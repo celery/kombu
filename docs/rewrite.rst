@@ -2,8 +2,8 @@
 
 .. code-block:: python
 
-    from carrot import Connection, Exchange, Binding
-    from carrot import Consumer, Producer
+    from kombu.connection Connection
+    from kombu.messaging import Exchange, Binding, Consumer, Producer
 
     media_exchange = Exchange("media", "direct", durable=True)
     video_binding = Binding("video", exchange=media_exchange, key="video")
@@ -30,12 +30,3 @@
     image_binding = Binding("image", exchange=media_exchange, key="image")
 
     consumer = Consumer(channel, [video_binding, image_binding])
-
-
-
-
-
-
-
-
-
