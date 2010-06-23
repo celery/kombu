@@ -1,0 +1,2 @@
+anyjson
+amqplib>=0.6

@@ -1,0 +1,202 @@
+"""
+
+`amqplib`_ backend for carrot.
+
+.. _`amqplib`: http://barryp.org/software/py-amqplib/
+
+"""
+import warnings
+import weakref
+
+from itertools import count
+
+from amqplib import client_0_8 as amqp
+from amqplib.client_0_8.exceptions import AMQPChannelException
+
+from kombu.backends.base import BaseMessage, BaseBackend
+
+DEFAULT_PORT = 5672
+
+class Connection(amqp.Connection):
+
+    def drain_events(self, allowed_methods=None, timeout=None):
+        """Wait for an event on any channel."""
+        return self.wait_multi(self.channels.values(), timeout=timeout)
+
+    def wait_multi(self, channels, allowed_methods=None, timeout=None):
+        """Wait for an event on a channel."""
+        chanmap = dict((chan.channel_id, chan) for chan in channels)
+        chanid, method_sig, args, content = self._wait_multiple(
+                chanmap.keys(), allowed_methods, timeout=timeout)
+
+        channel = chanmap[chanid]
+
+        if content \
+        and channel.auto_decode \
+        and hasattr(content, 'content_encoding'):
+            try:
+                content.body = content.body.decode(content.content_encoding)
+            except Exception:
+                pass
+
+        amqp_method = channel._METHOD_MAP.get(method_sig, None)
+
+        if amqp_method is None:
+            raise Exception('Unknown AMQP method (%d, %d)' % method_sig)
+
+        if content is None:
+            return amqp_method(channel, args)
+        else:
+            return amqp_method(channel, args, content)
+
+    def read_timeout(self, timeout=None):
+        if timeout is None:
+            return self.method_reader.read_method()
+        sock = self.transport.sock
+        prev = sock.gettimeout()
+        sock.settimeout(timeout)
+        try:
+            return self.method_reader.read_method()
+        finally:
+            sock.settimeout(prev)
+
+    def _wait_multiple(self, channel_ids, allowed_methods, timeout=None):
+        for channel_id in channel_ids:
+            method_queue = self.channels[channel_id].method_queue
+            for queued_method in method_queue:
+                method_sig = queued_method[0]
+                if (allowed_methods is None) \
+                or (method_sig in allowed_methods) \
+                or (method_sig == (20, 40)):
+                    method_queue.remove(queued_method)
+                    method_sig, args, content = queued_method
+                    return channel_id, method_sig, args, content
+
+        # Nothing queued, need to wait for a method from the peer
+        while True:
+            channel, method_sig, args, content = self.read_timeout(timeout)
+
+            if (channel in channel_ids) \
+            and ((allowed_methods is None) \
+                or (method_sig in allowed_methods) \
+                or (method_sig == (20, 40))):
+                return channel, method_sig, args, content
+
+            # Not the channel and/or method we were looking for. Queue
+            # this method for later
+            self.channels[channel].method_queue.append((method_sig,
+                                                        args,
+                                                        content))
+
+            #
+            # If we just queued up a method for channel 0 (the Connection
+            # itself) it's probably a close method in reaction to some
+            # error, so deal with it right away.
+            #
+            if channel == 0:
+                self.wait()
+
+    def channel(self, channel_id=None):
+        try:
+            return self.channels[channel_id]
+        except KeyError:
+            return Channel(self, channel_id)
+
+
+class Message(BaseMessage):
+    """A message received by the broker.
+
+    Usually you don't insantiate message objects yourself, but receive
+    them using a :class:`carrot.messaging.Consumer`.
+
+    :param backend: see :attr:`backend`.
+    :param amqp_message: see :attr:`_amqp_message`.
+
+
+    .. attribute:: body
+
+        The message body.
+
+    .. attribute:: delivery_tag
+
+        The message delivery tag, uniquely identifying this message.
+
+    .. attribute:: backend
+
+        The message backend used.
+        A subclass of :class:`carrot.backends.base.BaseBackend`.
+
+    .. attribute:: _amqp_message
+
+        A :class:`amqplib.client_0_8.basic_message.Message` instance.
+        This is a private attribute and should not be accessed by
+        production code.
+
+    """
+
+    def __init__(self, channel, amqp_message, **kwargs):
+        self._amqp_message = amqp_message
+        self.channel = channel
+
+        for attr_name in ("body",
+                          "delivery_tag",
+                          "content_type",
+                          "content_encoding",
+                          "delivery_info"):
+            kwargs[attr_name] = getattr(amqp_message, attr_name, None)
+
+        super(Message, self).__init__(backend, **kwargs)
+
+
+class Channel(amqp.Channel):
+    Message = Message
+
+    def prepare_message(self, message_data, priority=None,
+                content_type=None, content_encoding=None, headers=None,
+                properties=None):
+        """Encapsulate data into a AMQP message."""
+        return amqp.Message(message_data, priority=priority,
+                               content_type=content_type,
+                               content_encoding=content_encoding,
+                               properties=properties)
+
+    def message_to_python(self, raw_message):
+        """Convert encoded message body back to a Python value."""
+        return self.Message(channel=self, amqp_message=raw_message)
+
+
+class Backend(BaseBackend):
+    default_port = DEFAULT_PORT
+
+    def __init__(self, connection, **kwargs):
+        self.connection = connection
+        self.default_port = kwargs.get("default_port") or self.default_port
+
+    def get_channel(self, connection):
+        return connection.channel()
+
+    def drain_events(self, connection, **kwargs):
+        return connection.drain_events(**kwargs)
+
+    def establish_connection(self):
+        """Establish connection to the AMQP broker."""
+        conninfo = self.connection
+        if not conninfo.hostname:
+            raise KeyError("Missing hostname for AMQP connection.")
+        if conninfo.userid is None:
+            raise KeyError("Missing user id for AMQP connection.")
+        if conninfo.password is None:
+            raise KeyError("Missing password for AMQP connection.")
+        if not conninfo.port:
+            conninfo.port = self.default_port
+        return Connection(host=conninfo.host,
+                          userid=conninfo.userid,
+                          password=conninfo.password,
+                          virtual_host=conninfo.virtual_host,
+                          insist=conninfo.insist,
+                          ssl=conninfo.ssl,
+                          connect_timeout=conninfo.connect_timeout)
+
+    def close_connection(self, connection):
+        """Close the AMQP broker connection."""
+        connection.close()

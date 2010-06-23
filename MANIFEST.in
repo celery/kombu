@@ -1,0 +1,12 @@
+include AUTHORS
+include Changelog
+include FAQ
+include INSTALL
+include LICENSE
+include MANIFEST.in
+include README.rst
+include README
+include THANKS
+include TODO
+recursive-include docs *
+recursive-include kombu *.py
