@@ -5,6 +5,14 @@ except ImportError:
     ctypes = None
 
 
+def maybe_list(v):
+    if v is None:
+        return []
+    if hasattr(v, "__iter__"):
+        return v
+    return [v]
+
+
 def gen_unique_id():
     """Generate a unique id, having - hopefully - a very small chance of
     collission.

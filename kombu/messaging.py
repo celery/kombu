@@ -2,6 +2,7 @@ from itertools import count
 
 from kombu import serialization
 from kombu.entity import Exchange, Binding
+from kombu.utils import maybe_list
 
 
 class Producer(object):
@@ -17,11 +18,12 @@ class Producer(object):
         if auto_declare is not None:
             self.auto_declare = auto_declare
 
-        if self.exchange and self.auto_declare:
-            self.declare()
+        if self.exchange:
+            self.exchange = self.exchange.bind(self.channel)
+            self.auto_declare and self.declare()
 
     def declare(self):
-        self.exchange.declare(self.channel)
+        self.exchange.declare()
 
     def prepare(self, message_data, serializer=None,
             content_type=None, content_encoding=None):
@@ -52,10 +54,13 @@ class Producer(object):
 
         message_data, content_type, content_encoding = self.prepare(
                 message_data, content_type, content_encoding)
-        message = self.exchange.create_message(channel, message_data,
-                delivery_mode, priority, content_type, content_encoding)
+        message = self.exchange.create_message(message_data,
+                                               delivery_mode,
+                                               priority,
+                                               content_type,
+                                               content_encoding)
         return self.exchange.publish(message, routing_key, mandatory,
-                immediate)
+                                     immediate)
 
 
 _next_tag = count(1).next
@@ -80,12 +85,9 @@ class Consumer(object):
         if self.callbacks is None:
             self.callbacks = []
 
-        # bindings maybe list
-        if not hasattr(self.bindings, "__iter__"):
-            self.bindings = [self.bindings]
-
-        if self.auto_declare:
-            self.declare()
+        self.bindings = [binding.bind(self.channel)
+                            for binding in maybe_list(self.bindings)]
+        self.auto_declare and self.declare()
 
         self._active_tags = {}
         self._declare_consumer()
@@ -103,12 +105,14 @@ class Consumer(object):
     def _consume(self):
         H, T = self.bindings[:-1], self.bindings[-1]
         for binding in H:
-            binding.consume(self.channel, self._add_tag(binding),
-                            self._receive_callback, self.no_ack,
+            binding.consume(self._add_tag(binding),
+                            self._receive_callback,
+                            self.no_ack,
                             nowait=True)
-        T.consume(self.channel, self._add_tag(T),
-                self._receive_callback,
-                self.no_ack, nowait=False)
+        T.consume(self._add_tag(T),
+                  self._receive_callback,
+                  self.no_ack,
+                  nowait=False)
 
 
     def _add_tag(self, binding):
@@ -137,11 +141,11 @@ class Consumer(object):
 
     def purge(self):
         for binding in self.bindings:
-            self.binding.purge(self.channel)
+            self.binding.purge()
 
     def cancel(self):
         for binding, tag in self._active_tags.items():
-            binding.cancel(self.channel, tag)
+            binding.cancel(tag)
 
     def flow(self, active):
         self.channel.flow(active)
