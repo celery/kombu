@@ -2,6 +2,7 @@ from kombu.backends import get_backend_cls
 
 
 class BrokerConnection(object):
+    port = None
 
     def __init__(self, hostname="localhost", userid="guest",
             password="guest", virtual_host="/", port=None, **kwargs):

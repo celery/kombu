@@ -12,6 +12,7 @@ from itertools import count
 
 from amqplib import client_0_8 as amqp
 from amqplib.client_0_8.exceptions import AMQPChannelException
+from amqplib.client_0_8.channel import Channel
 
 from kombu.backends.base import BaseMessage, BaseBackend
 
@@ -148,7 +149,7 @@ class Message(BaseMessage):
         super(Message, self).__init__(backend, **kwargs)
 
 
-class Channel(amqp.Channel):
+class Channel(Channel):
     Message = Message
 
     def prepare_message(self, message_data, priority=None,
