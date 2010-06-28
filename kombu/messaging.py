@@ -18,7 +18,10 @@ class Producer(object):
             self.auto_declare = auto_declare
 
         if self.exchange and self.auto_declare:
-            self.exchange.declare(self.channel)
+            self.declare()
+
+    def declare(self):
+        self.exchange.declare(self.channel)
 
     def prepare(self, message_data, serializer=None,
             content_type=None, content_encoding=None):
@@ -61,6 +64,7 @@ class Consumer(object):
     no_ack = False
     auto_declare = True
     callbacks = None
+    on_decode_error = None
 
     def __init__(self, channel, bindings, no_ack=None, auto_declare=None,
             callbacks=None):
@@ -81,8 +85,7 @@ class Consumer(object):
             self.bindings = [self.bindings]
 
         if self.auto_declare:
-            for binding in self.bindings:
-                binding.declare(self.channel)
+            self.declare()
 
         self._active_tags = {}
         self._declare_consumer()
@@ -92,6 +95,10 @@ class Consumer(object):
 
     def __exit__(self):
         self.cancel()
+
+    def declare(self):
+        for binding in self.bindings:
+            binding.declare(self.channel)
 
     def _consume(self):
         H, T = self.bindings[:-1], self.bindings[-1]
@@ -110,7 +117,14 @@ class Consumer(object):
 
     def _receive_callback(self, raw_message):
         message = self.channel.message_to_python(raw_message)
-        self.receive(message.payload, message)
+        try:
+            decoded = message.payload
+        except Exception, exc:
+            if self.on_decode_error:
+                return self.on_decode_error(message, exc)
+            else:
+                raise
+        self.receive(decoded, message)
 
     def receive(self, message_data, message):
         if not self.callbacks:
