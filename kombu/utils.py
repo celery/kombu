@@ -1,10 +1,3 @@
-from uuid import UUID, uuid4, _uuid_generate_random
-try:
-    import ctypes
-except ImportError:
-    ctypes = None
-
-
 def maybe_list(v):
     if v is None:
         return []
@@ -13,26 +6,12 @@ def maybe_list(v):
     return [v]
 
 
-def gen_unique_id():
-    """Generate a unique id, having - hopefully - a very small chance of
-    collission.
-
-    For now this is provided by :func:`uuid.uuid4`.
-    """
-    # Workaround for http://bugs.python.org/issue4607
-    if ctypes and _uuid_generate_random:
-        buffer = ctypes.create_string_buffer(16)
-        _uuid_generate_random(buffer)
-        return str(UUID(bytes=buffer.raw))
-    return str(uuid4())
-
-
-def _compat_rl_partition(S, sep, direction=None):
-    if direction is None:
-        direction = S.split
+def _compat_rl_partition(S, sep, direction=None, reverse=False):
     items = direction(sep, 1)
     if len(items) == 1:
-        return items[0], sep, ''
+        if reverse:
+            return '', '', items[0]
+        return items[0], '', ''
     return items[0], sep, items[1]
 
 
@@ -56,8 +35,7 @@ def _compat_rpartition(S, sep):
     strings and ``S``.
 
     """
-    return _compat_rl_partition(S, sep, direction=S.rsplit)
-
+    return _compat_rl_partition(S, sep, direction=S.rsplit, reverse=True)
 
 
 def partition(S, sep):

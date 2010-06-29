@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import os
+import sys
 import codecs
 
 try:
@@ -12,9 +13,11 @@ except ImportError:
 
 from distutils.command.install_data import install_data
 from distutils.command.install import INSTALL_SCHEMES
-import sys
 
+os.environ["KOMBU_NO_EVAL"] = "yes"
 import kombu
+os.environ.pop("KOMBU_NO_EVAL", None)
+sys.modules.pop("kombu", None)
 
 packages, data_files = [], []
 root_dir = os.path.dirname(__file__)
@@ -77,6 +80,7 @@ setup(
         'anyjson',
         'amqplib>=0.6',
     ],
+    tests_require=["nose", "nose-cover3", "unittest2", "simplejson"],
     classifiers=[
         "Development Status :: 4 - Beta",
         "Framework :: Django",

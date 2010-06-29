@@ -5,13 +5,7 @@
 .. _`amqplib`: http://barryp.org/software/py-amqplib/
 
 """
-import warnings
-import weakref
-
-from itertools import count
-
 from amqplib import client_0_8 as amqp
-from amqplib.client_0_8.exceptions import AMQPChannelException
 from amqplib.client_0_8.channel import Channel
 
 from kombu.backends.base import BaseMessage, BaseBackend
@@ -146,7 +140,7 @@ class Message(BaseMessage):
                           "delivery_info"):
             kwargs[attr_name] = getattr(amqp_message, attr_name, None)
 
-        super(Message, self).__init__(backend, **kwargs)
+        super(Message, self).__init__(channel, **kwargs)
 
 
 class Channel(Channel):
@@ -157,9 +151,10 @@ class Channel(Channel):
                 properties=None):
         """Encapsulate data into a AMQP message."""
         return amqp.Message(message_data, priority=priority,
-                               content_type=content_type,
-                               content_encoding=content_encoding,
-                               properties=properties)
+                            content_type=content_type,
+                            content_encoding=content_encoding,
+                            properties=properties,
+                            application_headers=headers)
 
     def message_to_python(self, raw_message):
         """Convert encoded message body back to a Python value."""
@@ -173,7 +168,7 @@ class Backend(BaseBackend):
         self.connection = connection
         self.default_port = kwargs.get("default_port") or self.default_port
 
-    def get_channel(self, connection):
+    def create_channel(self, connection):
         return connection.channel()
 
     def drain_events(self, connection, **kwargs):

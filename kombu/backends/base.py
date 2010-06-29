@@ -19,8 +19,14 @@ class BaseMessage(object):
     MessageStateError = MessageStateError
 
     def __init__(self, channel, body=None, delivery_tag=None,
-            content_type=None, content_encoding=None, delivery_info={}, **kwargs):
+            content_type=None, content_encoding=None, delivery_info={},
+            **kwargs):
         self.channel = channel
+        self.body = body
+        self.delivery_tag = delivery_tag
+        self.content_type = content_type
+        self.content_encoding = content_encoding
+        self.delivery_info = delivery_info
         self._decoded_cache = None
         self._state = "RECEIVED"
 

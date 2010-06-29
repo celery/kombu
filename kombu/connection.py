@@ -1,3 +1,5 @@
+import socket
+
 from kombu.backends import get_backend_cls
 
 
@@ -22,7 +24,7 @@ class BrokerConnection(object):
     def __enter__(self):
         return self
 
-    def __exit__(self, e_type, e_value, e_trace):
+    def __exit__(self, *args):
         self.close()
 
     def _establish_connection(self):
@@ -66,6 +68,7 @@ class BrokerConnection(object):
         try:
             if self._connection:
                 self.backend.close_connection(self._connection)
+                self._connection = None
         except socket.error:
             pass
         self._closed = True

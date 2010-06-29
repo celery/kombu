@@ -18,6 +18,11 @@ class Object(object):
             value = kwargs.get(name)
             if value is not None:
                 setattr(self, name, (type_ or any)(value))
+            else:
+                try:
+                    getattr(self, name)
+                except AttributeError:
+                    setattr(self, name, None)
 
     def __copy__(self):
         return self.__class__(**dict((name, getattr(self, name))
@@ -26,22 +31,29 @@ class Object(object):
 
 def assert_is_bound(fun):
 
-    def only_if_bound(self, *args, **kwargs):
+    def if_bound(self, *args, **kwargs):
         if self.is_bound:
             return fun(self, *args, **kwargs)
         raise NotBoundError(
                 "Can't call %s on %s not bound to a channel" % (
                     fun.__name__,
                     self.__class__.__name__))
-    only_if_bound.__name__ = fun.__name__
+    if_bound.__name__ = fun.__name__
+    if_bound.__doc__ = fun.__doc__
+    if_bound.__module__ = fun.__module__
+    if_bound.__dict__.update(fun.__dict__)
+    if_bound.func_name = fun.__name__
 
-    return only_if_bound
+    return if_bound
 
 
 class MaybeChannelBound(Object):
     """Mixin for classes that can be bound to an AMQP channel."""
     channel = None
     _is_bound = False
+
+    def __call__(self, channel):
+        return self.bind(channel)
 
     def bind(self, channel):
         """Create copy of the instance that is bound to a channel."""
@@ -85,6 +97,7 @@ class Exchange(MaybeChannelBound):
              ("type", None),
              ("routing_key", None),
              ("channel", None),
+             ("arguments", None),
              ("durable", bool),
              ("auto_delete", bool),
              ("delivery_mode", lambda m: DELIVERY_MODES.get(m) or m))
@@ -106,19 +119,21 @@ class Exchange(MaybeChannelBound):
         return self.channel.exchange_declare(exchange=self.name,
                                              type=self.type,
                                              durable=self.durable,
-                                             auto_delete=self.auto_delete)
+                                             auto_delete=self.auto_delete,
+                                             arguments=self.arguments)
 
     @assert_is_bound
     def create_message(self, message_data, delivery_mode=None,
                 priority=None, content_type=None, content_encoding=None,
-                properties=None):
+                properties=None, headers=None):
         properties = properties or {}
         properties["delivery_mode"] = delivery_mode or self.delivery_mode
         return self.channel.prepare_message(message_data,
                                             properties=properties,
                                             priority=priority,
                                             content_type=content_type,
-                                            content_encoding=content_encoding)
+                                            content_encoding=content_encoding,
+                                            headers=headers)
 
     @assert_is_bound
     def publish(self, message, routing_key=None, mandatory=False,
@@ -129,8 +144,7 @@ class Exchange(MaybeChannelBound):
                                           exchange=self.name,
                                           routing_key=routing_key,
                                           mandatory=mandatory,
-                                          immediate=immediate,
-                                          headers=headers)
+                                          immediate=immediate)
 
     @assert_is_bound
     def delete(self, if_unused=False):
@@ -154,6 +168,8 @@ class Binding(MaybeChannelBound):
              ("exchange", None),
              ("routing_key", None),
              ("channel", None),
+             ("queue_arguments", None),
+             ("binding_arguments", None),
              ("durable", bool),
              ("exclusive", bool),
              ("auto_delete", bool))
@@ -169,7 +185,7 @@ class Binding(MaybeChannelBound):
         self.maybe_bind(self.channel)
 
     def when_bound(self):
-        self.exchange = self.exchange.bind(self.channel)
+        self.exchange = self.exchange(self.channel)
 
     @assert_is_bound
     def declare(self):
@@ -178,13 +194,14 @@ class Binding(MaybeChannelBound):
         chan = self.channel
         return (self.exchange and self.exchange.declare(),
                 self.name and chan.queue_declare(queue=self.name,
-                                                 durable=self.durable,
-                                                 exclusive=self.exclusive,
-                                                 auto_delete=self.auto_delete),
+                                            durable=self.durable,
+                                            exclusive=self.exclusive,
+                                            auto_delete=self.auto_delete,
+                                            arguments=self.queue_arguments),
                 self.name and chan.queue_bind(queue=self.name,
-                                              exchange=self.exchange.name,
-                                              routing_key=self.routing_key))
-
+                                            exchange=self.exchange.name,
+                                            routing_key=self.routing_key,
+                                            arguments=self.binding_arguments))
 
     @assert_is_bound
     def get(self, no_ack=None):
@@ -207,6 +224,10 @@ class Binding(MaybeChannelBound):
     @assert_is_bound
     def cancel(self, consumer_tag):
         return self.channel.basic_cancel(consumer_tag)
+
+    @assert_is_bound
+    def delete(self, if_unused=False, if_empty=False):
+        return self.channel.queue_delete(self.name, if_unused, if_empty)
 
     def __repr__(self):
         return super(Binding, self).__repr__(

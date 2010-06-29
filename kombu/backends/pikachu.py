@@ -1,4 +1,3 @@
-import asyncore
 import weakref
 import functools
 import itertools
@@ -197,6 +196,7 @@ class SyncBackend(BaseBackend):
                                          immediate=immediate)
         if mandatory or immediate:
             self.close()
+        return ret
 
     def qos(self, prefetch_size, prefetch_count, apply_global=False):
         """Request specific Quality of Service."""

@@ -1,8 +1,7 @@
 from carrot.backends.base import BaseBackend, BaseMessage
-from anyjson import serialize, deserialize
+from anyjson import deserialize
 from itertools import count
 from django.utils.datastructures import SortedDict
-from carrot.utils import gen_unique_id
 import sys
 import time
 import atexit
@@ -30,7 +29,7 @@ class QueueSet(object):
 
         :returns: The message and the name of the queue it came from as
             a tuple.
-        :raises Empty: If there are no more items in any of the queues.
+        :raises Queue.Empty: If there are no more items in any of the queues.
 
         """
 
@@ -42,7 +41,7 @@ class QueueSet(object):
             queue = self.cycle.next()
             try:
                 item = self.backend._get(queue)
-            except Empty:
+            except QueueEmpty:
                 # raises Empty when we've tried all of them.
                 tried.add(queue)
                 if tried == self.all:

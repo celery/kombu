@@ -2,47 +2,7 @@ import unittest2 as unittest
 
 from kombu.entity import Exchange, Binding, NotBoundError
 
-
-class Channel(object):
-
-    def __init__(self):
-        self.called = []
-
-    def _called(self, name):
-        self.called.append(name)
-
-    def __contains__(self, key):
-        return key in self.called
-
-    def exchange_declare(self, *args, **kwargs):
-        self._called("exchange_declare")
-
-    def prepare_message(self, *args, **kwargs):
-        self._called("prepare_message")
-
-    def basic_publish(self, *args, **kwargs):
-        self._called("basic_publish")
-
-    def exchange_delete(self, *args, **kwargs):
-        self._called("exchange_delete")
-
-    def queue_declare(self, *args, **kwargs):
-        self._called("queue_declare")
-
-    def queue_bind(self, *args, **kwargs):
-        self._called("queue_bind")
-
-    def basic_get(self, *args, **kwargs):
-        self._called("basic_get")
-
-    def queue_purge(self, *args, **kwargs):
-        self._called("queue_purge")
-
-    def basic_consume(self, *args, **kwargs):
-        self._called("basic_consume")
-
-    def basic_cancel(self, *args, **kwargs):
-        self._called("basic_cancel")
+from kombu.tests.mocks import Channel
 
 
 class test_Exchange(unittest.TestCase):
@@ -98,7 +58,6 @@ class test_Exchange(unittest.TestCase):
         self.assertIn("Exchange", repr(b))
 
 
-
 class test_Binding(unittest.TestCase):
 
     def setUp(self):
@@ -152,8 +111,12 @@ class test_Binding(unittest.TestCase):
         b.cancel("fifafo")
         self.assertIn("basic_cancel", b.channel)
 
+    def test_delete(self):
+        b = Binding("foo", self.exchange, "foo", channel=Channel())
+        b.delete()
+        self.assertIn("queue_delete", b.channel)
+
     def test__repr__(self):
         b = Binding("foo", self.exchange, "foo")
         self.assertIn("foo", repr(b))
         self.assertIn("Binding", repr(b))
-

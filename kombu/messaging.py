@@ -19,7 +19,7 @@ class Producer(object):
             self.auto_declare = auto_declare
 
         if self.exchange:
-            self.exchange = self.exchange.bind(self.channel)
+            self.exchange = self.exchange(self.channel)
             self.auto_declare and self.declare()
 
     def declare(self):
@@ -50,7 +50,7 @@ class Producer(object):
 
     def publish(self, message_data, routing_key=None, delivery_mode=None,
             mandatory=False, immediate=False, priority=0, content_type=None,
-            content_encoding=None, serializer=None):
+            content_encoding=None, serializer=None, headers=None):
 
         message_data, content_type, content_encoding = self.prepare(
                 message_data, content_type, content_encoding)
@@ -58,7 +58,8 @@ class Producer(object):
                                                delivery_mode,
                                                priority,
                                                content_type,
-                                               content_encoding)
+                                               content_encoding,
+                                               headers=headers)
         return self.exchange.publish(message, routing_key, mandatory,
                                      immediate)
 
@@ -84,25 +85,26 @@ class Consumer(object):
             self.callbacks = callbacks
         if self.callbacks is None:
             self.callbacks = []
-
-        self.bindings = [binding.bind(self.channel)
-                            for binding in maybe_list(self.bindings)]
-        self.auto_declare and self.declare()
-
         self._active_tags = {}
-        self._declare_consumer()
+
+        self.bindings = [binding(self.channel)
+                            for binding in maybe_list(self.bindings)]
+
+        if self.auto_declare:
+            self.declare()
+            self.consume()
 
     def __enter__(self):
         return self
 
-    def __exit__(self):
+    def __exit__(self, *args):
         self.cancel()
 
     def declare(self):
         for binding in self.bindings:
-            binding.declare(self.channel)
+            binding.declare()
 
-    def _consume(self):
+    def consume(self):
         H, T = self.bindings[:-1], self.bindings[-1]
         for binding in H:
             binding.consume(self._add_tag(binding),
@@ -113,7 +115,6 @@ class Consumer(object):
                   self._receive_callback,
                   self.no_ack,
                   nowait=False)
-
 
     def _add_tag(self, binding):
         tag = self._active_tags[binding] = str(_next_tag())
@@ -141,14 +142,20 @@ class Consumer(object):
 
     def purge(self):
         for binding in self.bindings:
-            self.binding.purge()
+            binding.purge()
 
     def cancel(self):
         for binding, tag in self._active_tags.items():
             binding.cancel(tag)
+        self._active_tags = {}
 
     def flow(self, active):
         self.channel.flow(active)
 
     def qos(self, prefetch_size=0, prefetch_count=0, apply_global=False):
-        self.channel.qos(prefetch_size, prefetch_count, apply_global)
+        return self.channel.basic_qos(prefetch_size,
+                                      prefetch_count,
+                                      apply_global)
+
+    def recover(self, requeue=False):
+        return self.channel.basic_recover(requeue)
