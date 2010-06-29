@@ -2,8 +2,8 @@ import unittest2 as unittest
 
 import simplejson
 
-from kombu.backends.base import MessageStateError
 from kombu.connection import BrokerConnection
+from kombu.exceptions import MessageStateError
 from kombu.messaging import Consumer, Producer
 from kombu.entity import Exchange, Binding
 

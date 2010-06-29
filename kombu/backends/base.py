@@ -4,12 +4,9 @@ Backend base classes.
 
 """
 from kombu import serialization
+from kombu.exceptions import MessageStateError
 
 ACKNOWLEDGED_STATES = frozenset(["ACK", "REJECTED", "REQUEUED"])
-
-
-class MessageStateError(Exception):
-    """The message has already been acknowledged."""
 
 
 class BaseMessage(object):

@@ -1,6 +1,7 @@
 import unittest2 as unittest
 
-from kombu.entity import Exchange, Binding, NotBoundError
+from kombu.entity import Exchange, Binding
+from kombu.exceptions import NotBoundError
 
 from kombu.tests.mocks import Channel
 

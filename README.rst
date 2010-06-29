@@ -38,6 +38,21 @@ Proposed API::
     consumer = Consumer(channel, [video_binding, image_binding])
 
 
+
+Exchanges/Bindings can be bound to a channel::
+
+    >>> exchange = Exchange("tasks", "direct")
+
+    >>> connection = BrokerConnection()
+    >>> channel = connection.channel()
+    >>> bound_exchance = exchange(channel)
+    >>> bound_exchange.delete()
+
+    # the original exchange is not affected, and stays unbound.
+    >>> exchange.delete()
+    raise NotBoundError: Can't call delete on Exchange not bound to
+        a channel.
+
 **ORIGINAL CARROT README BELOW**
 
 Introduction
