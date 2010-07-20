@@ -64,13 +64,13 @@ class Producer(object):
                                      immediate)
 
 
-_next_tag = count(1).next
 
 class Consumer(object):
     no_ack = False
     auto_declare = True
     callbacks = None
     on_decode_error = None
+    _next_tag = count(1).next # global
 
     def __init__(self, channel, bindings, no_ack=None, auto_declare=None,
             callbacks=None):
@@ -117,7 +117,7 @@ class Consumer(object):
                   nowait=False)
 
     def _add_tag(self, binding):
-        tag = self._active_tags[binding] = str(_next_tag())
+        tag = self._active_tags[binding] = str(self._next_tag())
         return tag
 
     def _receive_callback(self, raw_message):
