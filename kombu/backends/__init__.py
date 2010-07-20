@@ -6,8 +6,8 @@ DEFAULT_BACKEND = "kombu.backends.pyamqplib.Backend"
 
 BACKEND_ALIASES = {
     "amqplib": "kombu.backends.pyamqplib.Backend",
-    "pika": "kombu.backends.pikachu.AsyncoreBackend",
-    "syncpika": "kombu.backends.pikachu.SyncBackend",
+    "pika": "kombu.backends.pypika.AsyncoreBackend",
+    "syncpika": "kombu.backends.pypika.SyncBackend",
 }
 
 _backend_cache = {}
