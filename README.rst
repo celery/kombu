@@ -8,14 +8,14 @@
 
 Proposed API::
 
-    from kombu.connection Connection
+    from kombu.connection BrokerConnection
     from kombu.messaging import Exchange, Binding, Consumer, Producer
 
     media_exchange = Exchange("media", "direct", durable=True)
     video_binding = Binding("video", exchange=media_exchange, key="video")
 
     # connections/channels
-    connection = Connection("localhost", "guest", "guest", "/")
+    connection = BrokerConnection("localhost", "guest", "guest", "/")
     channel = connection.channel()
 
     # produce
