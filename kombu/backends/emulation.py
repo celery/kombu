@@ -173,19 +173,19 @@ class Channel(object):
                                delivery_info["routing_key"]),
                   message)
 
-    def _poll(self, resource):
-        while True:
-            if self.qos_manager.can_consume():
-                try:
-                    return resource.get()
-                except QueueEmpty:
-                    pass
+    def _poll(self, queues):
+        return Consume(self._get, queues, QueueEmpty).get()
 
     def drain_events(self, timeout=None):
         if self.qos_manager.can_consume():
-            queues = [_consumers[tag] for tag in self._consumers]
-            return Consume(self._get, queues, QueueEmpty).get()
+            if hasattr(self, "_get_many"):
+                return self._get_many(self._active_queues, timeout=timeout)
+            return self._poll(self._active_queues)
         raise QueueEmpty()
+
+    @property
+    def _active_queues(self):
+        return [_consumers[tag] for tag in self._consumers]
 
     def exchange_declare(self, exchange, type="direct", durable=False,
             auto_delete=False, arguments=None):
@@ -327,7 +327,7 @@ class EmulationBase(BaseBackend):
                 channel.close()
 
     def _drain_channel(self, channel):
-        return channel.drain_events()
+        return channel.drain_events(timeout=self.interval)
 
     def drain_events(self, timeout=None):
         consumer = Consume(self._drain_channel, self._channels, QueueEmpty)

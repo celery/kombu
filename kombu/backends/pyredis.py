@@ -12,7 +12,6 @@ DEFAULT_DB = 0
 
 class RedisChannel(emulation.Channel):
     queues = {}
-    do_restore = False
     _client = None
 
     def _new_queue(self, queue, **kwargs):
@@ -27,11 +26,11 @@ class RedisChannel(emulation.Channel):
     def _size(self, queue):
         return self.client.llen(queue)
 
-    def _get_many(self, queue, timeout=None):
+    def _get_many(self, queues, timeout=None):
         dest__item = self.client.brpop(queues, timeout=timeout)
         if dest__item:
             dest, item = dest__item
-            return deserialize(dest), item
+            return deserialize(item), dest
         raise Empty()
 
     def _put(self, queue, message):
