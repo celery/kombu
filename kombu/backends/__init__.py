@@ -16,6 +16,8 @@ _backend_cache = {}
 def resolve_backend(backend=None):
     backend = BACKEND_ALIASES.get(backend, backend)
     backend_module_name, _, backend_cls_name = rpartition(backend, ".")
+    if not backend_module_name:
+        raise KeyError("No such backend: %s" % (backend, ))
     return backend_module_name, backend_cls_name
 
 

@@ -141,8 +141,7 @@ class Consumer(object):
         self.callbacks.append(callback)
 
     def purge(self):
-        for binding in self.bindings:
-            binding.purge()
+        return sum(binding.purge() for binding in self.bindings)
 
     def cancel(self):
         for binding, tag in self._active_tags.items():

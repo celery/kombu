@@ -5,8 +5,12 @@
 .. _`amqplib`: http://barryp.org/software/py-amqplib/
 
 """
+import socket
+
 from amqplib import client_0_8 as amqp
 from amqplib.client_0_8.channel import Channel
+from amqplib.client_0_8.exceptions import AMQPConnectionException
+from amqplib.client_0_8.exceptions import AMQPChannelException
 
 from kombu.backends.base import BaseMessage, BaseBackend
 
@@ -163,6 +167,8 @@ class Channel(Channel):
 
 class Backend(BaseBackend):
     default_port = DEFAULT_PORT
+    connection_errors = (AMQPConnectionException, socket.error, IOError)
+    channel_errors = (AMQPChannelException, )
 
     def __init__(self, connection, **kwargs):
         self.connection = connection

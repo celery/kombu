@@ -5,6 +5,7 @@ from kombu.backends import get_backend_cls
 
 class BrokerConnection(object):
     port = None
+    virtual_host = "/"
 
     def __init__(self, hostname="localhost", userid="guest",
             password="guest", virtual_host="/", port=None, **kwargs):
@@ -73,11 +74,19 @@ class BrokerConnection(object):
             pass
         self._closed = True
 
-    def _create_backend(self):
+    def create_backend(self):
         return self.get_backend_cls()(connection=self)
 
     @property
     def backend(self):
         if self._backend is None:
-            self._backend = self._create_backend()
+            self._backend = self.create_backend()
         return self._backend
+
+    @property
+    def connection_errors(self):
+        return self.backend.connection_errors
+
+    @property
+    def channel_errors(self):
+        return self.backend.channel_errors

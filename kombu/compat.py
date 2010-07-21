@@ -145,7 +145,7 @@ class Consumer(messaging.Consumer):
     def fetch(self, no_ack=None, enable_callbacks=False):
         if no_ack is None:
             no_ack = self.no_ack
-        message = self.binding.get(no_ack)
+        message = self.bindings[0].get(no_ack)
         if message:
             if enable_callbacks:
                 self.receive(message.payload, message)
@@ -184,6 +184,9 @@ class _CSet(messaging.Consumer):
 
     def iterconsume(self):
         return iterconsume(self.connection, self)
+
+    def discard_all(self):
+        return self.purge()
 
     def add_consumer_from_dict(self, queue, **options):
         self.bindings.append(entry_to_binding(queue, **options))

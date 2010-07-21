@@ -129,13 +129,14 @@ class Binding(MaybeChannelBound):
 
     @assert_is_bound
     def get(self, no_ack=None):
+        import sys
         message = self.channel.basic_get(self.name, no_ack=no_ack)
         if message:
             return self.channel.message_to_python(message)
 
     @assert_is_bound
     def purge(self):
-        return self.channel.queue_purge(self.name)
+        return self.channel.queue_purge(self.name) or 0
 
     @assert_is_bound
     def consume(self, consumer_tag, callback, no_ack=None, nowait=True):
