@@ -8,13 +8,20 @@ class MemoryChannel(emulation.Channel):
     do_restore = False
 
     def _new_queue(self, queue, **kwargs):
-        self.queues[queue] = Queue()
+        if queue not in self.queues:
+            self.queues[queue] = Queue()
 
     def _get(self, queue):
         return self.queues[queue].get(block=False)
 
     def _put(self, queue, message):
         self.queues[queue].put(message)
+
+    def _size(self, queue):
+        return self.queues[queue].qsize()
+
+    def _delete(self, queue):
+        self.queues.pop(queue, None)
 
     def _purge(self, queue):
         size = self.queues[queue].qsize()

@@ -9,6 +9,8 @@ BACKEND_ALIASES = {
     "pika": "kombu.backends.pypika.AsyncoreBackend",
     "syncpika": "kombu.backends.pypika.SyncBackend",
     "memory": "kombu.backends.memory.MemoryBackend",
+    "redis": "kombu.backends.pyredis.RedisBackend",
+    "nbredis": "kombu.backends.pyredis.NBRedisBackend",
 }
 
 _backend_cache = {}

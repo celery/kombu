@@ -1,102 +1,106 @@
-from kombu.backends.base import BaseBackend, BaseMessage
-from anyjson import deserialize, serialize
-from itertools import count
-from collections import OrderedDict
-import sys
-import time
 import atexit
+import pickle
+import sys
+import tempfile
 
+from time import sleep
+from itertools import count, cycle
 from Queue import Empty as QueueEmpty
-from itertools import cycle
+
+from kombu.backends.base import BaseBackend, BaseMessage
+from kombu.utils import OrderedDict
 
 
-class QueueSet(object):
-    """A set of queues that operates as one."""
+class Consume(object):
+    """Consume from a set of resources, where each resource gets
+    an equal chance to be consumed from."""
 
-    def __init__(self, backend, queues):
-        self.backend = backend
-        self.queues = queues
+    def __init__(self, fun, resources, predicate=QueueEmpty):
+        self.fun = fun
+        self.resources = resources
+        self.predicate = predicate
 
         # an infinite cycle through all the queues.
-        self.cycle = cycle(self.queues)
+        self.cycle = cycle(self.resources)
 
-        # A set of all the queue names, so we can match when we've
+        # A set of all the names, so we can match when we've
         # tried all of them.
-        self.all = frozenset(self.queues)
+        self.all = frozenset(self.resources)
 
     def get(self):
-        """Get the next message avaiable in the queue.
-
-        :returns: The message and the name of the queue it came from as
-            a tuple.
-        :raises Queue.Empty: If there are no more items in any of the queues.
-
-        """
-
-        # A set of queues we've already tried.
+        # What we've already tried.
         tried = set()
 
         while True:
-            # Get the next queue in the cycle, and try to get an item off it.
-            queue = self.cycle.next()
+            # Get the next resource in the cycle,
+            # and try to get an item off it.
+            resource = self.cycle.next()
             try:
-                item = self.backend._get(queue)
-            except QueueEmpty:
-                # raises Empty when we've tried all of them.
-                tried.add(queue)
+                return self.fun(resource), resource
+            except self.predicate:
+                tried.add(resource)
                 if tried == self.all:
                     raise
-            else:
-                return item, queue
-
-    def __repr__(self):
-        return "<QueueSet: %s>" % repr(self.queue_names)
 
 
 class QualityOfService(object):
 
-    def __init__(self, resource, prefetch_count=None, interval=None,
+    def __init__(self, channel, prefetch_count=None, interval=None,
             do_restore=True):
-        self.resource = resource
+        self.channel = channel
         self.prefetch_count = prefetch_count
         self.interval = interval
         self._delivered = OrderedDict()
         self.do_restore = do_restore
         self._restored_once = False
-        atexit.register(self.restore_unacked_once)
+        if self.do_restore:
+            atexit.register(self.restore_unacked_once)
 
     def can_consume(self):
-        return len(self._delivered) > self.prefetch_count
+        if not self.prefetch_count:
+            return True
+        return len(self._delivered) < self.prefetch_count
 
-    def append(self, message, queue_name, delivery_tag):
-        self._delivered[delivery_tag] = message, queue_name
+    def append(self, message, delivery_tag):
+        self._delivered[delivery_tag] = message
 
     def ack(self, delivery_tag):
         self._delivered.pop(delivery_tag, None)
 
     def restore_unacked(self):
-        for message, queue_name in self._delivered.items():
-            self.resource._put(queue_name, message)
-        self._delivered = SortedDict()
+        for message in self._delivered.items():
+            self.channel._restore(message)
+        self._delivered.clear()
 
     def requeue(self, delivery_tag):
         try:
-            message, queue_name = self._delivered.pop(delivery_tag)
+            message = self._delivered.pop(delivery_tag)
         except KeyError:
             pass
-        self.resource.put(queue_name, message)
+        self.channel._restore(message)
 
     def restore_unacked_once(self):
-        if self.do_restore:
-            if not self._restored_once:
-                if self._delivered:
-                    sys.stderr.write(
-                        "Restoring unacknowledged messages: %s\n" % (
-                            self._delivered))
+        if self.do_restore and not self._restored_once:
+            if self._delivered:
+                sys.stderr.write(
+                    "Restoring unacknowledged messages: %s\n" % (
+                    self._delivered))
+            try:
                 self.restore_unacked()
-                if self._delivered:
-                    sys.stderr.write("UNRESTORED MESSAGES: %s\n" % (
-                        self._delivered))
+            except:
+                pass
+            if self._delivered:
+                sys.stderr.write("UNABLE TO RESTORE %s MESSAGES\n" % (
+                    len(self._delivered)))
+                persist = tempfile.mktemp()
+                sys.stderr.write(
+                    "PERSISTING UNRESTORED MESSAGES TO FILE: %s\n" % persist)
+                fh = open(persist, "w")
+                try:
+                    pickle.dump(self._delivered, fh, protocol=0)
+                finally:
+                    fh.flush()
+                    fh.close()
 
 
 class Message(BaseMessage):
@@ -111,7 +115,6 @@ class Message(BaseMessage):
         kwargs["headers"] = payload.get("headers")
         kwargs["properties"] = properties
         kwargs["delivery_info"] = properties.get("delivery_info")
-        self.destination = payload.get("destination")
 
         super(Message, self).__init__(channel, **kwargs)
 
@@ -121,7 +124,6 @@ class Message(BaseMessage):
 
 
 _exchanges = {}
-_queues = {}
 _consumers = {}
 _callbacks = {}
 
@@ -149,8 +151,41 @@ class Channel(object):
     def _purge(self, queue):
         raise NotImplementedError("Emulations must implement _purge")
 
+    def _size(self, queue):
+        return 0
+
+    def _delete(self, queue):
+        self._purge(queue)
+
     def _new_queue(self, queue):
-        raise NotImplementedError("Emulations must implement _new_queue")
+        pass
+
+    def _lookup(self, exchange, routing_key, default="ae.undeliver"):
+        try:
+            return _exchanges[exchange]["table"][routing_key]
+        except KeyError:
+            self._new_queue(default)
+            return default
+
+    def _restore(self, message):
+        delivery_info = message.delivery_info
+        self._put(self._lookup(delivery_info["exchange"],
+                               delivery_info["routing_key"]),
+                  message)
+
+    def _poll(self, resource):
+        while True:
+            if self.qos_manager.can_consume():
+                try:
+                    return resource.get()
+                except QueueEmpty:
+                    pass
+
+    def drain_events(self, timeout=None):
+        if self.qos_manager.can_consume():
+            queues = [_consumers[tag] for tag in self._consumers]
+            return Consume(self._get, queues, QueueEmpty).get()
+        raise QueueEmpty()
 
     def exchange_declare(self, exchange, type="direct", durable=False,
             auto_delete=False, arguments=None):
@@ -161,9 +196,19 @@ class Channel(object):
                                     "arguments": arguments or {},
                                     "table": {}}
 
+    def exchange_delete(self, exchange, if_unused=False):
+        for rkey, queue in _exchanges[exchange]["table"].items():
+            self._purge(queue)
+        _exchanges.pop(exchange, None)
+
     def queue_declare(self, queue, **kwargs):
-        if queue not in _queues:
-            _queues[queue] = self._new_queue(queue, **kwargs)
+        self._new_queue(queue, **kwargs)
+        return queue, self._size(queue), 0
+
+    def queue_delete(self, queue, if_unusued=False, if_empty=False):
+        if if_empty and self._size(queue):
+            return
+        self._delete(queue)
 
     def queue_bind(self, queue, exchange, routing_key, arguments=None):
         table = _exchanges[exchange].setdefault("table", {})
@@ -187,6 +232,11 @@ class Channel(object):
     def basic_ack(self, delivery_tag):
         self.qos_manager.ack(delivery_tag)
 
+    def basic_recover(self, requeue=False):
+        if requeue:
+            return self.qos_manager.restore_unacked()
+        raise NotImplementedError("Does not support recover(requeue=False)")
+
     def basic_reject(self, delivery_tag, requeue=False):
         if requeue:
             self.qos_manager.requeue(delivery_tag)
@@ -198,11 +248,10 @@ class Channel(object):
         self._consumers.add(consumer_tag)
 
     def basic_publish(self, message, exchange, routing_key, **kwargs):
-        message["destination"] = exchange
+        message["properties"]["delivery_info"]["exchange"] = exchange
+        message["properties"]["delivery_info"]["routing_key"] = routing_key
         message["properties"]["delivery_tag"] = self._next_delivery_tag()
-        table = _exchanges[exchange]["table"]
-        if routing_key in table:
-            self._put(table[routing_key], message)
+        self._put(self._lookup(exchange, routing_key), message)
 
     def basic_cancel(self, consumer_tag):
         queue = _consumers.pop(consumer_tag, None)
@@ -211,13 +260,14 @@ class Channel(object):
 
     def message_to_python(self, raw_message):
         message = self.Message(self, payload=raw_message)
-        self.qos_manager.append(message, message.destination,
-                                message.delivery_tag)
+        self.qos_manager.append(message, message.delivery_tag)
         return message
 
     def prepare_message(self, message_data, priority=None,
             content_type=None, content_encoding=None, headers=None,
             properties=None):
+        properties = properties or {}
+        properties.setdefault("delivery_info", {})
         return {"body": message_data,
                 "priority": priority or 0,
                 "content-encoding": content_encoding,
@@ -238,41 +288,61 @@ class Channel(object):
         return self._qos_manager
 
     def close(self):
-        map(self.basic_cancel, self._consumers)
+        map(self.basic_cancel, list(self._consumers))
+        self.connection.close_channel(self)
 
 
 class EmulationBase(BaseBackend):
     Channel = Channel
-    QueueSet = QueueSet
+    Consume = Consume
 
+    interval = 1
     default_port = None
 
     def __init__(self, connection, **kwargs):
         self.connection = connection
+        self._channels = set()
 
     def create_channel(self, connection):
-        return self.Channel(connection)
+        channel = self.Channel(connection)
+        self._channels.add(channel)
+        return channel
+
+    def close_channel(self, channel):
+        try:
+            self._channels.remove(channel)
+        except KeyError:
+            pass
 
     def establish_connection(self):
         return self # for drain events
 
     def close_connection(self, connection):
-        pass
+        while self._channels:
+            try:
+                channel = self._channels.pop()
+            except KeyError:
+                pass
+            else:
+                channel.close()
 
-    def _poll(self, resource):
-        while True:
-            if self.qos_manager.can_consume():
-                try:
-                    return resource.get()
-                except QueueEmpty:
-                    pass
-            time.sleep(self.interval)
+    def _drain_channel(self, channel):
+        return channel.drain_events()
 
     def drain_events(self, timeout=None):
-        queueset = self.QueueSet(self._consumers.values())
-        payload, queue = self._poll(queueset)
+        consumer = Consume(self._drain_channel, self._channels, QueueEmpty)
+        while True:
+            try:
+                item, channel = consumer.get()
+                break
+            except QueueEmpty:
+                sleep(self.interval)
+
+        message, queue = item
 
         if not queue or queue not in _callbacks:
-            return
+            raise KeyError(
+                "Received message for queue '%s' without consumers: %s" % (
+                    queue, message))
 
-        _callbacks[queue](payload)
+        _callbacks[queue](message)
