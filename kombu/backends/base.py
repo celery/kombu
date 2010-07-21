@@ -17,6 +17,7 @@ class BaseMessage(object):
 
     def __init__(self, channel, body=None, delivery_tag=None,
             content_type=None, content_encoding=None, delivery_info={},
+            properties=None, headers=None,
             **kwargs):
         self.channel = channel
         self.body = body
@@ -24,6 +25,8 @@ class BaseMessage(object):
         self.content_type = content_type
         self.content_encoding = content_encoding
         self.delivery_info = delivery_info
+        self.headers = headers
+        self.properties = properties
         self._decoded_cache = None
         self._state = "RECEIVED"
 
@@ -93,6 +96,8 @@ class BaseMessage(object):
 class BaseBackend(object):
     """Base class for backends."""
     default_port = None
+    connection_errors = ()
+    channel_errors = ()
 
     def __init__(self, connection, **kwargs):
         self.connection = connection

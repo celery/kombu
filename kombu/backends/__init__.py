@@ -8,6 +8,7 @@ BACKEND_ALIASES = {
     "amqplib": "kombu.backends.pyamqplib.Backend",
     "pika": "kombu.backends.pypika.AsyncoreBackend",
     "syncpika": "kombu.backends.pypika.SyncBackend",
+    "memory": "kombu.backends.memory.MemoryBackend",
 }
 
 _backend_cache = {}

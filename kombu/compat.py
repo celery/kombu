@@ -63,7 +63,7 @@ class Publisher(messaging.Producer):
             self.durable = durable
 
         if not isinstance(self.exchange, entity.Exchange):
-            self.exchange = entity.Exchange(exchange=self.exchange,
+            self.exchange = entity.Exchange(name=self.exchange,
                                             type=self.exchange_type,
                                             routing_key=self.routing_key,
                                             auto_delete=self.auto_delete,
