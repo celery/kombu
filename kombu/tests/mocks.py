@@ -115,7 +115,7 @@ class Backend(BaseBackend):
     def create_channel(self, connection):
         return connection.channel()
 
-    def drain_events(self, connection, **kwargs):
+    def drain_events(self, **kwargs):
         return "event"
 
     def close_connection(self, connection):
