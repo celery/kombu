@@ -4,7 +4,7 @@ from kombu import entity
 from kombu import messaging
 
 
-def iterconsume(connection, consumer):
+def iterconsume(connection, consumer, no_ack=False, limit=None):
     consumer.consume(no_ack=no_ack)
     for iteration in count(0):
         if limit and iteration >= limit:
@@ -161,7 +161,7 @@ class Consumer(messaging.Consumer):
         return self.purge()
 
     def iterconsume(self, limit=None, no_ack=None):
-        return iterconsume(self.connection, self)
+        return iterconsume(self.connection, self, no_ack, limit)
 
     def wait(self, limit=None):
         it = self.iterconsume(limit)
@@ -175,6 +175,7 @@ class Consumer(messaging.Consumer):
                 raise StopIteration
             yield item
 
+
 class _CSet(messaging.Consumer):
 
     def __init__(self, connection, *args, **kwargs):
@@ -182,8 +183,8 @@ class _CSet(messaging.Consumer):
         self.backend = connection.channel()
         super(_CSet, self).__init__(self.backend, *args, **kwargs)
 
-    def iterconsume(self):
-        return iterconsume(self.connection, self)
+    def iterconsume(self, limit=None, no_ack=False):
+        return iterconsume(self.connection, self, no_ack, limit)
 
     def discard_all(self):
         return self.purge()
@@ -204,7 +205,8 @@ def ConsumerSet(connection, from_dict=None, consumers=None,
 
     bindings = []
     if consumers:
-        map(bindings.extend, consumer.bindings)
+        for consumer in consumers:
+            map(bindings.extend, consumer.bindings)
     if from_dict:
         for queue_name, queue_options in from_dict.items():
             bindings.append(entry_to_binding(queue_name, **queue_options))

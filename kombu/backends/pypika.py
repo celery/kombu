@@ -1,7 +1,3 @@
-import weakref
-import functools
-import itertools
-
 from pika import asyncore_adapter
 from pika import blocking_adapter
 from pika import channel

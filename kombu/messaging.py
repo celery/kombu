@@ -68,7 +68,6 @@ class Producer(object):
                                      immediate)
 
 
-
 class Consumer(object):
     no_ack = False
     auto_declare = True
