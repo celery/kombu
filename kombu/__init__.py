@@ -2,8 +2,8 @@
 VERSION = (0, 1, 0)
 __version__ = ".".join(map(str, VERSION))
 __author__ = "Ask Solem"
-__contact__ = "askh@opera.com"
-__homepage__ = "http://github.com/ask/carrot/"
+__contact__ = "ask@celeryproject.org"
+__homepage__ = "http://github.com/ask/kombu/"
 __docformat__ = "restructuredtext"
 
 import os

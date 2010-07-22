@@ -1,10 +1,3 @@
-"""
-
-`amqplib`_ backend for carrot.
-
-.. _`amqplib`: http://barryp.org/software/py-amqplib/
-
-"""
 import socket
 
 from amqplib import client_0_8 as amqp
@@ -105,13 +98,6 @@ class Connection(amqp.Connection):
 class Message(BaseMessage):
     """A message received by the broker.
 
-    Usually you don't insantiate message objects yourself, but receive
-    them using a :class:`carrot.messaging.Consumer`.
-
-    :param backend: see :attr:`backend`.
-    :param amqp_message: see :attr:`_amqp_message`.
-
-
     .. attribute:: body
 
         The message body.
@@ -120,21 +106,13 @@ class Message(BaseMessage):
 
         The message delivery tag, uniquely identifying this message.
 
-    .. attribute:: backend
+    .. attribute:: channel
 
-        The message backend used.
-        A subclass of :class:`carrot.backends.base.BaseBackend`.
-
-    .. attribute:: _amqp_message
-
-        A :class:`amqplib.client_0_8.basic_message.Message` instance.
-        This is a private attribute and should not be accessed by
-        production code.
+        The channel instance the message was received on.
 
     """
 
     def __init__(self, channel, amqp_message, **kwargs):
-        self._amqp_message = amqp_message
         self.channel = channel
 
         for attr_name in ("body",
