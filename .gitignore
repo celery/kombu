@@ -18,3 +18,7 @@ bin
 developer-eggs
 downloads
 Documentation/*
+.tox/
+nosetests.xml
+kombu/tests/cover
+kombu/tests/coverage.xml
