@@ -9,11 +9,13 @@ class Producer(object):
     exchange = None
     serializer = None
     auto_declare = True
+    routing_key = ""
 
-    def __init__(self, channel, exchange=None, serializer=None,
-            auto_declare=None):
+    def __init__(self, channel, exchange=None, routing_key=None,
+            serializer=None, auto_declare=None):
         self.channel = channel
         self.exchange = exchange or self.exchange
+        self.routing_key = routing_key or self.routing_key
         self.serializer = serializer or self.serializer
         if auto_declare is not None:
             self.auto_declare = auto_declare
@@ -51,6 +53,8 @@ class Producer(object):
     def publish(self, message_data, routing_key=None, delivery_mode=None,
             mandatory=False, immediate=False, priority=0, content_type=None,
             content_encoding=None, serializer=None, headers=None):
+        if routing_key is None:
+            routing_key = self.routing_key
 
         message_data, content_type, content_encoding = self.prepare(
                 message_data, content_type, content_encoding)

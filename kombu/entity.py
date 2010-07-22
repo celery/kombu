@@ -12,25 +12,22 @@ class Exchange(MaybeChannelBound):
     PERSISTENT_DELIVERY_MODE = PERSISTENT_DELIVERY_MODE
     name = ""
     type = "direct"
-    routing_key = ""
     durable = True
     auto_delete = False
     delivery_mode = PERSISTENT_DELIVERY_MODE
 
     attrs = (("name", None),
              ("type", None),
-             ("routing_key", None),
              ("channel", None),
              ("arguments", None),
              ("durable", bool),
              ("auto_delete", bool),
              ("delivery_mode", lambda m: DELIVERY_MODES.get(m) or m))
 
-    def __init__(self, name="", type="", routing_key="", **kwargs):
+    def __init__(self, name="", type="", **kwargs):
         super(Exchange, self).__init__(**kwargs)
         self.name = name or self.name
         self.type = type or self.type
-        self.routing_key = routing_key or self.routing_key
         self.maybe_bind(self.channel)
 
     @assert_is_bound
@@ -62,8 +59,6 @@ class Exchange(MaybeChannelBound):
     @assert_is_bound
     def publish(self, message, routing_key=None, mandatory=False,
             immediate=False, headers=None):
-        if routing_key is None:
-            routing_key = self.routing_key
         return self.channel.basic_publish(message,
                                           exchange=self.name,
                                           routing_key=routing_key,
