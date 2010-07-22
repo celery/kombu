@@ -143,13 +143,13 @@ class Channel(object):
         self._qos_manager = None
 
     def _get(self, queue):
-        raise NotImplementedError("Emulations must implement _get")
+        raise NotImplementedError("Virtual channels must implement _get")
 
     def _put(self, queue, message):
-        raise NotImplementedError("Emulations must implement _put")
+        raise NotImplementedError("Virtual channels must implement _put")
 
     def _purge(self, queue):
-        raise NotImplementedError("Emulations must implement _purge")
+        raise NotImplementedError("Virtual channels must implement _purge")
 
     def _size(self, queue):
         return 0
@@ -292,7 +292,7 @@ class Channel(object):
         self.connection.close_channel(self)
 
 
-class EmulationBase(BaseBackend):
+class VirtualBaseBackend(BaseBackend):
     Channel = Channel
     Consume = Consume
 

@@ -4,13 +4,13 @@ from anyjson import serialize, deserialize
 from redis import Redis
 from redis import exceptions
 
-from kombu.backends import emulation
+from kombu.backends import virtual
 
 DEFAULT_PORT = 6379
 DEFAULT_DB = 0
 
 
-class RedisChannel(emulation.Channel):
+class RedisChannel(virtual.Channel):
     queues = {}
     _client = None
 
@@ -74,7 +74,7 @@ class RedisChannel(emulation.Channel):
         return self._client
 
 
-class RedisBackend(emulation.EmulationBase):
+class RedisBackend(virtual.VirtualBaseBackend):
     Channel = RedisChannel
 
     default_port = DEFAULT_PORT

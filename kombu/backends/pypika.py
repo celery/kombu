@@ -17,9 +17,6 @@ class Message(BaseMessage):
         self._amqp_message = amqp_message
 
         channel_id, method, header, body = amqp_message
-        self._channel_id = channel_id
-        self._method = method
-        self._header = header
 
         kwargs.update({"body": body,
                        "delivery_tag": method.delivery_tag,
@@ -77,6 +74,7 @@ class BlockingConnection(pika.BlockingConnection):
 
     def channel(self):
         return Channel(channel.ChannelHandler(self))
+
 
 class AsyncoreConnection(pika.AsyncoreConnection):
 
