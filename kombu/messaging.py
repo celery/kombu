@@ -161,4 +161,4 @@ class Consumer(object):
                                       apply_global)
 
     def recover(self, requeue=False):
-        return self.channel.basic_recover(requeue)
+        return self.channel.basic_recover(requeue=requeue)

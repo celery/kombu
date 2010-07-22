@@ -23,27 +23,9 @@ class Object(object):
                                         for name, _ in self.attrs))
 
 
-def assert_is_bound(fun):
-
-    def if_bound(self, *args, **kwargs):
-        if self.is_bound:
-            return fun(self, *args, **kwargs)
-        raise NotBoundError(
-                "Can't call %s on %s not bound to a channel" % (
-                    fun.__name__,
-                    self.__class__.__name__))
-    if_bound.__name__ = fun.__name__
-    if_bound.__doc__ = fun.__doc__
-    if_bound.__module__ = fun.__module__
-    if_bound.__dict__.update(fun.__dict__)
-    if_bound.func_name = fun.__name__
-
-    return if_bound
-
-
 class MaybeChannelBound(Object):
     """Mixin for classes that can be bound to an AMQP channel."""
-    channel = None
+    _channel = None
     _is_bound = False
 
     def __call__(self, channel):
@@ -56,7 +38,7 @@ class MaybeChannelBound(Object):
     def maybe_bind(self, channel):
         """Bind instance to channel if not already bound."""
         if not self.is_bound and channel:
-            self.channel = channel
+            self._channel = channel
             self.when_bound()
             self._is_bound = True
         return self
@@ -65,13 +47,21 @@ class MaybeChannelBound(Object):
         """Callback called when the class is bound."""
         pass
 
-    @property
-    def is_bound(self):
-        """Returns ``True`` if the entity is bound."""
-        return self._is_bound and self.channel is not None
-
     def __repr__(self, item=""):
         if self.is_bound:
             return "<bound %s of %s>" % (item or self.__class__.__name__,
                                          self.channel)
         return "<unbound %s>" % (item, )
+
+    @property
+    def is_bound(self):
+        """Returns ``True`` if the entity is bound."""
+        return self._is_bound and self._channel is not None
+
+    @property
+    def channel(self):
+        if self._channel is None:
+            raise NotBoundError(
+                "Can't call method on %s not bound to a channel" % (
+                    self.__class__.__name__))
+        return self._channel
