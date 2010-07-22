@@ -104,22 +104,28 @@ class Binding(MaybeChannelBound):
     def when_bound(self):
         self.exchange = self.exchange(self.channel)
 
+    def queue_declare(self, nowait=False, passive=False):
+        return self.channel.queue_declare(queue=self.name,
+                                          passive=passive,
+                                          durable=self.durable,
+                                          exclusive=self.exclusive,
+                                          auto_delete=self.auto_delete,
+                                          arguments=self.queue_arguments,
+                                          nowait=nowait)
+
+    def queue_bind(self, nowait=False):
+        return self.channel.queue_bind(queue=self.name,
+                                       exchange=self.exchange.name,
+                                       routing_key=self.routing_key,
+                                       arguments=self.binding_arguments,
+                                       nowait=nowait)
+
     def declare(self, nowait=False):
         """Declares the queue, the exchange and binds the queue to
         the exchange."""
-        chan = self.channel
-        return (self.exchange and self.exchange.declare(),
-                self.name and chan.queue_declare(queue=self.name,
-                                            durable=self.durable,
-                                            exclusive=self.exclusive,
-                                            auto_delete=self.auto_delete,
-                                            arguments=self.queue_arguments,
-                                            nowait=nowait),
-                self.name and chan.queue_bind(queue=self.name,
-                                            exchange=self.exchange.name,
-                                            routing_key=self.routing_key,
-                                            arguments=self.binding_arguments,
-                                            nowait=nowait))
+        return (self.exchange and self.exchange.declare(nowait),
+                self.name and self.queue_declare(nowait, passive=False),
+                self.name and self.queue_bind(nowait))
 
     def get(self, no_ack=None):
         message = self.channel.basic_get(queue=self.name, no_ack=no_ack)
