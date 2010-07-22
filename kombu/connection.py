@@ -62,7 +62,7 @@ class BrokerConnection(object):
         return self.backend.create_channel(self.connection)
 
     def drain_events(self, **kwargs):
-        return self.backend.drain_events(self.connection, **kwargs)
+        return self.backend.drain_events(**kwargs)
 
     def close(self):
         """Close the currently open connection."""
