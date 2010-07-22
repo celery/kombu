@@ -51,7 +51,7 @@ Exchanges/Bindings can be bound to a channel::
 
     >>> connection = BrokerConnection()
     >>> channel = connection.channel()
-    >>> bound_exchance = exchange(channel)
+    >>> bound_exchange = exchange(channel)
     >>> bound_exchange.delete()
 
     # the original exchange is not affected, and stays unbound.
@@ -250,7 +250,7 @@ defined in the last section.
 Look in the first Python shell again (where consumer loop is running),
 where the following text has been printed to the screen::
 
-   Got feed import message for: http://cnn.com/rss/edition.rss  
+   Got feed import message for: http://cnn.com/rss/edition.rss
 
 
 Serialization of Data
@@ -269,40 +269,40 @@ want to use.
 Each option has its advantages and disadvantages.
 
 ``json`` -- JSON is supported in many programming languages, is now
-    a standard part of Python (since 2.6), and is fairly fast to 
-    decode using the modern Python libraries such as ``cjson or 
+    a standard part of Python (since 2.6), and is fairly fast to
+    decode using the modern Python libraries such as ``cjson or
     ``simplejson``.
 
-    The primary disadvantage to ``JSON`` is that it limits you to 
-    the following data types: strings, unicode, floats, boolean, 
+    The primary disadvantage to ``JSON`` is that it limits you to
+    the following data types: strings, unicode, floats, boolean,
     dictionaries, and lists.  Decimals and dates are notably missing.
 
     Also, binary data will be transferred using base64 encoding, which
-    will cause the transferred data to be around 34% larger than an 
-    encoding which supports native binary types. 
+    will cause the transferred data to be around 34% larger than an
+    encoding which supports native binary types.
 
-    However, if your data fits inside the above constraints and 
+    However, if your data fits inside the above constraints and
     you need cross-language support, the default setting of ``JSON``
-    is probably your best choice. 
+    is probably your best choice.
 
 ``pickle`` -- If you have no desire to support any language other than
-    Python, then using the ``pickle`` encoding will gain you 
-    the support of all built-in Python data types (except class instances), 
+    Python, then using the ``pickle`` encoding will gain you
+    the support of all built-in Python data types (except class instances),
     smaller messages when sending binary files, and a slight speedup
     over ``JSON`` processing.
 
-``yaml`` -- YAML has many of the same characteristics as ``json``, 
-    except that it natively supports more data types (including dates, 
+``yaml`` -- YAML has many of the same characteristics as ``json``,
+    except that it natively supports more data types (including dates,
     recursive references, etc.)
 
     However, the Python libraries for YAML are a good bit slower
-    than the libraries for JSON. 
+    than the libraries for JSON.
 
     If you need a more expressive set of data types and need to maintain
     cross-language compatibility, then ``YAML`` may be a better fit
-    than the above. 
+    than the above.
 
-To instruct carrot to use an alternate serialization method, 
+To instruct carrot to use an alternate serialization method,
 use one of the following options.
 
     1.  Set the serialization option on a per-producer basis::
