@@ -36,6 +36,10 @@ Proposed API::
     image_binding = Binding("image", exchange=media_exchange, key="image")
 
     consumer = Consumer(channel, [video_binding, image_binding])
+    consumer.consume()
+
+    while True:
+        connection.drain_events()
 
 
 
