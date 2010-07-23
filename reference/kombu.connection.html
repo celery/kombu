@@ -1,0 +1,254 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Broker Connections - kombu.connection &mdash; Kombu v0.1.0 documentation</title>
+    <link rel="stylesheet" href="../static/celery.css" type="text/css" />
+    <link rel="stylesheet" href="../static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../static/jquery.js"></script>
+    <script type="text/javascript" src="../static/underscore.js"></script>
+    <script type="text/javascript" src="../static/doctools.js"></script>
+    <link rel="top" title="Kombu v0.1.0 documentation" href="../index.html" />
+    <link rel="up" title="API Reference" href="index.html" />
+    <link rel="next" title="Messaging - kombu.messaging" href="kombu.messaging.html" />
+    <link rel="prev" title="API Reference" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="kombu.messaging.html" title="Messaging - kombu.messaging"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="API Reference"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../index.html">Kombu v0.1.0 documentation</a> &raquo;</li>
+          <li><a href="index.html" accesskey="U">API Reference</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="broker-connections-kombu-connection">
+<h1>Broker Connections - kombu.connection<a class="headerlink" href="#broker-connections-kombu-connection" title="Permalink to this headline">¶</a></h1>
+<span class="target" id="module-kombu.connection"></span><dl class="class">
+<dt id="kombu.connection.BrokerConnection">
+<em class="property">class </em><tt class="descclassname">kombu.connection.</tt><tt class="descname">BrokerConnection</tt><big>(</big><em>hostname='localhost'</em>, <em>userid='guest'</em>, <em>password='guest'</em>, <em>virtual_host='/'</em>, <em>port=None</em>, <em>insist=False</em>, <em>ssl=False</em>, <em>backend_cls=None</em>, <em>connect_timeout=5</em>, <em>pool=None</em><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnection" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="kombu.connection.BrokerConnection.acquire">
+<tt class="descname">acquire</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnection.acquire" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.connection.BrokerConnection.backend">
+<tt class="descname">backend</tt><a class="headerlink" href="#kombu.connection.BrokerConnection.backend" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.connection.BrokerConnection.channel">
+<tt class="descname">channel</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnection.channel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Request a new AMQP channel.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.connection.BrokerConnection.channel_errors">
+<tt class="descname">channel_errors</tt><a class="headerlink" href="#kombu.connection.BrokerConnection.channel_errors" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.connection.BrokerConnection.clone">
+<tt class="descname">clone</tt><big>(</big><em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnection.clone" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.connection.BrokerConnection.close">
+<tt class="descname">close</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnection.close" title="Permalink to this definition">¶</a></dt>
+<dd><p>Close the currently open connection.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.connection.BrokerConnection.connect">
+<tt class="descname">connect</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnection.connect" title="Permalink to this definition">¶</a></dt>
+<dd><p>Establish a connection to the AMQP server.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.connection.BrokerConnection.connection">
+<tt class="descname">connection</tt><a class="headerlink" href="#kombu.connection.BrokerConnection.connection" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.connection.BrokerConnection.connection_errors">
+<tt class="descname">connection_errors</tt><a class="headerlink" href="#kombu.connection.BrokerConnection.connection_errors" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.connection.BrokerConnection.create_backend">
+<tt class="descname">create_backend</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnection.create_backend" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.connection.BrokerConnection.drain_events">
+<tt class="descname">drain_events</tt><big>(</big><em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnection.drain_events" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.connection.BrokerConnection.ensure">
+<tt class="descname">ensure</tt><big>(</big><em>fun</em>, <em>errback=None</em>, <em>max_retries=None</em>, <em>interval_start=2</em>, <em>interval_step=2</em>, <em>interval_max=30</em><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnection.ensure" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.connection.BrokerConnection.ensure_connection">
+<tt class="descname">ensure_connection</tt><big>(</big><em>errback=None</em>, <em>max_retries=None</em>, <em>interval_start=2</em>, <em>interval_step=2</em>, <em>interval_max=30</em><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnection.ensure_connection" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.connection.BrokerConnection.get_backend_cls">
+<tt class="descname">get_backend_cls</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnection.get_backend_cls" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the currently used backend class.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.connection.BrokerConnection.host">
+<tt class="descname">host</tt><a class="headerlink" href="#kombu.connection.BrokerConnection.host" title="Permalink to this definition">¶</a></dt>
+<dd><p>The host as a hostname/port pair separated by colon.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.connection.BrokerConnection.info">
+<tt class="descname">info</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnection.info" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.connection.BrokerConnection.release">
+<tt class="descname">release</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnection.release" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="kombu.connection.BrokerConnectionPool">
+<em class="property">class </em><tt class="descclassname">kombu.connection.</tt><tt class="descname">BrokerConnectionPool</tt><big>(</big><em>initial</em>, <em>min=2</em>, <em>max=10</em>, <em>ensure=False</em>, <em>preconnect=False</em><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnectionPool" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="kombu.connection.BrokerConnectionPool.acquire">
+<tt class="descname">acquire</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnectionPool.acquire" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.connection.BrokerConnectionPool.active">
+<tt class="descname">active</tt><a class="headerlink" href="#kombu.connection.BrokerConnectionPool.active" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.connection.BrokerConnectionPool.ensure">
+<tt class="descname">ensure</tt><big>(</big><em>fun</em>, <em>errback=None</em>, <em>max_retries=None</em>, <em>interval_start=2</em>, <em>interval_step=2</em>, <em>interval_max=30</em><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnectionPool.ensure" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.connection.BrokerConnectionPool.grow">
+<tt class="descname">grow</tt><big>(</big><em>n=1</em><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnectionPool.grow" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.connection.BrokerConnectionPool.release">
+<tt class="descname">release</tt><big>(</big><em>connection</em><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnectionPool.release" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.connection.BrokerConnectionPool.replace">
+<tt class="descname">replace</tt><big>(</big><em>connection</em><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnectionPool.replace" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.connection.BrokerConnectionPool.total">
+<tt class="descname">total</tt><a class="headerlink" href="#kombu.connection.BrokerConnectionPool.total" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper"><p class="logo"><a href="../index.html">
+  <img class="logo" width="128" height="128" src="http://cloud.github.com/downloads/ask/kombu/kombusmall.jpg" alt="Logo"/>
+</a></p>
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="index.html"
+                        title="previous chapter">API Reference</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="kombu.messaging.html"
+                        title="next chapter">Messaging - kombu.messaging</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../sources/reference/kombu.connection.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" size="18" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="kombu.messaging.html" title="Messaging - kombu.messaging"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="API Reference"
+             >previous</a> |</li>
+        <li><a href="../index.html">Kombu v0.1.0 documentation</a> &raquo;</li>
+          <li><a href="index.html" >API Reference</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2009-2010, Ask Solem.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0b2.
+    </div>
+  </body>
+</html>

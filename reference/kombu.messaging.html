@@ -1,0 +1,189 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Messaging - kombu.messaging &mdash; Kombu v0.1.0 documentation</title>
+    <link rel="stylesheet" href="../static/celery.css" type="text/css" />
+    <link rel="stylesheet" href="../static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../static/jquery.js"></script>
+    <script type="text/javascript" src="../static/underscore.js"></script>
+    <script type="text/javascript" src="../static/doctools.js"></script>
+    <link rel="top" title="Kombu v0.1.0 documentation" href="../index.html" />
+    <link rel="up" title="API Reference" href="index.html" />
+    <link rel="next" title="AMQP Entities - kombu.entity" href="kombu.entity.html" />
+    <link rel="prev" title="Broker Connections - kombu.connection" href="kombu.connection.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="kombu.entity.html" title="AMQP Entities - kombu.entity"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="kombu.connection.html" title="Broker Connections - kombu.connection"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../index.html">Kombu v0.1.0 documentation</a> &raquo;</li>
+          <li><a href="index.html" accesskey="U">API Reference</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="messaging-kombu-messaging">
+<h1>Messaging - kombu.messaging<a class="headerlink" href="#messaging-kombu-messaging" title="Permalink to this headline">¶</a></h1>
+<span class="target" id="module-kombu.messaging"></span><dl class="class">
+<dt id="kombu.messaging.Consumer">
+<em class="property">class </em><tt class="descclassname">kombu.messaging.</tt><tt class="descname">Consumer</tt><big>(</big><em>channel</em>, <em>bindings</em>, <em>no_ack=None</em>, <em>auto_declare=None</em>, <em>callbacks=None</em><big>)</big><a class="headerlink" href="#kombu.messaging.Consumer" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="kombu.messaging.Consumer.cancel">
+<tt class="descname">cancel</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.messaging.Consumer.cancel" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.messaging.Consumer.consume">
+<tt class="descname">consume</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.messaging.Consumer.consume" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.messaging.Consumer.declare">
+<tt class="descname">declare</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.messaging.Consumer.declare" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.messaging.Consumer.flow">
+<tt class="descname">flow</tt><big>(</big><em>active</em><big>)</big><a class="headerlink" href="#kombu.messaging.Consumer.flow" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.messaging.Consumer.purge">
+<tt class="descname">purge</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.messaging.Consumer.purge" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.messaging.Consumer.qos">
+<tt class="descname">qos</tt><big>(</big><em>prefetch_size=0</em>, <em>prefetch_count=0</em>, <em>apply_global=False</em><big>)</big><a class="headerlink" href="#kombu.messaging.Consumer.qos" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.messaging.Consumer.receive">
+<tt class="descname">receive</tt><big>(</big><em>message_data</em>, <em>message</em><big>)</big><a class="headerlink" href="#kombu.messaging.Consumer.receive" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.messaging.Consumer.recover">
+<tt class="descname">recover</tt><big>(</big><em>requeue=False</em><big>)</big><a class="headerlink" href="#kombu.messaging.Consumer.recover" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.messaging.Consumer.register_callback">
+<tt class="descname">register_callback</tt><big>(</big><em>callback</em><big>)</big><a class="headerlink" href="#kombu.messaging.Consumer.register_callback" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="kombu.messaging.Producer">
+<em class="property">class </em><tt class="descclassname">kombu.messaging.</tt><tt class="descname">Producer</tt><big>(</big><em>channel</em>, <em>exchange=None</em>, <em>routing_key=None</em>, <em>serializer=None</em>, <em>auto_declare=None</em><big>)</big><a class="headerlink" href="#kombu.messaging.Producer" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="kombu.messaging.Producer.declare">
+<tt class="descname">declare</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.messaging.Producer.declare" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.messaging.Producer.prepare">
+<tt class="descname">prepare</tt><big>(</big><em>message_data</em>, <em>serializer=None</em>, <em>content_type=None</em>, <em>content_encoding=None</em><big>)</big><a class="headerlink" href="#kombu.messaging.Producer.prepare" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.messaging.Producer.publish">
+<tt class="descname">publish</tt><big>(</big><em>message_data</em>, <em>routing_key=None</em>, <em>delivery_mode=None</em>, <em>mandatory=False</em>, <em>immediate=False</em>, <em>priority=0</em>, <em>content_type=None</em>, <em>content_encoding=None</em>, <em>serializer=None</em>, <em>headers=None</em><big>)</big><a class="headerlink" href="#kombu.messaging.Producer.publish" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper"><p class="logo"><a href="../index.html">
+  <img class="logo" width="128" height="128" src="http://cloud.github.com/downloads/ask/kombu/kombusmall.jpg" alt="Logo"/>
+</a></p>
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="kombu.connection.html"
+                        title="previous chapter">Broker Connections - kombu.connection</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="kombu.entity.html"
+                        title="next chapter">AMQP Entities - kombu.entity</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../sources/reference/kombu.messaging.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" size="18" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="kombu.entity.html" title="AMQP Entities - kombu.entity"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="kombu.connection.html" title="Broker Connections - kombu.connection"
+             >previous</a> |</li>
+        <li><a href="../index.html">Kombu v0.1.0 documentation</a> &raquo;</li>
+          <li><a href="index.html" >API Reference</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2009-2010, Ask Solem.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0b2.
+    </div>
+  </body>
+</html>

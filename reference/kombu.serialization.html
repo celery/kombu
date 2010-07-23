@@ -1,0 +1,143 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Serialization - kombu.serialization &mdash; Kombu v0.1.0 documentation</title>
+    <link rel="stylesheet" href="../static/celery.css" type="text/css" />
+    <link rel="stylesheet" href="../static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../static/jquery.js"></script>
+    <script type="text/javascript" src="../static/underscore.js"></script>
+    <script type="text/javascript" src="../static/doctools.js"></script>
+    <link rel="top" title="Kombu v0.1.0 documentation" href="../index.html" />
+    <link rel="up" title="API Reference" href="index.html" />
+    <link rel="next" title="Object Utilities - kombu.abstract" href="kombu.abstract.html" />
+    <link rel="prev" title="Virtual Backend Interface - kombu.backends.virtual" href="kombu.backends.virtual.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="kombu.abstract.html" title="Object Utilities - kombu.abstract"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="kombu.backends.virtual.html" title="Virtual Backend Interface - kombu.backends.virtual"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../index.html">Kombu v0.1.0 documentation</a> &raquo;</li>
+          <li><a href="index.html" accesskey="U">API Reference</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="serialization-kombu-serialization">
+<h1>Serialization - kombu.serialization<a class="headerlink" href="#serialization-kombu-serialization" title="Permalink to this headline">¶</a></h1>
+<span class="target" id="module-kombu.serialization"></span><p>Centralized support for encoding/decoding of data structures.
+Requires a json library (<a class="reference external" href="http://pypi.python.org/pypi/python-cjson/">cjson</a>, <a class="reference external" href="http://code.google.com/p/simplejson/">simplejson</a>, or <a class="reference external" href="http://docs.python.org/library/json.html">Python 2.6+</a>).</p>
+<p>Pickle support is built-in.</p>
+<p>Optionally installs support for <tt class="docutils literal"><span class="pre">YAML</span></tt> if the <a class="reference external" href="http://pyyaml.org/">PyYAML</a> package
+is installed.</p>
+<p>Optionally installs support for <a class="reference external" href="http://msgpack.sourceforge.net/">msgpack</a> if the <a class="reference external" href="http://pypi.python.org/pypi/msgpack-python/">msgpack-python</a>
+package is installed.</p>
+<dl class="exception">
+<dt id="kombu.serialization.SerializerNotInstalled">
+<em class="property">exception </em><tt class="descclassname">kombu.serialization.</tt><tt class="descname">SerializerNotInstalled</tt><a class="headerlink" href="#kombu.serialization.SerializerNotInstalled" title="Permalink to this definition">¶</a></dt>
+<dd><p>Support for the requested serialization type is not installed</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="kombu.serialization.registry">
+<tt class="descclassname">kombu.serialization.</tt><tt class="descname">registry</tt><a class="headerlink" href="#kombu.serialization.registry" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="function">
+<dt id="kombu.serialization.encode">
+<tt class="descclassname">kombu.serialization.</tt><tt class="descname">encode</tt><big>(</big><em>data</em>, <em>serializer=default_serializer</em><big>)</big><a class="headerlink" href="#kombu.serialization.encode" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p>Encode data using the registry&#8217;s default encoder.</p>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper"><p class="logo"><a href="../index.html">
+  <img class="logo" width="128" height="128" src="http://cloud.github.com/downloads/ask/kombu/kombusmall.jpg" alt="Logo"/>
+</a></p>
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="kombu.backends.virtual.html"
+                        title="previous chapter">Virtual Backend Interface - kombu.backends.virtual</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="kombu.abstract.html"
+                        title="next chapter">Object Utilities - kombu.abstract</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../sources/reference/kombu.serialization.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" size="18" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="kombu.abstract.html" title="Object Utilities - kombu.abstract"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="kombu.backends.virtual.html" title="Virtual Backend Interface - kombu.backends.virtual"
+             >previous</a> |</li>
+        <li><a href="../index.html">Kombu v0.1.0 documentation</a> &raquo;</li>
+          <li><a href="index.html" >API Reference</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2009-2010, Ask Solem.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0b2.
+    </div>
+  </body>
+</html>

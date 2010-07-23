@@ -1,0 +1,189 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Carrot Compatible API - kombu.compat &mdash; Kombu v0.1.0 documentation</title>
+    <link rel="stylesheet" href="../static/celery.css" type="text/css" />
+    <link rel="stylesheet" href="../static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../static/jquery.js"></script>
+    <script type="text/javascript" src="../static/underscore.js"></script>
+    <script type="text/javascript" src="../static/doctools.js"></script>
+    <link rel="top" title="Kombu v0.1.0 documentation" href="../index.html" />
+    <link rel="up" title="API Reference" href="index.html" />
+    <link rel="next" title="Exceptions - kombu.exceptions" href="kombu.exceptions.html" />
+    <link rel="prev" title="AMQP Entities - kombu.entity" href="kombu.entity.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="kombu.exceptions.html" title="Exceptions - kombu.exceptions"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="kombu.entity.html" title="AMQP Entities - kombu.entity"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../index.html">Kombu v0.1.0 documentation</a> &raquo;</li>
+          <li><a href="index.html" accesskey="U">API Reference</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="carrot-compatible-api-kombu-compat">
+<h1>Carrot Compatible API - kombu.compat<a class="headerlink" href="#carrot-compatible-api-kombu-compat" title="Permalink to this headline">¶</a></h1>
+<span class="target" id="module-kombu.compat"></span><dl class="class">
+<dt id="kombu.compat.Consumer">
+<em class="property">class </em><tt class="descclassname">kombu.compat.</tt><tt class="descname">Consumer</tt><big>(</big><em>connection</em>, <em>queue=None</em>, <em>exchange=None</em>, <em>routing_key=None</em>, <em>exchange_type=None</em>, <em>durable=None</em>, <em>exclusive=None</em>, <em>auto_delete=None</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.compat.Consumer" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="kombu.compat.Consumer.close">
+<tt class="descname">close</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.compat.Consumer.close" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.compat.Consumer.discard_all">
+<tt class="descname">discard_all</tt><big>(</big><em>filterfunc=None</em><big>)</big><a class="headerlink" href="#kombu.compat.Consumer.discard_all" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.compat.Consumer.fetch">
+<tt class="descname">fetch</tt><big>(</big><em>no_ack=None</em>, <em>enable_callbacks=False</em><big>)</big><a class="headerlink" href="#kombu.compat.Consumer.fetch" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.compat.Consumer.iterconsume">
+<tt class="descname">iterconsume</tt><big>(</big><em>limit=None</em>, <em>no_ack=None</em><big>)</big><a class="headerlink" href="#kombu.compat.Consumer.iterconsume" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.compat.Consumer.iterqueue">
+<tt class="descname">iterqueue</tt><big>(</big><em>limit=None</em>, <em>infinite=False</em><big>)</big><a class="headerlink" href="#kombu.compat.Consumer.iterqueue" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.compat.Consumer.process_next">
+<tt class="descname">process_next</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.compat.Consumer.process_next" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.compat.Consumer.wait">
+<tt class="descname">wait</tt><big>(</big><em>limit=None</em><big>)</big><a class="headerlink" href="#kombu.compat.Consumer.wait" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="kombu.compat.ConsumerSet">
+<tt class="descclassname">kombu.compat.</tt><tt class="descname">ConsumerSet</tt><big>(</big><em>connection</em>, <em>from_dict=None</em>, <em>consumers=None</em>, <em>callbacks=None</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.compat.ConsumerSet" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="kombu.compat.Publisher">
+<em class="property">class </em><tt class="descclassname">kombu.compat.</tt><tt class="descname">Publisher</tt><big>(</big><em>connection</em>, <em>exchange=None</em>, <em>routing_key=None</em>, <em>exchange_type=None</em>, <em>durable=None</em>, <em>auto_delete=None</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.compat.Publisher" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="kombu.compat.Publisher.close">
+<tt class="descname">close</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.compat.Publisher.close" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.compat.Publisher.send">
+<tt class="descname">send</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.compat.Publisher.send" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="kombu.compat.entry_to_binding">
+<tt class="descclassname">kombu.compat.</tt><tt class="descname">entry_to_binding</tt><big>(</big><em>queue</em>, <em>**options</em><big>)</big><a class="headerlink" href="#kombu.compat.entry_to_binding" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="kombu.compat.iterconsume">
+<tt class="descclassname">kombu.compat.</tt><tt class="descname">iterconsume</tt><big>(</big><em>connection</em>, <em>consumer</em>, <em>no_ack=False</em>, <em>limit=None</em><big>)</big><a class="headerlink" href="#kombu.compat.iterconsume" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper"><p class="logo"><a href="../index.html">
+  <img class="logo" width="128" height="128" src="http://cloud.github.com/downloads/ask/kombu/kombusmall.jpg" alt="Logo"/>
+</a></p>
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="kombu.entity.html"
+                        title="previous chapter">AMQP Entities - kombu.entity</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="kombu.exceptions.html"
+                        title="next chapter">Exceptions - kombu.exceptions</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../sources/reference/kombu.compat.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" size="18" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="kombu.exceptions.html" title="Exceptions - kombu.exceptions"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="kombu.entity.html" title="AMQP Entities - kombu.entity"
+             >previous</a> |</li>
+        <li><a href="../index.html">Kombu v0.1.0 documentation</a> &raquo;</li>
+          <li><a href="index.html" >API Reference</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2009-2010, Ask Solem.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0b2.
+    </div>
+  </body>
+</html>

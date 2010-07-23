@@ -1,0 +1,10 @@
+================
+ Change history
+================
+
+0.1.0
+=====
+:release-date: 2010-07-22 4:20 P.M CEST
+
+* Rewrite of carrot
+* Initial release
