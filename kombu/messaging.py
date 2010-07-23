@@ -58,12 +58,12 @@ class Producer(object):
 
         message_data, content_type, content_encoding = self.prepare(
                 message_data, content_type, content_encoding)
-        message = self.exchange.create_message(message_data,
-                                               delivery_mode,
-                                               priority,
-                                               content_type,
-                                               content_encoding,
-                                               headers=headers)
+        message = self.exchange.Message(message_data,
+                                        delivery_mode,
+                                        priority,
+                                        content_type,
+                                        content_encoding,
+                                        headers=headers)
         return self.exchange.publish(message, routing_key, mandatory,
                                      immediate)
 
