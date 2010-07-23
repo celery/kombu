@@ -1,11 +1,11 @@
 ==========================================================
- pika Backend - kombu.backends.pika
+ pika Backend - kombu.backends.pypika
 ==========================================================
 
 .. contents::
     :local:
-.. currentmodule:: kombu.backends.pika
+.. currentmodule:: kombu.backends.pypika
 
-.. automodule:: kombu.backends.pika
+.. automodule:: kombu.backends.pypika
     :members:
     :undoc-members:

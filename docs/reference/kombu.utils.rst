@@ -1,11 +1,11 @@
 ==========================================================
- Utilities - kombu.utilities
+ Utilities - kombu.utils
 ==========================================================
 
 .. contents::
     :local:
-.. currentmodule:: kombu.utilities
+.. currentmodule:: kombu.utils
 
-.. automodule:: kombu.utilities
+.. automodule:: kombu.utils
     :members:
     :undoc-members:

@@ -1,11 +1,11 @@
 ==========================================================
- amqplib Backend - kombu.backends.amqplib
+ amqplib Backend - kombu.backends.pyamqplib
 ==========================================================
 
 .. contents::
     :local:
-.. currentmodule:: kombu.backends.amqplib
+.. currentmodule:: kombu.backends.pyamqplib
 
-.. automodule:: kombu.backends.amqplib
+.. automodule:: kombu.backends.pyamqplib
     :members:
     :undoc-members:

@@ -1,11 +1,11 @@
 ==========================================================
- Redis Backend - kombu.backends.redis
+ Redis Backend - kombu.backends.pyredis
 ==========================================================
 
 .. contents::
     :local:
-.. currentmodule:: kombu.backends.redis
+.. currentmodule:: kombu.backends.pyredis
 
-.. automodule:: kombu.backends.redis
+.. automodule:: kombu.backends.pyredis
     :members:
     :undoc-members:
