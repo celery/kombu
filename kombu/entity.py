@@ -258,8 +258,8 @@ class Binding(MaybeChannelBound):
 
         The routing key (if any), also called *binding key*.
 
-        The interpretation of the routing key
-        depends on the the :attr:`Exchange.exchange_type`.
+        The interpretation of the routing key depends on
+        the :attr:`Exchange.type`.
 
             * direct exchange
 
