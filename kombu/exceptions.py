@@ -17,3 +17,6 @@ class PoolExhausted(Exception):
 class PoolLimitExceeded(Exception):
     """Can't add more connections to pool."""
 
+class TimeoutError(Exception):
+    """Operation timed out."""
+

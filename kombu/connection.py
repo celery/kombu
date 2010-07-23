@@ -4,6 +4,7 @@ import threading
 from collections import deque
 from copy import copy
 from functools import wraps
+from time import time
 
 from kombu import exceptions
 from kombu.backends import get_backend_cls
@@ -54,12 +55,9 @@ class BrokerConnection(object):
 
         >>> conn.connect()
 
-
     Remember to always close the connection::
 
         >>> conn.release()
-
-
 
     """
     port = None
@@ -163,7 +161,6 @@ class BrokerConnection(object):
         :keyword interval_max: Maximum number of seconds to sleep between
           each retry.
 
-
         **Example**
 
         This is an example ensuring a publish operation::
@@ -205,7 +202,12 @@ class BrokerConnection(object):
 
     def release(self):
         """Close the connection, or if the connection is managed by a pool
-        the connection will be released to the pool so it can be reused."""
+        the connection will be released to the pool so it can be reused.
+
+        **NOTE:** You must never perform operations on a connection
+        that has been released.
+
+        """
         if self.pool:
             self.pool.release(self)
         else:
@@ -293,59 +295,102 @@ class BrokerConnection(object):
 
 
 class BrokerConnectionPool(object):
-    _t = None
+    """Pool of connections.
 
-    def __init__(self, initial, min=2, max=10, ensure=False, preconnect=False):
+    :param initial: Initial :class:`BrokerConnection` to take connection
+      parameters from.
+
+    :keyword max: Maximum number of connections in the pool.
+      Default is 10.
+
+    :keyword ensure: When ``preconnect`` on, ensure we're able to establish
+      a connection. Default is ``False``.
+
+    :keyword preconnect: Number of connections at
+      instantiation. Default is to only establish connections when needed.
+
+    """
+
+    def __init__(self, initial, max=10, ensure=False, preconnect=0):
         self.initial = initial
-        self.min = min
         self.max = max
         self.preconnect = preconnect
-        self._t = threading.local()
-        self._t.connections = deque()
-        self._t.dirty = set()
+        self._connections = deque()
+        self._dirty = set()
+        self.mutex = threading.Lock()
+        self.not_empty = threading.Condition(self.mutex)
 
-        self.grow(self.min)
-        if self.preconnect:
-            for connection in self._connections:
-                if self.ensure:
-                    connection.ensure_connection()
-                else:
-                    connection.connect()
+        self.grow(self.preconnect, connect=True)
+        self.grow(self.max - self.preconnect)
 
+    def acquire(self, block=True, timeout=None):
+        """Acquire connection.
 
-    def grow(self, n=1):
-        for _ in xrange(n):
-            if self.total >= self.max:
-                raise exceptions.PoolLimitExceeded(
-                        "Can't add more connections to pool.")
-            connection = self.initial.clone(pool=self)
-            self._connections.append(connection)
+        :raises kombu.exceptions.PoolExhausted: If there are no
+          available connections to be acquired.
 
-    def acquire(self):
+        """
+        self.not_empty.acquire()
+        time_start = time()
         try:
-            connection = self._connections.popleft()
-        except IndexError:
-            raise exceptions.PoolExhausted("All connections acquired")
-        self._dirty.add(connection)
-        return connection
+            while 1:
+                try:
+                    connection = self._connections.popleft()
+                    self._dirty.add(connection)
+                    return connection
+                except IndexError:
+                    if not block:
+                        raise exceptions.PoolExhausted(
+                                "All connections acquired")
+                    if timeout:
+                        elapsed = time() - time_start
+                        remaining = timeout - elapsed
+                        if elapsed > timeout:
+                            raise exceptions.TimeoutError(
+                                "Timed out while acquiring connection.")
+                        self.not_empty.wait(remaining)
+        finally:
+            self.not_empty.release()
 
     def release(self, connection):
+        """Release connection so it can be used by others.
+
+        **NOTE:** You must never perform operations on a connection
+        that has been released.
+
+        """
+        self.mutex.acquire()
         try:
-            self._dirty.remove(connection)
-        except KeyError:
-            pass
-        self._connections.append(connection)
+            try:
+                self._dirty.remove(connection)
+            except KeyError:
+                pass
+            self._connections.append(connection)
+            self.not_empty.notify()
+        finally:
+            self.mutex.release()
 
     def replace(self, connection):
+        """Clone and replace connection with a new one.
+
+        This is useful if the connection is broken.
+
+        """
+        connection.close()
+        self.mutex.acquire()
         try:
-            self._dirty.remove(connection)
-            self._connections.remove(connection)
-        except (KeyError, ValueError):
-            pass
+            try:
+                self._dirty.remove(connection)
+                self._connections.remove(connection)
+            except (KeyError, ValueError):
+                pass
+        finally:
+            self.mutex.release()
         self.grow(1)
 
     def ensure(self, fun, errback=None, max_retries=None,
             interval_start=2, interval_step=2, interval_max=30):
+        """See :meth:`BrokerConnection.ensure`."""
 
         @wraps(fun)
         def _insured(*args, **kwargs):
@@ -360,7 +405,43 @@ class BrokerConnectionPool(object):
 
         return insured
 
+    def grow(self, n, connect=False):
+        """Add ``n`` more connections to the pool.
+
+        :keyword connect: Establish connections imemediately.
+          By default connections are only established when needed.
+
+        :raises kombu.exceptions.PoolLimitExceeded: If there are already
+          more than :attr:`max` number of connections in the pool.
+
+        """
+        self.mutex.acquire()
+        try:
+            for _ in xrange(n):
+                if self.total >= self.max:
+                    raise exceptions.PoolLimitExceeded(
+                            "Can't add more connections to the pool.")
+                connection = self.initial.clone(pool=self)
+                connect and self._establish_connection(connection)
+                self._connections.append(connection)
+                self.not_empty.notify()
+        finally:
+            self.mutex.release()
+
+    def close(self):
+        """Close all connections."""
+        while self._connections:
+            self._connections.popleft().close()
+        while self._dirty:
+            self._dirty.pop().close()
+
+    def _establish_connection(self, connection):
+        if self.ensure:
+            return connection.ensure_connection()
+        return connection.connect()
+
     def __repr__(self):
+        """``x.__repr__() <==> repr(x)``"""
         info = self.initial.info()
         return "<BrokerConnectionPool(%s): %s>" % (
                     self.max,
@@ -369,16 +450,10 @@ class BrokerConnectionPool(object):
 
     @property
     def active(self):
+        """Number of acquired connections."""
         return len(self._dirty)
 
     @property
     def total(self):
+        """Current total number of connections"""
         return self.active + len(self._connections)
-
-    @property
-    def _dirty(self):
-        return self._t.dirty
-
-    @property
-    def _connections(self):
-        return self._t.connections
