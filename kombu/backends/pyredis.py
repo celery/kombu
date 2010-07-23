@@ -78,7 +78,9 @@ class RedisBackend(virtual.VirtualBaseBackend):
     Channel = RedisChannel
 
     default_port = DEFAULT_PORT
-    connection_errors = (exceptions.ConnectionError, )
+    connection_errors = (exceptions.ConnectionError,
+                         exceptions.AuthenticationError)
     channel_errors = (exceptions.ConnectionError,
+                      exceptions.InvalidData,
                       exceptions.InvalidResponse,
                       exceptions.ResponseError)
