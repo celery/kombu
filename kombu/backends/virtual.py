@@ -299,8 +299,8 @@ class VirtualBaseBackend(BaseBackend):
     interval = 1
     default_port = None
 
-    def __init__(self, connection, **kwargs):
-        self.connection = connection
+    def __init__(self, client, **kwargs):
+        self.client = client
         self._channels = set()
 
     def create_channel(self, connection):
@@ -329,7 +329,7 @@ class VirtualBaseBackend(BaseBackend):
     def _drain_channel(self, channel):
         return channel.drain_events(timeout=self.interval)
 
-    def drain_events(self, timeout=None):
+    def drain_events(self, connection, timeout=None):
         consumer = Consume(self._drain_channel, self._channels, QueueEmpty)
         while True:
             try:

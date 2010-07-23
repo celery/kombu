@@ -111,8 +111,8 @@ class SyncBackend(BaseBackend):
     Message = Message
     Connection = BlockingConnection
 
-    def __init__(self, connection, **kwargs):
-        self.connection = connection
+    def __init__(self, client, **kwargs):
+        self.client = client
         self.default_port = kwargs.get("default_port", self.default_port)
 
     def create_channel(self, connection):
@@ -123,7 +123,7 @@ class SyncBackend(BaseBackend):
 
     def establish_connection(self):
         """Establish connection to the AMQP broker."""
-        conninfo = self.connection
+        conninfo = self.client
         if not conninfo.hostname:
             raise KeyError("Missing hostname for AMQP connection.")
         if conninfo.userid is None:

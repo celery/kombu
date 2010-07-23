@@ -1,6 +1,7 @@
 import socket
 
 from kombu.backends import get_backend_cls
+from kombu.utils import retry_over_time
 
 
 class BrokerConnection(object):
@@ -30,6 +31,13 @@ class BrokerConnection(object):
 
     def _establish_connection(self):
         return self.backend.establish_connection()
+
+    def ensure_connection(self, errback=None, max_retries=None,
+            interval_start=2, interval_step=2, interval_max=30):
+        retry_over_time(self.connect, self.connection_errors, (), {},
+                        errback, max_retries,
+                        interval_start, interval_step, interval_max)
+        return self
 
     @property
     def connection(self):
@@ -62,7 +70,7 @@ class BrokerConnection(object):
         return self.backend.create_channel(self.connection)
 
     def drain_events(self, **kwargs):
-        return self.backend.drain_events(**kwargs)
+        return self.backend.drain_events(self.connection, **kwargs)
 
     def close(self):
         """Close the currently open connection."""
@@ -75,7 +83,7 @@ class BrokerConnection(object):
         self._closed = True
 
     def create_backend(self):
-        return self.get_backend_cls()(connection=self)
+        return self.get_backend_cls()(client=self)
 
     @property
     def backend(self):
@@ -90,3 +98,5 @@ class BrokerConnection(object):
     @property
     def channel_errors(self):
         return self.backend.channel_errors
+
+Broker = BrokerConnection

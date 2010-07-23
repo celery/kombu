@@ -95,18 +95,22 @@ class BaseMessage(object):
 
 class BaseBackend(object):
     """Base class for backends."""
+    client = None
     default_port = None
     connection_errors = ()
     channel_errors = ()
 
-    def __init__(self, connection, **kwargs):
-        self.connection = connection
+    def __init__(self, client, **kwargs):
+        self.client = client
 
-    def get_channel(self):
+    def create_channel(self, connection):
+        raise NotImplementedError("Subclass responsibility")
+
+    def drain_events(self, connection, **kwargs):
         raise NotImplementedError("Subclass responsibility")
 
     def establish_connection(self):
         raise NotImplementedError("Subclass responsibility")
 
-    def close_connection(self):
+    def close_connection(self, connection):
         raise NotImplementedError("Subclass responsibility")

@@ -148,8 +148,8 @@ class Backend(BaseBackend):
     connection_errors = (AMQPConnectionException, socket.error, IOError)
     channel_errors = (AMQPChannelException, )
 
-    def __init__(self, connection, **kwargs):
-        self.connection = connection
+    def __init__(self, client, **kwargs):
+        self.client = client
         self.default_port = kwargs.get("default_port") or self.default_port
 
     def create_channel(self, connection):
@@ -160,7 +160,7 @@ class Backend(BaseBackend):
 
     def establish_connection(self):
         """Establish connection to the AMQP broker."""
-        conninfo = self.connection
+        conninfo = self.client
         if not conninfo.hostname:
             raise KeyError("Missing hostname for AMQP connection.")
         if conninfo.userid is None:
