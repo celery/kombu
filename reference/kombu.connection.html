@@ -57,10 +57,56 @@
 <span class="target" id="module-kombu.connection"></span><dl class="class">
 <dt id="kombu.connection.BrokerConnection">
 <em class="property">class </em><tt class="descclassname">kombu.connection.</tt><tt class="descname">BrokerConnection</tt><big>(</big><em>hostname='localhost'</em>, <em>userid='guest'</em>, <em>password='guest'</em>, <em>virtual_host='/'</em>, <em>port=None</em>, <em>insist=False</em>, <em>ssl=False</em>, <em>backend_cls=None</em>, <em>connect_timeout=5</em>, <em>pool=None</em><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnection" title="Permalink to this definition">¶</a></dt>
-<dd><dl class="method">
+<dd><p>A connection to the broker.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>hostname</strong> &#8211; Hostname/address of the server to connect to.
+Default is <tt class="docutils literal"><span class="pre">&quot;localhost&quot;</span></tt>.</li>
+<li><strong>userid</strong> &#8211; Username. Default is <tt class="docutils literal"><span class="pre">&quot;guest&quot;</span></tt>.</li>
+<li><strong>password</strong> &#8211; Password. Default is <tt class="docutils literal"><span class="pre">&quot;guest&quot;</span></tt>.</li>
+<li><strong>virtual_host</strong> &#8211; Virtual host. Default is <tt class="docutils literal"><span class="pre">&quot;/&quot;</span></tt>.</li>
+<li><strong>port</strong> &#8211; Port of the server. Default is backend specific.</li>
+<li><strong>insist</strong> &#8211; <p>Insist on connecting to a server.</p>
+<p>In a configuration with multiple load-sharing servers, the insist
+option tells the server that the client is insisting on a connection
+to the specified server.</p>
+<p>Default is <tt class="xref docutils literal"><span class="pre">False</span></tt>.</p>
+</li>
+<li><strong>ssl</strong> &#8211; Use ssl to connect to the server. Default is <tt class="xref docutils literal"><span class="pre">False</span></tt>.</li>
+<li><strong>backend_cls</strong> &#8211; Backend class to use.  Can be a class,
+or a string specifying the path to the class. (e.g.
+<tt class="docutils literal"><span class="pre">kombu.backends.pyamqplib.Backend</span></tt>), or one of the aliases:
+<tt class="docutils literal"><span class="pre">amqplib</span></tt>, <tt class="docutils literal"><span class="pre">pika</span></tt>, <tt class="docutils literal"><span class="pre">redis</span></tt>, <tt class="docutils literal"><span class="pre">memory</span></tt>.</li>
+<li><strong>connect_timeout</strong> &#8211; Timeout in seconds for connecting to the
+server. May not be suported by the specified backend.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Usage</strong></p>
+<p>Creating a connection:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">conn</span> <span class="o">=</span> <span class="n">BrokerConnection</span><span class="p">(</span><span class="s">&quot;rabbit.example.com&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The connection is established lazily when needed. If you need the
+connection to be established, then do so expliclty using <a class="reference internal" href="#kombu.connection.BrokerConnection.connect" title="kombu.connection.BrokerConnection.connect"><tt class="xref py py-meth docutils literal"><span class="pre">connect()</span></tt></a>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">conn</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Remember to always close the connection:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">conn</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+</pre></div>
+</div>
+<dl class="method">
 <dt id="kombu.connection.BrokerConnection.acquire">
 <tt class="descname">acquire</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnection.acquire" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Acquire connection.</p>
+<p>Only here for API compatibility with <a class="reference internal" href="#kombu.connection.BrokerConnectionPool" title="kombu.connection.BrokerConnectionPool"><tt class="xref py py-class docutils literal"><span class="pre">BrokerConnectionPool</span></tt></a>.</p>
+</dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.connection.BrokerConnection.backend">
@@ -70,29 +116,32 @@
 <dl class="method">
 <dt id="kombu.connection.BrokerConnection.channel">
 <tt class="descname">channel</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnection.channel" title="Permalink to this definition">¶</a></dt>
-<dd><p>Request a new AMQP channel.</p>
+<dd><p>Request a new channel.</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.connection.BrokerConnection.channel_errors">
 <tt class="descname">channel_errors</tt><a class="headerlink" href="#kombu.connection.BrokerConnection.channel_errors" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>List of exceptions that may be raised by the channel.</p>
+</dd></dl>
 
 <dl class="method">
 <dt id="kombu.connection.BrokerConnection.clone">
 <tt class="descname">clone</tt><big>(</big><em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnection.clone" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Create a copy of the connection with the same connection
+settings.</p>
+</dd></dl>
 
 <dl class="method">
 <dt id="kombu.connection.BrokerConnection.close">
 <tt class="descname">close</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnection.close" title="Permalink to this definition">¶</a></dt>
-<dd><p>Close the currently open connection.</p>
+<dd><p>Close the connection (if open).</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="kombu.connection.BrokerConnection.connect">
 <tt class="descname">connect</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnection.connect" title="Permalink to this definition">¶</a></dt>
-<dd><p>Establish a connection to the AMQP server.</p>
+<dd><p>Establish connection to server immediately.</p>
 </dd></dl>
 
 <dl class="attribute">
@@ -103,7 +152,8 @@
 <dl class="attribute">
 <dt id="kombu.connection.BrokerConnection.connection_errors">
 <tt class="descname">connection_errors</tt><a class="headerlink" href="#kombu.connection.BrokerConnection.connection_errors" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>List of exceptions that may be raised by the connection.</p>
+</dd></dl>
 
 <dl class="method">
 <dt id="kombu.connection.BrokerConnection.create_backend">
@@ -113,17 +163,89 @@
 <dl class="method">
 <dt id="kombu.connection.BrokerConnection.drain_events">
 <tt class="descname">drain_events</tt><big>(</big><em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnection.drain_events" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Wait for a single event from the server.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>timeout</strong> &#8211; Timeout in seconds before we give up.
+Raises <tt class="xref py py-exc docutils literal"><span class="pre">socket.timeout</span></tt> if the timeout is execeded.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p>Usually used from an event loop.</p>
+</dd></dl>
 
 <dl class="method">
 <dt id="kombu.connection.BrokerConnection.ensure">
-<tt class="descname">ensure</tt><big>(</big><em>fun</em>, <em>errback=None</em>, <em>max_retries=None</em>, <em>interval_start=2</em>, <em>interval_step=2</em>, <em>interval_max=30</em><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnection.ensure" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<tt class="descname">ensure</tt><big>(</big><em>fun</em>, <em>errback=None</em>, <em>max_retries=None</em>, <em>interval_start=1</em>, <em>interval_step=1</em>, <em>interval_max=1</em><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnection.ensure" title="Permalink to this definition">¶</a></dt>
+<dd><p>Ensure operation completes, regardless of any channel/connection
+errors occuring.</p>
+<p>Will retry by establishing the connection, and reapplying
+the function.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>fun</strong> &#8211; Method to apply.</li>
+<li><strong>errback</strong> &#8211; Optional callback called each time the connection
+can&#8217;t be established. Arguments provided are the exception
+raised and the interval that will be slept <tt class="docutils literal"><span class="pre">(exc,</span> <span class="pre">interval)</span></tt>.</li>
+<li><strong>max_retries</strong> &#8211; Maximum number of times to retry.
+If this limit is exceeded the connection error will be re-raised.</li>
+<li><strong>interval_start</strong> &#8211; The number of seconds we start sleeping for.</li>
+<li><strong>interval_step</strong> &#8211; How many seconds added to the interval
+for each retry.</li>
+<li><strong>interval_max</strong> &#8211; Maximum number of seconds to sleep between
+each retry.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Example</strong></p>
+<p>This is an example ensuring a publish operation:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="k">def</span> <span class="nf">errback</span><span class="p">(</span><span class="n">exc</span><span class="p">,</span> <span class="n">interval</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="k">print</span><span class="p">(</span><span class="s">&quot;Couldn&#39;t publish message: </span><span class="si">%r</span><span class="s">. Retry in </span><span class="si">%d</span><span class="s">s&quot;</span> <span class="o">%</span> <span class="p">(</span>
+<span class="gp">... </span>            <span class="n">exc</span><span class="p">,</span> <span class="n">interval</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">publish</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">ensure</span><span class="p">(</span><span class="n">producer</span><span class="o">.</span><span class="n">publish</span><span class="p">,</span>
+<span class="gp">... </span>                      <span class="n">errback</span><span class="o">=</span><span class="n">errback</span><span class="p">,</span> <span class="n">max_retries</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">publish</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">routing_key</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
 
 <dl class="method">
 <dt id="kombu.connection.BrokerConnection.ensure_connection">
 <tt class="descname">ensure_connection</tt><big>(</big><em>errback=None</em>, <em>max_retries=None</em>, <em>interval_start=2</em>, <em>interval_step=2</em>, <em>interval_max=30</em><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnection.ensure_connection" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Ensure we have a connection to the server.</p>
+<p>If not retry establishing the connection with the settings
+specified.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>errback</strong> &#8211; Optional callback called each time the connection
+can&#8217;t be established. Arguments provided are the exception
+raised and the interval that will be slept <tt class="docutils literal"><span class="pre">(exc,</span> <span class="pre">interval)</span></tt>.</li>
+<li><strong>max_retries</strong> &#8211; Maximum number of times to retry.
+If this limit is exceeded the connection error will be re-raised.</li>
+<li><strong>interval_start</strong> &#8211; The number of seconds we start sleeping for.</li>
+<li><strong>interval_step</strong> &#8211; How many seconds added to the interval
+for each retry.</li>
+<li><strong>interval_max</strong> &#8211; Maximum number of seconds to sleep between
+each retry.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 <dl class="method">
 <dt id="kombu.connection.BrokerConnection.get_backend_cls">
@@ -140,52 +262,119 @@
 <dl class="method">
 <dt id="kombu.connection.BrokerConnection.info">
 <tt class="descname">info</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnection.info" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Get connection info.</p>
+</dd></dl>
 
 <dl class="method">
 <dt id="kombu.connection.BrokerConnection.release">
 <tt class="descname">release</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnection.release" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Close the connection, or if the connection is managed by a pool
+the connection will be released to the pool so it can be reused.</p>
+<p><strong>NOTE:</strong> You must never perform operations on a connection
+that has been released.</p>
+</dd></dl>
 
 </dd></dl>
 
 <dl class="class">
 <dt id="kombu.connection.BrokerConnectionPool">
-<em class="property">class </em><tt class="descclassname">kombu.connection.</tt><tt class="descname">BrokerConnectionPool</tt><big>(</big><em>initial</em>, <em>min=2</em>, <em>max=10</em>, <em>ensure=False</em>, <em>preconnect=False</em><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnectionPool" title="Permalink to this definition">¶</a></dt>
-<dd><dl class="method">
+<em class="property">class </em><tt class="descclassname">kombu.connection.</tt><tt class="descname">BrokerConnectionPool</tt><big>(</big><em>initial</em>, <em>max=10</em>, <em>ensure=False</em>, <em>preconnect=0</em><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnectionPool" title="Permalink to this definition">¶</a></dt>
+<dd><p>Pool of connections.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>initial</strong> &#8211; Initial <a class="reference internal" href="#kombu.connection.BrokerConnection" title="kombu.connection.BrokerConnection"><tt class="xref py py-class docutils literal"><span class="pre">BrokerConnection</span></tt></a> to take connection
+parameters from.</li>
+<li><strong>max</strong> &#8211; Maximum number of connections in the pool.
+Default is 10.</li>
+<li><strong>ensure</strong> &#8211; When <tt class="docutils literal"><span class="pre">preconnect</span></tt> on, ensure we&#8217;re able to establish
+a connection. Default is <tt class="xref docutils literal"><span class="pre">False</span></tt>.</li>
+<li><strong>preconnect</strong> &#8211; Number of connections at
+instantiation. Default is to only establish connections when needed.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
 <dt id="kombu.connection.BrokerConnectionPool.acquire">
-<tt class="descname">acquire</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnectionPool.acquire" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<tt class="descname">acquire</tt><big>(</big><em>block=True</em>, <em>timeout=None</em><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnectionPool.acquire" title="Permalink to this definition">¶</a></dt>
+<dd><p>Acquire connection.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name" colspan="2">Raises <a class="reference internal" href="kombu.exceptions.html#kombu.exceptions.PoolExhausted" title="kombu.exceptions.PoolExhausted">kombu.exceptions.PoolExhausted</a>:</th></tr>
+<tr><td>&nbsp;</td><td class="field-body">If there are no
+available connections to be acquired.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.connection.BrokerConnectionPool.active">
 <tt class="descname">active</tt><a class="headerlink" href="#kombu.connection.BrokerConnectionPool.active" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Number of acquired connections.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.connection.BrokerConnectionPool.close">
+<tt class="descname">close</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnectionPool.close" title="Permalink to this definition">¶</a></dt>
+<dd><p>Close all connections.</p>
+</dd></dl>
 
 <dl class="method">
 <dt id="kombu.connection.BrokerConnectionPool.ensure">
 <tt class="descname">ensure</tt><big>(</big><em>fun</em>, <em>errback=None</em>, <em>max_retries=None</em>, <em>interval_start=2</em>, <em>interval_step=2</em>, <em>interval_max=30</em><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnectionPool.ensure" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>See <a class="reference internal" href="#kombu.connection.BrokerConnection.ensure" title="kombu.connection.BrokerConnection.ensure"><tt class="xref py py-meth docutils literal"><span class="pre">BrokerConnection.ensure()</span></tt></a>.</p>
+</dd></dl>
 
 <dl class="method">
 <dt id="kombu.connection.BrokerConnectionPool.grow">
-<tt class="descname">grow</tt><big>(</big><em>n=1</em><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnectionPool.grow" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<tt class="descname">grow</tt><big>(</big><em>n</em>, <em>connect=False</em><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnectionPool.grow" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add <tt class="docutils literal"><span class="pre">n</span></tt> more connections to the pool.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>connect</strong> &#8211; Establish connections imemediately.
+By default connections are only established when needed.</li>
+</ul>
+</td>
+</tr>
+<tr class="field"><th class="field-name" colspan="2">Raises <a class="reference internal" href="kombu.exceptions.html#kombu.exceptions.PoolLimitExceeded" title="kombu.exceptions.PoolLimitExceeded">kombu.exceptions.PoolLimitExceeded</a>:</th></tr>
+<tr><td>&nbsp;</td><td class="field-body"><p class="first last">If there are already
+more than <tt class="xref py py-attr docutils literal"><span class="pre">max</span></tt> number of connections in the pool.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 <dl class="method">
 <dt id="kombu.connection.BrokerConnectionPool.release">
 <tt class="descname">release</tt><big>(</big><em>connection</em><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnectionPool.release" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Release connection so it can be used by others.</p>
+<p><strong>NOTE:</strong> You must never perform operations on a connection
+that has been released.</p>
+</dd></dl>
 
 <dl class="method">
 <dt id="kombu.connection.BrokerConnectionPool.replace">
 <tt class="descname">replace</tt><big>(</big><em>connection</em><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnectionPool.replace" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Clone and replace connection with a new one.</p>
+<p>This is useful if the connection is broken.</p>
+</dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.connection.BrokerConnectionPool.total">
 <tt class="descname">total</tt><a class="headerlink" href="#kombu.connection.BrokerConnectionPool.total" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Current total number of connections</p>
+</dd></dl>
 
 </dd></dl>
 
