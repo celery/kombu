@@ -26,12 +26,9 @@ class BrokerConnection(object):
     :keyword port: Port of the server. Default is backend specific.
 
     :keyword insist: Insist on connecting to a server.
-
-        In a configuration with multiple load-sharing servers, the insist
-        option tells the server that the client is insisting on a connection
-        to the specified server.
-
-        Default is ``False``.
+      In a configuration with multiple load-sharing servers, the insist
+      option tells the server that the client is insisting on a connection
+      to the specified server.  Default is ``False``.
 
     :keyword ssl: Use ssl to connect to the server. Default is ``False``.
 
