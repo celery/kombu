@@ -112,17 +112,16 @@ class Message(BaseMessage):
 
     """
 
-    def __init__(self, channel, amqp_message, **kwargs):
-        self.channel = channel
-
-        for attr_name in ("body",
-                          "delivery_tag",
-                          "content_type",
-                          "content_encoding",
-                          "delivery_info"):
-            kwargs[attr_name] = getattr(amqp_message, attr_name, None)
-
-        super(Message, self).__init__(channel, **kwargs)
+    def __init__(self, channel, msg, **kwargs):
+        super(Message, self).__init__(channel,
+                                      body=msg.body,
+                                      delivery_tag=msg.delivery_tag,
+                                      content_type=msg.content_type,
+                                      content_encoding=msg.content_encoding,
+                                      delivery_info=msg.delivery_info,
+                                      properties=msg.properties,
+                                      headers=msg.application_headers,
+                                      **kwargs)
 
 
 class Channel(Channel):
@@ -140,7 +139,7 @@ class Channel(Channel):
 
     def message_to_python(self, raw_message):
         """Convert encoded message body back to a Python value."""
-        return self.Message(channel=self, amqp_message=raw_message)
+        return self.Message(self, raw_message)
 
 
 class Backend(BaseBackend):
