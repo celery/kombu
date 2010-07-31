@@ -59,7 +59,7 @@ class Channel(object):
     def queue_bind(self, *args, **kwargs):
         self._called("queue_bind")
 
-    def queue_delete(self, queue, if_unused=False, if_empty=False):
+    def queue_delete(self, queue, if_unused=False, if_empty=False, **kwargs):
         self._called("queue_delete")
 
     def basic_get(self, *args, **kwargs):
@@ -115,7 +115,7 @@ class Backend(BaseBackend):
     def create_channel(self, connection):
         return connection.channel()
 
-    def drain_events(self, **kwargs):
+    def drain_events(self, connection, **kwargs):
         return "event"
 
     def close_connection(self, connection):

@@ -353,6 +353,7 @@ class Consumer(object):
         self.receive(decoded, message)
 
     def __enter__(self):
+        self.consume()
         return self
 
     def __exit__(self, *args):

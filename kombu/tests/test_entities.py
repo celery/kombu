@@ -40,7 +40,7 @@ class test_Exchange(unittest.TestCase):
 
     def test_create_message(self):
         chan = Channel()
-        Exchange("foo", channel=chan).create_message({"foo": "bar"})
+        Exchange("foo", channel=chan).Message({"foo": "bar"})
         self.assertIn("prepare_message", chan)
 
     def test_publish(self):

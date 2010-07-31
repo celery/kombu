@@ -42,21 +42,33 @@ class test_Producer(unittest.TestCase):
         message = {u"the quick brown fox": u"jumps over the lazy dog"}
         channel = self.connection.channel()
         p = Producer(channel, self.exchange, serializer="json")
-        m, ctype, cencoding = p.prepare(message)
+        m, ctype, cencoding = p._prepare(message, headers={})
         self.assertDictEqual(message, simplejson.loads(m))
         self.assertEqual(ctype, "application/json")
         self.assertEqual(cencoding, "utf-8")
+
+    def test_prepare_compression(self):
+        message = {u"the quick brown fox": u"jumps over the lazy dog"}
+        channel = self.connection.channel()
+        p = Producer(channel, self.exchange, serializer="json")
+        headers = {}
+        m, ctype, cencoding = p._prepare(message, compression="zlib",
+                                         headers=headers)
+        self.assertEqual(ctype, "application/json")
+        self.assertEqual(cencoding, "utf-8")
+        self.assertEqual(headers["compression"], "application/x-gzip")
+        self.assertEqual(simplejson.loads(m.decode("zlib")), message)
 
     def test_prepare_custom_content_type(self):
         message = "the quick brown fox"
         channel = self.connection.channel()
         p = Producer(channel, self.exchange, serializer="json")
-        m, ctype, cencoding = p.prepare(message, content_type="custom")
+        m, ctype, cencoding = p._prepare(message, content_type="custom")
         self.assertEqual(m, message)
         self.assertEqual(ctype, "custom")
         self.assertEqual(cencoding, "binary")
-        m, ctype, cencoding = p.prepare(message, content_type="custom",
-                                        content_encoding="alien")
+        m, ctype, cencoding = p._prepare(message, content_type="custom",
+                                         content_encoding="alien")
         self.assertEqual(m, message)
         self.assertEqual(ctype, "custom")
         self.assertEqual(cencoding, "alien")
@@ -65,11 +77,11 @@ class test_Producer(unittest.TestCase):
         message = u"the quick brown fox"
         channel = self.connection.channel()
         p = Producer(channel, self.exchange, serializer="json")
-        m, ctype, cencoding = p.prepare(message, content_type="text/plain")
+        m, ctype, cencoding = p._prepare(message, content_type="text/plain")
         self.assertEqual(m, message)
         self.assertEqual(ctype, "text/plain")
         self.assertEqual(cencoding, "utf-8")
-        m, ctype, cencoding = p.prepare(message, content_type="text/plain",
+        m, ctype, cencoding = p._prepare(message, content_type="text/plain",
                                         content_encoding="utf-8")
         self.assertEqual(m, message)
         self.assertEqual(ctype, "text/plain")
@@ -95,7 +107,7 @@ class test_Producer(unittest.TestCase):
     def test_no_exchange(self):
         chan = self.connection.channel()
         p = Producer(chan)
-        self.assertIsNone(p.exchange)
+        self.assertFalse(p.exchange.name)
 
 
 class test_Consumer(unittest.TestCase):
@@ -125,6 +137,7 @@ class test_Consumer(unittest.TestCase):
         channel = self.connection.channel()
         binding = Binding("qname", self.exchange, "rkey")
         consumer = Consumer(channel, binding, auto_declare=True)
+        consumer.consume()
         self.assertIsNot(consumer.bindings[0], binding)
         self.assertTrue(consumer.bindings[0].is_bound)
         self.assertTrue(consumer.bindings[0].exchange.is_bound)
@@ -166,6 +179,7 @@ class test_Consumer(unittest.TestCase):
         channel = self.connection.channel()
         binding = Binding("qname", self.exchange, "rkey")
         consumer = Consumer(channel, binding, auto_declare=True)
+        consumer.consume()
         consumer.cancel()
         self.assertIn("basic_cancel", channel)
         self.assertFalse(consumer._active_tags)
@@ -176,6 +190,7 @@ class test_Consumer(unittest.TestCase):
         consumer = Consumer(channel, binding, auto_declare=True)
         context = consumer.__enter__()
         self.assertIs(context, consumer)
+        self.assertTrue(consumer._active_tags)
         consumer.__exit__()
         self.assertIn("basic_cancel", channel)
         self.assertFalse(consumer._active_tags)
@@ -211,6 +226,7 @@ class test_Consumer(unittest.TestCase):
         b3 = Binding("qname3", self.exchange, "rkey")
         b4 = Binding("qname4", self.exchange, "rkey")
         consumer = Consumer(channel, [b1, b2, b3, b4])
+        consumer.consume()
         self.assertEqual(channel.called.count("exchange_declare"), 4)
         self.assertEqual(channel.called.count("queue_declare"), 4)
         self.assertEqual(channel.called.count("queue_bind"), 4)
