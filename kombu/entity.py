@@ -191,7 +191,7 @@ class Exchange(MaybeChannelBound):
         """
         properties = properties or {}
         properties["delivery_mode"] = delivery_mode or self.delivery_mode
-        return self.channel.prepare_message(message_data,
+        return self.channel.prepare_message(body,
                                             properties=properties,
                                             priority=priority,
                                             content_type=content_type,
