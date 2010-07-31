@@ -4,6 +4,7 @@ Backend base classes.
 
 """
 from kombu import serialization
+from kombu.compression import decompress
 from kombu.exceptions import MessageStateError
 
 ACKNOWLEDGED_STATES = frozenset(["ACK", "REJECTED", "REQUEUED"])
@@ -25,10 +26,14 @@ class BaseMessage(object):
         self.content_type = content_type
         self.content_encoding = content_encoding
         self.delivery_info = delivery_info
-        self.headers = headers
-        self.properties = properties
+        self.headers = headers or {}
+        self.properties = properties or {}
         self._decoded_cache = None
         self._state = "RECEIVED"
+
+        compression = self.headers.get("compression")
+        if compression:
+            self.body = decompress(self.body, compression)
 
     def decode(self):
         """Deserialize the message body, returning the original

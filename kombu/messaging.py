@@ -1,6 +1,7 @@
 from itertools import count
 
 from kombu import serialization
+from kombu.compression import compress
 from kombu.entity import Exchange, Binding
 from kombu.utils import maybe_list
 
@@ -66,7 +67,8 @@ class Producer(object):
             self.exchange.declare()
 
     def _prepare(self, body, serializer=None,
-            content_type=None, content_encoding=None):
+            content_type=None, content_encoding=None, compression=None,
+            headers=None):
         # No content_type? Then we're serializing the data internally.
         if not content_type:
             serializer = serializer or self.serializer
@@ -81,15 +83,19 @@ class Producer(object):
                 body = body.encode(content_encoding)
 
             # If they passed in a string, we can't know anything
-            # about it.  So assume it's binary data.
+            # about it. So assume it's binary data.
             elif not content_encoding:
                 content_encoding = 'binary'
+
+        if compression:
+            body, headers["compression"] = compress(body, compression)
 
         return body, content_type, content_encoding
 
     def publish(self, body, routing_key=None, delivery_mode=None,
             mandatory=False, immediate=False, priority=0, content_type=None,
-            content_encoding=None, serializer=None, headers=None):
+            content_encoding=None, serializer=None, headers=None,
+            compression=None):
         """Publish message to the specified exchange.
 
         :param body: Message body.
@@ -105,11 +111,13 @@ class Producer(object):
           with the message body.
 
         """
+        headers = headers or {}
         if routing_key is None:
             routing_key = self.routing_key
 
         body, content_type, content_encoding = self._prepare(
-                body, content_type, content_encoding)
+                body, serializer, content_type, content_encoding,
+                compression, headers)
         message = self.exchange.Message(body,
                                         delivery_mode,
                                         priority,
