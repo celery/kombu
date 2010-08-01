@@ -1,6 +1,6 @@
 import unittest2 as unittest
 
-from kombu.entity import Exchange, Binding
+from kombu.entity import Exchange, Queue
 from kombu.exceptions import NotBoundError
 
 from kombu.tests.mocks import Channel
@@ -59,22 +59,22 @@ class test_Exchange(unittest.TestCase):
         self.assertIn("Exchange", repr(b))
 
 
-class test_Binding(unittest.TestCase):
+class test_Queue(unittest.TestCase):
 
     def setUp(self):
         self.exchange = Exchange("foo", "direct")
 
     def test_exclusive_implies_auto_delete(self):
         self.assertTrue(
-                Binding("foo", self.exchange, exclusive=True).auto_delete)
+                Queue("foo", self.exchange, exclusive=True).auto_delete)
 
     def test_binds_at_instantiation(self):
         self.assertTrue(
-                Binding("foo", self.exchange, channel=Channel()).is_bound)
+                Queue("foo", self.exchange, channel=Channel()).is_bound)
 
     def test_also_binds_exchange(self):
         chan = Channel()
-        b = Binding("foo", self.exchange)
+        b = Queue("foo", self.exchange)
         self.assertFalse(b.is_bound)
         self.assertFalse(b.exchange.is_bound)
         b = b.bind(chan)
@@ -85,7 +85,7 @@ class test_Binding(unittest.TestCase):
 
     def test_declare(self):
         chan = Channel()
-        b = Binding("foo", self.exchange, "foo", channel=chan)
+        b = Queue("foo", self.exchange, "foo", channel=chan)
         self.assertTrue(b.is_bound)
         b.declare()
         self.assertIn("exchange_declare", chan)
@@ -93,31 +93,31 @@ class test_Binding(unittest.TestCase):
         self.assertIn("queue_bind", chan)
 
     def test_get(self):
-        b = Binding("foo", self.exchange, "foo", channel=Channel())
+        b = Queue("foo", self.exchange, "foo", channel=Channel())
         b.get()
         self.assertIn("basic_get", b.channel)
 
     def test_purge(self):
-        b = Binding("foo", self.exchange, "foo", channel=Channel())
+        b = Queue("foo", self.exchange, "foo", channel=Channel())
         b.purge()
         self.assertIn("queue_purge", b.channel)
 
     def test_consume(self):
-        b = Binding("foo", self.exchange, "foo", channel=Channel())
+        b = Queue("foo", self.exchange, "foo", channel=Channel())
         b.consume("fifafo", None)
         self.assertIn("basic_consume", b.channel)
 
     def test_cancel(self):
-        b = Binding("foo", self.exchange, "foo", channel=Channel())
+        b = Queue("foo", self.exchange, "foo", channel=Channel())
         b.cancel("fifafo")
         self.assertIn("basic_cancel", b.channel)
 
     def test_delete(self):
-        b = Binding("foo", self.exchange, "foo", channel=Channel())
+        b = Queue("foo", self.exchange, "foo", channel=Channel())
         b.delete()
         self.assertIn("queue_delete", b.channel)
 
     def test__repr__(self):
-        b = Binding("foo", self.exchange, "foo")
+        b = Queue("foo", self.exchange, "foo")
         self.assertIn("foo", repr(b))
-        self.assertIn("Binding", repr(b))
+        self.assertIn("Queue", repr(b))

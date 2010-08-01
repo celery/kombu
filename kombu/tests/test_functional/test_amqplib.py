@@ -5,7 +5,7 @@ import unittest2 as unittest
 from nose import SkipTest
 
 from kombu import BrokerConnection
-from kombu import Producer, Consumer, Exchange, Binding
+from kombu import Producer, Consumer, Exchange, Queue
 
 
 def consumeN(conn, consumer, n=1):
@@ -41,7 +41,7 @@ class test_amqplib(unittest.TestCase):
         else:
             self.connected = True
         self.exchange = Exchange("tamqplib", "direct")
-        self.binding = Binding("tamqplib", self.exchange, "tamqplib")
+        self.queue = Queue("tamqplib", self.exchange, "tamqplib")
 
     def test_produce__consume(self):
         if not self.connected:
@@ -53,7 +53,7 @@ class test_amqplib(unittest.TestCase):
         chan1.close()
 
         chan2 = self.connection.channel()
-        consumer = Consumer(chan2, self.binding)
+        consumer = Consumer(chan2, self.queue)
         message = consumeN(self.connection, consumer)
         self.assertDictEqual(message[0], {"foo": "bar"})
         chan2.close()
@@ -64,9 +64,9 @@ class test_amqplib(unittest.TestCase):
             raise SkipTest("Broker not running.")
         chan1 = self.connection.channel()
         producer = Producer(chan1, self.exchange)
-        b1 = Binding("pyamqplib.b1", self.exchange, "b1")
-        b2 = Binding("pyamqplib.b2", self.exchange, "b2")
-        b3 = Binding("pyamqplib.b3", self.exchange, "b3")
+        b1 = Queue("pyamqplib.b1", self.exchange, "b1")
+        b2 = Queue("pyamqplib.b2", self.exchange, "b2")
+        b3 = Queue("pyamqplib.b3", self.exchange, "b3")
 
         producer.publish("b1", routing_key="b1")
         producer.publish("b2", routing_key="b2")
@@ -84,8 +84,8 @@ class test_amqplib(unittest.TestCase):
         if not self.connected:
             raise SkipTest("Broker not running.")
         chan = self.connection.channel()
-        self.purge([self.binding.name])
-        consumer = Consumer(chan, self.binding)
+        self.purge([self.queue.name])
+        consumer = Consumer(chan, self.queue)
         self.assertRaises(socket.timeout, self.connection.drain_events,
                 timeout=0.3)
         consumer.cancel()
@@ -97,11 +97,11 @@ class test_amqplib(unittest.TestCase):
         chan1.close()
 
         chan2 = self.connection.channel()
-        binding = Binding("amqplib_basic_get", self.exchange, "basic_get")
-        binding = binding(chan2)
-        binding.declare()
+        queue = Queue("amqplib_basic_get", self.exchange, "basic_get")
+        queue = queue(chan2)
+        queue.declare()
         for i in range(50):
-            m = binding.get()
+            m = queue.get()
             if m:
                 break
             time.sleep(0.1)

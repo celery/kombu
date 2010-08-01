@@ -2,7 +2,8 @@ from itertools import count
 
 from kombu import serialization
 from kombu.compression import compress
-from kombu.entity import Exchange, Binding
+from kombu.entity import Exchange, Queue
+from kombu.entity import Binding # TODO Remove
 from kombu.utils import maybe_list
 
 
@@ -132,7 +133,7 @@ class Consumer(object):
     """Message consumer.
 
     :param channel: see :attr:`channel`.
-    :param bindings: see :attr:`bindings`.
+    :param queues see :attr:`queues`.
     :keyword no_ack: see :attr:`no_ack`.
     :keyword auto_declare: see :attr:`auto_declare`
     :keyword callbacks: see :attr:`callbacks`.
@@ -142,9 +143,10 @@ class Consumer(object):
 
         The connection channel to use.
 
-    .. attribute:: bindings
+    .. attribute:: queues
 
-        A single binding, or a list of bindings to consume from.
+        A single :class:`~kombu.entity.Queue`, or a list of queues to
+        consume from.
 
     .. attribute:: auto_declare
 
@@ -176,10 +178,10 @@ class Consumer(object):
     _next_tag = count(1).next # global
     _consuming = False
 
-    def __init__(self, channel, bindings, no_ack=None, auto_declare=None,
+    def __init__(self, channel, queues, no_ack=None, auto_declare=None,
             callbacks=None, on_decode_error=None):
         self.channel = channel
-        self.bindings = bindings
+        self.queues = queues
         if no_ack is not None:
             self.no_ack = no_ack
         if auto_declare is not None:
@@ -193,21 +195,21 @@ class Consumer(object):
             self.callbacks = []
         self._active_tags = {}
 
-        self.bindings = [binding(self.channel)
-                            for binding in maybe_list(self.bindings)]
+        self.queues = [queue(self.channel)
+                            for queue in maybe_list(self.queues)]
 
         if self.auto_declare:
             self.declare()
 
     def declare(self):
-        """Declare queues, bindings and exchanges.
+        """Declare queues, exchanges and bindings.
 
         This is done automatically at instantiation if :attr:`auto_declare`
         is set.
 
         """
-        for binding in self.bindings:
-            binding.declare()
+        for queue in self.queues:
+            queue.declare()
 
     def consume(self, delivery_tag=None):
         """Register consumer on server.
@@ -217,9 +219,9 @@ class Consumer(object):
 
         """
         if not self._consuming:
-            H, T = self.bindings[:-1], self.bindings[-1]
-            for binding in H:
-                binding.consume(self._add_tag(binding, delivery_tag),
+            H, T = self.queues[:-1], self.queues[-1]
+            for queue in H:
+                queue.consume(self._add_tag(queue, delivery_tag),
                                 self._receive_callback,
                                 self.no_ack,
                                 nowait=True)
@@ -265,7 +267,7 @@ class Consumer(object):
         undo operation available.
 
         """
-        return sum(binding.purge() for binding in self.bindings)
+        return sum(queue.purge() for queue in self.queues)
 
     def cancel(self):
         """End all active queue consumers.
@@ -274,8 +276,8 @@ class Consumer(object):
         mean the server will not send any more messages for this consumer.
 
         """
-        for binding, tag in self._active_tags.items():
-            binding.cancel(tag)
+        for queue, tag in self._active_tags.items():
+            queue.cancel(tag)
         self._active_tags.clear()
         self._consuming = False
 
@@ -336,9 +338,9 @@ class Consumer(object):
         """
         return self.channel.basic_recover(requeue=requeue)
 
-    def _add_tag(self, binding, delivery_tag=None):
+    def _add_tag(self, queue, delivery_tag=None):
         tag = delivery_tag or str(self._next_tag())
-        self._active_tags[binding] = tag
+        self._active_tags[queue] = tag
         return tag
 
     def _receive_callback(self, raw_message):

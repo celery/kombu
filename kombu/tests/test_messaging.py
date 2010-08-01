@@ -5,7 +5,7 @@ import simplejson
 from kombu.connection import BrokerConnection
 from kombu.exceptions import MessageStateError
 from kombu.messaging import Consumer, Producer
-from kombu.entity import Exchange, Binding
+from kombu.entity import Exchange, Queue
 
 from kombu.tests.mocks import Backend
 
@@ -120,28 +120,28 @@ class test_Consumer(unittest.TestCase):
 
     def test_set_no_ack(self):
         channel = self.connection.channel()
-        binding = Binding("qname", self.exchange, "rkey")
-        consumer = Consumer(channel, binding, auto_declare=True, no_ack=True)
+        queue = Queue("qname", self.exchange, "rkey")
+        consumer = Consumer(channel, queue, auto_declare=True, no_ack=True)
         self.assertTrue(consumer.no_ack)
 
     def test_set_callbacks(self):
         channel = self.connection.channel()
-        binding = Binding("qname", self.exchange, "rkey")
+        queue = Queue("qname", self.exchange, "rkey")
         callbacks = [lambda x, y: x,
                      lambda x, y: x]
-        consumer = Consumer(channel, binding, auto_declare=True,
+        consumer = Consumer(channel, queue, auto_declare=True,
                             callbacks=callbacks)
         self.assertEqual(consumer.callbacks, callbacks)
 
     def test_auto_declare(self):
         channel = self.connection.channel()
-        binding = Binding("qname", self.exchange, "rkey")
-        consumer = Consumer(channel, binding, auto_declare=True)
+        queue = Queue("qname", self.exchange, "rkey")
+        consumer = Consumer(channel, queue, auto_declare=True)
         consumer.consume()
-        self.assertIsNot(consumer.bindings[0], binding)
-        self.assertTrue(consumer.bindings[0].is_bound)
-        self.assertTrue(consumer.bindings[0].exchange.is_bound)
-        self.assertIsNot(consumer.bindings[0].exchange, self.exchange)
+        self.assertIsNot(consumer.queues[0], queue)
+        self.assertTrue(consumer.queues[0].is_bound)
+        self.assertTrue(consumer.queues[0].exchange.is_bound)
+        self.assertIsNot(consumer.queues[0].exchange, self.exchange)
 
         for meth in ("exchange_declare",
                      "queue_declare",
@@ -153,12 +153,12 @@ class test_Consumer(unittest.TestCase):
 
     def test_manual_declare(self):
         channel = self.connection.channel()
-        binding = Binding("qname", self.exchange, "rkey")
-        consumer = Consumer(channel, binding, auto_declare=False)
-        self.assertIsNot(consumer.bindings[0], binding)
-        self.assertTrue(consumer.bindings[0].is_bound)
-        self.assertTrue(consumer.bindings[0].exchange.is_bound)
-        self.assertIsNot(consumer.bindings[0].exchange, self.exchange)
+        queue = Queue("qname", self.exchange, "rkey")
+        consumer = Consumer(channel, queue, auto_declare=False)
+        self.assertIsNot(consumer.queues[0], queue)
+        self.assertTrue(consumer.queues[0].is_bound)
+        self.assertTrue(consumer.queues[0].exchange.is_bound)
+        self.assertIsNot(consumer.queues[0].exchange, self.exchange)
 
         for meth in ("exchange_declare",
                      "queue_declare",
@@ -177,8 +177,8 @@ class test_Consumer(unittest.TestCase):
 
     def test_consume__cancel(self):
         channel = self.connection.channel()
-        binding = Binding("qname", self.exchange, "rkey")
-        consumer = Consumer(channel, binding, auto_declare=True)
+        queue = Queue("qname", self.exchange, "rkey")
+        consumer = Consumer(channel, queue, auto_declare=True)
         consumer.consume()
         consumer.cancel()
         self.assertIn("basic_cancel", channel)
@@ -186,8 +186,8 @@ class test_Consumer(unittest.TestCase):
 
     def test___enter____exit__(self):
         channel = self.connection.channel()
-        binding = Binding("qname", self.exchange, "rkey")
-        consumer = Consumer(channel, binding, auto_declare=True)
+        queue = Queue("qname", self.exchange, "rkey")
+        consumer = Consumer(channel, queue, auto_declare=True)
         context = consumer.__enter__()
         self.assertIs(context, consumer)
         self.assertTrue(consumer._active_tags)
@@ -197,34 +197,34 @@ class test_Consumer(unittest.TestCase):
 
     def test_flow(self):
         channel = self.connection.channel()
-        binding = Binding("qname", self.exchange, "rkey")
-        consumer = Consumer(channel, binding, auto_declare=True)
+        queue = Queue("qname", self.exchange, "rkey")
+        consumer = Consumer(channel, queue, auto_declare=True)
         consumer.flow(False)
         self.assertIn("flow", channel)
 
     def test_qos(self):
         channel = self.connection.channel()
-        binding = Binding("qname", self.exchange, "rkey")
-        consumer = Consumer(channel, binding, auto_declare=True)
+        queue = Queue("qname", self.exchange, "rkey")
+        consumer = Consumer(channel, queue, auto_declare=True)
         consumer.qos(30, 10, False)
         self.assertIn("basic_qos", channel)
 
     def test_purge(self):
         channel = self.connection.channel()
-        b1 = Binding("qname1", self.exchange, "rkey")
-        b2 = Binding("qname2", self.exchange, "rkey")
-        b3 = Binding("qname3", self.exchange, "rkey")
-        b4 = Binding("qname4", self.exchange, "rkey")
+        b1 = Queue("qname1", self.exchange, "rkey")
+        b2 = Queue("qname2", self.exchange, "rkey")
+        b3 = Queue("qname3", self.exchange, "rkey")
+        b4 = Queue("qname4", self.exchange, "rkey")
         consumer = Consumer(channel, [b1, b2, b3, b4], auto_declare=True)
         consumer.purge()
         self.assertEqual(channel.called.count("queue_purge"), 4)
 
-    def test_multiple_bindings(self):
+    def test_multiple_queues(self):
         channel = self.connection.channel()
-        b1 = Binding("qname1", self.exchange, "rkey")
-        b2 = Binding("qname2", self.exchange, "rkey")
-        b3 = Binding("qname3", self.exchange, "rkey")
-        b4 = Binding("qname4", self.exchange, "rkey")
+        b1 = Queue("qname1", self.exchange, "rkey")
+        b2 = Queue("qname2", self.exchange, "rkey")
+        b3 = Queue("qname3", self.exchange, "rkey")
+        b4 = Queue("qname4", self.exchange, "rkey")
         consumer = Consumer(channel, [b1, b2, b3, b4])
         consumer.consume()
         self.assertEqual(channel.called.count("exchange_declare"), 4)
@@ -238,7 +238,7 @@ class test_Consumer(unittest.TestCase):
 
     def test_receive_callback(self):
         channel = self.connection.channel()
-        b1 = Binding("qname1", self.exchange, "rkey")
+        b1 = Queue("qname1", self.exchange, "rkey")
         consumer = Consumer(channel, [b1])
 
         received = []
@@ -256,7 +256,7 @@ class test_Consumer(unittest.TestCase):
 
     def test_basic_ack_twice(self):
         channel = self.connection.channel()
-        b1 = Binding("qname1", self.exchange, "rkey")
+        b1 = Queue("qname1", self.exchange, "rkey")
         consumer = Consumer(channel, [b1])
 
         def callback(message_data, message):
@@ -269,7 +269,7 @@ class test_Consumer(unittest.TestCase):
 
     def test_basic_reject(self):
         channel = self.connection.channel()
-        b1 = Binding("qname1", self.exchange, "rkey")
+        b1 = Queue("qname1", self.exchange, "rkey")
         consumer = Consumer(channel, [b1])
 
         def callback(message_data, message):
@@ -281,7 +281,7 @@ class test_Consumer(unittest.TestCase):
 
     def test_basic_reject_twice(self):
         channel = self.connection.channel()
-        b1 = Binding("qname1", self.exchange, "rkey")
+        b1 = Queue("qname1", self.exchange, "rkey")
         consumer = Consumer(channel, [b1])
 
         def callback(message_data, message):
@@ -295,7 +295,7 @@ class test_Consumer(unittest.TestCase):
 
     def test_basic_reject__requeue(self):
         channel = self.connection.channel()
-        b1 = Binding("qname1", self.exchange, "rkey")
+        b1 = Queue("qname1", self.exchange, "rkey")
         consumer = Consumer(channel, [b1])
 
         def callback(message_data, message):
@@ -307,7 +307,7 @@ class test_Consumer(unittest.TestCase):
 
     def test_basic_reject__requeue_twice(self):
         channel = self.connection.channel()
-        b1 = Binding("qname1", self.exchange, "rkey")
+        b1 = Queue("qname1", self.exchange, "rkey")
         consumer = Consumer(channel, [b1])
 
         def callback(message_data, message):
@@ -321,13 +321,13 @@ class test_Consumer(unittest.TestCase):
 
     def test_receive_without_callbacks_raises(self):
         channel = self.connection.channel()
-        b1 = Binding("qname1", self.exchange, "rkey")
+        b1 = Queue("qname1", self.exchange, "rkey")
         consumer = Consumer(channel, [b1])
         self.assertRaises(NotImplementedError, consumer.receive, 1, 2)
 
     def test_decode_error(self):
         channel = self.connection.channel()
-        b1 = Binding("qname1", self.exchange, "rkey")
+        b1 = Queue("qname1", self.exchange, "rkey")
         consumer = Consumer(channel, [b1])
         consumer.channel.throw_decode_error = True
 
@@ -336,7 +336,7 @@ class test_Consumer(unittest.TestCase):
 
     def test_on_decode_error_callback(self):
         channel = self.connection.channel()
-        b1 = Binding("qname1", self.exchange, "rkey")
+        b1 = Queue("qname1", self.exchange, "rkey")
         consumer = Consumer(channel, [b1])
         consumer.channel.throw_decode_error = True
 
@@ -354,7 +354,7 @@ class test_Consumer(unittest.TestCase):
 
     def test_recover(self):
         channel = self.connection.channel()
-        b1 = Binding("qname1", self.exchange, "rkey")
+        b1 = Queue("qname1", self.exchange, "rkey")
         consumer = Consumer(channel, [b1])
         consumer.recover()
         self.assertIn("basic_recover", channel)

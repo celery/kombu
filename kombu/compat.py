@@ -12,7 +12,7 @@ def iterconsume(connection, consumer, no_ack=False, limit=None):
         yield connection.drain_events()
 
 
-def entry_to_binding(queue, **options):
+def entry_to_queue(queue, **options):
     binding_key = options.get("binding_key") or options.get("routing_key")
     e_durable = options.get("exchange_durable") or options.get("durable")
     e_auto_delete = options.get("exchange_auto_delete") or \
@@ -30,14 +30,14 @@ def entry_to_binding(queue, **options):
                                durable=e_durable,
                                auto_delete=e_auto_delete,
                                arguments=e_arguments)
-    return entity.Binding(queue,
-                          exchange=exchange,
-                          routing_key=binding_key,
-                          durable=q_durable,
-                          exclusive=options.get("exclusive"),
-                          auto_delete=q_auto_delete,
-                          queue_arguments=q_arguments,
-                          binding_arguments=b_arguments)
+    return entity.Queue(queue,
+                        exchange=exchange,
+                        routing_key=binding_key,
+                        durable=q_durable,
+                        exclusive=options.get("exclusive"),
+                        auto_delete=q_auto_delete,
+                        queue_arguments=q_arguments,
+                        binding_arguments=b_arguments)
 
 
 class Publisher(messaging.Producer):
@@ -120,13 +120,13 @@ class Consumer(messaging.Consumer):
                                    routing_key=self.routing_key,
                                    auto_delete=self.auto_delete,
                                    durable=self.durable)
-        binding = entity.Binding(self.queue,
-                                 exchange=exchange,
-                                 routing_key=self.routing_key,
-                                 durable=self.durable,
-                                 exclusive=self.exclusive,
-                                 auto_delete=self.auto_delete)
-        super(Consumer, self).__init__(self.backend, binding, **kwargs)
+        queue = entity.Queue(self.queue,
+                             exchange=exchange,
+                             routing_key=self.routing_key,
+                             durable=self.durable,
+                             exclusive=self.exclusive,
+                             auto_delete=self.auto_delete)
+        super(Consumer, self).__init__(self.backend, queue, **kwargs)
 
     def close(self):
         self.cancel()
@@ -145,7 +145,7 @@ class Consumer(messaging.Consumer):
     def fetch(self, no_ack=None, enable_callbacks=False):
         if no_ack is None:
             no_ack = self.no_ack
-        message = self.bindings[0].get(no_ack)
+        message = self.queues[0].get(no_ack)
         if message:
             if enable_callbacks:
                 self.receive(message.payload, message)
@@ -190,10 +190,10 @@ class _CSet(messaging.Consumer):
         return self.purge()
 
     def add_consumer_from_dict(self, queue, **options):
-        self.bindings.append(entry_to_binding(queue, **options))
+        self.queues.append(entry_to_queue(queue, **options))
 
     def add_consumer(self, consumer):
-        self.bindings.extend(consumer.bindings)
+        self.queues.extend(consumer.queues)
 
     def close(self):
         self.cancel()
@@ -203,12 +203,12 @@ class _CSet(messaging.Consumer):
 def ConsumerSet(connection, from_dict=None, consumers=None,
         callbacks=None, **kwargs):
 
-    bindings = []
+    queues = []
     if consumers:
         for consumer in consumers:
-            map(bindings.extend, consumer.bindings)
+            map(queues.extend, consumer.queues)
     if from_dict:
         for queue_name, queue_options in from_dict.items():
-            bindings.append(entry_to_binding(queue_name, **queue_options))
+            queues.append(entry_to_queue(queue_name, **queue_options))
 
-    return _CSet(connection, bindings, **kwargs)
+    return _CSet(connection, queues, **kwargs)

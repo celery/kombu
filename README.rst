@@ -11,10 +11,10 @@ Carrot will be discontinued in favor of Kombu.
 Proposed API::
 
     from kombu.connection BrokerConnection
-    from kombu.messaging import Exchange, Binding, Consumer, Producer
+    from kombu.messaging import Exchange, Queue, Consumer, Producer
 
     media_exchange = Exchange("media", "direct", durable=True)
-    video_binding = Binding("video", exchange=media_exchange, key="video")
+    video_queue = Queue("video", exchange=media_exchange, key="video")
 
     # connections/channels
     connection = BrokerConnection("localhost", "guest", "guest", "/")
@@ -25,7 +25,7 @@ Proposed API::
     producer.publish({"name": "/tmp/lolcat1.avi", "size": 1301013})
 
     # consume
-    consumer = Consumer(channel, video_binding)
+    consumer = Consumer(channel, video_queue)
     consumer.register_callback(process_media)
     consumer.consume()
 
@@ -34,10 +34,10 @@ Proposed API::
 
 
     # consumerset:
-    video_binding = Binding("video", exchange=media_exchange, key="video")
-    image_binding = Binding("image", exchange=media_exchange, key="image")
+    video_queue = Queue("video", exchange=media_exchange, key="video")
+    image_queue = Queue("image", exchange=media_exchange, key="image")
 
-    consumer = Consumer(channel, [video_binding, image_binding])
+    consumer = Consumer(channel, [video_queue, image_queue])
     consumer.consume()
 
     while True:
@@ -45,7 +45,7 @@ Proposed API::
 
 
 
-Exchanges/Bindings can be bound to a channel::
+Exchanges/Queue can be bound to a channel::
 
     >>> exchange = Exchange("tasks", "direct")
 
@@ -210,13 +210,13 @@ First we open up a Python shell and start a message consumer.
 This consumer declares a queue named ``"feed"``, receiving messages with
 the routing key ``"importer"`` from the ``"feed"`` exchange.
 
-    >>> from kombu import Exchange, Binding, Consumer
+    >>> from kombu import Exchange, Queue, Consumer
 
     >>> feed_exchange = Exchange("feed", type="direct")
-    >>> feed_binding = Binding("feed", feed_exchange, "importer")
+    >>> feed_queue = Queue("feed", feed_exchange, "importer")
 
     >>> channel = connection.channel()
-    >>> consumer = Consumer(channel, [feed_binding])
+    >>> consumer = Consumer(channel, [feed_queue])
 
     >>> def import_feed_callback(message_data, message)
     ...     feed_url = message_data["import_feed"]
@@ -347,7 +347,7 @@ This method returns a ``Message`` object, from where you can get the
 message body, de-serialize the body to get the data, acknowledge, reject or
 re-queue the message.
 
-    >>> consumer = Consumer(channel, bindings)
+    >>> consumer = Consumer(channel, queues)
     >>> message = consumer.get()
     >>> if message:
     ...    message_data = message.payload
@@ -371,7 +371,7 @@ can define the above producer and consumer like so:
     ...                              "feed_url": feed_url})
 
     >>> class FeedConsumer(Consumer):
-    ...     bindings = bindings
+    ...     queues = queues
     ...
     ...     def receive(self, message_data, message):
     ...         action = message_data["action"]

@@ -36,10 +36,10 @@ class Exchange(MaybeChannelBound):
             * ``topic``
 
                 Wildcard match between the routing key and the routing pattern
-                specified in the binding. The routing key is treated as zero
-                or more words delimited by ``"."`` and supports special
-                wildcard characters. ``"*"`` matches a single word and ``"#"``
-                matches zero or more words.
+                specified in the exchange/queue binding. The routing key is
+                treated as zero or more words delimited by ``"."`` and
+                supports special wildcard characters. ``"*"`` matches a
+                single word and ``"#"`` matches zero or more words.
 
             * ``fanout``
 
@@ -233,8 +233,8 @@ class Exchange(MaybeChannelBound):
                                                                    self.type))
 
 
-class Binding(MaybeChannelBound):
-    """A Queue declaration and its binding.
+class Queue(MaybeChannelBound):
+    """A Queue declaration.
 
     :keyword name: See :attr:`name`.
     :keyword exchange: See :attr:`exchange`.
@@ -283,7 +283,7 @@ class Binding(MaybeChannelBound):
 
     .. attribute:: channel
 
-        The channel the Binding is bound to (if bound).
+        The channel the Queue is bound to (if bound).
 
     .. attribute:: durable
 
@@ -322,19 +322,20 @@ class Binding(MaybeChannelBound):
 
     **Usage**
 
-    Example creating a binding for our exchange in the :class:`Exchange`
+    Example creating a queue using our exchange in the :class:`Exchange`
     example::
 
-        >>> science_news = Binding("science_news",
-        ...                        exchange=news_exchange,
-        ...                        routing_key="news.science")
+        >>> science_news = Queue("science_news",
+        ...                      exchange=news_exchange,
+        ...                      routing_key="news.science")
 
     For now ``science_news`` is just a declaration, you can't perform
-    actions on it. It just describes the name and options for the binding.
+    actions on it. It just describes the name and options for the queue.
 
-    The binding can be bound or unbound. Bound means the binding is
+    The queue can be bound or unbound. Bound means the queue is
     associated with a channel and operations can be performed on it.
-    To bind the binding you call the binding with the channel as argument::
+    To bind the queue you call the queue instance with the channel as
+    an argument::
 
         >>> bound_science_news = science_news(channel)
 
@@ -364,7 +365,7 @@ class Binding(MaybeChannelBound):
 
     def __init__(self, name="", exchange=None, routing_key="", channel=None,
             **kwargs):
-        super(Binding, self).__init__(**kwargs)
+        super(Queue, self).__init__(**kwargs)
         self.name = name or self.name
         self.exchange = exchange or self.exchange
         self.routing_key = routing_key or self.routing_key
@@ -492,7 +493,9 @@ class Binding(MaybeChannelBound):
                                          arguments=self.binding_arguments)
 
     def __repr__(self):
-        return super(Binding, self).__repr__(
-                 "Binding %s -> %s -> %s" % (self.name,
-                                             self.exchange,
+        return super(Queue, self).__repr__(
+                 "Queue %s -> %s -> %s" % (self.name,
+                                           self.exchange,
                                              self.routing_key))
+
+Binding = Queue
