@@ -18,6 +18,10 @@ class Producer(object):
         compression.
     :keyword auto_declare: Automatically declare the exchange
       at instantiation. Default is ``True``.
+    :keyword on_return: Callback to call for undeliverable messages,
+        when ``mandatory`` or ``imediate`` is used. This callback
+        needs the following signature:
+        ``(exception, exchange, routing_key, message).
 
     .. attribute:: channel
 
@@ -46,20 +50,26 @@ class Producer(object):
     auto_declare = True
     routing_key = ""
     compression = None
+    on_return = None
 
     def __init__(self, channel, exchange=None, routing_key=None,
-            serializer=None, auto_declare=None, compression=None):
+            serializer=None, auto_declare=None, compression=None,
+            on_return=None):
         self.channel = channel
         self.exchange = exchange or self.exchange
         self.routing_key = routing_key or self.routing_key
         self.serializer = serializer or self.serializer
         self.compression = compression or self.compression
+        self.on_return = on_return or self.on_return
         if auto_declare is not None:
             self.auto_declare = auto_declare
 
         if self.exchange:
             self.exchange = self.exchange(self.channel)
             self.auto_declare and self.declare()
+
+        if self.on_return:
+            self.channel.events["basic_return"].append(self.on_return)
 
     def declare(self):
         """Declare the exchange.

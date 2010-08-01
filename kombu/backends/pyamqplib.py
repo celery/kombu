@@ -11,6 +11,23 @@ DEFAULT_PORT = 5672
 
 class Connection(amqp.Connection):
 
+    def _dispatch_basic_return(self, channel, args, msg):
+        reply_code = args.read_short()
+        reply_text = args.read_shortstr()
+        exchange = args.read_shortstr()
+        routing_key = args.read_shortstr()
+
+        exc = AMQPChannelException(reply_code, reply_text, (50, 60))
+        if channel.events["basic_return"]:
+            for callback in channel.events["basic_return"]:
+                callback(exc, exchange, routing_key, msg)
+        else:
+            raise exc
+
+    def __init__(self, *args, **kwargs):
+        super(Connection, self).__init__(*args, **kwargs)
+        self._method_override = {(60, 50): self._dispatch_basic_return}
+
     def drain_events(self, allowed_methods=None, timeout=None):
         """Wait for an event on any channel."""
         return self.wait_multi(self.channels.values(), timeout=timeout)
@@ -31,7 +48,8 @@ class Connection(amqp.Connection):
             except Exception:
                 pass
 
-        amqp_method = channel._METHOD_MAP.get(method_sig, None)
+        amqp_method = self._method_override.get(method_sig) or \
+                        channel._METHOD_MAP.get(method_sig, None)
 
         if amqp_method is None:
             raise Exception('Unknown AMQP method (%d, %d)' % method_sig)
@@ -126,6 +144,7 @@ class Message(BaseMessage):
 
 class Channel(Channel):
     Message = Message
+    events = {"basic_return": []}
 
     def prepare_message(self, message_data, priority=None,
                 content_type=None, content_encoding=None, headers=None,
