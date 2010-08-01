@@ -8,6 +8,7 @@ from time import time
 
 from kombu import exceptions
 from kombu.backends import get_backend_cls
+from kombu.simple import SimpleQueue
 from kombu.utils import retry_over_time, OrderedDict
 
 
@@ -237,6 +238,54 @@ class BrokerConnection(object):
                             ("backend_cls", self.backend_cls),
                             ("connect_timeout", self.connect_timeout),
                             ("pool", self.pool)))
+
+    def SimpleQueue(self, name, no_ack=False, queue_opts=None,
+            exchange_opts=None, channel=None):
+        """Create new :class:`~kombu.simple.SimpleQueue`, using a channel
+        from this connection.
+
+        If ``name`` is a string, a queue and exchange will be automatically
+        created using that name as the name of the queue and exchange,
+        also it will be used as the default routing key.
+
+        :param name: Name of the queue/or a :class:`~kombu.entity.Queue`.
+        :keyword no_ack: Disable acknowledgements. Default is false.
+        :keyword queue_opts: Additional keyword arguments passed to the
+          constructor of the automatically created
+          :class:`~kombu.entity.Queue`.
+        :keyword exchange_opts: Additional keyword arguments passed to the
+          constructor of the automatically created
+          :class:`~kombu.entity.Exchange.
+        :keyword channel: Channel to use. If not specified a new channel
+           from the current connection will be used. Remember to call
+           :meth:`~kombu.simple.SimpleQueue.close` when done with the
+           object.
+
+        """
+        channel_autoclose = False
+        if channel is None:
+            channel = self.channel()
+            channel_autoclose = True
+        return SimpleQueue(channel, name, no_ack, queue_opts, exchange_opts,
+                           channel_autoclose=channel_autoclose)
+
+    def SimpleBuffer(self, name, no_ack=False, queue_opts=None,
+            exchange_opts=None, channel=None):
+        """Create new :class:`~kombu.simple.SimpleQueue` using a channel
+        from this connection.
+
+        Same as :meth:`SimpleQueue`, but configured with buffering
+        semantics. The resulting queue and exchange will not be durable, also
+        auto delete is enabled. Messages will be transient (not persistent),
+        and acknowledgements are disabled (``no_ack``).
+
+        """
+        channel_autoclose = False
+        if channel is None:
+            channel = self.channel()
+            channel_autoclose = True
+        return SimpleBuffer(channel, name, no_ack, queue_opts, exchange_opts,
+                            channel_autoclose=channel_autoclose)
 
     def _establish_connection(self):
         return self.backend.establish_connection()
