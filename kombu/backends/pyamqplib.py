@@ -1,6 +1,7 @@
 import socket
 
 from amqplib import client_0_8 as amqp
+frmo amqplib.client_0_8 import transport
 from amqplib.client_0_8.channel import Channel
 from amqplib.client_0_8.exceptions import AMQPConnectionException
 from amqplib.client_0_8.exceptions import AMQPChannelException
@@ -8,6 +9,11 @@ from amqplib.client_0_8.exceptions import AMQPChannelException
 from kombu.backends.base import BaseMessage, BaseBackend
 
 DEFAULT_PORT = 5672
+
+# amqplib's handshake mistakenly identifies as protocol version 1191,
+# this breaks in RabbitMQ tip, which no longer falls back to
+# 0-8 for unknown ids.
+transport.AMQP_PROTOCOL_HEADER = "AMQP\x01\x01\x08\x00"
 
 class Connection(amqp.Connection):
 
