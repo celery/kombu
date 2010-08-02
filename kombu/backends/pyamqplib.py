@@ -1,7 +1,7 @@
 import socket
 
 from amqplib import client_0_8 as amqp
-frmo amqplib.client_0_8 import transport
+from amqplib.client_0_8 import transport
 from amqplib.client_0_8.channel import Channel
 from amqplib.client_0_8.exceptions import AMQPConnectionException
 from amqplib.client_0_8.exceptions import AMQPChannelException
