@@ -9,6 +9,7 @@
     :maxdepth: 2
 
     kombu.connection
+    kombu.simple
     kombu.messaging
     kombu.entity
     kombu.compat
@@ -21,5 +22,6 @@
     kombu.transport.base
     kombu.transport.virtual
     kombu.serialization
+    kombu.compression
     kombu.abstract
     kombu.utils

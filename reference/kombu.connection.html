@@ -23,7 +23,7 @@
     <script type="text/javascript" src="../static/doctools.js"></script>
     <link rel="top" title="Kombu v0.1.0 documentation" href="../index.html" />
     <link rel="up" title="API Reference" href="index.html" />
-    <link rel="next" title="Messaging - kombu.messaging" href="kombu.messaging.html" />
+    <link rel="next" title="Simple Interface - kombu.simple" href="kombu.simple.html" />
     <link rel="prev" title="API Reference" href="index.html" /> 
   </head>
   <body>
@@ -37,7 +37,7 @@
           <a href="../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="kombu.messaging.html" title="Messaging - kombu.messaging"
+          <a href="kombu.simple.html" title="Simple Interface - kombu.simple"
              accesskey="N">next</a> |</li>
         <li class="right" >
           <a href="index.html" title="API Reference"
@@ -102,7 +102,7 @@ connection to be established, then do so expliclty using <a class="reference int
 <dl class="method">
 <dt id="kombu.connection.BrokerConnection.SimpleBuffer">
 <tt class="descname">SimpleBuffer</tt><big>(</big><em>name</em>, <em>no_ack=False</em>, <em>queue_opts=None</em>, <em>exchange_opts=None</em>, <em>channel=None</em><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnection.SimpleBuffer" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create new <tt class="xref py py-class docutils literal"><span class="pre">SimpleQueue</span></tt> using a channel
+<dd><p>Create new <a class="reference internal" href="kombu.simple.html#kombu.simple.SimpleQueue" title="kombu.simple.SimpleQueue"><tt class="xref py py-class docutils literal"><span class="pre">SimpleQueue</span></tt></a> using a channel
 from this connection.</p>
 <p>Same as <a class="reference internal" href="#kombu.connection.BrokerConnection.SimpleQueue" title="kombu.connection.BrokerConnection.SimpleQueue"><tt class="xref py py-meth docutils literal"><span class="pre">SimpleQueue()</span></tt></a>, but configured with buffering
 semantics. The resulting queue and exchange will not be durable, also
@@ -113,7 +113,7 @@ and acknowledgements are disabled (<tt class="docutils literal"><span class="pre
 <dl class="method">
 <dt id="kombu.connection.BrokerConnection.SimpleQueue">
 <tt class="descname">SimpleQueue</tt><big>(</big><em>name</em>, <em>no_ack=False</em>, <em>queue_opts=None</em>, <em>exchange_opts=None</em>, <em>channel=None</em><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnection.SimpleQueue" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create new <tt class="xref py py-class docutils literal"><span class="pre">SimpleQueue</span></tt>, using a channel
+<dd><p>Create new <a class="reference internal" href="kombu.simple.html#kombu.simple.SimpleQueue" title="kombu.simple.SimpleQueue"><tt class="xref py py-class docutils literal"><span class="pre">SimpleQueue</span></tt></a>, using a channel
 from this connection.</p>
 <p>If <tt class="docutils literal"><span class="pre">name</span></tt> is a string, a queue and exchange will be automatically
 created using that name as the name of the queue and exchange,
@@ -438,8 +438,8 @@ that has been released.</p>
   <p class="topless"><a href="index.html"
                         title="previous chapter">API Reference</a></p>
   <h4>Next topic</h4>
-  <p class="topless"><a href="kombu.messaging.html"
-                        title="next chapter">Messaging - kombu.messaging</a></p>
+  <p class="topless"><a href="kombu.simple.html"
+                        title="next chapter">Simple Interface - kombu.simple</a></p>
   <h3>This Page</h3>
   <ul class="this-page-menu">
     <li><a href="../sources/reference/kombu.connection.txt"
@@ -472,7 +472,7 @@ that has been released.</p>
           <a href="../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="kombu.messaging.html" title="Messaging - kombu.messaging"
+          <a href="kombu.simple.html" title="Simple Interface - kombu.simple"
              >next</a> |</li>
         <li class="right" >
           <a href="index.html" title="API Reference"
