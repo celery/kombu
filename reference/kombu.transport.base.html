@@ -1,0 +1,228 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Base Transport Interface - kombu.transport.base &mdash; Kombu v0.1.0 documentation</title>
+    <link rel="stylesheet" href="../static/celery.css" type="text/css" />
+    <link rel="stylesheet" href="../static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../static/jquery.js"></script>
+    <script type="text/javascript" src="../static/underscore.js"></script>
+    <script type="text/javascript" src="../static/doctools.js"></script>
+    <link rel="top" title="Kombu v0.1.0 documentation" href="../index.html" />
+    <link rel="up" title="API Reference" href="index.html" />
+    <link rel="next" title="Virtual Transport Interface - kombu.transport.virtual" href="kombu.transport.virtual.html" />
+    <link rel="prev" title="In-memory Transport - kombu.transport.memory" href="kombu.transport.memory.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="kombu.transport.virtual.html" title="Virtual Transport Interface - kombu.transport.virtual"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="kombu.transport.memory.html" title="In-memory Transport - kombu.transport.memory"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../index.html">Kombu v0.1.0 documentation</a> &raquo;</li>
+          <li><a href="index.html" accesskey="U">API Reference</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="base-transport-interface-kombu-transport-base">
+<h1>Base Transport Interface - kombu.transport.base<a class="headerlink" href="#base-transport-interface-kombu-transport-base" title="Permalink to this headline">¶</a></h1>
+<span class="target" id="module-kombu.transport.base"></span><p>Transport base classes.</p>
+<dl class="class">
+<dt id="kombu.transport.base.Message">
+<em class="property">class </em><tt class="descclassname">kombu.transport.base.</tt><tt class="descname">Message</tt><big>(</big><em>channel</em>, <em>body=None</em>, <em>delivery_tag=None</em>, <em>content_type=None</em>, <em>content_encoding=None</em>, <em>delivery_info={}</em>, <em>properties=None</em>, <em>headers=None</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.transport.base.Message" title="Permalink to this definition">¶</a></dt>
+<dd><p>Base class for received messages.</p>
+<dl class="exception">
+<dt id="kombu.transport.base.Message.MessageStateError">
+<em class="property">exception </em><tt class="descname">MessageStateError</tt><a class="headerlink" href="#kombu.transport.base.Message.MessageStateError" title="Permalink to this definition">¶</a></dt>
+<dd><p>The message has already been acknowledged.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.base.Message.ack">
+<tt class="descclassname">Message.</tt><tt class="descname">ack</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.transport.base.Message.ack" title="Permalink to this definition">¶</a></dt>
+<dd><p>Acknowledge this message as being processed.,
+This will remove the message from the queue.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name" colspan="2">Raises MessageStateError:</th></tr>
+<tr><td>&nbsp;</td><td class="field-body">If the message has already been
+acknowledged/requeued/rejected.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.base.Message.acknowledged">
+<tt class="descclassname">Message.</tt><tt class="descname">acknowledged</tt><a class="headerlink" href="#kombu.transport.base.Message.acknowledged" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.base.Message.decode">
+<tt class="descclassname">Message.</tt><tt class="descname">decode</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.transport.base.Message.decode" title="Permalink to this definition">¶</a></dt>
+<dd><p>Deserialize the message body, returning the original
+python structure sent by the publisher.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.base.Message.payload">
+<tt class="descclassname">Message.</tt><tt class="descname">payload</tt><a class="headerlink" href="#kombu.transport.base.Message.payload" title="Permalink to this definition">¶</a></dt>
+<dd><p>The decoded message.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.base.Message.reject">
+<tt class="descclassname">Message.</tt><tt class="descname">reject</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.transport.base.Message.reject" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reject this message.</p>
+<p>The message will be discarded by the server.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name" colspan="2">Raises MessageStateError:</th></tr>
+<tr><td>&nbsp;</td><td class="field-body">If the message has already been
+acknowledged/requeued/rejected.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.base.Message.requeue">
+<tt class="descclassname">Message.</tt><tt class="descname">requeue</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.transport.base.Message.requeue" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reject this message and put it back on the queue.</p>
+<p>You must not use this method as a means of selecting messages
+to process.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name" colspan="2">Raises MessageStateError:</th></tr>
+<tr><td>&nbsp;</td><td class="field-body">If the message has already been
+acknowledged/requeued/rejected.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="kombu.transport.base.Transport">
+<em class="property">class </em><tt class="descclassname">kombu.transport.base.</tt><tt class="descname">Transport</tt><big>(</big><em>client</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.transport.base.Transport" title="Permalink to this definition">¶</a></dt>
+<dd><p>Base class for transports.</p>
+<dl class="method">
+<dt id="kombu.transport.base.Transport.close_connection">
+<tt class="descname">close_connection</tt><big>(</big><em>connection</em><big>)</big><a class="headerlink" href="#kombu.transport.base.Transport.close_connection" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.base.Transport.create_channel">
+<tt class="descname">create_channel</tt><big>(</big><em>connection</em><big>)</big><a class="headerlink" href="#kombu.transport.base.Transport.create_channel" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.base.Transport.drain_events">
+<tt class="descname">drain_events</tt><big>(</big><em>connection</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.transport.base.Transport.drain_events" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.base.Transport.establish_connection">
+<tt class="descname">establish_connection</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.transport.base.Transport.establish_connection" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper"><p class="logo"><a href="../index.html">
+  <img class="logo" width="128" height="128" src="http://cloud.github.com/downloads/ask/kombu/kombusmall.jpg" alt="Logo"/>
+</a></p>
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="kombu.transport.memory.html"
+                        title="previous chapter">In-memory Transport - kombu.transport.memory</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="kombu.transport.virtual.html"
+                        title="next chapter">Virtual Transport Interface - kombu.transport.virtual</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../sources/reference/kombu.transport.base.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" size="18" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="kombu.transport.virtual.html" title="Virtual Transport Interface - kombu.transport.virtual"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="kombu.transport.memory.html" title="In-memory Transport - kombu.transport.memory"
+             >previous</a> |</li>
+        <li><a href="../index.html">Kombu v0.1.0 documentation</a> &raquo;</li>
+          <li><a href="index.html" >API Reference</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2009-2010, Ask Solem.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.1.
+    </div>
+  </body>
+</html>

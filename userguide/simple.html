@@ -1,0 +1,268 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Simple Interface &mdash; Kombu v0.1.0 documentation</title>
+    <link rel="stylesheet" href="../static/celery.css" type="text/css" />
+    <link rel="stylesheet" href="../static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../static/jquery.js"></script>
+    <script type="text/javascript" src="../static/underscore.js"></script>
+    <script type="text/javascript" src="../static/doctools.js"></script>
+    <link rel="top" title="Kombu v0.1.0 documentation" href="../index.html" />
+    <link rel="up" title="User Guide" href="index.html" />
+    <link rel="next" title="Frequently Asked Questions" href="../faq.html" />
+    <link rel="prev" title="User Guide" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../faq.html" title="Frequently Asked Questions"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="User Guide"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../index.html">Kombu v0.1.0 documentation</a> &raquo;</li>
+          <li><a href="index.html" accesskey="U">User Guide</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="simple-interface">
+<h1>Simple Interface<a class="headerlink" href="#simple-interface" title="Permalink to this headline">¶</a></h1>
+<div class="contents local topic" id="contents">
+<ul class="simple">
+<li><a class="reference external" href="#connections-and-transports" id="id1">Connections and transports</a></li>
+<li><a class="reference external" href="#sending-and-receiving-messages" id="id2">Sending and receiving messages</a></li>
+</ul>
+</div>
+<p><tt class="xref py py-mod docutils literal"><span class="pre">kombu.simple</span></tt> is a simple interface to AMQP queueing.
+It is only slightly different from the <tt class="xref py py-class docutils literal"><span class="pre">Queue</span></tt> class in the
+Python Standard Library, which makes it excellent for users with basic
+messaging needs.</p>
+<p>Instead of defining exchanges and queues, the simple classes only requires
+two arguments, a connection channel and a name. The name is used as the
+queue, exchange and routing key. If the need arises, you can specify
+a <a class="reference internal" href="../reference/kombu.entity.html#kombu.entity.Queue" title="kombu.entity.Queue"><tt class="xref py py-class docutils literal"><span class="pre">Queue</span></tt></a> as the name argument instead.</p>
+<p>In addition, the <a class="reference internal" href="../reference/kombu.connection.html#kombu.connection.BrokerConnection" title="kombu.connection.BrokerConnection"><tt class="xref py py-class docutils literal"><span class="pre">BrokerConnection</span></tt></a> comes with
+shortcuts to create simple queues using the current connection:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">queue</span> <span class="o">=</span> <span class="n">connection</span><span class="o">.</span><span class="n">SimpleQueue</span><span class="p">(</span><span class="s">&quot;myqueue&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c"># ... do something with queue</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">queue</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>This is equivalent to:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">kombu</span> <span class="kn">import</span> <span class="n">SimpleQueue</span><span class="p">,</span> <span class="n">SimpleBuffer</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="n">channel</span> <span class="o">=</span> <span class="n">connection</span><span class="o">.</span><span class="n">channel</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">queue</span> <span class="o">=</span> <span class="n">SimpleBuffer</span><span class="p">(</span><span class="n">channel</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c"># ... do something with queue</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">channel</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">queue</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+<div class="section" id="connections-and-transports">
+<h2><a class="toc-backref" href="#id1">Connections and transports</a><a class="headerlink" href="#connections-and-transports" title="Permalink to this headline">¶</a></h2>
+<p>To send and receive messages you need a transport and a connection.
+There are several transports to choose from (amqplib, pika, redis, in-memory),
+and you can even create your own. The default transport is amqplib.</p>
+<p>Create a connection using the default transport:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">kombu</span> <span class="kn">import</span> <span class="n">BrokerConnection</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">connection</span> <span class="o">=</span> <span class="n">BrokerConnection</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>The connection will not be established yet, as the connection is established
+when needed. If you want to explicitly establish the connection
+you have to call the <a class="reference internal" href="../reference/kombu.connection.html#kombu.connection.BrokerConnection.connect" title="kombu.connection.BrokerConnection.connect"><tt class="xref py py-meth docutils literal"><span class="pre">connect()</span></tt></a>
+method:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">connection</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>This connection will use the default connection settings, which is using
+the localhost host, default port, username <tt class="docutils literal"><span class="pre">guest</span></tt>,
+passowrd <tt class="docutils literal"><span class="pre">guest</span></tt> and virtual host &#8220;/&#8221;. A connection without arguments
+is the same as:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">BrokerConnection</span><span class="p">(</span><span class="n">hostname</span><span class="o">=</span><span class="s">&quot;localhost&quot;</span><span class="p">,</span>
+<span class="gp">... </span>                 <span class="n">userid</span><span class="o">=</span><span class="s">&quot;guest&quot;</span><span class="p">,</span>
+<span class="gp">... </span>                 <span class="n">password</span><span class="o">=</span><span class="s">&quot;guest&quot;</span><span class="p">,</span>
+<span class="gp">... </span>                 <span class="n">virtual_host</span><span class="o">=</span><span class="s">&quot;/&quot;</span><span class="p">,</span>
+<span class="gp">... </span>                 <span class="n">port</span><span class="o">=</span><span class="mi">6379</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The default port is transport specific, for AMQP transports this is 6379.</p>
+<p>Other fields may also have different meanings depending on the transport
+used. For example, the <tt class="docutils literal"><span class="pre">virtual_host</span></tt> argument is used as the database
+number in the Redis transport.</p>
+<p>See the reference documentation for
+<a class="reference internal" href="../reference/kombu.connection.html#kombu.connection.BrokerConnection" title="kombu.connection.BrokerConnection"><tt class="xref py py-class docutils literal"><span class="pre">BrokerConnection</span></tt></a> for a full list of arguments
+supported.</p>
+</div>
+<div class="section" id="sending-and-receiving-messages">
+<h2><a class="toc-backref" href="#id2">Sending and receiving messages</a><a class="headerlink" href="#sending-and-receiving-messages" title="Permalink to this headline">¶</a></h2>
+<p>The simple interface defines two classes; <tt class="xref py py-class docutils literal"><span class="pre">SimpleQueue</span></tt>,
+and <tt class="xref py py-class docutils literal"><span class="pre">SimpleBuffer</span></tt>. The former is used for persistent
+messages, and the latter is used for transient, buffer-like queues.
+They both have the same interface, so you can use them interchangeably.</p>
+<p>Here is an example using the <tt class="xref py py-class docutils literal"><span class="pre">SimpleQueue</span></tt> class
+to produce and consume logging messages:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">socket</span> <span class="kn">import</span> <span class="n">gethostname</span>
+<span class="kn">from</span> <span class="nn">time</span> <span class="kn">import</span> <span class="n">time</span>
+
+<span class="kn">from</span> <span class="nn">kombu</span> <span class="kn">import</span> <span class="n">BrokerConnection</span>
+
+
+<span class="k">class</span> <span class="nc">Logger</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">connection</span><span class="p">,</span> <span class="n">queue_name</span><span class="o">=</span><span class="s">&quot;log_queue&quot;</span><span class="p">,</span>
+            <span class="n">serializer</span><span class="o">=</span><span class="s">&quot;json&quot;</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">queue</span> <span class="o">=</span> <span class="n">connection</span><span class="o">.</span><span class="n">SimpleQueue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">queue_name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">serializer</span> <span class="o">=</span> <span class="n">serializer</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">compression</span> <span class="o">=</span> <span class="n">compression</span>
+
+    <span class="k">def</span> <span class="nf">log</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="s">&quot;INFO&quot;</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="p">{}):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="o">.</span><span class="n">put</span><span class="p">({</span><span class="s">&quot;message&quot;</span><span class="p">:</span> <span class="n">message</span><span class="p">,</span>
+                        <span class="s">&quot;level&quot;</span><span class="p">:</span> <span class="n">level</span><span class="p">,</span>
+                        <span class="s">&quot;context&quot;</span><span class="p">:</span> <span class="n">context</span><span class="p">,</span>
+                        <span class="s">&quot;hostname&quot;</span><span class="p">:</span> <span class="n">socket</span><span class="o">.</span><span class="n">gethostname</span><span class="p">(),</span>
+                        <span class="s">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">time</span><span class="p">()},</span>
+                        <span class="n">serializer</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">serializer</span><span class="p">,</span>
+                        <span class="n">compression</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">compression</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">callback</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+            <span class="n">log_message</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">block</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">entry</span> <span class="o">=</span> <span class="n">log_message</span><span class="o">.</span><span class="n">payload</span> <span class="c"># deserialized data.</span>
+            <span class="n">callback</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>
+            <span class="n">log_message</span><span class="o">.</span><span class="n">ack</span><span class="p">()</span> <span class="c"># remove message from queue</span>
+
+    <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">connection</span> <span class="o">=</span> <span class="n">BrokerConnection</span><span class="p">(</span><span class="n">hostname</span><span class="o">=</span><span class="s">&quot;localhost&quot;</span><span class="p">,</span>
+                                  <span class="n">userid</span><span class="o">=</span><span class="s">&quot;guest&quot;</span><span class="p">,</span>
+                                  <span class="n">password</span><span class="o">=</span><span class="s">&quot;guest&quot;</span><span class="p">,</span>
+                                  <span class="n">virtual_host</span><span class="o">=</span><span class="s">&quot;/&quot;</span><span class="p">)</span>
+    <span class="n">logger</span> <span class="o">=</span> <span class="n">Logger</span><span class="p">(</span><span class="n">connection</span><span class="p">)</span>
+
+    <span class="c"># Send message</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s">&quot;Error happened while encoding video&quot;</span><span class="p">,</span>
+               <span class="n">level</span><span class="o">=</span><span class="s">&quot;ERROR&quot;</span><span class="p">,</span>
+               <span class="n">context</span><span class="o">=</span><span class="p">{</span><span class="s">&quot;filename&quot;</span><span class="p">:</span> <span class="s">&quot;cutekitten.mpg&quot;</span><span class="p">})</span>
+
+    <span class="c"># Consume and process message</span>
+
+    <span class="c"># This is the callback called when a log message is</span>
+    <span class="c"># received.</span>
+    <span class="k">def</span> <span class="nf">dump_entry</span><span class="p">(</span><span class="n">entry</span><span class="p">):</span>
+        <span class="n">date</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">fromtimestamp</span><span class="p">(</span><span class="n">entry</span><span class="p">[</span><span class="s">&quot;timestamp&quot;</span><span class="p">])</span>
+        <span class="k">print</span><span class="p">(</span><span class="s">&quot;[</span><span class="si">%s</span><span class="s"> </span><span class="si">%s</span><span class="s"> </span><span class="si">%s</span><span class="s">] </span><span class="si">%s</span><span class="s"> </span><span class="si">%r</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">date</span><span class="p">,</span>
+                                    <span class="n">entry</span><span class="p">[</span><span class="s">&quot;hostname&quot;</span><span class="p">],</span>
+                                    <span class="n">entry</span><span class="p">[</span><span class="s">&quot;level&quot;</span><span class="p">],</span>
+                                    <span class="n">entry</span><span class="p">[</span><span class="s">&quot;message&quot;</span><span class="p">],</span>
+                                    <span class="n">entry</span><span class="p">[</span><span class="s">&quot;context&quot;</span><span class="p">]))</span>
+
+    <span class="c"># Process a single message using the callback above.</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="n">dump_entry</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper"><p class="logo"><a href="../index.html">
+  <img class="logo" width="128" height="128" src="http://cloud.github.com/downloads/ask/kombu/kombusmall.jpg" alt="Logo"/>
+</a></p>
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Simple Interface</a><ul>
+<li><a class="reference internal" href="#connections-and-transports">Connections and transports</a></li>
+<li><a class="reference internal" href="#sending-and-receiving-messages">Sending and receiving messages</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="index.html"
+                        title="previous chapter">User Guide</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="../faq.html"
+                        title="next chapter">Frequently Asked Questions</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../sources/userguide/simple.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" size="18" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../faq.html" title="Frequently Asked Questions"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="User Guide"
+             >previous</a> |</li>
+        <li><a href="../index.html">Kombu v0.1.0 documentation</a> &raquo;</li>
+          <li><a href="index.html" >User Guide</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2009-2010, Ask Solem.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.1.
+    </div>
+  </body>
+</html>

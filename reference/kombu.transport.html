@@ -1,0 +1,136 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Transports - kombu.transport &mdash; Kombu v0.1.0 documentation</title>
+    <link rel="stylesheet" href="../static/celery.css" type="text/css" />
+    <link rel="stylesheet" href="../static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../static/jquery.js"></script>
+    <script type="text/javascript" src="../static/underscore.js"></script>
+    <script type="text/javascript" src="../static/doctools.js"></script>
+    <link rel="top" title="Kombu v0.1.0 documentation" href="../index.html" />
+    <link rel="up" title="API Reference" href="index.html" />
+    <link rel="next" title="pika Transport - kombu.transport.pypika" href="kombu.transport.pypika.html" />
+    <link rel="prev" title="Exceptions - kombu.exceptions" href="kombu.exceptions.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="kombu.transport.pypika.html" title="pika Transport - kombu.transport.pypika"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="kombu.exceptions.html" title="Exceptions - kombu.exceptions"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../index.html">Kombu v0.1.0 documentation</a> &raquo;</li>
+          <li><a href="index.html" accesskey="U">API Reference</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="transports-kombu-transport">
+<h1>Transports - kombu.transport<a class="headerlink" href="#transports-kombu-transport" title="Permalink to this headline">¶</a></h1>
+<span class="target" id="module-kombu.transport"></span><dl class="function">
+<dt id="kombu.transport.get_transport_cls">
+<tt class="descclassname">kombu.transport.</tt><tt class="descname">get_transport_cls</tt><big>(</big><em>transport=None</em><big>)</big><a class="headerlink" href="#kombu.transport.get_transport_cls" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get transport class by name.</p>
+<p>The transport string is the full path to a transport class, e.g.:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="s">&quot;kombu.transport.pyamqplib.Transport&quot;</span>
+</pre></div>
+</div>
+<p>If the name does not include &#8220;<tt class="docutils literal"><span class="pre">.</span></tt>&#8221; (is not fully qualified),
+the alias table will be consulted.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="kombu.transport.resolve_transport">
+<tt class="descclassname">kombu.transport.</tt><tt class="descname">resolve_transport</tt><big>(</big><em>transport=None</em><big>)</big><a class="headerlink" href="#kombu.transport.resolve_transport" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper"><p class="logo"><a href="../index.html">
+  <img class="logo" width="128" height="128" src="http://cloud.github.com/downloads/ask/kombu/kombusmall.jpg" alt="Logo"/>
+</a></p>
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="kombu.exceptions.html"
+                        title="previous chapter">Exceptions - kombu.exceptions</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="kombu.transport.pypika.html"
+                        title="next chapter">pika Transport - kombu.transport.pypika</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../sources/reference/kombu.transport.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" size="18" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="kombu.transport.pypika.html" title="pika Transport - kombu.transport.pypika"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="kombu.exceptions.html" title="Exceptions - kombu.exceptions"
+             >previous</a> |</li>
+        <li><a href="../index.html">Kombu v0.1.0 documentation</a> &raquo;</li>
+          <li><a href="index.html" >API Reference</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2009-2010, Ask Solem.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.1.
+    </div>
+  </body>
+</html>
