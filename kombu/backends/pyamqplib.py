@@ -169,7 +169,10 @@ class Channel(Channel):
 
 class Backend(BaseBackend):
     default_port = DEFAULT_PORT
-    connection_errors = (AMQPConnectionException, socket.error, IOError)
+    connection_errors = (AMQPConnectionException,
+                         socket.error,
+                         IOError,
+                         OSError)
     channel_errors = (AMQPChannelException, )
 
     def __init__(self, client, **kwargs):

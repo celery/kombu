@@ -4,6 +4,7 @@ import threading
 from collections import deque
 from copy import copy
 from functools import wraps
+from itertools import count
 from time import time
 
 from kombu import exceptions
@@ -172,21 +173,25 @@ class BrokerConnection(object):
 
         """
 
+        max_retries = max_retries or 0
+
         @wraps(fun)
         def _insured(*args, **kwargs):
-            for retries in count(0):
+            for ret in count(0):
                 if max_retries and retries >= max_retries:
                     raise exceptions.EnsureExhausted()
                 try:
                     return fun(*args, **kwargs)
                 except self.connection_errors + self.channel_errors, exc:
                     errback and errback(exc, 0)
+                    self.connection.connection = None
                     self.close()
                     self.ensure_connection(errback,
-                                           max_retries - retries,
+                                           max(max_retries - retries, 1),
                                            interval_start,
                                            interval_step,
                                            interval_max)
+
         _insured.func_name = _insured.__name__ = "%s(insured)" % fun.__name__
         return _insured
 
