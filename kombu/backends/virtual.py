@@ -294,7 +294,7 @@ class Channel(object):
 
 class VirtualBaseBackend(BaseBackend):
     Channel = Channel
-    Consume = Consume
+    Cycle = FairCycle
 
     interval = 1
     default_port = None
@@ -330,7 +330,7 @@ class VirtualBaseBackend(BaseBackend):
         return channel.drain_events(timeout=self.interval)
 
     def drain_events(self, connection, timeout=None):
-        cycle = FairCycle(self._drain_channel, self._channels, QueueEmpty)
+        cycle = self.Cycle(self._drain_channel, self._channels, QueueEmpty)
         while True:
             try:
                 item, channel = cycle.get()
