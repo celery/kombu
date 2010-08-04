@@ -64,10 +64,10 @@
 <p>Carrot will be discontinued in favor of Kombu.</p>
 <p>Proposed API:</p>
 <div class="highlight-python"><pre>from kombu.connection BrokerConnection
-from kombu.messaging import Exchange, Binding, Consumer, Producer
+from kombu.messaging import Exchange, Queue, Consumer, Producer
 
 media_exchange = Exchange("media", "direct", durable=True)
-video_binding = Binding("video", exchange=media_exchange, key="video")
+video_queue = Queue("video", exchange=media_exchange, key="video")
 
 # connections/channels
 connection = BrokerConnection("localhost", "guest", "guest", "/")
@@ -78,7 +78,7 @@ producer = Producer(channel, exchange=media_exchange, serializer="json")
 producer.publish({"name": "/tmp/lolcat1.avi", "size": 1301013})
 
 # consume
-consumer = Consumer(channel, video_binding)
+consumer = Consumer(channel, video_queue)
 consumer.register_callback(process_media)
 consumer.consume()
 
@@ -87,16 +87,16 @@ while True:
 
 
 # consumerset:
-video_binding = Binding("video", exchange=media_exchange, key="video")
-image_binding = Binding("image", exchange=media_exchange, key="image")
+video_queue = Queue("video", exchange=media_exchange, key="video")
+image_queue = Queue("image", exchange=media_exchange, key="image")
 
-consumer = Consumer(channel, [video_binding, image_binding])
+consumer = Consumer(channel, [video_queue, image_queue])
 consumer.consume()
 
 while True:
     connection.drain_events()</pre>
 </div>
-<p>Exchanges/Bindings can be bound to a channel:</p>
+<p>Exchanges/Queue can be bound to a channel:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">exchange</span> <span class="o">=</span> <span class="n">Exchange</span><span class="p">(</span><span class="s">&quot;tasks&quot;</span><span class="p">,</span> <span class="s">&quot;direct&quot;</span><span class="p">)</span>
 
 <span class="gp">&gt;&gt;&gt; </span><span class="n">connection</span> <span class="o">=</span> <span class="n">BrokerConnection</span><span class="p">()</span>
@@ -119,10 +119,10 @@ routing, reliability and security.</p>
 <p>The aim of <tt class="docutils literal"><span class="pre">kombu</span></tt> is to make messaging in Python as easy as possible by
 providing a high-level interface for producing and consuming messages. At the
 same time it is a goal to re-use what is already available as much as possible.</p>
-<p><cite>kombu</cite> has pluggable messaging back-ends, so it is possible to support
+<p><cite>kombu</cite> has pluggable messaging transports, so it is possible to support
 several messaging systems. Currently, there is support for <a class="reference external" href="http://amqp.org">AMQP</a>
 (<a class="reference external" href="http://barryp.org/software/py-amqplib/">py-amqplib</a>, <a class="reference external" href="http://github.com/tonyg/pika">pika</a>), <a class="reference external" href="http://stomp.codehaus.org">STOMP</a> (<a class="reference external" href="http://pypi.python.org/stompy">stompy</a>). There&#8217;s also an
-in-memory backend for testing purposes, using the <a class="reference external" href="http://docs.python.org/library/queue.html">Python queue module</a>.</p>
+in-memory transport for testing purposes, using the <a class="reference external" href="http://docs.python.org/library/queue.html">Python queue module</a>.</p>
 <p>Several AMQP message broker implementations exists, including <a class="reference external" href="http://www.rabbitmq.com/">RabbitMQ</a>,
 <a class="reference external" href="http://activemq.apache.org/">Apache ActiveMQ</a>. You&#8217;ll need to have one of these installed,
 personally we&#8217;ve been using <a class="reference external" href="http://www.rabbitmq.com/">RabbitMQ</a>.</p>
@@ -247,15 +247,15 @@ your broker:</p>
 <p>This consumer declares a queue named <tt class="docutils literal"><span class="pre">&quot;feed&quot;</span></tt>, receiving messages with
 the routing key <tt class="docutils literal"><span class="pre">&quot;importer&quot;</span></tt> from the <tt class="docutils literal"><span class="pre">&quot;feed&quot;</span></tt> exchange.</p>
 <blockquote>
-<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">kombu</span> <span class="kn">import</span> <span class="n">Exchange</span><span class="p">,</span> <span class="n">Binding</span><span class="p">,</span> <span class="n">Consumer</span>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">kombu</span> <span class="kn">import</span> <span class="n">Exchange</span><span class="p">,</span> <span class="n">Queue</span><span class="p">,</span> <span class="n">Consumer</span>
 </pre></div>
 </div>
 <div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">feed_exchange</span> <span class="o">=</span> <span class="n">Exchange</span><span class="p">(</span><span class="s">&quot;feed&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s">&quot;direct&quot;</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">feed_binding</span> <span class="o">=</span> <span class="n">Binding</span><span class="p">(</span><span class="s">&quot;feed&quot;</span><span class="p">,</span> <span class="n">feed_exchange</span><span class="p">,</span> <span class="s">&quot;importer&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">feed_queue</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">(</span><span class="s">&quot;feed&quot;</span><span class="p">,</span> <span class="n">feed_exchange</span><span class="p">,</span> <span class="s">&quot;importer&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 <div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">channel</span> <span class="o">=</span> <span class="n">connection</span><span class="o">.</span><span class="n">channel</span><span class="p">()</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">consumer</span> <span class="o">=</span> <span class="n">Consumer</span><span class="p">(</span><span class="n">channel</span><span class="p">,</span> <span class="p">[</span><span class="n">feed_binding</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">consumer</span> <span class="o">=</span> <span class="n">Consumer</span><span class="p">(</span><span class="n">channel</span><span class="p">,</span> <span class="p">[</span><span class="n">feed_queue</span><span class="p">])</span>
 </pre></div>
 </div>
 <div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="k">def</span> <span class="nf">import_feed_callback</span><span class="p">(</span><span class="n">message_data</span><span class="p">,</span> <span class="n">message</span><span class="p">)</span>
@@ -381,7 +381,7 @@ for the raw data:</p>
 This method returns a <tt class="docutils literal"><span class="pre">Message</span></tt> object, from where you can get the
 message body, de-serialize the body to get the data, acknowledge, reject or
 re-queue the message.</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">consumer</span> <span class="o">=</span> <span class="n">Consumer</span><span class="p">(</span><span class="n">channel</span><span class="p">,</span> <span class="n">bindings</span><span class="p">)</span>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">consumer</span> <span class="o">=</span> <span class="n">Consumer</span><span class="p">(</span><span class="n">channel</span><span class="p">,</span> <span class="n">queues</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">message</span> <span class="o">=</span> <span class="n">consumer</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="k">if</span> <span class="n">message</span><span class="p">:</span>
 <span class="gp">... </span>   <span class="n">message_data</span> <span class="o">=</span> <span class="n">message</span><span class="o">.</span><span class="n">payload</span>
@@ -407,7 +407,7 @@ can define the above producer and consumer like so:</p>
 </pre></div>
 </div>
 <div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="k">class</span> <span class="nc">FeedConsumer</span><span class="p">(</span><span class="n">Consumer</span><span class="p">):</span>
-<span class="gp">... </span>    <span class="n">bindings</span> <span class="o">=</span> <span class="n">bindings</span>
+<span class="gp">... </span>    <span class="n">queues</span> <span class="o">=</span> <span class="n">queues</span>
 <span class="gp">...</span>
 <span class="gp">... </span>    <span class="k">def</span> <span class="nf">receive</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message_data</span><span class="p">,</span> <span class="n">message</span><span class="p">):</span>
 <span class="gp">... </span>        <span class="n">action</span> <span class="o">=</span> <span class="n">message_data</span><span class="p">[</span><span class="s">&quot;action&quot;</span><span class="p">]</span>

@@ -56,7 +56,7 @@
 <h1>Messaging - kombu.messaging<a class="headerlink" href="#messaging-kombu-messaging" title="Permalink to this headline">¶</a></h1>
 <span class="target" id="module-kombu.messaging"></span><dl class="class">
 <dt id="kombu.messaging.Consumer">
-<em class="property">class </em><tt class="descclassname">kombu.messaging.</tt><tt class="descname">Consumer</tt><big>(</big><em>channel</em>, <em>bindings</em>, <em>no_ack=None</em>, <em>auto_declare=None</em>, <em>callbacks=None</em>, <em>on_decode_error=None</em><big>)</big><a class="headerlink" href="#kombu.messaging.Consumer" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">kombu.messaging.</tt><tt class="descname">Consumer</tt><big>(</big><em>channel</em>, <em>queues</em>, <em>no_ack=None</em>, <em>auto_declare=None</em>, <em>callbacks=None</em>, <em>on_decode_error=None</em><big>)</big><a class="headerlink" href="#kombu.messaging.Consumer" title="Permalink to this definition">¶</a></dt>
 <dd><p>Message consumer.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -64,16 +64,16 @@
 <tbody valign="top">
 <tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>channel</strong> &#8211; see <a class="reference internal" href="#kombu.messaging.Consumer.channel" title="kombu.messaging.Consumer.channel"><tt class="xref py py-attr docutils literal"><span class="pre">channel</span></tt></a>.</li>
-<li><strong>bindings</strong> &#8211; see <a class="reference internal" href="#kombu.messaging.Consumer.bindings" title="kombu.messaging.Consumer.bindings"><tt class="xref py py-attr docutils literal"><span class="pre">bindings</span></tt></a>.</li>
-<li><strong>no_ack</strong> &#8211; see <tt class="xref py py-attr docutils literal"><span class="pre">no_ack</span></tt>.</li>
-<li><strong>auto_declare</strong> &#8211; see <a class="reference internal" href="#kombu.messaging.Consumer.auto_declare" title="kombu.messaging.Consumer.auto_declare"><tt class="xref py py-attr docutils literal"><span class="pre">auto_declare</span></tt></a></li>
-<li><strong>callbacks</strong> &#8211; see <a class="reference internal" href="#kombu.messaging.Consumer.callbacks" title="kombu.messaging.Consumer.callbacks"><tt class="xref py py-attr docutils literal"><span class="pre">callbacks</span></tt></a>.</li>
-<li><strong>on_decode_error</strong> &#8211; see <a class="reference internal" href="#kombu.messaging.Consumer.on_decode_error" title="kombu.messaging.Consumer.on_decode_error"><tt class="xref py py-attr docutils literal"><span class="pre">on_decode_error</span></tt></a>.</li>
 </ul>
 </td>
 </tr>
 </tbody>
 </table>
+<p>:param queues see <a class="reference internal" href="#kombu.messaging.Consumer.queues" title="kombu.messaging.Consumer.queues"><tt class="xref py py-attr docutils literal"><span class="pre">queues</span></tt></a>.
+:keyword no_ack: see <tt class="xref py py-attr docutils literal"><span class="pre">no_ack</span></tt>.
+:keyword auto_declare: see <a class="reference internal" href="#kombu.messaging.Consumer.auto_declare" title="kombu.messaging.Consumer.auto_declare"><tt class="xref py py-attr docutils literal"><span class="pre">auto_declare</span></tt></a>
+:keyword callbacks: see <a class="reference internal" href="#kombu.messaging.Consumer.callbacks" title="kombu.messaging.Consumer.callbacks"><tt class="xref py py-attr docutils literal"><span class="pre">callbacks</span></tt></a>.
+:keyword on_decode_error: see <a class="reference internal" href="#kombu.messaging.Consumer.on_decode_error" title="kombu.messaging.Consumer.on_decode_error"><tt class="xref py py-attr docutils literal"><span class="pre">on_decode_error</span></tt></a>.</p>
 <dl class="attribute">
 <dt id="kombu.messaging.Consumer.channel">
 <tt class="descname">channel</tt><a class="headerlink" href="#kombu.messaging.Consumer.channel" title="Permalink to this definition">¶</a></dt>
@@ -81,9 +81,10 @@
 </dd></dl>
 
 <dl class="attribute">
-<dt id="kombu.messaging.Consumer.bindings">
-<tt class="descname">bindings</tt><a class="headerlink" href="#kombu.messaging.Consumer.bindings" title="Permalink to this definition">¶</a></dt>
-<dd><p>A single binding, or a list of bindings to consume from.</p>
+<dt id="kombu.messaging.Consumer.queues">
+<tt class="descname">queues</tt><a class="headerlink" href="#kombu.messaging.Consumer.queues" title="Permalink to this definition">¶</a></dt>
+<dd><p>A single <a class="reference internal" href="kombu.entity.html#kombu.entity.Queue" title="kombu.entity.Queue"><tt class="xref py py-class docutils literal"><span class="pre">Queue</span></tt></a>, or a list of queues to
+consume from.</p>
 </dd></dl>
 
 <dl class="attribute">
@@ -100,7 +101,7 @@ if you want to handle this manually you can set this to <tt class="xref docutils
 <p>The signature of the callbacks must take two arguments:
 <tt class="docutils literal"><span class="pre">(body,</span> <span class="pre">message)</span></tt>, which is the decoded message body and
 the <tt class="docutils literal"><span class="pre">Message</span></tt> instance (a subclass of
-<a class="reference internal" href="kombu.backends.base.html#kombu.backends.base.BaseMessage" title="kombu.backends.base.BaseMessage"><tt class="xref py py-class docutils literal"><span class="pre">BaseMessage</span></tt></a>).</p>
+<a class="reference internal" href="kombu.transport.base.html#kombu.transport.base.Message" title="kombu.transport.base.Message"><tt class="xref py py-class docutils literal"><span class="pre">Message</span></tt></a>).</p>
 </dd></dl>
 
 <dl class="attribute">
@@ -122,7 +123,7 @@ mean the server will not send any more messages for this consumer.</p>
 
 <dl class="method">
 <dt id="kombu.messaging.Consumer.consume">
-<tt class="descname">consume</tt><big>(</big><em>delivery_tag=None</em><big>)</big><a class="headerlink" href="#kombu.messaging.Consumer.consume" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">consume</tt><big>(</big><em>delivery_tag=None</em>, <em>no_ack=None</em><big>)</big><a class="headerlink" href="#kombu.messaging.Consumer.consume" title="Permalink to this definition">¶</a></dt>
 <dd><p>Register consumer on server.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -138,7 +139,7 @@ If not specified a new tag will be automatically generated.</td>
 <dl class="method">
 <dt id="kombu.messaging.Consumer.declare">
 <tt class="descname">declare</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.messaging.Consumer.declare" title="Permalink to this definition">¶</a></dt>
-<dd><p>Declare queues, bindings and exchanges.</p>
+<dd><p>Declare queues, exchanges and bindings.</p>
 <p>This is done automatically at instantiation if <a class="reference internal" href="#kombu.messaging.Consumer.auto_declare" title="kombu.messaging.Consumer.auto_declare"><tt class="xref py py-attr docutils literal"><span class="pre">auto_declare</span></tt></a>
 is set.</p>
 </dd></dl>
@@ -249,14 +250,14 @@ is received.</p>
 <p>The signature of the callback needs to accept two arguments:
 <tt class="docutils literal"><span class="pre">(body,</span> <span class="pre">message)</span></tt>, which is the decoded message body
 and the <tt class="docutils literal"><span class="pre">Message</span></tt> instance (a subclass of
-<a class="reference internal" href="kombu.backends.base.html#kombu.backends.base.BaseMessage" title="kombu.backends.base.BaseMessage"><tt class="xref py py-class docutils literal"><span class="pre">BaseMessage</span></tt></a>.</p>
+<a class="reference internal" href="kombu.transport.base.html#kombu.transport.base.Message" title="kombu.transport.base.Message"><tt class="xref py py-class docutils literal"><span class="pre">Message</span></tt></a>.</p>
 </dd></dl>
 
 </dd></dl>
 
 <dl class="class">
 <dt id="kombu.messaging.Producer">
-<em class="property">class </em><tt class="descclassname">kombu.messaging.</tt><tt class="descname">Producer</tt><big>(</big><em>channel</em>, <em>exchange=None</em>, <em>routing_key=None</em>, <em>serializer=None</em>, <em>auto_declare=None</em><big>)</big><a class="headerlink" href="#kombu.messaging.Producer" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">kombu.messaging.</tt><tt class="descname">Producer</tt><big>(</big><em>channel</em>, <em>exchange=None</em>, <em>routing_key=None</em>, <em>serializer=None</em>, <em>auto_declare=None</em>, <em>compression=None</em>, <em>on_return=None</em><big>)</big><a class="headerlink" href="#kombu.messaging.Producer" title="Permalink to this definition">¶</a></dt>
 <dd><p>Message Producer.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -267,8 +268,14 @@ and the <tt class="docutils literal"><span class="pre">Message</span></tt> insta
 <li><strong>exchange</strong> &#8211; Exchange to publish to.</li>
 <li><strong>routing_key</strong> &#8211; Default routing key.</li>
 <li><strong>serializer</strong> &#8211; Default serializer. Default is <tt class="docutils literal"><span class="pre">&quot;json&quot;</span></tt>.</li>
+<li><strong>compression</strong> &#8211; Default compression method. Default is no
+compression.</li>
 <li><strong>auto_declare</strong> &#8211; Automatically declare the exchange
 at instantiation. Default is <tt class="xref docutils literal"><span class="pre">True</span></tt>.</li>
+<li><strong>on_return</strong> &#8211; Callback to call for undeliverable messages,
+when <tt class="docutils literal"><span class="pre">mandatory</span></tt> or <tt class="docutils literal"><span class="pre">imediate</span></tt> is used. This callback
+needs the following signature:
+<a href="#id1"><span class="problematic" id="id2">``</span></a>(exception, exchange, routing_key, message).</li>
 </ul>
 </td>
 </tr>
@@ -315,7 +322,7 @@ is set.</p>
 
 <dl class="method">
 <dt id="kombu.messaging.Producer.publish">
-<tt class="descname">publish</tt><big>(</big><em>body</em>, <em>routing_key=None</em>, <em>delivery_mode=None</em>, <em>mandatory=False</em>, <em>immediate=False</em>, <em>priority=0</em>, <em>content_type=None</em>, <em>content_encoding=None</em>, <em>serializer=None</em>, <em>headers=None</em><big>)</big><a class="headerlink" href="#kombu.messaging.Producer.publish" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">publish</tt><big>(</big><em>body</em>, <em>routing_key=None</em>, <em>delivery_mode=None</em>, <em>mandatory=False</em>, <em>immediate=False</em>, <em>priority=0</em>, <em>content_type=None</em>, <em>content_encoding=None</em>, <em>serializer=None</em>, <em>headers=None</em>, <em>compression=None</em><big>)</big><a class="headerlink" href="#kombu.messaging.Producer.publish" title="Permalink to this definition">¶</a></dt>
 <dd><p>Publish message to the specified exchange.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />

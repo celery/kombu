@@ -51,29 +51,25 @@
 <h2 id="A">A</h2>
 <table width="100%" class="indextable genindextable"><tr>
   <td width="33%" valign="top"><dl>
-    <dt><a href="reference/kombu.backends.base.html#kombu.backends.base.BaseMessage.ack">ack() (kombu.backends.base.BaseMessage method)</a></dt>
-    <dd><dl>
-      <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.QualityOfService.ack">(kombu.backends.virtual.QualityOfService method)</a></dt>
-  </dl></dd>
-    <dt><a href="reference/kombu.backends.base.html#kombu.backends.base.BaseMessage.acknowledged">acknowledged (kombu.backends.base.BaseMessage attribute)</a></dt>
+    <dt><a href="reference/kombu.transport.base.html#kombu.transport.base.Message.ack">ack() (kombu.transport.base.Message method)</a></dt>
+    <dt><a href="reference/kombu.transport.base.html#kombu.transport.base.Message.acknowledged">acknowledged (kombu.transport.base.Message attribute)</a></dt>
     <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnection.acquire">acquire() (kombu.connection.BrokerConnection method)</a></dt>
     <dd><dl>
       <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnectionPool.acquire">(kombu.connection.BrokerConnectionPool method)</a></dt>
   </dl></dd>
     <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnectionPool.active">active (kombu.connection.BrokerConnectionPool attribute)</a></dt>
-    <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.QualityOfService.append">append() (kombu.backends.virtual.QualityOfService method)</a></dt>
+    <dt><a href="reference/kombu.entity.html#kombu.entity.Exchange.arguments">arguments (kombu.entity.Exchange attribute)</a></dt>
 </dl></td>
   <td width="33%" valign="top"><dl>
-    <dt><a href="reference/kombu.entity.html#kombu.entity.Exchange.arguments">arguments (kombu.entity.Exchange attribute)</a></dt>
-    <dt><a href="reference/kombu.backends.pypika.html#kombu.backends.pypika.AsyncoreBackend">AsyncoreBackend (class in kombu.backends.pypika)</a></dt>
-    <dt><a href="reference/kombu.backends.pypika.html#kombu.backends.pypika.AsyncoreConnection">AsyncoreConnection (class in kombu.backends.pypika)</a></dt>
+    <dt><a href="reference/kombu.transport.pypika.html#kombu.transport.pypika.AsyncoreConnection">AsyncoreConnection (class in kombu.transport.pypika)</a></dt>
+    <dt><a href="reference/kombu.transport.pypika.html#kombu.transport.pypika.AsyncoreTransport">AsyncoreTransport (class in kombu.transport.pypika)</a></dt>
     <dt><a href="reference/kombu.messaging.html#kombu.messaging.Consumer.auto_declare">auto_declare (kombu.messaging.Consumer attribute)</a></dt>
     <dd><dl>
       <dt><a href="reference/kombu.messaging.html#kombu.messaging.Producer.auto_declare">(kombu.messaging.Producer attribute)</a></dt>
   </dl></dd>
-    <dt><a href="reference/kombu.entity.html#kombu.entity.Binding.auto_delete">auto_delete (kombu.entity.Binding attribute)</a></dt>
+    <dt><a href="reference/kombu.entity.html#kombu.entity.Exchange.auto_delete">auto_delete (kombu.entity.Exchange attribute)</a></dt>
     <dd><dl>
-      <dt><a href="reference/kombu.entity.html#kombu.entity.Exchange.auto_delete">(kombu.entity.Exchange attribute)</a></dt>
+      <dt><a href="reference/kombu.entity.html#kombu.entity.Queue.auto_delete">(kombu.entity.Queue attribute)</a></dt>
   </dl></dd>
 </dl></td>
 </tr></table>
@@ -81,57 +77,19 @@
 <h2 id="B">B</h2>
 <table width="100%" class="indextable genindextable"><tr>
   <td width="33%" valign="top"><dl>
-    <dt><a href="reference/kombu.backends.pyamqplib.html#kombu.backends.pyamqplib.Backend">Backend (class in kombu.backends.pyamqplib)</a></dt>
-    <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnection.backend">backend (kombu.connection.BrokerConnection attribute)</a></dt>
-    <dt><a href="reference/kombu.backends.base.html#kombu.backends.base.BaseBackend">BaseBackend (class in kombu.backends.base)</a></dt>
-    <dt><a href="reference/kombu.backends.base.html#kombu.backends.base.BaseMessage">BaseMessage (class in kombu.backends.base)</a></dt>
-    <dt><a href="reference/kombu.backends.base.html#kombu.backends.base.BaseMessage.MessageStateError">BaseMessage.MessageStateError</a></dt>
-    <dt><a href="reference/kombu.backends.pypika.html#kombu.backends.pypika.Channel.basic_ack">basic_ack() (kombu.backends.pypika.Channel method)</a></dt>
-    <dd><dl>
-      <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.Channel.basic_ack">(kombu.backends.virtual.Channel method)</a></dt>
-      <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.VirtualBaseBackend.Channel.basic_ack">(kombu.backends.virtual.VirtualBaseBackend.Channel method)</a></dt>
-  </dl></dd>
-    <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.Channel.basic_cancel">basic_cancel() (kombu.backends.virtual.Channel method)</a></dt>
-    <dd><dl>
-      <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.VirtualBaseBackend.Channel.basic_cancel">(kombu.backends.virtual.VirtualBaseBackend.Channel method)</a></dt>
-  </dl></dd>
-    <dt><a href="reference/kombu.backends.pypika.html#kombu.backends.pypika.Channel.basic_consume">basic_consume() (kombu.backends.pypika.Channel method)</a></dt>
-    <dd><dl>
-      <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.Channel.basic_consume">(kombu.backends.virtual.Channel method)</a></dt>
-      <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.VirtualBaseBackend.Channel.basic_consume">(kombu.backends.virtual.VirtualBaseBackend.Channel method)</a></dt>
-  </dl></dd>
-    <dt><a href="reference/kombu.backends.pypika.html#kombu.backends.pypika.Channel.basic_get">basic_get() (kombu.backends.pypika.Channel method)</a></dt>
-    <dd><dl>
-      <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.Channel.basic_get">(kombu.backends.virtual.Channel method)</a></dt>
-      <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.VirtualBaseBackend.Channel.basic_get">(kombu.backends.virtual.VirtualBaseBackend.Channel method)</a></dt>
-  </dl></dd>
-    <dt><a href="reference/kombu.backends.pypika.html#kombu.backends.pypika.Channel.basic_publish">basic_publish() (kombu.backends.pypika.Channel method)</a></dt>
-    <dd><dl>
-      <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.Channel.basic_publish">(kombu.backends.virtual.Channel method)</a></dt>
-      <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.VirtualBaseBackend.Channel.basic_publish">(kombu.backends.virtual.VirtualBaseBackend.Channel method)</a></dt>
-  </dl></dd>
-    <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.Channel.basic_qos">basic_qos() (kombu.backends.virtual.Channel method)</a></dt>
-    <dd><dl>
-      <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.VirtualBaseBackend.Channel.basic_qos">(kombu.backends.virtual.VirtualBaseBackend.Channel method)</a></dt>
-  </dl></dd>
+    <dt><a href="reference/kombu.transport.pypika.html#kombu.transport.pypika.Channel.basic_ack">basic_ack() (kombu.transport.pypika.Channel method)</a></dt>
+    <dt><a href="reference/kombu.transport.pypika.html#kombu.transport.pypika.Channel.basic_consume">basic_consume() (kombu.transport.pypika.Channel method)</a></dt>
+    <dt><a href="reference/kombu.transport.pypika.html#kombu.transport.pypika.Channel.basic_get">basic_get() (kombu.transport.pypika.Channel method)</a></dt>
+    <dt><a href="reference/kombu.transport.pypika.html#kombu.transport.pypika.Channel.basic_publish">basic_publish() (kombu.transport.pypika.Channel method)</a></dt>
+    <dt><a href="reference/kombu.abstract.html#kombu.abstract.MaybeChannelBound.bind">bind() (kombu.abstract.MaybeChannelBound method)</a></dt>
+    <dt><a href="reference/kombu.entity.html#kombu.entity.Binding">Binding (in module kombu.entity)</a></dt>
 </dl></td>
   <td width="33%" valign="top"><dl>
-    <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.Channel.basic_recover">basic_recover() (kombu.backends.virtual.Channel method)</a></dt>
+    <dt><a href="reference/kombu.entity.html#kombu.entity.Queue.binding_arguments">binding_arguments (kombu.entity.Queue attribute)</a></dt>
+    <dt><a href="reference/kombu.transport.pypika.html#kombu.transport.pypika.BlockingConnection">BlockingConnection (class in kombu.transport.pypika)</a></dt>
+    <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Channel.Message.body">body (kombu.transport.pyamqplib.Channel.Message attribute)</a></dt>
     <dd><dl>
-      <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.VirtualBaseBackend.Channel.basic_recover">(kombu.backends.virtual.VirtualBaseBackend.Channel method)</a></dt>
-  </dl></dd>
-    <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.Channel.basic_reject">basic_reject() (kombu.backends.virtual.Channel method)</a></dt>
-    <dd><dl>
-      <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.VirtualBaseBackend.Channel.basic_reject">(kombu.backends.virtual.VirtualBaseBackend.Channel method)</a></dt>
-  </dl></dd>
-    <dt><a href="reference/kombu.abstract.html#kombu.abstract.MaybeChannelBound.bind">bind() (kombu.abstract.MaybeChannelBound method)</a></dt>
-    <dt><a href="reference/kombu.entity.html#kombu.entity.Binding">Binding (class in kombu.entity)</a></dt>
-    <dt><a href="reference/kombu.entity.html#kombu.entity.Binding.binding_arguments">binding_arguments (kombu.entity.Binding attribute)</a></dt>
-    <dt><a href="reference/kombu.messaging.html#kombu.messaging.Consumer.bindings">bindings (kombu.messaging.Consumer attribute)</a></dt>
-    <dt><a href="reference/kombu.backends.pypika.html#kombu.backends.pypika.BlockingConnection">BlockingConnection (class in kombu.backends.pypika)</a></dt>
-    <dt><a href="reference/kombu.backends.pyamqplib.html#kombu.backends.pyamqplib.Channel.Message.body">body (kombu.backends.pyamqplib.Channel.Message attribute)</a></dt>
-    <dd><dl>
-      <dt><a href="reference/kombu.backends.pyamqplib.html#kombu.backends.pyamqplib.Message.body">(kombu.backends.pyamqplib.Message attribute)</a></dt>
+      <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Message.body">(kombu.transport.pyamqplib.Message attribute)</a></dt>
   </dl></dd>
     <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnection">BrokerConnection (class in kombu.connection)</a></dt>
     <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnectionPool">BrokerConnectionPool (class in kombu.connection)</a></dt>
@@ -142,72 +100,66 @@
 <table width="100%" class="indextable genindextable"><tr>
   <td width="33%" valign="top"><dl>
     <dt><a href="reference/kombu.messaging.html#kombu.messaging.Consumer.callbacks">callbacks (kombu.messaging.Consumer attribute)</a></dt>
-    <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.QualityOfService.can_consume">can_consume() (kombu.backends.virtual.QualityOfService method)</a></dt>
-    <dt><a href="reference/kombu.entity.html#kombu.entity.Binding.cancel">cancel() (kombu.entity.Binding method)</a></dt>
+    <dt><a href="reference/kombu.entity.html#kombu.entity.Queue.cancel">cancel() (kombu.entity.Queue method)</a></dt>
     <dd><dl>
       <dt><a href="reference/kombu.messaging.html#kombu.messaging.Consumer.cancel">(kombu.messaging.Consumer method)</a></dt>
   </dl></dd>
-    <dt><a href="reference/kombu.backends.pyamqplib.html#kombu.backends.pyamqplib.Channel">Channel (class in kombu.backends.pyamqplib)</a></dt>
+    <dt><a href="reference/kombu.transport.memory.html#kombu.transport.memory.Channel">Channel (class in kombu.transport.memory)</a></dt>
     <dd><dl>
-      <dt><a href="reference/kombu.backends.pypika.html#kombu.backends.pypika.Channel">(class in kombu.backends.pypika)</a></dt>
-      <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.Channel">(class in kombu.backends.virtual)</a></dt>
+      <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Channel">(class in kombu.transport.pyamqplib)</a></dt>
+      <dt><a href="reference/kombu.transport.pypika.html#kombu.transport.pypika.Channel">(class in kombu.transport.pypika)</a></dt>
+      <dt><a href="reference/kombu.transport.pyredis.html#kombu.transport.pyredis.Channel">(class in kombu.transport.pyredis)</a></dt>
   </dl></dd>
     <dt><a href="reference/kombu.abstract.html#kombu.abstract.MaybeChannelBound.channel">channel (kombu.abstract.MaybeChannelBound attribute)</a></dt>
-    <dt><a href="reference/kombu.backends.memory.html#kombu.backends.memory.MemoryBackend.Channel">Channel (kombu.backends.memory.MemoryBackend attribute)</a></dt>
-    <dt><a href="reference/kombu.backends.pyamqplib.html#kombu.backends.pyamqplib.Channel.Message.channel">channel (kombu.backends.pyamqplib.Channel.Message attribute)</a></dt>
-    <dd><dl>
-      <dt><a href="reference/kombu.backends.pyamqplib.html#kombu.backends.pyamqplib.Message.channel">(kombu.backends.pyamqplib.Message attribute)</a></dt>
-  </dl></dd>
-    <dt><a href="reference/kombu.backends.pyredis.html#kombu.backends.pyredis.RedisBackend.Channel">Channel (kombu.backends.pyredis.RedisBackend attribute)</a></dt>
-    <dt><a href="reference/kombu.entity.html#kombu.entity.Binding.channel">channel (kombu.entity.Binding attribute)</a></dt>
     <dd><dl>
       <dt><a href="reference/kombu.entity.html#kombu.entity.Exchange.channel">(kombu.entity.Exchange attribute)</a></dt>
+      <dt><a href="reference/kombu.entity.html#kombu.entity.Queue.channel">(kombu.entity.Queue attribute)</a></dt>
       <dt><a href="reference/kombu.messaging.html#kombu.messaging.Consumer.channel">(kombu.messaging.Consumer attribute)</a></dt>
       <dt><a href="reference/kombu.messaging.html#kombu.messaging.Producer.channel">(kombu.messaging.Producer attribute)</a></dt>
+      <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Channel.Message.channel">(kombu.transport.pyamqplib.Channel.Message attribute)</a></dt>
+      <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Message.channel">(kombu.transport.pyamqplib.Message attribute)</a></dt>
   </dl></dd>
-    <dt><a href="reference/kombu.backends.pyamqplib.html#kombu.backends.pyamqplib.Connection.channel">channel() (kombu.backends.pyamqplib.Connection method)</a></dt>
+    <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnection.channel">channel() (kombu.connection.BrokerConnection method)</a></dt>
     <dd><dl>
-      <dt><a href="reference/kombu.backends.pypika.html#kombu.backends.pypika.AsyncoreConnection.channel">(kombu.backends.pypika.AsyncoreConnection method)</a></dt>
-      <dt><a href="reference/kombu.backends.pypika.html#kombu.backends.pypika.BlockingConnection.channel">(kombu.backends.pypika.BlockingConnection method)</a></dt>
-      <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnection.channel">(kombu.connection.BrokerConnection method)</a></dt>
+      <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Connection.channel">(kombu.transport.pyamqplib.Connection method)</a></dt>
+      <dt><a href="reference/kombu.transport.pypika.html#kombu.transport.pypika.AsyncoreConnection.channel">(kombu.transport.pypika.AsyncoreConnection method)</a></dt>
+      <dt><a href="reference/kombu.transport.pypika.html#kombu.transport.pypika.BlockingConnection.channel">(kombu.transport.pypika.BlockingConnection method)</a></dt>
   </dl></dd>
-    <dt><a href="reference/kombu.backends.pyamqplib.html#kombu.backends.pyamqplib.Channel.Message">Channel.Message (class in kombu.backends.pyamqplib)</a></dt>
+    <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Channel.Message">Channel.Message (class in kombu.transport.pyamqplib)</a></dt>
     <dd><dl>
-      <dt><a href="reference/kombu.backends.pypika.html#kombu.backends.pypika.Channel.Message">(class in kombu.backends.pypika)</a></dt>
-      <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.Channel.Message">(class in kombu.backends.virtual)</a></dt>
+      <dt><a href="reference/kombu.transport.pypika.html#kombu.transport.pypika.Channel.Message">(class in kombu.transport.pypika)</a></dt>
   </dl></dd>
     <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnection.channel_errors">channel_errors (kombu.connection.BrokerConnection attribute)</a></dt>
     <dt><a href="reference/kombu.utils.html#kombu.utils.OrderedDict.clear">clear() (kombu.utils.OrderedDict method)</a></dt>
-    <dt><a href="reference/kombu.backends.pyredis.html#kombu.backends.pyredis.RedisChannel.client">client (kombu.backends.pyredis.RedisChannel attribute)</a></dt>
-    <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnection.clone">clone() (kombu.connection.BrokerConnection method)</a></dt>
-</dl></td>
-  <td width="33%" valign="top"><dl>
-    <dt><a href="reference/kombu.backends.pyredis.html#kombu.backends.pyredis.RedisChannel.close">close() (kombu.backends.pyredis.RedisChannel method)</a></dt>
+    <dt><a href="reference/kombu.transport.pyredis.html#kombu.transport.pyredis.Channel.client">client (kombu.transport.pyredis.Channel attribute)</a></dt>
     <dd><dl>
-      <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.Channel.close">(kombu.backends.virtual.Channel method)</a></dt>
-      <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.VirtualBaseBackend.Channel.close">(kombu.backends.virtual.VirtualBaseBackend.Channel method)</a></dt>
-      <dt><a href="reference/kombu.compat.html#kombu.compat.Consumer.close">(kombu.compat.Consumer method)</a></dt>
+      <dt><a href="reference/kombu.transport.pyredis.html#kombu.transport.pyredis.Transport.Channel.client">(kombu.transport.pyredis.Transport.Channel attribute)</a></dt>
+  </dl></dd>
+    <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnection.clone">clone() (kombu.connection.BrokerConnection method)</a></dt>
+    <dt><a href="reference/kombu.compat.html#kombu.compat.Consumer.close">close() (kombu.compat.Consumer method)</a></dt>
+    <dd><dl>
       <dt><a href="reference/kombu.compat.html#kombu.compat.Publisher.close">(kombu.compat.Publisher method)</a></dt>
       <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnection.close">(kombu.connection.BrokerConnection method)</a></dt>
       <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnectionPool.close">(kombu.connection.BrokerConnectionPool method)</a></dt>
+      <dt><a href="reference/kombu.transport.pyredis.html#kombu.transport.pyredis.Channel.close">(kombu.transport.pyredis.Channel method)</a></dt>
+      <dt><a href="reference/kombu.transport.pyredis.html#kombu.transport.pyredis.Transport.Channel.close">(kombu.transport.pyredis.Transport.Channel method)</a></dt>
   </dl></dd>
-    <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.VirtualBaseBackend.close_channel">close_channel() (kombu.backends.virtual.VirtualBaseBackend method)</a></dt>
-    <dt><a href="reference/kombu.backends.base.html#kombu.backends.base.BaseBackend.close_connection">close_connection() (kombu.backends.base.BaseBackend method)</a></dt>
+    <dt><a href="reference/kombu.transport.base.html#kombu.transport.base.Transport.close_connection">close_connection() (kombu.transport.base.Transport method)</a></dt>
     <dd><dl>
-      <dt><a href="reference/kombu.backends.pyamqplib.html#kombu.backends.pyamqplib.Backend.close_connection">(kombu.backends.pyamqplib.Backend method)</a></dt>
-      <dt><a href="reference/kombu.backends.pypika.html#kombu.backends.pypika.SyncBackend.close_connection">(kombu.backends.pypika.SyncBackend method)</a></dt>
-      <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.VirtualBaseBackend.close_connection">(kombu.backends.virtual.VirtualBaseBackend method)</a></dt>
+      <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Transport.close_connection">(kombu.transport.pyamqplib.Transport method)</a></dt>
+      <dt><a href="reference/kombu.transport.pypika.html#kombu.transport.pypika.SyncTransport.close_connection">(kombu.transport.pypika.SyncTransport method)</a></dt>
   </dl></dd>
+</dl></td>
+  <td width="33%" valign="top"><dl>
     <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnection.connect">connect() (kombu.connection.BrokerConnection method)</a></dt>
-    <dt><a href="reference/kombu.backends.pyamqplib.html#kombu.backends.pyamqplib.Connection">Connection (class in kombu.backends.pyamqplib)</a></dt>
-    <dd><dl>
-      <dt><a href="reference/kombu.backends.pypika.html#kombu.backends.pypika.AsyncoreBackend.Connection">(kombu.backends.pypika.AsyncoreBackend attribute)</a></dt>
-      <dt><a href="reference/kombu.backends.pypika.html#kombu.backends.pypika.SyncBackend.Connection">(kombu.backends.pypika.SyncBackend attribute)</a></dt>
-  </dl></dd>
+    <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Connection">Connection (class in kombu.transport.pyamqplib)</a></dt>
     <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnection.connection">connection (kombu.connection.BrokerConnection attribute)</a></dt>
+    <dt><a href="reference/kombu.transport.pypika.html#kombu.transport.pypika.AsyncoreTransport.Connection">Connection (kombu.transport.pypika.AsyncoreTransport attribute)</a></dt>
+    <dd><dl>
+      <dt><a href="reference/kombu.transport.pypika.html#kombu.transport.pypika.SyncTransport.Connection">(kombu.transport.pypika.SyncTransport attribute)</a></dt>
+  </dl></dd>
     <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnection.connection_errors">connection_errors (kombu.connection.BrokerConnection attribute)</a></dt>
-    <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.Consume">Consume (class in kombu.backends.virtual)</a></dt>
-    <dt><a href="reference/kombu.entity.html#kombu.entity.Binding.consume">consume() (kombu.entity.Binding method)</a></dt>
+    <dt><a href="reference/kombu.entity.html#kombu.entity.Queue.consume">consume() (kombu.entity.Queue method)</a></dt>
     <dd><dl>
       <dt><a href="reference/kombu.messaging.html#kombu.messaging.Consumer.consume">(kombu.messaging.Consumer method)</a></dt>
   </dl></dd>
@@ -218,50 +170,47 @@
     <dt><a href="reference/kombu.compat.html#kombu.compat.ConsumerSet">ConsumerSet() (in module kombu.compat)</a></dt>
     <dt><a href="reference/kombu.utils.html#kombu.utils.OrderedDict.copy">copy() (kombu.utils.OrderedDict method)</a></dt>
     <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnection.create_backend">create_backend() (kombu.connection.BrokerConnection method)</a></dt>
-    <dt><a href="reference/kombu.backends.base.html#kombu.backends.base.BaseBackend.create_channel">create_channel() (kombu.backends.base.BaseBackend method)</a></dt>
+    <dt><a href="reference/kombu.transport.base.html#kombu.transport.base.Transport.create_channel">create_channel() (kombu.transport.base.Transport method)</a></dt>
     <dd><dl>
-      <dt><a href="reference/kombu.backends.pyamqplib.html#kombu.backends.pyamqplib.Backend.create_channel">(kombu.backends.pyamqplib.Backend method)</a></dt>
-      <dt><a href="reference/kombu.backends.pypika.html#kombu.backends.pypika.SyncBackend.create_channel">(kombu.backends.pypika.SyncBackend method)</a></dt>
-      <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.VirtualBaseBackend.create_channel">(kombu.backends.virtual.VirtualBaseBackend method)</a></dt>
+      <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Transport.create_channel">(kombu.transport.pyamqplib.Transport method)</a></dt>
+      <dt><a href="reference/kombu.transport.pypika.html#kombu.transport.pypika.SyncTransport.create_channel">(kombu.transport.pypika.SyncTransport method)</a></dt>
   </dl></dd>
+    <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnection.create_transport">create_transport() (kombu.connection.BrokerConnection method)</a></dt>
 </dl></td>
 </tr></table>
 
 <h2 id="D">D</h2>
 <table width="100%" class="indextable genindextable"><tr>
   <td width="33%" valign="top"><dl>
-    <dt><a href="reference/kombu.entity.html#kombu.entity.Binding.declare">declare() (kombu.entity.Binding method)</a></dt>
+    <dt><a href="reference/kombu.entity.html#kombu.entity.Exchange.declare">declare() (kombu.entity.Exchange method)</a></dt>
     <dd><dl>
-      <dt><a href="reference/kombu.entity.html#kombu.entity.Exchange.declare">(kombu.entity.Exchange method)</a></dt>
+      <dt><a href="reference/kombu.entity.html#kombu.entity.Queue.declare">(kombu.entity.Queue method)</a></dt>
       <dt><a href="reference/kombu.messaging.html#kombu.messaging.Consumer.declare">(kombu.messaging.Consumer method)</a></dt>
       <dt><a href="reference/kombu.messaging.html#kombu.messaging.Producer.declare">(kombu.messaging.Producer method)</a></dt>
   </dl></dd>
-    <dt><a href="reference/kombu.backends.base.html#kombu.backends.base.BaseMessage.decode">decode() (kombu.backends.base.BaseMessage method)</a></dt>
-    <dt><a href="reference/kombu.entity.html#kombu.entity.Binding.delete">delete() (kombu.entity.Binding method)</a></dt>
+    <dt><a href="reference/kombu.transport.base.html#kombu.transport.base.Message.decode">decode() (kombu.transport.base.Message method)</a></dt>
+    <dt><a href="reference/kombu.entity.html#kombu.entity.Exchange.delete">delete() (kombu.entity.Exchange method)</a></dt>
     <dd><dl>
-      <dt><a href="reference/kombu.entity.html#kombu.entity.Exchange.delete">(kombu.entity.Exchange method)</a></dt>
+      <dt><a href="reference/kombu.entity.html#kombu.entity.Queue.delete">(kombu.entity.Queue method)</a></dt>
   </dl></dd>
     <dt><a href="reference/kombu.entity.html#kombu.entity.Exchange.delivery_mode">delivery_mode (kombu.entity.Exchange attribute)</a></dt>
 </dl></td>
   <td width="33%" valign="top"><dl>
-    <dt><a href="reference/kombu.backends.pyamqplib.html#kombu.backends.pyamqplib.Channel.Message.delivery_tag">delivery_tag (kombu.backends.pyamqplib.Channel.Message attribute)</a></dt>
+    <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Channel.Message.delivery_tag">delivery_tag (kombu.transport.pyamqplib.Channel.Message attribute)</a></dt>
     <dd><dl>
-      <dt><a href="reference/kombu.backends.pyamqplib.html#kombu.backends.pyamqplib.Message.delivery_tag">(kombu.backends.pyamqplib.Message attribute)</a></dt>
+      <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Message.delivery_tag">(kombu.transport.pyamqplib.Message attribute)</a></dt>
   </dl></dd>
     <dt><a href="reference/kombu.compat.html#kombu.compat.Consumer.discard_all">discard_all() (kombu.compat.Consumer method)</a></dt>
-    <dt><a href="reference/kombu.backends.base.html#kombu.backends.base.BaseBackend.drain_events">drain_events() (kombu.backends.base.BaseBackend method)</a></dt>
+    <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnection.drain_events">drain_events() (kombu.connection.BrokerConnection method)</a></dt>
     <dd><dl>
-      <dt><a href="reference/kombu.backends.pyamqplib.html#kombu.backends.pyamqplib.Backend.drain_events">(kombu.backends.pyamqplib.Backend method)</a></dt>
-      <dt><a href="reference/kombu.backends.pyamqplib.html#kombu.backends.pyamqplib.Connection.drain_events">(kombu.backends.pyamqplib.Connection method)</a></dt>
-      <dt><a href="reference/kombu.backends.pypika.html#kombu.backends.pypika.SyncBackend.drain_events">(kombu.backends.pypika.SyncBackend method)</a></dt>
-      <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.Channel.drain_events">(kombu.backends.virtual.Channel method)</a></dt>
-      <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.VirtualBaseBackend.drain_events">(kombu.backends.virtual.VirtualBaseBackend method)</a></dt>
-      <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.VirtualBaseBackend.Channel.drain_events">(kombu.backends.virtual.VirtualBaseBackend.Channel method)</a></dt>
-      <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnection.drain_events">(kombu.connection.BrokerConnection method)</a></dt>
+      <dt><a href="reference/kombu.transport.base.html#kombu.transport.base.Transport.drain_events">(kombu.transport.base.Transport method)</a></dt>
+      <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Connection.drain_events">(kombu.transport.pyamqplib.Connection method)</a></dt>
+      <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Transport.drain_events">(kombu.transport.pyamqplib.Transport method)</a></dt>
+      <dt><a href="reference/kombu.transport.pypika.html#kombu.transport.pypika.SyncTransport.drain_events">(kombu.transport.pypika.SyncTransport method)</a></dt>
   </dl></dd>
-    <dt><a href="reference/kombu.entity.html#kombu.entity.Binding.durable">durable (kombu.entity.Binding attribute)</a></dt>
+    <dt><a href="reference/kombu.entity.html#kombu.entity.Exchange.durable">durable (kombu.entity.Exchange attribute)</a></dt>
     <dd><dl>
-      <dt><a href="reference/kombu.entity.html#kombu.entity.Exchange.durable">(kombu.entity.Exchange attribute)</a></dt>
+      <dt><a href="reference/kombu.entity.html#kombu.entity.Queue.durable">(kombu.entity.Queue attribute)</a></dt>
   </dl></dd>
 </dl></td>
 </tr></table>
@@ -276,29 +225,20 @@
   </dl></dd>
     <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnection.ensure_connection">ensure_connection() (kombu.connection.BrokerConnection method)</a></dt>
     <dt><a href="reference/kombu.exceptions.html#kombu.exceptions.EnsureExhausted">EnsureExhausted</a></dt>
-    <dt><a href="reference/kombu.compat.html#kombu.compat.entry_to_binding">entry_to_binding() (in module kombu.compat)</a></dt>
-    <dt><a href="reference/kombu.backends.base.html#kombu.backends.base.BaseBackend.establish_connection">establish_connection() (kombu.backends.base.BaseBackend method)</a></dt>
-    <dd><dl>
-      <dt><a href="reference/kombu.backends.pyamqplib.html#kombu.backends.pyamqplib.Backend.establish_connection">(kombu.backends.pyamqplib.Backend method)</a></dt>
-      <dt><a href="reference/kombu.backends.pypika.html#kombu.backends.pypika.SyncBackend.establish_connection">(kombu.backends.pypika.SyncBackend method)</a></dt>
-      <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.VirtualBaseBackend.establish_connection">(kombu.backends.virtual.VirtualBaseBackend method)</a></dt>
-  </dl></dd>
+    <dt><a href="reference/kombu.compat.html#kombu.compat.entry_to_queue">entry_to_queue() (in module kombu.compat)</a></dt>
 </dl></td>
   <td width="33%" valign="top"><dl>
+    <dt><a href="reference/kombu.transport.base.html#kombu.transport.base.Transport.establish_connection">establish_connection() (kombu.transport.base.Transport method)</a></dt>
+    <dd><dl>
+      <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Transport.establish_connection">(kombu.transport.pyamqplib.Transport method)</a></dt>
+      <dt><a href="reference/kombu.transport.pypika.html#kombu.transport.pypika.SyncTransport.establish_connection">(kombu.transport.pypika.SyncTransport method)</a></dt>
+  </dl></dd>
     <dt><a href="reference/kombu.entity.html#kombu.entity.Exchange">Exchange (class in kombu.entity)</a></dt>
-    <dt><a href="reference/kombu.entity.html#kombu.entity.Binding.exchange">exchange (kombu.entity.Binding attribute)</a></dt>
+    <dt><a href="reference/kombu.entity.html#kombu.entity.Queue.exchange">exchange (kombu.entity.Queue attribute)</a></dt>
     <dd><dl>
       <dt><a href="reference/kombu.messaging.html#kombu.messaging.Producer.exchange">(kombu.messaging.Producer attribute)</a></dt>
   </dl></dd>
-    <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.Channel.exchange_declare">exchange_declare() (kombu.backends.virtual.Channel method)</a></dt>
-    <dd><dl>
-      <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.VirtualBaseBackend.Channel.exchange_declare">(kombu.backends.virtual.VirtualBaseBackend.Channel method)</a></dt>
-  </dl></dd>
-    <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.Channel.exchange_delete">exchange_delete() (kombu.backends.virtual.Channel method)</a></dt>
-    <dd><dl>
-      <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.VirtualBaseBackend.Channel.exchange_delete">(kombu.backends.virtual.VirtualBaseBackend.Channel method)</a></dt>
-  </dl></dd>
-    <dt><a href="reference/kombu.entity.html#kombu.entity.Binding.exclusive">exclusive (kombu.entity.Binding attribute)</a></dt>
+    <dt><a href="reference/kombu.entity.html#kombu.entity.Queue.exclusive">exclusive (kombu.entity.Queue attribute)</a></dt>
 </dl></td>
 </tr></table>
 
@@ -306,11 +246,7 @@
 <table width="100%" class="indextable genindextable"><tr>
   <td width="33%" valign="top"><dl>
     <dt><a href="reference/kombu.compat.html#kombu.compat.Consumer.fetch">fetch() (kombu.compat.Consumer method)</a></dt>
-    <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.Channel.flow">flow() (kombu.backends.virtual.Channel method)</a></dt>
-    <dd><dl>
-      <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.VirtualBaseBackend.Channel.flow">(kombu.backends.virtual.VirtualBaseBackend.Channel method)</a></dt>
-      <dt><a href="reference/kombu.messaging.html#kombu.messaging.Consumer.flow">(kombu.messaging.Consumer method)</a></dt>
-  </dl></dd>
+    <dt><a href="reference/kombu.messaging.html#kombu.messaging.Consumer.flow">flow() (kombu.messaging.Consumer method)</a></dt>
 </dl></td>
   <td width="33%" valign="top"><dl>
     <dt><a href="reference/kombu.utils.html#kombu.utils.OrderedDict.fromkeys">fromkeys() (kombu.utils.OrderedDict class method)</a></dt>
@@ -320,14 +256,10 @@
 <h2 id="G">G</h2>
 <table width="100%" class="indextable genindextable"><tr>
   <td width="33%" valign="top"><dl>
-    <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.Consume.get">get() (kombu.backends.virtual.Consume method)</a></dt>
+    <dt><a href="reference/kombu.entity.html#kombu.entity.Queue.get">get() (kombu.entity.Queue method)</a></dt>
+    <dt><a href="reference/kombu.transport.html#kombu.transport.get_transport_cls">get_transport_cls() (in module kombu.transport)</a></dt>
     <dd><dl>
-      <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.VirtualBaseBackend.Consume.get">(kombu.backends.virtual.VirtualBaseBackend.Consume method)</a></dt>
-      <dt><a href="reference/kombu.entity.html#kombu.entity.Binding.get">(kombu.entity.Binding method)</a></dt>
-  </dl></dd>
-    <dt><a href="reference/kombu.backends.html#kombu.backends.get_backend_cls">get_backend_cls() (in module kombu.backends)</a></dt>
-    <dd><dl>
-      <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnection.get_backend_cls">(kombu.connection.BrokerConnection method)</a></dt>
+      <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnection.get_transport_cls">(kombu.connection.BrokerConnection method)</a></dt>
   </dl></dd>
 </dl></td>
   <td width="33%" valign="top"><dl>
@@ -366,21 +298,20 @@
   <td width="33%" valign="top"><dl>
     <dt><a href="reference/kombu.utils.html#kombu.utils.OrderedDict.keys">keys() (kombu.utils.OrderedDict method)</a></dt>
     <dt><a href="reference/kombu.abstract.html#module-kombu.abstract">kombu.abstract (module)</a></dt>
-    <dt><a href="reference/kombu.backends.html#module-kombu.backends">kombu.backends (module)</a></dt>
-    <dt><a href="reference/kombu.backends.base.html#module-kombu.backends.base">kombu.backends.base (module)</a></dt>
-    <dt><a href="reference/kombu.backends.memory.html#module-kombu.backends.memory">kombu.backends.memory (module)</a></dt>
-    <dt><a href="reference/kombu.backends.pyamqplib.html#module-kombu.backends.pyamqplib">kombu.backends.pyamqplib (module)</a></dt>
-    <dt><a href="reference/kombu.backends.pypika.html#module-kombu.backends.pypika">kombu.backends.pypika (module)</a></dt>
-    <dt><a href="reference/kombu.backends.pyredis.html#module-kombu.backends.pyredis">kombu.backends.pyredis (module)</a></dt>
-</dl></td>
-  <td width="33%" valign="top"><dl>
-    <dt><a href="reference/kombu.backends.virtual.html#module-kombu.backends.virtual">kombu.backends.virtual (module)</a></dt>
     <dt><a href="reference/kombu.compat.html#module-kombu.compat">kombu.compat (module)</a></dt>
     <dt><a href="reference/kombu.connection.html#module-kombu.connection">kombu.connection (module)</a></dt>
     <dt><a href="reference/kombu.entity.html#module-kombu.entity">kombu.entity (module)</a></dt>
     <dt><a href="reference/kombu.exceptions.html#module-kombu.exceptions">kombu.exceptions (module)</a></dt>
     <dt><a href="reference/kombu.messaging.html#module-kombu.messaging">kombu.messaging (module)</a></dt>
     <dt><a href="reference/kombu.serialization.html#module-kombu.serialization">kombu.serialization (module)</a></dt>
+</dl></td>
+  <td width="33%" valign="top"><dl>
+    <dt><a href="reference/kombu.transport.html#module-kombu.transport">kombu.transport (module)</a></dt>
+    <dt><a href="reference/kombu.transport.base.html#module-kombu.transport.base">kombu.transport.base (module)</a></dt>
+    <dt><a href="reference/kombu.transport.memory.html#module-kombu.transport.memory">kombu.transport.memory (module)</a></dt>
+    <dt><a href="reference/kombu.transport.pyamqplib.html#module-kombu.transport.pyamqplib">kombu.transport.pyamqplib (module)</a></dt>
+    <dt><a href="reference/kombu.transport.pypika.html#module-kombu.transport.pypika">kombu.transport.pypika (module)</a></dt>
+    <dt><a href="reference/kombu.transport.pyredis.html#module-kombu.transport.pyredis">kombu.transport.pyredis (module)</a></dt>
     <dt><a href="reference/kombu.utils.html#module-kombu.utils">kombu.utils (module)</a></dt>
 </dl></td>
 </tr></table>
@@ -391,21 +322,18 @@
     <dt><a href="reference/kombu.abstract.html#kombu.abstract.MaybeChannelBound.maybe_bind">maybe_bind() (kombu.abstract.MaybeChannelBound method)</a></dt>
     <dt><a href="reference/kombu.utils.html#kombu.utils.maybe_list">maybe_list() (in module kombu.utils)</a></dt>
     <dt><a href="reference/kombu.abstract.html#kombu.abstract.MaybeChannelBound">MaybeChannelBound (class in kombu.abstract)</a></dt>
-    <dt><a href="reference/kombu.backends.memory.html#kombu.backends.memory.MemoryBackend">MemoryBackend (class in kombu.backends.memory)</a></dt>
-    <dt><a href="reference/kombu.backends.memory.html#kombu.backends.memory.MemoryChannel">MemoryChannel (class in kombu.backends.memory)</a></dt>
+    <dt><a href="reference/kombu.transport.base.html#kombu.transport.base.Message">Message (class in kombu.transport.base)</a></dt>
+    <dd><dl>
+      <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Message">(class in kombu.transport.pyamqplib)</a></dt>
+      <dt><a href="reference/kombu.transport.pypika.html#kombu.transport.pypika.Message">(class in kombu.transport.pypika)</a></dt>
+  </dl></dd>
 </dl></td>
   <td width="33%" valign="top"><dl>
-    <dt><a href="reference/kombu.backends.pyamqplib.html#kombu.backends.pyamqplib.Message">Message (class in kombu.backends.pyamqplib)</a></dt>
-    <dd><dl>
-      <dt><a href="reference/kombu.backends.pypika.html#kombu.backends.pypika.Message">(class in kombu.backends.pypika)</a></dt>
-      <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.Message">(class in kombu.backends.virtual)</a></dt>
-  </dl></dd>
     <dt><a href="reference/kombu.entity.html#kombu.entity.Exchange.Message">Message() (kombu.entity.Exchange method)</a></dt>
-    <dt><a href="reference/kombu.backends.pyamqplib.html#kombu.backends.pyamqplib.Channel.message_to_python">message_to_python() (kombu.backends.pyamqplib.Channel method)</a></dt>
+    <dt><a href="reference/kombu.transport.base.html#kombu.transport.base.Message.MessageStateError">Message.MessageStateError</a></dt>
+    <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Channel.message_to_python">message_to_python() (kombu.transport.pyamqplib.Channel method)</a></dt>
     <dd><dl>
-      <dt><a href="reference/kombu.backends.pypika.html#kombu.backends.pypika.Channel.message_to_python">(kombu.backends.pypika.Channel method)</a></dt>
-      <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.Channel.message_to_python">(kombu.backends.virtual.Channel method)</a></dt>
-      <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.VirtualBaseBackend.Channel.message_to_python">(kombu.backends.virtual.VirtualBaseBackend.Channel method)</a></dt>
+      <dt><a href="reference/kombu.transport.pypika.html#kombu.transport.pypika.Channel.message_to_python">(kombu.transport.pypika.Channel method)</a></dt>
   </dl></dd>
     <dt><a href="reference/kombu.exceptions.html#kombu.exceptions.MessageStateError">MessageStateError</a></dt>
 </dl></td>
@@ -414,9 +342,9 @@
 <h2 id="N">N</h2>
 <table width="100%" class="indextable genindextable"><tr>
   <td width="33%" valign="top"><dl>
-    <dt><a href="reference/kombu.entity.html#kombu.entity.Binding.name">name (kombu.entity.Binding attribute)</a></dt>
+    <dt><a href="reference/kombu.entity.html#kombu.entity.Exchange.name">name (kombu.entity.Exchange attribute)</a></dt>
     <dd><dl>
-      <dt><a href="reference/kombu.entity.html#kombu.entity.Exchange.name">(kombu.entity.Exchange attribute)</a></dt>
+      <dt><a href="reference/kombu.entity.html#kombu.entity.Queue.name">(kombu.entity.Queue attribute)</a></dt>
   </dl></dd>
 </dl></td>
   <td width="33%" valign="top"><dl>
@@ -439,18 +367,16 @@
 <table width="100%" class="indextable genindextable"><tr>
   <td width="33%" valign="top"><dl>
     <dt><a href="reference/kombu.utils.html#kombu.utils.partition">partition() (in module kombu.utils)</a></dt>
-    <dt><a href="reference/kombu.backends.base.html#kombu.backends.base.BaseMessage.payload">payload (kombu.backends.base.BaseMessage attribute)</a></dt>
+    <dt><a href="reference/kombu.transport.base.html#kombu.transport.base.Message.payload">payload (kombu.transport.base.Message attribute)</a></dt>
     <dt><a href="reference/kombu.exceptions.html#kombu.exceptions.PoolExhausted">PoolExhausted</a></dt>
     <dt><a href="reference/kombu.exceptions.html#kombu.exceptions.PoolLimitExceeded">PoolLimitExceeded</a></dt>
     <dt><a href="reference/kombu.utils.html#kombu.utils.OrderedDict.pop">pop() (kombu.utils.OrderedDict method)</a></dt>
     <dt><a href="reference/kombu.utils.html#kombu.utils.OrderedDict.popitem">popitem() (kombu.utils.OrderedDict method)</a></dt>
 </dl></td>
   <td width="33%" valign="top"><dl>
-    <dt><a href="reference/kombu.backends.pyamqplib.html#kombu.backends.pyamqplib.Channel.prepare_message">prepare_message() (kombu.backends.pyamqplib.Channel method)</a></dt>
+    <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Channel.prepare_message">prepare_message() (kombu.transport.pyamqplib.Channel method)</a></dt>
     <dd><dl>
-      <dt><a href="reference/kombu.backends.pypika.html#kombu.backends.pypika.Channel.prepare_message">(kombu.backends.pypika.Channel method)</a></dt>
-      <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.Channel.prepare_message">(kombu.backends.virtual.Channel method)</a></dt>
-      <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.VirtualBaseBackend.Channel.prepare_message">(kombu.backends.virtual.VirtualBaseBackend.Channel method)</a></dt>
+      <dt><a href="reference/kombu.transport.pypika.html#kombu.transport.pypika.Channel.prepare_message">(kombu.transport.pypika.Channel method)</a></dt>
   </dl></dd>
     <dt><a href="reference/kombu.compat.html#kombu.compat.Consumer.process_next">process_next() (kombu.compat.Consumer method)</a></dt>
     <dt><a href="reference/kombu.messaging.html#kombu.messaging.Producer">Producer (class in kombu.messaging)</a></dt>
@@ -459,7 +385,7 @@
       <dt><a href="reference/kombu.messaging.html#kombu.messaging.Producer.publish">(kombu.messaging.Producer method)</a></dt>
   </dl></dd>
     <dt><a href="reference/kombu.compat.html#kombu.compat.Publisher">Publisher (class in kombu.compat)</a></dt>
-    <dt><a href="reference/kombu.entity.html#kombu.entity.Binding.purge">purge() (kombu.entity.Binding method)</a></dt>
+    <dt><a href="reference/kombu.entity.html#kombu.entity.Queue.purge">purge() (kombu.entity.Queue method)</a></dt>
     <dd><dl>
       <dt><a href="reference/kombu.messaging.html#kombu.messaging.Consumer.purge">(kombu.messaging.Consumer method)</a></dt>
   </dl></dd>
@@ -470,51 +396,25 @@
 <table width="100%" class="indextable genindextable"><tr>
   <td width="33%" valign="top"><dl>
     <dt><a href="reference/kombu.messaging.html#kombu.messaging.Consumer.qos">qos() (kombu.messaging.Consumer method)</a></dt>
-    <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.Channel.qos_manager">qos_manager (kombu.backends.virtual.Channel attribute)</a></dt>
-    <dd><dl>
-      <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.VirtualBaseBackend.Channel.qos_manager">(kombu.backends.virtual.VirtualBaseBackend.Channel attribute)</a></dt>
-  </dl></dd>
-    <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.QualityOfService">QualityOfService (class in kombu.backends.virtual)</a></dt>
-    <dt><a href="reference/kombu.entity.html#kombu.entity.Binding.queue_arguments">queue_arguments (kombu.entity.Binding attribute)</a></dt>
+    <dt><a href="reference/kombu.entity.html#kombu.entity.Queue">Queue (class in kombu.entity)</a></dt>
+    <dt><a href="reference/kombu.entity.html#kombu.entity.Queue.queue_arguments">queue_arguments (kombu.entity.Queue attribute)</a></dt>
 </dl></td>
   <td width="33%" valign="top"><dl>
-    <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.Channel.queue_bind">queue_bind() (kombu.backends.virtual.Channel method)</a></dt>
-    <dd><dl>
-      <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.VirtualBaseBackend.Channel.queue_bind">(kombu.backends.virtual.VirtualBaseBackend.Channel method)</a></dt>
-      <dt><a href="reference/kombu.entity.html#kombu.entity.Binding.queue_bind">(kombu.entity.Binding method)</a></dt>
-  </dl></dd>
-    <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.Channel.queue_declare">queue_declare() (kombu.backends.virtual.Channel method)</a></dt>
-    <dd><dl>
-      <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.VirtualBaseBackend.Channel.queue_declare">(kombu.backends.virtual.VirtualBaseBackend.Channel method)</a></dt>
-      <dt><a href="reference/kombu.entity.html#kombu.entity.Binding.queue_declare">(kombu.entity.Binding method)</a></dt>
-  </dl></dd>
-    <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.Channel.queue_delete">queue_delete() (kombu.backends.virtual.Channel method)</a></dt>
-    <dd><dl>
-      <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.VirtualBaseBackend.Channel.queue_delete">(kombu.backends.virtual.VirtualBaseBackend.Channel method)</a></dt>
-  </dl></dd>
-    <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.Channel.queue_purge">queue_purge() (kombu.backends.virtual.Channel method)</a></dt>
-    <dd><dl>
-      <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.VirtualBaseBackend.Channel.queue_purge">(kombu.backends.virtual.VirtualBaseBackend.Channel method)</a></dt>
-  </dl></dd>
+    <dt><a href="reference/kombu.entity.html#kombu.entity.Queue.queue_bind">queue_bind() (kombu.entity.Queue method)</a></dt>
+    <dt><a href="reference/kombu.entity.html#kombu.entity.Queue.queue_declare">queue_declare() (kombu.entity.Queue method)</a></dt>
+    <dt><a href="reference/kombu.messaging.html#kombu.messaging.Consumer.queues">queues (kombu.messaging.Consumer attribute)</a></dt>
 </dl></td>
 </tr></table>
 
 <h2 id="R">R</h2>
 <table width="100%" class="indextable genindextable"><tr>
   <td width="33%" valign="top"><dl>
-    <dt><a href="reference/kombu.backends.pyamqplib.html#kombu.backends.pyamqplib.Connection.read_timeout">read_timeout() (kombu.backends.pyamqplib.Connection method)</a></dt>
+    <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Connection.read_timeout">read_timeout() (kombu.transport.pyamqplib.Connection method)</a></dt>
     <dt><a href="reference/kombu.messaging.html#kombu.messaging.Consumer.receive">receive() (kombu.messaging.Consumer method)</a></dt>
     <dt><a href="reference/kombu.messaging.html#kombu.messaging.Consumer.recover">recover() (kombu.messaging.Consumer method)</a></dt>
-    <dt><a href="reference/kombu.backends.pyredis.html#kombu.backends.pyredis.RedisBackend">RedisBackend (class in kombu.backends.pyredis)</a></dt>
-    <dt><a href="reference/kombu.backends.pyredis.html#kombu.backends.pyredis.RedisChannel">RedisChannel (class in kombu.backends.pyredis)</a></dt>
     <dt><a href="reference/kombu.messaging.html#kombu.messaging.Consumer.register_callback">register_callback() (kombu.messaging.Consumer method)</a></dt>
     <dt><a href="reference/kombu.serialization.html#kombu.serialization.registry">registry (in module kombu.serialization)</a></dt>
-    <dt><a href="reference/kombu.backends.base.html#kombu.backends.base.BaseMessage.reject">reject() (kombu.backends.base.BaseMessage method)</a></dt>
-    <dd><dl>
-      <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.Channel.Message.reject">(kombu.backends.virtual.Channel.Message method)</a></dt>
-      <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.Message.reject">(kombu.backends.virtual.Message method)</a></dt>
-      <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.VirtualBaseBackend.Channel.Message.reject">(kombu.backends.virtual.VirtualBaseBackend.Channel.Message method)</a></dt>
-  </dl></dd>
+    <dt><a href="reference/kombu.transport.base.html#kombu.transport.base.Message.reject">reject() (kombu.transport.base.Message method)</a></dt>
     <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnection.release">release() (kombu.connection.BrokerConnection method)</a></dt>
     <dd><dl>
       <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnectionPool.release">(kombu.connection.BrokerConnectionPool method)</a></dt>
@@ -523,15 +423,10 @@
   <td width="33%" valign="top"><dl>
     <dt><a href="reference/kombu.utils.html#kombu.utils.repeatlast">repeatlast() (in module kombu.utils)</a></dt>
     <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnectionPool.replace">replace() (kombu.connection.BrokerConnectionPool method)</a></dt>
-    <dt><a href="reference/kombu.backends.base.html#kombu.backends.base.BaseMessage.requeue">requeue() (kombu.backends.base.BaseMessage method)</a></dt>
-    <dd><dl>
-      <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.QualityOfService.requeue">(kombu.backends.virtual.QualityOfService method)</a></dt>
-  </dl></dd>
-    <dt><a href="reference/kombu.backends.html#kombu.backends.resolve_backend">resolve_backend() (in module kombu.backends)</a></dt>
-    <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.QualityOfService.restore_unacked">restore_unacked() (kombu.backends.virtual.QualityOfService method)</a></dt>
-    <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.QualityOfService.restore_unacked_once">restore_unacked_once() (kombu.backends.virtual.QualityOfService method)</a></dt>
+    <dt><a href="reference/kombu.transport.base.html#kombu.transport.base.Message.requeue">requeue() (kombu.transport.base.Message method)</a></dt>
+    <dt><a href="reference/kombu.transport.html#kombu.transport.resolve_transport">resolve_transport() (in module kombu.transport)</a></dt>
     <dt><a href="reference/kombu.utils.html#kombu.utils.retry_over_time">retry_over_time() (in module kombu.utils)</a></dt>
-    <dt><a href="reference/kombu.entity.html#kombu.entity.Binding.routing_key">routing_key (kombu.entity.Binding attribute)</a></dt>
+    <dt><a href="reference/kombu.entity.html#kombu.entity.Queue.routing_key">routing_key (kombu.entity.Queue attribute)</a></dt>
     <dd><dl>
       <dt><a href="reference/kombu.messaging.html#kombu.messaging.Producer.routing_key">(kombu.messaging.Producer attribute)</a></dt>
   </dl></dd>
@@ -545,11 +440,13 @@
     <dt><a href="reference/kombu.compat.html#kombu.compat.Publisher.send">send() (kombu.compat.Publisher method)</a></dt>
     <dt><a href="reference/kombu.messaging.html#kombu.messaging.Producer.serializer">serializer (kombu.messaging.Producer attribute)</a></dt>
     <dt><a href="reference/kombu.serialization.html#kombu.serialization.SerializerNotInstalled">SerializerNotInstalled</a></dt>
+    <dt><a href="reference/kombu.utils.html#kombu.utils.OrderedDict.setdefault">setdefault() (kombu.utils.OrderedDict method)</a></dt>
 </dl></td>
   <td width="33%" valign="top"><dl>
-    <dt><a href="reference/kombu.utils.html#kombu.utils.OrderedDict.setdefault">setdefault() (kombu.utils.OrderedDict method)</a></dt>
-    <dt><a href="reference/kombu.backends.pypika.html#kombu.backends.pypika.SyncBackend">SyncBackend (class in kombu.backends.pypika)</a></dt>
-    <dt><a href="reference/kombu.backends.pypika.html#kombu.backends.pypika.SyncBackend.Message">SyncBackend.Message (class in kombu.backends.pypika)</a></dt>
+    <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnection.SimpleBuffer">SimpleBuffer() (kombu.connection.BrokerConnection method)</a></dt>
+    <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnection.SimpleQueue">SimpleQueue() (kombu.connection.BrokerConnection method)</a></dt>
+    <dt><a href="reference/kombu.transport.pypika.html#kombu.transport.pypika.SyncTransport">SyncTransport (class in kombu.transport.pypika)</a></dt>
+    <dt><a href="reference/kombu.transport.pypika.html#kombu.transport.pypika.SyncTransport.Message">SyncTransport.Message (class in kombu.transport.pypika)</a></dt>
 </dl></td>
 </tr></table>
 
@@ -558,8 +455,19 @@
   <td width="33%" valign="top"><dl>
     <dt><a href="reference/kombu.exceptions.html#kombu.exceptions.TimeoutError">TimeoutError</a></dt>
     <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnectionPool.total">total (kombu.connection.BrokerConnectionPool attribute)</a></dt>
+    <dt><a href="reference/kombu.transport.base.html#kombu.transport.base.Transport">Transport (class in kombu.transport.base)</a></dt>
+    <dd><dl>
+      <dt><a href="reference/kombu.transport.memory.html#kombu.transport.memory.Transport">(class in kombu.transport.memory)</a></dt>
+      <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Transport">(class in kombu.transport.pyamqplib)</a></dt>
+      <dt><a href="reference/kombu.transport.pyredis.html#kombu.transport.pyredis.Transport">(class in kombu.transport.pyredis)</a></dt>
+  </dl></dd>
 </dl></td>
   <td width="33%" valign="top"><dl>
+    <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnection.transport">transport (kombu.connection.BrokerConnection attribute)</a></dt>
+    <dt><a href="reference/kombu.transport.memory.html#kombu.transport.memory.Transport.Channel">Transport.Channel (class in kombu.transport.memory)</a></dt>
+    <dd><dl>
+      <dt><a href="reference/kombu.transport.pyredis.html#kombu.transport.pyredis.Transport.Channel">(class in kombu.transport.pyredis)</a></dt>
+  </dl></dd>
     <dt><a href="reference/kombu.entity.html#kombu.entity.Exchange.type">type (kombu.entity.Exchange attribute)</a></dt>
 </dl></td>
 </tr></table>
@@ -567,7 +475,7 @@
 <h2 id="U">U</h2>
 <table width="100%" class="indextable genindextable"><tr>
   <td width="33%" valign="top"><dl>
-    <dt><a href="reference/kombu.entity.html#kombu.entity.Binding.unbind">unbind() (kombu.entity.Binding method)</a></dt>
+    <dt><a href="reference/kombu.entity.html#kombu.entity.Queue.unbind">unbind() (kombu.entity.Queue method)</a></dt>
 </dl></td>
   <td width="33%" valign="top"><dl>
     <dt><a href="reference/kombu.utils.html#kombu.utils.OrderedDict.update">update() (kombu.utils.OrderedDict method)</a></dt>
@@ -578,12 +486,6 @@
 <table width="100%" class="indextable genindextable"><tr>
   <td width="33%" valign="top"><dl>
     <dt><a href="reference/kombu.utils.html#kombu.utils.OrderedDict.values">values() (kombu.utils.OrderedDict method)</a></dt>
-    <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.VirtualBaseBackend">VirtualBaseBackend (class in kombu.backends.virtual)</a></dt>
-    <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.VirtualBaseBackend.Channel">VirtualBaseBackend.Channel (class in kombu.backends.virtual)</a></dt>
-</dl></td>
-  <td width="33%" valign="top"><dl>
-    <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.VirtualBaseBackend.Channel.Message">VirtualBaseBackend.Channel.Message (class in kombu.backends.virtual)</a></dt>
-    <dt><a href="reference/kombu.backends.virtual.html#kombu.backends.virtual.VirtualBaseBackend.Consume">VirtualBaseBackend.Consume (class in kombu.backends.virtual)</a></dt>
 </dl></td>
 </tr></table>
 
@@ -591,12 +493,12 @@
 <table width="100%" class="indextable genindextable"><tr>
   <td width="33%" valign="top"><dl>
     <dt><a href="reference/kombu.compat.html#kombu.compat.Consumer.wait">wait() (kombu.compat.Consumer method)</a></dt>
-    <dt><a href="reference/kombu.backends.pyamqplib.html#kombu.backends.pyamqplib.Connection.wait_multi">wait_multi() (kombu.backends.pyamqplib.Connection method)</a></dt>
+    <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Connection.wait_multi">wait_multi() (kombu.transport.pyamqplib.Connection method)</a></dt>
 </dl></td>
   <td width="33%" valign="top"><dl>
     <dt><a href="reference/kombu.abstract.html#kombu.abstract.MaybeChannelBound.when_bound">when_bound() (kombu.abstract.MaybeChannelBound method)</a></dt>
     <dd><dl>
-      <dt><a href="reference/kombu.entity.html#kombu.entity.Binding.when_bound">(kombu.entity.Binding method)</a></dt>
+      <dt><a href="reference/kombu.entity.html#kombu.entity.Queue.when_bound">(kombu.entity.Queue method)</a></dt>
   </dl></dd>
 </dl></td>
 </tr></table>

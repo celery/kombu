@@ -56,7 +56,7 @@
 <h1>Broker Connections - kombu.connection<a class="headerlink" href="#broker-connections-kombu-connection" title="Permalink to this headline">¶</a></h1>
 <span class="target" id="module-kombu.connection"></span><dl class="class">
 <dt id="kombu.connection.BrokerConnection">
-<em class="property">class </em><tt class="descclassname">kombu.connection.</tt><tt class="descname">BrokerConnection</tt><big>(</big><em>hostname='localhost'</em>, <em>userid='guest'</em>, <em>password='guest'</em>, <em>virtual_host='/'</em>, <em>port=None</em>, <em>insist=False</em>, <em>ssl=False</em>, <em>backend_cls=None</em>, <em>connect_timeout=5</em>, <em>pool=None</em><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnection" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">kombu.connection.</tt><tt class="descname">BrokerConnection</tt><big>(</big><em>hostname='localhost'</em>, <em>userid='guest'</em>, <em>password='guest'</em>, <em>virtual_host='/'</em>, <em>port=None</em>, <em>insist=False</em>, <em>ssl=False</em>, <em>transport=None</em>, <em>connect_timeout=5</em>, <em>pool=None</em>, <em>backend_cls=None</em><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnection" title="Permalink to this definition">¶</a></dt>
 <dd><p>A connection to the broker.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -68,18 +68,18 @@ Default is <tt class="docutils literal"><span class="pre">&quot;localhost&quot;<
 <li><strong>userid</strong> &#8211; Username. Default is <tt class="docutils literal"><span class="pre">&quot;guest&quot;</span></tt>.</li>
 <li><strong>password</strong> &#8211; Password. Default is <tt class="docutils literal"><span class="pre">&quot;guest&quot;</span></tt>.</li>
 <li><strong>virtual_host</strong> &#8211; Virtual host. Default is <tt class="docutils literal"><span class="pre">&quot;/&quot;</span></tt>.</li>
-<li><strong>port</strong> &#8211; Port of the server. Default is backend specific.</li>
+<li><strong>port</strong> &#8211; Port of the server. Default is transport specific.</li>
 <li><strong>insist</strong> &#8211; Insist on connecting to a server.
 In a configuration with multiple load-sharing servers, the insist
 option tells the server that the client is insisting on a connection
 to the specified server.  Default is <tt class="xref docutils literal"><span class="pre">False</span></tt>.</li>
 <li><strong>ssl</strong> &#8211; Use ssl to connect to the server. Default is <tt class="xref docutils literal"><span class="pre">False</span></tt>.</li>
-<li><strong>backend_cls</strong> &#8211; Backend class to use.  Can be a class,
+<li><strong>transport</strong> &#8211; Transport class to use. Can be a class,
 or a string specifying the path to the class. (e.g.
-<tt class="docutils literal"><span class="pre">kombu.backends.pyamqplib.Backend</span></tt>), or one of the aliases:
+<tt class="docutils literal"><span class="pre">kombu.transport.pyamqplib.Transport</span></tt>), or one of the aliases:
 <tt class="docutils literal"><span class="pre">amqplib</span></tt>, <tt class="docutils literal"><span class="pre">pika</span></tt>, <tt class="docutils literal"><span class="pre">redis</span></tt>, <tt class="docutils literal"><span class="pre">memory</span></tt>.</li>
 <li><strong>connect_timeout</strong> &#8211; Timeout in seconds for connecting to the
-server. May not be suported by the specified backend.</li>
+server. May not be suported by the specified transport.</li>
 </ul>
 </td>
 </tr>
@@ -100,16 +100,54 @@ connection to be established, then do so expliclty using <a class="reference int
 </pre></div>
 </div>
 <dl class="method">
+<dt id="kombu.connection.BrokerConnection.SimpleBuffer">
+<tt class="descname">SimpleBuffer</tt><big>(</big><em>name</em>, <em>no_ack=False</em>, <em>queue_opts=None</em>, <em>exchange_opts=None</em>, <em>channel=None</em><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnection.SimpleBuffer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create new <tt class="xref py py-class docutils literal"><span class="pre">SimpleQueue</span></tt> using a channel
+from this connection.</p>
+<p>Same as <a class="reference internal" href="#kombu.connection.BrokerConnection.SimpleQueue" title="kombu.connection.BrokerConnection.SimpleQueue"><tt class="xref py py-meth docutils literal"><span class="pre">SimpleQueue()</span></tt></a>, but configured with buffering
+semantics. The resulting queue and exchange will not be durable, also
+auto delete is enabled. Messages will be transient (not persistent),
+and acknowledgements are disabled (<tt class="docutils literal"><span class="pre">no_ack</span></tt>).</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.connection.BrokerConnection.SimpleQueue">
+<tt class="descname">SimpleQueue</tt><big>(</big><em>name</em>, <em>no_ack=False</em>, <em>queue_opts=None</em>, <em>exchange_opts=None</em>, <em>channel=None</em><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnection.SimpleQueue" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create new <tt class="xref py py-class docutils literal"><span class="pre">SimpleQueue</span></tt>, using a channel
+from this connection.</p>
+<p>If <tt class="docutils literal"><span class="pre">name</span></tt> is a string, a queue and exchange will be automatically
+created using that name as the name of the queue and exchange,
+also it will be used as the default routing key.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>name</strong> &#8211; Name of the queue/or a <a class="reference internal" href="kombu.entity.html#kombu.entity.Queue" title="kombu.entity.Queue"><tt class="xref py py-class docutils literal"><span class="pre">Queue</span></tt></a>.</li>
+<li><strong>no_ack</strong> &#8211; Disable acknowledgements. Default is false.</li>
+<li><strong>queue_opts</strong> &#8211; Additional keyword arguments passed to the
+constructor of the automatically created
+<a class="reference internal" href="kombu.entity.html#kombu.entity.Queue" title="kombu.entity.Queue"><tt class="xref py py-class docutils literal"><span class="pre">Queue</span></tt></a>.</li>
+<li><strong>exchange_opts</strong> &#8211; Additional keyword arguments passed to the
+constructor of the automatically created
+:class:<a href="#id1"><span class="problematic" id="id2">`</span></a>~kombu.entity.Exchange.</li>
+<li><strong>channel</strong> &#8211; Channel to use. If not specified a new channel
+from the current connection will be used. Remember to call
+<tt class="xref py py-meth docutils literal"><span class="pre">close()</span></tt> when done with the
+object.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
 <dt id="kombu.connection.BrokerConnection.acquire">
 <tt class="descname">acquire</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnection.acquire" title="Permalink to this definition">¶</a></dt>
 <dd><p>Acquire connection.</p>
 <p>Only here for API compatibility with <a class="reference internal" href="#kombu.connection.BrokerConnectionPool" title="kombu.connection.BrokerConnectionPool"><tt class="xref py py-class docutils literal"><span class="pre">BrokerConnectionPool</span></tt></a>.</p>
 </dd></dl>
-
-<dl class="attribute">
-<dt id="kombu.connection.BrokerConnection.backend">
-<tt class="descname">backend</tt><a class="headerlink" href="#kombu.connection.BrokerConnection.backend" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
 
 <dl class="method">
 <dt id="kombu.connection.BrokerConnection.channel">
@@ -156,6 +194,11 @@ settings.</p>
 <dl class="method">
 <dt id="kombu.connection.BrokerConnection.create_backend">
 <tt class="descname">create_backend</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnection.create_backend" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.connection.BrokerConnection.create_transport">
+<tt class="descname">create_transport</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnection.create_transport" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="method">
@@ -246,9 +289,9 @@ each retry.</li>
 </dd></dl>
 
 <dl class="method">
-<dt id="kombu.connection.BrokerConnection.get_backend_cls">
-<tt class="descname">get_backend_cls</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnection.get_backend_cls" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get the currently used backend class.</p>
+<dt id="kombu.connection.BrokerConnection.get_transport_cls">
+<tt class="descname">get_transport_cls</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnection.get_transport_cls" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the currently used transport class.</p>
 </dd></dl>
 
 <dl class="attribute">
@@ -271,6 +314,11 @@ the connection will be released to the pool so it can be reused.</p>
 <p><strong>NOTE:</strong> You must never perform operations on a connection
 that has been released.</p>
 </dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.connection.BrokerConnection.transport">
+<tt class="descname">transport</tt><a class="headerlink" href="#kombu.connection.BrokerConnection.transport" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
 
 </dd></dl>
 
