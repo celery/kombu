@@ -11,11 +11,10 @@ It is only slightly different from the :class:`~Queue.Queue` class in the
 Python Standard Library, which makes it excellent for users with basic
 messaging needs.
 
-Instead of defining exchanges and queues, the simple classes only require
-a two arguments, a connection channel and a a name. The name is used as the
-queue, exchange and routing key, but if the need arises, you can also specify
-a :class:`~kombu.entity.Queue` as the name argument, in that way this have
-almost all of the functionality of the regular interface.
+Instead of defining exchanges and queues, the simple classes only requires
+two arguments, a connection channel and a name. The name is used as the
+queue, exchange and routing key. If the need arises, you can specify
+a :class:`~kombu.entity.Queue` as the name argument instead.
 
 In addition, the :class:`~kombu.connection.BrokerConnection` comes with
 shortcuts to create simple queues using the current connection::
@@ -33,6 +32,7 @@ This is equivalent to::
     >>> queue = SimpleBuffer(channel)
     >>> # ... do something with queue
     >>> channel.close()
+    >>> queue.close()
 
 Connections and transports
 ==========================
@@ -47,7 +47,7 @@ Create a connection using the default transport::
     >>> connection = BrokerConnection()
 
 The connection will not be established yet, as the connection is established
-as soon as its needed. If you want to explicitly establish the connection
+when needed. If you want to explicitly establish the connection
 you have to call the :meth:`~kombu.connection.BrokerConnection.connect`
 method::
 
@@ -64,8 +64,7 @@ is the same as::
     ...                  virtual_host="/",
     ...                  port=6379)
 
-The default port is transport specific, for AMQP transports this 6379, but
-for others it might be something different.
+The default port is transport specific, for AMQP transports this is 6379.
 
 Other fields may also have different meanings depending on the transport
 used. For example, the ``virtual_host`` argument is used as the database
