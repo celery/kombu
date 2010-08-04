@@ -7,6 +7,7 @@ Contents:
     :maxdepth: 3
 
     introduction
+    userguide/index
     faq
     reference/index
     changelog

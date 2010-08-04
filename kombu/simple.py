@@ -9,6 +9,7 @@ from kombu import messaging
 
 
 class SimpleBase(object):
+    _consuming = False
 
     def __init__(self, channel, producer, consumer, no_ack=False,
             channel_autoclose=False):
@@ -19,12 +20,15 @@ class SimpleBase(object):
         self.channel_autoclose = channel_autoclose
         self.queue = self.consumer.queues[0]
         self.buffer = deque()
-
-        self.consumer.consume(no_ack=self.no_ack)
         self.consumer.register_callback(self._receive)
 
     def _receive(self, message_data, message):
         self.buffer.append(message)
+
+    def _consume(self):
+        if not self._consuming:
+            self.consumer.consume(no_ack=self.no_ack)
+            self._consuming = True
 
     def get_nowait(self):
         m = self.queue.get(no_ack=self.no_ack)
@@ -35,6 +39,7 @@ class SimpleBase(object):
     def get(self, block=True, timeout=None, sync=False):
         if block:
             return self.get_nowait()
+        self._consume()
         elapsed = 0.0
         remaining = timeout
         while True:
@@ -68,6 +73,7 @@ class SimpleBase(object):
     def close(self):
         if self.channel_autoclose:
             self.channel.close()
+        self.consumer.cancel()
 
     def __del__(self):
         self.close()
