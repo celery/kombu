@@ -7,14 +7,14 @@ from kombu.exceptions import MessageStateError
 from kombu.messaging import Consumer, Producer
 from kombu.entity import Exchange, Queue
 
-from kombu.tests.mocks import Backend
+from kombu.tests.mocks import Transport
 
 
 class test_Producer(unittest.TestCase):
 
     def setUp(self):
         self.exchange = Exchange("foo", "direct")
-        self.connection = BrokerConnection(backend_cls=Backend)
+        self.connection = BrokerConnection(transport=Transport)
         self.connection.connect()
         self.assertTrue(self.connection.connection.connected)
         self.assertFalse(self.exchange.is_bound)
@@ -113,7 +113,7 @@ class test_Producer(unittest.TestCase):
 class test_Consumer(unittest.TestCase):
 
     def setUp(self):
-        self.connection = BrokerConnection(backend_cls=Backend)
+        self.connection = BrokerConnection(transport=Transport)
         self.connection.connect()
         self.assertTrue(self.connection.connection.connected)
         self.exchange = Exchange("foo", "direct")

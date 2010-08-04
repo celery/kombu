@@ -7,7 +7,7 @@ from time import sleep
 from itertools import count, cycle
 from Queue import Empty as QueueEmpty
 
-from kombu.backends.base import BaseBackend, BaseMessage
+from kombu.transport import base
 from kombu.utils import OrderedDict
 
 
@@ -103,7 +103,7 @@ class QualityOfService(object):
                     fh.close()
 
 
-class Message(BaseMessage):
+class Message(base.Message):
 
     def __init__(self, channel, payload, **kwargs):
         properties = payload["properties"]
@@ -120,7 +120,7 @@ class Message(BaseMessage):
 
     def reject(self):
         raise NotImplementedError(
-            "This backend does not implement basic.reject")
+            "This transport does not implement basic.reject")
 
 
 _exchanges = {}
@@ -292,7 +292,7 @@ class Channel(object):
         self.connection.close_channel(self)
 
 
-class VirtualBaseBackend(BaseBackend):
+class Transport(base.Transport):
     Channel = Channel
     Cycle = FairCycle
 

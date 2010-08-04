@@ -8,7 +8,7 @@ from itertools import count
 from time import time
 
 from kombu import exceptions
-from kombu.backends import get_backend_cls
+from kombu.transport import get_transport_cls
 from kombu.simple import SimpleQueue
 from kombu.utils import retry_over_time, OrderedDict
 
@@ -25,7 +25,7 @@ class BrokerConnection(object):
 
     :keyword virtual_host: Virtual host. Default is ``"/"``.
 
-    :keyword port: Port of the server. Default is backend specific.
+    :keyword port: Port of the server. Default is transport specific.
 
     :keyword insist: Insist on connecting to a server.
       In a configuration with multiple load-sharing servers, the insist
@@ -34,13 +34,13 @@ class BrokerConnection(object):
 
     :keyword ssl: Use ssl to connect to the server. Default is ``False``.
 
-    :keyword backend_cls: Backend class to use.  Can be a class,
+    :keyword transport: Transport class to use. Can be a class,
          or a string specifying the path to the class. (e.g.
-         ``kombu.backends.pyamqplib.Backend``), or one of the aliases:
+         ``kombu.transport.pyamqplib.Transport``), or one of the aliases:
          ``amqplib``, ``pika``, ``redis``, ``memory``.
 
     :keyword connect_timeout: Timeout in seconds for connecting to the
-      server. May not be suported by the specified backend.
+      server. May not be suported by the specified transport.
 
 
     **Usage**
@@ -65,11 +65,12 @@ class BrokerConnection(object):
 
     _closed = None
     _connection = None
-    _backend = None
+    _transport = None
 
     def __init__(self, hostname="localhost", userid="guest",
             password="guest", virtual_host="/", port=None, insist=False,
-            ssl=False, backend_cls=None, connect_timeout=5, pool=None):
+            ssl=False, transport=None, connect_timeout=5, pool=None,
+            backend_cls=None):
         self.hostname = hostname
         self.userid = userid
         self.password = password
@@ -78,7 +79,8 @@ class BrokerConnection(object):
         self.insist = insist
         self.connect_timeout = connect_timeout or self.connect_timeout
         self.ssl = ssl
-        self.backend_cls = backend_cls
+        # backend_cls argument will be removed shortly.
+        self.transport_cls = transport or backend_cls
         self.pool = pool
 
     def connect(self):
@@ -88,7 +90,7 @@ class BrokerConnection(object):
 
     def channel(self):
         """Request a new channel."""
-        return self.backend.create_channel(self.connection)
+        return self.transport.create_channel(self.connection)
 
     def drain_events(self, **kwargs):
         """Wait for a single event from the server.
@@ -99,13 +101,13 @@ class BrokerConnection(object):
         Usually used from an event loop.
 
         """
-        return self.backend.drain_events(self.connection, **kwargs)
+        return self.transport.drain_events(self.connection, **kwargs)
 
     def close(self):
         """Close the connection (if open)."""
         try:
             if self._connection:
-                self.backend.close_connection(self._connection)
+                self.transport.close_connection(self._connection)
                 self._connection = None
         except socket.error:
             pass
@@ -216,20 +218,21 @@ class BrokerConnection(object):
         else:
             self.close()
 
-    def create_backend(self):
-        return self.get_backend_cls()(client=self)
+    def create_transport(self):
+        return self.get_transport_cls()(client=self)
+    create_backend = create_transport # FIXME
 
     def clone(self, **kwargs):
         """Create a copy of the connection with the same connection
         settings."""
         return self.__class__(**dict(self.info(), **kwargs))
 
-    def get_backend_cls(self):
-        """Get the currently used backend class."""
-        backend_cls = self.backend_cls
-        if not backend_cls or isinstance(backend_cls, basestring):
-            backend_cls = get_backend_cls(backend_cls)
-        return backend_cls
+    def get_transport_cls(self):
+        """Get the currently used transport class."""
+        transport_cls = self.transport_cls
+        if not transport_cls or isinstance(transport_cls, basestring):
+            transport_cls = get_transport_cls(transport_cls)
+        return transport_cls
 
     def info(self):
         """Get connection info."""
@@ -240,7 +243,7 @@ class BrokerConnection(object):
                             ("port", self.port),
                             ("insist", self.insist),
                             ("ssl", self.ssl),
-                            ("backend_cls", self.backend_cls),
+                            ("transport_cls", self.transport_cls),
                             ("connect_timeout", self.connect_timeout),
                             ("pool", self.pool)))
 
@@ -293,7 +296,7 @@ class BrokerConnection(object):
                             channel_autoclose=channel_autoclose)
 
     def _establish_connection(self):
-        return self.backend.establish_connection()
+        return self.transport.establish_connection()
 
     def __repr__(self):
         """``x.__repr__() <==> repr(x)``"""
@@ -329,20 +332,20 @@ class BrokerConnection(object):
         return ":".join([self.hostname, str(self.port)])
 
     @property
-    def backend(self):
-        if self._backend is None:
-            self._backend = self.create_backend()
-        return self._backend
+    def transport(self):
+        if self._transport is None:
+            self._transport = self.create_transport()
+        return self._transport
 
     @property
     def connection_errors(self):
         """List of exceptions that may be raised by the connection."""
-        return self.backend.connection_errors
+        return self.transport.connection_errors
 
     @property
     def channel_errors(self):
         """List of exceptions that may be raised by the channel."""
-        return self.backend.channel_errors
+        return self.transport.channel_errors
 
 
 class BrokerConnectionPool(object):

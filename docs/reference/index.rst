@@ -13,13 +13,13 @@
     kombu.entity
     kombu.compat
     kombu.exceptions
-    kombu.backends
-    kombu.backends.pypika
-    kombu.backends.pyamqplib
-    kombu.backends.pyredis
-    kombu.backends.memory
-    kombu.backends.base
-    kombu.backends.virtual
+    kombu.transport
+    kombu.transport.pypika
+    kombu.transport.pyamqplib
+    kombu.transport.pyredis
+    kombu.transport.memory
+    kombu.transport.base
+    kombu.transport.virtual
     kombu.serialization
     kombu.abstract
     kombu.utils

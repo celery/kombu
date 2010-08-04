@@ -1,11 +1,11 @@
 ==========================================================
- amqplib Backend - kombu.backends.pyamqplib
+ pika Transport - kombu.transport.pypika
 ==========================================================
 
 .. contents::
     :local:
-.. currentmodule:: kombu.backends.pyamqplib
+.. currentmodule:: kombu.transport.pypika
 
-.. automodule:: kombu.backends.pyamqplib
+.. automodule:: kombu.transport.pypika
     :members:
     :undoc-members:

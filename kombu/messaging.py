@@ -177,7 +177,7 @@ class Consumer(object):
         The signature of the callbacks must take two arguments:
         ``(body, message)``, which is the decoded message body and
         the ``Message`` instance (a subclass of
-        :class:`~kombu.backends.base.BaseMessage`).
+        :class:`~kombu.transport.base.Message`).
 
     .. attribute:: on_decode_error
 
@@ -274,7 +274,7 @@ class Consumer(object):
         The signature of the callback needs to accept two arguments:
         ``(body, message)``, which is the decoded message body
         and the ``Message`` instance (a subclass of
-        :class:`~kombu.backends.base.BaseMessage`.
+        :class:`~kombu.transport.base.Message`.
 
         """
         self.callbacks.append(callback)

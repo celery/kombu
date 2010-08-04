@@ -1,11 +1,11 @@
 ==========================================================
- pika Backend - kombu.backends.pypika
+ Transports - kombu.transport
 ==========================================================
 
 .. contents::
     :local:
-.. currentmodule:: kombu.backends.pypika
+.. currentmodule:: kombu.transport
 
-.. automodule:: kombu.backends.pypika
+.. automodule:: kombu.transport
     :members:
     :undoc-members:

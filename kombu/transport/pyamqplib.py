@@ -2,11 +2,11 @@ import socket
 
 from amqplib import client_0_8 as amqp
 from amqplib.client_0_8 import transport
-from amqplib.client_0_8.channel import Channel
+from amqplib.client_0_8.channel import Channel as _Channel
 from amqplib.client_0_8.exceptions import AMQPConnectionException
 from amqplib.client_0_8.exceptions import AMQPChannelException
 
-from kombu.backends.base import BaseMessage, BaseBackend
+from kombu.transport import base
 
 DEFAULT_PORT = 5672
 
@@ -14,6 +14,7 @@ DEFAULT_PORT = 5672
 # this breaks in RabbitMQ tip, which no longer falls back to
 # 0-8 for unknown ids.
 transport.AMQP_PROTOCOL_HEADER = "AMQP\x01\x01\x08\x00"
+
 
 class Connection(amqp.Connection):
 
@@ -119,7 +120,7 @@ class Connection(amqp.Connection):
             return Channel(self, channel_id)
 
 
-class Message(BaseMessage):
+class Message(base.Message):
     """A message received by the broker.
 
     .. attribute:: body
@@ -148,7 +149,7 @@ class Message(BaseMessage):
                                       **kwargs)
 
 
-class Channel(Channel):
+class Channel(_Channel):
     Message = Message
     events = {"basic_return": []}
 
@@ -167,7 +168,7 @@ class Channel(Channel):
         return self.Message(self, raw_message)
 
 
-class Backend(BaseBackend):
+class Transport(base.Transport):
     default_port = DEFAULT_PORT
     connection_errors = (AMQPConnectionException,
                          socket.error,

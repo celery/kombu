@@ -2,11 +2,10 @@ from itertools import count
 
 import simplejson
 
-from kombu.backends.base import BaseBackend
-from kombu.backends.base import BaseMessage
+from kombu.transport import base
 
 
-class Message(BaseMessage):
+class Message(base.Message):
 
     def __init__(self, *args, **kwargs):
         self.throw_decode_error = kwargs.get("throw_decode_error", False)
@@ -107,7 +106,7 @@ class Connection(object):
         return Channel()
 
 
-class Backend(BaseBackend):
+class Transport(base.Transport):
 
     def establish_connection(self):
         return Connection()

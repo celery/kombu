@@ -1,11 +1,11 @@
 ==========================================================
- Backends - kombu.backends
+ Base Transport Interface - kombu.transport.base
 ==========================================================
 
 .. contents::
     :local:
-.. currentmodule:: kombu.backends
+.. currentmodule:: kombu.transport.base
 
-.. automodule:: kombu.backends
+.. automodule:: kombu.transport.base
     :members:
     :undoc-members:

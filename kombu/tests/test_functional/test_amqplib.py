@@ -33,7 +33,7 @@ class test_amqplib(unittest.TestCase):
         map(chan.queue_purge, names)
 
     def setUp(self):
-        self.connection = BrokerConnection(backend_cls="amqplib")
+        self.connection = BrokerConnection(transport="amqplib")
         try:
             self.connection.connect()
         except socket.error:

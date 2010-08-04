@@ -1,6 +1,6 @@
 """
 
-Backend base classes.
+Transport base classes.
 
 """
 from kombu import serialization
@@ -10,7 +10,7 @@ from kombu.exceptions import MessageStateError
 ACKNOWLEDGED_STATES = frozenset(["ACK", "REJECTED", "REQUEUED"])
 
 
-class BaseMessage(object):
+class Message(object):
     """Base class for received messages."""
     _state = None
 
@@ -98,8 +98,8 @@ class BaseMessage(object):
         return self._state in ACKNOWLEDGED_STATES
 
 
-class BaseBackend(object):
-    """Base class for backends."""
+class Transport(object):
+    """Base class for transports."""
     client = None
     default_port = None
     connection_errors = ()

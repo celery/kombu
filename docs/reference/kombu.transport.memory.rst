@@ -1,11 +1,11 @@
 ==========================================================
- Redis Backend - kombu.backends.pyredis
+ In-memory Transport - kombu.transport.memory
 ==========================================================
 
 .. contents::
     :local:
-.. currentmodule:: kombu.backends.pyredis
+.. currentmodule:: kombu.transport.memory
 
-.. automodule:: kombu.backends.pyredis
+.. automodule:: kombu.transport.memory
     :members:
     :undoc-members:

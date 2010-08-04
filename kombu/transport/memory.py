@@ -1,9 +1,9 @@
 from Queue import Queue
 
-from kombu.backends import virtual
+from kombu.transport import virtual
 
 
-class MemoryChannel(virtual.Channel):
+class Channel(virtual.Channel):
     queues = {}
     do_restore = False
 
@@ -29,5 +29,5 @@ class MemoryChannel(virtual.Channel):
         return size
 
 
-class MemoryBackend(virtual.VirtualBaseBackend):
-    Channel = MemoryChannel
+class Transport(virtual.Transport):
+    Channel = Channel

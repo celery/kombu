@@ -4,13 +4,13 @@ from anyjson import serialize, deserialize
 from redis import Redis
 from redis import exceptions
 
-from kombu.backends import virtual
+from kombu.transport import virtual
 
 DEFAULT_PORT = 6379
 DEFAULT_DB = 0
 
 
-class RedisChannel(virtual.Channel):
+class Channel(virtual.Channel):
     queues = {}
     _client = None
 
@@ -42,7 +42,7 @@ class RedisChannel(virtual.Channel):
         return size
 
     def close(self):
-        super(RedisChannel, self).close()
+        super(Channel, self).close()
         try:
             self.client.bgsave()
         except exceptions.ResponseError:
@@ -74,8 +74,8 @@ class RedisChannel(virtual.Channel):
         return self._client
 
 
-class RedisBackend(virtual.VirtualBaseBackend):
-    Channel = RedisChannel
+class Transport(virtual.Transport):
+    Channel = Channel
 
     default_port = DEFAULT_PORT
     connection_errors = (exceptions.ConnectionError,

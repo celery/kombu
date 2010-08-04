@@ -1,11 +1,11 @@
 ==========================================================
- In-memory Backend - kombu.backends.memory
+ amqplib Transport - kombu.transport.pyamqplib
 ==========================================================
 
 .. contents::
     :local:
-.. currentmodule:: kombu.backends.memory
+.. currentmodule:: kombu.transport.pyamqplib
 
-.. automodule:: kombu.backends.memory
+.. automodule:: kombu.transport.pyamqplib
     :members:
     :undoc-members:

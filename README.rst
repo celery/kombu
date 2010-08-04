@@ -72,10 +72,10 @@ The aim of ``kombu`` is to make messaging in Python as easy as possible by
 providing a high-level interface for producing and consuming messages. At the
 same time it is a goal to re-use what is already available as much as possible.
 
-`kombu` has pluggable messaging back-ends, so it is possible to support
+`kombu` has pluggable messaging transports, so it is possible to support
 several messaging systems. Currently, there is support for `AMQP`_
 (`py-amqplib`_, `pika`_), `STOMP`_ (`stompy`_). There's also an
-in-memory backend for testing purposes, using the `Python queue module`_.
+in-memory transport for testing purposes, using the `Python queue module`_.
 
 Several AMQP message broker implementations exists, including `RabbitMQ`_,
 `Apache ActiveMQ`_. You'll need to have one of these installed,

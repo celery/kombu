@@ -5,12 +5,12 @@ from pika import connection
 from pika import exceptions
 from pika.spec import Basic, BasicProperties
 
-from kombu.backends.base import BaseMessage, BaseBackend
+from kombu.transport import base
 
 DEFAULT_PORT = 5672
 
 
-class Message(BaseMessage):
+class Message(base.Message):
 
     def __init__(self, channel, amqp_message, **kwargs):
         channel_id, method, header, body = amqp_message
@@ -89,7 +89,7 @@ class AsyncoreConnection(asyncore_adapter.AsyncoreConnection):
         return Channel(channel.ChannelHandler(self))
 
 
-class SyncBackend(BaseBackend):
+class SyncTransport(base.Transport):
     default_port = DEFAULT_PORT
 
     connection_errors = (exceptions.ConnectionClosed,
@@ -146,5 +146,5 @@ class SyncBackend(BaseBackend):
         connection.close()
 
 
-class AsyncoreBackend(SyncBackend):
+class AsyncoreTransport(SyncTransport):
     Connection = AsyncoreConnection

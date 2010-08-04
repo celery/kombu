@@ -1,11 +1,11 @@
 ==========================================================
- Base Backend Interface - kombu.backends.base
+ Redis Transport - kombu.transport.pyredis
 ==========================================================
 
 .. contents::
     :local:
-.. currentmodule:: kombu.backends.base
+.. currentmodule:: kombu.transport.pyredis
 
-.. automodule:: kombu.backends.base
+.. automodule:: kombu.transport.pyredis
     :members:
     :undoc-members:
