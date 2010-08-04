@@ -21,7 +21,7 @@ class Producer(object):
     :keyword on_return: Callback to call for undeliverable messages,
         when ``mandatory`` or ``imediate`` is used. This callback
         needs the following signature:
-        ``(exception, exchange, routing_key, message).
+        ``(exception, exchange, routing_key, message)``.
 
     .. attribute:: channel
 

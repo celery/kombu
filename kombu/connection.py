@@ -263,7 +263,7 @@ class BrokerConnection(object):
           :class:`~kombu.entity.Queue`.
         :keyword exchange_opts: Additional keyword arguments passed to the
           constructor of the automatically created
-          :class:`~kombu.entity.Exchange.
+          :class:`~kombu.entity.Exchange`.
         :keyword channel: Channel to use. If not specified a new channel
            from the current connection will be used. Remember to call
            :meth:`~kombu.simple.SimpleQueue.close` when done with the
