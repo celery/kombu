@@ -246,7 +246,6 @@ your broker:</p>
 <p>First we open up a Python shell and start a message consumer.</p>
 <p>This consumer declares a queue named <tt class="docutils literal"><span class="pre">&quot;feed&quot;</span></tt>, receiving messages with
 the routing key <tt class="docutils literal"><span class="pre">&quot;importer&quot;</span></tt> from the <tt class="docutils literal"><span class="pre">&quot;feed&quot;</span></tt> exchange.</p>
-<blockquote>
 <div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">kombu</span> <span class="kn">import</span> <span class="n">Exchange</span><span class="p">,</span> <span class="n">Queue</span><span class="p">,</span> <span class="n">Consumer</span>
 </pre></div>
 </div>
@@ -274,13 +273,11 @@ the routing key <tt class="docutils literal"><span class="pre">&quot;importer&qu
 <span class="gp">... </span>    <span class="n">connection</span><span class="o">.</span><span class="n">drain_events</span><span class="p">(</span><span class="n">timeout</span><span class="o">=...</span><span class="p">)</span>
 </pre></div>
 </div>
-</blockquote>
 </div>
 <div class="section" id="sending-messages-using-a-producer">
 <h2>Sending messages using a Producer<a class="headerlink" href="#sending-messages-using-a-producer" title="Permalink to this headline">¶</a></h2>
 <p>Then we open up another Python shell to send some messages to the consumer
 defined in the last section.</p>
-<blockquote>
 <div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">kombu</span> <span class="kn">import</span> <span class="n">Exchange</span><span class="p">,</span> <span class="n">Producer</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">feed_exchange</span> <span class="o">=</span> <span class="n">Exchange</span><span class="p">(</span><span class="s">&quot;feed&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s">&quot;direct&quot;</span><span class="p">)</span>
 </pre></div>
@@ -292,7 +289,6 @@ defined in the last section.</p>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">producer</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 </pre></div>
 </div>
-</blockquote>
 <p>Look in the first Python shell again (where consumer loop is running),
 where the following text has been printed to the screen:</p>
 <div class="highlight-python"><pre>Got feed import message for: http://cnn.com/rss/edition.rss</pre>
@@ -396,7 +392,6 @@ re-queue the message.</p>
 <h2>Sub-classing the messaging classes<a class="headerlink" href="#sub-classing-the-messaging-classes" title="Permalink to this headline">¶</a></h2>
 <p>The <tt class="docutils literal"><span class="pre">Consumer</span></tt>, and <tt class="docutils literal"><span class="pre">Producer</span></tt> classes can also be sub classed. Thus you
 can define the above producer and consumer like so:</p>
-<blockquote>
 <div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="k">class</span> <span class="nc">FeedProducer</span><span class="p">(</span><span class="n">Producer</span><span class="p">):</span>
 <span class="gp">... </span>    <span class="n">exchange</span> <span class="o">=</span> <span class="n">exchange</span>
 <span class="gp">... </span>    <span class="n">routing_key</span> <span class="o">=</span> <span class="s">&quot;importer&quot;</span>
@@ -429,7 +424,6 @@ can define the above producer and consumer like so:</p>
 <span class="gp">... </span>    <span class="n">connection</span><span class="o">.</span><span class="n">drain_events</span><span class="p">()</span>
 </pre></div>
 </div>
-</blockquote>
 <div class="section" id="getting-help">
 <h3>Getting Help<a class="headerlink" href="#getting-help" title="Permalink to this headline">¶</a></h3>
 </div>
@@ -542,7 +536,7 @@ file in the top distribution directory for the full license text.</p>
     </div>
     <div class="footer">
         &copy; Copyright 2009-2010, Ask Solem.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0b2.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.1.
     </div>
   </body>
 </html>
