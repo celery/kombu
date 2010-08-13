@@ -309,10 +309,7 @@ class Transport(base.Transport):
         return channel
 
     def close_channel(self, channel):
-        try:
-            self._channels.remove(channel)
-        except KeyError:
-            pass
+        self._channels.discard(channel)
 
     def establish_connection(self):
         return self # for drain events
