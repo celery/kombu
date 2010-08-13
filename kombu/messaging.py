@@ -319,7 +319,7 @@ class Consumer(object):
 
         The client can request that messages should be sent in
         advance so that when the client finishes processing a message,
-        the following message is already held locally, rather needing
+        the following message is already held locally, rather than needing
         to be sent down the channel. Prefetching gives a performance
         improvement.
 
