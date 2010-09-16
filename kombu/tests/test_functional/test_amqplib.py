@@ -66,6 +66,7 @@ class test_amqplib(unittest.TestCase):
         b1 = Queue("pyamqplib.b1", self.exchange, "b1")(chan1)
         b2 = Queue("pyamqplib.b2", self.exchange, "b2")(chan1)
         b3 = Queue("pyamqplib.b3", self.exchange, "b3")(chan1)
+        [q.declare() for q in (b1, b2, b3)]
         [q.purge() for q in (b1, b2, b3)]
 
         producer.publish("b1", routing_key="b1")
