@@ -3,7 +3,6 @@ import threading
 
 from collections import deque
 from copy import copy
-from functools import wraps
 from itertools import count
 from time import time
 
@@ -11,6 +10,7 @@ from kombu import exceptions
 from kombu.transport import get_transport_cls
 from kombu.simple import SimpleQueue
 from kombu.utils import retry_over_time, OrderedDict
+from kombu.utils.functional import wraps
 
 
 class BrokerConnection(object):
