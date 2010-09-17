@@ -73,11 +73,10 @@ class test_Serialization(unittest.TestCase):
                               content_encoding='latin-1'))
 
     def test_content_type_binary(self):
-        self.assertNotEquals(unicode_string,
-                             registry.decode(
-                                 unicode_string_as_utf8,
-                                 content_type='application/data',
-                                 content_encoding='binary'))
+        self.assertIsInstance(registry.decode(unicode_string_as_utf8,
+                                              content_type='application/data',
+                                              content_encoding='binary'),
+                              str)
 
         self.assertEquals(unicode_string_as_utf8,
                           registry.decode(
