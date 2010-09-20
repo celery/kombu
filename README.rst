@@ -2,7 +2,7 @@
  kombu - AMQP Messaging Framework for Python
 #############################################
 
-:Version: 0.1.0
+:Version: 0.2.0
 
 **THIS IS A REWRITE OF CARROT**
 
