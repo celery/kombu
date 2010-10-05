@@ -248,7 +248,7 @@ class Consumer(object):
                     self._receive_callback,
                     no_ack=no_ack,
                     nowait=False)
-            self._consuming = False
+            self._consuming = True
 
     def receive(self, body, message):
         """Method called when a message is received.
