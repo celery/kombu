@@ -74,7 +74,7 @@ class Message(object):
         if self.acknowledged:
             raise self.MessageStateError(
                 "Message already acknowledged with state: %s" % self._state)
-        self.channel.basic_reject(self.delivery_tag)
+        self.channel.basic_reject(self.delivery_tag, requeue=False)
         self._state = "REJECTED"
 
     def requeue(self):
