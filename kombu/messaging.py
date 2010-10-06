@@ -193,7 +193,6 @@ class Consumer(object):
     callbacks = None
     on_decode_error = None
     _next_tag = count(1).next # global
-    _consuming = False
 
     def __init__(self, channel, queues, no_ack=None, auto_declare=None,
             callbacks=None, on_decode_error=None):
@@ -228,27 +227,23 @@ class Consumer(object):
         for queue in self.queues:
             queue.declare()
 
-    def consume(self, delivery_tag=None, no_ack=None):
-        """Register consumer on server.
+    def _basic_consume(self, queue, consumer_tag=None,
+            no_ack=no_ack, nowait=True):
+        if queue.name not in self._active_tags:
+            queue.consume(self._add_tag(queue, consumer_tag),
+                          self._receive_callback,
+                          nowait=nowait)
 
-        :keyword: delivery_tag: Unique delivery tag for this channel.
-           If not specified a new tag will be automatically generated.
+    def consume(self, no_ack=None):
+        """Register consumer on server.
 
         """
         if no_ack is None:
             no_ack = self.no_ack
-        if not self._consuming:
-            H, T = self.queues[:-1], self.queues[-1]
-            for queue in H:
-                queue.consume(self._add_tag(queue, delivery_tag),
-                                self._receive_callback,
-                                no_ack=no_ack,
-                                nowait=True)
-            T.consume(self._add_tag(T),
-                    self._receive_callback,
-                    no_ack=no_ack,
-                    nowait=False)
-            self._consuming = False
+        H, T = self.queues[:-1], self.queues[-1]
+        for queue in H:
+            self._basic_consume(queue, no_ack=no_ack, nowait=True)
+        self._basic_consume(T, no_ack=no_ack, nowait=False)
 
     def receive(self, body, message):
         """Method called when a message is received.
@@ -295,10 +290,12 @@ class Consumer(object):
         mean the server will not send any more messages for this consumer.
 
         """
-        for queue, tag in self._active_tags.items():
-            queue.cancel(tag)
+        for tag in self._active_tags.values():
+            self.channel.basic_cancel(tag)
         self._active_tags.clear()
-        self._consuming = False
+
+    def cancel_by_queue(self, queue):
+        self.channel.basic_cancel(self._active_tags[queue])
 
     def flow(self, active):
         """Enable/disable flow from peer.
@@ -357,9 +354,9 @@ class Consumer(object):
         """
         return self.channel.basic_recover(requeue=requeue)
 
-    def _add_tag(self, queue, delivery_tag=None):
-        tag = delivery_tag or str(self._next_tag())
-        self._active_tags[queue] = tag
+    def _add_tag(self, queue, consumer_tag=None):
+        tag = consumer_tag or str(self._next_tag())
+        self._active_tags[queue.name] = tag
         return tag
 
     def _receive_callback(self, raw_message):
