@@ -157,7 +157,7 @@ class Channel(object):
     def _delete(self, queue):
         self._purge(queue)
 
-    def _new_queue(self, queue):
+    def _new_queue(self, queue, **kwargs):
         pass
 
     def _lookup(self, exchange, routing_key, default="ae.undeliver"):
@@ -216,7 +216,7 @@ class Channel(object):
         table[routing_key] = queue
 
     def queue_purge(self, queue, **kwargs):
-        return self._purge(queue, **kwargs)
+        return self._purge(queue)
 
     def flow(self, active=True):
         pass
@@ -251,7 +251,7 @@ class Channel(object):
         message["properties"]["delivery_info"]["exchange"] = exchange
         message["properties"]["delivery_info"]["routing_key"] = routing_key
         message["properties"]["delivery_tag"] = self._next_delivery_tag()
-        self._put(self._lookup(exchange, routing_key), message)
+        self._put(self._lookup(exchange, routing_key), message, **kwargs)
 
     def basic_cancel(self, consumer_tag):
         queue = _consumers.pop(consumer_tag, None)

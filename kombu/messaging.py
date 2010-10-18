@@ -111,7 +111,7 @@ class Producer(object):
     def publish(self, body, routing_key=None, delivery_mode=None,
             mandatory=False, immediate=False, priority=0, content_type=None,
             content_encoding=None, serializer=None, headers=None,
-            compression=None):
+            compression=None, exchange=None):
         """Publish message to the specified exchange.
 
         :param body: Message body.
@@ -125,6 +125,8 @@ class Producer(object):
         :keyword serializer: Serializer to use. Default is autodetect.
         :keyword headers: Mapping of arbitrary headers to pass along
           with the message body.
+        :keyword exchange: Override the exchange.  Note that this exchange
+          must have been declared.
 
         """
         headers = headers or {}
@@ -143,7 +145,7 @@ class Producer(object):
                                         content_encoding,
                                         headers=headers)
         return self.exchange.publish(message, routing_key, mandatory,
-                                     immediate)
+                                     immediate, exchange=exchange)
 
 
 class Consumer(object):

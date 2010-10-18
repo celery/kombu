@@ -14,7 +14,7 @@ class Channel(virtual.Channel):
     def _get(self, queue):
         return self.queues[queue].get(block=False)
 
-    def _put(self, queue, message):
+    def _put(self, queue, message, **kwargs):
         self.queues[queue].put(message)
 
     def _size(self, queue):

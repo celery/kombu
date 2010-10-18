@@ -199,7 +199,7 @@ class Exchange(MaybeChannelBound):
                                             headers=headers)
 
     def publish(self, message, routing_key=None, mandatory=False,
-            immediate=False):
+            immediate=False, exchange=None):
         """Publish message.
 
         :param message: :meth:`Message` instance to publish.
@@ -208,8 +208,9 @@ class Exchange(MaybeChannelBound):
         :param immediate: Currently not supported.
 
         """
+        exchange = exchange or self.name
         return self.channel.basic_publish(message,
-                                          exchange=self.name,
+                                          exchange=exchange,
                                           routing_key=routing_key,
                                           mandatory=mandatory,
                                           immediate=immediate)
