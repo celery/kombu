@@ -188,7 +188,7 @@ class Channel(object):
         return [_consumers[tag] for tag in self._consumers]
 
     def exchange_declare(self, exchange, type="direct", durable=False,
-            auto_delete=False, arguments=None):
+            auto_delete=False, arguments=None, nowait=False):
         if exchange not in _exchanges:
             _exchanges[exchange] = {"type": type,
                                     "durable": durable,
@@ -196,7 +196,7 @@ class Channel(object):
                                     "arguments": arguments or {},
                                     "table": {}}
 
-    def exchange_delete(self, exchange, if_unused=False):
+    def exchange_delete(self, exchange, if_unused=False, nowait=False):
         for rkey, queue in _exchanges[exchange]["table"].items():
             self._purge(queue)
         _exchanges.pop(exchange, None)
@@ -205,12 +205,13 @@ class Channel(object):
         self._new_queue(queue, **kwargs)
         return queue, self._size(queue), 0
 
-    def queue_delete(self, queue, if_unusued=False, if_empty=False):
+    def queue_delete(self, queue, if_unusued=False, if_empty=False, **kwargs):
         if if_empty and self._size(queue):
             return
         self._delete(queue)
 
-    def queue_bind(self, queue, exchange, routing_key, arguments=None):
+    def queue_bind(self, queue, exchange, routing_key, arguments=None,
+            **kwargs):
         table = _exchanges[exchange].setdefault("table", {})
         table[routing_key] = queue
 
@@ -241,8 +242,7 @@ class Channel(object):
         if requeue:
             self.qos_manager.requeue(delivery_tag)
 
-    def basic_consume(self, queue, no_ack, callback, consumer_tag,
-                         **kwargs):
+    def basic_consume(self, queue, no_ack, callback, consumer_tag, **kwargs):
         _consumers[consumer_tag] = queue
         _callbacks[queue] = callback
         self._consumers.add(consumer_tag)
