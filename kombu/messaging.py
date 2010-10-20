@@ -366,11 +366,11 @@ class Consumer(object):
         try:
             decoded = message.payload
         except Exception, exc:
-            if self.on_decode_error:
-                return self.on_decode_error(message, exc)
-            else:
+            if not self.on_decode_error:
                 raise
-        self.receive(decoded, message)
+            self.on_decode_error(message, exc)
+        else:
+            self.receive(decoded, message)
 
     def __enter__(self):
         self.consume()
