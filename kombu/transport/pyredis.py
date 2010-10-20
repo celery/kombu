@@ -11,7 +11,6 @@ DEFAULT_DB = 0
 
 
 class Channel(virtual.Channel):
-    queues = {}
     _client = None
 
     def _new_queue(self, queue, **kwargs):
@@ -33,7 +32,7 @@ class Channel(virtual.Channel):
             return deserialize(item), dest
         raise Empty()
 
-    def _put(self, queue, message):
+    def _put(self, queue, message, **kwargs):
         self.client.lpush(queue, serialize(message))
 
     def _purge(self, queue):
