@@ -13,6 +13,7 @@
     kombu.messaging
     kombu.entity
     kombu.compat
+    kombu.pidbox
     kombu.exceptions
     kombu.transport
     kombu.transport.pypika
@@ -25,3 +26,4 @@
     kombu.compression
     kombu.abstract
     kombu.utils
+    kombu.utils.functional
