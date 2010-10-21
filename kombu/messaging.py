@@ -234,6 +234,7 @@ class Consumer(object):
         if queue.name not in self._active_tags:
             queue.consume(self._add_tag(queue, consumer_tag),
                           self._receive_callback,
+                          no_ack=no_ack,
                           nowait=nowait)
 
     def consume(self, no_ack=None):
