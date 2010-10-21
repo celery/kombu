@@ -1,29 +1,40 @@
 """
 
-Server
-======
+Creating the applications Mailbox
+=================================
 
-mailbox = pidbox.Mailbox("celerybeat", )
+::
 
-@mailbox.handler
-def reload_schedule(state, **kwargs):
-    state.beat.reload_schedule()
-    state["last_reload"] = time()
+    >>> mailbox = pidbox.Mailbox("celerybeat", type="direct")
 
-@mailbox.handler
-def connection_info(state, **kwargs):
-    return {"connection": state.connection.info()}
+    >>> @mailbox.handler
+    >>> def reload_schedule(state, **kwargs):
+    ...     state["beat"].reload_schedule()
 
+    >>> @mailbox.handler
+    >>> def connection_info(state, **kwargs):
+    ...     return {"connection": state["connection"].info()}
 
-connection = kombu.BrokerConnection()
-mailbox(connection).Node(hostname).consume()
+Example Node
+============
 
-Client
-======
+::
+    >>> connection = kombu.BrokerConnection()
+    >>> state = {"beat": beat,
+                 "connection: connection}
+    >>> consumer = mailbox(connection).Node(hostname).listen()
+    >>> try:
+    ...     while True:
+    ...         connection.drain_events(timeout=1)
+    ... finally:
+    ...     consumer.cancel()
 
-celerybeat = pidbox.lookup("celerybeat")
-celerybeat.cast("reload_schedule")
-info = celerybeat.call("connection_info", timeout=1)
+Example Client
+==============
+
+::
+    >>> mailbox.cast("reload_schedule")   # cast is async.
+    >>> info = celerybeat.call("connection_info", timeout=1)
 
 """
 
