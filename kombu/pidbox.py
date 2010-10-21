@@ -21,7 +21,7 @@ Example Node
 ::
     >>> connection = kombu.BrokerConnection()
     >>> state = {"beat": beat,
-                 "connection: connection}
+                 "connection": connection}
     >>> consumer = mailbox(connection).Node(hostname).listen()
     >>> try:
     ...     while True:
