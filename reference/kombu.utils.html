@@ -6,13 +6,13 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Utilities - kombu.utils &mdash; Kombu v0.1.0 documentation</title>
+    <title>Utilities - kombu.utils &mdash; Kombu v0.9.0 documentation</title>
     <link rel="stylesheet" href="../static/celery.css" type="text/css" />
     <link rel="stylesheet" href="../static/pygments.css" type="text/css" />
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.1.0',
+        VERSION:     '0.9.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -21,9 +21,9 @@
     <script type="text/javascript" src="../static/jquery.js"></script>
     <script type="text/javascript" src="../static/underscore.js"></script>
     <script type="text/javascript" src="../static/doctools.js"></script>
-    <link rel="top" title="Kombu v0.1.0 documentation" href="../index.html" />
+    <link rel="top" title="Kombu v0.9.0 documentation" href="../index.html" />
     <link rel="up" title="API Reference" href="index.html" />
-    <link rel="next" title="Change history" href="../changelog.html" />
+    <link rel="next" title="functools - kombu.utils.functional" href="kombu.utils.functional.html" />
     <link rel="prev" title="Object Utilities - kombu.abstract" href="kombu.abstract.html" /> 
   </head>
   <body>
@@ -37,12 +37,12 @@
           <a href="../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../changelog.html" title="Change history"
+          <a href="kombu.utils.functional.html" title="functools - kombu.utils.functional"
              accesskey="N">next</a> |</li>
         <li class="right" >
           <a href="kombu.abstract.html" title="Object Utilities - kombu.abstract"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">Kombu v0.1.0 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu v0.9.0 documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">API Reference</a> &raquo;</li> 
       </ul>
     </div>  
@@ -134,6 +134,24 @@ order if false.</p>
 </dd></dl>
 
 <dl class="function">
+<dt id="kombu.utils.gen_unique_id">
+<tt class="descclassname">kombu.utils.</tt><tt class="descname">gen_unique_id</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.utils.gen_unique_id" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate a unique id, having - hopefully - a very small chance of
+collission.</p>
+<p>For now this is provided by <tt class="xref py py-func docutils literal"><span class="pre">uuid.uuid4()</span></tt>.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="kombu.utils.kwdict">
+<tt class="descclassname">kombu.utils.</tt><tt class="descname">kwdict</tt><big>(</big><em>kwargs</em><big>)</big><a class="headerlink" href="#kombu.utils.kwdict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Make sure keyword arguments are not in unicode.</p>
+<dl class="docutils">
+<dt>This should be fixed in newer Python versions,</dt>
+<dd>see: <a class="reference external" href="http://bugs.python.org/issue4978">http://bugs.python.org/issue4978</a>.</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
 <dt id="kombu.utils.maybe_list">
 <tt class="descclassname">kombu.utils.</tt><tt class="descname">maybe_list</tt><big>(</big><em>v</em><big>)</big><a class="headerlink" href="#kombu.utils.maybe_list" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
@@ -203,8 +221,8 @@ retry.</li>
   <p class="topless"><a href="kombu.abstract.html"
                         title="previous chapter">Object Utilities - kombu.abstract</a></p>
   <h4>Next topic</h4>
-  <p class="topless"><a href="../changelog.html"
-                        title="next chapter">Change history</a></p>
+  <p class="topless"><a href="kombu.utils.functional.html"
+                        title="next chapter">functools - kombu.utils.functional</a></p>
   <h3>This Page</h3>
   <ul class="this-page-menu">
     <li><a href="../sources/reference/kombu.utils.txt"
@@ -237,12 +255,12 @@ retry.</li>
           <a href="../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../changelog.html" title="Change history"
+          <a href="kombu.utils.functional.html" title="functools - kombu.utils.functional"
              >next</a> |</li>
         <li class="right" >
           <a href="kombu.abstract.html" title="Object Utilities - kombu.abstract"
              >previous</a> |</li>
-        <li><a href="../index.html">Kombu v0.1.0 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu v0.9.0 documentation</a> &raquo;</li>
           <li><a href="index.html" >API Reference</a> &raquo;</li> 
       </ul>
     </div>

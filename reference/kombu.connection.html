@@ -6,13 +6,13 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Broker Connections - kombu.connection &mdash; Kombu v0.1.0 documentation</title>
+    <title>Broker Connections - kombu.connection &mdash; Kombu v0.9.0 documentation</title>
     <link rel="stylesheet" href="../static/celery.css" type="text/css" />
     <link rel="stylesheet" href="../static/pygments.css" type="text/css" />
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.1.0',
+        VERSION:     '0.9.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -21,7 +21,7 @@
     <script type="text/javascript" src="../static/jquery.js"></script>
     <script type="text/javascript" src="../static/underscore.js"></script>
     <script type="text/javascript" src="../static/doctools.js"></script>
-    <link rel="top" title="Kombu v0.1.0 documentation" href="../index.html" />
+    <link rel="top" title="Kombu v0.9.0 documentation" href="../index.html" />
     <link rel="up" title="API Reference" href="index.html" />
     <link rel="next" title="Simple Interface - kombu.simple" href="kombu.simple.html" />
     <link rel="prev" title="API Reference" href="index.html" /> 
@@ -42,7 +42,7 @@
         <li class="right" >
           <a href="index.html" title="API Reference"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">Kombu v0.1.0 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu v0.9.0 documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">API Reference</a> &raquo;</li> 
       </ul>
     </div>  
@@ -56,7 +56,7 @@
 <h1>Broker Connections - kombu.connection<a class="headerlink" href="#broker-connections-kombu-connection" title="Permalink to this headline">¶</a></h1>
 <span class="target" id="module-kombu.connection"></span><dl class="class">
 <dt id="kombu.connection.BrokerConnection">
-<em class="property">class </em><tt class="descclassname">kombu.connection.</tt><tt class="descname">BrokerConnection</tt><big>(</big><em>hostname='localhost'</em>, <em>userid='guest'</em>, <em>password='guest'</em>, <em>virtual_host='/'</em>, <em>port=None</em>, <em>insist=False</em>, <em>ssl=False</em>, <em>transport=None</em>, <em>connect_timeout=5</em>, <em>pool=None</em>, <em>backend_cls=None</em><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnection" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">kombu.connection.</tt><tt class="descname">BrokerConnection</tt><big>(</big><em>hostname='localhost'</em>, <em>userid='guest'</em>, <em>password='guest'</em>, <em>virtual_host='/'</em>, <em>port=None</em>, <em>insist=False</em>, <em>ssl=False</em>, <em>transport=None</em>, <em>connect_timeout=5</em>, <em>backend_cls=None</em><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnection" title="Permalink to this definition">¶</a></dt>
 <dd><p>A connection to the broker.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -140,13 +140,6 @@ object.</li>
 </tr>
 </tbody>
 </table>
-</dd></dl>
-
-<dl class="method">
-<dt id="kombu.connection.BrokerConnection.acquire">
-<tt class="descname">acquire</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnection.acquire" title="Permalink to this definition">¶</a></dt>
-<dd><p>Acquire connection.</p>
-<p>Only here for API compatibility with <a class="reference internal" href="#kombu.connection.BrokerConnectionPool" title="kombu.connection.BrokerConnectionPool"><tt class="xref py py-class docutils literal"><span class="pre">BrokerConnectionPool</span></tt></a>.</p>
 </dd></dl>
 
 <dl class="method">
@@ -306,121 +299,10 @@ each retry.</li>
 <dd><p>Get connection info.</p>
 </dd></dl>
 
-<dl class="method">
-<dt id="kombu.connection.BrokerConnection.release">
-<tt class="descname">release</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnection.release" title="Permalink to this definition">¶</a></dt>
-<dd><p>Close the connection, or if the connection is managed by a pool
-the connection will be released to the pool so it can be reused.</p>
-<p><strong>NOTE:</strong> You must never perform operations on a connection
-that has been released.</p>
-</dd></dl>
-
 <dl class="attribute">
 <dt id="kombu.connection.BrokerConnection.transport">
 <tt class="descname">transport</tt><a class="headerlink" href="#kombu.connection.BrokerConnection.transport" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
-
-</dd></dl>
-
-<dl class="class">
-<dt id="kombu.connection.BrokerConnectionPool">
-<em class="property">class </em><tt class="descclassname">kombu.connection.</tt><tt class="descname">BrokerConnectionPool</tt><big>(</big><em>initial</em>, <em>max=10</em>, <em>ensure=False</em>, <em>preconnect=0</em><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnectionPool" title="Permalink to this definition">¶</a></dt>
-<dd><p>Pool of connections.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>initial</strong> &#8211; Initial <a class="reference internal" href="#kombu.connection.BrokerConnection" title="kombu.connection.BrokerConnection"><tt class="xref py py-class docutils literal"><span class="pre">BrokerConnection</span></tt></a> to take connection
-parameters from.</li>
-<li><strong>max</strong> &#8211; Maximum number of connections in the pool.
-Default is 10.</li>
-<li><strong>ensure</strong> &#8211; When <tt class="docutils literal"><span class="pre">preconnect</span></tt> on, ensure we&#8217;re able to establish
-a connection. Default is <tt class="xref docutils literal"><span class="pre">False</span></tt>.</li>
-<li><strong>preconnect</strong> &#8211; Number of connections at
-instantiation. Default is to only establish connections when needed.</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-<dl class="method">
-<dt id="kombu.connection.BrokerConnectionPool.acquire">
-<tt class="descname">acquire</tt><big>(</big><em>block=True</em>, <em>timeout=None</em><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnectionPool.acquire" title="Permalink to this definition">¶</a></dt>
-<dd><p>Acquire connection.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field"><th class="field-name" colspan="2">Raises <a class="reference internal" href="kombu.exceptions.html#kombu.exceptions.PoolExhausted" title="kombu.exceptions.PoolExhausted">kombu.exceptions.PoolExhausted</a>:</th></tr>
-<tr><td>&nbsp;</td><td class="field-body">If there are no
-available connections to be acquired.</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="attribute">
-<dt id="kombu.connection.BrokerConnectionPool.active">
-<tt class="descname">active</tt><a class="headerlink" href="#kombu.connection.BrokerConnectionPool.active" title="Permalink to this definition">¶</a></dt>
-<dd><p>Number of acquired connections.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="kombu.connection.BrokerConnectionPool.close">
-<tt class="descname">close</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnectionPool.close" title="Permalink to this definition">¶</a></dt>
-<dd><p>Close all connections.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="kombu.connection.BrokerConnectionPool.ensure">
-<tt class="descname">ensure</tt><big>(</big><em>fun</em>, <em>errback=None</em>, <em>max_retries=None</em>, <em>interval_start=2</em>, <em>interval_step=2</em>, <em>interval_max=30</em><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnectionPool.ensure" title="Permalink to this definition">¶</a></dt>
-<dd><p>See <a class="reference internal" href="#kombu.connection.BrokerConnection.ensure" title="kombu.connection.BrokerConnection.ensure"><tt class="xref py py-meth docutils literal"><span class="pre">BrokerConnection.ensure()</span></tt></a>.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="kombu.connection.BrokerConnectionPool.grow">
-<tt class="descname">grow</tt><big>(</big><em>n</em>, <em>connect=False</em><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnectionPool.grow" title="Permalink to this definition">¶</a></dt>
-<dd><p>Add <tt class="docutils literal"><span class="pre">n</span></tt> more connections to the pool.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>connect</strong> &#8211; Establish connections imemediately.
-By default connections are only established when needed.</li>
-</ul>
-</td>
-</tr>
-<tr class="field"><th class="field-name" colspan="2">Raises <a class="reference internal" href="kombu.exceptions.html#kombu.exceptions.PoolLimitExceeded" title="kombu.exceptions.PoolLimitExceeded">kombu.exceptions.PoolLimitExceeded</a>:</th></tr>
-<tr><td>&nbsp;</td><td class="field-body"><p class="first last">If there are already
-more than <tt class="xref py py-attr docutils literal"><span class="pre">max</span></tt> number of connections in the pool.</p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="kombu.connection.BrokerConnectionPool.release">
-<tt class="descname">release</tt><big>(</big><em>connection</em><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnectionPool.release" title="Permalink to this definition">¶</a></dt>
-<dd><p>Release connection so it can be used by others.</p>
-<p><strong>NOTE:</strong> You must never perform operations on a connection
-that has been released.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="kombu.connection.BrokerConnectionPool.replace">
-<tt class="descname">replace</tt><big>(</big><em>connection</em><big>)</big><a class="headerlink" href="#kombu.connection.BrokerConnectionPool.replace" title="Permalink to this definition">¶</a></dt>
-<dd><p>Clone and replace connection with a new one.</p>
-<p>This is useful if the connection is broken.</p>
-</dd></dl>
-
-<dl class="attribute">
-<dt id="kombu.connection.BrokerConnectionPool.total">
-<tt class="descname">total</tt><a class="headerlink" href="#kombu.connection.BrokerConnectionPool.total" title="Permalink to this definition">¶</a></dt>
-<dd><p>Current total number of connections</p>
-</dd></dl>
 
 </dd></dl>
 
@@ -477,7 +359,7 @@ that has been released.</p>
         <li class="right" >
           <a href="index.html" title="API Reference"
              >previous</a> |</li>
-        <li><a href="../index.html">Kombu v0.1.0 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu v0.9.0 documentation</a> &raquo;</li>
           <li><a href="index.html" >API Reference</a> &raquo;</li> 
       </ul>
     </div>
