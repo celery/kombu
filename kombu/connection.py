@@ -290,7 +290,7 @@ class BrokerConnection(object):
         return self
 
     def __exit__(self, *args):
-        self.release()
+        self.close()
 
     @property
     def connection(self):
