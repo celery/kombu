@@ -10,13 +10,20 @@ class EnsureExhausted(Exception):
     """ensure() limit exceeded."""
 
 
-class PoolExhausted(Exception):
-    """All connections acquired."""
-
-
-class PoolLimitExceeded(Exception):
-    """Can't add more connections to pool."""
-
 class TimeoutError(Exception):
     """Operation timed out."""
 
+
+class LimitExceeded(Exception):
+    """Limit exceeded."""
+    pass
+
+
+class ConnectionLimitExceeded(LimitExceeded):
+    """Maximum number of simultaneous connections exceeded."""
+    pass
+
+
+class ChannelLimitExceeded(LimitExceeded):
+    """Maximum number of simultaenous channels exceeded."""
+    pass
