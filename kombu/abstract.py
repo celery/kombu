@@ -43,6 +43,16 @@ class MaybeChannelBound(Object):
             self._is_bound = True
         return self
 
+    def revive(self, channel):
+        """Revive channel afer connection re-established.
+
+        Used by :meth:`~kombu.connection.BrokerConnection.ensure`.
+
+        """
+        if self.is_bound:
+            self._channel = channel
+            self.when_bound()
+
     def when_bound(self):
         """Callback called when the class is bound."""
         pass

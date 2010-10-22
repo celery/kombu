@@ -133,7 +133,6 @@ class BrokerConnection(object):
           each retry.
 
         """
-        print("CONNECTION ERRORS: %r" % (self.connection_errors, ))
         retry_over_time(self.connect, self.connection_errors, (), {},
                         errback, max_retries,
                         interval_start, interval_step, interval_max)
@@ -198,7 +197,7 @@ class BrokerConnection(object):
                                            interval_start,
                                            interval_step,
                                            interval_max)
-                    obj.channel = self.channel()
+                    obj.revive(self.channel())
                     got_connection += 1
 
         _insured.func_name = _insured.__name__ = "%s(insured)" % fun.__name__

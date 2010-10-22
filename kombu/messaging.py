@@ -11,7 +11,7 @@ class Producer(object):
     """Message Producer.
 
     :param channel: Connection channel.
-    :keyword exchange: Exchange to publish to.
+    :keyword exchange: Default exchange.
     :keyword routing_key: Default routing key.
     :keyword serializer: Default serializer. Default is ``"json"``.
     :keyword compression: Default compression method. Default is no
@@ -19,9 +19,9 @@ class Producer(object):
     :keyword auto_declare: Automatically declare the exchange
       at instantiation. Default is ``True``.
     :keyword on_return: Callback to call for undeliverable messages,
-        when ``mandatory`` or ``imediate`` is used. This callback
-        needs the following signature:
-        ``(exception, exchange, routing_key, message)``.
+        when the ``mandatory`` or ``imediate`` arguments to
+        :meth:`publish` is used. This callback needs the following
+        signature: ``(exception, exchange, routing_key, message)``.
 
     .. attribute:: channel
 
@@ -70,6 +70,10 @@ class Producer(object):
 
         if self.on_return:
             self.channel.events["basic_return"].append(self.on_return)
+
+    def revive(self, channel):
+        self.channel = channel
+        self.exchange.revive(channel)
 
     def declare(self):
         """Declare the exchange.
