@@ -223,6 +223,11 @@ class Consumer(object):
         if self.auto_declare:
             self.declare()
 
+    def revive(self, channel):
+        for queue in self.queues:
+            queue.revive(channel)
+        self.channel = channel
+
     def declare(self):
         """Declare queues, exchanges and bindings.
 
