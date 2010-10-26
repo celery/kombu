@@ -12,6 +12,20 @@ DEFAULT_DB = 0
 
 class Channel(virtual.Channel):
     _client = None
+    supports_fanout = True
+    keyprefix_fanout = "_kombu.fanout.%s"
+    keyprefix_queue = "_kombu.binding.%s"
+    sep = '\x06\x16'
+
+    def _queue_bind(self, exchange, routing_key, pattern, queue):
+        self.client.sadd(self.keyprefix_queue % (exchange, ),
+                         self.sep.join([routing_key or "",
+                                        pattern or "",
+                                        queue or ""]))
+
+    def get_table(self, exchange):
+        members = self.client.smembers(self.keyprefix_queue % (exchange, ))
+        return [tuple(val.split(self.sep)) for val in members]
 
     def _new_queue(self, queue, **kwargs):
         pass
@@ -48,7 +62,7 @@ class Channel(virtual.Channel):
             pass
 
     def _open(self):
-        conninfo = self.connection.connection
+        conninfo = self.connection.client
         database = conninfo.virtual_host
         if not isinstance(database, int):
             if not database or database == "/":
@@ -76,6 +90,7 @@ class Channel(virtual.Channel):
 class Transport(virtual.Transport):
     Channel = Channel
 
+    interval = 1
     default_port = DEFAULT_PORT
     connection_errors = (exceptions.ConnectionError,
                          exceptions.AuthenticationError)

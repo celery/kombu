@@ -1,3 +1,8 @@
+import pickle
+import sys
+import tempfile
+
+from pprint import pformat
 from time import sleep
 from uuid import UUID, uuid4, _uuid_generate_random
 
@@ -5,6 +10,10 @@ try:
     import ctypes
 except ImportError:
     ctypes = None
+
+
+def say(m, *s):
+    sys.stderr.write(str(m) % s + "\n")
 
 
 def gen_unique_id():
@@ -90,6 +99,22 @@ def retry_over_time(fun, catch, args=[], kwargs={}, errback=None,
             sleep(interval)
         else:
             return retval
+
+
+def emergency_dump_state(state):
+    persist = tempfile.mktemp()
+    say("EMERGENCY DUMP STATE TO FILE -> %s <-" % persist)
+    fh = open(persist, "w")
+    try:
+        try:
+            pickle.dump(state, fh, protocol=0)
+        except Exception, exc:
+            say("Cannot pickle state: %r. Fallback to pformat." % (exc, ))
+            fh.write(pformat(state))
+    finally:
+        fh.flush()
+        fh.close()
+    return persist
 
 
 ############## str.partition/str.rpartition #################################
