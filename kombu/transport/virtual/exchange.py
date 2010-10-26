@@ -58,7 +58,6 @@ class DirectExchange(ExchangeType):
     """The `direct` exchange routes based on exact routing keys."""
 
     def lookup(self, table, exchange, routing_key, default):
-        print("TABLE: %r" % (table, ))
         return [queue for rkey, _, queue in table
                     if rkey == routing_key] or [default]
 
@@ -115,7 +114,7 @@ class FanoutExchange(ExchangeType):
         return routing_key, None, queue
 
 
-#: Map of standard exchange types and their corresponding class
+#: Map of standard exchange types and corresponding classes.
 STANDARD_EXCHANGE_TYPES = {"direct": DirectExchange,
                            "topic": TopicExchange,
                            "fanout": FanoutExchange}

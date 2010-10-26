@@ -22,6 +22,8 @@
     kombu.transport.memory
     kombu.transport.base
     kombu.transport.virtual
+    kombu.transport.virtual.exchange
+    kombu.transport.virtual.scheduling
     kombu.serialization
     kombu.compression
     kombu.abstract

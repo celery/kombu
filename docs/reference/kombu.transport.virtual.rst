@@ -1,7 +1,3 @@
-==========================================================
- Virtual Transport Interface - kombu.transport.virtual
-==========================================================
-
 .. contents::
     :local:
 .. currentmodule:: kombu.transport.virtual
