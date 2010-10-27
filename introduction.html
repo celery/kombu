@@ -62,54 +62,6 @@
 </table>
 <p><strong>THIS IS A REWRITE OF CARROT</strong></p>
 <p>Carrot will be discontinued in favor of Kombu.</p>
-<p>Proposed API:</p>
-<div class="highlight-python"><pre>from kombu.connection BrokerConnection
-from kombu.messaging import Exchange, Queue, Consumer, Producer
-
-media_exchange = Exchange("media", "direct", durable=True)
-video_queue = Queue("video", exchange=media_exchange, key="video")
-
-# connections/channels
-connection = BrokerConnection("localhost", "guest", "guest", "/")
-channel = connection.channel()
-
-# produce
-producer = Producer(channel, exchange=media_exchange, serializer="json")
-producer.publish({"name": "/tmp/lolcat1.avi", "size": 1301013})
-
-# consume
-consumer = Consumer(channel, video_queue)
-consumer.register_callback(process_media)
-consumer.consume()
-
-while True:
-    connection.drain_events()
-
-
-# consumerset:
-video_queue = Queue("video", exchange=media_exchange, key="video")
-image_queue = Queue("image", exchange=media_exchange, key="image")
-
-consumer = Consumer(channel, [video_queue, image_queue])
-consumer.consume()
-
-while True:
-    connection.drain_events()</pre>
-</div>
-<p>Exchanges/Queue can be bound to a channel:</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">exchange</span> <span class="o">=</span> <span class="n">Exchange</span><span class="p">(</span><span class="s">&quot;tasks&quot;</span><span class="p">,</span> <span class="s">&quot;direct&quot;</span><span class="p">)</span>
-
-<span class="gp">&gt;&gt;&gt; </span><span class="n">connection</span> <span class="o">=</span> <span class="n">BrokerConnection</span><span class="p">()</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">channel</span> <span class="o">=</span> <span class="n">connection</span><span class="o">.</span><span class="n">channel</span><span class="p">()</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">bound_exchange</span> <span class="o">=</span> <span class="n">exchange</span><span class="p">(</span><span class="n">channel</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">bound_exchange</span><span class="o">.</span><span class="n">delete</span><span class="p">()</span>
-
-<span class="go"># the original exchange is not affected, and stays unbound.</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">exchange</span><span class="o">.</span><span class="n">delete</span><span class="p">()</span>
-<span class="go">raise NotBoundError: Can&#39;t call delete on Exchange not bound to</span>
-<span class="go">    a channel.</span>
-</pre></div>
-</div>
 <p><strong>ORIGINAL CARROT README BELOW</strong></p>
 <div class="section" id="introduction">
 <h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h2>
@@ -136,6 +88,26 @@ refer to the <a class="reference external" href="http://en.wikipedia.org/wiki/AM
 <p>Kombu is using Sphinx, and the latest documentation is available at GitHub:</p>
 <blockquote>
 <a class="reference external" href="http://ask.github.com/kombu">http://ask.github.com/kombu</a></blockquote>
+</div>
+<div class="section" id="quick-overview">
+<h2>Quick overview<a class="headerlink" href="#quick-overview" title="Permalink to this headline">¶</a></h2>
+<p><cite>Exchange</cite> and <cite>Queue</cite> are simply declarations that can be pickled
+and used in configuaration files etc.</p>
+<p>They also support operations, but to do so they need to bound
+to a channel:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">exchange</span> <span class="o">=</span> <span class="n">Exchange</span><span class="p">(</span><span class="s">&quot;tasks&quot;</span><span class="p">,</span> <span class="s">&quot;direct&quot;</span><span class="p">)</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="n">connection</span> <span class="o">=</span> <span class="n">BrokerConnection</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">channel</span> <span class="o">=</span> <span class="n">connection</span><span class="o">.</span><span class="n">channel</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">bound_exchange</span> <span class="o">=</span> <span class="n">exchange</span><span class="p">(</span><span class="n">channel</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">bound_exchange</span><span class="o">.</span><span class="n">delete</span><span class="p">()</span>
+
+<span class="go"># the original exchange is not affected, and stays unbound.</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">exchange</span><span class="o">.</span><span class="n">delete</span><span class="p">()</span>
+<span class="go">raise NotBoundError: Can&#39;t call delete on Exchange not bound to</span>
+<span class="go">    a channel.</span>
+</pre></div>
+</div>
 <div class="section" id="installation">
 <h3>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h3>
 <p>You can install <cite>kombu</cite> either via the Python Package Index (PyPI)
@@ -371,23 +343,6 @@ for the raw data:</p>
 <p>The <cite>Message</cite> object returned by the <cite>Consumer</cite> class will have a
 <cite>content_type</cite> and <cite>content_encoding</cite> attribute.</p>
 </div>
-<div class="section" id="receiving-messages-without-a-callback">
-<h2>Receiving messages without a callback<a class="headerlink" href="#receiving-messages-without-a-callback" title="Permalink to this headline">¶</a></h2>
-<p>You can also poll the queue manually, by using the <cite>get</cite> method.
-This method returns a <cite>Message</cite> object, from where you can get the
-message body, de-serialize the body to get the data, acknowledge, reject or
-re-queue the message.</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">consumer</span> <span class="o">=</span> <span class="n">Consumer</span><span class="p">(</span><span class="n">channel</span><span class="p">,</span> <span class="n">queues</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">message</span> <span class="o">=</span> <span class="n">consumer</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="k">if</span> <span class="n">message</span><span class="p">:</span>
-<span class="gp">... </span>   <span class="n">message_data</span> <span class="o">=</span> <span class="n">message</span><span class="o">.</span><span class="n">payload</span>
-<span class="gp">... </span>   <span class="n">message</span><span class="o">.</span><span class="n">ack</span><span class="p">()</span>
-<span class="gp">... </span><span class="k">else</span><span class="p">:</span>
-<span class="gp">... </span>    <span class="c"># No messages waiting on the queue.</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">consumer</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
-</pre></div>
-</div>
-</div>
 <div class="section" id="sub-classing-the-messaging-classes">
 <h2>Sub-classing the messaging classes<a class="headerlink" href="#sub-classing-the-messaging-classes" title="Permalink to this headline">¶</a></h2>
 <p>The <cite>Consumer</cite>, and <cite>Producer</cite> classes can also be sub classed. Thus you
@@ -462,7 +417,8 @@ file in the top distribution directory for the full license text.</p>
   <ul>
 <li><a class="reference internal" href="#">kombu - AMQP Messaging Framework for Python</a><ul>
 <li><a class="reference internal" href="#introduction">Introduction</a></li>
-<li><a class="reference internal" href="#documentation">Documentation</a><ul>
+<li><a class="reference internal" href="#documentation">Documentation</a></li>
+<li><a class="reference internal" href="#quick-overview">Quick overview</a><ul>
 <li><a class="reference internal" href="#installation">Installation</a></li>
 <li><a class="reference internal" href="#terminology">Terminology</a></li>
 <li><a class="reference internal" href="#examples">Examples</a></li>
@@ -473,7 +429,6 @@ file in the top distribution directory for the full license text.</p>
 <li><a class="reference internal" href="#sending-messages-using-a-producer">Sending messages using a Producer</a></li>
 <li><a class="reference internal" href="#serialization-of-data">Serialization of Data</a></li>
 <li><a class="reference internal" href="#sending-raw-data-without-serialization">Sending raw data without Serialization</a></li>
-<li><a class="reference internal" href="#receiving-messages-without-a-callback">Receiving messages without a callback</a></li>
 <li><a class="reference internal" href="#sub-classing-the-messaging-classes">Sub-classing the messaging classes</a><ul>
 <li><a class="reference internal" href="#getting-help">Getting Help</a></li>
 </ul>

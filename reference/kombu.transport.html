@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>&lt;no title&gt; &mdash; Kombu v0.9.1 documentation</title>
+    <title>kombu.transport &mdash; Kombu v0.9.1 documentation</title>
     <link rel="stylesheet" href="../static/celery.css" type="text/css" />
     <link rel="stylesheet" href="../static/pygments.css" type="text/css" />
     <script type="text/javascript">
@@ -52,7 +52,66 @@
         <div class="bodywrapper">
           <div class="body">
             
-  
+  <span class="target" id="module-kombu.transport"></span><div class="section" id="kombu-transport">
+<h1>kombu.transport<a class="headerlink" href="#kombu-transport" title="Permalink to this headline">¶</a></h1>
+<p>Built-in transports.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">copyright:</th><td class="field-body"><ol class="first loweralpha simple" start="3">
+<li>2009 - 2010 by Ask Solem.</li>
+</ol>
+</td>
+</tr>
+<tr class="field"><th class="field-name">license:</th><td class="field-body"><p class="first last">BSD, see LICENSE for more details.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="contents local topic" id="contents">
+<ul class="simple">
+<li><a class="reference internal" href="#data" id="id1">Data</a></li>
+<li><a class="reference internal" href="#functions" id="id2">Functions</a></li>
+</ul>
+</div>
+<div class="section" id="data">
+<h2><a class="toc-backref" href="#id1">Data</a><a class="headerlink" href="#data" title="Permalink to this headline">¶</a></h2>
+<dl class="data">
+<dt id="kombu.transport.DEFAULT_TRANSPORT">
+<tt class="descclassname">kombu.transport.</tt><tt class="descname">DEFAULT_TRANSPORT</tt><a class="headerlink" href="#kombu.transport.DEFAULT_TRANSPORT" title="Permalink to this definition">¶</a></dt>
+<dd><p>Default transport used when no transport specified.</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="kombu.transport.TRANSPORT_ALIASES">
+<tt class="descclassname">kombu.transport.</tt><tt class="descname">TRANSPORT_ALIASES</tt><a class="headerlink" href="#kombu.transport.TRANSPORT_ALIASES" title="Permalink to this definition">¶</a></dt>
+<dd><p>Mapping of transport aliases/class names.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="functions">
+<h2><a class="toc-backref" href="#id2">Functions</a><a class="headerlink" href="#functions" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="kombu.transport.get_transport_cls">
+<tt class="descclassname">kombu.transport.</tt><tt class="descname">get_transport_cls</tt><big>(</big><em>transport=None</em><big>)</big><a class="headerlink" href="#kombu.transport.get_transport_cls" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get transport class by name.</p>
+<p>The transport string is the full path to a transport class, e.g.:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="s">&quot;kombu.transport.pyamqplib.Transport&quot;</span>
+</pre></div>
+</div>
+<p>If the name does not include <cite>&#8221;.&#8221;</cite> (is not fully qualified),
+the alias table will be consulted.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="kombu.transport.resolve_transport">
+<tt class="descclassname">kombu.transport.</tt><tt class="descname">resolve_transport</tt><big>(</big><em>transport=None</em><big>)</big><a class="headerlink" href="#kombu.transport.resolve_transport" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</div>
+
 
           </div>
         </div>
@@ -61,6 +120,15 @@
         <div class="sphinxsidebarwrapper"><p class="logo"><a href="../index.html">
   <img class="logo" width="128" height="128" src="http://cloud.github.com/downloads/ask/kombu/kombusmall.jpg" alt="Logo"/>
 </a></p>
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">kombu.transport</a><ul>
+<li><a class="reference internal" href="#data">Data</a></li>
+<li><a class="reference internal" href="#functions">Functions</a></li>
+</ul>
+</li>
+</ul>
+
   <h4>Previous topic</h4>
   <p class="topless"><a href="kombu.exceptions.html"
                         title="previous chapter">kombu.exceptions</a></p>

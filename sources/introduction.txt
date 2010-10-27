@@ -8,57 +8,6 @@
 
 Carrot will be discontinued in favor of Kombu.
 
-Proposed API::
-
-    from kombu.connection BrokerConnection
-    from kombu.messaging import Exchange, Queue, Consumer, Producer
-
-    media_exchange = Exchange("media", "direct", durable=True)
-    video_queue = Queue("video", exchange=media_exchange, key="video")
-
-    # connections/channels
-    connection = BrokerConnection("localhost", "guest", "guest", "/")
-    channel = connection.channel()
-
-    # produce
-    producer = Producer(channel, exchange=media_exchange, serializer="json")
-    producer.publish({"name": "/tmp/lolcat1.avi", "size": 1301013})
-
-    # consume
-    consumer = Consumer(channel, video_queue)
-    consumer.register_callback(process_media)
-    consumer.consume()
-
-    while True:
-        connection.drain_events()
-
-
-    # consumerset:
-    video_queue = Queue("video", exchange=media_exchange, key="video")
-    image_queue = Queue("image", exchange=media_exchange, key="image")
-
-    consumer = Consumer(channel, [video_queue, image_queue])
-    consumer.consume()
-
-    while True:
-        connection.drain_events()
-
-
-
-Exchanges/Queue can be bound to a channel::
-
-    >>> exchange = Exchange("tasks", "direct")
-
-    >>> connection = BrokerConnection()
-    >>> channel = connection.channel()
-    >>> bound_exchange = exchange(channel)
-    >>> bound_exchange.delete()
-
-    # the original exchange is not affected, and stays unbound.
-    >>> exchange.delete()
-    raise NotBoundError: Can't call delete on Exchange not bound to
-        a channel.
-
 **ORIGINAL CARROT README BELOW**
 
 Introduction
@@ -105,6 +54,66 @@ Kombu is using Sphinx, and the latest documentation is available at GitHub:
 
     http://ask.github.com/kombu
 
+Quick overview
+--------------
+
+
+.. code-block:: python
+    from kombu.connection BrokerConnection
+    from kombu.messaging import Exchange, Queue, Consumer, Producer
+
+    media_exchange = Exchange("media", "direct", durable=True)
+    video_queue = Queue("video", exchange=media_exchange, key="video")
+
+    # connections/channels
+    connection = BrokerConnection("localhost", "guest", "guest", "/")
+    channel = connection.channel()
+
+    # produce
+    producer = Producer(channel, exchange=media_exchange, serializer="json")
+    producer.publish({"name": "/tmp/lolcat1.avi", "size": 1301013})
+
+    # consume
+    consumer = Consumer(channel, video_queue)
+    consumer.register_callback(process_media)
+    consumer.consume()
+
+    # Process messages on all channels
+    while True:
+        connection.drain_events()
+
+
+    # Consume from several queues on the same channel:
+    video_queue = Queue("video", exchange=media_exchange, key="video")
+    image_queue = Queue("image", exchange=media_exchange, key="image")
+
+    consumer = Consumer(channel, [video_queue, image_queue])
+    consumer.consume()
+
+    while True:
+        connection.drain_events()
+
+
+`Exchange` and `Queue` are simply declarations that can be pickled
+and used in configuaration files etc.
+
+They also support operations, but to do so they need to bound
+to a channel:
+
+.. code-block:: python
+
+    >>> exchange = Exchange("tasks", "direct")
+
+    >>> connection = BrokerConnection()
+    >>> channel = connection.channel()
+    >>> bound_exchange = exchange(channel)
+    >>> bound_exchange.delete()
+
+    # the original exchange is not affected, and stays unbound.
+    >>> exchange.delete()
+    raise NotBoundError: Can't call delete on Exchange not bound to
+        a channel.
+
 Installation
 ============
 
@@ -115,11 +124,9 @@ To install using `pip`,::
 
     $ pip install kombu
 
-
 To install using `easy_install`,::
 
     $ easy_install kombu
-
 
 If you have downloaded a source tarball you can install it
 by doing the following,::
@@ -252,7 +259,6 @@ where the following text has been printed to the screen::
 
    Got feed import message for: http://cnn.com/rss/edition.rss
 
-
 Serialization of Data
 -----------------------
 
@@ -338,23 +344,6 @@ for the raw data:
 The `Message` object returned by the `Consumer` class will have a
 `content_type` and `content_encoding` attribute.
 
-
-Receiving messages without a callback
---------------------------------------
-
-You can also poll the queue manually, by using the `get` method.
-This method returns a `Message` object, from where you can get the
-message body, de-serialize the body to get the data, acknowledge, reject or
-re-queue the message.
-
-    >>> consumer = Consumer(channel, queues)
-    >>> message = consumer.get()
-    >>> if message:
-    ...    message_data = message.payload
-    ...    message.ack()
-    ... else:
-    ...     # No messages waiting on the queue.
-    >>> consumer.close()
 
 Sub-classing the messaging classes
 ----------------------------------
