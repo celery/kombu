@@ -11,6 +11,7 @@ CouchDB transport.
 from Queue import Empty
 
 import couchdb
+import uuid
 
 from anyjson import serialize, deserialize
 
