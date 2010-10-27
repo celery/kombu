@@ -1,9 +1,21 @@
+"""
+kombu.compression
+=================
+
+Object utilities.
+
+:copyright: (c) 2009 - 2010 by Ask Solem.
+:license: BSD, see LICENSE for more details.
+
+"""
 from copy import copy
 
 from kombu.exceptions import NotBoundError
 
 
 class Object(object):
+    """Common baseclass supporting automatic kwargs->attributes handling,
+    and cloning."""
     attrs = ()
 
     def __init__(self, *args, **kwargs):
@@ -29,6 +41,7 @@ class MaybeChannelBound(Object):
     _is_bound = False
 
     def __call__(self, channel):
+        """`self(channel) -> self.bind(channel)`"""
         return self.bind(channel)
 
     def bind(self, channel):
@@ -65,11 +78,12 @@ class MaybeChannelBound(Object):
 
     @property
     def is_bound(self):
-        """Returns ``True`` if the entity is bound."""
+        """Flag set if the channel is bound."""
         return self._is_bound and self._channel is not None
 
     @property
     def channel(self):
+        """Current channel if the object is bound."""
         if self._channel is None:
             raise NotBoundError(
                 "Can't call method on %s not bound to a channel" % (

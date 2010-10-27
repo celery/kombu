@@ -19,8 +19,8 @@ method::
     >>> connection.connect()
 
 This connection will use the default connection settings, which is using
-the localhost host, default port, username ``guest``,
-password ``guest`` and virtual host "/". A connection without arguments
+the localhost host, default port, username `guest`,
+password `guest` and virtual host "/". A connection without arguments
 is the same as::
 
     >>> BrokerConnection(hostname="localhost",
@@ -32,7 +32,7 @@ is the same as::
 The default port is transport specific, for AMQP this is 6379.
 
 Other fields may also have different meaning depending on the transport
-used. For example, the Redis transport uses the ``virtual_host`` argument as
+used. For example, the Redis transport uses the `virtual_host` argument as
 the redis database number.
 
 See the :class:`~kombu.connection.BrokerConnection` reference documentation

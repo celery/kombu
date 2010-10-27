@@ -1,3 +1,13 @@
+"""
+kombu.entity
+================
+
+Exchange and Queue declarations.
+
+:copyright: (c) 2009 - 2010 by Ask Solem.
+:license: BSD, see LICENSE for more details.
+
+"""
 from kombu.abstract import MaybeChannelBound
 
 TRANSIENT_DELIVERY_MODE = 1
@@ -7,7 +17,7 @@ DELIVERY_MODES = {"transient": TRANSIENT_DELIVERY_MODE,
 
 
 class Exchange(MaybeChannelBound):
-    """An Exchange.
+    """An Exchange declaration.
 
     :keyword name: See :attr:`name`.
     :keyword type: See :attr:`type`.
@@ -28,34 +38,34 @@ class Exchange(MaybeChannelBound):
         also define additional exchange types, so see your broker
         manual for more information about available exchange types.
 
-            * ``direct`` (*default*)
+            * `direct` (*default*)
 
                 Direct match between the routing key in the message, and the
                 routing criteria used when a queue is bound to this exchange.
 
-            * ``topic``
+            * `topic`
 
                 Wildcard match between the routing key and the routing pattern
                 specified in the exchange/queue binding. The routing key is
-                treated as zero or more words delimited by ``"."`` and
-                supports special wildcard characters. ``"*"`` matches a
-                single word and ``"#"`` matches zero or more words.
+                treated as zero or more words delimited by `"."` and
+                supports special wildcard characters. `"*"` matches a
+                single word and `"#"` matches zero or more words.
 
-            * ``fanout``
+            * `fanout`
 
                 Queues are bound to this exchange with no arguments. Hence any
                 message sent to this exchange will be forwarded to all queues
                 bound to this exchange.
 
-            * ``headers``
+            * `headers`
 
                 Queues are bound to this exchange with a table of arguments
                 containing headers and values (optional). A special argument
                 named "x-match" determines the matching algorithm, where
-                ``"all"`` implies an ``AND`` (all pairs must match) and
-                ``"any"`` implies ``OR`` (at least one pair must match).
+                `"all"` implies an `AND` (all pairs must match) and
+                `"any"` implies `OR` (at least one pair must match).
 
-                :attr:`arguments`` is used to specify the arguments.
+                :attr:`arguments` is used to specify the arguments.
 
             This description of AMQP exchange types was shamelessly stolen
             from the blog post `AMQP in 10 minutes: Part 4`_ by
@@ -72,18 +82,19 @@ class Exchange(MaybeChannelBound):
 
         Durable exchanges remain active when a server restarts. Non-durable
         exchanges (transient exchanges) are purged when a server restarts.
-        Default is ``True``.
+        Default is :const:`True`.
 
     .. attribute:: auto_delete
 
         If set, the exchange is deleted when all queues have finished
-        using it. Default is ``False``.
+        using it. Default is :const:`False`.
 
     .. attribute:: delivery_mode
 
-        The default delivery mode used for messages. The value is an integer.
+        The default delivery mode used for messages. The value is an integer,
+        or alias string.
 
-            * 1 or "transient"
+            * 1 or `"transient"`
 
                 The message is transient. Which means it is stored in
                 memory only, and is lost if the server dies or restarts.
@@ -93,38 +104,16 @@ class Exchange(MaybeChannelBound):
                 stored both in-memory, and on disk, and therefore
                 preserved if the server dies or restarts.
 
-        The default value is ``2`` (persistent).
+        The default value is 2 (persistent).
 
     .. attribute:: arguments
 
         Additional arguments to specify when the exchange is declared.
 
-
-    **Usage**
-
-    Example creating an exchange declaration::
-
-        >>> news_exchange = Exchange("news", type="topic")
-
-    For now ``news_exchange`` is just a declaration, you can't perform
-    actions on it. It just describes the name and options for the exchange.
-
-    The exchange can be bound or unbound. Bound means the exchange is
-    associated with a channel and operations can be performed on it.
-    To bind the exchange you call the exchange with the channel as argument::
-
-        >>> bound_exchange = news_exchange(channel)
-
-    Now you can perform operations like :meth:`declare` or :meth:`delete`::
-
-        >>> bound_exchange.declare()
-        >>> message = bound_exchange.Message("Cure for cancer found!")
-        >>> bound_exchange.publish(message, routing_key="news.science")
-        >>> bound_exchange.delete()
-
     """
     TRANSIENT_DELIVERY_MODE = TRANSIENT_DELIVERY_MODE
     PERSISTENT_DELIVERY_MODE = PERSISTENT_DELIVERY_MODE
+
     name = ""
     type = "direct"
     durable = True
@@ -150,7 +139,7 @@ class Exchange(MaybeChannelBound):
         Creates the exchange on the broker.
 
         :keyword nowait: If set the server will not respond, and a
-            response will not be waited for. Default is ``False``.
+            response will not be waited for. Default is :const:`False`.
 
         """
         return self.channel.exchange_declare(exchange=self.name,
@@ -160,9 +149,9 @@ class Exchange(MaybeChannelBound):
                                              arguments=self.arguments,
                                              nowait=nowait)
 
-    def Message(self, body, delivery_mode=None,
-                priority=None, content_type=None, content_encoding=None,
-                properties=None, headers=None):
+    def Message(self, body, delivery_mode=None, priority=None,
+            content_type=None, content_encoding=None, properties=None,
+            headers=None):
         """Create message instance to be sent with :meth:`publish`.
 
         :param body: Message body.
@@ -170,7 +159,7 @@ class Exchange(MaybeChannelBound):
         :keyword delivery_mode: Set custom delivery mode. Defaults
             to :attr:`delivery_mode`.
 
-        :keyword priority: Message priority, ``0`` to ``9``. (currently not
+        :keyword priority: Message priority, 0 to 9. (currently not
             supported by RabbitMQ).
 
         :keyword content_type: The messages content_type. If content_type
@@ -219,10 +208,10 @@ class Exchange(MaybeChannelBound):
         """Delete the exchange declaration on server.
 
         :keyword if_unused: Delete only if the exchange has no bindings.
-            Default is ``False``.
+            Default is :const:`False`.
 
         :keyword nowait: If set the server will not respond, and a
-            response will not be waited for. Default is ``False``.
+            response will not be waited for. Default is :const:`False`.
 
         """
         return self.channel.exchange_delete(exchange=self.name,
@@ -275,12 +264,12 @@ class Queue(MaybeChannelBound):
 
                 Matches the routing key property of the message by a primitive
                 pattern matching scheme. The message routing key then consists
-                of words separated by dots (``"."``, like domain names), and
-                two special characters are available; star (``"*"``) and hash
-                (``"#"``). The star matches any word, and the hash matches
-                zero or more words. For example ``"*.stock.#"`` matches the
-                routing keys ``"usd.stock"`` and ``"eur.stock.db"`` but not
-                ``"stock.nasdaq"``.
+                of words separated by dots (`"."`, like domain names), and
+                two special characters are available; star (`"*"`) and hash
+                (`"#"`). The star matches any word, and the hash matches
+                zero or more words. For example `"*.stock.#"` matches the
+                routing keys `"usd.stock"` and `"eur.stock.db"` but not
+                `"stock.nasdaq"`.
 
     .. attribute:: channel
 
@@ -295,7 +284,7 @@ class Queue(MaybeChannelBound):
         messages, although it does not make sense to send
         persistent messages to a transient queue.
 
-        Default is ``True``.
+        Default is :const:`True`.
 
     .. attribute:: exclusive
 
@@ -303,7 +292,7 @@ class Queue(MaybeChannelBound):
         current connection. Setting the 'exclusive' flag
         always implies 'auto-delete'.
 
-        Default is ``False``.
+        Default is :const:`False`.
 
     .. attribute:: auto_delete
 
@@ -321,32 +310,7 @@ class Queue(MaybeChannelBound):
 
         Additional arguments used when binding the queue.
 
-    **Usage**
-
-    Example creating a queue using our exchange in the :class:`Exchange`
-    example::
-
-        >>> science_news = Queue("science_news",
-        ...                      exchange=news_exchange,
-        ...                      routing_key="news.science")
-
-    For now ``science_news`` is just a declaration, you can't perform
-    actions on it. It just describes the name and options for the queue.
-
-    The queue can be bound or unbound. Bound means the queue is
-    associated with a channel and operations can be performed on it.
-    To bind the queue you call the queue instance with the channel as
-    an argument::
-
-        >>> bound_science_news = science_news(channel)
-
-    Now you can perform operations like :meth:`declare` or :meth:`purge`::
-
-        >>> bound_sicence_news.declare()
-        >>> bound_science_news.purge()
-        >>> bound_science_news.delete()
     """
-
     name = ""
     exchange = None
     routing_key = ""
@@ -389,7 +353,7 @@ class Queue(MaybeChannelBound):
         """Declare queue on the server.
 
         :keyword nowait: Do not wait for a reply.
-        :keyword passive: If set, the server will not create the queue. 
+        :keyword passive: If set, the server will not create the queue.
             The client can use this to check whether a queue exists
             without modifying the server state.
 
@@ -413,7 +377,6 @@ class Queue(MaybeChannelBound):
                                        routing_key=self.routing_key,
                                        arguments=self.binding_arguments,
                                        nowait=nowait)
-
 
     def get(self, no_ack=None):
         """Poll the server for a new message.
@@ -497,6 +460,4 @@ class Queue(MaybeChannelBound):
         return super(Queue, self).__repr__(
                  "Queue %s -> %s -> %s" % (self.name,
                                            self.exchange,
-                                             self.routing_key))
-
-Binding = Queue
+                                           self.routing_key))

@@ -28,7 +28,7 @@ class test_Connection(unittest.TestCase):
         self.assertTrue(conn.connection.connected)
         conn.__exit__()
         self.assertIsNone(conn.connection)
-        conn.close() # again
+        conn.close()    # again
 
 
 class ResourceCase(unittest.TestCase):

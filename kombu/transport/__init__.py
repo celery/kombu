@@ -1,3 +1,13 @@
+"""
+kombu.transport
+===============
+
+Built-in transports.
+
+:copyright: (c) 2009 - 2010 by Ask Solem.
+:license: BSD, see LICENSE for more details.
+
+"""
 import sys
 
 from kombu.utils import rpartition
@@ -37,7 +47,7 @@ def get_transport_cls(transport=None):
 
         "kombu.transport.pyamqplib.Transport"
 
-    If the name does not include "``.``" (is not fully qualified),
+    If the name does not include `"."` (is not fully qualified),
     the alias table will be consulted.
 
     """

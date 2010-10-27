@@ -1,9 +1,18 @@
+"""
+kombu.messaging
+===============
+
+Sending and receiving messages.
+
+:copyright: (c) 2009 - 2010 by Ask Solem.
+:license: BSD, see LICENSE for more details.
+
+"""
 from itertools import count
 
-from kombu import serialization
 from kombu.compression import compress
 from kombu.entity import Exchange, Queue
-from kombu.entity import Binding # TODO Remove
+from kombu.serialization import encode
 from kombu.utils import maybe_list
 
 
@@ -13,43 +22,38 @@ class Producer(object):
     :param channel: Connection channel.
     :keyword exchange: Default exchange.
     :keyword routing_key: Default routing key.
-    :keyword serializer: Default serializer. Default is ``"json"``.
+    :keyword serializer: Default serializer. Default is `"json"`.
     :keyword compression: Default compression method. Default is no
         compression.
     :keyword auto_declare: Automatically declare the exchange
-      at instantiation. Default is ``True``.
+      at instantiation. Default is :const:`True`.
     :keyword on_return: Callback to call for undeliverable messages,
-        when the ``mandatory`` or ``imediate`` arguments to
+        when the `mandatory` or `imediate` arguments to
         :meth:`publish` is used. This callback needs the following
-        signature: ``(exception, exchange, routing_key, message)``.
-
-    .. attribute:: channel
-
-        The connection channel to use.
-
-    .. attribute:: exchange
-
-        Exchange to publish to.
-
-    .. attribute:: routing_key
-
-        Default routing key.
-
-    .. attribute:: serializer
-
-        Default serializer to use. Default is autodetect.
-
-    .. attribute:: auto_declare
-
-        By default the exchange is declared at instantiation.
-        If you want to declare manually you can set this to ``False``.
+        signature: `(exception, exchange, routing_key, message)`.
 
     """
+    #: The connection channel used.
+    channel = None
+
+    #: Default exchange.
     exchange = Exchange("")
-    serializer = None
-    auto_declare = True
+
+    # Default routing key.
     routing_key = ""
+
+    #: Default serializer to use. Default is JSON.
+    serializer = None
+
+    #: Default compression method.  Disabled by default.
     compression = None
+
+    #: By default the exchange is declared at instantiation.
+    #: If you want to declare manually then you can set this
+    #: to :const:`False`.
+    auto_declare = True
+
+    #: Basic return callback.
     on_return = None
 
     def __init__(self, channel, exchange=None, routing_key=None,
@@ -71,46 +75,15 @@ class Producer(object):
         if self.on_return:
             self.channel.events["basic_return"].append(self.on_return)
 
-    def revive(self, channel):
-        self.channel = channel
-        self.exchange.revive(channel)
-
     def declare(self):
         """Declare the exchange.
 
         This is done automatically at instantiation if :attr:`auto_declare`
-        is set.
+        is set to :const:`True`.
 
         """
         if self.exchange.name:
             self.exchange.declare()
-
-    def _prepare(self, body, serializer=None,
-            content_type=None, content_encoding=None, compression=None,
-            headers=None):
-
-        # No content_type? Then we're serializing the data internally.
-        if not content_type:
-            serializer = serializer or self.serializer
-            (content_type, content_encoding,
-             body) = serialization.encode(body, serializer=serializer)
-        else:
-            # If the programmer doesn't want us to serialize,
-            # make sure content_encoding is set.
-            if isinstance(body, unicode):
-                if not content_encoding:
-                    content_encoding = 'utf-8'
-                body = body.encode(content_encoding)
-
-            # If they passed in a string, we can't know anything
-            # about it. So assume it's binary data.
-            elif not content_encoding:
-                content_encoding = 'binary'
-
-        if compression:
-            body, headers["compression"] = compress(body, compression)
-
-        return body, content_type, content_encoding
 
     def publish(self, body, routing_key=None, delivery_mode=None,
             mandatory=False, immediate=False, priority=0, content_type=None,
@@ -151,6 +124,38 @@ class Producer(object):
         return self.exchange.publish(message, routing_key, mandatory,
                                      immediate, exchange=exchange)
 
+    def revive(self, channel):
+        """Revive the producer after connection loss."""
+        self.channel = channel
+        self.exchange.revive(channel)
+
+    def _prepare(self, body, serializer=None,
+            content_type=None, content_encoding=None, compression=None,
+            headers=None):
+
+        # No content_type? Then we're serializing the data internally.
+        if not content_type:
+            serializer = serializer or self.serializer
+            (content_type, content_encoding,
+             body) = encode(body, serializer=serializer)
+        else:
+            # If the programmer doesn't want us to serialize,
+            # make sure content_encoding is set.
+            if isinstance(body, unicode):
+                if not content_encoding:
+                    content_encoding = 'utf-8'
+                body = body.encode(content_encoding)
+
+            # If they passed in a string, we can't know anything
+            # about it. So assume it's binary data.
+            elif not content_encoding:
+                content_encoding = 'binary'
+
+        if compression:
+            body, headers["compression"] = compress(body, compression)
+
+        return body, content_type, content_encoding
+
 
 class Consumer(object):
     """Message consumer.
@@ -162,43 +167,38 @@ class Consumer(object):
     :keyword callbacks: see :attr:`callbacks`.
     :keyword on_decode_error: see :attr:`on_decode_error`.
 
-    .. attribute:: channel
-
-        The connection channel to use.
-
-    .. attribute:: queues
-
-        A single :class:`~kombu.entity.Queue`, or a list of queues to
-        consume from.
-
-    .. attribute:: auto_declare
-
-        By default the entities will be declared at instantiation,
-        if you want to handle this manually you can set this to ``False``.
-
-    .. attribute:: callbacks
-
-        List of callbacks called in order when a message is received.
-
-        The signature of the callbacks must take two arguments:
-        ``(body, message)``, which is the decoded message body and
-        the ``Message`` instance (a subclass of
-        :class:`~kombu.transport.base.Message`).
-
-    .. attribute:: on_decode_error
-
-        Callback called when a message can't be decoded.
-
-        The signature of the callback must take two arguments: ``(message,
-        exc)``, which is the message that can't be decoded and the exception
-        that occured while trying to decode it.
-
     """
+    #: The connection channel to use.
+    channel = None
+
+    #: A single :class:`~kombu.entity.Queue`, or a list of queues to
+    #: consume from.
+    queues = None
+
+    #: Flag for message acknowledgment disabled/enabled.
+    #: Enabled by default.
     no_ack = False
+
+    #: By default all entities will be declared at instantiation, if you
+    #: want to handle this manually you can set this to :const:`False`.
     auto_declare = True
+
+    #: List of callbacks called in order when a message is received.
+    #:
+    #: The signature of the callbacks must take two arguments:
+    #: `(body, message)`, which is the decoded message body and
+    #: the `Message` instance (a subclass of
+    #: :class:`~kombu.transport.base.Message`).
     callbacks = None
+
+    #: Callback called when a message can't be decoded.
+    #:
+    #: The signature of the callback must take two arguments: `(message,
+    #: exc)`, which is the message that can't be decoded and the exception
+    #: that occured while trying to decode it.
     on_decode_error = None
-    _next_tag = count(1).next # global
+
+    _next_tag = count(1).next   # global
 
     def __init__(self, channel, queues, no_ack=None, auto_declare=None,
             callbacks=None, on_decode_error=None):
@@ -223,11 +223,6 @@ class Consumer(object):
         if self.auto_declare:
             self.declare()
 
-    def revive(self, channel):
-        for queue in self.queues:
-            queue.revive(channel)
-        self.channel = channel
-
     def declare(self):
         """Declare queues, exchanges and bindings.
 
@@ -238,13 +233,17 @@ class Consumer(object):
         for queue in self.queues:
             queue.declare()
 
-    def _basic_consume(self, queue, consumer_tag=None,
-            no_ack=no_ack, nowait=True):
-        if queue.name not in self._active_tags:
-            queue.consume(self._add_tag(queue, consumer_tag),
-                          self._receive_callback,
-                          no_ack=no_ack,
-                          nowait=nowait)
+    def register_callback(self, callback):
+        """Register a new callback to be called when a message
+        is received.
+
+        The signature of the callback needs to accept two arguments:
+        `(body, message)`, which is the decoded message body
+        and the `Message` instance (a subclass of
+        :class:`~kombu.transport.base.Message`.
+
+        """
+        self.callbacks.append(callback)
 
     def consume(self, no_ack=None):
         """Register consumer on server.
@@ -256,44 +255,6 @@ class Consumer(object):
         for queue in H:
             self._basic_consume(queue, no_ack=no_ack, nowait=True)
         self._basic_consume(T, no_ack=no_ack, nowait=False)
-
-    def receive(self, body, message):
-        """Method called when a message is received.
-
-        This dispatches to the registered :attr:`callbacks`.
-
-        :param body: The decoded message body.
-        :param message: The ``Message`` instance.
-
-        :raises NotImplementedError: If no consumer callbacks have been
-          registered.
-
-        """
-        if not self.callbacks:
-            raise NotImplementedError("No consumer callbacks registered")
-        for callback in self.callbacks:
-            callback(body, message)
-
-    def register_callback(self, callback):
-        """Register a new callback to be called when a message
-        is received.
-
-        The signature of the callback needs to accept two arguments:
-        ``(body, message)``, which is the decoded message body
-        and the ``Message`` instance (a subclass of
-        :class:`~kombu.transport.base.Message`.
-
-        """
-        self.callbacks.append(callback)
-
-    def purge(self):
-        """Purge messages from all queues.
-
-        **WARNING**: This will *delete all ready messages*, there is no
-        undo operation available.
-
-        """
-        return sum(queue.purge() for queue in self.queues)
 
     def cancel(self):
         """End all active queue consumers.
@@ -307,7 +268,18 @@ class Consumer(object):
         self._active_tags.clear()
 
     def cancel_by_queue(self, queue):
+        """Cancel consumer by queue name."""
         self.channel.basic_cancel(self._active_tags[queue])
+
+    def purge(self):
+        """Purge messages from all queues.
+
+        .. warning::
+            This will *delete all ready messages*, there is no
+            undo operation available.
+
+        """
+        return sum(queue.purge() for queue in self.queues)
 
     def flow(self, active):
         """Enable/disable flow from peer.
@@ -359,12 +331,43 @@ class Consumer(object):
         on the specified channel.
 
         :keyword requeue: By default the messages will be redelivered
-          to the original recipient. With ``requeue`` set to true, the
+          to the original recipient. With `requeue` set to true, the
           server will attempt to requeue the message, potentially then
           delivering it to an alternative subscriber.
 
         """
         return self.channel.basic_recover(requeue=requeue)
+
+    def receive(self, body, message):
+        """Method called when a message is received.
+
+        This dispatches to the registered :attr:`callbacks`.
+
+        :param body: The decoded message body.
+        :param message: The `Message` instance.
+
+        :raises NotImplementedError: If no consumer callbacks have been
+          registered.
+
+        """
+        if not self.callbacks:
+            raise NotImplementedError("No consumer callbacks registered")
+        for callback in self.callbacks:
+            callback(body, message)
+
+    def revive(self, channel):
+        """Revive consumer after connection loss."""
+        for queue in self.queues:
+            queue.revive(channel)
+        self.channel = channel
+
+    def _basic_consume(self, queue, consumer_tag=None,
+            no_ack=no_ack, nowait=True):
+        if queue.name not in self._active_tags:
+            queue.consume(self._add_tag(queue, consumer_tag),
+                          self._receive_callback,
+                          no_ack=no_ack,
+                          nowait=nowait)
 
     def _add_tag(self, queue, consumer_tag=None):
         tag = consumer_tag or str(self._next_tag())
@@ -388,3 +391,6 @@ class Consumer(object):
 
     def __exit__(self, *args):
         self.cancel()
+
+    def __repr__(self):
+        return "<Consumer: %s>" % (self.queues, )

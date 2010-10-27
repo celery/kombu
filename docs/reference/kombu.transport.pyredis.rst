@@ -1,11 +1,20 @@
-==========================================================
- Redis Transport - kombu.transport.pyredis
-==========================================================
-
-.. contents::
-    :local:
 .. currentmodule:: kombu.transport.pyredis
 
 .. automodule:: kombu.transport.pyredis
-    :members:
-    :undoc-members:
+
+    .. contents::
+        :local:
+
+    Transport
+    ---------
+
+    .. autoclass:: Transport
+        :members:
+        :undoc-members:
+
+    Channel
+    -------
+
+    .. autoclass:: Channel
+        :members:
+        :undoc-members:

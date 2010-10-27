@@ -64,11 +64,11 @@ Exchanges/Queue can be bound to a channel::
 Introduction
 ------------
 
-``kombu`` is an `AMQP`_ messaging queue framework. AMQP is the Advanced Message
+`kombu` is an `AMQP`_ messaging queue framework. AMQP is the Advanced Message
 Queuing Protocol, an open standard protocol for message orientation, queuing,
 routing, reliability and security.
 
-The aim of ``kombu`` is to make messaging in Python as easy as possible by
+The aim of `kombu` is to make messaging in Python as easy as possible by
 providing a high-level interface for producing and consuming messages. At the
 same time it is a goal to re-use what is already available as much as possible.
 
@@ -81,7 +81,7 @@ Several AMQP message broker implementations exists, including `RabbitMQ`_,
 `Apache ActiveMQ`_. You'll need to have one of these installed,
 personally we've been using `RabbitMQ`_.
 
-Before you start playing with ``kombu``, you should probably read up on
+Before you start playing with `kombu`, you should probably read up on
 AMQP, and you could start with the excellent article about using RabbitMQ
 under Python, `Rabbits and warrens`_. For more detailed information, you can
 refer to the `Wikipedia article about AMQP`_.
@@ -108,15 +108,15 @@ Kombu is using Sphinx, and the latest documentation is available at GitHub:
 Installation
 ============
 
-You can install ``kombu`` either via the Python Package Index (PyPI)
+You can install `kombu` either via the Python Package Index (PyPI)
 or from source.
 
-To install using ``pip``,::
+To install using `pip`,::
 
     $ pip install kombu
 
 
-To install using ``easy_install``,::
+To install using `easy_install`,::
 
     $ easy_install kombu
 
@@ -167,7 +167,7 @@ There are some concepts you should be familiar with before starting:
             * Direct exchange
 
                 Matches if the routing key property of the message and
-                the ``routing_key`` attribute of the consumer are identical.
+                the `routing_key` attribute of the consumer are identical.
 
             * Fan-out exchange
 
@@ -178,12 +178,12 @@ There are some concepts you should be familiar with before starting:
 
                 Matches the routing key property of the message by a primitive
                 pattern matching scheme. The message routing key then consists
-                of words separated by dots (``"."``, like domain names), and
-                two special characters are available; star (``"*"``) and hash
-                (``"#"``). The star matches any word, and the hash matches
-                zero or more words. For example ``"*.stock.#"`` matches the
-                routing keys ``"usd.stock"`` and ``"eur.stock.db"`` but not
-                ``"stock.nasdaq"``.
+                of words separated by dots (`"."`, like domain names), and
+                two special characters are available; star (`"*"`) and hash
+                (`"#"`). The star matches any word, and the hash matches
+                zero or more words. For example `"*.stock.#"` matches the
+                routing keys `"usd.stock"` and `"eur.stock.db"` but not
+                `"stock.nasdaq"`.
 
 
 Examples
@@ -193,7 +193,7 @@ Creating a connection
 ---------------------
 
     You can set up a connection by creating an instance of
-    ``kombu.BrokerConnection``, with the appropriate options for
+    `kombu.BrokerConnection`, with the appropriate options for
     your broker:
 
     >>> from kombu import BrokerConnection
@@ -207,8 +207,8 @@ Receiving messages using a Consumer
 
 First we open up a Python shell and start a message consumer.
 
-This consumer declares a queue named ``"feed"``, receiving messages with
-the routing key ``"importer"`` from the ``"feed"`` exchange.
+This consumer declares a queue named `"feed"`, receiving messages with
+the routing key `"importer"` from the `"feed"` exchange.
 
     >>> from kombu import Exchange, Queue, Consumer
 
@@ -258,7 +258,7 @@ Serialization of Data
 
 By default every message is encoded using `JSON`_, so sending
 Python data structures like dictionaries and lists works.
-`YAML`_, `msgpack`_ and Python's built-in ``pickle`` module is also supported,
+`YAML`_, `msgpack`_ and Python's built-in `pickle` module is also supported,
 and if needed you can register any custom serialization scheme you
 want to use.
 
@@ -268,12 +268,12 @@ want to use.
 
 Each option has its advantages and disadvantages.
 
-``json`` -- JSON is supported in many programming languages, is now
+`json` -- JSON is supported in many programming languages, is now
     a standard part of Python (since 2.6), and is fairly fast to
-    decode using the modern Python libraries such as ``cjson or
-    ``simplejson``.
+    decode using the modern Python libraries such as `cjson` or
+    `simplejson`.
 
-    The primary disadvantage to ``JSON`` is that it limits you to
+    The primary disadvantage to `JSON` is that it limits you to
     the following data types: strings, unicode, floats, boolean,
     dictionaries, and lists.  Decimals and dates are notably missing.
 
@@ -282,16 +282,16 @@ Each option has its advantages and disadvantages.
     encoding which supports native binary types.
 
     However, if your data fits inside the above constraints and
-    you need cross-language support, the default setting of ``JSON``
+    you need cross-language support, the default setting of `JSON`
     is probably your best choice.
 
-``pickle`` -- If you have no desire to support any language other than
-    Python, then using the ``pickle`` encoding will gain you
+`pickle` -- If you have no desire to support any language other than
+    Python, then using the `pickle` encoding will gain you
     the support of all built-in Python data types (except class instances),
     smaller messages when sending binary files, and a slight speedup
-    over ``JSON`` processing.
+    over `JSON` processing.
 
-``yaml`` -- YAML has many of the same characteristics as ``json``,
+`yaml` -- YAML has many of the same characteristics as `json`,
     except that it natively supports more data types (including dates,
     recursive references, etc.)
 
@@ -299,7 +299,7 @@ Each option has its advantages and disadvantages.
     than the libraries for JSON.
 
     If you need a more expressive set of data types and need to maintain
-    cross-language compatibility, then ``YAML`` may be a better fit
+    cross-language compatibility, then `YAML` may be a better fit
     than the above.
 
 To instruct carrot to use an alternate serialization method,
@@ -316,7 +316,7 @@ use one of the following options.
             >>> producer.publish(message, routing_key=rkey,
             ...                  serializer="pickle")
 
-Note that a ``Consumer`` do not need the serialization method specified.
+Note that a `Consumer` do not need the serialization method specified.
 They can auto-detect the serialization method as the
 content-type is sent as a message header.
 
@@ -327,7 +327,7 @@ In some cases, you don't need your message data to be serialized. If you
 pass in a plain string or unicode object as your message, then carrot will
 not waste cycles serializing/deserializing the data.
 
-You can optionally specify a ``content_type`` and ``content_encoding``
+You can optionally specify a `content_type` and `content_encoding`
 for the raw data:
 
     >>> producer.send(open('~/my_picture.jpg','rb').read(),
@@ -335,15 +335,15 @@ for the raw data:
                       content_encoding="binary",
                       routing_key=rkey)
 
-The ``Message`` object returned by the ``Consumer`` class will have a
-``content_type`` and ``content_encoding`` attribute.
+The `Message` object returned by the `Consumer` class will have a
+`content_type` and `content_encoding` attribute.
 
 
 Receiving messages without a callback
 --------------------------------------
 
-You can also poll the queue manually, by using the ``get`` method.
-This method returns a ``Message`` object, from where you can get the
+You can also poll the queue manually, by using the `get` method.
+This method returns a `Message` object, from where you can get the
 message body, de-serialize the body to get the data, acknowledge, reject or
 re-queue the message.
 
@@ -359,7 +359,7 @@ re-queue the message.
 Sub-classing the messaging classes
 ----------------------------------
 
-The ``Consumer``, and ``Producer`` classes can also be sub classed. Thus you
+The `Consumer`, and `Producer` classes can also be sub classed. Thus you
 can define the above producer and consumer like so:
 
     >>> class FeedProducer(Producer):
@@ -409,7 +409,7 @@ to our issue tracker at http://github.com/ask/kombu/issues/
 Contributing
 ============
 
-Development of ``kombu`` happens at Github: http://github.com/ask/kombu
+Development of `kombu` happens at Github: http://github.com/ask/kombu
 
 You are highly encouraged to participate in the development. If you don't
 like Github (for some reason) you're welcome to send regular patches.
@@ -417,5 +417,5 @@ like Github (for some reason) you're welcome to send regular patches.
 License
 =======
 
-This software is licensed under the ``New BSD License``. See the ``LICENSE``
+This software is licensed under the `New BSD License`. See the :file:`LICENSE`
 file in the top distribution directory for the full license text.

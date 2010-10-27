@@ -1,17 +1,33 @@
+"""
+kombu.exceptions
+================
+
+Exceptions.
+
+:copyright: (c) 2009 - 2010 by Ask Solem.
+:license: BSD, see LICENSE for more details.
+
+"""
+
+
 class NotBoundError(Exception):
     """Trying to call channel dependent method on unbound entity."""
+    pass
 
 
 class MessageStateError(Exception):
     """The message has already been acknowledged."""
+    pass
 
 
 class EnsureExhausted(Exception):
     """ensure() limit exceeded."""
+    pass
 
 
 class TimeoutError(Exception):
     """Operation timed out."""
+    pass
 
 
 class LimitExceeded(Exception):

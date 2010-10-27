@@ -1,3 +1,13 @@
+"""
+kombu.transport.pyredis
+=======================
+
+Redis transport.
+
+:copyright: (c) 2009 - 2010 by Ask Solem.
+:license: BSD, see LICENSE for more details.
+
+"""
 from Queue import Empty
 
 from anyjson import serialize, deserialize

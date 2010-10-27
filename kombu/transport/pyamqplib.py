@@ -1,3 +1,13 @@
+"""
+kombu.transport.pyamqplib
+=========================
+
+amqplib transport.
+
+:copyright: (c) 2009 - 2010 by Ask Solem.
+:license: BSD, see LICENSE for more details.
+
+"""
 import socket
 
 from amqplib import client_0_8 as amqp

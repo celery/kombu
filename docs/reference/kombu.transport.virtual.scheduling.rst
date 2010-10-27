@@ -1,7 +1,7 @@
 .. contents::
     :local:
-.. currentmodule:: kombu.transport.scheduling
+.. currentmodule:: kombu.transport.virtual.scheduling
 
-.. automodule:: kombu.transport.scheduling
+.. automodule:: kombu.transport.virtual.scheduling
     :members:
     :undoc-members:

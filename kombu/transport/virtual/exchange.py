@@ -1,13 +1,12 @@
 """
-    kombu.transport.virtual.exchange
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+kombu.transport.virtual.exchange
+================================
 
-    Implementations of the standard exchanges defined
-    by the AMQ protocol.  Currently excluding the `headers`
-    exchange.
+Implementations of the standard exchanges defined
+by the AMQ protocol  (excluding the `headers` exchange).
 
-    :copyright: (c) 2009 - 2010 by Ask Solem.
-    :license: BSD, see LICENSE for more details.
+:copyright: (c) 2009 - 2010 by Ask Solem.
+:license: BSD, see LICENSE for more details.
 
 """
 import re
@@ -37,7 +36,7 @@ class ExchangeType(object):
         raise NotImplementedError("subclass responsibility")
 
     def prepare_bind(self, queue, exchange, routing_key, arguments):
-        """:returns: ``(routing_key, regex, queue)`` tuple to store
+        """:returns: `(routing_key, regex, queue)` tuple to store
         for bindings to this exchange."""
         return routing_key, None, queue
 
@@ -63,7 +62,7 @@ class DirectExchange(ExchangeType):
 
 
 class TopicExchange(ExchangeType):
-    """The `topic` exchanges routes based on words separated by dots, and the
+    """The `topic` exchanges routes based on words separated by dots, and
     wildcard characters `*` (any single word), and `#` (one or more words)."""
 
     #: map of wildcard to regex conversions

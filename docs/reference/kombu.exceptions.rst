@@ -1,11 +1,15 @@
-==========================================================
- Exceptions - kombu.exceptions
-==========================================================
-
-.. contents::
-    :local:
 .. currentmodule:: kombu.exceptions
 
 .. automodule:: kombu.exceptions
-    :members:
-    :undoc-members:
+
+    .. contents::
+        :local:
+
+    .. autoexception:: NotBoundError
+    .. autoexception:: MessageStateError
+    .. autoexception:: EnsureExhausted
+    .. autoexception:: TimeoutError
+    .. autoexception:: LimitExceeded
+    .. autoexception:: ConnectionLimitExceeded
+    .. autoexception:: ChannelLimitExceeded
+

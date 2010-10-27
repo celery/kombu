@@ -1,12 +1,13 @@
 """
-    kombu.transport.virtual
-    ~~~~~~~~~~~~~~~~~~~~~~~
+kombu.transport.virtual
+=======================
 
-    Virtual transport implementation.
-    Emulates the AMQ API for non-AMQ transports.
+Virtual transport implementation.
 
-    :copyright: (c) 2009 - 2010 by Ask Solem.
-    :license: BSD, see LICENSE for more details.
+Emulates the AMQ API for non-AMQ transports.
+
+:copyright: (c) 2009, 2010 by Ask Solem.
+:license: BSD, see LICENSE for more details.
 
 """
 import socket
@@ -49,8 +50,10 @@ class QoS(object):
     :param channel: AMQ Channel.
     :keyword prefetch_count: Initial prefetch count (defaults to 0).
 
-
     """
+
+    #: current prefetch count value
+    prefetch_count = 0
 
     #: :class:`~collections.OrderedDict` of active messages.
     _delivered = None
@@ -155,34 +158,58 @@ class Message(base.Message):
 
 
 class AbstractChannel(object):
-    """Methods implemented by subclasses of :class:`Channel`."""
+    """This is an abstract class defining the channel methods
+    you'd usually want to implement in a virtual channel.
+
+    Do not subclass directly, but rather inherit from :class:`Channel`
+    instead.
+
+    """
 
     def _get(self, queue):
+        """Get next message from `queue`."""
         raise NotImplementedError("Virtual channels must implement _get")
 
     def _put(self, queue, message):
+        """Put `message` onto `queue`."""
         raise NotImplementedError("Virtual channels must implement _put")
 
     def _purge(self, queue):
+        """Remove all messages from `queue`."""
         raise NotImplementedError("Virtual channels must implement _purge")
 
     def _size(self, queue):
+        """Return the number of messages in `queue` as an :class:`int`."""
         return 0
 
     def _delete(self, queue):
+        """Delete `queue`.
+
+        This just purges the queue, if you need to do more you can
+        override this method.
+
+        """
         self._purge(queue)
 
     def _new_queue(self, queue, **kwargs):
+        """Create new queue.
+
+        Some implementations needs to do additiona actions when
+        the queue is created.  You can do so by overriding this
+        method.
+
+        """
         pass
 
     def _poll(self, queues):
+        """Poll a list of queues for available messages."""
         return FairCycle(self._get, queues, Empty).get()
 
 
 class Channel(AbstractChannel):
     """Virtual channel.
 
-    :param connection: The connection this channel is part of.
+    :param connection: The transport instance this channel is part of.
 
     """
     #: message class used.
@@ -207,45 +234,6 @@ class Channel(AbstractChannel):
         # instantiate exchange types
         self.exchange_types = dict((typ, cls(self))
                     for typ, cls in self.exchange_types.items())
-
-    def get_table(self, exchange):
-        """Get table of bindings for `exchange`."""
-        return self.state.exchanges[exchange]["table"]
-
-    def typeof(self, exchange):
-        """Get the exchange type instance for `exchange`."""
-        type = self.state.exchanges[exchange]["type"]
-        return self.exchange_types[type]
-
-    def _lookup(self, exchange, routing_key, default="ae.undeliver"):
-        """Find all queues matching `routing_key` for the given `exchange`.
-
-        Returns `default` if no queues matched.
-
-        """
-        table = self.get_table(exchange)
-        try:
-            return self.typeof(exchange).lookup(table, exchange,
-                                                routing_key, default)
-        except KeyError:
-            self._new_queue(default)
-            return [default]
-
-    def _restore(self, message):
-        """Redeliver message to its original destination."""
-        delivery_info = message.delivery_info
-        message = message.serializable()
-        message["redelivered"] = True
-        for queue in self._lookup(delivery_info["exchange"],
-                                  delivery_info["routing_key"]):
-            self._put(queue, message)
-
-    def drain_events(self, timeout=None):
-        if self._consumers and self.qos.can_consume():
-            if hasattr(self, "_get_many"):
-                return self._get_many(self._active_queues, timeout=timeout)
-            return self._poll(self._active_queues)
-        raise Empty()
 
     def exchange_declare(self, exchange, type="direct", durable=False,
             auto_delete=False, arguments=None, nowait=False):
@@ -305,13 +293,33 @@ class Channel(AbstractChannel):
         """Remove all ready messages from queue."""
         return self._purge(queue)
 
-    def basic_qos(self, prefetch_size, prefetch_count, apply_global=False):
-        """Change QoS settings for this channel.
+    def basic_publish(self, message, exchange, routing_key, **kwargs):
+        """Publish message."""
+        message["properties"]["delivery_info"]["exchange"] = exchange
+        message["properties"]["delivery_info"]["routing_key"] = routing_key
+        message["properties"]["delivery_tag"] = self._next_delivery_tag()
+        for queue in self._lookup(exchange, routing_key):
+            self._put(queue, message, **kwargs)
 
-        Only `prefetch_count` is supported.
+    def basic_consume(self, queue, no_ack, callback, consumer_tag, **kwargs):
+        """Consume from `queue`"""
+        self._tag_to_queue[consumer_tag] = queue
 
-        """
-        self.qos.prefetch_count = prefetch_count
+        def _callback(raw_message):
+            message = self.Message(self, raw_message)
+            if not no_ack:
+                self.qos.append(message, message.delivery_tag)
+            return callback(message)
+
+        self.connection._callbacks[queue] = _callback
+        self._consumers.add(consumer_tag)
+
+    def basic_cancel(self, consumer_tag):
+        """Cancel consumer by consumer tag."""
+        self._consumers.remove(consumer_tag)
+        queue = self._tag_to_queue.pop(consumer_tag, None)
+        if queue:
+            self.connection._callbacks.pop(queue, None)
 
     def basic_get(self, queue, **kwargs):
         """Get message by direct access (synchronous)."""
@@ -334,33 +342,52 @@ class Channel(AbstractChannel):
         """Reject message."""
         self.qos.reject(delivery_tag, requeue=requeue)
 
-    def basic_consume(self, queue, no_ack, callback, consumer_tag, **kwargs):
-        """Start active consumer."""
-        self._tag_to_queue[consumer_tag] = queue
+    def basic_qos(self, prefetch_size, prefetch_count, apply_global=False):
+        """Change QoS settings for this channel.
 
-        def _callback(raw_message):
-            message = self.Message(self, raw_message)
-            if not no_ack:
-                self.qos.append(message, message.delivery_tag)
-            return callback(message)
+        Only `prefetch_count` is supported.
 
-        self.connection._callbacks[queue] = _callback
-        self._consumers.add(consumer_tag)
+        """
+        self.qos.prefetch_count = prefetch_count
 
-    def basic_publish(self, message, exchange, routing_key, **kwargs):
-        """Publish message."""
-        message["properties"]["delivery_info"]["exchange"] = exchange
-        message["properties"]["delivery_info"]["routing_key"] = routing_key
-        message["properties"]["delivery_tag"] = self._next_delivery_tag()
-        for queue in self._lookup(exchange, routing_key):
-            self._put(queue, message, **kwargs)
+    def get_table(self, exchange):
+        """Get table of bindings for `exchange`."""
+        return self.state.exchanges[exchange]["table"]
 
-    def basic_cancel(self, consumer_tag):
-        """Cancel consumer by consumer tag."""
-        self._consumers.remove(consumer_tag)
-        queue = self._tag_to_queue.pop(consumer_tag, None)
-        if queue:
-            self.connection._callbacks.pop(queue, None)
+    def typeof(self, exchange):
+        """Get the exchange type instance for `exchange`."""
+        type = self.state.exchanges[exchange]["type"]
+        return self.exchange_types[type]
+
+    def _lookup(self, exchange, routing_key, default="ae.undeliver"):
+        """Find all queues matching `routing_key` for the given `exchange`.
+
+        Returns `default` if no queues matched.
+
+        """
+        table = self.get_table(exchange)
+        try:
+            return self.typeof(exchange).lookup(table, exchange,
+                                                routing_key, default)
+        except KeyError:
+            self._new_queue(default)
+            return [default]
+
+    def _restore(self, message):
+        """Redeliver message to its original destination."""
+        delivery_info = message.delivery_info
+        message = message.serializable()
+        message["redelivered"] = True
+        for queue in self._lookup(delivery_info["exchange"],
+                                  delivery_info["routing_key"]):
+            self._put(queue, message)
+
+    def drain_events(self, timeout=None):
+        if self._consumers and self.qos.can_consume():
+            if hasattr(self, "_get_many"):
+                return self._get_many(self._active_queues, timeout=timeout)
+            return self._poll(self._active_queues)
+        raise Empty()
 
     def message_to_python(self, raw_message):
         """Convert raw message to :class:`Message` instance."""
@@ -383,6 +410,12 @@ class Channel(AbstractChannel):
                 "properties": properties or {}}
 
     def flow(self, active=True):
+        """Enable/disable message flow.
+
+        :raises NotImplementedError: as flow
+            is not implemented by the base virtual implementation.
+
+        """
         raise NotImplementedError("virtual channels does not support flow.")
 
     def close(self):
@@ -415,8 +448,19 @@ class Transport(base.Transport):
     :param client: :class:`~kombu.connection.BrokerConnection` instance
 
     """
+    #: channel class used.
     Channel = Channel
+
+    #: cycle class used.
     Cycle = FairCycle
+
+    #: :class:`BrokerState` containing declared exchanges and
+    #: bindings (set by constructor).
+    state = None
+
+    #: :class:`~kombu.transport.virtual.scheduling.FairCycle` instance
+    #: used to fairly drain events from channels (set by constructor).
+    cycle = None
 
     #: default interval between polling channels for new events.
     interval = 1

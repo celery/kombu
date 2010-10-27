@@ -1,3 +1,13 @@
+"""
+kombu.simple
+============
+
+Simple interface.
+
+:copyright: (c) 2009 - 2010 by Ask Solem.
+:license: BSD, see LICENSE for more details.
+
+"""
 import socket
 
 from collections import deque
@@ -22,20 +32,6 @@ class SimpleBase(object):
         self.buffer = deque()
         self.consumer.register_callback(self._receive)
 
-    def _receive(self, message_data, message):
-        self.buffer.append(message)
-
-    def _consume(self):
-        if not self._consuming:
-            self.consumer.consume(no_ack=self.no_ack)
-            self._consuming = True
-
-    def get_nowait(self):
-        m = self.queue.get(no_ack=self.no_ack)
-        if not m:
-            raise Empty()
-        return m
-
     def get(self, block=True, timeout=None, sync=False):
         if block:
             return self.get_nowait()
@@ -53,6 +49,12 @@ class SimpleBase(object):
                 raise Empty()
             elapsed += time() - time_start
             remaining = timeout - elapsed
+
+    def get_nowait(self):
+        m = self.queue.get(no_ack=self.no_ack)
+        if not m:
+            raise Empty()
+        return m
 
     def put(self, message, serializer=None, headers=None, compression=None,
             routing_key=None, **kwargs):
@@ -75,10 +77,19 @@ class SimpleBase(object):
             self.channel.close()
         self.consumer.cancel()
 
+    def _receive(self, message_data, message):
+        self.buffer.append(message)
+
+    def _consume(self):
+        if not self._consuming:
+            self.consumer.consume(no_ack=self.no_ack)
+            self._consuming = True
+
     def __del__(self):
         self.close()
 
     def __len__(self):
+        """`len(self) -> self.qsize()`"""
         return self.qsize()
 
 

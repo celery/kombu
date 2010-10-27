@@ -240,12 +240,12 @@ class test_Consumer(unittest.TestCase):
         channel = self.connection.channel()
         b1 = Queue("qname1", self.exchange, "rkey")
         consumer = Consumer(channel, [b1])
-
         received = []
+
         def callback(message_data, message):
             received.append(message_data)
             message.ack()
-            message.payload # trigger cache
+            message.payload     # trigger cache
 
         consumer.register_callback(callback)
         consumer._receive_callback({u"foo": u"bar"})
@@ -339,8 +339,8 @@ class test_Consumer(unittest.TestCase):
         b1 = Queue("qname1", self.exchange, "rkey")
         consumer = Consumer(channel, [b1])
         consumer.channel.throw_decode_error = True
-
         thrown = []
+
         def on_decode_error(msg, exc):
             thrown.append((msg.body, exc))
 

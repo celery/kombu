@@ -1,3 +1,13 @@
+"""
+    kombu.transport.virtual.scheduling
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    Consumer utilities.
+
+    :copyright: (c) 2009 - 2010 by Ask Solem.
+    :license: BSD, see LICENSE for more details.
+
+"""
 from itertools import count
 
 

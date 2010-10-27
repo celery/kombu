@@ -1,44 +1,16 @@
 """
+kombu.pidbox
+===============
 
-Creating the applications Mailbox
-=================================
+Generic process mailbox.
 
-::
-
-    >>> mailbox = pidbox.Mailbox("celerybeat", type="direct")
-
-    >>> @mailbox.handler
-    >>> def reload_schedule(state, **kwargs):
-    ...     state["beat"].reload_schedule()
-
-    >>> @mailbox.handler
-    >>> def connection_info(state, **kwargs):
-    ...     return {"connection": state["connection"].info()}
-
-Example Node
-============
-
-::
-    >>> connection = kombu.BrokerConnection()
-    >>> state = {"beat": beat,
-                 "connection": connection}
-    >>> consumer = mailbox(connection).Node(hostname).listen()
-    >>> try:
-    ...     while True:
-    ...         connection.drain_events(timeout=1)
-    ... finally:
-    ...     consumer.cancel()
-
-Example Client
-==============
-
-::
-    >>> mailbox.cast("reload_schedule")   # cast is async.
-    >>> info = celerybeat.call("connection_info", timeout=1)
+:copyright: (c) 2009 - 2010 by Ask Solem.
+:license: BSD, see LICENSE for more details.
 
 """
 
 import socket
+
 from copy import copy
 from itertools import count
 
@@ -48,6 +20,21 @@ from kombu.utils import gen_unique_id, kwdict
 
 
 class Node(object):
+
+    #: hostname of the node.
+    hostname = None
+
+    #: the :class:`Mailbox` this is a node for.
+    mailbox = None
+
+    #: map of method name/handlers.
+    handlers = None
+
+    #: current context (passed on to handlers)
+    state = None
+
+    #: current channel.
+    channel = None
 
     def __init__(self, hostname, state=None, channel=None, handlers=None,
             mailbox=None):
@@ -65,16 +52,16 @@ class Node(object):
                         [self.mailbox.get_queue(self.hostname)],
                         **options)
 
+    def handler(self, fun):
+        self.handlers[fun.__name__] = fun
+        return fun
+
     def listen(self, channel=None, callback=None):
         callback = callback or self.handle_message
         consumer = self.Consumer(channel=channel,
                                  callbacks=[callback or self.handle_message])
         consumer.consume()
         return consumer
-
-    def reply(self, data, exchange, routing_key, **kwargs):
-        self.mailbox._publish_reply(data, exchange, routing_key,
-                                    channel=self.channel)
 
     def dispatch_from_message(self, message):
         message = dict(message)
@@ -99,27 +86,42 @@ class Node(object):
             self.reply({self.hostname: reply}, **reply_to)
         return reply
 
+    def handle(self, method, arguments={}):
+        return self.handlers[method](self.state, **arguments)
+
     def handle_call(self, method, arguments):
         return self.handle(method, arguments)
 
     def handle_cast(self, method, arguments):
         return self.handle(method, arguments)
 
-    def handler(self, fun):
-        self.handlers[fun.__name__] = fun
-        return fun
-
-    def handle(self, method, arguments={}):
-        return self.handlers[method](self.state, **arguments)
-
     def handle_message(self, message_data, message):
         self.dispatch_from_message(message_data)
+
+    def reply(self, data, exchange, routing_key, **kwargs):
+        self.mailbox._publish_reply(data, exchange, routing_key,
+                                    channel=self.channel)
 
 
 class Mailbox(object):
     node_cls = Node
     exchange_fmt = "%s.pidbox"
     reply_exchange_fmt = "reply.%s.pidbox"
+
+    #: Name of application.
+    namespace = None
+
+    #: Connection (if bound).
+    connection = None
+
+    #: Exchange type (usually direct, or fanout for broadcast).
+    type = "direct"
+
+    #: mailbox exchange (init by constructor).
+    exchange = None
+
+    #: exchange to send replies to.
+    reply_exchange = None
 
     def __init__(self, namespace, type="direct", connection=None):
         self.namespace = namespace
@@ -167,7 +169,6 @@ class Mailbox(object):
     def get_queue(self, hostname):
         return Queue("%s.%s.pidbox" % (hostname, self.namespace),
                      exchange=self.exchange)
-
 
     def _publish_reply(self, reply, exchange, routing_key, channel=None):
         chan = channel or self.connection.channel()

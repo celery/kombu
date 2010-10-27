@@ -1,11 +1,20 @@
-==========================================================
- Compression - kombu.compression
-==========================================================
-
-.. contents::
-    :local:
 .. currentmodule:: kombu.compression
 
 .. automodule:: kombu.compression
-    :members:
-    :undoc-members:
+
+    .. contents::
+        :local:
+
+    Encoding/decoding
+    -----------------
+
+    .. autofunction:: compress
+    .. autofunction:: decompress
+
+    Registry
+    --------
+
+    .. autofunction:: encoders
+    .. autofunction:: get_encoder
+    .. autofunction:: get_decoder
+    .. autofunction:: register

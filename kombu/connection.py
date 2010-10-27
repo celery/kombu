@@ -1,3 +1,13 @@
+"""
+kombu.connection
+================
+
+Broker connection and pools.
+
+:copyright: (c) 2009 - 2010 by Ask Solem.
+:license: BSD, see LICENSE for more details.
+
+"""
 import socket
 
 from copy import copy
@@ -16,30 +26,21 @@ class BrokerConnection(object):
 
     :keyword hostname: Hostname/address of the server to connect to.
       Default is ``"localhost"``.
-
     :keyword userid: Username. Default is ``"guest"``.
-
     :keyword password: Password. Default is ``"guest"``.
-
     :keyword virtual_host: Virtual host. Default is ``"/"``.
-
     :keyword port: Port of the server. Default is transport specific.
-
     :keyword insist: Insist on connecting to a server.
       In a configuration with multiple load-sharing servers, the insist
       option tells the server that the client is insisting on a connection
       to the specified server.  Default is ``False``.
-
     :keyword ssl: Use ssl to connect to the server. Default is ``False``.
-
     :keyword transport: Transport class to use. Can be a class,
          or a string specifying the path to the class. (e.g.
          ``kombu.transport.pyamqplib.Transport``), or one of the aliases:
          ``amqplib``, ``pika``, ``redis``, ``memory``.
-
     :keyword connect_timeout: Timeout in seconds for connecting to the
       server. May not be suported by the specified transport.
-
 
     **Usage**
 
@@ -48,7 +49,8 @@ class BrokerConnection(object):
         >>> conn = BrokerConnection("rabbit.example.com")
 
     The connection is established lazily when needed. If you need the
-    connection to be established, then do so expliclty using :meth:`connect`::
+    connection to be established, then force it to do so using
+    :meth:`connect`::
 
         >>> conn.connect()
 
@@ -99,8 +101,7 @@ class BrokerConnection(object):
         """
         return self.transport.drain_events(self.connection, **kwargs)
 
-    def close(self):
-        """Close the connection (if open)."""
+    def _close(self):
         try:
             if self._connection:
                 try:
@@ -111,6 +112,11 @@ class BrokerConnection(object):
         except socket.error:
             pass
         self._closed = True
+
+    def release(self):
+        """Close the connection (if open)."""
+        self._close()
+    close = release
 
     def ensure_connection(self, errback=None, max_retries=None,
             interval_start=2, interval_step=2, interval_max=30):
@@ -205,12 +211,7 @@ class BrokerConnection(object):
 
     def create_transport(self):
         return self.get_transport_cls()(client=self)
-    create_backend = create_transport # FIXME
-
-    def clone(self, **kwargs):
-        """Create a copy of the connection with the same connection
-        settings."""
-        return self.__class__(**dict(self.info(), **kwargs))
+    create_backend = create_transport   # FIXME
 
     def get_transport_cls(self):
         """Get the currently used transport class."""
@@ -218,6 +219,11 @@ class BrokerConnection(object):
         if not transport_cls or isinstance(transport_cls, basestring):
             transport_cls = get_transport_cls(transport_cls)
         return transport_cls
+
+    def clone(self, **kwargs):
+        """Create a copy of the connection with the same connection
+        settings."""
+        return self.__class__(**dict(self.info(), **kwargs))
 
     def info(self):
         """Get connection info."""
@@ -240,7 +246,7 @@ class BrokerConnection(object):
 
         :keyword limit: Maximum number of active connections.
           Default is no limit.
-        :keyword preload: Number of connections to preload 
+        :keyword preload: Number of connections to preload
           when the pool is created.  Default is 0.
 
         *Example usage*::
@@ -267,7 +273,7 @@ class BrokerConnection(object):
 
         :keyword limit: Maximum number of active channels.
           Default is no limit.
-        :keyword preload: Number of channels to preload 
+        :keyword preload: Number of channels to preload
           when the pool is created.  Default is 0.
 
         *Example usage*::
@@ -344,6 +350,7 @@ class BrokerConnection(object):
         return "<BrokerConnection: %s>" % (
                     ", ".join("%s=%r" % (item, info[item])
                                 for item in info.keys()[:8]))
+
     def __copy__(self):
         """``x.__copy__() <==> copy(x)``"""
         return self.clone()
@@ -355,10 +362,17 @@ class BrokerConnection(object):
         return self
 
     def __exit__(self, *args):
-        self.close()
+        self.release()
 
     @property
     def connection(self):
+        """The underlying connection object.
+
+        .. warning::
+            This instance is transport specific, so do not
+            depend on the interface of this object.
+
+        """
         if self._closed:
             return
         if not self._connection:
@@ -447,7 +461,6 @@ class Resource(object):
         """
         self._dirty.discard(resource)
         self._resource.put_nowait(resource)
-
 
 
 class ConnectionPool(Resource):

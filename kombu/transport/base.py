@@ -1,8 +1,14 @@
 """
+kombu.transport.base
+====================
 
-Transport base classes.
+Base transport interface.
+
+:copyright: (c) 2009 - 2010 by Ask Solem.
+:license: BSD, see LICENSE for more details.
 
 """
+
 from kombu import serialization
 from kombu.compression import decompress
 from kombu.exceptions import MessageStateError
@@ -15,6 +21,30 @@ class Message(object):
     _state = None
 
     MessageStateError = MessageStateError
+
+    #: The channel the message was received on.
+    channel = None
+
+    #: Delivery tag used to identify the message in this channel.
+    delivery_tag = None
+
+    #: Content type used to identify the type of content.
+    content_type = None
+
+    #: Content encoding used to identify the text encoding of the body.
+    content_encoding = None
+
+    #: Additional delivery information.
+    delivery_info = None
+
+    #: Message headers
+    headers = None
+
+    #: Application properties
+    properties = None
+
+    #: Raw message body (may be serialized), see :attr:`payload` instead.
+    body = None
 
     def __init__(self, channel, body=None, delivery_tag=None,
             content_type=None, content_encoding=None, delivery_info={},
@@ -34,19 +64,6 @@ class Message(object):
         compression = self.headers.get("compression")
         if compression:
             self.body = decompress(self.body, compression)
-
-    def decode(self):
-        """Deserialize the message body, returning the original
-        python structure sent by the publisher."""
-        return serialization.decode(self.body, self.content_type,
-                                    self.content_encoding)
-
-    @property
-    def payload(self):
-        """The decoded message."""
-        if not self._decoded_cache:
-            self._decoded_cache = self.decode()
-        return self._decoded_cache
 
     def ack(self):
         """Acknowledge this message as being processed.,
@@ -93,29 +110,54 @@ class Message(object):
         self.channel.basic_reject(self.delivery_tag, requeue=True)
         self._state = "REQUEUED"
 
+    def decode(self):
+        """Deserialize the message body, returning the original
+        python structure sent by the publisher."""
+        return serialization.decode(self.body, self.content_type,
+                                    self.content_encoding)
+
     @property
     def acknowledged(self):
+        """Set to true if the message has been acknowledged."""
         return self._state in ACKNOWLEDGED_STATES
+
+    @property
+    def payload(self):
+        """The decoded message body."""
+        if not self._decoded_cache:
+            self._decoded_cache = self.decode()
+        return self._decoded_cache
 
 
 class Transport(object):
     """Base class for transports."""
+
+    #: The :class:`~kombu.connection.BrokerConnection` owning this instance.
     client = None
+
+    #: Default port used when no port has been specified.
     default_port = None
+
+    #: Tuple of errors that can happen due to connection failure.
     connection_errors = ()
+
+    #: Tuple of errors that can happen due to channel/method failure.
     channel_errors = ()
 
     def __init__(self, client, **kwargs):
         self.client = client
 
-    def create_channel(self, connection):
-        raise NotImplementedError("Subclass responsibility")
-
-    def drain_events(self, connection, **kwargs):
-        raise NotImplementedError("Subclass responsibility")
-
     def establish_connection(self):
         raise NotImplementedError("Subclass responsibility")
 
     def close_connection(self, connection):
+        raise NotImplementedError("Subclass responsibility")
+
+    def create_channel(self, connection):
+        raise NotImplementedError("Subclass responsibility")
+
+    def close_channel(self, connection):
+        raise NotImplementedError("Subclass responsibility")
+
+    def drain_events(self, connection, **kwargs):
         raise NotImplementedError("Subclass responsibility")

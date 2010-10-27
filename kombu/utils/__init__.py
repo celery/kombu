@@ -54,7 +54,7 @@ def repeatlast(it):
     yield the last value infinitely."""
     for item in it:
         yield item
-    while 1: # pragma: no cover
+    while 1:    # pragma: no cover
         yield item
 
 

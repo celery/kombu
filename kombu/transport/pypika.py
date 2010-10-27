@@ -1,3 +1,13 @@
+"""
+kombu.transport.pypika
+======================
+
+Pika transport.
+
+:copyright: (c) 2009 - 2010 by Ask Solem.
+:license: BSD, see LICENSE for more details.
+
+"""
 from pika import asyncore_adapter
 from pika import blocking_adapter
 from pika import channel
@@ -106,7 +116,6 @@ class SyncTransport(base.Transport):
                       exceptions.DuplicateConsumerTag,
                       exceptions.UnknownConsumerTag,
                       exceptions.ProtocolSyntaxError)
-
 
     Message = Message
     Connection = BlockingConnection

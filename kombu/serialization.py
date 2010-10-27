@@ -1,31 +1,20 @@
 """
-Centralized support for encoding/decoding of data structures.
-Requires a json library (`cjson`_, `simplejson`_, or `Python 2.6+`_).
+kombu.serialization
+===================
 
-Pickle support is built-in.
+Serialization utilities.
 
-Optionally installs support for ``YAML`` if the `PyYAML`_ package
-is installed.
-
-Optionally installs support for `msgpack`_ if the `msgpack-python`_
-package is installed.
-
-.. _`cjson`: http://pypi.python.org/pypi/python-cjson/
-.. _`simplejson`: http://code.google.com/p/simplejson/
-.. _`Python 2.6+`: http://docs.python.org/library/json.html
-.. _`PyYAML`: http://pyyaml.org/
-.. _`msgpack`: http://msgpack.sourceforge.net/
-.. _`msgpack-python`: http://pypi.python.org/pypi/msgpack-python/
+:copyright: (c) 2009 - 2010
+:license: BSD, see LICENSE for more details.
 
 """
 
 import codecs
 
-__all__ = ['SerializerNotInstalled', 'registry']
-
 
 class SerializerNotInstalled(StandardError):
     """Support for the requested serialization type is not installed"""
+    pass
 
 
 class SerializerRegistry(object):
@@ -40,28 +29,6 @@ class SerializerRegistry(object):
 
     def register(self, name, encoder, decoder, content_type,
                  content_encoding='utf-8'):
-        """Register a new encoder/decoder.
-
-        :param name: A convenience name for the serialization method.
-
-        :param encoder: A method that will be passed a python data structure
-            and should return a string representing the serialized data.
-            If ``None``, then only a decoder will be registered. Encoding
-            will not be possible.
-
-        :param decoder: A method that will be passed a string representing
-            serialized data and should return a python data structure.
-            If ``None``, then only an encoder will be registered.
-            Decoding will not be possible.
-
-        :param content_type: The mime-type describing the serialized
-            structure.
-
-        :param content_encoding: The content encoding (character set) that
-            the :param:`decoder` method will be returning. Will usually be
-            ``utf-8``, ``us-ascii``, or ``binary``.
-
-        """
         if encoder:
             self._encoders[name] = (content_type, content_encoding, encoder)
         if decoder:
@@ -72,7 +39,7 @@ class SerializerRegistry(object):
         Set the default serialization method used by this library.
 
         :param name: The name of the registered serialization method.
-            For example, ``json`` (default), ``pickle``, ``yaml``,
+            For example, `json` (default), `pickle`, `yaml`, `msgpack`,
             or any custom methods registered using :meth:`register`.
 
         :raises SerializerNotInstalled: If the serialization method
@@ -86,34 +53,6 @@ class SerializerRegistry(object):
                 "No encoder installed for %s" % name)
 
     def encode(self, data, serializer=None):
-        """
-        Serialize a data structure into a string suitable for sending
-        as an AMQP message body.
-
-        :param data: The message data to send. Can be a list,
-            dictionary or a string.
-
-        :keyword serializer: An optional string representing
-            the serialization method you want the data marshalled
-            into. (For example, ``json``, ``raw``, or ``pickle``).
-
-            If ``None`` (default), then `JSON`_ will be used, unless
-            ``data`` is a ``str`` or ``unicode`` object. In this
-            latter case, no serialization occurs as it would be
-            unnecessary.
-
-            Note that if ``serializer`` is specified, then that
-            serialization method will be used even if a ``str``
-            or ``unicode`` object is passed in.
-
-        :returns: A three-item tuple containing the content type
-            (e.g., ``application/json``), content encoding, (e.g.,
-            ``utf-8``) and a string containing the serialized
-            data.
-
-        :raises SerializerNotInstalled: If the serialization method
-              requested is not available.
-        """
         if serializer == "raw":
             return raw_encode(data)
         if serializer and not self._encoders.get(serializer):
@@ -145,19 +84,6 @@ class SerializerRegistry(object):
         return content_type, content_encoding, payload
 
     def decode(self, data, content_type, content_encoding):
-        """Deserialize a data stream as serialized using ``encode``
-        based on :param:`content_type`.
-
-        :param data: The message data to deserialize.
-
-        :param content_type: The content-type of the data.
-            (e.g., ``application/json``).
-
-        :param content_encoding: The content-encoding of the data.
-            (e.g., ``utf-8``, ``binary``, or ``us-ascii``).
-
-        :returns: The unserialized data.
-        """
         content_type = content_type or 'application/data'
         content_encoding = (content_encoding or 'utf-8').lower()
 
@@ -182,21 +108,85 @@ Global registry of serializers/deserializers.
 """
 registry = SerializerRegistry()
 
+
 """
 .. function:: encode(data, serializer=default_serializer)
 
-Encode data using the registry's default encoder.
+    Serialize a data structure into a string suitable for sending
+    as an AMQP message body.
 
+    :param data: The message data to send. Can be a list,
+        dictionary or a string.
+
+    :keyword serializer: An optional string representing
+        the serialization method you want the data marshalled
+        into. (For example, `json`, `raw`, or `pickle`).
+
+        If :const:`None` (default), then json will be used, unless
+        `data` is a :class:`str` or :class:`unicode` object. In this
+        latter case, no serialization occurs as it would be
+        unnecessary.
+
+        Note that if `serializer` is specified, then that
+        serialization method will be used even if a :class:`str`
+        or :class:`unicode` object is passed in.
+
+    :returns: A three-item tuple containing the content type
+        (e.g., `application/json`), content encoding, (e.g.,
+        `utf-8`) and a string containing the serialized
+        data.
+
+    :raises SerializerNotInstalled: If the serialization method
+            requested is not available.
 """
 encode = registry.encode
 
 """
 .. function:: decode(data, content_type, content_encoding):
 
-Decode data using the registry's default decoder.
+    Deserialize a data stream as serialized using `encode`
+    based on `content_type`.
+
+    :param data: The message data to deserialize.
+
+    :param content_type: The content-type of the data.
+        (e.g., `application/json`).
+
+    :param content_encoding: The content-encoding of the data.
+        (e.g., `utf-8`, `binary`, or `us-ascii`).
+
+    :returns: The unserialized data.
 
 """
 decode = registry.decode
+
+
+"""
+.. function:: register(name, encoder, decoder, content_type,
+                       content_encoding="utf-8"):
+    Register a new encoder/decoder.
+
+    :param name: A convenience name for the serialization method.
+
+    :param encoder: A method that will be passed a python data structure
+        and should return a string representing the serialized data.
+        If :const:`None`, then only a decoder will be registered. Encoding
+        will not be possible.
+
+    :param decoder: A method that will be passed a string representing
+        serialized data and should return a python data structure.
+        If :const:`None`, then only an encoder will be registered.
+        Decoding will not be possible.
+
+    :param content_type: The mime-type describing the serialized
+        structure.
+
+    :param content_encoding: The content encoding (character set) that
+        the `decoder` method will be returning. Will usually be
+        utf-8`, `us-ascii`, or `binary`.
+
+        """
+register = registry.register
 
 
 def raw_encode(data):
