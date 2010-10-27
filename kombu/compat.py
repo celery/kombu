@@ -203,7 +203,7 @@ class ConsumerSet(messaging.Consumer):
             for queue_name, queue_options in from_dict.items():
                 queues.append(entry_to_queue(queue_name, **queue_options))
 
-        super(_CSet, self).__init__(self.backend, queues, **kwargs)
+        super(ConsumerSet, self).__init__(self.backend, queues, **kwargs)
 
     def iterconsume(self, limit=None, no_ack=False):
         return _iterconsume(self.connection, self, no_ack, limit)
