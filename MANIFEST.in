@@ -8,5 +8,7 @@ include README.rst
 include README
 include THANKS
 include TODO
+include setup.cfg
+recursive-include contrib *
 recursive-include docs *
 recursive-include kombu *.py
