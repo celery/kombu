@@ -20,6 +20,7 @@
     kombu.transport.pypika
     kombu.transport.memory
     kombu.transport.pyredis
+    kombu.transport.beanstalk
     kombu.transport.mongodb
     kombu.transport.pycouchdb
     kombu.transport.base

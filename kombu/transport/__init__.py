@@ -20,6 +20,7 @@ TRANSPORT_ALIASES = {
     "syncpika": "kombu.transport.pypika.SyncTransport",
     "memory": "kombu.transport.memory.Transport",
     "redis": "kombu.transport.pyredis.Transport",
+    "beanstalk": "kombu.transport.beanstalk.Transport",
     "mongodb": "kombu.transport.mongodb.Transport",
     "couchdb": "kombu.transport.pycouchdb.Transport",
 }
