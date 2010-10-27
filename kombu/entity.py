@@ -387,9 +387,9 @@ class Queue(MaybeChannelBound):
         :keyword no_ack: If set messages received does not have to
             be acknowledged.
 
-        This method provides a direct access to the messages in a
-        queue using a synchronous dialogue that is designed for
-        specific types of application where synchronous functionality
+        This method provides direct access to the messages in a
+        queue using a synchronous dialogue, designed for
+        specific types of applications where synchronous functionality
         is more important than performance.
 
         """
