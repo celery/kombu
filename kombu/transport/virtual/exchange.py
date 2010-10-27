@@ -12,11 +12,6 @@ by the AMQ protocol  (excluding the `headers` exchange).
 import re
 
 
-class NotEquivalentError(Exception):
-    """Entity declaration is not equivalent to the previous declaration."""
-    pass
-
-
 class ExchangeType(object):
     """Implements the specifics for an exchange type.
 
@@ -42,11 +37,7 @@ class ExchangeType(object):
 
     def equivalent(self, prev, exchange, type, durable, auto_delete,
             arguments):
-        """Assert equivalence to previous declaration.
-
-        :raises NotEquivalentError: If the declarations are not equivalent.
-
-        """
+        """Returns true if `prev` and `*exchange* is equivalent."""
         return (type == prev["type"] and
                 durable == prev["durable"] and
                 auto_delete == prev["auto_delete"] and
@@ -91,7 +82,7 @@ class TopicExchange(ExchangeType):
             compiled = self._compiled[pattern]
         except KeyError:
             compiled = self._compiled[pattern] = re.compile(pattern, re.u)
-        return compiled.match(routing_key)
+        return compiled.match(string)
 
 
 class FanoutExchange(ExchangeType):

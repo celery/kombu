@@ -16,7 +16,7 @@ from Queue import Empty, Queue as _Queue
 
 from kombu import exceptions
 from kombu.transport import get_transport_cls
-from kombu.simple import SimpleQueue
+from kombu.simple import SimpleQueue, SimpleBuffer
 from kombu.utils import retry_over_time, OrderedDict
 from kombu.utils.functional import wraps
 

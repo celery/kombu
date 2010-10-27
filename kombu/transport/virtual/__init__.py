@@ -11,8 +11,6 @@ Emulates the AMQ API for non-AMQ transports.
 
 """
 import socket
-import sys
-import traceback
 
 from itertools import count
 from multiprocessing.util import Finalize
@@ -23,6 +21,11 @@ from kombu.utils import emergency_dump_state, OrderedDict, say
 
 from kombu.transport.virtual.scheduling import FairCycle
 from kombu.transport.virtual.exchange import STANDARD_EXCHANGE_TYPES
+
+
+class NotEquivalentError(Exception):
+    """Entity declaration is not equivalent to the previous declaration."""
+    pass
 
 
 class BrokerState(object):
@@ -512,13 +515,14 @@ class Transport(base.Transport):
 
     def drain_events(self, connection, timeout=None):
         cycle_seconds = len(self.channels) * self.interval
-        time_spent = 0
+        loop = 0
         while 1:
             try:
                 item, channel = self.cycle.get()
             except Empty:
-                if timeout and cycle_seconds >= timeout:
+                if timeout and cycle_seconds * loop >= timeout:
                     raise socket.timeout()
+                loop += 1
             else:
                 break
 
