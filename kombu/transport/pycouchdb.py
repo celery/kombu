@@ -4,7 +4,7 @@ kombu.transport.pycouchdb
 
 CouchDB transport.
 
-:copyright: (c) 2009 - 2010 by David Clymer
+:copyright: (c) 2010 by David Clymer.
 :license: BSD, see LICENSE for more details.
 
 """
@@ -38,8 +38,6 @@ def create_message_view(db):
 
 class Channel(virtual.Channel):
     _client = None
-    _mongoconn = None
-    _database = None
 
     view_created = False
 
