@@ -41,3 +41,6 @@ class Channel(virtual.Channel):
 
 class Transport(virtual.Transport):
     Channel = Channel
+
+    #: memory backend state is global.
+    state = virtual.BrokerState()
