@@ -12,31 +12,31 @@
 
     .. autoclass:: BrokerConnection
 
-        **ATTRIBUTES**
+        .. admonition:: Attributes
 
-        .. autoattribute:: connection_errors
-        .. autoattribute:: channel_errors
-        .. autoattribute:: transport
-        .. autoattribute:: host
-        .. autoattribute:: connection
+            .. autoattribute:: connection_errors
+            .. autoattribute:: channel_errors
+            .. autoattribute:: transport
+            .. autoattribute:: host
+            .. autoattribute:: connection
 
-        **METHODS**
+        .. admonition:: Methods
 
-        .. automethod:: connect
-        .. automethod:: channel
-        .. automethod:: drain_events
-        .. automethod:: release
-        .. automethod:: ensure_connection
-        .. automethod:: ensure
-        .. automethod:: create_transport
-        .. automethod:: get_transport_cls
-        .. automethod:: clone
-        .. automethod:: info
+            .. automethod:: connect
+            .. automethod:: channel
+            .. automethod:: drain_events
+            .. automethod:: release
+            .. automethod:: ensure_connection
+            .. automethod:: ensure
+            .. automethod:: create_transport
+            .. automethod:: get_transport_cls
+            .. automethod:: clone
+            .. automethod:: info
 
-        .. automethod:: Pool
-        .. automethod:: ChannelPool
-        .. automethod:: SimpleQueue
-        .. automethod:: SimpleBuffer
+            .. automethod:: Pool
+            .. automethod:: ChannelPool
+            .. automethod:: SimpleQueue
+            .. automethod:: SimpleBuffer
 
 
     Pools
