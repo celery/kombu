@@ -1,6 +1,6 @@
 .. currentmodule:: kombu.transport
 
-.. automodule:: kombu.transpor
+.. automodule:: kombu.transport
 
     .. contents::
         :local:

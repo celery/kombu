@@ -433,6 +433,12 @@ class Channel(AbstractChannel):
         self.qos.restore_unacked_once()
         self.connection.close_channel(self)
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc_info):
+        self.close()
+
     @property
     def state(self):
         """Broker state containing exchanges and bindings."""

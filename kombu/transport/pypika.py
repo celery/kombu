@@ -86,6 +86,12 @@ class Channel(channel.Channel):
     def basic_ack(self, delivery_tag):
         return channel.Channel.basic_ack(self, delivery_tag)
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc_info):
+        self.close()
+
 
 class BlockingConnection(blocking_adapter.BlockingConnection):
 
