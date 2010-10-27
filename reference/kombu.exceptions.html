@@ -6,13 +6,13 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Exceptions - kombu.exceptions &mdash; Kombu v0.9.0 documentation</title>
+    <title>kombu.exceptions &mdash; Kombu v0.9.1 documentation</title>
     <link rel="stylesheet" href="../static/celery.css" type="text/css" />
     <link rel="stylesheet" href="../static/pygments.css" type="text/css" />
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.9.0',
+        VERSION:     '0.9.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -21,10 +21,10 @@
     <script type="text/javascript" src="../static/jquery.js"></script>
     <script type="text/javascript" src="../static/underscore.js"></script>
     <script type="text/javascript" src="../static/doctools.js"></script>
-    <link rel="top" title="Kombu v0.9.0 documentation" href="../index.html" />
+    <link rel="top" title="Kombu v0.9.1 documentation" href="../index.html" />
     <link rel="up" title="API Reference" href="index.html" />
-    <link rel="next" title="Transports - kombu.transport" href="kombu.transport.html" />
-    <link rel="prev" title="Process Mailbox - kombu.pidbox" href="kombu.pidbox.html" /> 
+    <link rel="next" title="&lt;no title&gt;" href="kombu.transport.html" />
+    <link rel="prev" title="kombu.pidbox" href="kombu.pidbox.html" /> 
   </head>
   <body>
     <div class="related">
@@ -37,12 +37,12 @@
           <a href="../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="kombu.transport.html" title="Transports - kombu.transport"
+          <a href="kombu.transport.html" title="&lt;no title&gt;"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="kombu.pidbox.html" title="Process Mailbox - kombu.pidbox"
+          <a href="kombu.pidbox.html" title="kombu.pidbox"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">Kombu v0.9.0 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu v0.9.1 documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">API Reference</a> &raquo;</li> 
       </ul>
     </div>  
@@ -52,12 +52,27 @@
         <div class="bodywrapper">
           <div class="body">
             
-  <div class="section" id="exceptions-kombu-exceptions">
-<h1>Exceptions - kombu.exceptions<a class="headerlink" href="#exceptions-kombu-exceptions" title="Permalink to this headline">¶</a></h1>
-<span class="target" id="module-kombu.exceptions"></span><dl class="exception">
-<dt id="kombu.exceptions.EnsureExhausted">
-<em class="property">exception </em><tt class="descclassname">kombu.exceptions.</tt><tt class="descname">EnsureExhausted</tt><a class="headerlink" href="#kombu.exceptions.EnsureExhausted" title="Permalink to this definition">¶</a></dt>
-<dd><p>ensure() limit exceeded.</p>
+  <span class="target" id="module-kombu.exceptions"></span><div class="section" id="kombu-exceptions">
+<h1>kombu.exceptions<a class="headerlink" href="#kombu-exceptions" title="Permalink to this headline">¶</a></h1>
+<p>Exceptions.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">copyright:</th><td class="field-body"><ol class="first loweralpha simple" start="3">
+<li>2009 - 2010 by Ask Solem.</li>
+</ol>
+</td>
+</tr>
+<tr class="field"><th class="field-name">license:</th><td class="field-body"><p class="first last">BSD, see LICENSE for more details.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="exception">
+<dt id="kombu.exceptions.NotBoundError">
+<em class="property">exception </em><tt class="descclassname">kombu.exceptions.</tt><tt class="descname">NotBoundError</tt><a class="headerlink" href="#kombu.exceptions.NotBoundError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Trying to call channel dependent method on unbound entity.</p>
 </dd></dl>
 
 <dl class="exception">
@@ -67,27 +82,33 @@
 </dd></dl>
 
 <dl class="exception">
-<dt id="kombu.exceptions.NotBoundError">
-<em class="property">exception </em><tt class="descclassname">kombu.exceptions.</tt><tt class="descname">NotBoundError</tt><a class="headerlink" href="#kombu.exceptions.NotBoundError" title="Permalink to this definition">¶</a></dt>
-<dd><p>Trying to call channel dependent method on unbound entity.</p>
-</dd></dl>
-
-<dl class="exception">
-<dt id="kombu.exceptions.PoolExhausted">
-<em class="property">exception </em><tt class="descclassname">kombu.exceptions.</tt><tt class="descname">PoolExhausted</tt><a class="headerlink" href="#kombu.exceptions.PoolExhausted" title="Permalink to this definition">¶</a></dt>
-<dd><p>All connections acquired.</p>
-</dd></dl>
-
-<dl class="exception">
-<dt id="kombu.exceptions.PoolLimitExceeded">
-<em class="property">exception </em><tt class="descclassname">kombu.exceptions.</tt><tt class="descname">PoolLimitExceeded</tt><a class="headerlink" href="#kombu.exceptions.PoolLimitExceeded" title="Permalink to this definition">¶</a></dt>
-<dd><p>Can&#8217;t add more connections to pool.</p>
+<dt id="kombu.exceptions.EnsureExhausted">
+<em class="property">exception </em><tt class="descclassname">kombu.exceptions.</tt><tt class="descname">EnsureExhausted</tt><a class="headerlink" href="#kombu.exceptions.EnsureExhausted" title="Permalink to this definition">¶</a></dt>
+<dd><p>ensure() limit exceeded.</p>
 </dd></dl>
 
 <dl class="exception">
 <dt id="kombu.exceptions.TimeoutError">
 <em class="property">exception </em><tt class="descclassname">kombu.exceptions.</tt><tt class="descname">TimeoutError</tt><a class="headerlink" href="#kombu.exceptions.TimeoutError" title="Permalink to this definition">¶</a></dt>
 <dd><p>Operation timed out.</p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="kombu.exceptions.LimitExceeded">
+<em class="property">exception </em><tt class="descclassname">kombu.exceptions.</tt><tt class="descname">LimitExceeded</tt><a class="headerlink" href="#kombu.exceptions.LimitExceeded" title="Permalink to this definition">¶</a></dt>
+<dd><p>Limit exceeded.</p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="kombu.exceptions.ConnectionLimitExceeded">
+<em class="property">exception </em><tt class="descclassname">kombu.exceptions.</tt><tt class="descname">ConnectionLimitExceeded</tt><a class="headerlink" href="#kombu.exceptions.ConnectionLimitExceeded" title="Permalink to this definition">¶</a></dt>
+<dd><p>Maximum number of simultaneous connections exceeded.</p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="kombu.exceptions.ChannelLimitExceeded">
+<em class="property">exception </em><tt class="descclassname">kombu.exceptions.</tt><tt class="descname">ChannelLimitExceeded</tt><a class="headerlink" href="#kombu.exceptions.ChannelLimitExceeded" title="Permalink to this definition">¶</a></dt>
+<dd><p>Maximum number of simultaenous channels exceeded.</p>
 </dd></dl>
 
 </div>
@@ -102,10 +123,10 @@
 </a></p>
   <h4>Previous topic</h4>
   <p class="topless"><a href="kombu.pidbox.html"
-                        title="previous chapter">Process Mailbox - kombu.pidbox</a></p>
+                        title="previous chapter">kombu.pidbox</a></p>
   <h4>Next topic</h4>
   <p class="topless"><a href="kombu.transport.html"
-                        title="next chapter">Transports - kombu.transport</a></p>
+                        title="next chapter">&lt;no title&gt;</a></p>
   <h3>This Page</h3>
   <ul class="this-page-menu">
     <li><a href="../sources/reference/kombu.exceptions.txt"
@@ -138,18 +159,18 @@
           <a href="../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="kombu.transport.html" title="Transports - kombu.transport"
+          <a href="kombu.transport.html" title="&lt;no title&gt;"
              >next</a> |</li>
         <li class="right" >
-          <a href="kombu.pidbox.html" title="Process Mailbox - kombu.pidbox"
+          <a href="kombu.pidbox.html" title="kombu.pidbox"
              >previous</a> |</li>
-        <li><a href="../index.html">Kombu v0.9.0 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu v0.9.1 documentation</a> &raquo;</li>
           <li><a href="index.html" >API Reference</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2009-2010, Ask Solem.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.1.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.4.
     </div>
   </body>
 </html>

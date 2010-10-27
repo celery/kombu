@@ -6,13 +6,13 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>AMQP Entities - kombu.entity &mdash; Kombu v0.9.0 documentation</title>
+    <title>kombu.entity &mdash; Kombu v0.9.1 documentation</title>
     <link rel="stylesheet" href="../static/celery.css" type="text/css" />
     <link rel="stylesheet" href="../static/pygments.css" type="text/css" />
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.9.0',
+        VERSION:     '0.9.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -21,10 +21,10 @@
     <script type="text/javascript" src="../static/jquery.js"></script>
     <script type="text/javascript" src="../static/underscore.js"></script>
     <script type="text/javascript" src="../static/doctools.js"></script>
-    <link rel="top" title="Kombu v0.9.0 documentation" href="../index.html" />
+    <link rel="top" title="Kombu v0.9.1 documentation" href="../index.html" />
     <link rel="up" title="API Reference" href="index.html" />
-    <link rel="next" title="Carrot Compatible API - kombu.compat" href="kombu.compat.html" />
-    <link rel="prev" title="Messaging - kombu.messaging" href="kombu.messaging.html" /> 
+    <link rel="next" title="kombu.compat" href="kombu.compat.html" />
+    <link rel="prev" title="kombu.messaging" href="kombu.messaging.html" /> 
   </head>
   <body>
     <div class="related">
@@ -37,12 +37,12 @@
           <a href="../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="kombu.compat.html" title="Carrot Compatible API - kombu.compat"
+          <a href="kombu.compat.html" title="kombu.compat"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="kombu.messaging.html" title="Messaging - kombu.messaging"
+          <a href="kombu.messaging.html" title="kombu.messaging"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">Kombu v0.9.0 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu v0.9.1 documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">API Reference</a> &raquo;</li> 
       </ul>
     </div>  
@@ -52,18 +52,54 @@
         <div class="bodywrapper">
           <div class="body">
             
-  <div class="section" id="amqp-entities-kombu-entity">
-<h1>AMQP Entities - kombu.entity<a class="headerlink" href="#amqp-entities-kombu-entity" title="Permalink to this headline">¶</a></h1>
-<span class="target" id="module-kombu.entity"></span><dl class="attribute">
-<dt id="kombu.entity.Binding">
-<tt class="descclassname">kombu.entity.</tt><tt class="descname">Binding</tt><a class="headerlink" href="#kombu.entity.Binding" title="Permalink to this definition">¶</a></dt>
-<dd><p>alias of <a class="reference internal" href="#kombu.entity.Queue" title="kombu.entity.Queue"><tt class="xref py py-class docutils literal"><span class="pre">Queue</span></tt></a></p>
-</dd></dl>
-
+  <span class="target" id="module-kombu.entity"></span><div class="section" id="kombu-entity">
+<h1>kombu.entity<a class="headerlink" href="#kombu-entity" title="Permalink to this headline">¶</a></h1>
+<p>Exchange and Queue declarations.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">copyright:</th><td class="field-body"><ol class="first loweralpha simple" start="3">
+<li>2009 - 2010 by Ask Solem.</li>
+</ol>
+</td>
+</tr>
+<tr class="field"><th class="field-name">license:</th><td class="field-body"><p class="first last">BSD, see LICENSE for more details.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="contents local topic" id="contents">
+<ul class="simple">
+<li><a class="reference internal" href="#exchange" id="id1">Exchange</a></li>
+<li><a class="reference internal" href="#queue" id="id2">Queue</a></li>
+</ul>
+</div>
+<div class="section" id="exchange">
+<h2><a class="toc-backref" href="#id1">Exchange</a><a class="headerlink" href="#exchange" title="Permalink to this headline">¶</a></h2>
+<p>Example creating an exchange declaration:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">news_exchange</span> <span class="o">=</span> <span class="n">Exchange</span><span class="p">(</span><span class="s">&quot;news&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s">&quot;topic&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>For now <cite>news_exchange</cite> is just a declaration, you can&#8217;t perform
+actions on it. It just describes the name and options for the exchange.</p>
+<p>The exchange can be bound or unbound. Bound means the exchange is
+associated with a channel and operations can be performed on it.
+To bind the exchange you call the exchange with the channel as argument:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">bound_exchange</span> <span class="o">=</span> <span class="n">news_exchange</span><span class="p">(</span><span class="n">channel</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Now you can perform operations like <tt class="xref py py-meth docutils literal"><span class="pre">declare()</span></tt> or <tt class="xref py py-meth docutils literal"><span class="pre">delete()</span></tt>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">bound_exchange</span><span class="o">.</span><span class="n">declare</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">message</span> <span class="o">=</span> <span class="n">bound_exchange</span><span class="o">.</span><span class="n">Message</span><span class="p">(</span><span class="s">&quot;Cure for cancer found!&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">bound_exchange</span><span class="o">.</span><span class="n">publish</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">routing_key</span><span class="o">=</span><span class="s">&quot;news.science&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">bound_exchange</span><span class="o">.</span><span class="n">delete</span><span class="p">()</span>
+</pre></div>
+</div>
 <dl class="class">
 <dt id="kombu.entity.Exchange">
 <em class="property">class </em><tt class="descclassname">kombu.entity.</tt><tt class="descname">Exchange</tt><big>(</big><em>name=''</em>, <em>type=''</em>, <em>channel=None</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.entity.Exchange" title="Permalink to this definition">¶</a></dt>
-<dd><p>An Exchange.</p>
+<dd><p>An Exchange declaration.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -96,36 +132,36 @@ also define additional exchange types, so see your broker
 manual for more information about available exchange types.</p>
 <blockquote>
 <ul>
-<li><p class="first"><tt class="docutils literal"><span class="pre">direct</span></tt> (<em>default</em>)</p>
+<li><p class="first"><cite>direct</cite> (<em>default</em>)</p>
 <blockquote>
 <p>Direct match between the routing key in the message, and the
 routing criteria used when a queue is bound to this exchange.</p>
 </blockquote>
 </li>
-<li><p class="first"><tt class="docutils literal"><span class="pre">topic</span></tt></p>
+<li><p class="first"><cite>topic</cite></p>
 <blockquote>
 <p>Wildcard match between the routing key and the routing pattern
 specified in the exchange/queue binding. The routing key is
-treated as zero or more words delimited by <tt class="docutils literal"><span class="pre">&quot;.&quot;</span></tt> and
-supports special wildcard characters. <tt class="docutils literal"><span class="pre">&quot;*&quot;</span></tt> matches a
-single word and <tt class="docutils literal"><span class="pre">&quot;#&quot;</span></tt> matches zero or more words.</p>
+treated as zero or more words delimited by <cite>&#8221;.&#8221;</cite> and
+supports special wildcard characters. <cite>&#8220;*&#8221;</cite> matches a
+single word and <cite>&#8220;#&#8221;</cite> matches zero or more words.</p>
 </blockquote>
 </li>
-<li><p class="first"><tt class="docutils literal"><span class="pre">fanout</span></tt></p>
+<li><p class="first"><cite>fanout</cite></p>
 <blockquote>
 <p>Queues are bound to this exchange with no arguments. Hence any
 message sent to this exchange will be forwarded to all queues
 bound to this exchange.</p>
 </blockquote>
 </li>
-<li><p class="first"><tt class="docutils literal"><span class="pre">headers</span></tt></p>
+<li><p class="first"><cite>headers</cite></p>
 <blockquote>
 <p>Queues are bound to this exchange with a table of arguments
 containing headers and values (optional). A special argument
 named &#8220;x-match&#8221; determines the matching algorithm, where
-<tt class="docutils literal"><span class="pre">&quot;all&quot;</span></tt> implies an <tt class="docutils literal"><span class="pre">AND</span></tt> (all pairs must match) and
-<tt class="docutils literal"><span class="pre">&quot;any&quot;</span></tt> implies <tt class="docutils literal"><span class="pre">OR</span></tt> (at least one pair must match).</p>
-<p><tt class="xref py py-attr docutils literal"><span class="pre">arguments`</span></tt> is used to specify the arguments.</p>
+<cite>&#8220;all&#8221;</cite> implies an <cite>AND</cite> (all pairs must match) and
+<cite>&#8220;any&#8221;</cite> implies <cite>OR</cite> (at least one pair must match).</p>
+<p><a class="reference internal" href="#kombu.entity.Exchange.arguments" title="kombu.entity.Exchange.arguments"><tt class="xref py py-attr docutils literal"><span class="pre">arguments</span></tt></a> is used to specify the arguments.</p>
 </blockquote>
 </li>
 </ul>
@@ -146,23 +182,24 @@ Rajith Attapattu. This article is recommended reading.</p>
 <tt class="descname">durable</tt><a class="headerlink" href="#kombu.entity.Exchange.durable" title="Permalink to this definition">¶</a></dt>
 <dd><p>Durable exchanges remain active when a server restarts. Non-durable
 exchanges (transient exchanges) are purged when a server restarts.
-Default is <tt class="xref docutils literal"><span class="pre">True</span></tt>.</p>
+Default is <tt class="xref py py-const xref docutils literal"><span class="pre">True</span></tt>.</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.entity.Exchange.auto_delete">
 <tt class="descname">auto_delete</tt><a class="headerlink" href="#kombu.entity.Exchange.auto_delete" title="Permalink to this definition">¶</a></dt>
 <dd><p>If set, the exchange is deleted when all queues have finished
-using it. Default is <tt class="xref docutils literal"><span class="pre">False</span></tt>.</p>
+using it. Default is <tt class="xref py py-const xref docutils literal"><span class="pre">False</span></tt>.</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.entity.Exchange.delivery_mode">
 <tt class="descname">delivery_mode</tt><a class="headerlink" href="#kombu.entity.Exchange.delivery_mode" title="Permalink to this definition">¶</a></dt>
-<dd><p>The default delivery mode used for messages. The value is an integer.</p>
+<dd><p>The default delivery mode used for messages. The value is an integer,
+or alias string.</p>
 <blockquote>
 <ul>
-<li><p class="first">1 or &#8220;transient&#8221;</p>
+<li><p class="first">1 or <cite>&#8220;transient&#8221;</cite></p>
 <blockquote>
 <p>The message is transient. Which means it is stored in
 memory only, and is lost if the server dies or restarts.</p>
@@ -178,7 +215,7 @@ preserved if the server dies or restarts.</p>
 </li>
 </ul>
 </blockquote>
-<p>The default value is <tt class="docutils literal"><span class="pre">2</span></tt> (persistent).</p>
+<p>The default value is 2 (persistent).</p>
 </dd></dl>
 
 <dl class="attribute">
@@ -187,26 +224,12 @@ preserved if the server dies or restarts.</p>
 <dd><p>Additional arguments to specify when the exchange is declared.</p>
 </dd></dl>
 
-<p><strong>Usage</strong></p>
-<p>Example creating an exchange declaration:</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">news_exchange</span> <span class="o">=</span> <span class="n">Exchange</span><span class="p">(</span><span class="s">&quot;news&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s">&quot;topic&quot;</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>For now <tt class="docutils literal"><span class="pre">news_exchange</span></tt> is just a declaration, you can&#8217;t perform
-actions on it. It just describes the name and options for the exchange.</p>
-<p>The exchange can be bound or unbound. Bound means the exchange is
-associated with a channel and operations can be performed on it.
-To bind the exchange you call the exchange with the channel as argument:</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">bound_exchange</span> <span class="o">=</span> <span class="n">news_exchange</span><span class="p">(</span><span class="n">channel</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>Now you can perform operations like <a class="reference internal" href="#kombu.entity.Exchange.declare" title="kombu.entity.Exchange.declare"><tt class="xref py py-meth docutils literal"><span class="pre">declare()</span></tt></a> or <a class="reference internal" href="#kombu.entity.Exchange.delete" title="kombu.entity.Exchange.delete"><tt class="xref py py-meth docutils literal"><span class="pre">delete()</span></tt></a>:</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">bound_exchange</span><span class="o">.</span><span class="n">declare</span><span class="p">()</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">message</span> <span class="o">=</span> <span class="n">bound_exchange</span><span class="o">.</span><span class="n">Message</span><span class="p">(</span><span class="s">&quot;Cure for cancer found!&quot;</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">bound_exchange</span><span class="o">.</span><span class="n">publish</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">routing_key</span><span class="o">=</span><span class="s">&quot;news.science&quot;</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">bound_exchange</span><span class="o">.</span><span class="n">delete</span><span class="p">()</span>
-</pre></div>
-</div>
+<dl class="method">
+<dt id="kombu.entity.Exchange.maybe_bind">
+<tt class="descname">maybe_bind</tt><big>(</big><em>channel</em><big>)</big><a class="headerlink" href="#kombu.entity.Exchange.maybe_bind" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bind instance to channel if not already bound.</p>
+</dd></dl>
+
 <dl class="method">
 <dt id="kombu.entity.Exchange.Message">
 <tt class="descname">Message</tt><big>(</big><em>body</em>, <em>delivery_mode=None</em>, <em>priority=None</em>, <em>content_type=None</em>, <em>content_encoding=None</em>, <em>properties=None</em>, <em>headers=None</em><big>)</big><a class="headerlink" href="#kombu.entity.Exchange.Message" title="Permalink to this definition">¶</a></dt>
@@ -219,7 +242,7 @@ To bind the exchange you call the exchange with the channel as argument:</p>
 <li><strong>body</strong> &#8211; Message body.</li>
 <li><strong>delivery_mode</strong> &#8211; Set custom delivery mode. Defaults
 to <a class="reference internal" href="#kombu.entity.Exchange.delivery_mode" title="kombu.entity.Exchange.delivery_mode"><tt class="xref py py-attr docutils literal"><span class="pre">delivery_mode</span></tt></a>.</li>
-<li><strong>priority</strong> &#8211; Message priority, <tt class="docutils literal"><span class="pre">0</span></tt> to <tt class="docutils literal"><span class="pre">9</span></tt>. (currently not
+<li><strong>priority</strong> &#8211; Message priority, 0 to 9. (currently not
 supported by RabbitMQ).</li>
 <li><strong>content_type</strong> &#8211; The messages content_type. If content_type
 is set, no serialization occurs as it is assumed this is either
@@ -250,7 +273,7 @@ properly sets content_encoding.</li>
 <tbody valign="top">
 <tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>nowait</strong> &#8211; If set the server will not respond, and a
-response will not be waited for. Default is <tt class="xref docutils literal"><span class="pre">False</span></tt>.</li>
+response will not be waited for. Default is <tt class="xref py py-const xref docutils literal"><span class="pre">False</span></tt>.</li>
 </ul>
 </td>
 </tr>
@@ -268,9 +291,9 @@ response will not be waited for. Default is <tt class="xref docutils literal"><s
 <tbody valign="top">
 <tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>if_unused</strong> &#8211; Delete only if the exchange has no bindings.
-Default is <tt class="xref docutils literal"><span class="pre">False</span></tt>.</li>
+Default is <tt class="xref py py-const xref docutils literal"><span class="pre">False</span></tt>.</li>
 <li><strong>nowait</strong> &#8211; If set the server will not respond, and a
-response will not be waited for. Default is <tt class="xref docutils literal"><span class="pre">False</span></tt>.</li>
+response will not be waited for. Default is <tt class="xref py py-const xref docutils literal"><span class="pre">False</span></tt>.</li>
 </ul>
 </td>
 </tr>
@@ -300,6 +323,31 @@ response will not be waited for. Default is <tt class="xref docutils literal"><s
 
 </dd></dl>
 
+</div>
+<div class="section" id="queue">
+<h2><a class="toc-backref" href="#id2">Queue</a><a class="headerlink" href="#queue" title="Permalink to this headline">¶</a></h2>
+<p>Example creating a queue using our exchange in the <a class="reference internal" href="#kombu.entity.Exchange" title="kombu.entity.Exchange"><tt class="xref py py-class docutils literal"><span class="pre">Exchange</span></tt></a>
+example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">science_news</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">(</span><span class="s">&quot;science_news&quot;</span><span class="p">,</span>
+<span class="gp">... </span>                     <span class="n">exchange</span><span class="o">=</span><span class="n">news_exchange</span><span class="p">,</span>
+<span class="gp">... </span>                     <span class="n">routing_key</span><span class="o">=</span><span class="s">&quot;news.science&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>For now <cite>science_news</cite> is just a declaration, you can&#8217;t perform
+actions on it. It just describes the name and options for the queue.</p>
+<p>The queue can be bound or unbound. Bound means the queue is
+associated with a channel and operations can be performed on it.
+To bind the queue you call the queue instance with the channel as
+an argument:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">bound_science_news</span> <span class="o">=</span> <span class="n">science_news</span><span class="p">(</span><span class="n">channel</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Now you can perform operations like <tt class="xref py py-meth docutils literal"><span class="pre">declare()</span></tt> or <tt class="xref py py-meth docutils literal"><span class="pre">purge()</span></tt>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">bound_sicence_news</span><span class="o">.</span><span class="n">declare</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">bound_science_news</span><span class="o">.</span><span class="n">purge</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">bound_science_news</span><span class="o">.</span><span class="n">delete</span><span class="p">()</span>
+</pre></div>
+</div>
 <dl class="class">
 <dt id="kombu.entity.Queue">
 <em class="property">class </em><tt class="descclassname">kombu.entity.</tt><tt class="descname">Queue</tt><big>(</big><em>name=''</em>, <em>exchange=None</em>, <em>routing_key=''</em>, <em>channel=None</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.entity.Queue" title="Permalink to this definition">¶</a></dt>
@@ -358,12 +406,12 @@ the <a class="reference internal" href="#kombu.entity.Queue.routing_key" title="
 <blockquote>
 <p>Matches the routing key property of the message by a primitive
 pattern matching scheme. The message routing key then consists
-of words separated by dots (<tt class="docutils literal"><span class="pre">&quot;.&quot;</span></tt>, like domain names), and
-two special characters are available; star (<tt class="docutils literal"><span class="pre">&quot;*&quot;</span></tt>) and hash
-(<tt class="docutils literal"><span class="pre">&quot;#&quot;</span></tt>). The star matches any word, and the hash matches
-zero or more words. For example <tt class="docutils literal"><span class="pre">&quot;*.stock.#&quot;</span></tt> matches the
-routing keys <tt class="docutils literal"><span class="pre">&quot;usd.stock&quot;</span></tt> and <tt class="docutils literal"><span class="pre">&quot;eur.stock.db&quot;</span></tt> but not
-<tt class="docutils literal"><span class="pre">&quot;stock.nasdaq&quot;</span></tt>.</p>
+of words separated by dots (<cite>&#8221;.&#8221;</cite>, like domain names), and
+two special characters are available; star (<cite>&#8220;*&#8221;</cite>) and hash
+(<cite>&#8220;#&#8221;</cite>). The star matches any word, and the hash matches
+zero or more words. For example <cite>&#8220;*.stock.#&#8221;</cite> matches the
+routing keys <cite>&#8220;usd.stock&#8221;</cite> and <cite>&#8220;eur.stock.db&#8221;</cite> but not
+<cite>&#8220;stock.nasdaq&#8221;</cite>.</p>
 </blockquote>
 </li>
 </ul>
@@ -385,7 +433,7 @@ a server restarts.
 Note that durable queues do not necessarily hold persistent
 messages, although it does not make sense to send
 persistent messages to a transient queue.</p>
-<p>Default is <tt class="xref docutils literal"><span class="pre">True</span></tt>.</p>
+<p>Default is <tt class="xref py py-const xref docutils literal"><span class="pre">True</span></tt>.</p>
 </dd></dl>
 
 <dl class="attribute">
@@ -394,7 +442,7 @@ persistent messages to a transient queue.</p>
 <dd><p>Exclusive queues may only be consumed from by the
 current connection. Setting the &#8216;exclusive&#8217; flag
 always implies &#8216;auto-delete&#8217;.</p>
-<p>Default is <tt class="xref docutils literal"><span class="pre">False</span></tt>.</p>
+<p>Default is <tt class="xref py py-const xref docutils literal"><span class="pre">False</span></tt>.</p>
 </dd></dl>
 
 <dl class="attribute">
@@ -419,29 +467,12 @@ deleted.</p>
 <dd><p>Additional arguments used when binding the queue.</p>
 </dd></dl>
 
-<p><strong>Usage</strong></p>
-<p>Example creating a queue using our exchange in the <a class="reference internal" href="#kombu.entity.Exchange" title="kombu.entity.Exchange"><tt class="xref py py-class docutils literal"><span class="pre">Exchange</span></tt></a>
-example:</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">science_news</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">(</span><span class="s">&quot;science_news&quot;</span><span class="p">,</span>
-<span class="gp">... </span>                     <span class="n">exchange</span><span class="o">=</span><span class="n">news_exchange</span><span class="p">,</span>
-<span class="gp">... </span>                     <span class="n">routing_key</span><span class="o">=</span><span class="s">&quot;news.science&quot;</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>For now <tt class="docutils literal"><span class="pre">science_news</span></tt> is just a declaration, you can&#8217;t perform
-actions on it. It just describes the name and options for the queue.</p>
-<p>The queue can be bound or unbound. Bound means the queue is
-associated with a channel and operations can be performed on it.
-To bind the queue you call the queue instance with the channel as
-an argument:</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">bound_science_news</span> <span class="o">=</span> <span class="n">science_news</span><span class="p">(</span><span class="n">channel</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>Now you can perform operations like <a class="reference internal" href="#kombu.entity.Queue.declare" title="kombu.entity.Queue.declare"><tt class="xref py py-meth docutils literal"><span class="pre">declare()</span></tt></a> or <a class="reference internal" href="#kombu.entity.Queue.purge" title="kombu.entity.Queue.purge"><tt class="xref py py-meth docutils literal"><span class="pre">purge()</span></tt></a>:</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">bound_sicence_news</span><span class="o">.</span><span class="n">declare</span><span class="p">()</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">bound_science_news</span><span class="o">.</span><span class="n">purge</span><span class="p">()</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">bound_science_news</span><span class="o">.</span><span class="n">delete</span><span class="p">()</span>
-</pre></div>
-</div>
+<dl class="method">
+<dt id="kombu.entity.Queue.maybe_bind">
+<tt class="descname">maybe_bind</tt><big>(</big><em>channel</em><big>)</big><a class="headerlink" href="#kombu.entity.Queue.maybe_bind" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bind instance to channel if not already bound.</p>
+</dd></dl>
+
 <dl class="method">
 <dt id="kombu.entity.Queue.cancel">
 <tt class="descname">cancel</tt><big>(</big><em>consumer_tag</em><big>)</big><a class="headerlink" href="#kombu.entity.Queue.cancel" title="Permalink to this definition">¶</a></dt>
@@ -560,7 +591,7 @@ is more important than performance.</p>
 <tbody valign="top">
 <tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>nowait</strong> &#8211; Do not wait for a reply.</li>
-<li><strong>passive</strong> &#8211; If set, the server will not create the queue. 
+<li><strong>passive</strong> &#8211; If set, the server will not create the queue.
 The client can use this to check whether a queue exists
 without modifying the server state.</li>
 </ul>
@@ -584,6 +615,7 @@ without modifying the server state.</li>
 </dd></dl>
 
 </div>
+</div>
 
 
           </div>
@@ -593,12 +625,21 @@ without modifying the server state.</li>
         <div class="sphinxsidebarwrapper"><p class="logo"><a href="../index.html">
   <img class="logo" width="128" height="128" src="http://cloud.github.com/downloads/ask/kombu/kombusmall.jpg" alt="Logo"/>
 </a></p>
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">kombu.entity</a><ul>
+<li><a class="reference internal" href="#exchange">Exchange</a></li>
+<li><a class="reference internal" href="#queue">Queue</a></li>
+</ul>
+</li>
+</ul>
+
   <h4>Previous topic</h4>
   <p class="topless"><a href="kombu.messaging.html"
-                        title="previous chapter">Messaging - kombu.messaging</a></p>
+                        title="previous chapter">kombu.messaging</a></p>
   <h4>Next topic</h4>
   <p class="topless"><a href="kombu.compat.html"
-                        title="next chapter">Carrot Compatible API - kombu.compat</a></p>
+                        title="next chapter">kombu.compat</a></p>
   <h3>This Page</h3>
   <ul class="this-page-menu">
     <li><a href="../sources/reference/kombu.entity.txt"
@@ -631,18 +672,18 @@ without modifying the server state.</li>
           <a href="../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="kombu.compat.html" title="Carrot Compatible API - kombu.compat"
+          <a href="kombu.compat.html" title="kombu.compat"
              >next</a> |</li>
         <li class="right" >
-          <a href="kombu.messaging.html" title="Messaging - kombu.messaging"
+          <a href="kombu.messaging.html" title="kombu.messaging"
              >previous</a> |</li>
-        <li><a href="../index.html">Kombu v0.9.0 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu v0.9.1 documentation</a> &raquo;</li>
           <li><a href="index.html" >API Reference</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2009-2010, Ask Solem.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.1.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.4.
     </div>
   </body>
 </html>
