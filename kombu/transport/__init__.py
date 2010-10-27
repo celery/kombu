@@ -14,6 +14,39 @@ from kombu.utils import rpartition
 
 DEFAULT_TRANSPORT = "kombu.transport.pyamqplib.Transport"
 
+MISSING_LIB = """
+    The %(feature)s requires the %(lib)s module to be
+    installed; http://pypi.python.org/pypi/%(lib)s
+
+    Use pip to install this module::
+
+        $ pip install %(lib)s
+
+    or using easy_install::
+
+        $ easy_install %(lib)s
+"""
+
+
+def _requires(feature, module, lib):
+    try:
+        __import__(module)
+    except ImportError:
+        raise ImportError(MISSING_LIB % {"feature": feature,
+                                         "module": module,
+                                         "lib": lib})
+
+
+def _django_transport():
+    _requires("Django transport", "djkombu", "django-kombu")
+    return "djkombu.transport.DatabaseTransport"
+
+
+def _sqlalchemy_transport():
+    _requires("SQLAlchemy transport", "sqlakombu", "kombu-sqlalchemy")
+    return "sqlakombu.transport.Transport"
+
+
 TRANSPORT_ALIASES = {
     "amqplib": "kombu.transport.pyamqplib.Transport",
     "pika": "kombu.transport.pypika.AsyncoreTransport",
@@ -23,6 +56,8 @@ TRANSPORT_ALIASES = {
     "beanstalk": "kombu.transport.beanstalk.Transport",
     "mongodb": "kombu.transport.mongodb.Transport",
     "couchdb": "kombu.transport.pycouchdb.Transport",
+    "django": _django_transport,
+    "sqlalchemy": _sqlalchemy_transport,
 }
 
 _transport_cache = {}
@@ -30,6 +65,8 @@ _transport_cache = {}
 
 def resolve_transport(transport=None):
     transport = TRANSPORT_ALIASES.get(transport, transport)
+    if callable(transport):
+        transport = transport()
     transport_module_name, _, transport_cls_name = rpartition(transport, ".")
     if not transport_module_name:
         raise KeyError("No such transport: %s" % (transport, ))
