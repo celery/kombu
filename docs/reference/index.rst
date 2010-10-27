@@ -16,10 +16,12 @@
     kombu.pidbox
     kombu.exceptions
     kombu.transport
-    kombu.transport.pypika
     kombu.transport.pyamqplib
-    kombu.transport.pyredis
+    kombu.transport.pypika
     kombu.transport.memory
+    kombu.transport.pyredis
+    kombu.transport.mongodb
+    kombu.transport.pycouchdb
     kombu.transport.base
     kombu.transport.virtual
     kombu.transport.virtual.exchange

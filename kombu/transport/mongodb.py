@@ -37,7 +37,7 @@ class Channel(virtual.Channel):
                         "messages", query={"queue": queue}, remove=True)
         except OperationFailure:
             raise Empty()
-        return msg["value"]["payload"]
+        return deserialize(msg["value"]["payload"])
 
     def _size(self, queue):
         return self.client.count()

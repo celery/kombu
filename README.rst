@@ -57,8 +57,8 @@ Kombu is using Sphinx, and the latest documentation is available at GitHub:
 Quick overview
 --------------
 
-
 .. code-block:: python
+
     from kombu.connection BrokerConnection
     from kombu.messaging import Exchange, Queue, Consumer, Producer
 
@@ -81,7 +81,6 @@ Quick overview
     # Process messages on all channels
     while True:
         connection.drain_events()
-
 
     # Consume from several queues on the same channel:
     video_queue = Queue("video", exchange=media_exchange, key="video")
