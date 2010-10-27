@@ -11,11 +11,11 @@ CouchDB transport.
 from Queue import Empty
 
 import couchdb
-import uuid
 
 from anyjson import serialize, deserialize
 
 from kombu.transport import virtual
+from kombu.utils import uuid4
 
 DEFAULT_PORT = 5984
 DEFAULT_DATABASE = "kombu_default"
@@ -43,19 +43,10 @@ class Channel(virtual.Channel):
 
     view_created = False
 
-    def _new_queue(self, queue, **kwargs):
-        pass
-
-    def _query(self, queue, **kwargs):
-        # If the message view is not yet set up, we'll need it now.
-        if not self.view_created:
-            create_message_view(self.client)
-            self.view_created = True
-
-        if not queue:
-            raise Empty()
-
-        return self.client.view("kombu/messages", key=queue, **kwargs)
+    def _put(self, queue, message, **kwargs):
+        self.client.save({'_id': uuid4().hex,
+                          'queue': queue,
+                          'payload': message})
 
     def _get(self, queue):
         result = self._query(queue, limit=1)
@@ -88,6 +79,13 @@ class Channel(virtual.Channel):
             return server.create(dbname)
         except couchdb.PreconditionFailed:
             return server[dbname]
+
+    def _query(self, queue, **kwargs):
+        if not self.view_created:
+            # if the message view is not yet set up, we'll need it now.
+            create_message_view(self.client)
+            self.view_created = True
+        return self.client.view("kombu/messages", key=queue, **kwargs)
 
     @property
     def client(self):
