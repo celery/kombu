@@ -22,7 +22,7 @@ class ExchangeType(object):
     def __init__(self, channel):
         self.channel = channel
 
-    def lookup(self, exchange, routing_key, default):
+    def lookup(self, table, exchange, routing_key, default):
         """Lookup all queues matching `routing_key` in `exchange`.
 
         :returns: `default` if no queues matched.
@@ -41,7 +41,7 @@ class ExchangeType(object):
         return (type == prev["type"] and
                 durable == prev["durable"] and
                 auto_delete == prev["auto_delete"] and
-                arguments or {} == prev["arguments"] or {})
+                (arguments or {}) == (prev["arguments"] or {}))
 
 
 class DirectExchange(ExchangeType):
@@ -81,7 +81,7 @@ class TopicExchange(ExchangeType):
         try:
             compiled = self._compiled[pattern]
         except KeyError:
-            compiled = self._compiled[pattern] = re.compile(pattern, re.u)
+            compiled = self._compiled[pattern] = re.compile(pattern, re.U)
         return compiled.match(string)
 
 
@@ -99,9 +99,6 @@ class FanoutExchange(ExchangeType):
 
     def lookup(self, table, exchange, routing_key, default):
         return [queue for _, _, queue in table]
-
-    def prepare_bind(self, queue, exchange, routing_key, arguments):
-        return routing_key, None, queue
 
 
 #: Map of standard exchange types and corresponding classes.
