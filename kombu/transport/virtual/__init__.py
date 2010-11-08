@@ -79,7 +79,7 @@ class QoS(object):
 
         """
         pcount = self.prefetch_count
-        return (not pcount or len(self._delivered) > pcount)
+        return (not pcount or len(self._delivered) < pcount)
 
     def append(self, message, delivery_tag):
         """Append message to transactional state."""
@@ -236,6 +236,7 @@ class Channel(AbstractChannel):
         self._consumers = set()
         self._tag_to_queue = {}
         self._qos = None
+        self.closed = False
 
         # instantiate exchange types
         self.exchange_types = dict((typ, cls(self))
@@ -429,6 +430,7 @@ class Channel(AbstractChannel):
     def close(self):
         """Close channel, cancel all consumers, and requeue unacked
         messages."""
+        self.closed = True
         map(self.basic_cancel, list(self._consumers))
         self.qos.restore_unacked_once()
         self.connection.close_channel(self)
