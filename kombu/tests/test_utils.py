@@ -1,6 +1,10 @@
+import pickle
 import unittest2 as unittest
 
+from StringIO import StringIO
+
 from kombu import utils
+from kombu.utils.functional import wraps
 
 partition = utils._compat_partition
 rpartition = utils._compat_rpartition
@@ -69,3 +73,123 @@ class test_utils(unittest.TestCase):
 
     def test_rpartition_oldstr(self):
         self.assert_rpartition(utils.rpartition, OldString)
+
+
+class test_UUID(unittest.TestCase):
+
+    def test_uuid4(self):
+        self.assertNotEqual(utils.uuid4(),
+                            utils.uuid4())
+
+    def test_gen_unique_id(self):
+        i1 = utils.gen_unique_id()
+        i2 = utils.gen_unique_id()
+        self.assertIsInstance(i1, str)
+        self.assertNotEqual(i1, i2)
+
+
+class test_Misc(unittest.TestCase):
+
+    def test_kwdict(self):
+
+        def f(**kwargs):
+            return kwargs
+
+        kw = {u"foo": "foo",
+              u"bar": "bar"}
+        self.assertTrue(f(**utils.kwdict(kw)))
+
+    def test_repeatlast(self):
+        x = [1, 2, 3, 4]
+        it = utils.repeatlast(x)
+        self.assertEqual(it.next(), 1)
+        self.assertEqual(it.next(), 2)
+        self.assertEqual(it.next(), 3)
+        self.assertEqual(it.next(), 4)
+        self.assertEqual(it.next(), 4)
+
+
+
+class MyStringIO(StringIO):
+
+    def close(self):
+        pass
+
+
+
+class test_emergency_dump_state(unittest.TestCase):
+
+    def test_dump(self):
+        fh = MyStringIO()
+
+        utils.emergency_dump_state({"foo": "bar"}, open_file=lambda n, m : fh)
+        self.assertDictEqual(pickle.loads(fh.getvalue()), {"foo": "bar"})
+
+    def test_dump_second_strategy(self):
+        fh = MyStringIO()
+
+        def raise_something(*args, **kwargs):
+            raise KeyError("foo")
+
+        utils.emergency_dump_state({"foo": "bar"}, open_file=lambda n, m: fh,
+                                                   dump=raise_something)
+        self.assertIn("'foo': 'bar'", fh.getvalue())
+
+
+
+_tried_to_sleep = [None]
+def insomnia(fun):
+
+    @wraps(fun)
+    def _inner(*args, **kwargs):
+        _tried_to_sleep[0] = None
+
+        def mysleep(i):
+            _tried_to_sleep[0] = i
+
+        prev_sleep = utils.sleep
+        utils.sleep = mysleep
+        try:
+            return fun(*args, **kwargs)
+        finally:
+            utils.sleep = prev_sleep
+
+    return _inner
+
+
+class test_retry_over_Time(unittest.TestCase):
+
+    @insomnia
+    def test_simple(self):
+        index = [0]
+
+        class Predicate(Exception):
+            pass
+
+        def myfun():
+            sleepvals = {0: None,
+                         1: 2,
+                         2: 4,
+                         3: 6,
+                         4: 8,
+                         5: 10,
+                         6: 12,
+                         7: 14,
+                         8: 14,
+                         9: 14}
+            self.assertEqual(_tried_to_sleep[0], sleepvals[index[0]])
+            if index[0] < 9:
+                raise Predicate()
+            return 42
+
+        def errback(exc, interval):
+            index[0] += 1
+
+        x = utils.retry_over_time(myfun, Predicate, errback=errback,
+                                                    interval_max=14)
+        self.assertEqual(x, 42)
+        _tried_to_sleep[0] = None
+        index[0] = 0
+        self.assertRaises(Predicate,
+                          utils.retry_over_time, myfun, Predicate,
+                          max_retries=1, errback=errback, interval_max=14)
