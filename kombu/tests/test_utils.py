@@ -6,6 +6,8 @@ from StringIO import StringIO
 from kombu import utils
 from kombu.utils.functional import wraps
 
+from kombu.tests.utils import redirect_stdouts
+
 partition = utils._compat_partition
 rpartition = utils._compat_rpartition
 
@@ -116,16 +118,19 @@ class MyStringIO(StringIO):
         pass
 
 
-
 class test_emergency_dump_state(unittest.TestCase):
 
-    def test_dump(self):
+    @redirect_stdouts
+    def test_dump(self, stdout, stderr):
         fh = MyStringIO()
 
         utils.emergency_dump_state({"foo": "bar"}, open_file=lambda n, m : fh)
         self.assertDictEqual(pickle.loads(fh.getvalue()), {"foo": "bar"})
+        self.assertTrue(stderr.getvalue())
+        self.assertFalse(stdout.getvalue())
 
-    def test_dump_second_strategy(self):
+    @redirect_stdouts
+    def test_dump_second_strategy(self, stdout, stderr):
         fh = MyStringIO()
 
         def raise_something(*args, **kwargs):
@@ -134,7 +139,8 @@ class test_emergency_dump_state(unittest.TestCase):
         utils.emergency_dump_state({"foo": "bar"}, open_file=lambda n, m: fh,
                                                    dump=raise_something)
         self.assertIn("'foo': 'bar'", fh.getvalue())
-
+        self.assertTrue(stderr.getvalue())
+        self.assertFalse(stdout.getvalue())
 
 
 _tried_to_sleep = [None]

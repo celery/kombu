@@ -5,6 +5,7 @@ from kombu.transport import virtual
 from kombu.utils import gen_unique_id
 
 from kombu.tests.mocks import Channel
+from kombu.tests.utils import redirect_stdouts
 
 
 def client():
@@ -41,7 +42,8 @@ class test_QoS(unittest.TestCase):
         self.assertFalse(self.q._delivered.restored)
         self.assertTrue(self.q._on_collect)
 
-    def test_can_consume(self):
+    @redirect_stdouts
+    def test_can_consume(self, stdout, stderr):
 
         _restored = []
         class RestoreChannel(virtual.Channel):
@@ -79,6 +81,9 @@ class test_QoS(unittest.TestCase):
         self.q.restore_unacked_once()
         self.q._delivered.restored = False
         self.q.restore_unacked_once()
+
+        self.assertTrue(stderr.getvalue())
+        self.assertFalse(stdout.getvalue())
 
 
 class test_Message(unittest.TestCase):
