@@ -1,14 +1,18 @@
+import pickle
 import unittest2 as unittest
 
-from kombu.connection import BrokerConnection
+from kombu.connection import BrokerConnection, Resource
 
 from kombu.tests.mocks import Transport
 
 
 class test_Connection(unittest.TestCase):
 
+    def setUp(self):
+        self.conn = BrokerConnection(port=5672, transport=Transport)
+
     def test_establish_connection(self):
-        conn = BrokerConnection(port=5672, transport=Transport)
+        conn = self.conn
         conn.connect()
         self.assertTrue(conn.connection.connected)
         self.assertEqual(conn.host, "localhost:5672")
@@ -21,7 +25,7 @@ class test_Connection(unittest.TestCase):
         self.assertIsInstance(conn.transport, Transport)
 
     def test__enter____exit__(self):
-        conn = BrokerConnection(transport=Transport)
+        conn = self.conn
         context = conn.__enter__()
         self.assertIs(context, conn)
         conn.connect()
@@ -29,6 +33,68 @@ class test_Connection(unittest.TestCase):
         conn.__exit__()
         self.assertIsNone(conn.connection)
         conn.close()    # again
+
+    def test_close_survives_connerror(self):
+
+        class _CustomError(Exception):
+            pass
+
+        class MyTransport(Transport):
+            connection_errors = (_CustomError, )
+
+            def close_connection(self, connection):
+                raise _CustomError("foo")
+
+        conn = BrokerConnection(transport=MyTransport)
+        conn.connect()
+        conn.close()
+        self.assertTrue(conn._closed)
+
+    def test_ensure_connection(self):
+        self.assertTrue(self.conn.ensure_connection())
+
+    def test_SimpleQueue(self):
+        conn = self.conn
+        q = conn.SimpleQueue("foo")
+        self.assertTrue(q.channel)
+        self.assertTrue(q.channel_autoclose)
+        chan = conn.channel()
+        q2 = conn.SimpleQueue("foo", channel=chan)
+        self.assertIs(q2.channel, chan)
+        self.assertFalse(q2.channel_autoclose)
+
+    def test_SimpleBuffer(self):
+        conn = self.conn
+        q = conn.SimpleBuffer("foo")
+        self.assertTrue(q.channel)
+        self.assertTrue(q.channel_autoclose)
+        chan = conn.channel()
+        q2 = conn.SimpleBuffer("foo", channel=chan)
+        self.assertIs(q2.channel, chan)
+        self.assertFalse(q2.channel_autoclose)
+
+    def test__repr__(self):
+        self.assertTrue(repr(self.conn))
+
+    def test__reduce__(self):
+        x = pickle.loads(pickle.dumps(self.conn))
+        self.assertDictEqual(x.info(), self.conn.info())
+
+    def test_channel_errors(self):
+
+        class MyTransport(Transport):
+            channel_errors = (KeyError, ValueError)
+
+        conn = BrokerConnection(transport=MyTransport)
+        self.assertTupleEqual(conn.channel_errors, (KeyError, ValueError))
+
+    def test_connection_errors(self):
+
+        class MyTransport(Transport):
+            connection_errors = (KeyError, ValueError)
+
+        conn = BrokerConnection(transport=MyTransport)
+        self.assertTupleEqual(conn.connection_errors, (KeyError, ValueError))
 
 
 class ResourceCase(unittest.TestCase):
@@ -40,6 +106,10 @@ class ResourceCase(unittest.TestCase):
     def assertState(self, P, avail, dirty):
         self.assertEqual(P._resource.qsize(), avail)
         self.assertEqual(len(P._dirty), dirty)
+
+    def test_setup(self):
+        if self.abstract:
+            self.assertRaises(NotImplementedError, Resource)
 
     def test_acquire__release(self):
         if self.abstract:

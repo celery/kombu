@@ -21,7 +21,7 @@ class Channel(virtual.Channel):
         if queue not in self.queues:
             self.queues[queue] = Queue()
 
-    def _get(self, queue):
+    def _get(self, queue, timeout=None):
         return self.queues[queue].get(block=False)
 
     def _put(self, queue, message, **kwargs):

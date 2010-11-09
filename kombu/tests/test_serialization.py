@@ -1,13 +1,17 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-import cPickle
+import cPickle as pickle
 import sys
 import unittest2 as unittest
 
 from nose import SkipTest
 
-from kombu.serialization import registry
+from kombu.serialization import registry, register, SerializerNotInstalled, \
+                                raw_encode, register_yaml, register_msgpack, \
+                                decode
+
+from kombu.tests.utils import mask_modules, module_exists
 
 # For content_encoding tests
 unicode_string = u'abcdé\u8463'
@@ -33,7 +37,7 @@ json_data = ('{"int": 10, "float": 3.1415926500000002, '
              'th\\u00e9 lazy dog"}')
 
 # Pickle serialization tests
-pickle_data = cPickle.dumps(py_data)
+pickle_data = pickle.dumps(py_data)
 
 # YAML serialization tests
 yaml_data = ('float: 3.1415926500000002\nint: 10\n'
@@ -117,6 +121,7 @@ class test_Serialization(unittest.TestCase):
                               content_encoding='utf-8'))
 
     def test_msgpack_decode(self):
+        register_msgpack()
         try:
             import msgpack
         except ImportError:
@@ -130,6 +135,7 @@ class test_Serialization(unittest.TestCase):
                               content_encoding='binary'))
 
     def test_msgpack_encode(self):
+        register_msgpack()
         try:
             import msgpack
         except ImportError:
@@ -146,6 +152,7 @@ class test_Serialization(unittest.TestCase):
                     content_encoding='binary'))
 
     def test_yaml_decode(self):
+        register_yaml()
         try:
             import yaml
         except ImportError:
@@ -158,6 +165,7 @@ class test_Serialization(unittest.TestCase):
                               content_encoding='utf-8'))
 
     def test_yaml_encode(self):
+        register_yaml()
         try:
             import yaml
         except ImportError:
@@ -183,6 +191,35 @@ class test_Serialization(unittest.TestCase):
         self.assertEquals(pickle_data,
                           registry.encode(py_data,
                               serializer="pickle")[-1])
+
+    def test_register(self):
+        register(None, None, None, None)
+
+    def test_set_default_serializer_missing(self):
+        self.assertRaises(SerializerNotInstalled,
+                          registry._set_default_serializer, "nonexisting")
+
+    def test_encode_missing(self):
+        self.assertRaises(SerializerNotInstalled,
+                          registry.encode, "foo", serializer="nonexisting")
+
+    def test_raw_encode(self):
+        self.assertTupleEqual(raw_encode(str("foo")),
+                              ("application/data", "binary", "foo"))
+
+    @mask_modules("yaml")
+    def test_register_yaml__no_yaml(self):
+        register_yaml()
+        self.assertRaises(SerializerNotInstalled,
+                          decode, "foo", "application/x-yaml", "utf-8")
+
+    @mask_modules("msgpack")
+    def test_register_msgpack__no_msgpack(self):
+        register_msgpack()
+        self.assertRaises(SerializerNotInstalled,
+                          decode, "foo", "application/x-msgpack", "utf-8")
+
+
 
 
 if __name__ == '__main__':

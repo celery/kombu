@@ -19,6 +19,24 @@ class test_Exchange(unittest.TestCase):
         self.assertIs(bound.channel, chan)
         self.assertIn("<bound", repr(bound))
 
+    def test_revive(self):
+        exchange = Exchange("foo", "direct")
+        chan = Channel()
+
+        # reviving unbound channel is a noop.
+        exchange.revive(chan)
+        self.assertFalse(exchange.is_bound)
+        self.assertIsNone(exchange._channel)
+
+        bound = exchange.bind(chan)
+        self.assertTrue(bound.is_bound)
+        self.assertIs(bound.channel, chan)
+
+        chan2 = Channel()
+        bound.revive(chan2)
+        self.assertTrue(bound.is_bound)
+        self.assertIs(bound._channel, chan2)
+
     def test_assert_is_bound(self):
         exchange = Exchange("foo", "direct")
         self.assertRaises(NotBoundError, exchange.declare)

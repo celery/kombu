@@ -103,15 +103,13 @@ class BrokerConnection(object):
         return self.transport.drain_events(self.connection, **kwargs)
 
     def _close(self):
-        try:
-            if self._connection:
-                try:
-                    self.transport.close_connection(self._connection)
-                except self.transport.connection_errors + (AttributeError, ):
-                    pass
-                self._connection = None
-        except socket.error:
-            pass
+        if self._connection:
+            try:
+                self.transport.close_connection(self._connection)
+            except self.transport.connection_errors + (AttributeError,
+                                                       socket.error):
+                pass
+            self._connection = None
         self._closed = True
 
     def release(self):

@@ -29,6 +29,8 @@ class FairCycle(object):
                 return resource
             except IndexError:
                 self.pos = 0
+                if not self.resources:
+                    raise self.predicate()
 
     def get(self):
         for tried in count(0):

@@ -48,7 +48,7 @@ class Message(object):
 
     def __init__(self, channel, body=None, delivery_tag=None,
             content_type=None, content_encoding=None, delivery_info={},
-            properties=None, headers=None,
+            properties=None, headers=None, postencode=None,
             **kwargs):
         self.channel = channel
         self.body = body
@@ -64,6 +64,8 @@ class Message(object):
         compression = self.headers.get("compression")
         if compression:
             self.body = decompress(self.body, compression)
+        if postencode:
+            self.body = self.body.encode(postencode)
 
     def ack(self):
         """Acknowledge this message as being processed.,

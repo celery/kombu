@@ -26,7 +26,7 @@ DEFAULT_PORT = 5672
 transport.AMQP_PROTOCOL_HEADER = "AMQP\x01\x01\x08\x00"
 
 
-class Connection(amqp.Connection):
+class Connection(amqp.Connection):  # pragma: no cover
 
     def _dispatch_basic_return(self, channel, args, msg):
         reply_code = args.read_short()
@@ -179,6 +179,8 @@ class Channel(_Channel):
 
 
 class Transport(base.Transport):
+    Connection = Connection
+
     default_port = DEFAULT_PORT
     connection_errors = (AMQPConnectionException,
                          socket.error,
@@ -207,13 +209,13 @@ class Transport(base.Transport):
             raise KeyError("Missing password for AMQP connection.")
         if not conninfo.port:
             conninfo.port = self.default_port
-        return Connection(host=conninfo.host,
-                          userid=conninfo.userid,
-                          password=conninfo.password,
-                          virtual_host=conninfo.virtual_host,
-                          insist=conninfo.insist,
-                          ssl=conninfo.ssl,
-                          connect_timeout=conninfo.connect_timeout)
+        return self.Connection(host=conninfo.host,
+                               userid=conninfo.userid,
+                               password=conninfo.password,
+                               virtual_host=conninfo.virtual_host,
+                               insist=conninfo.insist,
+                               ssl=conninfo.ssl,
+                               connect_timeout=conninfo.connect_timeout)
 
     def close_connection(self, connection):
         """Close the AMQP broker connection."""

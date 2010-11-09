@@ -14,6 +14,7 @@ import socket
 
 from itertools import count
 from multiprocessing.util import Finalize
+from time import sleep
 from Queue import Empty
 
 from kombu.transport import base
@@ -104,7 +105,7 @@ class QoS(object):
         while delivered:
             try:
                 _, message = delivered.popitem()
-            except KeyError:
+            except KeyError:  # pragma: no cover
                 break
 
             try:
@@ -144,13 +145,14 @@ class Message(base.Message):
 
     def __init__(self, channel, payload, **kwargs):
         properties = payload["properties"]
-        fields = {"body": payload.get("body").encode("utf-8"),
+        fields = {"body": payload.get("body"),
                   "delivery_tag": properties["delivery_tag"],
                   "content_type": payload.get("content-type"),
                   "content_encoding": payload.get("content-encoding"),
                   "headers": payload.get("headers"),
                   "properties": properties,
-                  "delivery_info": properties.get("delivery_info")}
+                  "delivery_info": properties.get("delivery_info"),
+                  "postencode": "utf-8"}
         super(Message, self).__init__(channel, **dict(kwargs, **fields))
 
     def serializable(self):
@@ -170,7 +172,7 @@ class AbstractChannel(object):
 
     """
 
-    def _get(self, queue):
+    def _get(self, queue, timeout=None):
         """Get next message from `queue`."""
         raise NotImplementedError("Virtual channels must implement _get")
 
@@ -205,7 +207,7 @@ class AbstractChannel(object):
         """
         pass
 
-    def _poll(self, cycle):
+    def _poll(self, cycle, timeout=None):
         """Poll a list of queues for available messages."""
         return cycle.get()
 
@@ -331,8 +333,7 @@ class Channel(AbstractChannel):
         self._consumers.remove(consumer_tag)
         self._reset_cycle()
         queue = self._tag_to_queue.pop(consumer_tag, None)
-        if queue:
-            self.connection._callbacks.pop(queue, None)
+        self.connection._callbacks.pop(queue, None)
 
     def basic_get(self, queue, **kwargs):
         """Get message by direct access (synchronous)."""
@@ -400,7 +401,7 @@ class Channel(AbstractChannel):
         if self._consumers and self.qos.can_consume():
             if hasattr(self, "_get_many"):
                 return self._get_many(self._active_queues, timeout=timeout)
-            return self._poll(self.cycle)
+            return self._poll(self.cycle, timeout=timeout)
         raise Empty()
 
     def message_to_python(self, raw_message):
@@ -531,21 +532,23 @@ class Transport(base.Transport):
         while self.channels:
             try:
                 channel = self.channels.pop()
-            except KeyError:
+            except KeyError:    # pragma: no cover
                 pass
             else:
                 channel.close()
 
     def drain_events(self, connection, timeout=None):
-        cycle_seconds = len(self.channels) * self.interval
+        if not self.channels:
+            raise ValueError("No channels to drain events from.")
         loop = 0
         while 1:
             try:
                 item, channel = self.cycle.get()
             except Empty:
-                if timeout and cycle_seconds * loop >= timeout:
+                if timeout and loop * 0.1 >= timeout:
                     raise socket.timeout()
                 loop += 1
+                sleep(0.1)
             else:
                 break
 
@@ -559,4 +562,4 @@ class Transport(base.Transport):
         self._callbacks[queue](message)
 
     def _drain_channel(self, channel):
-        return channel.drain_events(timeout=self.interval)
+        return channel.drain_events()

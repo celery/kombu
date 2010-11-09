@@ -18,7 +18,7 @@ class test_FairCycle(unittest.TestCase):
     def test_cycle(self):
         resources = ["a", "b", "c", "d", "e"]
 
-        def echo(r):
+        def echo(r, timeout=None):
             return r
 
         # cycle should be ["a", "b", "c", "d", "e", ... repeat]
