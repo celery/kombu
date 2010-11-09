@@ -27,6 +27,9 @@ moduleindex = ("kombu.abstract",
 def setup():
     # so coverage sees all our modules.
     for module in moduleindex:
-        __import__(module)
+        try:
+            __import__(module)
+        except ImportError:
+            pass
 
 
