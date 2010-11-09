@@ -39,3 +39,6 @@ class FairCycle(object):
             except self.predicate:
                 if tried >= len(self.resources) - 1:
                     raise
+
+    def __repr__(self):
+        return "<FairCycle: %r>" % (self.resources, )

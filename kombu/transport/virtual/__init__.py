@@ -205,9 +205,9 @@ class AbstractChannel(object):
         """
         pass
 
-    def _poll(self, queues):
+    def _poll(self, cycle):
         """Poll a list of queues for available messages."""
-        return FairCycle(self._get, queues, Empty).get()
+        return cycle.get()
 
 
 class Channel(AbstractChannel):
@@ -235,6 +235,7 @@ class Channel(AbstractChannel):
     def __init__(self, connection, **kwargs):
         self.connection = connection
         self._consumers = set()
+        self._cycle = None
         self._tag_to_queue = {}
         self._qos = None
         self.closed = False
@@ -267,7 +268,7 @@ class Channel(AbstractChannel):
 
     def exchange_delete(self, exchange, if_unused=False, nowait=False):
         """Delete `exchange` and all its bindings."""
-        for rkey, _, queue in self.typeof(exchange).get_table():
+        for rkey, _, queue in self.get_table(exchange):
             self.queue_delete(queue, if_unused=True, if_empty=True)
         self.state.exchanges.pop(exchange, None)
 
@@ -323,10 +324,12 @@ class Channel(AbstractChannel):
 
         self.connection._callbacks[queue] = _callback
         self._consumers.add(consumer_tag)
+        self._reset_cycle()
 
     def basic_cancel(self, consumer_tag):
         """Cancel consumer by consumer tag."""
         self._consumers.remove(consumer_tag)
+        self._reset_cycle()
         queue = self._tag_to_queue.pop(consumer_tag, None)
         if queue:
             self.connection._callbacks.pop(queue, None)
@@ -352,7 +355,8 @@ class Channel(AbstractChannel):
         """Reject message."""
         self.qos.reject(delivery_tag, requeue=requeue)
 
-    def basic_qos(self, prefetch_size, prefetch_count, apply_global=False):
+    def basic_qos(self, prefetch_size=0, prefetch_count=0,
+            apply_global=False):
         """Change QoS settings for this channel.
 
         Only `prefetch_count` is supported.
@@ -375,8 +379,8 @@ class Channel(AbstractChannel):
         Returns `default` if no queues matched.
 
         """
-        table = self.get_table(exchange)
         try:
+            table = self.get_table(exchange)
             return self.typeof(exchange).lookup(table, exchange,
                                                 routing_key, default)
         except KeyError:
@@ -396,7 +400,7 @@ class Channel(AbstractChannel):
         if self._consumers and self.qos.can_consume():
             if hasattr(self, "_get_many"):
                 return self._get_many(self._active_queues, timeout=timeout)
-            return self._poll(self._active_queues)
+            return self._poll(self.cycle)
         raise Empty()
 
     def message_to_python(self, raw_message):
@@ -435,6 +439,10 @@ class Channel(AbstractChannel):
         map(self.basic_cancel, list(self._consumers))
         self.qos.restore_unacked_once()
         self.connection.close_channel(self)
+        self._cycle = None
+
+    def _reset_cycle(self):
+        self._cycle = FairCycle(self._get, self._active_queues, Empty)
 
     def __enter__(self):
         return self
@@ -457,6 +465,12 @@ class Channel(AbstractChannel):
     @property
     def _active_queues(self):
         return [self._tag_to_queue[tag] for tag in self._consumers]
+
+    @property
+    def cycle(self):
+        if self._cycle is None:
+            self._reset_cycle()
+        return self._cycle
 
 
 class Transport(base.Transport):
