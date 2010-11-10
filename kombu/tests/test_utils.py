@@ -1,4 +1,5 @@
 import pickle
+import sys
 import unittest2 as unittest
 
 from StringIO import StringIO
@@ -6,7 +7,7 @@ from StringIO import StringIO
 from kombu import utils
 from kombu.utils.functional import wraps
 
-from kombu.tests.utils import redirect_stdouts
+from kombu.tests.utils import redirect_stdouts, mask_modules
 
 partition = utils._compat_partition
 rpartition = utils._compat_rpartition
@@ -88,6 +89,23 @@ class test_UUID(unittest.TestCase):
         i2 = utils.gen_unique_id()
         self.assertIsInstance(i1, str)
         self.assertNotEqual(i1, i2)
+
+    def test_gen_unique_id_without_ctypes(self):
+        old_utils = sys.modules.pop("kombu.utils")
+
+        @mask_modules("ctypes")
+        def with_ctypes_masked():
+            from kombu.utils import ctypes, gen_unique_id
+
+            self.assertIsNone(ctypes)
+            uuid = gen_unique_id()
+            self.assertTrue(uuid)
+            self.assertIsInstance(uuid, basestring)
+
+        try:
+            with_ctypes_masked()
+        finally:
+            sys.modules["celery.utils"] = old_utils
 
 
 class test_Misc(unittest.TestCase):
