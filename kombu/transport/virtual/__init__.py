@@ -13,13 +13,13 @@ Emulates the AMQ API for non-AMQ transports.
 import socket
 
 from itertools import count
-from multiprocessing.util import Finalize
 from time import sleep
 from Queue import Empty
 
 from kombu.transport import base
 from kombu.utils import emergency_dump_state, say
 from kombu.utils.compat import OrderedDict
+from kombu.utils.finalize import Finalize
 
 from kombu.transport.virtual.scheduling import FairCycle
 from kombu.transport.virtual.exchange import STANDARD_EXCHANGE_TYPES
