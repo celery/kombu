@@ -1,3 +1,27 @@
+############## __builtin__.all ##############################################
+
+try:
+    all([True])
+    all = all
+except NameError:
+    def all(iterable):
+        for item in iterable:
+            if not item:
+                return False
+        return True
+
+############## __builtin__.any ##############################################
+
+try:
+    any([True])
+    any = any
+except NameError:
+    def any(iterable):
+        for item in iterable:
+            if item:
+                return True
+        return False
+
 ############## collections.OrderedDict #######################################
 
 import weakref
