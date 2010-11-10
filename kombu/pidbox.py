@@ -168,7 +168,9 @@ class Mailbox(object):
 
     def get_queue(self, hostname):
         return Queue("%s.%s.pidbox" % (hostname, self.namespace),
-                     exchange=self.exchange)
+                     exchange=self.exchange,
+                     durable=False,
+                     auto_delete=True)
 
     def _publish_reply(self, reply, exchange, routing_key, channel=None):
         chan = channel or self.connection.channel()
