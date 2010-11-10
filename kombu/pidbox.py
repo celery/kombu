@@ -96,7 +96,7 @@ class Node(object):
         return self.handle(method, arguments)
 
     def handle_message(self, message_data, message):
-        self.dispatch_from_message(message_data)
+        return self.dispatch_from_message(message_data)
 
     def reply(self, data, exchange, routing_key, **kwargs):
         self.mailbox._publish_reply(data, exchange, routing_key,
