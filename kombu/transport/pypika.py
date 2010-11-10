@@ -47,6 +47,10 @@ class Channel(channel.Channel):
             return
         return m
 
+    def queue_purge(self, queue=None, nowait=False):
+        return channel.Channel.queue_purge(self, queue=queue, nowait=nowait) \
+                              .message_count
+
     def basic_publish(self, message, exchange, routing_key, mandatory=False,
             immediate=False):
         message_data, properties = message
