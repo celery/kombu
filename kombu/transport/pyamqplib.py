@@ -148,15 +148,16 @@ class Message(base.Message):
     """
 
     def __init__(self, channel, msg, **kwargs):
+        props = msg.properties
         super(Message, self).__init__(channel,
-                                      body=msg.body,
-                                      delivery_tag=msg.delivery_tag,
-                                      content_type=msg.content_type,
-                                      content_encoding=msg.content_encoding,
-                                      delivery_info=msg.delivery_info,
-                                      properties=msg.properties,
-                                      headers=msg.application_headers,
-                                      **kwargs)
+                body=msg.body,
+                delivery_tag=msg.delivery_tag,
+                content_type=props.get("content_type"),
+                content_encoding=props.get("content_encoding"),
+                delivery_info=msg.delivery_info,
+                properties=msg.properties,
+                headers=props.get("application_headers"),
+                **kwargs)
 
 
 class Channel(_Channel):
