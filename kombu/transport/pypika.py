@@ -65,8 +65,6 @@ class Channel(channel.Channel):
             callback=None, nowait=False):
 
         def _callback_decode(channel, method, header, body):
-            print("IN CALLBACK DECODE: %r" % (
-                channel, method, header, body))
             return callback((channel, method, header, body))
 
         return channel.Channel.basic_consume(self, _callback_decode,
@@ -86,7 +84,6 @@ class Channel(channel.Channel):
 
     def message_to_python(self, raw_message):
         """Convert encoded message body back to a Python value."""
-        print("RAW MESSAGE: %r" % (raw_message, ))
         return self.Message(channel=self, amqp_message=raw_message)
 
     def basic_ack(self, delivery_tag):
