@@ -40,11 +40,13 @@ class Channel(virtual.Channel):
         return item, dest
 
     def _put(self, queue, message, **kwargs):
-        priority = message["properties"]["priority"]
+        priority = message["properties"]["delivery_info"]["priority"]
         self.client.use(queue)
         self.client.put(serialize(message), priority=priority)
 
     def _get(self, queue):
+        from kombu.utils import say
+        say("_GET!")
         if queue not in self.client.watching():
             self.client.watch(queue)
 
@@ -92,7 +94,10 @@ class Channel(virtual.Channel):
 
     def _open(self):
         conninfo = self.connection.client
-        return Connection(host=conninfo.hostname, port=conninfo.port)
+        port = conninfo.port or DEFAULT_PORT
+        conn = Connection(host=conninfo.hostname, port=port)
+        conn.connect()
+        return conn
 
     @property
     def client(self):
