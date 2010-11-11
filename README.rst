@@ -50,7 +50,7 @@ Kombu is using Sphinx, and the latest documentation is available at GitHub:
 Quick overview
 --------------
 
-.. code-block:: python
+::
 
     from kombu.connection BrokerConnection
     from kombu.messaging import Exchange, Queue, Consumer, Producer
@@ -92,7 +92,7 @@ and used in configuaration files etc.
 They also support operations, but to do so they need to be bound
 to a channel:
 
-.. code-block:: python
+::
 
     >>> exchange = Exchange("tasks", "direct")
 
@@ -211,5 +211,5 @@ like Github (for some reason) you're welcome to send regular patches.
 License
 =======
 
-This software is licensed under the `New BSD License`. See the :file:`LICENSE`
+This software is licensed under the `New BSD License`. See the `LICENSE`
 file in the top distribution directory for the full license text.
