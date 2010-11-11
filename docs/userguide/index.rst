@@ -10,3 +10,4 @@
 
     connections
     simple
+    serialization
