@@ -1,15 +1,18 @@
 import unittest2 as unittest
 
-from kombu import BrokerConnection, Exchange, Queue
+from kombu import BrokerConnection, Exchange
 from kombu import compat
 
 from kombu.tests.mocks import Transport, Channel
 
+
 class test_misc(unittest.TestCase):
 
     def test_iterconsume(self):
+
         class Connection(object):
             drained = 0
+
             def drain_events(self, *args, **kwargs):
                 self.drained += 1
                 return self.drained
@@ -136,7 +139,8 @@ class test_Consumer(unittest.TestCase):
         self.assertEqual(q.name, n)
         self.assertEqual(q.exchange.name, n)
 
-        c2 = compat.Consumer(self.connection, queue=n+"2", exchange=n+"2",
+        c2 = compat.Consumer(self.connection, queue=n + "2",
+                             exchange=n + "2",
                              routing_key="rkey", durable=False,
                              auto_delete=True, exclusive=True)
         q2 = c2.queues[0]
@@ -154,7 +158,7 @@ class test_Consumer(unittest.TestCase):
         self.assertIn("close", c.backend)
         self.assertTrue(c._closed)
 
-    def test_iterqueue(self, n="test_iterqueue"):
+    def test_iter(self, n="test_iterqueue"):
         c = compat.Consumer(self.connection, queue=n, exchange=n,
                             routing_key="rkey")
         self.assertTrue(hasattr(c.__iter__(), "next"))
@@ -212,14 +216,12 @@ class test_Consumer(unittest.TestCase):
                 for i in range(limit):
                     yield i
 
-
         c = C(self.connection, queue=n, exchange=n,
                                routing_key="rkey")
         self.assertEqual(c.wait(10), range(10))
         c.close()
 
     def test_iterqueue(self, n="test_iterqueue"):
-
         i = [0]
 
         class C(compat.Consumer):
@@ -280,4 +282,3 @@ class test_ConsumerSet(unittest.TestCase):
         self.assertIn("basic_cancel", c.channel)
         self.assertIn("close", c.channel)
         self.assertIn("close", c2.channel)
-

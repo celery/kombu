@@ -125,6 +125,7 @@ class test_Producer(unittest.TestCase):
 
         p = Producer(chan, on_return=on_return)
         self.assertTrue(on_return in chan.events["basic_return"])
+        self.assertTrue(p.on_return)
 
 
 class test_Consumer(unittest.TestCase):
