@@ -24,6 +24,7 @@ class Channel(object):
     def __init__(self):
         self.called = []
         self.deliveries = count(1).next
+        self.to_deliver = []
 
     def _called(self, name):
         self.called.append(name)
@@ -66,8 +67,13 @@ class Channel(object):
 
     def basic_get(self, *args, **kwargs):
         self._called("basic_get")
+        try:
+            return self.to_deliver.pop()
+        except IndexError:
+            pass
 
     def queue_purge(self, *args, **kwargs):
+        print("PURGE!")
         self._called("queue_purge")
 
     def basic_consume(self, *args, **kwargs):
@@ -81,6 +87,9 @@ class Channel(object):
 
     def basic_recover(self, requeue=False):
         self._called("basic_recover")
+
+    def close(self):
+        self._called("close")
 
     def message_to_python(self, message, *args, **kwargs):
         self._called("message_to_python")
