@@ -6,13 +6,13 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Utilities - kombu.utils &mdash; Kombu v0.9.1 documentation</title>
+    <title>Utilities - kombu.utils &mdash; Kombu v0.9.5 documentation</title>
     <link rel="stylesheet" href="../static/celery.css" type="text/css" />
     <link rel="stylesheet" href="../static/pygments.css" type="text/css" />
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.9.1',
+        VERSION:     '0.9.5',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -21,7 +21,7 @@
     <script type="text/javascript" src="../static/jquery.js"></script>
     <script type="text/javascript" src="../static/underscore.js"></script>
     <script type="text/javascript" src="../static/doctools.js"></script>
-    <link rel="top" title="Kombu v0.9.1 documentation" href="../index.html" />
+    <link rel="top" title="Kombu v0.9.5 documentation" href="../index.html" />
     <link rel="up" title="API Reference" href="index.html" />
     <link rel="next" title="kombu.utils.functional" href="kombu.utils.functional.html" />
     <link rel="prev" title="kombu.compression" href="kombu.abstract.html" /> 
@@ -42,7 +42,7 @@
         <li class="right" >
           <a href="kombu.abstract.html" title="kombu.compression"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">Kombu v0.9.1 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu v0.9.5 documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">API Reference</a> &raquo;</li> 
       </ul>
     </div>  
@@ -54,88 +54,9 @@
             
   <div class="section" id="utilities-kombu-utils">
 <h1>Utilities - kombu.utils<a class="headerlink" href="#utilities-kombu-utils" title="Permalink to this headline">¶</a></h1>
-<span class="target" id="module-kombu.utils"></span><dl class="class">
-<dt id="kombu.utils.OrderedDict">
-<em class="property">class </em><tt class="descclassname">kombu.utils.</tt><tt class="descname">OrderedDict</tt><big>(</big><em>*args</em>, <em>**kwds</em><big>)</big><a class="headerlink" href="#kombu.utils.OrderedDict" title="Permalink to this definition">¶</a></dt>
-<dd><p>Dictionary that remembers insertion order</p>
-<dl class="method">
-<dt id="kombu.utils.OrderedDict.clear">
-<tt class="descname">clear</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.utils.OrderedDict.clear" title="Permalink to this definition">¶</a></dt>
-<dd><p>od.clear() -&gt; None.  Remove all items from od.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="kombu.utils.OrderedDict.copy">
-<tt class="descname">copy</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.utils.OrderedDict.copy" title="Permalink to this definition">¶</a></dt>
-<dd><p>od.copy() -&gt; a shallow copy of od</p>
-</dd></dl>
-
-<dl class="classmethod">
-<dt id="kombu.utils.OrderedDict.fromkeys">
-<em class="property">classmethod </em><tt class="descname">fromkeys</tt><big>(</big><em>iterable</em>, <em>value=None</em><big>)</big><a class="headerlink" href="#kombu.utils.OrderedDict.fromkeys" title="Permalink to this definition">¶</a></dt>
-<dd><p>OD.fromkeys(S[, v]) -&gt; New ordered dictionary with keys from S
-and values equal to v (which defaults to None).</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="kombu.utils.OrderedDict.items">
-<tt class="descname">items</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.utils.OrderedDict.items" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="kombu.utils.OrderedDict.iteritems">
-<tt class="descname">iteritems</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.utils.OrderedDict.iteritems" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="kombu.utils.OrderedDict.iterkeys">
-<tt class="descname">iterkeys</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.utils.OrderedDict.iterkeys" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="kombu.utils.OrderedDict.itervalues">
-<tt class="descname">itervalues</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.utils.OrderedDict.itervalues" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="kombu.utils.OrderedDict.keys">
-<tt class="descname">keys</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.utils.OrderedDict.keys" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="kombu.utils.OrderedDict.pop">
-<tt class="descname">pop</tt><big>(</big><em>key</em>, <em>default=&lt;object object at 0x1002aa4c0&gt;</em><big>)</big><a class="headerlink" href="#kombu.utils.OrderedDict.pop" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="kombu.utils.OrderedDict.popitem">
-<tt class="descname">popitem</tt><big>(</big><em>last=True</em><big>)</big><a class="headerlink" href="#kombu.utils.OrderedDict.popitem" title="Permalink to this definition">¶</a></dt>
-<dd><p>od.popitem() -&gt; (k, v)</p>
-<p>Return and remove a (key, value) pair.
-Pairs are returned in LIFO order if last is true or FIFO
-order if false.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="kombu.utils.OrderedDict.setdefault">
-<tt class="descname">setdefault</tt><big>(</big><em>key</em>, <em>default=None</em><big>)</big><a class="headerlink" href="#kombu.utils.OrderedDict.setdefault" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="kombu.utils.OrderedDict.update">
-<tt class="descname">update</tt><big>(</big><em>other=()</em>, <em>**kwds</em><big>)</big><a class="headerlink" href="#kombu.utils.OrderedDict.update" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="kombu.utils.OrderedDict.values">
-<tt class="descname">values</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.utils.OrderedDict.values" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-<dl class="function">
+<span class="target" id="module-kombu.utils"></span><dl class="function">
 <dt id="kombu.utils.emergency_dump_state">
-<tt class="descclassname">kombu.utils.</tt><tt class="descname">emergency_dump_state</tt><big>(</big><em>state</em><big>)</big><a class="headerlink" href="#kombu.utils.emergency_dump_state" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">kombu.utils.</tt><tt class="descname">emergency_dump_state</tt><big>(</big><em>state</em>, <em>open_file=&lt;built-in function open&gt;</em>, <em>dump=&lt;function dump at 0x101b80410&gt;</em><big>)</big><a class="headerlink" href="#kombu.utils.emergency_dump_state" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
@@ -217,6 +138,11 @@ retry.</li>
 <tt class="descclassname">kombu.utils.</tt><tt class="descname">say</tt><big>(</big><em>m</em>, <em>*s</em><big>)</big><a class="headerlink" href="#kombu.utils.say" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
+<dl class="function">
+<dt id="kombu.utils.uuid4">
+<tt class="descclassname">kombu.utils.</tt><tt class="descname">uuid4</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.utils.uuid4" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
 </div>
 
 
@@ -270,7 +196,7 @@ retry.</li>
         <li class="right" >
           <a href="kombu.abstract.html" title="kombu.compression"
              >previous</a> |</li>
-        <li><a href="../index.html">Kombu v0.9.1 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu v0.9.5 documentation</a> &raquo;</li>
           <li><a href="index.html" >API Reference</a> &raquo;</li> 
       </ul>
     </div>

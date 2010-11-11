@@ -6,13 +6,13 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>API Reference &mdash; Kombu v0.9.1 documentation</title>
+    <title>API Reference &mdash; Kombu v0.9.5 documentation</title>
     <link rel="stylesheet" href="../static/celery.css" type="text/css" />
     <link rel="stylesheet" href="../static/pygments.css" type="text/css" />
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.9.1',
+        VERSION:     '0.9.5',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -21,7 +21,7 @@
     <script type="text/javascript" src="../static/jquery.js"></script>
     <script type="text/javascript" src="../static/underscore.js"></script>
     <script type="text/javascript" src="../static/doctools.js"></script>
-    <link rel="top" title="Kombu v0.9.1 documentation" href="../index.html" />
+    <link rel="top" title="Kombu v0.9.5 documentation" href="../index.html" />
     <link rel="next" title="kombu.connection" href="kombu.connection.html" />
     <link rel="prev" title="Frequently Asked Questions" href="../faq.html" /> 
   </head>
@@ -41,7 +41,7 @@
         <li class="right" >
           <a href="../faq.html" title="Frequently Asked Questions"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">Kombu v0.9.1 documentation</a> &raquo;</li> 
+        <li><a href="../index.html">Kombu v0.9.5 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -58,7 +58,7 @@
 <tbody valign="top">
 <tr class="field"><th class="field-name">Release:</th><td class="field-body">0.9</td>
 </tr>
-<tr class="field"><th class="field-name">Date:</th><td class="field-body">October 27, 2010</td>
+<tr class="field"><th class="field-name">Date:</th><td class="field-body">November 11, 2010</td>
 </tr>
 </tbody>
 </table>
@@ -102,13 +102,6 @@
 <li class="toctree-l2"><a class="reference internal" href="kombu.transport.html#functions">Functions</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="kombu.transport.pypika.html">kombu.transport.pypika</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="kombu.transport.pypika.html#transports">Transports</a></li>
-<li class="toctree-l2"><a class="reference internal" href="kombu.transport.pypika.html#connections">Connections</a></li>
-<li class="toctree-l2"><a class="reference internal" href="kombu.transport.pypika.html#channel">Channel</a></li>
-<li class="toctree-l2"><a class="reference internal" href="kombu.transport.pypika.html#message">Message</a></li>
-</ul>
-</li>
 <li class="toctree-l1"><a class="reference internal" href="kombu.transport.pyamqplib.html">kombu.transport.pyamqplib</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="kombu.transport.pyamqplib.html#transport">Transport</a></li>
 <li class="toctree-l2"><a class="reference internal" href="kombu.transport.pyamqplib.html#connection">Connection</a></li>
@@ -116,14 +109,37 @@
 <li class="toctree-l2"><a class="reference internal" href="kombu.transport.pyamqplib.html#message">Message</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="kombu.transport.pyredis.html">kombu.transport.pyredis</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="kombu.transport.pyredis.html#transport">Transport</a></li>
-<li class="toctree-l2"><a class="reference internal" href="kombu.transport.pyredis.html#channel">Channel</a></li>
+<li class="toctree-l1"><a class="reference internal" href="kombu.transport.pypika.html">kombu.transport.pypika</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="kombu.transport.pypika.html#transports">Transports</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kombu.transport.pypika.html#connections">Connections</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kombu.transport.pypika.html#channel">Channel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kombu.transport.pypika.html#message">Message</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="kombu.transport.memory.html">kombu.transport.memory</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="kombu.transport.memory.html#transport">Transport</a></li>
 <li class="toctree-l2"><a class="reference internal" href="kombu.transport.memory.html#channel">Channel</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="kombu.transport.pyredis.html">kombu.transport.pyredis</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="kombu.transport.pyredis.html#transport">Transport</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kombu.transport.pyredis.html#channel">Channel</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="kombu.transport.beanstalk.html">kombu.transport.beanstalk</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="kombu.transport.beanstalk.html#transport">Transport</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kombu.transport.beanstalk.html#channel">Channel</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="kombu.transport.mongodb.html">kombu.transport.mongodb</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="kombu.transport.mongodb.html#transport">Transport</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kombu.transport.mongodb.html#channel">Channel</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="kombu.transport.pycouchdb.html">kombu.transport.pycouchdb</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="kombu.transport.pycouchdb.html#transport">Transport</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kombu.transport.pycouchdb.html#channel">Channel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kombu.transport.pycouchdb.html#functions">Functions</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="kombu.transport.base.html">kombu.transport.base</a><ul>
@@ -162,6 +178,8 @@
 <li class="toctree-l1"><a class="reference internal" href="kombu.abstract.html">kombu.compression</a></li>
 <li class="toctree-l1"><a class="reference internal" href="kombu.utils.html">Utilities - kombu.utils</a></li>
 <li class="toctree-l1"><a class="reference internal" href="kombu.utils.functional.html">kombu.utils.functional</a></li>
+<li class="toctree-l1"><a class="reference internal" href="kombu.utils.compat.html">Compat. utilities - kombu.utils.compat</a></li>
+<li class="toctree-l1"><a class="reference internal" href="kombu.utils.finalize.html">Finalize - kombu.utils.finalize</a></li>
 </ul>
 </div>
 </div>
@@ -217,7 +235,7 @@
         <li class="right" >
           <a href="../faq.html" title="Frequently Asked Questions"
              >previous</a> |</li>
-        <li><a href="../index.html">Kombu v0.9.1 documentation</a> &raquo;</li> 
+        <li><a href="../index.html">Kombu v0.9.5 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">

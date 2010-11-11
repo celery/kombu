@@ -6,13 +6,13 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Kombu Documentation &mdash; Kombu v0.9.1 documentation</title>
+    <title>Kombu Documentation &mdash; Kombu v0.9.5 documentation</title>
     <link rel="stylesheet" href="static/celery.css" type="text/css" />
     <link rel="stylesheet" href="static/pygments.css" type="text/css" />
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '',
-        VERSION:     '0.9.1',
+        VERSION:     '0.9.5',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -21,7 +21,7 @@
     <script type="text/javascript" src="static/jquery.js"></script>
     <script type="text/javascript" src="static/underscore.js"></script>
     <script type="text/javascript" src="static/doctools.js"></script>
-    <link rel="top" title="Kombu v0.9.1 documentation" href="#" />
+    <link rel="top" title="Kombu v0.9.5 documentation" href="#" />
     <link rel="next" title="kombu - AMQP Messaging Framework for Python" href="introduction.html" /> 
   </head>
   <body>
@@ -37,7 +37,7 @@
         <li class="right" >
           <a href="introduction.html" title="kombu - AMQP Messaging Framework for Python"
              accesskey="N">next</a> |</li>
-        <li><a href="#">Kombu v0.9.1 documentation</a> &raquo;</li> 
+        <li><a href="#">Kombu v0.9.5 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -55,18 +55,13 @@
 <li class="toctree-l2"><a class="reference internal" href="introduction.html#introduction">Introduction</a></li>
 <li class="toctree-l2"><a class="reference internal" href="introduction.html#documentation">Documentation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="introduction.html#quick-overview">Quick overview</a></li>
-<li class="toctree-l2"><a class="reference internal" href="introduction.html#creating-a-connection">Creating a connection</a></li>
-<li class="toctree-l2"><a class="reference internal" href="introduction.html#receiving-messages-using-a-consumer">Receiving messages using a Consumer</a></li>
-<li class="toctree-l2"><a class="reference internal" href="introduction.html#sending-messages-using-a-producer">Sending messages using a Producer</a></li>
-<li class="toctree-l2"><a class="reference internal" href="introduction.html#serialization-of-data">Serialization of Data</a></li>
-<li class="toctree-l2"><a class="reference internal" href="introduction.html#sending-raw-data-without-serialization">Sending raw data without Serialization</a></li>
-<li class="toctree-l2"><a class="reference internal" href="introduction.html#sub-classing-the-messaging-classes">Sub-classing the messaging classes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="introduction.html#mailing-list">Mailing list</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="userguide/index.html">User Guide</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="userguide/connections.html">Connections and transports</a></li>
 <li class="toctree-l2"><a class="reference internal" href="userguide/simple.html">Simple Interface</a></li>
+<li class="toctree-l2"><a class="reference internal" href="userguide/serialization.html">Serialization</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="faq.html">Frequently Asked Questions</a><ul>
@@ -82,10 +77,13 @@
 <li class="toctree-l2"><a class="reference internal" href="reference/kombu.pidbox.html">kombu.pidbox</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/kombu.exceptions.html">kombu.exceptions</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/kombu.transport.html">kombu.transport</a></li>
-<li class="toctree-l2"><a class="reference internal" href="reference/kombu.transport.pypika.html">kombu.transport.pypika</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/kombu.transport.pyamqplib.html">kombu.transport.pyamqplib</a></li>
-<li class="toctree-l2"><a class="reference internal" href="reference/kombu.transport.pyredis.html">kombu.transport.pyredis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/kombu.transport.pypika.html">kombu.transport.pypika</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/kombu.transport.memory.html">kombu.transport.memory</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/kombu.transport.pyredis.html">kombu.transport.pyredis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/kombu.transport.beanstalk.html">kombu.transport.beanstalk</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/kombu.transport.mongodb.html">kombu.transport.mongodb</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/kombu.transport.pycouchdb.html">kombu.transport.pycouchdb</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/kombu.transport.base.html">kombu.transport.base</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/kombu.transport.virtual.html">kombu.transport.virtual</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/kombu.transport.virtual.exchange.html">kombu.transport.virtual.exchange</a></li>
@@ -95,6 +93,8 @@
 <li class="toctree-l2"><a class="reference internal" href="reference/kombu.abstract.html">kombu.compression</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/kombu.utils.html">Utilities - kombu.utils</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/kombu.utils.functional.html">kombu.utils.functional</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/kombu.utils.compat.html">Compat. utilities - kombu.utils.compat</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/kombu.utils.finalize.html">Finalize - kombu.utils.finalize</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="changelog.html">Change history</a><ul>
@@ -159,7 +159,7 @@
         <li class="right" >
           <a href="introduction.html" title="kombu - AMQP Messaging Framework for Python"
              >next</a> |</li>
-        <li><a href="#">Kombu v0.9.1 documentation</a> &raquo;</li> 
+        <li><a href="#">Kombu v0.9.5 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
