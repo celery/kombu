@@ -25,6 +25,7 @@ class Channel(object):
         self.called = []
         self.deliveries = count(1).next
         self.to_deliver = []
+        self.events = {"basic_return": []}
 
     def _called(self, name):
         self.called.append(name)
@@ -73,7 +74,6 @@ class Channel(object):
             pass
 
     def queue_purge(self, *args, **kwargs):
-        print("PURGE!")
         self._called("queue_purge")
 
     def basic_consume(self, *args, **kwargs):

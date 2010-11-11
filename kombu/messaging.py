@@ -68,9 +68,8 @@ class Producer(object):
         if auto_declare is not None:
             self.auto_declare = auto_declare
 
-        if self.exchange:
-            self.exchange = self.exchange(self.channel)
-            self.auto_declare and self.declare()
+        self.exchange = self.exchange(self.channel)
+        self.auto_declare and self.declare()
 
         if self.on_return:
             self.channel.events["basic_return"].append(self.on_return)
@@ -269,7 +268,12 @@ class Consumer(object):
 
     def cancel_by_queue(self, queue):
         """Cancel consumer by queue name."""
-        self.channel.basic_cancel(self._active_tags[queue])
+        try:
+            tag = self._active_tags.pop(queue)
+        except KeyError:
+            pass
+        else:
+            self.channel.basic_cancel(tag)
 
     def purge(self):
         """Purge messages from all queues.

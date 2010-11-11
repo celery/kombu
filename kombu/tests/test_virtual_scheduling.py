@@ -48,3 +48,6 @@ class test_FairCycle(unittest.TestCase):
                          ("a", "a"), ("b", "b")])
         cycle2 = FairCycle(echo, ["c", "c"], MyEmpty)
         self.assertRaises(MyEmpty, consume, cycle2.get, 3)
+
+    def test__repr__(self):
+        self.assertTrue(repr(FairCycle(lambda x: x, [1, 2, 3], MyEmpty)))
