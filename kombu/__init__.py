@@ -1,5 +1,5 @@
 """AMQP Messaging Framework for Python"""
-VERSION = (0, 9, 4)
+VERSION = (0, 9, 5)
 __version__ = ".".join(map(str, VERSION))
 __author__ = "Ask Solem"
 __contact__ = "ask@celeryproject.org"

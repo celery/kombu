@@ -32,3 +32,5 @@
     kombu.abstract
     kombu.utils
     kombu.utils.functional
+    kombu.utils.compat
+    kombu.utils.finalize
