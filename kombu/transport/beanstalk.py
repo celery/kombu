@@ -10,7 +10,6 @@ Beanstalk transport.
 """
 import socket
 
-from itertools import ifilter
 from Queue import Empty
 
 from anyjson import serialize, deserialize

@@ -4,7 +4,6 @@ from kombu.connection import BrokerConnection
 from kombu.transport import virtual
 from kombu.utils import gen_unique_id
 
-from kombu.tests.mocks import Channel
 from kombu.tests.utils import redirect_stdouts
 
 
@@ -44,8 +43,8 @@ class test_QoS(unittest.TestCase):
 
     @redirect_stdouts
     def test_can_consume(self, stdout, stderr):
-
         _restored = []
+
         class RestoreChannel(virtual.Channel):
             do_restore = True
 
@@ -106,6 +105,7 @@ class test_Message(unittest.TestCase):
         message = c.message_to_python(data)
         dict_ = message.serializable()
         self.assertEqual(dict_["body"], "the quick brown fox...")
+        self.assertEqual(dict_["properties"]["delivery_tag"], tag)
 
 
 class test_AbstractChannel(unittest.TestCase):
@@ -346,9 +346,10 @@ class test_Transport(unittest.TestCase):
         self.assertEqual(len(self.transport.channels), 2)
         self.transport.close_connection(self.transport)
         self.assertFalse(self.transport.channels)
+        del(c1)  # so pyflakes doesn't complain
+        del(c2)
 
     def test_drain_channel(self):
         channel = self.transport.create_channel(self.transport)
         self.assertRaises(virtual.Empty, self.transport._drain_channel,
                           channel)
-

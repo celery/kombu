@@ -6,6 +6,7 @@ from kombu.transport.virtual.scheduling import FairCycle
 class MyEmpty(Exception):
     pass
 
+
 def consume(fun, n):
     r = []
     for i in range(n):
@@ -47,5 +48,3 @@ class test_FairCycle(unittest.TestCase):
                          ("a", "a"), ("b", "b")])
         cycle2 = FairCycle(echo, ["c", "c"], MyEmpty)
         self.assertRaises(MyEmpty, consume, cycle2.get, 3)
-
-

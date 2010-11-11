@@ -11,7 +11,7 @@ from kombu.serialization import registry, register, SerializerNotInstalled, \
                                 raw_encode, register_yaml, register_msgpack, \
                                 decode
 
-from kombu.tests.utils import mask_modules, module_exists
+from kombu.tests.utils import mask_modules
 
 # For content_encoding tests
 unicode_string = u'abcdé\u8463'
@@ -123,7 +123,7 @@ class test_Serialization(unittest.TestCase):
     def test_msgpack_decode(self):
         register_msgpack()
         try:
-            import msgpack
+            __import__("msgpack")
         except ImportError:
             say("* msgpack-python not installed, will not execute "
                 "related tests.")
@@ -137,7 +137,7 @@ class test_Serialization(unittest.TestCase):
     def test_msgpack_encode(self):
         register_msgpack()
         try:
-            import msgpack
+            __import__("msgpack")
         except ImportError:
             say("* msgpack-python not installed, will not execute "
                 "related tests.")
@@ -154,7 +154,7 @@ class test_Serialization(unittest.TestCase):
     def test_yaml_decode(self):
         register_yaml()
         try:
-            import yaml
+            __import__("yaml")
         except ImportError:
             say("* PyYAML not installed, will not execute related tests.")
             raise SkipTest("PyYAML not installed")
@@ -167,7 +167,7 @@ class test_Serialization(unittest.TestCase):
     def test_yaml_encode(self):
         register_yaml()
         try:
-            import yaml
+            __import__("yaml")
         except ImportError:
             say("* PyYAML not installed, will not execute related tests.")
             raise SkipTest("PyYAML not installed")
@@ -218,9 +218,3 @@ class test_Serialization(unittest.TestCase):
         register_msgpack()
         self.assertRaises(SerializerNotInstalled,
                           decode, "foo", "application/x-msgpack", "utf-8")
-
-
-
-
-if __name__ == '__main__':
-    unittest.main()

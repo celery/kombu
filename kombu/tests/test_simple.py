@@ -5,7 +5,6 @@ from Queue import Empty
 from kombu import BrokerConnection, Exchange, Queue
 
 
-
 class SimpleBase(unittest.TestCase):
     abstract = True
 
@@ -98,7 +97,6 @@ class SimpleBase(unittest.TestCase):
             return
         q = self.Queue("test_nonzero")
         self.assertTrue(q)
-
 
 
 class test_SimpleQueue(SimpleBase):

@@ -36,7 +36,7 @@ class test_MemoryTransport(unittest.TestCase):
 
         while 1:
             if len(_received) == 10:
-                break;
+                break
             self.c.drain_events()
 
         self.assertEqual(len(_received), 10)
@@ -72,7 +72,7 @@ class test_MemoryTransport(unittest.TestCase):
 
         while 1:
             if len(_received1) + len(_received2) == 20:
-                break;
+                break
             self.c.drain_events()
 
         self.assertEqual(len(_received1) + len(_received2), 20)
@@ -106,6 +106,9 @@ class test_MemoryTransport(unittest.TestCase):
         c2 = self.c.channel()
 
         self.assertRaises(socket.timeout, self.c.drain_events, timeout=0.1)
+
+        del(c1)  # so pyflakes doesn't complain.
+        del(c2)
 
     def test_drain_events_unregistered_queue(self):
         c1 = self.c.channel()

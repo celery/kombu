@@ -8,7 +8,7 @@ from kombu.utils import gen_unique_id
 class test_Mailbox(unittest.TestCase):
 
     def _handler(self, state):
-        return stats["var"]
+        return self.stats["var"]
 
     def setUp(self):
 
@@ -34,8 +34,8 @@ class test_Mailbox(unittest.TestCase):
         ticket = gen_unique_id()
         mailbox.get_reply_queue(ticket)(self.connection.channel()).declare()
         mailbox._publish_reply({"foo": "bar"}, exchange, ticket)
-
         _callback_called = [False]
+
         def callback(body):
             _callback_called[0] = True
 
@@ -121,8 +121,8 @@ class test_Mailbox(unittest.TestCase):
         self.assertDictEqual(res, {"error": "KeyError('foo',)"})
 
     def test_dispatch_replies(self):
-
         _replied = [False]
+
         def reply(data, **options):
             _replied[0] = True
 
@@ -139,8 +139,8 @@ class test_Mailbox(unittest.TestCase):
         self.assertTrue(_replied[0])
 
     def test_reply(self):
-
         _replied = [(None, None, None)]
+
         def publish_reply(data, exchange, routing_key, **kwargs):
             _replied[0] = (data, exchange, routing_key)
 
@@ -218,4 +218,3 @@ class test_Mailbox(unittest.TestCase):
     def assertIsCall(self, message):
         self.assertTrue(message["method"])
         self.assertTrue(message["reply_to"])
-

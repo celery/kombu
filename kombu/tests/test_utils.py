@@ -129,7 +129,6 @@ class test_Misc(unittest.TestCase):
         self.assertEqual(it.next(), 4)
 
 
-
 class MyStringIO(StringIO):
 
     def close(self):
@@ -142,7 +141,7 @@ class test_emergency_dump_state(unittest.TestCase):
     def test_dump(self, stdout, stderr):
         fh = MyStringIO()
 
-        utils.emergency_dump_state({"foo": "bar"}, open_file=lambda n, m : fh)
+        utils.emergency_dump_state({"foo": "bar"}, open_file=lambda n, m: fh)
         self.assertDictEqual(pickle.loads(fh.getvalue()), {"foo": "bar"})
         self.assertTrue(stderr.getvalue())
         self.assertFalse(stdout.getvalue())
@@ -162,6 +161,8 @@ class test_emergency_dump_state(unittest.TestCase):
 
 
 _tried_to_sleep = [None]
+
+
 def insomnia(fun):
 
     @wraps(fun)

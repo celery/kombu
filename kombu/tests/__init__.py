@@ -24,6 +24,7 @@ moduleindex = ("kombu.abstract",
                "kombu.transport.virtual.exchange",
                "kombu.transport.virtual.scheduling")
 
+
 def setup():
     # so coverage sees all our modules.
     for module in moduleindex:
@@ -31,5 +32,3 @@ def setup():
             __import__(module)
         except ImportError:
             pass
-
-

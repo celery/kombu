@@ -35,7 +35,7 @@ class Channel(virtual.Channel):
         try:
             msg = self.client.database.command("findandmodify",
                         "messages", query={"queue": queue}, remove=True)
-        except OperationFailure:
+        except errors.OperationFailure:
             raise Empty()
         return deserialize(msg["value"]["payload"])
 
@@ -48,6 +48,7 @@ class Channel(virtual.Channel):
     def _purge(self, queue):
         size = self._size(queue)
         self.client.remove({"queue": queue})
+        return size
 
     def close(self):
         super(Channel, self).close()
@@ -61,7 +62,7 @@ class Channel(virtual.Channel):
         dbname = conninfo.virtual_host
         if not dbname or dbname == "/":
             dbname = "kombu_default"
-        database = getattr(mongoconn, connection, dbname)
+        database = getattr(mongoconn, mongoconn, dbname)
         col = self.database.messages
         col.ensure_index([("queue", 1)])
         self._database = database

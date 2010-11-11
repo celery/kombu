@@ -44,7 +44,7 @@ class Channel(virtual.Channel):
     def _put(self, queue, message, **kwargs):
         self.client.save({'_id': uuid4().hex,
                           'queue': queue,
-                          'payload': message})
+                          'payload': serialize(message)})
 
     def _get(self, queue):
         result = self._query(queue, limit=1)

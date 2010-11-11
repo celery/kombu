@@ -122,6 +122,7 @@ def emergency_dump_state(state, open_file=open, dump=pickle.dump):
 
 ############## str.partition/str.rpartition #################################
 
+
 def _compat_rl_partition(S, sep, direction=None, reverse=False):
     items = direction(sep, 1)
     if len(items) == 1:
