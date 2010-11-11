@@ -33,7 +33,7 @@ class SimpleBase(object):
         self.consumer.register_callback(self._receive)
 
     def get(self, block=True, timeout=None, sync=False):
-        if block:
+        if not block:
             return self.get_nowait()
         self._consume()
         elapsed = 0.0
@@ -43,7 +43,7 @@ class SimpleBase(object):
             if self.buffer:
                 return self.buffer.pop()
             try:
-                self.channel.connection.drain_events(
+                self.channel.connection.client.drain_events(
                             timeout=timeout and remaining)
             except socket.timeout:
                 raise Empty()
@@ -66,7 +66,7 @@ class SimpleBase(object):
                               **kwargs)
 
     def clear(self):
-        self.consumer.purge()
+        return self.consumer.purge()
 
     def qsize(self):
         _, size, _ = self.queue.queue_declare(passive=True)
@@ -85,12 +85,12 @@ class SimpleBase(object):
             self.consumer.consume(no_ack=self.no_ack)
             self._consuming = True
 
-    def __del__(self):
-        self.close()
-
     def __len__(self):
         """`len(self) -> self.qsize()`"""
         return self.qsize()
+
+    def __nonzero__(self):
+        return True
 
 
 class SimpleQueue(SimpleBase):

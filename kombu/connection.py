@@ -292,7 +292,7 @@ class BrokerConnection(object):
         """
         return ChannelPool(self, limit, preload)
 
-    def SimpleQueue(self, name, no_ack=False, queue_opts=None,
+    def SimpleQueue(self, name, no_ack=None, queue_opts=None,
             exchange_opts=None, channel=None):
         """Create new :class:`~kombu.simple.SimpleQueue`, using a channel
         from this connection.
@@ -322,7 +322,7 @@ class BrokerConnection(object):
         return SimpleQueue(channel, name, no_ack, queue_opts, exchange_opts,
                            channel_autoclose=channel_autoclose)
 
-    def SimpleBuffer(self, name, no_ack=False, queue_opts=None,
+    def SimpleBuffer(self, name, no_ack=None, queue_opts=None,
             exchange_opts=None, channel=None):
         """Create new :class:`~kombu.simple.SimpleQueue` using a channel
         from this connection.
