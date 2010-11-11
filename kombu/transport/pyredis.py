@@ -12,8 +12,6 @@ from threading import Condition, Event, Lock, Thread
 from Queue import Empty, Queue as _Queue
 
 from anyjson import serialize, deserialize
-from redis import Redis
-from redis import exceptions
 
 from kombu.transport import virtual
 
@@ -41,16 +39,19 @@ class ChannelPoller(Thread):
         self.mutex = Lock()
         self.poll_request = Condition(self.mutex)
         self.shutdown = Event()
+        self.stopped = Event()
         Thread.__init__(self)
         self.setDaemon(False)
+        self.started = False
 
-    def run(self):
+    def run(self):  # pragma: no cover
         inbound = self.inbound
+        shutdown = self.shutdown
         drain_events = self.drain_events
         poll_request = self.poll_request
 
         while 1:
-            if self.shutdown.isSet():
+            if shutdown.isSet():
                 break
 
             try:
@@ -58,9 +59,9 @@ class ChannelPoller(Thread):
             except Empty:
                 pass
             else:
-                self.inbound.put_nowait(item)
+                inbound.put_nowait(item)
 
-            if self.shutdown.isSet():
+            if shutdown.isSet():
                 break
 
             # Wait for next poll request
@@ -75,6 +76,8 @@ class ChannelPoller(Thread):
                 poll_request.wait(1)
             finally:
                 poll_request.release()
+
+        self.stopped.set()
 
     def poll(self):
         # start thread on demand.
@@ -91,19 +94,24 @@ class ChannelPoller(Thread):
         # for it to put a message onto the inbound queue.
         return self.inbound.get(timeout=0.3)
 
+    def _can_start(self):
+        return not (self.started or
+                    self.isAlive() or
+                    self.shutdown.isSet() or
+                    self.stopped.isSet())
+
     def ensure_started(self):
-        if not self.isAlive():
+        if self._can_start():
+            self.started = True
             self.start()
 
     def close(self):
+        self.shutdown.set()
         if self.isAlive():
-            self.shutdown.set()
             self.join()
 
 
 class Channel(virtual.Channel):
-    Client = Redis
-
     _client = None
     supports_fanout = True
     keyprefix_fanout = "_kombu.fanout.%s"
@@ -115,6 +123,16 @@ class Channel(virtual.Channel):
         super_.__init__(*args, **kwargs)
 
         self._poller = ChannelPoller(super_.drain_events)
+        self.Client = self._get_client()
+        self.ResponseError = self._get_response_error()
+
+    def _get_client(self):
+        from redis import Redis
+        return Redis
+
+    def _get_response_error(self):
+        from redis import exceptions
+        return exceptions.ResponseError
 
     def drain_events(self, timeout=None):
         return self._poller.poll()
@@ -128,9 +146,6 @@ class Channel(virtual.Channel):
     def get_table(self, exchange):
         members = self.client.smembers(self.keyprefix_queue % (exchange, ))
         return [tuple(val.split(self.sep)) for val in members]
-
-    def _new_queue(self, queue, **kwargs):
-        pass
 
     def _get(self, queue):
         item = self.client.rpop(queue)
@@ -161,7 +176,7 @@ class Channel(virtual.Channel):
         super(Channel, self).close()
         try:
             self.client.bgsave()
-        except exceptions.ResponseError:
+        except self.ResponseError:
             pass
 
     def _open(self):
@@ -195,9 +210,16 @@ class Transport(virtual.Transport):
 
     interval = 1
     default_port = DEFAULT_PORT
-    connection_errors = (exceptions.ConnectionError,
-                         exceptions.AuthenticationError)
-    channel_errors = (exceptions.ConnectionError,
-                      exceptions.InvalidData,
-                      exceptions.InvalidResponse,
-                      exceptions.ResponseError)
+
+    def __init__(self, *args, **kwargs):
+        self.connection_errors, self.channel_errors = self._get_errors()
+        super(Transport, self).__init__(*args, **kwargs)
+
+    def _get_errors(self):
+        from redis import exceptions
+        return ((exceptions.ConnectionError,
+                 exceptions.AuthenticationError),
+                (exceptions.ConnectionError,
+                 exceptions.InvalidData,
+                 exceptions.InvalidResponse,
+                 exceptions.ResponseError))
