@@ -14,6 +14,7 @@ from Queue import Empty, Queue as _Queue
 from anyjson import serialize, deserialize
 
 from kombu.transport import virtual
+from kombu.utils.finalize import Finalize
 
 DEFAULT_PORT = 6379
 DEFAULT_DB = 0
@@ -40,6 +41,8 @@ class ChannelPoller(Thread):
         self.poll_request = Condition(self.mutex)
         self.shutdown = Event()
         self.stopped = Event()
+        self._on_collect = Finalize(self, self.close)
+
         Thread.__init__(self)
         self.setDaemon(False)
         self.started = False
