@@ -102,6 +102,8 @@ class ChannelPoller(Thread):
 
 
 class Channel(virtual.Channel):
+    Client = Redis
+
     _client = None
     supports_fanout = True
     keyprefix_fanout = "_kombu.fanout.%s"
@@ -176,10 +178,10 @@ class Channel(virtual.Channel):
                 raise ValueError(
                     "Database name must be int between 0 and limit - 1")
 
-        return Redis(host=conninfo.hostname,
-                     port=conninfo.port or DEFAULT_PORT,
-                     db=database,
-                     password=conninfo.password)
+        return self.Client(host=conninfo.hostname,
+                           port=conninfo.port or DEFAULT_PORT,
+                           db=database,
+                           password=conninfo.password)
 
     @property
     def client(self):
