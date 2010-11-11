@@ -19,6 +19,16 @@ class test_Exchange(unittest.TestCase):
         self.assertIs(bound.channel, chan)
         self.assertIn("<bound", repr(bound))
 
+    def test_eq(self):
+        e1 = Exchange("foo", "direct")
+        e2 = Exchange("foo", "direct")
+        self.assertEqual(e1, e2)
+
+        e3 = Exchange("foo", "topic")
+        self.assertNotEqual(e1, e3)
+
+        self.assertFalse(e1.__eq__(True))
+
     def test_revive(self):
         exchange = Exchange("foo", "direct")
         chan = Channel()
@@ -82,6 +92,15 @@ class test_Queue(unittest.TestCase):
     def setUp(self):
         self.exchange = Exchange("foo", "direct")
 
+    def test_eq(self):
+        q1 = Queue("xxx", Exchange("xxx", "direct"), "xxx")
+        q2 = Queue("xxx", Exchange("xxx", "direct"), "xxx")
+        self.assertEqual(q1, q2)
+        self.assertFalse(q1.__eq__(True))
+
+        q3 = Queue("yyy", Exchange("xxx", "direct"), "xxx")
+        self.assertNotEqual(q1, q3)
+
     def test_exclusive_implies_auto_delete(self):
         self.assertTrue(
                 Queue("foo", self.exchange, exclusive=True).auto_delete)
@@ -134,6 +153,11 @@ class test_Queue(unittest.TestCase):
         b = Queue("foo", self.exchange, "foo", channel=Channel())
         b.delete()
         self.assertIn("queue_delete", b.channel)
+
+    def test_unbind(self):
+        b = Queue("foo", self.exchange, "foo", channel=Channel())
+        b.unbind()
+        self.assertIn("queue_unbind", b.channel)
 
     def test__repr__(self):
         b = Queue("foo", self.exchange, "foo")

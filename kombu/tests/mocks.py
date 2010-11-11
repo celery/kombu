@@ -58,6 +58,9 @@ class Channel(object):
     def queue_bind(self, *args, **kwargs):
         self._called("queue_bind")
 
+    def queue_unbind(self, *args, **kwargs):
+        self._called("queue_unbind")
+
     def queue_delete(self, queue, if_unused=False, if_empty=False, **kwargs):
         self._called("queue_delete")
 
