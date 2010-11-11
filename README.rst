@@ -17,12 +17,11 @@ and provide tested and proven implementations of common messaging patterns.
 
 `Kombu` has pluggable messaging transports, so it is possible to support
 several messaging systems. Currently, there is support for `AMQP`_
-(`py-amqplib`_, `pika`_), `STOMP`_ (`stompy`_). There's also an
-in-memory transport for testing purposes, using the `Python queue module`_.
+(`py-amqplib`_, `pika`_), `Redis`_, and `Beanstalk`. Also there's an
+in-memory transport for testing purposes.
 
-Several AMQP message broker implementations exists, including `RabbitMQ`_,
-`Apache ActiveMQ`_. You'll need to have one of these installed,
-personally we've been using `RabbitMQ`_.
+There are also transports available as plug-ins, like `kombu-sqlalchemy`
+(SQLAlchemy transport), or `django-kombu`_ (transport using the Django ORM).
 
 Before you start playing with `Kombu`, you should probably read up on
 AMQP, and you could start with the excellent article about using RabbitMQ
@@ -31,15 +30,15 @@ refer to the `Wikipedia article about AMQP`_.
 
 .. _`RabbitMQ`: http://www.rabbitmq.com/
 .. _`AMQP`: http://amqp.org
-.. _`STOMP`: http://stomp.codehaus.org
-.. _`stompy`: http://pypi.python.org/stompy
+.. _`Redis`: http://code.google.com/p/redis/
 .. _`Python Queue module`: http://docs.python.org/library/queue.html
 .. _`Apache ActiveMQ`: http://activemq.apache.org/
-.. _`Django`: http://www.djangoproject.com/
 .. _`Rabbits and warrens`: http://blogs.digitar.com/jjww/2009/01/rabbits-and-warrens/
 .. _`py-amqplib`: http://barryp.org/software/py-amqplib/
 .. _`pika`: http://github.com/tonyg/pika
 .. _`Wikipedia article about AMQP`: http://en.wikipedia.org/wiki/AMQP
+.. _`kombu-sqlalchemy`: http://github.com/ask/kombu-sqlalchemy/
+.. _`django-kombu`: http://github.com/ask/django-kombu/
 
 Documentation
 -------------
