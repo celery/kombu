@@ -6,4 +6,4 @@ simplejson
 pika
 PyYAML
 msgpack-python
-
+redis
