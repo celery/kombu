@@ -118,7 +118,8 @@ class test_Mailbox(unittest.TestCase):
             raise KeyError("foo")
 
         res = node.dispatch("my_handler_name")
-        self.assertDictEqual(res, {"error": "KeyError('foo',)"})
+        self.assertIn("error", res)
+        self.assertIn("KeyError(", res["error"])
 
     def test_dispatch_replies(self):
         _replied = [False]
