@@ -1,0 +1,18 @@
+# MongoDB transport
+pymongo
+
+# CouchDB transport
+couchdb
+
+# Pika transport
+pika
+
+# Beanstalk transport
+beanstalkc
+
+# SQLAlchemy transport
+kombu-sqlalchemy
+
+# Django ORM transport
+Django
+django-kombu
