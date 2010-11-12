@@ -15,14 +15,11 @@ for message orientation, queuing, routing, reliability and security.
 One of the most popular implementations of AMQP is `RabbitMQ`_.
 
 The aim of `Kombu` is to make messaging in Python as easy as possible by
-providing a idiomatic high-level interface for producing and consuming messages
-in Python, and provide tested and proven implementations of common messaging
-patterns.
+providing an idiomatic high-level interface for the AMQP protocol, and also
+provide proven and tested solutions to common messaging problems.
 
 Features
 ========
-
-* Tested idiomatic Python API for the AMQ protocol.
 
 * Allows application authors to support several message server
   solutions by using pluggable transports.
