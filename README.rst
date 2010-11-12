@@ -25,12 +25,12 @@ Features
 * Allows application authors to support several message server
   solutions by using pluggable transports.
 
-    * AMQP transports for both the `amqplib` (sync) and `pika` (sync + async)
-      clients.
+    * AMQP transports for both the `amqplib`_ (sync) and
+      `pika`_ (sync + async) clients.
 
     * Virtual transports makes it really easy to add support for non-AMQP
-      transports.  There is already built-in support for `Redis`, `Beanstalk`,
-      `CouchDB`, and `MongoDB`.
+      transports.  There is already built-in support for `Redis`_,
+      `Beanstalk`_, `CouchDB`_, and `MongoDB`_.
 
     * SQLAlchemy and Django ORM transports exists as plug-ins (
       `kombu-sqlalchemy`_ and `django-kombu`_).
@@ -55,6 +55,9 @@ Features
 .. _`RabbitMQ`: http://www.rabbitmq.com/
 .. _`AMQP`: http://amqp.org
 .. _`Redis`: http://code.google.com/p/redis/
+.. _`MongoDB`: http://www.mongodb.org/
+.. _`CouchDB`: http://couchdb.apache.org/
+.. _`Beanstalk`: http://kr.github.com/beanstalkd/
 .. _`Python Queue module`: http://docs.python.org/library/queue.html
 .. _`Apache ActiveMQ`: http://activemq.apache.org/
 .. _`Rabbits and warrens`: http://blogs.digitar.com/jjww/2009/01/rabbits-and-warrens/
@@ -63,6 +66,7 @@ Features
 .. _`Wikipedia article about AMQP`: http://en.wikipedia.org/wiki/AMQP
 .. _`kombu-sqlalchemy`: http://github.com/ask/kombu-sqlalchemy/
 .. _`django-kombu`: http://github.com/ask/django-kombu/
+.. _`carrot`: http://pypi.python.org/pypi/carrot/
 
 Documentation
 -------------
