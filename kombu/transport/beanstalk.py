@@ -45,8 +45,6 @@ class Channel(virtual.Channel):
         self.client.put(serialize(message), priority=priority)
 
     def _get(self, queue):
-        from kombu.utils import say
-        say("_GET!")
         if queue not in self.client.watching():
             self.client.watch(queue)
 

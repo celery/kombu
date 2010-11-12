@@ -273,7 +273,6 @@ class test_ConsumerSet(unittest.TestCase):
             self.assertIs(c2q.channel, c2.channel)
 
         c.discard_all()
-        print("CALLED: %r" % (c.channel.called, ))
         self.assertEqual(c.channel.called.count("queue_purge"), 4)
         c.consume()
 
