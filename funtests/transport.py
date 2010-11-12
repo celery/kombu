@@ -19,7 +19,10 @@ def consumeN(conn, consumer, n=1):
     consumer.consume()
 
     while True:
-        conn.drain_events(timeout=1)
+        try:
+            conn.drain_events(timeout=1)
+        except socket.timeout:
+            pass
         if len(messages) >= n:
             break
 

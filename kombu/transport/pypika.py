@@ -8,6 +8,8 @@ Pika transport.
 :license: BSD, see LICENSE for more details.
 
 """
+import socket
+
 from pika import asyncore_adapter
 from pika import blocking_adapter
 from pika import channel
@@ -30,9 +32,10 @@ class Message(base.Message):
                        "content_type": header.content_type,
                        "content_encoding": header.content_encoding,
                        "delivery_info": dict(
-                            consumer_tag=method.consumer_tag,
+                            consumer_tag=getattr(method, "consumer_tag", None),
                             routing_key=method.routing_key,
                             delivery_tag=method.delivery_tag,
+                            redelivered=method.redelivered,
                             exchange=method.exchange)})
 
         super(Message, self).__init__(channel, **kwargs)
@@ -42,10 +45,10 @@ class Channel(channel.Channel):
     Message = Message
 
     def basic_get(self, queue, no_ack):
-        m = channel.Channel.basic_get(self, queue=queue, no_ack=no_ack)
-        if isinstance(m, Basic.GetEmpty):
+        method = channel.Channel.basic_get(self, queue=queue, no_ack=no_ack)
+        if isinstance(method, Basic.GetEmpty):
             return
-        return m
+        return None, method, method._properties, method._body
 
     def queue_purge(self, queue=None, nowait=False):
         return channel.Channel.queue_purge(self, queue=queue, nowait=nowait) \
@@ -105,11 +108,28 @@ class BlockingConnection(blocking_adapter.BlockingConnection):
     def channel(self):
         return Channel(channel.ChannelHandler(self))
 
+    def ensure_drain_events(self, timeout=None):
+        return self.drain_events(timeout=timeout)
 
 class AsyncoreConnection(asyncore_adapter.AsyncoreConnection):
+    _event_counter = 0
+    Super = asyncore_adapter.AsyncoreConnection
 
     def channel(self):
         return Channel(channel.ChannelHandler(self))
+
+    def ensure_drain_events(self, timeout=None):
+        # asyncore connection does not raise socket.timeout when timing out
+        # so need to do a little trick here to mimic the behavior
+        # of sync connection.
+        current_events = self._event_counter
+        self.drain_events(timeout=timeout)
+        if self._event_counter <= current_events:
+            raise socket.timeout("timed out")
+
+    def on_data_available(self, buf):
+        self._event_counter += 1
+        self.Super.on_data_available(self, buf)
 
 
 class SyncTransport(base.Transport):
@@ -141,7 +161,7 @@ class SyncTransport(base.Transport):
         return connection.channel()
 
     def drain_events(self, connection, **kwargs):
-        return connection.drain_events(**kwargs)
+        return connection.ensure_drain_events(**kwargs)
 
     def establish_connection(self):
         """Establish connection to the AMQP broker."""
