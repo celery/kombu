@@ -10,6 +10,7 @@ CouchDB transport.
 """
 from Queue import Empty
 
+import socket
 import couchdb
 
 from anyjson import serialize, deserialize
@@ -70,9 +71,10 @@ class Channel(virtual.Channel):
         proto = conninfo.ssl and "https" or "http"
         if not dbname or dbname == "/":
             dbname = DEFAULT_DATABASE
+        port = conninfo.port or DEFAULT_PORT
         server = couchdb.Server('%s://%s:%s/' % (proto,
                                                  conninfo.hostname,
-                                                 conninfo.port))
+                                                 port))
         try:
             return server.create(dbname)
         except couchdb.PreconditionFailed:
@@ -97,7 +99,8 @@ class Transport(virtual.Transport):
 
     interval = 1
     default_port = DEFAULT_PORT
-    connection_errors = (couchdb.HTTPError,
+    connection_errors = (socket.error,
+                         couchdb.HTTPError,
                          couchdb.ServerError,
                          couchdb.Unauthorized)
     channel_errors = (couchdb.HTTPError,
