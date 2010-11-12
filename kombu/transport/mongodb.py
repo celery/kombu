@@ -26,7 +26,6 @@ __author__ = "Flavio [FlaPer87] Percoco Premoli <flaper87@flaper87.org>"
 class Channel(virtual.Channel):
     _client = None
     _mongoconn = None
-    _database = None
 
     def _new_queue(self, queue, **kwargs):
         pass
@@ -53,7 +52,6 @@ class Channel(virtual.Channel):
     def close(self):
         super(Channel, self).close()
         self._mongoconn.end_request()
-        self._database = None
         self._mongoconn = None
 
     def _open(self):
@@ -62,10 +60,9 @@ class Channel(virtual.Channel):
         dbname = conninfo.virtual_host
         if not dbname or dbname == "/":
             dbname = "kombu_default"
-        database = getattr(mongoconn, mongoconn, dbname)
-        col = self.database.messages
+        database = getattr(mongoconn, dbname)
+        col = database.messages
         col.ensure_index([("queue", 1)])
-        self._database = database
         self._mongoconn = mongoconn
         return col
 
