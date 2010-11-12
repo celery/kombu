@@ -4,29 +4,53 @@
 
 :Version: 0.9.5
 
-Introduction
-------------
+Synopsis
+========
 
-`Kombu` is an `AMQP`_ messaging queue framework. AMQP is the Advanced Message
-Queuing Protocol, an open standard protocol for message orientation, queuing,
-routing, reliability and security.
+`Kombu` is an `AMQP`_ messaging queue framework for Python.
+
+AMQP is the Advanced Message Queuing Protocol, an open standard protocol
+for message orientation, queuing, routing, reliability and security.
 
 The aim of `Kombu` is to make messaging in Python as easy as possible by
-providing a high-level interface for producing and consuming messages,
-and provide tested and proven implementations of common messaging patterns.
+providing a idiomatic high-level interface for producing and consuming messages
+in Python, and provide tested and proven implementations of common messaging
+patterns.
 
-`Kombu` has pluggable messaging transports, so it is possible to support
-several messaging systems. Currently, there is support for `AMQP`_
-(`py-amqplib`_, `pika`_), `Redis`_, and `Beanstalk`. Also there's an
-in-memory transport for testing purposes.
+Features
+========
 
-There are also transports available as plug-ins, like `kombu-sqlalchemy`
-(SQLAlchemy transport), or `django-kombu`_ (transport using the Django ORM).
+* Tested idiomatic Python API for the AMQ protocol.
 
-Before you start playing with `Kombu`, you should probably read up on
-AMQP, and you could start with the excellent article about using RabbitMQ
-under Python, `Rabbits and warrens`_. For more detailed information, you can
-refer to the `Wikipedia article about AMQP`_.
+* Allows application authors to support several message server
+  solutions by using pluggable transports.
+
+    * AMQP transports for both the `amqplib` (sync) and `pika` (sync + async)
+      clients.
+
+    * Virtual transports makes it really easy to add support for non-AMQP
+      transports.  There is already built-in support for `Redis`, `Beanstalk`,
+      `CouchDB`, and `MongoDB`.
+
+    * SQLAlchemy and Django ORM transports exists as plug-ins (
+      `kombu-sqlalchemy`_ and `django-kombu`_).
+
+    * In-memory transport for unit testing.
+
+* Supports automatic encoding, serialization and compression of message
+  payloads.
+
+* Consistent exception handling across transports.
+
+* The ability to ensure that an operation is performed by gracefully
+  handling connection and channel errrors.
+
+* Several annoyances with `amqplib`_ has been fixed, like supporting
+  timeouts and the ability to wait for events on more than one channel.
+
+* Projects already using `carrot`_ can easily be ported by using
+  a compatibility layer.
+
 
 .. _`RabbitMQ`: http://www.rabbitmq.com/
 .. _`AMQP`: http://amqp.org
