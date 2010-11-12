@@ -61,7 +61,7 @@ Features
 .. _`Python Queue module`: http://docs.python.org/library/queue.html
 .. _`Apache ActiveMQ`: http://activemq.apache.org/
 .. _`Rabbits and warrens`: http://blogs.digitar.com/jjww/2009/01/rabbits-and-warrens/
-.. _`py-amqplib`: http://barryp.org/software/py-amqplib/
+.. _`amqplib`: http://barryp.org/software/py-amqplib/
 .. _`pika`: http://github.com/tonyg/pika
 .. _`Wikipedia article about AMQP`: http://en.wikipedia.org/wiki/AMQP
 .. _`kombu-sqlalchemy`: http://github.com/ask/kombu-sqlalchemy/
