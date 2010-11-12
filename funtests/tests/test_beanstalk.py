@@ -1,6 +1,6 @@
 from nose import SkipTest
 
-from kombu.tests.test_functional import transport
+from funtests import transport
 
 
 class test_beanstalk(transport.TransportCase):

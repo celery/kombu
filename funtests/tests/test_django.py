@@ -1,7 +1,8 @@
 from nose import SkipTest
 
-from kombu.tests.test_functional import transport
 from kombu.tests.utils import redirect_stdouts
+
+from funtests import transport
 
 
 class test_django(transport.TransportCase):

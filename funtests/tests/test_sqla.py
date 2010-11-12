@@ -1,6 +1,6 @@
 from nose import SkipTest
 
-from kombu.tests.test_functional import transport
+from funtests import transport
 
 
 class test_sqla(transport.TransportCase):
@@ -13,4 +13,4 @@ class test_sqla(transport.TransportCase):
         try:
             import sqlakombu
         except ImportError:
-            raise SkipTest("sqlalchemy-kombu not installed")
+            raise SkipTest("kombu-sqlalchemy not installed")
