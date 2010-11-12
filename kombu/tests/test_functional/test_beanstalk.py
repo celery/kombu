@@ -10,6 +10,3 @@ class test_beanstalk(transport.TransportCase):
 
     def after_connect(self, connection):
         connection.channel().client
-
-    def test_basic_get(self):
-        raise SkipTest("beanstalk does not support synchronous access.")

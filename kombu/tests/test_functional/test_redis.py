@@ -6,4 +6,5 @@ class test_redis(transport.TransportCase):
     prefix = "redis"
 
     def after_connect(self, connection):
-        connection.channel().client
+        client = connection.channel().client
+        client.info()
