@@ -25,7 +25,6 @@ __author__ = "Flavio [FlaPer87] Percoco Premoli <flaper87@flaper87.org>"
 
 class Channel(virtual.Channel):
     _client = None
-    _mongoconn = None
 
     def _new_queue(self, queue, **kwargs):
         pass
@@ -51,8 +50,7 @@ class Channel(virtual.Channel):
 
     def close(self):
         super(Channel, self).close()
-        self._mongoconn.end_request()
-        self._mongoconn = None
+        self.client.database.connection.end_request()
 
     def _open(self):
         conninfo = self.connection.client
@@ -63,7 +61,6 @@ class Channel(virtual.Channel):
         database = getattr(mongoconn, dbname)
         col = database.messages
         col.ensure_index([("queue", 1)])
-        self._mongoconn = mongoconn
         return col
 
     @property
