@@ -7,7 +7,7 @@
 Synopsis
 ========
 
-`Kombu` is an `AMQP`_ messaging queue framework for Python.
+`Kombu` is an `AMQP`_ messaging framework for Python.
 
 AMQP is the Advanced Message Queuing Protocol, an open standard protocol
 for message orientation, queuing, routing, reliability and security.
