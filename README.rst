@@ -12,6 +12,8 @@ Synopsis
 AMQP is the Advanced Message Queuing Protocol, an open standard protocol
 for message orientation, queuing, routing, reliability and security.
 
+One of the most popular implementations of AMQP is `RabbitMQ`_.
+
 The aim of `Kombu` is to make messaging in Python as easy as possible by
 providing a idiomatic high-level interface for producing and consuming messages
 in Python, and provide tested and proven implementations of common messaging
@@ -52,14 +54,16 @@ Features
   a compatibility layer.
 
 
+For an introduction to AMQP you should read the article `Rabbits and warrens`_,
+and the `Wikipedia article about AMQP`_.
+
+
 .. _`RabbitMQ`: http://www.rabbitmq.com/
 .. _`AMQP`: http://amqp.org
 .. _`Redis`: http://code.google.com/p/redis/
 .. _`MongoDB`: http://www.mongodb.org/
 .. _`CouchDB`: http://couchdb.apache.org/
 .. _`Beanstalk`: http://kr.github.com/beanstalkd/
-.. _`Python Queue module`: http://docs.python.org/library/queue.html
-.. _`Apache ActiveMQ`: http://activemq.apache.org/
 .. _`Rabbits and warrens`: http://blogs.digitar.com/jjww/2009/01/rabbits-and-warrens/
 .. _`amqplib`: http://barryp.org/software/py-amqplib/
 .. _`pika`: http://github.com/tonyg/pika
