@@ -83,7 +83,9 @@ class Node(object):
             reply = {"error": repr(exc)}
 
         if reply_to:
-            self.reply({self.hostname: reply}, **reply_to)
+            self.reply({self.hostname: reply},
+                       exchange=reply_to["exchange"],
+                       routing_key=reply_to["routing_key"])
         return reply
 
     def handle(self, method, arguments={}):
@@ -179,7 +181,8 @@ class Mailbox(object):
                                           delivery_mode="transient",
                                           durable=False,
                                           auto_delete=True)
-            producer = Producer(chan, exchange=exchange)
+            producer = Producer(chan, exchange=exchange,
+                                      auto_declare=False)
             producer.publish(reply, routing_key=routing_key)
         finally:
             channel or chan.close()
