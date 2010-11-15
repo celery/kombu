@@ -25,6 +25,7 @@ class Client(object):
         self._called = []
         self.queues = {}
         self.sets = {}
+        self._connection = None
         self.bgsave_raises_ResponseError = False
 
     def bgsave(self):
@@ -69,6 +70,18 @@ class Client(object):
 
     def _new_queue(self, key):
         self.queues[key] = _Queue()
+
+    class _sconnection(object):
+        disconnected = False
+
+        def disconnect(self):
+            self.disconnected = True
+
+    @property
+    def connection(self):
+        if self._connection is None:
+            self._connection = self._sconnection()
+        return self._connection
 
 
 class Channel(pyredis.Channel):
@@ -179,6 +192,7 @@ class test_Redis(unittest.TestCase):
 
     def test_close_poller_not_active(self):
         c = BrokerConnection(transport=Transport).channel()
+        c.client.connection
         c.close()
         self.assertFalse(c._poller.isAlive())
         self.assertTrue("BGSAVE" in c.client)
@@ -187,6 +201,12 @@ class test_Redis(unittest.TestCase):
         c = BrokerConnection(transport=Transport).channel()
         c.client.bgsave_raises_ResponseError = True
         c.close()
+
+    def test_close_disconnects(self):
+        c = BrokerConnection(transport=Transport).channel()
+        conn = c.client.connection
+        c.close()
+        self.assertTrue(conn.disconnected)
 
     def test_get__Empty(self):
         channel = self.connection.channel()
