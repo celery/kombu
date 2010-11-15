@@ -97,6 +97,11 @@ class Channel(virtual.Channel):
         conn.connect()
         return conn
 
+    def close(self):
+        if self._client is not None:
+            return self._client.close()
+        super(Channel, self).close()
+
     @property
     def client(self):
         if self._client is None:
