@@ -176,13 +176,16 @@ class Channel(virtual.Channel):
 
     def close(self):
         self._poller.close()
-        try:
-            self.client.bgsave()
-            self.client.connection.disconnect()
-        except self.ResponseError:
-            pass
+        if self._client is not None:
+            try:
+                self._client.bgsave()
+            except self.ResponseError:
+                pass
+            try:
+                self._client.connection.disconnect()
+            except (AttributeError, self.ResponseError):
+                pass
         super(Channel, self).close()
-
 
     def _open(self):
         conninfo = self.connection.client
