@@ -246,7 +246,7 @@ def register_msgpack():
         import msgpack
         registry.register('msgpack', msgpack.packs, msgpack.unpacks,
                 content_type='application/x-msgpack',
-                content_encoding='utf-8')
+                content_encoding='binary')
     except ImportError:
 
         def not_available(*args, **kwargs):
