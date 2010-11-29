@@ -94,15 +94,13 @@ def retry_over_time(fun, catch, args=[], kwargs={}, errback=None,
 
     for retries, interval in enumerate(repeatlast(interval_range)):
         try:
-            retval = fun(*args, **kwargs)
+            return fun(*args, **kwargs)
         except catch, exc:
             if max_retries and retries > max_retries:
                 raise
             if errback:
                 errback(exc, interval)
             sleep(interval)
-        else:
-            return retval
 
 
 def emergency_dump_state(state, open_file=open, dump=pickle.dump):
