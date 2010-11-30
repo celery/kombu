@@ -115,6 +115,7 @@ class BlockingConnection(blocking_adapter.BlockingConnection):
     def ensure_drain_events(self, timeout=None):
         return self.drain_events(timeout=timeout)
 
+
 class AsyncoreConnection(asyncore_adapter.AsyncoreConnection):
     _event_counter = 0
     Super = asyncore_adapter.AsyncoreConnection

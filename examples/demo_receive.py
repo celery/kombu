@@ -15,6 +15,7 @@ queue = Queue("kombu_demo", exchange, routing_key="kombu_demo")
 def pretty(obj):
     return pformat(obj, indent=4)
 
+
 #: This is the callback applied when a message is received.
 def handle_message(body, message):
     print("Received message: %r" % (body, ))
@@ -42,5 +43,3 @@ consumer.consume()
 #: be a message, or a message that is to be delivered to the consumers
 #: channel, but any event received on the connection.
 connection.drain_events()
-
-
