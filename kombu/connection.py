@@ -474,11 +474,12 @@ class ConnectionPool(Resource):
         return copy(self.connection)
 
     def setup(self):
-        for i in xrange(self.limit):
-            conn = self.new()
-            if i < self.preload:
-                conn.connect()
-            self._resource.put_nowait(conn)
+        if self.limit:
+            for i in xrange(self.limit):
+                conn = self.new()
+                if i < self.preload:
+                    conn.connect()
+                self._resource.put_nowait(conn)
 
     def prepare(self, resource):
         if not resource._connection:
