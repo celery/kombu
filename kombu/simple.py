@@ -43,12 +43,12 @@ class SimpleBase(object):
             if self.buffer:
                 return self.buffer.pop()
             try:
-                self.channel.connection.client.drain_events(
+                self.channel.connection.drain_events(
                             timeout=timeout and remaining)
             except socket.timeout:
                 raise Empty()
             elapsed += time() - time_start
-            remaining = timeout - elapsed
+            remaining = timeout and timeout - elapsed or None
 
     def get_nowait(self):
         m = self.queue.get(no_ack=self.no_ack)
