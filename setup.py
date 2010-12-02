@@ -4,12 +4,19 @@ import os
 import sys
 import codecs
 
+extra = {}
+if sys.version_info >= (3, 0):
+    extra.update(use_2to3=True)
+
+
+if sys.version_info < (2, 4):
+    raise Exception("Kombu requires Python 2.4 or higher.")
+
 try:
-    from setuptools import setup, find_packages
+    from setuptools import setup, Extension, Feature, find_packages
 except ImportError:
-    from ez_setup import use_setuptools
-    use_setuptools()
-    from setuptools import setup, find_packages
+    from distutils.core import setup, Extension, find_packages
+    Feature = None
 
 from distutils.command.install_data import install_data
 from distutils.command.install import INSTALL_SCHEMES
@@ -44,7 +51,7 @@ def fullsplit(path, result=None):
     return fullsplit(head, [tail] + result)
 
 
-for scheme in INSTALL_SCHEMES.values():
+for scheme in list(INSTALL_SCHEMES.values()):
     scheme['data'] = scheme['purelib']
 
 for dirpath, dirnames, filenames in os.walk(src_dir):
@@ -86,6 +93,12 @@ setup(
         "Framework :: Django",
         "Operating System :: OS Independent",
         "Programming Language :: Python",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 2.7",
+        "Programming Language :: Python :: 2.6",
+        "Programming Language :: Python :: 2.5",
+        "Programming Language :: Python :: 2.4",
+        "Programming Language :: Python :: 2",
         "License :: OSI Approved :: BSD License",
         "Intended Audience :: Developers",
         "Topic :: Communications",
@@ -93,4 +106,5 @@ setup(
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
     long_description=long_description,
+    **extra
 )
