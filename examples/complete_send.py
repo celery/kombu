@@ -2,7 +2,7 @@
 
 Example producer that sends a single message and exits.
 
-You can use `demo_receive.py` to receive the message sent.
+You can use `complete_receive.py` to receive the message sent.
 
 """
 

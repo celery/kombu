@@ -437,7 +437,8 @@ class Channel(AbstractChannel):
         """Close channel, cancel all consumers, and requeue unacked
         messages."""
         self.closed = True
-        map(self.basic_cancel, list(self._consumers))
+        for consumer in list(self._consumers):
+            self.basic_cancel(consumer)
         self.qos.restore_unacked_once()
         self.connection.close_channel(self)
         self._cycle = None
