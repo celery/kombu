@@ -1,8 +1,11 @@
 import pickle
 import sys
-import unittest2 as unittest
+from kombu.tests.utils import unittest
 
-from StringIO import StringIO
+if sys.version_info >= (3, 0):
+    from io import StringIO, BytesIO
+else:
+    from StringIO import StringIO, StringIO as BytesIO
 
 from kombu import utils
 from kombu.utils.functional import wraps
@@ -135,11 +138,17 @@ class MyStringIO(StringIO):
         pass
 
 
+class MyBytesIO(BytesIO):
+
+    def close(self):
+        pass
+
+
 class test_emergency_dump_state(unittest.TestCase):
 
     @redirect_stdouts
     def test_dump(self, stdout, stderr):
-        fh = MyStringIO()
+        fh = MyBytesIO()
 
         utils.emergency_dump_state({"foo": "bar"}, open_file=lambda n, m: fh)
         self.assertDictEqual(pickle.loads(fh.getvalue()), {"foo": "bar"})

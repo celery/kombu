@@ -43,7 +43,7 @@ class SimpleBase(object):
             if self.buffer:
                 return self.buffer.pop()
             try:
-                self.channel.connection.drain_events(
+                self.channel.connection.client.drain_events(
                             timeout=timeout and remaining)
             except socket.timeout:
                 raise Empty()

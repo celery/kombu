@@ -1,11 +1,12 @@
-import unittest2 as unittest
+from kombu.tests.utils import unittest
 
-import simplejson
+import anyjson
 
 from kombu.connection import BrokerConnection
 from kombu.exceptions import MessageStateError
 from kombu.messaging import Consumer, Producer
 from kombu.entity import Exchange, Queue
+from kombu.serialization import bytes_type
 
 from kombu.tests.mocks import Transport
 
@@ -43,7 +44,7 @@ class test_Producer(unittest.TestCase):
         channel = self.connection.channel()
         p = Producer(channel, self.exchange, serializer="json")
         m, ctype, cencoding = p._prepare(message, headers={})
-        self.assertDictEqual(message, simplejson.loads(m))
+        self.assertDictEqual(message, anyjson.deserialize(m))
         self.assertEqual(ctype, "application/json")
         self.assertEqual(cencoding, "utf-8")
 
@@ -57,10 +58,12 @@ class test_Producer(unittest.TestCase):
         self.assertEqual(ctype, "application/json")
         self.assertEqual(cencoding, "utf-8")
         self.assertEqual(headers["compression"], "application/x-gzip")
-        self.assertEqual(simplejson.loads(m.decode("zlib")), message)
+        import zlib
+        self.assertEqual(anyjson.deserialize(
+                            zlib.decompress(m).decode("utf-8")), message)
 
     def test_prepare_custom_content_type(self):
-        message = "the quick brown fox"
+        message = "the quick brown fox".encode("utf-8")
         channel = self.connection.channel()
         p = Producer(channel, self.exchange, serializer="json")
         m, ctype, cencoding = p._prepare(message, content_type="custom")
@@ -78,12 +81,12 @@ class test_Producer(unittest.TestCase):
         channel = self.connection.channel()
         p = Producer(channel, self.exchange, serializer="json")
         m, ctype, cencoding = p._prepare(message, content_type="text/plain")
-        self.assertEqual(m, message)
+        self.assertEqual(m, message.encode("utf-8"))
         self.assertEqual(ctype, "text/plain")
         self.assertEqual(cencoding, "utf-8")
         m, ctype, cencoding = p._prepare(message, content_type="text/plain",
                                         content_encoding="utf-8")
-        self.assertEqual(m, message)
+        self.assertEqual(m, message.encode("utf-8"))
         self.assertEqual(ctype, "text/plain")
         self.assertEqual(cencoding, "utf-8")
 
@@ -96,7 +99,7 @@ class test_Producer(unittest.TestCase):
         self.assertIn("basic_publish", channel)
 
         m, exc, rkey = ret
-        self.assertDictEqual(message, simplejson.loads(m["body"]))
+        self.assertDictEqual(message, anyjson.deserialize(m["body"]))
         self.assertDictContainsSubset({"content_type": "application/json",
                                        "content_encoding": "utf-8",
                                        "priority": 0}, m)
@@ -371,7 +374,7 @@ class test_Consumer(unittest.TestCase):
 
         self.assertTrue(thrown)
         m, exc = thrown[0]
-        self.assertEqual(simplejson.loads(m), {"foo": "bar"})
+        self.assertEqual(anyjson.deserialize(m), {"foo": "bar"})
         self.assertIsInstance(exc, ValueError)
 
     def test_recover(self):

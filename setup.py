@@ -5,8 +5,13 @@ import sys
 import codecs
 
 extra = {}
+tests_require = {"nose", "nose-cover3"}
 if sys.version_info >= (3, 0):
     extra.update(use_2to3=True)
+elif sys.version_info <= (2, 6):
+    tests_require.append("unittest2")
+elif sys.version_info <= (2, 5):
+    tests_require.append("simplejson")
 
 
 if sys.version_info < (2, 4):
@@ -87,7 +92,7 @@ setup(
         'anyjson',
         'amqplib>=0.6',
     ],
-    tests_require=["nose", "nose-cover3", "unittest2", "simplejson"],
+    tests_require=tests_require,
     classifiers=[
         "Development Status :: 4 - Beta",
         "Framework :: Django",

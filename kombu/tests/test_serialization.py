@@ -3,13 +3,13 @@
 
 import cPickle as pickle
 import sys
-import unittest2 as unittest
+from kombu.tests.utils import unittest
 
 from nose import SkipTest
 
 from kombu.serialization import registry, register, SerializerNotInstalled, \
                                 raw_encode, register_yaml, register_msgpack, \
-                                decode
+                                decode, bytes_type
 
 from kombu.tests.utils import mask_modules
 
@@ -80,7 +80,7 @@ class test_Serialization(unittest.TestCase):
         self.assertIsInstance(registry.decode(unicode_string_as_utf8,
                                               content_type='application/data',
                                               content_encoding='binary'),
-                              str)
+                              bytes_type)
 
         self.assertEquals(unicode_string_as_utf8,
                           registry.decode(
@@ -204,8 +204,9 @@ class test_Serialization(unittest.TestCase):
                           registry.encode, "foo", serializer="nonexisting")
 
     def test_raw_encode(self):
-        self.assertTupleEqual(raw_encode(str("foo")),
-                              ("application/data", "binary", "foo"))
+        self.assertTupleEqual(raw_encode("foo".encode("utf-8")),
+                              ("application/data", "binary",
+                                  "foo".encode("utf-8")))
 
     @mask_modules("yaml")
     def test_register_yaml__no_yaml(self):

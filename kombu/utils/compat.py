@@ -38,7 +38,7 @@ class _Link(object):
     __slots__ = 'prev', 'next', 'key', '__weakref__'
 
 
-class OrderedDict(dict, MutableMapping):
+class CompatOrderedDict(dict, MutableMapping):
     """Dictionary that remembers insertion order"""
     # An inherited dict maps keys to values.
     # The inherited dict provides __getitem__, __len__, __contains__, and get.
@@ -232,3 +232,8 @@ class OrderedDict(dict, MutableMapping):
 
     def __ne__(self, other):
         return not (self == other)
+
+try:
+    from collections import OrderedDict
+except ImportError:
+    OrderedDict = CompatOrderedDict

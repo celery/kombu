@@ -1,4 +1,4 @@
-import unittest2 as unittest
+from kombu.tests.utils import unittest
 
 from kombu.connection import BrokerConnection
 from kombu.transport import virtual
@@ -95,7 +95,8 @@ class test_Message(unittest.TestCase):
         self.assertIsInstance(message, virtual.Message)
         self.assertIs(message, c.message_to_python(message))
 
-        self.assertEqual(message.body, "the quick brown fox...")
+        self.assertEqual(message.body,
+                         "the quick brown fox...".encode("utf-8"))
         self.assertTrue(message.delivery_tag, tag)
 
     def test_serializable(self):
@@ -104,7 +105,8 @@ class test_Message(unittest.TestCase):
         tag = data["properties"]["delivery_tag"] = gen_unique_id()
         message = c.message_to_python(data)
         dict_ = message.serializable()
-        self.assertEqual(dict_["body"], "the quick brown fox...")
+        self.assertEqual(dict_["body"],
+                         "the quick brown fox...".encode("utf-8"))
         self.assertEqual(dict_["properties"]["delivery_tag"], tag)
 
 
@@ -249,7 +251,8 @@ class test_Channel(unittest.TestCase):
 
         r1 = c.message_to_python(c.basic_get(n))
         self.assertTrue(r1)
-        self.assertEqual(r1.body, "nthex quick brown fox...")
+        self.assertEqual(r1.body,
+                         "nthex quick brown fox...".encode("utf-8"))
         self.assertIsNone(c.basic_get(n))
 
         consumer_tag = gen_unique_id()
@@ -259,7 +262,8 @@ class test_Channel(unittest.TestCase):
         self.assertIn(n + "2", c._active_queues)
         r2, _ = c.drain_events()
         r2 = c.message_to_python(r2)
-        self.assertEqual(r2.body, "nthex quick brown fox...")
+        self.assertEqual(r2.body,
+                         "nthex quick brown fox...".encode("utf-8"))
         self.assertEqual(r2.delivery_info["exchange"], n)
         self.assertEqual(r2.delivery_info["routing_key"], n)
         self.assertRaises(virtual.Empty, c.drain_events)
@@ -268,7 +272,7 @@ class test_Channel(unittest.TestCase):
         c._restore(r2)
         r3 = c.message_to_python(c.basic_get(n))
         self.assertTrue(r3)
-        self.assertEqual(r3.body, "nthex quick brown fox...")
+        self.assertEqual(r3.body, "nthex quick brown fox...".encode("utf-8"))
         self.assertIsNone(c.basic_get(n))
 
     def test_basic_ack(self):

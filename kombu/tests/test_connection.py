@@ -1,5 +1,5 @@
 import pickle
-import unittest2 as unittest
+from kombu.tests.utils import unittest
 
 from kombu.connection import BrokerConnection, Resource
 

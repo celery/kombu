@@ -8,6 +8,8 @@ Compression utilities.
 :license: BSD, see LICENSE for more details.
 
 """
+import bz2
+import zlib
 
 _aliases = {}
 _encoders = {}
@@ -52,7 +54,7 @@ def compress(body, content_type):
 
     """
     encoder, content_type = get_encoder(content_type)
-    return encoder(body), content_type
+    return encoder(body.encode("utf-8")), content_type
 
 
 def decompress(body, content_type):
@@ -62,12 +64,12 @@ def decompress(body, content_type):
     :param content_type: mime-type of compression method used.
 
     """
-    return get_decoder(content_type)(body)
+    return get_decoder(content_type)(body).decode("utf-8")
 
 
-register(lambda x: x.encode("zlib"),
-         lambda x: x.decode("zlib"),
+register(zlib.compress,
+         zlib.decompress,
          "application/x-gzip", aliases=["gzip", "zlib"])
-register(lambda x: x.encode("bz2"),
-         lambda x: x.decode("bz2"),
+register(bz2.compress,
+         bz2.decompress,
          "application/x-bz2", aliases=["bzip2", "bzip"])

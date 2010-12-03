@@ -1,4 +1,4 @@
-import unittest2 as unittest
+from kombu.tests.utils import unittest
 
 from kombu.transport import pyamqplib
 from kombu.connection import BrokerConnection

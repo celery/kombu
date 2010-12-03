@@ -1,6 +1,6 @@
 from itertools import count
 
-import simplejson
+import anyjson
 
 from kombu.transport import base
 
@@ -93,7 +93,7 @@ class Channel(object):
 
     def message_to_python(self, message, *args, **kwargs):
         self._called("message_to_python")
-        return Message(self, body=simplejson.dumps(message),
+        return Message(self, body=anyjson.serialize(message),
                 delivery_tag=self.deliveries(),
                 throw_decode_error=self.throw_decode_error,
                 content_type="application/json", content_encoding="utf-8")

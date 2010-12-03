@@ -6,6 +6,12 @@ from StringIO import StringIO
 
 from kombu.utils.functional import wraps
 
+try:
+    import unittest
+    unittest.skip
+except AttributeError:
+    import unittest2 as unittest
+
 
 def redirect_stdouts(fun):
 

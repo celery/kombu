@@ -8,8 +8,14 @@ Serialization utilities.
 :license: BSD, see LICENSE for more details.
 
 """
-
 import codecs
+import sys
+
+
+bytes_type = str
+if sys.version_info >= (3, 0):
+    bytes_type = bytes
+
 
 
 class SerializerNotInstalled(StandardError):
@@ -62,7 +68,7 @@ class SerializerRegistry(object):
         # If a raw string was sent, assume binary encoding
         # (it's likely either ASCII or a raw binary file, but 'binary'
         # charset will encompass both, even if not ideal.
-        if not serializer and isinstance(data, str):
+        if not serializer and isinstance(data, bytes_type):
             # In Python 3+, this would be "bytes"; allow binary data to be
             # sent as a message without getting encoder errors
             return "application/data", "binary", data

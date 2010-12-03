@@ -34,15 +34,19 @@ def gen_unique_id():
     return str(uuid4())
 
 
-def kwdict(kwargs):
-    """Make sure keyword arguments are not in unicode.
+if sys.version_info >= (3, 0):
+    def kwdict(kwargs):
+        return kwargs
+else:
+    def kwdict(kwargs):
+        """Make sure keyword arguments are not in unicode.
 
-    This should be fixed in newer Python versions,
-      see: http://bugs.python.org/issue4978.
+        This should be fixed in newer Python versions,
+        see: http://bugs.python.org/issue4978.
 
-    """
-    return dict((key.encode("utf-8"), value)
-                    for key, value in kwargs.items())
+        """
+        return dict((key.encode("utf-8"), value)
+                        for key, value in kwargs.items())
 
 
 def maybe_list(v):

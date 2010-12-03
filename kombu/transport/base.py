@@ -64,7 +64,7 @@ class Message(object):
         compression = self.headers.get("compression")
         if compression:
             self.body = decompress(self.body, compression)
-        if postencode:
+        if postencode and isinstance(self.body, unicode):
             self.body = self.body.encode(postencode)
 
     def ack(self):

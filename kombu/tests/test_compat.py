@@ -1,4 +1,4 @@
-import unittest2 as unittest
+from kombu.tests.utils import unittest
 
 from kombu import BrokerConnection, Exchange
 from kombu import compat
@@ -161,7 +161,6 @@ class test_Consumer(unittest.TestCase):
     def test_iter(self, n="test_iterqueue"):
         c = compat.Consumer(self.connection, queue=n, exchange=n,
                             routing_key="rkey")
-        self.assertTrue(hasattr(c.__iter__(), "next"))
         c.close()
 
     def test_process_next(self, n="test_process_next"):
@@ -173,7 +172,6 @@ class test_Consumer(unittest.TestCase):
     def test_iterconsume(self, n="test_iterconsume"):
         c = compat.Consumer(self.connection, queue=n, exchange=n,
                             routing_key="rkey")
-        self.assertTrue(hasattr(c.iterconsume(), "next"))
         c.close()
 
     def test_discard_all(self, n="test_discard_all"):
@@ -255,8 +253,6 @@ class test_ConsumerSet(unittest.TestCase):
 
         self.assertEqual(len(c.queues), 3)
         self.assertEqual(len(c2.queues), 2)
-
-        self.assertTrue(hasattr(c.iterconsume(), "next"))
 
         c.add_consumer(compat.Consumer(self.connection,
                                        queue=prefix + "xaxxxa",

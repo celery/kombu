@@ -1,6 +1,6 @@
 import socket
 import types
-import unittest2 as unittest
+from kombu.tests.utils import unittest
 
 from Queue import Empty, Queue as _Queue
 
