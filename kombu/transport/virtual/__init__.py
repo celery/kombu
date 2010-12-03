@@ -489,7 +489,7 @@ class Transport(base.Transport):
 
     #: :class:`BrokerState` containing declared exchanges and
     #: bindings (set by constructor).
-    state = None
+    state = BrokerState()
 
     #: :class:`~kombu.transport.virtual.scheduling.FairCycle` instance
     #: used to fairly drain events from channels (set by constructor).
@@ -512,8 +512,6 @@ class Transport(base.Transport):
         self.channels = []
         self._callbacks = {}
         self.cycle = self.Cycle(self._drain_channel, self.channels, Empty)
-        if self.state is None:
-            self.state = BrokerState()
 
     def create_channel(self, connection):
         channel = self.Channel(connection)
