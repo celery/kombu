@@ -110,7 +110,9 @@ class Channel(channel.Channel):
 class BlockingConnection(blocking_adapter.BlockingConnection):
 
     def channel(self):
-        return Channel(channel.ChannelHandler(self))
+        c = Channel(channel.ChannelHandler(self))
+        c.connection = self
+        return c
 
     def ensure_drain_events(self, timeout=None):
         return self.drain_events(timeout=timeout)
@@ -121,7 +123,9 @@ class AsyncoreConnection(asyncore_adapter.AsyncoreConnection):
     Super = asyncore_adapter.AsyncoreConnection
 
     def channel(self):
-        return Channel(channel.ChannelHandler(self))
+        c = Channel(channel.ChannelHandler(self))
+        c.connection = self
+        return c
 
     def ensure_drain_events(self, timeout=None):
         # asyncore connection does not raise socket.timeout when timing out
