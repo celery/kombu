@@ -18,13 +18,13 @@ class ResponseError(Exception):
 
 
 class Client(object):
+    queues = {}
+    sets = {}
 
     def __init__(self, db=None, port=None, **kwargs):
         self.port = port
         self.db = db
         self._called = []
-        self.queues = {}
-        self.sets = {}
         self._connection = None
         self.bgsave_raises_ResponseError = False
 
