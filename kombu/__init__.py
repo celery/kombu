@@ -1,6 +1,6 @@
 """AMQP Messaging Framework for Python"""
-VERSION = (0, 9, 7)
-__version__ = ".".join(map(str, VERSION))
+VERSION = (1, 0, 0, "b1")
+__version__ = ".".join(map(str, VERSION[0:3])) + "".join(VERSION[3:])
 __author__ = "Ask Solem"
 __contact__ = "ask@celeryproject.org"
 __homepage__ = "http://github.com/ask/kombu/"
