@@ -70,7 +70,7 @@ def verifyindex(options):
 
 @task
 def flakes(options):
-    sh("find kombu -name '*.py' | xargs pyflakes")
+    sh("find kombu funtests examples -name '*.py' | xargs pyflakes")
 
 
 @task
@@ -115,7 +115,7 @@ def test(options):
 ])
 def pep8(options):
     noerror = getattr(options, "noerror", False)
-    return sh("""find . -name "*.py" | xargs pep8 | perl -nle'\
+    return sh("""find kombu -name "*.py" | xargs pep8 | perl -nle'\
             print; $a=1 if $_}{exit($a)'""", ignore_error=noerror)
 
 
