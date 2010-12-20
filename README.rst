@@ -81,7 +81,7 @@ Quick overview
 
 ::
 
-    from kombu.connection BrokerConnection
+    from kombu.connection import BrokerConnection
     from kombu.messaging import Exchange, Queue, Consumer, Producer
 
     media_exchange = Exchange("media", "direct", durable=True)
