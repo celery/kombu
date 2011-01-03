@@ -1,16 +1,15 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-import cPickle as pickle
 import sys
-from kombu.tests.utils import unittest
 
 from nose import SkipTest
 
 from kombu.serialization import registry, register, SerializerNotInstalled, \
                                 raw_encode, register_yaml, register_msgpack, \
-                                decode, bytes_type
+                                decode, bytes_type, pickle
 
+from kombu.tests.utils import unittest
 from kombu.tests.utils import mask_modules
 
 # For content_encoding tests

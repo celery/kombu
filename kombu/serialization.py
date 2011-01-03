@@ -11,6 +11,28 @@ Serialization utilities.
 import codecs
 import sys
 
+import pickle as pypickle
+try:
+    import cPickle as cpickle
+except ImportError:
+    cpickle = None
+
+if sys.version_info < (2, 6):  # pragma: no cover
+    # cPickle is broken in Python <= 2.5.
+    # It unsafely and incorrectly uses relative instead of absolute
+    # imports,
+    # so e.g.:
+    #       exceptions.KeyError
+    # becomes:
+    #       kombu.exceptions.KeyError
+    #
+    # Your best choice is to upgrade to Python 2.6,
+    # as while the pure pickle version has worse performance,
+    # it is the only safe option for older Python versions.
+    pickle = pypickle
+else:
+    pickle = cpickle or pypickle
+
 
 bytes_type = str
 if sys.version_info >= (3, 0):
@@ -239,8 +261,7 @@ def register_yaml():
 def register_pickle():
     """The fastest serialization method, but restricts
     you to python clients."""
-    import cPickle
-    registry.register('pickle', cPickle.dumps, cPickle.loads,
+    registry.register('pickle', pickle.dumps, pickle.loads,
                       content_type='application/x-python-serialize',
                       content_encoding='binary')
 
