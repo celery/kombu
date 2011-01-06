@@ -25,12 +25,13 @@ DEFAULT_PORT = 5672
 class Message(base.Message):
 
     def __init__(self, channel, amqp_message, **kwargs):
-        channel_id, method, header, body = amqp_message
+        channel_id, method, props, body = amqp_message
 
         kwargs.update({"body": body,
                        "delivery_tag": method.delivery_tag,
-                       "content_type": header.content_type,
-                       "content_encoding": header.content_encoding,
+                       "content_type": props.content_type,
+                       "content_encoding": props.content_encoding,
+                       "headers": props.headers,
                        "delivery_info": dict(
                             consumer_tag=getattr(method, "consumer_tag", None),
                             routing_key=method.routing_key,
