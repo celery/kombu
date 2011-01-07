@@ -182,7 +182,7 @@ def insomnia(fun):
     return _inner
 
 
-class test_retry_over_Time(unittest.TestCase):
+class test_retry_over_time(unittest.TestCase):
 
     @insomnia
     def test_simple(self):
@@ -193,15 +193,15 @@ class test_retry_over_Time(unittest.TestCase):
 
         def myfun():
             sleepvals = {0: None,
-                         1: 2,
-                         2: 4,
-                         3: 6,
-                         4: 8,
-                         5: 10,
-                         6: 12,
-                         7: 14,
-                         8: 14,
-                         9: 14}
+                         1: 2.0,
+                         2: 4.0,
+                         3: 6.0,
+                         4: 8.0,
+                         5: 10.0,
+                         6: 12.0,
+                         7: 14.0,
+                         8: 16.0,
+                         9: 16.0}
             self.assertEqual(_tried_to_sleep[0], sleepvals[index[0]])
             if index[0] < 9:
                 raise Predicate()

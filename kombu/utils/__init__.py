@@ -62,7 +62,8 @@ def fxrange(start=1.0, stop=None, step=1.0, repeatlast=False):
     while 1:
         if cur <= stop:
             yield cur
-            cur += step
+            if cur + step <= stop:
+                cur += step
         else:
             if not repeatlast:
                 break
