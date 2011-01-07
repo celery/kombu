@@ -20,11 +20,6 @@ class MessageStateError(Exception):
     pass
 
 
-class EnsureExhausted(Exception):
-    """ensure() limit exceeded."""
-    pass
-
-
 class TimeoutError(Exception):
     """Operation timed out."""
     pass

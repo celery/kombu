@@ -188,10 +188,9 @@ class BrokerConnection(object):
                 try:
                     return fun(*args, **kwargs)
                 except self.connection_errors + self.channel_errors, exc:
-                    if got_connection:
+                    if got_connection or \
+                            max_retries and retries > max_retries:
                         raise
-                    if max_retries and retries > max_retries:
-                        raise exceptions.EnsureExhausted()
                     errback and errback(exc, 0)
                     self._connection = None
                     self.close()
