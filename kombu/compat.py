@@ -100,6 +100,10 @@ class Publisher(messaging.Producer):
     def send(self, *args, **kwargs):
         return self.publish(*args, **kwargs)
 
+    def revive(self, channel):
+        self.backend = channel
+        super(Publisher, self).revive(channel)
+
     def close(self):
         self.backend.close()
         self._closed = True
@@ -152,6 +156,10 @@ class Consumer(messaging.Consumer):
                              exclusive=self.exclusive,
                              auto_delete=self.auto_delete)
         super(Consumer, self).__init__(self.backend, queue, **kwargs)
+
+    def revive(self, channel):
+        self.backend = channel
+        super(Consumer, self).revive(channel)
 
     def close(self):
         self.cancel()
@@ -232,6 +240,10 @@ class ConsumerSet(messaging.Consumer):
     def add_consumer(self, consumer):
         for queue in consumer.queues:
             self.queues.append(queue(self.channel))
+
+    def revive(self, channel):
+        self.backend = channel
+        super(ConsumerSet, self).revive(channel)
 
     def close(self):
         self.cancel()
