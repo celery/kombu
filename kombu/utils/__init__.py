@@ -57,13 +57,16 @@ def maybe_list(v):
     return [v]
 
 
-def repeatlast(it):
-    """Iterate over all elements in the iterator, and when its exhausted
-    yield the last value infinitely."""
-    for item in it:
-        yield item
-    while 1:    # pragma: no cover
-        yield item
+def fxrange(start=1.0, stop=None, step=1.0, repeatlast=False):
+    cur = start * 1.0
+    while 1:
+        if cur <= stop:
+            yield cur
+            cur += step
+        else:
+            if not repeatlast:
+                break
+            yield cur
 
 
 def retry_over_time(fun, catch, args=[], kwargs={}, errback=None,
@@ -92,11 +95,11 @@ def retry_over_time(fun, catch, args=[], kwargs={}, errback=None,
 
     """
     retries = 0
-    interval_range = xrange(interval_start,
-                            interval_max + interval_start,
-                            interval_step)
+    interval_range = fxrange(interval_start,
+                             interval_max + interval_start,
+                             interval_step, repeatlast=True)
 
-    for retries, interval in enumerate(repeatlast(interval_range)):
+    for retries, interval in enumerate(interval_range):
         try:
             return fun(*args, **kwargs)
         except catch, exc:

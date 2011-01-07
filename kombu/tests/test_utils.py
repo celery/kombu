@@ -122,15 +122,6 @@ class test_Misc(unittest.TestCase):
               u"bar": "bar"}
         self.assertTrue(f(**utils.kwdict(kw)))
 
-    def test_repeatlast(self):
-        x = [1, 2, 3, 4]
-        it = utils.repeatlast(x)
-        self.assertEqual(it.next(), 1)
-        self.assertEqual(it.next(), 2)
-        self.assertEqual(it.next(), 3)
-        self.assertEqual(it.next(), 4)
-        self.assertEqual(it.next(), 4)
-
 
 class MyStringIO(StringIO):
 
