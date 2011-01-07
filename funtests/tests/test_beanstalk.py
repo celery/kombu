@@ -1,5 +1,3 @@
-from nose import SkipTest
-
 from funtests import transport
 
 
