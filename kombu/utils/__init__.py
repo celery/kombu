@@ -62,12 +62,11 @@ def fxrange(start=1.0, stop=None, step=1.0, repeatlast=False):
     while 1:
         if cur <= stop:
             yield cur
-            if cur + step <= stop:
-                cur += step
+            cur += step
         else:
             if not repeatlast:
                 break
-            yield cur
+            yield cur - step
 
 
 def retry_over_time(fun, catch, args=[], kwargs={}, errback=None,
