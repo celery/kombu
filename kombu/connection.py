@@ -22,6 +22,12 @@ from kombu.utils.compat import OrderedDict
 from kombu.utils.functional import wraps
 
 
+#: Connection info -> URI
+URI_FORMAT = """\
+%(transport)s://%(userid)s@%(hostname)s%(port)s%(virtual_host)s\
+"""
+
+
 class BrokerConnection(object):
     """A connection to the broker.
 
@@ -60,6 +66,8 @@ class BrokerConnection(object):
         >>> conn.release()
 
     """
+    URI_FORMAT = URI_FORMAT
+
     port = None
     virtual_host = "/"
     connect_timeout = 5
@@ -236,6 +244,16 @@ class BrokerConnection(object):
                             ("ssl", self.ssl),
                             ("transport", transport_cls),
                             ("connect_timeout", self.connect_timeout)))
+
+    def as_uri(self):
+        fields = self.info()
+        port = fields["port"]
+        if port:
+            fields["port"] = ":%s" % (port, )
+        vhost = fields["virtual_host"]
+        if not vhost.startswith('/'):
+            fields["virtual_host"] = '/' + vhost
+        return self.URI_FORMAT % fields
 
     def Pool(self, limit=None, preload=None):
         """Pool of connections.
