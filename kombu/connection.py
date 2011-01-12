@@ -362,10 +362,7 @@ class BrokerConnection(object):
 
     def __repr__(self):
         """``x.__repr__() <==> repr(x)``"""
-        info = self.info()
-        return "<BrokerConnection: %s>" % (
-                    ", ".join("%s=%r" % (item, info[item])
-                                for item in info.keys()[:8]))
+        return "<BrokerConnection: %s>" % self.as_uri()
 
     def __copy__(self):
         """``x.__copy__() <==> copy(x)``"""
