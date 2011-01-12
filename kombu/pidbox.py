@@ -97,8 +97,8 @@ class Node(object):
     def handle_cast(self, method, arguments):
         return self.handle(method, arguments)
 
-    def handle_message(self, message_data, message):
-        return self.dispatch_from_message(message_data)
+    def handle_message(self, body, message):
+        return self.dispatch_from_message(body)
 
     def reply(self, data, exchange, routing_key, **kwargs):
         self.mailbox._publish_reply(data, exchange, routing_key,
@@ -240,10 +240,10 @@ class Mailbox(object):
         consumer = Consumer(channel, [queue], no_ack=True)
         responses = []
 
-        def on_message(message_data, message):
+        def on_message(body, message):
             if callback:
-                callback(message_data)
-            responses.append(message_data)
+                callback(body)
+            responses.append(body)
 
         try:
             consumer.register_callback(on_message)
