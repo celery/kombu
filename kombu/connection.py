@@ -481,8 +481,8 @@ class Resource(object):
     def force_close_all(self):
         """Closes and removes all resources in the pool (also those in use).
 
-        Can be used to close resources from parent processes after fork (e.g.
-        sockets).
+        Can be used to close resources from parent processes
+        after fork (e.g. sockets/connections).
 
         """
         dirty = self._dirty
