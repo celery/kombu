@@ -18,6 +18,7 @@ class ExchangeType(object):
     :param channel: AMQ Channel
 
     """
+    type = None
 
     def __init__(self, channel):
         self.channel = channel
@@ -46,6 +47,7 @@ class ExchangeType(object):
 
 class DirectExchange(ExchangeType):
     """The `direct` exchange routes based on exact routing keys."""
+    type = "direct"
 
     def lookup(self, table, exchange, routing_key, default):
         return [queue for rkey, _, queue in table
@@ -55,6 +57,7 @@ class DirectExchange(ExchangeType):
 class TopicExchange(ExchangeType):
     """The `topic` exchanges routes based on words separated by dots, and
     wildcard characters `*` (any single word), and `#` (one or more words)."""
+    type = "topic"
 
     #: map of wildcard to regex conversions
     wildcards = {"*": r".*?[^\.]",
@@ -96,6 +99,7 @@ class FanoutExchange(ExchangeType):
     for an example implementation of these methods.
 
     """
+    type = "fanout"
 
     def lookup(self, table, exchange, routing_key, default):
         return [queue for _, _, queue in table]
