@@ -13,7 +13,7 @@ Emulates the AMQ API for non-AMQ transports.
 import socket
 
 from itertools import count
-from time import sleep
+from time import sleep, time
 from Queue import Empty
 
 from kombu.transport import base
@@ -239,6 +239,7 @@ class Channel(AbstractChannel):
         self._consumers = set()
         self._cycle = None
         self._tag_to_queue = {}
+        self._active_queues = set()
         self._qos = None
         self.closed = False
 
@@ -311,12 +312,16 @@ class Channel(AbstractChannel):
         message["properties"]["delivery_info"]["exchange"] = exchange
         message["properties"]["delivery_info"]["routing_key"] = routing_key
         message["properties"]["delivery_tag"] = self._next_delivery_tag()
-        for queue in self._lookup(exchange, routing_key):
-            self._put(queue, message, **kwargs)
+        if self.typeof(exchange).type == "fanout" and self.supports_fanout:
+            self._put_fanout(exchange, message, **kwargs)
+        else:
+            for queue in self._lookup(exchange, routing_key):
+                self._put(queue, message, **kwargs)
 
     def basic_consume(self, queue, no_ack, callback, consumer_tag, **kwargs):
         """Consume from `queue`"""
         self._tag_to_queue[consumer_tag] = queue
+        self._active_queues.add(queue)
 
         def _callback(raw_message):
             message = self.Message(self, raw_message)
@@ -326,6 +331,7 @@ class Channel(AbstractChannel):
 
         self.connection._callbacks[queue] = _callback
         self._consumers.add(consumer_tag)
+
         self._reset_cycle()
 
     def basic_cancel(self, consumer_tag):
@@ -333,6 +339,7 @@ class Channel(AbstractChannel):
         self._consumers.remove(consumer_tag)
         self._reset_cycle()
         queue = self._tag_to_queue.pop(consumer_tag, None)
+        self._active_queues.discard(queue)
         self.connection._callbacks.pop(queue, None)
 
     def basic_get(self, queue, **kwargs):
@@ -465,10 +472,6 @@ class Channel(AbstractChannel):
         return self._qos
 
     @property
-    def _active_queues(self):
-        return [self._tag_to_queue[tag] for tag in self._consumers]
-
-    @property
     def cycle(self):
         if self._cycle is None:
             self._reset_cycle()
@@ -540,11 +543,12 @@ class Transport(base.Transport):
         if not self.channels:
             raise ValueError("No channels to drain events from.")
         loop = 0
+        time_start = time()
         while 1:
             try:
-                item, channel = self.cycle.get()
+                item, channel = self.cycle.get(timeout=timeout)
             except Empty:
-                if timeout and loop * 0.1 >= timeout:
+                if timeout and time() - time_start >= timeout:
                     raise socket.timeout()
                 loop += 1
                 sleep(0.1)
@@ -560,5 +564,5 @@ class Transport(base.Transport):
 
         self._callbacks[queue](message)
 
-    def _drain_channel(self, channel):
-        return channel.drain_events()
+    def _drain_channel(self, channel, timeout=None):
+        return channel.drain_events(timeout=timeout)
