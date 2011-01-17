@@ -182,7 +182,7 @@ class Mailbox(object):
                                           durable=False,
                                           auto_delete=True)
             producer = Producer(chan, exchange=exchange,
-                                      auto_declare=False)
+                                      auto_declare=True)
             producer.publish(reply, routing_key=routing_key)
         finally:
             channel or chan.close()
