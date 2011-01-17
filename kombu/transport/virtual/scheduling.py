@@ -32,12 +32,12 @@ class FairCycle(object):
                 if not self.resources:
                     raise self.predicate()
 
-    def get(self):
+    def get(self, **kwargs):
         for tried in count(0):
             resource = self._next()
 
             try:
-                return self.fun(resource), resource
+                return self.fun(resource, **kwargs), resource
             except self.predicate:
                 if tried >= len(self.resources) - 1:
                     raise
