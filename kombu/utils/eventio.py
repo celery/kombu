@@ -1,6 +1,11 @@
 import select
 import socket
 
+try:
+    from eventlet.patcher import is_monkey_patched as is_eventlet
+except ImportError:
+    is_eventlet = lambda module: False
+
 POLL_READ = 0x001
 POLL_ERR = 0x008 | 0x010 | 0x2000
 
@@ -66,8 +71,12 @@ class _select(object):
             events[fd] = events.get(fd, 0) | POLL_ERR
         return events.items()
 
-
-if hasattr(select, "epoll"):
+if is_eventlet(select):
+    # Eventlet ships with a monkey patched version of select.select
+    # we can use.
+    print("IS EVENTLET -> USING SELECT")
+    poll = _select
+elif hasattr(select, "epoll"):
     # Py2.6+ Linux
     poll = select.epoll
 elif hasattr(select, "kqueue"):
