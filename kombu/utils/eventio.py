@@ -32,7 +32,8 @@ class _kqueue(object):
                                                 flags=flags)], 0)
 
     def poll(self, timeout):
-        kevents = self._kqueue.control(None, 1000, timeout / 1000.0)
+        kevents = self._kqueue.control(None, 1000,
+                                      timeout and timeout / 1000.0 or timeout)
         events = {}
         for kevent in kevents:
             fd = kevent.ident
@@ -72,14 +73,13 @@ class _select(object):
         return events.items()
 
 if is_eventlet(select):
-    # Eventlet ships with a monkey patched version of select.select
-    # we can use.
+    # use Eventlet's non-blocking version of select.select
     poll = _select
 elif hasattr(select, "epoll"):
     # Py2.6+ Linux
     poll = select.epoll
 elif hasattr(select, "kqueue"):
     # Py2.6+ on BSD / Darwin
-    poll = select.poll
+    poll = _kqueue
 else:
     poll = _select
