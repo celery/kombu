@@ -8,8 +8,6 @@ Redis transport.
 :license: BSD, see LICENSE for more details.
 
 """
-import socket
-
 from itertools import imap
 from Queue import Empty
 
@@ -17,6 +15,7 @@ from anyjson import serialize, deserialize
 
 from kombu.transport import virtual
 from kombu.utils import eventio
+from kombu.utils import cached_property
 
 DEFAULT_PORT = 6379
 DEFAULT_DB = 0
@@ -32,8 +31,10 @@ class MultiChannelPoller(object):
         self._poller = eventio.poll()
 
     def add(self, channel):
-        if channel not in self._channels:
-            self._channels.add(channel)
+        self._channels.add(channel)
+
+    def discard(self, channel):
+        self._channels.discard(channel)
 
     def _register(self, channel, client, type):
         if (channel, client, type) in self._chan_to_sock:
@@ -95,31 +96,16 @@ class Channel(virtual.Channel):
     _in_listen = False
     _fanout_queues = {}
 
-    def __repr__(self):
-        return "<Channel: %x BRPOP:%r SUB:%r>" % (id(self),
-                                                  self.active_queues,
-                                                  self.active_fanout_queues)
-
     def __init__(self, *args, **kwargs):
         super_ = super(Channel, self)
         super_.__init__(*args, **kwargs)
 
         self.Client = self._get_client()
-        self.connection.cycle.add(self)
+        self.ResponseError = self._get_response_error()
         self.active_fanout_queues = set()
         self._fanout_to_queue = {}
-        self.ResponseError = self._get_response_error()
-
-        self.handlers = {"BRPOP": self._brpop_read,
-                         "LISTEN": self._receive}
-
-    def _get_client(self):
-        from redis import Redis
-        return Redis
-
-    def _get_response_error(self):
-        from redis import exceptions
-        return exceptions.ResponseError
+        self.handlers = {"BRPOP": self._brpop_read, "LISTEN": self._receive}
+        self.connection.cycle.add(self)  # add to channel poller.
 
     def basic_consume(self, queue, *args, **kwargs):
         if queue in self._fanout_queues:
@@ -199,6 +185,13 @@ class Channel(virtual.Channel):
             pass
 
     def _get(self, queue):
+        """basic.get
+
+        .. note::
+
+            Implies ``no_ack=True``
+
+        """
         item = self.client.rpop(queue)
         if item:
             return deserialize(item)
@@ -207,46 +200,50 @@ class Channel(virtual.Channel):
     def _size(self, queue):
         return self.client.llen(queue)
 
-    def _get_many(self, queues, timeout=None):
-        dest__item = self.client.brpop(queues, timeout=timeout)
-        if dest__item:
-            dest, item = dest__item
-            return deserialize(item), dest
-        raise Empty()
-
     def _put(self, queue, message, **kwargs):
+        """Publish message."""
         self.client.lpush(queue, serialize(message))
 
     def _put_fanout(self, exchange, message, **kwargs):
+        """Publish fanout message."""
         self.client.publish(exchange, serialize(message))
 
     def _queue_bind(self, exchange, routing_key, pattern, queue):
         if self.typeof(exchange).type == "fanout":
+            # Mark exchange as fanout.
             self._fanout_queues[queue] = exchange
         self.client.sadd(self.keyprefix_queue % (exchange, ),
                           self.sep.join([routing_key or "",
                                         pattern or "",
                                         queue or ""]))
 
-    def get_table(self, exchange):
-        members = self.client.smembers(self.keyprefix_queue % (exchange, ))
-        return [tuple(val.split(self.sep)) for val in members]
+    def _has_queue(self, queue, **kwargs):
+        return self.client.exists(queue)
 
+    def get_table(self, exchange):
+        return [tuple(val.split(self.sep))
+                    for val in self.client.smembers(
+                            self.keyprefix_queue % exchange)]
 
     def _purge(self, queue):
-        size = self.client.llen(queue)
-        self.client.delete(queue)
+        size, _ = self.client.pipeline().llen(queue) \
+                                        .delete(queue).execute()
         return size
 
     def close(self):
-        if self._client is not None:
+        # remove from channel poller.
+        self.connection.cycle.discard(self)
+
+        # Close connections
+        for attr in "client", "subclient":
             try:
-                self._client.connection.disconnect()
+                delattr(self, attr)
             except (AttributeError, self.ResponseError):
                 pass
+
         super(Channel, self).close()
 
-    def _open(self):
+    def _create_client(self):
         conninfo = self.connection.client
         database = conninfo.virtual_host
         if not isinstance(database, int):
@@ -265,17 +262,29 @@ class Channel(virtual.Channel):
                            db=database,
                            password=conninfo.password)
 
-    @property
-    def client(self):
-        if self._client is None:
-            self._client = self._open()
-        return self._client
+    def _get_client(self):
+        from redis import Redis
+        return Redis
 
-    @property
+    def _get_response_error(self):
+        from redis import exceptions
+        return exceptions.ResponseError
+
+    @cached_property
+    def client(self):
+        return self._create_client()
+
+    @client.deleter
+    def client(self, client):
+        client.disconnect()
+
+    @cached_property
     def subclient(self):
-        if self._subclient is None:
-            self._subclient = self._open()
-        return self._subclient
+        return self._create_client()
+
+    @subclient.deleter
+    def subclient(self, client):
+        client.disconnect()
 
     @property
     def active_queues(self):
@@ -294,10 +303,6 @@ class Transport(virtual.Transport):
         super(Transport, self).__init__(*args, **kwargs)
         self.connection_errors, self.channel_errors = self._get_errors()
         self.cycle = self.default_cycle
-
-    def close_connection(self, connection):
-        self.cycle.close()
-        super(Transport, self).close_connection(connection)
 
     def _get_errors(self):
         from redis import exceptions

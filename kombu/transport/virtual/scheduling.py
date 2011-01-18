@@ -42,5 +42,8 @@ class FairCycle(object):
                 if tried >= len(self.resources) - 1:
                     raise
 
+    def close(self):
+        pass
+
     def __repr__(self):
         return "<FairCycle: %r>" % (self.resources, )

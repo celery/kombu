@@ -7,7 +7,6 @@
 
     .. autoexception:: NotBoundError
     .. autoexception:: MessageStateError
-    .. autoexception:: EnsureExhausted
     .. autoexception:: TimeoutError
     .. autoexception:: LimitExceeded
     .. autoexception:: ConnectionLimitExceeded

@@ -16,6 +16,7 @@ from itertools import count
 from time import sleep, time
 from Queue import Empty
 
+from kombu.exceptions import StdChannelError
 from kombu.transport import base
 from kombu.utils import emergency_dump_state, say
 from kombu.utils.compat import OrderedDict
@@ -207,6 +208,15 @@ class AbstractChannel(object):
         """
         pass
 
+    def _has_queue(self, queue, **kwargs):
+        """Verify that queue exists.
+
+        Should return :const:`True` if the queue exists or :const:`False`
+        otherwise.
+
+        """
+        return True
+
     def _poll(self, cycle, timeout=None):
         """Poll a list of queues for available messages."""
         return cycle.get()
@@ -275,9 +285,14 @@ class Channel(AbstractChannel):
             self.queue_delete(queue, if_unused=True, if_empty=True)
         self.state.exchanges.pop(exchange, None)
 
-    def queue_declare(self, queue, **kwargs):
+    def queue_declare(self, queue, passive=False, **kwargs):
         """Declare queue."""
-        self._new_queue(queue, **kwargs)
+        if passive and not self._has_queue(queue, **kwargs):
+            raise StdChannelError("404",
+                    u"NOT_FOUND - no queue %r in vhost %r" % (
+                        queue, self.connection.client.virtual_host or '/'),
+                    (50, 10), "Channel.queue_declare")
+            self._new_queue(queue, **kwargs)
         return queue, self._size(queue), 0
 
     def queue_delete(self, queue, if_unusued=False, if_empty=False, **kwargs):
@@ -448,7 +463,9 @@ class Channel(AbstractChannel):
             self.basic_cancel(consumer)
         self.qos.restore_unacked_once()
         self.connection.close_channel(self)
-        self._cycle = None
+        if self._cycle is not None:
+            self._cycle.close()
+            self._cycle = None
 
     def _reset_cycle(self):
         self._cycle = FairCycle(self._get, self._active_queues, Empty)
@@ -531,6 +548,7 @@ class Transport(base.Transport):
         return self     # for drain events
 
     def close_connection(self, connection):
+        self.cycle.close()
         while self.channels:
             try:
                 channel = self.channels.pop()

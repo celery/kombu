@@ -38,3 +38,6 @@ class ConnectionLimitExceeded(LimitExceeded):
 class ChannelLimitExceeded(LimitExceeded):
     """Maximum number of simultaenous channels exceeded."""
     pass
+
+class StdChannelError(Exception):
+    pass
