@@ -74,7 +74,6 @@ class _select(object):
 if is_eventlet(select):
     # Eventlet ships with a monkey patched version of select.select
     # we can use.
-    print("IS EVENTLET -> USING SELECT")
     poll = _select
 elif hasattr(select, "epoll"):
     # Py2.6+ Linux
