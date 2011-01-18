@@ -55,6 +55,7 @@ For an introduction to AMQP you should read the article `Rabbits and warrens`_,
 and the `Wikipedia article about AMQP`_.
 
 
+
 .. _`RabbitMQ`: http://www.rabbitmq.com/
 .. _`AMQP`: http://amqp.org
 .. _`Redis`: http://code.google.com/p/redis/
@@ -68,6 +69,33 @@ and the `Wikipedia article about AMQP`_.
 .. _`kombu-sqlalchemy`: http://github.com/ask/kombu-sqlalchemy/
 .. _`django-kombu`: http://github.com/ask/django-kombu/
 .. _`carrot`: http://pypi.python.org/pypi/carrot/
+
+
+Transport Comparison
+====================
+
++---------------+----------+------------+-----------+---------------+
+| **Client**    | **Type** | **Direct** | **Topic** | **Fanout**    |
++---------------+----------+------------+-----------+---------------+
+| *amqplib*     | Native   | Yes        | Yes       | Yes           |
++---------------+----------+------------+-----------+---------------+
+| *pika*        | Native   | Yes        | Yes       | Yes           |
++---------------+----------+------------+-----------+---------------+
+| *redis*       | Virtual  | Yes        | Yes[†]    | Yes (PUB/SUB) |
++---------------+----------+------------+-----------+---------------+
+| *beanstalk*   | Virtual  | Yes        | Yes[†]    | No            |
++---------------+----------+------------+-----------+---------------+
+| *mongodb*     | Virtual  | Yes        | Yes[†]    | No            |
++---------------+----------+------------+-----------+---------------+
+| *couchdb*     | Virtual  | Yes        | Yes[†]    | No            |
++---------------+----------+------------+-----------+---------------+
+| *in-memory*   | Virtual  | Yes        | Yes[†]    | No            |
++---------------+----------+------------+-----------+---------------+
+
+
+:†: Declarations only kept in memory, so all clients needs
+       to declare entities.
+
 
 Documentation
 -------------
