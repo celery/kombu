@@ -56,8 +56,8 @@ class MultiChannelPoller(object):
                 ident not in self._chan_to_sock:
             channel._in_poll = False
             self._register(*ident)
-        # start BRPOP command
-        if not channel._in_poll:
+
+        if not channel._in_poll:  # send BRPOP
             channel._brpop_start()
 
     def _register_LISTEN(self, channel):
@@ -65,7 +65,7 @@ class MultiChannelPoller(object):
             channel._in_listen = False
             self._register(channel, channel.subclient, "LISTEN")
         if not channel._in_listen:
-            channel._subscribe()
+            channel._subscribe()  # send SUBSCRIBE
 
     def get(self, timeout=None):
         for channel in self._channels:
