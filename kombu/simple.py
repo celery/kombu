@@ -32,7 +32,7 @@ class SimpleBase(object):
         self.buffer = deque()
         self.consumer.register_callback(self._receive)
 
-    def get(self, block=True, timeout=None, sync=False):
+    def get(self, block=True, timeout=None):
         if not block:
             return self.get_nowait()
         self._consume()

@@ -210,13 +210,15 @@ class Transport(base.Transport):
             raise KeyError("Missing password for AMQP connection.")
         if not conninfo.port:
             conninfo.port = self.default_port
-        return self.Connection(host=conninfo.host,
+        conn = self.Connection(host=conninfo.host,
                                userid=conninfo.userid,
                                password=conninfo.password,
                                virtual_host=conninfo.virtual_host,
                                insist=conninfo.insist,
                                ssl=conninfo.ssl,
                                connect_timeout=conninfo.connect_timeout)
+        conn.client = self.client
+        return conn
 
     def close_connection(self, connection):
         """Close the AMQP broker connection."""
