@@ -1,17 +1,33 @@
 import socket
 import types
-from kombu.tests.utils import unittest
 
+from itertools import count
 from Queue import Empty, Queue as _Queue
 
 from kombu.connection import BrokerConnection
 from kombu.entity import Exchange, Queue
 from kombu.messaging import Consumer, Producer
 
-from kombu.transport import pyredis
-
+from kombu.tests.utils import unittest
 from kombu.tests.utils import module_exists
 
+# patch poll
+from kombu.utils import eventio
+
+
+class _poll(eventio._select):
+
+    def poll(self, timeout):
+        events = []
+        for fd in self._rfd:
+            if fd.data:
+                events.append((fd.fileno(), eventio.POLL_READ))
+        return events
+
+
+eventio.poll = _poll
+
+from kombu.transport import pyredis
 
 class ResponseError(Exception):
     pass
@@ -50,6 +66,31 @@ class Client(object):
     def lpush(self, key, value):
         self.queues[key].put_nowait(value)
 
+    def parse_command(self, cmd):
+        c = cmd.split('\r\n')
+        c.pop()
+        c.reverse()
+        argv = []
+        argc = int(c.pop().replace('*', ''))
+        for i in xrange(argc):
+            c.pop()
+            argv.append(c.pop())
+        return argv
+
+    def parse_response(self, type, **options):
+        cmd = self.connection._sock.data.pop()
+        argv = self.parse_command(cmd)
+        cmd = argv[0]
+        queues = argv[1:-1]
+        assert cmd == type
+        self.connection._sock.data = []
+        if type == "BRPOP":
+            item = self.brpop(queues, 0.001)
+            if item:
+                return item
+            raise Empty()
+
+
     def brpop(self, keys, timeout=None):
         key = keys[0]
         try:
@@ -68,20 +109,70 @@ class Client(object):
     def __contains__(self, k):
         return k in self._called
 
+    def pipeline(self):
+        return Pipeline(self)
+
+    def encode(self, value):
+        return str(value)
+
     def _new_queue(self, key):
         self.queues[key] = _Queue()
 
     class _sconnection(object):
         disconnected = False
 
+        class _socket(object):
+            blocking = True
+            next_fileno = count(30).next
+
+            def __init__(self, *args):
+                self._fileno = self.next_fileno()
+                self.data = []
+
+            def fileno(self):
+                return self._fileno
+
+            def setblocking(self, blocking):
+                self.blocking = blocking
+
+
+        def __init__(self, client):
+            self.client = client
+            self._sock = self._socket()
+
         def disconnect(self):
             self.disconnected = True
+
+        def send(self, cmd, client):
+            self._sock.data.append(cmd)
 
     @property
     def connection(self):
         if self._connection is None:
-            self._connection = self._sconnection()
+            self._connection = self._sconnection(self)
         return self._connection
+
+
+class Pipeline(object):
+
+    def __init__(self, client):
+        self.client = client
+        self.stack = []
+
+    def __getattr__(self, key):
+        if key not in self.__dict__:
+
+            def _add(*args, **kwargs):
+                self.stack.append((getattr(self.client, key), args, kwargs))
+                return self
+
+            return _add
+        return self.__dict__[key]
+
+    def execute(self):
+        stack = list(self.stack)
+        self.stack[:] = []
+        return [fun(*args, **kwargs) for fun, args, kwargs in stack]
 
 
 class Channel(pyredis.Channel):
@@ -142,11 +233,10 @@ class test_Redis(unittest.TestCase):
         consumer.register_callback(callback)
         consumer.consume()
 
-        self.assertTrue(channel._poller._can_start())
+        self.assertIn(channel, channel.connection.cycle._channels)
         try:
             connection.drain_events(timeout=1)
             self.assertTrue(_received)
-            self.assertFalse(channel._poller._can_start())
             self.assertRaises(socket.timeout,
                               connection.drain_events, timeout=0.01)
         finally:
@@ -194,8 +284,7 @@ class test_Redis(unittest.TestCase):
         c = BrokerConnection(transport=Transport).channel()
         c.client.connection
         c.close()
-        self.assertFalse(c._poller.isAlive())
-        self.assertTrue("BGSAVE" in c.client)
+        self.assertNotIn(c, c.connection.cycle._channels)
 
     def test_close_ResponseError(self):
         c = BrokerConnection(transport=Transport).channel()
@@ -204,9 +293,11 @@ class test_Redis(unittest.TestCase):
 
     def test_close_disconnects(self):
         c = BrokerConnection(transport=Transport).channel()
-        conn = c.client.connection
+        conn1 = c.client.connection
+        conn2 = c.subclient.connection
         c.close()
-        self.assertTrue(conn.disconnected)
+        self.assertTrue(conn1.disconnected)
+        self.assertTrue(conn2.disconnected)
 
     def test_get__Empty(self):
         channel = self.connection.channel()

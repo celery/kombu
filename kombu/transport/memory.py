@@ -17,6 +17,9 @@ class Channel(virtual.Channel):
     queues = {}
     do_restore = False
 
+    def _has_queue(self, queue, **kwargs):
+        return queue in self.queues
+
     def _new_queue(self, queue, **kwargs):
         if queue not in self.queues:
             self.queues[queue] = Queue()

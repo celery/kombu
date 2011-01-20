@@ -249,7 +249,7 @@ class Channel(AbstractChannel):
         self._consumers = set()
         self._cycle = None
         self._tag_to_queue = {}
-        self._active_queues = set()
+        self._active_queues = []
         self._qos = None
         self.closed = False
 
@@ -292,6 +292,7 @@ class Channel(AbstractChannel):
                     u"NOT_FOUND - no queue %r in vhost %r" % (
                         queue, self.connection.client.virtual_host or '/'),
                     (50, 10), "Channel.queue_declare")
+        else:
             self._new_queue(queue, **kwargs)
         return queue, self._size(queue), 0
 
@@ -336,7 +337,7 @@ class Channel(AbstractChannel):
     def basic_consume(self, queue, no_ack, callback, consumer_tag, **kwargs):
         """Consume from `queue`"""
         self._tag_to_queue[consumer_tag] = queue
-        self._active_queues.add(queue)
+        self._active_queues.append(queue)
 
         def _callback(raw_message):
             message = self.Message(self, raw_message)
@@ -354,7 +355,10 @@ class Channel(AbstractChannel):
         self._consumers.remove(consumer_tag)
         self._reset_cycle()
         queue = self._tag_to_queue.pop(consumer_tag, None)
-        self._active_queues.discard(queue)
+        try:
+            self._active_queues.remove(queue)
+        except ValueError:
+            pass
         self.connection._callbacks.pop(queue, None)
 
     def basic_get(self, queue, **kwargs):

@@ -276,7 +276,7 @@ class Channel(virtual.Channel):
 
     @client.deleter
     def client(self, client):
-        client.disconnect()
+        client.connection.disconnect()
 
     @cached_property
     def subclient(self):
@@ -284,7 +284,7 @@ class Channel(virtual.Channel):
 
     @subclient.deleter
     def subclient(self, client):
-        client.disconnect()
+        client.connection.disconnect()
 
     @property
     def active_queues(self):

@@ -115,7 +115,7 @@ class test_MemoryTransport(unittest.TestCase):
 
         class Cycle(object):
 
-            def get(self):
+            def get(self, timeout=None):
                 return ("foo", "foo"), c1
 
         self.c.transport.cycle = Cycle()
