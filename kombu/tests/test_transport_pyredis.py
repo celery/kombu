@@ -26,8 +26,8 @@ class _poll(eventio._select):
 
 
 eventio.poll = _poll
+from kombu.transport import pyredis  # must import after poller patch
 
-from kombu.transport import pyredis
 
 class ResponseError(Exception):
     pass
@@ -90,7 +90,6 @@ class Client(object):
                 return item
             raise Empty()
 
-
     def brpop(self, keys, timeout=None):
         key = keys[0]
         try:
@@ -134,7 +133,6 @@ class Client(object):
 
             def setblocking(self, blocking):
                 self.blocking = blocking
-
 
         def __init__(self, client):
             self.client = client

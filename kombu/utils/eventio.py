@@ -37,7 +37,6 @@ class _kqueue(object):
         events = {}
         for kevent in kevents:
             fd = kevent.ident
-            flags = 0
             if kevent.filter == select.KQ_FILTER_READ:
                 events[fd] = events.get(fd, 0) | POLL_READ
             if kevent.filter == select.KQ_EV_ERROR:
