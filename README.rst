@@ -81,19 +81,19 @@ Transport Comparison
 +---------------+----------+------------+-----------+---------------+
 | *pika*        | Native   | Yes        | Yes       | Yes           |
 +---------------+----------+------------+-----------+---------------+
-| *redis*       | Virtual  | Yes        | Yes[†]    | Yes (PUB/SUB) |
+| *redis*       | Virtual  | Yes        | Yes[*]    | Yes (PUB/SUB) |
 +---------------+----------+------------+-----------+---------------+
-| *beanstalk*   | Virtual  | Yes        | Yes[†]    | No            |
+| *beanstalk*   | Virtual  | Yes        | Yes[*]    | No            |
 +---------------+----------+------------+-----------+---------------+
-| *mongodb*     | Virtual  | Yes        | Yes[†]    | No            |
+| *mongodb*     | Virtual  | Yes        | Yes[*]    | No            |
 +---------------+----------+------------+-----------+---------------+
-| *couchdb*     | Virtual  | Yes        | Yes[†]    | No            |
+| *couchdb*     | Virtual  | Yes        | Yes[*]    | No            |
 +---------------+----------+------------+-----------+---------------+
-| *in-memory*   | Virtual  | Yes        | Yes[†]    | No            |
+| *in-memory*   | Virtual  | Yes        | Yes[*]    | No            |
 +---------------+----------+------------+-----------+---------------+
 
 
-:†: Declarations only kept in memory, so all clients needs
+:*: Declarations only kept in memory, so all clients needs
        to declare entities.
 
 
