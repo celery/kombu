@@ -6,13 +6,13 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Utilities - kombu.utils &mdash; Kombu v0.9.5 documentation</title>
+    <title>Utilities - kombu.utils &mdash; Kombu v1.0.0rc3 documentation</title>
     <link rel="stylesheet" href="../static/celery.css" type="text/css" />
     <link rel="stylesheet" href="../static/pygments.css" type="text/css" />
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.9.5',
+        VERSION:     '1.0.0rc3',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -21,7 +21,7 @@
     <script type="text/javascript" src="../static/jquery.js"></script>
     <script type="text/javascript" src="../static/underscore.js"></script>
     <script type="text/javascript" src="../static/doctools.js"></script>
-    <link rel="top" title="Kombu v0.9.5 documentation" href="../index.html" />
+    <link rel="top" title="Kombu v1.0.0rc3 documentation" href="../index.html" />
     <link rel="up" title="API Reference" href="index.html" />
     <link rel="next" title="kombu.utils.functional" href="kombu.utils.functional.html" />
     <link rel="prev" title="kombu.compression" href="kombu.abstract.html" /> 
@@ -42,7 +42,7 @@
         <li class="right" >
           <a href="kombu.abstract.html" title="kombu.compression"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">Kombu v0.9.5 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu v1.0.0rc3 documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">API Reference</a> &raquo;</li> 
       </ul>
     </div>  
@@ -54,9 +54,39 @@
             
   <div class="section" id="utilities-kombu-utils">
 <h1>Utilities - kombu.utils<a class="headerlink" href="#utilities-kombu-utils" title="Permalink to this headline">¶</a></h1>
-<span class="target" id="module-kombu.utils"></span><dl class="function">
+<span class="target" id="module-kombu.utils"></span><dl class="attribute">
+<dt id="kombu.utils.cached_property">
+<tt class="descclassname">kombu.utils.</tt><tt class="descname">cached_property</tt><a class="headerlink" href="#kombu.utils.cached_property" title="Permalink to this definition">¶</a></dt>
+<dd><p>Property descriptor that caches the return value
+of the get function.</p>
+<p><em>Examples</em></p>
+<div class="highlight-python"><div class="highlight"><pre><span class="nd">@cached_property</span>
+<span class="k">def</span> <span class="nf">connection</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">Connection</span><span class="p">()</span>
+
+<span class="nd">@connection.setter</span>  <span class="c"># Prepares stored value</span>
+<span class="k">def</span> <span class="nf">connection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&quot;Connection must be a connection&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">value</span>
+
+<span class="nd">@connection.deleter</span>
+<span class="k">def</span> <span class="nf">connection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+    <span class="c"># Additional action to do at del(self.attr)</span>
+    <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="k">print</span><span class="p">(</span><span class="s">&quot;Connection </span><span class="si">%r</span><span class="s"> deleted&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="p">))</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="function">
 <dt id="kombu.utils.emergency_dump_state">
-<tt class="descclassname">kombu.utils.</tt><tt class="descname">emergency_dump_state</tt><big>(</big><em>state</em>, <em>open_file=&lt;built-in function open&gt;</em>, <em>dump=&lt;function dump at 0x101b80410&gt;</em><big>)</big><a class="headerlink" href="#kombu.utils.emergency_dump_state" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">kombu.utils.</tt><tt class="descname">emergency_dump_state</tt><big>(</big><em>state</em>, <em>open_file=&lt;built-in function open&gt;</em>, <em>dump=&lt;function dump at 0x101b8e938&gt;</em><big>)</big><a class="headerlink" href="#kombu.utils.emergency_dump_state" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="kombu.utils.fxrange">
+<tt class="descclassname">kombu.utils.</tt><tt class="descname">fxrange</tt><big>(</big><em>start=1.0</em>, <em>stop=None</em>, <em>step=1.0</em>, <em>repeatlast=False</em><big>)</big><a class="headerlink" href="#kombu.utils.fxrange" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
@@ -71,10 +101,8 @@ collission.</p>
 <dt id="kombu.utils.kwdict">
 <tt class="descclassname">kombu.utils.</tt><tt class="descname">kwdict</tt><big>(</big><em>kwargs</em><big>)</big><a class="headerlink" href="#kombu.utils.kwdict" title="Permalink to this definition">¶</a></dt>
 <dd><p>Make sure keyword arguments are not in unicode.</p>
-<dl class="docutils">
-<dt>This should be fixed in newer Python versions,</dt>
-<dd>see: <a class="reference external" href="http://bugs.python.org/issue4978">http://bugs.python.org/issue4978</a>.</dd>
-</dl>
+<p>This should be fixed in newer Python versions,
+see: <a class="reference external" href="http://bugs.python.org/issue4978">http://bugs.python.org/issue4978</a>.</p>
 </dd></dl>
 
 <dl class="function">
@@ -86,13 +114,6 @@ collission.</p>
 <dt id="kombu.utils.partition">
 <tt class="descclassname">kombu.utils.</tt><tt class="descname">partition</tt><big>(</big><em>S</em>, <em>sep</em><big>)</big><a class="headerlink" href="#kombu.utils.partition" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
-
-<dl class="function">
-<dt id="kombu.utils.repeatlast">
-<tt class="descclassname">kombu.utils.</tt><tt class="descname">repeatlast</tt><big>(</big><em>it</em><big>)</big><a class="headerlink" href="#kombu.utils.repeatlast" title="Permalink to this definition">¶</a></dt>
-<dd><p>Iterate over all elements in the iterator, and when its exhausted
-yield the last value infinitely.</p>
-</dd></dl>
 
 <dl class="function">
 <dt id="kombu.utils.retry_over_time">
@@ -196,7 +217,7 @@ retry.</li>
         <li class="right" >
           <a href="kombu.abstract.html" title="kombu.compression"
              >previous</a> |</li>
-        <li><a href="../index.html">Kombu v0.9.5 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu v1.0.0rc3 documentation</a> &raquo;</li>
           <li><a href="index.html" >API Reference</a> &raquo;</li> 
       </ul>
     </div>

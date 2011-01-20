@@ -6,13 +6,13 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>kombu.transport.pypika &mdash; Kombu v0.9.5 documentation</title>
+    <title>kombu.transport.pypika &mdash; Kombu v1.0.0rc3 documentation</title>
     <link rel="stylesheet" href="../static/celery.css" type="text/css" />
     <link rel="stylesheet" href="../static/pygments.css" type="text/css" />
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.9.5',
+        VERSION:     '1.0.0rc3',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -21,7 +21,7 @@
     <script type="text/javascript" src="../static/jquery.js"></script>
     <script type="text/javascript" src="../static/underscore.js"></script>
     <script type="text/javascript" src="../static/doctools.js"></script>
-    <link rel="top" title="Kombu v0.9.5 documentation" href="../index.html" />
+    <link rel="top" title="Kombu v1.0.0rc3 documentation" href="../index.html" />
     <link rel="up" title="API Reference" href="index.html" />
     <link rel="next" title="kombu.transport.memory" href="kombu.transport.memory.html" />
     <link rel="prev" title="kombu.transport.pyamqplib" href="kombu.transport.pyamqplib.html" /> 
@@ -42,7 +42,7 @@
         <li class="right" >
           <a href="kombu.transport.pyamqplib.html" title="kombu.transport.pyamqplib"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">Kombu v0.9.5 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu v1.0.0rc3 documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">API Reference</a> &raquo;</li> 
       </ul>
     </div>  
@@ -134,9 +134,25 @@
 <dl class="class">
 <dt id="kombu.transport.pypika.AsyncoreConnection">
 <em class="property">class </em><tt class="descclassname">kombu.transport.pypika.</tt><tt class="descname">AsyncoreConnection</tt><big>(</big><em>parameters</em>, <em>wait_for_open=True</em>, <em>reconnection_strategy=None</em><big>)</big><a class="headerlink" href="#kombu.transport.pypika.AsyncoreConnection" title="Permalink to this definition">¶</a></dt>
-<dd><dl class="method">
+<dd><dl class="attribute">
+<dt id="kombu.transport.pypika.AsyncoreConnection.Super">
+<tt class="descname">Super</tt><a class="headerlink" href="#kombu.transport.pypika.AsyncoreConnection.Super" title="Permalink to this definition">¶</a></dt>
+<dd><p>alias of <a class="reference internal" href="#kombu.transport.pypika.AsyncoreConnection" title="kombu.transport.pypika.AsyncoreConnection"><tt class="xref py py-class docutils literal"><span class="pre">AsyncoreConnection</span></tt></a></p>
+</dd></dl>
+
+<dl class="method">
 <dt id="kombu.transport.pypika.AsyncoreConnection.channel">
 <tt class="descname">channel</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.transport.pypika.AsyncoreConnection.channel" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.pypika.AsyncoreConnection.ensure_drain_events">
+<tt class="descname">ensure_drain_events</tt><big>(</big><em>timeout=None</em><big>)</big><a class="headerlink" href="#kombu.transport.pypika.AsyncoreConnection.ensure_drain_events" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.pypika.AsyncoreConnection.on_data_available">
+<tt class="descname">on_data_available</tt><big>(</big><em>buf</em><big>)</big><a class="headerlink" href="#kombu.transport.pypika.AsyncoreConnection.on_data_available" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
@@ -147,6 +163,11 @@
 <dd><dl class="method">
 <dt id="kombu.transport.pypika.BlockingConnection.channel">
 <tt class="descname">channel</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.transport.pypika.BlockingConnection.channel" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.pypika.BlockingConnection.ensure_drain_events">
+<tt class="descname">ensure_drain_events</tt><big>(</big><em>timeout=None</em><big>)</big><a class="headerlink" href="#kombu.transport.pypika.BlockingConnection.ensure_drain_events" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
@@ -185,14 +206,12 @@
 <dl class="method">
 <dt id="kombu.transport.pypika.Channel.message_to_python">
 <tt class="descclassname">Channel.</tt><tt class="descname">message_to_python</tt><big>(</big><em>raw_message</em><big>)</big><a class="headerlink" href="#kombu.transport.pypika.Channel.message_to_python" title="Permalink to this definition">¶</a></dt>
-<dd><p>Convert encoded message body back to a Python value.</p>
-</dd></dl>
+<dd></dd></dl>
 
 <dl class="method">
 <dt id="kombu.transport.pypika.Channel.prepare_message">
 <tt class="descclassname">Channel.</tt><tt class="descname">prepare_message</tt><big>(</big><em>message_data</em>, <em>priority=None</em>, <em>content_type=None</em>, <em>content_encoding=None</em>, <em>headers=None</em>, <em>properties=None</em><big>)</big><a class="headerlink" href="#kombu.transport.pypika.Channel.prepare_message" title="Permalink to this definition">¶</a></dt>
-<dd><p>Encapsulate data into a AMQP message.</p>
-</dd></dl>
+<dd></dd></dl>
 
 <dl class="method">
 <dt id="kombu.transport.pypika.Channel.queue_purge">
@@ -274,7 +293,7 @@
         <li class="right" >
           <a href="kombu.transport.pyamqplib.html" title="kombu.transport.pyamqplib"
              >previous</a> |</li>
-        <li><a href="../index.html">Kombu v0.9.5 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu v1.0.0rc3 documentation</a> &raquo;</li>
           <li><a href="index.html" >API Reference</a> &raquo;</li> 
       </ul>
     </div>

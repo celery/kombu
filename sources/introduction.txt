@@ -2,43 +2,100 @@
  kombu - AMQP Messaging Framework for Python
 #############################################
 
-:Version: 0.9.5
+:Version: 1.0.0rc3
 
-Introduction
-------------
+Synopsis
+========
 
-`Kombu` is an `AMQP`_ messaging queue framework. AMQP is the Advanced Message
-Queuing Protocol, an open standard protocol for message orientation, queuing,
-routing, reliability and security.
+`Kombu` is an `AMQP`_ messaging framework for Python.
+
+AMQP is the Advanced Message Queuing Protocol, an open standard protocol
+for message orientation, queuing, routing, reliability and security.
+
+One of the most popular implementations of AMQP is `RabbitMQ`_.
 
 The aim of `Kombu` is to make messaging in Python as easy as possible by
-providing a high-level interface for producing and consuming messages,
-and provide tested and proven implementations of common messaging patterns.
+providing an idiomatic high-level interface for the AMQP protocol, and also
+provide proven and tested solutions to common messaging problems.
 
-`Kombu` has pluggable messaging transports, so it is possible to support
-several messaging systems. Currently, there is support for `AMQP`_
-(`py-amqplib`_, `pika`_), `Redis`_, and `Beanstalk`. Also there's an
-in-memory transport for testing purposes.
+Features
+========
 
-There are also transports available as plug-ins, like `kombu-sqlalchemy`
-(SQLAlchemy transport), or `django-kombu`_ (transport using the Django ORM).
+* Allows application authors to support several message server
+  solutions by using pluggable transports.
 
-Before you start playing with `Kombu`, you should probably read up on
-AMQP, and you could start with the excellent article about using RabbitMQ
-under Python, `Rabbits and warrens`_. For more detailed information, you can
-refer to the `Wikipedia article about AMQP`_.
+    * AMQP transports for both the `amqplib`_ (sync) and
+      `pika`_ (sync + async) clients.
+
+    * Virtual transports makes it really easy to add support for non-AMQP
+      transports.  There is already built-in support for `Redis`_,
+      `Beanstalk`_, `CouchDB`_, and `MongoDB`_.
+
+    * SQLAlchemy and Django ORM transports exists as plug-ins (
+      `kombu-sqlalchemy`_ and `django-kombu`_).
+
+    * In-memory transport for unit testing.
+
+* Supports automatic encoding, serialization and compression of message
+  payloads.
+
+* Consistent exception handling across transports.
+
+* The ability to ensure that an operation is performed by gracefully
+  handling connection and channel errrors.
+
+* Several annoyances with `amqplib`_ has been fixed, like supporting
+  timeouts and the ability to wait for events on more than one channel.
+
+* Projects already using `carrot`_ can easily be ported by using
+  a compatibility layer.
+
+
+For an introduction to AMQP you should read the article `Rabbits and warrens`_,
+and the `Wikipedia article about AMQP`_.
+
+
 
 .. _`RabbitMQ`: http://www.rabbitmq.com/
 .. _`AMQP`: http://amqp.org
 .. _`Redis`: http://code.google.com/p/redis/
-.. _`Python Queue module`: http://docs.python.org/library/queue.html
-.. _`Apache ActiveMQ`: http://activemq.apache.org/
+.. _`MongoDB`: http://www.mongodb.org/
+.. _`CouchDB`: http://couchdb.apache.org/
+.. _`Beanstalk`: http://kr.github.com/beanstalkd/
 .. _`Rabbits and warrens`: http://blogs.digitar.com/jjww/2009/01/rabbits-and-warrens/
-.. _`py-amqplib`: http://barryp.org/software/py-amqplib/
+.. _`amqplib`: http://barryp.org/software/py-amqplib/
 .. _`pika`: http://github.com/tonyg/pika
 .. _`Wikipedia article about AMQP`: http://en.wikipedia.org/wiki/AMQP
 .. _`kombu-sqlalchemy`: http://github.com/ask/kombu-sqlalchemy/
 .. _`django-kombu`: http://github.com/ask/django-kombu/
+.. _`carrot`: http://pypi.python.org/pypi/carrot/
+
+
+Transport Comparison
+====================
+
++---------------+----------+------------+-----------+---------------+
+| **Client**    | **Type** | **Direct** | **Topic** | **Fanout**    |
++---------------+----------+------------+-----------+---------------+
+| *amqplib*     | Native   | Yes        | Yes       | Yes           |
++---------------+----------+------------+-----------+---------------+
+| *pika*        | Native   | Yes        | Yes       | Yes           |
++---------------+----------+------------+-----------+---------------+
+| *redis*       | Virtual  | Yes        | Yes[*]    | Yes (PUB/SUB) |
++---------------+----------+------------+-----------+---------------+
+| *beanstalk*   | Virtual  | Yes        | Yes[*]    | No            |
++---------------+----------+------------+-----------+---------------+
+| *mongodb*     | Virtual  | Yes        | Yes[*]    | No            |
++---------------+----------+------------+-----------+---------------+
+| *couchdb*     | Virtual  | Yes        | Yes[*]    | No            |
++---------------+----------+------------+-----------+---------------+
+| *in-memory*   | Virtual  | Yes        | Yes[*]    | No            |
++---------------+----------+------------+-----------+---------------+
+
+
+:*: Declarations only kept in memory, so all clients needs
+       to declare entities.
+
 
 Documentation
 -------------
@@ -50,9 +107,9 @@ Kombu is using Sphinx, and the latest documentation is available at GitHub:
 Quick overview
 --------------
 
-.. code-block:: python
+::
 
-    from kombu.connection BrokerConnection
+    from kombu.connection import BrokerConnection
     from kombu.messaging import Exchange, Queue, Consumer, Producer
 
     media_exchange = Exchange("media", "direct", durable=True)
@@ -92,7 +149,7 @@ and used in configuaration files etc.
 They also support operations, but to do so they need to be bound
 to a channel:
 
-.. code-block:: python
+::
 
     >>> exchange = Exchange("tasks", "direct")
 
@@ -211,5 +268,5 @@ like Github (for some reason) you're welcome to send regular patches.
 License
 =======
 
-This software is licensed under the `New BSD License`. See the :file:`LICENSE`
+This software is licensed under the `New BSD License`. See the `LICENSE`
 file in the top distribution directory for the full license text.

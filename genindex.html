@@ -6,13 +6,13 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Index &mdash; Kombu v0.9.5 documentation</title>
+    <title>Index &mdash; Kombu v1.0.0rc3 documentation</title>
     <link rel="stylesheet" href="static/celery.css" type="text/css" />
     <link rel="stylesheet" href="static/pygments.css" type="text/css" />
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '',
-        VERSION:     '0.9.5',
+        VERSION:     '1.0.0rc3',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -21,7 +21,7 @@
     <script type="text/javascript" src="static/jquery.js"></script>
     <script type="text/javascript" src="static/underscore.js"></script>
     <script type="text/javascript" src="static/doctools.js"></script>
-    <link rel="top" title="Kombu v0.9.5 documentation" href="index.html" /> 
+    <link rel="top" title="Kombu v1.0.0rc3 documentation" href="index.html" /> 
   </head>
   <body>
     <div class="related">
@@ -33,7 +33,7 @@
         <li class="right" >
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li><a href="index.html">Kombu v0.9.5 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Kombu v1.0.0rc3 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -76,6 +76,10 @@
     <dd><dl>
       <dt><a href="reference/kombu.connection.html#kombu.connection.ConnectionPool.acquire">(kombu.connection.ConnectionPool method)</a></dt>
   </dl></dd>
+    <dt><a href="reference/kombu.transport.pyredis.html#kombu.transport.pyredis.Channel.active_queues">active_queues (kombu.transport.pyredis.Channel attribute)</a></dt>
+    <dd><dl>
+      <dt><a href="reference/kombu.transport.pyredis.html#kombu.transport.pyredis.Transport.Channel.active_queues">(kombu.transport.pyredis.Transport.Channel attribute)</a></dt>
+  </dl></dd>
     <dt><a href="reference/kombu.compat.html#kombu.compat.ConsumerSet.add_consumer">add_consumer() (kombu.compat.ConsumerSet method)</a></dt>
     <dt><a href="reference/kombu.compat.html#kombu.compat.ConsumerSet.add_consumer_from_dict">add_consumer_from_dict() (kombu.compat.ConsumerSet method)</a></dt>
 </dl></td>
@@ -107,9 +111,15 @@
     <dd><dl>
       <dt><a href="reference/kombu.transport.virtual.html#kombu.transport.virtual.Channel.basic_ack">(kombu.transport.virtual.Channel method)</a></dt>
   </dl></dd>
-    <dt><a href="reference/kombu.transport.virtual.html#kombu.transport.virtual.Channel.basic_cancel">basic_cancel() (kombu.transport.virtual.Channel method)</a></dt>
+    <dt><a href="reference/kombu.transport.pyredis.html#kombu.transport.pyredis.Channel.basic_cancel">basic_cancel() (kombu.transport.pyredis.Channel method)</a></dt>
+    <dd><dl>
+      <dt><a href="reference/kombu.transport.pyredis.html#kombu.transport.pyredis.Transport.Channel.basic_cancel">(kombu.transport.pyredis.Transport.Channel method)</a></dt>
+      <dt><a href="reference/kombu.transport.virtual.html#kombu.transport.virtual.Channel.basic_cancel">(kombu.transport.virtual.Channel method)</a></dt>
+  </dl></dd>
     <dt><a href="reference/kombu.transport.pypika.html#kombu.transport.pypika.Channel.basic_consume">basic_consume() (kombu.transport.pypika.Channel method)</a></dt>
     <dd><dl>
+      <dt><a href="reference/kombu.transport.pyredis.html#kombu.transport.pyredis.Channel.basic_consume">(kombu.transport.pyredis.Channel method)</a></dt>
+      <dt><a href="reference/kombu.transport.pyredis.html#kombu.transport.pyredis.Transport.Channel.basic_consume">(kombu.transport.pyredis.Transport.Channel method)</a></dt>
       <dt><a href="reference/kombu.transport.virtual.html#kombu.transport.virtual.Channel.basic_consume">(kombu.transport.virtual.Channel method)</a></dt>
   </dl></dd>
     <dt><a href="reference/kombu.transport.pypika.html#kombu.transport.pypika.Channel.basic_get">basic_get() (kombu.transport.pypika.Channel method)</a></dt>
@@ -142,6 +152,7 @@
 <h2 id="C">C</h2>
 <table width="100%" class="indextable genindextable"><tr>
   <td width="33%" valign="top"><dl>
+    <dt><a href="reference/kombu.utils.html#kombu.utils.cached_property">cached_property (in module kombu.utils)</a></dt>
     <dt><a href="reference/kombu.pidbox.html#kombu.pidbox.Mailbox.call">call() (kombu.pidbox.Mailbox method)</a></dt>
     <dt><a href="reference/kombu.messaging.html#kombu.messaging.Consumer.callbacks">callbacks (kombu.messaging.Consumer attribute)</a></dt>
     <dt><a href="reference/kombu.transport.virtual.html#kombu.transport.virtual.QoS.can_consume">can_consume() (kombu.transport.virtual.QoS method)</a></dt>
@@ -203,7 +214,7 @@
     <dt><a href="reference/kombu.simple.html#kombu.simple.SimpleBuffer.clear">clear() (kombu.simple.SimpleBuffer method)</a></dt>
     <dd><dl>
       <dt><a href="reference/kombu.simple.html#kombu.simple.SimpleQueue.clear">(kombu.simple.SimpleQueue method)</a></dt>
-      <dt><a href="reference/kombu.utils.compat.html#kombu.utils.compat.OrderedDict.clear">(kombu.utils.compat.OrderedDict method)</a></dt>
+      <dt><a href="reference/kombu.utils.compat.html#kombu.utils.compat.CompatOrderedDict.clear">(kombu.utils.compat.CompatOrderedDict method)</a></dt>
   </dl></dd>
     <dt><a href="reference/kombu.transport.base.html#kombu.transport.base.Transport.client">client (kombu.transport.base.Transport attribute)</a></dt>
     <dd><dl>
@@ -223,12 +234,15 @@
       <dt><a href="reference/kombu.compat.html#kombu.compat.Publisher.close">(kombu.compat.Publisher method)</a></dt>
       <dt><a href="reference/kombu.simple.html#kombu.simple.SimpleBuffer.close">(kombu.simple.SimpleBuffer method)</a></dt>
       <dt><a href="reference/kombu.simple.html#kombu.simple.SimpleQueue.close">(kombu.simple.SimpleQueue method)</a></dt>
+      <dt><a href="reference/kombu.transport.beanstalk.html#kombu.transport.beanstalk.Channel.close">(kombu.transport.beanstalk.Channel method)</a></dt>
+      <dt><a href="reference/kombu.transport.beanstalk.html#kombu.transport.beanstalk.Transport.Channel.close">(kombu.transport.beanstalk.Transport.Channel method)</a></dt>
       <dt><a href="reference/kombu.transport.mongodb.html#kombu.transport.mongodb.Channel.close">(kombu.transport.mongodb.Channel method)</a></dt>
       <dt><a href="reference/kombu.transport.mongodb.html#kombu.transport.mongodb.Transport.Channel.close">(kombu.transport.mongodb.Transport.Channel method)</a></dt>
       <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Connection.close">(kombu.transport.pyamqplib.Connection method)</a></dt>
       <dt><a href="reference/kombu.transport.pyredis.html#kombu.transport.pyredis.Channel.close">(kombu.transport.pyredis.Channel method)</a></dt>
       <dt><a href="reference/kombu.transport.pyredis.html#kombu.transport.pyredis.Transport.Channel.close">(kombu.transport.pyredis.Transport.Channel method)</a></dt>
       <dt><a href="reference/kombu.transport.virtual.html#kombu.transport.virtual.Channel.close">(kombu.transport.virtual.Channel method)</a></dt>
+      <dt><a href="reference/kombu.transport.virtual.scheduling.html#kombu.transport.virtual.scheduling.FairCycle.close">(kombu.transport.virtual.scheduling.FairCycle method)</a></dt>
   </dl></dd>
     <dt><a href="reference/kombu.transport.base.html#kombu.transport.base.Transport.close_channel">close_channel() (kombu.transport.base.Transport method)</a></dt>
     <dd><dl>
@@ -240,9 +254,10 @@
       <dt><a href="reference/kombu.transport.pypika.html#kombu.transport.pypika.SyncTransport.close_connection">(kombu.transport.pypika.SyncTransport method)</a></dt>
       <dt><a href="reference/kombu.transport.virtual.html#kombu.transport.virtual.Transport.close_connection">(kombu.transport.virtual.Transport method)</a></dt>
   </dl></dd>
-    <dt><a href="reference/kombu.compression.html#kombu.compression.compress">compress() (in module kombu.compression)</a></dt>
+    <dt><a href="reference/kombu.utils.compat.html#kombu.utils.compat.CompatOrderedDict">CompatOrderedDict (class in kombu.utils.compat)</a></dt>
 </dl></td>
   <td width="33%" valign="top"><dl>
+    <dt><a href="reference/kombu.compression.html#kombu.compression.compress">compress() (in module kombu.compression)</a></dt>
     <dt><a href="reference/kombu.messaging.html#kombu.messaging.Producer.compression">compression (kombu.messaging.Producer attribute)</a></dt>
     <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnection.connect">connect() (kombu.connection.BrokerConnection method)</a></dt>
     <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Connection">Connection (class in kombu.transport.pyamqplib)</a></dt>
@@ -278,7 +293,7 @@
     <dt><a href="reference/kombu.compat.html#kombu.compat.ConsumerSet">ConsumerSet (class in kombu.compat)</a></dt>
     <dt><a href="reference/kombu.transport.base.html#kombu.transport.base.Message.content_encoding">content_encoding (kombu.transport.base.Message attribute)</a></dt>
     <dt><a href="reference/kombu.transport.base.html#kombu.transport.base.Message.content_type">content_type (kombu.transport.base.Message attribute)</a></dt>
-    <dt><a href="reference/kombu.utils.compat.html#kombu.utils.compat.OrderedDict.copy">copy() (kombu.utils.compat.OrderedDict method)</a></dt>
+    <dt><a href="reference/kombu.utils.compat.html#kombu.utils.compat.CompatOrderedDict.copy">copy() (kombu.utils.compat.CompatOrderedDict method)</a></dt>
     <dt><a href="reference/kombu.transport.base.html#kombu.transport.base.Transport.create_channel">create_channel() (kombu.transport.base.Transport method)</a></dt>
     <dd><dl>
       <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Transport.create_channel">(kombu.transport.pyamqplib.Transport method)</a></dt>
@@ -346,8 +361,6 @@
       <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Transport.drain_events">(kombu.transport.pyamqplib.Transport method)</a></dt>
       <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Transport.Connection.drain_events">(kombu.transport.pyamqplib.Transport.Connection method)</a></dt>
       <dt><a href="reference/kombu.transport.pypika.html#kombu.transport.pypika.SyncTransport.drain_events">(kombu.transport.pypika.SyncTransport method)</a></dt>
-      <dt><a href="reference/kombu.transport.pyredis.html#kombu.transport.pyredis.Channel.drain_events">(kombu.transport.pyredis.Channel method)</a></dt>
-      <dt><a href="reference/kombu.transport.pyredis.html#kombu.transport.pyredis.Transport.Channel.drain_events">(kombu.transport.pyredis.Transport.Channel method)</a></dt>
       <dt><a href="reference/kombu.transport.virtual.html#kombu.transport.virtual.Channel.drain_events">(kombu.transport.virtual.Channel method)</a></dt>
       <dt><a href="reference/kombu.transport.virtual.html#kombu.transport.virtual.Transport.drain_events">(kombu.transport.virtual.Transport method)</a></dt>
   </dl></dd>
@@ -367,7 +380,10 @@
     <dt><a href="reference/kombu.compression.html#kombu.compression.encoders">encoders() (in module kombu.compression)</a></dt>
     <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnection.ensure">ensure() (kombu.connection.BrokerConnection method)</a></dt>
     <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnection.ensure_connection">ensure_connection() (kombu.connection.BrokerConnection method)</a></dt>
-    <dt><a href="reference/kombu.exceptions.html#kombu.exceptions.EnsureExhausted">EnsureExhausted</a></dt>
+    <dt><a href="reference/kombu.transport.pypika.html#kombu.transport.pypika.AsyncoreConnection.ensure_drain_events">ensure_drain_events() (kombu.transport.pypika.AsyncoreConnection method)</a></dt>
+    <dd><dl>
+      <dt><a href="reference/kombu.transport.pypika.html#kombu.transport.pypika.BlockingConnection.ensure_drain_events">(kombu.transport.pypika.BlockingConnection method)</a></dt>
+  </dl></dd>
     <dt><a href="reference/kombu.transport.virtual.exchange.html#kombu.transport.virtual.exchange.ExchangeType.equivalent">equivalent() (kombu.transport.virtual.exchange.ExchangeType method)</a></dt>
     <dt><a href="reference/kombu.transport.base.html#kombu.transport.base.Transport.establish_connection">establish_connection() (kombu.transport.base.Transport method)</a></dt>
     <dd><dl>
@@ -402,16 +418,17 @@
     <dt><a href="reference/kombu.transport.virtual.scheduling.html#kombu.transport.virtual.scheduling.FairCycle">FairCycle (class in kombu.transport.virtual.scheduling)</a></dt>
     <dt><a href="reference/kombu.transport.virtual.exchange.html#kombu.transport.virtual.exchange.FanoutExchange">FanoutExchange (class in kombu.transport.virtual.exchange)</a></dt>
     <dt><a href="reference/kombu.compat.html#kombu.compat.Consumer.fetch">fetch() (kombu.compat.Consumer method)</a></dt>
+    <dt><a href="reference/kombu.utils.finalize.html#kombu.utils.finalize.Finalize">Finalize (class in kombu.utils.finalize)</a></dt>
 </dl></td>
   <td width="33%" valign="top"><dl>
-    <dt><a href="reference/kombu.utils.finalize.html#kombu.utils.finalize.Finalize">Finalize (class in kombu.utils.finalize)</a></dt>
     <dt><a href="reference/kombu.compat.html#kombu.compat.Consumer.flow">flow() (kombu.compat.Consumer method)</a></dt>
     <dd><dl>
       <dt><a href="reference/kombu.compat.html#kombu.compat.ConsumerSet.flow">(kombu.compat.ConsumerSet method)</a></dt>
       <dt><a href="reference/kombu.messaging.html#kombu.messaging.Consumer.flow">(kombu.messaging.Consumer method)</a></dt>
       <dt><a href="reference/kombu.transport.virtual.html#kombu.transport.virtual.Channel.flow">(kombu.transport.virtual.Channel method)</a></dt>
   </dl></dd>
-    <dt><a href="reference/kombu.utils.compat.html#kombu.utils.compat.OrderedDict.fromkeys">fromkeys() (kombu.utils.compat.OrderedDict class method)</a></dt>
+    <dt><a href="reference/kombu.utils.compat.html#kombu.utils.compat.CompatOrderedDict.fromkeys">fromkeys() (kombu.utils.compat.CompatOrderedDict class method)</a></dt>
+    <dt><a href="reference/kombu.utils.html#kombu.utils.fxrange">fxrange() (in module kombu.utils)</a></dt>
 </dl></td>
 </tr></table>
 
@@ -470,17 +487,17 @@
     <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnection.info">info() (kombu.connection.BrokerConnection method)</a></dt>
     <dt><a href="reference/kombu.transport.virtual.html#kombu.transport.virtual.Transport.interval">interval (kombu.transport.virtual.Transport attribute)</a></dt>
     <dt><a href="reference/kombu.abstract.html#kombu.abstract.MaybeChannelBound.is_bound">is_bound (kombu.abstract.MaybeChannelBound attribute)</a></dt>
-    <dt><a href="reference/kombu.utils.compat.html#kombu.utils.compat.OrderedDict.items">items() (kombu.utils.compat.OrderedDict method)</a></dt>
+    <dt><a href="reference/kombu.utils.compat.html#kombu.utils.compat.CompatOrderedDict.items">items() (kombu.utils.compat.CompatOrderedDict method)</a></dt>
     <dt><a href="reference/kombu.compat.html#kombu.compat.Consumer.iterconsume">iterconsume() (kombu.compat.Consumer method)</a></dt>
     <dd><dl>
       <dt><a href="reference/kombu.compat.html#kombu.compat.ConsumerSet.iterconsume">(kombu.compat.ConsumerSet method)</a></dt>
   </dl></dd>
 </dl></td>
   <td width="33%" valign="top"><dl>
-    <dt><a href="reference/kombu.utils.compat.html#kombu.utils.compat.OrderedDict.iteritems">iteritems() (kombu.utils.compat.OrderedDict method)</a></dt>
-    <dt><a href="reference/kombu.utils.compat.html#kombu.utils.compat.OrderedDict.iterkeys">iterkeys() (kombu.utils.compat.OrderedDict method)</a></dt>
+    <dt><a href="reference/kombu.utils.compat.html#kombu.utils.compat.CompatOrderedDict.iteritems">iteritems() (kombu.utils.compat.CompatOrderedDict method)</a></dt>
+    <dt><a href="reference/kombu.utils.compat.html#kombu.utils.compat.CompatOrderedDict.iterkeys">iterkeys() (kombu.utils.compat.CompatOrderedDict method)</a></dt>
     <dt><a href="reference/kombu.compat.html#kombu.compat.Consumer.iterqueue">iterqueue() (kombu.compat.Consumer method)</a></dt>
-    <dt><a href="reference/kombu.utils.compat.html#kombu.utils.compat.OrderedDict.itervalues">itervalues() (kombu.utils.compat.OrderedDict method)</a></dt>
+    <dt><a href="reference/kombu.utils.compat.html#kombu.utils.compat.CompatOrderedDict.itervalues">itervalues() (kombu.utils.compat.CompatOrderedDict method)</a></dt>
 </dl></td>
 </tr></table>
 
@@ -488,7 +505,7 @@
 <table width="100%" class="indextable genindextable"><tr>
   <td width="33%" valign="top"><dl>
     <dt><a href="reference/kombu.transport.virtual.exchange.html#kombu.transport.virtual.exchange.TopicExchange.key_to_pattern">key_to_pattern() (kombu.transport.virtual.exchange.TopicExchange method)</a></dt>
-    <dt><a href="reference/kombu.utils.compat.html#kombu.utils.compat.OrderedDict.keys">keys() (kombu.utils.compat.OrderedDict method)</a></dt>
+    <dt><a href="reference/kombu.utils.compat.html#kombu.utils.compat.CompatOrderedDict.keys">keys() (kombu.utils.compat.CompatOrderedDict method)</a></dt>
     <dt><a href="reference/kombu.abstract.html#module-kombu.abstract">kombu.abstract (module)</a></dt>
     <dt><a href="reference/kombu.compat.html#module-kombu.compat">kombu.compat (module)</a></dt>
     <dt><a href="reference/kombu.compression.html#module-kombu.compression">kombu.compression (module)</a></dt>
@@ -600,11 +617,11 @@
 <h2 id="O">O</h2>
 <table width="100%" class="indextable genindextable"><tr>
   <td width="33%" valign="top"><dl>
+    <dt><a href="reference/kombu.transport.pypika.html#kombu.transport.pypika.AsyncoreConnection.on_data_available">on_data_available() (kombu.transport.pypika.AsyncoreConnection method)</a></dt>
     <dt><a href="reference/kombu.messaging.html#kombu.messaging.Consumer.on_decode_error">on_decode_error (kombu.messaging.Consumer attribute)</a></dt>
-    <dt><a href="reference/kombu.messaging.html#kombu.messaging.Producer.on_return">on_return (kombu.messaging.Producer attribute)</a></dt>
 </dl></td>
   <td width="33%" valign="top"><dl>
-    <dt><a href="reference/kombu.utils.compat.html#kombu.utils.compat.OrderedDict">OrderedDict (class in kombu.utils.compat)</a></dt>
+    <dt><a href="reference/kombu.messaging.html#kombu.messaging.Producer.on_return">on_return (kombu.messaging.Producer attribute)</a></dt>
 </dl></td>
 </tr></table>
 
@@ -617,8 +634,8 @@
       <dt><a href="reference/kombu.transport.virtual.html#kombu.transport.virtual.Message.payload">(kombu.transport.virtual.Message attribute)</a></dt>
   </dl></dd>
     <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnection.Pool">Pool() (kombu.connection.BrokerConnection method)</a></dt>
-    <dt><a href="reference/kombu.utils.compat.html#kombu.utils.compat.OrderedDict.pop">pop() (kombu.utils.compat.OrderedDict method)</a></dt>
-    <dt><a href="reference/kombu.utils.compat.html#kombu.utils.compat.OrderedDict.popitem">popitem() (kombu.utils.compat.OrderedDict method)</a></dt>
+    <dt><a href="reference/kombu.utils.compat.html#kombu.utils.compat.CompatOrderedDict.pop">pop() (kombu.utils.compat.CompatOrderedDict method)</a></dt>
+    <dt><a href="reference/kombu.utils.compat.html#kombu.utils.compat.CompatOrderedDict.popitem">popitem() (kombu.utils.compat.CompatOrderedDict method)</a></dt>
     <dt><a href="reference/kombu.transport.virtual.html#kombu.transport.virtual.QoS.prefetch_count">prefetch_count (kombu.transport.virtual.QoS attribute)</a></dt>
     <dt><a href="reference/kombu.transport.virtual.exchange.html#kombu.transport.virtual.exchange.ExchangeType.prepare_bind">prepare_bind() (kombu.transport.virtual.exchange.ExchangeType method)</a></dt>
     <dd><dl>
@@ -738,10 +755,9 @@
       <dt><a href="reference/kombu.connection.html#kombu.connection.ChannelPool.release">(kombu.connection.ChannelPool method)</a></dt>
       <dt><a href="reference/kombu.connection.html#kombu.connection.ConnectionPool.release">(kombu.connection.ConnectionPool method)</a></dt>
   </dl></dd>
-    <dt><a href="reference/kombu.utils.html#kombu.utils.repeatlast">repeatlast() (in module kombu.utils)</a></dt>
+    <dt><a href="reference/kombu.pidbox.html#kombu.pidbox.Node.reply">reply() (kombu.pidbox.Node method)</a></dt>
 </dl></td>
   <td width="33%" valign="top"><dl>
-    <dt><a href="reference/kombu.pidbox.html#kombu.pidbox.Node.reply">reply() (kombu.pidbox.Node method)</a></dt>
     <dt><a href="reference/kombu.pidbox.html#kombu.pidbox.Mailbox.reply_exchange">reply_exchange (kombu.pidbox.Mailbox attribute)</a></dt>
     <dt><a href="reference/kombu.transport.base.html#kombu.transport.base.Message.requeue">requeue() (kombu.transport.base.Message method)</a></dt>
     <dd><dl>
@@ -775,11 +791,11 @@
     <dt><a href="reference/kombu.transport.virtual.html#kombu.transport.virtual.Message.serializable">serializable() (kombu.transport.virtual.Message method)</a></dt>
     <dt><a href="reference/kombu.messaging.html#kombu.messaging.Producer.serializer">serializer (kombu.messaging.Producer attribute)</a></dt>
     <dt><a href="reference/kombu.serialization.html#kombu.serialization.SerializerNotInstalled">SerializerNotInstalled</a></dt>
-    <dt><a href="reference/kombu.utils.compat.html#kombu.utils.compat.OrderedDict.setdefault">setdefault() (kombu.utils.compat.OrderedDict method)</a></dt>
+    <dt><a href="reference/kombu.utils.compat.html#kombu.utils.compat.CompatOrderedDict.setdefault">setdefault() (kombu.utils.compat.CompatOrderedDict method)</a></dt>
     <dt><a href="reference/kombu.simple.html#kombu.simple.SimpleBuffer">SimpleBuffer (class in kombu.simple)</a></dt>
+    <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnection.SimpleBuffer">SimpleBuffer() (kombu.connection.BrokerConnection method)</a></dt>
 </dl></td>
   <td width="33%" valign="top"><dl>
-    <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnection.SimpleBuffer">SimpleBuffer() (kombu.connection.BrokerConnection method)</a></dt>
     <dt><a href="reference/kombu.simple.html#kombu.simple.SimpleQueue">SimpleQueue (class in kombu.simple)</a></dt>
     <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnection.SimpleQueue">SimpleQueue() (kombu.connection.BrokerConnection method)</a></dt>
     <dt><a href="reference/kombu.pidbox.html#kombu.pidbox.Node.state">state (kombu.pidbox.Node attribute)</a></dt>
@@ -789,6 +805,11 @@
       <dt><a href="reference/kombu.transport.virtual.html#kombu.transport.virtual.Transport.state">(kombu.transport.virtual.Transport attribute)</a></dt>
   </dl></dd>
     <dt><a href="reference/kombu.utils.finalize.html#kombu.utils.finalize.Finalize.still_active">still_active() (kombu.utils.finalize.Finalize method)</a></dt>
+    <dt><a href="reference/kombu.transport.pyredis.html#kombu.transport.pyredis.Channel.subclient">subclient (kombu.transport.pyredis.Channel attribute)</a></dt>
+    <dd><dl>
+      <dt><a href="reference/kombu.transport.pyredis.html#kombu.transport.pyredis.Transport.Channel.subclient">(kombu.transport.pyredis.Transport.Channel attribute)</a></dt>
+  </dl></dd>
+    <dt><a href="reference/kombu.transport.pypika.html#kombu.transport.pypika.AsyncoreConnection.Super">Super (kombu.transport.pypika.AsyncoreConnection attribute)</a></dt>
     <dt><a href="reference/kombu.transport.pypika.html#kombu.transport.pypika.SyncTransport">SyncTransport (class in kombu.transport.pypika)</a></dt>
     <dt><a href="reference/kombu.transport.pypika.html#kombu.transport.pypika.SyncTransport.Message">SyncTransport.Message (class in kombu.transport.pypika)</a></dt>
 </dl></td>
@@ -834,7 +855,7 @@
 <table width="100%" class="indextable genindextable"><tr>
   <td width="33%" valign="top"><dl>
     <dt><a href="reference/kombu.entity.html#kombu.entity.Queue.unbind">unbind() (kombu.entity.Queue method)</a></dt>
-    <dt><a href="reference/kombu.utils.compat.html#kombu.utils.compat.OrderedDict.update">update() (kombu.utils.compat.OrderedDict method)</a></dt>
+    <dt><a href="reference/kombu.utils.compat.html#kombu.utils.compat.CompatOrderedDict.update">update() (kombu.utils.compat.CompatOrderedDict method)</a></dt>
 </dl></td>
   <td width="33%" valign="top"><dl>
     <dt><a href="reference/kombu.utils.html#kombu.utils.uuid4">uuid4() (in module kombu.utils)</a></dt>
@@ -844,7 +865,7 @@
 <h2 id="V">V</h2>
 <table width="100%" class="indextable genindextable"><tr>
   <td width="33%" valign="top"><dl>
-    <dt><a href="reference/kombu.utils.compat.html#kombu.utils.compat.OrderedDict.values">values() (kombu.utils.compat.OrderedDict method)</a></dt>
+    <dt><a href="reference/kombu.utils.compat.html#kombu.utils.compat.CompatOrderedDict.values">values() (kombu.utils.compat.CompatOrderedDict method)</a></dt>
 </dl></td>
 </tr></table>
 
@@ -904,7 +925,7 @@
         <li class="right" >
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li><a href="index.html">Kombu v0.9.5 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Kombu v1.0.0rc3 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">

@@ -6,13 +6,13 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Compat. utilities - kombu.utils.compat &mdash; Kombu v0.9.5 documentation</title>
+    <title>Compat. utilities - kombu.utils.compat &mdash; Kombu v1.0.0rc3 documentation</title>
     <link rel="stylesheet" href="../static/celery.css" type="text/css" />
     <link rel="stylesheet" href="../static/pygments.css" type="text/css" />
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.9.5',
+        VERSION:     '1.0.0rc3',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -21,7 +21,7 @@
     <script type="text/javascript" src="../static/jquery.js"></script>
     <script type="text/javascript" src="../static/underscore.js"></script>
     <script type="text/javascript" src="../static/doctools.js"></script>
-    <link rel="top" title="Kombu v0.9.5 documentation" href="../index.html" />
+    <link rel="top" title="Kombu v1.0.0rc3 documentation" href="../index.html" />
     <link rel="up" title="API Reference" href="index.html" />
     <link rel="next" title="Finalize - kombu.utils.finalize" href="kombu.utils.finalize.html" />
     <link rel="prev" title="kombu.utils.functional" href="kombu.utils.functional.html" /> 
@@ -42,7 +42,7 @@
         <li class="right" >
           <a href="kombu.utils.functional.html" title="kombu.utils.functional"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">Kombu v0.9.5 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu v1.0.0rc3 documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">API Reference</a> &raquo;</li> 
       </ul>
     </div>  
@@ -55,61 +55,61 @@
   <div class="section" id="compat-utilities-kombu-utils-compat">
 <h1>Compat. utilities - kombu.utils.compat<a class="headerlink" href="#compat-utilities-kombu-utils-compat" title="Permalink to this headline">¶</a></h1>
 <span class="target" id="module-kombu.utils.compat"></span><dl class="class">
-<dt id="kombu.utils.compat.OrderedDict">
-<em class="property">class </em><tt class="descclassname">kombu.utils.compat.</tt><tt class="descname">OrderedDict</tt><big>(</big><em>*args</em>, <em>**kwds</em><big>)</big><a class="headerlink" href="#kombu.utils.compat.OrderedDict" title="Permalink to this definition">¶</a></dt>
+<dt id="kombu.utils.compat.CompatOrderedDict">
+<em class="property">class </em><tt class="descclassname">kombu.utils.compat.</tt><tt class="descname">CompatOrderedDict</tt><big>(</big><em>*args</em>, <em>**kwds</em><big>)</big><a class="headerlink" href="#kombu.utils.compat.CompatOrderedDict" title="Permalink to this definition">¶</a></dt>
 <dd><p>Dictionary that remembers insertion order</p>
 <dl class="method">
-<dt id="kombu.utils.compat.OrderedDict.clear">
-<tt class="descname">clear</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.utils.compat.OrderedDict.clear" title="Permalink to this definition">¶</a></dt>
+<dt id="kombu.utils.compat.CompatOrderedDict.clear">
+<tt class="descname">clear</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.utils.compat.CompatOrderedDict.clear" title="Permalink to this definition">¶</a></dt>
 <dd><p>od.clear() -&gt; None.  Remove all items from od.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="kombu.utils.compat.OrderedDict.copy">
-<tt class="descname">copy</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.utils.compat.OrderedDict.copy" title="Permalink to this definition">¶</a></dt>
+<dt id="kombu.utils.compat.CompatOrderedDict.copy">
+<tt class="descname">copy</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.utils.compat.CompatOrderedDict.copy" title="Permalink to this definition">¶</a></dt>
 <dd><p>od.copy() -&gt; a shallow copy of od</p>
 </dd></dl>
 
 <dl class="classmethod">
-<dt id="kombu.utils.compat.OrderedDict.fromkeys">
-<em class="property">classmethod </em><tt class="descname">fromkeys</tt><big>(</big><em>iterable</em>, <em>value=None</em><big>)</big><a class="headerlink" href="#kombu.utils.compat.OrderedDict.fromkeys" title="Permalink to this definition">¶</a></dt>
+<dt id="kombu.utils.compat.CompatOrderedDict.fromkeys">
+<em class="property">classmethod </em><tt class="descname">fromkeys</tt><big>(</big><em>iterable</em>, <em>value=None</em><big>)</big><a class="headerlink" href="#kombu.utils.compat.CompatOrderedDict.fromkeys" title="Permalink to this definition">¶</a></dt>
 <dd><p>OD.fromkeys(S[, v]) -&gt; New ordered dictionary with keys from S
 and values equal to v (which defaults to None).</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="kombu.utils.compat.OrderedDict.items">
-<tt class="descname">items</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.utils.compat.OrderedDict.items" title="Permalink to this definition">¶</a></dt>
+<dt id="kombu.utils.compat.CompatOrderedDict.items">
+<tt class="descname">items</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.utils.compat.CompatOrderedDict.items" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="method">
-<dt id="kombu.utils.compat.OrderedDict.iteritems">
-<tt class="descname">iteritems</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.utils.compat.OrderedDict.iteritems" title="Permalink to this definition">¶</a></dt>
+<dt id="kombu.utils.compat.CompatOrderedDict.iteritems">
+<tt class="descname">iteritems</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.utils.compat.CompatOrderedDict.iteritems" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="method">
-<dt id="kombu.utils.compat.OrderedDict.iterkeys">
-<tt class="descname">iterkeys</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.utils.compat.OrderedDict.iterkeys" title="Permalink to this definition">¶</a></dt>
+<dt id="kombu.utils.compat.CompatOrderedDict.iterkeys">
+<tt class="descname">iterkeys</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.utils.compat.CompatOrderedDict.iterkeys" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="method">
-<dt id="kombu.utils.compat.OrderedDict.itervalues">
-<tt class="descname">itervalues</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.utils.compat.OrderedDict.itervalues" title="Permalink to this definition">¶</a></dt>
+<dt id="kombu.utils.compat.CompatOrderedDict.itervalues">
+<tt class="descname">itervalues</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.utils.compat.CompatOrderedDict.itervalues" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="method">
-<dt id="kombu.utils.compat.OrderedDict.keys">
-<tt class="descname">keys</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.utils.compat.OrderedDict.keys" title="Permalink to this definition">¶</a></dt>
+<dt id="kombu.utils.compat.CompatOrderedDict.keys">
+<tt class="descname">keys</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.utils.compat.CompatOrderedDict.keys" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="method">
-<dt id="kombu.utils.compat.OrderedDict.pop">
-<tt class="descname">pop</tt><big>(</big><em>key</em>, <em>default=&lt;object object at 0x1002aa940&gt;</em><big>)</big><a class="headerlink" href="#kombu.utils.compat.OrderedDict.pop" title="Permalink to this definition">¶</a></dt>
+<dt id="kombu.utils.compat.CompatOrderedDict.pop">
+<tt class="descname">pop</tt><big>(</big><em>key</em>, <em>default=&lt;object object at 0x1002be940&gt;</em><big>)</big><a class="headerlink" href="#kombu.utils.compat.CompatOrderedDict.pop" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="method">
-<dt id="kombu.utils.compat.OrderedDict.popitem">
-<tt class="descname">popitem</tt><big>(</big><em>last=True</em><big>)</big><a class="headerlink" href="#kombu.utils.compat.OrderedDict.popitem" title="Permalink to this definition">¶</a></dt>
+<dt id="kombu.utils.compat.CompatOrderedDict.popitem">
+<tt class="descname">popitem</tt><big>(</big><em>last=True</em><big>)</big><a class="headerlink" href="#kombu.utils.compat.CompatOrderedDict.popitem" title="Permalink to this definition">¶</a></dt>
 <dd><p>od.popitem() -&gt; (k, v)</p>
 <p>Return and remove a (key, value) pair.
 Pairs are returned in LIFO order if last is true or FIFO
@@ -117,18 +117,18 @@ order if false.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="kombu.utils.compat.OrderedDict.setdefault">
-<tt class="descname">setdefault</tt><big>(</big><em>key</em>, <em>default=None</em><big>)</big><a class="headerlink" href="#kombu.utils.compat.OrderedDict.setdefault" title="Permalink to this definition">¶</a></dt>
+<dt id="kombu.utils.compat.CompatOrderedDict.setdefault">
+<tt class="descname">setdefault</tt><big>(</big><em>key</em>, <em>default=None</em><big>)</big><a class="headerlink" href="#kombu.utils.compat.CompatOrderedDict.setdefault" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="method">
-<dt id="kombu.utils.compat.OrderedDict.update">
-<tt class="descname">update</tt><big>(</big><em>other=()</em>, <em>**kwds</em><big>)</big><a class="headerlink" href="#kombu.utils.compat.OrderedDict.update" title="Permalink to this definition">¶</a></dt>
+<dt id="kombu.utils.compat.CompatOrderedDict.update">
+<tt class="descname">update</tt><big>(</big><em>other=()</em>, <em>**kwds</em><big>)</big><a class="headerlink" href="#kombu.utils.compat.CompatOrderedDict.update" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="method">
-<dt id="kombu.utils.compat.OrderedDict.values">
-<tt class="descname">values</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.utils.compat.OrderedDict.values" title="Permalink to this definition">¶</a></dt>
+<dt id="kombu.utils.compat.CompatOrderedDict.values">
+<tt class="descname">values</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.utils.compat.CompatOrderedDict.values" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
@@ -186,7 +186,7 @@ order if false.</p>
         <li class="right" >
           <a href="kombu.utils.functional.html" title="kombu.utils.functional"
              >previous</a> |</li>
-        <li><a href="../index.html">Kombu v0.9.5 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu v1.0.0rc3 documentation</a> &raquo;</li>
           <li><a href="index.html" >API Reference</a> &raquo;</li> 
       </ul>
     </div>
