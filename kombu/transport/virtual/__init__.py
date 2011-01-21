@@ -562,8 +562,6 @@ class Transport(base.Transport):
                 channel.close()
 
     def drain_events(self, connection, timeout=None):
-        if not self.channels:
-            raise ValueError("No channels to drain events from.")
         loop = 0
         time_start = time()
         while 1:
