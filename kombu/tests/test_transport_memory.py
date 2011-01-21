@@ -100,7 +100,7 @@ class test_MemoryTransport(unittest.TestCase):
         self.assertIsNone(self.q2(channel).get())
 
     def test_drain_events(self):
-        self.assertRaises(ValueError, self.c.drain_events, timeout=0.1)
+        self.assertRaises(socket.timeout, self.c.drain_events, timeout=0.1)
 
         c1 = self.c.channel()
         c2 = self.c.channel()
