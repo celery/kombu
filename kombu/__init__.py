@@ -11,3 +11,4 @@ if not os.environ.get("KOMBU_NO_EVAL", False):
     from kombu.connection import BrokerConnection
     from kombu.entity import Exchange, Queue
     from kombu.messaging import Consumer, Producer
+

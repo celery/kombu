@@ -12,6 +12,24 @@ except ImportError:
     ctypes = None
 
 
+blocking = None
+try:
+    from eventlet.patches import is_monkey_patched as is_eventlet
+    import socket
+
+    if is_eventlet(socket):
+        from eventlet import spawn
+
+        def blocking(fun, *args, **kwargs):
+            return spawn(fun, *args, **kwargs).wait()
+except ImportError:
+    pass
+
+if blocking is None:
+    def blocking(fun, *args, **kwargs):
+        return fun(*args, **kwargs)
+
+
 def say(m, *s):
     sys.stderr.write(str(m) % s + "\n")
 
