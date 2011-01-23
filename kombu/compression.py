@@ -8,7 +8,6 @@ Compression utilities.
 :license: BSD, see LICENSE for more details.
 
 """
-import bz2
 import zlib
 
 _aliases = {}
@@ -70,6 +69,11 @@ def decompress(body, content_type):
 register(zlib.compress,
          zlib.decompress,
          "application/x-gzip", aliases=["gzip", "zlib"])
-register(bz2.compress,
-         bz2.decompress,
-         "application/x-bz2", aliases=["bzip2", "bzip"])
+try:
+    import bz2
+except ImportError:
+    pass  # Jython?
+else:
+    register(bz2.compress,
+             bz2.decompress,
+             "application/x-bz2", aliases=["bzip2", "bzip"])
