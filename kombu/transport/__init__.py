@@ -49,6 +49,7 @@ def _sqlalchemy_transport():
 
 TRANSPORT_ALIASES = {
     "amqplib": "kombu.transport.pyamqplib.Transport",
+    "librabbitmq": "kombu.transport.librabbitmq.Transport",
     "pika": "kombu.transport.pypika.AsyncoreTransport",
     "syncpika": "kombu.transport.pypika.SyncTransport",
     "memory": "kombu.transport.memory.Transport",
