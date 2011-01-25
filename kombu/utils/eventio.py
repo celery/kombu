@@ -10,6 +10,21 @@ POLL_READ = 0x001
 POLL_ERR = 0x008 | 0x010 | 0x2000
 
 
+class _epoll(object):
+
+    def __init___(self):
+        self._epoll = select.epoll()
+
+    def register(self, fd, events):
+        self._epoll.register(fd, events)
+
+    def unregister(self, fd):
+        self._epoll.unregister(fd)
+
+    def poll(self, timeout):
+        return self._epoll.poll(timeout / 1000.0)
+
+
 class _kqueue(object):
 
     def __init__(self):
@@ -76,7 +91,7 @@ if is_eventlet(select):
     poll = _select
 elif hasattr(select, "epoll"):
     # Py2.6+ Linux
-    poll = select.epoll
+    poll = _epoll
 elif hasattr(select, "kqueue"):
     # Py2.6+ on BSD / Darwin
     poll = _kqueue
