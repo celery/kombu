@@ -144,12 +144,11 @@ class Exchange(MaybeChannelBound):
 
         """
         return _SYN(self.channel.exchange_declare, exchange=self.name,
-                                                   type=self.type,
-                                                   durable=self.durable,
-                                                   auto_delete=\
-                                                        self.auto_delete,
-                                                   arguments=self.arguments,
-                                                   nowait=nowait)
+                                                type=self.type,
+                                                durable=self.durable,
+                                                auto_delete=self.auto_delete,
+                                                arguments=self.arguments,
+                                                nowait=nowait)
 
     def Message(self, body, delivery_mode=None, priority=None,
             content_type=None, content_encoding=None, properties=None,
@@ -465,10 +464,9 @@ class Queue(MaybeChannelBound):
     def unbind(self):
         """Delete the binding on the server."""
         return _SYN(self.channel.queue_unbind, queue=self.name,
-                                               exchange=self.exchange.name,
-                                               routing_key=self.routing_key,
-                                               arguments=\
-                                                    self.binding_arguments)
+                                            exchange=self.exchange.name,
+                                            routing_key=self.routing_key,
+                                            arguments=self.binding_arguments)
 
     def __eq__(self, other):
         if isinstance(other, Queue):
