@@ -12,22 +12,43 @@ except ImportError:
     ctypes = None
 
 
-blocking = None
-try:
-    from eventlet.patches import is_monkey_patched as is_eventlet
-    import socket
+def __how_to_block():
+    ## -eventlet-
+    try:
+        from eventlet.patches import is_monkey_patched as is_eventlet
+        import socket
 
-    if is_eventlet(socket):
-        from eventlet import spawn
+        if is_eventlet(socket):
+            from eventlet import spawn
 
-        def blocking(fun, *args, **kwargs):
-            return spawn(fun, *args, **kwargs).wait()
-except ImportError:
-    pass
+            def __blocking__(fun, *args, **kwargs):
+                return spawn(fun, *args, **kwargs).wait()
 
-if blocking is None:
-    def blocking(fun, *args, **kwargs):
+            return __blocking__
+    except ImportError:
+        pass
+
+    # -gevent-
+    try:
+        from gevent import socket as _gsocket
+        import socket
+
+        if socket.socket is _gsocket.socket:
+            from gevent import Greenlet
+
+            def __blocking__(fun, *args, **kwargs):
+                return Greenlet.spawn(fun, *args, **kwargs).get()
+
+            return __blocking__
+    except ImportError:
+        pass
+
+    def __blocking__(fun, *args, **kwargs):
         return fun(*args, **kwargs)
+
+    return __blocking__
+
+blocking = __how_to_block()
 
 
 def say(m, *s):
