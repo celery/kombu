@@ -1,3 +1,5 @@
+import sys
+
 ############## __builtin__.all ##############################################
 
 try:
@@ -198,7 +200,13 @@ class CompatOrderedDict(dict, MutableMapping):
         """
         if not self:
             raise KeyError('dictionary is empty')
-        key = (last and reversed(self) or iter(self)).next()
+        if last:
+            if sys.platform.startswith("java"):
+                key = self.keys()[-1]
+            else:
+                key = reversed(self).next()
+        else:
+            key = iter(self).next()
         value = self.pop(key)
         return key, value
 

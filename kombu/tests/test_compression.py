@@ -1,14 +1,24 @@
-from kombu.tests.utils import unittest
+from nose import SkipTest
 
 from kombu import compression
+from kombu.tests.utils import unittest
 
 
 class test_compression(unittest.TestCase):
 
+    def setUp(self):
+        try:
+            import bz2
+        except ImportError:
+            self.has_bzip2 = False
+        else:
+            self.has_bzip2 = True
+
     def test_encoders(self):
         encoders = compression.encoders()
         self.assertIn("application/x-gzip", encoders)
-        self.assertIn("application/x-bz2", encoders)
+        if self.has_bzip2:
+            self.assertIn("application/x-bz2", encoders)
 
     def test_compress__decompress__zlib(self):
         text = "The Quick Brown Fox Jumps Over The Lazy Dog"
@@ -18,6 +28,8 @@ class test_compression(unittest.TestCase):
         self.assertEqual(d, text)
 
     def test_compress__decompress__bzip2(self):
+        if not self.has_bzip2:
+            raise SkipTest("bzip2 not available")
         text = "The Brown Quick Fox Over The Lazy Dog Jumps"
         c, ctype = compression.compress(text, "bzip2")
         self.assertNotEqual(text, c)

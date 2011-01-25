@@ -17,6 +17,15 @@ try:
 except ImportError:
     cpickle = None
 
+
+if sys.platform.startswith("java"):
+
+    def _decode(t, coding):
+        return codecs.getdecoder(coding)(t)[0]
+
+else:
+    _decode = codecs.decode
+
 if sys.version_info < (2, 6):  # pragma: no cover
     # cPickle is broken in Python <= 2.5.
     # It unsafely and incorrectly uses relative instead of absolute
@@ -117,7 +126,7 @@ class SerializerRegistry(object):
         # Don't decode 8-bit strings or unicode objects
         if content_encoding not in ('binary', 'ascii-8bit') and \
                 not isinstance(data, unicode):
-            data = codecs.decode(data, content_encoding)
+            data = _decode(data, content_encoding)
 
         try:
             decoder = self._decoders[content_type]
