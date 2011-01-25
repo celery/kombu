@@ -17,6 +17,7 @@
     kombu.exceptions
     kombu.transport
     kombu.transport.pyamqplib
+    kombu.transport.librabbitmq
     kombu.transport.pypika
     kombu.transport.memory
     kombu.transport.pyredis
