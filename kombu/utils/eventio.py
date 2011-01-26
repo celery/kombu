@@ -12,7 +12,7 @@ POLL_ERR = 0x008 | 0x010 | 0x2000
 
 class _epoll(object):
 
-    def __init___(self):
+    def __init__(self):
         self._epoll = select.epoll()
 
     def register(self, fd, events):
