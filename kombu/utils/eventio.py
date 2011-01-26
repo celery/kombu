@@ -19,7 +19,10 @@ class _epoll(object):
         self._epoll.register(fd, events)
 
     def unregister(self, fd):
-        self._epoll.unregister(fd)
+        try:
+            self._epoll.unregister(fd)
+        except socket.error:
+            pass
 
     def poll(self, timeout):
         return self._epoll.poll(timeout / 1000.0)
