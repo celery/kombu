@@ -17,6 +17,7 @@
     kombu.exceptions
     kombu.transport
     kombu.transport.pyamqplib
+    kombu.transport.librabbitmq
     kombu.transport.pypika
     kombu.transport.memory
     kombu.transport.pyredis
@@ -30,6 +31,7 @@
     kombu.serialization
     kombu.compression
     kombu.abstract
+    kombu.syn
     kombu.utils
     kombu.utils.functional
     kombu.utils.compat
