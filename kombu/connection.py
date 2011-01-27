@@ -16,7 +16,6 @@ from Queue import Empty, Queue as _Queue
 
 from kombu import exceptions
 from kombu.transport import get_transport_cls
-from kombu.simple import SimpleQueue, SimpleBuffer
 from kombu.utils import retry_over_time
 from kombu.utils.compat import OrderedDict
 from kombu.utils.functional import wraps
@@ -332,6 +331,8 @@ class BrokerConnection(object):
            object.
 
         """
+        from kombu.simple import SimpleQueue
+
         channel_autoclose = False
         if channel is None:
             channel = self.channel()
@@ -350,6 +351,8 @@ class BrokerConnection(object):
         and acknowledgements are disabled (``no_ack``).
 
         """
+        from kombu.simple import SimpleBuffer
+
         channel_autoclose = False
         if channel is None:
             channel = self.channel()
