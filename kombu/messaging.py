@@ -245,6 +245,13 @@ class Consumer(object):
         """
         self.callbacks.append(callback)
 
+    def __enter__(self):
+        self.consume()
+        return self
+
+    def __exit__(self):
+        self.cancel()
+
     def consume(self, no_ack=None):
         """Register consumer on server.
 
@@ -368,11 +375,14 @@ class Consumer(object):
 
     def _basic_consume(self, queue, consumer_tag=None,
             no_ack=no_ack, nowait=True):
-        if queue.name not in self._active_tags:
-            queue.consume(self._add_tag(queue, consumer_tag),
+        tag = self._active_tags.get(queue.name)
+        if tag is None:
+            tag = self._add_tag(queue, consumer_tag)
+            queue.consume(tag,
                           self._receive_callback,
                           no_ack=no_ack,
                           nowait=nowait)
+        return tag
 
     def _add_tag(self, queue, consumer_tag=None):
         tag = consumer_tag or str(self._next_tag())
