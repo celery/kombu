@@ -78,5 +78,3 @@ def detect_sync_method():
             pass
 
     return _sync_default()
-
-
