@@ -9,7 +9,7 @@ Exchange and Queue declarations.
 
 """
 from kombu.abstract import MaybeChannelBound
-from kombu.utils import blocking as _SYN
+from kombu.syn import blocking as _SYN
 
 TRANSIENT_DELIVERY_MODE = 1
 PERSISTENT_DELIVERY_MODE = 2

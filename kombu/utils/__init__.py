@@ -1,8 +1,5 @@
-import pickle
 import sys
-import tempfile
 
-from pprint import pformat
 from time import sleep
 from uuid import UUID, uuid4 as _uuid4, _uuid_generate_random
 
@@ -10,45 +7,6 @@ try:
     import ctypes
 except ImportError:
     ctypes = None
-
-
-def __how_to_block():
-    ## -eventlet-
-    try:
-        from eventlet.patches import is_monkey_patched as is_eventlet
-        import socket
-
-        if is_eventlet(socket):
-            from eventlet import spawn
-
-            def __blocking__(fun, *args, **kwargs):
-                return spawn(fun, *args, **kwargs).wait()
-
-            return __blocking__
-    except ImportError:
-        pass
-
-    # -gevent-
-    try:
-        from gevent import socket as _gsocket
-        import socket
-
-        if socket.socket is _gsocket.socket:
-            from gevent import Greenlet
-
-            def __blocking__(fun, *args, **kwargs):
-                return Greenlet.spawn(fun, *args, **kwargs).get()
-
-            return __blocking__
-    except ImportError:
-        pass
-
-    def __blocking__(fun, *args, **kwargs):
-        return fun(*args, **kwargs)
-
-    return __blocking__
-
-blocking = __how_to_block()
 
 
 def say(m, *s):
@@ -149,8 +107,14 @@ def retry_over_time(fun, catch, args=[], kwargs={}, errback=None,
             sleep(interval)
 
 
-def emergency_dump_state(state, open_file=open, dump=pickle.dump):
-    persist = tempfile.mktemp()
+def emergency_dump_state(state, open_file=open, dump=None):
+    from pprint import pformat
+    from tempfile import mktemp
+
+    if dump is None:
+        import pickle
+        dump = pickle.dump
+    persist = mktemp()
     say("EMERGENCY DUMP STATE TO FILE -> %s <-" % persist)
     fh = open_file(persist, "w")
     try:

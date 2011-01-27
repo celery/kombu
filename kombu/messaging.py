@@ -13,7 +13,7 @@ from itertools import count
 from kombu.compression import compress
 from kombu.entity import Exchange, Queue
 from kombu.serialization import encode
-from kombu.utils import blocking as _SYN
+from kombu.syn import blocking as _SYN
 from kombu.utils import maybe_list
 
 

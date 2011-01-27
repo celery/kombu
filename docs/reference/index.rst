@@ -31,6 +31,7 @@
     kombu.serialization
     kombu.compression
     kombu.abstract
+    kombu.syn
     kombu.utils
     kombu.utils.functional
     kombu.utils.compat
