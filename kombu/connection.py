@@ -509,6 +509,22 @@ class Resource(object):
             resource.mutex.release()
 
 
+class PoolChannelContext(object):
+
+    def __init__(self, pool, block=False):
+        self.pool = pool
+        self.block = block
+
+    def __enter__(self):
+        self.conn = self.pool.acquire(block=self.block)
+        self.chan = self.conn.channel()
+        return self.conn, self.chan
+
+    def __exit__(self, *exc_info):
+        self.chan.close()
+        self.conn.release()
+
+
 class ConnectionPool(Resource):
     LimitExceeded = exceptions.ConnectionLimitExceeded
 
@@ -519,6 +535,9 @@ class ConnectionPool(Resource):
 
     def new(self):
         return copy(self.connection)
+
+    def acquire_channel(self, block=False):
+        return PoolChannelContext(self, block)
 
     def setup(self):
         if self.limit:
