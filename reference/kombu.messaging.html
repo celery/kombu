@@ -95,9 +95,10 @@ compression.</li>
 <li><strong>auto_declare</strong> &#8211; Automatically declare the exchange
 at instantiation. Default is <tt class="xref py py-const xref docutils literal"><span class="pre">True</span></tt>.</li>
 <li><strong>on_return</strong> &#8211; Callback to call for undeliverable messages,
-when the <cite>mandatory</cite> or <cite>imediate</cite> arguments to
+when the <cite>mandatory</cite> or <cite>immediate</cite> arguments to
 <a class="reference internal" href="#kombu.messaging.Producer.publish" title="kombu.messaging.Producer.publish"><tt class="xref py py-meth docutils literal"><span class="pre">publish()</span></tt></a> is used. This callback needs the following
-signature: <cite>(exception, exchange, routing_key, message)</cite>.</li>
+signature: <cite>(exception, exchange, routing_key, message)</cite>.
+Note that the producer needs to drain events to use this feature.</li>
 </ul>
 </td>
 </tr>
@@ -112,131 +113,7 @@ signature: <cite>(exception, exchange, routing_key, message)</cite>.</li>
 <dl class="attribute">
 <dt id="kombu.messaging.Producer.exchange">
 <tt class="descname">exchange</tt><a class="headerlink" href="#kombu.messaging.Producer.exchange" title="Permalink to this definition">¶</a></dt>
-<dd><p>An Exchange declaration.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>name</strong> &#8211; See <a class="reference internal" href="#kombu.messaging.Producer.name" title="kombu.messaging.Producer.name"><tt class="xref py py-attr docutils literal"><span class="pre">name</span></tt></a>.</li>
-<li><strong>type</strong> &#8211; See <a class="reference internal" href="#kombu.messaging.Producer.type" title="kombu.messaging.Producer.type"><tt class="xref py py-attr docutils literal"><span class="pre">type</span></tt></a>.</li>
-<li><strong>channel</strong> &#8211; See <a class="reference internal" href="#kombu.messaging.Producer.channel" title="kombu.messaging.Producer.channel"><tt class="xref py py-attr docutils literal"><span class="pre">channel</span></tt></a>.</li>
-<li><strong>durable</strong> &#8211; See <a class="reference internal" href="#kombu.messaging.Producer.durable" title="kombu.messaging.Producer.durable"><tt class="xref py py-attr docutils literal"><span class="pre">durable</span></tt></a>.</li>
-<li><strong>auto_delete</strong> &#8211; See <a class="reference internal" href="#kombu.messaging.Producer.auto_delete" title="kombu.messaging.Producer.auto_delete"><tt class="xref py py-attr docutils literal"><span class="pre">auto_delete</span></tt></a>.</li>
-<li><strong>delivery_mode</strong> &#8211; See <a class="reference internal" href="#kombu.messaging.Producer.delivery_mode" title="kombu.messaging.Producer.delivery_mode"><tt class="xref py py-attr docutils literal"><span class="pre">delivery_mode</span></tt></a>.</li>
-<li><strong>arguments</strong> &#8211; See <a class="reference internal" href="#kombu.messaging.Producer.arguments" title="kombu.messaging.Producer.arguments"><tt class="xref py py-attr docutils literal"><span class="pre">arguments</span></tt></a>.</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-<dl class="attribute">
-<dt id="kombu.messaging.Producer.name">
-<tt class="descname">name</tt><a class="headerlink" href="#kombu.messaging.Producer.name" title="Permalink to this definition">¶</a></dt>
-<dd><p>Name of the exchange. Default is no name (the default exchange).</p>
-</dd></dl>
-
-<dl class="attribute">
-<dt id="kombu.messaging.Producer.type">
-<tt class="descname">type</tt><a class="headerlink" href="#kombu.messaging.Producer.type" title="Permalink to this definition">¶</a></dt>
-<dd><p>AMQP defines four default exchange types (routing algorithms) that
-covers most of the common messaging use cases. An AMQP broker can
-also define additional exchange types, so see your broker
-manual for more information about available exchange types.</p>
-<blockquote>
-<ul>
-<li><p class="first"><cite>direct</cite> (<em>default</em>)</p>
-<blockquote>
-<p>Direct match between the routing key in the message, and the
-routing criteria used when a queue is bound to this exchange.</p>
-</blockquote>
-</li>
-<li><p class="first"><cite>topic</cite></p>
-<blockquote>
-<p>Wildcard match between the routing key and the routing pattern
-specified in the exchange/queue binding. The routing key is
-treated as zero or more words delimited by <cite>&#8221;.&#8221;</cite> and
-supports special wildcard characters. <cite>&#8220;*&#8221;</cite> matches a
-single word and <cite>&#8220;#&#8221;</cite> matches zero or more words.</p>
-</blockquote>
-</li>
-<li><p class="first"><cite>fanout</cite></p>
-<blockquote>
-<p>Queues are bound to this exchange with no arguments. Hence any
-message sent to this exchange will be forwarded to all queues
-bound to this exchange.</p>
-</blockquote>
-</li>
-<li><p class="first"><cite>headers</cite></p>
-<blockquote>
-<p>Queues are bound to this exchange with a table of arguments
-containing headers and values (optional). A special argument
-named &#8220;x-match&#8221; determines the matching algorithm, where
-<cite>&#8220;all&#8221;</cite> implies an <cite>AND</cite> (all pairs must match) and
-<cite>&#8220;any&#8221;</cite> implies <cite>OR</cite> (at least one pair must match).</p>
-<p><a class="reference internal" href="#kombu.messaging.Producer.arguments" title="kombu.messaging.Producer.arguments"><tt class="xref py py-attr docutils literal"><span class="pre">arguments</span></tt></a> is used to specify the arguments.</p>
-</blockquote>
-</li>
-</ul>
-<p>This description of AMQP exchange types was shamelessly stolen
-from the blog post <a class="reference external" href="http://bit.ly/amqp-exchange-types">AMQP in 10 minutes: Part 4</a> by
-Rajith Attapattu. This article is recommended reading.</p>
-</blockquote>
-</dd></dl>
-
-<dl class="attribute">
-<dt>
-<tt class="descname">channel</tt></dt>
-<dd><p>The channel the exchange is bound to (if bound).</p>
-</dd></dl>
-
-<dl class="attribute">
-<dt id="kombu.messaging.Producer.durable">
-<tt class="descname">durable</tt><a class="headerlink" href="#kombu.messaging.Producer.durable" title="Permalink to this definition">¶</a></dt>
-<dd><p>Durable exchanges remain active when a server restarts. Non-durable
-exchanges (transient exchanges) are purged when a server restarts.
-Default is <tt class="xref py py-const xref docutils literal"><span class="pre">True</span></tt>.</p>
-</dd></dl>
-
-<dl class="attribute">
-<dt id="kombu.messaging.Producer.auto_delete">
-<tt class="descname">auto_delete</tt><a class="headerlink" href="#kombu.messaging.Producer.auto_delete" title="Permalink to this definition">¶</a></dt>
-<dd><p>If set, the exchange is deleted when all queues have finished
-using it. Default is <tt class="xref py py-const xref docutils literal"><span class="pre">False</span></tt>.</p>
-</dd></dl>
-
-<dl class="attribute">
-<dt id="kombu.messaging.Producer.delivery_mode">
-<tt class="descname">delivery_mode</tt><a class="headerlink" href="#kombu.messaging.Producer.delivery_mode" title="Permalink to this definition">¶</a></dt>
-<dd><p>The default delivery mode used for messages. The value is an integer,
-or alias string.</p>
-<blockquote>
-<ul>
-<li><p class="first">1 or <cite>&#8220;transient&#8221;</cite></p>
-<blockquote>
-<p>The message is transient. Which means it is stored in
-memory only, and is lost if the server dies or restarts.</p>
-</blockquote>
-</li>
-<li><dl class="first docutils">
-<dt>2 or &#8220;persistent&#8221; (<em>default</em>)</dt>
-<dd><p class="first last">The message is persistent. Which means the message is
-stored both in-memory, and on disk, and therefore
-preserved if the server dies or restarts.</p>
-</dd>
-</dl>
-</li>
-</ul>
-</blockquote>
-<p>The default value is 2 (persistent).</p>
-</dd></dl>
-
-<dl class="attribute">
-<dt id="kombu.messaging.Producer.arguments">
-<tt class="descname">arguments</tt><a class="headerlink" href="#kombu.messaging.Producer.arguments" title="Permalink to this definition">¶</a></dt>
-<dd><p>Additional arguments to specify when the exchange is declared.</p>
-</dd></dl>
-
+<dd><p>Default exchange.</p>
 </dd></dl>
 
 <dl class="attribute">
@@ -292,7 +169,7 @@ is set to <tt class="xref py py-const xref docutils literal"><span class="pre">T
 <tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>body</strong> &#8211; Message body.</li>
 <li><strong>routing_key</strong> &#8211; Message routing key.</li>
-<li><strong>delivery_mode</strong> &#8211; See <a class="reference internal" href="#kombu.messaging.Producer.delivery_mode" title="kombu.messaging.Producer.delivery_mode"><tt class="xref py py-attr docutils literal"><span class="pre">delivery_mode</span></tt></a>.</li>
+<li><strong>delivery_mode</strong> &#8211; See <tt class="xref py py-attr docutils literal"><span class="pre">delivery_mode</span></tt>.</li>
 <li><strong>mandatory</strong> &#8211; Currently not supported.</li>
 <li><strong>immediate</strong> &#8211; Currently not supported.</li>
 <li><strong>priority</strong> &#8211; Message priority. A number between 0 and 9.</li>
