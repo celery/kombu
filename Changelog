@@ -2,9 +2,19 @@
  Change history
 ================
 
+1.0.1
+=====
+
+* Redis: Now works with Linux (epoll)
+
+1.0.0
+=====
+:release-date: 2011-01-28 12:00 P.M CEST
+
+* Initial release
+
 0.1.0
 =====
 :release-date: 2010-07-22 4:20 P.M CEST
 
-* Rewrite of carrot
-* Initial release
+* Initial fork of carrot
