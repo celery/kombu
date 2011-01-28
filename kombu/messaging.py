@@ -29,16 +29,17 @@ class Producer(object):
     :keyword auto_declare: Automatically declare the exchange
       at instantiation. Default is :const:`True`.
     :keyword on_return: Callback to call for undeliverable messages,
-        when the `mandatory` or `imediate` arguments to
+        when the `mandatory` or `immediate` arguments to
         :meth:`publish` is used. This callback needs the following
         signature: `(exception, exchange, routing_key, message)`.
+        Note that the producer needs to drain events to use this feature.
 
     """
     #: The connection channel used.
     channel = None
 
     #: Default exchange.
-    exchange = Exchange("")
+    exchange = None
 
     # Default routing key.
     routing_key = ""
@@ -62,6 +63,8 @@ class Producer(object):
             on_return=None):
         self.channel = channel
         self.exchange = exchange or self.exchange
+        if self.exchange is None:
+            self.exchange = Exchange("")
         self.routing_key = routing_key or self.routing_key
         self.serializer = serializer or self.serializer
         self.compression = compression or self.compression
