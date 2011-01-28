@@ -1,0 +1,140 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Async Utilities - kombu.syn &mdash; Kombu v1.0.0 documentation</title>
+    <link rel="stylesheet" href="../static/celery.css" type="text/css" />
+    <link rel="stylesheet" href="../static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.0.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../static/jquery.js"></script>
+    <script type="text/javascript" src="../static/underscore.js"></script>
+    <script type="text/javascript" src="../static/doctools.js"></script>
+    <link rel="top" title="Kombu v1.0.0 documentation" href="../index.html" />
+    <link rel="up" title="API Reference" href="index.html" />
+    <link rel="next" title="Utilities - kombu.utils" href="kombu.utils.html" />
+    <link rel="prev" title="kombu.compression" href="kombu.abstract.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="kombu.utils.html" title="Utilities - kombu.utils"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="kombu.abstract.html" title="kombu.compression"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../index.html">Kombu v1.0.0 documentation</a> &raquo;</li>
+          <li><a href="index.html" accesskey="U">API Reference</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="async-utilities-kombu-syn">
+<h1>Async Utilities - kombu.syn<a class="headerlink" href="#async-utilities-kombu-syn" title="Permalink to this headline">¶</a></h1>
+<span class="target" id="module-kombu.syn"></span><dl class="function">
+<dt id="kombu.syn.blocking">
+<tt class="descclassname">kombu.syn.</tt><tt class="descname">blocking</tt><big>(</big><em>fun</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.syn.blocking" title="Permalink to this definition">¶</a></dt>
+<dd><p>Make sure function is called by blocking and waiting for the result,
+even if we&#8217;re currently in a monkey patched eventlet/gevent
+environment.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="kombu.syn.detect_sync_method">
+<tt class="descclassname">kombu.syn.</tt><tt class="descname">detect_sync_method</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.syn.detect_sync_method" title="Permalink to this definition">¶</a></dt>
+<dd><p>Detect method to use for blocking calls.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="kombu.syn.select_blocking_method">
+<tt class="descclassname">kombu.syn.</tt><tt class="descname">select_blocking_method</tt><big>(</big><em>type</em><big>)</big><a class="headerlink" href="#kombu.syn.select_blocking_method" title="Permalink to this definition">¶</a></dt>
+<dd><p>Select blocking method, where <cite>type</cite> is onf of default
+gevent or eventlet.</p>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper"><p class="logo"><a href="../index.html">
+  <img class="logo" width="128" height="128" src="http://cloud.github.com/downloads/ask/kombu/kombusmall.jpg" alt="Logo"/>
+</a></p>
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="kombu.abstract.html"
+                        title="previous chapter">kombu.compression</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="kombu.utils.html"
+                        title="next chapter">Utilities - kombu.utils</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../sources/reference/kombu.syn.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" size="18" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="kombu.utils.html" title="Utilities - kombu.utils"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="kombu.abstract.html" title="kombu.compression"
+             >previous</a> |</li>
+        <li><a href="../index.html">Kombu v1.0.0 documentation</a> &raquo;</li>
+          <li><a href="index.html" >API Reference</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2009-2010, Ask Solem.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.4.
+    </div>
+  </body>
+</html>
