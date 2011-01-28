@@ -160,6 +160,16 @@ class Channel(virtual.Channel):
         self.subclient.subscribe(keys)
         self._in_listen = True
 
+    def _handle_message(self, client, r):
+        if r[0] == "unsubscribe" and r[2] == 0:
+            client.subscribed = False
+        elif r[0] == "pmessage":
+            return {"type":    r[0], "pattern": r[1],
+                    "channel": r[2], "data":    r[3]}
+        else:
+            return {"type":    r[0], "pattern": None,
+                    "channel": r[1], "data":    r[2]}
+
     def _receive(self):
         c = self.subclient
         response = None
@@ -168,7 +178,7 @@ class Channel(virtual.Channel):
         except self.connection.connection_errors:
             self._in_listen = False
         if response is not None:
-            payload = c._handle_message(response)
+            payload = self._handle_message(client, response)
             if payload["type"] == "message":
                 return (deserialize(payload["data"]),
                         self._fanout_to_queue[payload["channel"]])
