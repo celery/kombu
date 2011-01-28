@@ -25,7 +25,7 @@ class _epoll(object):
             pass
 
     def poll(self, timeout):
-        return self._epoll.poll(timeout / 1000.0)
+        return self._epoll.poll(timeout and timeout / 1000.0)
 
 
 class _kqueue(object):
