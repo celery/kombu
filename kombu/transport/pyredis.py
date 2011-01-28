@@ -178,7 +178,7 @@ class Channel(virtual.Channel):
         except self.connection.connection_errors:
             self._in_listen = False
         if response is not None:
-            payload = self._handle_message(client, response)
+            payload = self._handle_message(c, response)
             if payload["type"] == "message":
                 return (deserialize(payload["data"]),
                         self._fanout_to_queue[payload["channel"]])
