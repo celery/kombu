@@ -171,8 +171,8 @@ class Channel(_Channel):
         return amqp.Message(message_data, priority=priority,
                             content_type=content_type,
                             content_encoding=content_encoding,
-                            properties=properties,
-                            application_headers=headers)
+                            application_headers=headers,
+                            **properties)
 
     def message_to_python(self, raw_message):
         """Convert encoded message body back to a Python value."""
