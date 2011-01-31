@@ -73,7 +73,8 @@ class Producer(object):
             self.auto_declare = auto_declare
 
         self.exchange = self.exchange(self.channel)
-        self.auto_declare and self.declare()
+        if self.auto_declare:
+            self.declare()
 
         if self.on_return:
             self.channel.events["basic_return"].append(self.on_return)

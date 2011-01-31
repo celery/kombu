@@ -2,6 +2,12 @@
  Change history
 ================
 
+1.0.2
+=====
+
+* amqplib: Message properties were not set properly.
+* Ghettoq backend names are now automatically translated to the new names.
+
 1.0.1
 =====
 

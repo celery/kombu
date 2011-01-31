@@ -47,6 +47,27 @@ def _sqlalchemy_transport():
     return "sqlakombu.transport.Transport"
 
 
+def _ghettoq(name, new, alias=None):
+    xxx = new
+
+    def __inner():
+        import warnings
+        _new = callable(xxx) and xxx() or xxx
+        gtransport = "ghettoq.taproot.%s" % name
+        ktransport = "kombu.transport.%s.Transport" % _new
+        this = alias or name
+        warnings.warn("""
+    Ghettoq does not work with Kombu, but there is now a built-in version
+    of the %s transport.
+
+    You should replace %r with simply: %r
+        """ % (name, gtransport, this))
+        print("TTT: %r" % ktransport)
+        return ktransport
+
+    return __inner
+
+
 TRANSPORT_ALIASES = {
     "amqplib": "kombu.transport.pyamqplib.Transport",
     "librabbitmq": "kombu.transport.librabbitmq.Transport",
@@ -59,6 +80,13 @@ TRANSPORT_ALIASES = {
     "couchdb": "kombu.transport.pycouchdb.Transport",
     "django": _django_transport,
     "sqlalchemy": _sqlalchemy_transport,
+
+    "ghettoq.taproot.Redis": _ghettoq("Redis", "pyredis", "redis"),
+    "ghettoq.taproot.Database": _ghettoq("Database", _django_transport,
+                                         "django"),
+    "ghettoq.taproot.MongoDB": _ghettoq("MongoDB", "mongodb"),
+    "ghettoq.taproot.Beanstalk": _ghettoq("Beanstalk", "beanstalk"),
+    "ghettoq.taproot.CouchDB": _ghettoq("CouchDB", "couchdb"),
 }
 
 _transport_cache = {}
