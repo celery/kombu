@@ -4,7 +4,7 @@ kombu.transport.pycouchdb
 
 CouchDB transport.
 
-:copyright: (c) 2010 by David Clymer.
+:copyright: (c) 2010 - 2011 by David Clymer.
 :license: BSD, see LICENSE for more details.
 
 """

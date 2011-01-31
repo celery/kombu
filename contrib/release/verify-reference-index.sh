@@ -16,6 +16,4 @@ verify_index() {
     return $retval
 }
 
-verify_index docs/reference/index.rst && \
-    verify_index docs/internals/reference/index.rst
-
+verify_index docs/reference/index.rst

@@ -4,7 +4,7 @@ kombu.entity
 
 Exchange and Queue declarations.
 
-:copyright: (c) 2009 - 2010 by Ask Solem.
+:copyright: (c) 2009 - 2011 by Ask Solem.
 :license: BSD, see LICENSE for more details.
 
 """
@@ -356,7 +356,7 @@ class Queue(MaybeChannelBound):
     def declare(self, nowait=False):
         """Declares the queue, the exchange and binds the queue to
         the exchange."""
-        return (self.exchange and self.exchange.declare(nowait),
+        return (self.name and self.exchange.declare(nowait),
                 self.name and self.queue_declare(nowait, passive=False),
                 self.name and self.queue_bind(nowait))
 

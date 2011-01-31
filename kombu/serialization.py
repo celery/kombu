@@ -4,7 +4,7 @@ kombu.serialization
 
 Serialization utilities.
 
-:copyright: (c) 2009 - 2010
+:copyright: (c) 2009 - 2011 by Ask Solem
 :license: BSD, see LICENSE for more details.
 
 """

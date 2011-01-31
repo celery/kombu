@@ -6,7 +6,7 @@ Carrot compatible interface for :class:`Publisher` and :class:`Producer`.
 
 See http://packages.python.org/pypi/carrot for documentation.
 
-:copyright: (c) 2009 - 2010 by Ask Solem.
+:copyright: (c) 2009 - 2011 by Ask Solem.
 :license: BSD, see LICENSE for more details.
 
 """

@@ -4,7 +4,7 @@ kombu.transport.beanstalk
 
 Beanstalk transport.
 
-:copyright: (c) 2010 by David Ziegler.
+:copyright: (c) 2010 - 2011 by David Ziegler.
 :license: BSD, see LICENSE for more details.
 
 """
