@@ -392,7 +392,7 @@ class BrokerConnection(object):
         if self._closed:
             return
         if not self._connection or not \
-                self.transport.verify_connection(connection):
+                self.transport.verify_connection(self._connection):
             self._connection = self._establish_connection()
             self._closed = False
         return self._connection
