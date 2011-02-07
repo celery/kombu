@@ -391,7 +391,8 @@ class BrokerConnection(object):
         """
         if self._closed:
             return
-        if not self._connection:
+        if not self._connection or not \
+                self.transport.verify_connection(connection):
             self._connection = self._establish_connection()
             self._closed = False
         return self._connection
@@ -548,8 +549,7 @@ class ConnectionPool(Resource):
                 self._resource.put_nowait(conn)
 
     def prepare(self, resource):
-        if not resource._connection:
-            resource.connect()
+        resource.connect()
         return resource
 
 

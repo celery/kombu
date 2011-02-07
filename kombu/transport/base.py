@@ -163,3 +163,6 @@ class Transport(object):
 
     def drain_events(self, connection, **kwargs):
         raise NotImplementedError("Subclass responsibility")
+
+    def verify_connection(self, connection):
+        return True

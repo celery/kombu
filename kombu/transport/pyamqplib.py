@@ -223,3 +223,6 @@ class Transport(base.Transport):
     def close_connection(self, connection):
         """Close the AMQP broker connection."""
         connection.close()
+
+    def verify_connection(self, connection):
+        return connection.channels is not None
