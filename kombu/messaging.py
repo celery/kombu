@@ -165,7 +165,7 @@ class Consumer(object):
     """Message consumer.
 
     :param channel: see :attr:`channel`.
-    :param queues see :attr:`queues`.
+    :param queues: see :attr:`queues`.
     :keyword no_ack: see :attr:`no_ack`.
     :keyword auto_declare: see :attr:`auto_declare`
     :keyword callbacks: see :attr:`callbacks`.
