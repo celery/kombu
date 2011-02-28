@@ -531,6 +531,9 @@ class Transport(base.Transport):
     #: queue/callback map.
     _callbacks = None
 
+    #: Time to sleep between unsuccessful polls.
+    polling_interval = 0.1
+
     def __init__(self, client, **kwargs):
         self.client = client
         self.channels = []
@@ -571,7 +574,7 @@ class Transport(base.Transport):
                 if timeout and time() - time_start >= timeout:
                     raise socket.timeout()
                 loop += 1
-                sleep(0.1)
+                sleep(self.polling_interval)
             else:
                 break
 
