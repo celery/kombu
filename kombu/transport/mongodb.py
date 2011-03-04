@@ -33,8 +33,10 @@ class Channel(virtual.Channel):
         try:
             msg = self.client.database.command("findandmodify",
                         "messages", query={"queue": queue}, remove=True)
-        except errors.OperationFailure:
-            raise Empty()
+        except errors.OperationFailure, exc:
+            if "No matching object found" in exc.args[0]:
+                raise Empty()
+            raise
         return deserialize(msg["value"]["payload"])
 
     def _size(self, queue):
@@ -56,6 +58,11 @@ class Channel(virtual.Channel):
         conninfo = self.connection.client
         mongoconn = Connection(host=conninfo.hostname, port=conninfo.port)
         dbname = conninfo.virtual_host
+        version = mongoconn.server_info()["version"]
+        if tuple(map(int, version.split("."))) < (1, 3):
+            raise NotImplementedError(
+                "Kombu requires MongoDB version 1.3+, but connected to %s" % (
+                    version, ))
         if not dbname or dbname == "/":
             dbname = "kombu_default"
         database = getattr(mongoconn, dbname)
