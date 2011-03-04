@@ -122,6 +122,7 @@ class QoS(object):
         Will only be done once for each instance.
 
         """
+        self._on_collect.cancel()
         state = self._delivered
 
         if not self.channel.do_restore or getattr(state, "restored"):
@@ -466,7 +467,8 @@ class Channel(AbstractChannel):
         self.closed = True
         for consumer in list(self._consumers):
             self.basic_cancel(consumer)
-        self.qos.restore_unacked_once()
+        if self._qos:
+            self._qos.restore_unacked_once()
         self.connection.close_channel(self)
         if self._cycle is not None:
             self._cycle.close()
