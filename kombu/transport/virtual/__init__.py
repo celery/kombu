@@ -62,9 +62,13 @@ class QoS(object):
     prefetch_count = 0
 
     #: :class:`~collections.OrderedDict` of active messages.
+    #: *NOTE*: Can only be modified by the consuming thread.
     _delivered = None
 
-    #: acked and rejected tags.
+    #: acks can be done by other threads than the consuming thread.
+    #: Instead of a mutex, which doesn't perform well here, we mark
+    #: the delivery tags as dirty, so subsequent calls to append() can remove
+    #: them.
     _dirty = set()
 
     def __init__(self, channel, prefetch_count=0):
@@ -85,7 +89,7 @@ class QoS(object):
 
         """
         pcount = self.prefetch_count
-        return (not pcount or len(self._delivered) < pcount)
+        return (not pcount or len(self._delivered) - len(self._dirty) < pcount)
 
     def append(self, message, delivery_tag):
         """Append message to transactional state."""
@@ -94,12 +98,15 @@ class QoS(object):
             self._flush()
 
     def _flush(self):
+        """Flush dirty (acked/rejected) tags from."""
+        dirty = self._dirty
+        delivered = self._delivered
         while 1:
             try:
-                dirty_tag = self._dirty.pop()
+                dirty_tag = dirty.pop()
             except KeyError:
                 break
-            self._delivered.pop(dirty_tag, None)
+            delivered.pop(dirty_tag, None)
 
     def ack(self, delivery_tag):
         """Acknowledge message and remove from transactional state."""
@@ -107,9 +114,9 @@ class QoS(object):
 
     def reject(self, delivery_tag, requeue=False):
         """Remove from transactional state and requeue message."""
-        message = self._dirty.add(delivery_tag)
         if requeue:
-            self.channel._restore(message)
+            self.channel._restore(self._delivered[delivery_tag])
+        self._dirty.add(delivery_tag)
 
     def restore_unacked(self):
         """Restore all unacknowledged messages."""

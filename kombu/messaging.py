@@ -10,11 +10,14 @@ Sending and receiving messages.
 """
 from itertools import count
 
+from kombu import entity
 from kombu.compression import compress
-from kombu.entity import Exchange, Queue
 from kombu.serialization import encode
 from kombu.syn import blocking as _SYN
 from kombu.utils import maybe_list
+
+Exchange = entity.Exchange
+Queue = entity.Queue
 
 
 class Producer(object):
@@ -403,13 +406,6 @@ class Consumer(object):
             self.on_decode_error(message, exc)
         else:
             self.receive(decoded, message)
-
-    def __enter__(self):
-        self.consume()
-        return self
-
-    def __exit__(self, *args):
-        self.cancel()
 
     def __repr__(self):
         return "<Consumer: %s>" % (self.queues, )

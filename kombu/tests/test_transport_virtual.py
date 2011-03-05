@@ -72,6 +72,7 @@ class test_QoS(unittest.TestCase):
         tag3 = gen_unique_id()
         self.q.append(i + 3, tag3)
         self.q.reject(tag3, requeue=True)
+        self.q._flush()
         self.q.restore_unacked_once()
         self.assertListEqual(_restored, [11, 9, 8, 7, 6, 5, 4, 3, 2, 1])
         self.assertTrue(self.q._delivered.restored)

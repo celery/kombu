@@ -48,7 +48,7 @@ class Finalize(object):
         except KeyError:
             pass
         else:
-            self._reset
+            self._reset()
 
     def still_active(self):
         self._key in self._registry
