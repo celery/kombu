@@ -2,6 +2,26 @@
  Change history
 ================
 
+1.0.5
+=====
+:release-date: 2011-03-05 16:00 P.M CET
+
+* Fixed memory leak when creating virtual channels.  All virtual transports
+  affects (redis, mongodb, memory, django, sqlalchemy, couchdb, beanstalk).
+
+* Virtual Transports: Fixed potential race condition when acking messages.
+
+    If you have been affected by this, the error would show itself as an
+    exception raised by the OrderedDict implementation. (``object no longer
+    exists``).
+
+* MongoDB transport requires the ``findandmodify`` command only available in
+  MongoDB 1.3+, so now raises an exception if connected to an incompatible
+  server version.
+
+* Virtual Transports: ``basic.cancel`` should not try to remove unknown
+  consumer tag.
+
 1.0.4
 =====
 :release-date: 2011-02-28 16:00 P.M CET
