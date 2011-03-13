@@ -22,7 +22,7 @@ class test_Connection(unittest.TestCase):
         _connection = conn.connection
         conn.close()
         self.assertFalse(_connection.connected)
-        self.assertIsInstance(conn.transport, Transport)
+        self.assertIsInstance(conn.transport, Transport)      
 
     def test__enter____exit__(self):
         conn = self.conn
@@ -95,6 +95,21 @@ class test_Connection(unittest.TestCase):
 
         conn = BrokerConnection(transport=MyTransport)
         self.assertTupleEqual(conn.connection_errors, (KeyError, ValueError))
+
+
+class test_Connection_With_Broker_Args(unittest.TestCase):
+
+    _extra_args = {
+        'pool_recycle'  : 3600,
+        'echo'          : True
+    }
+
+    def setUp(self):
+        self.conn = BrokerConnection(port=5672, transport=Transport, backend_extra_args=self._extra_args)
+
+    def test_establish_connection(self):
+        conn = self.conn
+        self.assertEqual(conn.backend_extra_args, self._extra_args)
 
 
 class ResourceCase(unittest.TestCase):
