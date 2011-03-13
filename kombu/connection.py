@@ -47,7 +47,7 @@ class BrokerConnection(object):
          ``amqplib``, ``pika``, ``redis``, ``memory``.
     :keyword connect_timeout: Timeout in seconds for connecting to the
       server. May not be suported by the specified transport.
-    :backend_extra_args: A dict of additional connection arguments to pass to
+    :keyword backend_extra_args: A dict of additional connection arguments to pass to
     alternate kombu channel implementations (useful for things like SQLAlchemy
     engine arguments)
 
