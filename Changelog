@@ -4,10 +4,10 @@
 
 1.0.5
 =====
-:release-date: 2011-03-05 16:00 P.M CET
+:release-date: 2011-03-17 16:00 P.M CET
 
 * Fixed memory leak when creating virtual channels.  All virtual transports
-  affects (redis, mongodb, memory, django, sqlalchemy, couchdb, beanstalk).
+  affected (redis, mongodb, memory, django, sqlalchemy, couchdb, beanstalk).
 
 * Virtual Transports: Fixed potential race condition when acking messages.
 
