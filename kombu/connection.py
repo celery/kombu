@@ -244,6 +244,9 @@ class BrokerConnection(object):
                             ("transport", transport_cls),
                             ("connect_timeout", self.connect_timeout)))
 
+    def __hash__(self):
+        return hash("|".join(map(str, self.info().itervalues())))
+
     def as_uri(self):
         fields = self.info()
         port = fields["port"]
