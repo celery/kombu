@@ -105,11 +105,11 @@ class test_Connection_With_Broker_Args(unittest.TestCase):
     }
 
     def setUp(self):
-        self.conn = BrokerConnection(port=5672, transport=Transport, backend_extra_args=self._extra_args)
+        self.conn = BrokerConnection(port=5672, transport=Transport, transport_options=self._extra_args)
 
     def test_establish_connection(self):
         conn = self.conn
-        self.assertEqual(conn.backend_extra_args, self._extra_args)
+        self.assertEqual(conn.transport_options, self._extra_args)
 
 
 class ResourceCase(unittest.TestCase):

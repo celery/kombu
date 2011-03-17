@@ -47,7 +47,7 @@ class BrokerConnection(object):
          ``amqplib``, ``pika``, ``redis``, ``memory``.
     :keyword connect_timeout: Timeout in seconds for connecting to the
       server. May not be suported by the specified transport.
-    :keyword backend_extra_args: A dict of additional connection arguments to pass to
+    :keyword transport_options: A dict of additional connection arguments to pass to
     alternate kombu channel implementations (useful for things like SQLAlchemy
     engine arguments)
 
@@ -80,7 +80,7 @@ class BrokerConnection(object):
 
     def __init__(self, hostname="localhost", userid="guest",
             password="guest", virtual_host="/", port=None, insist=False,
-            ssl=False, transport=None, connect_timeout=5, backend_cls=None, backend_extra_args={}):
+            ssl=False, transport=None, connect_timeout=5, backend_cls=None, transport_options={}):
         self.hostname = hostname
         self.userid = userid
         self.password = password
@@ -91,7 +91,7 @@ class BrokerConnection(object):
         self.ssl = ssl
         # backend_cls argument will be removed shortly.
         self.transport_cls = transport or backend_cls
-        self.backend_extra_args = backend_extra_args
+        self.transport_options = transport_options
 
     def connect(self):
         """Establish connection to server immediately."""
