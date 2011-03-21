@@ -180,7 +180,9 @@ class Exchange(MaybeChannelBound):
 
         """
         properties = properties or {}
-        properties["delivery_mode"] = delivery_mode or self.delivery_mode
+        delivery_mode = delivery_mode or self.delivery_mode
+        properties["delivery_mode"] = DELIVERY_MODES.get(delivery_mode,
+                                                         delivery_mode)
         return self.channel.prepare_message(body,
                                             properties=properties,
                                             priority=priority,
