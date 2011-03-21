@@ -339,9 +339,14 @@ class Transport(virtual.Transport):
 
     def _get_errors(self):
         from redis import exceptions
+        # This exception suddenly changed name between redis-py versions
+        if hasattr(exceptions, "InvalidData"):
+            DataError = exceptions.InvalidData
+        else:
+            DataError = exceptions.DataError
         return ((exceptions.ConnectionError,
                  exceptions.AuthenticationError),
                 (exceptions.ConnectionError,
-                 exceptions.InvalidData,
+                 DataError,
                  exceptions.InvalidResponse,
                  exceptions.ResponseError))
