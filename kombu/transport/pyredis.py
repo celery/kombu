@@ -342,6 +342,6 @@ class Transport(virtual.Transport):
         return ((exceptions.ConnectionError,
                  exceptions.AuthenticationError),
                 (exceptions.ConnectionError,
-                 exceptions.InvalidData,
+                 exceptions.DataError,
                  exceptions.InvalidResponse,
                  exceptions.ResponseError))
