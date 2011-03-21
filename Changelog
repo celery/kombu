@@ -2,6 +2,17 @@
  Change history
 ================
 
+1.0.6
+=====
+:release-date: 2011-03-21 16:00 P.M CET
+
+* The ``delivery_mode`` aliases (persistent/transient) were not automatically
+  converted to integer, and would cause a crash if using the amqplib
+  transport.
+
+* Redis: The redis-py :exc:`InvalidData` exception suddenly changed name to
+  :exc:`DataError`.
+
 1.0.5
 =====
 :release-date: 2011-03-17 16:00 P.M CET
