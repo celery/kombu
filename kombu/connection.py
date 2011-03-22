@@ -8,6 +8,7 @@ Broker connection and pools.
 :license: BSD, see LICENSE for more details.
 
 """
+import os
 import socket
 
 from copy import copy
@@ -96,7 +97,12 @@ class BrokerConnection(object):
 
     def channel(self):
         """Request a new channel."""
-        return self.transport.create_channel(self.connection)
+        chan = self.transport.create_channel(self.connection)
+        if os.environ.get("KOMBU_LOG_CHANNEL", False):
+            from kombu.utils.debug import Logwrapped
+            return Logwrapped(chan, "kombu.channel",
+                    "[Kombu channel:%(channel_id)s] ")
+        return chan
 
     def drain_events(self, **kwargs):
         """Wait for a single event from the server.

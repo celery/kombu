@@ -57,3 +57,8 @@ if not os.environ.get("KOMBU_NO_EVAL", False):
         "__homepage__": __homepage__,
         "__docformat__": __docformat__,
         "VERSION": VERSION})
+
+if os.environ.get("KOMBU_LOG_DEBUG"):
+    os.environ["KOMBU_LOG_CHANNEL"] = "1"
+    from kombu.utils import debug
+    debug.setup_logging()
