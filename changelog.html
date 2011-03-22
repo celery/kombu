@@ -6,13 +6,13 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Change history &mdash; Kombu v1.0.3 documentation</title>
+    <title>Change history &mdash; Kombu v1.0.6 documentation</title>
     <link rel="stylesheet" href="static/celery.css" type="text/css" />
     <link rel="stylesheet" href="static/pygments.css" type="text/css" />
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '',
-        VERSION:     '1.0.3',
+        VERSION:     '1.0.6',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -21,7 +21,7 @@
     <script type="text/javascript" src="static/jquery.js"></script>
     <script type="text/javascript" src="static/underscore.js"></script>
     <script type="text/javascript" src="static/doctools.js"></script>
-    <link rel="top" title="Kombu v1.0.3 documentation" href="index.html" />
+    <link rel="top" title="Kombu v1.0.6 documentation" href="index.html" />
     <link rel="prev" title="Finalize - kombu.utils.finalize" href="reference/kombu.utils.finalize.html" /> 
   </head>
   <body>
@@ -37,7 +37,7 @@
         <li class="right" >
           <a href="reference/kombu.utils.finalize.html" title="Finalize - kombu.utils.finalize"
              accesskey="P">previous</a> |</li>
-        <li><a href="index.html">Kombu v1.0.3 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Kombu v1.0.6 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -49,7 +49,103 @@
   <div class="section" id="change-history">
 <h1>Change history<a class="headerlink" href="#change-history" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="id1">
-<h2>1.0.3<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<h2>1.0.6<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">release-date:</th><td class="field-body">2011-03-22 16:00 P.M CET</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><p class="first">The <tt class="docutils literal"><span class="pre">delivery_mode</span></tt> aliases (persistent/transient) were not automatically
+converted to integer, and would cause a crash if using the amqplib
+transport.</p>
+</li>
+<li><p class="first">Redis: The redis-py <tt class="xref py py-exc docutils literal"><span class="pre">InvalidData</span></tt> exception suddenly changed name to
+<tt class="xref py py-exc docutils literal"><span class="pre">DataError</span></tt>.</p>
+</li>
+<li><p class="first">The <span class="target" id="index-0"></span><tt class="xref std std-envvar docutils literal"><span class="pre">KOMBU_LOG_DEBUG</span></tt> environment variable can now be set to log all
+channel method calls.</p>
+<p>Support for the following environment variables have been added:</p>
+<blockquote>
+<ul class="simple">
+<li><span class="target" id="index-1"></span><tt class="xref std std-envvar docutils literal"><span class="pre">KOMBU_LOG_CHANNEL</span></tt> will wrap channels in an object that
+logs every method call.</li>
+<li><span class="target" id="index-2"></span><tt class="xref std std-envvar docutils literal"><span class="pre">KOMBU_LOG_DEBUG</span></tt> both enables channel logging and configures the
+root logger to emit messages to standard error.</li>
+</ul>
+<p><strong>Example Usage</strong>:</p>
+<div class="highlight-python"><pre>$ KOMBU_LOG_DEBUG=1 python
+&gt;&gt;&gt; from kombu import BrokerConnection
+&gt;&gt;&gt; conn = BrokerConnection()
+&gt;&gt;&gt; channel = conn.channel()
+Start from server, version: 8.0, properties:
+    {u'product': 'RabbitMQ',..............  }
+Open OK! known_hosts []
+using channel_id: 1
+Channel open
+&gt;&gt;&gt; channel.queue_declare("myq", passive=True)
+[Kombu channel:1] queue_declare('myq', passive=True)
+(u'myq', 0, 1)</pre>
+</div>
+</blockquote>
+</li>
+</ul>
+</div>
+<div class="section" id="id2">
+<h2>1.0.5<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">release-date:</th><td class="field-body">2011-03-17 16:00 P.M CET</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><p class="first">Fixed memory leak when creating virtual channels.  All virtual transports
+affected (redis, mongodb, memory, django, sqlalchemy, couchdb, beanstalk).</p>
+</li>
+<li><p class="first">Virtual Transports: Fixed potential race condition when acking messages.</p>
+<blockquote>
+<p>If you have been affected by this, the error would show itself as an
+exception raised by the OrderedDict implementation. (<tt class="docutils literal"><span class="pre">object</span> <span class="pre">no</span> <span class="pre">longer</span>
+<span class="pre">exists</span></tt>).</p>
+</blockquote>
+</li>
+<li><p class="first">MongoDB transport requires the <tt class="docutils literal"><span class="pre">findandmodify</span></tt> command only available in
+MongoDB 1.3+, so now raises an exception if connected to an incompatible
+server version.</p>
+</li>
+<li><p class="first">Virtual Transports: <tt class="docutils literal"><span class="pre">basic.cancel</span></tt> should not try to remove unknown
+consumer tag.</p>
+</li>
+</ul>
+</div>
+<div class="section" id="id3">
+<h2>1.0.4<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">release-date:</th><td class="field-body">2011-02-28 16:00 P.M CET</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><p class="first">Added Transport.polling_interval</p>
+<blockquote>
+<p>Used by django-kombu to increase the time to sleep between SELECTs when
+there are no messages in the queue.</p>
+<p>Users of django-kombu should upgrade to django-kombu v0.9.2.</p>
+</blockquote>
+</li>
+</ul>
+</div>
+<div class="section" id="id4">
+<h2>1.0.3<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -64,8 +160,8 @@
 <li>Copyright headers updated to include 2011.</li>
 </ul>
 </div>
-<div class="section" id="id2">
-<h2>1.0.2<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id5">
+<h2>1.0.2<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -79,8 +175,8 @@
 <li>Ghettoq backend names are now automatically translated to the new names.</li>
 </ul>
 </div>
-<div class="section" id="id3">
-<h2>1.0.1<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id6">
+<h2>1.0.1<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -93,8 +189,8 @@
 <li>Redis: Now works with Linux (epoll)</li>
 </ul>
 </div>
-<div class="section" id="id4">
-<h2>1.0.0<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id7">
+<h2>1.0.0<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -107,8 +203,8 @@
 <li>Initial release</li>
 </ul>
 </div>
-<div class="section" id="id5">
-<h2>0.1.0<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id8">
+<h2>0.1.0<a class="headerlink" href="#id8" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -134,11 +230,14 @@
   <h3><a href="index.html">Table Of Contents</a></h3>
   <ul>
 <li><a class="reference internal" href="#">Change history</a><ul>
-<li><a class="reference internal" href="#id1">1.0.3</a></li>
-<li><a class="reference internal" href="#id2">1.0.2</a></li>
-<li><a class="reference internal" href="#id3">1.0.1</a></li>
-<li><a class="reference internal" href="#id4">1.0.0</a></li>
-<li><a class="reference internal" href="#id5">0.1.0</a></li>
+<li><a class="reference internal" href="#id1">1.0.6</a></li>
+<li><a class="reference internal" href="#id2">1.0.5</a></li>
+<li><a class="reference internal" href="#id3">1.0.4</a></li>
+<li><a class="reference internal" href="#id4">1.0.3</a></li>
+<li><a class="reference internal" href="#id5">1.0.2</a></li>
+<li><a class="reference internal" href="#id6">1.0.1</a></li>
+<li><a class="reference internal" href="#id7">1.0.0</a></li>
+<li><a class="reference internal" href="#id8">0.1.0</a></li>
 </ul>
 </li>
 </ul>
@@ -180,7 +279,7 @@
         <li class="right" >
           <a href="reference/kombu.utils.finalize.html" title="Finalize - kombu.utils.finalize"
              >previous</a> |</li>
-        <li><a href="index.html">Kombu v1.0.3 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Kombu v1.0.6 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">

@@ -6,13 +6,13 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Index &mdash; Kombu v1.0.3 documentation</title>
+    <title>Index &mdash; Kombu v1.0.6 documentation</title>
     <link rel="stylesheet" href="static/celery.css" type="text/css" />
     <link rel="stylesheet" href="static/pygments.css" type="text/css" />
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '',
-        VERSION:     '1.0.3',
+        VERSION:     '1.0.6',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -21,7 +21,7 @@
     <script type="text/javascript" src="static/jquery.js"></script>
     <script type="text/javascript" src="static/underscore.js"></script>
     <script type="text/javascript" src="static/doctools.js"></script>
-    <link rel="top" title="Kombu v1.0.3 documentation" href="index.html" /> 
+    <link rel="top" title="Kombu v1.0.6 documentation" href="index.html" /> 
   </head>
   <body>
     <div class="related">
@@ -33,7 +33,7 @@
         <li class="right" >
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li><a href="index.html">Kombu v1.0.3 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Kombu v1.0.6 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -411,6 +411,7 @@
 <table width="100%" class="indextable genindextable"><tr>
   <td width="33%" valign="top"><dl>
     <dt><a href="reference/kombu.utils.html#kombu.utils.emergency_dump_state">emergency_dump_state() (in module kombu.utils)</a></dt>
+    <dt><a href="reference/kombu.utils.log.html#kombu.utils.log.NullHandler.emit">emit() (kombu.utils.log.NullHandler method)</a></dt>
     <dt><a href="reference/kombu.serialization.html#kombu.serialization.encode">encode() (in module kombu.serialization)</a>, <a href="reference/kombu.serialization.html#kombu.serialization.encode">[1]</a></dt>
     <dt><a href="reference/kombu.compression.html#kombu.compression.encoders">encoders() (in module kombu.compression)</a></dt>
     <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnection.ensure">ensure() (kombu.connection.BrokerConnection method)</a></dt>
@@ -418,6 +419,11 @@
     <dt><a href="reference/kombu.transport.pypika.html#kombu.transport.pypika.AsyncoreConnection.ensure_drain_events">ensure_drain_events() (kombu.transport.pypika.AsyncoreConnection method)</a></dt>
     <dd><dl>
       <dt><a href="reference/kombu.transport.pypika.html#kombu.transport.pypika.BlockingConnection.ensure_drain_events">(kombu.transport.pypika.BlockingConnection method)</a></dt>
+  </dl></dd>
+    <dt>environment variable</dt>
+    <dd><dl>
+      <dt><a href="changelog.html#index-1">KOMBU_LOG_CHANNEL</a></dt>
+      <dt><a href="changelog.html#index-0">KOMBU_LOG_DEBUG</a>, <a href="changelog.html#index-2">[1]</a></dt>
   </dl></dd>
     <dt><a href="reference/kombu.transport.virtual.exchange.html#kombu.transport.virtual.exchange.ExchangeType.equivalent">equivalent() (kombu.transport.virtual.exchange.ExchangeType method)</a></dt>
     <dt><a href="reference/kombu.transport.base.html#kombu.transport.base.Transport.establish_connection">establish_connection() (kombu.transport.base.Transport method)</a></dt>
@@ -427,9 +433,9 @@
       <dt><a href="reference/kombu.transport.pypika.html#kombu.transport.pypika.SyncTransport.establish_connection">(kombu.transport.pypika.SyncTransport method)</a></dt>
       <dt><a href="reference/kombu.transport.virtual.html#kombu.transport.virtual.Transport.establish_connection">(kombu.transport.virtual.Transport method)</a></dt>
   </dl></dd>
-    <dt><a href="reference/kombu.entity.html#kombu.entity.Exchange">Exchange (class in kombu.entity)</a></dt>
 </dl></td>
   <td width="33%" valign="top"><dl>
+    <dt><a href="reference/kombu.entity.html#kombu.entity.Exchange">Exchange (class in kombu.entity)</a></dt>
     <dt><a href="reference/kombu.entity.html#kombu.entity.Queue.exchange">exchange (kombu.entity.Queue attribute)</a></dt>
     <dd><dl>
       <dt><a href="reference/kombu.messaging.html#kombu.messaging.Producer.exchange">(kombu.messaging.Producer attribute)</a></dt>
@@ -484,12 +490,13 @@
   </dl></dd>
     <dt><a href="reference/kombu.compression.html#kombu.compression.get_decoder">get_decoder() (in module kombu.compression)</a></dt>
     <dt><a href="reference/kombu.compression.html#kombu.compression.get_encoder">get_encoder() (in module kombu.compression)</a></dt>
+    <dt><a href="reference/kombu.utils.log.html#kombu.utils.log.get_logger">get_logger() (in module kombu.utils.log)</a></dt>
+</dl></td>
+  <td width="33%" valign="top"><dl>
     <dt><a href="reference/kombu.simple.html#kombu.simple.SimpleBuffer.get_nowait">get_nowait() (kombu.simple.SimpleBuffer method)</a></dt>
     <dd><dl>
       <dt><a href="reference/kombu.simple.html#kombu.simple.SimpleQueue.get_nowait">(kombu.simple.SimpleQueue method)</a></dt>
   </dl></dd>
-</dl></td>
-  <td width="33%" valign="top"><dl>
     <dt><a href="reference/kombu.pidbox.html#kombu.pidbox.Mailbox.get_queue">get_queue() (kombu.pidbox.Mailbox method)</a></dt>
     <dt><a href="reference/kombu.pidbox.html#kombu.pidbox.Mailbox.get_reply_queue">get_reply_queue() (kombu.pidbox.Mailbox method)</a></dt>
     <dt><a href="reference/kombu.transport.pyredis.html#kombu.transport.pyredis.Channel.get_table">get_table() (kombu.transport.pyredis.Channel method)</a></dt>
@@ -560,10 +567,10 @@
     <dt><a href="reference/kombu.transport.html#module-kombu.transport">kombu.transport (module)</a></dt>
     <dt><a href="reference/kombu.transport.base.html#module-kombu.transport.base">kombu.transport.base (module)</a></dt>
     <dt><a href="reference/kombu.transport.beanstalk.html#module-kombu.transport.beanstalk">kombu.transport.beanstalk (module)</a></dt>
-</dl></td>
-  <td width="33%" valign="top"><dl>
     <dt><a href="reference/kombu.transport.librabbitmq.html#module-kombu.transport.librabbitmq">kombu.transport.librabbitmq (module)</a></dt>
     <dt><a href="reference/kombu.transport.memory.html#module-kombu.transport.memory">kombu.transport.memory (module)</a></dt>
+</dl></td>
+  <td width="33%" valign="top"><dl>
     <dt><a href="reference/kombu.transport.mongodb.html#module-kombu.transport.mongodb">kombu.transport.mongodb (module)</a></dt>
     <dt><a href="reference/kombu.transport.pyamqplib.html#module-kombu.transport.pyamqplib">kombu.transport.pyamqplib (module)</a></dt>
     <dt><a href="reference/kombu.transport.pycouchdb.html#module-kombu.transport.pycouchdb">kombu.transport.pycouchdb (module)</a></dt>
@@ -574,8 +581,12 @@
     <dt><a href="reference/kombu.transport.virtual.scheduling.html#module-kombu.transport.virtual.scheduling">kombu.transport.virtual.scheduling (module)</a></dt>
     <dt><a href="reference/kombu.utils.html#module-kombu.utils">kombu.utils (module)</a></dt>
     <dt><a href="reference/kombu.utils.compat.html#module-kombu.utils.compat">kombu.utils.compat (module)</a></dt>
+    <dt><a href="reference/kombu.utils.debug.html#module-kombu.utils.debug">kombu.utils.debug (module)</a></dt>
     <dt><a href="reference/kombu.utils.finalize.html#module-kombu.utils.finalize">kombu.utils.finalize (module)</a></dt>
     <dt><a href="reference/kombu.utils.functional.html#module-kombu.utils.functional">kombu.utils.functional (module)</a></dt>
+    <dt><a href="reference/kombu.utils.log.html#module-kombu.utils.log">kombu.utils.log (module)</a></dt>
+    <dt><a href="changelog.html#index-1">KOMBU_LOG_CHANNEL</a></dt>
+    <dt><a href="changelog.html#index-0">KOMBU_LOG_DEBUG</a>, <a href="changelog.html#index-2">[1]</a></dt>
     <dt><a href="reference/kombu.utils.html#kombu.utils.kwdict">kwdict() (in module kombu.utils)</a></dt>
 </dl></td>
 </tr></table>
@@ -591,6 +602,7 @@
     <dt><a href="reference/kombu.pidbox.html#kombu.pidbox.Node.listen">listen() (kombu.pidbox.Node method)</a></dt>
 </dl></td>
   <td width="33%" valign="top"><dl>
+    <dt><a href="reference/kombu.utils.debug.html#kombu.utils.debug.Logwrapped">Logwrapped (class in kombu.utils.debug)</a></dt>
     <dt><a href="reference/kombu.transport.virtual.exchange.html#kombu.transport.virtual.exchange.DirectExchange.lookup">lookup() (kombu.transport.virtual.exchange.DirectExchange method)</a></dt>
     <dd><dl>
       <dt><a href="reference/kombu.transport.virtual.exchange.html#kombu.transport.virtual.exchange.ExchangeType.lookup">(kombu.transport.virtual.exchange.ExchangeType method)</a></dt>
@@ -652,11 +664,12 @@
       <dt><a href="reference/kombu.simple.html#kombu.simple.SimpleBuffer.no_ack">(kombu.simple.SimpleBuffer attribute)</a></dt>
       <dt><a href="reference/kombu.simple.html#kombu.simple.SimpleQueue.no_ack">(kombu.simple.SimpleQueue attribute)</a></dt>
   </dl></dd>
+    <dt><a href="reference/kombu.pidbox.html#kombu.pidbox.Node">Node (class in kombu.pidbox)</a></dt>
 </dl></td>
   <td width="33%" valign="top"><dl>
-    <dt><a href="reference/kombu.pidbox.html#kombu.pidbox.Node">Node (class in kombu.pidbox)</a></dt>
     <dt><a href="reference/kombu.pidbox.html#kombu.pidbox.Mailbox.Node">Node() (kombu.pidbox.Mailbox method)</a></dt>
     <dt><a href="reference/kombu.exceptions.html#kombu.exceptions.NotBoundError">NotBoundError</a></dt>
+    <dt><a href="reference/kombu.utils.log.html#kombu.utils.log.NullHandler">NullHandler (class in kombu.utils.log)</a></dt>
 </dl></td>
 </tr></table>
 
@@ -849,10 +862,11 @@
     <dt><a href="reference/kombu.messaging.html#kombu.messaging.Producer.serializer">serializer (kombu.messaging.Producer attribute)</a></dt>
     <dt><a href="reference/kombu.serialization.html#kombu.serialization.SerializerNotInstalled">SerializerNotInstalled</a></dt>
     <dt><a href="reference/kombu.utils.compat.html#kombu.utils.compat.CompatOrderedDict.setdefault">setdefault() (kombu.utils.compat.CompatOrderedDict method)</a></dt>
+    <dt><a href="reference/kombu.utils.debug.html#kombu.utils.debug.setup_logging">setup_logging() (in module kombu.utils.debug)</a></dt>
     <dt><a href="reference/kombu.simple.html#kombu.simple.SimpleBuffer">SimpleBuffer (class in kombu.simple)</a></dt>
-    <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnection.SimpleBuffer">SimpleBuffer() (kombu.connection.BrokerConnection method)</a></dt>
 </dl></td>
   <td width="33%" valign="top"><dl>
+    <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnection.SimpleBuffer">SimpleBuffer() (kombu.connection.BrokerConnection method)</a></dt>
     <dt><a href="reference/kombu.simple.html#kombu.simple.SimpleQueue">SimpleQueue (class in kombu.simple)</a></dt>
     <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnection.SimpleQueue">SimpleQueue() (kombu.connection.BrokerConnection method)</a></dt>
     <dt><a href="reference/kombu.pidbox.html#kombu.pidbox.Node.state">state (kombu.pidbox.Node attribute)</a></dt>
@@ -990,7 +1004,7 @@
         <li class="right" >
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li><a href="index.html">Kombu v1.0.3 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Kombu v1.0.6 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
