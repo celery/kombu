@@ -4,7 +4,7 @@
 
 1.0.6
 =====
-:release-date: 2011-03-21 16:00 P.M CET
+:release-date: 2011-03-22 16:00 P.M CET
 
 * The ``delivery_mode`` aliases (persistent/transient) were not automatically
   converted to integer, and would cause a crash if using the amqplib
@@ -12,6 +12,32 @@
 
 * Redis: The redis-py :exc:`InvalidData` exception suddenly changed name to
   :exc:`DataError`.
+
+* The :envvar:`KOMBU_LOG_DEBUG` environment variable can now be set to log all
+  channel method calls.
+
+  Support for the following environment variables have been added:
+
+    * :envvar:`KOMBU_LOG_CHANNEL` will wrap channels in an object that
+      logs every method call.
+
+    * :envvar:`KOMBU_LOG_DEBUG` both enables channel logging and configures the
+      root logger to emit messages to standard error.
+
+    **Example Usage**::
+
+        $ KOMBU_LOG_DEBUG=1 python
+        >>> from kombu import BrokerConnection
+        >>> conn = BrokerConnection()
+        >>> channel = conn.channel()
+        Start from server, version: 8.0, properties:
+            {u'product': 'RabbitMQ',..............  }
+        Open OK! known_hosts []
+        using channel_id: 1
+        Channel open
+        >>> channel.queue_declare("myq", passive=True)
+        [Kombu channel:1] queue_declare('myq', passive=True)
+        (u'myq', 0, 1)
 
 1.0.5
 =====
