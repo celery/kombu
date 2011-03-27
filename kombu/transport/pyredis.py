@@ -100,7 +100,8 @@ class MultiChannelPoller(object):
         for fileno, event in events:
             if event & eventio.POLL_READ:
                 chan, type = self._fd_to_chan[fileno]
-                return chan.handlers[type](), self
+                if chan.qos.can_consume():
+                    return chan.handlers[type](), self
             elif event & eventio.POLL_HUP:
                 chan, type = self._fd_to_chan[fileno]
                 chan._poll_error(type)

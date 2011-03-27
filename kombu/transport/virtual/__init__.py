@@ -89,7 +89,7 @@ class QoS(object):
 
         """
         pcount = self.prefetch_count
-        return (not pcount or len(self._delivered) - len(self._dirty) < pcount)
+        return not pcount or len(self._delivered) - len(self._dirty) < pcount
 
     def append(self, message, delivery_tag):
         """Append message to transactional state."""
