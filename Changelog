@@ -2,6 +2,19 @@
  Change history
 ================
 
+1.0.7
+=====
+:release-date: 2011-03-28 16:00 P.M CEST
+
+* on_decode_error is now called for exceptions in message_to_python
+  (Issue #24).
+
+* Redis did not respect QoS settings.
+
+* BrokerConnection now supports a ``transport_options`` argument.
+
+    This can be used to pass additional arguments to transports.
+
 1.0.6
 =====
 :release-date: 2011-03-22 16:00 P.M CET
