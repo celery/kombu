@@ -397,8 +397,8 @@ class Consumer(object):
         return tag
 
     def _receive_callback(self, raw_message):
-        message = self.channel.message_to_python(raw_message)
         try:
+            message = self.channel.message_to_python(raw_message)
             decoded = message.payload
         except Exception, exc:
             if not self.on_decode_error:
