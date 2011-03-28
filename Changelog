@@ -6,6 +6,11 @@
 =====
 :release-date: 2011-03-28 16:00 P.M CEST
 
+* Please note that the Pika backend only works with version 0.5.2.
+
+    The latest version (0.9.x) drastically changed API, and it is not
+    compatible yet.
+
 * on_decode_error is now called for exceptions in message_to_python
   (Issue #24).
 
@@ -14,6 +19,9 @@
 * BrokerConnection now supports a ``transport_options`` argument.
 
     This can be used to pass additional arguments to transports.
+
+* Pika: ``drain_events`` raised :exc:`socket.timeout` even if no timeout
+  set (Issue #8).
 
 1.0.6
 =====
