@@ -89,7 +89,7 @@ setup(
     zip_safe=False,
     test_suite="nose.collector",
     install_requires=[
-        'anyjson',
+        'anyjson>=0.3.1',
         'amqplib>=0.6',
     ],
     tests_require=tests_require,
