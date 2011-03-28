@@ -10,7 +10,11 @@ Pika transport.
 """
 import socket
 
-from pika import asyncore_adapter
+import pika
+try:
+    from pika import asyncore_adapter
+except ImportError:
+    raise ImportError("Kombu only works with pika version 0.5.2")
 from pika import blocking_adapter
 from pika import channel
 from pika import connection
