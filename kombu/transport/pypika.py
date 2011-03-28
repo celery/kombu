@@ -134,7 +134,7 @@ class AsyncoreConnection(asyncore_adapter.AsyncoreConnection):
         # of sync connection.
         current_events = self._event_counter
         self.drain_events(timeout=timeout)
-        if self._event_counter <= current_events:
+        if timeout and self._event_counter <= current_events:
             raise socket.timeout("timed out")
 
     def on_data_available(self, buf):
