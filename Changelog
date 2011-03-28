@@ -19,7 +19,12 @@
 * on_decode_error is now called for exceptions in message_to_python
   (Issue #24).
 
-* Redis did not respect QoS settings.
+* Redis: did not respect QoS settings.
+
+* Redis: Creating a connection now ensures the connection is established.
+
+    This means ``BrokerConnection.ensure_connection`` works properly with
+    Redis.
 
 * consumer_tag argument to ``Queue.consume`` can't be :const:`None`
   (Issue #21).

@@ -128,6 +128,10 @@ class Channel(virtual.Channel):
         self.active_fanout_queues = set()
         self._fanout_to_queue = {}
         self.handlers = {"BRPOP": self._brpop_read, "LISTEN": self._receive}
+
+        # Evaluate connection.
+        self.client.info()
+
         self.connection.cycle.add(self)  # add to channel poller.
 
     def basic_consume(self, queue, *args, **kwargs):
@@ -336,7 +340,25 @@ class Transport(virtual.Transport):
     def __init__(self, *args, **kwargs):
         super(Transport, self).__init__(*args, **kwargs)
         self.connection_errors, self.channel_errors = self._get_errors()
+        self._avail_channels = []
         self.cycle = self.default_cycle
+
+    def create_channel(self, connection):
+        try:
+            return self._avail_channels.pop()
+        except IndexError:
+            pass
+        return super(Transport, self).create_channel(connection)
+
+    def establish_connection(self):
+        conn = super(Transport, self).establish_connection()
+        self._avail_channels.append(self.create_channel(conn))
+        return conn
+
+    def close_connection(self, connection):
+        while self._avail_channels:
+            self._avail_channels.pop().close()
+        super(Transport, self).close_connecton(connection)
 
     def _get_errors(self):
         from redis import exceptions

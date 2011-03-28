@@ -144,6 +144,9 @@ class Client(object):
         def send(self, cmd, client):
             self._sock.data.append(cmd)
 
+    def info(self):
+        return {"foo": 1}
+
     @property
     def connection(self):
         if self._connection is None:
@@ -189,7 +192,7 @@ class Transport(pyredis.Transport):
     Channel = Channel
 
     def _get_errors(self):
-        return ((), ())
+        return ((KeyError, ), (IndexError, ))
 
 
 class test_Redis(unittest.TestCase):
@@ -265,9 +268,8 @@ class test_Redis(unittest.TestCase):
                               transport=Transport).channel()
         self.assertEqual(c3.client.db, 1)
 
-        c4 = BrokerConnection(virtual_host="/foo",
-                              transport=Transport).channel()
-        self.assertRaises(ValueError, getattr, c4, "client")
+        self.assertRaises(BrokerConnection(virtual_host="/foo",
+                              transport=Transport).channel)
 
     def test_db_port(self):
         c1 = BrokerConnection(port=None, transport=Transport).channel()
@@ -308,7 +310,7 @@ class test_Redis(unittest.TestCase):
 
         @module_exists(redis, exceptions)
         def _do_test():
-            conn = BrokerConnection(transport="redis")
+            conn = BrokerConnection(transport=Transport)
             chan = conn.channel()
             self.assertTrue(chan.Client)
             self.assertTrue(chan.ResponseError)
