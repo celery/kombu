@@ -562,11 +562,15 @@ class Transport(base.Transport):
     def __init__(self, client, **kwargs):
         self.client = client
         self.channels = []
+        self._avail_channels = []
         self._callbacks = {}
         self.cycle = self.Cycle(self._drain_channel, self.channels, Empty)
 
     def create_channel(self, connection):
-        channel = self.Channel(connection)
+        try:
+            channel = self._avail_channels.pop()
+        except IndexError:
+            channel = self.Channel(connection)
         self.channels.append(channel)
         return channel
 
@@ -577,17 +581,19 @@ class Transport(base.Transport):
             pass
 
     def establish_connection(self):
+        self._avail_channels.append(self.create_channel(self))
         return self     # for drain events
 
     def close_connection(self, connection):
         self.cycle.close()
-        while self.channels:
-            try:
-                channel = self.channels.pop()
-            except KeyError:    # pragma: no cover
-                pass
-            else:
-                channel.close()
+        for l in self._avail_channels, self.channels:
+            while l:
+                try:
+                    channel = l.pop()
+                except (IndexError, KeyError):  # pragma: no cover
+                    pass
+                else:
+                    channel.close()
 
     def drain_events(self, connection, timeout=None):
         loop = 0

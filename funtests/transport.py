@@ -61,9 +61,11 @@ class TransportCase(unittest.TestCase):
         chan = self.connection.channel()
         map(chan.queue_purge, names)
 
+    def get_connection(self, **options):
+        return BrokerConnection(transport=self.transport, **options)
+
     def do_connect(self):
-        self.connection = BrokerConnection(transport=self.transport,
-                                           **self.connection_options)
+        self.connection = self.get_connection(**self.connection_options)
         try:
             self.connection.connect()
             self.after_connect(self.connection)
