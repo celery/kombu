@@ -4,7 +4,7 @@
 
 1.0.7
 =====
-:release-date: 2011-03-28 16:00 P.M CEST
+:release-date: 2011-03-28 05:45 P.M CEST
 
 * Now depends on anyjson 0.3.1
 
@@ -41,7 +41,7 @@
 
 1.0.6
 =====
-:release-date: 2011-03-22 16:00 P.M CET
+:release-date: 2011-03-22 04:00 P.M CET
 
 * The ``delivery_mode`` aliases (persistent/transient) were not automatically
   converted to integer, and would cause a crash if using the amqplib
@@ -78,7 +78,7 @@
 
 1.0.5
 =====
-:release-date: 2011-03-17 16:00 P.M CET
+:release-date: 2011-03-17 04:00 P.M CET
 
 * Fixed memory leak when creating virtual channels.  All virtual transports
   affected (redis, mongodb, memory, django, sqlalchemy, couchdb, beanstalk).
@@ -98,7 +98,7 @@
 
 1.0.4
 =====
-:release-date: 2011-02-28 16:00 P.M CET
+:release-date: 2011-02-28 04:00 P.M CET
 
 * Added Transport.polling_interval
 
@@ -109,7 +109,7 @@
 
 1.0.3
 =====
-:release-date: 2011-02-12 16:00 P.M CET
+:release-date: 2011-02-12 04:00 P.M CET
 
 * ConnectionPool: Re-connect if amqplib connection closed
 
@@ -138,6 +138,6 @@
 
 0.1.0
 =====
-:release-date: 2010-07-22 4:20 P.M CET
+:release-date: 2010-07-22 04:20 P.M CET
 
 * Initial fork of carrot
