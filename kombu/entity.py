@@ -415,7 +415,7 @@ class Queue(MaybeChannelBound):
         return _SYN(self.channel.queue_purge, queue=self.name,
                                               nowait=nowait) or 0
 
-    def consume(self, consumer_tag=None, callback=None, no_ack=None,
+    def consume(self, consumer_tag='', callback=None, no_ack=None,
             nowait=False):
         """Start a queue consumer.
 
@@ -437,7 +437,7 @@ class Queue(MaybeChannelBound):
         """
         return self.channel.basic_consume(queue=self.name,
                                           no_ack=no_ack,
-                                          consumer_tag=consumer_tag,
+                                          consumer_tag=consumer_tag or '',
                                           callback=callback,
                                           nowait=nowait)
 

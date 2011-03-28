@@ -21,6 +21,12 @@
 
 * Redis did not respect QoS settings.
 
+* consumer_tag argument to ``Queue.consume`` can't be :const:`None`
+  (Issue #21).
+
+    A None value is now automatically converted to empty string.
+    An empty string will make the server generate a unique tag.
+
 * BrokerConnection now supports a ``transport_options`` argument.
 
     This can be used to pass additional arguments to transports.
