@@ -59,6 +59,6 @@ if not os.environ.get("KOMBU_NO_EVAL", False):
         "VERSION": VERSION})
 
 if os.environ.get("KOMBU_LOG_DEBUG"):
-    os.environ["KOMBU_LOG_CHANNEL"] = "1"
+    os.environ.update(KOMBU_LOG_CHANNEL="1", KOMBU_LOG_CONNECTION="1")
     from kombu.utils import debug
     debug.setup_logging()
