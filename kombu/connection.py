@@ -13,7 +13,7 @@ import socket
 
 from copy import copy
 from itertools import count
-from Queue import Empty, Queue as _Queue
+from Queue import Empty, LifoQueue as _LifoQueue
 
 from kombu import exceptions
 from kombu.transport import get_transport_cls
@@ -379,7 +379,7 @@ class BrokerConnection(object):
 
     def __repr__(self):
         """``x.__repr__() <==> repr(x)``"""
-        return "<BrokerConnection: %s>" % self.as_uri()
+        return "<BrokerConnection: %s at 0x%x>" % (self.as_uri(), id(self))
 
     def __copy__(self):
         """``x.__copy__() <==> copy(x)``"""
@@ -439,7 +439,7 @@ class Resource(object):
         self.limit = limit
         self.preload = preload or 0
 
-        self._resource = _Queue()
+        self._resource = _LifoQueue()
         self._dirty = set()
         self.setup()
 
