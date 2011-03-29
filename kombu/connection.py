@@ -21,6 +21,9 @@ from kombu.utils import retry_over_time
 from kombu.utils.compat import OrderedDict
 from kombu.utils.functional import wraps
 
+_LOG_CONNECTION = os.environ.get("KOMBU_LOG_CONNECTION", False)
+_LOG_CHANNEL = os.environ.get("KOMBU_LOG_CHANNEL", False)
+
 
 #: Connection info -> URI
 URI_FORMAT = """\
@@ -78,6 +81,7 @@ class BrokerConnection(object):
     _closed = None
     _connection = None
     _transport = None
+    _logger = None
 
     def __init__(self, hostname="localhost", userid="guest",
             password="guest", virtual_host="/", port=None, insist=False,
@@ -94,6 +98,14 @@ class BrokerConnection(object):
         # backend_cls argument will be removed shortly.
         self.transport_cls = transport or backend_cls
         self.transport_options = transport_options
+        if _LOG_CONNECTION:
+            from kombu.utils.log import get_logger
+            self._logger = get_logger("kombu.connection")
+
+    def _debug(self, msg, ident="[Kombu connection:0x%(id)x] ", **kwargs):
+        if self._logger:
+            self._logger.debug((ident + unicode(msg)) % {"id": id(self)},
+                               **kwargs)
 
     def connect(self):
         """Establish connection to server immediately."""
@@ -102,8 +114,9 @@ class BrokerConnection(object):
 
     def channel(self):
         """Request a new channel."""
+        self._debug("create channel")
         chan = self.transport.create_channel(self.connection)
-        if os.environ.get("KOMBU_LOG_CHANNEL", False):
+        if _LOG_CHANNEL:
             from kombu.utils.debug import Logwrapped
             return Logwrapped(chan, "kombu.channel",
                     "[Kombu channel:%(channel_id)s] ")
@@ -128,6 +141,7 @@ class BrokerConnection(object):
                                                        socket.error):
                 pass
             self._connection = None
+            self._debug("closed")
         self._closed = True
 
     def release(self):
@@ -206,6 +220,8 @@ class BrokerConnection(object):
                 try:
                     return fun(*args, **kwargs)
                 except self.connection_errors + self.channel_errors, exc:
+                    self._debug("ensure got exception: %r" % (exc, ),
+                                exc_info=sys.exc_info())
                     if got_connection or \
                             max_retries and retries > max_retries:
                         raise
@@ -375,7 +391,10 @@ class BrokerConnection(object):
                             channel_autoclose=channel_autoclose, **kwargs)
 
     def _establish_connection(self):
-        return self.transport.establish_connection()
+        self._debug("establishing connection...")
+        conn = self.transport.establish_connection()
+        self._debug("connection established: %r" % (conn, ))
+        return conn
 
     def __repr__(self):
         """``x.__repr__() <==> repr(x)``"""
@@ -446,6 +465,14 @@ class Resource(object):
     def setup(self):
         raise NotImplementedError("subclass responsibilty")
 
+    def _add_when_empty(self):
+        if self.limit and len(self._dirty) >= self.limit:
+            raise self.LimitExceeded(self.limit)
+        # All taken, put new on the queue and
+        # try get again, this way the first in line
+        # will get the resource.
+        self._resource.put_nowait(self.new())
+
     def acquire(self, block=False, timeout=None):
         """Acquire resource.
 
@@ -458,32 +485,34 @@ class Resource(object):
           and the limit has been exceeded.
 
         """
-        while True:
-            try:
-                resource = self._resource.get(block=block, timeout=timeout)
-            except Empty:
-                if self.limit and len(self._dirty) >= self.limit:
-                    raise self.LimitExceeded(self.limit)
-                # All taken, put new on the queue and
-                # try get again, this way the first in line
-                # will get the resource.
-                self._resource.put_nowait(self.new())
-            else:
-                resource = self.prepare(resource)
-                self._dirty.add(resource)
+        if self.limit:
+            while 1:
+                try:
+                    resource = self._resource.get(block=block, timeout=timeout)
+                except Empty:
+                    self._add_when_empty()
+                else:
+                    resource = self.prepare(resource)
+                    self._dirty.add(resource)
+                    break
+        else:
+            resource = self.prepare(self.new())
 
-                @wraps(self.release)
-                def _release():
-                    self.release(resource)
-                resource.release = _release
+        @wraps(self.release)
+        def _release():
+            self.release(resource)
+        resource.release = _release
 
-                return resource
+        return resource
 
     def prepare(self, resource):
         return resource
 
     def close_resource(self, resource):
         resource.close()
+
+    def release_resource(self, resource):
+        pass
 
     def release(self, resource):
         """Release resource so it can be used by another thread.
@@ -493,8 +522,12 @@ class Resource(object):
         be acquired if so needed.
 
         """
-        self._dirty.discard(resource)
-        self._resource.put_nowait(resource)
+        if self.limit:
+            self._dirty.discard(resource)
+            self._resource.put_nowait(resource)
+            self.release_resource(resource)
+        else:
+            self.close_resource(resource)
 
     def force_close_all(self):
         """Closes and removes all resources in the pool (also those in use).
@@ -551,6 +584,9 @@ class ConnectionPool(Resource):
     def new(self):
         return copy(self.connection)
 
+    def release_resource(self, resource):
+        resource._debug("released")
+
     def acquire_channel(self, block=False):
         return PoolChannelContext(self, block)
 
@@ -563,6 +599,7 @@ class ConnectionPool(Resource):
                 self._resource.put_nowait(conn)
 
     def prepare(self, resource):
+        resource._debug("acquired")
         resource.connect()
         return resource
 
