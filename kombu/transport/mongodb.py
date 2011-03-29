@@ -59,7 +59,7 @@ class Channel(virtual.Channel):
         mongoconn = Connection(host=conninfo.hostname, port=conninfo.port)
         dbname = conninfo.virtual_host
         version = mongoconn.server_info()["version"]
-        if tuple(map(int, version.split("."))) < (1, 3):
+        if tuple(map(int, version.split(".")[:2])) < (1, 3):
             raise NotImplementedError(
                 "Kombu requires MongoDB version 1.3+, but connected to %s" % (
                     version, ))
