@@ -217,7 +217,9 @@ class test_Consumer(unittest.TestCase):
         context = consumer.__enter__()
         self.assertIs(context, consumer)
         self.assertTrue(consumer._active_tags)
-        consumer.__exit__()
+        self.assertRaises(TypeError, consumer.__exit__)
+        res = consumer.__exit__(None, None, None)
+        self.assertFalse(res)
         self.assertIn("basic_cancel", channel)
         self.assertFalse(consumer._active_tags)
 
