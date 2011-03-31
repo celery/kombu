@@ -111,6 +111,10 @@ class Channel(channel.Channel):
     def __exit__(self, *exc_info):
         self.close()
 
+    @property
+    def channel_id(self):
+        return self.channel_number
+
 
 class BlockingConnection(blocking_adapter.BlockingConnection):
 
