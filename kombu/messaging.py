@@ -256,7 +256,7 @@ class Consumer(object):
         self.consume()
         return self
 
-    def __exit__(self, exc_type, exc_val, traceback):
+    def __exit__(self, *exc_info):
         self.cancel()
         return False
 
