@@ -280,6 +280,8 @@ class Channel(AbstractChannel):
         self.exchange_types = dict((typ, cls(self))
                     for typ, cls in self.exchange_types.items())
 
+        self.channel_id = self.connection._next_channel_id()
+
     def exchange_declare(self, exchange, type="direct", durable=False,
             auto_delete=False, arguments=None, nowait=False):
         """Declare exchange."""
@@ -565,6 +567,7 @@ class Transport(base.Transport):
         self._avail_channels = []
         self._callbacks = {}
         self.cycle = self.Cycle(self._drain_channel, self.channels, Empty)
+        self._next_channel_id = count(1).next
 
     def create_channel(self, connection):
         try:
