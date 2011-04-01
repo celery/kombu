@@ -83,8 +83,8 @@ class BrokerConnection(object):
     _transport = None
     _logger = None
 
-    def __init__(self, hostname="localhost", userid="guest",
-            password="guest", virtual_host="/", port=None, insist=False,
+    def __init__(self, hostname="localhost", userid=None,
+            password=None, virtual_host="/", port=None, insist=False,
             ssl=False, transport=None, connect_timeout=5, backend_cls=None,
             transport_options={}, **kwargs):
         self.hostname = hostname
