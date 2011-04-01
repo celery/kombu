@@ -66,6 +66,8 @@ class Channel(virtual.Channel):
         if not dbname or dbname == "/":
             dbname = "kombu_default"
         database = getattr(mongoconn, dbname)
+        if conninfo.userid:
+            database.authenticate(conninfo.userid, conninfo.password)
         col = database.messages
         col.ensure_index([("queue", 1)])
         return col
