@@ -258,7 +258,6 @@ class Consumer(object):
 
     def __exit__(self, *exc_info):
         self.cancel()
-        return False
 
     def consume(self, no_ack=None):
         """Register consumer on server.
