@@ -10,6 +10,7 @@ Emulates the AMQ API for non-AMQ transports.
 :license: BSD, see LICENSE for more details.
 
 """
+import base64
 import socket
 
 from itertools import count
@@ -24,6 +25,13 @@ from kombu.utils.finalize import Finalize
 
 from kombu.transport.virtual.scheduling import FairCycle
 from kombu.transport.virtual.exchange import STANDARD_EXCHANGE_TYPES
+
+
+class Base64(object):
+
+    def __init__(self):
+        self.encode = base64.b64encode
+        self.decode = base64.b64decode
 
 
 class NotEquivalentError(Exception):
@@ -169,7 +177,10 @@ class Message(base.Message):
 
     def __init__(self, channel, payload, **kwargs):
         properties = payload["properties"]
-        fields = {"body": payload.get("body"),
+        body = payload.get("body")
+        if body:
+            body = channel.decode_body(body, properties.get("body_encoding"))
+        fields = {"body": body,
                   "delivery_tag": properties["delivery_tag"],
                   "content_type": payload.get("content-type"),
                   "content_encoding": payload.get("content-encoding"),
@@ -264,6 +275,13 @@ class Channel(AbstractChannel):
     #: flag set if the channel supports fanout exchanges.
     supports_fanout = False
 
+    #: Binary <-> ASCII codecs.
+    codecs = {"base64": Base64()}
+
+    #: Default body encoding.
+    #: NOTE: ``transport_options["body_encoding"]`` will override this value.
+    body_encoding = "base64"
+
     #: counter used to generate delivery tags for this channel.
     _next_delivery_tag = count(1).next
 
@@ -281,6 +299,12 @@ class Channel(AbstractChannel):
                     for typ, cls in self.exchange_types.items())
 
         self.channel_id = self.connection._next_channel_id()
+
+        topts = self.connection.client.transport_options
+        try:
+            self.body_encoding = topts["body_encoding"]
+        except KeyError:
+            pass
 
     def exchange_declare(self, exchange, type="direct", durable=False,
             auto_delete=False, arguments=None, nowait=False):
@@ -350,9 +374,12 @@ class Channel(AbstractChannel):
 
     def basic_publish(self, message, exchange, routing_key, **kwargs):
         """Publish message."""
-        message["properties"]["delivery_info"]["exchange"] = exchange
-        message["properties"]["delivery_info"]["routing_key"] = routing_key
-        message["properties"]["delivery_tag"] = self._next_delivery_tag()
+        props = message["properties"]
+        message["body"], props["body_encoding"] = \
+                self.encode_body(message["body"], self.body_encoding)
+        props["delivery_info"]["exchange"] = exchange
+        props["delivery_info"]["routing_key"] = routing_key
+        props["delivery_tag"] = self._next_delivery_tag()
         if self.typeof(exchange).type == "fanout" and self.supports_fanout:
             self._put_fanout(exchange, message, **kwargs)
         else:
@@ -497,6 +524,16 @@ class Channel(AbstractChannel):
         if self._cycle is not None:
             self._cycle.close()
             self._cycle = None
+
+    def encode_body(self, body, encoding=None):
+        if encoding:
+            return self.codecs.get(encoding).encode(body), encoding
+        return body, encoding
+
+    def decode_body(self, body, encoding=None):
+        if encoding:
+            return self.codecs.get(encoding).decode(body)
+        return body
 
     def _reset_cycle(self):
         self._cycle = FairCycle(self._get, self._active_queues, Empty)
