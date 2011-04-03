@@ -12,3 +12,6 @@ include setup.cfg
 recursive-include contrib *
 recursive-include docs *
 recursive-include kombu *.py
+recursive-include requirements *.txt
+recursive-include funtests *.py setup.cfg
+recursive-include examples *.py
