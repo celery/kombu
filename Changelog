@@ -2,6 +2,89 @@
  Change history
 ================
 
+.. _version-1.0.8:
+
+1.1.0
+=====
+
+.. _v110-important:
+
+Important Notes
+---------------
+
+* Virtual transports: Message body is now base64 encoded by default
+  (Issue #27).
+
+    This should solve problems sending binary data with virtual
+    transports.
+
+    Message compatibility is handled by adding a ``body_encoding``
+    property, so messages sent by older version can be received
+    with this version. However -- If you are accessing the messages
+    directly, not using Kombu, then you have to respect
+    the ``body_encoding`` property.
+
+    If you need to disable base64 encoding then you can do so
+    via the transport options::
+
+        BrokerConnection(transport="...",
+                         transport_options={"body_encoding": None})
+
+    **For transport authors**:
+
+        You don't have to change anything in your custom transports,
+        as this is handled automatically by the base class.
+
+        If you want to use a different encoder you can do so
+        by adding a key to ``Channel.codecs``, and setting
+        ``Channel.body_encoding`` to that key.
+
+        The codecs must have two methods/function attributes:
+            ``encode(data)`` and ``decode(data)``.
+
+* ConnectionPool/ChannelPool/Resource: Setting ``limit=None`` (or 0)
+  now disables pool semantics, and will establish and close
+  the resource whenever acquired or released.
+
+* ConnectionPool/ChannelPool/Resource: Is now using a LIFO queue
+  instead of the previous FIFO behavior.
+
+    This means that the last resource released will be the one
+    acquired next.  I.e. if only a single thread is using the pool
+    this means only a single connection will ever be used.
+
+* BrokerConnection: Cloned connections did not inherit transport_options
+  (``__copy__``).
+
+* contrib/requirements is now located in the top directory
+  of the distribution.
+
+* MongoDB: Now supports authentication using the ``userid`` and ``password``
+  arguments to :class:`BrokerConnection` (Issue #30).
+
+* BrokerConnection: Default autentication credentials are now delegated to
+  the individual transports.
+ 
+    This means that the ``userid`` and ``password`` arguments to
+    BrokerConnection is no longer *guest/guest* by default.
+
+    The amqplib and pika transports will still have the default
+    credentials.
+
+* :meth:`Consumer.__exit__` did not have the correct signature (Issue #32).
+
+* Channel objects now have a ``channel_id`` attribute.
+
+* MongoDB: Version sniffing broke with development versions of
+	mongod (Issue #29).
+
+* New environment variable :envvar:`KOMBU_LOG_CONNECTION` will now emit debug
+  log messages for connection related actions.
+
+  :envvar:`KOMBU_LOG_DEBUG` will also enable :envvar:`KOMBU_LOG_CONNECTION`.
+
+.. _version-1.0.7:
+
 1.0.7
 =====
 :release-date: 2011-03-28 05:45 P.M CEST
@@ -38,6 +121,8 @@
 
 * Pika: ``drain_events`` raised :exc:`socket.timeout` even if no timeout
   set (Issue #8).
+
+.. version-1.0.6:
 
 1.0.6
 =====
@@ -76,6 +161,8 @@
         [Kombu channel:1] queue_declare('myq', passive=True)
         (u'myq', 0, 1)
 
+.. _version-1.0.5:
+
 1.0.5
 =====
 :release-date: 2011-03-17 04:00 P.M CET
@@ -96,6 +183,8 @@
 * Virtual Transports: ``basic.cancel`` should not try to remove unknown
   consumer tag.
 
+.. _version-1.0.4:
+
 1.0.4
 =====
 :release-date: 2011-02-28 04:00 P.M CET
@@ -107,6 +196,8 @@
 
     Users of django-kombu should upgrade to django-kombu v0.9.2.
 
+.. _version-1.0.3:
+
 1.0.3
 =====
 :release-date: 2011-02-12 04:00 P.M CET
@@ -117,6 +208,8 @@
 
 * Copyright headers updated to include 2011.
 
+.. _version-1.0.2:
+
 1.0.2
 =====
 :release-date: 2011-01-31 10:45 P.M CET
@@ -124,17 +217,23 @@
 * amqplib: Message properties were not set properly.
 * Ghettoq backend names are now automatically translated to the new names.
 
+.. _version-1.0.1:
+
 1.0.1
 =====
 :release-date: 2011-01-28 12:00 P.M CET
 
 * Redis: Now works with Linux (epoll)
 
+.. _version-1.0.0:
+
 1.0.0
 =====
 :release-date: 2011-01-27 12:00 P.M CET
 
 * Initial release
+
+.. _version-0.1.0:
 
 0.1.0
 =====
