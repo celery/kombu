@@ -2,7 +2,7 @@
  Change history
 ================
 
-.. _version-1.0.8:
+.. _version-1.1.0:
 
 1.1.0
 =====
@@ -19,9 +19,9 @@ Important Notes
     transports.
 
     Message compatibility is handled by adding a ``body_encoding``
-    property, so messages sent by older version can be received
-    with this version. However -- If you are accessing the messages
-    directly, not using Kombu, then you have to respect
+    property, so messages sent by older versions is compatible
+	with this release.  However -- If you are accessing the messages
+    directly not using Kombu, then you have to respect
     the ``body_encoding`` property.
 
     If you need to disable base64 encoding then you can do so
@@ -35,12 +35,12 @@ Important Notes
         You don't have to change anything in your custom transports,
         as this is handled automatically by the base class.
 
-        If you want to use a different encoder you can do so
-        by adding a key to ``Channel.codecs``, and setting
-        ``Channel.body_encoding`` to that key.
+        If you want to use a different encoder you can do so by adding
+		a key to ``Channel.codecs``.  Default encoding is specified
+		by the ``Channel.body_encoding`` attribute.
 
-        The codecs must have two methods/function attributes:
-            ``encode(data)`` and ``decode(data)``.
+        A new codec must provide two methods: ``encode(data)`` and
+		``decode(data)``.
 
 * ConnectionPool/ChannelPool/Resource: Setting ``limit=None`` (or 0)
   now disables pool semantics, and will establish and close
