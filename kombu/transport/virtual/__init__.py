@@ -191,8 +191,11 @@ class Message(base.Message):
         super(Message, self).__init__(channel, **dict(kwargs, **fields))
 
     def serializable(self):
-        return {"body": self.body,
-                "properties": self.properties,
+        props = self.properties
+        body, _ = self.channel.encode_body(self.body,
+                                           props.get("body_encoding"))
+        return {"body": body,
+                "properties": props,
                 "content-type": self.content_type,
                 "content-encoding": self.content_encoding,
                 "headers": self.headers}
