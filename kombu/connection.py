@@ -87,7 +87,7 @@ class BrokerConnection(object):
     def __init__(self, hostname="localhost", userid=None,
             password=None, virtual_host="/", port=None, insist=False,
             ssl=False, transport=None, connect_timeout=5, backend_cls=None,
-            transport_options={}, **kwargs):
+            transport_options=None, **kwargs):
         self.hostname = hostname
         self.userid = userid
         self.password = password
@@ -98,7 +98,11 @@ class BrokerConnection(object):
         self.ssl = ssl
         # backend_cls argument will be removed shortly.
         self.transport_cls = transport or backend_cls
+
+        if transport_options is None:
+            transport_options = {}
         self.transport_options = transport_options
+
         if _LOG_CONNECTION:
             from kombu.utils.log import get_logger
             self._logger = get_logger("kombu.connection")
@@ -270,6 +274,7 @@ class BrokerConnection(object):
                             ("insist", self.insist),
                             ("ssl", self.ssl),
                             ("transport", transport_cls),
+                            ("transport_options", self.transport_options),
                             ("connect_timeout", self.connect_timeout)))
 
     def __hash__(self):
