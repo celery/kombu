@@ -20,7 +20,7 @@ Important Notes
 
     Message compatibility is handled by adding a ``body_encoding``
     property, so messages sent by older versions is compatible
-	with this release.  However -- If you are accessing the messages
+    with this release.  However -- If you are accessing the messages
     directly not using Kombu, then you have to respect
     the ``body_encoding`` property.
 
@@ -36,11 +36,11 @@ Important Notes
         as this is handled automatically by the base class.
 
         If you want to use a different encoder you can do so by adding
-		a key to ``Channel.codecs``.  Default encoding is specified
-		by the ``Channel.body_encoding`` attribute.
+        a key to ``Channel.codecs``.  Default encoding is specified
+        by the ``Channel.body_encoding`` attribute.
 
         A new codec must provide two methods: ``encode(data)`` and
-		``decode(data)``.
+        ``decode(data)``.
 
 * ConnectionPool/ChannelPool/Resource: Setting ``limit=None`` (or 0)
   now disables pool semantics, and will establish and close
