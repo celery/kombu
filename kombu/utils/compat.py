@@ -249,6 +249,7 @@ except ImportError:
 ############## queue.LifoQueue ##############################################
 from Queue import Queue
 
+
 class LifoQueue(Queue):
 
     def _init(self, maxsize):
