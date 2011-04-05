@@ -245,3 +245,20 @@ try:
     from collections import OrderedDict
 except ImportError:
     OrderedDict = CompatOrderedDict
+
+############## queue.LifoQueue ##############################################
+from Queue import Queue
+
+class LifoQueue(Queue):
+
+    def _init(self, maxsize):
+        self.queue = []
+
+    def _qsize(self, len=len):
+        return len(self.queue)
+
+    def _put(self, item):
+        self.queue.append(item)
+
+    def _get(self):
+        return self.queue.pop()

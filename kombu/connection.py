@@ -14,12 +14,12 @@ import socket
 
 from copy import copy
 from itertools import count
-from Queue import Empty, LifoQueue as _LifoQueue
+from Queue import Empty
 
 from kombu import exceptions
 from kombu.transport import get_transport_cls
 from kombu.utils import retry_over_time
-from kombu.utils.compat import OrderedDict
+from kombu.utils.compat import OrderedDict, LifoQueue as _LifoQueue
 from kombu.utils.functional import wraps
 
 _LOG_CONNECTION = os.environ.get("KOMBU_LOG_CONNECTION", False)
