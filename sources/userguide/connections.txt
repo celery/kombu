@@ -37,5 +37,3 @@ the redis database number.
 
 See the :class:`~kombu.connection.BrokerConnection` reference documentation
 for more information and a full list of the arguments supported.
-
-Specifying a 

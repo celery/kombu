@@ -6,13 +6,13 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Change history &mdash; Kombu v1.0.6 documentation</title>
+    <title>Change history &mdash; Kombu v1.1.0 documentation</title>
     <link rel="stylesheet" href="static/celery.css" type="text/css" />
     <link rel="stylesheet" href="static/pygments.css" type="text/css" />
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '',
-        VERSION:     '1.0.6',
+        VERSION:     '1.1.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -21,7 +21,7 @@
     <script type="text/javascript" src="static/jquery.js"></script>
     <script type="text/javascript" src="static/underscore.js"></script>
     <script type="text/javascript" src="static/doctools.js"></script>
-    <link rel="top" title="Kombu v1.0.6 documentation" href="index.html" />
+    <link rel="top" title="Kombu v1.1.0 documentation" href="index.html" />
     <link rel="prev" title="Finalize - kombu.utils.finalize" href="reference/kombu.utils.finalize.html" /> 
   </head>
   <body>
@@ -37,7 +37,7 @@
         <li class="right" >
           <a href="reference/kombu.utils.finalize.html" title="Finalize - kombu.utils.finalize"
              accesskey="P">previous</a> |</li>
-        <li><a href="index.html">Kombu v1.0.6 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Kombu v1.1.0 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -48,13 +48,152 @@
             
   <div class="section" id="change-history">
 <h1>Change history<a class="headerlink" href="#change-history" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="id1">
-<h2>1.0.6<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="version-1-1-0">
+<span id="id1"></span><h2>1.1.0<a class="headerlink" href="#version-1-1-0" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">release-date:</th><td class="field-body">2011-03-22 16:00 P.M CET</td>
+<tr class="field"><th class="field-name">release-date:</th><td class="field-body">2011-04-05 01:05 P.M CEST</td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="important-notes">
+<span id="v110-important"></span><h3>Important Notes<a class="headerlink" href="#important-notes" title="Permalink to this headline">¶</a></h3>
+<ul>
+<li><p class="first">Virtual transports: Message body is now base64 encoded by default
+(Issue #27).</p>
+<blockquote>
+<div><p>This should solve problems sending binary data with virtual
+transports.</p>
+<p>Message compatibility is handled by adding a <tt class="docutils literal"><span class="pre">body_encoding</span></tt>
+property, so messages sent by older versions is compatible
+with this release.  However &#8211; If you are accessing the messages
+directly not using Kombu, then you have to respect
+the <tt class="docutils literal"><span class="pre">body_encoding</span></tt> property.</p>
+<p>If you need to disable base64 encoding then you can do so
+via the transport options:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">BrokerConnection</span><span class="p">(</span><span class="n">transport</span><span class="o">=</span><span class="s">&quot;...&quot;</span><span class="p">,</span>
+                 <span class="n">transport_options</span><span class="o">=</span><span class="p">{</span><span class="s">&quot;body_encoding&quot;</span><span class="p">:</span> <span class="bp">None</span><span class="p">})</span>
+</pre></div>
+</div>
+<p><strong>For transport authors</strong>:</p>
+<blockquote>
+<div><p>You don&#8217;t have to change anything in your custom transports,
+as this is handled automatically by the base class.</p>
+<p>If you want to use a different encoder you can do so by adding
+a key to <tt class="docutils literal"><span class="pre">Channel.codecs</span></tt>.  Default encoding is specified
+by the <tt class="docutils literal"><span class="pre">Channel.body_encoding</span></tt> attribute.</p>
+<p>A new codec must provide two methods: <tt class="docutils literal"><span class="pre">encode(data)</span></tt> and
+<tt class="docutils literal"><span class="pre">decode(data)</span></tt>.</p>
+</div></blockquote>
+</div></blockquote>
+</li>
+<li><p class="first">ConnectionPool/ChannelPool/Resource: Setting <tt class="docutils literal"><span class="pre">limit=None</span></tt> (or 0)
+now disables pool semantics, and will establish and close
+the resource whenever acquired or released.</p>
+</li>
+<li><p class="first">ConnectionPool/ChannelPool/Resource: Is now using a LIFO queue
+instead of the previous FIFO behavior.</p>
+<blockquote>
+<div><p>This means that the last resource released will be the one
+acquired next.  I.e. if only a single thread is using the pool
+this means only a single connection will ever be used.</p>
+</div></blockquote>
+</li>
+<li><p class="first">BrokerConnection: Cloned connections did not inherit transport_options
+(<tt class="docutils literal"><span class="pre">__copy__</span></tt>).</p>
+</li>
+<li><p class="first">contrib/requirements is now located in the top directory
+of the distribution.</p>
+</li>
+<li><p class="first">MongoDB: Now supports authentication using the <tt class="docutils literal"><span class="pre">userid</span></tt> and <tt class="docutils literal"><span class="pre">password</span></tt>
+arguments to <tt class="xref py py-class docutils literal"><span class="pre">BrokerConnection</span></tt> (Issue #30).</p>
+</li>
+<li><p class="first">BrokerConnection: Default autentication credentials are now delegated to
+the individual transports.</p>
+<blockquote>
+<div><p>This means that the <tt class="docutils literal"><span class="pre">userid</span></tt> and <tt class="docutils literal"><span class="pre">password</span></tt> arguments to
+BrokerConnection is no longer <em>guest/guest</em> by default.</p>
+<p>The amqplib and pika transports will still have the default
+credentials.</p>
+</div></blockquote>
+</li>
+<li><p class="first"><tt class="xref py py-meth docutils literal"><span class="pre">Consumer.__exit__()</span></tt> did not have the correct signature (Issue #32).</p>
+</li>
+<li><p class="first">Channel objects now have a <tt class="docutils literal"><span class="pre">channel_id</span></tt> attribute.</p>
+</li>
+<li><dl class="first docutils">
+<dt>MongoDB: Version sniffing broke with development versions of</dt>
+<dd><p class="first last">mongod (Issue #29).</p>
+</dd>
+</dl>
+</li>
+<li><p class="first">New environment variable <span class="target" id="index-0"></span><tt class="xref std std-envvar docutils literal"><span class="pre">KOMBU_LOG_CONNECTION</span></tt> will now emit debug
+log messages for connection related actions.</p>
+<p><span class="target" id="index-1"></span><tt class="xref std std-envvar docutils literal"><span class="pre">KOMBU_LOG_DEBUG</span></tt> will also enable <span class="target" id="index-2"></span><tt class="xref std std-envvar docutils literal"><span class="pre">KOMBU_LOG_CONNECTION</span></tt>.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="version-1-0-7">
+<span id="id2"></span><h2>1.0.7<a class="headerlink" href="#version-1-0-7" title="Permalink to this headline">¶</a></h2>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">release-date:</th><td class="field-body">2011-03-28 05:45 P.M CEST</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><p class="first">Now depends on anyjson 0.3.1</p>
+<blockquote>
+<div><p>cjson is no longer a recommended json implementation, and anyjson
+will now emit a deprecation warning if used.</p>
+</div></blockquote>
+</li>
+<li><p class="first">Please note that the Pika backend only works with version 0.5.2.</p>
+<blockquote>
+<div><p>The latest version (0.9.x) drastically changed API, and it is not
+compatible yet.</p>
+</div></blockquote>
+</li>
+<li><p class="first">on_decode_error is now called for exceptions in message_to_python
+(Issue #24).</p>
+</li>
+<li><p class="first">Redis: did not respect QoS settings.</p>
+</li>
+<li><p class="first">Redis: Creating a connection now ensures the connection is established.</p>
+<blockquote>
+<div><p>This means <tt class="docutils literal"><span class="pre">BrokerConnection.ensure_connection</span></tt> works properly with
+Redis.</p>
+</div></blockquote>
+</li>
+<li><p class="first">consumer_tag argument to <tt class="docutils literal"><span class="pre">Queue.consume</span></tt> can&#8217;t be <tt class="xref py py-const xref docutils literal"><span class="pre">None</span></tt>
+(Issue #21).</p>
+<blockquote>
+<div><p>A None value is now automatically converted to empty string.
+An empty string will make the server generate a unique tag.</p>
+</div></blockquote>
+</li>
+<li><p class="first">BrokerConnection now supports a <tt class="docutils literal"><span class="pre">transport_options</span></tt> argument.</p>
+<blockquote>
+<div><p>This can be used to pass additional arguments to transports.</p>
+</div></blockquote>
+</li>
+<li><p class="first">Pika: <tt class="docutils literal"><span class="pre">drain_events</span></tt> raised <tt class="xref py py-exc docutils literal"><span class="pre">socket.timeout</span></tt> even if no timeout
+set (Issue #8).</p>
+</li>
+</ul>
+</div>
+<div class="section" id="id3">
+<h2>1.0.6<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">release-date:</th><td class="field-body">2011-03-22 04:00 P.M CET</td>
 </tr>
 </tbody>
 </table>
@@ -66,14 +205,14 @@ transport.</p>
 <li><p class="first">Redis: The redis-py <tt class="xref py py-exc docutils literal"><span class="pre">InvalidData</span></tt> exception suddenly changed name to
 <tt class="xref py py-exc docutils literal"><span class="pre">DataError</span></tt>.</p>
 </li>
-<li><p class="first">The <span class="target" id="index-0"></span><tt class="xref std std-envvar docutils literal"><span class="pre">KOMBU_LOG_DEBUG</span></tt> environment variable can now be set to log all
+<li><p class="first">The <span class="target" id="index-3"></span><tt class="xref std std-envvar docutils literal"><span class="pre">KOMBU_LOG_DEBUG</span></tt> environment variable can now be set to log all
 channel method calls.</p>
 <p>Support for the following environment variables have been added:</p>
 <blockquote>
-<ul class="simple">
-<li><span class="target" id="index-1"></span><tt class="xref std std-envvar docutils literal"><span class="pre">KOMBU_LOG_CHANNEL</span></tt> will wrap channels in an object that
+<div><ul class="simple">
+<li><span class="target" id="index-4"></span><tt class="xref std std-envvar docutils literal"><span class="pre">KOMBU_LOG_CHANNEL</span></tt> will wrap channels in an object that
 logs every method call.</li>
-<li><span class="target" id="index-2"></span><tt class="xref std std-envvar docutils literal"><span class="pre">KOMBU_LOG_DEBUG</span></tt> both enables channel logging and configures the
+<li><span class="target" id="index-5"></span><tt class="xref std std-envvar docutils literal"><span class="pre">KOMBU_LOG_DEBUG</span></tt> both enables channel logging and configures the
 root logger to emit messages to standard error.</li>
 </ul>
 <p><strong>Example Usage</strong>:</p>
@@ -90,17 +229,17 @@ Channel open
 [Kombu channel:1] queue_declare('myq', passive=True)
 (u'myq', 0, 1)</pre>
 </div>
-</blockquote>
+</div></blockquote>
 </li>
 </ul>
 </div>
-<div class="section" id="id2">
-<h2>1.0.5<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="version-1-0-5">
+<span id="id4"></span><h2>1.0.5<a class="headerlink" href="#version-1-0-5" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">release-date:</th><td class="field-body">2011-03-17 16:00 P.M CET</td>
+<tr class="field"><th class="field-name">release-date:</th><td class="field-body">2011-03-17 04:00 P.M CET</td>
 </tr>
 </tbody>
 </table>
@@ -110,10 +249,10 @@ affected (redis, mongodb, memory, django, sqlalchemy, couchdb, beanstalk).</p>
 </li>
 <li><p class="first">Virtual Transports: Fixed potential race condition when acking messages.</p>
 <blockquote>
-<p>If you have been affected by this, the error would show itself as an
+<div><p>If you have been affected by this, the error would show itself as an
 exception raised by the OrderedDict implementation. (<tt class="docutils literal"><span class="pre">object</span> <span class="pre">no</span> <span class="pre">longer</span>
 <span class="pre">exists</span></tt>).</p>
-</blockquote>
+</div></blockquote>
 </li>
 <li><p class="first">MongoDB transport requires the <tt class="docutils literal"><span class="pre">findandmodify</span></tt> command only available in
 MongoDB 1.3+, so now raises an exception if connected to an incompatible
@@ -124,33 +263,33 @@ consumer tag.</p>
 </li>
 </ul>
 </div>
-<div class="section" id="id3">
-<h2>1.0.4<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="version-1-0-4">
+<span id="id5"></span><h2>1.0.4<a class="headerlink" href="#version-1-0-4" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">release-date:</th><td class="field-body">2011-02-28 16:00 P.M CET</td>
+<tr class="field"><th class="field-name">release-date:</th><td class="field-body">2011-02-28 04:00 P.M CET</td>
 </tr>
 </tbody>
 </table>
 <ul>
 <li><p class="first">Added Transport.polling_interval</p>
 <blockquote>
-<p>Used by django-kombu to increase the time to sleep between SELECTs when
+<div><p>Used by django-kombu to increase the time to sleep between SELECTs when
 there are no messages in the queue.</p>
 <p>Users of django-kombu should upgrade to django-kombu v0.9.2.</p>
-</blockquote>
+</div></blockquote>
 </li>
 </ul>
 </div>
-<div class="section" id="id4">
-<h2>1.0.3<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="version-1-0-3">
+<span id="id6"></span><h2>1.0.3<a class="headerlink" href="#version-1-0-3" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">release-date:</th><td class="field-body">2011-02-12 16:00 P.M CET</td>
+<tr class="field"><th class="field-name">release-date:</th><td class="field-body">2011-02-12 04:00 P.M CET</td>
 </tr>
 </tbody>
 </table>
@@ -160,8 +299,8 @@ there are no messages in the queue.</p>
 <li>Copyright headers updated to include 2011.</li>
 </ul>
 </div>
-<div class="section" id="id5">
-<h2>1.0.2<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="version-1-0-2">
+<span id="id7"></span><h2>1.0.2<a class="headerlink" href="#version-1-0-2" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -175,8 +314,8 @@ there are no messages in the queue.</p>
 <li>Ghettoq backend names are now automatically translated to the new names.</li>
 </ul>
 </div>
-<div class="section" id="id6">
-<h2>1.0.1<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="version-1-0-1">
+<span id="id8"></span><h2>1.0.1<a class="headerlink" href="#version-1-0-1" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -189,8 +328,8 @@ there are no messages in the queue.</p>
 <li>Redis: Now works with Linux (epoll)</li>
 </ul>
 </div>
-<div class="section" id="id7">
-<h2>1.0.0<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="version-1-0-0">
+<span id="id9"></span><h2>1.0.0<a class="headerlink" href="#version-1-0-0" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -203,13 +342,13 @@ there are no messages in the queue.</p>
 <li>Initial release</li>
 </ul>
 </div>
-<div class="section" id="id8">
-<h2>0.1.0<a class="headerlink" href="#id8" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="version-0-1-0">
+<span id="id10"></span><h2>0.1.0<a class="headerlink" href="#version-0-1-0" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">release-date:</th><td class="field-body">2010-07-22 4:20 P.M CET</td>
+<tr class="field"><th class="field-name">release-date:</th><td class="field-body">2010-07-22 04:20 P.M CET</td>
 </tr>
 </tbody>
 </table>
@@ -230,14 +369,19 @@ there are no messages in the queue.</p>
   <h3><a href="index.html">Table Of Contents</a></h3>
   <ul>
 <li><a class="reference internal" href="#">Change history</a><ul>
-<li><a class="reference internal" href="#id1">1.0.6</a></li>
-<li><a class="reference internal" href="#id2">1.0.5</a></li>
-<li><a class="reference internal" href="#id3">1.0.4</a></li>
-<li><a class="reference internal" href="#id4">1.0.3</a></li>
-<li><a class="reference internal" href="#id5">1.0.2</a></li>
-<li><a class="reference internal" href="#id6">1.0.1</a></li>
-<li><a class="reference internal" href="#id7">1.0.0</a></li>
-<li><a class="reference internal" href="#id8">0.1.0</a></li>
+<li><a class="reference internal" href="#version-1-1-0">1.1.0</a><ul>
+<li><a class="reference internal" href="#important-notes">Important Notes</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#version-1-0-7">1.0.7</a></li>
+<li><a class="reference internal" href="#id3">1.0.6</a></li>
+<li><a class="reference internal" href="#version-1-0-5">1.0.5</a></li>
+<li><a class="reference internal" href="#version-1-0-4">1.0.4</a></li>
+<li><a class="reference internal" href="#version-1-0-3">1.0.3</a></li>
+<li><a class="reference internal" href="#version-1-0-2">1.0.2</a></li>
+<li><a class="reference internal" href="#version-1-0-1">1.0.1</a></li>
+<li><a class="reference internal" href="#version-1-0-0">1.0.0</a></li>
+<li><a class="reference internal" href="#version-0-1-0">0.1.0</a></li>
 </ul>
 </li>
 </ul>
@@ -279,12 +423,12 @@ there are no messages in the queue.</p>
         <li class="right" >
           <a href="reference/kombu.utils.finalize.html" title="Finalize - kombu.utils.finalize"
              >previous</a> |</li>
-        <li><a href="index.html">Kombu v1.0.6 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Kombu v1.1.0 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2009-2011, Ask Solem.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.4.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.7.
     </div>
   </body>
 </html>
