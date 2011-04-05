@@ -94,7 +94,7 @@ setup(
     ],
     tests_require=tests_require,
     classifiers=[
-        "Development Status :: 4 - Beta",
+        "Development Status :: 5 - Production/Stable",
         "Framework :: Django",
         "Operating System :: OS Independent",
         "Programming Language :: Python",
@@ -108,6 +108,7 @@ setup(
         "Intended Audience :: Developers",
         "Topic :: Communications",
         "Topic :: System :: Distributed Computing",
+        "Topic :: System :: Networking",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
     long_description=long_description,
