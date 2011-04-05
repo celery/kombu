@@ -8,8 +8,9 @@
 =====
 :release-date: 2011-04-05 15:51 P.M CEST
 
-* 1.1.0 broke Python 2.4 and 2.5 compatibility by using
-  LifoQueue.
+* 1.1.0 started using ``Queue.LifoQueue`` which is only available
+  in Python 2.6+ (Issue #33).  We now ship with our own LifoQueue.
+
 
 .. _version-1.1.0:
 
