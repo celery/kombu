@@ -22,3 +22,7 @@ queue = connection.SimpleQueue("kombu_demo")
 message = queue.get(block=True, timeout=10)
 message.ack()
 print(message.payload)
+
+#: Always remember to close connections and channels.
+queue.close()
+connection.close()

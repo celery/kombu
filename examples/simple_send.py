@@ -25,3 +25,7 @@ connection = BrokerConnection(hostname="localhost",
 #: name, exchange name and routing key.
 queue = connection.SimpleQueue("kombu_demo")
 queue.put({"hello": "world"}, serializer="json", compression="zlib")
+
+# Always remember to close channels and connections.
+queue.close()
+connection.close()
