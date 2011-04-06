@@ -2,6 +2,21 @@
  Change history
 ================
 
+.. _version-1.1.2:
+
+1.1.2
+=====
+:release-date: 2011-04-06 16:00 P.M CEST
+
+* Redis: Fixes serious issue where messages could be lost.
+
+	The issue could happen if the message exceeded a certain number
+	of kilobytes in size.
+
+	It is recommended that all users of the Redis transport should
+	upgrade to this version, even if not currently experiencing any
+	issues.
+
 .. _version-1.1.1:
 
 1.1.1
