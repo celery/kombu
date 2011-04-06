@@ -62,7 +62,6 @@ class MultiChannelPoller(object):
         if client.connection._sock is None:   # not connected yet.
             client.connection.connect(client)
         sock = client.connection._sock
-        sock.setblocking(0)
         self._fd_to_chan[sock.fileno()] = (channel, type)
         self._chan_to_sock[(channel, client, type)] = sock
         self._poller.register(sock, self.eventflags)
@@ -161,7 +160,6 @@ class Channel(virtual.Channel):
         c = self.subclient
         if c.connection._sock is None:
             c.connection.connect(c)
-            c.connection._sock.setblocking(0)
         self.subclient.subscribe(keys)
         self._in_listen = True
 
