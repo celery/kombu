@@ -619,9 +619,12 @@ class Transport(base.Transport):
 
     def close_channel(self, channel):
         try:
-            self.channels.remove(channel)
-        except ValueError:
-            pass
+            try:
+                self.channels.remove(channel)
+            except ValueError:
+                pass
+        finally:
+            channel.connection = None
 
     def establish_connection(self):
         self._avail_channels.append(self.create_channel(self))

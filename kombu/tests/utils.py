@@ -1,8 +1,11 @@
 import __builtin__
+import os
 import sys
 import types
 
 from StringIO import StringIO
+
+from nose import SkipTest
 
 from kombu.utils.functional import wraps
 
@@ -89,3 +92,23 @@ def mask_modules(*modnames):
 
         return __inner
     return _inner
+
+
+def skip_if_environ(env_var_name):
+
+    def _wrap_test(fun):
+
+        @wraps(fun)
+        def _skips_if_environ(*args, **kwargs):
+            if os.environ.get(env_var_name):
+                raise SkipTest("SKIP %s: %s set\n" % (
+                    fun.__name__, env_var_name))
+            return fun(*args, **kwargs)
+
+        return _skips_if_environ
+
+    return _wrap_test
+
+
+def skip_if_quick(fun):
+    return skip_if_environ("QUICKTEST")(fun)

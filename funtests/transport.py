@@ -5,11 +5,13 @@ import sys
 import time
 import unittest2 as unittest
 import warnings
+import weakref
 
 from nose import SkipTest
 
 from kombu import BrokerConnection
 from kombu import Producer, Consumer, Exchange, Queue
+from kombu.tests.utils import skip_if_quick
 
 if sys.version_info >= (2, 5):
     from hashlib import sha256 as _digest
@@ -119,6 +121,7 @@ class TransportCase(unittest.TestCase):
     def _digest(self, data):
         return _digest(data).hexdigest()
 
+    @skip_if_quick
     def test_produce__consume_large_messages(self, bytes=1048576, n=10,
             charset=string.punctuation + string.letters + string.digits):
         if not self.verify_alive():
@@ -155,8 +158,6 @@ class TransportCase(unittest.TestCase):
 
         chan1.close()
         self.purge([self.queue.name])
-
-
 
     def P(self, rest):
         return "%s.%s" % (self.prefix, rest)
@@ -213,6 +214,45 @@ class TransportCase(unittest.TestCase):
             time.sleep(0.1)
         self.assertEqual(m.payload, {"basic.get": "this"})
         chan2.close()
+
+    def test_cyclic_reference_transport(self):
+        if not self.verify_alive():
+            return
+
+        def _createref():
+            conn = self.get_connection()
+            conn.transport
+            conn.close()
+            return weakref.ref(conn)
+
+        self.assertIsNone(_createref()())
+
+
+    def test_cyclic_reference_connection(self):
+        if not self.verify_alive():
+            return
+
+        def _createref():
+            conn = self.get_connection()
+            conn.connect()
+            conn.close()
+            return weakref.ref(conn)
+
+        self.assertIsNone(_createref()())
+
+    def test_cyclic_reference_channel(self):
+        if not self.verify_alive():
+            return
+
+        def _createref():
+            conn = self.get_connection()
+            conn.connect()
+            channel = conn.channel()
+            channel.close()
+            conn.close()
+            return weakref.ref(conn)
+
+        self.assertIsNone(_createref()())
 
     def tearDown(self):
         if self.transport and self.connected:

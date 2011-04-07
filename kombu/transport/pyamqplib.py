@@ -178,6 +178,12 @@ class Channel(_Channel):
         """Convert encoded message body back to a Python value."""
         return self.Message(self, raw_message)
 
+    def close(self):
+        try:
+            super(Channel, self).close()
+        finally:
+            self.connection = None
+
 
 class Transport(base.Transport):
     Connection = Connection
@@ -222,6 +228,7 @@ class Transport(base.Transport):
 
     def close_connection(self, connection):
         """Close the AMQP broker connection."""
+        connection.client = None
         connection.close()
 
     def verify_connection(self, connection):

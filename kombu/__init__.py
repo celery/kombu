@@ -14,7 +14,7 @@ if not os.environ.get("KOMBU_NO_EVAL", False):
     from types import ModuleType
 
     all_by_module = {
-            "kombu.connection": ["BrokerConnection"],
+            "kombu.connection": ["BrokerConnection", "Connection"],
             "kombu.entity": ["Exchange", "Queue"],
             "kombu.messaging": ["Consumer", "Producer"],
     }

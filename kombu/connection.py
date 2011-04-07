@@ -147,6 +147,9 @@ class BrokerConnection(object):
                 pass
             self._connection = None
             self._debug("closed")
+        if self._transport:
+            self._transport.client = None
+            self._transport = None
         self._closed = True
 
     def release(self):
@@ -456,6 +459,7 @@ class BrokerConnection(object):
     def channel_errors(self):
         """List of exceptions that may be raised by the channel."""
         return self.transport.channel_errors
+Connection = BrokerConnection
 
 
 class Resource(object):
