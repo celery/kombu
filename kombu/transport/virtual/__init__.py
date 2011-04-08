@@ -523,10 +523,11 @@ class Channel(AbstractChannel):
             self.basic_cancel(consumer)
         if self._qos:
             self._qos.restore_unacked_once()
-        self.connection.close_channel(self)
         if self._cycle is not None:
             self._cycle.close()
             self._cycle = None
+        if self.connection is not None:
+            self.connection.close_channel(self)
 
     def encode_body(self, body, encoding=None):
         if encoding:
