@@ -56,8 +56,6 @@ class Channel(virtual.Channel):
         super(Channel, self).close()
         
     def _open(self):
-        print self.connection
-        print self.connection.client
         conninfo = self.connection.client
         mongoconn = Connection(host=conninfo.hostname, port=conninfo.port)
         dbname = conninfo.virtual_host
