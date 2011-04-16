@@ -63,9 +63,14 @@ class Channel(virtual.Channel):
             timeout = 1
 
         watching = self.client.watching()
+
         [self.client.watch(active)
             for active in queues
                 if active not in watching]
+
+        [self.client.ignore(active)
+            for active in watching
+                if active not in queues]
 
         job = self.client.reserve(timeout=timeout)
         return self._parse_job(job)
