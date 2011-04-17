@@ -189,10 +189,14 @@ class Transport(base.Transport):
     Connection = Connection
 
     default_port = DEFAULT_PORT
+
+    # it's very annoying that amqplib sometimes raises AttributeError
+    # if the connection is lost, but nothing we can do about that here.
     connection_errors = (AMQPConnectionException,
                          socket.error,
                          IOError,
-                         OSError)
+                         OSError,
+                         AttributeError)
     channel_errors = (AMQPChannelException, )
 
     def __init__(self, client, **kwargs):
