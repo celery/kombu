@@ -50,6 +50,17 @@ class MultiChannelPoller(object):
         # poll implementation (epoll/kqueue/select)
         self._poller = eventio.poll()
 
+    def close(self):
+        for fd in self._chan_to_sock.itervalues():
+            try:
+                self._poller.unregister(fd)
+            except KeyError:
+                pass
+        self._channels.clear()
+        self._fd_to_chan.clear()
+        self._chan_to_sock.clear()
+        self._poller = None
+
     def add(self, channel):
         self._channels.add(channel)
 
@@ -91,7 +102,8 @@ class MultiChannelPoller(object):
     def get(self, timeout=None):
         for channel in self._channels:
             if channel.active_queues:           # BRPOP mode?
-                self._register_BRPOP(channel)
+                if channel.qos.can_consume():
+                    self._register_BRPOP(channel)
             if channel.active_fanout_queues:    # LISTEN mode?
                 self._register_LISTEN(channel)
 
@@ -269,16 +281,16 @@ class Channel(virtual.Channel):
         return size
 
     def close(self):
-        # remove from channel poller.
-        self.connection.cycle.discard(self)
+        if not self.closed:
+            # remove from channel poller.
+            self.connection.cycle.discard(self)
 
-        # Close connections
-        for attr in "client", "subclient":
-            try:
-                delattr(self, attr)
-            except (AttributeError, self.ResponseError):
-                pass
-
+            # Close connections
+            for attr in "client", "subclient":
+                try:
+                    delattr(self, attr)
+                except (AttributeError, self.ResponseError):
+                    pass
         super(Channel, self).close()
 
     def _create_client(self):
@@ -342,12 +354,11 @@ class Transport(virtual.Transport):
     interval = 1
     default_port = DEFAULT_PORT
     # poller is global for all Redis BrokerConnection's
-    default_cycle = MultiChannelPoller()
 
     def __init__(self, *args, **kwargs):
         super(Transport, self).__init__(*args, **kwargs)
         self.connection_errors, self.channel_errors = self._get_errors()
-        self.cycle = self.default_cycle
+        self.cycle = MultiChannelPoller()
 
     def _get_errors(self):
         from redis import exceptions
