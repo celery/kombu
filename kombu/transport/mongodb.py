@@ -11,8 +11,9 @@ MongoDB transport.
 """
 from Queue import Empty
 
-from anyjson import serialize, deserialize
+import pymongo
 from pymongo import errors
+from anyjson import serialize, deserialize
 from pymongo.connection import Connection
 
 from kombu.transport import virtual
@@ -32,7 +33,7 @@ class Channel(virtual.Channel):
     def _get(self, queue):
         try:
             msg = self.client.database.command("findandmodify",
-                        "messages", query={"queue": queue}, remove=True)
+                        "messages", query={"queue": queue}, sort={'_id' : pymongo.ASCENDING }, remove=True)
         except errors.OperationFailure, exc:
             if "No matching object found" in exc.args[0]:
                 raise Empty()
