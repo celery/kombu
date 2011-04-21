@@ -282,9 +282,10 @@ class test_Redis(unittest.TestCase):
 
     def test_close_poller_not_active(self):
         c = BrokerConnection(transport=Transport).channel()
+        cycle = c.connection.cycle
         c.client.connection
         c.close()
-        self.assertNotIn(c, c.connection.cycle._channels)
+        self.assertNotIn(c, cycle._channels)
 
     def test_close_ResponseError(self):
         c = BrokerConnection(transport=Transport).channel()

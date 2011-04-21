@@ -342,9 +342,6 @@ class test_Transport(unittest.TestCase):
     def setUp(self):
         self.transport = client().transport
 
-    def test_close_nonexisting_channel(self):
-        self.transport.close_channel("foo")
-
     def test_close_connection(self):
         c1 = self.transport.create_channel(self.transport)
         c2 = self.transport.create_channel(self.transport)
