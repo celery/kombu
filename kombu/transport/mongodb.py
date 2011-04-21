@@ -52,7 +52,8 @@ class Channel(virtual.Channel):
 
     def close(self):
         super(Channel, self).close()
-        self.client.database.connection.end_request()
+        if self._client:
+            self._client.database.connection.end_request()
 
     def _open(self):
         conninfo = self.connection.client
