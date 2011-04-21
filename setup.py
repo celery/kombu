@@ -18,12 +18,10 @@ if sys.version_info < (2, 4):
     raise Exception("Kombu requires Python 2.4 or higher.")
 
 try:
-    from setuptools import setup, Extension, Feature, find_packages
+    from setuptools import setup
 except ImportError:
-    from distutils.core import setup, Extension, find_packages
-    Feature = None
+    from distutils.core import setup  # noqa
 
-from distutils.command.install_data import install_data
 from distutils.command.install import INSTALL_SCHEMES
 
 os.environ["KOMBU_NO_EVAL"] = "yes"
@@ -36,13 +34,6 @@ root_dir = os.path.dirname(__file__)
 if root_dir != '':
     os.chdir(root_dir)
 src_dir = "kombu"
-
-
-def osx_install_data(install_data):
-
-    def finalize_options(self):
-        self.set_undefined_options("install", ("install_lib", "install_dir"))
-        install_data.finalize_options(self)
 
 
 def fullsplit(path, result=None):
@@ -111,5 +102,4 @@ setup(
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
     long_description=long_description,
-    **extra
-)
+    **extra)

@@ -13,7 +13,7 @@ import socket
 try:
     from ssl import SSLError
 except ImportError:
-    class SSLError(Exception):
+    class SSLError(Exception):  # noqa
         pass
 
 from amqplib import client_0_8 as amqp

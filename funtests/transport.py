@@ -16,7 +16,7 @@ from kombu.tests.utils import skip_if_quick
 if sys.version_info >= (2, 5):
     from hashlib import sha256 as _digest
 else:
-    from sha import new as _digest
+    from sha import new as _digest  # noqa
 
 
 def say(msg):
@@ -127,7 +127,7 @@ class TransportCase(unittest.TestCase):
         if not self.verify_alive():
             return
         bytes = min(filter(None, [bytes, self.message_size_limit]))
-        messages = ["".join(random.choice(charset) 
+        messages = ["".join(random.choice(charset)
                         for j in xrange(bytes)) + "--%s" % n
                             for i in xrange(n)]
         digests = []
@@ -226,7 +226,6 @@ class TransportCase(unittest.TestCase):
             return weakref.ref(conn)
 
         self.assertIsNone(_createref()())
-
 
     def test_cyclic_reference_connection(self):
         if not self.verify_alive():

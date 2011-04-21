@@ -8,7 +8,7 @@ class test_compression(unittest.TestCase):
 
     def setUp(self):
         try:
-            import bz2
+            import bz2  # noqa
         except ImportError:
             self.has_bzip2 = False
         else:

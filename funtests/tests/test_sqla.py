@@ -11,6 +11,6 @@ class test_sqla(transport.TransportCase):
 
     def before_connect(self):
         try:
-            import sqlakombu
+            import sqlakombu  # noqa
         except ImportError:
             raise SkipTest("kombu-sqlalchemy not installed")

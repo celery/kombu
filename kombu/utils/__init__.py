@@ -6,7 +6,7 @@ from uuid import UUID, uuid4 as _uuid4, _uuid_generate_random
 try:
     import ctypes
 except ImportError:
-    ctypes = None
+    ctypes = None  # noqa
 
 
 def say(m, *s):
@@ -32,10 +32,11 @@ def gen_unique_id():
 
 
 if sys.version_info >= (3, 0):
+
     def kwdict(kwargs):
         return kwargs
 else:
-    def kwdict(kwargs):
+    def kwdict(kwargs):  # noqa
         """Make sure keyword arguments are not in unicode.
 
         This should be fixed in newer Python versions,

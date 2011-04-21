@@ -1,6 +1,6 @@
-from paver.easy import *
-from paver import doctools
-from paver.setuputils import setup
+from paver.easy import *            # noqa
+from paver import doctools          # noqa
+from paver.setuputils import setup  # noqa
 
 options(
         sphinx=Bunch(builddir=".build"),
@@ -113,6 +113,20 @@ def test(options):
 @cmdopts([
     ("noerror", "E", "Ignore errors"),
 ])
+def flake8(options):
+    noerror = getattr(options, "noerror", False)
+    complexity = getattr(options, "complexity", 22)
+    sh("""flake8 . | perl -mstrict -mwarnings -nle'
+        my $ignore = m/too complex \((\d+)\)/ && $1 le %s;
+        if (! $ignore) { print STDERR; our $FOUND_FLAKE = 1 }
+    }{exit $FOUND_FLAKE;
+        '""" % (complexity, ), ignore_error=noerror)
+
+
+@task
+@cmdopts([
+    ("noerror", "E", "Ignore errors"),
+])
 def pep8(options):
     noerror = getattr(options, "noerror", False)
     return sh("""find kombu -name "*.py" | xargs pep8 | perl -nle'\
@@ -137,7 +151,7 @@ def gitcleanforce(options):
 
 
 @task
-@needs("pep8", "autodoc", "verifyindex", "test", "gitclean")
+@needs("flake8", "autodoc", "verifyindex", "test", "gitclean")
 def releaseok(options):
     pass
 

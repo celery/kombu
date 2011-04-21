@@ -10,13 +10,12 @@ Pika transport.
 """
 import socket
 
-import pika
+from pika import channel  # must be here to raise importerror for below.
 try:
     from pika import asyncore_adapter
 except ImportError:
     raise ImportError("Kombu only works with pika version 0.5.2")
 from pika import blocking_adapter
-from pika import channel
 from pika import connection
 from pika import exceptions
 from pika.spec import Basic, BasicProperties

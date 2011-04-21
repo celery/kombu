@@ -12,6 +12,7 @@ from kombu import BrokerConnection
 
 eventlet.monkey_patch()
 
+
 def send_many(n):
 
     #: Create connection
@@ -22,7 +23,6 @@ def send_many(n):
                                   userid="guest",
                                   password="guest",
                                   virtual_host="/")
-
 
     #: SimpleQueue mimics the interface of the Python Queue module.
     #: First argument can either be a queue name or a kombu.Queue object.

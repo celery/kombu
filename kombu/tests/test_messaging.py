@@ -6,7 +6,6 @@ from kombu.connection import BrokerConnection
 from kombu.exceptions import MessageStateError
 from kombu.messaging import Consumer, Producer
 from kombu.entity import Exchange, Queue
-from kombu.serialization import bytes_type
 
 from kombu.tests.mocks import Transport
 

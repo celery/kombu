@@ -15,7 +15,7 @@ class test_django(transport.TransportCase):
         @redirect_stdouts
         def setup_django(stdout, stderr):
             try:
-                import djkombu
+                import djkombu  # noqa
             except ImportError:
                 raise SkipTest("django-kombu not installed")
             from django.conf import settings

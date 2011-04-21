@@ -4,7 +4,7 @@ import socket
 try:
     from eventlet.patcher import is_monkey_patched as is_eventlet
 except ImportError:
-    is_eventlet = lambda module: False
+    is_eventlet = lambda module: False  # noqa
 
 POLL_READ = 0x001
 POLL_ERR = 0x008 | 0x010 | 0x2000

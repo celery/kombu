@@ -15,7 +15,7 @@ import pickle as pypickle
 try:
     import cPickle as cpickle
 except ImportError:
-    cpickle = None
+    cpickle = None  # noqa
 
 
 if sys.platform.startswith("java"):

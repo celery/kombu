@@ -6,7 +6,7 @@ try:
     all([True])
     all = all
 except NameError:
-    def all(iterable):
+    def all(iterable):  # noqa
         for item in iterable:
             if not item:
                 return False
@@ -18,7 +18,7 @@ try:
     any([True])
     any = any
 except NameError:
-    def any(iterable):
+    def any(iterable):  # noqa
         for item in iterable:
             if item:
                 return True
@@ -30,7 +30,7 @@ import weakref
 try:
     from collections import MutableMapping
 except ImportError:
-    from UserDict import DictMixin as MutableMapping
+    from UserDict import DictMixin as MutableMapping  # noqa
 from itertools import imap as _imap
 from operator import eq as _eq
 
@@ -244,7 +244,7 @@ class CompatOrderedDict(dict, MutableMapping):
 try:
     from collections import OrderedDict
 except ImportError:
-    OrderedDict = CompatOrderedDict
+    OrderedDict = CompatOrderedDict  # noqa
 
 ############## queue.LifoQueue ##############################################
 from Queue import Queue

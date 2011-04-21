@@ -27,7 +27,6 @@ def wait_many(timeout=1):
                                   password="guest",
                                   virtual_host="/")
 
-
     #: SimpleQueue mimics the interface of the Python Queue module.
     #: First argument can either be a queue name or a kombu.Queue object.
     #: If a name, then the queue will be declared with the name as the queue

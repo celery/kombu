@@ -5,7 +5,7 @@ from kombu.tests.utils import unittest
 if sys.version_info >= (3, 0):
     from io import StringIO, BytesIO
 else:
-    from StringIO import StringIO, StringIO as BytesIO
+    from StringIO import StringIO, StringIO as BytesIO  # noqa
 
 from kombu import utils
 from kombu.utils.functional import wraps

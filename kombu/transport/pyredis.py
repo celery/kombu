@@ -330,7 +330,7 @@ class Channel(virtual.Channel):
     def client(self):
         return self._create_client()
 
-    @client.deleter
+    @client.deleter     # noqa
     def client(self, client):
         client.connection.disconnect()
 
@@ -338,7 +338,7 @@ class Channel(virtual.Channel):
     def subclient(self):
         return self._create_client()
 
-    @subclient.deleter
+    @subclient.deleter  # noqa
     def subclient(self, client):
         client.connection.disconnect()
 
