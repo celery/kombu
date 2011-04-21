@@ -518,16 +518,17 @@ class Channel(AbstractChannel):
     def close(self):
         """Close channel, cancel all consumers, and requeue unacked
         messages."""
-        self.closed = True
-        for consumer in list(self._consumers):
-            self.basic_cancel(consumer)
-        if self._qos:
-            self._qos.restore_unacked_once()
-        if self._cycle is not None:
-            self._cycle.close()
-            self._cycle = None
-        if self.connection is not None:
-            self.connection.close_channel(self)
+        if not self.closed:
+            self.closed = True
+            for consumer in list(self._consumers):
+                self.basic_cancel(consumer)
+            if self._qos:
+                self._qos.restore_unacked_once()
+            if self._cycle is not None:
+                self._cycle.close()
+                self._cycle = None
+            if self.connection is not None:
+                self.connection.close_channel(self)
 
     def encode_body(self, body, encoding=None):
         if encoding:
