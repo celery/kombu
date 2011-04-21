@@ -2,6 +2,32 @@
  Change history
 ================
 
+.. _version-1.1.3:
+
+1.1.3
+=====
+:release-date: 2011-04-21 16:00 P.M CEST
+
+* Redis: Consuming from multiple connections now works with Eventlet.
+
+* Redis: Can now perform channel operations while the channel is in
+  BRPOP/LISTEN mode (Issue #35).
+
+    Also the async BRPOP now times out after 1 second, this means that
+    cancelling consuming from a queue/starting consuming from additional queues
+    has a latency of up to one second (BRPOP does not support subsecond
+    timeouts).
+
+* Virtual: Allow channel objects to be closed multiple times without error.
+
+* amqplib: ``AttributeError`` has been added to the list of known
+  connection related errors (:attr:`Connection.connection_errors`).
+
+* amqplib: Now converts :exc:`SSLError` timeout errors to
+  :exc:`socket.timeout` (http://bugs.python.org/issue10272)
+
+* Ensures cyclic references are destroyed when the connection is closed.
+
 .. _version-1.1.2:
 
 1.1.2
@@ -10,12 +36,12 @@
 
 * Redis: Fixes serious issue where messages could be lost.
 
-	The issue could happen if the message exceeded a certain number
-	of kilobytes in size.
+    The issue could happen if the message exceeded a certain number
+    of kilobytes in size.
 
-	It is recommended that all users of the Redis transport should
-	upgrade to this version, even if not currently experiencing any
-	issues.
+    It is recommended that all users of the Redis transport should
+    upgrade to this version, even if not currently experiencing any
+    issues.
 
 .. _version-1.1.1:
 
