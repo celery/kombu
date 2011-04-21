@@ -10,6 +10,12 @@ amqplib transport.
 """
 import socket
 
+try:
+    from ssl import SSLError
+except ImportError:
+    class SSLError(Exception):
+        pass
+
 from amqplib import client_0_8 as amqp
 from amqplib.client_0_8 import transport
 from amqplib.client_0_8.channel import Channel as _Channel
@@ -83,7 +89,13 @@ class Connection(amqp.Connection):  # pragma: no cover
         prev = sock.gettimeout()
         sock.settimeout(timeout)
         try:
-            return self.method_reader.read_method()
+            try:
+                return self.method_reader.read_method()
+            except SSLError, exc:
+                # http://bugs.python.org/issue10272
+                if "timed out" in str(exc):
+                    raise socket.timeout()
+                raise
         finally:
             sock.settimeout(prev)
 
@@ -100,8 +112,11 @@ class Connection(amqp.Connection):  # pragma: no cover
                     return channel_id, method_sig, args, content
 
         # Nothing queued, need to wait for a method from the peer
-        while True:
-            channel, method_sig, args, content = self.read_timeout(timeout)
+        read_timeout = self.read_timeout
+        channels = self.channels
+        wait = self.wait
+        while 1:
+            channel, method_sig, args, content = read_timeout(timeout)
 
             if (channel in channel_ids) \
             and ((allowed_methods is None) \
@@ -111,9 +126,7 @@ class Connection(amqp.Connection):  # pragma: no cover
 
             # Not the channel and/or method we were looking for. Queue
             # this method for later
-            self.channels[channel].method_queue.append((method_sig,
-                                                        args,
-                                                        content))
+            channels[channel].method_queue.append((method_sig, args, content))
 
             #
             # If we just queued up a method for channel 0 (the Connection
@@ -121,7 +134,7 @@ class Connection(amqp.Connection):  # pragma: no cover
             # error, so deal with it right away.
             #
             if channel == 0:
-                self.wait()
+                wait()
 
     def channel(self, channel_id=None):
         try:
