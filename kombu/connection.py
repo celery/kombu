@@ -87,10 +87,11 @@ class BrokerConnection(object):
     def __init__(self, hostname="localhost", userid=None,
             password=None, virtual_host="/", port=None, insist=False,
             ssl=False, transport=None, connect_timeout=5, backend_cls=None,
-            transport_options=None, **kwargs):
+            transport_options=None, login_method=None, **kwargs):
         self.hostname = hostname
         self.userid = userid
         self.password = password
+        self.login_method = login_method
         self.virtual_host = virtual_host or self.virtual_host
         self.port = port or self.port
         self.insist = insist

@@ -231,11 +231,14 @@ class Transport(base.Transport):
             conninfo.userid = "guest"
         if conninfo.password is None:
             conninfo.password = "guest"
+        if conninfo.login_method is None:
+			conninfo.login_method = "AMQPLAIN"
         if not conninfo.port:
             conninfo.port = self.default_port
         conn = self.Connection(host=conninfo.host,
                                userid=conninfo.userid,
                                password=conninfo.password,
+                               login_method=conninfo.login_method,
                                virtual_host=conninfo.virtual_host,
                                insist=conninfo.insist,
                                ssl=conninfo.ssl,
