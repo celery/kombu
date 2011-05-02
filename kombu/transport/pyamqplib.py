@@ -232,7 +232,7 @@ class Transport(base.Transport):
         if conninfo.password is None:
             conninfo.password = "guest"
         if conninfo.login_method is None:
-			conninfo.login_method = "AMQPLAIN"
+            conninfo.login_method = "AMQPLAIN"
         if not conninfo.port:
             conninfo.port = self.default_port
         conn = self.Connection(host=conninfo.host,
