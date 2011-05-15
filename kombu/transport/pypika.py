@@ -152,7 +152,8 @@ class AsyncoreConnection(asyncore_adapter.AsyncoreConnection):
 class SyncTransport(base.Transport):
     default_port = DEFAULT_PORT
 
-    connection_errors = (exceptions.ConnectionClosed,
+    connection_errors = (socket.error,
+                         exceptions.ConnectionClosed,
                          exceptions.ChannelClosed,
                          exceptions.LoginError,
                          exceptions.NoFreeChannels,

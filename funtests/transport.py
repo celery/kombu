@@ -56,6 +56,9 @@ def consumeN(conn, consumer, n=1, timeout=30):
 class TransportCase(unittest.TestCase):
     transport = None
     prefix = None
+    sep = '.'
+    userid = None
+    password = None
     event_loop_max = 100
     connection_options = {}
 
@@ -86,6 +89,10 @@ class TransportCase(unittest.TestCase):
         map(chan.queue_purge, names)
 
     def get_connection(self, **options):
+        if self.userid:
+            options.setdefault("userid", self.userid)
+        if self.password:
+            options.setdefault("password", self.password)
         return BrokerConnection(transport=self.transport, **options)
 
     def do_connect(self):
@@ -160,7 +167,7 @@ class TransportCase(unittest.TestCase):
         self.purge([self.queue.name])
 
     def P(self, rest):
-        return "%s.%s" % (self.prefix, rest)
+        return "%s%s%s" % (self.prefix, self.sep, rest)
 
     def test_produce__consume_multiple(self):
         if not self.verify_alive():
