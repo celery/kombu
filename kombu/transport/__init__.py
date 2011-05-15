@@ -62,7 +62,6 @@ def _ghettoq(name, new, alias=None):
 
     You should replace %r with simply: %r
         """ % (name, gtransport, this))
-        print("TTT: %r" % ktransport)
         return ktransport
 
     return __inner
@@ -75,6 +74,7 @@ TRANSPORT_ALIASES = {
     "syncpika": "kombu.transport.pypika.SyncTransport",
     "memory": "kombu.transport.memory.Transport",
     "redis": "kombu.transport.pyredis.Transport",
+    "SQS": "kombu.transport.SQS.Transport",
     "beanstalk": "kombu.transport.beanstalk.Transport",
     "mongodb": "kombu.transport.mongodb.Transport",
     "couchdb": "kombu.transport.pycouchdb.Transport",
