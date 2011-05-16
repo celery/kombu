@@ -94,12 +94,10 @@ class Transport(base.Transport):
     def establish_connection(self):
         """Establish connection to the AMQP broker."""
         conninfo = self.client
-        if not conninfo.hostname:
-            raise KeyError("Missing hostname for AMQP connection.")
         if conninfo.userid is None:
-            raise KeyError("Missing user id for AMQP connection.")
+            conninfo.userid = "guest"
         if conninfo.password is None:
-            raise KeyError("Missing password for AMQP connection.")
+            conninfo.password = "guest"
         if not conninfo.port:
             conninfo.port = self.default_port
         conn = self.Connection(host=conninfo.host,
