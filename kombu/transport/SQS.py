@@ -9,9 +9,12 @@ Amazon SQS transport.
 :license: BSD, see LICENSE for more details.
 
 """
+import socket
+
 from Queue import Empty
 
 from anyjson import serialize, deserialize
+from boto import exception
 from boto.sqs.connection import SQSConnection
 from boto.sqs.message import Message
 
@@ -77,5 +80,6 @@ class Transport(virtual.Transport):
 
     interval = 1
     default_port = None
-    connection_errors = ()
-    channel_errors = ()
+    connection_errors = (exception.SQSError,
+                         socket.error)
+    channel_errors = (exception.SQSDecodeError, )
