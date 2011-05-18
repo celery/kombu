@@ -29,7 +29,7 @@ Features
 
     * Virtual transports makes it really easy to add support for non-AMQP
       transports.  There is already built-in support for `Redis`_,
-      `Beanstalk`_, `CouchDB`_, and `MongoDB`_.
+      `Beanstalk`_, `Amazon SQS`, `CouchDB`_, and `MongoDB`_.
 
     * SQLAlchemy and Django ORM transports exists as plug-ins (
       `kombu-sqlalchemy`_ and `django-kombu`_).
@@ -59,6 +59,7 @@ and the `Wikipedia article about AMQP`_.
 .. _`RabbitMQ`: http://www.rabbitmq.com/
 .. _`AMQP`: http://amqp.org
 .. _`Redis`: http://code.google.com/p/redis/
+.. _`Amazon SQS`: http://aws.amazon.com/sqs/
 .. _`MongoDB`: http://www.mongodb.org/
 .. _`CouchDB`: http://couchdb.apache.org/
 .. _`Beanstalk`: http://kr.github.com/beanstalkd/
@@ -84,6 +85,8 @@ Transport Comparison
 | *redis*       | Virtual  | Yes        | Yes[*]_   | Yes (PUB/SUB) |
 +---------------+----------+------------+-----------+---------------+
 | *beanstalk*   | Virtual  | Yes        | Yes[*]_   | No            |
++---------------+----------+------------+-----------+---------------+
+| *SQS*         | Virtual  | Yes        | Yes[*]_   | No
 +---------------+----------+------------+-----------+---------------+
 | *mongodb*     | Virtual  | Yes        | Yes[*]_   | No            |
 +---------------+----------+------------+-----------+---------------+
