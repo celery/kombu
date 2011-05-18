@@ -18,6 +18,7 @@ from boto.sqs.message import Message
 from kombu.transport import virtual
 from kombu.utils import cached_property
 
+
 class Channel(virtual.Channel):
     _client = None
 
