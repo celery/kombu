@@ -1,3 +1,6 @@
+# redis transport
+redis
+
 # MongoDB transport
 pymongo
 
@@ -5,7 +8,7 @@ pymongo
 couchdb
 
 # Pika transport
-pika
+pika==0.5.2
 
 # Beanstalk transport
 beanstalkc
@@ -16,3 +19,6 @@ kombu-sqlalchemy
 # Django ORM transport
 Django
 django-kombu
+
+# SQS transport
+boto
