@@ -61,6 +61,7 @@ class TransportCase(unittest.TestCase):
     password = None
     event_loop_max = 100
     connection_options = {}
+    suppress_disorder_warning = False
 
     connected = False
     skip_test_reason = None
@@ -152,7 +153,7 @@ class TransportCase(unittest.TestCase):
                         for msg in consumeN(self.connection, consumer, n)]
         self.assertEqual(len(received), n)
         ordering = [i for i, _ in received]
-        if ordering != range(n):
+        if ordering != range(n) and not self.suppress_disorder_warning:
             warnings.warn(
                 "%s did not deliver messages in FIFO order: %r" % (
                     self.transport, ordering))

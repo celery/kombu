@@ -10,6 +10,7 @@ Amazon SQS transport.
 
 """
 import socket
+import string
 
 from Queue import Empty
 
@@ -22,11 +23,24 @@ from kombu.transport import virtual
 from kombu.utils import cached_property
 
 
+# dots are replaced by dash, all other punctuation
+# replaced by underscore.
+CHARS_REPLACE = string.punctuation.replace('-', '') \
+                                  .replace('_', '') \
+                                  .replace('.', '')
+CHARS_REPLACE_TABLE = string.maketrans(CHARS_REPLACE + '.',
+                                       "_" * len(CHARS_REPLACE) + '-')
+
+
 class Channel(virtual.Channel):
     _client = None
 
+    def entity_name(self, name, table=CHARS_REPLACE_TABLE):
+        return name.translate(table)
+
     def _new_queue(self, queue, **kwargs):
-        return self.client.create_queue(queue, self.visibility_timeout)
+        return self.client.create_queue(self.entity_name(queue),
+                                        self.visibility_timeout)
 
     def _get(self, queue):
         q = self._new_queue(queue)
