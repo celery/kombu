@@ -20,4 +20,4 @@ class test_SQS(transport.TransportCase):
             raise SkipTest("Missing envvar AWS_SECRET_ACCESS_KEY")
 
     def after_connect(self, connection):
-        connection.channel().client
+        connection.channel().sqs
