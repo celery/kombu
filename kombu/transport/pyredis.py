@@ -71,7 +71,7 @@ class MultiChannelPoller(object):
         if (channel, client, type) in self._chan_to_sock:
             self._unregister(channel, client, type)
         if client.connection._sock is None:   # not connected yet.
-            client.connection.connect(client)
+            client.connection.connect()
         sock = client.connection._sock
         self._fd_to_chan[sock.fileno()] = (channel, type)
         self._chan_to_sock[(channel, client, type)] = sock
@@ -171,7 +171,7 @@ class Channel(virtual.Channel):
             return
         c = self.subclient
         if c.connection._sock is None:
-            c.connection.connect(c)
+            c.connection.connect()
         self.subclient.subscribe(keys)
         self._in_listen = True
 
@@ -189,7 +189,7 @@ class Channel(virtual.Channel):
         c = self.subclient
         response = None
         try:
-            response = c.parse_response("LISTEN")
+            response = c.parse_response()
         except self.connection.connection_errors:
             self._in_listen = False
         if response is not None:
@@ -321,6 +321,7 @@ class Channel(virtual.Channel):
         # KombuRedis maintains a connection attribute on it's instance and
         # uses that when executing commands
         class KombuRedis(redis.Redis):
+
             def __init__(self, *args, **kwargs):
                 super(KombuRedis, self).__init__(*args, **kwargs)
                 self.connection = self.connection_pool.get_connection('_')
@@ -359,7 +360,10 @@ class Channel(virtual.Channel):
     @cached_property
     def subclient(self):
         client = self._create_client()
-        return client.pubsub()
+        pubsub = client.pubsub()
+        pool = pubsub.connection_pool
+        pubsub.connection = pool.get_connection("pubsub", pubsub.shard_hint)
+        return pubsub
 
     @subclient.deleter  # noqa
     def subclient(self, client):
