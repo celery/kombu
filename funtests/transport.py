@@ -10,7 +10,7 @@ import weakref
 from nose import SkipTest
 
 from kombu import BrokerConnection
-from kombu import Producer, Consumer, Exchange, Queue
+from kombu import Exchange, Queue
 from kombu.tests.utils import skip_if_quick
 
 if sys.version_info >= (2, 5):
