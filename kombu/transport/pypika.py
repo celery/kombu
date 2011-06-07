@@ -10,17 +10,18 @@ Pika transport.
 """
 import socket
 
+from kombu.exceptions import VersionMismatch
+from kombu.transport import base
+
 from pika import channel  # must be here to raise importerror for below.
 try:
     from pika import asyncore_adapter
 except ImportError:
-    raise ImportError("Kombu only works with pika version 0.5.2")
+    raise VersionMismatch("Kombu only works with pika version 0.5.2")
 from pika import blocking_adapter
 from pika import connection
 from pika import exceptions
 from pika.spec import Basic, BasicProperties
-
-from kombu.transport import base
 
 DEFAULT_PORT = 5672
 

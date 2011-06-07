@@ -13,6 +13,7 @@ from Queue import Empty
 
 from anyjson import serialize, deserialize
 
+from kombu.exceptions import VersionMismatch
 from kombu.transport import virtual
 from kombu.utils import eventio
 from kombu.utils import cached_property
@@ -307,11 +308,19 @@ class Channel(virtual.Channel):
                            password=conninfo.password)
 
     def _get_client(self):
-        from redis import Redis, ConnectionError
+        import redis
+
+        version = getattr(redis, "__version__", (0, 0, 0))
+        if version:
+            version = tuple(version.split("."))
+        if version < (2, 4, 4):
+            raise VersionMismatch(
+                "Redis transport requires redis-py versions 2.4.4 or later. "
+                "You have %r" % (".".join(version), ))
 
         # KombuRedis maintains a connection attribute on it's instance and
         # uses that when executing commands
-        class KombuRedis(Redis):
+        class KombuRedis(redis.Redis):
             def __init__(self, *args, **kwargs):
                 super(KombuRedis, self).__init__(*args, **kwargs)
                 self.connection = self.connection_pool.get_connection('_')
@@ -322,7 +331,7 @@ class Channel(virtual.Channel):
                 try:
                     conn.send_command(*args)
                     return self.parse_response(conn, command_name, **options)
-                except ConnectionError:
+                except redis.ConnectionError:
                     conn.disconnect()
                     conn.send_command(*args)
                     return self.parse_response(conn, command_name, **options)
