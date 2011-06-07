@@ -36,6 +36,7 @@ class ResponseError(Exception):
 class Client(object):
     queues = {}
     sets = {}
+    shard_hint = None
 
     def __init__(self, db=None, port=None, **kwargs):
         self.port = port
@@ -43,6 +44,7 @@ class Client(object):
         self._called = []
         self._connection = None
         self.bgsave_raises_ResponseError = False
+        self.connection = self._sconnection(self)
 
     def bgsave(self):
         self._called.append("BGSAVE")
@@ -134,13 +136,15 @@ class Client(object):
         return {"foo": 1}
 
     def pubsub(self, *args, **kwargs):
-        return self
+        connection = self.connection
 
-    @property
-    def connection(self):
-        if self._connection is None:
-            self._connection = self._sconnection(self)
-        return self._connection
+        class ConnectionPool(object):
+
+            def get_connection(self, *args, **kwargs):
+                return connection
+        self.connection_pool = ConnectionPool()
+
+        return self
 
 
 class Pipeline(object):
