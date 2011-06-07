@@ -49,7 +49,7 @@ class Message(base.Message):
                 **kwargs)
 
 
-class Channel(amqp.Channel):
+class Channel(amqp.Channel, base.StdChannel):
     Message = Message
 
     def prepare_message(self, body, priority=None,

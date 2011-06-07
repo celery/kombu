@@ -60,8 +60,14 @@ class Channel(virtual.Channel):
 
     def _purge(self, queue):
         q = self._new_queue(queue)
-        size = q.count()
-        q.clear()
+        # SQS is slow at registering messages, so run for a few
+        # iterations to ensure messages are deleted.
+        size = 0
+        for i in xrange(10):
+            size += q.count()
+            if not size:
+                break
+            q.clear()
         return size
 
     def close(self):

@@ -9,7 +9,6 @@ Redis transport.
 
 """
 
-from itertools import imap
 from Queue import Empty
 
 from anyjson import serialize, deserialize

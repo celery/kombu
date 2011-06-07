@@ -45,7 +45,7 @@ class Message(base.Message):
         super(Message, self).__init__(channel, **kwargs)
 
 
-class Channel(channel.Channel):
+class Channel(channel.Channel, base.StdChannel):
     Message = Message
 
     def basic_get(self, queue, no_ack):

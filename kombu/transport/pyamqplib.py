@@ -173,7 +173,7 @@ class Message(base.Message):
                 **kwargs)
 
 
-class Channel(_Channel):
+class Channel(_Channel, base.StdChannel):
     Message = Message
     events = {"basic_return": []}
 
