@@ -172,7 +172,10 @@ class Channel(virtual.Channel):
         q = self._new_queue(queue)
         rs = q.get_messages(1)
         if rs:
-            return deserialize(rs[0].get_body())
+            m = rs[0]
+            body = deserialize(rs[0].get_body())
+            q.delete_message(m)
+            return body
         raise Empty()
 
     def _size(self, queue):
@@ -196,14 +199,15 @@ class Channel(virtual.Channel):
                     if "can't set attribute" not in str(exc):
                         raise
 
-    def _aws_connect_to(self, fun, regions):
-        conninfo = self.conninfo
-        region = None
+    def _get_regioninfo(self, regions):
         if self.region:
             for _r in regions:
                 if _r.name == self.region:
-                    region = _r
-                    break
+                    return _r
+
+    def _aws_connect_to(self, fun, regions):
+        conninfo = self.conninfo
+        region = self._get_regioninfo(regions)
         return fun(region=region,
                    aws_access_key_id=conninfo.userid,
                    aws_secret_access_key=conninfo.password,
@@ -242,11 +246,11 @@ class Channel(virtual.Channel):
     def visibility_timeout(self):
         return self.transport_options.get("visibility_timeout")
 
-    @property
+    @cached_property
     def supports_fanout(self):
         return self.transport_options.get("sdb_persistence", True)
 
-    @property
+    @cached_property
     def region(self):
         return self.transport_options.get("region") or self.default_region
 
