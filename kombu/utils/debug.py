@@ -4,11 +4,13 @@ from kombu.utils.functional import wraps
 from kombu.utils.log import get_logger
 
 
-def setup_logging(loglevel=logging.DEBUG):
-    root = logging.getLogger()
-    if not root.handlers:
-        root.addHandler(logging.StreamHandler())
-    root.setLevel(loglevel)
+def setup_logging(loglevel=logging.DEBUG, loggers=["kombu.connection",
+                                                   "kombu.channel"]):
+    for logger in loggers:
+        l = get_logger(logger)
+        if not l.handlers:
+            l.addHandler(logging.StreamHandler())
+        l.setLevel(loglevel)
 
 
 class Logwrapped(object):
