@@ -173,10 +173,17 @@ class Channel(virtual.Channel):
         rs = q.get_messages(1)
         if rs:
             m = rs[0]
-            body = deserialize(rs[0].get_body())
-            q.delete_message(m)
-            return body
+            payload = deserialize(rs[0].get_body())
+            payload["properties"]["delivery_info"].update({
+                "sqs_message": m, "sqs_queue": q})
+            return payload
         raise Empty()
+
+    def basic_ack(self, delivery_tag):
+        qos = self.qos
+        delivery_info = self.qos.get(delivery_tag).delivery_info
+        delivery_info["sqs_queue"].delete_message(delivery_info["sqs_message"])
+        super(Channel, self).basic_ack(delivery_tag)
 
     def _size(self, queue):
         """Returns the number of messages in a queue."""

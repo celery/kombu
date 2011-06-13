@@ -105,6 +105,9 @@ class QoS(object):
         if self._dirty:
             self._flush()
 
+    def get(self, delivery_tag):
+        return self._delivered[delivery_tag]
+
     def _flush(self):
         """Flush dirty (acked/rejected) tags from."""
         dirty = self._dirty
