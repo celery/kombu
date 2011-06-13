@@ -16,7 +16,6 @@ from Queue import Empty
 
 from anyjson import serialize, deserialize
 
-import boto
 from boto import exception
 from boto import sdb as _sdb
 from boto import sqs as _sqs
@@ -72,7 +71,7 @@ class Table(Domain):
     def exchange_delete(self, exchange):
         """Delete all routes for `exchange`."""
         for item in self.routes_for(exchange):
-            domain.delete_item(item["id"])
+            self.delete_item(item["id"])
 
     def get_item(self, item_name, consistent_read=True):
         """Uses `consistent_read` by default."""
@@ -90,7 +89,6 @@ class Table(Domain):
         for item in self.select("""queue = '%s' limit 1""" % queue,
                                 max_items=1):
             return item["id"]
-
 
 
 class Channel(virtual.Channel):
@@ -180,7 +178,6 @@ class Channel(virtual.Channel):
         raise Empty()
 
     def basic_ack(self, delivery_tag):
-        qos = self.qos
         delivery_info = self.qos.get(delivery_tag).delivery_info
         delivery_info["sqs_queue"].delete_message(delivery_info["sqs_message"])
         super(Channel, self).basic_ack(delivery_tag)

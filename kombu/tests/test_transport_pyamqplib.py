@@ -12,10 +12,6 @@ class MockConnection(dict):
 
 class test_amqplib(unittest.TestCase):
 
-    def test_conninfo(self):
-        c = BrokerConnection(hostname=None, transport="amqplib")
-        self.assertRaises(KeyError, c.connect)
-
     def test_default_port(self):
 
         class Transport(pyamqplib.Transport):
