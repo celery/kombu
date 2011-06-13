@@ -2,11 +2,28 @@
  Change history
 ================
 
+.. _version-1.1.6:
+
+1.1.6
+=====
+:release-date: 2011-06-13 04:00 P.M BST
+
+* Redis: Fixes issue introduced in 1.1.4, where a redis connection
+  failure could leave consumer hanging forever.
+
 .. _version-1.1.5:
+
+1.1.5
+=====
+:release-date: 2011-06-07 06:00 P.M BST
 
 * Fixes compatibility with redis-py 2.4.4.
 
 .. _version-1.1.4:
+
+1.1.4
+=====
+:release-date: 2011-06-07 04:00 P.M BST
 
 * Redis transport: Now requires redis-py version 2.4.4 or later.
 
