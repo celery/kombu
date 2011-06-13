@@ -9,11 +9,11 @@ Redis transport.
 
 """
 
-from itertools import imap
 from Queue import Empty
 
 from anyjson import serialize, deserialize
 
+from kombu.exceptions import VersionMismatch
 from kombu.transport import virtual
 from kombu.utils import eventio
 from kombu.utils import cached_property
@@ -71,7 +71,7 @@ class MultiChannelPoller(object):
         if (channel, client, type) in self._chan_to_sock:
             self._unregister(channel, client, type)
         if client.connection._sock is None:   # not connected yet.
-            client.connection.connect(client)
+            client.connection.connect()
         sock = client.connection._sock
         self._fd_to_chan[sock.fileno()] = (channel, type)
         self._chan_to_sock[(channel, client, type)] = sock
@@ -171,7 +171,7 @@ class Channel(virtual.Channel):
             return
         c = self.subclient
         if c.connection._sock is None:
-            c.connection.connect(c)
+            c.connection.connect()
         self.subclient.subscribe(keys)
         self._in_listen = True
 
@@ -189,7 +189,7 @@ class Channel(virtual.Channel):
         c = self.subclient
         response = None
         try:
-            response = c.parse_response("LISTEN")
+            response = c.parse_response()
         except self.connection.connection_errors:
             self._in_listen = False
         if response is not None:
@@ -308,11 +308,20 @@ class Channel(virtual.Channel):
                            password=conninfo.password)
 
     def _get_client(self):
-        from redis import Redis, ConnectionError
+        import redis
+
+        version = getattr(redis, "__version__", (0, 0, 0))
+        if version:
+            version = tuple(version.split("."))
+        if version < (2, 4, 4):
+            raise VersionMismatch(
+                "Redis transport requires redis-py versions 2.4.4 or later. "
+                "You have %r" % (".".join(version), ))
 
         # KombuRedis maintains a connection attribute on it's instance and
         # uses that when executing commands
-        class KombuRedis(Redis):
+        class KombuRedis(redis.Redis):
+
             def __init__(self, *args, **kwargs):
                 super(KombuRedis, self).__init__(*args, **kwargs)
                 self.connection = self.connection_pool.get_connection('_')
@@ -323,7 +332,7 @@ class Channel(virtual.Channel):
                 try:
                     conn.send_command(*args)
                     return self.parse_response(conn, command_name, **options)
-                except ConnectionError:
+                except redis.ConnectionError:
                     conn.disconnect()
                     conn.send_command(*args)
                     return self.parse_response(conn, command_name, **options)
@@ -351,7 +360,10 @@ class Channel(virtual.Channel):
     @cached_property
     def subclient(self):
         client = self._create_client()
-        return client.pubsub()
+        pubsub = client.pubsub()
+        pool = pubsub.connection_pool
+        pubsub.connection = pool.get_connection("pubsub", pubsub.shard_hint)
+        return pubsub
 
     @subclient.deleter  # noqa
     def subclient(self, client):

@@ -173,7 +173,7 @@ class Message(base.Message):
                 **kwargs)
 
 
-class Channel(_Channel):
+class Channel(_Channel, base.StdChannel):
     Message = Message
     events = {"basic_return": []}
 
@@ -226,7 +226,7 @@ class Transport(base.Transport):
         """Establish connection to the AMQP broker."""
         conninfo = self.client
         if not conninfo.hostname:
-            raise KeyError("Missing hostname for AMQP connection.")
+            conninfo.hostname = "localhost"
         if conninfo.userid is None:
             conninfo.userid = "guest"
         if conninfo.password is None:

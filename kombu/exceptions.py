@@ -42,3 +42,7 @@ class ChannelLimitExceeded(LimitExceeded):
 
 class StdChannelError(Exception):
     pass
+
+
+class VersionMismatch(Exception):
+    pass

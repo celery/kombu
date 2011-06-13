@@ -16,6 +16,17 @@ from kombu.exceptions import MessageStateError
 ACKNOWLEDGED_STATES = frozenset(["ACK", "REJECTED", "REQUEUED"])
 
 
+class StdChannel(object):
+
+    def Consumer(self, *args, **kwargs):
+        from kombu.messaging import Consumer
+        return Consumer(self, *args, **kwargs)
+
+    def Producer(self, *args, **kwargs):
+        from kombu.messaging import Producer
+        return Producer(self, *args, **kwargs)
+
+
 class Message(object):
     """Base class for received messages."""
     _state = None

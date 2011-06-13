@@ -262,7 +262,7 @@ class AbstractChannel(object):
         return cycle.get()
 
 
-class Channel(AbstractChannel):
+class Channel(AbstractChannel, base.StdChannel):
     """Virtual channel.
 
     :param connection: The transport instance this channel is part of.

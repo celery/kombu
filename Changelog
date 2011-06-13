@@ -2,6 +2,34 @@
  Change history
 ================
 
+.. _version-1.1.5:
+
+* Fixes compatibility with redis-py 2.4.4.
+
+.. _version-1.1.4:
+
+* Redis transport: Now requires redis-py version 2.4.4 or later.
+
+* New Amazon SQS transport added.
+
+    Usage:
+
+        >>> conn = BrokerConnection(transport="SQS",
+        ...                         userid=aws_access_key_id,
+        ...                         password=aws_secret_access_key)
+
+    The environment variables :envvar:`AWS_ACCESS_KEY_ID` and
+    :envvar:`AWS_SECRET_ACCESS_KEY` are also supported.
+
+* librabbitmq transport: Fixes default credentials support.
+
+* amqplib transport: Now supports `login_method` for SSL auth.
+
+    :class:`BrokerConnection` now supports the `login_method`
+    keyword argument.
+
+    Default `login_method` is ``AMQPLAIN``.
+
 .. _version-1.1.3:
 
 1.1.3

@@ -36,6 +36,7 @@ class ResponseError(Exception):
 class Client(object):
     queues = {}
     sets = {}
+    shard_hint = None
 
     def __init__(self, db=None, port=None, **kwargs):
         self.port = port
@@ -43,6 +44,7 @@ class Client(object):
         self._called = []
         self._connection = None
         self.bgsave_raises_ResponseError = False
+        self.connection = self._sconnection(self)
 
     def bgsave(self):
         self._called.append("BGSAVE")
@@ -66,22 +68,8 @@ class Client(object):
     def lpush(self, key, value):
         self.queues[key].put_nowait(value)
 
-    def parse_command(self, cmd):
-        c = cmd.split('\r\n')
-        c.pop()
-        c.reverse()
-        argv = []
-        argc = int(c.pop().replace('*', ''))
-        for i in xrange(argc):
-            c.pop()
-            argv.append(c.pop())
-        return argv
-
-    def parse_response(self, type, **options):
-        cmd = self.connection._sock.data.pop()
-        argv = self.parse_command(cmd)
-        cmd = argv[0]
-        queues = argv[1:-1]
+    def parse_response(self, connection, type, **options):
+        cmd, queues = self.connection._sock.data.pop()
         assert cmd == type
         self.connection._sock.data = []
         if type == "BRPOP":
@@ -141,17 +129,22 @@ class Client(object):
         def disconnect(self):
             self.disconnected = True
 
-        def send(self, cmd, client):
-            self._sock.data.append(cmd)
+        def send_command(self, cmd, *args):
+            self._sock.data.append((cmd, args))
 
     def info(self):
         return {"foo": 1}
 
-    @property
-    def connection(self):
-        if self._connection is None:
-            self._connection = self._sconnection(self)
-        return self._connection
+    def pubsub(self, *args, **kwargs):
+        connection = self.connection
+
+        class ConnectionPool(object):
+
+            def get_connection(self, *args, **kwargs):
+                return connection
+        self.connection_pool = ConnectionPool()
+
+        return self
 
 
 class Pipeline(object):
