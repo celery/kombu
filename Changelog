@@ -11,6 +11,22 @@
 * Redis: Fixes issue introduced in 1.1.4, where a redis connection
   failure could leave consumer hanging forever.
 
+* SQS: Now supports fanout messaging by using SimpleDB to store routing
+  tables.
+
+    This can be disabled by setting the `supports_fanout` transport option:
+
+        >>> BrokerConnection(transport="SQS",
+        ...                  transport_options={"supports_fanout": False})
+
+* SQS: Now properly deletes a message when a message is acked.
+
+* SQS: Can now set the Amazon AWS region, by using the ``region``
+  transport option.
+
+* amqplib: Now uses `localhost` as default hostname instead of raising an
+  error.
+
 .. _version-1.1.5:
 
 1.1.5
