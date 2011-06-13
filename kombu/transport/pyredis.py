@@ -214,6 +214,9 @@ class Channel(virtual.Channel):
                                                         "BRPOP",
                                                         **options)
             except self.connection.connection_errors:
+                # if there's a ConnectionError, disconnect so the next
+                # iteration will reconnect automatically.
+                self.client.connection.disconnect()
                 raise Empty()
             if dest__item:
                 dest, item = dest__item
