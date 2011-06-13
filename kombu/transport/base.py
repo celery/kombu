@@ -26,6 +26,10 @@ class StdChannel(object):
         from kombu.messaging import Producer
         return Producer(self, *args, **kwargs)
 
+    def list_bindings(self):
+        raise NotImplementedError("%r does not implement list_bindings" % (
+            self.__class__, ))
+
 
 class Message(object):
     """Base class for received messages."""
