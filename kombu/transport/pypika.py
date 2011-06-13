@@ -185,15 +185,9 @@ class SyncTransport(base.Transport):
     def establish_connection(self):
         """Establish connection to the AMQP broker."""
         conninfo = self.client
-        if not conninfo.hostname:
-            raise KeyError("Missing hostname for AMQP connection.")
-        if conninfo.userid is None:
-            conninfo.userid = "guest"
-        if conninfo.password is None:
-            conninfo.password = "guest"
-        if not conninfo.port:
-            conninfo.port = self.default_port
-
+        for name, default_value in self.default_connection_params.items():
+            if not getattr(conninfo, name, None):
+                setattr(conninfo, name, default_value)
         credentials = connection.PlainCredentials(conninfo.userid,
                                                   conninfo.password)
         return self.Connection(connection.ConnectionParameters(
@@ -205,6 +199,11 @@ class SyncTransport(base.Transport):
     def close_connection(self, connection):
         """Close the AMQP broker connection."""
         connection.close()
+
+    @property
+    def default_connection_params(self):
+        return {"hostname": "localhost", "port": self.default_port,
+                "userid": "guest", "password": "guest"}
 
 
 class AsyncoreTransport(SyncTransport):

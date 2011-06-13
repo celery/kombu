@@ -181,3 +181,7 @@ class Transport(object):
 
     def verify_connection(self, connection):
         return True
+
+    @property
+    def default_connection_params(self):
+        return {}

@@ -270,16 +270,18 @@ class BrokerConnection(object):
         """Get connection info."""
         transport_cls = self.transport_cls or "amqplib"
         port = self.port or self.transport.default_port
-        return OrderedDict((("hostname", self.hostname),
-                            ("userid", self.userid),
-                            ("password", self.password),
-                            ("virtual_host", self.virtual_host),
-                            ("port", port),
-                            ("insist", self.insist),
-                            ("ssl", self.ssl),
-                            ("transport", transport_cls),
-                            ("transport_options", self.transport_options),
-                            ("connect_timeout", self.connect_timeout)))
+        i = OrderedDict((("hostname", self.hostname),
+                         ("userid", self.userid),
+                         ("password", self.password),
+                         ("virtual_host", self.virtual_host),
+                         ("port", port),
+                         ("insist", self.insist),
+                         ("ssl", self.ssl),
+                         ("transport", transport_cls),
+                         ("transport_options", self.transport_options),
+                         ("connect_timeout", self.connect_timeout)))
+        i.update(self.transport.default_connection_params)
+        return i
 
     def __hash__(self):
         return hash("|".join(map(str, self.info().itervalues())))
