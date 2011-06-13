@@ -29,7 +29,7 @@ Features
 
     * Virtual transports makes it really easy to add support for non-AMQP
       transports.  There is already built-in support for `Redis`_,
-      `Beanstalk`_, `Amazon SQS`, `CouchDB`_, and `MongoDB`_.
+      `Beanstalk`_, `Amazon SQS`_, `CouchDB`_, and `MongoDB`_.
 
     * SQLAlchemy and Django ORM transports exists as plug-ins (
       `kombu-sqlalchemy`_ and `django-kombu`_).
@@ -86,7 +86,7 @@ Transport Comparison
 +---------------+----------+------------+-----------+---------------+
 | *beanstalk*   | Virtual  | Yes        | Yes[*]_   | No            |
 +---------------+----------+------------+-----------+---------------+
-| *SQS*         | Virtual  | Yes        | Yes[*]_   | No
+| *SQS*         | Virtual  | Yes        | Yes[*]_   | Yes[#]_       |
 +---------------+----------+------------+-----------+---------------+
 | *mongodb*     | Virtual  | Yes        | Yes[*]_   | No            |
 +---------------+----------+------------+-----------+---------------+
@@ -98,6 +98,9 @@ Transport Comparison
 
 .. [*] Declarations only kept in memory, so exchanges/queues
        must be declared by all clients that needs them.
+
+.. [#] Fanout supported via storing routing tables in SimpleDB.
+       Can be disabled by setting the ``supports_fanout`` transport option.
 
 
 Documentation
