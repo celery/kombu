@@ -374,6 +374,12 @@ class Channel(AbstractChannel, base.StdChannel):
         if self.supports_fanout:
             self._queue_bind(exchange, *meta)
 
+    def list_bindings(self):
+        for exchange in self.state.exchanges:
+            table = self.get_table(exchange)
+            for routing_key, pattern, queue in table:
+                yield queue, exchange, routing_key
+
     def queue_purge(self, queue, **kwargs):
         """Remove all ready messages from queue."""
         return self._purge(queue)
