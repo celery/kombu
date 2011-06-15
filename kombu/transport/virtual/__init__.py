@@ -378,7 +378,7 @@ class Channel(AbstractChannel, base.StdChannel):
             self._queue_bind(exchange, *meta)
 
     def list_bindings(self):
-        for exchange in self.state.exchanges:
+        for exchange in self.get_exchanges():
             table = self.get_table(exchange)
             for routing_key, pattern, queue in table:
                 yield queue, exchange, routing_key
@@ -458,6 +458,9 @@ class Channel(AbstractChannel, base.StdChannel):
 
         """
         self.qos.prefetch_count = prefetch_count
+
+    def get_exchanges(self):
+        return self.state.exchanges.keys()
 
     def get_table(self, exchange):
         """Get table of bindings for `exchange`."""

@@ -44,7 +44,7 @@ class Table(Domain):
 
     def routes_for(self, exchange):
         """Iterator giving all routes for an exchange."""
-        return self.select("""exchange = '%s'""" % exchange)
+        return self.select("""WHERE exchange = '%s'""" % exchange)
 
     def get_queue(self, queue):
         """Get binding for queue."""
@@ -99,7 +99,7 @@ class Table(Domain):
     def select(self, query='', next_token=None, consistent_read=True,
             max_items=None):
         """Uses `consistent_read` by default."""
-        query = """SELECT * FROM `%s` WHERE %s""" % (self.name, query)
+        query = """SELECT * FROM `%s` %s""" % (self.name, query)
         return Domain.select(self, query, next_token,
                                    consistent_read, max_items)
 
@@ -108,8 +108,11 @@ class Table(Domain):
             for item in self.select(query, consistent_read=c, **kwargs):
                 return item
 
+    def get_exchanges(self):
+        return list(set(i["exchange"] for i in self.select()))
+
     def _get_queue_item(self, queue):
-        return self._try_first("""queue = '%s' limit 1""" % queue)
+        return self._try_first("""WHERE queue = '%s' limit 1""" % queue)
 
     def _get_queue_id(self, queue):
         item = self._get_queue_item(queue)
@@ -173,6 +176,11 @@ class Channel(virtual.Channel):
             return [(r["routing_key"], r["pattern"], r["queue"])
                         for r in self.table.routes_for(exchange)]
         return super(Channel, self).get_table(exchange)
+
+    def get_exchanges(self):
+        if self.supports_fanout:
+            return self.table.get_exchanges()
+        return super(Channel, self).get_exchanges()
 
     def _delete(self, queue):
         """delete queue by name."""
