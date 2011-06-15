@@ -30,6 +30,11 @@ class StdChannel(object):
         raise NotImplementedError("%r does not implement list_bindings" % (
             self.__class__, ))
 
+    def after_reply_message_received(self, queue):
+        """reply queue semantics: can be used to delete the queue
+           after transient reply message received."""
+        pass
+
 
 class Message(object):
     """Base class for received messages."""

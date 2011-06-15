@@ -253,6 +253,7 @@ class Mailbox(object):
                     self.connection.drain_events(timeout=timeout)
                 except socket.timeout:
                     break
+            chan.after_reply_message_received(queue.name)
             return responses
         finally:
             channel or chan.close()

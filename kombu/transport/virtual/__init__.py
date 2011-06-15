@@ -359,6 +359,9 @@ class Channel(AbstractChannel, base.StdChannel):
         self._delete(queue)
         self.state.bindings.pop(queue, None)
 
+    def after_reply_message_received(self, queue):
+        self.queue_delete(queue)
+
     def queue_bind(self, queue, exchange, routing_key, arguments=None,
             **kwargs):
         """Bind `queue` to `exchange` with `routing key`."""
@@ -472,9 +475,8 @@ class Channel(AbstractChannel, base.StdChannel):
 
         """
         try:
-            table = self.get_table(exchange)
-            return self.typeof(exchange).lookup(table, exchange,
-                                                routing_key, default)
+            return self.typeof(exchange).lookup(self.get_table(exchange),
+                                                exchange, routing_key, default)
         except KeyError:
             self._new_queue(default)
             return [default]
@@ -622,7 +624,7 @@ class Transport(base.Transport):
 
     def create_channel(self, connection):
         try:
-            channel = self._avail_channels.pop()
+            return self._avail_channels.pop()
         except IndexError:
             channel = self.Channel(connection)
         self.channels.append(channel)
@@ -638,6 +640,9 @@ class Transport(base.Transport):
             channel.connection = None
 
     def establish_connection(self):
+        # creates channel to verify connection.
+        # this channel is then used as the next requested channel.
+        # (returned by ``create_channel``).
         self._avail_channels.append(self.create_channel(self))
         return self     # for drain events
 

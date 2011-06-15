@@ -46,4 +46,5 @@ class FairCycle(object):
         pass
 
     def __repr__(self):
-        return "<FairCycle: %r>" % (self.resources, )
+        return "<FairCycle: %r/%r %r>" % (self.pos, len(self.resources),
+                                          self.resources, )
