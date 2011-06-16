@@ -86,7 +86,7 @@ class BrokerConnection(object):
 
     def __init__(self, hostname="localhost", userid=None,
             password=None, virtual_host="/", port=None, insist=False,
-            ssl=False, transport=None, connect_timeout=5, backend_cls=None,
+            ssl=False, transport=None, connect_timeout=5,
             transport_options=None, login_method=None, **kwargs):
         self.hostname = hostname
         self.userid = userid
@@ -98,7 +98,7 @@ class BrokerConnection(object):
         self.connect_timeout = connect_timeout or self.connect_timeout
         self.ssl = ssl
         # backend_cls argument will be removed shortly.
-        self.transport_cls = transport or backend_cls
+        self.transport_cls = transport or kwargs.get("backend_cls")
 
         if transport_options is None:
             transport_options = {}
@@ -269,19 +269,22 @@ class BrokerConnection(object):
     def info(self):
         """Get connection info."""
         transport_cls = self.transport_cls or "amqplib"
-        port = self.port or self.transport.default_port
-        i = OrderedDict((("hostname", self.hostname),
-                         ("userid", self.userid),
-                         ("password", self.password),
-                         ("virtual_host", self.virtual_host),
-                         ("port", port),
-                         ("insist", self.insist),
-                         ("ssl", self.ssl),
-                         ("transport", transport_cls),
-                         ("transport_options", self.transport_options),
-                         ("connect_timeout", self.connect_timeout)))
-        i.update(self.transport.default_connection_params)
-        return i
+        defaults = self.transport.default_connection_params
+        info = OrderedDict((("hostname", self.hostname),
+                            ("userid", self.userid),
+                            ("password", self.password),
+                            ("virtual_host", self.virtual_host),
+                            ("port", self.port),
+                            ("insist", self.insist),
+                            ("ssl", self.ssl),
+                            ("transport", transport_cls),
+                            ("connect_timeout", self.connect_timeout),
+                            ("transport_options", self.transport_options),
+                            ("login_method", self.login_method)))
+        for key, value in defaults.iteritems():
+            if info[key] is None:
+                info[key] = value
+        return info
 
     def __hash__(self):
         return hash("|".join(map(str, self.info().itervalues())))
