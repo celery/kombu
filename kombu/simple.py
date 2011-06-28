@@ -21,6 +21,12 @@ from kombu import messaging
 class SimpleBase(object):
     _consuming = False
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc_info):
+        self.close()
+
     def __init__(self, channel, producer, consumer, no_ack=False,
             channel_autoclose=False):
         self.channel = channel
