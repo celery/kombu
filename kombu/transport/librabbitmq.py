@@ -94,16 +94,14 @@ class Transport(base.Transport):
     def establish_connection(self):
         """Establish connection to the AMQP broker."""
         conninfo = self.client
-        if conninfo.userid is None:
-            conninfo.userid = "guest"
-        if conninfo.password is None:
-            conninfo.password = "guest"
-        if not conninfo.port:
-            conninfo.port = self.default_port
+        for name, default_value in self.default_connection_params.items():
+            if not getattr(conninfo, name, None):
+                setattr(conninfo, name, default_value)
         conn = self.Connection(host=conninfo.host,
                                userid=conninfo.userid,
                                password=conninfo.password,
                                virtual_host=conninfo.virtual_host,
+                               login_method=conninfo.login_method,
                                insist=conninfo.insist,
                                ssl=conninfo.ssl,
                                connect_timeout=conninfo.connect_timeout)
@@ -113,3 +111,9 @@ class Transport(base.Transport):
     def close_connection(self, connection):
         """Close the AMQP broker connection."""
         connection.close()
+
+    @property
+    def default_connection_params(self):
+        return {"userid": "guest", "password": "guest",
+                "port": self.default_port,
+                "hostname": "localhost", "login_method": "AMQPLAIN"}
