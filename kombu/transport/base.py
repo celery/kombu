@@ -17,6 +17,7 @@ ACKNOWLEDGED_STATES = frozenset(["ACK", "REJECTED", "REQUEUED"])
 
 
 class StdChannel(object):
+    no_ack_consumers = None
 
     def Consumer(self, *args, **kwargs):
         from kombu.messaging import Consumer
@@ -95,6 +96,10 @@ class Message(object):
             acknowledged/requeued/rejected.
 
         """
+        if self.channel.no_ack_consumers is not None:
+            consumer_tag = self.delivery_info["consumer_tag"]
+            if consumer_tag in self.channel.no_ack_consumers:
+                return
         if self.acknowledged:
             raise self.MessageStateError(
                 "Message already acknowledged with state: %s" % self._state)

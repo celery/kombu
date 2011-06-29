@@ -61,6 +61,7 @@ def entry_to_queue(queue, **options):
                         durable=q_durable,
                         exclusive=options.get("exclusive"),
                         auto_delete=q_auto_delete,
+                        no_ack=options.get("no_ack"),
                         queue_arguments=q_arguments,
                         binding_arguments=b_arguments)
 

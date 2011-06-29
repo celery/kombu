@@ -177,6 +177,10 @@ class Channel(_Channel, base.StdChannel):
     Message = Message
     events = {"basic_return": []}
 
+    def __init__(self, *args, **kwargs):
+        self.no_ack_consumers = set()
+        super(Channel, self).__init__(*args, **kwargs)
+
     def prepare_message(self, message_data, priority=None,
                 content_type=None, content_encoding=None, headers=None,
                 properties=None):
@@ -196,6 +200,16 @@ class Channel(_Channel, base.StdChannel):
             super(Channel, self).close()
         finally:
             self.connection = None
+
+    def basic_consume(self, *args, **kwargs):
+        consumer_tag = super(Channel, self).basic_consume(*args, **kwargs)
+        if kwargs["no_ack"]:
+            self.no_ack_consumers.add(consumer_tag)
+        return consumer_tag
+
+    def basic_cancel(self, consumer_tag, **kwargs):
+        self.no_ack_consumers.discard(consumer_tag)
+        return super(Channel, self).basic_cancel(consumer_tag, **kwargs)
 
 
 class Transport(base.Transport):

@@ -331,6 +331,7 @@ class Queue(MaybeChannelBound):
     durable = True
     exclusive = False
     auto_delete = False
+    no_ack = False
 
     attrs = (("name", None),
              ("exchange", None),
@@ -339,7 +340,8 @@ class Queue(MaybeChannelBound):
              ("binding_arguments", None),
              ("durable", bool),
              ("exclusive", bool),
-             ("auto_delete", bool))
+             ("auto_delete", bool),
+             ("no_ack", None))
 
     def __init__(self, name="", exchange=None, routing_key="", channel=None,
             **kwargs):
@@ -435,6 +437,8 @@ class Queue(MaybeChannelBound):
         :keyword callback: callback called for each delivered message
 
         """
+        if no_ack is None:
+            no_ack = self.no_ack
         return self.channel.basic_consume(queue=self.name,
                                           no_ack=no_ack,
                                           consumer_tag=consumer_tag or '',

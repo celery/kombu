@@ -184,7 +184,7 @@ class Consumer(object):
 
     #: Flag for message acknowledgment disabled/enabled.
     #: Enabled by default.
-    no_ack = False
+    no_ack = None
 
     #: By default all entities will be declared at instantiation, if you
     #: want to handle this manually you can set this to :const:`False`.
