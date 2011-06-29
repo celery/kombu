@@ -2,6 +2,22 @@
  Change history
 ================
 
+.. _version-1.2.0:
+
+1.2.0
+=====
+:release-date: 2011-06-29 04:00 P.M BST
+
+* Adds Queue.no_ack option to control the no_ack option for individual queues.
+
+* Recent versions broke pylibrabbitmq support.
+
+* SimpleQueue and SimpleBuffer can now be used as contexts.
+
+* Test requirements specifies PyYAML==3.09 as 3.10 dropped Python 2.4 support
+
+* Now properly reports default values in Connection.info/.as_uri
+
 .. _version-1.1.6:
 
 1.1.6

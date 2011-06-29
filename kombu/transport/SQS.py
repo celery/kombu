@@ -84,7 +84,6 @@ class Table(Domain):
 
     def exchange_delete(self, exchange):
         """Delete all routes for `exchange`."""
-        self._already_bound.discard(queue)
         for item in self.routes_for(exchange):
             self.delete_item(item["id"])
 
@@ -164,7 +163,6 @@ class Channel(virtual.Channel):
         """
         if self.supports_fanout:
             self.table.queue_bind(*args)
-
 
     def get_table(self, exchange):
         """Get routing table.
