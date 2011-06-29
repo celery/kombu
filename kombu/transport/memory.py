@@ -41,6 +41,9 @@ class Channel(virtual.Channel):
         self.queues[queue].queue.clear()
         return size
 
+    def after_reply_message_received(self, queue):
+        pass
+
 
 class Transport(virtual.Transport):
     Channel = Channel

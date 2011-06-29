@@ -17,7 +17,7 @@ class Message(base.Message):
         return super(Message, self).decode()
 
 
-class Channel(object):
+class Channel(base.StdChannel):
     open = True
     throw_decode_error = False
 
