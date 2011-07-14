@@ -1,4 +1,3 @@
-
 """
 kombu.transport.SQS
 ===================
@@ -128,6 +127,17 @@ class Channel(virtual.Channel):
     _sqs = None
     _queue_cache = {}
     _noack_queues = set()
+
+    def __init__(self, *args, **kwargs):
+        super(Channel, self).__init__(*args, **kwargs)
+        
+        # SQS blows up when you try to create a new queue if one alread exists with a different 
+        # visability_timeout, so this populates the queue_cache to protect from recreating 
+        # queues that already exist
+        
+        queues = self.sqs.get_all_queues()
+        for queue in queues:
+            self._queue_cache[queue.name] = queue
 
     def basic_consume(self, queue, no_ack, *args, **kwargs):
         if no_ack:
