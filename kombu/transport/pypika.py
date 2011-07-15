@@ -123,6 +123,15 @@ class Channel(channel.Channel, base.StdChannel):
     def __exit__(self, *exc_info):
         self.close()
 
+    def close(self):
+        super(Channel, self).close()
+        if getattr(self, "handler", None):
+            if getattr(self.handler, "connection", None):
+                self.handler.connection.channels.pop(
+                        self.handler.channel_number, None)
+                self.handler.connection = None
+            self.handler = None
+
     @property
     def channel_id(self):
         return self.channel_number

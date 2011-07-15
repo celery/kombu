@@ -286,12 +286,18 @@ class TransportCase(unittest.TestCase):
         def _createref():
             conn = self.get_connection()
             conn.connect()
-            channel = conn.channel()
-            channel.close()
-            conn.close()
-            return weakref.ref(conn)
+            chanrefs = []
+            try:
+                for i in xrange(100):
+                    channel = conn.channel()
+                    chanrefs.append(weakref.ref(channel))
+                    channel.close()
+            finally:
+                conn.close()
+            return chanrefs
 
-        self.assertIsNone(_createref()())
+        for chanref in _createref():
+            self.assertIsNone(chanref())
 
     def tearDown(self):
         if self.transport and self.connected:

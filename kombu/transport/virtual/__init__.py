@@ -543,6 +543,7 @@ class Channel(AbstractChannel, base.StdChannel):
                 self._cycle = None
             if self.connection is not None:
                 self.connection.close_channel(self)
+        self.exchange_types = None
 
     def encode_body(self, body, encoding=None):
         if encoding:
