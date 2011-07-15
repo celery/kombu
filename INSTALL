@@ -1,17 +1,17 @@
 Installation
 ============
 
-You can install ``carrot`` either via the Python Package Index (PyPI)
+You can install ``kombu`` either via the Python Package Index (PyPI)
 or from source.
 
 To install using ``pip``,::
 
-    $ pip install carrot
+    $ pip install kombu
 
 
 To install using ``easy_install``,::
 
-    $ easy_install carrot
+    $ easy_install kombu
 
 
 If you have downloaded a source tarball you can install it
