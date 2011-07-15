@@ -95,7 +95,7 @@ class Producer(object):
     def publish(self, body, routing_key=None, delivery_mode=None,
             mandatory=False, immediate=False, priority=0, content_type=None,
             content_encoding=None, serializer=None, headers=None,
-            compression=None, exchange=None):
+            compression=None, exchange=None, **properties):
         """Publish message to the specified exchange.
 
         :param body: Message body.
@@ -111,6 +111,7 @@ class Producer(object):
           with the message body.
         :keyword exchange: Override the exchange.  Note that this exchange
           must have been declared.
+        :keyword properties: Additional properties, see the AMQP spec.
 
         """
         headers = headers or {}
@@ -127,7 +128,8 @@ class Producer(object):
                                         priority,
                                         content_type,
                                         content_encoding,
-                                        headers=headers)
+                                        headers=headers,
+                                        properties=properties)
         return self.exchange.publish(message, routing_key, mandatory,
                                      immediate, exchange=exchange)
 
