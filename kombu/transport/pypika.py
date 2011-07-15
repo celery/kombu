@@ -40,7 +40,7 @@ class Message(base.Message):
     def __init__(self, channel, amqp_message, **kwargs):
         channel_id, method, props, body = amqp_message
         propdict = dict(zip(BASIC_PROPERTIES,
-                        attrgetter(BASIC_PROPERTIES)(props)))
+                        attrgetter(*BASIC_PROPERTIES)(props)))
 
         kwargs.update({"body": body,
                        "delivery_tag": method.delivery_tag,

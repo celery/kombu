@@ -6,7 +6,9 @@
 
 1.2.0
 =====
-:release-date: 2011-06-29 04:00 P.M BST
+:release-date: 2011-07-15 12:00 P.M BST
+
+* Producer.publish: Can now set additional properties using keyword arguments.
 
 * Adds Queue.no_ack option to control the no_ack option for individual queues.
 
