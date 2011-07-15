@@ -8,7 +8,10 @@
 =====
 :release-date: 2011-07-15 12:00 P.M BST
 
-* Producer.publish: Can now set additional properties using keyword arguments.
+* Virtual: Fixes cyclic reference in Channel.close (Issue #49).
+
+* Producer.publish: Can now set additional properties using keyword
+  arguments (Issue #48).
 
 * Adds Queue.no_ack option to control the no_ack option for individual queues.
 
