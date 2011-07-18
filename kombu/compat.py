@@ -234,8 +234,10 @@ class ConsumerSet(messaging.Consumer):
         return self.purge()
 
     def add_consumer_from_dict(self, queue, **options):
-        queue = entry_to_queue(queue, **options)
-        self.queues.append(queue(self.channel))
+        queue = entry_to_queue(queue, **options)(self.channel)
+        if self.auto_declare:
+            queue.declare()
+        self.queues.append(queue)
         return queue
 
     def add_consumer(self, consumer):
