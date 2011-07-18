@@ -290,6 +290,7 @@ class Consumer(object):
         except KeyError:
             pass
         else:
+            self.queues[:] = [q for q in self.queues if q.name != queue]
             self.channel.basic_cancel(tag)
 
     def purge(self):
