@@ -250,6 +250,42 @@ class BrokerConnection(object):
         _insured.func_name = _insured.__name__ = "%s(insured)" % fun.__name__
         return _insured
 
+    def autoretry(self, fun, channel, on_revive=None, **ensure_options):
+        """Decorator for functions supporting a ``channel`` keyword argument.
+
+        The resulting callable will retry calling the function if
+        it raises connection or channel related errors.
+        The return value will be a tuple of ``(retval, last_created_channel)``.
+
+        See :meth:`ensure` for the full list of supported keyword arguments.
+
+        Example usage::
+
+            channel = connection.channel()
+            try:
+                ret, channel = connection.autoretry(publish_messages_fun, channel)
+            finally:
+                channel.close()
+        """
+        channels = [channel]
+
+        class Revival(object):
+            __name__ = fun.__name__
+            __module__ = fun.__module__
+            __doc__ = fun.__doc__
+
+            def revive(self, channel):
+                channels[0] = channel
+                if on_revive:
+                    on_revive(channel)
+
+            def __call__(self, *args, **kwargs):
+                kwargs["channel"] = channels[0]
+                return fun(*args, **kwargs), channels[0]
+
+        revive = Revival()
+        return self.ensure(revive, revive, **ensure_options)
+
     def create_transport(self):
         return self.get_transport_cls()(client=self)
     create_backend = create_transport   # FIXME
