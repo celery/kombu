@@ -293,6 +293,12 @@ class Consumer(object):
             self.queues[:] = [q for q in self.queues if q.name != queue]
             self.channel.basic_cancel(tag)
 
+    def consuming_from(self, queue):
+        name = queue
+        if isinstance(queue, Queue):
+            name = queue.name
+        return any(q.name == name for q in self.queues)
+
     def purge(self):
         """Purge messages from all queues.
 
