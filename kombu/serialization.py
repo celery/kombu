@@ -70,6 +70,15 @@ class SerializerRegistry(object):
         if decoder:
             self._decoders[content_type] = decoder
 
+    def unregister(self, name):
+        try:
+            content_type = self._encoders[name][0]
+            del self._decoders[content_type]
+            del self._encoders[name]
+        except KeyError:
+            raise SerializerNotInstalled(
+                "No encoder/decoder installed for %s" % name)
+
     def _set_default_serializer(self, name):
         """
         Set the default serialization method used by this library.
@@ -223,6 +232,16 @@ decode = registry.decode
 
         """
 register = registry.register
+
+
+"""
+.. function:: unregister(name):
+    Unregister registered encoder/decoder.
+
+    :param name: Registered serialization method name.
+
+        """
+unregister = registry.unregister
 
 
 def raw_encode(data):
