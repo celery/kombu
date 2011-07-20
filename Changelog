@@ -2,6 +2,44 @@
  Change history
 ================
 
+.. _version-1.2.1:
+
+1.2.1
+=====
+:release-date: TBA
+
+* ``serialization.unregister`` added so it is possible to remove unwanted
+  seralizers.
+
+* ``BrokerConnection.autoretry`` is a version of ``ensure`` that works
+  with arbitrary functions (i.e. it does not need an associated object
+  that implements the ``revive`` method.
+
+  Example usage:
+
+  .. code-block:: python
+
+        channel = connection.channel()
+        try:
+            ret, channel = connection.autoretry(send_messages, channel=channel)
+        finally:
+            channel.close()
+
+* ``ConnectionPool.acquire`` no longer force establishes the connection.
+
+    The connection will be established as needed.
+
+* ``BrokerConnection.ensure`` now supports an ``on_revive`` callback
+  that is applied whenever the connection is re-established.
+
+* ``Consumer.consuming_from(queue)`` returns True if the Consumer is
+  consuming from ``queue``.
+
+* ``Consumer.cancel_by_queue`` did not remove the queue from ``queues``.
+
+* ``compat.ConsumerSet.add_queue_from_dict`` now automatically declared
+  the queue if ``auto_declare`` set.
+
 .. _version-1.2.0:
 
 1.2.0
