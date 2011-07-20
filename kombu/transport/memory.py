@@ -33,7 +33,7 @@ class Channel(virtual.Channel):
     def _size(self, queue):
         return self.queues[queue].qsize()
 
-    def _delete(self, queue):
+    def _delete(self, queue, *args):
         self.queues.pop(queue, None)
 
     def _purge(self, queue):

@@ -291,6 +291,8 @@ class Channel(AbstractChannel, base.StdChannel):
     #: counter used to generate delivery tags for this channel.
     _next_delivery_tag = count(1).next
 
+    deadletter_queue = "ae.undeliver"
+
     def __init__(self, connection, **kwargs):
         self.connection = connection
         self._consumers = set()
@@ -303,6 +305,7 @@ class Channel(AbstractChannel, base.StdChannel):
         # instantiate exchange types
         self.exchange_types = dict((typ, cls(self))
                     for typ, cls in self.exchange_types.items())
+        self.auto_delete_queues = {}
 
         self.channel_id = self.connection._next_channel_id()
 
@@ -340,8 +343,10 @@ class Channel(AbstractChannel, base.StdChannel):
             self.queue_delete(queue, if_unused=True, if_empty=True)
         self.state.exchanges.pop(exchange, None)
 
-    def queue_declare(self, queue, passive=False, **kwargs):
+    def queue_declare(self, queue, passive=False, auto_delete=False, **kwargs):
         """Declare queue."""
+        if auto_delete:
+            self.auto_delete_queues.setdefault(queue, 0)
         if passive and not self._has_queue(queue, **kwargs):
             raise StdChannelError("404",
                     u"NOT_FOUND - no queue %r in vhost %r" % (
@@ -355,8 +360,10 @@ class Channel(AbstractChannel, base.StdChannel):
         """Delete queue."""
         if if_empty and self._size(queue):
             return
-        exchange, routing_key = self.state.bindings[queue]
-        self._delete(queue)
+        exchange, routing_key, arguments = self.state.bindings[queue]
+        meta = self.typeof(exchange).prepare_bind(queue, exchange,
+                                                  routing_key, arguments)
+        self._delete(queue, exchange, *meta)
         self.state.bindings.pop(queue, None)
 
     def after_reply_message_received(self, queue):
@@ -368,7 +375,7 @@ class Channel(AbstractChannel, base.StdChannel):
         if queue in self.state.bindings:
             return
         table = self.state.exchanges[exchange].setdefault("table", [])
-        self.state.bindings[queue] = exchange, routing_key
+        self.state.bindings[queue] = exchange, routing_key, arguments
         meta = self.typeof(exchange).prepare_bind(queue,
                                                   exchange,
                                                   routing_key,
@@ -395,16 +402,15 @@ class Channel(AbstractChannel, base.StdChannel):
         props["delivery_info"]["exchange"] = exchange
         props["delivery_info"]["routing_key"] = routing_key
         props["delivery_tag"] = self._next_delivery_tag()
-        if self.typeof(exchange).type == "fanout" and self.supports_fanout:
-            self._put_fanout(exchange, message, **kwargs)
-        else:
-            for queue in self._lookup(exchange, routing_key):
-                self._put(queue, message, **kwargs)
+        self.typeof(exchange).deliver(message,
+                                      exchange, routing_key, **kwargs)
 
     def basic_consume(self, queue, no_ack, callback, consumer_tag, **kwargs):
         """Consume from `queue`"""
         self._tag_to_queue[consumer_tag] = queue
         self._active_queues.append(queue)
+        if queue in self.auto_delete_queues:
+            self.auto_delete_queues[queue] += 1
 
         def _callback(raw_message):
             message = self.Message(self, raw_message)
@@ -423,6 +429,12 @@ class Channel(AbstractChannel, base.StdChannel):
             self._consumers.remove(consumer_tag)
             self._reset_cycle()
             queue = self._tag_to_queue.pop(consumer_tag, None)
+            if queue in self.auto_delete_queues:
+                used = self.auto_delete_queues[queue]
+                if not used - 1:
+                    self.queue_delete(queue)
+                self.auto_delete_queues[queue] -= 1
+
             try:
                 self._active_queues.remove(queue)
             except ValueError:
@@ -471,12 +483,14 @@ class Channel(AbstractChannel, base.StdChannel):
         type = self.state.exchanges[exchange]["type"]
         return self.exchange_types[type]
 
-    def _lookup(self, exchange, routing_key, default="ae.undeliver"):
+    def _lookup(self, exchange, routing_key, default=None):
         """Find all queues matching `routing_key` for the given `exchange`.
 
         Returns `default` if no queues matched.
 
         """
+        if default is None:
+            default = self.deadletter_queue
         try:
             return self.typeof(exchange).lookup(self.get_table(exchange),
                                                 exchange, routing_key, default)
@@ -544,6 +558,7 @@ class Channel(AbstractChannel, base.StdChannel):
             if self.connection is not None:
                 self.connection.close_channel(self)
         self.exchange_types = None
+        self.auto_delete_queues = None
 
     def encode_body(self, body, encoding=None):
         if encoding:

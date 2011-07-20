@@ -180,7 +180,7 @@ class Channel(virtual.Channel):
             return self.table.get_exchanges()
         return super(Channel, self).get_exchanges()
 
-    def _delete(self, queue):
+    def _delete(self, queue, *args):
         """delete queue by name."""
         self._queue_cache.pop(queue, None)
         self.table.queue_delete(queue)
