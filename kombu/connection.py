@@ -269,7 +269,7 @@ class BrokerConnection(object):
 
             channel = connection.channel()
             try:
-                ret, channel = connection.autoretry(publish_messages_fun, channel)
+                ret, channel = connection.autoretry(publish_messages, channel)
             finally:
                 channel.close()
         """
