@@ -311,7 +311,7 @@ class Channel(virtual.Channel):
 
     @cached_property
     def supports_fanout(self):
-        return self.transport_options.get("sdb_persistence", True)
+        return self.transport_options.get("sdb_persistence", False)
 
     @cached_property
     def region(self):
