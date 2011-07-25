@@ -138,6 +138,9 @@ class Producer(object):
         self.channel = channel
         self.exchange.revive(channel)
 
+    def close(self):
+        pass
+
     def _prepare(self, body, serializer=None,
             content_type=None, content_encoding=None, compression=None,
             headers=None):
@@ -260,6 +263,13 @@ class Consumer(object):
 
     def __exit__(self, *exc_info):
         self.cancel()
+
+    def add_queue(self, queue):
+        queue = queue(self.channel)
+        if self.auto_declare:
+            queue.declare()
+        self.queues.append(queue)
+        return queue
 
     def consume(self, no_ack=None):
         """Register consumer on server.

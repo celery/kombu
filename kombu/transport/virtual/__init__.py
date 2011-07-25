@@ -229,7 +229,7 @@ class AbstractChannel(object):
         """Return the number of messages in `queue` as an :class:`int`."""
         return 0
 
-    def _delete(self, queue):
+    def _delete(self, queue, *args, **kwargs):
         """Delete `queue`.
 
         This just purges the queue, if you need to do more you can

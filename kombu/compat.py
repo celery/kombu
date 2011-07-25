@@ -234,15 +234,11 @@ class ConsumerSet(messaging.Consumer):
         return self.purge()
 
     def add_consumer_from_dict(self, queue, **options):
-        queue = entry_to_queue(queue, **options)(self.channel)
-        if self.auto_declare:
-            queue.declare()
-        self.queues.append(queue)
-        return queue
+        return self.add_queue(entry_to_queue(queue, **options))
 
     def add_consumer(self, consumer):
         for queue in consumer.queues:
-            self.queues.append(queue(self.channel))
+            self.add_queue(queue)
 
     def revive(self, channel):
         self.backend = channel
