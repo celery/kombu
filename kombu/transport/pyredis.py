@@ -272,7 +272,6 @@ class Channel(virtual.Channel):
                                                queue or ""]))
         self._avail_client.delete(queue)
 
-
     def _has_queue(self, queue, **kwargs):
         return self._avail_client.exists(queue)
 

@@ -174,6 +174,7 @@ class test_Channel(unittest.TestCase):
             durable=False, auto_delete=True)
 
     def test_exchange_delete(self, ex="test_exchange_delete"):
+
         class PurgeChannel(virtual.Channel):
             purged = []
 
