@@ -8,6 +8,8 @@
 =====
 :release-date: TBA
 
+* Redis: Now automatically deletes auto_delete queues at ``basic_cancel``.
+
 * ``serialization.unregister`` added so it is possible to remove unwanted
   seralizers.
 
