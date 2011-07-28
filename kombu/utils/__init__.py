@@ -5,7 +5,7 @@ from uuid import UUID, uuid4 as _uuid4, _uuid_generate_random
 
 try:
     import ctypes
-except ImportError:
+except:
     ctypes = None  # noqa
 
 
