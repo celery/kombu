@@ -138,6 +138,12 @@ class Producer(object):
         self.channel = channel
         self.exchange.revive(channel)
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc_info):
+        self.close()
+
     def close(self):
         pass
 
