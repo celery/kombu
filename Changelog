@@ -8,10 +8,14 @@
 =====
 :release-date: TBA
 
+* Now depends on amqplib >= 1.0.0.
+
 * Redis: Now automatically deletes auto_delete queues at ``basic_cancel``.
 
 * ``serialization.unregister`` added so it is possible to remove unwanted
   seralizers.
+
+* Fixes MemoryError while importing ctypes on SELinux (Issue #52).
 
 * ``BrokerConnection.autoretry`` is a version of ``ensure`` that works
   with arbitrary functions (i.e. it does not need an associated object
