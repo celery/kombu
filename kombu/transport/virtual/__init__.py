@@ -360,7 +360,10 @@ class Channel(AbstractChannel, base.StdChannel):
         """Delete queue."""
         if if_empty and self._size(queue):
             return
-        exchange, routing_key, arguments = self.state.bindings[queue]
+        try:
+            exchange, routing_key, arguments = self.state.bindings[queue]
+        except KeyError:
+            return
         meta = self.typeof(exchange).prepare_bind(queue, exchange,
                                                   routing_key, arguments)
         self._delete(queue, exchange, *meta)
