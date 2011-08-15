@@ -3,6 +3,8 @@ import sys
 from time import sleep
 from uuid import UUID, uuid4 as _uuid4, _uuid_generate_random
 
+from kombu.utils.encoding import safe_repr as _safe_repr
+
 try:
     import ctypes
 except:
@@ -257,3 +259,13 @@ class cached_property(object):
 
     def deleter(self, fdel):
         return self.__class__(self.__get, self.__set, fdel)
+
+
+def reprkwargs(kwargs, sep=', ', fmt="%s=%s"):
+    return sep.join(fmt % (k, _safe_repr(v)) for k, v in kwargs.iteritems())
+
+
+def reprcall(name, args=(), kwargs=(), sep=', '):
+    return "%s(%s%s%s)" % (name, sep.join(map(_safe_repr, args)),
+                           (args and kwargs) and sep or "",
+                           reprkwargs(kwargs, sep))
