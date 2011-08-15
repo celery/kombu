@@ -26,6 +26,7 @@ if sys.platform.startswith("java"):
 else:
     _decode = codecs.decode
 
+
 if sys.version_info < (2, 6):  # pragma: no cover
     # cPickle is broken in Python <= 2.5.
     # It unsafely and incorrectly uses relative instead of absolute
@@ -62,6 +63,7 @@ class SerializerRegistry(object):
         self._default_encode = None
         self._default_content_type = None
         self._default_content_encoding = None
+        self.type_to_name = {}
 
     def register(self, name, encoder, decoder, content_type,
                  content_encoding='utf-8'):
@@ -69,12 +71,14 @@ class SerializerRegistry(object):
             self._encoders[name] = (content_type, content_encoding, encoder)
         if decoder:
             self._decoders[content_type] = decoder
+        self.type_to_name[content_type] = name
 
     def unregister(self, name):
         try:
             content_type = self._encoders[name][0]
-            del self._decoders[content_type]
-            del self._encoders[name]
+            self._decoders.pop(content_type, None)
+            self._encoders.pop(name, None)
+            self.type_to_name.pop(content_type, None)
         except KeyError:
             raise SerializerNotInstalled(
                 "No encoder/decoder installed for %s" % name)
