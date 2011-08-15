@@ -120,6 +120,9 @@ class Producer(object):
         if compression is None:
             compression = self.compression
 
+        if isinstance(exchange, Exchange):
+            exchange = exchange.name
+
         body, content_type, content_encoding = self._prepare(
                 body, serializer, content_type, content_encoding,
                 compression, headers)
@@ -281,6 +284,8 @@ class Consumer(object):
         """Register consumer on server.
 
         """
+        if not self.queues:
+            return
         if no_ack is None:
             no_ack = self.no_ack
         H, T = self.queues[:-1], self.queues[-1]
