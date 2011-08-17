@@ -162,7 +162,7 @@ class Channel(virtual.Channel):
         except KeyError:
             q = self._queue_cache[queue] = self.sqs.create_queue(
                     self.entity_name(queue),
-                    self.visibility_timeout)
+                                        self.visibility_timeout)
             return q
 
     def _queue_bind(self, *args):
@@ -259,18 +259,18 @@ class Channel(virtual.Channel):
             size += q.count()
             if not size:
                 break
-            q.clear()
+        q.clear()
         return size
 
     def close(self):
         super(Channel, self).close()
         for conn in (self._sqs, self._sdb):
             if conn:
-                try:
+            try:
                     conn.close()
-                except AttributeError, exc:  # FIXME ???
-                    if "can't set attribute" not in str(exc):
-                        raise
+            except AttributeError, exc:  # FIXME ???
+                if "can't set attribute" not in str(exc):
+                    raise
 
     def _get_regioninfo(self, regions):
         if self.region:
