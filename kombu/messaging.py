@@ -95,7 +95,7 @@ class Producer(object):
     def publish(self, body, routing_key=None, delivery_mode=None,
             mandatory=False, immediate=False, priority=0, content_type=None,
             content_encoding=None, serializer=None, headers=None,
-            compression=None, exchange=None):
+            compression=None, exchange=None, **properties):
         """Publish message to the specified exchange.
 
         :param body: Message body.
@@ -111,6 +111,7 @@ class Producer(object):
           with the message body.
         :keyword exchange: Override the exchange.  Note that this exchange
           must have been declared.
+        :keyword properties: Additional properties, see the AMQP spec.
 
         """
         headers = headers or {}
@@ -118,6 +119,9 @@ class Producer(object):
             routing_key = self.routing_key
         if compression is None:
             compression = self.compression
+
+        if isinstance(exchange, Exchange):
+            exchange = exchange.name
 
         body, content_type, content_encoding = self._prepare(
                 body, serializer, content_type, content_encoding,
@@ -127,7 +131,8 @@ class Producer(object):
                                         priority,
                                         content_type,
                                         content_encoding,
-                                        headers=headers)
+                                        headers=headers,
+                                        properties=properties)
         return self.exchange.publish(message, routing_key, mandatory,
                                      immediate, exchange=exchange)
 
@@ -135,6 +140,15 @@ class Producer(object):
         """Revive the producer after connection loss."""
         self.channel = channel
         self.exchange.revive(channel)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc_info):
+        self.close()
+
+    def close(self):
+        pass
 
     def _prepare(self, body, serializer=None,
             content_type=None, content_encoding=None, compression=None,
@@ -259,10 +273,19 @@ class Consumer(object):
     def __exit__(self, *exc_info):
         self.cancel()
 
+    def add_queue(self, queue):
+        queue = queue(self.channel)
+        if self.auto_declare:
+            queue.declare()
+        self.queues.append(queue)
+        return queue
+
     def consume(self, no_ack=None):
         """Register consumer on server.
 
         """
+        if not self.queues:
+            return
         if no_ack is None:
             no_ack = self.no_ack
         H, T = self.queues[:-1], self.queues[-1]
@@ -288,7 +311,14 @@ class Consumer(object):
         except KeyError:
             pass
         else:
+            self.queues[:] = [q for q in self.queues if q.name != queue]
             self.channel.basic_cancel(tag)
+
+    def consuming_from(self, queue):
+        name = queue
+        if isinstance(queue, Queue):
+            name = queue.name
+        return any(q.name == name for q in self.queues)
 
     def purge(self):
         """Purge messages from all queues.

@@ -7,7 +7,8 @@ from nose import SkipTest
 
 from kombu.serialization import registry, register, SerializerNotInstalled, \
                                 raw_encode, register_yaml, register_msgpack, \
-                                decode, bytes_type, pickle
+                                decode, bytes_type, pickle, \
+                                unregister, register_pickle
 
 from kombu.tests.utils import unittest
 from kombu.tests.utils import mask_modules
@@ -193,6 +194,15 @@ class test_Serialization(unittest.TestCase):
 
     def test_register(self):
         register(None, None, None, None)
+
+    def test_unregister(self):
+        self.assertRaises(SerializerNotInstalled,
+                          unregister, "nonexisting")
+        registry.encode("foo", serializer="pickle")
+        unregister("pickle")
+        self.assertRaises(SerializerNotInstalled,
+                          registry.encode, "foo", serializer="pickle")
+        register_pickle()
 
     def test_set_default_serializer_missing(self):
         self.assertRaises(SerializerNotInstalled,

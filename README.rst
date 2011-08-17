@@ -2,7 +2,7 @@
  kombu - AMQP Messaging Framework for Python
 #############################################
 
-:Version: 1.2.0
+:Version: 1.2.1
 
 Synopsis
 ========
@@ -119,7 +119,7 @@ Quick overview
     from kombu.messaging import Exchange, Queue, Consumer, Producer
 
     media_exchange = Exchange("media", "direct", durable=True)
-    video_queue = Queue("video", exchange=media_exchange, key="video")
+    video_queue = Queue("video", exchange=media_exchange, routing_key="video")
 
     # connections/channels
     connection = BrokerConnection("localhost", "guest", "guest", "/")

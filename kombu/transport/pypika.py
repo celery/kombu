@@ -10,6 +10,8 @@ Pika transport.
 """
 import socket
 
+from operator import attrgetter
+
 from kombu.exceptions import VersionMismatch
 from kombu.transport import base
 
@@ -26,16 +28,26 @@ from pika.spec import Basic, BasicProperties
 DEFAULT_PORT = 5672
 
 
+BASIC_PROPERTIES = ("content_type", "content_encoding",
+                    "headers", "delivery_mode", "priority",
+                    "correlation_id", "reply_to", "expiration",
+                    "message_id", "timestamp", "type", "user_id",
+                    "app_id", "cluster_id")
+
+
 class Message(base.Message):
 
     def __init__(self, channel, amqp_message, **kwargs):
         channel_id, method, props, body = amqp_message
+        propdict = dict(zip(BASIC_PROPERTIES,
+                        attrgetter(*BASIC_PROPERTIES)(props)))
 
         kwargs.update({"body": body,
                        "delivery_tag": method.delivery_tag,
                        "content_type": props.content_type,
                        "content_encoding": props.content_encoding,
                        "headers": props.headers,
+                       "properties": propdict,
                        "delivery_info": dict(
                             consumer_tag=getattr(method, "consumer_tag", None),
                             routing_key=method.routing_key,
@@ -110,6 +122,15 @@ class Channel(channel.Channel, base.StdChannel):
 
     def __exit__(self, *exc_info):
         self.close()
+
+    def close(self):
+        super(Channel, self).close()
+        if getattr(self, "handler", None):
+            if getattr(self.handler, "connection", None):
+                self.handler.connection.channels.pop(
+                        self.handler.channel_number, None)
+                self.handler.connection = None
+            self.handler = None
 
     @property
     def channel_id(self):

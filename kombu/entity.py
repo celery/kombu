@@ -355,14 +355,20 @@ class Queue(MaybeChannelBound):
         self.maybe_bind(channel)
 
     def when_bound(self):
-        self.exchange = self.exchange(self.channel)
+        if self.exchange:
+            self.exchange = self.exchange(self.channel)
 
     def declare(self, nowait=False):
         """Declares the queue, the exchange and binds the queue to
         the exchange."""
-        return (self.name and self.exchange.declare(nowait),
-                self.name and self.queue_declare(nowait, passive=False),
-                self.name and self.queue_bind(nowait))
+        name = self.name
+        if name:
+            if self.exchange:
+                self.exchange.declare(nowait)
+        self.queue_declare(nowait, passive=False)
+        if name:
+            self.queue_bind(nowait)
+        return self.name
 
     def queue_declare(self, nowait=False, passive=False):
         """Declare queue on the server.
@@ -373,13 +379,16 @@ class Queue(MaybeChannelBound):
             without modifying the server state.
 
         """
-        return _SYN(self.channel.queue_declare, queue=self.name,
-                                                passive=passive,
-                                                durable=self.durable,
-                                                exclusive=self.exclusive,
-                                                auto_delete=self.auto_delete,
-                                                arguments=self.queue_arguments,
-                                                nowait=nowait)
+        ret = _SYN(self.channel.queue_declare, queue=self.name,
+                                               passive=passive,
+                                               durable=self.durable,
+                                               exclusive=self.exclusive,
+                                               auto_delete=self.auto_delete,
+                                               arguments=self.queue_arguments,
+                                               nowait=nowait)
+        if not self.name:
+            self.name = ret[0]
+        return ret
 
     def queue_bind(self, nowait=False):
         """Create the queue binding on the server.

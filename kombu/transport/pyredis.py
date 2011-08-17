@@ -265,6 +265,13 @@ class Channel(virtual.Channel):
                                            pattern or "",
                                            queue or ""]))
 
+    def _delete(self, queue, exchange, routing_key, pattern, *args):
+        self._avail_client.srem(self.keyprefix_queue % (exchange, ),
+                                self.sep.join([routing_key or "",
+                                               pattern or "",
+                                               queue or ""]))
+        self._avail_client.delete(queue)
+
     def _has_queue(self, queue, **kwargs):
         return self._avail_client.exists(queue)
 

@@ -242,6 +242,8 @@ class Transport(base.Transport):
         for name, default_value in self.default_connection_params.items():
             if not getattr(conninfo, name, None):
                 setattr(conninfo, name, default_value)
+        if conninfo.hostname == "localhost":
+            conninfo.hostname = "127.0.0.1"
         conn = self.Connection(host=conninfo.host,
                                userid=conninfo.userid,
                                password=conninfo.password,

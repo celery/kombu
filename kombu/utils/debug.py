@@ -14,6 +14,7 @@ def setup_logging(loglevel=logging.DEBUG, loggers=["kombu.connection",
 
 
 class Logwrapped(object):
+    __ignore = ("__enter__", "__exit__")
 
     def __init__(self, instance, logger=None, ident=None):
         self.instance = instance
@@ -23,7 +24,7 @@ class Logwrapped(object):
     def __getattr__(self, key):
         meth = getattr(self.instance, key)
 
-        if not callable(meth):
+        if not callable(meth) or key in self.__ignore:
             return meth
 
         @wraps(meth)

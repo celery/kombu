@@ -53,6 +53,12 @@ class DirectExchange(ExchangeType):
         return [queue for rkey, _, queue in table
                     if rkey == routing_key] or [default]
 
+    def deliver(self, message, exchange, routing_key, **kwargs):
+        _lookup = self.channel._lookup
+        _put = self.channel._put
+        for queue in _lookup(exchange, routing_key):
+            _put(queue, message, **kwargs)
+
 
 class TopicExchange(ExchangeType):
     """The `topic` exchanges routes based on words separated by dots, and
@@ -67,8 +73,16 @@ class TopicExchange(ExchangeType):
     _compiled = {}
 
     def lookup(self, table, exchange, routing_key, default):
-        return  [queue for rkey, pattern, queue in table
-                            if self._match(pattern, routing_key)] or [default]
+        return [queue for rkey, pattern, queue in table
+                        if self._match(pattern, routing_key)] or [default]
+
+    def deliver(self, message, exchange, routing_key, **kwargs):
+        _lookup = self.channel._lookup
+        _put = self.channel._put
+        deadletter = self.channel.deadletter_queue
+        for queue in [q for q in _lookup(exchange, routing_key)
+                            if q and q != deadletter]:
+            _put(queue, message, **kwargs)
 
     def prepare_bind(self, queue, exchange, routing_key, arguments):
         return routing_key, self.key_to_pattern(routing_key), queue
@@ -103,6 +117,10 @@ class FanoutExchange(ExchangeType):
 
     def lookup(self, table, exchange, routing_key, default):
         return [queue for _, _, queue in table]
+
+    def deliver(self, message, exchange, routing_key, **kwargs):
+        if self.channel.supports_fanout:
+            self.channel._put_fanout(exchange, message, **kwargs)
 
 
 #: Map of standard exchange types and corresponding classes.

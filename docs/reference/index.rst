@@ -30,6 +30,7 @@
     kombu.transport.virtual.scheduling
     kombu.serialization
     kombu.compression
+    kombu.pools
     kombu.abstract
     kombu.syn
     kombu.utils

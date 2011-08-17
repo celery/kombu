@@ -190,7 +190,7 @@ class Channel(virtual.Channel):
             return self.table.get_exchanges()
         return super(Channel, self).get_exchanges()
 
-    def _delete(self, queue):
+    def _delete(self, queue, *args):
         """delete queue by name."""
         self._queue_cache.pop(queue, None)
         self.table.queue_delete(queue)
@@ -321,7 +321,7 @@ class Channel(virtual.Channel):
 
     @cached_property
     def supports_fanout(self):
-        return self.transport_options.get("sdb_persistence", True)
+        return self.transport_options.get("sdb_persistence", False)
 
     @cached_property
     def region(self):

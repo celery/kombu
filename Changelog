@@ -2,11 +2,60 @@
  Change history
 ================
 
+.. _version-1.2.1:
+
+1.2.1
+=====
+:release-date: TBA
+
+* Now depends on amqplib >= 1.0.0.
+
+* Redis: Now automatically deletes auto_delete queues at ``basic_cancel``.
+
+* ``serialization.unregister`` added so it is possible to remove unwanted
+  seralizers.
+
+* Fixes MemoryError while importing ctypes on SELinux (Issue #52).
+
+* ``BrokerConnection.autoretry`` is a version of ``ensure`` that works
+  with arbitrary functions (i.e. it does not need an associated object
+  that implements the ``revive`` method.
+
+  Example usage:
+
+  .. code-block:: python
+
+        channel = connection.channel()
+        try:
+            ret, channel = connection.autoretry(send_messages, channel=channel)
+        finally:
+            channel.close()
+
+* ``ConnectionPool.acquire`` no longer force establishes the connection.
+
+    The connection will be established as needed.
+
+* ``BrokerConnection.ensure`` now supports an ``on_revive`` callback
+  that is applied whenever the connection is re-established.
+
+* ``Consumer.consuming_from(queue)`` returns True if the Consumer is
+  consuming from ``queue``.
+
+* ``Consumer.cancel_by_queue`` did not remove the queue from ``queues``.
+
+* ``compat.ConsumerSet.add_queue_from_dict`` now automatically declared
+  the queue if ``auto_declare`` set.
+
 .. _version-1.2.0:
 
 1.2.0
 =====
-:release-date: 2011-06-29 04:00 P.M BST
+:release-date: 2011-07-15 12:00 P.M BST
+
+* Virtual: Fixes cyclic reference in Channel.close (Issue #49).
+
+* Producer.publish: Can now set additional properties using keyword
+  arguments (Issue #48).
 
 * Adds Queue.no_ack option to control the no_ack option for individual queues.
 
