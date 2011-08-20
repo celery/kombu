@@ -115,7 +115,7 @@ class BrokerConnection(object):
                   "port": port, "insist": insist, "ssl": ssl,
                   "transport": transport, "connect_timeout": connect_timeout,
                   "login_method": login_method}
-        if "://" in hostname:
+        if hostname and "://" in hostname:
             params.update(parse_url(hostname))
         self._init_params(**params)
 
