@@ -32,6 +32,7 @@ URI_FORMAT = """\
 %(transport)s://%(userid)s@%(hostname)s%(port)s/%(virtual_host)s\
 """
 
+
 def parse_url(url):
     auth = userid = password = None
     scheme = urlparse(url).scheme
@@ -104,6 +105,7 @@ class BrokerConnection(object):
     _connection = None
     _transport = None
     _logger = None
+    skip_uri_transports = set(["sqlalchemy", "sqlakombu.transport.Transport"])
 
     def __init__(self, hostname="localhost", userid=None,
             password=None, virtual_host=None, port=None, insist=False,
@@ -115,7 +117,8 @@ class BrokerConnection(object):
                   "port": port, "insist": insist, "ssl": ssl,
                   "transport": transport, "connect_timeout": connect_timeout,
                   "login_method": login_method}
-        if hostname and "://" in hostname:
+        if hostname and "://" in hostname \
+                and transport not in self.skip_uri_transports:
             params.update(parse_url(hostname))
         self._init_params(**params)
 
