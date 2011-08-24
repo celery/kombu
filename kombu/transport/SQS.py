@@ -267,7 +267,7 @@ class Channel(virtual.Channel):
         for conn in (self._sqs, self._sdb):
             if conn:
                 try:
-                        conn.close()
+                    conn.close()
                 except AttributeError, exc:  # FIXME ???
                     if "can't set attribute" not in str(exc):
                         raise
