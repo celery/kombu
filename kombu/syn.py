@@ -8,14 +8,13 @@ def blocking(fun, *args, **kwargs):
     """Make sure function is called by blocking and waiting for the result,
     even if we're currently in a monkey patched eventlet/gevent
     environment."""
-    global __sync_current
     if __sync_current is None:
-        __sync_current = detect_sync_method()
+        select_blocking_method(detect_environment())
     return __sync_current(fun, *args, **kwargs)
 
 
 def select_blocking_method(type):
-    """Select blocking method, where `type` is onf of default
+    """Select blocking method, where `type` is one of default
     gevent or eventlet."""
     global __sync_current
     __sync_current = {"eventlet": _sync_eventlet,
@@ -52,9 +51,7 @@ def _sync_gevent():
     return __gblocking__
 
 
-def detect_sync_method():
-    """Detect method to use for blocking calls."""
-
+def detect_environment():
     ## -eventlet-
     if "eventlet" in sys.modules:
         try:
@@ -62,7 +59,7 @@ def detect_sync_method():
             import socket
 
             if is_eventlet(socket):
-                return _sync_eventlet()
+                return "eventlet"
         except ImportError:
             pass
 
@@ -73,8 +70,8 @@ def detect_sync_method():
             import socket
 
             if socket.socket is _gsocket.socket:
-                return _sync_gevent()
+                return "gevent"
         except ImportError:
             pass
 
-    return _sync_default()
+    return "default"

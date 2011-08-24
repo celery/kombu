@@ -73,11 +73,16 @@ class Publisher(messaging.Producer):
     durable = True
     auto_delete = False
     _closed = False
+    _provided_channel = None
 
     def __init__(self, connection, exchange=None, routing_key=None,
-            exchange_type=None, durable=None, auto_delete=None, **kwargs):
+            exchange_type=None, durable=None, auto_delete=None, channel=None,
+            **kwargs):
         self.connection = connection
-        self.backend = connection.channel()
+        if channel:
+            self._provided_channel = self.backend = channel
+        else:
+            self.backend = connection.channel()
 
         self.exchange = exchange or self.exchange
         self.exchange_type = exchange_type or self.exchange_type
@@ -106,7 +111,8 @@ class Publisher(messaging.Producer):
         super(Publisher, self).revive(channel)
 
     def close(self):
-        self.backend.close()
+        if not self._provided_channel:
+            self.backend.close()
         self._closed = True
 
     def __enter__(self):

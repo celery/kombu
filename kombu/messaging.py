@@ -145,10 +145,11 @@ class Producer(object):
         return self
 
     def __exit__(self, *exc_info):
-        self.close()
+        self.release()
 
-    def close(self):
+    def release(self):
         pass
+    close = release
 
     def _prepare(self, body, serializer=None,
             content_type=None, content_encoding=None, compression=None,
