@@ -266,11 +266,11 @@ class Channel(virtual.Channel):
         super(Channel, self).close()
         for conn in (self._sqs, self._sdb):
             if conn:
-            try:
-                    conn.close()
-            except AttributeError, exc:  # FIXME ???
-                if "can't set attribute" not in str(exc):
-                    raise
+                try:
+                        conn.close()
+                except AttributeError, exc:  # FIXME ???
+                    if "can't set attribute" not in str(exc):
+                        raise
 
     def _get_regioninfo(self, regions):
         if self.region:
