@@ -110,5 +110,34 @@ def skip_if_environ(env_var_name):
     return _wrap_test
 
 
+def skip_if_module(module):
+    def _wrap_test(fun):
+        @wraps(fun)
+        def _skip_if_module(*args, **kwargs):
+            try:
+                __import__(module)
+                raise SkipTest("SKIP %s: %s available\n" % (
+                    fun.__name__, module))
+            except ImportError:
+                pass
+            return fun(*args, **kwargs)
+        return _skip_if_module
+    return _wrap_test
+
+
+def skip_if_not_module(module):
+    def _wrap_test(fun):
+        @wraps(fun)
+        def _skip_if_not_module(*args, **kwargs):
+            try:
+                __import__(module)
+            except ImportError:
+                raise SkipTest("SKIP %s: %s available\n" % (
+                    fun.__name__, module))
+            return fun(*args, **kwargs)
+        return _skip_if_not_module
+    return _wrap_test
+
+
 def skip_if_quick(fun):
     return skip_if_environ("QUICKTEST")(fun)
