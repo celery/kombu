@@ -11,7 +11,7 @@ from kombu.serialization import registry, register, SerializerNotInstalled, \
                                 unregister, register_pickle
 
 from kombu.tests.utils import unittest
-from kombu.tests.utils import mask_modules
+from kombu.tests.utils import mask_modules, skip_if_not_module
 
 # For content_encoding tests
 unicode_string = u'abcdé\u8463'
@@ -120,28 +120,18 @@ class test_Serialization(unittest.TestCase):
                               content_type='application/json',
                               content_encoding='utf-8'))
 
+    @skip_if_not_module('msgpack')
     def test_msgpack_decode(self):
         register_msgpack()
-        try:
-            __import__("msgpack")
-        except ImportError:
-            say("* msgpack-python not installed, will not execute "
-                "related tests.")
-            raise SkipTest("msgpack-python not installed")
         self.assertEquals(msgpack_py_data,
                           registry.decode(
                               msgpack_data,
                               content_type='application/x-msgpack',
                               content_encoding='binary'))
 
+    @skip_if_not_module('msgpack')
     def test_msgpack_encode(self):
         register_msgpack()
-        try:
-            __import__("msgpack")
-        except ImportError:
-            say("* msgpack-python not installed, will not execute "
-                "related tests.")
-            raise SkipTest("msgpack-python not installed")
         self.assertEquals(registry.decode(
                 registry.encode(msgpack_py_data, serializer="msgpack")[-1],
                 content_type='application/x-msgpack',
@@ -151,26 +141,18 @@ class test_Serialization(unittest.TestCase):
                     content_type='application/x-msgpack',
                     content_encoding='binary'))
 
+    @skip_if_not_module('yaml')
     def test_yaml_decode(self):
         register_yaml()
-        try:
-            __import__("yaml")
-        except ImportError:
-            say("* PyYAML not installed, will not execute related tests.")
-            raise SkipTest("PyYAML not installed")
         self.assertEquals(py_data,
                           registry.decode(
                               yaml_data,
                               content_type='application/x-yaml',
                               content_encoding='utf-8'))
 
+    @skip_if_not_module('yaml')
     def test_yaml_encode(self):
         register_yaml()
-        try:
-            __import__("yaml")
-        except ImportError:
-            say("* PyYAML not installed, will not execute related tests.")
-            raise SkipTest("PyYAML not installed")
         self.assertEquals(registry.decode(
                               registry.encode(py_data, serializer="yaml")[-1],
                               content_type='application/x-yaml',

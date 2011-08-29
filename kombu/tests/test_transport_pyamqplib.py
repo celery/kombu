@@ -19,7 +19,7 @@ class test_amqplib(unittest.TestCase):
 
         c = BrokerConnection(port=None, transport=Transport).connect()
         self.assertEqual(c["host"],
-                         "localhost:%s" % (Transport.default_port, ))
+                         "127.0.0.1:%s" % (Transport.default_port, ))
 
     def test_custom_port(self):
 
@@ -27,4 +27,4 @@ class test_amqplib(unittest.TestCase):
             Connection = MockConnection
 
         c = BrokerConnection(port=1337, transport=Transport).connect()
-        self.assertEqual(c["host"], "localhost:1337")
+        self.assertEqual(c["host"], "127.0.0.1:1337")

@@ -10,7 +10,7 @@ else:
 from kombu import utils
 from kombu.utils.functional import wraps
 
-from kombu.tests.utils import redirect_stdouts, mask_modules
+from kombu.tests.utils import redirect_stdouts, mask_modules, skip_if_module
 
 partition = utils._compat_partition
 rpartition = utils._compat_rpartition
@@ -93,6 +93,7 @@ class test_UUID(unittest.TestCase):
         self.assertIsInstance(i1, str)
         self.assertNotEqual(i1, i2)
 
+    @skip_if_module('__pypy__')
     def test_gen_unique_id_without_ctypes(self):
         old_utils = sys.modules.pop("kombu.utils")
 
