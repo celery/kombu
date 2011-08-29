@@ -565,7 +565,7 @@ class Resource(object):
         self.setup()
 
     def setup(self):
-        raise NotImplementedError("subclass responsibilty")
+        pass
 
     def _add_when_empty(self):
         if self.limit and len(self._dirty) >= self.limit:
@@ -731,11 +731,10 @@ class ConnectionPool(Resource):
         return PoolChannelContext(self, block)
 
     def setup(self):
-        if self.limit:
-            for i in xrange(self.limit):
+        if self.preload:
+            for _ in xrange(self.preload):
                 conn = self.new()
-                if i < self.preload:
-                    conn.connect()
+                conn.connect()
                 self._resource.put_nowait(conn)
 
     def prepare(self, resource):
@@ -756,9 +755,9 @@ class ChannelPool(Resource):
 
     def setup(self):
         channel = self.new()
-        for i in xrange(self.limit):
-            self._resource.put_nowait(
-                    i < self.preload and channel() or channel)
+        if self.preload:
+            for i in xrange(self.preload):
+                self._resource.put_nowait(channel())
 
     def prepare(self, channel):
         if callable(channel):

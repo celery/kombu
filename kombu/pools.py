@@ -20,11 +20,6 @@ class ProducerPool(Resource):
     def new(self):
         return lambda: self.create_producer()
 
-    def setup(self):
-        if self.limit:
-            for _ in xrange(self.limit):
-                self._resource.put_nowait(self.new())
-
     def prepare(self, p):
         if callable(p):
             p = p()
