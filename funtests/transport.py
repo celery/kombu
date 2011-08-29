@@ -289,11 +289,11 @@ class TransportCase(unittest.TestCase):
             chanrefs = []
             try:
                 for i in xrange(100):
-                    channel = conn.channel()
+            channel = conn.channel()
                     chanrefs.append(weakref.ref(channel))
-                    channel.close()
+            channel.close()
             finally:
-                conn.close()
+            conn.close()
             return chanrefs
 
         for chanref in _createref():
