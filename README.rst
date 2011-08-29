@@ -65,7 +65,7 @@ and the `Wikipedia article about AMQP`_.
 .. _`Beanstalk`: http://kr.github.com/beanstalkd/
 .. _`Rabbits and warrens`: http://blogs.digitar.com/jjww/2009/01/rabbits-and-warrens/
 .. _`amqplib`: http://barryp.org/software/py-amqplib/
-.. _`pika`: http://github.com/tonyg/pika
+.. _`pika`: http://github.com/pika/pika
 .. _`Wikipedia article about AMQP`: http://en.wikipedia.org/wiki/AMQP
 .. _`kombu-sqlalchemy`: http://github.com/ask/kombu-sqlalchemy/
 .. _`django-kombu`: http://github.com/ask/django-kombu/
