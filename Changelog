@@ -6,7 +6,7 @@
 
 1.2.1
 =====
-:release-date: TBA
+:release-date: 2011-07-29 12:52 P.M BST
 
 * Now depends on amqplib >= 1.0.0.
 
