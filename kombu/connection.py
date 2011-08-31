@@ -374,12 +374,14 @@ class BrokerConnection(object):
 
     def as_uri(self):
         fields = self.info()
+        hostname = fields["hostname"]
         port = fields["port"]
         userid = fields["userid"]
         url = "%s://" % fields["transport"]
         if userid:
             url += userid + '@'
-        url += fields["hostname"]
+        if hostname:
+            url += hostname
         if port:
             url += ':' + str(port)
         url += '/' + fields["virtual_host"]
