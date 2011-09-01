@@ -150,7 +150,7 @@ class test_ConnectionPool(ResourceCase):
         q = P._resource.queue
         self.assertIsNotNone(q[0]._connection)
         self.assertIsNotNone(q[1]._connection)
-        self.assertIsNone(q[2]._connection)
+        self.assertIsNone(q[2]()._connection)
 
 
 class test_ChannelPool(ResourceCase):
