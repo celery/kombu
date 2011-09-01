@@ -372,16 +372,19 @@ class BrokerConnection(object):
     def __hash__(self):
         return hash("|".join(map(str, self.info().itervalues())))
 
-    def as_uri(self):
+    def as_uri(self, include_password=False):
         fields = self.info()
         hostname = fields["hostname"]
         port = fields["port"]
         userid = fields["userid"]
+        password = fields["password"]
         url = "%s://" % fields["transport"]
         if userid:
-            url += userid + '@'
-        if hostname:
-            url += hostname
+            url += userid
+            if include_password and password:
+                url += ':' + password
+            url += '@'
+        url += fields["hostname"]
         if port:
             url += ':' + str(port)
         url += '/' + fields["virtual_host"]
@@ -567,7 +570,7 @@ class Resource(object):
         self.setup()
 
     def setup(self):
-        pass
+        raise NotImplementedError("subclass responsibility")
 
     def _add_when_empty(self):
         if self.limit and len(self._dirty) >= self.limit:
