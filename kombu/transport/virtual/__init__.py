@@ -704,3 +704,7 @@ class Transport(base.Transport):
 
     def _drain_channel(self, channel, timeout=None):
         return channel.drain_events(timeout=timeout)
+
+    @property
+    def default_connection_params(self):
+        return {"port": self.default_port, "hostname": "localhost"}
