@@ -1,0 +1,399 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>kombu.transport.pyamqplib &mdash; Kombu v1.3.0 documentation</title>
+    <link rel="stylesheet" href="../_static/celery.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.3.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="Kombu v1.3.0 documentation" href="../index.html" />
+    <link rel="up" title="API Reference" href="index.html" />
+    <link rel="next" title="kombu.transport.librabbitmq" href="kombu.transport.librabbitmq.html" />
+    <link rel="prev" title="kombu.transport" href="kombu.transport.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="kombu.transport.librabbitmq.html" title="kombu.transport.librabbitmq"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="kombu.transport.html" title="kombu.transport"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../index.html">Kombu v1.3.0 documentation</a> &raquo;</li>
+          <li><a href="index.html" accesskey="U">API Reference</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <span class="target" id="module-kombu.transport.pyamqplib"></span><div class="section" id="kombu-transport-pyamqplib">
+<h1>kombu.transport.pyamqplib<a class="headerlink" href="#kombu-transport-pyamqplib" title="Permalink to this headline">¶</a></h1>
+<p>amqplib transport.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">copyright:</th><td class="field-body"><ol class="first loweralpha simple" start="3">
+<li>2009 - 2011 by Ask Solem.</li>
+</ol>
+</td>
+</tr>
+<tr class="field"><th class="field-name">license:</th><td class="field-body"><p class="first last">BSD, see LICENSE for more details.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="contents local topic" id="contents">
+<ul class="simple">
+<li><a class="reference internal" href="#transport" id="id1">Transport</a></li>
+<li><a class="reference internal" href="#connection" id="id2">Connection</a></li>
+<li><a class="reference internal" href="#channel" id="id3">Channel</a></li>
+<li><a class="reference internal" href="#message" id="id4">Message</a></li>
+</ul>
+</div>
+<div class="section" id="transport">
+<h2><a class="toc-backref" href="#id1">Transport</a><a class="headerlink" href="#transport" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="kombu.transport.pyamqplib.Transport">
+<em class="property">class </em><tt class="descclassname">kombu.transport.pyamqplib.</tt><tt class="descname">Transport</tt><big>(</big><em>client</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.transport.pyamqplib.Transport" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="class">
+<dt id="kombu.transport.pyamqplib.Transport.Connection">
+<em class="property">class </em><tt class="descname">Connection</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.transport.pyamqplib.Transport.Connection" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="kombu.transport.pyamqplib.Transport.Connection.channel">
+<tt class="descname">channel</tt><big>(</big><em>channel_id=None</em><big>)</big><a class="headerlink" href="#kombu.transport.pyamqplib.Transport.Connection.channel" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.pyamqplib.Transport.Connection.drain_events">
+<tt class="descname">drain_events</tt><big>(</big><em>allowed_methods=None</em>, <em>timeout=None</em><big>)</big><a class="headerlink" href="#kombu.transport.pyamqplib.Transport.Connection.drain_events" title="Permalink to this definition">¶</a></dt>
+<dd><p>Wait for an event on any channel.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.pyamqplib.Transport.Connection.read_timeout">
+<tt class="descname">read_timeout</tt><big>(</big><em>timeout=None</em><big>)</big><a class="headerlink" href="#kombu.transport.pyamqplib.Transport.Connection.read_timeout" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.pyamqplib.Transport.Connection.wait_multi">
+<tt class="descname">wait_multi</tt><big>(</big><em>channels</em>, <em>allowed_methods=None</em>, <em>timeout=None</em><big>)</big><a class="headerlink" href="#kombu.transport.pyamqplib.Transport.Connection.wait_multi" title="Permalink to this definition">¶</a></dt>
+<dd><p>Wait for an event on a channel.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.pyamqplib.Transport.close_connection">
+<tt class="descclassname">Transport.</tt><tt class="descname">close_connection</tt><big>(</big><em>connection</em><big>)</big><a class="headerlink" href="#kombu.transport.pyamqplib.Transport.close_connection" title="Permalink to this definition">¶</a></dt>
+<dd><p>Close the AMQP broker connection.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.pyamqplib.Transport.create_channel">
+<tt class="descclassname">Transport.</tt><tt class="descname">create_channel</tt><big>(</big><em>connection</em><big>)</big><a class="headerlink" href="#kombu.transport.pyamqplib.Transport.create_channel" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.pyamqplib.Transport.default_connection_params">
+<tt class="descclassname">Transport.</tt><tt class="descname">default_connection_params</tt><a class="headerlink" href="#kombu.transport.pyamqplib.Transport.default_connection_params" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.pyamqplib.Transport.drain_events">
+<tt class="descclassname">Transport.</tt><tt class="descname">drain_events</tt><big>(</big><em>connection</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.transport.pyamqplib.Transport.drain_events" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.pyamqplib.Transport.establish_connection">
+<tt class="descclassname">Transport.</tt><tt class="descname">establish_connection</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.transport.pyamqplib.Transport.establish_connection" title="Permalink to this definition">¶</a></dt>
+<dd><p>Establish connection to the AMQP broker.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.pyamqplib.Transport.verify_connection">
+<tt class="descclassname">Transport.</tt><tt class="descname">verify_connection</tt><big>(</big><em>connection</em><big>)</big><a class="headerlink" href="#kombu.transport.pyamqplib.Transport.verify_connection" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="connection">
+<h2><a class="toc-backref" href="#id2">Connection</a><a class="headerlink" href="#connection" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="kombu.transport.pyamqplib.Connection">
+<em class="property">class </em><tt class="descclassname">kombu.transport.pyamqplib.</tt><tt class="descname">Connection</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.transport.pyamqplib.Connection" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="kombu.transport.pyamqplib.Connection.channel">
+<tt class="descname">channel</tt><big>(</big><em>channel_id=None</em><big>)</big><a class="headerlink" href="#kombu.transport.pyamqplib.Connection.channel" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.pyamqplib.Connection.close">
+<tt class="descname">close</tt><big>(</big><em>reply_code=0</em>, <em>reply_text=''</em>, <em>method_sig=(0</em>, <em>0)</em><big>)</big><a class="headerlink" href="#kombu.transport.pyamqplib.Connection.close" title="Permalink to this definition">¶</a></dt>
+<dd><p>request a connection close</p>
+<p>This method indicates that the sender wants to close the
+connection. This may be due to internal conditions (e.g. a
+forced shut-down) or due to an error handling a specific
+method, i.e. an exception.  When a close is due to an
+exception, the sender provides the class and method id of the
+method which caused the exception.</p>
+<p>RULE:</p>
+<blockquote>
+<div>After sending this method any received method except the
+Close-OK method MUST be discarded.</div></blockquote>
+<p>RULE:</p>
+<blockquote>
+<div>The peer sending this method MAY use a counter or timeout
+to detect failure of the other peer to respond correctly
+with the Close-OK method.</div></blockquote>
+<p>RULE:</p>
+<blockquote>
+<div>When a server receives the Close method from a client it
+MUST delete all server-side resources associated with the
+client&#8217;s context.  A client CANNOT reconnect to a context
+after sending or receiving a Close method.</div></blockquote>
+<dl class="docutils">
+<dt>PARAMETERS:</dt>
+<dd><p class="first">reply_code: short</p>
+<blockquote>
+<div>The reply code. The AMQ reply codes are defined in AMQ
+RFC 011.</div></blockquote>
+<p>reply_text: shortstr</p>
+<blockquote>
+<div>The localised reply text.  This text can be logged as an
+aid to resolving issues.</div></blockquote>
+<p>class_id: short</p>
+<blockquote>
+<div><p>failing method class</p>
+<p>When the close is provoked by a method exception, this
+is the class of the method.</p>
+</div></blockquote>
+<p>method_id: short</p>
+<blockquote class="last">
+<div><p>failing method ID</p>
+<p>When the close is provoked by a method exception, this
+is the ID of the method.</p>
+</div></blockquote>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.pyamqplib.Connection.dispatch_method">
+<tt class="descname">dispatch_method</tt><big>(</big><em>method_sig</em>, <em>args</em>, <em>content</em><big>)</big><a class="headerlink" href="#kombu.transport.pyamqplib.Connection.dispatch_method" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.pyamqplib.Connection.drain_events">
+<tt class="descname">drain_events</tt><big>(</big><em>allowed_methods=None</em>, <em>timeout=None</em><big>)</big><a class="headerlink" href="#kombu.transport.pyamqplib.Connection.drain_events" title="Permalink to this definition">¶</a></dt>
+<dd><p>Wait for an event on any channel.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.pyamqplib.Connection.read_timeout">
+<tt class="descname">read_timeout</tt><big>(</big><em>timeout=None</em><big>)</big><a class="headerlink" href="#kombu.transport.pyamqplib.Connection.read_timeout" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.pyamqplib.Connection.wait">
+<tt class="descname">wait</tt><big>(</big><em>allowed_methods=None</em><big>)</big><a class="headerlink" href="#kombu.transport.pyamqplib.Connection.wait" title="Permalink to this definition">¶</a></dt>
+<dd><p>Wait for a method that matches our allowed_methods parameter (the
+default value of None means match any method), and dispatch to it.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.pyamqplib.Connection.wait_multi">
+<tt class="descname">wait_multi</tt><big>(</big><em>channels</em>, <em>allowed_methods=None</em>, <em>timeout=None</em><big>)</big><a class="headerlink" href="#kombu.transport.pyamqplib.Connection.wait_multi" title="Permalink to this definition">¶</a></dt>
+<dd><p>Wait for an event on a channel.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="channel">
+<h2><a class="toc-backref" href="#id3">Channel</a><a class="headerlink" href="#channel" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="kombu.transport.pyamqplib.Channel">
+<em class="property">class </em><tt class="descclassname">kombu.transport.pyamqplib.</tt><tt class="descname">Channel</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.transport.pyamqplib.Channel" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="class">
+<dt id="kombu.transport.pyamqplib.Channel.Message">
+<em class="property">class </em><tt class="descname">Message</tt><big>(</big><em>channel</em>, <em>msg</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.transport.pyamqplib.Channel.Message" title="Permalink to this definition">¶</a></dt>
+<dd><p>A message received by the broker.</p>
+<dl class="attribute">
+<dt id="kombu.transport.pyamqplib.Channel.Message.body">
+<tt class="descname">body</tt><a class="headerlink" href="#kombu.transport.pyamqplib.Channel.Message.body" title="Permalink to this definition">¶</a></dt>
+<dd><p>The message body.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.pyamqplib.Channel.Message.delivery_tag">
+<tt class="descname">delivery_tag</tt><a class="headerlink" href="#kombu.transport.pyamqplib.Channel.Message.delivery_tag" title="Permalink to this definition">¶</a></dt>
+<dd><p>The message delivery tag, uniquely identifying this message.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.pyamqplib.Channel.Message.channel">
+<tt class="descname">channel</tt><a class="headerlink" href="#kombu.transport.pyamqplib.Channel.Message.channel" title="Permalink to this definition">¶</a></dt>
+<dd><p>The channel instance the message was received on.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.pyamqplib.Channel.basic_cancel">
+<tt class="descclassname">Channel.</tt><tt class="descname">basic_cancel</tt><big>(</big><em>consumer_tag</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.transport.pyamqplib.Channel.basic_cancel" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.pyamqplib.Channel.basic_consume">
+<tt class="descclassname">Channel.</tt><tt class="descname">basic_consume</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.transport.pyamqplib.Channel.basic_consume" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.pyamqplib.Channel.close">
+<tt class="descclassname">Channel.</tt><tt class="descname">close</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.transport.pyamqplib.Channel.close" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.pyamqplib.Channel.message_to_python">
+<tt class="descclassname">Channel.</tt><tt class="descname">message_to_python</tt><big>(</big><em>raw_message</em><big>)</big><a class="headerlink" href="#kombu.transport.pyamqplib.Channel.message_to_python" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert encoded message body back to a Python value.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.pyamqplib.Channel.prepare_message">
+<tt class="descclassname">Channel.</tt><tt class="descname">prepare_message</tt><big>(</big><em>message_data</em>, <em>priority=None</em>, <em>content_type=None</em>, <em>content_encoding=None</em>, <em>headers=None</em>, <em>properties=None</em><big>)</big><a class="headerlink" href="#kombu.transport.pyamqplib.Channel.prepare_message" title="Permalink to this definition">¶</a></dt>
+<dd><p>Encapsulate data into a AMQP message.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="message">
+<h2><a class="toc-backref" href="#id4">Message</a><a class="headerlink" href="#message" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="kombu.transport.pyamqplib.Message">
+<em class="property">class </em><tt class="descclassname">kombu.transport.pyamqplib.</tt><tt class="descname">Message</tt><big>(</big><em>channel</em>, <em>msg</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.transport.pyamqplib.Message" title="Permalink to this definition">¶</a></dt>
+<dd><p>A message received by the broker.</p>
+<dl class="attribute">
+<dt id="kombu.transport.pyamqplib.Message.body">
+<tt class="descname">body</tt><a class="headerlink" href="#kombu.transport.pyamqplib.Message.body" title="Permalink to this definition">¶</a></dt>
+<dd><p>The message body.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.pyamqplib.Message.delivery_tag">
+<tt class="descname">delivery_tag</tt><a class="headerlink" href="#kombu.transport.pyamqplib.Message.delivery_tag" title="Permalink to this definition">¶</a></dt>
+<dd><p>The message delivery tag, uniquely identifying this message.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.pyamqplib.Message.channel">
+<tt class="descname">channel</tt><a class="headerlink" href="#kombu.transport.pyamqplib.Message.channel" title="Permalink to this definition">¶</a></dt>
+<dd><p>The channel instance the message was received on.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper"><p class="logo"><a href="../index.html">
+  <img class="logo" width="128" height="128" src="http://cloud.github.com/downloads/ask/kombu/kombusmall.jpg" alt="Logo"/>
+</a></p>
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">kombu.transport.pyamqplib</a><ul>
+<li><a class="reference internal" href="#transport">Transport</a></li>
+<li><a class="reference internal" href="#connection">Connection</a></li>
+<li><a class="reference internal" href="#channel">Channel</a></li>
+<li><a class="reference internal" href="#message">Message</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="kombu.transport.html"
+                        title="previous chapter">kombu.transport</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="kombu.transport.librabbitmq.html"
+                        title="next chapter">kombu.transport.librabbitmq</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/reference/kombu.transport.pyamqplib.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" size="18" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="kombu.transport.librabbitmq.html" title="kombu.transport.librabbitmq"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="kombu.transport.html" title="kombu.transport"
+             >previous</a> |</li>
+        <li><a href="../index.html">Kombu v1.3.0 documentation</a> &raquo;</li>
+          <li><a href="index.html" >API Reference</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2009-2011, Ask Solem.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.7.
+    </div>
+  </body>
+</html>

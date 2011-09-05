@@ -1,0 +1,485 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>kombu.messaging &mdash; Kombu v1.3.0 documentation</title>
+    <link rel="stylesheet" href="../_static/celery.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.3.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="Kombu v1.3.0 documentation" href="../index.html" />
+    <link rel="up" title="API Reference" href="index.html" />
+    <link rel="next" title="kombu.entity" href="kombu.entity.html" />
+    <link rel="prev" title="kombu.simple" href="kombu.simple.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="kombu.entity.html" title="kombu.entity"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="kombu.simple.html" title="kombu.simple"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../index.html">Kombu v1.3.0 documentation</a> &raquo;</li>
+          <li><a href="index.html" accesskey="U">API Reference</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <span class="target" id="module-kombu.messaging"></span><div class="section" id="kombu-messaging">
+<h1>kombu.messaging<a class="headerlink" href="#kombu-messaging" title="Permalink to this headline">¶</a></h1>
+<p>Sending and receiving messages.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">copyright:</th><td class="field-body"><ol class="first loweralpha simple" start="3">
+<li>2009 - 2011 by Ask Solem.</li>
+</ol>
+</td>
+</tr>
+<tr class="field"><th class="field-name">license:</th><td class="field-body"><p class="first last">BSD, see LICENSE for more details.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="contents local topic" id="contents">
+<ul class="simple">
+<li><a class="reference internal" href="#message-producer" id="id1">Message Producer</a></li>
+<li><a class="reference internal" href="#message-consumer" id="id2">Message Consumer</a></li>
+</ul>
+</div>
+<div class="section" id="message-producer">
+<h2><a class="toc-backref" href="#id1">Message Producer</a><a class="headerlink" href="#message-producer" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="kombu.messaging.Producer">
+<em class="property">class </em><tt class="descclassname">kombu.messaging.</tt><tt class="descname">Producer</tt><big>(</big><em>channel</em>, <em>exchange=None</em>, <em>routing_key=None</em>, <em>serializer=None</em>, <em>auto_declare=None</em>, <em>compression=None</em>, <em>on_return=None</em><big>)</big><a class="headerlink" href="#kombu.messaging.Producer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Message Producer.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>channel</strong> &#8211; Connection channel.</li>
+<li><strong>exchange</strong> &#8211; Default exchange.</li>
+<li><strong>routing_key</strong> &#8211; Default routing key.</li>
+<li><strong>serializer</strong> &#8211; Default serializer. Default is <cite>&#8220;json&#8221;</cite>.</li>
+<li><strong>compression</strong> &#8211; Default compression method. Default is no
+compression.</li>
+<li><strong>auto_declare</strong> &#8211; Automatically declare the exchange
+at instantiation. Default is <tt class="xref py py-const xref docutils literal"><span class="pre">True</span></tt>.</li>
+<li><strong>on_return</strong> &#8211; Callback to call for undeliverable messages,
+when the <cite>mandatory</cite> or <cite>immediate</cite> arguments to
+<a class="reference internal" href="#kombu.messaging.Producer.publish" title="kombu.messaging.Producer.publish"><tt class="xref py py-meth docutils literal"><span class="pre">publish()</span></tt></a> is used. This callback needs the following
+signature: <cite>(exception, exchange, routing_key, message)</cite>.
+Note that the producer needs to drain events to use this feature.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="attribute">
+<dt id="kombu.messaging.Producer.channel">
+<tt class="descname">channel</tt><a class="headerlink" href="#kombu.messaging.Producer.channel" title="Permalink to this definition">¶</a></dt>
+<dd><p>The connection channel used.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.messaging.Producer.exchange">
+<tt class="descname">exchange</tt><a class="headerlink" href="#kombu.messaging.Producer.exchange" title="Permalink to this definition">¶</a></dt>
+<dd><p>Default exchange.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.messaging.Producer.routing_key">
+<tt class="descname">routing_key</tt><a class="headerlink" href="#kombu.messaging.Producer.routing_key" title="Permalink to this definition">¶</a></dt>
+<dd><p>str(object) -&gt; string</p>
+<p>Return a nice string representation of the object.
+If the argument is a string, the return value is the same object.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.messaging.Producer.serializer">
+<tt class="descname">serializer</tt><a class="headerlink" href="#kombu.messaging.Producer.serializer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Default serializer to use. Default is JSON.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.messaging.Producer.compression">
+<tt class="descname">compression</tt><a class="headerlink" href="#kombu.messaging.Producer.compression" title="Permalink to this definition">¶</a></dt>
+<dd><p>Default compression method.  Disabled by default.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.messaging.Producer.auto_declare">
+<tt class="descname">auto_declare</tt><a class="headerlink" href="#kombu.messaging.Producer.auto_declare" title="Permalink to this definition">¶</a></dt>
+<dd><p>By default the exchange is declared at instantiation.
+If you want to declare manually then you can set this
+to <tt class="xref py py-const xref docutils literal"><span class="pre">False</span></tt>.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.messaging.Producer.on_return">
+<tt class="descname">on_return</tt><a class="headerlink" href="#kombu.messaging.Producer.on_return" title="Permalink to this definition">¶</a></dt>
+<dd><p>Basic return callback.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.messaging.Producer.declare">
+<tt class="descname">declare</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.messaging.Producer.declare" title="Permalink to this definition">¶</a></dt>
+<dd><p>Declare the exchange.</p>
+<p>This is done automatically at instantiation if <a class="reference internal" href="#kombu.messaging.Producer.auto_declare" title="kombu.messaging.Producer.auto_declare"><tt class="xref py py-attr docutils literal"><span class="pre">auto_declare</span></tt></a>
+is set to <tt class="xref py py-const xref docutils literal"><span class="pre">True</span></tt>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.messaging.Producer.publish">
+<tt class="descname">publish</tt><big>(</big><em>body</em>, <em>routing_key=None</em>, <em>delivery_mode=None</em>, <em>mandatory=False</em>, <em>immediate=False</em>, <em>priority=0</em>, <em>content_type=None</em>, <em>content_encoding=None</em>, <em>serializer=None</em>, <em>headers=None</em>, <em>compression=None</em>, <em>exchange=None</em>, <em>**properties</em><big>)</big><a class="headerlink" href="#kombu.messaging.Producer.publish" title="Permalink to this definition">¶</a></dt>
+<dd><p>Publish message to the specified exchange.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>body</strong> &#8211; Message body.</li>
+<li><strong>routing_key</strong> &#8211; Message routing key.</li>
+<li><strong>delivery_mode</strong> &#8211; See <tt class="xref py py-attr docutils literal"><span class="pre">delivery_mode</span></tt>.</li>
+<li><strong>mandatory</strong> &#8211; Currently not supported.</li>
+<li><strong>immediate</strong> &#8211; Currently not supported.</li>
+<li><strong>priority</strong> &#8211; Message priority. A number between 0 and 9.</li>
+<li><strong>content_type</strong> &#8211; Content type. Default is autodetect.</li>
+<li><strong>content_encoding</strong> &#8211; Content encoding. Default is autodetect.</li>
+<li><strong>serializer</strong> &#8211; Serializer to use. Default is autodetect.</li>
+<li><strong>headers</strong> &#8211; Mapping of arbitrary headers to pass along
+with the message body.</li>
+<li><strong>exchange</strong> &#8211; Override the exchange.  Note that this exchange
+must have been declared.</li>
+<li><strong>properties</strong> &#8211; Additional properties, see the AMQP spec.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.messaging.Producer.revive">
+<tt class="descname">revive</tt><big>(</big><em>channel</em><big>)</big><a class="headerlink" href="#kombu.messaging.Producer.revive" title="Permalink to this definition">¶</a></dt>
+<dd><p>Revive the producer after connection loss.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="message-consumer">
+<h2><a class="toc-backref" href="#id2">Message Consumer</a><a class="headerlink" href="#message-consumer" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="kombu.messaging.Consumer">
+<em class="property">class </em><tt class="descclassname">kombu.messaging.</tt><tt class="descname">Consumer</tt><big>(</big><em>channel</em>, <em>queues</em>, <em>no_ack=None</em>, <em>auto_declare=None</em>, <em>callbacks=None</em>, <em>on_decode_error=None</em><big>)</big><a class="headerlink" href="#kombu.messaging.Consumer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Message consumer.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>channel</strong> &#8211; see <a class="reference internal" href="#kombu.messaging.Consumer.channel" title="kombu.messaging.Consumer.channel"><tt class="xref py py-attr docutils literal"><span class="pre">channel</span></tt></a>.</li>
+<li><strong>queues</strong> &#8211; see <a class="reference internal" href="#kombu.messaging.Consumer.queues" title="kombu.messaging.Consumer.queues"><tt class="xref py py-attr docutils literal"><span class="pre">queues</span></tt></a>.</li>
+<li><strong>no_ack</strong> &#8211; see <a class="reference internal" href="#kombu.messaging.Consumer.no_ack" title="kombu.messaging.Consumer.no_ack"><tt class="xref py py-attr docutils literal"><span class="pre">no_ack</span></tt></a>.</li>
+<li><strong>auto_declare</strong> &#8211; see <a class="reference internal" href="#kombu.messaging.Consumer.auto_declare" title="kombu.messaging.Consumer.auto_declare"><tt class="xref py py-attr docutils literal"><span class="pre">auto_declare</span></tt></a></li>
+<li><strong>callbacks</strong> &#8211; see <a class="reference internal" href="#kombu.messaging.Consumer.callbacks" title="kombu.messaging.Consumer.callbacks"><tt class="xref py py-attr docutils literal"><span class="pre">callbacks</span></tt></a>.</li>
+<li><strong>on_decode_error</strong> &#8211; see <a class="reference internal" href="#kombu.messaging.Consumer.on_decode_error" title="kombu.messaging.Consumer.on_decode_error"><tt class="xref py py-attr docutils literal"><span class="pre">on_decode_error</span></tt></a>.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="attribute">
+<dt id="kombu.messaging.Consumer.channel">
+<tt class="descname">channel</tt><a class="headerlink" href="#kombu.messaging.Consumer.channel" title="Permalink to this definition">¶</a></dt>
+<dd><p>The connection channel to use.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.messaging.Consumer.queues">
+<tt class="descname">queues</tt><a class="headerlink" href="#kombu.messaging.Consumer.queues" title="Permalink to this definition">¶</a></dt>
+<dd><p>A single <a class="reference internal" href="kombu.entity.html#kombu.entity.Queue" title="kombu.entity.Queue"><tt class="xref py py-class docutils literal"><span class="pre">Queue</span></tt></a>, or a list of queues to
+consume from.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.messaging.Consumer.no_ack">
+<tt class="descname">no_ack</tt><a class="headerlink" href="#kombu.messaging.Consumer.no_ack" title="Permalink to this definition">¶</a></dt>
+<dd><p>Flag for message acknowledgment disabled/enabled.
+Enabled by default.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.messaging.Consumer.auto_declare">
+<tt class="descname">auto_declare</tt><a class="headerlink" href="#kombu.messaging.Consumer.auto_declare" title="Permalink to this definition">¶</a></dt>
+<dd><p>By default all entities will be declared at instantiation, if you
+want to handle this manually you can set this to <tt class="xref py py-const xref docutils literal"><span class="pre">False</span></tt>.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.messaging.Consumer.callbacks">
+<tt class="descname">callbacks</tt><a class="headerlink" href="#kombu.messaging.Consumer.callbacks" title="Permalink to this definition">¶</a></dt>
+<dd><p>List of callbacks called in order when a message is received.</p>
+<p>The signature of the callbacks must take two arguments:
+<cite>(body, message)</cite>, which is the decoded message body and
+the <cite>Message</cite> instance (a subclass of
+<a class="reference internal" href="kombu.transport.base.html#kombu.transport.base.Message" title="kombu.transport.base.Message"><tt class="xref py py-class docutils literal"><span class="pre">Message</span></tt></a>).</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.messaging.Consumer.on_decode_error">
+<tt class="descname">on_decode_error</tt><a class="headerlink" href="#kombu.messaging.Consumer.on_decode_error" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback called when a message can&#8217;t be decoded.</p>
+<p>The signature of the callback must take two arguments: <cite>(message,
+exc)</cite>, which is the message that can&#8217;t be decoded and the exception
+that occured while trying to decode it.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.messaging.Consumer.declare">
+<tt class="descname">declare</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.messaging.Consumer.declare" title="Permalink to this definition">¶</a></dt>
+<dd><p>Declare queues, exchanges and bindings.</p>
+<p>This is done automatically at instantiation if <a class="reference internal" href="#kombu.messaging.Consumer.auto_declare" title="kombu.messaging.Consumer.auto_declare"><tt class="xref py py-attr docutils literal"><span class="pre">auto_declare</span></tt></a>
+is set.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.messaging.Consumer.register_callback">
+<tt class="descname">register_callback</tt><big>(</big><em>callback</em><big>)</big><a class="headerlink" href="#kombu.messaging.Consumer.register_callback" title="Permalink to this definition">¶</a></dt>
+<dd><p>Register a new callback to be called when a message
+is received.</p>
+<p>The signature of the callback needs to accept two arguments:
+<cite>(body, message)</cite>, which is the decoded message body
+and the <cite>Message</cite> instance (a subclass of
+<a class="reference internal" href="kombu.transport.base.html#kombu.transport.base.Message" title="kombu.transport.base.Message"><tt class="xref py py-class docutils literal"><span class="pre">Message</span></tt></a>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.messaging.Consumer.consume">
+<tt class="descname">consume</tt><big>(</big><em>no_ack=None</em><big>)</big><a class="headerlink" href="#kombu.messaging.Consumer.consume" title="Permalink to this definition">¶</a></dt>
+<dd><p>Register consumer on server.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.messaging.Consumer.cancel">
+<tt class="descname">cancel</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.messaging.Consumer.cancel" title="Permalink to this definition">¶</a></dt>
+<dd><p>End all active queue consumers.</p>
+<p>This does not affect already delivered messages, but it does
+mean the server will not send any more messages for this consumer.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.messaging.Consumer.cancel_by_queue">
+<tt class="descname">cancel_by_queue</tt><big>(</big><em>queue</em><big>)</big><a class="headerlink" href="#kombu.messaging.Consumer.cancel_by_queue" title="Permalink to this definition">¶</a></dt>
+<dd><p>Cancel consumer by queue name.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.messaging.Consumer.purge">
+<tt class="descname">purge</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.messaging.Consumer.purge" title="Permalink to this definition">¶</a></dt>
+<dd><p>Purge messages from all queues.</p>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">This will <em>delete all ready messages</em>, there is no
+undo operation available.</p>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.messaging.Consumer.flow">
+<tt class="descname">flow</tt><big>(</big><em>active</em><big>)</big><a class="headerlink" href="#kombu.messaging.Consumer.flow" title="Permalink to this definition">¶</a></dt>
+<dd><p>Enable/disable flow from peer.</p>
+<p>This is a simple flow-control mechanism that a peer can use
+to avoid overflowing its queues or otherwise finding itself
+receiving more messages than it can process.</p>
+<p>The peer that receives a request to stop sending content
+will finish sending the current content (if any), and then wait
+until flow is reactivated.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.messaging.Consumer.qos">
+<tt class="descname">qos</tt><big>(</big><em>prefetch_size=0</em>, <em>prefetch_count=0</em>, <em>apply_global=False</em><big>)</big><a class="headerlink" href="#kombu.messaging.Consumer.qos" title="Permalink to this definition">¶</a></dt>
+<dd><p>Specify quality of service.</p>
+<p>The client can request that messages should be sent in
+advance so that when the client finishes processing a message,
+the following message is already held locally, rather than needing
+to be sent down the channel. Prefetching gives a performance
+improvement.</p>
+<p>The prefetch window is Ignored if the <a class="reference internal" href="#kombu.messaging.Consumer.no_ack" title="kombu.messaging.Consumer.no_ack"><tt class="xref py py-attr docutils literal"><span class="pre">no_ack</span></tt></a> option is set.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>prefetch_size</strong> &#8211; Specify the prefetch window in octets.
+The server will send a message in advance if it is equal to
+or smaller in size than the available prefetch size (and
+also falls within other prefetch limits). May be set to zero,
+meaning &#8220;no specific limit&#8221;, although other prefetch limits
+may still apply.</li>
+<li><strong>prefetch_count</strong> &#8211; Specify the prefetch window in terms of
+whole messages.</li>
+<li><strong>apply_global</strong> &#8211; Apply new settings globally on all channels.
+Currently not supported by RabbitMQ.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.messaging.Consumer.recover">
+<tt class="descname">recover</tt><big>(</big><em>requeue=False</em><big>)</big><a class="headerlink" href="#kombu.messaging.Consumer.recover" title="Permalink to this definition">¶</a></dt>
+<dd><p>Redeliver unacknowledged messages.</p>
+<p>Asks the broker to redeliver all unacknowledged messages
+on the specified channel.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><strong>requeue</strong> &#8211; By default the messages will be redelivered
+to the original recipient. With <cite>requeue</cite> set to true, the
+server will attempt to requeue the message, potentially then
+delivering it to an alternative subscriber.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.messaging.Consumer.receive">
+<tt class="descname">receive</tt><big>(</big><em>body</em>, <em>message</em><big>)</big><a class="headerlink" href="#kombu.messaging.Consumer.receive" title="Permalink to this definition">¶</a></dt>
+<dd><p>Method called when a message is received.</p>
+<p>This dispatches to the registered <a class="reference internal" href="#kombu.messaging.Consumer.callbacks" title="kombu.messaging.Consumer.callbacks"><tt class="xref py py-attr docutils literal"><span class="pre">callbacks</span></tt></a>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>body</strong> &#8211; The decoded message body.</li>
+<li><strong>message</strong> &#8211; The <cite>Message</cite> instance.</li>
+</ul>
+</td>
+</tr>
+<tr class="field"><th class="field-name" colspan="2">Raises NotImplementedError:</th></tr>
+<tr class="field"><td>&nbsp;</td><td class="field-body"><p class="first last">If no consumer callbacks have been
+registered.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.messaging.Consumer.revive">
+<tt class="descname">revive</tt><big>(</big><em>channel</em><big>)</big><a class="headerlink" href="#kombu.messaging.Consumer.revive" title="Permalink to this definition">¶</a></dt>
+<dd><p>Revive consumer after connection loss.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper"><p class="logo"><a href="../index.html">
+  <img class="logo" width="128" height="128" src="http://cloud.github.com/downloads/ask/kombu/kombusmall.jpg" alt="Logo"/>
+</a></p>
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">kombu.messaging</a><ul>
+<li><a class="reference internal" href="#message-producer">Message Producer</a></li>
+<li><a class="reference internal" href="#message-consumer">Message Consumer</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="kombu.simple.html"
+                        title="previous chapter">kombu.simple</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="kombu.entity.html"
+                        title="next chapter">kombu.entity</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/reference/kombu.messaging.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" size="18" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="kombu.entity.html" title="kombu.entity"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="kombu.simple.html" title="kombu.simple"
+             >previous</a> |</li>
+        <li><a href="../index.html">Kombu v1.3.0 documentation</a> &raquo;</li>
+          <li><a href="index.html" >API Reference</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2009-2011, Ask Solem.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.7.
+    </div>
+  </body>
+</html>

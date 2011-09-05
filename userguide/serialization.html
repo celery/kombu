@@ -1,0 +1,205 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Serialization &mdash; Kombu v1.3.0 documentation</title>
+    <link rel="stylesheet" href="../_static/celery.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.3.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="Kombu v1.3.0 documentation" href="../index.html" />
+    <link rel="up" title="User Guide" href="index.html" />
+    <link rel="next" title="Frequently Asked Questions" href="../faq.html" />
+    <link rel="prev" title="Simple Interface" href="simple.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../faq.html" title="Frequently Asked Questions"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="simple.html" title="Simple Interface"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../index.html">Kombu v1.3.0 documentation</a> &raquo;</li>
+          <li><a href="index.html" accesskey="U">User Guide</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="serialization">
+<span id="guide-serialization"></span><h1>Serialization<a class="headerlink" href="#serialization" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="serializers">
+<span id="id1"></span><h2>Serializers<a class="headerlink" href="#serializers" title="Permalink to this headline">¶</a></h2>
+<p>By default every message is encoded using <a class="reference external" href="http://www.json.org/">JSON</a>, so sending
+Python data structures like dictionaries and lists works.
+<a class="reference external" href="http://yaml.org/">YAML</a>, <a class="reference external" href="http://msgpack.sourceforge.net/">msgpack</a> and Python&#8217;s built-in <cite>pickle</cite> module is also supported,
+and if needed you can register any custom serialization scheme you
+want to use.</p>
+<p>Each option has its advantages and disadvantages.</p>
+<dl class="docutils">
+<dt><cite>json</cite> &#8211; JSON is supported in many programming languages, is now</dt>
+<dd><p class="first">a standard part of Python (since 2.6), and is fairly fast to
+decode using the modern Python libraries such as <cite>cjson</cite> or
+<cite>simplejson</cite>.</p>
+<p>The primary disadvantage to <cite>JSON</cite> is that it limits you to
+the following data types: strings, unicode, floats, boolean,
+dictionaries, and lists.  Decimals and dates are notably missing.</p>
+<p>Also, binary data will be transferred using base64 encoding, which
+will cause the transferred data to be around 34% larger than an
+encoding which supports native binary types.</p>
+<p class="last">However, if your data fits inside the above constraints and
+you need cross-language support, the default setting of <cite>JSON</cite>
+is probably your best choice.</p>
+</dd>
+<dt><cite>pickle</cite> &#8211; If you have no desire to support any language other than</dt>
+<dd>Python, then using the <cite>pickle</cite> encoding will gain you
+the support of all built-in Python data types (except class instances),
+smaller messages when sending binary files, and a slight speedup
+over <cite>JSON</cite> processing.</dd>
+<dt><cite>yaml</cite> &#8211; YAML has many of the same characteristics as <cite>json</cite>,</dt>
+<dd><p class="first">except that it natively supports more data types (including dates,
+recursive references, etc.)</p>
+<p>However, the Python libraries for YAML are a good bit slower
+than the libraries for JSON.</p>
+<p class="last">If you need a more expressive set of data types and need to maintain
+cross-language compatibility, then <cite>YAML</cite> may be a better fit
+than the above.</p>
+</dd>
+</dl>
+<p>To instruct carrot to use an alternate serialization method,
+use one of the following options.</p>
+<blockquote>
+<div><ol class="arabic">
+<li><p class="first">Set the serialization option on a per-producer basis:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">producer</span> <span class="o">=</span> <span class="n">Producer</span><span class="p">(</span><span class="n">channel</span><span class="p">,</span>
+<span class="gp">... </span>                    <span class="n">exchange</span><span class="o">=</span><span class="n">exchange</span><span class="p">,</span>
+<span class="gp">... </span>                    <span class="n">serializer</span><span class="o">=</span><span class="s">&quot;yaml&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Set the serialization option per message:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">producer</span><span class="o">.</span><span class="n">publish</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">routing_key</span><span class="o">=</span><span class="n">rkey</span><span class="p">,</span>
+<span class="gp">... </span>                 <span class="n">serializer</span><span class="o">=</span><span class="s">&quot;pickle&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</li>
+</ol>
+</div></blockquote>
+<p>Note that a <cite>Consumer</cite> do not need the serialization method specified.
+They can auto-detect the serialization method as the
+content-type is sent as a message header.</p>
+</div>
+<div class="section" id="sending-raw-data-without-serialization">
+<span id="sending-raw-data"></span><h2>Sending raw data without Serialization<a class="headerlink" href="#sending-raw-data-without-serialization" title="Permalink to this headline">¶</a></h2>
+<p>In some cases, you don&#8217;t need your message data to be serialized. If you
+pass in a plain string or unicode object as your message, then carrot will
+not waste cycles serializing/deserializing the data.</p>
+<p>You can optionally specify a <cite>content_type</cite> and <cite>content_encoding</cite>
+for the raw data:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">producer</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="s">&#39;~/my_picture.jpg&#39;</span><span class="p">,</span><span class="s">&#39;rb&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">read</span><span class="p">(),</span>
+<span class="go">                  content_type=&quot;image/jpeg&quot;,</span>
+<span class="go">                  content_encoding=&quot;binary&quot;,</span>
+<span class="go">                  routing_key=rkey)</span>
+</pre></div>
+</div>
+<p>The <cite>Message</cite> object returned by the <cite>Consumer</cite> class will have a
+<cite>content_type</cite> and <cite>content_encoding</cite> attribute.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper"><p class="logo"><a href="../index.html">
+  <img class="logo" width="128" height="128" src="http://cloud.github.com/downloads/ask/kombu/kombusmall.jpg" alt="Logo"/>
+</a></p>
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Serialization</a><ul>
+<li><a class="reference internal" href="#serializers">Serializers</a></li>
+<li><a class="reference internal" href="#sending-raw-data-without-serialization">Sending raw data without Serialization</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="simple.html"
+                        title="previous chapter">Simple Interface</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="../faq.html"
+                        title="next chapter">Frequently Asked Questions</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/userguide/serialization.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" size="18" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../faq.html" title="Frequently Asked Questions"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="simple.html" title="Simple Interface"
+             >previous</a> |</li>
+        <li><a href="../index.html">Kombu v1.3.0 documentation</a> &raquo;</li>
+          <li><a href="index.html" >User Guide</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2009-2011, Ask Solem.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.7.
+    </div>
+  </body>
+</html>

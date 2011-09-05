@@ -1,0 +1,456 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>kombu.transport.SQS &mdash; Kombu v1.3.0 documentation</title>
+    <link rel="stylesheet" href="../_static/celery.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.3.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="Kombu v1.3.0 documentation" href="../index.html" />
+    <link rel="up" title="API Reference" href="index.html" />
+    <link rel="next" title="kombu.transport.base" href="kombu.transport.base.html" />
+    <link rel="prev" title="kombu.transport.pycouchdb" href="kombu.transport.pycouchdb.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="kombu.transport.base.html" title="kombu.transport.base"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="kombu.transport.pycouchdb.html" title="kombu.transport.pycouchdb"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../index.html">Kombu v1.3.0 documentation</a> &raquo;</li>
+          <li><a href="index.html" accesskey="U">API Reference</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <span class="target" id="module-kombu.transport.SQS"></span><div class="section" id="kombu-transport-sqs">
+<h1>kombu.transport.SQS<a class="headerlink" href="#kombu-transport-sqs" title="Permalink to this headline">¶</a></h1>
+<p>Amazon SQS transport.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">copyright:</th><td class="field-body"><ol class="first loweralpha simple" start="3">
+<li>2010 - 2011 by Ask Solem</li>
+</ol>
+</td>
+</tr>
+<tr class="field"><th class="field-name">license:</th><td class="field-body"><p class="first last">BSD, see LICENSE for more details.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="contents local topic" id="contents">
+<ul class="simple">
+<li><a class="reference internal" href="#transport" id="id1">Transport</a></li>
+<li><a class="reference internal" href="#channel" id="id2">Channel</a></li>
+</ul>
+</div>
+<div class="section" id="transport">
+<h2><a class="toc-backref" href="#id1">Transport</a><a class="headerlink" href="#transport" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="kombu.transport.SQS.Transport">
+<em class="property">class </em><tt class="descclassname">kombu.transport.SQS.</tt><tt class="descname">Transport</tt><big>(</big><em>client</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.transport.SQS.Transport" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="class">
+<dt id="kombu.transport.SQS.Transport.Channel">
+<em class="property">class </em><tt class="descname">Channel</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.transport.SQS.Transport.Channel" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="class">
+<dt id="kombu.transport.SQS.Transport.Channel.Table">
+<em class="property">class </em><tt class="descname">Table</tt><big>(</big><em>connection=None</em>, <em>name=None</em><big>)</big><a class="headerlink" href="#kombu.transport.SQS.Transport.Channel.Table" title="Permalink to this definition">¶</a></dt>
+<dd><p>Amazon SimpleDB domain describing the message routing table.</p>
+<dl class="method">
+<dt id="kombu.transport.SQS.Transport.Channel.Table.create_binding">
+<tt class="descname">create_binding</tt><big>(</big><em>queue</em><big>)</big><a class="headerlink" href="#kombu.transport.SQS.Transport.Channel.Table.create_binding" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get binding item for queue.</p>
+<p>Creates the item if it doesn&#8217;t exist.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.SQS.Transport.Channel.Table.exchange_delete">
+<tt class="descname">exchange_delete</tt><big>(</big><em>exchange</em><big>)</big><a class="headerlink" href="#kombu.transport.SQS.Transport.Channel.Table.exchange_delete" title="Permalink to this definition">¶</a></dt>
+<dd><p>Delete all routes for <cite>exchange</cite>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.SQS.Transport.Channel.Table.get_exchanges">
+<tt class="descname">get_exchanges</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.transport.SQS.Transport.Channel.Table.get_exchanges" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.SQS.Transport.Channel.Table.get_item">
+<tt class="descname">get_item</tt><big>(</big><em>item_name</em><big>)</big><a class="headerlink" href="#kombu.transport.SQS.Transport.Channel.Table.get_item" title="Permalink to this definition">¶</a></dt>
+<dd><p>Uses <cite>consistent_read</cite> by default.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.SQS.Transport.Channel.Table.get_queue">
+<tt class="descname">get_queue</tt><big>(</big><em>queue</em><big>)</big><a class="headerlink" href="#kombu.transport.SQS.Transport.Channel.Table.get_queue" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get binding for queue.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.SQS.Transport.Channel.Table.queue_bind">
+<tt class="descname">queue_bind</tt><big>(</big><em>exchange</em>, <em>routing_key</em>, <em>pattern</em>, <em>queue</em><big>)</big><a class="headerlink" href="#kombu.transport.SQS.Transport.Channel.Table.queue_bind" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.SQS.Transport.Channel.Table.queue_delete">
+<tt class="descname">queue_delete</tt><big>(</big><em>queue</em><big>)</big><a class="headerlink" href="#kombu.transport.SQS.Transport.Channel.Table.queue_delete" title="Permalink to this definition">¶</a></dt>
+<dd><p>delete queue by name.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.SQS.Transport.Channel.Table.routes_for">
+<tt class="descname">routes_for</tt><big>(</big><em>exchange</em><big>)</big><a class="headerlink" href="#kombu.transport.SQS.Transport.Channel.Table.routes_for" title="Permalink to this definition">¶</a></dt>
+<dd><p>Iterator giving all routes for an exchange.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.SQS.Transport.Channel.Table.select">
+<tt class="descname">select</tt><big>(</big><em>query=''</em>, <em>next_token=None</em>, <em>consistent_read=True</em>, <em>max_items=None</em><big>)</big><a class="headerlink" href="#kombu.transport.SQS.Transport.Channel.Table.select" title="Permalink to this definition">¶</a></dt>
+<dd><p>Uses <cite>consistent_read</cite> by default.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.SQS.Transport.Channel.basic_ack">
+<tt class="descclassname">Transport.Channel.</tt><tt class="descname">basic_ack</tt><big>(</big><em>delivery_tag</em><big>)</big><a class="headerlink" href="#kombu.transport.SQS.Transport.Channel.basic_ack" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.SQS.Transport.Channel.basic_cancel">
+<tt class="descclassname">Transport.Channel.</tt><tt class="descname">basic_cancel</tt><big>(</big><em>consumer_tag</em><big>)</big><a class="headerlink" href="#kombu.transport.SQS.Transport.Channel.basic_cancel" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.SQS.Transport.Channel.basic_consume">
+<tt class="descclassname">Transport.Channel.</tt><tt class="descname">basic_consume</tt><big>(</big><em>queue</em>, <em>no_ack</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.transport.SQS.Transport.Channel.basic_consume" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.SQS.Transport.Channel.close">
+<tt class="descclassname">Transport.Channel.</tt><tt class="descname">close</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.transport.SQS.Transport.Channel.close" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.SQS.Transport.Channel.conninfo">
+<tt class="descclassname">Transport.Channel.</tt><tt class="descname">conninfo</tt><a class="headerlink" href="#kombu.transport.SQS.Transport.Channel.conninfo" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.SQS.Transport.Channel.entity_name">
+<tt class="descclassname">Transport.Channel.</tt><tt class="descname">entity_name</tt><big>(</big><em>name</em>, <em>table='x00x01x02x03x04x05x06x07x08tnx0bx0crx0ex0fx10x11x12x13x14x15x16x17x18x19x1ax1bx1cx1dx1ex1f ____________--_0123456789_______ABCDEFGHIJKLMNOPQRSTUVWXYZ______abcdefghijklmnopqrstuvwxyz____x7fx80x81x82x83x84x85x86x87x88x89x8ax8bx8cx8dx8ex8fx90x91x92x93x94x95x96x97x98x99x9ax9bx9cx9dx9ex9fxa0xa1xa2xa3xa4xa5xa6xa7xa8xa9xaaxabxacxadxaexafxb0xb1xb2xb3xb4xb5xb6xb7xb8xb9xbaxbbxbcxbdxbexbfxc0xc1xc2xc3xc4xc5xc6xc7xc8xc9xcaxcbxccxcdxcexcfxd0xd1xd2xd3xd4xd5xd6xd7xd8xd9xdaxdbxdcxddxdexdfxe0xe1xe2xe3xe4xe5xe6xe7xe8xe9xeaxebxecxedxeexefxf0xf1xf2xf3xf4xf5xf6xf7xf8xf9xfaxfbxfcxfdxfexff'</em><big>)</big><a class="headerlink" href="#kombu.transport.SQS.Transport.Channel.entity_name" title="Permalink to this definition">¶</a></dt>
+<dd><p>Format AMQP queue name into a legal SQS queue name.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.SQS.Transport.Channel.exchange_delete">
+<tt class="descclassname">Transport.Channel.</tt><tt class="descname">exchange_delete</tt><big>(</big><em>exchange</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.transport.SQS.Transport.Channel.exchange_delete" title="Permalink to this definition">¶</a></dt>
+<dd><p>Delete exchange by name.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.SQS.Transport.Channel.get_exchanges">
+<tt class="descclassname">Transport.Channel.</tt><tt class="descname">get_exchanges</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.transport.SQS.Transport.Channel.get_exchanges" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.SQS.Transport.Channel.get_table">
+<tt class="descclassname">Transport.Channel.</tt><tt class="descname">get_table</tt><big>(</big><em>exchange</em><big>)</big><a class="headerlink" href="#kombu.transport.SQS.Transport.Channel.get_table" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get routing table.</p>
+<p>Retrieved from SDB if <a class="reference internal" href="#kombu.transport.SQS.Transport.Channel.supports_fanout" title="kombu.transport.SQS.Transport.Channel.supports_fanout"><tt class="xref py py-attr docutils literal"><span class="pre">supports_fanout</span></tt></a>.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.SQS.Transport.Channel.region">
+<tt class="descclassname">Transport.Channel.</tt><tt class="descname">region</tt><a class="headerlink" href="#kombu.transport.SQS.Transport.Channel.region" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.SQS.Transport.Channel.sdb">
+<tt class="descclassname">Transport.Channel.</tt><tt class="descname">sdb</tt><a class="headerlink" href="#kombu.transport.SQS.Transport.Channel.sdb" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.SQS.Transport.Channel.sqs">
+<tt class="descclassname">Transport.Channel.</tt><tt class="descname">sqs</tt><a class="headerlink" href="#kombu.transport.SQS.Transport.Channel.sqs" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.SQS.Transport.Channel.supports_fanout">
+<tt class="descclassname">Transport.Channel.</tt><tt class="descname">supports_fanout</tt><a class="headerlink" href="#kombu.transport.SQS.Transport.Channel.supports_fanout" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.SQS.Transport.Channel.table">
+<tt class="descclassname">Transport.Channel.</tt><tt class="descname">table</tt><a class="headerlink" href="#kombu.transport.SQS.Transport.Channel.table" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.SQS.Transport.Channel.transport_options">
+<tt class="descclassname">Transport.Channel.</tt><tt class="descname">transport_options</tt><a class="headerlink" href="#kombu.transport.SQS.Transport.Channel.transport_options" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.SQS.Transport.Channel.visibility_timeout">
+<tt class="descclassname">Transport.Channel.</tt><tt class="descname">visibility_timeout</tt><a class="headerlink" href="#kombu.transport.SQS.Transport.Channel.visibility_timeout" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="channel">
+<h2><a class="toc-backref" href="#id2">Channel</a><a class="headerlink" href="#channel" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="kombu.transport.SQS.Channel">
+<em class="property">class </em><tt class="descclassname">kombu.transport.SQS.</tt><tt class="descname">Channel</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.transport.SQS.Channel" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="class">
+<dt id="kombu.transport.SQS.Channel.Table">
+<em class="property">class </em><tt class="descname">Table</tt><big>(</big><em>connection=None</em>, <em>name=None</em><big>)</big><a class="headerlink" href="#kombu.transport.SQS.Channel.Table" title="Permalink to this definition">¶</a></dt>
+<dd><p>Amazon SimpleDB domain describing the message routing table.</p>
+<dl class="method">
+<dt id="kombu.transport.SQS.Channel.Table.create_binding">
+<tt class="descname">create_binding</tt><big>(</big><em>queue</em><big>)</big><a class="headerlink" href="#kombu.transport.SQS.Channel.Table.create_binding" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get binding item for queue.</p>
+<p>Creates the item if it doesn&#8217;t exist.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.SQS.Channel.Table.exchange_delete">
+<tt class="descname">exchange_delete</tt><big>(</big><em>exchange</em><big>)</big><a class="headerlink" href="#kombu.transport.SQS.Channel.Table.exchange_delete" title="Permalink to this definition">¶</a></dt>
+<dd><p>Delete all routes for <cite>exchange</cite>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.SQS.Channel.Table.get_exchanges">
+<tt class="descname">get_exchanges</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.transport.SQS.Channel.Table.get_exchanges" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.SQS.Channel.Table.get_item">
+<tt class="descname">get_item</tt><big>(</big><em>item_name</em><big>)</big><a class="headerlink" href="#kombu.transport.SQS.Channel.Table.get_item" title="Permalink to this definition">¶</a></dt>
+<dd><p>Uses <cite>consistent_read</cite> by default.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.SQS.Channel.Table.get_queue">
+<tt class="descname">get_queue</tt><big>(</big><em>queue</em><big>)</big><a class="headerlink" href="#kombu.transport.SQS.Channel.Table.get_queue" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get binding for queue.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.SQS.Channel.Table.queue_bind">
+<tt class="descname">queue_bind</tt><big>(</big><em>exchange</em>, <em>routing_key</em>, <em>pattern</em>, <em>queue</em><big>)</big><a class="headerlink" href="#kombu.transport.SQS.Channel.Table.queue_bind" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.SQS.Channel.Table.queue_delete">
+<tt class="descname">queue_delete</tt><big>(</big><em>queue</em><big>)</big><a class="headerlink" href="#kombu.transport.SQS.Channel.Table.queue_delete" title="Permalink to this definition">¶</a></dt>
+<dd><p>delete queue by name.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.SQS.Channel.Table.routes_for">
+<tt class="descname">routes_for</tt><big>(</big><em>exchange</em><big>)</big><a class="headerlink" href="#kombu.transport.SQS.Channel.Table.routes_for" title="Permalink to this definition">¶</a></dt>
+<dd><p>Iterator giving all routes for an exchange.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.SQS.Channel.Table.select">
+<tt class="descname">select</tt><big>(</big><em>query=''</em>, <em>next_token=None</em>, <em>consistent_read=True</em>, <em>max_items=None</em><big>)</big><a class="headerlink" href="#kombu.transport.SQS.Channel.Table.select" title="Permalink to this definition">¶</a></dt>
+<dd><p>Uses <cite>consistent_read</cite> by default.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.SQS.Channel.basic_ack">
+<tt class="descclassname">Channel.</tt><tt class="descname">basic_ack</tt><big>(</big><em>delivery_tag</em><big>)</big><a class="headerlink" href="#kombu.transport.SQS.Channel.basic_ack" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.SQS.Channel.basic_cancel">
+<tt class="descclassname">Channel.</tt><tt class="descname">basic_cancel</tt><big>(</big><em>consumer_tag</em><big>)</big><a class="headerlink" href="#kombu.transport.SQS.Channel.basic_cancel" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.SQS.Channel.basic_consume">
+<tt class="descclassname">Channel.</tt><tt class="descname">basic_consume</tt><big>(</big><em>queue</em>, <em>no_ack</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.transport.SQS.Channel.basic_consume" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.SQS.Channel.close">
+<tt class="descclassname">Channel.</tt><tt class="descname">close</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.transport.SQS.Channel.close" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.SQS.Channel.conninfo">
+<tt class="descclassname">Channel.</tt><tt class="descname">conninfo</tt><a class="headerlink" href="#kombu.transport.SQS.Channel.conninfo" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.SQS.Channel.entity_name">
+<tt class="descclassname">Channel.</tt><tt class="descname">entity_name</tt><big>(</big><em>name</em>, <em>table='x00x01x02x03x04x05x06x07x08tnx0bx0crx0ex0fx10x11x12x13x14x15x16x17x18x19x1ax1bx1cx1dx1ex1f ____________--_0123456789_______ABCDEFGHIJKLMNOPQRSTUVWXYZ______abcdefghijklmnopqrstuvwxyz____x7fx80x81x82x83x84x85x86x87x88x89x8ax8bx8cx8dx8ex8fx90x91x92x93x94x95x96x97x98x99x9ax9bx9cx9dx9ex9fxa0xa1xa2xa3xa4xa5xa6xa7xa8xa9xaaxabxacxadxaexafxb0xb1xb2xb3xb4xb5xb6xb7xb8xb9xbaxbbxbcxbdxbexbfxc0xc1xc2xc3xc4xc5xc6xc7xc8xc9xcaxcbxccxcdxcexcfxd0xd1xd2xd3xd4xd5xd6xd7xd8xd9xdaxdbxdcxddxdexdfxe0xe1xe2xe3xe4xe5xe6xe7xe8xe9xeaxebxecxedxeexefxf0xf1xf2xf3xf4xf5xf6xf7xf8xf9xfaxfbxfcxfdxfexff'</em><big>)</big><a class="headerlink" href="#kombu.transport.SQS.Channel.entity_name" title="Permalink to this definition">¶</a></dt>
+<dd><p>Format AMQP queue name into a legal SQS queue name.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.SQS.Channel.exchange_delete">
+<tt class="descclassname">Channel.</tt><tt class="descname">exchange_delete</tt><big>(</big><em>exchange</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.transport.SQS.Channel.exchange_delete" title="Permalink to this definition">¶</a></dt>
+<dd><p>Delete exchange by name.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.SQS.Channel.get_exchanges">
+<tt class="descclassname">Channel.</tt><tt class="descname">get_exchanges</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.transport.SQS.Channel.get_exchanges" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.SQS.Channel.get_table">
+<tt class="descclassname">Channel.</tt><tt class="descname">get_table</tt><big>(</big><em>exchange</em><big>)</big><a class="headerlink" href="#kombu.transport.SQS.Channel.get_table" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get routing table.</p>
+<p>Retrieved from SDB if <a class="reference internal" href="#kombu.transport.SQS.Channel.supports_fanout" title="kombu.transport.SQS.Channel.supports_fanout"><tt class="xref py py-attr docutils literal"><span class="pre">supports_fanout</span></tt></a>.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.SQS.Channel.region">
+<tt class="descclassname">Channel.</tt><tt class="descname">region</tt><a class="headerlink" href="#kombu.transport.SQS.Channel.region" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.SQS.Channel.sdb">
+<tt class="descclassname">Channel.</tt><tt class="descname">sdb</tt><a class="headerlink" href="#kombu.transport.SQS.Channel.sdb" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.SQS.Channel.sqs">
+<tt class="descclassname">Channel.</tt><tt class="descname">sqs</tt><a class="headerlink" href="#kombu.transport.SQS.Channel.sqs" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.SQS.Channel.supports_fanout">
+<tt class="descclassname">Channel.</tt><tt class="descname">supports_fanout</tt><a class="headerlink" href="#kombu.transport.SQS.Channel.supports_fanout" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.SQS.Channel.table">
+<tt class="descclassname">Channel.</tt><tt class="descname">table</tt><a class="headerlink" href="#kombu.transport.SQS.Channel.table" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.SQS.Channel.transport_options">
+<tt class="descclassname">Channel.</tt><tt class="descname">transport_options</tt><a class="headerlink" href="#kombu.transport.SQS.Channel.transport_options" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.SQS.Channel.visibility_timeout">
+<tt class="descclassname">Channel.</tt><tt class="descname">visibility_timeout</tt><a class="headerlink" href="#kombu.transport.SQS.Channel.visibility_timeout" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper"><p class="logo"><a href="../index.html">
+  <img class="logo" width="128" height="128" src="http://cloud.github.com/downloads/ask/kombu/kombusmall.jpg" alt="Logo"/>
+</a></p>
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">kombu.transport.SQS</a><ul>
+<li><a class="reference internal" href="#transport">Transport</a></li>
+<li><a class="reference internal" href="#channel">Channel</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="kombu.transport.pycouchdb.html"
+                        title="previous chapter">kombu.transport.pycouchdb</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="kombu.transport.base.html"
+                        title="next chapter">kombu.transport.base</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/reference/kombu.transport.SQS.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" size="18" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="kombu.transport.base.html" title="kombu.transport.base"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="kombu.transport.pycouchdb.html" title="kombu.transport.pycouchdb"
+             >previous</a> |</li>
+        <li><a href="../index.html">Kombu v1.3.0 documentation</a> &raquo;</li>
+          <li><a href="index.html" >API Reference</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2009-2011, Ask Solem.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.7.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,360 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>kombu.pidbox &mdash; Kombu v1.3.0 documentation</title>
+    <link rel="stylesheet" href="../_static/celery.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.3.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="Kombu v1.3.0 documentation" href="../index.html" />
+    <link rel="up" title="API Reference" href="index.html" />
+    <link rel="next" title="kombu.exceptions" href="kombu.exceptions.html" />
+    <link rel="prev" title="kombu.compat" href="kombu.compat.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="kombu.exceptions.html" title="kombu.exceptions"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="kombu.compat.html" title="kombu.compat"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../index.html">Kombu v1.3.0 documentation</a> &raquo;</li>
+          <li><a href="index.html" accesskey="U">API Reference</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <span class="target" id="module-kombu.pidbox"></span><div class="section" id="kombu-pidbox">
+<h1>kombu.pidbox<a class="headerlink" href="#kombu-pidbox" title="Permalink to this headline">¶</a></h1>
+<p>Generic process mailbox.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">copyright:</th><td class="field-body"><ol class="first loweralpha simple" start="3">
+<li>2009 - 2011 by Ask Solem.</li>
+</ol>
+</td>
+</tr>
+<tr class="field"><th class="field-name">license:</th><td class="field-body"><p class="first last">BSD, see LICENSE for more details.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="contents local topic" id="contents">
+<ul class="simple">
+<li><a class="reference internal" href="#introduction" id="id1">Introduction</a><ul>
+<li><a class="reference internal" href="#creating-the-applications-mailbox" id="id2">Creating the applications Mailbox</a></li>
+<li><a class="reference internal" href="#example-node" id="id3">Example Node</a></li>
+<li><a class="reference internal" href="#example-client" id="id4">Example Client</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#mailbox" id="id5">Mailbox</a></li>
+<li><a class="reference internal" href="#node" id="id6">Node</a></li>
+</ul>
+</div>
+<div class="section" id="introduction">
+<h2><a class="toc-backref" href="#id1">Introduction</a><a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="creating-the-applications-mailbox">
+<h3><a class="toc-backref" href="#id2">Creating the applications Mailbox</a><a class="headerlink" href="#creating-the-applications-mailbox" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">mailbox</span> <span class="o">=</span> <span class="n">pidbox</span><span class="o">.</span><span class="n">Mailbox</span><span class="p">(</span><span class="s">&quot;celerybeat&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s">&quot;direct&quot;</span><span class="p">)</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="nd">@mailbox.handler</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">def</span> <span class="nf">reload_schedule</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="n">state</span><span class="p">[</span><span class="s">&quot;beat&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">reload_schedule</span><span class="p">()</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="nd">@mailbox.handler</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">def</span> <span class="nf">connection_info</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="k">return</span> <span class="p">{</span><span class="s">&quot;connection&quot;</span><span class="p">:</span> <span class="n">state</span><span class="p">[</span><span class="s">&quot;connection&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">info</span><span class="p">()}</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="example-node">
+<h3><a class="toc-backref" href="#id3">Example Node</a><a class="headerlink" href="#example-node" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">connection</span> <span class="o">=</span> <span class="n">kombu</span><span class="o">.</span><span class="n">BrokerConnection</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">state</span> <span class="o">=</span> <span class="p">{</span><span class="s">&quot;beat&quot;</span><span class="p">:</span> <span class="n">beat</span><span class="p">,</span>
+<span class="go">            &quot;connection&quot;: connection}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">consumer</span> <span class="o">=</span> <span class="n">mailbox</span><span class="p">(</span><span class="n">connection</span><span class="p">)</span><span class="o">.</span><span class="n">Node</span><span class="p">(</span><span class="n">hostname</span><span class="p">)</span><span class="o">.</span><span class="n">listen</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">try</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+<span class="gp">... </span>        <span class="n">connection</span><span class="o">.</span><span class="n">drain_events</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="gp">... </span><span class="k">finally</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="n">consumer</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="example-client">
+<h3><a class="toc-backref" href="#id4">Example Client</a><a class="headerlink" href="#example-client" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">mailbox</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="s">&quot;reload_schedule&quot;</span><span class="p">)</span>   <span class="c"># cast is async.</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">info</span> <span class="o">=</span> <span class="n">celerybeat</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="s">&quot;connection_info&quot;</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="mailbox">
+<h2><a class="toc-backref" href="#id5">Mailbox</a><a class="headerlink" href="#mailbox" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="kombu.pidbox.Mailbox">
+<em class="property">class </em><tt class="descclassname">kombu.pidbox.</tt><tt class="descname">Mailbox</tt><big>(</big><em>namespace</em>, <em>type='direct'</em>, <em>connection=None</em><big>)</big><a class="headerlink" href="#kombu.pidbox.Mailbox" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="attribute">
+<dt id="kombu.pidbox.Mailbox.namespace">
+<tt class="descname">namespace</tt><a class="headerlink" href="#kombu.pidbox.Mailbox.namespace" title="Permalink to this definition">¶</a></dt>
+<dd><p>Name of application.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.pidbox.Mailbox.connection">
+<tt class="descname">connection</tt><a class="headerlink" href="#kombu.pidbox.Mailbox.connection" title="Permalink to this definition">¶</a></dt>
+<dd><p>Connection (if bound).</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.pidbox.Mailbox.type">
+<tt class="descname">type</tt><a class="headerlink" href="#kombu.pidbox.Mailbox.type" title="Permalink to this definition">¶</a></dt>
+<dd><p>Exchange type (usually direct, or fanout for broadcast).</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.pidbox.Mailbox.exchange">
+<tt class="descname">exchange</tt><a class="headerlink" href="#kombu.pidbox.Mailbox.exchange" title="Permalink to this definition">¶</a></dt>
+<dd><p>mailbox exchange (init by constructor).</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.pidbox.Mailbox.reply_exchange">
+<tt class="descname">reply_exchange</tt><a class="headerlink" href="#kombu.pidbox.Mailbox.reply_exchange" title="Permalink to this definition">¶</a></dt>
+<dd><p>exchange to send replies to.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.pidbox.Mailbox.Node">
+<tt class="descname">Node</tt><big>(</big><em>hostname=None</em>, <em>state=None</em>, <em>channel=None</em>, <em>handlers=None</em><big>)</big><a class="headerlink" href="#kombu.pidbox.Mailbox.Node" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.pidbox.Mailbox.call">
+<tt class="descname">call</tt><big>(</big><em>destination</em>, <em>command</em>, <em>kwargs={}</em>, <em>timeout=None</em>, <em>callback=None</em>, <em>channel=None</em><big>)</big><a class="headerlink" href="#kombu.pidbox.Mailbox.call" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.pidbox.Mailbox.cast">
+<tt class="descname">cast</tt><big>(</big><em>destination</em>, <em>command</em>, <em>kwargs={}</em><big>)</big><a class="headerlink" href="#kombu.pidbox.Mailbox.cast" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.pidbox.Mailbox.abcast">
+<tt class="descname">abcast</tt><big>(</big><em>command</em>, <em>kwargs={}</em><big>)</big><a class="headerlink" href="#kombu.pidbox.Mailbox.abcast" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.pidbox.Mailbox.multi_call">
+<tt class="descname">multi_call</tt><big>(</big><em>command</em>, <em>kwargs={}</em>, <em>timeout=1</em>, <em>limit=None</em>, <em>callback=None</em>, <em>channel=None</em><big>)</big><a class="headerlink" href="#kombu.pidbox.Mailbox.multi_call" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.pidbox.Mailbox.get_reply_queue">
+<tt class="descname">get_reply_queue</tt><big>(</big><em>ticket</em><big>)</big><a class="headerlink" href="#kombu.pidbox.Mailbox.get_reply_queue" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.pidbox.Mailbox.get_queue">
+<tt class="descname">get_queue</tt><big>(</big><em>hostname</em><big>)</big><a class="headerlink" href="#kombu.pidbox.Mailbox.get_queue" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="node">
+<h2><a class="toc-backref" href="#id6">Node</a><a class="headerlink" href="#node" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="kombu.pidbox.Node">
+<em class="property">class </em><tt class="descclassname">kombu.pidbox.</tt><tt class="descname">Node</tt><big>(</big><em>hostname</em>, <em>state=None</em>, <em>channel=None</em>, <em>handlers=None</em>, <em>mailbox=None</em><big>)</big><a class="headerlink" href="#kombu.pidbox.Node" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="attribute">
+<dt id="kombu.pidbox.Node.hostname">
+<tt class="descname">hostname</tt><a class="headerlink" href="#kombu.pidbox.Node.hostname" title="Permalink to this definition">¶</a></dt>
+<dd><p>hostname of the node.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.pidbox.Node.mailbox">
+<tt class="descname">mailbox</tt><a class="headerlink" href="#kombu.pidbox.Node.mailbox" title="Permalink to this definition">¶</a></dt>
+<dd><p>the <a class="reference internal" href="#kombu.pidbox.Mailbox" title="kombu.pidbox.Mailbox"><tt class="xref py py-class docutils literal"><span class="pre">Mailbox</span></tt></a> this is a node for.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.pidbox.Node.handlers">
+<tt class="descname">handlers</tt><a class="headerlink" href="#kombu.pidbox.Node.handlers" title="Permalink to this definition">¶</a></dt>
+<dd><p>map of method name/handlers.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.pidbox.Node.state">
+<tt class="descname">state</tt><a class="headerlink" href="#kombu.pidbox.Node.state" title="Permalink to this definition">¶</a></dt>
+<dd><p>current context (passed on to handlers)</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.pidbox.Node.channel">
+<tt class="descname">channel</tt><a class="headerlink" href="#kombu.pidbox.Node.channel" title="Permalink to this definition">¶</a></dt>
+<dd><p>current channel.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kombu.pidbox.Node.Consumer">
+<tt class="descname">Consumer</tt><big>(</big><em>channel=None</em>, <em>**options</em><big>)</big><a class="headerlink" href="#kombu.pidbox.Node.Consumer" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.pidbox.Node.handler">
+<tt class="descname">handler</tt><big>(</big><em>fun</em><big>)</big><a class="headerlink" href="#kombu.pidbox.Node.handler" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.pidbox.Node.listen">
+<tt class="descname">listen</tt><big>(</big><em>channel=None</em>, <em>callback=None</em><big>)</big><a class="headerlink" href="#kombu.pidbox.Node.listen" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.pidbox.Node.dispatch">
+<tt class="descname">dispatch</tt><big>(</big><em>method</em>, <em>arguments=None</em>, <em>reply_to=None</em><big>)</big><a class="headerlink" href="#kombu.pidbox.Node.dispatch" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.pidbox.Node.dispatch_from_message">
+<tt class="descname">dispatch_from_message</tt><big>(</big><em>message</em><big>)</big><a class="headerlink" href="#kombu.pidbox.Node.dispatch_from_message" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.pidbox.Node.handle_call">
+<tt class="descname">handle_call</tt><big>(</big><em>method</em>, <em>arguments</em><big>)</big><a class="headerlink" href="#kombu.pidbox.Node.handle_call" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.pidbox.Node.handle_cast">
+<tt class="descname">handle_cast</tt><big>(</big><em>method</em>, <em>arguments</em><big>)</big><a class="headerlink" href="#kombu.pidbox.Node.handle_cast" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.pidbox.Node.handle">
+<tt class="descname">handle</tt><big>(</big><em>method</em>, <em>arguments={}</em><big>)</big><a class="headerlink" href="#kombu.pidbox.Node.handle" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.pidbox.Node.handle_message">
+<tt class="descname">handle_message</tt><big>(</big><em>body</em>, <em>message</em><big>)</big><a class="headerlink" href="#kombu.pidbox.Node.handle_message" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.pidbox.Node.reply">
+<tt class="descname">reply</tt><big>(</big><em>data</em>, <em>exchange</em>, <em>routing_key</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.pidbox.Node.reply" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper"><p class="logo"><a href="../index.html">
+  <img class="logo" width="128" height="128" src="http://cloud.github.com/downloads/ask/kombu/kombusmall.jpg" alt="Logo"/>
+</a></p>
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">kombu.pidbox</a><ul>
+<li><a class="reference internal" href="#introduction">Introduction</a><ul>
+<li><a class="reference internal" href="#creating-the-applications-mailbox">Creating the applications Mailbox</a></li>
+<li><a class="reference internal" href="#example-node">Example Node</a></li>
+<li><a class="reference internal" href="#example-client">Example Client</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#mailbox">Mailbox</a></li>
+<li><a class="reference internal" href="#node">Node</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="kombu.compat.html"
+                        title="previous chapter">kombu.compat</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="kombu.exceptions.html"
+                        title="next chapter">kombu.exceptions</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/reference/kombu.pidbox.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" size="18" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="kombu.exceptions.html" title="kombu.exceptions"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="kombu.compat.html" title="kombu.compat"
+             >previous</a> |</li>
+        <li><a href="../index.html">Kombu v1.3.0 documentation</a> &raquo;</li>
+          <li><a href="index.html" >API Reference</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2009-2011, Ask Solem.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.7.
+    </div>
+  </body>
+</html>

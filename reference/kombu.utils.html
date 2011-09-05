@@ -1,0 +1,244 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Utilities - kombu.utils &mdash; Kombu v1.3.0 documentation</title>
+    <link rel="stylesheet" href="../_static/celery.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.3.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="Kombu v1.3.0 documentation" href="../index.html" />
+    <link rel="up" title="API Reference" href="index.html" />
+    <link rel="next" title="Compat. utilities - kombu.utils.compat" href="kombu.utils.compat.html" />
+    <link rel="prev" title="Async Utilities - kombu.syn" href="kombu.syn.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="kombu.utils.compat.html" title="Compat. utilities - kombu.utils.compat"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="kombu.syn.html" title="Async Utilities - kombu.syn"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../index.html">Kombu v1.3.0 documentation</a> &raquo;</li>
+          <li><a href="index.html" accesskey="U">API Reference</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="utilities-kombu-utils">
+<h1>Utilities - kombu.utils<a class="headerlink" href="#utilities-kombu-utils" title="Permalink to this headline">¶</a></h1>
+<span class="target" id="module-kombu.utils"></span><dl class="attribute">
+<dt id="kombu.utils.cached_property">
+<tt class="descclassname">kombu.utils.</tt><tt class="descname">cached_property</tt><a class="headerlink" href="#kombu.utils.cached_property" title="Permalink to this definition">¶</a></dt>
+<dd><p>Property descriptor that caches the return value
+of the get function.</p>
+<p><em>Examples</em></p>
+<div class="highlight-python"><div class="highlight"><pre><span class="nd">@cached_property</span>
+<span class="k">def</span> <span class="nf">connection</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">Connection</span><span class="p">()</span>
+
+<span class="nd">@connection.setter</span>  <span class="c"># Prepares stored value</span>
+<span class="k">def</span> <span class="nf">connection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&quot;Connection must be a connection&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">value</span>
+
+<span class="nd">@connection.deleter</span>
+<span class="k">def</span> <span class="nf">connection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+    <span class="c"># Additional action to do at del(self.attr)</span>
+    <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="k">print</span><span class="p">(</span><span class="s">&quot;Connection </span><span class="si">%r</span><span class="s"> deleted&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="p">))</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="kombu.utils.emergency_dump_state">
+<tt class="descclassname">kombu.utils.</tt><tt class="descname">emergency_dump_state</tt><big>(</big><em>state</em>, <em>open_file=&lt;built-in function open&gt;</em>, <em>dump=None</em><big>)</big><a class="headerlink" href="#kombu.utils.emergency_dump_state" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="kombu.utils.fxrange">
+<tt class="descclassname">kombu.utils.</tt><tt class="descname">fxrange</tt><big>(</big><em>start=1.0</em>, <em>stop=None</em>, <em>step=1.0</em>, <em>repeatlast=False</em><big>)</big><a class="headerlink" href="#kombu.utils.fxrange" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="kombu.utils.fxrangemax">
+<tt class="descclassname">kombu.utils.</tt><tt class="descname">fxrangemax</tt><big>(</big><em>start=1.0</em>, <em>stop=None</em>, <em>step=1.0</em>, <em>max=100.0</em><big>)</big><a class="headerlink" href="#kombu.utils.fxrangemax" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="kombu.utils.gen_unique_id">
+<tt class="descclassname">kombu.utils.</tt><tt class="descname">gen_unique_id</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.utils.gen_unique_id" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate a unique id, having - hopefully - a very small chance of
+collission.</p>
+<p>For now this is provided by <tt class="xref py py-func docutils literal"><span class="pre">uuid.uuid4()</span></tt>.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="kombu.utils.kwdict">
+<tt class="descclassname">kombu.utils.</tt><tt class="descname">kwdict</tt><big>(</big><em>kwargs</em><big>)</big><a class="headerlink" href="#kombu.utils.kwdict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Make sure keyword arguments are not in unicode.</p>
+<p>This should be fixed in newer Python versions,
+see: <a class="reference external" href="http://bugs.python.org/issue4978">http://bugs.python.org/issue4978</a>.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="kombu.utils.maybe_list">
+<tt class="descclassname">kombu.utils.</tt><tt class="descname">maybe_list</tt><big>(</big><em>v</em><big>)</big><a class="headerlink" href="#kombu.utils.maybe_list" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="kombu.utils.partition">
+<tt class="descclassname">kombu.utils.</tt><tt class="descname">partition</tt><big>(</big><em>S</em>, <em>sep</em><big>)</big><a class="headerlink" href="#kombu.utils.partition" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="kombu.utils.reprcall">
+<tt class="descclassname">kombu.utils.</tt><tt class="descname">reprcall</tt><big>(</big><em>name</em>, <em>args=()</em>, <em>kwargs=()</em>, <em>sep='</em>, <em>'</em><big>)</big><a class="headerlink" href="#kombu.utils.reprcall" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="kombu.utils.reprkwargs">
+<tt class="descclassname">kombu.utils.</tt><tt class="descname">reprkwargs</tt><big>(</big><em>kwargs</em>, <em>sep='</em>, <em>'</em>, <em>fmt='%s=%s'</em><big>)</big><a class="headerlink" href="#kombu.utils.reprkwargs" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="kombu.utils.retry_over_time">
+<tt class="descclassname">kombu.utils.</tt><tt class="descname">retry_over_time</tt><big>(</big><em>fun</em>, <em>catch</em>, <em>args=</em><span class="optional">[</span><span class="optional">]</span>, <em>kwargs={}</em>, <em>errback=None</em>, <em>max_retries=None</em>, <em>interval_start=2</em>, <em>interval_step=2</em>, <em>interval_max=30</em><big>)</big><a class="headerlink" href="#kombu.utils.retry_over_time" title="Permalink to this definition">¶</a></dt>
+<dd><p>Retry the function over and over until max retries is exceeded.</p>
+<p>For each retry we sleep a for a while before we try again, this interval
+is increased for every retry until the max seconds is reached.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>fun</strong> &#8211; The function to try</li>
+<li><strong>catch</strong> &#8211; Exceptions to catch, can be either tuple or a single
+exception class.</li>
+<li><strong>args</strong> &#8211; Positional arguments passed on to the function.</li>
+<li><strong>kwargs</strong> &#8211; Keyword arguments passed on to the function.</li>
+<li><strong>errback</strong> &#8211; Callback for when an exception in <tt class="docutils literal"><span class="pre">catch</span></tt> is raised.
+The callback must take two arguments: <tt class="docutils literal"><span class="pre">exc</span></tt> and <tt class="docutils literal"><span class="pre">interval</span></tt>, where
+<tt class="docutils literal"><span class="pre">exc</span></tt> is the exception instance, and <tt class="docutils literal"><span class="pre">interval</span></tt> is the time in
+seconds to sleep next..</li>
+<li><strong>max_retries</strong> &#8211; Maximum number of retries before we give up.
+If this is not set, we will retry forever.</li>
+<li><strong>interval_start</strong> &#8211; How long (in seconds) we start sleeping between
+retries.</li>
+<li><strong>interval_step</strong> &#8211; By how much the interval is increased for each
+retry.</li>
+<li><strong>interval_max</strong> &#8211; Maximum number of seconds to sleep between retries.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="kombu.utils.rpartition">
+<tt class="descclassname">kombu.utils.</tt><tt class="descname">rpartition</tt><big>(</big><em>S</em>, <em>sep</em><big>)</big><a class="headerlink" href="#kombu.utils.rpartition" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="kombu.utils.say">
+<tt class="descclassname">kombu.utils.</tt><tt class="descname">say</tt><big>(</big><em>m</em>, <em>*s</em><big>)</big><a class="headerlink" href="#kombu.utils.say" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="kombu.utils.uuid4">
+<tt class="descclassname">kombu.utils.</tt><tt class="descname">uuid4</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.utils.uuid4" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper"><p class="logo"><a href="../index.html">
+  <img class="logo" width="128" height="128" src="http://cloud.github.com/downloads/ask/kombu/kombusmall.jpg" alt="Logo"/>
+</a></p>
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="kombu.syn.html"
+                        title="previous chapter">Async Utilities - kombu.syn</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="kombu.utils.compat.html"
+                        title="next chapter">Compat. utilities - kombu.utils.compat</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/reference/kombu.utils.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" size="18" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="kombu.utils.compat.html" title="Compat. utilities - kombu.utils.compat"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="kombu.syn.html" title="Async Utilities - kombu.syn"
+             >previous</a> |</li>
+        <li><a href="../index.html">Kombu v1.3.0 documentation</a> &raquo;</li>
+          <li><a href="index.html" >API Reference</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2009-2011, Ask Solem.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.7.
+    </div>
+  </body>
+</html>
