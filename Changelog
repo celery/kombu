@@ -6,7 +6,7 @@
 
 1.3.0
 =====
-:release-date: TBA
+:release-date: 2011-10-05 01:00 P.M BST
 
 * Broker connection info can be now be specified using URLs
 
