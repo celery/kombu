@@ -38,10 +38,44 @@
 
         So the leading slash in the path component is **always required**.
 
+* Now comes with default global connection and producer pools.
+
+    The acquire a connection using the connection parameters
+    from a :class:`BrokerConnection`::
+
+        >>> from kombu import BrokerConnection, connections
+        >>> connection = BrokerConnection("amqp://guest:guest@localhost//")
+        >>> with connections[connection].acquire(block=True):
+        ...     # do something with connection
+
+    To acquire a producer using the connection parameters
+    from a :class:`BrokerConnection`::
+
+        >>> from kombu import BrokerConnection, producers
+        >>> connection = BrokerConnection("amqp://guest:guest@localhost//")
+        >>> with producers[connection].acquire(block=True):
+        ...     producer.publish({"hello": "world"}, exchange="hello")
+
+    Acquiring a producer will in turn also acquire a connection
+    from the associated pool in ``connections``, so you the number
+    of producers is bound the same limit as number of connections.
+
+    The default limit of 100 connections per connection instance
+    can be changed by doing::
+
+        >>> from kombu import pools
+        >>> pools.set_limit(10)
+
+    The pool can also be forcefully closed by doing::
+
+        >>> from kombu import pools
+        >>> pool.reset()
+
+
 * SQS Transport: Persistence using SimpleDB is now disabled by default,
   after reports of unstable SimpleDB connections leading to errors.
 
-* :class:`Prodcuer` can now be used as a context manager.
+* :class:`Producer` can now be used as a context manager.
 
 * ``Producer.__exit__`` now properly calls ``release`` instead of close.
 

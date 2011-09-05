@@ -17,6 +17,7 @@ if not os.environ.get("KOMBU_NO_EVAL", False):
             "kombu.connection": ["BrokerConnection", "Connection"],
             "kombu.entity": ["Exchange", "Queue"],
             "kombu.messaging": ["Consumer", "Producer"],
+            "kombu.pools": ["connections", "producers"],
     }
 
     object_origins = {}
