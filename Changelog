@@ -2,6 +2,83 @@
  Change history
 ================
 
+.. _version-1.3.0:
+
+1.3.0
+=====
+:release-date: TBA
+
+* Broker connection info can be now be specified using URLs
+
+    The broker hostname can now be given as an URL instead, of the format::
+
+        transport://user:password@hostname:port/virtual_host
+
+    for example the default broker is expressed as::
+
+        >>> BrokerConnection("amqp://guest:guest@localhost:5672//")
+
+    Transport defaults to amqp, and is not required.
+    user, password, port and virtual_host is also not mandatory and
+    will default to the corresponding transports default.
+
+    .. note::
+
+        Note that the path component (virtual_host) always starts with a
+        forward-slash.  This is necessary to distinguish between the virtual
+        host '' (empty) and '/', which are both acceptable virtual host names.
+
+        A virtual host of '/' becomes:
+
+            amqp://guest:guest@localhost:5672//
+
+        and a virtual host of '' (empty) becomes::
+
+            amqp://guest:guest@localhost:5672/
+
+        So the leading slash in the path component is **always required**.
+
+* SQS Transport: Persistence using SimpleDB is now disabled by default,
+  after reports of unstable SimpleDB connections leading to errors.
+
+* :class:`Prodcuer` can now be used as a context manager.
+
+* ``Producer.__exit__`` now properly calls ``release`` instead of close.
+
+    The previous behavior would lead to a memory leak when using
+    the :class:`kombu.pools.ProducerPool`
+
+* Now silences all exceptions from `import ctypes` to match behaviour
+  of the standard Python uuid module, and avoid passing on MemoryError
+  exceptions on SELinux-enabled systems (Issue #52 + Issue #53)
+
+* ``amqp`` is now an alias to the ``amqplib`` transport.
+
+* ``kombu.syn.detect_environment`` now returns 'default', 'eventlet', or
+  'gevent' depending on what monkey patches have been installed.
+
+* Serialization registry has new attribute ``type_to_name`` so it is
+  possible to lookup serializater name by content type.
+
+* Exchange argument to ``Producer.publish`` can now be an :class:`Exchange`
+  instance.
+
+* ``compat.Publisher`` now supports the ``channel`` keyword argument.
+
+* Acking a message on some transports could lead to :exc:`KeyError` being
+  raised (Issue #57).
+
+* Connection pool:  Connections are no long instantiated when the pool is
+  created, but instantiated as needed instead.
+
+* Tests now pass on PyPy.
+
+* ``Connection.as_uri`` now includes the password if the keyword argument
+  ``include_password`` is set.
+
+* Virtual transports now comes with a default ``default_connection_params``
+  attribute.
+
 .. _version-1.2.1:
 
 1.2.1
