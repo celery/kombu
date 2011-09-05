@@ -24,6 +24,7 @@
     kombu.transport.beanstalk
     kombu.transport.mongodb
     kombu.transport.pycouchdb
+    kombu.transport.SQS
     kombu.transport.base
     kombu.transport.virtual
     kombu.transport.virtual.exchange
@@ -34,7 +35,9 @@
     kombu.abstract
     kombu.syn
     kombu.utils
+    kombu.utils.compat
+    kombu.utils.debug
     kombu.utils.encoding
     kombu.utils.functional
-    kombu.utils.compat
     kombu.utils.finalize
+    kombu.utils.log
