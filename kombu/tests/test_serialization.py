@@ -3,8 +3,6 @@
 
 import sys
 
-from nose import SkipTest
-
 from kombu.serialization import registry, register, SerializerNotInstalled, \
                                 raw_encode, register_yaml, register_msgpack, \
                                 decode, bytes_type, pickle, \

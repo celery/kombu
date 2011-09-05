@@ -34,6 +34,7 @@
     kombu.abstract
     kombu.syn
     kombu.utils
+    kombu.utils.encoding
     kombu.utils.functional
     kombu.utils.compat
     kombu.utils.finalize

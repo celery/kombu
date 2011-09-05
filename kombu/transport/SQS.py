@@ -130,11 +130,11 @@ class Channel(virtual.Channel):
 
     def __init__(self, *args, **kwargs):
         super(Channel, self).__init__(*args, **kwargs)
-        
-        # SQS blows up when you try to create a new queue if one alread exists with a different 
-        # visability_timeout, so this populates the queue_cache to protect from recreating 
-        # queues that already exist
-        
+
+        # SQS blows up when you try to create a new queue if one already
+        # exists with a different visibility_timeout, so this prepopulates
+        # the queue_cache to protect us from recreating
+        # queues that are known to already exist.
         queues = self.sqs.get_all_queues()
         for queue in queues:
             self._queue_cache[queue.name] = queue

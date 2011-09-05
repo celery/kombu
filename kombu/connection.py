@@ -146,7 +146,6 @@ class BrokerConnection(object):
         self.ssl = ssl
         self.transport_cls = transport
 
-
     def _debug(self, msg, ident="[Kombu connection:0x%(id)x] ", **kwargs):
         if self._logger:
             self._logger.debug((ident + unicode(msg)) % {"id": id(self)},
@@ -374,7 +373,6 @@ class BrokerConnection(object):
 
     def as_uri(self, include_password=False):
         fields = self.info()
-        hostname = fields["hostname"]
         port = fields["port"]
         userid = fields["userid"]
         password = fields["password"]
@@ -682,7 +680,7 @@ class Resource(object):
 
         _next_resource_id = 0
 
-        def acquire(self, *args, **kwargs):
+        def acquire(self, *args, **kwargs):  # noqa
             id = self._next_resource_id = self._next_resource_id + 1
             print("+%s ACQUIRE %s" % (id, self.__class__.__name__, ))
             r = self._orig_acquire(*args, **kwargs)
@@ -690,7 +688,7 @@ class Resource(object):
             print("-%s ACQUIRE %s" % (id, self.__class__.__name__, ))
             return r
 
-        def release(self, resource):
+        def release(self, resource):  # noqa
             id = resource._resource_id
             print("+%s RELEASE %s" % (id, self.__class__.__name__, ))
             r = self._orig_release(resource)

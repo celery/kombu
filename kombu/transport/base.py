@@ -99,7 +99,7 @@ class Message(object):
         if self.channel.no_ack_consumers is not None:
             try:
                 consumer_tag = self.delivery_info["consumer_tag"]
-            except KeyError: 
+            except KeyError:
                 pass
             else:
                 if consumer_tag in self.channel.no_ack_consumers:
