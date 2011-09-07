@@ -16,7 +16,7 @@ from itertools import count
 
 from kombu.entity import Exchange, Queue
 from kombu.messaging import Consumer, Producer
-from kombu.utils import gen_unique_id, kwdict
+from kombu.utils import kwdict, uuid
 
 
 class Node(object):
@@ -205,7 +205,7 @@ class Mailbox(object):
     def _broadcast(self, command, arguments=None, destination=None,
             reply=False, timeout=1, limit=None, callback=None, channel=None):
         arguments = arguments or {}
-        reply_ticket = reply and gen_unique_id() or None
+        reply_ticket = reply and uuid() or None
 
         if destination is not None and \
                 not isinstance(destination, (list, tuple)):

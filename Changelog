@@ -2,6 +2,30 @@
  Change history
 ================
 
+.. _version-1.3.1:
+
+1.3.1
+=====
+:release-date: 2011-10-07 03:00 P.M BST
+
+* Last release broke after fork for pool reinitialization.
+
+* Producer/Consumer now has a ``connection`` attribute,
+  giving access to the :class:`BrokerConnection` of the
+  instance.
+
+* Pika: Channels now have access to the underlying
+  :class:`BrokerConnection` instance using ``channel.connection.client``.
+
+    This was previously required by the ``Simple`` classes and is now
+    also required by :class:`Consumer` and :class:`Producer`.
+
+* Connection.default_channel is now closed at object revival.
+
+* Adds kombu.clocks.LamportClock.
+
+* compat.entry_to_queue has been moved to new module :mod:`kombu.common`.
+
 .. _version-1.3.0:
 
 1.3.0

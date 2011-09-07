@@ -87,24 +87,24 @@ class test_UUID(unittest.TestCase):
         self.assertNotEqual(utils.uuid4(),
                             utils.uuid4())
 
-    def test_gen_unique_id(self):
-        i1 = utils.gen_unique_id()
-        i2 = utils.gen_unique_id()
+    def test_uuid(self):
+        i1 = utils.uuid()
+        i2 = utils.uuid()
         self.assertIsInstance(i1, str)
         self.assertNotEqual(i1, i2)
 
     @skip_if_module('__pypy__')
-    def test_gen_unique_id_without_ctypes(self):
+    def test_uuid_without_ctypes(self):
         old_utils = sys.modules.pop("kombu.utils")
 
         @mask_modules("ctypes")
         def with_ctypes_masked():
-            from kombu.utils import ctypes, gen_unique_id
+            from kombu.utils import ctypes, uuid
 
             self.assertIsNone(ctypes)
-            uuid = gen_unique_id()
-            self.assertTrue(uuid)
-            self.assertIsInstance(uuid, basestring)
+            tid = uuid()
+            self.assertTrue(tid)
+            self.assertIsInstance(tid, basestring)
 
         try:
             with_ctypes_masked()

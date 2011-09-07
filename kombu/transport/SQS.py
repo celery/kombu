@@ -24,7 +24,7 @@ from boto.sqs.connection import SQSConnection
 from boto.sqs.message import Message
 
 from kombu.transport import virtual
-from kombu.utils import cached_property, gen_unique_id
+from kombu.utils import cached_property, uuid
 
 
 # dots are replaced by dash, all other punctuation
@@ -60,7 +60,7 @@ class Table(Domain):
         item = self.get_queue(queue)
         if item:
             return item, item["id"]
-        id = gen_unique_id()
+        id = uuid()
         return self.new_item(id), id
 
     def queue_bind(self, exchange, routing_key, pattern, queue):

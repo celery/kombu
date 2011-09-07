@@ -2,7 +2,7 @@ from kombu.tests.utils import unittest
 
 from kombu.connection import BrokerConnection
 from kombu.transport import virtual
-from kombu.utils import gen_unique_id
+from kombu.utils import uuid
 
 from kombu.tests.utils import redirect_stdouts
 
@@ -53,23 +53,23 @@ class test_QoS(unittest.TestCase):
 
         self.assertTrue(self.q.can_consume())
         for i in range(self.q.prefetch_count - 1):
-            self.q.append(i, gen_unique_id())
+            self.q.append(i, uuid())
             self.assertTrue(self.q.can_consume())
-        self.q.append(i + 1, gen_unique_id())
+        self.q.append(i + 1, uuid())
         self.assertFalse(self.q.can_consume())
 
         tag1 = self.q._delivered.keys()[0]
         self.q.ack(tag1)
         self.assertTrue(self.q.can_consume())
 
-        tag2 = gen_unique_id()
+        tag2 = uuid()
         self.q.append(i + 2, tag2)
         self.assertFalse(self.q.can_consume())
         self.q.reject(tag2)
         self.assertTrue(self.q.can_consume())
 
         self.q.channel = RestoreChannel(self.q.channel.connection)
-        tag3 = gen_unique_id()
+        tag3 = uuid()
         self.q.append(i + 3, tag3)
         self.q.reject(tag3, requeue=True)
         self.q._flush()
@@ -91,7 +91,7 @@ class test_Message(unittest.TestCase):
     def test_create(self):
         c = client().channel()
         data = c.prepare_message("the quick brown fox...")
-        tag = data["properties"]["delivery_tag"] = gen_unique_id()
+        tag = data["properties"]["delivery_tag"] = uuid()
         message = c.message_to_python(data)
         self.assertIsInstance(message, virtual.Message)
         self.assertIs(message, c.message_to_python(message))
@@ -103,7 +103,7 @@ class test_Message(unittest.TestCase):
     def test_serializable(self):
         c = client().channel()
         data = c.prepare_message("the quick brown fox...")
-        tag = data["properties"]["delivery_tag"] = gen_unique_id()
+        tag = data["properties"]["delivery_tag"] = uuid()
         message = c.message_to_python(data)
         dict_ = message.serializable()
         self.assertEqual(dict_["body"],
@@ -257,7 +257,7 @@ class test_Channel(unittest.TestCase):
                          "nthex quick brown fox...".encode("utf-8"))
         self.assertIsNone(c.basic_get(n))
 
-        consumer_tag = gen_unique_id()
+        consumer_tag = uuid()
 
         c.basic_consume(n + "2", False, consumer_tag=consumer_tag,
                                         callback=lambda *a: None)

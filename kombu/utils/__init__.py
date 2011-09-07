@@ -24,13 +24,14 @@ def uuid4():
     return _uuid4()
 
 
-def gen_unique_id():
+def uuid():
     """Generate a unique id, having - hopefully - a very small chance of
     collission.
 
     For now this is provided by :func:`uuid.uuid4`.
     """
     return str(uuid4())
+gen_unique_id = uuid
 
 
 if sys.version_info >= (3, 0):

@@ -2,7 +2,7 @@ from kombu.tests.utils import unittest
 
 from kombu import pidbox
 from kombu.connection import BrokerConnection
-from kombu.utils import gen_unique_id
+from kombu.utils import uuid
 
 
 class test_Mailbox(unittest.TestCase):
@@ -31,7 +31,7 @@ class test_Mailbox(unittest.TestCase):
         mailbox = pidbox.Mailbox("test_reply__collect")(self.connection)
         exchange = mailbox.reply_exchange.name
 
-        ticket = gen_unique_id()
+        ticket = uuid()
         mailbox.get_reply_queue(ticket)(self.connection.channel()).declare()
         mailbox._publish_reply({"foo": "bar"}, exchange, ticket)
         _callback_called = [False]
@@ -45,7 +45,7 @@ class test_Mailbox(unittest.TestCase):
         self.assertEqual(reply, [{"foo": "bar"}])
         self.assertTrue(_callback_called[0])
 
-        ticket = gen_unique_id()
+        ticket = uuid()
         mailbox.get_reply_queue(ticket)(self.connection.channel()).declare()
         mailbox._publish_reply({"biz": "boz"}, exchange, ticket)
         reply = mailbox._collect(ticket, limit=1, channel=channel)
