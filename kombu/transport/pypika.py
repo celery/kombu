@@ -138,6 +138,11 @@ class Channel(channel.Channel, base.StdChannel):
 
 
 class BlockingConnection(blocking_adapter.BlockingConnection):
+    Super = blocking_adapter.BlockingConnection
+
+    def __init__(self, client, *args, **kwargs):
+        self.client = client
+        self.Super.__init__(self, *args, **kwargs)
 
     def channel(self):
         c = Channel(channel.ChannelHandler(self))
@@ -151,6 +156,10 @@ class BlockingConnection(blocking_adapter.BlockingConnection):
 class AsyncoreConnection(asyncore_adapter.AsyncoreConnection):
     _event_counter = 0
     Super = asyncore_adapter.AsyncoreConnection
+
+    def __init__(self, client, *args, **kwargs):
+        self.client = client
+        self.Super.__init__(self, *args, **kwargs)
 
     def channel(self):
         c = Channel(channel.ChannelHandler(self))
@@ -211,11 +220,11 @@ class SyncTransport(base.Transport):
                 setattr(conninfo, name, default_value)
         credentials = connection.PlainCredentials(conninfo.userid,
                                                   conninfo.password)
-        return self.Connection(connection.ConnectionParameters(
-                                        conninfo.hostname,
-                                        port=conninfo.port,
-                                        virtual_host=conninfo.virtual_host,
-                                        credentials=credentials))
+        return self.Connection(self.client,
+                               connection.ConnectionParameters(
+                                    conninfo.hostname, port=conninfo.port,
+                                    virtual_host=conninfo.virtual_host,
+                                    credentials=credentials))
 
     def close_connection(self, connection):
         """Close the AMQP broker connection."""
