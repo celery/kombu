@@ -6,13 +6,13 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>kombu.transport.pypika &mdash; Kombu v1.3.0 documentation</title>
+    <title>&lt;no title&gt; &mdash; Kombu v1.3.1 documentation</title>
     <link rel="stylesheet" href="../_static/celery.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '1.3.0',
+        VERSION:     '1.3.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -21,7 +21,7 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="Kombu v1.3.0 documentation" href="../index.html" />
+    <link rel="top" title="Kombu v1.3.1 documentation" href="../index.html" />
     <link rel="up" title="API Reference" href="index.html" />
     <link rel="next" title="kombu.transport.memory" href="kombu.transport.memory.html" />
     <link rel="prev" title="kombu.transport.librabbitmq" href="kombu.transport.librabbitmq.html" /> 
@@ -42,7 +42,7 @@
         <li class="right" >
           <a href="kombu.transport.librabbitmq.html" title="kombu.transport.librabbitmq"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">Kombu v1.3.0 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu v1.3.1 documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">API Reference</a> &raquo;</li> 
       </ul>
     </div>  
@@ -52,200 +52,7 @@
         <div class="bodywrapper">
           <div class="body">
             
-  <span class="target" id="module-kombu.transport.pypika"></span><div class="section" id="kombu-transport-pypika">
-<h1>kombu.transport.pypika<a class="headerlink" href="#kombu-transport-pypika" title="Permalink to this headline">¶</a></h1>
-<p>Pika transport.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field"><th class="field-name">copyright:</th><td class="field-body"><ol class="first loweralpha simple" start="3">
-<li>2009 - 2011 by Ask Solem.</li>
-</ol>
-</td>
-</tr>
-<tr class="field"><th class="field-name">license:</th><td class="field-body"><p class="first last">BSD, see LICENSE for more details.</p>
-</td>
-</tr>
-</tbody>
-</table>
-<div class="contents local topic" id="contents">
-<ul class="simple">
-<li><a class="reference internal" href="#transports" id="id1">Transports</a></li>
-<li><a class="reference internal" href="#connections" id="id2">Connections</a></li>
-<li><a class="reference internal" href="#channel" id="id3">Channel</a></li>
-<li><a class="reference internal" href="#message" id="id4">Message</a></li>
-</ul>
-</div>
-<div class="section" id="transports">
-<h2><a class="toc-backref" href="#id1">Transports</a><a class="headerlink" href="#transports" title="Permalink to this headline">¶</a></h2>
-<dl class="class">
-<dt id="kombu.transport.pypika.AsyncoreTransport">
-<em class="property">class </em><tt class="descclassname">kombu.transport.pypika.</tt><tt class="descname">AsyncoreTransport</tt><big>(</big><em>client</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.transport.pypika.AsyncoreTransport" title="Permalink to this definition">¶</a></dt>
-<dd><dl class="attribute">
-<dt id="kombu.transport.pypika.AsyncoreTransport.Connection">
-<tt class="descname">Connection</tt><a class="headerlink" href="#kombu.transport.pypika.AsyncoreTransport.Connection" title="Permalink to this definition">¶</a></dt>
-<dd><p>alias of <a class="reference internal" href="#kombu.transport.pypika.AsyncoreConnection" title="kombu.transport.pypika.AsyncoreConnection"><tt class="xref py py-class docutils literal"><span class="pre">AsyncoreConnection</span></tt></a></p>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="class">
-<dt id="kombu.transport.pypika.SyncTransport">
-<em class="property">class </em><tt class="descclassname">kombu.transport.pypika.</tt><tt class="descname">SyncTransport</tt><big>(</big><em>client</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.transport.pypika.SyncTransport" title="Permalink to this definition">¶</a></dt>
-<dd><dl class="attribute">
-<dt id="kombu.transport.pypika.SyncTransport.Connection">
-<tt class="descname">Connection</tt><a class="headerlink" href="#kombu.transport.pypika.SyncTransport.Connection" title="Permalink to this definition">¶</a></dt>
-<dd><p>alias of <a class="reference internal" href="#kombu.transport.pypika.BlockingConnection" title="kombu.transport.pypika.BlockingConnection"><tt class="xref py py-class docutils literal"><span class="pre">BlockingConnection</span></tt></a></p>
-</dd></dl>
-
-<dl class="class">
-<dt id="kombu.transport.pypika.SyncTransport.Message">
-<em class="property">class </em><tt class="descname">Message</tt><big>(</big><em>channel</em>, <em>amqp_message</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.transport.pypika.SyncTransport.Message" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="kombu.transport.pypika.SyncTransport.close_connection">
-<tt class="descclassname">SyncTransport.</tt><tt class="descname">close_connection</tt><big>(</big><em>connection</em><big>)</big><a class="headerlink" href="#kombu.transport.pypika.SyncTransport.close_connection" title="Permalink to this definition">¶</a></dt>
-<dd><p>Close the AMQP broker connection.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="kombu.transport.pypika.SyncTransport.create_channel">
-<tt class="descclassname">SyncTransport.</tt><tt class="descname">create_channel</tt><big>(</big><em>connection</em><big>)</big><a class="headerlink" href="#kombu.transport.pypika.SyncTransport.create_channel" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="attribute">
-<dt id="kombu.transport.pypika.SyncTransport.default_connection_params">
-<tt class="descclassname">SyncTransport.</tt><tt class="descname">default_connection_params</tt><a class="headerlink" href="#kombu.transport.pypika.SyncTransport.default_connection_params" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="kombu.transport.pypika.SyncTransport.drain_events">
-<tt class="descclassname">SyncTransport.</tt><tt class="descname">drain_events</tt><big>(</big><em>connection</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.transport.pypika.SyncTransport.drain_events" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="kombu.transport.pypika.SyncTransport.establish_connection">
-<tt class="descclassname">SyncTransport.</tt><tt class="descname">establish_connection</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.transport.pypika.SyncTransport.establish_connection" title="Permalink to this definition">¶</a></dt>
-<dd><p>Establish connection to the AMQP broker.</p>
-</dd></dl>
-
-</dd></dl>
-
-</div>
-<div class="section" id="connections">
-<h2><a class="toc-backref" href="#id2">Connections</a><a class="headerlink" href="#connections" title="Permalink to this headline">¶</a></h2>
-<dl class="class">
-<dt id="kombu.transport.pypika.AsyncoreConnection">
-<em class="property">class </em><tt class="descclassname">kombu.transport.pypika.</tt><tt class="descname">AsyncoreConnection</tt><big>(</big><em>parameters</em>, <em>wait_for_open=True</em>, <em>reconnection_strategy=None</em><big>)</big><a class="headerlink" href="#kombu.transport.pypika.AsyncoreConnection" title="Permalink to this definition">¶</a></dt>
-<dd><dl class="attribute">
-<dt id="kombu.transport.pypika.AsyncoreConnection.Super">
-<tt class="descname">Super</tt><a class="headerlink" href="#kombu.transport.pypika.AsyncoreConnection.Super" title="Permalink to this definition">¶</a></dt>
-<dd><p>alias of <a class="reference internal" href="#kombu.transport.pypika.AsyncoreConnection" title="kombu.transport.pypika.AsyncoreConnection"><tt class="xref py py-class docutils literal"><span class="pre">AsyncoreConnection</span></tt></a></p>
-</dd></dl>
-
-<dl class="method">
-<dt id="kombu.transport.pypika.AsyncoreConnection.channel">
-<tt class="descname">channel</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.transport.pypika.AsyncoreConnection.channel" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="kombu.transport.pypika.AsyncoreConnection.ensure_drain_events">
-<tt class="descname">ensure_drain_events</tt><big>(</big><em>timeout=None</em><big>)</big><a class="headerlink" href="#kombu.transport.pypika.AsyncoreConnection.ensure_drain_events" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="kombu.transport.pypika.AsyncoreConnection.on_data_available">
-<tt class="descname">on_data_available</tt><big>(</big><em>buf</em><big>)</big><a class="headerlink" href="#kombu.transport.pypika.AsyncoreConnection.on_data_available" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-<dl class="class">
-<dt id="kombu.transport.pypika.BlockingConnection">
-<em class="property">class </em><tt class="descclassname">kombu.transport.pypika.</tt><tt class="descname">BlockingConnection</tt><big>(</big><em>parameters</em>, <em>wait_for_open=True</em>, <em>reconnection_strategy=None</em><big>)</big><a class="headerlink" href="#kombu.transport.pypika.BlockingConnection" title="Permalink to this definition">¶</a></dt>
-<dd><dl class="method">
-<dt id="kombu.transport.pypika.BlockingConnection.channel">
-<tt class="descname">channel</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.transport.pypika.BlockingConnection.channel" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="kombu.transport.pypika.BlockingConnection.ensure_drain_events">
-<tt class="descname">ensure_drain_events</tt><big>(</big><em>timeout=None</em><big>)</big><a class="headerlink" href="#kombu.transport.pypika.BlockingConnection.ensure_drain_events" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-</div>
-<div class="section" id="channel">
-<h2><a class="toc-backref" href="#id3">Channel</a><a class="headerlink" href="#channel" title="Permalink to this headline">¶</a></h2>
-<dl class="class">
-<dt id="kombu.transport.pypika.Channel">
-<em class="property">class </em><tt class="descclassname">kombu.transport.pypika.</tt><tt class="descname">Channel</tt><big>(</big><em>handler</em><big>)</big><a class="headerlink" href="#kombu.transport.pypika.Channel" title="Permalink to this definition">¶</a></dt>
-<dd><dl class="class">
-<dt id="kombu.transport.pypika.Channel.Message">
-<em class="property">class </em><tt class="descname">Message</tt><big>(</big><em>channel</em>, <em>amqp_message</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.transport.pypika.Channel.Message" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="kombu.transport.pypika.Channel.basic_ack">
-<tt class="descclassname">Channel.</tt><tt class="descname">basic_ack</tt><big>(</big><em>delivery_tag</em><big>)</big><a class="headerlink" href="#kombu.transport.pypika.Channel.basic_ack" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="kombu.transport.pypika.Channel.basic_consume">
-<tt class="descclassname">Channel.</tt><tt class="descname">basic_consume</tt><big>(</big><em>queue</em>, <em>no_ack=False</em>, <em>consumer_tag=None</em>, <em>callback=None</em>, <em>nowait=False</em><big>)</big><a class="headerlink" href="#kombu.transport.pypika.Channel.basic_consume" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="kombu.transport.pypika.Channel.basic_get">
-<tt class="descclassname">Channel.</tt><tt class="descname">basic_get</tt><big>(</big><em>queue</em>, <em>no_ack</em><big>)</big><a class="headerlink" href="#kombu.transport.pypika.Channel.basic_get" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="kombu.transport.pypika.Channel.basic_publish">
-<tt class="descclassname">Channel.</tt><tt class="descname">basic_publish</tt><big>(</big><em>message</em>, <em>exchange</em>, <em>routing_key</em>, <em>mandatory=False</em>, <em>immediate=False</em><big>)</big><a class="headerlink" href="#kombu.transport.pypika.Channel.basic_publish" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="attribute">
-<dt id="kombu.transport.pypika.Channel.channel_id">
-<tt class="descclassname">Channel.</tt><tt class="descname">channel_id</tt><a class="headerlink" href="#kombu.transport.pypika.Channel.channel_id" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="kombu.transport.pypika.Channel.close">
-<tt class="descclassname">Channel.</tt><tt class="descname">close</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.transport.pypika.Channel.close" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="kombu.transport.pypika.Channel.message_to_python">
-<tt class="descclassname">Channel.</tt><tt class="descname">message_to_python</tt><big>(</big><em>raw_message</em><big>)</big><a class="headerlink" href="#kombu.transport.pypika.Channel.message_to_python" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="kombu.transport.pypika.Channel.prepare_message">
-<tt class="descclassname">Channel.</tt><tt class="descname">prepare_message</tt><big>(</big><em>message_data</em>, <em>priority=None</em>, <em>content_type=None</em>, <em>content_encoding=None</em>, <em>headers=None</em>, <em>properties=None</em><big>)</big><a class="headerlink" href="#kombu.transport.pypika.Channel.prepare_message" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="kombu.transport.pypika.Channel.queue_purge">
-<tt class="descclassname">Channel.</tt><tt class="descname">queue_purge</tt><big>(</big><em>queue=None</em>, <em>nowait=False</em><big>)</big><a class="headerlink" href="#kombu.transport.pypika.Channel.queue_purge" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-</div>
-<div class="section" id="message">
-<h2><a class="toc-backref" href="#id4">Message</a><a class="headerlink" href="#message" title="Permalink to this headline">¶</a></h2>
-<dl class="class">
-<dt id="kombu.transport.pypika.Message">
-<em class="property">class </em><tt class="descclassname">kombu.transport.pypika.</tt><tt class="descname">Message</tt><big>(</big><em>channel</em>, <em>amqp_message</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.transport.pypika.Message" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</div>
-</div>
-
+  
 
           </div>
         </div>
@@ -254,17 +61,6 @@
         <div class="sphinxsidebarwrapper"><p class="logo"><a href="../index.html">
   <img class="logo" width="128" height="128" src="http://cloud.github.com/downloads/ask/kombu/kombusmall.jpg" alt="Logo"/>
 </a></p>
-  <h3><a href="../index.html">Table Of Contents</a></h3>
-  <ul>
-<li><a class="reference internal" href="#">kombu.transport.pypika</a><ul>
-<li><a class="reference internal" href="#transports">Transports</a></li>
-<li><a class="reference internal" href="#connections">Connections</a></li>
-<li><a class="reference internal" href="#channel">Channel</a></li>
-<li><a class="reference internal" href="#message">Message</a></li>
-</ul>
-</li>
-</ul>
-
   <h4>Previous topic</h4>
   <p class="topless"><a href="kombu.transport.librabbitmq.html"
                         title="previous chapter">kombu.transport.librabbitmq</a></p>
@@ -308,7 +104,7 @@
         <li class="right" >
           <a href="kombu.transport.librabbitmq.html" title="kombu.transport.librabbitmq"
              >previous</a> |</li>
-        <li><a href="../index.html">Kombu v1.3.0 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu v1.3.1 documentation</a> &raquo;</li>
           <li><a href="index.html" >API Reference</a> &raquo;</li> 
       </ul>
     </div>

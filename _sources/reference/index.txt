@@ -12,6 +12,8 @@
     kombu.simple
     kombu.messaging
     kombu.entity
+    kombu.common
+    kombu.clocks
     kombu.compat
     kombu.pidbox
     kombu.exceptions
