@@ -115,38 +115,61 @@ Quick overview
 
 ::
 
-    from kombu.connection import BrokerConnection
-    from kombu.messaging import Exchange, Queue, Consumer, Producer
+    from kombu import BrokerConnection, Exchange, Queue
 
     media_exchange = Exchange("media", "direct", durable=True)
     video_queue = Queue("video", exchange=media_exchange, routing_key="video")
 
-    # connections/channels
-    connection = BrokerConnection("localhost", "guest", "guest", "/")
-    channel = connection.channel()
+    # connections
+    with BrokerConnection("amqp://guest:guest@localhost//") as conn:
 
-    # produce
-    producer = Producer(channel, exchange=media_exchange, serializer="json")
-    producer.publish({"name": "/tmp/lolcat1.avi", "size": 1301013})
+        # produce
+        with conn.Producer(exchange=media_exchange,
+                           serializer="json") as producer:
+            producer.publish({"name": "/tmp/lolcat1.avi", "size": 1301013})
 
-    # consume
-    consumer = Consumer(channel, video_queue)
-    consumer.register_callback(process_media)
-    consumer.consume()
-
-    # Process messages on all channels
-    while True:
-        connection.drain_events()
+        # consume
+        with conn.Consumer(video_queue, callbacks=[process_media]) as consumer:
+            # Process messages and handle events on all channels
+            while True:
+                connection.drain_events()
 
     # Consume from several queues on the same channel:
     video_queue = Queue("video", exchange=media_exchange, key="video")
     image_queue = Queue("image", exchange=media_exchange, key="image")
 
-    consumer = Consumer(channel, [video_queue, image_queue])
-    consumer.consume()
+    with connection.Consumer([video_queue, image_queue],
+                             callbacks=[process_media]) as consumer:
+        while True:
+            connection.drain_events()
 
-    while True:
-        connection.drain_events()
+
+Or handle channels menually::
+
+    with connection.channel() as channel:
+        producer = Producer(channel, ...)
+        consumer = Producer(channel)
+
+
+All objects can be used outside of with statements too,
+just remember to close the objects after use::
+
+    from kombu import BrokerConnection, Consumer, Producer
+
+    connection = BrokerConnection()
+        # ...
+    connection.close()
+
+    consumer = Consumer(channel_or_connection, ...)
+    consumer.register_callback(my_callback)
+    consumer.consume()
+        # ....
+    consumer.cancel()
+
+
+    producer = Producer(channel_or_connection, ...)
+        # ....
+    producer.close()
 
 
 `Exchange` and `Queue` are simply declarations that can be pickled

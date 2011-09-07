@@ -314,6 +314,7 @@ class Consumer(object):
         for tag in self._active_tags.values():
             self.channel.basic_cancel(tag)
         self._active_tags.clear()
+    close = cancel
 
     def cancel_by_queue(self, queue):
         """Cancel consumer by queue name."""

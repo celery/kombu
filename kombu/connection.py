@@ -456,6 +456,18 @@ class BrokerConnection(object):
         """
         return ChannelPool(self, limit, preload)
 
+    def Producer(self, channel=None, *args, **kwargs):
+        from kombu.messaging import Producer
+        if channel is None:
+            channel = self   # use default channel support.
+        return Producer(channel, *args, **kwargs)
+
+    def Consumer(self, channel=None, *args, **kwargs):
+        from kombu.messaging import Consumer
+        if channel is None:
+            channel = self  # use default channel support.
+        return Consumer(channel, *args, **kwargs)
+
     def SimpleQueue(self, name, no_ack=None, queue_opts=None,
             exchange_opts=None, channel=None, **kwargs):
         """Create new :class:`~kombu.simple.SimpleQueue`, using a channel
