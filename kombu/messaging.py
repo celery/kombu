@@ -68,6 +68,8 @@ class Producer(object):
         if isinstance(channel, BrokerConnection):
             channel = channel.default_channel
         self.channel = channel
+        self.connection = self.channel.connection.client
+
         self.exchange = exchange or self.exchange
         if self.exchange is None:
             self.exchange = Exchange("")
@@ -231,6 +233,8 @@ class Consumer(object):
         if isinstance(channel, BrokerConnection):
             channel = channel.default_channel
         self.channel = channel
+        self.connection = self.channel.connection.client
+
         self.queues = queues
         if no_ack is not None:
             self.no_ack = no_ack
