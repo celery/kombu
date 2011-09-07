@@ -149,6 +149,10 @@ class BlockingConnection(blocking_adapter.BlockingConnection):
         c.connection = self
         return c
 
+    def close(self):
+        self.client = None
+        self.Super.close(self)
+
     def ensure_drain_events(self, timeout=None):
         return self.drain_events(timeout=timeout)
 
@@ -178,6 +182,10 @@ class AsyncoreConnection(asyncore_adapter.AsyncoreConnection):
     def on_data_available(self, buf):
         self._event_counter += 1
         self.Super.on_data_available(self, buf)
+
+    def close(self):
+        self.client = None
+        self.Super.close(self)
 
 
 class SyncTransport(base.Transport):
