@@ -103,6 +103,7 @@ class BrokerConnection(object):
 
     _closed = None
     _connection = None
+    _default_channel = None
     _transport = None
     _logger = None
     skip_uri_transports = set(["sqlalchemy", "sqlakombu.transport.Transport"])
@@ -177,12 +178,19 @@ class BrokerConnection(object):
         """
         return self.transport.drain_events(self.connection, **kwargs)
 
+    def maybe_close_channel(self, channel):
+        try:
+            channel.close()
+        except (self.connection_errors + self.channel_errors):
+            pass
+
     def _close(self):
+        if self._default_channel:
+            self.maybe_close_channel(self._default_channel)
         if self._connection:
             try:
                 self.transport.close_connection(self._connection)
-            except self.transport.connection_errors + (AttributeError,
-                                                       socket.error):
+            except self.connection_errors + (AttributeError, socket.error):
                 pass
             self._connection = None
             self._debug("closed")
@@ -221,6 +229,11 @@ class BrokerConnection(object):
                         errback, max_retries,
                         interval_start, interval_step, interval_max)
         return self
+
+    def revive(self, new_channel):
+        if self._default_channel:
+            self.maybe_close_channel(self._default_channel)
+            self._default_channel = None
 
     def ensure(self, obj, fun, errback=None, max_retries=None,
             interval_start=1, interval_step=1, interval_max=1, on_revive=None):
@@ -283,6 +296,7 @@ class BrokerConnection(object):
                                            interval_step,
                                            interval_max)
                     new_channel = self.channel()
+                    self.revive(new_channel)
                     obj.revive(new_channel)
                     if on_revive:
                         on_revive(new_channel)
@@ -535,6 +549,12 @@ class BrokerConnection(object):
         return self._connection
 
     @property
+    def default_channel(self):
+        if self._default_channel is None:
+            self._default_channel = self.channel()
+        return self._default_channel
+
+    @property
     def host(self):
         """The host as a hostname/port pair separated by colon."""
         return ":".join([self.hostname, str(self.port)])
@@ -709,7 +729,7 @@ class PoolChannelContext(object):
         return self.conn, self.chan
 
     def __exit__(self, *exc_info):
-        self.chan.close()
+        self.conn.maybe_close_channel(self.chan)
         self.conn.release()
 
 
