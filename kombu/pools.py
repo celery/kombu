@@ -5,6 +5,12 @@ from itertools import chain
 
 __all__ = ["ProducerPool", "connections", "producers", "set_limit", "reset"]
 _limit = [200]
+_groups = []
+
+
+def register_group(group):
+    _groups.append(group)
+    return group
 
 
 class ProducerPool(Resource):
@@ -16,10 +22,8 @@ class ProducerPool(Resource):
 
     def create_producer(self):
         conn = self.connections.acquire(block=True)
-        channel = conn.channel()
-        producer = self.Producer(channel)
+        producer = self.Producer(conn)
         producer.connection = conn
-        conn._producer_chan = channel
         return producer
 
     def new(self):
@@ -35,9 +39,7 @@ class ProducerPool(Resource):
             p = p()
         if not p.connection:
             p.connection = self.connections.acquire(block=True)
-            if not getattr(p.connection, "_producer_chan", None):
-                p.connection._producer_chan = p.connection.channel()
-            p.revive(p.connection._producer_chan)
+            p.revive(p.connection.default_channel)
         return p
 
     def release(self, resource):
@@ -61,44 +63,50 @@ class HashingDict(dict):
         return dict.__delitem__(self, hash(key))
 
 
-class _Connections(HashingDict):
+class PoolGroup(HashingDict):
 
-    def __missing__(self, connection):
-        k = self[connection] = connection.Pool(limit=_limit[0])
+    def create(self, resource, limit):
+        raise NotImplementedError("PoolGroups must define ``create``")
+
+    def __missing__(self, resource):
+        k = self[resource] = self.create(resource, _limit[0])
         return k
-connections = _Connections()
+
+
+class _Connections(PoolGroup):
+
+    def create(self, connection, limit):
+        return connection.Pool(limit=limit)
+connections = register_group(_Connections())
 
 
 class _Producers(HashingDict):
 
-    def __missing__(self, conn):
-        k = self[conn] = ProducerPool(connections[conn], limit=_limit[0])
-        return k
-producers = _Producers()
+    def create(self, connection, limit):
+        return ProducerPool(connections[connection], limit=limit)
+producers = register_group(_Producers())
 
 
 def _all_pools():
-    return chain(connections.itervalues() if connections else iter([]),
-                 producers.itervalues() if producers else iter([]))
+    return chain(*[(g.itervalues() if g else iter([])) for g in _groups])
 
 
 def set_limit(limit):
     _limit[0] = limit
     for pool in _all_pools():
         pool.limit = limit
+    reset()
     return limit
 
 
-def reset():
-    global connections
-    global producers
+def reset(*args, **kwargs):
     for pool in _all_pools():
         try:
             pool.force_close_all()
         except Exception:
             pass
-    connections = _Connections()
-    producers._Producers()
+    for group in _groups:
+        group.clear()
 
 
 try:
