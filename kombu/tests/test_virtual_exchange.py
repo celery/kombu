@@ -1,8 +1,9 @@
 from kombu.tests.utils import unittest
 
+from kombu import BrokerConnection
 from kombu.transport.virtual import exchange
 
-from kombu.tests.mocks import Channel
+from kombu.tests.mocks import Transport
 
 
 class ExchangeCase(unittest.TestCase):
@@ -10,7 +11,8 @@ class ExchangeCase(unittest.TestCase):
 
     def setUp(self):
         if self.type:
-            self.e = self.type(Channel())
+            self.e = self.type(BrokerConnection(transport=Transport)
+                                               .channel())
 
 
 class test_Direct(ExchangeCase):

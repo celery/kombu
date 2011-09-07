@@ -21,7 +21,8 @@ class Channel(base.StdChannel):
     open = True
     throw_decode_error = False
 
-    def __init__(self):
+    def __init__(self, connection):
+        self.connection = connection
         self.called = []
         self.deliveries = count(1).next
         self.to_deliver = []
@@ -114,14 +115,17 @@ class Channel(base.StdChannel):
 class Connection(object):
     connected = True
 
+    def __init__(self, client):
+        self.client = client
+
     def channel(self):
-        return Channel()
+        return Channel(self)
 
 
 class Transport(base.Transport):
 
     def establish_connection(self):
-        return Connection()
+        return Connection(self.client)
 
     def create_channel(self, connection):
         return connection.channel()

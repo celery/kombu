@@ -1,9 +1,14 @@
 from kombu.tests.utils import unittest
 
+from kombu import Connection
 from kombu.entity import Exchange, Queue
 from kombu.exceptions import NotBoundError
 
-from kombu.tests.mocks import Channel
+from kombu.tests.mocks import Transport
+
+
+def get_conn():
+    return Connection(transport=Transport)
 
 
 class test_Exchange(unittest.TestCase):
@@ -13,7 +18,7 @@ class test_Exchange(unittest.TestCase):
         self.assertFalse(exchange.is_bound)
         self.assertIn("<unbound", repr(exchange))
 
-        chan = Channel()
+        chan = get_conn().channel()
         bound = exchange.bind(chan)
         self.assertTrue(bound.is_bound)
         self.assertIs(bound.channel, chan)
@@ -31,7 +36,8 @@ class test_Exchange(unittest.TestCase):
 
     def test_revive(self):
         exchange = Exchange("foo", "direct")
-        chan = Channel()
+        conn = get_conn()
+        chan = conn.channel()
 
         # reviving unbound channel is a noop.
         exchange.revive(chan)
@@ -42,7 +48,7 @@ class test_Exchange(unittest.TestCase):
         self.assertTrue(bound.is_bound)
         self.assertIs(bound.channel, chan)
 
-        chan2 = Channel()
+        chan2 = conn.channel()
         bound.revive(chan2)
         self.assertTrue(bound.is_bound)
         self.assertIs(bound._channel, chan2)
@@ -50,8 +56,9 @@ class test_Exchange(unittest.TestCase):
     def test_assert_is_bound(self):
         exchange = Exchange("foo", "direct")
         self.assertRaises(NotBoundError, exchange.declare)
+        conn = get_conn()
 
-        chan = Channel()
+        chan = conn.channel()
         exchange.bind(chan).declare()
         self.assertIn("exchange_declare", chan)
 
@@ -64,20 +71,20 @@ class test_Exchange(unittest.TestCase):
         self.assertEqual(exc.delivery_mode, Exchange.PERSISTENT_DELIVERY_MODE)
 
     def test_bind_at_instantiation(self):
-        self.assertTrue(Exchange("foo", channel=Channel()).is_bound)
+        self.assertTrue(Exchange("foo", channel=get_conn().channel()).is_bound)
 
     def test_create_message(self):
-        chan = Channel()
+        chan = get_conn().channel()
         Exchange("foo", channel=chan).Message({"foo": "bar"})
         self.assertIn("prepare_message", chan)
 
     def test_publish(self):
-        chan = Channel()
+        chan = get_conn().channel()
         Exchange("foo", channel=chan).publish("the quick brown fox")
         self.assertIn("basic_publish", chan)
 
     def test_delete(self):
-        chan = Channel()
+        chan = get_conn().channel()
         Exchange("foo", channel=chan).delete()
         self.assertIn("exchange_delete", chan)
 
@@ -106,11 +113,11 @@ class test_Queue(unittest.TestCase):
                 Queue("foo", self.exchange, exclusive=True).auto_delete)
 
     def test_binds_at_instantiation(self):
-        self.assertTrue(
-                Queue("foo", self.exchange, channel=Channel()).is_bound)
+        self.assertTrue(Queue("foo", self.exchange,
+                              channel=get_conn().channel()).is_bound)
 
     def test_also_binds_exchange(self):
-        chan = Channel()
+        chan = get_conn().channel()
         b = Queue("foo", self.exchange)
         self.assertFalse(b.is_bound)
         self.assertFalse(b.exchange.is_bound)
@@ -121,7 +128,7 @@ class test_Queue(unittest.TestCase):
         self.assertIsNot(b.exchange, self.exchange)
 
     def test_declare(self):
-        chan = Channel()
+        chan = get_conn().channel()
         b = Queue("foo", self.exchange, "foo", channel=chan)
         self.assertTrue(b.is_bound)
         b.declare()
@@ -130,32 +137,32 @@ class test_Queue(unittest.TestCase):
         self.assertIn("queue_bind", chan)
 
     def test_get(self):
-        b = Queue("foo", self.exchange, "foo", channel=Channel())
+        b = Queue("foo", self.exchange, "foo", channel=get_conn().channel())
         b.get()
         self.assertIn("basic_get", b.channel)
 
     def test_purge(self):
-        b = Queue("foo", self.exchange, "foo", channel=Channel())
+        b = Queue("foo", self.exchange, "foo", channel=get_conn().channel())
         b.purge()
         self.assertIn("queue_purge", b.channel)
 
     def test_consume(self):
-        b = Queue("foo", self.exchange, "foo", channel=Channel())
+        b = Queue("foo", self.exchange, "foo", channel=get_conn().channel())
         b.consume("fifafo", None)
         self.assertIn("basic_consume", b.channel)
 
     def test_cancel(self):
-        b = Queue("foo", self.exchange, "foo", channel=Channel())
+        b = Queue("foo", self.exchange, "foo", channel=get_conn().channel())
         b.cancel("fifafo")
         self.assertIn("basic_cancel", b.channel)
 
     def test_delete(self):
-        b = Queue("foo", self.exchange, "foo", channel=Channel())
+        b = Queue("foo", self.exchange, "foo", channel=get_conn().channel())
         b.delete()
         self.assertIn("queue_delete", b.channel)
 
     def test_unbind(self):
-        b = Queue("foo", self.exchange, "foo", channel=Channel())
+        b = Queue("foo", self.exchange, "foo", channel=get_conn().channel())
         b.unbind()
         self.assertIn("queue_unbind", b.channel)
 
