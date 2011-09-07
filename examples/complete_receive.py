@@ -2,8 +2,9 @@
 Example of simple consumer that waits for a single message, acknowledges it
 and exits.
 """
+from __future__ import with_statement
 
-from kombu import BrokerConnection, Exchange, Queue, Consumer
+from kombu import Connection, Exchange, Queue
 from pprint import pformat
 
 #: By default messages sent to exchanges are persistent (delivery_mode=2),
@@ -23,23 +24,12 @@ def handle_message(body, message):
     print("  delivery_info:\n%s" % (pretty(message.delivery_info), ))
     message.ack()
 
-#: Create a connection and a channel.
-#: If hostname, userid, password and virtual_host is not specified
-#: the values below are the default, but listed here so it can
-#: be easily changed.
-connection = BrokerConnection(hostname="localhost",
-                              userid="guest",
-                              password="guest",
-                              virtual_host="/")
-channel = connection.channel()
-
-#: Create consumer using our callback and queue.
-#: Second argument can also be a list to consume from
-#: any number of queues.
-consumer = Consumer(channel, queue, callbacks=[handle_message])
-consumer.consume()
-
-#: This waits for a single event.  Note that this event may not
-#: be a message, or a message that is to be delivered to the consumers
-#: channel, but any event received on the connection.
-connection.drain_events()
+with Connection("amqp://guest:guest@localhost:5672//") as connection:
+    #: Create consumer using our callback and queue.
+    #: Second argument can also be a list to consume from
+    #: any number of queues.
+    with connection.Consumer(queue, callbacks=[handle_message]):
+        #: This waits for a single event.  Note that this event may not
+        #: be a message, or a message that is to be delivered to the consumers
+        #: channel, but any event received on the connection.
+        connection.drain_events(timeout=10)

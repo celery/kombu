@@ -5,8 +5,9 @@ Example producer that sends a single message and exits.
 You can use `complete_receive.py` to receive the message sent.
 
 """
+from __future__ import with_statement
 
-from kombu import BrokerConnection, Exchange, Queue, Producer
+from kombu import Connection, Exchange, Queue
 
 #: By default messages sent to exchanges are persistent (delivery_mode=2),
 #: and queues and exchanges are durable.
@@ -14,22 +15,18 @@ exchange = Exchange("kombu_demo", type="direct")
 queue = Queue("kombu_demo", exchange, routing_key="kombu_demo")
 
 
-#: Create connection and channel.
-#: If hostname, userid, password and virtual_host is not specified
-#: the values below are the default, but listed here so it can
-#: be easily changed.
-connection = BrokerConnection(hostname="localhost",
-                              userid="guest",
-                              password="guest",
-                              virtual_host="/")
-channel = connection.channel()
+with Connection("amqp://guest:guest@localhost:5672//") as connection:
 
-#: Producers are used to publish messages.
-#: Routing keys can also be specifed as an argument to `publish`.
-producer = Producer(channel, exchange, routing_key="kombu_demo")
+    #: Producers are used to publish messages.
+    #: a default exchange and routing key can also be specifed
+    #: as arguments the Producer, but we rather specify this explicitly
+    #: at the publish call.
+    producer = connection.Producer()
 
-#: Publish the message using the json serializer (which is the default),
-#: and zlib compression.  The kombu consumer will automatically detect
-#: encoding, serializiation and compression used and decode accordingly.
-producer.publish({"hello": "world"}, serializer="json",
-                                     compression="zlib")
+    #: Publish the message using the json serializer (which is the default),
+    #: and zlib compression.  The kombu consumer will automatically detect
+    #: encoding, serializiation and compression used and decode accordingly.
+    producer.publish({"hello": "world"},
+                     exchange=exchange,
+                     routing_key="kombu_demo",
+                     serializer="json", compression="zlib")
