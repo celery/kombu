@@ -69,7 +69,7 @@ class PoolGroup(HashingDict):
         raise NotImplementedError("PoolGroups must define ``create``")
 
     def __missing__(self, resource):
-        k = self[resource] = self.create(resource, _limit[0])
+        k = self[resource] = self.create(resource, get_limit())
         return k
 
 
@@ -91,11 +91,16 @@ def _all_pools():
     return chain(*[(g.itervalues() if g else iter([])) for g in _groups])
 
 
+def get_limit():
+    return _limit[0]
+
+
 def set_limit(limit):
-    _limit[0] = limit
-    for pool in _all_pools():
-        pool.limit = limit
-    reset()
+    if _limit[0] != limit:
+        _limit[0] = limit
+        for pool in _all_pools():
+            pool.limit = limit
+        reset()
     return limit
 
 
