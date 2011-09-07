@@ -1,10 +1,11 @@
-from kombu.tests.utils import unittest
+from __future__ import absolute_import
 
-from kombu.connection import BrokerConnection
-from kombu.transport import virtual
-from kombu.utils import uuid
+from ..connection import BrokerConnection
+from ..transport import virtual
+from ..utils import uuid
 
-from kombu.tests.utils import redirect_stdouts
+from .utils import unittest
+from .utils import redirect_stdouts
 
 
 def client():

@@ -8,12 +8,13 @@ pylibrabbitmq transport.
 :license: BSD, see LICENSE for more details.
 
 """
+from __future__ import absolute_import
 import socket
 import pylibrabbitmq as amqp
 
 from pylibrabbitmq import ChannelError, ConnectionError
 
-from kombu.transport import base
+from . import base
 
 DEFAULT_PORT = 5672
 

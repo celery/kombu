@@ -1,6 +1,6 @@
 """
-kombu.transport.pypika
-======================
+kombu.transport.pika
+====================
 
 Pika transport.
 
@@ -8,12 +8,14 @@ Pika transport.
 :license: BSD, see LICENSE for more details.
 
 """
+from __future__ import absolute_import
+
 import socket
 
 from operator import attrgetter
 
-from kombu.exceptions import VersionMismatch
-from kombu.transport import base
+from ..exceptions import VersionMismatch
+from . import base
 
 from pika import channel  # must be here to raise importerror for below.
 try:
@@ -24,6 +26,7 @@ from pika import blocking_adapter
 from pika import connection
 from pika import exceptions
 from pika.spec import Basic, BasicProperties
+
 
 DEFAULT_PORT = 5672
 

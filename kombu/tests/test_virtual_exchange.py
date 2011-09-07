@@ -1,9 +1,10 @@
-from kombu.tests.utils import unittest
+from __future__ import absolute_import
 
-from kombu import BrokerConnection
-from kombu.transport.virtual import exchange
+from .. import BrokerConnection
+from ..transport.virtual import exchange
 
-from kombu.tests.mocks import Transport
+from .mocks import Transport
+from .utils import unittest
 
 
 class ExchangeCase(unittest.TestCase):

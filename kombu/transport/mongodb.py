@@ -9,6 +9,8 @@ MongoDB transport.
 :license: BSD, see LICENSE for more details.
 
 """
+from __future__ import absolute_import
+
 from Queue import Empty
 
 import pymongo
@@ -16,7 +18,7 @@ from pymongo import errors
 from anyjson import serialize, deserialize
 from pymongo.connection import Connection
 
-from kombu.transport import virtual
+from . import virtual
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 27017

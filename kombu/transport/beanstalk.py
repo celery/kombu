@@ -8,6 +8,8 @@ Beanstalk transport.
 :license: BSD, see LICENSE for more details.
 
 """
+from __future__ import absolute_import
+
 import socket
 
 from Queue import Empty
@@ -15,7 +17,7 @@ from Queue import Empty
 from anyjson import serialize, deserialize
 from beanstalkc import Connection, BeanstalkcException, SocketError
 
-from kombu.transport import virtual
+from . import virtual
 
 DEFAULT_PORT = 11300
 

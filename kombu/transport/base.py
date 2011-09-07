@@ -8,10 +8,11 @@ Base transport interface.
 :license: BSD, see LICENSE for more details.
 
 """
+from __future__ import absolute_import
 
-from kombu import serialization
-from kombu.compression import decompress
-from kombu.exceptions import MessageStateError
+from .. import serialization
+from ..compression import decompress
+from ..exceptions import MessageStateError
 
 ACKNOWLEDGED_STATES = frozenset(["ACK", "REJECTED", "REQUEUED"])
 
@@ -20,11 +21,11 @@ class StdChannel(object):
     no_ack_consumers = None
 
     def Consumer(self, *args, **kwargs):
-        from kombu.messaging import Consumer
+        from ..messaging import Consumer
         return Consumer(self, *args, **kwargs)
 
     def Producer(self, *args, **kwargs):
-        from kombu.messaging import Producer
+        from ..messaging import Producer
         return Producer(self, *args, **kwargs)
 
     def list_bindings(self):

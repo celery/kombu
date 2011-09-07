@@ -1,5 +1,7 @@
-from kombu import entity
-from kombu.utils import gen_unique_id as uuid
+from __future__ import absolute_import
+
+from . import entity
+from .utils import gen_unique_id as uuid  # noqa
 
 
 def entry_to_queue(queue, **options):

@@ -1,9 +1,11 @@
-from kombu.tests.utils import unittest
+from __future__ import absolute_import
 
-from kombu import BrokerConnection, Exchange
-from kombu import compat
 
-from kombu.tests.mocks import Transport, Channel
+from .. import BrokerConnection, Exchange
+from .. import compat
+
+from .mocks import Transport, Channel
+from .utils import unittest
 
 
 class test_misc(unittest.TestCase):

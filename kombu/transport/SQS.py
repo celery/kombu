@@ -8,6 +8,8 @@ Amazon SQS transport.
 :license: BSD, see LICENSE for more details.
 
 """
+from __future__ import absolute_import
+
 import socket
 import string
 
@@ -23,9 +25,9 @@ from boto.sdb.connection import SDBConnection
 from boto.sqs.connection import SQSConnection
 from boto.sqs.message import Message
 
-from kombu.transport import virtual
-from kombu.utils import cached_property, uuid
+from ..utils import cached_property, uuid
 
+from . import virtual
 
 # dots are replaced by dash, all other punctuation
 # replaced by underscore.

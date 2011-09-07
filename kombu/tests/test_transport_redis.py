@@ -1,18 +1,18 @@
+from __future__ import absolute_import
+
 import socket
 import types
 
 from itertools import count
 from Queue import Empty, Queue as _Queue
 
-from kombu.connection import BrokerConnection
-from kombu.entity import Exchange, Queue
-from kombu.messaging import Consumer, Producer
+from ..connection import BrokerConnection
+from ..entity import Exchange, Queue
+from ..messaging import Consumer, Producer
+from ..utils import eventio  # patch poll
 
-from kombu.tests.utils import unittest
-from kombu.tests.utils import module_exists
-
-# patch poll
-from kombu.utils import eventio
+from .utils import unittest
+from .utils import module_exists
 
 
 class _poll(eventio._select):
@@ -26,7 +26,7 @@ class _poll(eventio._select):
 
 
 eventio.poll = _poll
-from kombu.transport import pyredis  # must import after poller patch
+from ..transport import redis  # must import after poller patch
 
 
 class ResponseError(Exception):
@@ -169,7 +169,7 @@ class Pipeline(object):
         return [fun(*args, **kwargs) for fun, args, kwargs in stack]
 
 
-class Channel(pyredis.Channel):
+class Channel(redis.Channel):
 
     def _get_client(self):
         return Client
@@ -181,7 +181,7 @@ class Channel(pyredis.Channel):
         self.client._new_queue(queue)
 
 
-class Transport(pyredis.Transport):
+class Transport(redis.Transport):
     Channel = Channel
 
     def _get_errors(self):
@@ -300,9 +300,9 @@ class test_Redis(unittest.TestCase):
 
     def test_get_client(self):
 
-        redis, exceptions = _redis_modules()
+        myredis, exceptions = _redis_modules()
 
-        @module_exists(redis, exceptions)
+        @module_exists(myredis, exceptions)
         def _do_test():
             conn = BrokerConnection(transport=Transport)
             chan = conn.channel()
@@ -341,8 +341,8 @@ def _redis_modules():
     class Redis(object):
         pass
 
-    redis = types.ModuleType("redis")
-    redis.exceptions = exceptions
-    redis.Redis = Redis
+    myredis = types.ModuleType("redis")
+    myredis.exceptions = exceptions
+    myredis.Redis = Redis
 
-    return redis, exceptions
+    return myredis, exceptions

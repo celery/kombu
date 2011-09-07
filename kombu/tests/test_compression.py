@@ -1,7 +1,9 @@
+from __future__ import absolute_import
+
 from nose import SkipTest
 
-from kombu import compression
-from kombu.tests.utils import unittest
+from .. import compression
+from .utils import unittest
 
 
 class test_compression(unittest.TestCase):

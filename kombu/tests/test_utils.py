@@ -1,19 +1,19 @@
+from __future__ import absolute_import
+
 import pickle
 import sys
-from kombu.tests.utils import unittest
+
+from functools import wraps
 
 if sys.version_info >= (3, 0):
     from io import StringIO, BytesIO
 else:
     from StringIO import StringIO, StringIO as BytesIO  # noqa
 
-from kombu import utils
-from kombu.utils.functional import wraps
+from .. import utils
 
-from kombu.tests.utils import redirect_stdouts, mask_modules, skip_if_module
-
-partition = utils._compat_partition
-rpartition = utils._compat_rpartition
+from .utils import redirect_stdouts, mask_modules, skip_if_module
+from .utils import unittest
 
 
 class OldString(object):
@@ -38,48 +38,6 @@ class test_utils(unittest.TestCase):
         self.assertEqual(utils.maybe_list(1), [1])
         self.assertEqual(utils.maybe_list([1, 2, 3]), [1, 2, 3])
 
-    def assert_partition(self, p, t=str):
-        self.assertEqual(p(t("foo.bar.baz"), "."),
-                ("foo", ".", "bar.baz"))
-        self.assertEqual(p(t("foo"), "."),
-                ("foo", "", ""))
-        self.assertEqual(p(t("foo."), "."),
-                ("foo", ".", ""))
-        self.assertEqual(p(t(".bar"), "."),
-                ("", ".", "bar"))
-        self.assertEqual(p(t("."), "."),
-                ('', ".", ''))
-
-    def assert_rpartition(self, p, t=str):
-        self.assertEqual(p(t("foo.bar.baz"), "."),
-                ("foo.bar", ".", "baz"))
-        self.assertEqual(p(t("foo"), "."),
-                ("", "", "foo"))
-        self.assertEqual(p(t("foo."), "."),
-                ("foo", ".", ""))
-        self.assertEqual(p(t(".bar"), "."),
-                ("", ".", "bar"))
-        self.assertEqual(p(t("."), "."),
-                ('', ".", ''))
-
-    def test_compat_partition(self):
-        self.assert_partition(partition)
-
-    def test_compat_rpartition(self):
-        self.assert_rpartition(rpartition)
-
-    def test_partition(self):
-        self.assert_partition(utils.partition)
-
-    def test_rpartition(self):
-        self.assert_rpartition(utils.rpartition)
-
-    def test_partition_oldstr(self):
-        self.assert_partition(utils.partition, OldString)
-
-    def test_rpartition_oldstr(self):
-        self.assert_rpartition(utils.rpartition, OldString)
-
 
 class test_UUID(unittest.TestCase):
 
@@ -99,7 +57,7 @@ class test_UUID(unittest.TestCase):
 
         @mask_modules("ctypes")
         def with_ctypes_masked():
-            from kombu.utils import ctypes, uuid
+            from ..utils import ctypes, uuid
 
             self.assertIsNone(ctypes)
             tid = uuid()

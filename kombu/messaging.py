@@ -8,13 +8,15 @@ Sending and receiving messages.
 :license: BSD, see LICENSE for more details.
 
 """
+from __future__ import absolute_import
+
 from itertools import count
 
-from kombu import entity
-from kombu.compression import compress
-from kombu.serialization import encode
-from kombu.syn import blocking as _SYN
-from kombu.utils import maybe_list
+from . import entity
+from .compression import compress
+from .serialization import encode
+from .syn import blocking as _SYN
+from .utils import maybe_list
 
 Exchange = entity.Exchange
 Queue = entity.Queue
@@ -64,7 +66,7 @@ class Producer(object):
     def __init__(self, channel, exchange=None, routing_key=None,
             serializer=None, auto_declare=None, compression=None,
             on_return=None):
-        from kombu.connection import BrokerConnection
+        from .connection import BrokerConnection
         if isinstance(channel, BrokerConnection):
             channel = channel.default_channel
         self.channel = channel
@@ -229,7 +231,7 @@ class Consumer(object):
 
     def __init__(self, channel, queues, no_ack=None, auto_declare=None,
             callbacks=None, on_decode_error=None):
-        from kombu.connection import BrokerConnection
+        from .connection import BrokerConnection
         if isinstance(channel, BrokerConnection):
             channel = channel.default_channel
         self.channel = channel

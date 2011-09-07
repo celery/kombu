@@ -1,6 +1,6 @@
 """
-kombu.transport.pyamqplib
-=========================
+kombu.transport.amqplib
+=======================
 
 amqplib transport.
 
@@ -8,6 +8,8 @@ amqplib transport.
 :license: BSD, see LICENSE for more details.
 
 """
+from __future__ import absolute_import
+
 import socket
 
 try:
@@ -22,7 +24,7 @@ from amqplib.client_0_8.channel import Channel as _Channel
 from amqplib.client_0_8.exceptions import AMQPConnectionException
 from amqplib.client_0_8.exceptions import AMQPChannelException
 
-from kombu.transport import base
+from . import base
 
 DEFAULT_PORT = 5672
 

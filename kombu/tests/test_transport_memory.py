@@ -1,9 +1,12 @@
-import socket
-from kombu.tests.utils import unittest
+from __future__ import absolute_import
 
-from kombu.connection import BrokerConnection
-from kombu.entity import Exchange, Queue
-from kombu.messaging import Consumer, Producer
+import socket
+
+from ..connection import BrokerConnection
+from ..entity import Exchange, Queue
+from ..messaging import Consumer, Producer
+
+from .utils import unittest
 
 
 class test_MemoryTransport(unittest.TestCase):

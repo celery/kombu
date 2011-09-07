@@ -10,6 +10,8 @@ Emulates the AMQ API for non-AMQ transports.
 :license: BSD, see LICENSE for more details.
 
 """
+from __future__ import absolute_import
+
 import base64
 import socket
 
@@ -17,14 +19,15 @@ from itertools import count
 from time import sleep, time
 from Queue import Empty
 
-from kombu.exceptions import StdChannelError
-from kombu.transport import base
-from kombu.utils import emergency_dump_state, say
-from kombu.utils.compat import OrderedDict
-from kombu.utils.finalize import Finalize
+from ...exceptions import StdChannelError
+from ...utils import emergency_dump_state, say
+from ...utils.compat import OrderedDict
+from ...utils.finalize import Finalize
 
-from kombu.transport.virtual.scheduling import FairCycle
-from kombu.transport.virtual.exchange import STANDARD_EXCHANGE_TYPES
+from .. import base
+
+from .scheduling import FairCycle
+from .exchange import STANDARD_EXCHANGE_TYPES
 
 
 class Base64(object):

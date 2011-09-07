@@ -1,6 +1,7 @@
-from kombu.tests.utils import unittest
+from __future__ import absolute_import
 
-from kombu.transport.base import Transport
+from ..transport.base import Transport
+from .utils import unittest
 
 
 class test_interface(unittest.TestCase):

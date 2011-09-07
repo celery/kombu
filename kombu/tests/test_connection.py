@@ -1,9 +1,11 @@
+from __future__ import absolute_import
 import pickle
-from kombu.tests.utils import unittest
 
-from kombu.connection import BrokerConnection, Resource
 
-from kombu.tests.mocks import Transport
+from ..connection import BrokerConnection, Resource
+
+from .mocks import Transport
+from .utils import unittest
 
 
 class test_Connection(unittest.TestCase):

@@ -8,11 +8,11 @@ Built-in transports.
 :license: BSD, see LICENSE for more details.
 
 """
+from __future__ import absolute_import
+
 import sys
 
-from kombu.utils import rpartition
-
-DEFAULT_TRANSPORT = "kombu.transport.pyamqplib.Transport"
+DEFAULT_TRANSPORT = "kombu.transport.amqplib.Transport"
 
 MISSING_LIB = """
     The %(feature)s requires the %(lib)s module to be
@@ -68,21 +68,21 @@ def _ghettoq(name, new, alias=None):
 
 
 TRANSPORT_ALIASES = {
-    "amqp": "kombu.transport.pyamqplib.Transport",
-    "amqplib": "kombu.transport.pyamqplib.Transport",
+    "amqp": "kombu.transport.amqplib.Transport",
+    "amqplib": "kombu.transport.amqplib.Transport",
     "librabbitmq": "kombu.transport.librabbitmq.Transport",
-    "pika": "kombu.transport.pypika.AsyncoreTransport",
-    "syncpika": "kombu.transport.pypika.SyncTransport",
+    "pika": "kombu.transport.pika.AsyncoreTransport",
+    "syncpika": "kombu.transport.pika.SyncTransport",
     "memory": "kombu.transport.memory.Transport",
-    "redis": "kombu.transport.pyredis.Transport",
+    "redis": "kombu.transport.redis.Transport",
     "SQS": "kombu.transport.SQS.Transport",
     "beanstalk": "kombu.transport.beanstalk.Transport",
     "mongodb": "kombu.transport.mongodb.Transport",
-    "couchdb": "kombu.transport.pycouchdb.Transport",
+    "couchdb": "kombu.transport.couchdb.Transport",
     "django": _django_transport,
     "sqlalchemy": _sqlalchemy_transport,
 
-    "ghettoq.taproot.Redis": _ghettoq("Redis", "pyredis", "redis"),
+    "ghettoq.taproot.Redis": _ghettoq("Redis", "redis", "redis"),
     "ghettoq.taproot.Database": _ghettoq("Database", _django_transport,
                                          "django"),
     "ghettoq.taproot.MongoDB": _ghettoq("MongoDB", "mongodb"),
@@ -97,7 +97,7 @@ def resolve_transport(transport=None):
     transport = TRANSPORT_ALIASES.get(transport, transport)
     if callable(transport):
         transport = transport()
-    transport_module_name, _, transport_cls_name = rpartition(transport, ".")
+    transport_module_name, _, transport_cls_name = transport.rpartition(".")
     if not transport_module_name:
         raise KeyError("No such transport: %s" % (transport, ))
     return transport_module_name, transport_cls_name
@@ -115,7 +115,7 @@ def get_transport_cls(transport=None):
 
     The transport string is the full path to a transport class, e.g.::
 
-        "kombu.transport.pyamqplib.Transport"
+        "kombu.transport.amqplib.Transport"
 
     If the name does not include `"."` (is not fully qualified),
     the alias table will be consulted.

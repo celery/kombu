@@ -1,8 +1,9 @@
-from kombu.tests.utils import unittest
+from __future__ import absolute_import
 
-from kombu import transport
+from .. import transport
 
-from kombu.tests.utils import mask_modules, module_exists
+from .utils import unittest
+from .utils import mask_modules, module_exists
 
 
 class test_transport(unittest.TestCase):

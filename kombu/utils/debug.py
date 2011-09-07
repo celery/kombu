@@ -1,7 +1,10 @@
+from __future__ import absolute_import
+
 import logging
 
-from kombu.utils.functional import wraps
-from kombu.utils.log import get_logger
+from functools import wraps
+
+from .log import get_logger
 
 
 def setup_logging(loglevel=logging.DEBUG, loggers=["kombu.connection",

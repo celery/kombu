@@ -1,6 +1,6 @@
 """
-kombu.transport.pycouchdb
-=========================
+kombu.transport.couchdb
+=======================
 
 CouchDB transport.
 
@@ -8,6 +8,8 @@ CouchDB transport.
 :license: BSD, see LICENSE for more details.
 
 """
+from __future__ import absolute_import
+
 from Queue import Empty
 
 import socket
@@ -15,8 +17,8 @@ import couchdb
 
 from anyjson import serialize, deserialize
 
-from kombu.transport import virtual
-from kombu.utils import uuid4
+from ..utils import uuid4
+from . import virtual
 
 DEFAULT_PORT = 5984
 DEFAULT_DATABASE = "kombu_default"

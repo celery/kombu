@@ -1,5 +1,7 @@
-from kombu.connection import Resource
-from kombu.messaging import Producer
+from __future__ import absolute_import
+
+from .connection import Resource
+from .messaging import Producer
 
 from itertools import chain
 

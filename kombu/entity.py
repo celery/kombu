@@ -8,8 +8,10 @@ Exchange and Queue declarations.
 :license: BSD, see LICENSE for more details.
 
 """
-from kombu.abstract import MaybeChannelBound
-from kombu.syn import blocking as _SYN
+from __future__ import absolute_import
+
+from .abstract import MaybeChannelBound
+from .syn import blocking as _SYN
 
 TRANSIENT_DELIVERY_MODE = 1
 PERSISTENT_DELIVERY_MODE = 2

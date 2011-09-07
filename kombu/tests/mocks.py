@@ -1,8 +1,10 @@
+from __future__ import absolute_import
+
 from itertools import count
 
 import anyjson
 
-from kombu.transport import base
+from ..transport import base
 
 
 class Message(base.Message):

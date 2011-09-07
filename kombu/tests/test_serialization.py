@@ -1,15 +1,16 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import
 
 import sys
 
-from kombu.serialization import registry, register, SerializerNotInstalled, \
-                                raw_encode, register_yaml, register_msgpack, \
-                                decode, bytes_type, pickle, \
-                                unregister, register_pickle
+from ..serialization import (registry, register, SerializerNotInstalled,
+                             raw_encode, register_yaml, register_msgpack,
+                             decode, bytes_type, pickle,
+                             unregister, register_pickle)
 
-from kombu.tests.utils import unittest
-from kombu.tests.utils import mask_modules, skip_if_not_module
+from .utils import unittest
+from .utils import mask_modules, skip_if_not_module
 
 # For content_encoding tests
 unicode_string = u'abcdé\u8463'

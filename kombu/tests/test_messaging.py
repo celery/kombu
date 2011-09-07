@@ -1,13 +1,14 @@
-from kombu.tests.utils import unittest
+from __future__ import absolute_import
 
 import anyjson
 
-from kombu.connection import BrokerConnection
-from kombu.exceptions import MessageStateError
-from kombu.messaging import Consumer, Producer
-from kombu.entity import Exchange, Queue
+from ..connection import BrokerConnection
+from ..exceptions import MessageStateError
+from ..messaging import Consumer, Producer
+from ..entity import Exchange, Queue
 
-from kombu.tests.mocks import Transport
+from .mocks import Transport
+from .utils import unittest
 
 
 class test_Producer(unittest.TestCase):

@@ -10,11 +10,12 @@ See http://packages.python.org/pypi/carrot for documentation.
 :license: BSD, see LICENSE for more details.
 
 """
+from __future__ import absolute_import
 from itertools import count
 
-from kombu import entity
-from kombu import messaging
-from kombu.common import entry_to_queue
+from . import entity
+from . import messaging
+from .common import entry_to_queue
 
 
 def _iterconsume(connection, consumer, no_ack=False, limit=None):

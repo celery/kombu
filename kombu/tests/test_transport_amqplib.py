@@ -1,8 +1,9 @@
-from kombu.tests.utils import unittest
+from __future__ import absolute_import
 
-from kombu.transport import pyamqplib
-from kombu.connection import BrokerConnection
+from ..transport import amqplib
+from ..connection import BrokerConnection
 
+from .utils import unittest
 
 class MockConnection(dict):
 
@@ -14,7 +15,7 @@ class test_amqplib(unittest.TestCase):
 
     def test_default_port(self):
 
-        class Transport(pyamqplib.Transport):
+        class Transport(amqplib.Transport):
             Connection = MockConnection
 
         c = BrokerConnection(port=None, transport=Transport).connect()
@@ -23,7 +24,7 @@ class test_amqplib(unittest.TestCase):
 
     def test_custom_port(self):
 
-        class Transport(pyamqplib.Transport):
+        class Transport(amqplib.Transport):
             Connection = MockConnection
 
         c = BrokerConnection(port=1337, transport=Transport).connect()

@@ -1,6 +1,8 @@
-from kombu.tests.utils import unittest
+from __future__ import absolute_import
 
-from kombu.transport.virtual.scheduling import FairCycle
+from ..transport.virtual.scheduling import FairCycle
+
+from .utils import unittest
 
 
 class MyEmpty(Exception):

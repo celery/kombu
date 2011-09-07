@@ -1,10 +1,11 @@
-from kombu.tests.utils import unittest
+from __future__ import absolute_import
 
-from kombu import Connection
-from kombu.entity import Exchange, Queue
-from kombu.exceptions import NotBoundError
+from .. import Connection
+from ..entity import Exchange, Queue
+from ..exceptions import NotBoundError
 
-from kombu.tests.mocks import Transport
+from .mocks import Transport
+from .utils import unittest
 
 
 def get_conn():

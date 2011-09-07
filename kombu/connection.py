@@ -8,20 +8,22 @@ Broker connection and pools.
 :license: BSD, see LICENSE for more details.
 
 """
+from __future__ import absolute_import
+
 import os
 import sys
 import socket
 
 from copy import copy
+from functools import wraps
 from itertools import count
 from Queue import Empty
 from urlparse import urlparse, parse_qsl
 
-from kombu import exceptions
-from kombu.transport import get_transport_cls
-from kombu.utils import kwdict, partition, retry_over_time
-from kombu.utils.compat import OrderedDict, LifoQueue as _LifoQueue
-from kombu.utils.functional import wraps
+from . import exceptions
+from .transport import get_transport_cls
+from .utils import kwdict, retry_over_time
+from .utils.compat import OrderedDict, LifoQueue as _LifoQueue
 
 _LOG_CONNECTION = os.environ.get("KOMBU_LOG_CONNECTION", False)
 _LOG_CHANNEL = os.environ.get("KOMBU_LOG_CHANNEL", False)
@@ -39,9 +41,9 @@ def parse_url(url):
     parts = urlparse(url.replace("%s://" % (scheme, ), "http://"))
     netloc = parts.netloc
     if '@' in netloc:
-        auth, _, netloc = partition(parts.netloc, '@')
-        userid, _, password = partition(auth, ':')
-    hostname, _, port = partition(netloc, ':')
+        auth, _, netloc = parts.netloc.partition('@')
+        userid, _, password = auth.partition(':')
+    hostname, _, port = netloc.partition(':')
     path = parts.path or ""
     if path and path[0] == '/':
         path = path[path.index('/') + 1:]
@@ -70,7 +72,7 @@ class BrokerConnection(object):
     :keyword ssl: Use ssl to connect to the server. Default is ``False``.
     :keyword transport: Transport class to use. Can be a class,
          or a string specifying the path to the class. (e.g.
-         ``kombu.transport.pyamqplib.Transport``), or one of the aliases:
+         ``kombu.transport.amqplib.Transport``), or one of the aliases:
          ``amqplib``, ``pika``, ``redis``, ``memory``.
     :keyword connect_timeout: Timeout in seconds for connecting to the
       server. May not be suported by the specified transport.
@@ -131,7 +133,7 @@ class BrokerConnection(object):
         self.transport_options = transport_options
 
         if _LOG_CONNECTION:
-            from kombu.utils.log import get_logger
+            from .utils.log import get_logger
             self._logger = get_logger("kombu.connection")
 
     def _init_params(self, hostname, userid, password, virtual_host, port,
@@ -162,7 +164,7 @@ class BrokerConnection(object):
         self._debug("create channel")
         chan = self.transport.create_channel(self.connection)
         if _LOG_CHANNEL:
-            from kombu.utils.debug import Logwrapped
+            from .utils.debug import Logwrapped
             return Logwrapped(chan, "kombu.channel",
                     "[Kombu channel:%(channel_id)s] ")
         return chan
@@ -457,13 +459,13 @@ class BrokerConnection(object):
         return ChannelPool(self, limit, preload)
 
     def Producer(self, channel=None, *args, **kwargs):
-        from kombu.messaging import Producer
+        from .messaging import Producer
         if channel is None:
             channel = self   # use default channel support.
         return Producer(channel, *args, **kwargs)
 
     def Consumer(self, channel=None, *args, **kwargs):
-        from kombu.messaging import Consumer
+        from .messaging import Consumer
         if channel is None:
             channel = self  # use default channel support.
         return Consumer(channel, *args, **kwargs)
@@ -491,7 +493,7 @@ class BrokerConnection(object):
            object.
 
         """
-        from kombu.simple import SimpleQueue
+        from .simple import SimpleQueue
 
         channel_autoclose = False
         if channel is None:
@@ -511,7 +513,7 @@ class BrokerConnection(object):
         and acknowledgements are disabled (``no_ack``).
 
         """
-        from kombu.simple import SimpleBuffer
+        from .simple import SimpleBuffer
 
         channel_autoclose = False
         if channel is None:

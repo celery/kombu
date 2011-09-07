@@ -1,13 +1,14 @@
+from __future__ import absolute_import
+
 import __builtin__
 import os
 import sys
 import types
 
+from functools import wraps
 from StringIO import StringIO
 
 from nose import SkipTest
-
-from kombu.utils.functional import wraps
 
 try:
     import unittest

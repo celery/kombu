@@ -1,8 +1,9 @@
-from kombu.tests.utils import unittest
+from __future__ import absolute_import
 
 from Queue import Empty
 
-from kombu import BrokerConnection, Exchange, Queue
+from .. import BrokerConnection, Exchange, Queue
+from .utils import unittest
 
 
 class SimpleBase(unittest.TestCase):

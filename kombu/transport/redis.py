@@ -1,6 +1,6 @@
 """
-kombu.transport.pyredis
-=======================
+kombu.transport.redis
+=====================
 
 Redis transport.
 
@@ -8,15 +8,16 @@ Redis transport.
 :license: BSD, see LICENSE for more details.
 
 """
+from __future__ import absolute_import
 
 from Queue import Empty
 
 from anyjson import serialize, deserialize
 
-from kombu.exceptions import VersionMismatch
-from kombu.transport import virtual
-from kombu.utils import eventio
-from kombu.utils import cached_property
+from ..exceptions import VersionMismatch
+from ..utils import eventio, cached_property
+
+from . import virtual
 
 DEFAULT_PORT = 6379
 DEFAULT_DB = 0

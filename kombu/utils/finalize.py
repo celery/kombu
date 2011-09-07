@@ -1,4 +1,6 @@
 """Taken from multiprocessing.util.Finalize."""
+from __future__ import absolute_import
+
 import weakref
 
 from itertools import count

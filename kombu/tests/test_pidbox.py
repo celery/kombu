@@ -1,8 +1,10 @@
-from kombu.tests.utils import unittest
+from __future__ import absolute_import
 
-from kombu import pidbox
-from kombu.connection import BrokerConnection
-from kombu.utils import uuid
+from .. import pidbox
+from ..connection import BrokerConnection
+from ..utils import uuid
+
+from .utils import unittest
 
 
 class test_Mailbox(unittest.TestCase):
