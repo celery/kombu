@@ -64,6 +64,9 @@ class Producer(object):
     def __init__(self, channel, exchange=None, routing_key=None,
             serializer=None, auto_declare=None, compression=None,
             on_return=None):
+        from kombu.connection import BrokerConnection
+        if isinstance(channel, BrokerConnection):
+            channel = channel.default_channel
         self.channel = channel
         self.exchange = exchange or self.exchange
         if self.exchange is None:
@@ -224,6 +227,9 @@ class Consumer(object):
 
     def __init__(self, channel, queues, no_ack=None, auto_declare=None,
             callbacks=None, on_decode_error=None):
+        from kombu.connection import BrokerConnection
+        if isinstance(channel, BrokerConnection):
+            channel = channel.default_channel
         self.channel = channel
         self.queues = queues
         if no_ack is not None:
