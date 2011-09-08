@@ -544,6 +544,13 @@ class BrokerConnection(object):
         self.release()
 
     @property
+    def connected(self):
+        """Returns true if the connection has been established."""
+        return (not self._closed and
+                self._connection is not None and
+                self.transport.verify_connection(self._connection))
+
+    @property
     def connection(self):
         """The underlying connection object.
 
@@ -552,13 +559,11 @@ class BrokerConnection(object):
             depend on the interface of this object.
 
         """
-        if self._closed:
-            return
-        if not self._connection or not \
-                self.transport.verify_connection(self._connection):
-            self._connection = self._establish_connection()
-            self._closed = False
-        return self._connection
+        if not self._closed:
+            if not self.connected:
+                self._connection = self._establish_connection()
+                self._closed = False
+            return self._connection
 
     @property
     def default_channel(self):
