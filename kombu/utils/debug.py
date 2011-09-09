@@ -1,3 +1,13 @@
+"""
+kombu.utils.debug
+=================
+
+Debugging support.
+
+:copyright: (c) 2009 - 2011 by Ask Solem.
+:license: BSD, see LICENSE for more details.
+
+"""
 import logging
 
 from kombu.utils.functional import wraps

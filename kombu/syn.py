@@ -1,3 +1,13 @@
+"""
+kombu.syn
+=========
+
+Thread synchronization.
+
+:copyright: (c) 2009 - 2011 by Ask Solem.
+:license: BSD, see LICENSE for more details.
+
+"""
 import sys
 
 #: current blocking method

@@ -1,3 +1,13 @@
+"""
+kombu.common
+============
+
+Common Utilities.
+
+:copyright: (c) 2009 - 2011 by Ask Solem.
+:license: BSD, see LICENSE for more details.
+
+"""
 from collections import defaultdict
 
 from kombu import entity
