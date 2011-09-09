@@ -5,6 +5,7 @@ from ..connection import BrokerConnection
 
 from .utils import unittest
 
+
 class MockConnection(dict):
 
     def __setattr__(self, key, value):

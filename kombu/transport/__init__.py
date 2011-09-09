@@ -42,11 +42,6 @@ def _django_transport():
     return "djkombu.transport.DatabaseTransport"
 
 
-def _sqlalchemy_transport():
-    _requires("SQLAlchemy transport", "sqlakombu", "kombu-sqlalchemy")
-    return "sqlakombu.transport.Transport"
-
-
 def _ghettoq(name, new, alias=None):
     xxx = new
 
@@ -80,8 +75,7 @@ TRANSPORT_ALIASES = {
     "mongodb": "kombu.transport.mongodb.Transport",
     "couchdb": "kombu.transport.couchdb.Transport",
     "django": _django_transport,
-    "sqlalchemy": _sqlalchemy_transport,
-
+    "sqlalchemy": "kombu.transport.sqlalchemy.Transport",
     "ghettoq.taproot.Redis": _ghettoq("Redis", "redis", "redis"),
     "ghettoq.taproot.Database": _ghettoq("Database", _django_transport,
                                          "django"),
