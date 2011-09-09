@@ -1,3 +1,13 @@
+"""
+kombu.utils.limits
+==================
+
+Token bucket implementation for rate limiting.
+
+:copyright: (c) 2009 - 2011 by Ask Solem.
+:license: BSD, see LICENSE for more details.
+
+"""
 import time
 
 

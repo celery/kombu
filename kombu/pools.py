@@ -1,3 +1,13 @@
+"""
+kombu.pools
+===========
+
+Public resource pools.
+
+:copyright: (c) 2009 - 2011 by Ask Solem.
+:license: BSD, see LICENSE for more details.
+
+"""
 from __future__ import absolute_import
 
 from .connection import Resource

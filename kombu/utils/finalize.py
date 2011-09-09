@@ -1,4 +1,15 @@
-"""Taken from multiprocessing.util.Finalize."""
+"""
+kombu.utils.finalize
+====================
+
+Execute cleanup handlers when objects go out of scope.
+
+Taken from :class:`multiprocessing.util.Finalize`.
+
+:copyright: (c) 2009 - 2011 by Ask Solem.
+:license: BSD, see LICENSE for more details.
+
+"""
 from __future__ import absolute_import
 
 import weakref
