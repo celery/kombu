@@ -742,11 +742,9 @@ class PoolChannelContext(object):
 
     def __enter__(self):
         self.conn = self.pool.acquire(block=self.block)
-        self.chan = self.conn.channel()
-        return self.conn, self.chan
+        return self.conn, self.conn.default_channel
 
     def __exit__(self, *exc_info):
-        self.conn.maybe_close_channel(self.chan)
         self.conn.release()
 
 
