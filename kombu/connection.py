@@ -137,7 +137,7 @@ class BrokerConnection(object):
         self.transport_options = transport_options
 
         if _LOG_CONNECTION:
-            from .utils.log import get_logger
+            from .log import get_logger
             self._logger = get_logger("kombu.connection")
 
     def _init_params(self, hostname, userid, password, virtual_host, port,

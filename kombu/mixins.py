@@ -18,14 +18,14 @@ from functools import partial
 from itertools import count
 
 from .messaging import Consumer
-
+from .log import LogMixin
 from .utils import cached_property, nested
 from .utils.limits import TokenBucket
 
 __all__ = ["ConsumerMixin"]
 
 
-class ConsumerMixin(object):
+class ConsumerMixin(LogMixin):
     connect_max_retries = None
     should_stop = False
 
@@ -44,12 +44,6 @@ class ConsumerMixin(object):
     @contextmanager
     def extra_context(self, connection, channel):
         yield
-
-    def error(self, msg, *args):
-        pass
-
-    def info(self, msg, *args):
-        pass
 
     def run(self):
         while not self.should_stop:
