@@ -14,17 +14,16 @@ def register_group(group):
 
 
 class ProducerPool(Resource):
-    Producer = Producer
 
     def __init__(self, connections, *args, **kwargs):
         self.connections = connections
         super(ProducerPool, self).__init__(*args, **kwargs)
 
+    def Producer(self, connection):
+        return Producer(connection)
+
     def create_producer(self):
-        conn = self.connections.acquire(block=True)
-        producer = self.Producer(conn)
-        producer.connection = conn
-        return producer
+        return self.Producer(self.connections.acquire(block=True))
 
     def new(self):
         return lambda: self.create_producer()
