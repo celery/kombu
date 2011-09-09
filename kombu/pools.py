@@ -16,17 +16,16 @@ def register_group(group):
 
 
 class ProducerPool(Resource):
-    Producer = Producer
 
     def __init__(self, connections, *args, **kwargs):
         self.connections = connections
         super(ProducerPool, self).__init__(*args, **kwargs)
 
+    def Producer(self, connection):
+        return Producer(connection)
+
     def create_producer(self):
-        conn = self.connections.acquire(block=True)
-        producer = self.Producer(conn)
-        producer.connection = conn
-        return producer
+        return self.Producer(self.connections.acquire(block=True))
 
     def new(self):
         return lambda: self.create_producer()
@@ -71,7 +70,7 @@ class PoolGroup(HashingDict):
         raise NotImplementedError("PoolGroups must define ``create``")
 
     def __missing__(self, resource):
-        k = self[resource] = self.create(resource, _limit[0])
+        k = self[resource] = self.create(resource, get_limit())
         return k
 
 
@@ -93,11 +92,16 @@ def _all_pools():
     return chain(*[(g.itervalues() if g else iter([])) for g in _groups])
 
 
+def get_limit():
+    return _limit[0]
+
+
 def set_limit(limit):
-    _limit[0] = limit
-    for pool in _all_pools():
-        pool.limit = limit
-    reset()
+    if _limit[0] != limit:
+        _limit[0] = limit
+        for pool in _all_pools():
+            pool.limit = limit
+        reset()
     return limit
 
 

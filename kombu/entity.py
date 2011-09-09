@@ -136,6 +136,9 @@ class Exchange(MaybeChannelBound):
         self.type = type or self.type
         self.maybe_bind(channel)
 
+    def __hash__(self):
+        return hash("E|%s" % (self.name, ))
+
     def declare(self, nowait=False):
         """Declare the exchange.
 
@@ -325,6 +328,12 @@ class Queue(MaybeChannelBound):
 
         Additional arguments used when binding the queue.
 
+    .. attribute:: alias
+
+        Unused in Kombu, but application can take advantage of this.
+        For example to give alternate names to queues with automatically
+        generated queue names.
+
     """
     name = ""
     exchange = None
@@ -343,7 +352,8 @@ class Queue(MaybeChannelBound):
              ("durable", bool),
              ("exclusive", bool),
              ("auto_delete", bool),
-             ("no_ack", None))
+             ("no_ack", None),
+             ("alias", None))
 
     def __init__(self, name="", exchange=None, routing_key="", channel=None,
             **kwargs):
@@ -355,6 +365,9 @@ class Queue(MaybeChannelBound):
         if self.exclusive:
             self.auto_delete = True
         self.maybe_bind(channel)
+
+    def __hash__(self):
+        return hash("Q|%s" % (self.name, ))
 
     def when_bound(self):
         if self.exchange:
