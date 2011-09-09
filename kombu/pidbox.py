@@ -19,6 +19,8 @@ from .entity import Exchange, Queue
 from .messaging import Consumer, Producer
 from .utils import kwdict, uuid
 
+__all__ = ["Node", "Mailbox"]
+
 
 class Node(object):
 

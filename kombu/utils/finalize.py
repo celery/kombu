@@ -16,6 +16,8 @@ import weakref
 
 from itertools import count
 
+__all__ = ["Finalize"]
+
 
 class Finalize(object):
     """Object finalization using weakrefs."""

@@ -12,6 +12,8 @@ from __future__ import absolute_import
 
 from threading import Lock
 
+__all__ = ["LamportClock"]
+
 
 class LamportClock(object):
     """Lamport's logical clock.

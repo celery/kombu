@@ -12,6 +12,8 @@ from __future__ import absolute_import
 
 import sys
 
+__all__ = ["blocking", "select_blocking_method", "detect_environment"]
+
 #: current blocking method
 __sync_current = None
 

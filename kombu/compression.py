@@ -16,6 +16,9 @@ _aliases = {}
 _encoders = {}
 _decoders = {}
 
+__all__ = ["register", "encoders", "get_encoder",
+           "get_decoder", "compress", "decompress"]
+
 
 def register(encoder, decoder, content_type, aliases=[]):
     """Register new compression method.

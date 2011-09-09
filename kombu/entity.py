@@ -18,6 +18,8 @@ PERSISTENT_DELIVERY_MODE = 2
 DELIVERY_MODES = {"transient": TRANSIENT_DELIVERY_MODE,
                   "persistent": PERSISTENT_DELIVERY_MODE}
 
+__all__ = ["Exchange", "Queue"]
+
 
 class Exchange(MaybeChannelBound):
     """An Exchange declaration.

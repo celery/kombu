@@ -14,6 +14,8 @@ from copy import copy
 
 from .exceptions import NotBoundError
 
+__all__ = ["Object", "MaybeChannelBound"]
+
 
 class Object(object):
     """Common baseclass supporting automatic kwargs->attributes handling,

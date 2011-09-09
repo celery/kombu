@@ -11,11 +11,14 @@ See http://packages.python.org/pypi/carrot for documentation.
 
 """
 from __future__ import absolute_import
+
 from itertools import count
 
 from . import entity
 from . import messaging
 from .common import entry_to_queue
+
+__all__ = ["Publisher", "Consumer"]
 
 
 def _iterconsume(connection, consumer, no_ack=False, limit=None):

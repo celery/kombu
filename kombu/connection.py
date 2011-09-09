@@ -14,6 +14,7 @@ import os
 import sys
 import socket
 
+from contextlib import contextmanager
 from copy import copy
 from functools import wraps
 from itertools import count
@@ -33,6 +34,9 @@ _LOG_CHANNEL = os.environ.get("KOMBU_LOG_CHANNEL", False)
 URI_FORMAT = """\
 %(transport)s://%(userid)s@%(hostname)s%(port)s/%(virtual_host)s\
 """
+
+__all__ = ["parse_url", "BrokerConnection", "Resource",
+           "ConnectionPool", "ChannelPool"]
 
 
 def parse_url(url):
@@ -736,20 +740,6 @@ class Resource(object):
             return r
 
 
-class PoolChannelContext(object):
-
-    def __init__(self, pool, block=False):
-        self.pool = pool
-        self.block = block
-
-    def __enter__(self):
-        self.conn = self.pool.acquire(block=self.block)
-        return self.conn, self.conn.default_channel
-
-    def __exit__(self, *exc_info):
-        self.conn.release()
-
-
 class ConnectionPool(Resource):
     LimitExceeded = exceptions.ConnectionLimitExceeded
 
@@ -767,8 +757,10 @@ class ConnectionPool(Resource):
     def close_resource(self, resource):
         resource._close()
 
+    @contextmanager
     def acquire_channel(self, block=False):
-        return PoolChannelContext(self, block)
+        with self.acquire(block=block) as connection:
+            return connection, connection.default_channel
 
     def setup(self):
         if self.limit:

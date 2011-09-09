@@ -19,6 +19,10 @@ try:
 except ImportError:
     cpickle = None  # noqa
 
+from .exceptions import SerializerNotInstalled
+
+__all__ = ["pickle", "bytes_type", "encode", "decode",
+           "register", "unregister"]
 
 if sys.platform.startswith("java"):
 
@@ -49,11 +53,6 @@ else:
 bytes_type = str
 if sys.version_info >= (3, 0):
     bytes_type = bytes
-
-
-class SerializerNotInstalled(StandardError):
-    """Support for the requested serialization type is not installed"""
-    pass
 
 
 class SerializerRegistry(object):

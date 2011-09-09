@@ -10,6 +10,15 @@ Exceptions.
 """
 from __future__ import absolute_import
 
+import socket
+
+__all__ = ["NotBoundError", "MessageStateError", "TimeoutError",
+           "LimitExceeded", "ConnectionLimitExceeded",
+           "ChannelLimitExceeded", "StdChannelError", "VersionMismatch",
+           "SerializerNotInstalled"]
+
+TimeoutError = socket.timeout
+
 
 class NotBoundError(Exception):
     """Trying to call channel dependent method on unbound entity."""
@@ -18,11 +27,6 @@ class NotBoundError(Exception):
 
 class MessageStateError(Exception):
     """The message has already been acknowledged."""
-    pass
-
-
-class TimeoutError(Exception):
-    """Operation timed out."""
     pass
 
 
@@ -46,4 +50,9 @@ class StdChannelError(Exception):
 
 
 class VersionMismatch(Exception):
+    pass
+
+
+class SerializerNotInstalled(StandardError):
+    """Support for the requested serialization type is not installed"""
     pass

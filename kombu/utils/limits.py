@@ -10,6 +10,8 @@ Token bucket implementation for rate limiting.
 """
 import time
 
+__all__ = ["TokenBucket"]
+
 
 class TokenBucket(object):
     """Token Bucket Algorithm.

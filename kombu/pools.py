@@ -10,19 +10,16 @@ Public resource pools.
 """
 from __future__ import absolute_import
 
-from .connection import Resource
-from .messaging import Producer
-
 from itertools import chain
 
-__all__ = ["ProducerPool", "connections", "producers", "set_limit", "reset"]
+from .connection import Resource
+from .messaging import Producer
+from .utils import HashingDict
+
+__all__ = ["ProducerPool", "PoolGroup", "register_group",
+           "connections", "producers", "get_limit", "set_limit", "reset"]
 _limit = [200]
 _groups = []
-
-
-def register_group(group):
-    _groups.append(group)
-    return group
 
 
 class ProducerPool(Resource):
@@ -59,21 +56,6 @@ class ProducerPool(Resource):
         super(ProducerPool, self).release(resource)
 
 
-class HashingDict(dict):
-
-    def __getitem__(self, key):
-        h = hash(key)
-        if h not in self:
-            return self.__missing__(key)
-        return dict.__getitem__(self, h)
-
-    def __setitem__(self, key, value):
-        return dict.__setitem__(self, hash(key), value)
-
-    def __delitem__(self, key):
-        return dict.__delitem__(self, hash(key))
-
-
 class PoolGroup(HashingDict):
 
     def create(self, resource, limit):
@@ -82,6 +64,11 @@ class PoolGroup(HashingDict):
     def __missing__(self, resource):
         k = self[resource] = self.create(resource, get_limit())
         return k
+
+
+def register_group(group):
+    _groups.append(group)
+    return group
 
 
 class _Connections(PoolGroup):

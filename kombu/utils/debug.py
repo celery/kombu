@@ -16,6 +16,8 @@ from functools import wraps
 
 from .log import get_logger
 
+__all__ = ["setup_logging", "LogWrapped"]
+
 
 def setup_logging(loglevel=logging.DEBUG, loggers=["kombu.connection",
                                                    "kombu.channel"]):

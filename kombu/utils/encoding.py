@@ -13,6 +13,8 @@ from __future__ import absolute_import
 import sys
 import traceback
 
+__all__ = ["default_encoding", "safe_str", "safe_repr"]
+
 
 def default_encoding():
     if sys.platform.startswith("java"):

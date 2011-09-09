@@ -19,6 +19,8 @@ from Queue import Empty
 from . import entity
 from . import messaging
 
+__all__ = ["SimpleQueue", "SimpleBuffer"]
+
 
 class SimpleBase(object):
     _consuming = False

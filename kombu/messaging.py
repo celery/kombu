@@ -18,6 +18,8 @@ from .serialization import encode
 from .syn import blocking as _SYN
 from .utils import maybe_list
 
+__all__ = ["Exchange", "Queue", "Producer", "Consumer"]
+
 Exchange = entity.Exchange
 Queue = entity.Queue
 
