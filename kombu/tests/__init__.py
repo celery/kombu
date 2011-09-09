@@ -34,6 +34,7 @@ def setup():
     # so coverage sees all our modules.
     for module in moduleindex:
         try:
+            print("IMPORT: %r" % (module, ))
             __import__(module)
         except ImportError:
             pass

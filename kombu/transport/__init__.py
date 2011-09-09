@@ -14,36 +14,9 @@ import sys
 
 DEFAULT_TRANSPORT = "kombu.transport.amqplib.Transport"
 
-MISSING_LIB = """
-    The %(feature)s requires the %(lib)s module to be
-    installed; http://pypi.python.org/pypi/%(lib)s
-
-    Use pip to install this module::
-
-        $ pip install %(lib)s
-
-    or using easy_install::
-
-        $ easy_install %(lib)s
-"""
-
-
-def _requires(feature, module, lib):
-    try:
-        __import__(module)
-    except ImportError:
-        raise ImportError(MISSING_LIB % {"feature": feature,
-                                         "module": module,
-                                         "lib": lib})
-
-
-def _django_transport():
-    _requires("Django transport", "djkombu", "django-kombu")
-    return "djkombu.transport.DatabaseTransport"
-
 
 def _ghettoq(name, new, alias=None):
-    xxx = new
+    xxx = new   # stupid enclosing
 
     def __inner():
         import warnings
@@ -74,11 +47,10 @@ TRANSPORT_ALIASES = {
     "beanstalk": "kombu.transport.beanstalk.Transport",
     "mongodb": "kombu.transport.mongodb.Transport",
     "couchdb": "kombu.transport.couchdb.Transport",
-    "django": _django_transport,
+    "django": "kombu.transport.django.Transport",
     "sqlalchemy": "kombu.transport.sqlalchemy.Transport",
     "ghettoq.taproot.Redis": _ghettoq("Redis", "redis", "redis"),
-    "ghettoq.taproot.Database": _ghettoq("Database", _django_transport,
-                                         "django"),
+    "ghettoq.taproot.Database": _ghettoq("Database", "django", "django"),
     "ghettoq.taproot.MongoDB": _ghettoq("MongoDB", "mongodb"),
     "ghettoq.taproot.Beanstalk": _ghettoq("Beanstalk", "beanstalk"),
     "ghettoq.taproot.CouchDB": _ghettoq("CouchDB", "couchdb"),
