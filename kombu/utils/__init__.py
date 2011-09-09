@@ -2,6 +2,7 @@ from __future__ import absolute_import
 
 import sys
 
+from contextlib import contextmanager
 from time import sleep
 from uuid import UUID, uuid4 as _uuid4, _uuid_generate_random
 
@@ -224,3 +225,34 @@ def reprcall(name, args=(), kwargs=(), sep=', '):
     return "%s(%s%s%s)" % (name, sep.join(map(_safe_repr, args)),
                            (args and kwargs) and sep or "",
                            reprkwargs(kwargs, sep))
+
+
+@contextmanager
+def nested(*managers):
+    """Combine multiple context managers into a single nested
+    context manager."""
+    exits = []
+    vars = []
+    exc = (None, None, None)
+    try:
+        for mgr in managers:
+            exit = mgr.__exit__
+            enter = mgr.__enter__
+            vars.append(enter())
+            exits.append(exit)
+        yield vars
+    except:
+        exc = sys.exc_info()
+    finally:
+        while exits:
+            exit = exits.pop()
+            try:
+                if exit(*exc):
+                    exc = (None, None, None)
+            except:
+                exc = sys.exc_info()
+        if exc != (None, None, None):
+            # Don't rely on sys.exc_info() still containing
+            # the right information. Another exception may
+            # have been raised and caught by an exit method
+            raise exc[0], exc[1], exc[2]

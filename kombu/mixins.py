@@ -3,14 +3,14 @@ from __future__ import with_statement
 
 import socket
 
-from contextlib import nested, contextmanager
+from contextlib import contextmanager
 from functools import partial
 from itertools import count
 
-from kombu.messaging import Consumer
+from .messaging import Consumer
 
-from kombu.utils import cached_property
-from kombu.utils.limits import TokenBucket
+from .utils import cached_property, nested
+from .utils.limits import TokenBucket
 
 __all__ = ["ConsumerMixin"]
 
