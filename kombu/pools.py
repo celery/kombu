@@ -78,7 +78,7 @@ class Connections(PoolGroup):
 connections = register_group(Connections())
 
 
-class Producers(HashingDict):
+class Producers(PoolGroup):
 
     def create(self, connection, limit):
         return ProducerPool(connections[connection], limit=limit)
