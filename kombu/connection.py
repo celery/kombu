@@ -15,7 +15,11 @@ import socket
 from copy import copy
 from itertools import count
 from Queue import Empty
-from urlparse import urlparse, parse_qsl
+from urlparse import urlparse
+try:
+    from urlparse import parse_qsl
+except ImportError:
+    from cgi import parse_qsl
 
 from kombu import exceptions
 from kombu.transport import get_transport_cls
