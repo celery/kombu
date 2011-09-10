@@ -82,14 +82,14 @@ class PoolGroup(HashingDict):
         return k
 
 
-class _Connections(PoolGroup):
+class Connections(PoolGroup):
 
     def create(self, connection, limit):
         return connection.Pool(limit=limit)
 connections = register_group(_Connections())
 
 
-class _Producers(HashingDict):
+class Producers(HashingDict):
 
     def create(self, connection, limit):
         return ProducerPool(connections[connection], limit=limit)
@@ -104,12 +104,17 @@ def get_limit():
     return _limit[0]
 
 
-def set_limit(limit):
+def set_limit(limit, force=False, reset_after=False):
+    if limit < limit:
+        if not force:
+            raise RuntimeError("Can't lower limit after pool in use.")
+        reset_after = True
     if _limit[0] != limit:
         _limit[0] = limit
         for pool in _all_pools():
             pool.limit = limit
-        reset()
+        if reset_after:
+            reset()
     return limit
 
 
