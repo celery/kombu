@@ -52,10 +52,16 @@ class LamportClock(object):
         self.mutex = Lock()
 
     def adjust(self, other):
-        with self.mutex:
+        self.mutex.acquire()
+        try:
             self.value = max(self.value, other) + 1
+        finally:
+            self.mutex.release()
 
     def forward(self):
-        with self.mutex:
+        self.mutex.acquire()
+        try:
             self.value += 1
-        return self.value
+            return self.value
+        finally:
+            self.mutex.release()

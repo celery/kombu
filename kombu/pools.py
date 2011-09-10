@@ -86,14 +86,14 @@ class Connections(PoolGroup):
 
     def create(self, connection, limit):
         return connection.Pool(limit=limit)
-connections = register_group(_Connections())
+connections = register_group(Connections())
 
 
 class Producers(HashingDict):
 
     def create(self, connection, limit):
         return ProducerPool(connections[connection], limit=limit)
-producers = register_group(_Producers())
+producers = register_group(Producers())
 
 
 def _all_pools():
