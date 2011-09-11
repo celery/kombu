@@ -61,42 +61,34 @@ def parse_url(url):
 class BrokerConnection(object):
     """A connection to the broker.
 
-    :keyword hostname: Hostname/address of the server to connect to.
-      Default is ``"localhost"``.
-    :keyword userid: Username. Default is ``"guest"``.
-    :keyword password: Password. Default is ``"guest"``.
-    :keyword virtual_host: Virtual host. Default is ``"/"``.
-    :keyword port: Port of the server. Default is transport specific.
-    :keyword insist: Insist on connecting to a server.
-      In a configuration with multiple load-sharing servers, the insist
-      option tells the server that the client is insisting on a connection
-      to the specified server.  Default is ``False``.
+    :param URL:  Connection URL.
+
+    :keyword hostname: Default Hostname/address if not provided in the URL.
+    :keyword userid: Default username if not provided in the URL.
+    :keyword password: Default password if not provided in the URL.
+    :keyword virtual_host: Default virtual host if not provided in the URL.
+    :keyword port: Default port if not provided in the URL.
     :keyword ssl: Use ssl to connect to the server. Default is ``False``.
-    :keyword transport: Transport class to use. Can be a class,
-         or a string specifying the path to the class. (e.g.
-         ``kombu.transport.pyamqplib.Transport``), or one of the aliases:
-         ``amqplib``, ``pika``, ``redis``, ``memory``.
+      May not be supported by the specified transport.
+    :keyword transport: Default transport if not specified in the URL.
     :keyword connect_timeout: Timeout in seconds for connecting to the
       server. May not be suported by the specified transport.
     :keyword transport_options: A dict of additional connection arguments to
       pass to alternate kombu channel implementations.  Consult the transport
       documentation for available options.
+    :keyword insist: *Deprecated*
 
-    **Usage**
+    .. note::
 
-    Creating a connection::
+        The connection is established lazily when needed. If you need the
+        connection to be established, then force it to do so using
+        :meth:`connect`::
 
-        >>> conn = BrokerConnection("rabbit.example.com")
+            >>> conn.connect()
 
-    The connection is established lazily when needed. If you need the
-    connection to be established, then force it to do so using
-    :meth:`connect`::
+        Remember to always close the connection::
 
-        >>> conn.connect()
-
-    Remember to always close the connection::
-
-        >>> conn.release()
+            >>> conn.release()
 
     """
     URI_FORMAT = URI_FORMAT
