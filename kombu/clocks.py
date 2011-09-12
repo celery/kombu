@@ -9,6 +9,7 @@ Logical Clocks and Synchronization.
 
 """
 from __future__ import absolute_import
+from __future__ import with_statement
 
 from threading import Lock
 
@@ -55,16 +56,10 @@ class LamportClock(object):
         self.mutex = Lock()
 
     def adjust(self, other):
-        self.mutex.acquire()
-        try:
+        with self.mutex:
             self.value = max(self.value, other) + 1
-        finally:
-            self.mutex.release()
 
     def forward(self):
-        self.mutex.acquire()
-        try:
+        with self.mutex:
             self.value += 1
             return self.value
-        finally:
-            self.mutex.release()
