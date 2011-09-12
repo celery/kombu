@@ -294,7 +294,12 @@ def register_yaml():
 def register_pickle():
     """The fastest serialization method, but restricts
     you to python clients."""
-    registry.register('pickle', pickle.dumps, pickle.loads,
+
+    # pickle doesn't handle unicode.
+    def unpickle(s):
+        return pickle.loads(str(s))
+
+    registry.register('pickle', pickle.dumps, unpickle,
                       content_type='application/x-python-serialize',
                       content_encoding='binary')
 
