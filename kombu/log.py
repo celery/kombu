@@ -10,7 +10,7 @@ from .utils import cached_property
 from .utils.encoding import safe_repr, safe_str
 from .utils.functional import maybe_promise
 
-__all__ = ["LogMixin", "LOG_LEVELS", "get_loglevel", "setup_logger"]
+__all__ = ["LogMixin", "LOG_LEVELS", "get_loglevel", "setup_logging"]
 
 LOG_LEVELS = dict(logging._levelNames)
 LOG_LEVELS["FATAL"] = logging.FATAL
@@ -138,7 +138,7 @@ class Log(LogMixin):
         return self._logger_name
 
 
-def setup_logger(loglevel=None, logfile=None):
+def setup_logging(loglevel=None, logfile=None):
     logger = logging.getLogger()
     loglevel = get_loglevel(loglevel or "ERROR")
     logfile = logfile if logfile else sys.__stderr__

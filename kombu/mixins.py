@@ -20,6 +20,7 @@ from itertools import count
 from .messaging import Consumer
 from .log import LogMixin
 from .utils import cached_property, nested
+from .utils.encoding import safe_repr
 from .utils.limits import TokenBucket
 
 __all__ = ["ConsumerMixin"]
@@ -88,9 +89,10 @@ class ConsumerMixin(LogMixin):
             self.on_connection_revived()
             self.info("Connected to %s", conn.as_uri())
             channel = conn.default_channel
-            with self._consume_from(*self.get_consumers(
-                    partial(Consumer, channel), channel)) as consumers:
-                yield conn, channel, consumers
+            cls = partial(Consumer, channel,
+                          on_decode_error=self.on_decode_error)
+            with self._consume_from(*self.get_consumers(cls, channel)) as c:
+                yield conn, channel, c
 
     @contextmanager
     def _consume_from(self, *consumers):
@@ -103,3 +105,10 @@ class ConsumerMixin(LogMixin):
         # poses problems for the too often restarts protection
         # in Connection.ensure_connection
         return TokenBucket(1)
+
+    def on_decode_error(self, message, exc):
+        self.critical(
+            "Can't decode message body: %r (type:%r encoding:%r raw:%r')",
+                    exc, message.content_type, message.content_encoding,
+                    safe_repr(message.body))
+        message.ack()
