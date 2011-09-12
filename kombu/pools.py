@@ -19,7 +19,9 @@ from .utils import HashingDict
 __all__ = ["ProducerPool", "PoolGroup", "register_group",
            "connections", "producers", "get_limit", "set_limit", "reset"]
 _limit = [200]
+_used = [False]
 _groups = []
+use_global_limit = object()
 
 
 class ProducerPool(Resource):
@@ -58,11 +60,19 @@ class ProducerPool(Resource):
 
 class PoolGroup(HashingDict):
 
+    def __init__(self, limit=None):
+        self.limit = limit
+
     def create(self, resource, limit):
         raise NotImplementedError("PoolGroups must define ``create``")
 
     def __missing__(self, resource):
-        k = self[resource] = self.create(resource, get_limit())
+        limit = self.limit
+        if limit is use_global_limit:
+            limit = get_limit()
+        if not _used[0]:
+            _used[0] = True
+        k = self[resource] = self.create(resource, limit)
         return k
 
 
@@ -75,14 +85,14 @@ class Connections(PoolGroup):
 
     def create(self, connection, limit):
         return connection.Pool(limit=limit)
-connections = register_group(Connections())
+connections = register_group(Connections(limit=use_global_limit))
 
 
 class Producers(PoolGroup):
 
     def create(self, connection, limit):
         return ProducerPool(connections[connection], limit=limit)
-producers = register_group(Producers())
+producers = register_group(Producers(limit=use_global_limit))
 
 
 def _all_pools():
@@ -95,7 +105,7 @@ def get_limit():
 
 def set_limit(limit, force=False, reset_after=False):
     if limit < limit:
-        if not force:
+        if _used[0] and not force:
             raise RuntimeError("Can't lower limit after pool in use.")
         reset_after = True
     if _limit[0] != limit:

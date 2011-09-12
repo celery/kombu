@@ -17,6 +17,7 @@
 /* -- page layout ----------------------------------------------------------- */
  
 body {
+    align: left;
     font-family: {{ body_font_stack }};
     font-size: 17px;
     background-color: white;
