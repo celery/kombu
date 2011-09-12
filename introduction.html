@@ -6,13 +6,13 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>kombu - AMQP Messaging Framework for Python &mdash; Kombu v1.3.1 documentation</title>
+    <title>kombu - AMQP Messaging Framework for Python &mdash; Kombu v1.3.2 documentation</title>
     <link rel="stylesheet" href="_static/celery.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '',
-        VERSION:     '1.3.1',
+        VERSION:     '1.3.2',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -21,7 +21,7 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="Kombu v1.3.1 documentation" href="index.html" />
+    <link rel="top" title="Kombu v1.3.2 documentation" href="index.html" />
     <link rel="next" title="User Guide" href="userguide/index.html" />
     <link rel="prev" title="Kombu Documentation" href="index.html" /> 
   </head>
@@ -41,7 +41,7 @@
         <li class="right" >
           <a href="index.html" title="Kombu Documentation"
              accesskey="P">previous</a> |</li>
-        <li><a href="index.html">Kombu v1.3.1 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Kombu v1.3.2 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -195,59 +195,38 @@ Can be disabled by setting the <tt class="docutils literal"><span class="pre">su
 </div>
 <div class="section" id="quick-overview">
 <h3>Quick overview<a class="headerlink" href="#quick-overview" title="Permalink to this headline">¶</a></h3>
-<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">kombu</span> <span class="kn">import</span> <span class="n">BrokerConnection</span><span class="p">,</span> <span class="n">Exchange</span><span class="p">,</span> <span class="n">Queue</span>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">kombu.connection</span> <span class="kn">import</span> <span class="n">BrokerConnection</span>
+<span class="kn">from</span> <span class="nn">kombu.messaging</span> <span class="kn">import</span> <span class="n">Exchange</span><span class="p">,</span> <span class="n">Queue</span><span class="p">,</span> <span class="n">Consumer</span><span class="p">,</span> <span class="n">Producer</span>
 
 <span class="n">media_exchange</span> <span class="o">=</span> <span class="n">Exchange</span><span class="p">(</span><span class="s">&quot;media&quot;</span><span class="p">,</span> <span class="s">&quot;direct&quot;</span><span class="p">,</span> <span class="n">durable</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
 <span class="n">video_queue</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">(</span><span class="s">&quot;video&quot;</span><span class="p">,</span> <span class="n">exchange</span><span class="o">=</span><span class="n">media_exchange</span><span class="p">,</span> <span class="n">routing_key</span><span class="o">=</span><span class="s">&quot;video&quot;</span><span class="p">)</span>
 
-<span class="c"># connections</span>
-<span class="k">with</span> <span class="n">BrokerConnection</span><span class="p">(</span><span class="s">&quot;amqp://guest:guest@localhost//&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">conn</span><span class="p">:</span>
+<span class="c"># connections/channels</span>
+<span class="n">connection</span> <span class="o">=</span> <span class="n">BrokerConnection</span><span class="p">(</span><span class="s">&quot;localhost&quot;</span><span class="p">,</span> <span class="s">&quot;guest&quot;</span><span class="p">,</span> <span class="s">&quot;guest&quot;</span><span class="p">,</span> <span class="s">&quot;/&quot;</span><span class="p">)</span>
+<span class="n">channel</span> <span class="o">=</span> <span class="n">connection</span><span class="o">.</span><span class="n">channel</span><span class="p">()</span>
 
-    <span class="c"># produce</span>
-    <span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">Producer</span><span class="p">(</span><span class="n">exchange</span><span class="o">=</span><span class="n">media_exchange</span><span class="p">,</span>
-                       <span class="n">serializer</span><span class="o">=</span><span class="s">&quot;json&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">producer</span><span class="p">:</span>
-        <span class="n">producer</span><span class="o">.</span><span class="n">publish</span><span class="p">({</span><span class="s">&quot;name&quot;</span><span class="p">:</span> <span class="s">&quot;/tmp/lolcat1.avi&quot;</span><span class="p">,</span> <span class="s">&quot;size&quot;</span><span class="p">:</span> <span class="mi">1301013</span><span class="p">})</span>
+<span class="c"># produce</span>
+<span class="n">producer</span> <span class="o">=</span> <span class="n">Producer</span><span class="p">(</span><span class="n">channel</span><span class="p">,</span> <span class="n">exchange</span><span class="o">=</span><span class="n">media_exchange</span><span class="p">,</span> <span class="n">serializer</span><span class="o">=</span><span class="s">&quot;json&quot;</span><span class="p">)</span>
+<span class="n">producer</span><span class="o">.</span><span class="n">publish</span><span class="p">({</span><span class="s">&quot;name&quot;</span><span class="p">:</span> <span class="s">&quot;/tmp/lolcat1.avi&quot;</span><span class="p">,</span> <span class="s">&quot;size&quot;</span><span class="p">:</span> <span class="mi">1301013</span><span class="p">})</span>
 
-    <span class="c"># consume</span>
-    <span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">Consumer</span><span class="p">(</span><span class="n">video_queue</span><span class="p">,</span> <span class="n">callbacks</span><span class="o">=</span><span class="p">[</span><span class="n">process_media</span><span class="p">])</span> <span class="k">as</span> <span class="n">consumer</span><span class="p">:</span>
-        <span class="c"># Process messages and handle events on all channels</span>
-        <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
-            <span class="n">connection</span><span class="o">.</span><span class="n">drain_events</span><span class="p">()</span>
+<span class="c"># consume</span>
+<span class="n">consumer</span> <span class="o">=</span> <span class="n">Consumer</span><span class="p">(</span><span class="n">channel</span><span class="p">,</span> <span class="n">video_queue</span><span class="p">)</span>
+<span class="n">consumer</span><span class="o">.</span><span class="n">register_callback</span><span class="p">(</span><span class="n">process_media</span><span class="p">)</span>
+<span class="n">consumer</span><span class="o">.</span><span class="n">consume</span><span class="p">()</span>
+
+<span class="c"># Process messages on all channels</span>
+<span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+    <span class="n">connection</span><span class="o">.</span><span class="n">drain_events</span><span class="p">()</span>
 
 <span class="c"># Consume from several queues on the same channel:</span>
 <span class="n">video_queue</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">(</span><span class="s">&quot;video&quot;</span><span class="p">,</span> <span class="n">exchange</span><span class="o">=</span><span class="n">media_exchange</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s">&quot;video&quot;</span><span class="p">)</span>
 <span class="n">image_queue</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">(</span><span class="s">&quot;image&quot;</span><span class="p">,</span> <span class="n">exchange</span><span class="o">=</span><span class="n">media_exchange</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s">&quot;image&quot;</span><span class="p">)</span>
 
-<span class="k">with</span> <span class="n">connection</span><span class="o">.</span><span class="n">Consumer</span><span class="p">([</span><span class="n">video_queue</span><span class="p">,</span> <span class="n">image_queue</span><span class="p">],</span>
-                         <span class="n">callbacks</span><span class="o">=</span><span class="p">[</span><span class="n">process_media</span><span class="p">])</span> <span class="k">as</span> <span class="n">consumer</span><span class="p">:</span>
-    <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
-        <span class="n">connection</span><span class="o">.</span><span class="n">drain_events</span><span class="p">()</span>
-</pre></div>
-</div>
-<p>Or handle channels menually:</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="k">with</span> <span class="n">connection</span><span class="o">.</span><span class="n">channel</span><span class="p">()</span> <span class="k">as</span> <span class="n">channel</span><span class="p">:</span>
-    <span class="n">producer</span> <span class="o">=</span> <span class="n">Producer</span><span class="p">(</span><span class="n">channel</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
-    <span class="n">consumer</span> <span class="o">=</span> <span class="n">Producer</span><span class="p">(</span><span class="n">channel</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>All objects can be used outside of with statements too,
-just remember to close the objects after use:</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">kombu</span> <span class="kn">import</span> <span class="n">BrokerConnection</span><span class="p">,</span> <span class="n">Consumer</span><span class="p">,</span> <span class="n">Producer</span>
-
-<span class="n">connection</span> <span class="o">=</span> <span class="n">BrokerConnection</span><span class="p">()</span>
-    <span class="c"># ...</span>
-<span class="n">connection</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
-
-<span class="n">consumer</span> <span class="o">=</span> <span class="n">Consumer</span><span class="p">(</span><span class="n">channel_or_connection</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
-<span class="n">consumer</span><span class="o">.</span><span class="n">register_callback</span><span class="p">(</span><span class="n">my_callback</span><span class="p">)</span>
+<span class="n">consumer</span> <span class="o">=</span> <span class="n">Consumer</span><span class="p">(</span><span class="n">channel</span><span class="p">,</span> <span class="p">[</span><span class="n">video_queue</span><span class="p">,</span> <span class="n">image_queue</span><span class="p">])</span>
 <span class="n">consumer</span><span class="o">.</span><span class="n">consume</span><span class="p">()</span>
-    <span class="c"># ....</span>
-<span class="n">consumer</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
 
-
-<span class="n">producer</span> <span class="o">=</span> <span class="n">Producer</span><span class="p">(</span><span class="n">channel_or_connection</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
-    <span class="c"># ....</span>
-<span class="n">producer</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+<span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+    <span class="n">connection</span><span class="o">.</span><span class="n">drain_events</span><span class="p">()</span>
 </pre></div>
 </div>
 <p><cite>Exchange</cite> and <cite>Queue</cite> are simply declarations that can be pickled
@@ -455,7 +434,7 @@ file in the top distribution directory for the full license text.</p>
         <li class="right" >
           <a href="index.html" title="Kombu Documentation"
              >previous</a> |</li>
-        <li><a href="index.html">Kombu v1.3.1 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Kombu v1.3.2 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
