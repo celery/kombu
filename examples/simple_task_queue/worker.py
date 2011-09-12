@@ -32,4 +32,7 @@ if __name__ == "__main__":
     setup_logging(loglevel="INFO")
 
     with BrokerConnection("amqp://guest:guest@localhost:5672//") as conn:
-        Worker(conn).run()
+        try:
+            Worker(conn).run()
+        except KeyboardInterrupt:
+            print("bye bye")
