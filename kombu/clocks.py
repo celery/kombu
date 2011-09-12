@@ -16,7 +16,7 @@ class LamportClock(object):
 
     From Wikipedia:
 
-    "A Lamport logical clock is a monotonically incrementing software counter
+    A Lamport logical clock is a monotonically incrementing software counter
     maintained in each process.  It follows some simple rules:
 
         * A process increments its counter before each event in that process;
@@ -34,8 +34,7 @@ class LamportClock(object):
     .. seealso::
 
         http://en.wikipedia.org/wiki/Lamport_timestamps
-        http://en.wikipedia.org/wiki/Lamport's_Distributed_
-            Mutual_Exclusion_Algorithm
+        http://en.wikipedia.org/wiki/Lamport's_Distributed_Mutual_Exclusion_Algorithm
 
     *Usage*
 

@@ -10,4 +10,6 @@
 
     connections
     simple
+    examples
+    pools
     serialization

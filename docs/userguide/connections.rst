@@ -111,7 +111,7 @@ keyword arguments, these are:
 :transport: Default transport if not provided in the URL.
   Can be a string specifying the path to the class. (e.g.
   ``kombu.transport.pyamqplib.Transport``), or one of the aliases:
-         ``amqplib``, ``pika``, ``redis``, ``memory``, and so on.
+  ``amqplib``, ``pika``, ``redis``, ``memory``, and so on.
 
 :ssl: Use ssl to connect to the server. Default is ``False``.
   Only supported by the amqp transport.
