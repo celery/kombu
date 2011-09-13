@@ -4,9 +4,8 @@ import os
 import logging
 import sys
 
-from logging.handlers import WatchedFileHandler
-
 from .utils import cached_property
+from .utils.compat import WatchedFileHandler
 from .utils.encoding import safe_repr, safe_str
 from .utils.functional import maybe_promise
 

@@ -252,9 +252,11 @@ class LifoQueue(Queue):
         return self.queue.pop()
 
 ############## logging.handlers.WatchedFileHandler ##########################
+import logging
 import os
-from stat import ST_DEV, ST_INO
 import platform as _platform
+
+from stat import ST_DEV, ST_INO
 
 if _platform.system() == "Windows":
     #since windows doesn't go with WatchedFileHandler use FileHandler instead
