@@ -12,6 +12,25 @@ import sys
 import traceback
 
 
+if sys.version_info >= (3, 0):
+    def str_to_bytes(s):
+        if isinstance(s, str):
+            return s.encode()
+        return s
+
+    def bytes_to_str(s):
+        if isinstance(s, bytes):
+            return s.decode()
+        return s
+
+else:  # noqa
+    def str_to_bytes(s):
+        return s
+
+    def bytes_to_str(s):
+        return s
+
+
 def default_encoding():
     if sys.platform.startswith("java"):
         return "utf-8"

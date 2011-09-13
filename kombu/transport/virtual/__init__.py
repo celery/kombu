@@ -21,6 +21,7 @@ from kombu.exceptions import StdChannelError
 from kombu.transport import base
 from kombu.utils import emergency_dump_state, say
 from kombu.utils.compat import OrderedDict
+from kombu.utils.encoding import str_to_bytes, bytes_to_str
 from kombu.utils.finalize import Finalize
 
 from kombu.transport.virtual.scheduling import FairCycle
@@ -29,9 +30,11 @@ from kombu.transport.virtual.exchange import STANDARD_EXCHANGE_TYPES
 
 class Base64(object):
 
-    def __init__(self):
-        self.encode = base64.b64encode
-        self.decode = base64.b64decode
+    def encode(self, s):
+        return bytes_to_str(base64.b64encode(str_to_bytes(s)))
+
+    def decode(self, s):
+        return base64.b64decode(str_to_bytes(s))
 
 
 class NotEquivalentError(Exception):
