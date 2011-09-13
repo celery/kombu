@@ -22,6 +22,7 @@ from Queue import Empty
 from ...exceptions import StdChannelError
 from ...utils import emergency_dump_state, say
 from ...utils.compat import OrderedDict
+from ...utils.encoding import str_to_bytes, bytes_to_str
 from ...utils.finalize import Finalize
 
 from .. import base
@@ -32,9 +33,11 @@ from .exchange import STANDARD_EXCHANGE_TYPES
 
 class Base64(object):
 
-    def __init__(self):
-        self.encode = base64.b64encode
-        self.decode = base64.b64decode
+    def encode(self, s):
+        return bytes_to_str(base64.b64encode(str_to_bytes(s)))
+
+    def decode(self, s):
+        return base64.b64decode(str_to_bytes(s))
 
 
 class NotEquivalentError(Exception):
