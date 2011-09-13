@@ -8,10 +8,10 @@ Common Utilities.
 :license: BSD, see LICENSE for more details.
 
 """
-from collections import defaultdict
 
 from kombu import entity
 from kombu.utils import uuid
+from kombu.utils.compat import defaultdict
 
 declared_entities = defaultdict(lambda: set())
 
