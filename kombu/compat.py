@@ -41,7 +41,6 @@ class Publisher(messaging.Producer):
     def __init__(self, connection, exchange=None, routing_key=None,
             exchange_type=None, durable=None, auto_delete=None, channel=None,
             **kwargs):
-        self.connection = connection
         if channel:
             self._provided_channel = self.backend = channel
         else:
@@ -99,7 +98,6 @@ class Consumer(messaging.Consumer):
     def __init__(self, connection, queue=None, exchange=None,
             routing_key=None, exchange_type=None, durable=None,
             exclusive=None, auto_delete=None, **kwargs):
-        self.connection = connection
         self.backend = connection.channel()
 
         if durable is not None:
@@ -183,7 +181,6 @@ class ConsumerSet(messaging.Consumer):
 
     def __init__(self, connection, from_dict=None, consumers=None,
             callbacks=None, **kwargs):
-        self.connection = connection
         self.backend = connection.channel()
 
         queues = []
