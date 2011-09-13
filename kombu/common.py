@@ -58,7 +58,13 @@ class Broadcast(Queue):
                                                  auto_delete=True)}, **kwargs))
 
 
-def maybe_declare(entity, channel):
+def maybe_declare(entity, channel, retry=False, **retry_policy):
+    if retry:
+        return _imaybe_declare(entity, channel, **retry_policy)
+    return _maybe_declare(entity, channel)
+
+
+def _maybe_declare(entity, channel):
     declared = declared_entities[channel.connection.client]
     if not entity.is_bound:
         entity = entity(channel)
@@ -67,6 +73,12 @@ def maybe_declare(entity, channel):
         declared.add(entity)
         return True
     return False
+
+
+def _imaybe_declare(entity, channel, **retry_policy):
+    entity = entity(channel)
+    return channel.connection.client.ensure(entity, _maybe_declare,
+                             **retry_policy)(entity, channel)
 
 
 def itermessages(conn, channel, queue, limit=1, timeout=None, **kwargs):

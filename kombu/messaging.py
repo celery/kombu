@@ -27,13 +27,13 @@ Queue = entity.Queue
 class Producer(object):
     """Message Producer.
 
-    :param channel: Connection channel.
-    :keyword exchange: Default exchange.
-    :keyword routing_key: Default routing key.
+    :param channel: Connection or channel.
+    :keyword exchange: Optional default exchange.
+    :keyword routing_key: Optional default routing key.
     :keyword serializer: Default serializer. Default is `"json"`.
     :keyword compression: Default compression method. Default is no
         compression.
-    :keyword auto_declare: Automatically declare the exchange
+    :keyword auto_declare: Automatically declare the default exchange
       at instantiation. Default is :const:`True`.
     :keyword on_return: Callback to call for undeliverable messages,
         when the `mandatory` or `immediate` arguments to
@@ -72,7 +72,6 @@ class Producer(object):
         if isinstance(channel, BrokerConnection):
             channel = channel.default_channel
         self.channel = channel
-        self.connection = self.channel.connection.client
 
         self.exchange = exchange or self.exchange
         if self.exchange is None:
@@ -87,7 +86,6 @@ class Producer(object):
         self.exchange = self.exchange(self.channel)
         if self.auto_declare:
             self.declare()
-
         if self.on_return:
             self.channel.events["basic_return"].append(self.on_return)
 
@@ -101,10 +99,16 @@ class Producer(object):
         if self.exchange.name:
             self.exchange.declare()
 
+    def maybe_declare(self, entity, retry=False, **retry_policy):
+        if entity:
+            from .common import maybe_declare
+            return maybe_declare(entity, self.channel, retry, **retry_policy)
+
     def publish(self, body, routing_key=None, delivery_mode=None,
             mandatory=False, immediate=False, priority=0, content_type=None,
             content_encoding=None, serializer=None, headers=None,
-            compression=None, exchange=None, **properties):
+            compression=None, exchange=None, retry=False, retry_policy=None,
+            declare=[], **properties):
         """Publish message to the specified exchange.
 
         :param body: Message body.
@@ -132,6 +136,10 @@ class Producer(object):
         if isinstance(exchange, Exchange):
             exchange = exchange.name
 
+        # Additional  entities to declare before publishing the message.
+        for entity in declare:
+            self.maybe_declare(entity, retry, **retry_policy or {})
+
         body, content_type, content_encoding = self._prepare(
                 body, serializer, content_type, content_encoding,
                 compression, headers)
@@ -142,11 +150,21 @@ class Producer(object):
                                         content_encoding,
                                         headers=headers,
                                         properties=properties)
+        publish = self._publish
+        if retry:
+            publish = self.connection.ensure(self, self._publish,
+                                             **retry_policy)
+        return publish(message, routing_key, mandatory, immediate, exchange)
+
+    def _publish(self, message, routing_key, mandatory, immediate, exchange):
         return self.exchange.publish(message, routing_key, mandatory,
                                      immediate, exchange=exchange)
 
     def revive(self, channel):
         """Revive the producer after connection loss."""
+        from .connection import BrokerConnection
+        if isinstance(channel, BrokerConnection):
+            channel = channel.default_channel
         self.channel = channel
         self.exchange.revive(channel)
 
@@ -186,6 +204,13 @@ class Producer(object):
             body, headers["compression"] = compress(body, compression)
 
         return body, content_type, content_encoding
+
+    @property
+    def connection(self):
+        try:
+            return self.channel.connection.client
+        except AttributeError:
+            pass
 
 
 class Consumer(object):
@@ -237,7 +262,6 @@ class Consumer(object):
         if isinstance(channel, BrokerConnection):
             channel = channel.default_channel
         self.channel = channel
-        self.connection = self.channel.connection.client
 
         self.queues = queues
         if no_ack is not None:
@@ -455,3 +479,10 @@ class Consumer(object):
 
     def __repr__(self):
         return "<Consumer: %s>" % (self.queues, )
+
+    @property
+    def connection(self):
+        try:
+            return self.channel.connection.client
+        except AttributeError:
+            pass
