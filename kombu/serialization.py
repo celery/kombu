@@ -20,6 +20,7 @@ except ImportError:
     cpickle = None  # noqa
 
 from .exceptions import SerializerNotInstalled
+from .utils.encoding import str_to_bytes
 
 __all__ = ["pickle", "bytes_type", "encode", "decode",
            "register", "unregister"]
@@ -297,7 +298,7 @@ def register_pickle():
 
     # pickle doesn't handle unicode.
     def unpickle(s):
-        return pickle.loads(str(s))
+        return pickle.loads(str_to_bytes(s))
 
     registry.register('pickle', pickle.dumps, unpickle,
                       content_type='application/x-python-serialize',
