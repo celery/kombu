@@ -10,6 +10,8 @@ Public resource pools.
 """
 from __future__ import absolute_import
 
+import os
+
 from itertools import chain
 
 from .connection import Resource
@@ -22,6 +24,7 @@ _limit = [200]
 _used = [False]
 _groups = []
 use_global_limit = object()
+disable_limit_protection = os.environ.get("KOMBU_DISABLE_LIMIT_PROTECTION")
 
 
 class ProducerPool(Resource):
@@ -106,7 +109,7 @@ def set_limit(limit, force=False, reset_after=False):
     limit = limit or 0
     glimit = _limit[0] or 0
     if limit or 0 < glimit:
-        if _used[0] and not force:
+        if not disable_limit_protection and (_used[0] and not force):
             raise RuntimeError("Can't lower limit after pool in use.")
         reset_after = True
     if limit != glimit:
