@@ -103,11 +103,13 @@ def get_limit():
 
 
 def set_limit(limit, force=False, reset_after=False):
-    if limit < limit:
+    limit = limit or 0
+    glimit = _limit[0] or 0
+    if limit or 0 < glimit:
         if _used[0] and not force:
             raise RuntimeError("Can't lower limit after pool in use.")
         reset_after = True
-    if _limit[0] != limit:
+    if limit != glimit:
         _limit[0] = limit
         for pool in _all_pools():
             pool.limit = limit
