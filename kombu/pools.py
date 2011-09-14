@@ -124,6 +124,7 @@ def reset(*args, **kwargs):
             pass
     for group in _groups:
         group.clear()
+    _used[0] = False
 
 try:
     from multiprocessing.util import register_after_fork
