@@ -756,7 +756,7 @@ class ConnectionPool(Resource):
     @contextmanager
     def acquire_channel(self, block=False):
         with self.acquire(block=block) as connection:
-            return connection, connection.default_channel
+            yield connection, connection.default_channel
 
     def setup(self):
         if self.limit:
