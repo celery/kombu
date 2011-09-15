@@ -67,7 +67,7 @@ def _safe_str(s, errors="replace"):
         if isinstance(s, str):
             return s.encode(encoding, errors)
         return str(s, encoding, errors)
-    except Exception as exc:
+    except Exception, exc:
         return "<Unrepresentable %r: %r %r>" % (
                 type(s), exc, "\n".join(traceback.format_stack()))
 
