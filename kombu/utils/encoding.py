@@ -29,7 +29,7 @@ if sys.version_info >= (3, 0):
             return s.decode()
         return s
 
-    def to_utf8(s, errors=None):
+    def from_utf8(s, errors=None):
         return s
 
 else:
@@ -39,7 +39,7 @@ else:
     def bytes_to_str(s):          # noqa
         return s
 
-    def to_utf8(s, errors=None):  # noqa
+    def from_utf8(s, errors=None):  # noqa
         return s.encode("utf-8", errors)
 
 
