@@ -29,7 +29,7 @@ if sys.version_info >= (3, 0):
             return s.decode()
         return s
 
-    def to_utf8(s):
+    def to_utf8(s, errors=None):
         return s
 
 else:
@@ -39,8 +39,8 @@ else:
     def bytes_to_str(s):          # noqa
         return s
 
-    def to_utf8(s):               # noqa
-        return s.encode("utf-8")
+    def to_utf8(s, errors=None):  # noqa
+        return s.encode("utf-8", errors)
 
 
 if sys.platform.startswith("java"):
@@ -60,7 +60,6 @@ def safe_str(s, errors="replace"):
 
 
 def _safe_str(s, errors="replace"):
-    print("S IS %r" % (type(s), ))
     if is_py3k:
         return s
     encoding = default_encoding()
