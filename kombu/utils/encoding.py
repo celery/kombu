@@ -18,6 +18,7 @@ is_py3k = sys.version_info >= (3, 0)
 
 
 if sys.version_info >= (3, 0):
+
     def str_to_bytes(s):
         if isinstance(s, str):
             return s.encode()
@@ -28,18 +29,27 @@ if sys.version_info >= (3, 0):
             return s.decode()
         return s
 
-else:  # noqa
-    def str_to_bytes(s):
+    def to_utf8(s):
         return s
 
-    def bytes_to_str(s):
+else:
+    def str_to_bytes(s):          # noqa
         return s
 
+    def bytes_to_str(s):          # noqa
+        return s
 
-def default_encoding():
-    if sys.platform.startswith("java"):
+    def to_utf8(s):               # noqa
+        return s.encode("utf-8")
+
+
+if sys.platform.startswith("java"):
+
+    def default_encoding():
         return "utf-8"
-    return sys.getfilesystemencoding()
+else:
+    def default_encoding():       # noqa
+        return sys.getfilesystemencoding()
 
 
 def safe_str(s, errors="replace"):
