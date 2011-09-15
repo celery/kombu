@@ -14,6 +14,7 @@ import sys
 import traceback
 
 __all__ = ["default_encoding", "safe_str", "safe_repr"]
+is_py3k = sys.version_info >= (3, 0)
 
 
 if sys.version_info >= (3, 0):
@@ -42,18 +43,22 @@ def default_encoding():
 
 
 def safe_str(s, errors="replace"):
+    s = bytes_to_str(s)
     if not isinstance(s, basestring):
         return safe_repr(s, errors)
     return _safe_str(s, errors)
 
 
 def _safe_str(s, errors="replace"):
+    print("S IS %r" % (type(s), ))
+    if is_py3k:
+        return s
     encoding = default_encoding()
     try:
-        if isinstance(s, unicode):
+        if isinstance(s, str):
             return s.encode(encoding, errors)
-        return unicode(s, encoding, errors)
-    except Exception, exc:
+        return str(s, encoding, errors)
+    except Exception as exc:
         return "<Unrepresentable %r: %r %r>" % (
                 type(s), exc, "\n".join(traceback.format_stack()))
 
