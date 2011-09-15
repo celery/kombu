@@ -29,18 +29,18 @@ if sys.version_info >= (3, 0):
             return s.decode()
         return s
 
-    def from_utf8(s, errors=None):
+    def from_utf8(s, *args, **kwargs):
         return s
 
 else:
-    def str_to_bytes(s):          # noqa
+    def str_to_bytes(s):                # noqa
         return s
 
-    def bytes_to_str(s):          # noqa
+    def bytes_to_str(s):                # noqa
         return s
 
-    def from_utf8(s, errors=None):  # noqa
-        return s.encode("utf-8", errors)
+    def from_utf8(s, *args, **kwargs):  # noqa
+        return s.encode("utf-8", *args, **kwargs)
 
 
 if sys.platform.startswith("java"):
