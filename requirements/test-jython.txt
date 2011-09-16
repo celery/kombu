@@ -3,4 +3,3 @@ nose-cover3
 unittest2>=0.5.0
 coverage>=3.0
 simplejson
-PyYAML==3.09  # 3.10 dropped 2.4 support
