@@ -169,7 +169,7 @@ class test_Serialization(unittest.TestCase):
                               content_encoding='binary'))
 
     def test_pickle_encode(self):
-        self.assertEquaEqual(pickle_data,
+        self.assertEqual(pickle_data,
                           registry.encode(py_data,
                               serializer="pickle")[-1])
 
