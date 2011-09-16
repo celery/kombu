@@ -1,0 +1,8 @@
+#!/bin/bash
+base=${1:-.}
+nosetests --with-xunit \
+          --xunit-file="$base/nosetests.xml"
+# coverage doesn't with with jython
+echo "<coverage />" > "$base/coverage.html"
+mkdir -p "$base/cover"
+touch "$base/cover/index.html"
