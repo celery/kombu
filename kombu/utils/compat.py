@@ -280,9 +280,10 @@ class LifoQueue(Queue):
 try:
     from collections import defaultdict
 except ImportError:
+
     # Written by Jason Kirtland, taken from Python Cookbook:
     # <http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/523034>
-    class defaultdict(dict):
+    class defaultdict(dict):  # noqa
 
         def __init__(self, default_factory=None, *args, **kwargs):
             dict.__init__(self, *args, **kwargs)
@@ -321,4 +322,3 @@ except ImportError:
                                             dict.__repr__(self))
     import collections
     collections.defaultdict = defaultdict               # Pickle needs this.
-

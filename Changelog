@@ -42,7 +42,7 @@
   can be used to check if the connection instance has established
   a connection.
 
-* ``ConnectionPool.acquire_channel` now returns the connections
+* ``ConnectionPool.acquire_channel`` now returns the connections
   default channel rather than establising a new channel that
   must be manually handled.
 

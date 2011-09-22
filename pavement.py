@@ -68,11 +68,6 @@ def verifyindex(options):
 
 
 @task
-def flakes(options):
-    sh("find kombu funtests examples -name '*.py' | xargs pyflakes")
-
-
-@task
 def clean_readme(options):
     path("README").unlink()
     path("README.rst").unlink()
@@ -126,6 +121,25 @@ def flake8(options):
 @cmdopts([
     ("noerror", "E", "Ignore errors"),
 ])
+def flakeplus(options):
+    noerror = getattr(options, "noerror", False)
+    sh("python contrib/release/flakeplus.py kombu",
+       ignore_error=noerror)
+
+
+@task
+@cmdopts([
+    ("noerror", "E", "Ignore errors"),
+])
+def flakes(options):
+    flake8(options)
+    flakeplus(options)
+
+
+@task
+@cmdopts([
+    ("noerror", "E", "Ignore errors"),
+])
 def pep8(options):
     noerror = getattr(options, "noerror", False)
     return sh("""find kombu -name "*.py" | xargs pep8 | perl -nle'\
@@ -150,7 +164,7 @@ def gitcleanforce(options):
 
 
 @task
-@needs("flake8", "autodoc", "verifyindex", "test", "gitclean")
+@needs("flakes", "autodoc", "verifyindex", "test", "gitclean")
 def releaseok(options):
     pass
 

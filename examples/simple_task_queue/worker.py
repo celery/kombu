@@ -1,10 +1,10 @@
 from __future__ import with_statement
 
-from kombu import Exchange, Queue
 from kombu.mixins import ConsumerMixin
 from kombu.utils import kwdict
 
 from queues import task_queues
+
 
 class Worker(ConsumerMixin):
 
@@ -26,5 +26,3 @@ if __name__ == "__main__":
 
     with BrokerConnection("amqp://guest:guest@localhost:5672//") as conn:
         Worker(conn).run()
-
-

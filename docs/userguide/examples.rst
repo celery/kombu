@@ -1,3 +1,11 @@
+.. _examples:
+
+========================
+ Examples
+========================
+
+.. _task-queue-example:
+
 Task Queue Example
 ==================
 
