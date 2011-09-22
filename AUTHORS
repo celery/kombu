@@ -1,39 +1,41 @@
-==================================
- AUTHORS (in chronological order)
-==================================
+=========
+ AUTHORS
+=========
+:order: sorted
 
-Ask Solem <ask@celeryproject.org>
-Travis Cline <travis.cline@gmail.com>
-Rune Halvorsen <runeh@opera.com>
-Sean Creeley <sean.creeley@gmail.com>
-Jason Cater <jason@ncsfulfillment.com>
-Ian Struble <istruble@gmail.com>
-Patrick Schneider <patrick.p2k.schneider@gmail.com>
-Travis Swicegood <development@domain51.com>
-Stephen Day <stevvooe@gmail.com>
+Adam Nelson <adam@varud.com>
+Adam Wentz
+Alexandre Bourget <alexandre.bourget@savoirfairelinux.com>
 Andrew Watts
+Andy McCurdy <andy@andymccurdy.com>
+Anton Gyllenberg <anton@iki.fi>
+Ask Solem <ask@celeryproject.org>
+Christopher Grebs <cg@webshox.org>
+David Clymer <david@zettazebra.com>
+David Gelvin <david.gelvin@gmail.com>
+David Strauss <david@davidstrauss.net>
+David Ziegler <david.ziegler@gmail.com>
+Flavio [FlaPer87] Percoco Premoli <flaper87@flaper87.org>
+Gregory Haskins <greg@greghaskins.com>
+Ian Eure <ian.eure@gmail.com>
+Ian Struble <istruble@gmail.com>
+James Turk <james.p.turk@gmail.com>
+Jason Cater <jason@ncsfulfillment.com>
+Jeff Balogh <me@jeffbalogh.org>
+John Spray <jcspray@gmail.com>
+Mher Movsisyan <mher.movsisyan@gmail.com>
+Patrick Schneider <patrick.p2k.schneider@gmail.com>
 Paul McLanahan <paul@mclanahan.net>
 Ralf Nyren <ralf-github@nyren.net>
-Jeff Balogh <me@jeffbalogh.org>
-Adam Wentz
-Vincent Driessen <vincent@datafox.nl>
-Sean Bleier <sebleier@gmail.com>
-David Gelvin <david.gelvin@gmail.com>
-Shane Caraveo <shane@caraveo.com>
-Flavio [FlaPer87] Percoco Premoli <flaper87@flaper87.org>
-David Clymer <david@zettazebra.com>
-David Ziegler <david.ziegler@gmail.com>
-Alexandre Bourget <alexandre.bourget@savoirfairelinux.com>
 Rob Ottaway <robottaway@gmail.com>
-Anton Gyllenberg <anton@iki.fi>
+Rune Halvorsen <runeh@opera.com>
 Ryan Petrello <lists@ryanpetrello.com>
-Ian Eure <ian.eure@gmail.com>
-David Strauss <david@davidstrauss.net>
-Andy McCurdy <andy@andymccurdy.com>
-Mher Movsisyan <mher.movsisyan@gmail.com>
-John Spray <jcspray@gmail.com>
-Christopher Grebs <cg@webshox.org>
-iSlava <sig.crea@gmail.com>
-Adam Nelson <adam@varud.com>
+Sean Bleier <sebleier@gmail.com>
+Sean Creeley <sean.creeley@gmail.com>
+Shane Caraveo <shane@caraveo.com>
+Stephen Day <stevvooe@gmail.com>
+Travis Cline <travis.cline@gmail.com>
+Travis Swicegood <development@domain51.com>
+Vincent Driessen <vincent@datafox.nl>
 Zach Smith <zmsmith27@gmail.com>
-Gregory Haskins <greg@greghaskins.com>
+iSlava <sig.crea@gmail.com>
