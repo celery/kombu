@@ -6,13 +6,13 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>API Reference &mdash; Kombu v1.3.2 documentation</title>
+    <title>API Reference &mdash; Kombu v1.4.0 documentation</title>
     <link rel="stylesheet" href="../_static/celery.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '1.3.2',
+        VERSION:     '1.4.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -21,7 +21,7 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="Kombu v1.3.2 documentation" href="../index.html" />
+    <link rel="top" title="Kombu v1.4.0 documentation" href="../index.html" />
     <link rel="next" title="kombu.connection" href="kombu.connection.html" />
     <link rel="prev" title="Frequently Asked Questions" href="../faq.html" /> 
   </head>
@@ -41,7 +41,7 @@
         <li class="right" >
           <a href="../faq.html" title="Frequently Asked Questions"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">Kombu v1.3.2 documentation</a> &raquo;</li> 
+        <li><a href="../index.html">Kombu v1.4.0 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -56,9 +56,9 @@
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Release:</th><td class="field-body">1.3</td>
+<tr class="field"><th class="field-name">Release:</th><td class="field-body">1.4</td>
 </tr>
-<tr class="field"><th class="field-name">Date:</th><td class="field-body">September 12, 2011</td>
+<tr class="field"><th class="field-name">Date:</th><td class="field-body">September 22, 2011</td>
 </tr>
 </tbody>
 </table>
@@ -84,6 +84,18 @@
 <li class="toctree-l2"><a class="reference internal" href="kombu.entity.html#queue">Queue</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="kombu.common.html">Common Utilities - kombu.common</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="kombu.common.html#kombu-common">kombu.common</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="kombu.mixins.html">Mixin Classes - kombu.mixins</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="kombu.mixins.html#kombu-mixins">kombu.mixins</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="kombu.clocks.html">Clocks and Synchronization - kombu.clocks</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="kombu.clocks.html#kombu-clocks">kombu.clocks</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="kombu.compat.html">kombu.compat</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="kombu.compat.html#publisher">Publisher</a></li>
 <li class="toctree-l2"><a class="reference internal" href="kombu.compat.html#consumer">Consumer</a></li>
@@ -107,6 +119,13 @@
 <li class="toctree-l2"><a class="reference internal" href="kombu.transport.pyamqplib.html#connection">Connection</a></li>
 <li class="toctree-l2"><a class="reference internal" href="kombu.transport.pyamqplib.html#channel">Channel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="kombu.transport.pyamqplib.html#message">Message</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="kombu.transport.librabbitmq.html">kombu.transport.librabbitmq</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="kombu.transport.librabbitmq.html#transport">Transport</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kombu.transport.librabbitmq.html#connection">Connection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kombu.transport.librabbitmq.html#channel">Channel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kombu.transport.librabbitmq.html#message">Message</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="kombu.transport.pypika.html">kombu.transport.pypika</a><ul>
@@ -180,16 +199,44 @@
 <li class="toctree-l2"><a class="reference internal" href="kombu.compression.html#registry">Registry</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="kombu.pools.html">General Pools - kombu.pools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="kombu.pools.html">General Pools - kombu.pools</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="kombu.pools.html#kombu-pools">kombu.pools</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="kombu.abstract.html">kombu.compression</a></li>
-<li class="toctree-l1"><a class="reference internal" href="kombu.syn.html">Async Utilities - kombu.syn</a></li>
-<li class="toctree-l1"><a class="reference internal" href="kombu.utils.html">Utilities - kombu.utils</a></li>
-<li class="toctree-l1"><a class="reference internal" href="kombu.utils.compat.html">Compat. utilities - kombu.utils.compat</a></li>
-<li class="toctree-l1"><a class="reference internal" href="kombu.utils.debug.html">Debugging - kombu.utils.debug</a></li>
-<li class="toctree-l1"><a class="reference internal" href="kombu.utils.encoding.html">String Encoding - kombu.utils.encoding</a></li>
+<li class="toctree-l1"><a class="reference internal" href="kombu.syn.html">Async Utilities - kombu.syn</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="kombu.syn.html#kombu-syn">kombu.syn</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="kombu.utils.html">Utilities - kombu.utils</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="kombu.utils.html#kombu-utils">kombu.utils</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="kombu.utils.limits.html">Rate limiting - kombu.utils.limits</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="kombu.utils.limits.html#kombu-utils-limits">kombu.utils.limits</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="kombu.utils.compat.html">Compat. utilities - kombu.utils.compat</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="kombu.utils.compat.html#kombu-utils-compat">kombu.utils.compat</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="kombu.utils.debug.html">Debugging - kombu.utils.debug</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="kombu.utils.debug.html#kombu-utils-debug">kombu.utils.debug</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="kombu.utils.encoding.html">String Encoding - kombu.utils.encoding</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="kombu.utils.encoding.html#kombu-utils-encoding">kombu.utils.encoding</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="kombu.utils.functional.html">kombu.utils.functional</a></li>
-<li class="toctree-l1"><a class="reference internal" href="kombu.utils.finalize.html">Finalize - kombu.utils.finalize</a></li>
-<li class="toctree-l1"><a class="reference internal" href="kombu.utils.log.html">Logging - kombu.utils.log</a></li>
+<li class="toctree-l1"><a class="reference internal" href="kombu.utils.finalize.html">Finalize - kombu.utils.finalize</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="kombu.utils.finalize.html#kombu-utils-finalize">kombu.utils.finalize</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="kombu.utils.log.html">Logging - kombu.utils.log</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="kombu.utils.log.html#kombu-utils-log">kombu.utils.log</a></li>
+</ul>
+</li>
 </ul>
 </div>
 </div>
@@ -245,7 +292,7 @@
         <li class="right" >
           <a href="../faq.html" title="Frequently Asked Questions"
              >previous</a> |</li>
-        <li><a href="../index.html">Kombu v1.3.2 documentation</a> &raquo;</li> 
+        <li><a href="../index.html">Kombu v1.4.0 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">

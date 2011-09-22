@@ -17,6 +17,7 @@
 /* -- page layout ----------------------------------------------------------- */
  
 body {
+    align: left;
     font-family: Optima, Segoe, "Segoe UI", Candara, Calibri, Arial, sans-serif;
     font-size: 17px;
     background-color: white;

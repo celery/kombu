@@ -1,3 +1,5 @@
+.. _guide-simple:
+
 ==================
  Simple Interface
 ==================
@@ -34,6 +36,7 @@ This is equivalent to::
     >>> channel.close()
     >>> queue.close()
 
+.. _simple-send-receive:
 
 Sending and receiving messages
 ==============================
@@ -47,6 +50,8 @@ Here is an example using the :class:`~kombu.simple.SimpleQueue` class
 to produce and consume logging messages:
 
 .. code-block:: python
+
+    from __future__ import with_statement
 
     from socket import gethostname
     from time import time
@@ -83,30 +88,27 @@ to produce and consume logging messages:
 
 
     if __name__ == "__main__":
-        connection = BrokerConnection(hostname="localhost",
-                                      userid="guest",
-                                      password="guest",
-                                      virtual_host="/")
-        logger = Logger(connection)
+        from contextlib import closing
 
-        # Send message
-        logger.log("Error happened while encoding video",
-                   level="ERROR",
-                   context={"filename": "cutekitten.mpg"})
+        with BrokerConnection("amqp://guest:guest@localhost:5672//") as conn:
+            with closing(Logger(connection)) as logger:
 
-        # Consume and process message
+                # Send message
+                logger.log("Error happened while encoding video",
+                            level="ERROR",
+                            context={"filename": "cutekitten.mpg"})
 
-        # This is the callback called when a log message is
-        # received.
-        def dump_entry(entry):
-            date = datetime.fromtimestamp(entry["timestamp"])
-            print("[%s %s %s] %s %r" % (date,
-                                        entry["hostname"],
-                                        entry["level"],
-                                        entry["message"],
-                                        entry["context"]))
+                # Consume and process message
 
-        # Process a single message using the callback above.
-        logger.process(dump_entry, n=1)
+                # This is the callback called when a log message is
+                # received.
+                def dump_entry(entry):
+                    date = datetime.fromtimestamp(entry["timestamp"])
+                    print("[%s %s %s] %s %r" % (date,
+                                                entry["hostname"],
+                                                entry["level"],
+                                                entry["message"],
+                                                entry["context"]))
 
-        logger.close()
+                # Process a single message using the callback above.
+                logger.process(dump_entry, n=1)
