@@ -1,0 +1,277 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Connection and Producer Pools &mdash; Kombu v1.4.0 documentation</title>
+    <link rel="stylesheet" href="../_static/celery.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.4.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="Kombu v1.4.0 documentation" href="../index.html" />
+    <link rel="up" title="User Guide" href="index.html" />
+    <link rel="next" title="Serialization" href="serialization.html" />
+    <link rel="prev" title="Simple Interface" href="simple.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="serialization.html" title="Serialization"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="simple.html" title="Simple Interface"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../index.html">Kombu v1.4.0 documentation</a> &raquo;</li>
+          <li><a href="index.html" accesskey="U">User Guide</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="connection-and-producer-pools">
+<span id="guide-pools"></span><h1>Connection and Producer Pools<a class="headerlink" href="#connection-and-producer-pools" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="default-pools">
+<span id="id1"></span><h2>Default Pools<a class="headerlink" href="#default-pools" title="Permalink to this headline">¶</a></h2>
+<p>Kombu ships with two global pools: one connection pool,
+and one producer pool.</p>
+<p>These are convenient and the fact that they are global
+may not be an issue as connections should often be limited
+at the process level, rather than per thread/application
+and so on, but if you need custom pools per thread
+see <a class="reference internal" href="#custom-pool-groups"><em>Custom Pool Groups</em></a>.</p>
+<div class="section" id="the-connection-pool-group">
+<span id="default-connections"></span><h3>The connection pool group<a class="headerlink" href="#the-connection-pool-group" title="Permalink to this headline">¶</a></h3>
+<p>The connection pools are available as <tt class="xref py py-attr docutils literal"><span class="pre">kombu.pools.connections</span></tt>.
+This is a pool group, which means you give it a connection instance,
+and you get a pool instance back.  We have one pool per connection
+instance to support multiple connections in the same app.
+All connection instances with the same connection parameters will
+get the same pool:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">kombu</span> <span class="kn">import</span> <span class="n">BrokerConnection</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">kombu.pools</span> <span class="kn">import</span> <span class="n">connections</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="n">connections</span><span class="p">[</span><span class="n">BrokerConnection</span><span class="p">(</span><span class="s">&quot;redis://localhost:6379&quot;</span><span class="p">)]</span>
+<span class="go">&lt;kombu.connection.ConnectionPool object at 0x101805650&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">connections</span><span class="p">[</span><span class="n">BrokerConnection</span><span class="p">(</span><span class="s">&quot;redis://localhost:6379&quot;</span><span class="p">)]</span>
+<span class="go">&lt;kombu.connection.ConnectionPool object at 0x101805650&gt;</span>
+</pre></div>
+</div>
+<p>Let&#8217;s acquire and release a connection:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">kombu</span> <span class="kn">import</span> <span class="n">BrokerConnection</span>
+<span class="kn">from</span> <span class="nn">kombu.pools</span> <span class="kn">import</span> <span class="n">connections</span>
+
+<span class="n">connection</span> <span class="o">=</span> <span class="n">BrokerConnection</span><span class="p">(</span><span class="s">&quot;redis://localhost:6379&quot;</span><span class="p">)</span>
+
+<span class="k">with</span> <span class="n">connections</span><span class="p">[</span><span class="n">connection</span><span class="p">]</span><span class="o">.</span><span class="n">acquire</span><span class="p">(</span><span class="n">block</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">conn</span><span class="p">:</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">&quot;Got connection: </span><span class="si">%r</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">connection</span><span class="o">.</span><span class="n">as_uri</span><span class="p">(),</span> <span class="p">))</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p>The <tt class="docutils literal"><span class="pre">block=True</span></tt> here means that the acquire call will block
+until a connection is available in the pool.
+Note that this will block forever in case there is a deadlock
+in your code where a connection is not released.  There
+is a <tt class="docutils literal"><span class="pre">timeout</span></tt> argument you can use to safeguard against this
+(see <tt class="xref py py-meth docutils literal"><span class="pre">kombu.connection.Resource.acquire()</span></tt>).</p>
+<p class="last">If blocking is disabled and there aren&#8217;t any connections
+left in the pool an <a class="reference internal" href="../reference/kombu.exceptions.html#kombu.exceptions.ConnectionLimitExceeded" title="kombu.exceptions.ConnectionLimitExceeded"><tt class="xref py py-class docutils literal"><span class="pre">kombu.exceptions.ConnectionLimitExceeded</span></tt></a>
+exception will be raised.</p>
+</div>
+<p>That&#8217;s about it.  If you need to connect to multiple brokers
+at once you can do that too:</p>
+<div class="highlight-python"><pre>from kombu import BrokerConnection
+from kombu.pools import connections
+
+c1 = BrokerConnection("amqp://")
+c2 = BrokerConnection("redis://")
+
+with connections[c1].acquire(block=True) as conn1:
+    with connections[c2].acquire(block=True) as conn2:
+        # ....</pre>
+</div>
+</div>
+</div>
+<div class="section" id="the-producer-pool-group">
+<span id="default-producers"></span><h2>The producer pool group<a class="headerlink" href="#the-producer-pool-group" title="Permalink to this headline">¶</a></h2>
+<p>This is a pool group just like the connections, except
+that is manages <a class="reference internal" href="../reference/kombu.messaging.html#kombu.messaging.Producer" title="kombu.messaging.Producer"><tt class="xref py py-class docutils literal"><span class="pre">kombu.messaging.Producer</span></tt></a> instances
+used to publish messages with.  It also links to the connection pool
+group, by using the connection pool for the connection provided.</p>
+<p>Here is an example using the producer pool to publish a message
+to the <tt class="docutils literal"><span class="pre">news</span></tt> exchange:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">kombu</span> <span class="kn">import</span> <span class="n">BrokerConnection</span><span class="p">,</span> <span class="n">Exchange</span>
+<span class="kn">from</span> <span class="nn">kombu.common</span> <span class="kn">import</span> <span class="n">maybe_declare</span>
+<span class="kn">from</span> <span class="nn">kombu.pools</span> <span class="kn">import</span> <span class="n">producers</span>
+
+<span class="c"># The exchange we send our news articles to.</span>
+<span class="n">news_exchange</span> <span class="o">=</span> <span class="n">Exchange</span><span class="p">(</span><span class="s">&quot;news&quot;</span><span class="p">)</span>
+
+<span class="c"># The article we want to send</span>
+<span class="n">article</span> <span class="o">=</span> <span class="p">{</span><span class="s">&quot;title&quot;</span><span class="p">:</span> <span class="s">&quot;No cellular coverage on the tube for 2012&quot;</span><span class="p">,</span>
+           <span class="s">&quot;ingress&quot;</span><span class="p">:</span> <span class="s">&quot;yadda yadda yadda&quot;</span><span class="p">}</span>
+
+<span class="c"># The broker where our exchange is.</span>
+<span class="n">connection</span> <span class="o">=</span> <span class="n">BrokerConnection</span><span class="p">(</span><span class="s">&quot;amqp://guest:guest@localhost:5672//&quot;</span><span class="p">)</span>
+
+<span class="k">with</span> <span class="n">producers</span><span class="p">[</span><span class="n">connection</span><span class="p">]</span><span class="o">.</span><span class="n">acquire</span><span class="p">(</span><span class="n">block</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">producer</span><span class="p">:</span>
+    <span class="c"># maybe_declare knows what entities have already been declared</span>
+    <span class="c"># so we don&#39;t have to do so multiple times in the same process.</span>
+    <span class="n">maybe_declare</span><span class="p">(</span><span class="n">news_exchange</span><span class="p">)</span>
+    <span class="n">producer</span><span class="o">.</span><span class="n">publish</span><span class="p">(</span><span class="n">article</span><span class="p">,</span> <span class="n">routing_key</span><span class="o">=</span><span class="s">&quot;domestic&quot;</span><span class="p">,</span>
+                              <span class="n">serializer</span><span class="o">=</span><span class="s">&quot;json&quot;</span><span class="p">,</span>
+                              <span class="n">compression</span><span class="o">=</span><span class="s">&quot;zlib&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="section" id="setting-pool-limits">
+<span id="default-pool-limits"></span><h3>Setting pool limits<a class="headerlink" href="#setting-pool-limits" title="Permalink to this headline">¶</a></h3>
+<p>By default every connection instance has a limit of 200 connections.
+You can change this limit using <a class="reference internal" href="../reference/kombu.pools.html#kombu.pools.set_limit" title="kombu.pools.set_limit"><tt class="xref py py-func docutils literal"><span class="pre">kombu.pools.set_limit()</span></tt></a>.
+You are able to grow the pool at runtime, but you can&#8217;t shrink it,
+so it is best to set the limit as early as possible after your application
+starts:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">kombu</span> <span class="kn">import</span> <span class="n">pools</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">pools</span><span class="o">.</span><span class="n">set_limit</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="resetting-all-pools">
+<h3>Resetting all pools<a class="headerlink" href="#resetting-all-pools" title="Permalink to this headline">¶</a></h3>
+<p>You can close all active connections and reset all pool groups by
+using the <a class="reference internal" href="../reference/kombu.pools.html#kombu.pools.reset" title="kombu.pools.reset"><tt class="xref py py-func docutils literal"><span class="pre">kombu.pools.reset()</span></tt></a> function.  Note that this
+will not respect anything currently using these connections,
+so will just drag the connections away from under their feet:
+you should be very careful before you use this.</p>
+<p>Kombu will reset the pools if the process is forked,
+so that forked processes start with clean pool groups.</p>
+</div>
+</div>
+<div class="section" id="custom-pool-groups">
+<span id="id2"></span><h2>Custom Pool Groups<a class="headerlink" href="#custom-pool-groups" title="Permalink to this headline">¶</a></h2>
+<p>To maintain your own pool groups you should create your own
+<tt class="xref py py-class docutils literal"><span class="pre">Connections</span></tt> and <tt class="xref py py-class docutils literal"><span class="pre">kombu.pools.Producers</span></tt>
+instances:</p>
+<div class="highlight-python"><pre>from kombu import pools
+from kombu import BrokerConnection
+
+connections = pools.Connection(limit=100)
+producers = pools.Producers(limit=connections.limit)
+
+connection = BrokerConnection("amqp://guest:guest@localhost:5672//")
+
+with connections[connection].acquire(block=True):
+    # ...</pre>
+</div>
+<p>If you want to use the global limit that can be set with
+<a class="reference internal" href="../reference/kombu.pools.html#kombu.pools.set_limit" title="kombu.pools.set_limit"><tt class="xref py py-func docutils literal"><span class="pre">set_limit()</span></tt></a> you can use a special value as the <tt class="docutils literal"><span class="pre">limit</span></tt>
+argument:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">kombu</span> <span class="kn">import</span> <span class="n">pools</span>
+
+<span class="n">connections</span> <span class="o">=</span> <span class="n">pools</span><span class="o">.</span><span class="n">Connections</span><span class="p">(</span><span class="n">limit</span><span class="o">=</span><span class="n">pools</span><span class="o">.</span><span class="n">use_default_limit</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper"><p class="logo"><a href="../index.html">
+  <img class="logo" width="128" height="128" src="http://cloud.github.com/downloads/ask/kombu/kombusmall.jpg" alt="Logo"/>
+</a></p>
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Connection and Producer Pools</a><ul>
+<li><a class="reference internal" href="#default-pools">Default Pools</a><ul>
+<li><a class="reference internal" href="#the-connection-pool-group">The connection pool group</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#the-producer-pool-group">The producer pool group</a><ul>
+<li><a class="reference internal" href="#setting-pool-limits">Setting pool limits</a></li>
+<li><a class="reference internal" href="#resetting-all-pools">Resetting all pools</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#custom-pool-groups">Custom Pool Groups</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="simple.html"
+                        title="previous chapter">Simple Interface</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="serialization.html"
+                        title="next chapter">Serialization</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/userguide/pools.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" size="18" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="serialization.html" title="Serialization"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="simple.html" title="Simple Interface"
+             >previous</a> |</li>
+        <li><a href="../index.html">Kombu v1.4.0 documentation</a> &raquo;</li>
+          <li><a href="index.html" >User Guide</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2009-2011, Ask Solem.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.7.
+    </div>
+  </body>
+</html>

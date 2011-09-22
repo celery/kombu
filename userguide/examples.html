@@ -1,0 +1,212 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Examples &mdash; Kombu v1.4.0 documentation</title>
+    <link rel="stylesheet" href="../_static/celery.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.4.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="Kombu v1.4.0 documentation" href="../index.html" />
+    <link rel="up" title="User Guide" href="index.html" />
+    <link rel="next" title="Simple Interface" href="simple.html" />
+    <link rel="prev" title="Connections and transports" href="connections.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="simple.html" title="Simple Interface"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="connections.html" title="Connections and transports"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../index.html">Kombu v1.4.0 documentation</a> &raquo;</li>
+          <li><a href="index.html" accesskey="U">User Guide</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="examples">
+<span id="id1"></span><h1>Examples<a class="headerlink" href="#examples" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="task-queue-example">
+<span id="id2"></span><h2>Task Queue Example<a class="headerlink" href="#task-queue-example" title="Permalink to this headline">¶</a></h2>
+<p>Very simple task queue using pickle, with primitive support
+for priorities using different queues.</p>
+<p><tt class="file docutils literal"><span class="pre">queues.py</span></tt>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">kombu</span> <span class="kn">import</span> <span class="n">Exchange</span><span class="p">,</span> <span class="n">Queue</span>
+
+<span class="n">task_exchange</span> <span class="o">=</span> <span class="n">Exchange</span><span class="p">(</span><span class="s">&quot;tasks&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s">&quot;direct&quot;</span><span class="p">)</span>
+<span class="n">task_queues</span> <span class="o">=</span> <span class="p">[</span><span class="n">Queue</span><span class="p">(</span><span class="s">&quot;hipri&quot;</span><span class="p">,</span> <span class="n">task_exchange</span><span class="p">,</span> <span class="n">routing_key</span><span class="o">=</span><span class="s">&quot;hipri&quot;</span><span class="p">),</span>
+               <span class="n">Queue</span><span class="p">(</span><span class="s">&quot;midpri&quot;</span><span class="p">,</span> <span class="n">task_exchange</span><span class="p">,</span> <span class="n">routing_key</span><span class="o">=</span><span class="s">&quot;midpri&quot;</span><span class="p">),</span>
+               <span class="n">Queue</span><span class="p">(</span><span class="s">&quot;lopri&quot;</span><span class="p">,</span> <span class="n">task_exchange</span><span class="p">,</span> <span class="n">routing_key</span><span class="o">=</span><span class="s">&quot;lopri&quot;</span><span class="p">)]</span>
+</pre></div>
+</div>
+<p><tt class="file docutils literal"><span class="pre">worker.py</span></tt>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">with_statement</span>
+
+<span class="kn">from</span> <span class="nn">kombu.mixins</span> <span class="kn">import</span> <span class="n">ConsumerMixin</span>
+<span class="kn">from</span> <span class="nn">kombu.utils</span> <span class="kn">import</span> <span class="n">kwdict</span>
+
+<span class="kn">from</span> <span class="nn">queues</span> <span class="kn">import</span> <span class="n">task_queues</span>
+
+
+<span class="k">class</span> <span class="nc">Worker</span><span class="p">(</span><span class="n">ConsumerMixin</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">get_consumers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">Consumer</span><span class="p">,</span> <span class="n">channel</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">Consumer</span><span class="p">(</span><span class="n">queues</span><span class="o">=</span><span class="n">task_queues</span><span class="p">,</span>
+                        <span class="n">callbacks</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">process_task</span><span class="p">])</span>
+
+    <span class="k">def</span> <span class="nf">process_task</span><span class="p">(</span><span class="n">body</span><span class="p">,</span> <span class="n">message</span><span class="p">):</span>
+        <span class="n">fun</span> <span class="o">=</span> <span class="n">body</span><span class="p">[</span><span class="s">&quot;fun&quot;</span><span class="p">]</span>
+        <span class="n">args</span> <span class="o">=</span> <span class="n">body</span><span class="p">[</span><span class="s">&quot;args&quot;</span><span class="p">]</span>
+        <span class="n">kwargs</span> <span class="o">=</span> <span class="n">body</span><span class="p">[</span><span class="s">&quot;kwargs&quot;</span><span class="p">]</span>
+        <span class="n">fun</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwdict</span><span class="p">(</span><span class="n">kwargs</span><span class="p">))</span>
+        <span class="n">message</span><span class="o">.</span><span class="n">ack</span><span class="p">()</span>
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">kombu</span> <span class="kn">import</span> <span class="n">BrokerConnection</span>
+    <span class="kn">from</span> <span class="nn">kombu.log</span> <span class="kn">import</span> <span class="n">setup_logging</span>
+    <span class="n">setup_logging</span><span class="p">(</span><span class="n">loglevel</span><span class="o">=</span><span class="s">&quot;INFO&quot;</span><span class="p">)</span>
+
+    <span class="k">with</span> <span class="n">BrokerConnection</span><span class="p">(</span><span class="s">&quot;amqp://guest:guest@localhost:5672//&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">conn</span><span class="p">:</span>
+        <span class="n">Worker</span><span class="p">(</span><span class="n">conn</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</pre></div>
+</div>
+<p><tt class="file docutils literal"><span class="pre">tasks.py</span></tt>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">def</span> <span class="nf">hello_task</span><span class="p">(</span><span class="n">who</span><span class="o">=</span><span class="s">&quot;world&quot;</span><span class="p">):</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">&quot;Hello </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">who</span><span class="p">,</span> <span class="p">))</span>
+</pre></div>
+</div>
+<div class="highlight-python"><div class="highlight"><pre>
+</pre></div>
+</div>
+<p><tt class="file docutils literal"><span class="pre">client.py</span></tt>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">with_statement</span>
+
+<span class="kn">from</span> <span class="nn">kombu.common</span> <span class="kn">import</span> <span class="n">maybe_declare</span>
+<span class="kn">from</span> <span class="nn">kombu.pools</span> <span class="kn">import</span> <span class="n">producers</span>
+
+<span class="kn">from</span> <span class="nn">.queues</span> <span class="kn">import</span> <span class="n">task_exchange</span>
+
+<span class="n">priority_to_routing_key</span> <span class="o">=</span> <span class="p">{</span><span class="s">&quot;high&quot;</span><span class="p">:</span> <span class="s">&quot;hipri&quot;</span><span class="p">,</span>
+                           <span class="s">&quot;mid&quot;</span><span class="p">:</span> <span class="s">&quot;midpri&quot;</span><span class="p">,</span>
+                           <span class="s">&quot;low&quot;</span><span class="p">:</span> <span class="s">&quot;lopri&quot;</span><span class="p">}</span>
+
+
+<span class="k">def</span> <span class="nf">send_as_task</span><span class="p">(</span><span class="n">connection</span><span class="p">,</span> <span class="n">fun</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">,</span> <span class="n">priority</span><span class="o">=</span><span class="s">&quot;mid&quot;</span><span class="p">):</span>
+    <span class="n">payload</span> <span class="o">=</span> <span class="p">{</span><span class="s">&quot;fun&quot;</span><span class="p">:</span> <span class="n">fun</span><span class="p">,</span> <span class="s">&quot;args&quot;</span><span class="p">:</span> <span class="n">args</span><span class="p">,</span> <span class="s">&quot;kwargs&quot;</span><span class="p">:</span> <span class="n">kwargs</span><span class="p">}</span>
+    <span class="n">routing_key</span> <span class="o">=</span> <span class="n">priority_to_routing_key</span><span class="p">[</span><span class="n">priority</span><span class="p">]</span>
+
+    <span class="k">with</span> <span class="n">producers</span><span class="p">[</span><span class="n">connection</span><span class="p">]</span><span class="o">.</span><span class="n">acquire</span><span class="p">(</span><span class="n">block</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">producer</span><span class="p">:</span>
+        <span class="n">maybe_declare</span><span class="p">(</span><span class="n">task_exchange</span><span class="p">,</span> <span class="n">producer</span><span class="o">.</span><span class="n">channel</span><span class="p">)</span>
+        <span class="n">producer</span><span class="o">.</span><span class="n">publish</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span> <span class="n">serializer</span><span class="o">=</span><span class="s">&quot;pickle&quot;</span><span class="p">,</span>
+                                  <span class="n">compression</span><span class="o">=</span><span class="s">&quot;zlib&quot;</span><span class="p">,</span>
+                                  <span class="n">routing_key</span><span class="o">=</span><span class="n">routing_key</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">kombu</span> <span class="kn">import</span> <span class="n">BrokerConnection</span>
+    <span class="kn">from</span> <span class="nn">.tasks</span> <span class="kn">import</span> <span class="n">hello_task</span>
+
+    <span class="n">connection</span> <span class="o">=</span> <span class="n">BrokerConnection</span><span class="p">(</span><span class="s">&quot;amqp://guest:guest@localhost:5672//&quot;</span><span class="p">)</span>
+    <span class="n">send_as_task</span><span class="p">(</span><span class="n">connection</span><span class="p">,</span> <span class="n">fun</span><span class="o">=</span><span class="n">hello_task</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="s">&quot;Kombu&quot;</span><span class="p">,</span> <span class="p">),</span>
+                 <span class="n">priority</span><span class="o">=</span><span class="s">&quot;high&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper"><p class="logo"><a href="../index.html">
+  <img class="logo" width="128" height="128" src="http://cloud.github.com/downloads/ask/kombu/kombusmall.jpg" alt="Logo"/>
+</a></p>
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Examples</a><ul>
+<li><a class="reference internal" href="#task-queue-example">Task Queue Example</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="connections.html"
+                        title="previous chapter">Connections and transports</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="simple.html"
+                        title="next chapter">Simple Interface</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/userguide/examples.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" size="18" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="simple.html" title="Simple Interface"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="connections.html" title="Connections and transports"
+             >previous</a> |</li>
+        <li><a href="../index.html">Kombu v1.4.0 documentation</a> &raquo;</li>
+          <li><a href="index.html" >User Guide</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2009-2011, Ask Solem.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.7.
+    </div>
+  </body>
+</html>
