@@ -2,6 +2,54 @@
  Change history
 ================
 
+.. _version-1.3.5:
+
+1.3.5
+=====
+:release-date: 2011-09-16 06:00 P.M BST
+:by: Ask Solem
+
+* Python 3: AMQP_PROTOCOL_HEADER must be bytes, not str.
+
+.. _version-1.3.4:
+
+1.3.4
+=====
+:release-date: 2011-09-16 06:00 P.M BST
+:by: Ask Solem
+
+* Fixes syntax error in pools.reset
+
+
+.. _version-1.3.3:
+
+1.3.3
+=====
+:release-date: 2011-09-15 02:00 P.M BST
+:by: Ask Solem
+
+* pools.reset did not support after forker arguments.
+
+.. _version-1.3.2:
+
+1.3.2
+=====
+:release-date: 2011-09-10 01:00 P.M BST
+:by: Mher Movsisyan
+
+* Broke Python 2.5 compatibility by importing ``parse_qsl`` from ``urlparse``
+
+* Connection.default_channel is now closed when connection is revived
+  after connection failures.
+
+* Pika: Channel now supports the ``connection.client`` attribute
+  as required by the simple interface.
+
+* pools.set_limit now raises an exception if the limit is lower
+  than the previous limit.
+
+* pools.set_limit no longer resets the pools.
+
 .. _version-1.3.1:
 
 1.3.1
