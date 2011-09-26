@@ -2,10 +2,23 @@
  Change history
 ================
 
+.. _version-1.4.1:
+
+1.4.1
+=====
+:release-date: 2011-09-26 04:00 P.M BST
+:by: Ask Solem
+
+* 1.4.0 broke the producer pool, resulting in new connections being
+  established for every acquire.
+
+
 .. _version-1.4.0:
 
 1.4.0
 =====
+:release-date: 2011-09-22 05:00 P.M BST
+:by: Ask Solem
 
 * Adds module :mod:`kombu.mixins`.
 

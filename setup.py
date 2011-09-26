@@ -29,8 +29,6 @@ import re
 re_meta = re.compile(r'__(\w+?)__\s*=\s*(.*)')
 re_vers = re.compile(r'VERSION\s*=\s*\((.*?)\)')
 re_doc = re.compile(r'^"""(.+?)"""')
-here = os.path.abspath(os.path.dirname(__file__))
-meta_fh = open(os.path.join(here, "kombu/__init__.py"))
 rq = lambda s: s.strip("\"'")
 
 def add_default(m):
@@ -49,6 +47,8 @@ def add_doc(m):
 pats = {re_meta: add_default,
         re_vers: add_version,
         re_doc: add_doc}
+here = os.path.abspath(os.path.dirname(__file__))
+meta_fh = open(os.path.join(here, "kombu/__init__.py"))
 try:
     meta = {}
     for line in meta_fh:
