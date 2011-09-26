@@ -129,9 +129,9 @@ def bump(dist, docfile="README.rst", custom=None):
         print("  writing %r..." % (v.filename, ))
         v.write(next)
 
-    cmd("git", "commit", "-m", "Bumps version to %s" % (to_str(next), ),
-        *[f.filename for f in files])
-    cmd("git", "tag", "v%s" % (to_str(next), ))
+    print(cmd("git", "commit", "-m", "Bumps version to %s" % (to_str(next), ),
+        *[f.filename for f in files]))
+    print(cmd("git", "tag", "v%s" % (to_str(next), )))
 
 
 def main(argv=sys.argv, docfile="README.rst", custom=None):
