@@ -48,13 +48,13 @@ class ProducerPool(Resource):
     def prepare(self, p):
         if callable(p):
             p = p()
-        if not p.channel:
-            p.revive(self.connections.acquire(block=True))
+        p.connection = self.connections.acquire(block=True)
+        p.revive(p.connection.default_channel)
         return p
 
     def release(self, resource):
         resource.connection.release()
-        resource.channel = None
+        resource.connection = resource.channel = None
         super(ProducerPool, self).release(resource)
 
 

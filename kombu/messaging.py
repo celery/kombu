@@ -144,6 +144,7 @@ class Producer(object):
     def revive(self, channel):
         """Revive the producer after connection loss."""
         self.channel = channel
+        self.connection = self.channel.connection.client
         self.exchange.revive(channel)
 
     def __enter__(self):
@@ -421,6 +422,7 @@ class Consumer(object):
         for queue in self.queues:
             queue.revive(channel)
         self.channel = channel
+        self.connection = self.channel.connection.client
 
     def _basic_consume(self, queue, consumer_tag=None,
             no_ack=no_ack, nowait=True):
