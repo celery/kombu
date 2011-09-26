@@ -83,7 +83,7 @@ def readme(options):
 
 @task
 def bump(options):
-    sh("contrib/release/bump_version.py kombu")
+    sh("contrib/release/bump_version.py kombu/__init__.py README.rst")
 
 
 @task

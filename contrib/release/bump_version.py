@@ -111,15 +111,21 @@ class SphinxVersion(VersionFile):
         self.filename = filename
 
 
-def bump(dist, docfile="README.rst", custom=None):
-    distfile = os.path.join(dist, "__init__.py")
-    files = [PyVersion(distfile), SphinxVersion(docfile)]
+_filetype_to_type = {"py": PyVersion, "rst": SphinxVersion}
 
+def filetype_to_type(filename):
+    _, _, suffix = filename.rpartition(".")
+    return _filetype_to_type[suffix](filename)
+
+
+def bump(*files, **kwargs):
+    version = kwargs.get("version")
+    files = [filetype_to_type(f) for f in files]
     versions = [v.parse() for v in files]
     current = list(reversed(sorted(versions)))[0]  # find highest
 
-    if custom:
-        next = from_str(custom)
+    if version:
+        next = from_str(version)
     else:
         major, minor, release, text = current
         if text:
@@ -137,20 +143,15 @@ def bump(dist, docfile="README.rst", custom=None):
     print(cmd("git", "tag", "v%s" % (to_str(next), )))
 
 
-def main(argv=sys.argv, docfile="README.rst", custom=None):
+def main(argv=sys.argv, version=None):
     if not len(argv) > 1:
         print("Usage: distdir [docfile] -- <custom version>")
         sys.exit(0)
-    dist = argv[1]
     if "--" in argv:
         c = argv.index('--')
-        custom = argv[c + 1]
+        version = argv[c + 1]
         argv = argv[:c]
-    try:
-        docfile = argv[2]
-    except IndexError:
-        pass
-    bump(dist, docfile, custom)
+    bump(*argv, version=version)
 
 if __name__ == "__main__":
     main()
