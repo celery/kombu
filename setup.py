@@ -24,10 +24,43 @@ except ImportError:
 
 from distutils.command.install import INSTALL_SCHEMES
 
-os.environ["KOMBU_NO_EVAL"] = "yes"
-import kombu
-os.environ.pop("KOMBU_NO_EVAL", None)
-sys.modules.pop("kombu", None)
+# -- Parse meta
+import re
+re_meta = re.compile(r'__(\w+?)__\s*=\s*(.*)')
+re_vers = re.compile(r'VERSION\s*=\s*\((.*?)\)')
+re_doc = re.compile(r'^"""(.+?)"""')
+here = os.path.abspath(os.path.dirname(__file__))
+meta_fh = open(os.path.join(here, "kombu/__init__.py"))
+rq = lambda s: s.strip("\"'")
+
+def add_default(m):
+    attr_name, attr_value = m.groups()
+    return ((attr_name, rq(attr_value)), )
+
+
+def add_version(m):
+    v = list(map(rq, m.groups()[0].split(", ")))
+    return (("VERSION", ".".join(v[0:3]) + "".join(v[3:])), )
+
+
+def add_doc(m):
+    return (("doc", m.groups()[0]), )
+
+pats = {re_meta: add_default,
+        re_vers: add_version,
+        re_doc: add_doc}
+try:
+    meta = {}
+    for line in meta_fh:
+        if line.strip() == '# -eof meta-':
+            break
+        for pattern, handler in pats.items():
+            m = pattern.match(line.strip())
+            if m:
+                meta.update(handler(m))
+finally:
+    meta_fh.close()
+# --
 
 packages, data_files = [], []
 root_dir = os.path.dirname(__file__)
@@ -69,11 +102,11 @@ else:
 
 setup(
     name='kombu',
-    version=kombu.__version__,
-    description=kombu.__doc__,
-    author=kombu.__author__,
-    author_email=kombu.__contact__,
-    url=kombu.__homepage__,
+    version=meta["VERSION"],
+    description=meta["doc"],
+    author=meta["author"],
+    author_email=meta["contact"],
+    url=meta["homepage"],
     platforms=["any"],
     packages=packages,
     data_files=data_files,
