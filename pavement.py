@@ -83,7 +83,7 @@ def readme(options):
 
 @task
 def bump(options):
-    sh("bump -c kombu")
+    sh("contrib/release/bump_version.py kombu")
 
 
 @task
@@ -109,12 +109,7 @@ def test(options):
 ])
 def flake8(options):
     noerror = getattr(options, "noerror", False)
-    complexity = getattr(options, "complexity", 22)
-    sh("""flake8 . | perl -mstrict -mwarnings -nle'
-        my $ignore = m/too complex \((\d+)\)/ && $1 le %s;
-        if (! $ignore) { print STDERR; our $FOUND_FLAKE = 1 }
-    }{exit $FOUND_FLAKE;
-        '""" % (complexity, ), ignore_error=noerror)
+    sh("""flake8 kombu""", ignore_error=noerror)
 
 
 @task
