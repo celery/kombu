@@ -27,6 +27,7 @@ for module, items in all_by_module.iteritems():
     for item in items:
         object_origins[item] = module
 
+
 class module(ModuleType):
 
     def __getattr__(self, name):

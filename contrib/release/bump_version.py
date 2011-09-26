@@ -27,6 +27,7 @@ def no_enoent():
         if exc.errno != errno.ENOENT:
             raise
 
+
 class StringVersion(object):
 
     def decode(self, s):
@@ -62,6 +63,7 @@ class TupleVersion(object):
             v.pop()
         return ", ".join(map(quote, v))
 
+
 class VersionFile(object):
 
     def __init__(self, filename):
@@ -89,6 +91,7 @@ class VersionFile(object):
                 m = pattern.match(line)
                 if m:
                     return self.type.decode(m.groups()[0])
+
 
 class PyVersion(VersionFile):
     regex = re.compile(r'^VERSION\s*=\s*\((.+?)\)')
@@ -149,9 +152,5 @@ def main(argv=sys.argv, docfile="README.rst", custom=None):
         pass
     bump(dist, docfile, custom)
 
-
-
-
 if __name__ == "__main__":
     main()
-
