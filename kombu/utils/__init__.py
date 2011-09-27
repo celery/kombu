@@ -44,6 +44,21 @@ class HashingDict(dict):
         return dict.__delitem__(self, hash(key))
 
 
+class HashingDict(dict):
+
+    def __getitem__(self, key):
+        h = hash(key)
+        if h not in self:
+            return self.__missing__(key)
+        return dict.__getitem__(self, h)
+
+    def __setitem__(self, key, value):
+        return dict.__setitem__(self, hash(key), value)
+
+    def __delitem__(self, key):
+        return dict.__delitem__(self, hash(key))
+
+
 def say(m, *s):
     sys.stderr.write(str(m) % s + "\n")
 

@@ -23,8 +23,7 @@ def setup_logging(loglevel=logging.DEBUG, loggers=["kombu.connection",
                                                    "kombu.channel"]):
     for logger in loggers:
         l = get_logger(logger)
-        if not l.handlers:
-            l.addHandler(logging.StreamHandler())
+        l.addHandler(logging.StreamHandler())
         l.setLevel(loglevel)
 
 

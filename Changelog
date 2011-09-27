@@ -2,6 +2,121 @@
  Change history
 ================
 
+.. _version-1.4.1:
+
+1.4.1
+=====
+:release-date: 2011-09-26 04:00 P.M BST
+:by: Ask Solem
+
+* 1.4.0 broke the producer pool, resulting in new connections being
+  established for every acquire.
+
+
+.. _version-1.4.0:
+
+1.4.0
+=====
+:release-date: 2011-09-22 05:00 P.M BST
+:by: Ask Solem
+
+* Adds module :mod:`kombu.mixins`.
+
+    This module contains a :class:`~kombu.mixins.ConsumerMixin` class
+    that can be used to easily implement a message consumer
+    thread that consumes messages from one or more
+    :class:`kombu.messaging.Consumer` instances.
+
+* New example: :ref:`task-queue-example`
+
+    Using the ``ConsumerMixin``, default channels and
+    the global connection pool to demonstrate new Kombu features.
+
+* MongoDB transport did not work with MongoDB >= 2.0 (Issue #66)
+
+    Fix contributed by James Turk.
+
+* Redis-py version check did not account for beta identifiers
+  in version string.
+
+    Fix contributed by David Ziegler.
+
+* Producer and Consumer now accepts a connection instance as the
+  first argument.
+
+    The connections default channel will then be used.
+
+    In addition shortcut methods has been added to BrokerConnection::
+
+        >>> connection.Producer(exchange)
+        >>> connection.Consumer(queues=..., callbacks=...)
+
+* BrokerConnection has aquired a ``connected`` attribute that
+  can be used to check if the connection instance has established
+  a connection.
+
+* ``ConnectionPool.acquire_channel`` now returns the connections
+  default channel rather than establising a new channel that
+  must be manually handled.
+
+* Added ``kombu.common.maybe_declare``
+
+    ``maybe_declare(entity)`` declares an entity if it has
+    not previously been declared in the same process.
+
+* :func:`kombu.compat.entry_to_queue` has been moved to :mod:`kombu.common`
+
+* New module :mod:`kombu.clocks` now contains an implementation
+  of Lamports logical clock.
+
+.. _version-1.3.5:
+
+1.3.5
+=====
+:release-date: 2011-09-16 06:00 P.M BST
+:by: Ask Solem
+
+* Python 3: AMQP_PROTOCOL_HEADER must be bytes, not str.
+
+.. _version-1.3.4:
+
+1.3.4
+=====
+:release-date: 2011-09-16 06:00 P.M BST
+:by: Ask Solem
+
+* Fixes syntax error in pools.reset
+
+
+.. _version-1.3.3:
+
+1.3.3
+=====
+:release-date: 2011-09-15 02:00 P.M BST
+:by: Ask Solem
+
+* pools.reset did not support after forker arguments.
+
+.. _version-1.3.2:
+
+1.3.2
+=====
+:release-date: 2011-09-10 01:00 P.M BST
+:by: Mher Movsisyan
+
+* Broke Python 2.5 compatibility by importing ``parse_qsl`` from ``urlparse``
+
+* Connection.default_channel is now closed when connection is revived
+  after connection failures.
+
+* Pika: Channel now supports the ``connection.client`` attribute
+  as required by the simple interface.
+
+* pools.set_limit now raises an exception if the limit is lower
+  than the previous limit.
+
+* pools.set_limit no longer resets the pools.
+
 .. _version-1.3.1:
 
 1.3.1
@@ -94,7 +209,6 @@
 
         >>> from kombu import pools
         >>> pool.reset()
-
 
 * SQS Transport: Persistence using SimpleDB is now disabled by default,
   after reports of unstable SimpleDB connections leading to errors.

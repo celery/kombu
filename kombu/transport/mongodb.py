@@ -1,4 +1,3 @@
-
 """
 kombu.transport.mongodb
 =======================
@@ -41,6 +40,9 @@ class Channel(virtual.Channel):
             if "No matching object found" in exc.args[0]:
                 raise Empty()
             raise
+        # as of mongo 2.0 empty results won't raise an error
+        if msg['value'] is None:
+            raise Empty()
         return deserialize(msg["value"]["payload"])
 
     def _size(self, queue):

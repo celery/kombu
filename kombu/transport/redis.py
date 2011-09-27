@@ -323,7 +323,7 @@ class Channel(virtual.Channel):
 
         version = getattr(redis, "__version__", (0, 0, 0))
         if version:
-            version = tuple(version.split("."))
+            version = tuple(map(int, version.split(".")))
         if version < (2, 4, 4):
             raise VersionMismatch(
                 "Redis transport requires redis-py versions 2.4.4 or later. "

@@ -38,8 +38,12 @@ class LamportClock(object):
 
     .. seealso::
 
-        http://en.wikipedia.org/wiki/Lamport_timestamps
-        http://en.wikipedia.org/wiki/Lamport's_Distributed_Mutual_Exclusion_Algorithm
+        * `Lamport timestamps`_
+
+        * `Lamports distributed mutex`_
+
+    .. _`Lamport Timestamps`: http://en.wikipedia.org/wiki/Lamport_timestamps
+    .. _`Lamports distributed mutex`: http://bit.ly/p99ybE
 
     *Usage*
 

@@ -17,7 +17,7 @@ __all__ = ["default_encoding", "safe_str", "safe_repr"]
 is_py3k = sys.version_info >= (3, 0)
 
 
-if sys.version_info >= (3, 0):
+if is_py3k:
 
     def str_to_bytes(s):
         if isinstance(s, str):
@@ -33,6 +33,7 @@ if sys.version_info >= (3, 0):
         return s
 
 else:
+
     def str_to_bytes(s):                # noqa
         return s
 
@@ -48,6 +49,7 @@ if sys.platform.startswith("java"):
     def default_encoding():
         return "utf-8"
 else:
+
     def default_encoding():       # noqa
         return sys.getfilesystemencoding()
 

@@ -68,11 +68,6 @@ def verifyindex(options):
 
 
 @task
-def flakes(options):
-    sh("find kombu funtests examples -name '*.py' | xargs pyflakes")
-
-
-@task
 def clean_readme(options):
     path("README").unlink()
     path("README.rst").unlink()
@@ -88,7 +83,7 @@ def readme(options):
 
 @task
 def bump(options):
-    sh("bump -c kombu")
+    sh("contrib/release/bump_version.py kombu/__init__.py README.rst")
 
 
 @task
@@ -114,12 +109,26 @@ def test(options):
 ])
 def flake8(options):
     noerror = getattr(options, "noerror", False)
-    complexity = getattr(options, "complexity", 22)
-    sh("""flake8 . | perl -mstrict -mwarnings -nle'
-        my $ignore = m/too complex \((\d+)\)/ && $1 le %s;
-        if (! $ignore) { print STDERR; our $FOUND_FLAKE = 1 }
-    }{exit $FOUND_FLAKE;
-        '""" % (complexity, ), ignore_error=noerror)
+    sh("""flake8 kombu""", ignore_error=noerror)
+
+
+@task
+@cmdopts([
+    ("noerror", "E", "Ignore errors"),
+])
+def flakeplus(options):
+    noerror = getattr(options, "noerror", False)
+    sh("python contrib/release/flakeplus.py kombu",
+       ignore_error=noerror)
+
+
+@task
+@cmdopts([
+    ("noerror", "E", "Ignore errors"),
+])
+def flakes(options):
+    flake8(options)
+    flakeplus(options)
 
 
 @task
@@ -150,7 +159,7 @@ def gitcleanforce(options):
 
 
 @task
-@needs("flake8", "autodoc", "verifyindex", "test", "gitclean")
+@needs("flakes", "autodoc", "verifyindex", "test", "gitclean")
 def releaseok(options):
     pass
 

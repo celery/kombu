@@ -13,6 +13,7 @@
     kombu.messaging
     kombu.entity
     kombu.common
+    kombu.mixins
     kombu.clocks
     kombu.compat
     kombu.pidbox
@@ -37,6 +38,7 @@
     kombu.abstract
     kombu.syn
     kombu.utils
+    kombu.utils.limits
     kombu.utils.compat
     kombu.utils.debug
     kombu.utils.encoding

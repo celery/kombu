@@ -9,7 +9,7 @@
     :maxdepth: 2
 
     connections
-    simple
     examples
+    simple
     pools
     serialization
