@@ -8,6 +8,7 @@ Evented IO support for multiple platforms.
 :license: BSD, see LICENSE for more details.
 
 """
+import errno
 import select
 import socket
 
@@ -20,7 +21,30 @@ POLL_READ = 0x001
 POLL_ERR = 0x008 | 0x010 | 0x2000
 
 
-class _epoll(object):
+def get_errno(exc):
+    try:
+        return exc.errno
+    except AttributeError:
+        try:
+            # e.args = (errno, reason)
+            if isinstance(exc.args, tuple) and len(exc.args) == 2:
+                return exc.args[0]
+        except AttributeError:
+            pass
+    return 0
+
+
+class Poller(object):
+
+    def poll(self, timeout):
+        try:
+            return self._poll(timeout)
+        except Exception, exc:
+            if get_errno(exc) != errno.EINTR:
+                raise
+
+
+class _epoll(Poller):
 
     def __init__(self):
         self._epoll = select.epoll()
@@ -34,11 +58,11 @@ class _epoll(object):
         except socket.error:
             pass
 
-    def poll(self, timeout):
+    def _poll(self, timeout):
         return self._epoll.poll(timeout and timeout / 1000.0 or -1)
 
 
-class _kqueue(object):
+class _kqueue(Poller):
 
     def __init__(self):
         self._kqueue = select.kqueue()
@@ -59,7 +83,7 @@ class _kqueue(object):
         self._kqueue.control([select.kevent(fd, filter=select.KQ_FILTER_READ,
                                                 flags=flags)], 0)
 
-    def poll(self, timeout):
+    def _poll(self, timeout):
         kevents = self._kqueue.control(None, 1000,
                                       timeout and timeout / 1000.0 or timeout)
         events = {}
@@ -72,7 +96,7 @@ class _kqueue(object):
         return events.items()
 
 
-class _select(object):
+class _select(Poller):
 
     def __init__(self):
         self._all = self._rfd, self._efd = set(), set()
@@ -88,7 +112,7 @@ class _select(object):
         self._rfd.discard(fd)
         self._efd.discard(fd)
 
-    def poll(self, timeout):
+    def _poll(self, timeout):
         read, _write, error = select.select(self._rfd, [], self._efd, timeout)
         events = {}
         for fd in read:
