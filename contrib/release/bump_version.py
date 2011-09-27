@@ -31,6 +31,7 @@ def no_enoent():
 class StringVersion(object):
 
     def decode(self, s):
+        s = rq(s)
         text = ""
         major, minor, release = s.split(".")
         if not release.isdigit():
@@ -68,9 +69,11 @@ class VersionFile(object):
 
     def __init__(self, filename):
         self.filename = filename
+        self._kept = None
 
     def _as_orig(self, version):
-        return self.wb % self.type.encode(version)
+        return self.wb % {"version": self.type.encode(version),
+                          "kept": self._kept}
 
     def write(self, version):
         pattern = self.regex
@@ -86,32 +89,38 @@ class VersionFile(object):
 
     def parse(self):
         pattern = self.regex
+        gpos = 0
         with open(self.filename) as fh:
             for line in fh:
                 m = pattern.match(line)
                 if m:
-                    return self.type.decode(m.groups()[0])
+                    if "?P<keep>" in pattern.pattern:
+                        self._kept, gpos = m.groupdict()["keep"], 1
+                    return self.type.decode(m.groups()[gpos])
 
 
 class PyVersion(VersionFile):
     regex = re.compile(r'^VERSION\s*=\s*\((.+?)\)')
-    wb = "VERSION = (%s)\n"
+    wb = "VERSION = (%(version)s)\n"
     type = TupleVersion()
-
-    def __init__(self, filename):
-        self.filename = filename
 
 
 class SphinxVersion(VersionFile):
     regex = re.compile(r'^:[Vv]ersion:\s*(.+?)$')
-    wb = ':Version: %s\n'
+    wb = ':Version: %(version)s\n'
     type = StringVersion()
 
-    def __init__(self, filename):
-        self.filename = filename
+
+class CPPVersion(VersionFile):
+    regex = re.compile(r'^\#\s*define\s*(?P<keep>\w*)VERSION\s+(.+)')
+    wb = '#define %(kept)sVERSION "%(version)s"\n'
+    type = StringVersion()
 
 
-_filetype_to_type = {"py": PyVersion, "rst": SphinxVersion}
+_filetype_to_type = {"py": PyVersion,
+                     "rst": SphinxVersion,
+                     "c": CPPVersion,
+                     "h": CPPVersion}
 
 def filetype_to_type(filename):
     _, _, suffix = filename.rpartition(".")
@@ -151,7 +160,7 @@ def main(argv=sys.argv, version=None):
         c = argv.index('--')
         version = argv[c + 1]
         argv = argv[:c]
-    bump(*argv, version=version)
+    bump(*argv[1:], version=version)
 
 if __name__ == "__main__":
     main()
