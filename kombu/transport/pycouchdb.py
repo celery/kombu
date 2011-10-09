@@ -75,6 +75,11 @@ class Channel(virtual.Channel):
         server = couchdb.Server('%s://%s:%s/' % (proto,
                                                  conninfo.hostname,
                                                  port))
+        # Setting user and password if are avaliable
+        try:
+            server.resource.credentials = (conninfo.userid, conninfo.password)
+        except AttributeError:
+            pass
         try:
             return server.create(dbname)
         except couchdb.PreconditionFailed:
