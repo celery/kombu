@@ -81,9 +81,9 @@ class Channel(virtual.Channel):
         except AttributeError:
             pass
         try:
-            return server.create(dbname)
-        except couchdb.PreconditionFailed:
             return server[dbname]
+        except couchdb.http.ResourceNotFound:
+            return  server.create(dbname)
 
     def _query(self, queue, **kwargs):
         if not self.view_created:
