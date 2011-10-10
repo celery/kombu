@@ -145,7 +145,7 @@ def setup_logging(loglevel=None, logfile=None):
         if hasattr(logfile, "write"):
             handler = logging.StreamHandler(logfile)
         else:
-            handler = logging.WatchedFileHandler(logfile)
+            handler = WatchedFileHandler(logfile)
         logger.addHandler(handler)
         logger.setLevel(logging.INFO)
     return logger

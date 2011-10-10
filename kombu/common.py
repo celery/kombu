@@ -11,7 +11,6 @@ Common Utilities.
 from __future__ import absolute_import
 from __future__ import with_statement
 
-import os
 import socket
 import sys
 
@@ -23,7 +22,6 @@ from . import serialization
 from .entity import Exchange, Queue
 from .log import Log
 from .messaging import Consumer
-from .pools import producers
 from .utils import uuid
 
 __all__ = ["Broadcast", "entry_to_queue", "maybe_declare", "uuid",

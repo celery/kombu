@@ -4,7 +4,7 @@ from django.db import transaction, connection, models
 try:
     from django.db import connections, router
 except ImportError:  # pre-Django 1.2
-    connections = router = None
+    connections = router = None  # noqa
 
 
 class QueueManager(models.Manager):

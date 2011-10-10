@@ -39,7 +39,6 @@ class ProducerPool(Resource):
     def _acquire_connection(self):
         return self.connections.acquire(block=True)
 
-
     def create_producer(self):
         return self.Producer(self._acquire_connection())
 

@@ -20,6 +20,3 @@ class Command(BaseCommand):
         print("Removing %s invisible %s... " % (
                 count, pluralize("message", count)))
         Message.objects.cleanup()
-
-
-
