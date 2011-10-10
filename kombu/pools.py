@@ -36,8 +36,12 @@ class ProducerPool(Resource):
     def Producer(self, connection):
         return Producer(connection)
 
+    def _acquire_connection(self):
+        return self.connections.acquire(block=True)
+
+
     def create_producer(self):
-        return self.Producer(self.connections.acquire(block=True))
+        return self.Producer(self._acquire_connection())
 
     def new(self):
         return lambda: self.create_producer()
@@ -50,8 +54,9 @@ class ProducerPool(Resource):
     def prepare(self, p):
         if callable(p):
             p = p()
-        connection = self.connections.acquire(block=True)
-        p.revive(connection.default_channel)
+        if not p.channel:
+            connection = self._acquire_connection()
+            p.revive(connection.default_channel)
         return p
 
     def release(self, resource):

@@ -164,7 +164,6 @@ def insured(pool, fun, args, kwargs, errback=None, on_revive=None, **opts):
 
 def ipublish(pool, fun, args=(), kwargs={}, errback=None, on_revive=None,
         **retry_policy):
-
     with pool.acquire(block=True) as producer:
         errback = errback or _ensure_errback
         revive = partial(revive_producer, producer, on_revive=on_revive)

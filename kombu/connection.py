@@ -597,6 +597,7 @@ Connection = BrokerConnection
 
 
 class Resource(object):
+    LimitExceeded = exceptions.LimitExceeded
 
     def __init__(self, limit=None, preload=None):
         self.limit = limit
