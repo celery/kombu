@@ -146,10 +146,10 @@ class SerializerRegistry(object):
         except KeyError:
             return data
 
-        try:
-            return decoder(data)
-        except Exception:
+        if not len(data):
             return None
+
+        return decoder(data)
 
 
 """
