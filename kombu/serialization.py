@@ -146,6 +146,9 @@ class SerializerRegistry(object):
         except KeyError:
             return data
 
+        if not len(data):
+            return None
+
         return decoder(data)
 
 
