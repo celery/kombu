@@ -77,10 +77,15 @@ class Channel(virtual.Channel):
         server = couchdb.Server('%s://%s:%s/' % (proto,
                                                  conninfo.hostname,
                                                  port))
+        # Use username and password if avaliable
         try:
-            return server.create(dbname)
-        except couchdb.PreconditionFailed:
+            server.resource.credentials = (conninfo.userid, conninfo.password)
+        except AttributeError:
+            pass
+        try:
             return server[dbname]
+        except couchdb.http.ResourceNotFound:
+            return server.create(dbname)
 
     def _query(self, queue, **kwargs):
         if not self.view_created:

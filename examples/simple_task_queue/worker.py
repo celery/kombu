@@ -28,7 +28,7 @@ class Worker(ConsumerMixin):
 
 if __name__ == "__main__":
     from kombu import BrokerConnection
-    from kombu.log import setup_logging
+    from kombu.utils.debug import setup_logging
     setup_logging(loglevel="INFO")
 
     with BrokerConnection("amqp://guest:guest@localhost:5672//") as conn:

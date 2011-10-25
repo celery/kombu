@@ -464,11 +464,11 @@ class BrokerConnection(object):
             channel = self   # use default channel support.
         return Producer(channel, *args, **kwargs)
 
-    def Consumer(self, channel=None, *args, **kwargs):
+    def Consumer(self, queues=None, channel=None, *args, **kwargs):
         from .messaging import Consumer
         if channel is None:
             channel = self  # use default channel support.
-        return Consumer(channel, *args, **kwargs)
+        return Consumer(channel, queues, *args, **kwargs)
 
     def SimpleQueue(self, name, no_ack=None, queue_opts=None,
             exchange_opts=None, channel=None, **kwargs):
