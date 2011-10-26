@@ -37,6 +37,7 @@ else:
     def str_to_bytes(s):                # noqa
         if isinstance(s, unicode):
             return s.encode()
+        return s
 
     def bytes_to_str(s):                # noqa
         return s
