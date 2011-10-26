@@ -6,13 +6,13 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>kombu - AMQP Messaging Framework for Python &mdash; Kombu v1.4.0 documentation</title>
+    <title>kombu - AMQP Messaging Framework for Python &mdash; Kombu v1.4.2 documentation</title>
     <link rel="stylesheet" href="_static/celery.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '',
-        VERSION:     '1.4.0',
+        VERSION:     '1.4.2',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -21,7 +21,7 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="Kombu v1.4.0 documentation" href="index.html" />
+    <link rel="top" title="Kombu v1.4.2 documentation" href="index.html" />
     <link rel="next" title="User Guide" href="userguide/index.html" />
     <link rel="prev" title="Kombu Documentation" href="index.html" /> 
   </head>
@@ -41,7 +41,7 @@
         <li class="right" >
           <a href="index.html" title="Kombu Documentation"
              accesskey="P">previous</a> |</li>
-        <li><a href="index.html">Kombu v1.4.0 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Kombu v1.4.2 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -56,7 +56,7 @@
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Version:</th><td class="field-body">1.4.0</td>
+<tr class="field"><th class="field-name">Version:</th><td class="field-body">1.4.2</td>
 </tr>
 </tbody>
 </table>
@@ -200,19 +200,23 @@ Can be disabled by setting the <tt class="docutils literal"><span class="pre">su
 <span class="n">media_exchange</span> <span class="o">=</span> <span class="n">Exchange</span><span class="p">(</span><span class="s">&quot;media&quot;</span><span class="p">,</span> <span class="s">&quot;direct&quot;</span><span class="p">,</span> <span class="n">durable</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
 <span class="n">video_queue</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">(</span><span class="s">&quot;video&quot;</span><span class="p">,</span> <span class="n">exchange</span><span class="o">=</span><span class="n">media_exchange</span><span class="p">,</span> <span class="n">routing_key</span><span class="o">=</span><span class="s">&quot;video&quot;</span><span class="p">)</span>
 
+<span class="k">def</span> <span class="nf">process_media</span><span class="p">(</span><span class="n">body</span><span class="p">,</span> <span class="n">message</span><span class="p">):</span>
+    <span class="k">print</span> <span class="n">body</span>
+    <span class="n">message</span><span class="o">.</span><span class="n">ack</span><span class="p">()</span>
+
 <span class="c"># connections</span>
 <span class="k">with</span> <span class="n">BrokerConnection</span><span class="p">(</span><span class="s">&quot;amqp://guest:guest@localhost//&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">conn</span><span class="p">:</span>
 
     <span class="c"># produce</span>
     <span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">Producer</span><span class="p">(</span><span class="n">exchange</span><span class="o">=</span><span class="n">media_exchange</span><span class="p">,</span>
-                       <span class="n">serializer</span><span class="o">=</span><span class="s">&quot;json&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">producer</span><span class="p">:</span>
+                       <span class="n">serializer</span><span class="o">=</span><span class="s">&quot;json&quot;</span><span class="p">,</span> <span class="n">routing_key</span><span class="o">=</span><span class="s">&quot;video&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">producer</span><span class="p">:</span>
         <span class="n">producer</span><span class="o">.</span><span class="n">publish</span><span class="p">({</span><span class="s">&quot;name&quot;</span><span class="p">:</span> <span class="s">&quot;/tmp/lolcat1.avi&quot;</span><span class="p">,</span> <span class="s">&quot;size&quot;</span><span class="p">:</span> <span class="mi">1301013</span><span class="p">})</span>
 
     <span class="c"># consume</span>
     <span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">Consumer</span><span class="p">(</span><span class="n">video_queue</span><span class="p">,</span> <span class="n">callbacks</span><span class="o">=</span><span class="p">[</span><span class="n">process_media</span><span class="p">])</span> <span class="k">as</span> <span class="n">consumer</span><span class="p">:</span>
         <span class="c"># Process messages and handle events on all channels</span>
         <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
-            <span class="n">connection</span><span class="o">.</span><span class="n">drain_events</span><span class="p">()</span>
+            <span class="n">conn</span><span class="o">.</span><span class="n">drain_events</span><span class="p">()</span>
 
 <span class="c"># Consume from several queues on the same channel:</span>
 <span class="n">video_queue</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">(</span><span class="s">&quot;video&quot;</span><span class="p">,</span> <span class="n">exchange</span><span class="o">=</span><span class="n">media_exchange</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s">&quot;video&quot;</span><span class="p">)</span>
@@ -426,7 +430,7 @@ file in the top distribution directory for the full license text.</p>
 <div id="searchbox" style="display: none">
   <h3>Quick search</h3>
     <form class="search" action="search.html" method="get">
-      <input type="text" name="q" size="18" />
+      <input type="text" name="q" />
       <input type="submit" value="Go" />
       <input type="hidden" name="check_keywords" value="yes" />
       <input type="hidden" name="area" value="default" />
@@ -455,12 +459,12 @@ file in the top distribution directory for the full license text.</p>
         <li class="right" >
           <a href="index.html" title="Kombu Documentation"
              >previous</a> |</li>
-        <li><a href="index.html">Kombu v1.4.0 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Kombu v1.4.2 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2009-2011, Ask Solem.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.7.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.8.
     </div>
   </body>
 </html>

@@ -6,13 +6,13 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Examples &mdash; Kombu v1.4.0 documentation</title>
+    <title>Examples &mdash; Kombu v1.4.2 documentation</title>
     <link rel="stylesheet" href="../_static/celery.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '1.4.0',
+        VERSION:     '1.4.2',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -21,7 +21,7 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="Kombu v1.4.0 documentation" href="../index.html" />
+    <link rel="top" title="Kombu v1.4.2 documentation" href="../index.html" />
     <link rel="up" title="User Guide" href="index.html" />
     <link rel="next" title="Simple Interface" href="simple.html" />
     <link rel="prev" title="Connections and transports" href="connections.html" /> 
@@ -42,7 +42,7 @@
         <li class="right" >
           <a href="connections.html" title="Connections and transports"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">Kombu v1.4.0 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu v1.4.2 documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">User Guide</a> &raquo;</li> 
       </ul>
     </div>  
@@ -78,11 +78,14 @@ for priorities using different queues.</p>
 
 <span class="k">class</span> <span class="nc">Worker</span><span class="p">(</span><span class="n">ConsumerMixin</span><span class="p">):</span>
 
-    <span class="k">def</span> <span class="nf">get_consumers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">Consumer</span><span class="p">,</span> <span class="n">channel</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">Consumer</span><span class="p">(</span><span class="n">queues</span><span class="o">=</span><span class="n">task_queues</span><span class="p">,</span>
-                        <span class="n">callbacks</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">process_task</span><span class="p">])</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">connection</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">connection</span> <span class="o">=</span> <span class="n">connection</span>
 
-    <span class="k">def</span> <span class="nf">process_task</span><span class="p">(</span><span class="n">body</span><span class="p">,</span> <span class="n">message</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">get_consumers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">Consumer</span><span class="p">,</span> <span class="n">channel</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">Consumer</span><span class="p">(</span><span class="n">queues</span><span class="o">=</span><span class="n">task_queues</span><span class="p">,</span>
+                        <span class="n">callbacks</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">process_task</span><span class="p">])]</span>
+
+    <span class="k">def</span> <span class="nf">process_task</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">body</span><span class="p">,</span> <span class="n">message</span><span class="p">):</span>
         <span class="n">fun</span> <span class="o">=</span> <span class="n">body</span><span class="p">[</span><span class="s">&quot;fun&quot;</span><span class="p">]</span>
         <span class="n">args</span> <span class="o">=</span> <span class="n">body</span><span class="p">[</span><span class="s">&quot;args&quot;</span><span class="p">]</span>
         <span class="n">kwargs</span> <span class="o">=</span> <span class="n">body</span><span class="p">[</span><span class="s">&quot;kwargs&quot;</span><span class="p">]</span>
@@ -91,7 +94,7 @@ for priorities using different queues.</p>
 
 <span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&quot;__main__&quot;</span><span class="p">:</span>
     <span class="kn">from</span> <span class="nn">kombu</span> <span class="kn">import</span> <span class="n">BrokerConnection</span>
-    <span class="kn">from</span> <span class="nn">kombu.log</span> <span class="kn">import</span> <span class="n">setup_logging</span>
+    <span class="kn">from</span> <span class="nn">kombu.utils.debug</span> <span class="kn">import</span> <span class="n">setup_logging</span>
     <span class="n">setup_logging</span><span class="p">(</span><span class="n">loglevel</span><span class="o">=</span><span class="s">&quot;INFO&quot;</span><span class="p">)</span>
 
     <span class="k">with</span> <span class="n">BrokerConnection</span><span class="p">(</span><span class="s">&quot;amqp://guest:guest@localhost:5672//&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">conn</span><span class="p">:</span>
@@ -112,7 +115,7 @@ for priorities using different queues.</p>
 <span class="kn">from</span> <span class="nn">kombu.common</span> <span class="kn">import</span> <span class="n">maybe_declare</span>
 <span class="kn">from</span> <span class="nn">kombu.pools</span> <span class="kn">import</span> <span class="n">producers</span>
 
-<span class="kn">from</span> <span class="nn">.queues</span> <span class="kn">import</span> <span class="n">task_exchange</span>
+<span class="kn">from</span> <span class="nn">queues</span> <span class="kn">import</span> <span class="n">task_exchange</span>
 
 <span class="n">priority_to_routing_key</span> <span class="o">=</span> <span class="p">{</span><span class="s">&quot;high&quot;</span><span class="p">:</span> <span class="s">&quot;hipri&quot;</span><span class="p">,</span>
                            <span class="s">&quot;mid&quot;</span><span class="p">:</span> <span class="s">&quot;midpri&quot;</span><span class="p">,</span>
@@ -131,10 +134,10 @@ for priorities using different queues.</p>
 
 <span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&quot;__main__&quot;</span><span class="p">:</span>
     <span class="kn">from</span> <span class="nn">kombu</span> <span class="kn">import</span> <span class="n">BrokerConnection</span>
-    <span class="kn">from</span> <span class="nn">.tasks</span> <span class="kn">import</span> <span class="n">hello_task</span>
+    <span class="kn">from</span> <span class="nn">tasks</span> <span class="kn">import</span> <span class="n">hello_task</span>
 
     <span class="n">connection</span> <span class="o">=</span> <span class="n">BrokerConnection</span><span class="p">(</span><span class="s">&quot;amqp://guest:guest@localhost:5672//&quot;</span><span class="p">)</span>
-    <span class="n">send_as_task</span><span class="p">(</span><span class="n">connection</span><span class="p">,</span> <span class="n">fun</span><span class="o">=</span><span class="n">hello_task</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="s">&quot;Kombu&quot;</span><span class="p">,</span> <span class="p">),</span>
+    <span class="n">send_as_task</span><span class="p">(</span><span class="n">connection</span><span class="p">,</span> <span class="n">fun</span><span class="o">=</span><span class="n">hello_task</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="s">&quot;Kombu&quot;</span><span class="p">,</span> <span class="p">),</span> <span class="n">kwargs</span><span class="o">=</span><span class="p">{},</span>
                  <span class="n">priority</span><span class="o">=</span><span class="s">&quot;high&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -171,7 +174,7 @@ for priorities using different queues.</p>
 <div id="searchbox" style="display: none">
   <h3>Quick search</h3>
     <form class="search" action="../search.html" method="get">
-      <input type="text" name="q" size="18" />
+      <input type="text" name="q" />
       <input type="submit" value="Go" />
       <input type="hidden" name="check_keywords" value="yes" />
       <input type="hidden" name="area" value="default" />
@@ -200,13 +203,13 @@ for priorities using different queues.</p>
         <li class="right" >
           <a href="connections.html" title="Connections and transports"
              >previous</a> |</li>
-        <li><a href="../index.html">Kombu v1.4.0 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu v1.4.2 documentation</a> &raquo;</li>
           <li><a href="index.html" >User Guide</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2009-2011, Ask Solem.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.7.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.8.
     </div>
   </body>
 </html>
