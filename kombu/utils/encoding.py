@@ -35,7 +35,8 @@ if is_py3k:
 else:
 
     def str_to_bytes(s):                # noqa
-        return s
+        if isinstance(s, unicode):
+            return s.encode()
 
     def bytes_to_str(s):                # noqa
         return s
