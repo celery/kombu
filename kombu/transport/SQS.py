@@ -285,6 +285,9 @@ class Channel(virtual.Channel):
                    aws_secret_access_key=conninfo.password,
                    port=conninfo.port)
 
+    def _next_delivery_tag(self):
+        return uuid()  # See #73
+
     @property
     def sqs(self):
         if self._sqs is None:
