@@ -2,6 +2,34 @@
  Change history
 ================
 
+.. _version-1.4.2:
+
+1.4.2
+=====
+:release-date: 2011-10-26 05:00 P.M BST
+:by: Ask Solem
+
+* Eventio: Polling should ignore `errno.EINTR`
+
+* SQS: str.encode did only start accepting kwargs after Py2.7.
+
+* simple_task_queue example didn't run correctly (Issue #72).
+
+    Fix contributed by Stefan Eletzhofer.
+
+* Empty messages would not raise an exception not able to be handled
+  by `on_decode_error` (Issue #72)
+
+    Fix contributed by Christophe Chauvet.
+
+* CouchDB: Properly authenticate if user/password set (Issue #70)
+
+    Fix contributed by Rafael Duran Castaneda
+
+* BrokerConnection.Consumer had the wrong signature.
+
+    Fix contributed by Pavel Skvazh
+
 .. _version-1.4.1:
 
 1.4.1
