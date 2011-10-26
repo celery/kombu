@@ -457,7 +457,7 @@ class BrokerConnection(object):
         if channel is None:
             channel = self   # use default channel support.
         return Producer(channel, *args, **kwargs)
-    
+
     def Consumer(self, queues=None, channel=None, *args, **kwargs):
         from kombu.messaging import Consumer
         if channel is None:
