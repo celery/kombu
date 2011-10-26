@@ -17,6 +17,8 @@ try:
 except ImportError:
     cpickle = None  # noqa
 
+from kombu.utils.encoding import str_to_bytes
+
 
 if sys.platform.startswith("java"):
 
@@ -297,7 +299,7 @@ def register_pickle():
     """The fastest serialization method, but restricts
     you to python clients."""
     def deserialize(data):
-        return pickle.loads(data.encode("ascii"))
+        return pickle.loads(str_to_bytes(data))
     registry.register('pickle', pickle.dumps, deserialize,
                       content_type='application/x-python-serialize',
                       content_encoding='binary')
