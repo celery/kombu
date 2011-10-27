@@ -2,10 +2,9 @@
 kombu.utils.encoding
 ====================
 
-Unicode utilities.
-
-:copyright: (c) 2009 - 2011 by Ask Solem.
-:license: BSD, see LICENSE for more details.
+Utilities to encode text, and to safely emit text from running
+applications without crashing with the infamous :exc:`UnicodeDecodeError`
+exception.
 
 """
 from __future__ import absolute_import
@@ -13,7 +12,8 @@ from __future__ import absolute_import
 import sys
 import traceback
 
-__all__ = ["default_encoding", "safe_str", "safe_repr"]
+__all__ = ["str_to_bytes", "bytes_to_str", "from_utf8",
+           "default_encoding", "safe_str", "safe_repr"]
 is_py3k = sys.version_info >= (3, 0)
 
 
