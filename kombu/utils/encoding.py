@@ -24,6 +24,8 @@ if sys.version_info >= (3, 0):
             return s.decode()
         return s
 
+    bytes_t = bytes
+
 else:
 
     def str_to_bytes(s):  # noqa
@@ -33,6 +35,8 @@ else:
 
     def bytes_to_str(s):  # noqa
         return s
+
+    bytes_t = str
 
 
 if sys.platform.startswith("java"):
