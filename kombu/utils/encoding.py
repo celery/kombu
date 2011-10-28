@@ -13,7 +13,8 @@ import sys
 import traceback
 
 __all__ = ["str_to_bytes", "bytes_to_str", "from_utf8",
-           "default_encoding", "safe_str", "safe_repr"]
+           "default_encoding", "safe_str", "safe_repr",
+           "bytes_t", "str_t"]
 is_py3k = sys.version_info >= (3, 0)
 
 
@@ -32,6 +33,9 @@ if is_py3k:
     def from_utf8(s, *args, **kwargs):
         return s
 
+    bytes_t = bytes
+    str_t = str
+
 else:
 
     def str_to_bytes(s):                # noqa
@@ -44,6 +48,9 @@ else:
 
     def from_utf8(s, *args, **kwargs):  # noqa
         return s.encode("utf-8", *args, **kwargs)
+
+    bytes_t = str
+    str_t = unicode
 
 
 if sys.platform.startswith("java"):
