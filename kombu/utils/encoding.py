@@ -24,6 +24,11 @@ if sys.version_info >= (3, 0):
             return s.decode()
         return s
 
+    def ensure_bytes(s):
+        if not isinstance(s, bytes):
+            return bytes_to_str(s)
+        return s
+
     bytes_t = bytes
 
 else:
@@ -37,6 +42,7 @@ else:
         return s
 
     bytes_t = str
+    ensure_bytes = str_to_bytes
 
 
 if sys.platform.startswith("java"):
