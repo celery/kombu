@@ -209,3 +209,10 @@ class test_retry_over_time(unittest.TestCase):
                 self.myfun, self.Predicate,
                 max_retries=1, errback=self.errback, interval_max=14)
         self.assertEqual(self.index, 2)
+
+    @insomnia
+    def test_retry_never(self):
+        self.assertRaises(self.Predicate, utils.retry_over_time,
+                self.myfun, self.Predicate,
+                max_retries=0, errback=self.errback, interval_max=14)
+        self.assertEqual(self.index, 1)

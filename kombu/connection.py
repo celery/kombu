@@ -267,10 +267,8 @@ class BrokerConnection(object):
 
         """
 
-        max_retries = max_retries or 0
-
         @wraps(fun)
-        def _insured(*args, **kwargs):
+        def _ensured(*args, **kwargs):
             got_connection = 0
             for retries in count(0):
                 try:
@@ -278,14 +276,16 @@ class BrokerConnection(object):
                 except self.connection_errors + self.channel_errors, exc:
                     self._debug("ensure got exception: %r" % (exc, ),
                                 exc_info=sys.exc_info())
-                    if got_connection or \
-                            max_retries and retries > max_retries:
+                    if got_connection:
+                        raise
+                    if max_retries is not None and retries > max_retries:
                         raise
                     errback and errback(exc, 0)
                     self._connection = None
                     self.close()
-                    remaining_retries = max_retries and \
-                                            max(max_retries - retries, 1)
+                    remaining_retries = None
+                    if max_retries is not None:
+                        remaining_retries = max(max_retries - retries, 1)
                     self.ensure_connection(errback,
                                            remaining_retries,
                                            interval_start,
@@ -298,8 +298,8 @@ class BrokerConnection(object):
                         on_revive(new_channel)
                     got_connection += 1
 
-        _insured.func_name = _insured.__name__ = "%s(insured)" % fun.__name__
-        return _insured
+        _ensured.func_name = _ensured.__name__ = "%s(ensured)" % fun.__name__
+        return _ensured
 
     def autoretry(self, fun, channel=None, **ensure_options):
         """Decorator for functions supporting a ``channel`` keyword argument.
