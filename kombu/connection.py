@@ -63,16 +63,16 @@ class BrokerConnection(object):
 
     :param URL:  Connection URL.
 
-    :keyword hostname: Default Hostname/address if not provided in the URL.
-    :keyword userid: Default username if not provided in the URL.
+    :keyword hostname: Default host name/address if not provided in the URL.
+    :keyword userid: Default user name if not provided in the URL.
     :keyword password: Default password if not provided in the URL.
     :keyword virtual_host: Default virtual host if not provided in the URL.
     :keyword port: Default port if not provided in the URL.
-    :keyword ssl: Use ssl to connect to the server. Default is ``False``.
+    :keyword ssl: Use SSL to connect to the server. Default is ``False``.
       May not be supported by the specified transport.
     :keyword transport: Default transport if not specified in the URL.
     :keyword connect_timeout: Timeout in seconds for connecting to the
-      server. May not be suported by the specified transport.
+      server. May not be supported by the specified transport.
     :keyword transport_options: A dict of additional connection arguments to
       pass to alternate kombu channel implementations.  Consult the transport
       documentation for available options.
@@ -167,7 +167,7 @@ class BrokerConnection(object):
         """Wait for a single event from the server.
 
         :keyword timeout: Timeout in seconds before we give up.
-            Raises :exc:`socket.timeout` if the timeout is execeded.
+            Raises :exc:`socket.timeout` if the timeout is exceeded.
 
         Usually used from an event loop.
 
@@ -234,7 +234,7 @@ class BrokerConnection(object):
     def ensure(self, obj, fun, errback=None, max_retries=None,
             interval_start=1, interval_step=1, interval_max=1, on_revive=None):
         """Ensure operation completes, regardless of any channel/connection
-        errors occuring.
+        errors occurring.
 
         Will retry by establishing the connection, and reapplying
         the function.
@@ -569,7 +569,7 @@ class BrokerConnection(object):
 
     @property
     def host(self):
-        """The host as a hostname/port pair separated by colon."""
+        """The host as a host name/port pair separated by colon."""
         return ":".join([self.hostname, str(self.port)])
 
     @property

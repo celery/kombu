@@ -16,6 +16,7 @@ from kombu.serialization import encode
 from kombu.syn import blocking as _SYN
 from kombu.utils import maybe_list
 
+
 Exchange = entity.Exchange
 Queue = entity.Queue
 
@@ -109,9 +110,9 @@ class Producer(object):
         :keyword mandatory: Currently not supported.
         :keyword immediate: Currently not supported.
         :keyword priority: Message priority. A number between 0 and 9.
-        :keyword content_type: Content type. Default is autodetect.
-        :keyword content_encoding: Content encoding. Default is autodetect.
-        :keyword serializer: Serializer to use. Default is autodetect.
+        :keyword content_type: Content type. Default is auto-detect.
+        :keyword content_encoding: Content encoding. Default is auto-detect.
+        :keyword serializer: Serializer to use. Default is auto-detect.
         :keyword headers: Mapping of arbitrary headers to pass along
           with the message body.
         :keyword exchange: Override the exchange.  Note that this exchange
@@ -223,7 +224,7 @@ class Consumer(object):
     #:
     #: The signature of the callback must take two arguments: `(message,
     #: exc)`, which is the message that can't be decoded and the exception
-    #: that occured while trying to decode it.
+    #: that occurred while trying to decode it.
     on_decode_error = None
 
     _next_tag = count(1).next   # global

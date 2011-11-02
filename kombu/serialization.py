@@ -111,14 +111,14 @@ class SerializerRegistry(object):
                         "No encoder installed for %s" % serializer)
 
         # If a raw string was sent, assume binary encoding
-        # (it's likely either ASCII or a raw binary file, but 'binary'
-        # charset will encompass both, even if not ideal.
+        # (it's likely either ASCII or a raw binary file, and a character
+        # set of 'binary' will encompass both, even if not ideal.
         if not serializer and isinstance(data, bytes_type):
             # In Python 3+, this would be "bytes"; allow binary data to be
             # sent as a message without getting encoder errors
             return "application/data", "binary", data
 
-        # For unicode objects, force it into a string
+        # For Unicode objects, force it into a string
         if not serializer and isinstance(data, unicode):
             payload = data.encode("utf-8")
             return "text/plain", "utf-8", payload
@@ -138,7 +138,7 @@ class SerializerRegistry(object):
         content_type = content_type or 'application/data'
         content_encoding = (content_encoding or 'utf-8').lower()
 
-        # Don't decode 8-bit strings or unicode objects
+        # Don't decode 8-bit strings or Unicode objects
         if content_encoding not in ('binary', 'ascii-8bit') and \
                 not isinstance(data, unicode):
             data = _decode(data, content_encoding)

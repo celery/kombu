@@ -14,7 +14,7 @@ from kombu.exceptions import NotBoundError
 
 
 class Object(object):
-    """Common baseclass supporting automatic kwargs->attributes handling,
+    """Common base class supporting automatic kwargs->attributes handling,
     and cloning."""
     attrs = ()
 
@@ -63,7 +63,7 @@ class MaybeChannelBound(Object):
         return self
 
     def revive(self, channel):
-        """Revive channel afer connection re-established.
+        """Revive channel after the connection has been re-established.
 
         Used by :meth:`~kombu.connection.BrokerConnection.ensure`.
 

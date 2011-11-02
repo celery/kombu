@@ -42,7 +42,7 @@ Features
 * Consistent exception handling across transports.
 
 * The ability to ensure that an operation is performed by gracefully
-  handling connection and channel errrors.
+  handling connection and channel errors.
 
 * Several annoyances with `amqplib`_ has been fixed, like supporting
   timeouts and the ability to wait for events on more than one channel.
@@ -148,7 +148,7 @@ Quick overview
             connection.drain_events()
 
 
-Or handle channels menually::
+Or handle channels manually::
 
     with connection.channel() as channel:
         producer = Producer(channel, ...)
@@ -177,7 +177,7 @@ just remember to close the objects after use::
 
 
 `Exchange` and `Queue` are simply declarations that can be pickled
-and used in configuaration files etc.
+and used in configuration files etc.
 
 They also support operations, but to do so they need to be bound
 to a channel:

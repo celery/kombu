@@ -212,7 +212,7 @@ class Mailbox(object):
             raise ValueError("destination must be a list/tuple not %s" % (
                     type(destination)))
 
-        # Set reply limit to number of destinations (if specificed)
+        # Set reply limit to number of destinations (if specified)
         if limit is None and destination:
             limit = destination and len(destination) or None
 

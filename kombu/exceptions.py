@@ -36,7 +36,7 @@ class ConnectionLimitExceeded(LimitExceeded):
 
 
 class ChannelLimitExceeded(LimitExceeded):
-    """Maximum number of simultaenous channels exceeded."""
+    """Maximum number of simultaneous channels exceeded."""
     pass
 
 

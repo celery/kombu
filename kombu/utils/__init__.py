@@ -51,7 +51,7 @@ def uuid4():
 
 def uuid():
     """Generate a unique id, having - hopefully - a very small chance of
-    collission.
+    collision.
 
     For now this is provided by :func:`uuid.uuid4`.
     """
@@ -65,7 +65,7 @@ if sys.version_info >= (3, 0):
         return kwargs
 else:
     def kwdict(kwargs):  # noqa
-        """Make sure keyword arguments are not in unicode.
+        """Make sure keyword arguments are not in Unicode.
 
         This should be fixed in newer Python versions,
         see: http://bugs.python.org/issue4978.
