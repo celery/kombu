@@ -85,6 +85,34 @@ class test_Connection(unittest.TestCase):
     def test_ensure_connection(self):
         self.assertTrue(self.conn.ensure_connection())
 
+    def test_ensure_success(self):
+        def publish():
+            return "foobar"
+
+        ensured = self.conn.ensure(None, publish)
+        self.assertEqual(ensured(), "foobar")
+
+    def test_ensure_failure(self):
+        class _CustomError(Exception):
+            pass
+
+        def publish():
+            raise _CustomError("bar")
+
+        ensured = self.conn.ensure(None, publish)
+        self.assertRaises(_CustomError, ensured)
+
+    def test_ensure_connection_failure(self):
+        class _ConnectionError(Exception):
+            pass
+
+        def publish():
+            raise _ConnectionError("failed connection")
+
+        self.conn.transport.connection_errors = (_ConnectionError,)
+        ensured = self.conn.ensure(self.conn, publish)
+        self.assertRaises(_ConnectionError, ensured)
+
     def test_SimpleQueue(self):
         conn = self.conn
         q = conn.SimpleQueue("foo")
