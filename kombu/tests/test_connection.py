@@ -1,10 +1,42 @@
 import pickle
 from kombu.tests.utils import unittest
 
-from kombu.connection import BrokerConnection, Resource
+from kombu.connection import BrokerConnection, Resource, parse_url
 
 from kombu.tests.mocks import Transport
 
+
+class test_connection_utils(unittest.TestCase):
+
+    def setUp(self):
+        self.url = "amqp://user:pass@localhost:5672/my/vhost"
+        self.nopass = "amqp://user@localhost:5672/my/vhost"
+        self.expected = {
+            "transport": "amqp",
+            "userid": "user",
+            "password": "pass",
+            "hostname": "localhost",
+            "port": 5672,
+            "virtual_host": "my/vhost",
+        }
+
+    def test_parse_url(self):
+        result = parse_url(self.url)
+        self.assertDictEqual(result, self.expected)
+
+    def test_parse_generated_as_uri(self):
+        conn = BrokerConnection(self.url)
+        info = conn.info()
+        for k, v in self.expected.items():
+            self.assertEqual(v, self.expected[k])
+        # by default almost the same- no password
+        self.assertEqual(conn.as_uri(), self.nopass)
+        self.assertEqual(conn.as_uri(include_password=True), self.url)
+
+    def test_bogus_scheme(self):
+        conn = BrokerConnection("bogus://localhost:7421")
+        # second parameter must be a callable, thus this little hack
+        self.assertRaises(KeyError, lambda: conn.transport)
 
 class test_Connection(unittest.TestCase):
 

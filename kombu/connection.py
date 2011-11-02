@@ -48,7 +48,7 @@ def parse_url(url):
     hostname, _, port = partition(netloc, ':')
     path = parts.path or ""
     if path and path[0] == '/':
-        path = path[path.index('/') + 1:]
+        path = path[1:]
     return dict({"hostname": hostname,
                  "port": port and int(port) or None,
                  "userid": userid or None,
