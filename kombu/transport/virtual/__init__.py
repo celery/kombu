@@ -12,6 +12,7 @@ Emulates the AMQ API for non-AMQ transports.
 """
 import base64
 import socket
+import warnings
 
 from itertools import count
 from time import sleep, time
@@ -27,6 +28,11 @@ from kombu.utils.finalize import Finalize
 from kombu.transport.virtual.scheduling import FairCycle
 from kombu.transport.virtual.exchange import STANDARD_EXCHANGE_TYPES
 
+UNDELIVERABLE_FMT = """\
+Message could not be delivered: No queues bound to exchange %(exchange)r
+with binding key %(routing_key)r
+"""
+
 
 class Base64(object):
 
@@ -39,6 +45,11 @@ class Base64(object):
 
 class NotEquivalentError(Exception):
     """Entity declaration is not equivalent to the previous declaration."""
+    pass
+
+
+class UndeliverableWarning(UserWarning):
+    """The message could not be delivered to a queue."""
     pass
 
 
@@ -501,6 +512,8 @@ class Channel(AbstractChannel, base.StdChannel):
             return self.typeof(exchange).lookup(self.get_table(exchange),
                                                 exchange, routing_key, default)
         except KeyError:
+            warnings.warn(UndeliverableWarning(UNDELIVERABLE_FMT % {
+                "exchange": exchange, "routing_key": routing_key}))
             self._new_queue(default)
             return [default]
 
