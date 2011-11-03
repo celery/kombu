@@ -28,7 +28,7 @@ class test_connection_utils(unittest.TestCase):
         conn = BrokerConnection(self.url)
         info = conn.info()
         for k, v in self.expected.items():
-            self.assertEqual(v, self.expected[k])
+            self.assertEqual(info[k], v)
         # by default almost the same- no password
         self.assertEqual(conn.as_uri(), self.nopass)
         self.assertEqual(conn.as_uri(include_password=True), self.url)
@@ -37,6 +37,7 @@ class test_connection_utils(unittest.TestCase):
         conn = BrokerConnection("bogus://localhost:7421")
         # second parameter must be a callable, thus this little hack
         self.assertRaises(KeyError, lambda: conn.transport)
+
 
 class test_Connection(unittest.TestCase):
 
