@@ -127,6 +127,11 @@ Quick overview
     # connections
     with BrokerConnection("amqp://guest:guest@localhost//") as conn:
 
+        # Declare the video queue so that the messages can be delivered.
+        # It is a best practice in Kombu to have both publishers and
+        # consmers declare the queue.
+        video_queue(channel).declare()
+
         # produce
         with conn.Producer(exchange=media_exchange,
                            serializer="json", routing_key="video") as producer:
