@@ -20,7 +20,7 @@ from Queue import Empty
 
 from kombu.exceptions import StdChannelError
 from kombu.transport import base
-from kombu.utils import emergency_dump_state, say
+from kombu.utils import emergency_dump_state, say, gen_unique_id
 from kombu.utils.compat import OrderedDict
 from kombu.utils.encoding import str_to_bytes, bytes_to_str
 from kombu.utils.finalize import Finalize
@@ -301,9 +301,6 @@ class Channel(AbstractChannel, base.StdChannel):
     #: Default body encoding.
     #: NOTE: ``transport_options["body_encoding"]`` will override this value.
     body_encoding = "base64"
-
-    #: counter used to generate delivery tags for this channel.
-    _next_delivery_tag = count(1).next
 
     deadletter_queue = "ae.undeliver"
 
@@ -591,6 +588,9 @@ class Channel(AbstractChannel, base.StdChannel):
 
     def _reset_cycle(self):
         self._cycle = FairCycle(self._get, self._active_queues, Empty)
+
+    def _next_delivery_tag(self):
+        return gen_unique_id()
 
     def __enter__(self):
         return self
