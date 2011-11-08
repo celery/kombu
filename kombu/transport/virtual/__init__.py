@@ -13,6 +13,7 @@ Emulates the AMQ API for non-AMQ transports.
 import base64
 import socket
 import warnings
+import os
 
 from itertools import count
 from time import sleep, time
@@ -305,7 +306,12 @@ class Channel(AbstractChannel, base.StdChannel):
     #: counter used to generate delivery tags for this channel.
     _next_delivery_tag = count(1).next
 
-    deadletter_queue = "ae.undeliver"
+    #: Optional queue where messages with no route is delivered.
+    #: Set by ``transport_options["deadletter_queue"]``.
+    deadletter_queue = None
+
+    # List of options to transfer from :attr:`transport_options`.
+    from_transport_options = ("body_encoding", "deadletter_queue")
 
     def __init__(self, connection, **kwargs):
         self.connection = connection
@@ -324,10 +330,11 @@ class Channel(AbstractChannel, base.StdChannel):
         self.channel_id = self.connection._next_channel_id()
 
         topts = self.connection.client.transport_options
-        try:
-            self.body_encoding = topts["body_encoding"]
-        except KeyError:
-            pass
+        for opt_name in self.from_transport_options:
+            try:
+                setattr(self, opt_name, topts[opt_name])
+            except KeyError:
+                pass
 
     def exchange_declare(self, exchange, type="direct", durable=False,
             auto_delete=False, arguments=None, nowait=False):
@@ -509,13 +516,17 @@ class Channel(AbstractChannel, base.StdChannel):
         if default is None:
             default = self.deadletter_queue
         try:
-            return self.typeof(exchange).lookup(self.get_table(exchange),
-                                                exchange, routing_key, default)
+            R = self.typeof(exchange).lookup(self.get_table(exchange),
+                                             exchange, routing_key, default)
         except KeyError:
+            R = []
+
+        if not R and default is not None:
             warnings.warn(UndeliverableWarning(UNDELIVERABLE_FMT % {
                 "exchange": exchange, "routing_key": routing_key}))
             self._new_queue(default)
-            return [default]
+            R = [default]
+        return R
 
     def _restore(self, message):
         """Redeliver message to its original destination."""

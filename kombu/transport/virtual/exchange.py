@@ -51,7 +51,7 @@ class DirectExchange(ExchangeType):
 
     def lookup(self, table, exchange, routing_key, default):
         return [queue for rkey, _, queue in table
-                    if rkey == routing_key] or [default]
+                    if rkey == routing_key]
 
     def deliver(self, message, exchange, routing_key, **kwargs):
         _lookup = self.channel._lookup
@@ -75,7 +75,7 @@ class TopicExchange(ExchangeType):
 
     def lookup(self, table, exchange, routing_key, default):
         return [queue for rkey, pattern, queue in table
-                        if self._match(pattern, routing_key)] or [default]
+                        if self._match(pattern, routing_key)]
 
     def deliver(self, message, exchange, routing_key, **kwargs):
         _lookup = self.channel._lookup

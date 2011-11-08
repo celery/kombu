@@ -28,7 +28,7 @@ class test_Direct(ExchangeCase):
                 ["qFoo", "qFox"])
         self.assertListEqual(self.e.lookup(
                 self.table, "eMoz", "rMoz", "DEFAULT"),
-                ["DEFAULT"])
+                [])
         self.assertListEqual(self.e.lookup(
                 self.table, "eBar", "rBar", None),
                 ["qBar"])
@@ -70,10 +70,10 @@ class test_Topic(ExchangeCase):
                 ["rFoo"])
         self.assertListEqual(self.e.lookup(
                 self.table, "eFoo", "stockxeuropexOSE", None),
-                [None])
+                [])
         self.assertListEqual(self.e.lookup(
                 self.table, "eFoo", "candy.schleckpulver.snap_crackle", None),
-                [None])
+                [])
 
 
 class test_ExchangeType(ExchangeCase):
