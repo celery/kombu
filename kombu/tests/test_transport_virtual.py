@@ -1,9 +1,12 @@
 from kombu.tests.utils import unittest
 
+import warnings
+
 from kombu.connection import BrokerConnection
 from kombu.transport import virtual
 from kombu.utils import uuid
 
+from kombu.tests.compat import catch_warnings
 from kombu.tests.utils import redirect_stdouts
 
 
@@ -322,8 +325,12 @@ class test_Channel(unittest.TestCase):
         self.assertEqual(self.channel._qos.prefetch_count, 128)
 
     def test_lookup__undeliverable(self, n="test_lookup__undeliverable"):
-        self.assertListEqual(self.channel._lookup(n, n, "ae.undeliver"),
-                             ["ae.undeliver"])
+        warnings.resetwarnings()
+        with catch_warnings(record=True) as log:
+            self.assertListEqual(self.channel._lookup(n, n, "ae.undeliver"),
+                                                      ["ae.undeliver"])
+            self.assertTrue(log)
+            self.assertIn("could not be delivered", log[0].message.args[0])
 
     def test_context(self):
         x = self.channel.__enter__()
