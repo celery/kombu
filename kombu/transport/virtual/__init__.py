@@ -13,6 +13,7 @@ Emulates the AMQ API for non-AMQ transports.
 import base64
 import socket
 import warnings
+import os
 
 from itertools import count
 from time import sleep, time
@@ -506,12 +507,15 @@ class Channel(AbstractChannel, base.StdChannel):
         Returns `default` if no queues matched.
 
         """
-        if default is None:
+        deadletter_diabled = os.getenv("KOMBU_DISABLE_DEAD_LETTER")
+        if default is None and not deadletter_diabled:
             default = self.deadletter_queue
         try:
             return self.typeof(exchange).lookup(self.get_table(exchange),
                                                 exchange, routing_key, default)
         except KeyError:
+            if deadletter_diabled:
+                return []
             warnings.warn(UndeliverableWarning(UNDELIVERABLE_FMT % {
                 "exchange": exchange, "routing_key": routing_key}))
             self._new_queue(default)
