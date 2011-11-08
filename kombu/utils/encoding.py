@@ -1,10 +1,14 @@
+# -*- coding: utf-8 -*-
 """
 kombu.utils.encoding
-====================
+~~~~~~~~~~~~~~~~~~~~~
 
 Utilities to encode text, and to safely emit text from running
 applications without crashing with the infamous :exc:`UnicodeDecodeError`
 exception.
+
+:copyright: (c) 2009 - 2011 by Ask Solem.
+:license: BSD, see LICENSE for more details.
 
 """
 from __future__ import absolute_import
@@ -12,9 +16,6 @@ from __future__ import absolute_import
 import sys
 import traceback
 
-__all__ = ["str_to_bytes", "bytes_to_str", "from_utf8",
-           "default_encoding", "safe_str", "safe_repr",
-           "bytes_t", "str_t", "ensure_bytes"]
 is_py3k = sys.version_info >= (3, 0)
 
 
@@ -38,8 +39,8 @@ if is_py3k:
             return str_to_bytes(s)
         return s
 
-    bytes_t = bytes
     str_t = str
+    bytes_t = bytes
 
 else:
 
@@ -54,8 +55,8 @@ else:
     def from_utf8(s, *args, **kwargs):  # noqa
         return s.encode("utf-8", *args, **kwargs)
 
-    bytes_t = str
     str_t = unicode
+    bytes_t = str
     ensure_bytes = str_to_bytes
 
 

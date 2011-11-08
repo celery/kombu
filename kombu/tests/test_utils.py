@@ -119,17 +119,12 @@ class test_emergency_dump_state(unittest.TestCase):
         self.assertFalse(stdout.getvalue())
 
 
-_tried_to_sleep = [None]
-
-
 def insomnia(fun):
 
     @wraps(fun)
     def _inner(*args, **kwargs):
-        _tried_to_sleep[0] = None
-
         def mysleep(i):
-            _tried_to_sleep[0] = i
+            pass
 
         prev_sleep = utils.sleep
         utils.sleep = mysleep
@@ -143,37 +138,39 @@ def insomnia(fun):
 
 class test_retry_over_time(unittest.TestCase):
 
+    def setUp(self):
+        self.index = 0
+
+    class Predicate(Exception):
+        pass
+
+    def myfun(self):
+        if self.index < 9:
+            raise self.Predicate()
+        return 42
+
+    def errback(self, exc, interval):
+        sleepvals = (None, 2.0, 4.0, 6.0, 8.0, 10.0, 12.0, 14.0, 16.0, 16.0)
+        self.index += 1
+        self.assertEqual(interval, sleepvals[self.index])
+
     @insomnia
     def test_simple(self):
-        index = [0]
-
-        class Predicate(Exception):
-            pass
-
-        def myfun():
-            sleepvals = {0: None,
-                         1: 2.0,
-                         2: 4.0,
-                         3: 6.0,
-                         4: 8.0,
-                         5: 10.0,
-                         6: 12.0,
-                         7: 14.0,
-                         8: 16.0,
-                         9: 16.0}
-            self.assertEqual(_tried_to_sleep[0], sleepvals[index[0]])
-            if index[0] < 9:
-                raise Predicate()
-            return 42
-
-        def errback(exc, interval):
-            index[0] += 1
-
-        x = utils.retry_over_time(myfun, Predicate, errback=errback,
-                                                    interval_max=14)
+        x = utils.retry_over_time(self.myfun, self.Predicate,
+                errback=self.errback, interval_max=14)
         self.assertEqual(x, 42)
-        _tried_to_sleep[0] = None
-        index[0] = 0
-        self.assertRaises(Predicate,
-                          utils.retry_over_time, myfun, Predicate,
-                          max_retries=1, errback=errback, interval_max=14)
+        self.assertEqual(self.index, 9)
+
+    @insomnia
+    def test_retry_once(self):
+        self.assertRaises(self.Predicate, utils.retry_over_time,
+                self.myfun, self.Predicate,
+                max_retries=1, errback=self.errback, interval_max=14)
+        self.assertEqual(self.index, 2)
+
+    @insomnia
+    def test_retry_never(self):
+        self.assertRaises(self.Predicate, utils.retry_over_time,
+                self.myfun, self.Predicate,
+                max_retries=0, errback=self.errback, interval_max=14)
+        self.assertEqual(self.index, 1)

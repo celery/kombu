@@ -36,7 +36,7 @@ class Broadcast(Queue):
     """Convenience class used to define broadcast queues.
 
     Every queue instance will have a unique name,
-    and both the queue and exchange is configued with auto deletion.
+    and both the queue and exchange is configured with auto deletion.
 
     :keyword name: This is used as the name of the exchange.
     :keyword queue: By default a unique id is used for the queue

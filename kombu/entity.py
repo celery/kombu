@@ -483,7 +483,7 @@ class Queue(MaybeChannelBound):
             if the queue has consumers.
 
         :keyword if_empty: If set, the server will only delete the queue
-            if it is empty. If if's not empty a channel error will be raised.
+            if it is empty. If it is not empty a channel error will be raised.
 
         :keyword nowait: Do not wait for a reply.
 

@@ -55,7 +55,7 @@ def parse_url(url):
     hostname, _, port = netloc.partition(':')
     path = parts.path or ""
     if path and path[0] == '/':
-        path = path[path.index('/') + 1:]
+        path = path[1:]
     return dict({"hostname": hostname,
                  "port": port and int(port) or None,
                  "userid": userid or None,
@@ -70,15 +70,16 @@ class BrokerConnection(object):
 
     :param URL:  Connection URL.
 
-    :keyword hostname: Default Hostname/address if not provided in the URL.
-    :keyword userid: Default username if not provided in the URL.
+    :keyword hostname: Default host name/address if not provided in the URL.
+    :keyword userid: Default user name if not provided in the URL.
     :keyword password: Default password if not provided in the URL.
     :keyword virtual_host: Default virtual host if not provided in the URL.
     :keyword port: Default port if not provided in the URL.
-    :keyword ssl: Use ssl to connect to the server. Default is ``False``.
+    :keyword ssl: Use SSL to connect to the server. Default is ``False``.
+      May not be supported by the specified transport.
     :keyword transport: Default transport if not specified in the URL.
     :keyword connect_timeout: Timeout in seconds for connecting to the
-      server. May not be suported by the specified transport.
+      server. May not be supported by the specified transport.
     :keyword transport_options: A dict of additional connection arguments to
       pass to alternate kombu channel implementations.  Consult the transport
       documentation for available options.
@@ -173,7 +174,7 @@ class BrokerConnection(object):
         """Wait for a single event from the server.
 
         :keyword timeout: Timeout in seconds before we give up.
-            Raises :exc:`socket.timeout` if the timeout is execeded.
+            Raises :exc:`socket.timeout` if the timeout is exceeded.
 
         Usually used from an event loop.
 
@@ -240,7 +241,7 @@ class BrokerConnection(object):
     def ensure(self, obj, fun, errback=None, max_retries=None,
             interval_start=1, interval_step=1, interval_max=1, on_revive=None):
         """Ensure operation completes, regardless of any channel/connection
-        errors occuring.
+        errors occurring.
 
         Will retry by establishing the connection, and reapplying
         the function.
@@ -273,10 +274,8 @@ class BrokerConnection(object):
 
         """
 
-        max_retries = max_retries or 0
-
         @wraps(fun)
-        def _insured(*args, **kwargs):
+        def _ensured(*args, **kwargs):
             got_connection = 0
             for retries in count(0):
                 try:
@@ -284,14 +283,16 @@ class BrokerConnection(object):
                 except self.connection_errors + self.channel_errors, exc:
                     self._debug("ensure got exception: %r" % (exc, ),
                                 exc_info=sys.exc_info())
-                    if got_connection or \
-                            max_retries and retries > max_retries:
+                    if got_connection:
+                        raise
+                    if max_retries is not None and retries > max_retries:
                         raise
                     errback and errback(exc, 0)
                     self._connection = None
                     self.close()
-                    remaining_retries = max_retries and \
-                                            max(max_retries - retries, 1)
+                    remaining_retries = None
+                    if max_retries is not None:
+                        remaining_retries = max(max_retries - retries, 1)
                     self.ensure_connection(errback,
                                            remaining_retries,
                                            interval_start,
@@ -304,8 +305,8 @@ class BrokerConnection(object):
                         on_revive(new_channel)
                     got_connection += 1
 
-        _insured.func_name = _insured.__name__ = "%s(insured)" % fun.__name__
-        return _insured
+        _ensured.func_name = _ensured.__name__ = "%s(ensured)" % fun.__name__
+        return _ensured
 
     def autoretry(self, fun, channel=None, **ensure_options):
         """Decorator for functions supporting a ``channel`` keyword argument.
@@ -575,7 +576,7 @@ class BrokerConnection(object):
 
     @property
     def host(self):
-        """The host as a hostname/port pair separated by colon."""
+        """The host as a host name/port pair separated by colon."""
         return ":".join([self.hostname, str(self.port)])
 
     @property
