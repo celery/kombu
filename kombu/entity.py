@@ -11,7 +11,6 @@ Exchange and Queue declarations.
 from __future__ import absolute_import
 
 from .abstract import MaybeChannelBound
-from .syn import blocking as _SYN
 
 TRANSIENT_DELIVERY_MODE = 1
 PERSISTENT_DELIVERY_MODE = 2
@@ -150,12 +149,12 @@ class Exchange(MaybeChannelBound):
             response will not be waited for. Default is :const:`False`.
 
         """
-        return _SYN(self.channel.exchange_declare, exchange=self.name,
-                                                type=self.type,
-                                                durable=self.durable,
-                                                auto_delete=self.auto_delete,
-                                                arguments=self.arguments,
-                                                nowait=nowait)
+        return self.channel.exchange_declare(exchange=self.name,
+                                             type=self.type,
+                                             durable=self.durable,
+                                             auto_delete=self.auto_delete,
+                                             arguments=self.arguments,
+                                             nowait=nowait)
 
     def Message(self, body, delivery_mode=None, priority=None,
             content_type=None, content_encoding=None, properties=None,
@@ -224,9 +223,9 @@ class Exchange(MaybeChannelBound):
             response will not be waited for. Default is :const:`False`.
 
         """
-        return _SYN(self.channel.exchange_delete, exchange=self.name,
-                                                  if_unused=if_unused,
-                                                  nowait=nowait)
+        return self.channel.exchange_delete(exchange=self.name,
+                                            if_unused=if_unused,
+                                            nowait=nowait)
 
     def __eq__(self, other):
         if isinstance(other, Exchange):
@@ -396,13 +395,13 @@ class Queue(MaybeChannelBound):
             without modifying the server state.
 
         """
-        ret = _SYN(self.channel.queue_declare, queue=self.name,
-                                               passive=passive,
-                                               durable=self.durable,
-                                               exclusive=self.exclusive,
-                                               auto_delete=self.auto_delete,
-                                               arguments=self.queue_arguments,
-                                               nowait=nowait)
+        ret = self.channel.queue_declare(queue=self.name,
+                                         passive=passive,
+                                         durable=self.durable,
+                                         exclusive=self.exclusive,
+                                         auto_delete=self.auto_delete,
+                                         arguments=self.queue_arguments,
+                                         nowait=nowait)
         if not self.name:
             self.name = ret[0]
         return ret
@@ -413,11 +412,11 @@ class Queue(MaybeChannelBound):
         :keyword nowait: Do not wait for a reply.
 
         """
-        return _SYN(self.channel.queue_bind, queue=self.name,
-                                             exchange=self.exchange.name,
-                                             routing_key=self.routing_key,
-                                             arguments=self.binding_arguments,
-                                             nowait=nowait)
+        return self.channel.queue_bind(queue=self.name,
+                                       exchange=self.exchange.name,
+                                       routing_key=self.routing_key,
+                                       arguments=self.binding_arguments,
+                                       nowait=nowait)
 
     def get(self, no_ack=None):
         """Poll the server for a new message.
@@ -434,14 +433,14 @@ class Queue(MaybeChannelBound):
         is more important than performance.
 
         """
-        message = _SYN(self.channel.basic_get, queue=self.name, no_ack=no_ack)
+        message = self.channel.basic_get(queue=self.name, no_ack=no_ack)
         if message is not None:
             return self.channel.message_to_python(message)
 
     def purge(self, nowait=False):
         """Remove all messages from the queue."""
-        return _SYN(self.channel.queue_purge, queue=self.name,
-                                              nowait=nowait) or 0
+        return self.channel.queue_purge(queue=self.name,
+                                        nowait=nowait) or 0
 
     def consume(self, consumer_tag='', callback=None, no_ack=None,
             nowait=False):
@@ -488,17 +487,17 @@ class Queue(MaybeChannelBound):
         :keyword nowait: Do not wait for a reply.
 
         """
-        return _SYN(self.channel.queue_delete, queue=self.name,
-                                               if_unused=if_unused,
-                                               if_empty=if_empty,
-                                               nowait=nowait)
+        return self.channel.queue_delete(queue=self.name,
+                                         if_unused=if_unused,
+                                         if_empty=if_empty,
+                                         nowait=nowait)
 
     def unbind(self):
         """Delete the binding on the server."""
-        return _SYN(self.channel.queue_unbind, queue=self.name,
-                                            exchange=self.exchange.name,
-                                            routing_key=self.routing_key,
-                                            arguments=self.binding_arguments)
+        return self.channel.queue_unbind(queue=self.name,
+                                         exchange=self.exchange.name,
+                                         routing_key=self.routing_key,
+                                         arguments=self.binding_arguments)
 
     def __eq__(self, other):
         if isinstance(other, Queue):

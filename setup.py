@@ -114,7 +114,7 @@ setup(
     test_suite="nose.collector",
     install_requires=[
         'anyjson>=0.3.1',
-        'amqplib>=1.0',
+        'kamqp',
     ],
     tests_require=tests_require,
     classifiers=[

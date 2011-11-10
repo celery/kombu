@@ -93,6 +93,11 @@ class ConsumerMixin(LogMixin):
             Also keyword arguments to ``consume`` are forwarded
             to this handler.
 
+        * :meth:`on_consume_end`
+
+            Handler called after the consumers are cancelled.
+            Takes arguments ``(connection, channel)``.
+
         * :meth:`on_iteration`
 
             Handler called for every iteration while draining
@@ -132,6 +137,9 @@ class ConsumerMixin(LogMixin):
     def on_consume_ready(self, connection, channel, consumers, **kwargs):
         pass
 
+    def on_consume_end(self, connection, channel):
+        pass
+
     def on_iteration(self):
         pass
 
@@ -168,7 +176,6 @@ class ConsumerMixin(LogMixin):
                 for i in limit and xrange(limit) or count():
                     if self.should_stop:
                         break
-                    self.debug("DRAIN EVENTS")
                     self.on_iteration()
                     try:
                         connection.drain_events(timeout=safety_interval)
@@ -212,6 +219,7 @@ class ConsumerMixin(LogMixin):
             with self._consume_from(*self.get_consumers(cls, channel)) as c:
                 yield conn, channel, c
             self.debug("Consumers cancelled")
+            self.on_consume_end(connection, channel)
         self.debug("Connection closed")
 
     @contextmanager

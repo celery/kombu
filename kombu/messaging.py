@@ -15,7 +15,6 @@ from itertools import count
 from . import entity
 from .compression import compress
 from .serialization import encode
-from .syn import blocking as _SYN
 from .utils import maybe_list
 
 __all__ = ["Exchange", "Queue", "Producer", "Consumer"]
@@ -225,7 +224,7 @@ class Consumer(object):
     :keyword on_decode_error: see :attr:`on_decode_error`.
 
     """
-    #: The connection channel to use.
+    #: The connection/channel to use for this consumer.
     channel = None
 
     #: A single :class:`~kombu.entity.Queue`, or a list of queues to
@@ -410,9 +409,9 @@ class Consumer(object):
           Currently not supported by RabbitMQ.
 
         """
-        return _SYN(self.channel.basic_qos, prefetch_size,
-                                            prefetch_count,
-                                            apply_global)
+        return self.channel.basic_qos(prefetch_size,
+                                      prefetch_count,
+                                      apply_global)
 
     def recover(self, requeue=False):
         """Redeliver unacknowledged messages.
@@ -426,7 +425,7 @@ class Consumer(object):
           delivering it to an alternative subscriber.
 
         """
-        return _SYN(self.channel.basic_recover, requeue=requeue)
+        return self.channel.basic_recover(requeue=requeue)
 
     def receive(self, body, message):
         """Method called when a message is received.
@@ -472,6 +471,7 @@ class Consumer(object):
             message = self.channel.message_to_python(raw_message)
             decoded = message.payload
         except Exception, exc:
+            raise
             if not self.on_decode_error:
                 raise
             self.on_decode_error(message, exc)
