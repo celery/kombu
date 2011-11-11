@@ -38,10 +38,15 @@ URI_FORMAT = """\
 
 
 def parse_url(url):
-    port = path = None
-    auth = userid = password = None
+    port = path = auth = userid = password = None
     scheme = urlparse(url).scheme
     parts = urlparse(url.replace("%s://" % (scheme, ), "http://"))
+
+    # The first pymongo.Connection() argument (host) can be
+    # a mongodb connection URI. If this is the case, don't
+    # use port but let pymongo get the port(s) from the URI instead.
+    # This enables the use of replica sets and sharding.
+    # See pymongo.Connection() for more info.
     if scheme != 'mongodb':
         netloc = parts.netloc
         if '@' in netloc:
@@ -53,7 +58,9 @@ def parse_url(url):
             path = path[1:]
         port = int(port)
     else:
+        # strip the scheme since it is appended automatically
         hostname = url[len('mongodb://'):]
+
     return dict({"hostname": hostname,
                  "port": port or None,
                  "userid": userid or None,
@@ -399,8 +406,13 @@ class BrokerConnection(object):
                 url += ':' + password
             url += '@'
         url += fields["hostname"]
+
+        # If the transport equals 'mongodb' the
+        # hostname contains a full mongodb connection
+        # URI. Let pymongo retreive the port from there.
         if port and transport != "mongodb":
             url += ':' + str(port)
+
         url += '/' + fields["virtual_host"]
         return url
 
