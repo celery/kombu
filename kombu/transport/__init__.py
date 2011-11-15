@@ -76,6 +76,7 @@ TRANSPORT_ALIASES = {
     "memory": "kombu.transport.memory.Transport",
     "redis": "kombu.transport.pyredis.Transport",
     "SQS": "kombu.transport.SQS.Transport",
+    "sqs": "kombu.transport.SQS.Transport",
     "beanstalk": "kombu.transport.beanstalk.Transport",
     "mongodb": "kombu.transport.mongodb.Transport",
     "couchdb": "kombu.transport.pycouchdb.Transport",
