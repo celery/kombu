@@ -30,9 +30,9 @@ from kombu.utils.encoding import safe_str
 
 # dots are replaced by dash, all other punctuation
 # replaced by underscore.
-CHARS_REPLACE_TABLE = dict((ord(c), 95)
+CHARS_REPLACE_TABLE = dict((ord(c), 0x5f)
                            for c in string.punctuation if c not in '-_.')
-CHARS_REPLACE_TABLE[46] = 45
+CHARS_REPLACE_TABLE[0x2e] = 0x2d  # '.' -> '-'
 
 
 class Table(Domain):
