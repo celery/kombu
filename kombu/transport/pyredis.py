@@ -17,6 +17,7 @@ from kombu.exceptions import VersionMismatch
 from kombu.transport import virtual
 from kombu.utils import eventio
 from kombu.utils import cached_property
+from kombu.utils.encoding import str_t
 
 DEFAULT_PORT = 6379
 DEFAULT_DB = 0
@@ -326,7 +327,7 @@ class Channel(virtual.Channel):
         if version < (2, 4, 4):
             raise VersionMismatch(
                 "Redis transport requires redis-py versions 2.4.4 or later. "
-                "You have %r" % (".".join(version), ))
+                "You have %r" % (".".join(map(str_t, version)), ))
 
         # KombuRedis maintains a connection attribute on it's instance and
         # uses that when executing commands

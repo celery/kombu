@@ -29,6 +29,7 @@ if sys.version_info >= (3, 0):
             return bytes_to_str(s)
         return s
 
+    str_t = str
     bytes_t = bytes
 
 else:
@@ -41,6 +42,7 @@ else:
     def bytes_to_str(s):  # noqa
         return s
 
+    str_t = unicode
     bytes_t = str
     ensure_bytes = str_to_bytes
 

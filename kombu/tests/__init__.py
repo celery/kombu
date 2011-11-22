@@ -1,3 +1,5 @@
+from kombu.exceptions import VersionMismatch
+
 moduleindex = ("kombu.abstract",
                "kombu.compat",
                "kombu.compression",
@@ -30,5 +32,5 @@ def setup():
     for module in moduleindex:
         try:
             __import__(module)
-        except ImportError:
+        except (ImportError, VersionMismatch):
             pass
