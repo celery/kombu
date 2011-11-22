@@ -16,7 +16,7 @@ from itertools import chain
 
 from .connection import Resource
 from .messaging import Producer
-from .utils import HashingDict
+from .utils import EqualityDict
 
 __all__ = ["ProducerPool", "PoolGroup", "register_group",
            "connections", "producers", "get_limit", "set_limit", "reset"]
@@ -64,7 +64,7 @@ class ProducerPool(Resource):
         super(ProducerPool, self).release(resource)
 
 
-class PoolGroup(HashingDict):
+class PoolGroup(EqualityDict):
 
     def __init__(self, limit=None):
         self.limit = limit

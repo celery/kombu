@@ -23,25 +23,32 @@ try:
 except:
     ctypes = None  # noqa
 
-__all__ = ["HashingDict", "say", "uuid", "kwdict", "maybe_list",
+__all__ = ["EqualityDict", "say", "uuid", "kwdict", "maybe_list",
            "fxrange", "fxrangemax", "retry_over_time",
            "emergency_dump_state", "cached_property",
            "reprkwargs", "reprcall", "nested"]
 
 
-class HashingDict(dict):
+def eqhash(o):
+    try:
+        return o.__eqhash__()
+    except AttributeError:
+        return hash(o)
+
+
+class EqualityDict(dict):
 
     def __getitem__(self, key):
-        h = hash(key)
+        h = eqhash(key)
         if h not in self:
             return self.__missing__(key)
         return dict.__getitem__(self, h)
 
     def __setitem__(self, key, value):
-        return dict.__setitem__(self, hash(key), value)
+        return dict.__setitem__(self, eqhash(key), value)
 
     def __delitem__(self, key):
-        return dict.__delitem__(self, hash(key))
+        return dict.__delitem__(self, eqhash(key))
 
 
 class HashingDict(dict):
