@@ -390,7 +390,7 @@ class BrokerConnection(object):
                 info[key] = value
         return info
 
-    def __hash__(self):
+    def __eqhash__(self):
         return hash("|".join(map(str, self.info().itervalues())))
 
     def as_uri(self, include_password=False):
@@ -644,22 +644,22 @@ class Resource(object):
         if self.limit:
             while 1:
                 try:
-                    resource = self._resource.get(block=block, timeout=timeout)
+                    R = self._resource.get(block=block, timeout=timeout)
                 except Empty:
                     self._add_when_empty()
                 else:
-                    resource = self.prepare(resource)
-                    self._dirty.add(resource)
+                    R = self.prepare(R)
+                    self._dirty.add(R)
                     break
         else:
-            resource = self.prepare(self.new())
+            R = self.prepare(self.new())
 
         @wraps(self.release)
         def _release():
-            self.release(resource)
-        resource.release = _release
+            self.release(R)
+        R.release = _release
 
-        return resource
+        return R
 
     def prepare(self, resource):
         return resource
@@ -675,9 +675,7 @@ class Resource(object):
         of defective resources."""
         if self.limit:
             self._dirty.discard(resource)
-            self.close_resource(resource)
-        else:
-            self.close_resource(resource)
+        self.close_resource(resource)
 
     def release(self, resource):
         """Release resource so it can be used by another thread.
@@ -725,18 +723,21 @@ class Resource(object):
                 mutex.release()
 
     if os.environ.get("KOMBU_DEBUG_POOL"):
-
         _orig_acquire = acquire
         _orig_release = release
 
         _next_resource_id = 0
 
         def acquire(self, *args, **kwargs):  # noqa
+            import traceback
             id = self._next_resource_id = self._next_resource_id + 1
             print("+%s ACQUIRE %s" % (id, self.__class__.__name__, ))
             r = self._orig_acquire(*args, **kwargs)
             r._resource_id = id
             print("-%s ACQUIRE %s" % (id, self.__class__.__name__, ))
+            if not hasattr(r, "acquired_by"):
+                r.acquired_by = []
+            r.acquired_by.append(traceback.format_stack())
             return r
 
         def release(self, resource):  # noqa

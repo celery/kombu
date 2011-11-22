@@ -14,7 +14,7 @@ from itertools import chain
 
 from kombu.connection import Resource
 from kombu.messaging import Producer
-from kombu.utils import HashingDict
+from kombu.utils import EqualityDict
 
 __all__ = ["ProducerPool", "PoolGroup", "register_group",
            "connections", "producers", "get_limit", "set_limit", "reset"]
@@ -60,7 +60,7 @@ class ProducerPool(Resource):
         super(ProducerPool, self).release(resource)
 
 
-class PoolGroup(HashingDict):
+class PoolGroup(EqualityDict):
 
     def __init__(self, limit=None):
         self.limit = limit
