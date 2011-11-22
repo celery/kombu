@@ -38,19 +38,31 @@ URI_FORMAT = """\
 
 
 def parse_url(url):
-    auth = userid = password = None
+    port = path = auth = userid = password = None
     scheme = urlparse(url).scheme
     parts = urlparse(url.replace("%s://" % (scheme, ), "http://"))
-    netloc = parts.netloc
-    if '@' in netloc:
-        auth, _, netloc = partition(parts.netloc, '@')
-        userid, _, password = partition(auth, ':')
-    hostname, _, port = partition(netloc, ':')
-    path = parts.path or ""
-    if path and path[0] == '/':
-        path = path[1:]
+
+    # The first pymongo.Connection() argument (host) can be
+    # a mongodb connection URI. If this is the case, don't
+    # use port but let pymongo get the port(s) from the URI instead.
+    # This enables the use of replica sets and sharding.
+    # See pymongo.Connection() for more info.
+    if scheme != 'mongodb':
+        netloc = parts.netloc
+        if '@' in netloc:
+            auth, _, netloc = partition(parts.netloc, '@')
+            userid, _, password = partition(auth, ':')
+        hostname, _, port = partition(netloc, ':')
+        path = parts.path or ""
+        if path and path[0] == '/':
+            path = path[1:]
+        port = int(port)
+    else:
+        # strip the scheme since it is appended automatically
+        hostname = url[len('mongodb://'):]
+
     return dict({"hostname": hostname,
-                 "port": port and int(port) or None,
+                 "port": port or None,
                  "userid": userid or None,
                  "password": password or None,
                  "transport": scheme,
@@ -386,15 +398,21 @@ class BrokerConnection(object):
         port = fields["port"]
         userid = fields["userid"]
         password = fields["password"]
-        url = "%s://" % fields["transport"]
+        transport = fields["transport"]
+        url = "%s://" % transport
         if userid:
             url += userid
             if include_password and password:
                 url += ':' + password
             url += '@'
         url += fields["hostname"]
-        if port:
+
+        # If the transport equals 'mongodb' the
+        # hostname contains a full mongodb connection
+        # URI. Let pymongo retreive the port from there.
+        if port and transport != "mongodb":
             url += ':' + str(port)
+
         url += '/' + fields["virtual_host"]
         return url
 
