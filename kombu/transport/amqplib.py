@@ -13,9 +13,6 @@ from __future__ import absolute_import
 import socket
 
 from kamqp import client_0_8 as amqp
-from kamqp.client_0_8.channel import Channel as _Channel
-from kamqp.client_0_8.exceptions import AMQPConnectionError
-from kamqp.client_0_8.exceptions import AMQPChannelError
 
 from . import base
 from ..utils.encoding import str_to_bytes
@@ -53,7 +50,7 @@ class Message(base.Message):
                 **kwargs)
 
 
-class Channel(_Channel, base.StdChannel):
+class Channel(amqp.Channel, base.StdChannel):
     Message = Message
 
     def prepare_message(self, message_data, priority=None,
@@ -82,12 +79,11 @@ class Transport(base.Transport):
 
     # it's very annoying that amqplib sometimes raises AttributeError
     # if the connection is lost, but nothing we can do about that here.
-    connection_errors = (AMQPConnectionError,
+    connection_errors = (amqp.AMQPRecoverableError,
                          socket.error,
                          IOError,
-                         OSError,
-                         AttributeError)
-    channel_errors = (AMQPChannelError, )
+                         OSError)
+    channel_errors = (amqp.AMQPChannelError, )
 
     def __init__(self, client, **kwargs):
         self.client = client
@@ -114,7 +110,8 @@ class Transport(base.Transport):
                                virtual_host=conninfo.virtual_host,
                                insist=conninfo.insist,
                                ssl=conninfo.ssl,
-                               connect_timeout=conninfo.connect_timeout)
+                               connect_timeout=conninfo.connect_timeout,
+                               **conninfo.transport_options)
         conn.client = self.client
         return conn
 
