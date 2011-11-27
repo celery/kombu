@@ -2,6 +2,71 @@
  Change history
 ================
 
+.. _version-1.5.0:
+
+1.5.0
+=====
+:release-date: 2011-11-27 06:00 P.M GMT
+:by: Ask Solem
+
+* kombu.pools: Fixed a bug resulting in resources not being properly released.
+
+  This was caused by the use of ``__hash__`` to distinguish them.
+
+* Virtual transports: Dead-letter queue is now disabled by default.
+
+    The dead-letter queue was enabled by default to help application
+    authors, but now that Kombu is stable it should be removed.
+    There are after all many cases where messages should just be dropped
+    when there are no queues to buffer them, and keeping them without
+    supporting automatic cleanup is rather considered a resource leak
+    than a feature.
+
+    If wanted the dead-letter queue can still be enabled, by using
+    the ``deadletter_queue`` transport option::
+
+        >>> x = BrokerConnection("redis://",
+        ...       transport_options={"deadletter_queue": "ae.undeliver"})
+
+    In addition, an :class:`UndeliverableWarning` is now emitted when
+    the dead-letter queue is enabled and a message ends up there.
+
+    Contributed by Ionel Maries Cristian.
+
+* MongoDB transport now supports Replicasets (Issue #81).
+
+    Contributed by Ivan Metzlar.
+
+* The ``Connection.ensure`` methods now accepts a ``max_retries`` value
+  of 0.
+
+    A value of 0 now means *do not retry*, which is distinct from :const:`None`
+    which means *retry indefinitely*.
+
+    Contributed by Dan McGee.
+
+* SQS Transport: Now has a lowercase ``sqs`` alias, so that it can be
+  used with broker URLs (Issue #82).
+
+    Fix contributed by Hong Minhee
+
+* SQS Transport: Fixes KeyError on message acknowledgements (Issue #73).
+
+    The SQS transport now uses UUID's for delivery tags, rather than
+    a counter.
+
+    Fix contributed by Brian Bernstein.
+
+* SQS Transport: Unicode related fixes (Issue #82).
+
+    Fix contributed by Hong Minhee.
+
+* Redis version check could crash because of improper handling of types
+  (Issue #63).
+
+* Fixed error with `Resource.force_close_all`, when resources
+  not yet properly initialized.  (Issue #78).
+
 .. _version-1.4.3:
 
 1.4.3
