@@ -1,0 +1,356 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Consumers &mdash; Kombu 1.5.0 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/celery.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.5.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="Kombu 1.5.0 documentation" href="../index.html" />
+    <link rel="up" title="User Guide" href="index.html" />
+    <link rel="next" title="Examples" href="examples.html" />
+    <link rel="prev" title="Producers" href="producers.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="examples.html" title="Examples"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="producers.html" title="Producers"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../index.html">Kombu 1.5.0 documentation</a> &raquo;</li>
+          <li><a href="index.html" accesskey="U">User Guide</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="consumers">
+<span id="guide-consumers"></span><h1>Consumers<a class="headerlink" href="#consumers" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="basics">
+<span id="consumer-basics"></span><h2>Basics<a class="headerlink" href="#basics" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-kombu.messaging">
+<span id="reference"></span><h2>Reference<a class="headerlink" href="#module-kombu.messaging" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt>
+<em class="property">class </em><tt class="descclassname">kombu.messaging.</tt><tt class="descname">Consumer</tt><big>(</big><em>channel</em>, <em>queues</em>, <em>no_ack=None</em>, <em>auto_declare=None</em>, <em>callbacks=None</em>, <em>on_decode_error=None</em><big>)</big></dt>
+<dd><p>Message consumer.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>channel</strong> &#8211; see <tt class="xref py py-attr docutils literal"><span class="pre">channel</span></tt>.</li>
+<li><strong>queues</strong> &#8211; see <tt class="xref py py-attr docutils literal"><span class="pre">queues</span></tt>.</li>
+<li><strong>no_ack</strong> &#8211; see <tt class="xref py py-attr docutils literal"><span class="pre">no_ack</span></tt>.</li>
+<li><strong>auto_declare</strong> &#8211; see <tt class="xref py py-attr docutils literal"><span class="pre">auto_declare</span></tt></li>
+<li><strong>callbacks</strong> &#8211; see <tt class="xref py py-attr docutils literal"><span class="pre">callbacks</span></tt>.</li>
+<li><strong>on_decode_error</strong> &#8211; see <tt class="xref py py-attr docutils literal"><span class="pre">on_decode_error</span></tt>.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="attribute">
+<dt>
+<tt class="descclassname">Consumer.</tt><tt class="descname">auto_declare</tt><em class="property"> = True</em></dt>
+<dd><p>By default all entities will be declared at instantiation, if you
+want to handle this manually you can set this to <tt class="xref py py-const docutils literal"><span class="pre">False</span></tt>.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt>
+<tt class="descclassname">Consumer.</tt><tt class="descname">callbacks</tt><em class="property"> = None</em></dt>
+<dd><p>List of callbacks called in order when a message is received.</p>
+<p>The signature of the callbacks must take two arguments:
+<cite>(body, message)</cite>, which is the decoded message body and
+the <cite>Message</cite> instance (a subclass of
+<a class="reference internal" href="../reference/kombu.transport.base.html#kombu.transport.base.Message" title="kombu.transport.base.Message"><tt class="xref py py-class docutils literal"><span class="pre">Message</span></tt></a>).</p>
+</dd></dl>
+
+<dl class="method">
+<dt>
+<tt class="descclassname">Consumer.</tt><tt class="descname">cancel</tt><big>(</big><big>)</big></dt>
+<dd><p>End all active queue consumers.</p>
+<p>This does not affect already delivered messages, but it does
+mean the server will not send any more messages for this consumer.</p>
+</dd></dl>
+
+<dl class="method">
+<dt>
+<tt class="descclassname">Consumer.</tt><tt class="descname">cancel_by_queue</tt><big>(</big><em>queue</em><big>)</big></dt>
+<dd><p>Cancel consumer by queue name.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt>
+<tt class="descclassname">Consumer.</tt><tt class="descname">channel</tt><em class="property"> = None</em></dt>
+<dd><p>The connection channel to use.</p>
+</dd></dl>
+
+<dl class="method">
+<dt>
+<tt class="descclassname">Consumer.</tt><tt class="descname">close</tt><big>(</big><big>)</big></dt>
+<dd><p>End all active queue consumers.</p>
+<p>This does not affect already delivered messages, but it does
+mean the server will not send any more messages for this consumer.</p>
+</dd></dl>
+
+<dl class="method">
+<dt>
+<tt class="descclassname">Consumer.</tt><tt class="descname">consume</tt><big>(</big><em>no_ack=None</em><big>)</big></dt>
+<dd><p>Register consumer on server.</p>
+</dd></dl>
+
+<dl class="method">
+<dt>
+<tt class="descclassname">Consumer.</tt><tt class="descname">declare</tt><big>(</big><big>)</big></dt>
+<dd><p>Declare queues, exchanges and bindings.</p>
+<p>This is done automatically at instantiation if <tt class="xref py py-attr docutils literal"><span class="pre">auto_declare</span></tt>
+is set.</p>
+</dd></dl>
+
+<dl class="method">
+<dt>
+<tt class="descclassname">Consumer.</tt><tt class="descname">flow</tt><big>(</big><em>active</em><big>)</big></dt>
+<dd><p>Enable/disable flow from peer.</p>
+<p>This is a simple flow-control mechanism that a peer can use
+to avoid overflowing its queues or otherwise finding itself
+receiving more messages than it can process.</p>
+<p>The peer that receives a request to stop sending content
+will finish sending the current content (if any), and then wait
+until flow is reactivated.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt>
+<tt class="descclassname">Consumer.</tt><tt class="descname">no_ack</tt><em class="property"> = None</em></dt>
+<dd><p>Flag for message acknowledgment disabled/enabled.
+Enabled by default.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt>
+<tt class="descclassname">Consumer.</tt><tt class="descname">on_decode_error</tt><em class="property"> = None</em></dt>
+<dd><p>Callback called when a message can&#8217;t be decoded.</p>
+<p>The signature of the callback must take two arguments: <cite>(message,
+exc)</cite>, which is the message that can&#8217;t be decoded and the exception
+that occurred while trying to decode it.</p>
+</dd></dl>
+
+<dl class="method">
+<dt>
+<tt class="descclassname">Consumer.</tt><tt class="descname">purge</tt><big>(</big><big>)</big></dt>
+<dd><p>Purge messages from all queues.</p>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">This will <em>delete all ready messages</em>, there is no
+undo operation available.</p>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt>
+<tt class="descclassname">Consumer.</tt><tt class="descname">qos</tt><big>(</big><em>prefetch_size=0</em>, <em>prefetch_count=0</em>, <em>apply_global=False</em><big>)</big></dt>
+<dd><p>Specify quality of service.</p>
+<p>The client can request that messages should be sent in
+advance so that when the client finishes processing a message,
+the following message is already held locally, rather than needing
+to be sent down the channel. Prefetching gives a performance
+improvement.</p>
+<p>The prefetch window is Ignored if the <tt class="xref py py-attr docutils literal"><span class="pre">no_ack</span></tt> option is set.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>prefetch_size</strong> &#8211; Specify the prefetch window in octets.
+The server will send a message in advance if it is equal to
+or smaller in size than the available prefetch size (and
+also falls within other prefetch limits). May be set to zero,
+meaning &#8220;no specific limit&#8221;, although other prefetch limits
+may still apply.</li>
+<li><strong>prefetch_count</strong> &#8211; Specify the prefetch window in terms of
+whole messages.</li>
+<li><strong>apply_global</strong> &#8211; Apply new settings globally on all channels.
+Currently not supported by RabbitMQ.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt>
+<tt class="descclassname">Consumer.</tt><tt class="descname">queues</tt><em class="property"> = None</em></dt>
+<dd><p>A single <a class="reference internal" href="../reference/kombu.entity.html#kombu.entity.Queue" title="kombu.entity.Queue"><tt class="xref py py-class docutils literal"><span class="pre">Queue</span></tt></a>, or a list of queues to
+consume from.</p>
+</dd></dl>
+
+<dl class="method">
+<dt>
+<tt class="descclassname">Consumer.</tt><tt class="descname">receive</tt><big>(</big><em>body</em>, <em>message</em><big>)</big></dt>
+<dd><p>Method called when a message is received.</p>
+<p>This dispatches to the registered <tt class="xref py py-attr docutils literal"><span class="pre">callbacks</span></tt>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>body</strong> &#8211; The decoded message body.</li>
+<li><strong>message</strong> &#8211; The <cite>Message</cite> instance.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name" colspan="2">Raises NotImplementedError:</th></tr>
+<tr class="field-even field"><td>&nbsp;</td><td class="field-body"><p class="first last">If no consumer callbacks have been
+registered.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt>
+<tt class="descclassname">Consumer.</tt><tt class="descname">recover</tt><big>(</big><em>requeue=False</em><big>)</big></dt>
+<dd><p>Redeliver unacknowledged messages.</p>
+<p>Asks the broker to redeliver all unacknowledged messages
+on the specified channel.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>requeue</strong> &#8211; By default the messages will be redelivered
+to the original recipient. With <cite>requeue</cite> set to true, the
+server will attempt to requeue the message, potentially then
+delivering it to an alternative subscriber.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt>
+<tt class="descclassname">Consumer.</tt><tt class="descname">register_callback</tt><big>(</big><em>callback</em><big>)</big></dt>
+<dd><p>Register a new callback to be called when a message
+is received.</p>
+<p>The signature of the callback needs to accept two arguments:
+<cite>(body, message)</cite>, which is the decoded message body
+and the <cite>Message</cite> instance (a subclass of
+<a class="reference internal" href="../reference/kombu.transport.base.html#kombu.transport.base.Message" title="kombu.transport.base.Message"><tt class="xref py py-class docutils literal"><span class="pre">Message</span></tt></a>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt>
+<tt class="descclassname">Consumer.</tt><tt class="descname">revive</tt><big>(</big><em>channel</em><big>)</big></dt>
+<dd><p>Revive consumer after connection loss.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper"><p class="logo"><a href="../index.html">
+  <img class="logo" width="128" height="128" src="http://cloud.github.com/downloads/ask/kombu/kombusmall.jpg" alt="Logo"/>
+</a></p>
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Consumers</a><ul>
+<li><a class="reference internal" href="#basics">Basics</a></li>
+<li><a class="reference internal" href="#module-kombu.messaging">Reference</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="producers.html"
+                        title="previous chapter">Producers</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="examples.html"
+                        title="next chapter">Examples</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/userguide/consumers.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="examples.html" title="Examples"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="producers.html" title="Producers"
+             >previous</a> |</li>
+        <li><a href="../index.html">Kombu 1.5.0 documentation</a> &raquo;</li>
+          <li><a href="index.html" >User Guide</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2009-2011, Ask Solem.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
+    </div>
+  </body>
+</html>

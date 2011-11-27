@@ -1,0 +1,253 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Producers &mdash; Kombu 1.5.0 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/celery.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.5.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="Kombu 1.5.0 documentation" href="../index.html" />
+    <link rel="up" title="User Guide" href="index.html" />
+    <link rel="next" title="Consumers" href="consumers.html" />
+    <link rel="prev" title="Connections and transports" href="connections.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="consumers.html" title="Consumers"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="connections.html" title="Connections and transports"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../index.html">Kombu 1.5.0 documentation</a> &raquo;</li>
+          <li><a href="index.html" accesskey="U">User Guide</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="producers">
+<span id="guide-producers"></span><h1>Producers<a class="headerlink" href="#producers" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="basics">
+<span id="producer-basics"></span><h2>Basics<a class="headerlink" href="#basics" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="serialization">
+<h2>Serialization<a class="headerlink" href="#serialization" title="Permalink to this headline">¶</a></h2>
+<p>See <a class="reference internal" href="serialization.html#guide-serialization"><em>Serialization</em></a>.</p>
+</div>
+<div class="section" id="module-kombu.messaging">
+<span id="reference"></span><h2>Reference<a class="headerlink" href="#module-kombu.messaging" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt>
+<em class="property">class </em><tt class="descclassname">kombu.messaging.</tt><tt class="descname">Producer</tt><big>(</big><em>channel</em>, <em>exchange=None</em>, <em>routing_key=None</em>, <em>serializer=None</em>, <em>auto_declare=None</em>, <em>compression=None</em>, <em>on_return=None</em><big>)</big></dt>
+<dd><p>Message Producer.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>channel</strong> &#8211; Connection channel.</li>
+<li><strong>exchange</strong> &#8211; Default exchange.</li>
+<li><strong>routing_key</strong> &#8211; Default routing key.</li>
+<li><strong>serializer</strong> &#8211; Default serializer. Default is <cite>&#8220;json&#8221;</cite>.</li>
+<li><strong>compression</strong> &#8211; Default compression method. Default is no
+compression.</li>
+<li><strong>auto_declare</strong> &#8211; Automatically declare the exchange
+at instantiation. Default is <tt class="xref py py-const docutils literal"><span class="pre">True</span></tt>.</li>
+<li><strong>on_return</strong> &#8211; Callback to call for undeliverable messages,
+when the <cite>mandatory</cite> or <cite>immediate</cite> arguments to
+<tt class="xref py py-meth docutils literal"><span class="pre">publish()</span></tt> is used. This callback needs the following
+signature: <cite>(exception, exchange, routing_key, message)</cite>.
+Note that the producer needs to drain events to use this feature.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="attribute">
+<dt>
+<tt class="descclassname">Producer.</tt><tt class="descname">auto_declare</tt><em class="property"> = True</em></dt>
+<dd><p>By default the exchange is declared at instantiation.
+If you want to declare manually then you can set this
+to <tt class="xref py py-const docutils literal"><span class="pre">False</span></tt>.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt>
+<tt class="descclassname">Producer.</tt><tt class="descname">channel</tt><em class="property"> = None</em></dt>
+<dd><p>The connection channel used.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt>
+<tt class="descclassname">Producer.</tt><tt class="descname">compression</tt><em class="property"> = None</em></dt>
+<dd><p>Default compression method.  Disabled by default.</p>
+</dd></dl>
+
+<dl class="method">
+<dt>
+<tt class="descclassname">Producer.</tt><tt class="descname">declare</tt><big>(</big><big>)</big></dt>
+<dd><p>Declare the exchange.</p>
+<p>This is done automatically at instantiation if <tt class="xref py py-attr docutils literal"><span class="pre">auto_declare</span></tt>
+is set to <tt class="xref py py-const docutils literal"><span class="pre">True</span></tt>.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt>
+<tt class="descclassname">Producer.</tt><tt class="descname">exchange</tt><em class="property"> = None</em></dt>
+<dd><p>Default exchange.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt>
+<tt class="descclassname">Producer.</tt><tt class="descname">on_return</tt><em class="property"> = None</em></dt>
+<dd><p>Basic return callback.</p>
+</dd></dl>
+
+<dl class="method">
+<dt>
+<tt class="descclassname">Producer.</tt><tt class="descname">publish</tt><big>(</big><em>body</em>, <em>routing_key=None</em>, <em>delivery_mode=None</em>, <em>mandatory=False</em>, <em>immediate=False</em>, <em>priority=0</em>, <em>content_type=None</em>, <em>content_encoding=None</em>, <em>serializer=None</em>, <em>headers=None</em>, <em>compression=None</em>, <em>exchange=None</em>, <em>**properties</em><big>)</big></dt>
+<dd><p>Publish message to the specified exchange.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>body</strong> &#8211; Message body.</li>
+<li><strong>routing_key</strong> &#8211; Message routing key.</li>
+<li><strong>delivery_mode</strong> &#8211; See <tt class="xref py py-attr docutils literal"><span class="pre">delivery_mode</span></tt>.</li>
+<li><strong>mandatory</strong> &#8211; Currently not supported.</li>
+<li><strong>immediate</strong> &#8211; Currently not supported.</li>
+<li><strong>priority</strong> &#8211; Message priority. A number between 0 and 9.</li>
+<li><strong>content_type</strong> &#8211; Content type. Default is auto-detect.</li>
+<li><strong>content_encoding</strong> &#8211; Content encoding. Default is auto-detect.</li>
+<li><strong>serializer</strong> &#8211; Serializer to use. Default is auto-detect.</li>
+<li><strong>headers</strong> &#8211; Mapping of arbitrary headers to pass along
+with the message body.</li>
+<li><strong>exchange</strong> &#8211; Override the exchange.  Note that this exchange
+must have been declared.</li>
+<li><strong>properties</strong> &#8211; Additional properties, see the AMQP spec.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt>
+<tt class="descclassname">Producer.</tt><tt class="descname">revive</tt><big>(</big><em>channel</em><big>)</big></dt>
+<dd><p>Revive the producer after connection loss.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt>
+<tt class="descclassname">Producer.</tt><tt class="descname">serializer</tt><em class="property"> = None</em></dt>
+<dd><p>Default serializer to use. Default is JSON.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper"><p class="logo"><a href="../index.html">
+  <img class="logo" width="128" height="128" src="http://cloud.github.com/downloads/ask/kombu/kombusmall.jpg" alt="Logo"/>
+</a></p>
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Producers</a><ul>
+<li><a class="reference internal" href="#basics">Basics</a></li>
+<li><a class="reference internal" href="#serialization">Serialization</a></li>
+<li><a class="reference internal" href="#module-kombu.messaging">Reference</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="connections.html"
+                        title="previous chapter">Connections and transports</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="consumers.html"
+                        title="next chapter">Consumers</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/userguide/producers.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="consumers.html" title="Consumers"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="connections.html" title="Connections and transports"
+             >previous</a> |</li>
+        <li><a href="../index.html">Kombu 1.5.0 documentation</a> &raquo;</li>
+          <li><a href="index.html" >User Guide</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2009-2011, Ask Solem.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
+    </div>
+  </body>
+</html>
