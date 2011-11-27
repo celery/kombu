@@ -326,11 +326,15 @@ class test_Channel(unittest.TestCase):
 
     def test_lookup__undeliverable(self, n="test_lookup__undeliverable"):
         warnings.resetwarnings()
-        with catch_warnings(record=True) as log:
+        context = catch_warnings(record=True)
+        log = context.__enter__()
+        try:
             self.assertListEqual(self.channel._lookup(n, n, "ae.undeliver"),
                                                       ["ae.undeliver"])
             self.assertTrue(log)
             self.assertIn("could not be delivered", log[0].message.args[0])
+        finally:
+            context.__exit__()
 
     def test_context(self):
         x = self.channel.__enter__()

@@ -13,7 +13,6 @@ Emulates the AMQ API for non-AMQ transports.
 import base64
 import socket
 import warnings
-import os
 
 from itertools import count
 from time import sleep, time
@@ -31,7 +30,7 @@ from kombu.transport.virtual.exchange import STANDARD_EXCHANGE_TYPES
 
 UNDELIVERABLE_FMT = """\
 Message could not be delivered: No queues bound to exchange %(exchange)r
-with binding key %(routing_key)r
+using binding key %(routing_key)r
 """
 
 
