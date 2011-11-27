@@ -13,7 +13,6 @@ from itertools import count
 from kombu import entity
 from kombu.compression import compress
 from kombu.serialization import encode
-from kombu.syn import blocking as _SYN
 from kombu.utils import maybe_list
 
 
@@ -383,9 +382,9 @@ class Consumer(object):
           Currently not supported by RabbitMQ.
 
         """
-        return _SYN(self.channel.basic_qos, prefetch_size,
-                                            prefetch_count,
-                                            apply_global)
+        return self.channel.basic_qos(prefetch_size,
+                                      prefetch_count,
+                                      apply_global)
 
     def recover(self, requeue=False):
         """Redeliver unacknowledged messages.
@@ -399,7 +398,7 @@ class Consumer(object):
           delivering it to an alternative subscriber.
 
         """
-        return _SYN(self.channel.basic_recover, requeue=requeue)
+        return self.channel.basic_recover(requeue=requeue)
 
     def receive(self, body, message):
         """Method called when a message is received.

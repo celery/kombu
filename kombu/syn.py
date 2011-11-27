@@ -1,64 +1,12 @@
-"""
-kombu.syn
-=========
-
-Thread synchronization.
-
-:copyright: (c) 2009 - 2011 by Ask Solem.
-:license: BSD, see LICENSE for more details.
-
-"""
 import sys
-
-#: current blocking method
-__sync_current = None
 
 
 def blocking(fun, *args, **kwargs):
-    """Make sure function is called by blocking and waiting for the result,
-    even if we're currently in a monkey patched eventlet/gevent
-    environment."""
-    if __sync_current is None:
-        select_blocking_method(detect_environment())
-    return __sync_current(fun, *args, **kwargs)
+    return fun(*args, **kwargs)
 
 
 def select_blocking_method(type):
-    """Select blocking method, where `type` is one of default
-    gevent or eventlet."""
-    global __sync_current
-    __sync_current = {"eventlet": _sync_eventlet,
-                      "gevent": _sync_gevent,
-                      "default": _sync_default}[type]()
-
-
-def _sync_default():
-    """Create blocking primitive."""
-
-    def __blocking__(fun, *args, **kwargs):
-        return fun(*args, **kwargs)
-
-    return __blocking__
-
-
-def _sync_eventlet():
-    """Create Eventlet blocking primitive."""
-    from eventlet import spawn
-
-    def __eblocking__(fun, *args, **kwargs):
-        return spawn(fun, *args, **kwargs).wait()
-
-    return __eblocking__
-
-
-def _sync_gevent():
-    """Create gevent blocking primitive."""
-    from gevent import Greenlet
-
-    def __gblocking__(fun, *args, **kwargs):
-        return Greenlet.spawn(fun, *args, **kwargs).get()
-
-    return __gblocking__
+    pass
 
 
 def detect_environment():
