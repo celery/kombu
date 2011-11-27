@@ -706,7 +706,10 @@ class Resource(object):
                 dres = dirty.pop()
             except KeyError:
                 break
-            self.close_resource(dres)
+            try:
+                self.close_resource(dres)
+            except AttributeError:  # Issue #78
+                pass
 
         mutex = getattr(resource, "mutex", None)
         if mutex:
@@ -717,7 +720,10 @@ class Resource(object):
                     res = resource.queue.pop()
                 except IndexError:
                     break
-                self.close_resource(res)
+                try:
+                    self.close_resource(res)
+                except AttributeError:
+                    pass  # Issue #78
         finally:
             if mutex:
                 mutex.release()
