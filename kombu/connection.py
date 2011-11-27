@@ -56,7 +56,7 @@ def parse_url(url):
         path = parts.path or ""
         if path and path[0] == '/':
             path = path[1:]
-        port = int(port)
+        port = port and int(port) or port
     else:
         # strip the scheme since it is appended automatically
         hostname = url[len('mongodb://'):]
