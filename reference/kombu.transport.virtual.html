@@ -2,17 +2,20 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
+
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>kombu.transport.virtual &mdash; Kombu v1.4.2 documentation</title>
+    <title>kombu.transport.virtual &mdash; Kombu 1.5.0 documentation</title>
+    
     <link rel="stylesheet" href="../_static/celery.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '1.4.2',
+        VERSION:     '1.5.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -21,7 +24,7 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="Kombu v1.4.2 documentation" href="../index.html" />
+    <link rel="top" title="Kombu 1.5.0 documentation" href="../index.html" />
     <link rel="up" title="API Reference" href="index.html" />
     <link rel="next" title="kombu.transport.virtual.exchange" href="kombu.transport.virtual.exchange.html" />
     <link rel="prev" title="kombu.transport.base" href="kombu.transport.base.html" /> 
@@ -42,7 +45,7 @@
         <li class="right" >
           <a href="kombu.transport.base.html" title="kombu.transport.base"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">Kombu v1.4.2 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 1.5.0 documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">API Reference</a> &raquo;</li> 
       </ul>
     </div>  
@@ -60,12 +63,12 @@
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">copyright:</th><td class="field-body"><ol class="first loweralpha simple" start="3">
+<tr class="field-odd field"><th class="field-name">copyright:</th><td class="field-body"><ol class="first loweralpha simple" start="3">
 <li>2009, 2011 by Ask Solem.</li>
 </ol>
 </td>
 </tr>
-<tr class="field"><th class="field-name">license:</th><td class="field-body"><p class="first last">BSD, see LICENSE for more details.</p>
+<tr class="field-even field"><th class="field-name">license:</th><td class="field-body"><p class="first last">BSD, see LICENSE for more details.</p>
 </td>
 </tr>
 </tbody>
@@ -89,44 +92,44 @@
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><strong>client</strong> &#8211; <a class="reference internal" href="kombu.connection.html#kombu.connection.BrokerConnection" title="kombu.connection.BrokerConnection"><tt class="xref py py-class docutils literal"><span class="pre">BrokerConnection</span></tt></a> instance</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>client</strong> &#8211; <a class="reference internal" href="kombu.connection.html#kombu.connection.BrokerConnection" title="kombu.connection.BrokerConnection"><tt class="xref py py-class docutils literal"><span class="pre">BrokerConnection</span></tt></a> instance</td>
 </tr>
 </tbody>
 </table>
 <dl class="attribute">
 <dt id="kombu.transport.virtual.Transport.Channel">
-<tt class="descname">Channel</tt><a class="headerlink" href="#kombu.transport.virtual.Transport.Channel" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">Channel</tt><em class="property"> = &lt;class 'kombu.transport.virtual.Channel'&gt;</em><a class="headerlink" href="#kombu.transport.virtual.Transport.Channel" title="Permalink to this definition">¶</a></dt>
 <dd><p>channel class used.</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.transport.virtual.Transport.Cycle">
-<tt class="descname">Cycle</tt><a class="headerlink" href="#kombu.transport.virtual.Transport.Cycle" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">Cycle</tt><em class="property"> = &lt;class 'kombu.transport.virtual.scheduling.FairCycle'&gt;</em><a class="headerlink" href="#kombu.transport.virtual.Transport.Cycle" title="Permalink to this definition">¶</a></dt>
 <dd><p>cycle class used.</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.transport.virtual.Transport.interval">
-<tt class="descname">interval</tt><a class="headerlink" href="#kombu.transport.virtual.Transport.interval" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">interval</tt><em class="property"> = 1</em><a class="headerlink" href="#kombu.transport.virtual.Transport.interval" title="Permalink to this definition">¶</a></dt>
 <dd><p>default interval between polling channels for new events.</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.transport.virtual.Transport.default_port">
-<tt class="descname">default_port</tt><a class="headerlink" href="#kombu.transport.virtual.Transport.default_port" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">default_port</tt><em class="property"> = None</em><a class="headerlink" href="#kombu.transport.virtual.Transport.default_port" title="Permalink to this definition">¶</a></dt>
 <dd><p>port number used when no port is specified.</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.transport.virtual.Transport.state">
-<tt class="descname">state</tt><a class="headerlink" href="#kombu.transport.virtual.Transport.state" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">state</tt><em class="property"> = &lt;kombu.transport.virtual.BrokerState object at 0x10271f890&gt;</em><a class="headerlink" href="#kombu.transport.virtual.Transport.state" title="Permalink to this definition">¶</a></dt>
 <dd><p><a class="reference internal" href="#kombu.transport.virtual.BrokerState" title="kombu.transport.virtual.BrokerState"><tt class="xref py py-class docutils literal"><span class="pre">BrokerState</span></tt></a> containing declared exchanges and
 bindings (set by constructor).</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.transport.virtual.Transport.cycle">
-<tt class="descname">cycle</tt><a class="headerlink" href="#kombu.transport.virtual.Transport.cycle" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">cycle</tt><em class="property"> = None</em><a class="headerlink" href="#kombu.transport.virtual.Transport.cycle" title="Permalink to this definition">¶</a></dt>
 <dd><p><a class="reference internal" href="kombu.transport.virtual.scheduling.html#kombu.transport.virtual.scheduling.FairCycle" title="kombu.transport.virtual.scheduling.FairCycle"><tt class="xref py py-class docutils literal"><span class="pre">FairCycle</span></tt></a> instance
 used to fairly drain events from channels (set by constructor).</p>
 </dd></dl>
@@ -178,13 +181,13 @@ instead.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><strong>connection</strong> &#8211; The transport instance this channel is part of.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>connection</strong> &#8211; The transport instance this channel is part of.</td>
 </tr>
 </tbody>
 </table>
 <dl class="attribute">
 <dt id="kombu.transport.virtual.Channel.Message">
-<tt class="descname">Message</tt><a class="headerlink" href="#kombu.transport.virtual.Channel.Message" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">Message</tt><em class="property"> = &lt;class 'kombu.transport.virtual.Message'&gt;</em><a class="headerlink" href="#kombu.transport.virtual.Channel.Message" title="Permalink to this definition">¶</a></dt>
 <dd><p>message class used.</p>
 </dd></dl>
 
@@ -202,14 +205,14 @@ instead.</p>
 
 <dl class="attribute">
 <dt id="kombu.transport.virtual.Channel.do_restore">
-<tt class="descname">do_restore</tt><a class="headerlink" href="#kombu.transport.virtual.Channel.do_restore" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">do_restore</tt><em class="property"> = True</em><a class="headerlink" href="#kombu.transport.virtual.Channel.do_restore" title="Permalink to this definition">¶</a></dt>
 <dd><p>flag to restore unacked messages when channel
 goes out of scope.</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.transport.virtual.Channel.exchange_types">
-<tt class="descname">exchange_types</tt><a class="headerlink" href="#kombu.transport.virtual.Channel.exchange_types" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">exchange_types</tt><em class="property"> = {'topic': &lt;class 'kombu.transport.virtual.exchange.TopicExchange'&gt;, 'fanout': &lt;class 'kombu.transport.virtual.exchange.FanoutExchange'&gt;, 'direct': &lt;class 'kombu.transport.virtual.exchange.DirectExchange'&gt;}</em><a class="headerlink" href="#kombu.transport.virtual.Channel.exchange_types" title="Permalink to this definition">¶</a></dt>
 <dd><p>mapping of exchange types and corresponding classes.</p>
 </dd></dl>
 
@@ -335,8 +338,8 @@ goes out of scope.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name" colspan="2">Raises NotImplementedError:</th></tr>
-<tr class="field"><td>&nbsp;</td><td class="field-body">as flow
+<tr class="field-odd field"><th class="field-name" colspan="2">Raises NotImplementedError:</th></tr>
+<tr class="field-odd field"><td>&nbsp;</td><td class="field-body">as flow
 is not implemented by the base virtual implementation.</td>
 </tr>
 </tbody>
@@ -383,8 +386,8 @@ This will remove the message from the queue.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name" colspan="2">Raises MessageStateError:</th></tr>
-<tr class="field"><td>&nbsp;</td><td class="field-body">If the message has already been
+<tr class="field-odd field"><th class="field-name" colspan="2">Raises MessageStateError:</th></tr>
+<tr class="field-odd field"><td>&nbsp;</td><td class="field-body">If the message has already been
 acknowledged/requeued/rejected.</td>
 </tr>
 </tbody>
@@ -397,6 +400,26 @@ acknowledged/requeued/rejected.</td>
 <dd><p>Set to true if the message has been acknowledged.</p>
 </dd></dl>
 
+<dl class="attribute">
+<dt id="kombu.transport.virtual.Message.body">
+<tt class="descclassname">Message.</tt><tt class="descname">body</tt><em class="property"> = None</em><a class="headerlink" href="#kombu.transport.virtual.Message.body" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.virtual.Message.channel">
+<tt class="descclassname">Message.</tt><tt class="descname">channel</tt><em class="property"> = None</em><a class="headerlink" href="#kombu.transport.virtual.Message.channel" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.virtual.Message.content_encoding">
+<tt class="descclassname">Message.</tt><tt class="descname">content_encoding</tt><em class="property"> = None</em><a class="headerlink" href="#kombu.transport.virtual.Message.content_encoding" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.virtual.Message.content_type">
+<tt class="descclassname">Message.</tt><tt class="descname">content_type</tt><em class="property"> = None</em><a class="headerlink" href="#kombu.transport.virtual.Message.content_type" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
 <dl class="method">
 <dt id="kombu.transport.virtual.Message.decode">
 <tt class="descclassname">Message.</tt><tt class="descname">decode</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.transport.virtual.Message.decode" title="Permalink to this definition">¶</a></dt>
@@ -405,10 +428,30 @@ python structure sent by the publisher.</p>
 </dd></dl>
 
 <dl class="attribute">
+<dt id="kombu.transport.virtual.Message.delivery_info">
+<tt class="descclassname">Message.</tt><tt class="descname">delivery_info</tt><em class="property"> = None</em><a class="headerlink" href="#kombu.transport.virtual.Message.delivery_info" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.virtual.Message.delivery_tag">
+<tt class="descclassname">Message.</tt><tt class="descname">delivery_tag</tt><em class="property"> = None</em><a class="headerlink" href="#kombu.transport.virtual.Message.delivery_tag" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.virtual.Message.headers">
+<tt class="descclassname">Message.</tt><tt class="descname">headers</tt><em class="property"> = None</em><a class="headerlink" href="#kombu.transport.virtual.Message.headers" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
 <dt id="kombu.transport.virtual.Message.payload">
 <tt class="descclassname">Message.</tt><tt class="descname">payload</tt><a class="headerlink" href="#kombu.transport.virtual.Message.payload" title="Permalink to this definition">¶</a></dt>
 <dd><p>The decoded message body.</p>
 </dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.virtual.Message.properties">
+<tt class="descclassname">Message.</tt><tt class="descname">properties</tt><em class="property"> = None</em><a class="headerlink" href="#kombu.transport.virtual.Message.properties" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
 
 <dl class="method">
 <dt id="kombu.transport.virtual.Message.reject">
@@ -419,8 +462,8 @@ python structure sent by the publisher.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name" colspan="2">Raises MessageStateError:</th></tr>
-<tr class="field"><td>&nbsp;</td><td class="field-body">If the message has already been
+<tr class="field-odd field"><th class="field-name" colspan="2">Raises MessageStateError:</th></tr>
+<tr class="field-odd field"><td>&nbsp;</td><td class="field-body">If the message has already been
 acknowledged/requeued/rejected.</td>
 </tr>
 </tbody>
@@ -437,8 +480,8 @@ to process.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name" colspan="2">Raises MessageStateError:</th></tr>
-<tr class="field"><td>&nbsp;</td><td class="field-body">If the message has already been
+<tr class="field-odd field"><th class="field-name" colspan="2">Raises MessageStateError:</th></tr>
+<tr class="field-odd field"><td>&nbsp;</td><td class="field-body">If the message has already been
 acknowledged/requeued/rejected.</td>
 </tr>
 </tbody>
@@ -464,7 +507,7 @@ acknowledged/requeued/rejected.</td>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>channel</strong> &#8211; AMQ Channel.</li>
 <li><strong>prefetch_count</strong> &#8211; Initial prefetch count (defaults to 0).</li>
 </ul>
@@ -499,7 +542,7 @@ prefetch limits.</p>
 
 <dl class="attribute">
 <dt id="kombu.transport.virtual.QoS.prefetch_count">
-<tt class="descname">prefetch_count</tt><a class="headerlink" href="#kombu.transport.virtual.QoS.prefetch_count" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">prefetch_count</tt><em class="property"> = 0</em><a class="headerlink" href="#kombu.transport.virtual.QoS.prefetch_count" title="Permalink to this definition">¶</a></dt>
 <dd><p>current prefetch count value</p>
 </dd></dl>
 
@@ -532,13 +575,13 @@ prefetch limits.</p>
 <em class="property">class </em><tt class="descclassname">kombu.transport.virtual.</tt><tt class="descname">BrokerState</tt><big>(</big><em>exchanges=None</em>, <em>bindings=None</em><big>)</big><a class="headerlink" href="#kombu.transport.virtual.BrokerState" title="Permalink to this definition">¶</a></dt>
 <dd><dl class="attribute">
 <dt id="kombu.transport.virtual.BrokerState.bindings">
-<tt class="descname">bindings</tt><a class="headerlink" href="#kombu.transport.virtual.BrokerState.bindings" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">bindings</tt><em class="property"> = None</em><a class="headerlink" href="#kombu.transport.virtual.BrokerState.bindings" title="Permalink to this definition">¶</a></dt>
 <dd><p>active bindings.</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.transport.virtual.BrokerState.exchanges">
-<tt class="descname">exchanges</tt><a class="headerlink" href="#kombu.transport.virtual.BrokerState.exchanges" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">exchanges</tt><em class="property"> = None</em><a class="headerlink" href="#kombu.transport.virtual.BrokerState.exchanges" title="Permalink to this definition">¶</a></dt>
 <dd><p>exchange declarations.</p>
 </dd></dl>
 
@@ -610,13 +653,13 @@ prefetch limits.</p>
         <li class="right" >
           <a href="kombu.transport.base.html" title="kombu.transport.base"
              >previous</a> |</li>
-        <li><a href="../index.html">Kombu v1.4.2 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 1.5.0 documentation</a> &raquo;</li>
           <li><a href="index.html" >API Reference</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2009-2011, Ask Solem.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.8.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
     </div>
   </body>
 </html>

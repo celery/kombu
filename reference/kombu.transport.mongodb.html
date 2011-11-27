@@ -2,17 +2,20 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
+
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>kombu.transport.mongodb &mdash; Kombu v1.4.2 documentation</title>
+    <title>kombu.transport.mongodb &mdash; Kombu 1.5.0 documentation</title>
+    
     <link rel="stylesheet" href="../_static/celery.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '1.4.2',
+        VERSION:     '1.5.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -21,7 +24,7 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="Kombu v1.4.2 documentation" href="../index.html" />
+    <link rel="top" title="Kombu 1.5.0 documentation" href="../index.html" />
     <link rel="up" title="API Reference" href="index.html" />
     <link rel="next" title="kombu.transport.pycouchdb" href="kombu.transport.pycouchdb.html" />
     <link rel="prev" title="kombu.transport.beanstalk" href="kombu.transport.beanstalk.html" /> 
@@ -42,7 +45,7 @@
         <li class="right" >
           <a href="kombu.transport.beanstalk.html" title="kombu.transport.beanstalk"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">Kombu v1.4.2 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 1.5.0 documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">API Reference</a> &raquo;</li> 
       </ul>
     </div>  
@@ -59,12 +62,12 @@
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">copyright:</th><td class="field-body"><ol class="first loweralpha simple" start="3">
+<tr class="field-odd field"><th class="field-name">copyright:</th><td class="field-body"><ol class="first loweralpha simple" start="3">
 <li>2010 - 2011 by Flavio Percoco Premoli.</li>
 </ol>
 </td>
 </tr>
-<tr class="field"><th class="field-name">license:</th><td class="field-body"><p class="first last">BSD, see LICENSE for more details.</p>
+<tr class="field-even field"><th class="field-name">license:</th><td class="field-body"><p class="first last">BSD, see LICENSE for more details.</p>
 </td>
 </tr>
 </tbody>
@@ -94,6 +97,26 @@
 <dd></dd></dl>
 
 </dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.mongodb.Transport.channel_errors">
+<tt class="descclassname">Transport.</tt><tt class="descname">channel_errors</tt><em class="property"> = (&lt;class 'pymongo.errors.ConnectionFailure'&gt;, &lt;class 'pymongo.errors.OperationFailure'&gt;)</em><a class="headerlink" href="#kombu.transport.mongodb.Transport.channel_errors" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.mongodb.Transport.connection_errors">
+<tt class="descclassname">Transport.</tt><tt class="descname">connection_errors</tt><em class="property"> = (&lt;class 'pymongo.errors.ConnectionFailure'&gt;,)</em><a class="headerlink" href="#kombu.transport.mongodb.Transport.connection_errors" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.mongodb.Transport.default_port">
+<tt class="descclassname">Transport.</tt><tt class="descname">default_port</tt><em class="property"> = 27017</em><a class="headerlink" href="#kombu.transport.mongodb.Transport.default_port" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.mongodb.Transport.interval">
+<tt class="descclassname">Transport.</tt><tt class="descname">interval</tt><em class="property"> = 1</em><a class="headerlink" href="#kombu.transport.mongodb.Transport.interval" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
 
 </dd></dl>
 
@@ -178,13 +201,13 @@
         <li class="right" >
           <a href="kombu.transport.beanstalk.html" title="kombu.transport.beanstalk"
              >previous</a> |</li>
-        <li><a href="../index.html">Kombu v1.4.2 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 1.5.0 documentation</a> &raquo;</li>
           <li><a href="index.html" >API Reference</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2009-2011, Ask Solem.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.8.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
     </div>
   </body>
 </html>

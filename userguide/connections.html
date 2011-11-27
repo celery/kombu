@@ -2,17 +2,20 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
+
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Connections and transports &mdash; Kombu v1.4.2 documentation</title>
+    <title>Connections and transports &mdash; Kombu 1.5.0 documentation</title>
+    
     <link rel="stylesheet" href="../_static/celery.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '1.4.2',
+        VERSION:     '1.5.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -21,9 +24,9 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="Kombu v1.4.2 documentation" href="../index.html" />
+    <link rel="top" title="Kombu 1.5.0 documentation" href="../index.html" />
     <link rel="up" title="User Guide" href="index.html" />
-    <link rel="next" title="Examples" href="examples.html" />
+    <link rel="next" title="Producers" href="producers.html" />
     <link rel="prev" title="User Guide" href="index.html" /> 
   </head>
   <body>
@@ -37,12 +40,12 @@
           <a href="../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="examples.html" title="Examples"
+          <a href="producers.html" title="Producers"
              accesskey="N">next</a> |</li>
         <li class="right" >
           <a href="index.html" title="User Guide"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">Kombu v1.4.2 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 1.5.0 documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">User Guide</a> &raquo;</li> 
       </ul>
     </div>  
@@ -71,7 +74,7 @@ method:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">connection</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
 </pre></div>
 </div>
-<p>You can also check wether the connection is connected:</p>
+<p>You can also check whether the connection is connected:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">connection</span><span class="o">.</span><span class="n">connected</span><span class="p">()</span>
 <span class="go">True</span>
 </pre></div>
@@ -83,7 +86,7 @@ method:</p>
 <p>But best practice is to release the connection instead,
 this will release the resource if the connection is associated
 with a connection pool, or close the connection if not,
-and makes it easier to transist to connection pools later:</p>
+and makes it easier to do the transition to connection pools later:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">connection</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
 </pre></div>
 </div>
@@ -122,7 +125,7 @@ amqp://localhost/foo</pre>
 </div>
 <p>See <a class="reference internal" href="#connection-options"><em>Keyword arguments</em></a> for a list of supported options.</p>
 <p>A connection without options will use the default connection settings,
-which is using the localhost host, default port, username <cite>guest</cite>,
+which is using the localhost host, default port, user name <cite>guest</cite>,
 password <cite>guest</cite> and virtual host &#8220;/&#8221;. A connection without arguments
 is the same as:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">BrokerConnection</span><span class="p">(</span><span class="s">&quot;amqp://guest:guest@localhost:5672//&quot;</span><span class="p">)</span>
@@ -141,36 +144,36 @@ keyword arguments, these are:</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">hostname:</th><td class="field-body">Default hostname if not provided in the URL.</td>
+<tr class="field-odd field"><th class="field-name">hostname:</th><td class="field-body">Default host name if not provided in the URL.</td>
 </tr>
-<tr class="field"><th class="field-name">userid:</th><td class="field-body">Default username if not provided in the URL.</td>
+<tr class="field-even field"><th class="field-name">userid:</th><td class="field-body">Default user name if not provided in the URL.</td>
 </tr>
-<tr class="field"><th class="field-name">password:</th><td class="field-body">Default password if not provided in the URL.</td>
+<tr class="field-odd field"><th class="field-name">password:</th><td class="field-body">Default password if not provided in the URL.</td>
 </tr>
-<tr class="field"><th class="field-name">virtual_host:</th><td class="field-body">Default virtual host if not provided in the URL.</td>
+<tr class="field-even field"><th class="field-name">virtual_host:</th><td class="field-body">Default virtual host if not provided in the URL.</td>
 </tr>
-<tr class="field"><th class="field-name">port:</th><td class="field-body">Default port if not provided in the URL.</td>
+<tr class="field-odd field"><th class="field-name">port:</th><td class="field-body">Default port if not provided in the URL.</td>
 </tr>
-<tr class="field"><th class="field-name">transport:</th><td class="field-body">Default transport if not provided in the URL.
+<tr class="field-even field"><th class="field-name">transport:</th><td class="field-body">Default transport if not provided in the URL.
 Can be a string specifying the path to the class. (e.g.
 <tt class="docutils literal"><span class="pre">kombu.transport.pyamqplib.Transport</span></tt>), or one of the aliases:
 <tt class="docutils literal"><span class="pre">amqplib</span></tt>, <tt class="docutils literal"><span class="pre">pika</span></tt>, <tt class="docutils literal"><span class="pre">redis</span></tt>, <tt class="docutils literal"><span class="pre">memory</span></tt>, and so on.</td>
 </tr>
-<tr class="field"><th class="field-name">ssl:</th><td class="field-body">Use ssl to connect to the server. Default is <tt class="xref docutils literal"><span class="pre">False</span></tt>.
+<tr class="field-odd field"><th class="field-name">ssl:</th><td class="field-body">Use SSL to connect to the server. Default is <tt class="docutils literal"><span class="pre">False</span></tt>.
 Only supported by the amqp transport.</td>
 </tr>
-<tr class="field"><th class="field-name">insist:</th><td class="field-body">Insist on connecting to a server.
+<tr class="field-even field"><th class="field-name">insist:</th><td class="field-body">Insist on connecting to a server.
 In a configuration with multiple load-sharing servers, the insist
 option tells the server that the client is insisting on a connection
-to the specified server.  Default is <tt class="xref docutils literal"><span class="pre">False</span></tt>.
+to the specified server.  Default is <tt class="docutils literal"><span class="pre">False</span></tt>.
 Only supported by the amqp and pika transports, and not by AMQP 0-9-1.</td>
 </tr>
-<tr class="field"><th class="field-name" colspan="2">connect_timeout:</th></tr>
-<tr class="field"><td>&nbsp;</td><td class="field-body">Timeout in seconds for connecting to the
-server. May not be suported by the specified transport.</td>
+<tr class="field-odd field"><th class="field-name" colspan="2">connect_timeout:</th></tr>
+<tr class="field-odd field"><td>&nbsp;</td><td class="field-body">Timeout in seconds for connecting to the
+server. May not be supported by the specified transport.</td>
 </tr>
-<tr class="field"><th class="field-name" colspan="2">transport_options:</th></tr>
-<tr class="field"><td>&nbsp;</td><td class="field-body">A dict of additional connection arguments to
+<tr class="field-even field"><th class="field-name" colspan="2">transport_options:</th></tr>
+<tr class="field-even field"><td>&nbsp;</td><td class="field-body">A dict of additional connection arguments to
 pass to alternate kombu channel implementations.  Consult the transport
 documentation for available options.</td>
 </tr>
@@ -188,55 +191,55 @@ documentation for available options.</td>
 <col width="24%" />
 </colgroup>
 <tbody valign="top">
-<tr><td><strong>Client</strong></td>
+<tr class="row-odd"><td><strong>Client</strong></td>
 <td><strong>Type</strong></td>
 <td><strong>Direct</strong></td>
 <td><strong>Topic</strong></td>
 <td><strong>Fanout</strong></td>
 </tr>
-<tr><td><em>amqplib</em></td>
+<tr class="row-even"><td><em>amqplib</em></td>
 <td>Native</td>
 <td>Yes</td>
 <td>Yes</td>
 <td>Yes</td>
 </tr>
-<tr><td><em>pika</em></td>
+<tr class="row-odd"><td><em>pika</em></td>
 <td>Native</td>
 <td>Yes</td>
 <td>Yes</td>
 <td>Yes</td>
 </tr>
-<tr><td><em>redis</em></td>
+<tr class="row-even"><td><em>redis</em></td>
 <td>Virtual</td>
 <td>Yes</td>
 <td>Yes[*]_</td>
 <td>Yes (PUB/SUB)</td>
 </tr>
-<tr><td><em>beanstalk</em></td>
+<tr class="row-odd"><td><em>beanstalk</em></td>
 <td>Virtual</td>
 <td>Yes</td>
 <td>Yes[*]_</td>
 <td>No</td>
 </tr>
-<tr><td><em>SQS</em></td>
+<tr class="row-even"><td><em>SQS</em></td>
 <td>Virtual</td>
 <td>Yes</td>
 <td>Yes[*]_</td>
 <td>Yes[#]_</td>
 </tr>
-<tr><td><em>mongodb</em></td>
+<tr class="row-odd"><td><em>mongodb</em></td>
 <td>Virtual</td>
 <td>Yes</td>
 <td>Yes[*]_</td>
 <td>No</td>
 </tr>
-<tr><td><em>couchdb</em></td>
+<tr class="row-even"><td><em>couchdb</em></td>
 <td>Virtual</td>
 <td>Yes</td>
 <td>Yes[*]_</td>
 <td>No</td>
 </tr>
-<tr><td><em>in-memory</em></td>
+<tr class="row-odd"><td><em>in-memory</em></td>
 <td>Virtual</td>
 <td>Yes</td>
 <td>Yes[*]_</td>
@@ -284,8 +287,8 @@ Can be disabled by setting the <tt class="docutils literal"><span class="pre">su
   <p class="topless"><a href="index.html"
                         title="previous chapter">User Guide</a></p>
   <h4>Next topic</h4>
-  <p class="topless"><a href="examples.html"
-                        title="next chapter">Examples</a></p>
+  <p class="topless"><a href="producers.html"
+                        title="next chapter">Producers</a></p>
   <h3>This Page</h3>
   <ul class="this-page-menu">
     <li><a href="../_sources/userguide/connections.txt"
@@ -318,18 +321,18 @@ Can be disabled by setting the <tt class="docutils literal"><span class="pre">su
           <a href="../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="examples.html" title="Examples"
+          <a href="producers.html" title="Producers"
              >next</a> |</li>
         <li class="right" >
           <a href="index.html" title="User Guide"
              >previous</a> |</li>
-        <li><a href="../index.html">Kombu v1.4.2 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 1.5.0 documentation</a> &raquo;</li>
           <li><a href="index.html" >User Guide</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2009-2011, Ask Solem.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.8.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
     </div>
   </body>
 </html>

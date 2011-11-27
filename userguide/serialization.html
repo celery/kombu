@@ -2,17 +2,20 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
+
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Serialization &mdash; Kombu v1.4.2 documentation</title>
+    <title>Serialization &mdash; Kombu 1.5.0 documentation</title>
+    
     <link rel="stylesheet" href="../_static/celery.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '1.4.2',
+        VERSION:     '1.5.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -21,7 +24,7 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="Kombu v1.4.2 documentation" href="../index.html" />
+    <link rel="top" title="Kombu 1.5.0 documentation" href="../index.html" />
     <link rel="up" title="User Guide" href="index.html" />
     <link rel="next" title="Frequently Asked Questions" href="../faq.html" />
     <link rel="prev" title="Connection and Producer Pools" href="pools.html" /> 
@@ -42,7 +45,7 @@
         <li class="right" >
           <a href="pools.html" title="Connection and Producer Pools"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">Kombu v1.4.2 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 1.5.0 documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">User Guide</a> &raquo;</li> 
       </ul>
     </div>  
@@ -68,9 +71,9 @@ want to use.</p>
 decode using the modern Python libraries such as <cite>cjson</cite> or
 <cite>simplejson</cite>.</p>
 <p>The primary disadvantage to <cite>JSON</cite> is that it limits you to
-the following data types: strings, unicode, floats, boolean,
+the following data types: strings, Unicode, floats, boolean,
 dictionaries, and lists.  Decimals and dates are notably missing.</p>
-<p>Also, binary data will be transferred using base64 encoding, which
+<p>Also, binary data will be transferred using Base64 encoding, which
 will cause the transferred data to be around 34% larger than an
 encoding which supports native binary types.</p>
 <p class="last">However, if your data fits inside the above constraints and
@@ -118,14 +121,15 @@ content-type is sent as a message header.</p>
 <div class="section" id="sending-raw-data-without-serialization">
 <span id="sending-raw-data"></span><h2>Sending raw data without Serialization<a class="headerlink" href="#sending-raw-data-without-serialization" title="Permalink to this headline">¶</a></h2>
 <p>In some cases, you don&#8217;t need your message data to be serialized. If you
-pass in a plain string or unicode object as your message, then carrot will
+pass in a plain string or Unicode object as your message, then carrot will
 not waste cycles serializing/deserializing the data.</p>
 <p>You can optionally specify a <cite>content_type</cite> and <cite>content_encoding</cite>
 for the raw data:</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">producer</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="s">&#39;~/my_picture.jpg&#39;</span><span class="p">,</span><span class="s">&#39;rb&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">read</span><span class="p">(),</span>
-<span class="go">                  content_type=&quot;image/jpeg&quot;,</span>
-<span class="go">                  content_encoding=&quot;binary&quot;,</span>
-<span class="go">                  routing_key=rkey)</span>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s">&quot;~/my_picture.jpg&quot;</span><span class="p">,</span> <span class="s">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="n">producer</span><span class="o">.</span><span class="n">publish</span><span class="p">(</span><span class="n">fh</span><span class="o">.</span><span class="n">read</span><span class="p">(),</span>
+<span class="go">                         content_type=&quot;image/jpeg&quot;,</span>
+<span class="go">                         content_encoding=&quot;binary&quot;,</span>
+<span class="go">                         routing_key=rkey)</span>
 </pre></div>
 </div>
 <p>The <cite>Message</cite> object returned by the <cite>Consumer</cite> class will have a
@@ -193,13 +197,13 @@ for the raw data:</p>
         <li class="right" >
           <a href="pools.html" title="Connection and Producer Pools"
              >previous</a> |</li>
-        <li><a href="../index.html">Kombu v1.4.2 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 1.5.0 documentation</a> &raquo;</li>
           <li><a href="index.html" >User Guide</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2009-2011, Ask Solem.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.8.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
     </div>
   </body>
 </html>

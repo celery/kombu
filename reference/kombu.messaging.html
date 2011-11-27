@@ -2,17 +2,20 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
+
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>kombu.messaging &mdash; Kombu v1.4.2 documentation</title>
+    <title>kombu.messaging &mdash; Kombu 1.5.0 documentation</title>
+    
     <link rel="stylesheet" href="../_static/celery.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '1.4.2',
+        VERSION:     '1.5.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -21,7 +24,7 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="Kombu v1.4.2 documentation" href="../index.html" />
+    <link rel="top" title="Kombu 1.5.0 documentation" href="../index.html" />
     <link rel="up" title="API Reference" href="index.html" />
     <link rel="next" title="kombu.entity" href="kombu.entity.html" />
     <link rel="prev" title="kombu.simple" href="kombu.simple.html" /> 
@@ -42,7 +45,7 @@
         <li class="right" >
           <a href="kombu.simple.html" title="kombu.simple"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">Kombu v1.4.2 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 1.5.0 documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">API Reference</a> &raquo;</li> 
       </ul>
     </div>  
@@ -59,12 +62,12 @@
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">copyright:</th><td class="field-body"><ol class="first loweralpha simple" start="3">
+<tr class="field-odd field"><th class="field-name">copyright:</th><td class="field-body"><ol class="first loweralpha simple" start="3">
 <li>2009 - 2011 by Ask Solem.</li>
 </ol>
 </td>
 </tr>
-<tr class="field"><th class="field-name">license:</th><td class="field-body"><p class="first last">BSD, see LICENSE for more details.</p>
+<tr class="field-even field"><th class="field-name">license:</th><td class="field-body"><p class="first last">BSD, see LICENSE for more details.</p>
 </td>
 </tr>
 </tbody>
@@ -85,7 +88,7 @@
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>channel</strong> &#8211; Connection channel.</li>
 <li><strong>exchange</strong> &#8211; Default exchange.</li>
 <li><strong>routing_key</strong> &#8211; Default routing key.</li>
@@ -93,7 +96,7 @@
 <li><strong>compression</strong> &#8211; Default compression method. Default is no
 compression.</li>
 <li><strong>auto_declare</strong> &#8211; Automatically declare the exchange
-at instantiation. Default is <tt class="xref py py-const xref docutils literal"><span class="pre">True</span></tt>.</li>
+at instantiation. Default is <tt class="xref py py-const docutils literal"><span class="pre">True</span></tt>.</li>
 <li><strong>on_return</strong> &#8211; Callback to call for undeliverable messages,
 when the <cite>mandatory</cite> or <cite>immediate</cite> arguments to
 <a class="reference internal" href="#kombu.messaging.Producer.publish" title="kombu.messaging.Producer.publish"><tt class="xref py py-meth docutils literal"><span class="pre">publish()</span></tt></a> is used. This callback needs the following
@@ -106,47 +109,44 @@ Note that the producer needs to drain events to use this feature.</li>
 </table>
 <dl class="attribute">
 <dt id="kombu.messaging.Producer.channel">
-<tt class="descname">channel</tt><a class="headerlink" href="#kombu.messaging.Producer.channel" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">channel</tt><em class="property"> = None</em><a class="headerlink" href="#kombu.messaging.Producer.channel" title="Permalink to this definition">¶</a></dt>
 <dd><p>The connection channel used.</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.messaging.Producer.exchange">
-<tt class="descname">exchange</tt><a class="headerlink" href="#kombu.messaging.Producer.exchange" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">exchange</tt><em class="property"> = None</em><a class="headerlink" href="#kombu.messaging.Producer.exchange" title="Permalink to this definition">¶</a></dt>
 <dd><p>Default exchange.</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.messaging.Producer.routing_key">
-<tt class="descname">routing_key</tt><a class="headerlink" href="#kombu.messaging.Producer.routing_key" title="Permalink to this definition">¶</a></dt>
-<dd><p>str(object) -&gt; string</p>
-<p>Return a nice string representation of the object.
-If the argument is a string, the return value is the same object.</p>
-</dd></dl>
+<tt class="descname">routing_key</tt><em class="property"> = ''</em><a class="headerlink" href="#kombu.messaging.Producer.routing_key" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.messaging.Producer.serializer">
-<tt class="descname">serializer</tt><a class="headerlink" href="#kombu.messaging.Producer.serializer" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">serializer</tt><em class="property"> = None</em><a class="headerlink" href="#kombu.messaging.Producer.serializer" title="Permalink to this definition">¶</a></dt>
 <dd><p>Default serializer to use. Default is JSON.</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.messaging.Producer.compression">
-<tt class="descname">compression</tt><a class="headerlink" href="#kombu.messaging.Producer.compression" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">compression</tt><em class="property"> = None</em><a class="headerlink" href="#kombu.messaging.Producer.compression" title="Permalink to this definition">¶</a></dt>
 <dd><p>Default compression method.  Disabled by default.</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.messaging.Producer.auto_declare">
-<tt class="descname">auto_declare</tt><a class="headerlink" href="#kombu.messaging.Producer.auto_declare" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">auto_declare</tt><em class="property"> = True</em><a class="headerlink" href="#kombu.messaging.Producer.auto_declare" title="Permalink to this definition">¶</a></dt>
 <dd><p>By default the exchange is declared at instantiation.
 If you want to declare manually then you can set this
-to <tt class="xref py py-const xref docutils literal"><span class="pre">False</span></tt>.</p>
+to <tt class="xref py py-const docutils literal"><span class="pre">False</span></tt>.</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.messaging.Producer.on_return">
-<tt class="descname">on_return</tt><a class="headerlink" href="#kombu.messaging.Producer.on_return" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">on_return</tt><em class="property"> = None</em><a class="headerlink" href="#kombu.messaging.Producer.on_return" title="Permalink to this definition">¶</a></dt>
 <dd><p>Basic return callback.</p>
 </dd></dl>
 
@@ -155,7 +155,7 @@ to <tt class="xref py py-const xref docutils literal"><span class="pre">False</s
 <tt class="descname">declare</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.messaging.Producer.declare" title="Permalink to this definition">¶</a></dt>
 <dd><p>Declare the exchange.</p>
 <p>This is done automatically at instantiation if <a class="reference internal" href="#kombu.messaging.Producer.auto_declare" title="kombu.messaging.Producer.auto_declare"><tt class="xref py py-attr docutils literal"><span class="pre">auto_declare</span></tt></a>
-is set to <tt class="xref py py-const xref docutils literal"><span class="pre">True</span></tt>.</p>
+is set to <tt class="xref py py-const docutils literal"><span class="pre">True</span></tt>.</p>
 </dd></dl>
 
 <dl class="method">
@@ -166,16 +166,16 @@ is set to <tt class="xref py py-const xref docutils literal"><span class="pre">T
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>body</strong> &#8211; Message body.</li>
 <li><strong>routing_key</strong> &#8211; Message routing key.</li>
 <li><strong>delivery_mode</strong> &#8211; See <tt class="xref py py-attr docutils literal"><span class="pre">delivery_mode</span></tt>.</li>
 <li><strong>mandatory</strong> &#8211; Currently not supported.</li>
 <li><strong>immediate</strong> &#8211; Currently not supported.</li>
 <li><strong>priority</strong> &#8211; Message priority. A number between 0 and 9.</li>
-<li><strong>content_type</strong> &#8211; Content type. Default is autodetect.</li>
-<li><strong>content_encoding</strong> &#8211; Content encoding. Default is autodetect.</li>
-<li><strong>serializer</strong> &#8211; Serializer to use. Default is autodetect.</li>
+<li><strong>content_type</strong> &#8211; Content type. Default is auto-detect.</li>
+<li><strong>content_encoding</strong> &#8211; Content encoding. Default is auto-detect.</li>
+<li><strong>serializer</strong> &#8211; Serializer to use. Default is auto-detect.</li>
 <li><strong>headers</strong> &#8211; Mapping of arbitrary headers to pass along
 with the message body.</li>
 <li><strong>exchange</strong> &#8211; Override the exchange.  Note that this exchange
@@ -207,7 +207,7 @@ must have been declared.</li>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>channel</strong> &#8211; see <a class="reference internal" href="#kombu.messaging.Consumer.channel" title="kombu.messaging.Consumer.channel"><tt class="xref py py-attr docutils literal"><span class="pre">channel</span></tt></a>.</li>
 <li><strong>queues</strong> &#8211; see <a class="reference internal" href="#kombu.messaging.Consumer.queues" title="kombu.messaging.Consumer.queues"><tt class="xref py py-attr docutils literal"><span class="pre">queues</span></tt></a>.</li>
 <li><strong>no_ack</strong> &#8211; see <a class="reference internal" href="#kombu.messaging.Consumer.no_ack" title="kombu.messaging.Consumer.no_ack"><tt class="xref py py-attr docutils literal"><span class="pre">no_ack</span></tt></a>.</li>
@@ -221,34 +221,34 @@ must have been declared.</li>
 </table>
 <dl class="attribute">
 <dt id="kombu.messaging.Consumer.channel">
-<tt class="descname">channel</tt><a class="headerlink" href="#kombu.messaging.Consumer.channel" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">channel</tt><em class="property"> = None</em><a class="headerlink" href="#kombu.messaging.Consumer.channel" title="Permalink to this definition">¶</a></dt>
 <dd><p>The connection channel to use.</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.messaging.Consumer.queues">
-<tt class="descname">queues</tt><a class="headerlink" href="#kombu.messaging.Consumer.queues" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">queues</tt><em class="property"> = None</em><a class="headerlink" href="#kombu.messaging.Consumer.queues" title="Permalink to this definition">¶</a></dt>
 <dd><p>A single <a class="reference internal" href="kombu.entity.html#kombu.entity.Queue" title="kombu.entity.Queue"><tt class="xref py py-class docutils literal"><span class="pre">Queue</span></tt></a>, or a list of queues to
 consume from.</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.messaging.Consumer.no_ack">
-<tt class="descname">no_ack</tt><a class="headerlink" href="#kombu.messaging.Consumer.no_ack" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">no_ack</tt><em class="property"> = None</em><a class="headerlink" href="#kombu.messaging.Consumer.no_ack" title="Permalink to this definition">¶</a></dt>
 <dd><p>Flag for message acknowledgment disabled/enabled.
 Enabled by default.</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.messaging.Consumer.auto_declare">
-<tt class="descname">auto_declare</tt><a class="headerlink" href="#kombu.messaging.Consumer.auto_declare" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">auto_declare</tt><em class="property"> = True</em><a class="headerlink" href="#kombu.messaging.Consumer.auto_declare" title="Permalink to this definition">¶</a></dt>
 <dd><p>By default all entities will be declared at instantiation, if you
-want to handle this manually you can set this to <tt class="xref py py-const xref docutils literal"><span class="pre">False</span></tt>.</p>
+want to handle this manually you can set this to <tt class="xref py py-const docutils literal"><span class="pre">False</span></tt>.</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.messaging.Consumer.callbacks">
-<tt class="descname">callbacks</tt><a class="headerlink" href="#kombu.messaging.Consumer.callbacks" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">callbacks</tt><em class="property"> = None</em><a class="headerlink" href="#kombu.messaging.Consumer.callbacks" title="Permalink to this definition">¶</a></dt>
 <dd><p>List of callbacks called in order when a message is received.</p>
 <p>The signature of the callbacks must take two arguments:
 <cite>(body, message)</cite>, which is the decoded message body and
@@ -258,11 +258,11 @@ the <cite>Message</cite> instance (a subclass of
 
 <dl class="attribute">
 <dt id="kombu.messaging.Consumer.on_decode_error">
-<tt class="descname">on_decode_error</tt><a class="headerlink" href="#kombu.messaging.Consumer.on_decode_error" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">on_decode_error</tt><em class="property"> = None</em><a class="headerlink" href="#kombu.messaging.Consumer.on_decode_error" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback called when a message can&#8217;t be decoded.</p>
 <p>The signature of the callback must take two arguments: <cite>(message,
 exc)</cite>, which is the message that can&#8217;t be decoded and the exception
-that occured while trying to decode it.</p>
+that occurred while trying to decode it.</p>
 </dd></dl>
 
 <dl class="method">
@@ -341,7 +341,7 @@ improvement.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>prefetch_size</strong> &#8211; Specify the prefetch window in octets.
 The server will send a message in advance if it is equal to
 or smaller in size than the available prefetch size (and
@@ -369,7 +369,7 @@ on the specified channel.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><strong>requeue</strong> &#8211; By default the messages will be redelivered
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>requeue</strong> &#8211; By default the messages will be redelivered
 to the original recipient. With <cite>requeue</cite> set to true, the
 server will attempt to requeue the message, potentially then
 delivering it to an alternative subscriber.</td>
@@ -387,14 +387,14 @@ delivering it to an alternative subscriber.</td>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>body</strong> &#8211; The decoded message body.</li>
 <li><strong>message</strong> &#8211; The <cite>Message</cite> instance.</li>
 </ul>
 </td>
 </tr>
-<tr class="field"><th class="field-name" colspan="2">Raises NotImplementedError:</th></tr>
-<tr class="field"><td>&nbsp;</td><td class="field-body"><p class="first last">If no consumer callbacks have been
+<tr class="field-even field"><th class="field-name" colspan="2">Raises NotImplementedError:</th></tr>
+<tr class="field-even field"><td>&nbsp;</td><td class="field-body"><p class="first last">If no consumer callbacks have been
 registered.</p>
 </td>
 </tr>
@@ -473,13 +473,13 @@ registered.</p>
         <li class="right" >
           <a href="kombu.simple.html" title="kombu.simple"
              >previous</a> |</li>
-        <li><a href="../index.html">Kombu v1.4.2 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 1.5.0 documentation</a> &raquo;</li>
           <li><a href="index.html" >API Reference</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2009-2011, Ask Solem.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.8.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
     </div>
   </body>
 </html>

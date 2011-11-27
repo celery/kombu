@@ -25,7 +25,7 @@ method::
 
     >>> connection.connect()
 
-You can also check wether the connection is connected::
+You can also check whether the connection is connected::
 
     >>> connection.connected()
     True
@@ -37,7 +37,7 @@ Connections must always be closed after use::
 But best practice is to release the connection instead,
 this will release the resource if the connection is associated
 with a connection pool, or close the connection if not,
-and makes it easier to transist to connection pools later::
+and makes it easier to do the transition to connection pools later::
 
     >>> connection.release()
 
@@ -83,7 +83,7 @@ The query part of the URL can also be used to set options, e.g.::
 See :ref:`connection-options` for a list of supported options.
 
 A connection without options will use the default connection settings,
-which is using the localhost host, default port, username `guest`,
+which is using the localhost host, default port, user name `guest`,
 password `guest` and virtual host "/". A connection without arguments
 is the same as::
 
@@ -103,8 +103,8 @@ Keyword arguments
 The :class:`BrokerConnection` class supports additional
 keyword arguments, these are:
 
-:hostname: Default hostname if not provided in the URL.
-:userid: Default username if not provided in the URL.
+:hostname: Default host name if not provided in the URL.
+:userid: Default user name if not provided in the URL.
 :password: Default password if not provided in the URL.
 :virtual_host: Default virtual host if not provided in the URL.
 :port: Default port if not provided in the URL.
@@ -113,7 +113,7 @@ keyword arguments, these are:
   ``kombu.transport.pyamqplib.Transport``), or one of the aliases:
   ``amqplib``, ``pika``, ``redis``, ``memory``, and so on.
 
-:ssl: Use ssl to connect to the server. Default is ``False``.
+:ssl: Use SSL to connect to the server. Default is ``False``.
   Only supported by the amqp transport.
 :insist: Insist on connecting to a server.
   In a configuration with multiple load-sharing servers, the insist
@@ -121,7 +121,7 @@ keyword arguments, these are:
   to the specified server.  Default is ``False``.
   Only supported by the amqp and pika transports, and not by AMQP 0-9-1.
 :connect_timeout: Timeout in seconds for connecting to the
-  server. May not be suported by the specified transport.
+  server. May not be supported by the specified transport.
 :transport_options: A dict of additional connection arguments to
   pass to alternate kombu channel implementations.  Consult the transport
   documentation for available options.

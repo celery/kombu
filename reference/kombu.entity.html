@@ -2,17 +2,20 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
+
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>kombu.entity &mdash; Kombu v1.4.2 documentation</title>
+    <title>kombu.entity &mdash; Kombu 1.5.0 documentation</title>
+    
     <link rel="stylesheet" href="../_static/celery.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '1.4.2',
+        VERSION:     '1.5.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -21,7 +24,7 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="Kombu v1.4.2 documentation" href="../index.html" />
+    <link rel="top" title="Kombu 1.5.0 documentation" href="../index.html" />
     <link rel="up" title="API Reference" href="index.html" />
     <link rel="next" title="Common Utilities - kombu.common" href="kombu.common.html" />
     <link rel="prev" title="kombu.messaging" href="kombu.messaging.html" /> 
@@ -42,7 +45,7 @@
         <li class="right" >
           <a href="kombu.messaging.html" title="kombu.messaging"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">Kombu v1.4.2 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 1.5.0 documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">API Reference</a> &raquo;</li> 
       </ul>
     </div>  
@@ -59,12 +62,12 @@
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">copyright:</th><td class="field-body"><ol class="first loweralpha simple" start="3">
+<tr class="field-odd field"><th class="field-name">copyright:</th><td class="field-body"><ol class="first loweralpha simple" start="3">
 <li>2009 - 2011 by Ask Solem.</li>
 </ol>
 </td>
 </tr>
-<tr class="field"><th class="field-name">license:</th><td class="field-body"><p class="first last">BSD, see LICENSE for more details.</p>
+<tr class="field-even field"><th class="field-name">license:</th><td class="field-body"><p class="first last">BSD, see LICENSE for more details.</p>
 </td>
 </tr>
 </tbody>
@@ -104,7 +107,7 @@ To bind the exchange you call the exchange with the channel as argument:</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>name</strong> &#8211; See <a class="reference internal" href="#kombu.entity.Exchange.name" title="kombu.entity.Exchange.name"><tt class="xref py py-attr docutils literal"><span class="pre">name</span></tt></a>.</li>
 <li><strong>type</strong> &#8211; See <a class="reference internal" href="#kombu.entity.Exchange.type" title="kombu.entity.Exchange.type"><tt class="xref py py-attr docutils literal"><span class="pre">type</span></tt></a>.</li>
 <li><strong>channel</strong> &#8211; See <a class="reference internal" href="#kombu.entity.Exchange.channel" title="kombu.entity.Exchange.channel"><tt class="xref py py-attr docutils literal"><span class="pre">channel</span></tt></a>.</li>
@@ -182,14 +185,14 @@ Rajith Attapattu. This article is recommended reading.</p>
 <tt class="descname">durable</tt><a class="headerlink" href="#kombu.entity.Exchange.durable" title="Permalink to this definition">¶</a></dt>
 <dd><p>Durable exchanges remain active when a server restarts. Non-durable
 exchanges (transient exchanges) are purged when a server restarts.
-Default is <tt class="xref py py-const xref docutils literal"><span class="pre">True</span></tt>.</p>
+Default is <tt class="xref py py-const docutils literal"><span class="pre">True</span></tt>.</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.entity.Exchange.auto_delete">
 <tt class="descname">auto_delete</tt><a class="headerlink" href="#kombu.entity.Exchange.auto_delete" title="Permalink to this definition">¶</a></dt>
 <dd><p>If set, the exchange is deleted when all queues have finished
-using it. Default is <tt class="xref py py-const xref docutils literal"><span class="pre">False</span></tt>.</p>
+using it. Default is <tt class="xref py py-const docutils literal"><span class="pre">False</span></tt>.</p>
 </dd></dl>
 
 <dl class="attribute">
@@ -238,7 +241,7 @@ preserved if the server dies or restarts.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>body</strong> &#8211; Message body.</li>
 <li><strong>delivery_mode</strong> &#8211; Set custom delivery mode. Defaults
 to <a class="reference internal" href="#kombu.entity.Exchange.delivery_mode" title="kombu.entity.Exchange.delivery_mode"><tt class="xref py py-attr docutils literal"><span class="pre">delivery_mode</span></tt></a>.</li>
@@ -262,6 +265,26 @@ properly sets content_encoding.</li>
 </table>
 </dd></dl>
 
+<dl class="attribute">
+<dt id="kombu.entity.Exchange.PERSISTENT_DELIVERY_MODE">
+<tt class="descname">PERSISTENT_DELIVERY_MODE</tt><em class="property"> = 2</em><a class="headerlink" href="#kombu.entity.Exchange.PERSISTENT_DELIVERY_MODE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.entity.Exchange.TRANSIENT_DELIVERY_MODE">
+<tt class="descname">TRANSIENT_DELIVERY_MODE</tt><em class="property"> = 1</em><a class="headerlink" href="#kombu.entity.Exchange.TRANSIENT_DELIVERY_MODE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.entity.Exchange.attrs">
+<tt class="descname">attrs</tt><em class="property"> = (('name', None), ('type', None), ('arguments', None), ('durable', &lt;type 'bool'&gt;), ('auto_delete', &lt;type 'bool'&gt;), ('delivery_mode', &lt;function &lt;lambda&gt; at 0x1024dd9b0&gt;))</em><a class="headerlink" href="#kombu.entity.Exchange.attrs" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt>
+<tt class="descname">auto_delete</tt><em class="property"> = False</em></dt>
+<dd></dd></dl>
+
 <dl class="method">
 <dt id="kombu.entity.Exchange.declare">
 <tt class="descname">declare</tt><big>(</big><em>nowait=False</em><big>)</big><a class="headerlink" href="#kombu.entity.Exchange.declare" title="Permalink to this definition">¶</a></dt>
@@ -271,8 +294,8 @@ properly sets content_encoding.</li>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><strong>nowait</strong> &#8211; If set the server will not respond, and a
-response will not be waited for. Default is <tt class="xref py py-const xref docutils literal"><span class="pre">False</span></tt>.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>nowait</strong> &#8211; If set the server will not respond, and a
+response will not be waited for. Default is <tt class="xref py py-const docutils literal"><span class="pre">False</span></tt>.</td>
 </tr>
 </tbody>
 </table>
@@ -286,17 +309,32 @@ response will not be waited for. Default is <tt class="xref py py-const xref doc
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>if_unused</strong> &#8211; Delete only if the exchange has no bindings.
-Default is <tt class="xref py py-const xref docutils literal"><span class="pre">False</span></tt>.</li>
+Default is <tt class="xref py py-const docutils literal"><span class="pre">False</span></tt>.</li>
 <li><strong>nowait</strong> &#8211; If set the server will not respond, and a
-response will not be waited for. Default is <tt class="xref py py-const xref docutils literal"><span class="pre">False</span></tt>.</li>
+response will not be waited for. Default is <tt class="xref py py-const docutils literal"><span class="pre">False</span></tt>.</li>
 </ul>
 </td>
 </tr>
 </tbody>
 </table>
 </dd></dl>
+
+<dl class="attribute">
+<dt>
+<tt class="descname">delivery_mode</tt><em class="property"> = 2</em></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt>
+<tt class="descname">durable</tt><em class="property"> = True</em></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt>
+<tt class="descname">name</tt><em class="property"> = ''</em></dt>
+<dd></dd></dl>
 
 <dl class="method">
 <dt id="kombu.entity.Exchange.publish">
@@ -306,7 +344,7 @@ response will not be waited for. Default is <tt class="xref py py-const xref doc
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>message</strong> &#8211; <a class="reference internal" href="#kombu.entity.Exchange.Message" title="kombu.entity.Exchange.Message"><tt class="xref py py-meth docutils literal"><span class="pre">Message()</span></tt></a> instance to publish.</li>
 <li><strong>routing_key</strong> &#8211; Routing key.</li>
 <li><strong>mandatory</strong> &#8211; Currently not supported.</li>
@@ -317,6 +355,11 @@ response will not be waited for. Default is <tt class="xref py py-const xref doc
 </tbody>
 </table>
 </dd></dl>
+
+<dl class="attribute">
+<dt>
+<tt class="descname">type</tt><em class="property"> = 'direct'</em></dt>
+<dd></dd></dl>
 
 </dd></dl>
 
@@ -353,7 +396,7 @@ an argument:</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>name</strong> &#8211; See <a class="reference internal" href="#kombu.entity.Queue.name" title="kombu.entity.Queue.name"><tt class="xref py py-attr docutils literal"><span class="pre">name</span></tt></a>.</li>
 <li><strong>exchange</strong> &#8211; See <a class="reference internal" href="#kombu.entity.Queue.exchange" title="kombu.entity.Queue.exchange"><tt class="xref py py-attr docutils literal"><span class="pre">exchange</span></tt></a>.</li>
 <li><strong>routing_key</strong> &#8211; See <a class="reference internal" href="#kombu.entity.Queue.routing_key" title="kombu.entity.Queue.routing_key"><tt class="xref py py-attr docutils literal"><span class="pre">routing_key</span></tt></a>.</li>
@@ -430,7 +473,7 @@ a server restarts.
 Note that durable queues do not necessarily hold persistent
 messages, although it does not make sense to send
 persistent messages to a transient queue.</p>
-<p>Default is <tt class="xref py py-const xref docutils literal"><span class="pre">True</span></tt>.</p>
+<p>Default is <tt class="xref py py-const docutils literal"><span class="pre">True</span></tt>.</p>
 </dd></dl>
 
 <dl class="attribute">
@@ -439,7 +482,7 @@ persistent messages to a transient queue.</p>
 <dd><p>Exclusive queues may only be consumed from by the
 current connection. Setting the &#8216;exclusive&#8217; flag
 always implies &#8216;auto-delete&#8217;.</p>
-<p>Default is <tt class="xref py py-const xref docutils literal"><span class="pre">False</span></tt>.</p>
+<p>Default is <tt class="xref py py-const docutils literal"><span class="pre">False</span></tt>.</p>
 </dd></dl>
 
 <dl class="attribute">
@@ -478,6 +521,16 @@ generated queue names.</p>
 <dd><p>Bind instance to channel if not already bound.</p>
 </dd></dl>
 
+<dl class="attribute">
+<dt id="kombu.entity.Queue.attrs">
+<tt class="descname">attrs</tt><em class="property"> = (('name', None), ('exchange', None), ('routing_key', None), ('queue_arguments', None), ('binding_arguments', None), ('durable', &lt;type 'bool'&gt;), ('exclusive', &lt;type 'bool'&gt;), ('auto_delete', &lt;type 'bool'&gt;), ('no_ack', None), ('alias', None))</em><a class="headerlink" href="#kombu.entity.Queue.attrs" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt>
+<tt class="descname">auto_delete</tt><em class="property"> = False</em></dt>
+<dd></dd></dl>
+
 <dl class="method">
 <dt id="kombu.entity.Queue.cancel">
 <tt class="descname">cancel</tt><big>(</big><em>consumer_tag</em><big>)</big><a class="headerlink" href="#kombu.entity.Queue.cancel" title="Permalink to this definition">¶</a></dt>
@@ -494,7 +547,7 @@ until the client cancels them.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>consumer_tag</strong> &#8211; Unique identifier for the consumer. The
 consumer tag is local to a connection, so two clients
 can use the same consumer tags. If this field is empty
@@ -525,12 +578,12 @@ the exchange.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>if_unused</strong> &#8211; If set, the server will only delete the queue
 if it has no consumers. A channel error will be raised
 if the queue has consumers.</li>
 <li><strong>if_empty</strong> &#8211; If set, the server will only delete the queue
-if it is empty. If if&#8217;s not empty a channel error will be raised.</li>
+if it is empty. If it is not empty a channel error will be raised.</li>
 <li><strong>nowait</strong> &#8211; Do not wait for a reply.</li>
 </ul>
 </td>
@@ -539,17 +592,32 @@ if it is empty. If if&#8217;s not empty a channel error will be raised.</li>
 </table>
 </dd></dl>
 
+<dl class="attribute">
+<dt>
+<tt class="descname">durable</tt><em class="property"> = True</em></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt>
+<tt class="descname">exchange</tt><em class="property"> = None</em></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt>
+<tt class="descname">exclusive</tt><em class="property"> = False</em></dt>
+<dd></dd></dl>
+
 <dl class="method">
 <dt id="kombu.entity.Queue.get">
 <tt class="descname">get</tt><big>(</big><em>no_ack=None</em><big>)</big><a class="headerlink" href="#kombu.entity.Queue.get" title="Permalink to this definition">¶</a></dt>
 <dd><p>Poll the server for a new message.</p>
 <p>Returns the message instance if a message was available,
-or <tt class="xref py py-const xref docutils literal"><span class="pre">None</span></tt> otherwise.</p>
+or <tt class="xref py py-const docutils literal"><span class="pre">None</span></tt> otherwise.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><strong>no_ack</strong> &#8211; If set messages received does not have to
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>no_ack</strong> &#8211; If set messages received does not have to
 be acknowledged.</td>
 </tr>
 </tbody>
@@ -559,6 +627,16 @@ queue using a synchronous dialogue, designed for
 specific types of applications where synchronous functionality
 is more important than performance.</p>
 </dd></dl>
+
+<dl class="attribute">
+<dt>
+<tt class="descname">name</tt><em class="property"> = ''</em></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.entity.Queue.no_ack">
+<tt class="descname">no_ack</tt><em class="property"> = False</em><a class="headerlink" href="#kombu.entity.Queue.no_ack" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
 
 <dl class="method">
 <dt id="kombu.entity.Queue.purge">
@@ -574,7 +652,7 @@ is more important than performance.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><strong>nowait</strong> &#8211; Do not wait for a reply.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>nowait</strong> &#8211; Do not wait for a reply.</td>
 </tr>
 </tbody>
 </table>
@@ -588,7 +666,7 @@ is more important than performance.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>nowait</strong> &#8211; Do not wait for a reply.</li>
 <li><strong>passive</strong> &#8211; If set, the server will not create the queue.
 The client can use this to check whether a queue exists
@@ -599,6 +677,11 @@ without modifying the server state.</li>
 </tbody>
 </table>
 </dd></dl>
+
+<dl class="attribute">
+<dt>
+<tt class="descname">routing_key</tt><em class="property"> = ''</em></dt>
+<dd></dd></dl>
 
 <dl class="method">
 <dt id="kombu.entity.Queue.unbind">
@@ -676,13 +759,13 @@ without modifying the server state.</li>
         <li class="right" >
           <a href="kombu.messaging.html" title="kombu.messaging"
              >previous</a> |</li>
-        <li><a href="../index.html">Kombu v1.4.2 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 1.5.0 documentation</a> &raquo;</li>
           <li><a href="index.html" >API Reference</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2009-2011, Ask Solem.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.8.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
     </div>
   </body>
 </html>

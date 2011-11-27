@@ -2,17 +2,20 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
+
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>kombu - AMQP Messaging Framework for Python &mdash; Kombu v1.4.2 documentation</title>
+    <title>kombu - AMQP Messaging Framework for Python &mdash; Kombu 1.5.0 documentation</title>
+    
     <link rel="stylesheet" href="_static/celery.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '',
-        VERSION:     '1.4.2',
+        VERSION:     '1.5.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -21,7 +24,7 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="Kombu v1.4.2 documentation" href="index.html" />
+    <link rel="top" title="Kombu 1.5.0 documentation" href="index.html" />
     <link rel="next" title="User Guide" href="userguide/index.html" />
     <link rel="prev" title="Kombu Documentation" href="index.html" /> 
   </head>
@@ -41,7 +44,7 @@
         <li class="right" >
           <a href="index.html" title="Kombu Documentation"
              accesskey="P">previous</a> |</li>
-        <li><a href="index.html">Kombu v1.4.2 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Kombu 1.5.0 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -56,7 +59,7 @@
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Version:</th><td class="field-body">1.4.2</td>
+<tr class="field-odd field"><th class="field-name">Version:</th><td class="field-body">1.5.0</td>
 </tr>
 </tbody>
 </table>
@@ -94,7 +97,7 @@ payloads.</p>
 <li><p class="first">Consistent exception handling across transports.</p>
 </li>
 <li><p class="first">The ability to ensure that an operation is performed by gracefully
-handling connection and channel errrors.</p>
+handling connection and channel errors.</p>
 </li>
 <li><p class="first">Several annoyances with <a class="reference external" href="http://barryp.org/software/py-amqplib/">amqplib</a> has been fixed, like supporting
 timeouts and the ability to wait for events on more than one channel.</p>
@@ -117,55 +120,55 @@ and the <a class="reference external" href="http://en.wikipedia.org/wiki/AMQP">W
 <col width="24%" />
 </colgroup>
 <tbody valign="top">
-<tr><td><strong>Client</strong></td>
+<tr class="row-odd"><td><strong>Client</strong></td>
 <td><strong>Type</strong></td>
 <td><strong>Direct</strong></td>
 <td><strong>Topic</strong></td>
 <td><strong>Fanout</strong></td>
 </tr>
-<tr><td><em>amqplib</em></td>
+<tr class="row-even"><td><em>amqplib</em></td>
 <td>Native</td>
 <td>Yes</td>
 <td>Yes</td>
 <td>Yes</td>
 </tr>
-<tr><td><em>pika</em></td>
+<tr class="row-odd"><td><em>pika</em></td>
 <td>Native</td>
 <td>Yes</td>
 <td>Yes</td>
 <td>Yes</td>
 </tr>
-<tr><td><em>redis</em></td>
+<tr class="row-even"><td><em>redis</em></td>
 <td>Virtual</td>
 <td>Yes</td>
 <td>Yes[*]_</td>
 <td>Yes (PUB/SUB)</td>
 </tr>
-<tr><td><em>beanstalk</em></td>
+<tr class="row-odd"><td><em>beanstalk</em></td>
 <td>Virtual</td>
 <td>Yes</td>
 <td>Yes[*]_</td>
 <td>No</td>
 </tr>
-<tr><td><em>SQS</em></td>
+<tr class="row-even"><td><em>SQS</em></td>
 <td>Virtual</td>
 <td>Yes</td>
 <td>Yes[*]_</td>
 <td>Yes[#]_</td>
 </tr>
-<tr><td><em>mongodb</em></td>
+<tr class="row-odd"><td><em>mongodb</em></td>
 <td>Virtual</td>
 <td>Yes</td>
 <td>Yes[*]_</td>
 <td>No</td>
 </tr>
-<tr><td><em>couchdb</em></td>
+<tr class="row-even"><td><em>couchdb</em></td>
 <td>Virtual</td>
 <td>Yes</td>
 <td>Yes[*]_</td>
 <td>No</td>
 </tr>
-<tr><td><em>in-memory</em></td>
+<tr class="row-odd"><td><em>in-memory</em></td>
 <td>Virtual</td>
 <td>Yes</td>
 <td>Yes[*]_</td>
@@ -207,6 +210,11 @@ Can be disabled by setting the <tt class="docutils literal"><span class="pre">su
 <span class="c"># connections</span>
 <span class="k">with</span> <span class="n">BrokerConnection</span><span class="p">(</span><span class="s">&quot;amqp://guest:guest@localhost//&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">conn</span><span class="p">:</span>
 
+    <span class="c"># Declare the video queue so that the messages can be delivered.</span>
+    <span class="c"># It is a best practice in Kombu to have both publishers and</span>
+    <span class="c"># consmers declare the queue.</span>
+    <span class="n">video_queue</span><span class="p">(</span><span class="n">channel</span><span class="p">)</span><span class="o">.</span><span class="n">declare</span><span class="p">()</span>
+
     <span class="c"># produce</span>
     <span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">Producer</span><span class="p">(</span><span class="n">exchange</span><span class="o">=</span><span class="n">media_exchange</span><span class="p">,</span>
                        <span class="n">serializer</span><span class="o">=</span><span class="s">&quot;json&quot;</span><span class="p">,</span> <span class="n">routing_key</span><span class="o">=</span><span class="s">&quot;video&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">producer</span><span class="p">:</span>
@@ -228,7 +236,7 @@ Can be disabled by setting the <tt class="docutils literal"><span class="pre">su
         <span class="n">connection</span><span class="o">.</span><span class="n">drain_events</span><span class="p">()</span>
 </pre></div>
 </div>
-<p>Or handle channels menually:</p>
+<p>Or handle channels manually:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="k">with</span> <span class="n">connection</span><span class="o">.</span><span class="n">channel</span><span class="p">()</span> <span class="k">as</span> <span class="n">channel</span><span class="p">:</span>
     <span class="n">producer</span> <span class="o">=</span> <span class="n">Producer</span><span class="p">(</span><span class="n">channel</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
     <span class="n">consumer</span> <span class="o">=</span> <span class="n">Producer</span><span class="p">(</span><span class="n">channel</span><span class="p">)</span>
@@ -255,7 +263,7 @@ just remember to close the objects after use:</p>
 </pre></div>
 </div>
 <p><cite>Exchange</cite> and <cite>Queue</cite> are simply declarations that can be pickled
-and used in configuaration files etc.</p>
+and used in configuration files etc.</p>
 <p>They also support operations, but to do so they need to be bound
 to a channel:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">exchange</span> <span class="o">=</span> <span class="n">Exchange</span><span class="p">(</span><span class="s">&quot;tasks&quot;</span><span class="p">,</span> <span class="s">&quot;direct&quot;</span><span class="p">)</span>
@@ -459,12 +467,12 @@ file in the top distribution directory for the full license text.</p>
         <li class="right" >
           <a href="index.html" title="Kombu Documentation"
              >previous</a> |</li>
-        <li><a href="index.html">Kombu v1.4.2 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Kombu 1.5.0 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2009-2011, Ask Solem.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.8.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
     </div>
   </body>
 </html>

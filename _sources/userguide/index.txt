@@ -9,6 +9,8 @@
     :maxdepth: 2
 
     connections
+    producers
+    consumers
     examples
     simple
     pools

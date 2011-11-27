@@ -2,17 +2,20 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
+
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>kombu.transport.virtual.exchange &mdash; Kombu v1.4.2 documentation</title>
+    <title>kombu.transport.virtual.exchange &mdash; Kombu 1.5.0 documentation</title>
+    
     <link rel="stylesheet" href="../_static/celery.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '1.4.2',
+        VERSION:     '1.5.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -21,7 +24,7 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="Kombu v1.4.2 documentation" href="../index.html" />
+    <link rel="top" title="Kombu 1.5.0 documentation" href="../index.html" />
     <link rel="up" title="API Reference" href="index.html" />
     <link rel="next" title="kombu.transport.virtual.scheduling" href="kombu.transport.virtual.scheduling.html" />
     <link rel="prev" title="kombu.transport.virtual" href="kombu.transport.virtual.html" /> 
@@ -42,7 +45,7 @@
         <li class="right" >
           <a href="kombu.transport.virtual.html" title="kombu.transport.virtual"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">Kombu v1.4.2 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 1.5.0 documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">API Reference</a> &raquo;</li> 
       </ul>
     </div>  
@@ -60,12 +63,12 @@ by the AMQ protocol  (excluding the <cite>headers</cite> exchange).</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">copyright:</th><td class="field-body"><ol class="first loweralpha simple" start="3">
+<tr class="field-odd field"><th class="field-name">copyright:</th><td class="field-body"><ol class="first loweralpha simple" start="3">
 <li>2009 - 2011 by Ask Solem.</li>
 </ol>
 </td>
 </tr>
-<tr class="field"><th class="field-name">license:</th><td class="field-body"><p class="first last">BSD, see LICENSE for more details.</p>
+<tr class="field-even field"><th class="field-name">license:</th><td class="field-body"><p class="first last">BSD, see LICENSE for more details.</p>
 </td>
 </tr>
 </tbody>
@@ -92,6 +95,11 @@ by the AMQ protocol  (excluding the <cite>headers</cite> exchange).</p>
 <dl class="method">
 <dt id="kombu.transport.virtual.exchange.DirectExchange.lookup">
 <tt class="descname">lookup</tt><big>(</big><em>table</em>, <em>exchange</em>, <em>routing_key</em>, <em>default</em><big>)</big><a class="headerlink" href="#kombu.transport.virtual.exchange.DirectExchange.lookup" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.virtual.exchange.DirectExchange.type">
+<tt class="descname">type</tt><em class="property"> = 'direct'</em><a class="headerlink" href="#kombu.transport.virtual.exchange.DirectExchange.type" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
@@ -127,8 +135,13 @@ dots, using wildcard characters <tt class="docutils literal"><span class="pre">*
 <dd></dd></dl>
 
 <dl class="attribute">
+<dt id="kombu.transport.virtual.exchange.TopicExchange.type">
+<tt class="descname">type</tt><em class="property"> = 'topic'</em><a class="headerlink" href="#kombu.transport.virtual.exchange.TopicExchange.type" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
 <dt id="kombu.transport.virtual.exchange.TopicExchange.wildcards">
-<tt class="descname">wildcards</tt><a class="headerlink" href="#kombu.transport.virtual.exchange.TopicExchange.wildcards" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">wildcards</tt><em class="property"> = {'#': '.*?', '*': '.*?[^\\.]'}</em><a class="headerlink" href="#kombu.transport.virtual.exchange.TopicExchange.wildcards" title="Permalink to this definition">¶</a></dt>
 <dd><p>map of wildcard to regex conversions</p>
 </dd></dl>
 
@@ -157,6 +170,11 @@ for an example implementation of these methods.</p>
 <tt class="descname">lookup</tt><big>(</big><em>table</em>, <em>exchange</em>, <em>routing_key</em>, <em>default</em><big>)</big><a class="headerlink" href="#kombu.transport.virtual.exchange.FanoutExchange.lookup" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
+<dl class="attribute">
+<dt id="kombu.transport.virtual.exchange.FanoutExchange.type">
+<tt class="descname">type</tt><em class="property"> = 'fanout'</em><a class="headerlink" href="#kombu.transport.virtual.exchange.FanoutExchange.type" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
 </dd></dl>
 
 </div>
@@ -170,7 +188,7 @@ for an example implementation of these methods.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><strong>channel</strong> &#8211; AMQ Channel</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>channel</strong> &#8211; AMQ Channel</td>
 </tr>
 </tbody>
 </table>
@@ -188,7 +206,7 @@ for an example implementation of these methods.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><cite>default</cite> if no queues matched.</td>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><cite>default</cite> if no queues matched.</td>
 </tr>
 </tbody>
 </table>
@@ -200,6 +218,11 @@ for an example implementation of these methods.</p>
 <dd><p>Returns tuple of <cite>(routing_key, regex, queue)</cite> to be stored
 for bindings to this exchange.</p>
 </dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.virtual.exchange.ExchangeType.type">
+<tt class="descname">type</tt><em class="property"> = None</em><a class="headerlink" href="#kombu.transport.virtual.exchange.ExchangeType.type" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
 
 </dd></dl>
 
@@ -268,13 +291,13 @@ for bindings to this exchange.</p>
         <li class="right" >
           <a href="kombu.transport.virtual.html" title="kombu.transport.virtual"
              >previous</a> |</li>
-        <li><a href="../index.html">Kombu v1.4.2 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 1.5.0 documentation</a> &raquo;</li>
           <li><a href="index.html" >API Reference</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2009-2011, Ask Solem.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.8.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
     </div>
   </body>
 </html>

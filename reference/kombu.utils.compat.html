@@ -2,17 +2,20 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
+
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Compat. utilities - kombu.utils.compat &mdash; Kombu v1.4.2 documentation</title>
+    <title>Compat. utilities - kombu.utils.compat &mdash; Kombu 1.5.0 documentation</title>
+    
     <link rel="stylesheet" href="../_static/celery.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '1.4.2',
+        VERSION:     '1.5.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -21,7 +24,7 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="Kombu v1.4.2 documentation" href="../index.html" />
+    <link rel="top" title="Kombu 1.5.0 documentation" href="../index.html" />
     <link rel="up" title="API Reference" href="index.html" />
     <link rel="next" title="Debugging - kombu.utils.debug" href="kombu.utils.debug.html" />
     <link rel="prev" title="Rate limiting - kombu.utils.limits" href="kombu.utils.limits.html" /> 
@@ -42,7 +45,7 @@
         <li class="right" >
           <a href="kombu.utils.limits.html" title="Rate limiting - kombu.utils.limits"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">Kombu v1.4.2 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 1.5.0 documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">API Reference</a> &raquo;</li> 
       </ul>
     </div>  
@@ -66,12 +69,12 @@
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">copyright:</th><td class="field-body"><ol class="first loweralpha simple" start="3">
+<tr class="field-odd field"><th class="field-name">copyright:</th><td class="field-body"><ol class="first loweralpha simple" start="3">
 <li>2009 - 2011 by Ask Solem.</li>
 </ol>
 </td>
 </tr>
-<tr class="field"><th class="field-name">license:</th><td class="field-body"><p class="first last">BSD, see LICENSE for more details.</p>
+<tr class="field-even field"><th class="field-name">license:</th><td class="field-body"><p class="first last">BSD, see LICENSE for more details.</p>
 </td>
 </tr>
 </tbody>
@@ -82,21 +85,18 @@
 <dd><p>Dictionary that remembers insertion order</p>
 <dl class="method">
 <dt id="kombu.utils.compat.CompatOrderedDict.clear">
-<tt class="descname">clear</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.utils.compat.CompatOrderedDict.clear" title="Permalink to this definition">¶</a></dt>
-<dd><p>od.clear() -&gt; None.  Remove all items from od.</p>
-</dd></dl>
+<tt class="descname">clear</tt><big>(</big><big>)</big> &rarr; None.  Remove all items from od.<a class="headerlink" href="#kombu.utils.compat.CompatOrderedDict.clear" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
 
 <dl class="method">
 <dt id="kombu.utils.compat.CompatOrderedDict.copy">
-<tt class="descname">copy</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.utils.compat.CompatOrderedDict.copy" title="Permalink to this definition">¶</a></dt>
-<dd><p>od.copy() -&gt; a shallow copy of od</p>
-</dd></dl>
+<tt class="descname">copy</tt><big>(</big><big>)</big> &rarr; a shallow copy of od<a class="headerlink" href="#kombu.utils.compat.CompatOrderedDict.copy" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
 
 <dl class="classmethod">
 <dt id="kombu.utils.compat.CompatOrderedDict.fromkeys">
-<em class="property">classmethod </em><tt class="descname">fromkeys</tt><big>(</big><em>iterable</em>, <em>value=None</em><big>)</big><a class="headerlink" href="#kombu.utils.compat.CompatOrderedDict.fromkeys" title="Permalink to this definition">¶</a></dt>
-<dd><p>OD.fromkeys(S[, v]) -&gt; New ordered dictionary with keys from S
-and values equal to v (which defaults to None).</p>
+<em class="property">classmethod </em><tt class="descname">fromkeys</tt><big>(</big><em>S</em><span class="optional">[</span>, <em>v</em><span class="optional">]</span><big>)</big> &rarr; New ordered dictionary with keys from S<a class="headerlink" href="#kombu.utils.compat.CompatOrderedDict.fromkeys" title="Permalink to this definition">¶</a></dt>
+<dd><p>and values equal to v (which defaults to None).</p>
 </dd></dl>
 
 <dl class="method">
@@ -126,14 +126,13 @@ and values equal to v (which defaults to None).</p>
 
 <dl class="method">
 <dt id="kombu.utils.compat.CompatOrderedDict.pop">
-<tt class="descname">pop</tt><big>(</big><em>key</em>, <em>default=&lt;object object at 0x102036ed0&gt;</em><big>)</big><a class="headerlink" href="#kombu.utils.compat.CompatOrderedDict.pop" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">pop</tt><big>(</big><em>key</em>, <em>default=&lt;object object at 0x102708260&gt;</em><big>)</big><a class="headerlink" href="#kombu.utils.compat.CompatOrderedDict.pop" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="method">
 <dt id="kombu.utils.compat.CompatOrderedDict.popitem">
-<tt class="descname">popitem</tt><big>(</big><em>last=True</em><big>)</big><a class="headerlink" href="#kombu.utils.compat.CompatOrderedDict.popitem" title="Permalink to this definition">¶</a></dt>
-<dd><p>od.popitem() -&gt; (k, v)</p>
-<p>Return and remove a (key, value) pair.
+<tt class="descname">popitem</tt><big>(</big><em>) -&gt; (k</em>, <em>v</em><big>)</big><a class="headerlink" href="#kombu.utils.compat.CompatOrderedDict.popitem" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return and remove a (key, value) pair.
 Pairs are returned in LIFO order if last is true or FIFO
 order if false.</p>
 </dd></dl>
@@ -222,13 +221,13 @@ order if false.</p>
         <li class="right" >
           <a href="kombu.utils.limits.html" title="Rate limiting - kombu.utils.limits"
              >previous</a> |</li>
-        <li><a href="../index.html">Kombu v1.4.2 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 1.5.0 documentation</a> &raquo;</li>
           <li><a href="index.html" >API Reference</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2009-2011, Ask Solem.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.8.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
     </div>
   </body>
 </html>

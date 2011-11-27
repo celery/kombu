@@ -2,17 +2,20 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
+
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Change history &mdash; Kombu v1.4.2 documentation</title>
+    <title>Change history &mdash; Kombu 1.5.0 documentation</title>
+    
     <link rel="stylesheet" href="_static/celery.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '',
-        VERSION:     '1.4.2',
+        VERSION:     '1.5.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -21,7 +24,7 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="Kombu v1.4.2 documentation" href="index.html" />
+    <link rel="top" title="Kombu 1.5.0 documentation" href="index.html" />
     <link rel="prev" title="Logging - kombu.utils.log" href="reference/kombu.utils.log.html" /> 
   </head>
   <body>
@@ -37,7 +40,7 @@
         <li class="right" >
           <a href="reference/kombu.utils.log.html" title="Logging - kombu.utils.log"
              accesskey="P">previous</a> |</li>
-        <li><a href="index.html">Kombu v1.4.2 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Kombu 1.5.0 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -48,15 +51,103 @@
             
   <div class="section" id="change-history">
 <h1>Change history<a class="headerlink" href="#change-history" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="version-1-4-2">
-<span id="id1"></span><h2>1.4.2<a class="headerlink" href="#version-1-4-2" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="version-1-5-0">
+<span id="id1"></span><h2>1.5.0<a class="headerlink" href="#version-1-5-0" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">release-date:</th><td class="field-body">2011-10-26 05:00 P.M BST</td>
+<tr class="field-odd field"><th class="field-name">release-date:</th><td class="field-body">2011-11-27 06:00 P.M GMT</td>
 </tr>
-<tr class="field"><th class="field-name">by:</th><td class="field-body">Ask Solem</td>
+<tr class="field-even field"><th class="field-name">by:</th><td class="field-body">Ask Solem</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><p class="first">kombu.pools: Fixed a bug resulting in resources not being properly released.</p>
+<p>This was caused by the use of <tt class="docutils literal"><span class="pre">__hash__</span></tt> to distinguish them.</p>
+</li>
+<li><p class="first">Virtual transports: Dead-letter queue is now disabled by default.</p>
+<blockquote>
+<div><p>The dead-letter queue was enabled by default to help application
+authors, but now that Kombu is stable it should be removed.
+There are after all many cases where messages should just be dropped
+when there are no queues to buffer them, and keeping them without
+supporting automatic cleanup is rather considered a resource leak
+than a feature.</p>
+<p>If wanted the dead-letter queue can still be enabled, by using
+the <tt class="docutils literal"><span class="pre">deadletter_queue</span></tt> transport option:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">x</span> <span class="o">=</span> <span class="n">BrokerConnection</span><span class="p">(</span><span class="s">&quot;redis://&quot;</span><span class="p">,</span>
+<span class="gp">... </span>      <span class="n">transport_options</span><span class="o">=</span><span class="p">{</span><span class="s">&quot;deadletter_queue&quot;</span><span class="p">:</span> <span class="s">&quot;ae.undeliver&quot;</span><span class="p">})</span>
+</pre></div>
+</div>
+<p>In addition, an <tt class="xref py py-class docutils literal"><span class="pre">UndeliverableWarning</span></tt> is now emitted when
+the dead-letter queue is enabled and a message ends up there.</p>
+<p>Contributed by Ionel Maries Cristian.</p>
+</div></blockquote>
+</li>
+<li><p class="first">MongoDB transport now supports Replicasets (Issue #81).</p>
+<blockquote>
+<div><p>Contributed by Ivan Metzlar.</p>
+</div></blockquote>
+</li>
+<li><p class="first">The <tt class="docutils literal"><span class="pre">Connection.ensure</span></tt> methods now accepts a <tt class="docutils literal"><span class="pre">max_retries</span></tt> value
+of 0.</p>
+<blockquote>
+<div><p>A value of 0 now means <em>do not retry</em>, which is distinct from <tt class="xref py py-const docutils literal"><span class="pre">None</span></tt>
+which means <em>retry indefinitely</em>.</p>
+<p>Contributed by Dan McGee.</p>
+</div></blockquote>
+</li>
+<li><p class="first">SQS Transport: Now has a lowercase <tt class="docutils literal"><span class="pre">sqs</span></tt> alias, so that it can be
+used with broker URLs (Issue #82).</p>
+<blockquote>
+<div><p>Fix contributed by Hong Minhee</p>
+</div></blockquote>
+</li>
+<li><p class="first">SQS Transport: Fixes KeyError on message acknowledgements (Issue #73).</p>
+<blockquote>
+<div><p>The SQS transport now uses UUID&#8217;s for delivery tags, rather than
+a counter.</p>
+<p>Fix contributed by Brian Bernstein.</p>
+</div></blockquote>
+</li>
+<li><p class="first">SQS Transport: Unicode related fixes (Issue #82).</p>
+<blockquote>
+<div><p>Fix contributed by Hong Minhee.</p>
+</div></blockquote>
+</li>
+<li><p class="first">Redis version check could crash because of improper handling of types
+(Issue #63).</p>
+</li>
+<li><p class="first">Fixed error with <cite>Resource.force_close_all</cite>, when resources
+not yet properly initialized.  (Issue #78).</p>
+</li>
+</ul>
+</div>
+<div class="section" id="version-1-4-3">
+<span id="id2"></span><h2>1.4.3<a class="headerlink" href="#version-1-4-3" title="Permalink to this headline">¶</a></h2>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">release-date:</th><td class="field-body">2011-10-27 10:00 P.M BST</td>
+</tr>
+</tbody>
+</table>
+<ul class="simple">
+<li>Fixes bug in ProducerPool where too many resources would be acquired.</li>
+</ul>
+</div>
+<div class="section" id="version-1-4-2">
+<span id="id3"></span><h2>1.4.2<a class="headerlink" href="#version-1-4-2" title="Permalink to this headline">¶</a></h2>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">release-date:</th><td class="field-body">2011-10-26 05:00 P.M BST</td>
+</tr>
+<tr class="field-even field"><th class="field-name">by:</th><td class="field-body">Ask Solem</td>
 </tr>
 </tbody>
 </table>
@@ -89,14 +180,14 @@ by <cite>on_decode_error</cite> (Issue #72)</p>
 </ul>
 </div>
 <div class="section" id="version-1-4-1">
-<span id="id2"></span><h2>1.4.1<a class="headerlink" href="#version-1-4-1" title="Permalink to this headline">¶</a></h2>
+<span id="id4"></span><h2>1.4.1<a class="headerlink" href="#version-1-4-1" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">release-date:</th><td class="field-body">2011-09-26 04:00 P.M BST</td>
+<tr class="field-odd field"><th class="field-name">release-date:</th><td class="field-body">2011-09-26 04:00 P.M BST</td>
 </tr>
-<tr class="field"><th class="field-name">by:</th><td class="field-body">Ask Solem</td>
+<tr class="field-even field"><th class="field-name">by:</th><td class="field-body">Ask Solem</td>
 </tr>
 </tbody>
 </table>
@@ -106,14 +197,14 @@ established for every acquire.</li>
 </ul>
 </div>
 <div class="section" id="version-1-4-0">
-<span id="id3"></span><h2>1.4.0<a class="headerlink" href="#version-1-4-0" title="Permalink to this headline">¶</a></h2>
+<span id="id5"></span><h2>1.4.0<a class="headerlink" href="#version-1-4-0" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">release-date:</th><td class="field-body">2011-09-22 05:00 P.M BST</td>
+<tr class="field-odd field"><th class="field-name">release-date:</th><td class="field-body">2011-09-22 05:00 P.M BST</td>
 </tr>
-<tr class="field"><th class="field-name">by:</th><td class="field-body">Ask Solem</td>
+<tr class="field-even field"><th class="field-name">by:</th><td class="field-body">Ask Solem</td>
 </tr>
 </tbody>
 </table>
@@ -176,14 +267,14 @@ of Lamports logical clock.</p>
 </ul>
 </div>
 <div class="section" id="version-1-3-5">
-<span id="id4"></span><h2>1.3.5<a class="headerlink" href="#version-1-3-5" title="Permalink to this headline">¶</a></h2>
+<span id="id6"></span><h2>1.3.5<a class="headerlink" href="#version-1-3-5" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">release-date:</th><td class="field-body">2011-09-16 06:00 P.M BST</td>
+<tr class="field-odd field"><th class="field-name">release-date:</th><td class="field-body">2011-09-16 06:00 P.M BST</td>
 </tr>
-<tr class="field"><th class="field-name">by:</th><td class="field-body">Ask Solem</td>
+<tr class="field-even field"><th class="field-name">by:</th><td class="field-body">Ask Solem</td>
 </tr>
 </tbody>
 </table>
@@ -192,14 +283,14 @@ of Lamports logical clock.</p>
 </ul>
 </div>
 <div class="section" id="version-1-3-4">
-<span id="id5"></span><h2>1.3.4<a class="headerlink" href="#version-1-3-4" title="Permalink to this headline">¶</a></h2>
+<span id="id7"></span><h2>1.3.4<a class="headerlink" href="#version-1-3-4" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">release-date:</th><td class="field-body">2011-09-16 06:00 P.M BST</td>
+<tr class="field-odd field"><th class="field-name">release-date:</th><td class="field-body">2011-09-16 06:00 P.M BST</td>
 </tr>
-<tr class="field"><th class="field-name">by:</th><td class="field-body">Ask Solem</td>
+<tr class="field-even field"><th class="field-name">by:</th><td class="field-body">Ask Solem</td>
 </tr>
 </tbody>
 </table>
@@ -208,14 +299,14 @@ of Lamports logical clock.</p>
 </ul>
 </div>
 <div class="section" id="version-1-3-3">
-<span id="id6"></span><h2>1.3.3<a class="headerlink" href="#version-1-3-3" title="Permalink to this headline">¶</a></h2>
+<span id="id8"></span><h2>1.3.3<a class="headerlink" href="#version-1-3-3" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">release-date:</th><td class="field-body">2011-09-15 02:00 P.M BST</td>
+<tr class="field-odd field"><th class="field-name">release-date:</th><td class="field-body">2011-09-15 02:00 P.M BST</td>
 </tr>
-<tr class="field"><th class="field-name">by:</th><td class="field-body">Ask Solem</td>
+<tr class="field-even field"><th class="field-name">by:</th><td class="field-body">Ask Solem</td>
 </tr>
 </tbody>
 </table>
@@ -224,14 +315,14 @@ of Lamports logical clock.</p>
 </ul>
 </div>
 <div class="section" id="version-1-3-2">
-<span id="id7"></span><h2>1.3.2<a class="headerlink" href="#version-1-3-2" title="Permalink to this headline">¶</a></h2>
+<span id="id9"></span><h2>1.3.2<a class="headerlink" href="#version-1-3-2" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">release-date:</th><td class="field-body">2011-09-10 01:00 P.M BST</td>
+<tr class="field-odd field"><th class="field-name">release-date:</th><td class="field-body">2011-09-10 01:00 P.M BST</td>
 </tr>
-<tr class="field"><th class="field-name">by:</th><td class="field-body">Mher Movsisyan</td>
+<tr class="field-even field"><th class="field-name">by:</th><td class="field-body">Mher Movsisyan</td>
 </tr>
 </tbody>
 </table>
@@ -247,12 +338,12 @@ than the previous limit.</li>
 </ul>
 </div>
 <div class="section" id="version-1-3-1">
-<span id="id8"></span><h2>1.3.1<a class="headerlink" href="#version-1-3-1" title="Permalink to this headline">¶</a></h2>
+<span id="id10"></span><h2>1.3.1<a class="headerlink" href="#version-1-3-1" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">release-date:</th><td class="field-body">2011-10-07 03:00 P.M BST</td>
+<tr class="field-odd field"><th class="field-name">release-date:</th><td class="field-body">2011-10-07 03:00 P.M BST</td>
 </tr>
 </tbody>
 </table>
@@ -279,12 +370,12 @@ also required by <tt class="xref py py-class docutils literal"><span class="pre"
 </ul>
 </div>
 <div class="section" id="version-1-3-0">
-<span id="id9"></span><h2>1.3.0<a class="headerlink" href="#version-1-3-0" title="Permalink to this headline">¶</a></h2>
+<span id="id11"></span><h2>1.3.0<a class="headerlink" href="#version-1-3-0" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">release-date:</th><td class="field-body">2011-10-05 01:00 P.M BST</td>
+<tr class="field-odd field"><th class="field-name">release-date:</th><td class="field-body">2011-10-05 01:00 P.M BST</td>
 </tr>
 </tbody>
 </table>
@@ -396,12 +487,12 @@ attribute.</p>
 </ul>
 </div>
 <div class="section" id="version-1-2-1">
-<span id="id10"></span><h2>1.2.1<a class="headerlink" href="#version-1-2-1" title="Permalink to this headline">¶</a></h2>
+<span id="id12"></span><h2>1.2.1<a class="headerlink" href="#version-1-2-1" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">release-date:</th><td class="field-body">2011-07-29 12:52 P.M BST</td>
+<tr class="field-odd field"><th class="field-name">release-date:</th><td class="field-body">2011-07-29 12:52 P.M BST</td>
 </tr>
 </tbody>
 </table>
@@ -446,12 +537,12 @@ the queue if <tt class="docutils literal"><span class="pre">auto_declare</span><
 </ul>
 </div>
 <div class="section" id="version-1-2-0">
-<span id="id11"></span><h2>1.2.0<a class="headerlink" href="#version-1-2-0" title="Permalink to this headline">¶</a></h2>
+<span id="id13"></span><h2>1.2.0<a class="headerlink" href="#version-1-2-0" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">release-date:</th><td class="field-body">2011-07-15 12:00 P.M BST</td>
+<tr class="field-odd field"><th class="field-name">release-date:</th><td class="field-body">2011-07-15 12:00 P.M BST</td>
 </tr>
 </tbody>
 </table>
@@ -467,12 +558,12 @@ arguments (Issue #48).</li>
 </ul>
 </div>
 <div class="section" id="version-1-1-6">
-<span id="id12"></span><h2>1.1.6<a class="headerlink" href="#version-1-1-6" title="Permalink to this headline">¶</a></h2>
+<span id="id14"></span><h2>1.1.6<a class="headerlink" href="#version-1-1-6" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">release-date:</th><td class="field-body">2011-06-13 04:00 P.M BST</td>
+<tr class="field-odd field"><th class="field-name">release-date:</th><td class="field-body">2011-06-13 04:00 P.M BST</td>
 </tr>
 </tbody>
 </table>
@@ -501,12 +592,12 @@ error.</p>
 </ul>
 </div>
 <div class="section" id="version-1-1-5">
-<span id="id13"></span><h2>1.1.5<a class="headerlink" href="#version-1-1-5" title="Permalink to this headline">¶</a></h2>
+<span id="id15"></span><h2>1.1.5<a class="headerlink" href="#version-1-1-5" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">release-date:</th><td class="field-body">2011-06-07 06:00 P.M BST</td>
+<tr class="field-odd field"><th class="field-name">release-date:</th><td class="field-body">2011-06-07 06:00 P.M BST</td>
 </tr>
 </tbody>
 </table>
@@ -515,12 +606,12 @@ error.</p>
 </ul>
 </div>
 <div class="section" id="version-1-1-4">
-<span id="id14"></span><h2>1.1.4<a class="headerlink" href="#version-1-1-4" title="Permalink to this headline">¶</a></h2>
+<span id="id16"></span><h2>1.1.4<a class="headerlink" href="#version-1-1-4" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">release-date:</th><td class="field-body">2011-06-07 04:00 P.M BST</td>
+<tr class="field-odd field"><th class="field-name">release-date:</th><td class="field-body">2011-06-07 04:00 P.M BST</td>
 </tr>
 </tbody>
 </table>
@@ -551,12 +642,12 @@ keyword argument.</p>
 </ul>
 </div>
 <div class="section" id="version-1-1-3">
-<span id="id15"></span><h2>1.1.3<a class="headerlink" href="#version-1-1-3" title="Permalink to this headline">¶</a></h2>
+<span id="id17"></span><h2>1.1.3<a class="headerlink" href="#version-1-1-3" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">release-date:</th><td class="field-body">2011-04-21 16:00 P.M CEST</td>
+<tr class="field-odd field"><th class="field-name">release-date:</th><td class="field-body">2011-04-21 16:00 P.M CEST</td>
 </tr>
 </tbody>
 </table>
@@ -585,12 +676,12 @@ connection related errors (<tt class="xref py py-attr docutils literal"><span cl
 </ul>
 </div>
 <div class="section" id="version-1-1-2">
-<span id="id16"></span><h2>1.1.2<a class="headerlink" href="#version-1-1-2" title="Permalink to this headline">¶</a></h2>
+<span id="id18"></span><h2>1.1.2<a class="headerlink" href="#version-1-1-2" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">release-date:</th><td class="field-body">2011-04-06 16:00 P.M CEST</td>
+<tr class="field-odd field"><th class="field-name">release-date:</th><td class="field-body">2011-04-06 16:00 P.M CEST</td>
 </tr>
 </tbody>
 </table>
@@ -607,12 +698,12 @@ issues.</p>
 </ul>
 </div>
 <div class="section" id="version-1-1-1">
-<span id="id17"></span><h2>1.1.1<a class="headerlink" href="#version-1-1-1" title="Permalink to this headline">¶</a></h2>
+<span id="id19"></span><h2>1.1.1<a class="headerlink" href="#version-1-1-1" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">release-date:</th><td class="field-body">2011-04-05 15:51 P.M CEST</td>
+<tr class="field-odd field"><th class="field-name">release-date:</th><td class="field-body">2011-04-05 15:51 P.M CEST</td>
 </tr>
 </tbody>
 </table>
@@ -622,12 +713,12 @@ in Python 2.6+ (Issue #33).  We now ship with our own LifoQueue.</li>
 </ul>
 </div>
 <div class="section" id="version-1-1-0">
-<span id="id18"></span><h2>1.1.0<a class="headerlink" href="#version-1-1-0" title="Permalink to this headline">¶</a></h2>
+<span id="id20"></span><h2>1.1.0<a class="headerlink" href="#version-1-1-0" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">release-date:</th><td class="field-body">2011-04-05 01:05 P.M CEST</td>
+<tr class="field-odd field"><th class="field-name">release-date:</th><td class="field-body">2011-04-05 01:05 P.M CEST</td>
 </tr>
 </tbody>
 </table>
@@ -710,12 +801,12 @@ log messages for connection related actions.</p>
 </div>
 </div>
 <div class="section" id="version-1-0-7">
-<span id="id19"></span><h2>1.0.7<a class="headerlink" href="#version-1-0-7" title="Permalink to this headline">¶</a></h2>
+<span id="id21"></span><h2>1.0.7<a class="headerlink" href="#version-1-0-7" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">release-date:</th><td class="field-body">2011-03-28 05:45 P.M CEST</td>
+<tr class="field-odd field"><th class="field-name">release-date:</th><td class="field-body">2011-03-28 05:45 P.M CEST</td>
 </tr>
 </tbody>
 </table>
@@ -743,7 +834,7 @@ compatible yet.</p>
 Redis.</p>
 </div></blockquote>
 </li>
-<li><p class="first">consumer_tag argument to <tt class="docutils literal"><span class="pre">Queue.consume</span></tt> can&#8217;t be <tt class="xref py py-const xref docutils literal"><span class="pre">None</span></tt>
+<li><p class="first">consumer_tag argument to <tt class="docutils literal"><span class="pre">Queue.consume</span></tt> can&#8217;t be <tt class="xref py py-const docutils literal"><span class="pre">None</span></tt>
 (Issue #21).</p>
 <blockquote>
 <div><p>A None value is now automatically converted to empty string.
@@ -760,13 +851,13 @@ set (Issue #8).</p>
 </li>
 </ul>
 </div>
-<div class="section" id="id20">
-<h2>1.0.6<a class="headerlink" href="#id20" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id22">
+<h2>1.0.6<a class="headerlink" href="#id22" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">release-date:</th><td class="field-body">2011-03-22 04:00 P.M CET</td>
+<tr class="field-odd field"><th class="field-name">release-date:</th><td class="field-body">2011-03-22 04:00 P.M CET</td>
 </tr>
 </tbody>
 </table>
@@ -807,12 +898,12 @@ Channel open
 </ul>
 </div>
 <div class="section" id="version-1-0-5">
-<span id="id21"></span><h2>1.0.5<a class="headerlink" href="#version-1-0-5" title="Permalink to this headline">¶</a></h2>
+<span id="id23"></span><h2>1.0.5<a class="headerlink" href="#version-1-0-5" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">release-date:</th><td class="field-body">2011-03-17 04:00 P.M CET</td>
+<tr class="field-odd field"><th class="field-name">release-date:</th><td class="field-body">2011-03-17 04:00 P.M CET</td>
 </tr>
 </tbody>
 </table>
@@ -837,12 +928,12 @@ consumer tag.</p>
 </ul>
 </div>
 <div class="section" id="version-1-0-4">
-<span id="id22"></span><h2>1.0.4<a class="headerlink" href="#version-1-0-4" title="Permalink to this headline">¶</a></h2>
+<span id="id24"></span><h2>1.0.4<a class="headerlink" href="#version-1-0-4" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">release-date:</th><td class="field-body">2011-02-28 04:00 P.M CET</td>
+<tr class="field-odd field"><th class="field-name">release-date:</th><td class="field-body">2011-02-28 04:00 P.M CET</td>
 </tr>
 </tbody>
 </table>
@@ -857,12 +948,12 @@ there are no messages in the queue.</p>
 </ul>
 </div>
 <div class="section" id="version-1-0-3">
-<span id="id23"></span><h2>1.0.3<a class="headerlink" href="#version-1-0-3" title="Permalink to this headline">¶</a></h2>
+<span id="id25"></span><h2>1.0.3<a class="headerlink" href="#version-1-0-3" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">release-date:</th><td class="field-body">2011-02-12 04:00 P.M CET</td>
+<tr class="field-odd field"><th class="field-name">release-date:</th><td class="field-body">2011-02-12 04:00 P.M CET</td>
 </tr>
 </tbody>
 </table>
@@ -873,12 +964,12 @@ there are no messages in the queue.</p>
 </ul>
 </div>
 <div class="section" id="version-1-0-2">
-<span id="id24"></span><h2>1.0.2<a class="headerlink" href="#version-1-0-2" title="Permalink to this headline">¶</a></h2>
+<span id="id26"></span><h2>1.0.2<a class="headerlink" href="#version-1-0-2" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">release-date:</th><td class="field-body">2011-01-31 10:45 P.M CET</td>
+<tr class="field-odd field"><th class="field-name">release-date:</th><td class="field-body">2011-01-31 10:45 P.M CET</td>
 </tr>
 </tbody>
 </table>
@@ -888,12 +979,12 @@ there are no messages in the queue.</p>
 </ul>
 </div>
 <div class="section" id="version-1-0-1">
-<span id="id25"></span><h2>1.0.1<a class="headerlink" href="#version-1-0-1" title="Permalink to this headline">¶</a></h2>
+<span id="id27"></span><h2>1.0.1<a class="headerlink" href="#version-1-0-1" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">release-date:</th><td class="field-body">2011-01-28 12:00 P.M CET</td>
+<tr class="field-odd field"><th class="field-name">release-date:</th><td class="field-body">2011-01-28 12:00 P.M CET</td>
 </tr>
 </tbody>
 </table>
@@ -902,12 +993,12 @@ there are no messages in the queue.</p>
 </ul>
 </div>
 <div class="section" id="version-1-0-0">
-<span id="id26"></span><h2>1.0.0<a class="headerlink" href="#version-1-0-0" title="Permalink to this headline">¶</a></h2>
+<span id="id28"></span><h2>1.0.0<a class="headerlink" href="#version-1-0-0" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">release-date:</th><td class="field-body">2011-01-27 12:00 P.M CET</td>
+<tr class="field-odd field"><th class="field-name">release-date:</th><td class="field-body">2011-01-27 12:00 P.M CET</td>
 </tr>
 </tbody>
 </table>
@@ -916,12 +1007,12 @@ there are no messages in the queue.</p>
 </ul>
 </div>
 <div class="section" id="version-0-1-0">
-<span id="id27"></span><h2>0.1.0<a class="headerlink" href="#version-0-1-0" title="Permalink to this headline">¶</a></h2>
+<span id="id29"></span><h2>0.1.0<a class="headerlink" href="#version-0-1-0" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">release-date:</th><td class="field-body">2010-07-22 04:20 P.M CET</td>
+<tr class="field-odd field"><th class="field-name">release-date:</th><td class="field-body">2010-07-22 04:20 P.M CET</td>
 </tr>
 </tbody>
 </table>
@@ -942,6 +1033,8 @@ there are no messages in the queue.</p>
   <h3><a href="index.html">Table Of Contents</a></h3>
   <ul>
 <li><a class="reference internal" href="#">Change history</a><ul>
+<li><a class="reference internal" href="#version-1-5-0">1.5.0</a></li>
+<li><a class="reference internal" href="#version-1-4-3">1.4.3</a></li>
 <li><a class="reference internal" href="#version-1-4-2">1.4.2</a></li>
 <li><a class="reference internal" href="#version-1-4-1">1.4.1</a></li>
 <li><a class="reference internal" href="#version-1-4-0">1.4.0</a></li>
@@ -964,7 +1057,7 @@ there are no messages in the queue.</p>
 </ul>
 </li>
 <li><a class="reference internal" href="#version-1-0-7">1.0.7</a></li>
-<li><a class="reference internal" href="#id20">1.0.6</a></li>
+<li><a class="reference internal" href="#id22">1.0.6</a></li>
 <li><a class="reference internal" href="#version-1-0-5">1.0.5</a></li>
 <li><a class="reference internal" href="#version-1-0-4">1.0.4</a></li>
 <li><a class="reference internal" href="#version-1-0-3">1.0.3</a></li>
@@ -1013,12 +1106,12 @@ there are no messages in the queue.</p>
         <li class="right" >
           <a href="reference/kombu.utils.log.html" title="Logging - kombu.utils.log"
              >previous</a> |</li>
-        <li><a href="index.html">Kombu v1.4.2 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Kombu 1.5.0 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2009-2011, Ask Solem.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.8.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
     </div>
   </body>
 </html>

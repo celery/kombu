@@ -2,17 +2,20 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
+
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>kombu.pidbox &mdash; Kombu v1.4.2 documentation</title>
+    <title>kombu.pidbox &mdash; Kombu 1.5.0 documentation</title>
+    
     <link rel="stylesheet" href="../_static/celery.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '1.4.2',
+        VERSION:     '1.5.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -21,7 +24,7 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="Kombu v1.4.2 documentation" href="../index.html" />
+    <link rel="top" title="Kombu 1.5.0 documentation" href="../index.html" />
     <link rel="up" title="API Reference" href="index.html" />
     <link rel="next" title="kombu.exceptions" href="kombu.exceptions.html" />
     <link rel="prev" title="kombu.compat" href="kombu.compat.html" /> 
@@ -42,7 +45,7 @@
         <li class="right" >
           <a href="kombu.compat.html" title="kombu.compat"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">Kombu v1.4.2 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 1.5.0 documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">API Reference</a> &raquo;</li> 
       </ul>
     </div>  
@@ -59,12 +62,12 @@
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">copyright:</th><td class="field-body"><ol class="first loweralpha simple" start="3">
+<tr class="field-odd field"><th class="field-name">copyright:</th><td class="field-body"><ol class="first loweralpha simple" start="3">
 <li>2009 - 2011 by Ask Solem.</li>
 </ol>
 </td>
 </tr>
-<tr class="field"><th class="field-name">license:</th><td class="field-body"><p class="first last">BSD, see LICENSE for more details.</p>
+<tr class="field-even field"><th class="field-name">license:</th><td class="field-body"><p class="first last">BSD, see LICENSE for more details.</p>
 </td>
 </tr>
 </tbody>
@@ -126,31 +129,31 @@
 <em class="property">class </em><tt class="descclassname">kombu.pidbox.</tt><tt class="descname">Mailbox</tt><big>(</big><em>namespace</em>, <em>type='direct'</em>, <em>connection=None</em><big>)</big><a class="headerlink" href="#kombu.pidbox.Mailbox" title="Permalink to this definition">¶</a></dt>
 <dd><dl class="attribute">
 <dt id="kombu.pidbox.Mailbox.namespace">
-<tt class="descname">namespace</tt><a class="headerlink" href="#kombu.pidbox.Mailbox.namespace" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">namespace</tt><em class="property"> = None</em><a class="headerlink" href="#kombu.pidbox.Mailbox.namespace" title="Permalink to this definition">¶</a></dt>
 <dd><p>Name of application.</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.pidbox.Mailbox.connection">
-<tt class="descname">connection</tt><a class="headerlink" href="#kombu.pidbox.Mailbox.connection" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">connection</tt><em class="property"> = None</em><a class="headerlink" href="#kombu.pidbox.Mailbox.connection" title="Permalink to this definition">¶</a></dt>
 <dd><p>Connection (if bound).</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.pidbox.Mailbox.type">
-<tt class="descname">type</tt><a class="headerlink" href="#kombu.pidbox.Mailbox.type" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">type</tt><em class="property"> = 'direct'</em><a class="headerlink" href="#kombu.pidbox.Mailbox.type" title="Permalink to this definition">¶</a></dt>
 <dd><p>Exchange type (usually direct, or fanout for broadcast).</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.pidbox.Mailbox.exchange">
-<tt class="descname">exchange</tt><a class="headerlink" href="#kombu.pidbox.Mailbox.exchange" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">exchange</tt><em class="property"> = None</em><a class="headerlink" href="#kombu.pidbox.Mailbox.exchange" title="Permalink to this definition">¶</a></dt>
 <dd><p>mailbox exchange (init by constructor).</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.pidbox.Mailbox.reply_exchange">
-<tt class="descname">reply_exchange</tt><a class="headerlink" href="#kombu.pidbox.Mailbox.reply_exchange" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">reply_exchange</tt><em class="property"> = None</em><a class="headerlink" href="#kombu.pidbox.Mailbox.reply_exchange" title="Permalink to this definition">¶</a></dt>
 <dd><p>exchange to send replies to.</p>
 </dd></dl>
 
@@ -199,31 +202,31 @@
 <em class="property">class </em><tt class="descclassname">kombu.pidbox.</tt><tt class="descname">Node</tt><big>(</big><em>hostname</em>, <em>state=None</em>, <em>channel=None</em>, <em>handlers=None</em>, <em>mailbox=None</em><big>)</big><a class="headerlink" href="#kombu.pidbox.Node" title="Permalink to this definition">¶</a></dt>
 <dd><dl class="attribute">
 <dt id="kombu.pidbox.Node.hostname">
-<tt class="descname">hostname</tt><a class="headerlink" href="#kombu.pidbox.Node.hostname" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">hostname</tt><em class="property"> = None</em><a class="headerlink" href="#kombu.pidbox.Node.hostname" title="Permalink to this definition">¶</a></dt>
 <dd><p>hostname of the node.</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.pidbox.Node.mailbox">
-<tt class="descname">mailbox</tt><a class="headerlink" href="#kombu.pidbox.Node.mailbox" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">mailbox</tt><em class="property"> = None</em><a class="headerlink" href="#kombu.pidbox.Node.mailbox" title="Permalink to this definition">¶</a></dt>
 <dd><p>the <a class="reference internal" href="#kombu.pidbox.Mailbox" title="kombu.pidbox.Mailbox"><tt class="xref py py-class docutils literal"><span class="pre">Mailbox</span></tt></a> this is a node for.</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.pidbox.Node.handlers">
-<tt class="descname">handlers</tt><a class="headerlink" href="#kombu.pidbox.Node.handlers" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">handlers</tt><em class="property"> = None</em><a class="headerlink" href="#kombu.pidbox.Node.handlers" title="Permalink to this definition">¶</a></dt>
 <dd><p>map of method name/handlers.</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.pidbox.Node.state">
-<tt class="descname">state</tt><a class="headerlink" href="#kombu.pidbox.Node.state" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">state</tt><em class="property"> = None</em><a class="headerlink" href="#kombu.pidbox.Node.state" title="Permalink to this definition">¶</a></dt>
 <dd><p>current context (passed on to handlers)</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.pidbox.Node.channel">
-<tt class="descname">channel</tt><a class="headerlink" href="#kombu.pidbox.Node.channel" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">channel</tt><em class="property"> = None</em><a class="headerlink" href="#kombu.pidbox.Node.channel" title="Permalink to this definition">¶</a></dt>
 <dd><p>current channel.</p>
 </dd></dl>
 
@@ -348,13 +351,13 @@
         <li class="right" >
           <a href="kombu.compat.html" title="kombu.compat"
              >previous</a> |</li>
-        <li><a href="../index.html">Kombu v1.4.2 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 1.5.0 documentation</a> &raquo;</li>
           <li><a href="index.html" >API Reference</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2009-2011, Ask Solem.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.8.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
     </div>
   </body>
 </html>

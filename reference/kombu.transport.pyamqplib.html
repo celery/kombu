@@ -2,17 +2,20 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
+
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>kombu.transport.pyamqplib &mdash; Kombu v1.4.2 documentation</title>
+    <title>kombu.transport.pyamqplib &mdash; Kombu 1.5.0 documentation</title>
+    
     <link rel="stylesheet" href="../_static/celery.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '1.4.2',
+        VERSION:     '1.5.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -21,7 +24,7 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="Kombu v1.4.2 documentation" href="../index.html" />
+    <link rel="top" title="Kombu 1.5.0 documentation" href="../index.html" />
     <link rel="up" title="API Reference" href="index.html" />
     <link rel="next" title="kombu.transport.librabbitmq" href="kombu.transport.librabbitmq.html" />
     <link rel="prev" title="kombu.transport" href="kombu.transport.html" /> 
@@ -42,7 +45,7 @@
         <li class="right" >
           <a href="kombu.transport.html" title="kombu.transport"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">Kombu v1.4.2 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 1.5.0 documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">API Reference</a> &raquo;</li> 
       </ul>
     </div>  
@@ -59,12 +62,12 @@
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">copyright:</th><td class="field-body"><ol class="first loweralpha simple" start="3">
+<tr class="field-odd field"><th class="field-name">copyright:</th><td class="field-body"><ol class="first loweralpha simple" start="3">
 <li>2009 - 2011 by Ask Solem.</li>
 </ol>
 </td>
 </tr>
-<tr class="field"><th class="field-name">license:</th><td class="field-body"><p class="first last">BSD, see LICENSE for more details.</p>
+<tr class="field-even field"><th class="field-name">license:</th><td class="field-body"><p class="first last">BSD, see LICENSE for more details.</p>
 </td>
 </tr>
 </tbody>
@@ -109,11 +112,21 @@
 
 </dd></dl>
 
+<dl class="attribute">
+<dt id="kombu.transport.pyamqplib.Transport.channel_errors">
+<tt class="descclassname">Transport.</tt><tt class="descname">channel_errors</tt><em class="property"> = (&lt;class 'amqplib.client_0_8.exceptions.AMQPChannelException'&gt;,)</em><a class="headerlink" href="#kombu.transport.pyamqplib.Transport.channel_errors" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
 <dl class="method">
 <dt id="kombu.transport.pyamqplib.Transport.close_connection">
 <tt class="descclassname">Transport.</tt><tt class="descname">close_connection</tt><big>(</big><em>connection</em><big>)</big><a class="headerlink" href="#kombu.transport.pyamqplib.Transport.close_connection" title="Permalink to this definition">¶</a></dt>
 <dd><p>Close the AMQP broker connection.</p>
 </dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.pyamqplib.Transport.connection_errors">
+<tt class="descclassname">Transport.</tt><tt class="descname">connection_errors</tt><em class="property"> = (&lt;class 'amqplib.client_0_8.exceptions.AMQPConnectionException'&gt;, &lt;class 'socket.error'&gt;, &lt;type 'exceptions.IOError'&gt;, &lt;type 'exceptions.OSError'&gt;, &lt;type 'exceptions.AttributeError'&gt;)</em><a class="headerlink" href="#kombu.transport.pyamqplib.Transport.connection_errors" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
 
 <dl class="method">
 <dt id="kombu.transport.pyamqplib.Transport.create_channel">
@@ -123,6 +136,11 @@
 <dl class="attribute">
 <dt id="kombu.transport.pyamqplib.Transport.default_connection_params">
 <tt class="descclassname">Transport.</tt><tt class="descname">default_connection_params</tt><a class="headerlink" href="#kombu.transport.pyamqplib.Transport.default_connection_params" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.pyamqplib.Transport.default_port">
+<tt class="descclassname">Transport.</tt><tt class="descname">default_port</tt><em class="property"> = 5672</em><a class="headerlink" href="#kombu.transport.pyamqplib.Transport.default_port" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="method">
@@ -281,6 +299,11 @@ default value of None means match any method), and dispatch to it.</p>
 <tt class="descclassname">Channel.</tt><tt class="descname">close</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.transport.pyamqplib.Channel.close" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
+<dl class="attribute">
+<dt id="kombu.transport.pyamqplib.Channel.events">
+<tt class="descclassname">Channel.</tt><tt class="descname">events</tt><em class="property"> = {'basic_return': []}</em><a class="headerlink" href="#kombu.transport.pyamqplib.Channel.events" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
 <dl class="method">
 <dt id="kombu.transport.pyamqplib.Channel.message_to_python">
 <tt class="descclassname">Channel.</tt><tt class="descname">message_to_python</tt><big>(</big><em>raw_message</em><big>)</big><a class="headerlink" href="#kombu.transport.pyamqplib.Channel.message_to_python" title="Permalink to this definition">¶</a></dt>
@@ -387,13 +410,13 @@ default value of None means match any method), and dispatch to it.</p>
         <li class="right" >
           <a href="kombu.transport.html" title="kombu.transport"
              >previous</a> |</li>
-        <li><a href="../index.html">Kombu v1.4.2 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 1.5.0 documentation</a> &raquo;</li>
           <li><a href="index.html" >API Reference</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2009-2011, Ask Solem.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.8.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
     </div>
   </body>
 </html>

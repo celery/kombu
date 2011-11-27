@@ -2,17 +2,20 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
+
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>kombu.transport.SQS &mdash; Kombu v1.4.2 documentation</title>
+    <title>kombu.transport.SQS &mdash; Kombu 1.5.0 documentation</title>
+    
     <link rel="stylesheet" href="../_static/celery.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '1.4.2',
+        VERSION:     '1.5.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -21,7 +24,7 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="Kombu v1.4.2 documentation" href="../index.html" />
+    <link rel="top" title="Kombu 1.5.0 documentation" href="../index.html" />
     <link rel="up" title="API Reference" href="index.html" />
     <link rel="next" title="kombu.transport.base" href="kombu.transport.base.html" />
     <link rel="prev" title="kombu.transport.pycouchdb" href="kombu.transport.pycouchdb.html" /> 
@@ -42,7 +45,7 @@
         <li class="right" >
           <a href="kombu.transport.pycouchdb.html" title="kombu.transport.pycouchdb"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">Kombu v1.4.2 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 1.5.0 documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">API Reference</a> &raquo;</li> 
       </ul>
     </div>  
@@ -59,12 +62,12 @@
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">copyright:</th><td class="field-body"><ol class="first loweralpha simple" start="3">
+<tr class="field-odd field"><th class="field-name">copyright:</th><td class="field-body"><ol class="first loweralpha simple" start="3">
 <li>2010 - 2011 by Ask Solem</li>
 </ol>
 </td>
 </tr>
-<tr class="field"><th class="field-name">license:</th><td class="field-body"><p class="first last">BSD, see LICENSE for more details.</p>
+<tr class="field-even field"><th class="field-name">license:</th><td class="field-body"><p class="first last">BSD, see LICENSE for more details.</p>
 </td>
 </tr>
 </tbody>
@@ -167,9 +170,19 @@
 <tt class="descclassname">Transport.Channel.</tt><tt class="descname">conninfo</tt><a class="headerlink" href="#kombu.transport.SQS.Transport.Channel.conninfo" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
+<dl class="attribute">
+<dt id="kombu.transport.SQS.Transport.Channel.default_region">
+<tt class="descclassname">Transport.Channel.</tt><tt class="descname">default_region</tt><em class="property"> = 'us-east-1'</em><a class="headerlink" href="#kombu.transport.SQS.Transport.Channel.default_region" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.SQS.Transport.Channel.domain_format">
+<tt class="descclassname">Transport.Channel.</tt><tt class="descname">domain_format</tt><em class="property"> = 'kombu%(vhost)s'</em><a class="headerlink" href="#kombu.transport.SQS.Transport.Channel.domain_format" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
 <dl class="method">
 <dt id="kombu.transport.SQS.Transport.Channel.entity_name">
-<tt class="descclassname">Transport.Channel.</tt><tt class="descname">entity_name</tt><big>(</big><em>name</em>, <em>table='x00x01x02x03x04x05x06x07x08tnx0bx0crx0ex0fx10x11x12x13x14x15x16x17x18x19x1ax1bx1cx1dx1ex1f ____________--_0123456789_______ABCDEFGHIJKLMNOPQRSTUVWXYZ______abcdefghijklmnopqrstuvwxyz____x7fx80x81x82x83x84x85x86x87x88x89x8ax8bx8cx8dx8ex8fx90x91x92x93x94x95x96x97x98x99x9ax9bx9cx9dx9ex9fxa0xa1xa2xa3xa4xa5xa6xa7xa8xa9xaaxabxacxadxaexafxb0xb1xb2xb3xb4xb5xb6xb7xb8xb9xbaxbbxbcxbdxbexbfxc0xc1xc2xc3xc4xc5xc6xc7xc8xc9xcaxcbxccxcdxcexcfxd0xd1xd2xd3xd4xd5xd6xd7xd8xd9xdaxdbxdcxddxdexdfxe0xe1xe2xe3xe4xe5xe6xe7xe8xe9xeaxebxecxedxeexefxf0xf1xf2xf3xf4xf5xf6xf7xf8xf9xfaxfbxfcxfdxfexff'</em><big>)</big><a class="headerlink" href="#kombu.transport.SQS.Transport.Channel.entity_name" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">Transport.Channel.</tt><tt class="descname">entity_name</tt><big>(</big><em>name</em>, <em>table={33: 95</em>, <em>34: 95</em>, <em>35: 95</em>, <em>36: 95</em>, <em>37: 95</em>, <em>38: 95</em>, <em>39: 95</em>, <em>40: 95</em>, <em>41: 95</em>, <em>42: 95</em>, <em>43: 95</em>, <em>44: 95</em>, <em>46: 45</em>, <em>47: 95</em>, <em>58: 95</em>, <em>59: 95</em>, <em>60: 95</em>, <em>61: 95</em>, <em>62: 95</em>, <em>63: 95</em>, <em>64: 95</em>, <em>91: 95</em>, <em>92: 95</em>, <em>93: 95</em>, <em>94: 95</em>, <em>96: 95</em>, <em>123: 95</em>, <em>124: 95</em>, <em>125: 95</em>, <em>126: 95}</em><big>)</big><a class="headerlink" href="#kombu.transport.SQS.Transport.Channel.entity_name" title="Permalink to this definition">¶</a></dt>
 <dd><p>Format AMQP queue name into a legal SQS queue name.</p>
 </dd></dl>
 
@@ -227,6 +240,26 @@
 <dd></dd></dl>
 
 </dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.SQS.Transport.channel_errors">
+<tt class="descclassname">Transport.</tt><tt class="descname">channel_errors</tt><em class="property"> = (&lt;class 'boto.exception.SQSDecodeError'&gt;,)</em><a class="headerlink" href="#kombu.transport.SQS.Transport.channel_errors" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.SQS.Transport.connection_errors">
+<tt class="descclassname">Transport.</tt><tt class="descname">connection_errors</tt><em class="property"> = (&lt;class 'boto.exception.SQSError'&gt;, &lt;class 'socket.error'&gt;)</em><a class="headerlink" href="#kombu.transport.SQS.Transport.connection_errors" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.SQS.Transport.default_port">
+<tt class="descclassname">Transport.</tt><tt class="descname">default_port</tt><em class="property"> = None</em><a class="headerlink" href="#kombu.transport.SQS.Transport.default_port" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.SQS.Transport.polling_interval">
+<tt class="descclassname">Transport.</tt><tt class="descname">polling_interval</tt><em class="property"> = 1</em><a class="headerlink" href="#kombu.transport.SQS.Transport.polling_interval" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
 
 </dd></dl>
 
@@ -320,9 +353,19 @@
 <tt class="descclassname">Channel.</tt><tt class="descname">conninfo</tt><a class="headerlink" href="#kombu.transport.SQS.Channel.conninfo" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
+<dl class="attribute">
+<dt id="kombu.transport.SQS.Channel.default_region">
+<tt class="descclassname">Channel.</tt><tt class="descname">default_region</tt><em class="property"> = 'us-east-1'</em><a class="headerlink" href="#kombu.transport.SQS.Channel.default_region" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.SQS.Channel.domain_format">
+<tt class="descclassname">Channel.</tt><tt class="descname">domain_format</tt><em class="property"> = 'kombu%(vhost)s'</em><a class="headerlink" href="#kombu.transport.SQS.Channel.domain_format" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
 <dl class="method">
 <dt id="kombu.transport.SQS.Channel.entity_name">
-<tt class="descclassname">Channel.</tt><tt class="descname">entity_name</tt><big>(</big><em>name</em>, <em>table='x00x01x02x03x04x05x06x07x08tnx0bx0crx0ex0fx10x11x12x13x14x15x16x17x18x19x1ax1bx1cx1dx1ex1f ____________--_0123456789_______ABCDEFGHIJKLMNOPQRSTUVWXYZ______abcdefghijklmnopqrstuvwxyz____x7fx80x81x82x83x84x85x86x87x88x89x8ax8bx8cx8dx8ex8fx90x91x92x93x94x95x96x97x98x99x9ax9bx9cx9dx9ex9fxa0xa1xa2xa3xa4xa5xa6xa7xa8xa9xaaxabxacxadxaexafxb0xb1xb2xb3xb4xb5xb6xb7xb8xb9xbaxbbxbcxbdxbexbfxc0xc1xc2xc3xc4xc5xc6xc7xc8xc9xcaxcbxccxcdxcexcfxd0xd1xd2xd3xd4xd5xd6xd7xd8xd9xdaxdbxdcxddxdexdfxe0xe1xe2xe3xe4xe5xe6xe7xe8xe9xeaxebxecxedxeexefxf0xf1xf2xf3xf4xf5xf6xf7xf8xf9xfaxfbxfcxfdxfexff'</em><big>)</big><a class="headerlink" href="#kombu.transport.SQS.Channel.entity_name" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">Channel.</tt><tt class="descname">entity_name</tt><big>(</big><em>name</em>, <em>table={33: 95</em>, <em>34: 95</em>, <em>35: 95</em>, <em>36: 95</em>, <em>37: 95</em>, <em>38: 95</em>, <em>39: 95</em>, <em>40: 95</em>, <em>41: 95</em>, <em>42: 95</em>, <em>43: 95</em>, <em>44: 95</em>, <em>46: 45</em>, <em>47: 95</em>, <em>58: 95</em>, <em>59: 95</em>, <em>60: 95</em>, <em>61: 95</em>, <em>62: 95</em>, <em>63: 95</em>, <em>64: 95</em>, <em>91: 95</em>, <em>92: 95</em>, <em>93: 95</em>, <em>94: 95</em>, <em>96: 95</em>, <em>123: 95</em>, <em>124: 95</em>, <em>125: 95</em>, <em>126: 95}</em><big>)</big><a class="headerlink" href="#kombu.transport.SQS.Channel.entity_name" title="Permalink to this definition">¶</a></dt>
 <dd><p>Format AMQP queue name into a legal SQS queue name.</p>
 </dd></dl>
 
@@ -444,13 +487,13 @@
         <li class="right" >
           <a href="kombu.transport.pycouchdb.html" title="kombu.transport.pycouchdb"
              >previous</a> |</li>
-        <li><a href="../index.html">Kombu v1.4.2 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 1.5.0 documentation</a> &raquo;</li>
           <li><a href="index.html" >API Reference</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2009-2011, Ask Solem.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.8.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
     </div>
   </body>
 </html>

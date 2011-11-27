@@ -27,10 +27,10 @@ Each option has its advantages and disadvantages.
     `simplejson`.
 
     The primary disadvantage to `JSON` is that it limits you to
-    the following data types: strings, unicode, floats, boolean,
+    the following data types: strings, Unicode, floats, boolean,
     dictionaries, and lists.  Decimals and dates are notably missing.
 
-    Also, binary data will be transferred using base64 encoding, which
+    Also, binary data will be transferred using Base64 encoding, which
     will cause the transferred data to be around 34% larger than an
     encoding which supports native binary types.
 
@@ -79,16 +79,17 @@ Sending raw data without Serialization
 ======================================
 
 In some cases, you don't need your message data to be serialized. If you
-pass in a plain string or unicode object as your message, then carrot will
+pass in a plain string or Unicode object as your message, then carrot will
 not waste cycles serializing/deserializing the data.
 
 You can optionally specify a `content_type` and `content_encoding`
 for the raw data::
 
-    >>> producer.send(open('~/my_picture.jpg','rb').read(),
-                      content_type="image/jpeg",
-                      content_encoding="binary",
-                      routing_key=rkey)
+    >>> with open("~/my_picture.jpg", "rb") as fh:
+    ...     producer.publish(fh.read(),
+                             content_type="image/jpeg",
+                             content_encoding="binary",
+                             routing_key=rkey)
 
 The `Message` object returned by the `Consumer` class will have a
 `content_type` and `content_encoding` attribute.
