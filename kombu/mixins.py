@@ -219,7 +219,7 @@ class ConsumerMixin(LogMixin):
             with self._consume_from(*self.get_consumers(cls, channel)) as c:
                 yield conn, channel, c
             self.debug("Consumers cancelled")
-            self.on_consume_end(connection, channel)
+            self.on_consume_end(conn, channel)
         self.debug("Connection closed")
 
     @contextmanager
