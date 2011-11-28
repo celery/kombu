@@ -15,7 +15,6 @@ import socket
 from kamqp import client_0_8 as amqp
 
 from . import base
-from ..utils.encoding import str_to_bytes
 
 DEFAULT_PORT = 5672
 

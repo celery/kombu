@@ -14,7 +14,6 @@ import socket
 
 from operator import attrgetter
 
-from ..exceptions import VersionMismatch
 from . import base
 
 import pika
@@ -22,10 +21,7 @@ from pika import spec
 from pika.adapters import blocking_connection as blocking
 from pika import exceptions
 
-
 DEFAULT_PORT = 5672
-
-
 BASIC_PROPERTIES = ("content_type", "content_encoding",
                     "headers", "delivery_mode", "priority",
                     "correlation_id", "reply_to", "expiration",
