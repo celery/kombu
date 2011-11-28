@@ -10,6 +10,7 @@ Redis transport.
 """
 from __future__ import absolute_import
 
+from time import time
 from Queue import Empty
 
 from anyjson import serialize, deserialize
@@ -37,6 +38,36 @@ DEFAULT_DB = 0
 # Also it means we can easily use PUBLISH/SUBSCRIBE to do fanout
 # exchanges (broadcast), as an alternative to pushing messages to fanout-bound
 # queues manually.
+
+
+class QoS(virtual.QoS):
+
+    def append(self, message, delivery_tag):
+        self.client.pipeline() \
+                .zadd(self.unacked_index_key, time(), delivery_tag) \
+                .hset(self.unacked_key, delivery_tag, message) \
+                .execute()
+        super(QoS, self).append(message, delivery_tag)
+
+    def ack(self, delivery_tag):
+        self.client.pipeline() \
+                .zrem(self.unacked_index_key, delivery_tag) \
+                .hdel(self.unacked_key, delivery_tag) \
+                .execute()
+        super(QoS, self).ack(delivery_tag)
+    reject = ack
+
+    @cached_property
+    def client(self):
+        return self.channel.client
+
+    @cached_property
+    def unacked_key(self):
+        return self.channel.unacked_key
+
+    @cached_property
+    def unacked_index_key(self):
+        return self.channel.unacked_index_key
 
 
 class MultiChannelPoller(object):
@@ -123,6 +154,8 @@ class MultiChannelPoller(object):
 
 
 class Channel(virtual.Channel):
+    QoS = QoS
+
     _client = None
     _subclient = None
     supports_fanout = True
@@ -131,6 +164,14 @@ class Channel(virtual.Channel):
     _in_poll = False
     _in_listen = False
     _fanout_queues = {}
+    unacked_key = "unacked"
+    unacked_index_key = "unacked_index"
+    unacked_timeout = 1200  # not implemented
+
+    from_transport_options = (virtual.Channel.from_transport_options
+                            + ("unacked_key",
+                               "unacked_index_key",
+                               "unacked_timeout"))
 
     def __init__(self, *args, **kwargs):
         super_ = super(Channel, self)
@@ -146,6 +187,18 @@ class Channel(virtual.Channel):
         self.client.info()
 
         self.connection.cycle.add(self)  # add to channel poller.
+
+    def _restore(self, message):
+        client = self.client
+        delivery_info = message.delivery_info
+        payload, _ = client.pipeline() \
+                        .hget(self.unacked_key, delivery_info) \
+                        .hdel(self.unacked_key, delivery_info) \
+                        .execute()
+        # NOTE does not set 'redelivered' header.
+        for queue in self._lookup(delivery_info["exchange"],
+                                  delivery_info["routing_key"]):
+            client.lpush(queue, payload)
 
     def basic_consume(self, queue, *args, **kwargs):
         if queue in self._fanout_queues:

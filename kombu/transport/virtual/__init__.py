@@ -288,6 +288,9 @@ class Channel(AbstractChannel, base.StdChannel):
     #: message class used.
     Message = Message
 
+    #: QoS class used.
+    QoS = QoS
+
     #: flag to restore unacked messages when channel
     #: goes out of scope.
     do_restore = True
@@ -620,7 +623,7 @@ class Channel(AbstractChannel, base.StdChannel):
     def qos(self):
         """:class:`QoS` manager for this channel."""
         if self._qos is None:
-            self._qos = QoS(self)
+            self._qos = self.QoS(self)
         return self._qos
 
     @property
