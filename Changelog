@@ -64,8 +64,8 @@
 * Redis version check could crash because of improper handling of types
   (Issue #63).
 
-* Fixed error with `Resource.force_close_all`, when resources
-  not yet properly initialized.  (Issue #78).
+* Fixed error with `Resource.force_close_all` when resources
+  were not yet properly initialized (Issue #78).
 
 .. _version-1.4.3:
 
