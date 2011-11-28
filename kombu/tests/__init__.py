@@ -1,5 +1,7 @@
 from __future__ import absolute_import
 
+from ..exceptions import VersionMismatch
+
 moduleindex = ("kombu.abstract",
                "kombu.compat",
                "kombu.common",
@@ -36,5 +38,5 @@ def setup():
         print("preimporting %r for coverage..." % (module, ))
         try:
             __import__(module)
-        except ImportError:
+        except (ImportError, VersionMismatch):
             pass

@@ -82,8 +82,14 @@ def readme(options):
 
 
 @task
+@cmdopts([
+    ("custom=", "C", "custom version"),
+])
 def bump(options):
-    sh("contrib/release/bump_version.py kombu/__init__.py README.rst")
+    s = "-- '%s'" % (options.custom, ) \
+            if getattr(options, "custom") else ""
+    sh("contrib/release/bump_version.py \
+            kombu/__init__.py README.rst %s" % (s, ))
 
 
 @task

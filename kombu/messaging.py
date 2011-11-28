@@ -12,16 +12,12 @@ from __future__ import absolute_import
 
 from itertools import count
 
-from . import entity
+from .entity import Exchange, Queue
 from .compression import compress
 from .serialization import encode
 from .utils import maybe_list
 
 __all__ = ["Exchange", "Queue", "Producer", "Consumer"]
-
-
-Exchange = entity.Exchange
-Queue = entity.Queue
 
 
 class Producer(object):
@@ -471,7 +467,6 @@ class Consumer(object):
             message = self.channel.message_to_python(raw_message)
             decoded = message.payload
         except Exception, exc:
-            raise
             if not self.on_decode_error:
                 raise
             self.on_decode_error(message, exc)

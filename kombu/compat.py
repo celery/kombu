@@ -65,8 +65,9 @@ class Publisher(messaging.Producer):
         return self.publish(*args, **kwargs)
 
     def close(self):
-        if not self._provided_channel:
+        if self.channel is not None and not self._provided_channel:
             self.channel.close()
+        super(Publisher, self).close()
         self._closed = True
 
     def __enter__(self):

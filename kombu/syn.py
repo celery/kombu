@@ -10,11 +10,15 @@ from __future__ import absolute_import
 
 import sys
 
-__all__ = ["blocking", "detect_environment"]
+__all__ = ["detect_environment"]
 
 
 def blocking(fun, *args, **kwargs):
     return fun(*args, **kwargs)
+
+
+def select_blocking_method(type):
+    pass
 
 
 def detect_environment():

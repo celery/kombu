@@ -16,6 +16,7 @@ from anyjson import serialize, deserialize
 
 from ..exceptions import VersionMismatch
 from ..utils import eventio, cached_property
+from ..utils.encoding import str_t
 
 from . import virtual
 
@@ -327,7 +328,7 @@ class Channel(virtual.Channel):
         if version < (2, 4, 4):
             raise VersionMismatch(
                 "Redis transport requires redis-py versions 2.4.4 or later. "
-                "You have %r" % (".".join(version), ))
+                "You have %r" % (".".join(map(str_t, version)), ))
 
         # KombuRedis maintains a connection attribute on it's instance and
         # uses that when executing commands

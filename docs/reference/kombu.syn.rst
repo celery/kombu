@@ -7,5 +7,5 @@
 .. currentmodule:: kombu.syn
 
 .. automodule:: kombu.syn
-    :members:
-    :undoc-members:
+
+    .. autofunction:: detect_environment

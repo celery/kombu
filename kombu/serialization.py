@@ -65,6 +65,7 @@ class SerializerRegistry(object):
         self._default_encode = None
         self._default_content_type = None
         self._default_content_encoding = None
+        self._disabled_content_types = set()
         self.type_to_name = {}
 
     def register(self, name, encoder, decoder, content_type,
@@ -74,6 +75,11 @@ class SerializerRegistry(object):
         if decoder:
             self._decoders[content_type] = decoder
         self.type_to_name[content_type] = name
+
+    def disable(self, name):
+        if '/' not in name:
+            name = self.type_to_name[name]
+        self._disabled_content_types.add(name)
 
     def unregister(self, name):
         try:
@@ -134,7 +140,10 @@ class SerializerRegistry(object):
         payload = encoder(data)
         return content_type, content_encoding, payload
 
-    def decode(self, data, content_type, content_encoding):
+    def decode(self, data, content_type, content_encoding, force=False):
+        if content_type in self._disabled_content_types:
+            raise SerializerNotInstalled(
+                "Content-type %r has been disabled." % (content_type, ))
         content_type = content_type or 'application/data'
         content_encoding = (content_encoding or 'utf-8').lower()
 
