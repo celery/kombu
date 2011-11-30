@@ -2,6 +2,26 @@
  Change history
 ================
 
+.. _version-1.5.1:
+
+1.5.1
+=====
+:release-date: 2011-11-30 01:00 P.M GMT
+:by: Ask Solem
+
+* Fixes issue with ``kombu.compat`` introduced in 1.5.0 (Issue #83).
+
+* Adds the ability to disable content_types in the serializer registry.
+
+    Any message with a content type that is disabled will be refused.
+    One example would be to disable the Pickle serializer:
+
+        >>> from kombu.serialization import registry
+        # by name
+        >>> registry.disable("pickle")
+        # or by mime-type.
+        >>> registry.disable("application/x-python-serialize")
+
 .. _version-1.5.0:
 
 1.5.0
