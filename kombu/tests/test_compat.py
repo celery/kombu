@@ -109,7 +109,6 @@ class test_Publisher(unittest.TestCase):
         pub.send({"foo": "bar"})
         self.assertIn("basic_publish", pub.backend)
         pub.close()
-        self.assertIn("close", pub.backend)
 
     def test__enter__exit__(self):
         pub = compat.Publisher(self.connection,
@@ -118,7 +117,6 @@ class test_Publisher(unittest.TestCase):
         x = pub.__enter__()
         self.assertIs(x, pub)
         x.__exit__()
-        self.assertIn("close", pub.backend)
         self.assertTrue(pub._closed)
 
 

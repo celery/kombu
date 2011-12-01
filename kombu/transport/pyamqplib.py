@@ -88,7 +88,8 @@ class Connection(amqp.Connection):  # pragma: no cover
             return self.method_reader.read_method()
         sock = self.transport.sock
         prev = sock.gettimeout()
-        sock.settimeout(timeout)
+        if prev != timeout:
+            sock.settimeout(timeout)
         try:
             try:
                 return self.method_reader.read_method()
@@ -98,7 +99,8 @@ class Connection(amqp.Connection):  # pragma: no cover
                     raise socket.timeout()
                 raise
         finally:
-            sock.settimeout(prev)
+            if prev != timeout:
+                sock.settimeout(prev)
 
     def _wait_multiple(self, channel_ids, allowed_methods, timeout=None):
         for channel_id in channel_ids:
