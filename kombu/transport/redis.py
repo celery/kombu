@@ -10,13 +10,14 @@ Redis transport.
 """
 from __future__ import absolute_import
 
+from threading import Lock
 from time import time
 from Queue import Empty
 
 from anyjson import serialize, deserialize
 
 from ..exceptions import VersionMismatch
-from ..utils import eventio, cached_property
+from ..utils import eventio, cached_property, uuid
 from ..utils.encoding import str_t
 
 from . import virtual
@@ -40,26 +41,68 @@ DEFAULT_DB = 0
 # queues manually.
 
 
+class DummyLock(object):
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc_info):
+        pass
+
+
 class QoS(virtual.QoS):
+    restore_at_shutdown = False
+
+    def __init__(self, *args, **kwargs):
+        super(QoS, self).__init__(*args, **kwargs)
+        from threading import Lock
+        self.mutex = DummyLock()  # XXX let's see how this works out
+        self._vrestore_count = 0
 
     def append(self, message, delivery_tag):
-        self.client.pipeline() \
-                .zadd(self.unacked_index_key, time(), delivery_tag) \
-                .hset(self.unacked_key, delivery_tag, message) \
-                .execute()
-        super(QoS, self).append(message, delivery_tag)
+        with self.mutex:
+            delivery = message.delivery_info
+            EX, RK = delivery["exchange"], delivery["routing_key"]
+            self.client.pipeline() \
+                   .zadd(self.unacked_index_key, delivery_tag, time()) \
+                   .hset(self.unacked_key, delivery_tag,
+                       serialize([message._raw, EX, RK])) \
+                   .execute()
+            super(QoS, self).append(message, delivery_tag)
 
     def ack(self, delivery_tag):
-        self.client.pipeline() \
-                .zrem(self.unacked_index_key, delivery_tag) \
-                .hdel(self.unacked_key, delivery_tag) \
-                .execute()
-        super(QoS, self).ack(delivery_tag)
+        with self.mutex:
+            self._remove_from_indices(delivery_tag).execute()
+            super(QoS, self).ack(delivery_tag)
     reject = ack
+
+    def _remove_from_indices(self, delivery_tag, pipe=None):
+        return (pipe or self.client.pipeline()) \
+                .zrem(self.unacked_index_key, delivery_tag) \
+                .hdel(self.unacked_key, delivery_tag)
+
+    def restore_visible(self, start=0, num=10, interval=10):
+        if self._vrestore_count % interval:
+            return
+        with self.mutex:
+            client = self.client
+            unacked_key = self.unacked_key
+            ceil = time() - self.visibility_timeout
+            visible = client.zrevrangebyscore(
+                    self.unacked_index_key, ceil, 0,
+                    start=start, num=num, withscores=True)
+            for tag, score in visible or []:
+                p, _, _ = self._remove_from_indices(tag,
+                                    client.pipeline().hget(unacked_key, tag)) \
+                                .execute()
+                if p:
+                    M, EX, RK = deserialize(p)
+                    self.channel._do_restore_message(M, EX, RK)
+            self._vrestore_count += 1
 
     @cached_property
     def client(self):
-        return self.channel.client
+        return self.channel._avail_client
 
     @cached_property
     def unacked_key(self):
@@ -68,6 +111,10 @@ class QoS(virtual.QoS):
     @cached_property
     def unacked_index_key(self):
         return self.channel.unacked_index_key
+
+    @cached_property
+    def visibility_timeout(self):
+        return self.channel.visibility_timeout
 
 
 class MultiChannelPoller(object):
@@ -133,13 +180,17 @@ class MultiChannelPoller(object):
             channel._subscribe()  # send SUBSCRIBE
 
     def get(self, timeout=None):
+        # - reset active redis commands.
+        direct_channels = set()
         for channel in self._channels:
             if channel.active_queues:           # BRPOP mode?
+                direct_channels.add(channel)
                 if channel.qos.can_consume():
                     self._register_BRPOP(channel)
             if channel.active_fanout_queues:    # LISTEN mode?
                 self._register_LISTEN(channel)
 
+        # - poll for new events
         events = self._poller.poll(timeout and timeout * 1000 or None)
         for fileno, event in events:
             if event & eventio.POLL_READ:
@@ -150,6 +201,10 @@ class MultiChannelPoller(object):
                 chan, type = self._fd_to_chan[fileno]
                 chan._poll_error(type)
                 break
+
+        # - no new data, so try to restore messages.
+        for channel in direct_channels:
+            channel.qos.restore_visible()
         raise Empty()
 
 
@@ -166,12 +221,12 @@ class Channel(virtual.Channel):
     _fanout_queues = {}
     unacked_key = "unacked"
     unacked_index_key = "unacked_index"
-    unacked_timeout = 1200  # not implemented
+    visibility_timeout = 18000  # 5 hours
 
     from_transport_options = (virtual.Channel.from_transport_options
                             + ("unacked_key",
                                "unacked_index_key",
-                               "unacked_timeout"))
+                               "visibility_timeout"))
 
     def __init__(self, *args, **kwargs):
         super_ = super(Channel, self)
@@ -188,17 +243,23 @@ class Channel(virtual.Channel):
 
         self.connection.cycle.add(self)  # add to channel poller.
 
-    def _restore(self, message):
-        client = self.client
-        delivery_info = message.delivery_info
-        payload, _ = client.pipeline() \
-                        .hget(self.unacked_key, delivery_info) \
-                        .hdel(self.unacked_key, delivery_info) \
-                        .execute()
+    def _do_restore_message(self, payload, exchange, routing_key):
         # NOTE does not set 'redelivered' header.
-        for queue in self._lookup(delivery_info["exchange"],
-                                  delivery_info["routing_key"]):
-            client.lpush(queue, payload)
+        for queue in self._lookup(exchange, routing_key):
+            self._avail_client.lpush(queue, serialize(payload))
+
+    def _restore(self, message, payload=None):
+        tag = message.delivery_tag
+        P, _ = self.client.pipeline() \
+                            .hget(self.unacked_key, tag) \
+                            .hdel(self.unacked_key, tag) \
+                         .execute()
+        if P:
+            M, EX, RK = deserialize(P)
+            self._do_restore_message(M, EX, RK)
+
+    def _next_delivery_tag(self):
+        return uuid()
 
     def basic_consume(self, queue, *args, **kwargs):
         if queue in self._fanout_queues:
