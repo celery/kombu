@@ -111,6 +111,13 @@ class Message(object):
         self.channel.basic_ack(self.delivery_tag)
         self._state = "ACK"
 
+    def ack_log_error(self, logger, errors):
+        try:
+            self.ack()
+        except errors, exc:
+            logger.critical("Couldn't ack %r, reason:%r",
+                    self.delivery_tag, exc, exc_info=True)
+
     def reject(self):
         """Reject this message.
 
