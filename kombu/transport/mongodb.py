@@ -46,7 +46,7 @@ class Channel(virtual.Channel):
         return deserialize(msg["value"]["payload"])
 
     def _size(self, queue):
-        return self.client.count()
+        return self.client.find({"queue": queue}).count()
 
     def _put(self, queue, message, **kwargs):
         self.client.insert({"payload": serialize(message), "queue": queue})
