@@ -72,7 +72,6 @@ class Message(object):
             properties=None, headers=None, postencode=None,
             **kwargs):
         self.channel = channel
-        self.body = body
         self.delivery_tag = delivery_tag
         self.content_type = content_type
         self.content_encoding = content_encoding
@@ -82,11 +81,13 @@ class Message(object):
         self._decoded_cache = None
         self._state = "RECEIVED"
 
-        compression = self.headers.get("compression")
-        if compression:
-            self.body = decompress(self.body, compression)
-        if postencode and isinstance(self.body, unicode):
-            self.body = self.body.encode(postencode)
+        try:
+            body = decompress(body, self.headers["compression"])
+        except KeyError:
+            pass
+        if postencode and isinstance(body, unicode):
+            body = body.encode(postencode)
+        self.body = body
 
     def ack(self):
         """Acknowledge this message as being processed.,
@@ -109,6 +110,13 @@ class Message(object):
                 "Message already acknowledged with state: %s" % self._state)
         self.channel.basic_ack(self.delivery_tag)
         self._state = "ACK"
+
+    def ack_log_error(self, logger, errors):
+        try:
+            self.ack()
+        except errors, exc:
+            logger.critical("Couldn't ack %r, reason:%r",
+                    self.delivery_tag, exc, exc_info=True)
 
     def reject(self):
         """Reject this message.

@@ -56,10 +56,11 @@ class Channel(amqp.Channel, base.StdChannel):
                 content_type=None, content_encoding=None, headers=None,
                 properties=None):
         """Encapsulate data into a AMQP message."""
-        properties = dict({"content_type": content_type,
+        properties = properties if properties is not None else {}
+        properties.update({"content_type": content_type,
                            "content_encoding": content_encoding,
                            "headers": headers,
-                           "priority": priority}, **properties or {})
+                           "priority": priority})
         return amqp.Message(body, properties=properties)
 
     def message_to_python(self, raw_message):
@@ -106,6 +107,7 @@ class Transport(base.Transport):
                                ssl=conninfo.ssl,
                                connect_timeout=conninfo.connect_timeout)
         conn.client = self.client
+        self.client.drain_events = conn.drain_events
         return conn
 
     def close_connection(self, connection):
