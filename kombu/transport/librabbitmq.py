@@ -45,7 +45,7 @@ class Message(base.Message):
                 delivery_tag=info["delivery_tag"],
                 content_type=props["content_type"],
                 content_encoding=props["content_encoding"],
-                headers=props.get("application_headers"),
+                headers=props.get("headers"),
                 **kwargs)
 
 
@@ -58,7 +58,7 @@ class Channel(amqp.Channel, base.StdChannel):
         """Encapsulate data into a AMQP message."""
         properties = dict({"content_type": content_type,
                            "content_encoding": content_encoding,
-                           "application_headers": headers,
+                           "headers": headers,
                            "priority": priority}, **properties or {})
         return amqp.Message(body, properties=properties)
 
