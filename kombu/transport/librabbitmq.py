@@ -19,34 +19,16 @@ DEFAULT_PORT = 5672
 
 
 class Message(base.Message):
-    """A message received by the broker.
 
-    .. attribute:: body
-
-        The message body.
-
-    .. attribute:: delivery_tag
-
-        The message delivery tag, uniquely identifying this message.
-
-    .. attribute:: channel
-
-        The channel instance the message was received on.
-
-    """
-
-    def __init__(self, channel, message, **kwargs):
-        props = message.properties
-        info = message.delivery_info
+    def __init__(self, body, props, info, channel):
         super(Message, self).__init__(channel,
-                body=message.body,
+                body=body,
                 delivery_info=info,
                 properties=props,
                 delivery_tag=info["delivery_tag"],
                 content_type=props["content_type"],
                 content_encoding=props["content_encoding"],
-                headers=props.get("headers"),
-                **kwargs)
+                headers=props.get("headers"))
 
 
 class Channel(amqp.Channel, base.StdChannel):
@@ -62,10 +44,6 @@ class Channel(amqp.Channel, base.StdChannel):
                            "headers": headers,
                            "priority": priority})
         return amqp.Message(body, properties=properties)
-
-    def message_to_python(self, raw_message):
-        """Convert encoded message body back to a Python value."""
-        return self.Message(self, raw_message)
 
 
 class Connection(amqp.Connection):

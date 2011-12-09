@@ -412,10 +412,10 @@ class Consumer(object):
           registered.
 
         """
-        if not self.callbacks:
+        callbacks = self.callbacks
+        if not callbacks:
             raise NotImplementedError("No consumer callbacks registered")
-        for callback in self.callbacks:
-            callback(body, message)
+        [callback(body, message) for callback in callbacks]
 
     def revive(self, channel):
         """Revive consumer after connection loss."""
@@ -440,10 +440,12 @@ class Consumer(object):
         self._active_tags[queue.name] = tag
         return tag
 
-    def _receive_callback(self, raw_message):
+    def _receive_callback(self, message):
+        channel = self.channel
         try:
-            message = self.channel.message_to_python(raw_message)
-            decoded = message.payload
+            if hasattr(channel, "message_to_python"):
+                message = channel.message_to_python(message)
+            decoded = message.decode()
         except Exception, exc:
             if not self.on_decode_error:
                 raise

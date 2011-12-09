@@ -9,9 +9,9 @@ Base transport interface.
 
 """
 
-from kombu import serialization
 from kombu.compression import decompress
 from kombu.exceptions import MessageStateError
+from kombu.serialization import decode
 
 ACKNOWLEDGED_STATES = frozenset(["ACK", "REJECTED", "REQUEUED"])
 
@@ -39,34 +39,11 @@ class StdChannel(object):
 
 class Message(object):
     """Base class for received messages."""
-    _state = None
-
-    MessageStateError = MessageStateError
-
-    #: The channel the message was received on.
-    channel = None
-
-    #: Delivery tag used to identify the message in this channel.
-    delivery_tag = None
-
-    #: Content type used to identify the type of content.
-    content_type = None
-
-    #: Content encoding used to identify the text encoding of the body.
-    content_encoding = None
-
-    #: Additional delivery information.
-    delivery_info = None
-
-    #: Message headers
-    headers = None
-
-    #: Application properties
-    properties = None
-
-    #: Raw message body (may be serialized), see :attr:`payload` instead.
-    body = None
-
+    __slots__ = ("_state", "channel", "delivery_tag",
+                 "content_type", "content_encoding",
+                 "delivery_info", "headers",
+                 "properties", "body",
+                 "_decoded_cache")
     def __init__(self, channel, body=None, delivery_tag=None,
             content_type=None, content_encoding=None, delivery_info={},
             properties=None, headers=None, postencode=None,
@@ -152,8 +129,8 @@ class Message(object):
     def decode(self):
         """Deserialize the message body, returning the original
         python structure sent by the publisher."""
-        return serialization.decode(self.body, self.content_type,
-                                    self.content_encoding)
+        return decode(self.body, self.content_type,
+                      self.content_encoding)
 
     @property
     def acknowledged(self):
