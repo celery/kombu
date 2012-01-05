@@ -20,7 +20,7 @@ def maybe_declare(entity, channel):
     declared = declared_entities[channel.connection.client]
     if not entity.is_bound:
         entity = entity(channel)
-    if entity not in declared:
+    if not entity.can_cache_declaration or entity not in declared:
         entity.declare()
         declared.add(entity)
         return True

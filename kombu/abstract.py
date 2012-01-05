@@ -46,6 +46,9 @@ class MaybeChannelBound(Object):
     _channel = None
     _is_bound = False
 
+    #: Defines whether maybe_declare can skip declaring this entity twice.
+    can_cache_declaration = False
+
     def __call__(self, channel):
         """`self(channel) -> self.bind(channel)`"""
         return self.bind(channel)
