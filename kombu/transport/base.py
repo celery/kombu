@@ -43,7 +43,7 @@ class Message(object):
                  "content_type", "content_encoding",
                  "delivery_info", "headers",
                  "properties", "body",
-                 "_decoded_cache")
+                 "_decoded_cache", "__dict__")
     def __init__(self, channel, body=None, delivery_tag=None,
             content_type=None, content_encoding=None, delivery_info={},
             properties=None, headers=None, postencode=None,
