@@ -4,7 +4,7 @@ kombu.transport.SQS
 
 Amazon SQS transport.
 
-:copyright: (c) 2010 - 2011 by Ask Solem
+:copyright: (c) 2010 - 2012 by Ask Solem
 :license: BSD, see LICENSE for more details.
 
 """

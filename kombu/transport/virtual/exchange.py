@@ -5,7 +5,7 @@ kombu.transport.virtual.exchange
 Implementations of the standard exchanges defined
 by the AMQ protocol  (excluding the `headers` exchange).
 
-:copyright: (c) 2009 - 2011 by Ask Solem.
+:copyright: (c) 2009 - 2012 by Ask Solem.
 :license: BSD, see LICENSE for more details.
 
 """

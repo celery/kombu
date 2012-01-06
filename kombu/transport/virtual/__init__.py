@@ -6,7 +6,7 @@ Virtual transport implementation.
 
 Emulates the AMQ API for non-AMQ transports.
 
-:copyright: (c) 2009, 2011 by Ask Solem.
+:copyright: (c) 2009, 2012 by Ask Solem.
 :license: BSD, see LICENSE for more details.
 
 """
