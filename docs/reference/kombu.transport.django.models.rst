@@ -1,11 +1,11 @@
 ==========================================================
- Logging Utilities - kombu.utils.log
+ Django Models - kombu.transport.django.models
 ==========================================================
 
 .. contents::
     :local:
-.. currentmodule:: kombu.utils.log
+.. currentmodule:: kombu.transport.django.models
 
-.. automodule:: kombu.utils.log
+.. automodule:: kombu.transport.django.models
     :members:
     :undoc-members:

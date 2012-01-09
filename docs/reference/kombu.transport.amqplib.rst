@@ -1,6 +1,6 @@
-.. currentmodule:: kombu.transport.pyamqplib
+.. currentmodule:: kombu.transport.amqplib
 
-.. automodule:: kombu.transport.pyamqplib
+.. automodule:: kombu.transport.amqplib
 
     .. contents::
         :local:

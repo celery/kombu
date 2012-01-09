@@ -18,15 +18,23 @@
     kombu.compat
     kombu.pidbox
     kombu.exceptions
+    kombu.log
     kombu.transport
-    kombu.transport.pyamqplib
+    kombu.transport.amqplib
     kombu.transport.librabbitmq
-    kombu.transport.pypika
+    kombu.transport.pika
+    kombu.transport.pika2
     kombu.transport.memory
-    kombu.transport.pyredis
+    kombu.transport.redis
     kombu.transport.beanstalk
     kombu.transport.mongodb
-    kombu.transport.pycouchdb
+    kombu.transport.couchdb
+    kombu.transport.django
+    kombu.transport.django.models
+    kombu.transport.django.managers
+    kombu.transport.django.management.commands.clean_kombu_messages
+    kombu.transport.sqlalchemy
+    kombu.transport.sqlalchemy.models
     kombu.transport.SQS
     kombu.transport.base
     kombu.transport.virtual

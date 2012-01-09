@@ -1,6 +1,6 @@
-.. currentmodule:: kombu.transport.pyredis
+.. currentmodule:: kombu.transport.couchdb
 
-.. automodule:: kombu.transport.pyredis
+.. automodule:: kombu.transport.couchdb
 
     .. contents::
         :local:
@@ -18,3 +18,8 @@
     .. autoclass:: Channel
         :members:
         :undoc-members:
+
+    Functions
+    ---------
+
+    .. autofunction:: create_message_view

@@ -1,11 +1,11 @@
 ==========================================================
- Logging Utilities - kombu.utils.log
+ Logging - kombu.log
 ==========================================================
 
 .. contents::
     :local:
-.. currentmodule:: kombu.utils.log
+.. currentmodule:: kombu.log
 
-.. automodule:: kombu.utils.log
+.. automodule:: kombu.log
     :members:
     :undoc-members:

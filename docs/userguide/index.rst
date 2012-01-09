@@ -8,6 +8,7 @@
 .. toctree::
     :maxdepth: 2
 
+    introduction
     connections
     producers
     consumers

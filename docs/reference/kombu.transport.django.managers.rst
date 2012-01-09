@@ -1,11 +1,11 @@
 ==========================================================
- Logging Utilities - kombu.utils.log
+ Django Managers - kombu.transport.django.managers
 ==========================================================
 
 .. contents::
     :local:
-.. currentmodule:: kombu.utils.log
+.. currentmodule:: kombu.transport.django.managers
 
-.. automodule:: kombu.utils.log
+.. automodule:: kombu.transport.django.managers
     :members:
     :undoc-members:

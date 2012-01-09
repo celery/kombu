@@ -33,8 +33,6 @@ if sys.platform.startswith("java"):
 else:
     _decode = codecs.decode
 
-
-
 if sys.version_info < (2, 6):  # pragma: no cover
     # cPickle is broken in Python <= 2.5.
     # It unsafely and incorrectly uses relative instead of absolute
@@ -50,7 +48,6 @@ if sys.version_info < (2, 6):  # pragma: no cover
     pickle = pypickle
 else:
     pickle = cpickle or pypickle
-
 
 bytes_type = str
 if sys.version_info >= (3, 0):

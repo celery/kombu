@@ -17,7 +17,7 @@ from operator import attrgetter
 from ..exceptions import VersionMismatch
 from . import base
 
-from pika import channel  # must be here to raise importerror for below.
+from pika import channel  # must be here to raise import error
 try:
     from pika import asyncore_adapter
 except ImportError:

@@ -9,6 +9,10 @@ import os
 sys.path.append(os.path.join(os.pardir, "tests"))
 import kombu
 
+from django.conf import settings
+if not settings.configured:
+    settings.configure()
+
 # General configuration
 # ---------------------
 
