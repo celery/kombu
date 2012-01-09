@@ -90,7 +90,8 @@ class Connection(amqp.Connection):  # pragma: no cover
             return self.method_reader.read_method()
         sock = self.transport.sock
         prev = sock.gettimeout()
-        sock.settimeout(timeout)
+        if prev != timeout:
+            sock.settimeout(timeout)
         try:
             try:
                 return self.method_reader.read_method()
@@ -100,7 +101,8 @@ class Connection(amqp.Connection):  # pragma: no cover
                     raise socket.timeout()
                 raise
         finally:
-            sock.settimeout(prev)
+            if prev != timeout:
+                sock.settimeout(prev)
 
     def _wait_multiple(self, channel_ids, allowed_methods, timeout=None):
         for channel_id in channel_ids:
@@ -147,21 +149,6 @@ class Connection(amqp.Connection):  # pragma: no cover
 
 
 class Message(base.Message):
-    """A message received by the broker.
-
-    .. attribute:: body
-
-        The message body.
-
-    .. attribute:: delivery_tag
-
-        The message delivery tag, uniquely identifying this message.
-
-    .. attribute:: channel
-
-        The channel instance the message was received on.
-
-    """
 
     def __init__(self, channel, msg, **kwargs):
         props = msg.properties
@@ -172,7 +159,7 @@ class Message(base.Message):
                 content_encoding=props.get("content_encoding"),
                 delivery_info=msg.delivery_info,
                 properties=msg.properties,
-                headers=props.get("application_headers"),
+                headers=props.get("application_headers") or {},
                 **kwargs)
 
 

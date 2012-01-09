@@ -87,7 +87,7 @@ def readme(options):
 ])
 def bump(options):
     s = "-- '%s'" % (options.custom, ) \
-            if getattr(options, "custom") else ""
+            if getattr(options, "custom", None) else ""
     sh("contrib/release/bump_version.py \
             kombu/__init__.py README.rst %s" % (s, ))
 

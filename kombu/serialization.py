@@ -24,14 +24,15 @@ from .utils.encoding import str_to_bytes
 
 __all__ = ["pickle", "bytes_type", "encode", "decode",
            "register", "unregister"]
+SKIP_DECODE = frozenset(["binary", "ascii-8bit"])
 
 if sys.platform.startswith("java"):
 
     def _decode(t, coding):
         return codecs.getdecoder(coding)(t)[0]
-
 else:
     _decode = codecs.decode
+
 
 
 if sys.version_info < (2, 6):  # pragma: no cover
@@ -147,20 +148,14 @@ class SerializerRegistry(object):
         content_type = content_type or 'application/data'
         content_encoding = (content_encoding or 'utf-8').lower()
 
-        # Don't decode 8-bit strings or Unicode objects
-        if content_encoding not in ('binary', 'ascii-8bit') and \
-                not isinstance(data, unicode):
-            data = _decode(data, content_encoding)
-
-        try:
-            decoder = self._decoders[content_type]
-        except KeyError:
-            return data
-
-        if not data:
-            return data
-
-        return decoder(data)
+        if data:
+            decode = self._decoders.get(content_type)
+            if decode:
+                return decode(data)
+        if content_encoding not in SKIP_DECODE and \
+              not isinstance(data, unicode):
+            return _decode(data, content_encoding)
+        return data
 
 
 """
@@ -276,10 +271,9 @@ def raw_encode(data):
 
 def register_json():
     """Register a encoder/decoder for JSON serialization."""
-    from anyjson import serialize as json_serialize
-    from anyjson import deserialize as json_deserialize
+    from anyjson import loads, dumps
 
-    registry.register('json', json_serialize, json_deserialize,
+    registry.register('json', dumps, loads,
                       content_type='application/json',
                       content_encoding='utf-8')
 

@@ -10,7 +10,7 @@ Base transport interface.
 """
 from __future__ import absolute_import
 
-from .. import serialization
+from ..serialization import decode
 from ..compression import decompress
 from ..exceptions import MessageStateError
 
@@ -40,40 +40,19 @@ class StdChannel(object):
 
 class Message(object):
     """Base class for received messages."""
-    _state = None
-
+    __slots__ = ("_state", "channel", "delivery_tag",
+                 "content_type", "content_encoding",
+                 "delivery_info", "headers",
+                 "properties", "body",
+                 "_decoded_cache",
+                 "MessageStateError", "__dict__")
     MessageStateError = MessageStateError
-
-    #: The channel the message was received on.
-    channel = None
-
-    #: Delivery tag used to identify the message in this channel.
-    delivery_tag = None
-
-    #: Content type used to identify the type of content.
-    content_type = None
-
-    #: Content encoding used to identify the text encoding of the body.
-    content_encoding = None
-
-    #: Additional delivery information.
-    delivery_info = None
-
-    #: Message headers
-    headers = None
-
-    #: Application properties
-    properties = None
-
-    #: Raw message body (may be serialized), see :attr:`payload` instead.
-    body = None
 
     def __init__(self, channel, body=None, delivery_tag=None,
             content_type=None, content_encoding=None, delivery_info={},
             properties=None, headers=None, postencode=None,
             **kwargs):
         self.channel = channel
-        self.body = body
         self.delivery_tag = delivery_tag
         self.content_type = content_type
         self.content_encoding = content_encoding
@@ -83,11 +62,13 @@ class Message(object):
         self._decoded_cache = None
         self._state = "RECEIVED"
 
-        compression = self.headers.get("compression")
-        if compression:
-            self.body = decompress(self.body, compression)
-        if postencode and isinstance(self.body, unicode):
-            self.body = self.body.encode(postencode)
+        try:
+            body = decompress(body, self.headers["compression"])
+        except KeyError:
+            pass
+        if postencode and isinstance(body, unicode):
+            body = body.encode(postencode)
+        self.body = body
 
     def ack(self):
         """Acknowledge this message as being processed.,
@@ -152,8 +133,8 @@ class Message(object):
     def decode(self):
         """Deserialize the message body, returning the original
         python structure sent by the publisher."""
-        return serialization.decode(self.body, self.content_type,
-                                    self.content_encoding)
+        return decode(self.body, self.content_type,
+                      self.content_encoding)
 
     @property
     def acknowledged(self):
