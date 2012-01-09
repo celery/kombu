@@ -1,6 +1,11 @@
 from __future__ import absolute_import
 
+import anyjson
+
 from ..exceptions import VersionMismatch
+
+# avoid json implementation inconsistencies.
+anyjson.force_implementation("simplejson")
 
 moduleindex = ("kombu.abstract",
                "kombu.compat",
