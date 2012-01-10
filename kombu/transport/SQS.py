@@ -158,6 +158,7 @@ class Channel(virtual.Channel):
 
     def _new_queue(self, queue, **kwargs):
         """Ensures a queue exists in SQS."""
+        queue = self.queue_name_prefix + queue
         try:
             return self._queue_cache[queue]
         except KeyError:
@@ -322,6 +323,10 @@ class Channel(virtual.Channel):
     @cached_property
     def visibility_timeout(self):
         return self.transport_options.get("visibility_timeout")
+    
+    @cached_property
+    def queue_name_prefix(self):
+        return self.transport_options.get("queue_name_prefix", '')    
 
     @cached_property
     def supports_fanout(self):
