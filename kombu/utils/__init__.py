@@ -57,7 +57,7 @@ def say(m, *s):
 
 def uuid4():
     # Workaround for http://bugs.python.org/issue4607
-    if ctypes and _uuid_generate_random:
+    if ctypes and _uuid_generate_random:  # pragma: no cover
         buffer = ctypes.create_string_buffer(16)
         _uuid_generate_random(buffer)
         return UUID(bytes=buffer.raw)
@@ -74,12 +74,12 @@ def uuid():
 gen_unique_id = uuid
 
 
-if sys.version_info >= (3, 0):
+if sys.version_info >= (2, 6, 5):
 
     def kwdict(kwargs):
         return kwargs
 else:
-    def kwdict(kwargs):  # noqa
+    def kwdict(kwargs):  # pragma: no cover  # noqa
         """Make sure keyword arguments are not in Unicode.
 
         This should be fixed in newer Python versions,

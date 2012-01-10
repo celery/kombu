@@ -112,7 +112,7 @@ def get_limit():
 def set_limit(limit, force=False, reset_after=False):
     limit = limit or 0
     glimit = _limit[0] or 0
-    if limit or 0 < glimit:
+    if limit < glimit:
         if not disable_limit_protection and (_used[0] and not force):
             raise RuntimeError("Can't lower limit after pool in use.")
         reset_after = True
@@ -138,5 +138,5 @@ def reset(*args, **kwargs):
 try:
     from multiprocessing.util import register_after_fork
     register_after_fork(connections, reset)
-except ImportError:
+except ImportError:  # pragma: no cover
     pass

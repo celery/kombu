@@ -21,7 +21,7 @@ from itertools import count
 from . import serialization
 from .entity import Exchange, Queue
 from .log import Log
-from .messaging import Consumer
+from .messaging import Consumer as _Consumer
 from .utils import uuid
 
 __all__ = ["Broadcast", "entry_to_queue", "maybe_declare", "uuid",
@@ -52,8 +52,8 @@ class Broadcast(Queue):
                     name=queue or "bcast.%s" % (uuid(), ),
                     **dict({"alias": name,
                             "auto_delete": True,
-                            "exchange": Exchange(name, type="fanout",
-                                                 auto_delete=True)}, **kwargs))
+                            "exchange": Exchange(name, type="fanout"),
+                           }, **kwargs))
 
 
 def maybe_declare(entity, channel, retry=False, **retry_policy):
@@ -65,7 +65,7 @@ def maybe_declare(entity, channel, retry=False, **retry_policy):
 def _maybe_declare(entity, channel):
     declared = declared_entities[channel.connection.client]
     if not entity.is_bound:
-        entity = entity(channel)
+        entity = entity.bind(channel)
     if not entity.can_cache_declaration or entity not in declared:
         entity.declare()
         declared.add(entity)
@@ -79,7 +79,8 @@ def _imaybe_declare(entity, channel, **retry_policy):
                              **retry_policy)(entity, channel)
 
 
-def itermessages(conn, channel, queue, limit=1, timeout=None, **kwargs):
+def itermessages(conn, channel, queue, limit=1, timeout=None,
+        Consumer=_Consumer, **kwargs):
     acc = deque()
 
     def on_message(body, message):

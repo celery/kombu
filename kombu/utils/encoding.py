@@ -18,7 +18,7 @@ import traceback
 
 is_py3k = sys.version_info >= (3, 0)
 
-if sys.platform.startswith("java"):
+if sys.platform.startswith("java"):  # pragma: no cover
 
     def default_encoding():
         return "utf-8"
@@ -27,7 +27,7 @@ else:
     def default_encoding():       # noqa
         return sys.getfilesystemencoding()
 
-if is_py3k:
+if is_py3k:  # pragma: no cover
 
     def str_to_bytes(s):
         if isinstance(s, str):
@@ -82,7 +82,7 @@ def safe_str(s, errors="replace"):
 
 
 def _safe_str(s, errors="replace"):
-    if is_py3k:
+    if is_py3k:  # pragma: no cover
         return s
     encoding = default_encoding()
     try:

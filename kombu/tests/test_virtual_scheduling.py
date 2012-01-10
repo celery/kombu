@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+from __future__ import with_statement
 
 from ..transport.virtual.scheduling import FairCycle
 
@@ -50,6 +51,13 @@ class test_FairCycle(unittest.TestCase):
                          ("a", "a"), ("b", "b")])
         cycle2 = FairCycle(echo, ["c", "c"], MyEmpty)
         self.assertRaises(MyEmpty, consume, cycle2.get, 3)
+
+    def test_cycle_no_resources(self):
+        cycle = FairCycle(None, [], MyEmpty)
+        cycle.pos = 10
+
+        with self.assertRaises(MyEmpty):
+            cycle._next()
 
     def test__repr__(self):
         self.assertTrue(repr(FairCycle(lambda x: x, [1, 2, 3], MyEmpty)))

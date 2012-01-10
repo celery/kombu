@@ -90,6 +90,10 @@ class test_QoS(unittest.TestCase):
         self.assertTrue(stderr.getvalue())
         self.assertFalse(stdout.getvalue())
 
+    def test_get(self):
+        self.q._delivered["foo"] = 1
+        self.assertEqual(self.q.get("foo"), 1)
+
 
 class test_Message(unittest.TestCase):
 
@@ -139,6 +143,9 @@ class test_AbstractChannel(unittest.TestCase):
 
     def test_new_queue(self):
         self.assertIsNone(virtual.AbstractChannel()._new_queue("queue"))
+
+    def test_has_queue(self):
+        self.assertTrue(virtual.AbstractChannel()._has_queue("queue"))
 
     def test_poll(self):
 

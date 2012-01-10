@@ -5,6 +5,7 @@ from ..transport.virtual import exchange
 
 from .mocks import Transport
 from .utils import unittest
+from .utils import Mock
 
 
 class ExchangeCase(unittest.TestCase):
@@ -46,6 +47,21 @@ class test_Fanout(ExchangeCase):
                 self.table, "eFoo", "rFoo", None),
                 ["qFoo", "qFox", "qBar"])
 
+    def test_deliver_when_fanout_supported(self):
+        self.e.channel = Mock()
+        self.e.channel.supports_fanout = True
+        message = Mock()
+
+        self.e.deliver(message, "exchange", None)
+        self.e.channel._put_fanout.assert_called_with("exchange", message)
+
+    def test_deliver_when_fanout_unsupported(self):
+        self.e.channel = Mock()
+        self.e.channel.supports_fanout = False
+
+        self.e.deliver(Mock(), "exchange", None)
+        self.assertFalse(self.e.channel._put_fanout.called)
+
 
 class test_Topic(ExchangeCase):
     type = exchange.TopicExchange
@@ -75,6 +91,16 @@ class test_Topic(ExchangeCase):
         self.assertListEqual(self.e.lookup(
                 self.table, "eFoo", "candy.schleckpulver.snap_crackle", None),
                 [])
+
+    def test_deliver(self):
+        self.e.channel = Mock()
+        self.e.channel._lookup.return_value = ("a", "b")
+        message = Mock()
+        self.e.deliver(message, "exchange", "rkey")
+
+        expected = [(("a", message), {}),
+                    (("b", message), {})]
+        self.assertListEqual(self.e.channel._put.call_args_list, expected)
 
 
 class test_ExchangeType(ExchangeCase):
