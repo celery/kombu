@@ -109,7 +109,7 @@ class MultiChannelPoller(object):
             if channel.active_fanout_queues:    # LISTEN mode?
                 self._register_LISTEN(channel)
 
-        events = self._poller.poll(timeout and timeout * 1000 or None)
+        events = self._poller.poll(timeout)
         for fileno, event in events:
             if event & eventio.POLL_READ:
                 chan, type = self._fd_to_chan[fileno]

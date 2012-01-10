@@ -63,7 +63,7 @@ class _epoll(Poller):
             pass
 
     def _poll(self, timeout):
-        return self._epoll.poll(timeout and timeout / 1000.0 or -1)
+        return self._epoll.poll(timeout or -1)
 
 
 class _kqueue(Poller):
@@ -88,8 +88,7 @@ class _kqueue(Poller):
                                                 flags=flags)], 0)
 
     def _poll(self, timeout):
-        kevents = self._kqueue.control(None, 1000,
-                                      timeout and timeout / 1000.0 or timeout)
+        kevents = self._kqueue.control(None, 1000, timeout)
         events = {}
         for kevent in kevents:
             fd = kevent.ident
