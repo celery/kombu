@@ -1,10 +1,18 @@
 from funtests import transport
 from nose import SkipTest
 
+from kombu.exceptions import VersionMismatch
+
 
 class test_pika_blocking(transport.TransportCase):
     transport = "syncpika"
     prefix = "syncpika"
+
+    def before_connect(self):
+        try:
+            from kombu.transport import pika
+        except VersionMismatch:
+            raise SkipTest("Pika version mismatch")
 
     def test_produce__consume_large_messages(self, *args, **kwargs):
         raise SkipTest("test currently fails for sync pika")
@@ -16,6 +24,12 @@ class test_pika_blocking(transport.TransportCase):
 class test_pika_async(transport.TransportCase):
     transport = "pika"
     prefix = "pika"
+
+    def before_connect(self):
+        try:
+            from kombu.transport import pika
+        except VersionMismatch:
+            raise SkipTest("Pika version mismatch")
 
     def test_produce__consume_large_messages(self, *args, **kwargs):
         raise SkipTest("test currently fails for async pika")

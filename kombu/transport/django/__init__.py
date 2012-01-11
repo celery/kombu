@@ -51,7 +51,7 @@ class Channel(virtual.Channel):
         db.close_connection()
 
 
-class DatabaseTransport(virtual.Transport):
+class Transport(virtual.Transport):
     Channel = Channel
 
     default_port = 0

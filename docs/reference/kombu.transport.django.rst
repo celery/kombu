@@ -12,7 +12,7 @@
     Transport
     ---------
 
-    .. autoclass:: DatabaseTransport
+    .. autoclass:: Transport
         :members:
         :undoc-members:
 
