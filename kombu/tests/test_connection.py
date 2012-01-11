@@ -2,9 +2,11 @@ from __future__ import absolute_import
 import pickle
 
 from ..connection import BrokerConnection, Resource, parse_url
+from ..messaging import Consumer, Producer
 
 from .mocks import Transport
 from .utils import unittest
+from .utils import Mock
 
 
 class test_connection_utils(unittest.TestCase):
@@ -24,6 +26,10 @@ class test_connection_utils(unittest.TestCase):
     def test_parse_url(self):
         result = parse_url(self.url)
         self.assertDictEqual(result, self.expected)
+
+    def test_parse_url_mongodb(self):
+        result = parse_url("mongodb://example.com/")
+        self.assertEqual(result["hostname"], "example.com/")
 
     def test_parse_generated_as_uri(self):
         conn = BrokerConnection(self.url)
@@ -84,6 +90,35 @@ class test_Connection(unittest.TestCase):
         conn.close()
         self.assertTrue(conn._closed)
 
+    def test_close_when_default_channel(self):
+        conn = self.conn
+        conn._default_channel = Mock()
+        conn._close()
+        conn._default_channel.close.assert_called_with()
+
+    def test_close_when_default_channel_close_raises(self):
+
+        class Conn(BrokerConnection):
+
+            @property
+            def connection_errors(self):
+                return (KeyError, )
+
+        conn = Conn("memory://")
+        conn._default_channel = Mock()
+        conn._default_channel.close.side_effect = KeyError()
+
+        conn._close()
+        conn._default_channel.close.assert_called_with()
+
+    def test_revive_when_default_channel(self):
+        conn = self.conn
+        defchan = conn._default_channel = Mock()
+        conn.revive(Mock())
+
+        defchan.close.assert_called_with()
+        self.assertIsNone(conn._default_channel)
+
     def test_ensure_connection(self):
         self.assertTrue(self.conn.ensure_connection())
 
@@ -134,6 +169,17 @@ class test_Connection(unittest.TestCase):
         q2 = conn.SimpleBuffer("foo", channel=chan)
         self.assertIs(q2.channel, chan)
         self.assertFalse(q2.channel_autoclose)
+
+    def test_Producer(self):
+        conn = self.conn
+        self.assertIsInstance(conn.Producer(), Producer)
+        self.assertIsInstance(conn.Producer(conn.default_channel), Producer)
+
+    def test_Consumer(self):
+        conn = self.conn
+        self.assertIsInstance(conn.Consumer(queues=[]), Consumer)
+        self.assertIsInstance(conn.Consumer(queues=[],
+                              channel=conn.default_channel), Consumer)
 
     def test__repr__(self):
         self.assertTrue(repr(self.conn))
@@ -214,6 +260,21 @@ class test_ConnectionPool(ResourceCase):
         self.assertIsNotNone(q[1]._connection)
         self.assertIsNone(q[2]()._connection)
 
+    def test_setup_no_limit(self):
+        P = self.create_resource(None, None)
+        self.assertFalse(P._resource.queue)
+        self.assertIsNone(P.limit)
+
+    def test_prepare_not_callable(self):
+        P = self.create_resource(None, None)
+        conn = BrokerConnection("memory://")
+        self.assertIs(P.prepare(conn), conn)
+
+    def test_acquire_channel(self):
+        P = self.create_resource(10, 0)
+        with P.acquire_channel() as (conn, channel):
+            self.assertIs(channel, conn.default_channel)
+
 
 class test_ChannelPool(ResourceCase):
     abstract = False
@@ -228,3 +289,14 @@ class test_ChannelPool(ResourceCase):
         self.assertTrue(q[0].basic_consume)
         self.assertTrue(q[1].basic_consume)
         self.assertRaises(AttributeError, getattr, q[2], "basic_consume")
+
+    def test_setup_no_limit(self):
+        P = self.create_resource(None, None)
+        self.assertFalse(P._resource.queue)
+        self.assertIsNone(P.limit)
+
+    def test_prepare_not_callable(self):
+        P = self.create_resource(10, 0)
+        conn = BrokerConnection("memory://")
+        chan = conn.default_channel
+        self.assertIs(P.prepare(chan), chan)

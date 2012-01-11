@@ -145,7 +145,7 @@ class BrokerConnection(object):
             transport_options = {}
         self.transport_options = transport_options
 
-        if _LOG_CONNECTION:
+        if _LOG_CONNECTION:  # pragma: no cover
             from .log import get_logger
             self._logger = get_logger("kombu.connection")
 
@@ -163,7 +163,7 @@ class BrokerConnection(object):
         self.transport_cls = transport
 
     def _debug(self, msg, ident="[Kombu connection:0x%(id)x] ", **kwargs):
-        if self._logger:
+        if self._logger:  # pragma: no cover
             self._logger.debug((ident + unicode(msg)) % {"id": id(self)},
                                **kwargs)
 
@@ -176,7 +176,7 @@ class BrokerConnection(object):
         """Request a new channel."""
         self._debug("create channel")
         chan = self.transport.create_channel(self.connection)
-        if _LOG_CHANNEL:
+        if _LOG_CHANNEL:  # pragma: no cover
             from .utils.debug import Logwrapped
             return Logwrapped(chan, "kombu.channel",
                     "[Kombu channel:%(channel_id)s] ")
@@ -736,7 +736,7 @@ class Resource(object):
             if mutex:
                 mutex.release()
 
-    if os.environ.get("KOMBU_DEBUG_POOL"):
+    if os.environ.get("KOMBU_DEBUG_POOL"):  # pragma: no cover
         _orig_acquire = acquire
         _orig_release = release
 
