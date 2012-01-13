@@ -1,7 +1,84 @@
 from __future__ import absolute_import
+from __future__ import with_statement
 
-from ..transport.base import Transport
+from .. import BrokerConnection, Consumer, Producer, Queue
+from ..transport.base import Message, StdChannel, Transport
+
 from .utils import unittest
+from .utils import Mock
+
+
+class test_StdChannel(unittest.TestCase):
+
+    def setUp(self):
+        self.conn = BrokerConnection("memory://")
+        self.channel = self.conn.channel()
+
+    def test_Consumer(self):
+        q = Queue("foo")
+        cons = self.channel.Consumer(q)
+        self.assertIsInstance(cons, Consumer)
+        self.assertIs(cons.channel, self.channel)
+
+    def test_Producer(self):
+        prod = self.channel.Producer()
+        self.assertIsInstance(prod, Producer)
+        self.assertIs(prod.channel, self.channel)
+
+    def test_interface_list_bindings(self):
+        with self.assertRaises(NotImplementedError):
+            StdChannel().list_bindings()
+
+    def test_interface_after_reply_message_received(self):
+        self.assertIsNone(StdChannel().after_reply_message_received(
+                Queue("foo")))
+
+
+class test_Message(unittest.TestCase):
+
+    def setUp(self):
+        self.conn = BrokerConnection("memory://")
+        self.channel = self.conn.channel()
+        self.message = Message(self.channel, delivery_tag=313)
+
+    def test_ack_respects_no_ack_consumers(self):
+        self.channel.no_ack_consumers = set(["abc"])
+        self.message.delivery_info["consumer_tag"] = "abc"
+        ack = self.channel.basic_ack = Mock()
+
+        self.message.ack()
+        self.assertNotEqual(self.message._state, "ACK")
+        self.assertFalse(ack.called)
+
+    def test_ack_missing_consumer_tag(self):
+        self.channel.no_ack_consumers = set(["abc"])
+        self.message.delivery_info = {}
+        ack = self.channel.basic_ack = Mock()
+
+        self.message.ack()
+        ack.assert_called_with(self.message.delivery_tag)
+
+    def test_ack_not_no_ack(self):
+        self.channel.no_ack_consumers = set()
+        self.message.delivery_info["consumer_tag"] = "abc"
+        ack = self.channel.basic_ack = Mock()
+
+        self.message.ack()
+        ack.assert_called_with(self.message.delivery_tag)
+
+    def test_ack_log_error_when_no_error(self):
+        ack = self.message.ack = Mock()
+        self.message.ack_log_error(Mock(), KeyError)
+        ack.assert_called_with()
+
+    def test_ack_log_error_when_error(self):
+        ack = self.message.ack = Mock()
+        ack.side_effect = KeyError("foo")
+        logger = Mock()
+        self.message.ack_log_error(logger, KeyError)
+        ack.assert_called_with()
+        self.assertTrue(logger.critical.called)
+        self.assertIn("Couldn't ack", logger.critical.call_args[0][0])
 
 
 class test_interface(unittest.TestCase):

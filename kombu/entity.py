@@ -341,7 +341,7 @@ class Queue(MaybeChannelBound):
 
     """
     name = ""
-    exchange = None
+    exchange = Exchange("")
     routing_key = ""
 
     durable = True
