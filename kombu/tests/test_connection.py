@@ -1,4 +1,6 @@
 from __future__ import absolute_import
+from __future__ import with_statement
+
 import pickle
 
 from ..connection import BrokerConnection, Resource, parse_url

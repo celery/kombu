@@ -323,10 +323,10 @@ class Channel(virtual.Channel):
     @cached_property
     def visibility_timeout(self):
         return self.transport_options.get("visibility_timeout")
-    
+
     @cached_property
     def queue_name_prefix(self):
-        return self.transport_options.get("queue_name_prefix", '')    
+        return self.transport_options.get("queue_name_prefix", '')
 
     @cached_property
     def supports_fanout(self):

@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+from __future__ import with_statement
 
 import socket
 import types
@@ -600,7 +601,7 @@ class test_MultiChannelPoller(unittest.TestCase):
 
     def test_close_when_unregister_raises_KeyError(self):
         p = self.Poller()
-        poller = p._poller = Mock()
+        p._poller = Mock()
         p._chan_to_sock.update({1: 1})
         p._poller.unregister.side_effect = KeyError(1)
         p.close()
@@ -731,7 +732,6 @@ class test_MultiChannelPoller(unittest.TestCase):
 
         p._register_LISTEN.assert_called_with(channel)
 
-
     def test_get_receives_POLL_ERR(self):
         p, channel = self.create_get(events=[(1, eventio.POLL_ERR)])
         p._fd_to_chan[1] = (channel, "BRPOP")
@@ -740,4 +740,3 @@ class test_MultiChannelPoller(unittest.TestCase):
             p.get()
 
         channel._poll_error.assert_called_with("BRPOP")
-
