@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+from __future__ import with_statement
 
 from .. import pidbox
 from ..connection import BrokerConnection
@@ -109,8 +110,8 @@ class test_Mailbox(unittest.TestCase):
         def my_handler_name(state):
             raise SystemExit
 
-        self.assertRaises(SystemExit,
-                          node.dispatch, "my_handler_name")
+        with self.assertRaises(SystemExit):
+            node.dispatch("my_handler_name")
 
     def test_dispatch_raising(self):
         node = self.bound.Node("test_dispatch_raising", state=self.state)
@@ -196,8 +197,8 @@ class test_Mailbox(unittest.TestCase):
         self.assertIsCast(self.get_next(consumer))
 
     def test_call_destination_must_be_sequence(self):
-        self.assertRaises(ValueError,
-                          self.bound.call, "some_node", "mymethod")
+        with self.assertRaises(ValueError):
+            self.bound.call("some_node", "mymethod")
 
     def test_call(self):
         self.assertEqual(self.bound.call(["some_node"], "mymethod"),

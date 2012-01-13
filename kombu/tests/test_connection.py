@@ -43,9 +43,8 @@ class test_connection_utils(unittest.TestCase):
         self.assertEqual(conn.as_uri(include_password=True), self.url)
 
     def test_bogus_scheme(self):
-        conn = BrokerConnection("bogus://localhost:7421")
-        # second parameter must be a callable, thus this little hack
-        self.assertRaises(KeyError, lambda: conn.transport)
+        with self.assertRaises(KeyError):
+            BrokerConnection("bogus://localhost:7421").transport
 
 
 class test_Connection(unittest.TestCase):
@@ -139,7 +138,8 @@ class test_Connection(unittest.TestCase):
             raise _CustomError("bar")
 
         ensured = self.conn.ensure(None, publish)
-        self.assertRaises(_CustomError, ensured)
+        with self.assertRaises(_CustomError):
+            ensured()
 
     def test_ensure_connection_failure(self):
         class _ConnectionError(Exception):
@@ -150,7 +150,8 @@ class test_Connection(unittest.TestCase):
 
         self.conn.transport.connection_errors = (_ConnectionError,)
         ensured = self.conn.ensure(self.conn, publish)
-        self.assertRaises(_ConnectionError, ensured)
+        with self.assertRaises(_ConnectionError):
+            ensured()
 
     def test_SimpleQueue(self):
         conn = self.conn
@@ -232,7 +233,8 @@ class ResourceCase(unittest.TestCase):
 
     def test_setup(self):
         if self.abstract:
-            self.assertRaises(NotImplementedError, Resource)
+            with self.assertRaises(NotImplementedError):
+                Resource()
 
     def test_acquire__release(self):
         if self.abstract:
@@ -241,7 +243,8 @@ class ResourceCase(unittest.TestCase):
         self.assertState(P, 10, 0)
         chans = [P.acquire() for _ in xrange(10)]
         self.assertState(P, 0, 10)
-        self.assertRaises(P.LimitExceeded, P.acquire)
+        with self.assertRaises(P.LimitExceeded):
+            P.acquire()
         chans.pop().release()
         self.assertState(P, 1, 9)
         [chan.release() for chan in chans]
@@ -290,7 +293,8 @@ class test_ChannelPool(ResourceCase):
         q = P._resource.queue
         self.assertTrue(q[0].basic_consume)
         self.assertTrue(q[1].basic_consume)
-        self.assertRaises(AttributeError, getattr, q[2], "basic_consume")
+        with self.assertRaises(AttributeError):
+            getattr(q[2], "basic_consume")
 
     def test_setup_no_limit(self):
         P = self.create_resource(None, None)

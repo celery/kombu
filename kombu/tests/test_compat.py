@@ -1,5 +1,5 @@
 from __future__ import absolute_import
-
+from __future__ import with_statement
 
 from .. import BrokerConnection, Exchange
 from .. import compat
@@ -166,7 +166,8 @@ class test_Consumer(unittest.TestCase):
     def test_process_next(self, n="test_process_next"):
         c = compat.Consumer(self.connection, queue=n, exchange=n,
                             routing_key="rkey")
-        self.assertRaises(NotImplementedError, c.process_next)
+        with self.assertRaises(NotImplementedError):
+            c.process_next()
         c.close()
 
     def test_iterconsume(self, n="test_iterconsume"):
@@ -202,8 +203,8 @@ class test_Consumer(unittest.TestCase):
     def test_discard_all_filterfunc_not_supported(self, n="xjf21j21"):
         c = compat.Consumer(self.connection, queue=n, exchange=n,
                             routing_key="rkey")
-        self.assertRaises(NotImplementedError, c.discard_all,
-                          filterfunc=lambda x: x)
+        with self.assertRaises(NotImplementedError):
+            c.discard_all(filterfunc=lambda x: x)
         c.close()
 
     def test_wait(self, n="test_wait"):

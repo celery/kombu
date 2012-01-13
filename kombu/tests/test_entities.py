@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+from __future__ import with_statement
 
 from .. import Connection
 from ..entity import Exchange, Queue
@@ -56,7 +57,8 @@ class test_Exchange(unittest.TestCase):
 
     def test_assert_is_bound(self):
         exchange = Exchange("foo", "direct")
-        self.assertRaises(NotBoundError, exchange.declare)
+        with self.assertRaises(NotBoundError):
+            exchange.declare()
         conn = get_conn()
 
         chan = conn.channel()

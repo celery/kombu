@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
+from __future__ import with_statement
 
 import sys
 
@@ -177,21 +178,21 @@ class test_Serialization(unittest.TestCase):
         register(None, None, None, None)
 
     def test_unregister(self):
-        self.assertRaises(SerializerNotInstalled,
-                          unregister, "nonexisting")
+        with self.assertRaises(SerializerNotInstalled):
+            unregister("nonexisting")
         registry.encode("foo", serializer="pickle")
         unregister("pickle")
-        self.assertRaises(SerializerNotInstalled,
-                          registry.encode, "foo", serializer="pickle")
+        with self.assertRaises(SerializerNotInstalled):
+            registry.encode("foo", serializer="pickle")
         register_pickle()
 
     def test_set_default_serializer_missing(self):
-        self.assertRaises(SerializerNotInstalled,
-                          registry._set_default_serializer, "nonexisting")
+        with self.assertRaises(SerializerNotInstalled):
+            registry._set_default_serializer("nonexisting")
 
     def test_encode_missing(self):
-        self.assertRaises(SerializerNotInstalled,
-                          registry.encode, "foo", serializer="nonexisting")
+        with self.assertRaises(SerializerNotInstalled):
+            registry.encode("foo", serializer="nonexisting")
 
     def test_raw_encode(self):
         self.assertTupleEqual(raw_encode("foo".encode("utf-8")),
@@ -201,11 +202,11 @@ class test_Serialization(unittest.TestCase):
     @mask_modules("yaml")
     def test_register_yaml__no_yaml(self):
         register_yaml()
-        self.assertRaises(SerializerNotInstalled,
-                          decode, "foo", "application/x-yaml", "utf-8")
+        with self.assertRaises(SerializerNotInstalled):
+            decode("foo", "application/x-yaml", "utf-8")
 
     @mask_modules("msgpack")
     def test_register_msgpack__no_msgpack(self):
         register_msgpack()
-        self.assertRaises(SerializerNotInstalled,
-                          decode, "foo", "application/x-msgpack", "utf-8")
+        with self.assertRaises(SerializerNotInstalled):
+            decode("foo", "application/x-msgpack", "utf-8")

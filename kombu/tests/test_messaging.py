@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+from __future__ import with_statement
 
 import anyjson
 
@@ -291,8 +292,8 @@ class test_Consumer(unittest.TestCase):
             message.ack()
 
         consumer.register_callback(callback)
-        self.assertRaises(MessageStateError,
-                          consumer._receive_callback, {"foo": "bar"})
+        with self.assertRaises(MessageStateError):
+            consumer._receive_callback({"foo": "bar"})
 
     def test_basic_reject(self):
         channel = self.connection.channel()
@@ -316,8 +317,8 @@ class test_Consumer(unittest.TestCase):
             message.reject()
 
         consumer.register_callback(callback)
-        self.assertRaises(MessageStateError,
-                          consumer._receive_callback, {"foo": "bar"})
+        with self.assertRaises(MessageStateError):
+            consumer._receive_callback({"foo": "bar"})
         self.assertIn("basic_reject", channel)
 
     def test_basic_reject__requeue(self):
@@ -342,15 +343,16 @@ class test_Consumer(unittest.TestCase):
             message.requeue()
 
         consumer.register_callback(callback)
-        self.assertRaises(MessageStateError,
-                          consumer._receive_callback, {"foo": "bar"})
+        with self.assertRaises(MessageStateError):
+            consumer._receive_callback({"foo": "bar"})
         self.assertIn("basic_reject:requeue", channel)
 
     def test_receive_without_callbacks_raises(self):
         channel = self.connection.channel()
         b1 = Queue("qname1", self.exchange, "rkey")
         consumer = Consumer(channel, [b1])
-        self.assertRaises(NotImplementedError, consumer.receive, 1, 2)
+        with self.assertRaises(NotImplementedError):
+            consumer.receive(1, 2)
 
     def test_decode_error(self):
         channel = self.connection.channel()
@@ -358,8 +360,8 @@ class test_Consumer(unittest.TestCase):
         consumer = Consumer(channel, [b1])
         consumer.channel.throw_decode_error = True
 
-        self.assertRaises(ValueError,
-                consumer._receive_callback, {"foo": "bar"})
+        with self.assertRaises(ValueError):
+            consumer._receive_callback({"foo": "bar"})
 
     def test_on_decode_error_callback(self):
         channel = self.connection.channel()

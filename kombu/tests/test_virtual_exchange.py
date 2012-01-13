@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+from __future__ import with_statement
 
 from .. import BrokerConnection
 from ..transport.virtual import exchange
@@ -107,8 +108,8 @@ class test_ExchangeType(ExchangeCase):
     type = exchange.ExchangeType
 
     def test_lookup(self):
-        self.assertRaises(NotImplementedError, self.e.lookup,
-                [], "eFoo", "rFoo", None)
+        with self.assertRaises(NotImplementedError):
+            self.e.lookup([], "eFoo", "rFoo", None)
 
     def test_prepare_bind(self):
         self.assertTupleEqual(self.e.prepare_bind("qFoo", "eFoo", "rFoo", {}),

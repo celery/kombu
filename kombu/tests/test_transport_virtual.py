@@ -123,23 +123,23 @@ class test_Message(unittest.TestCase):
 class test_AbstractChannel(unittest.TestCase):
 
     def test_get(self):
-        self.assertRaises(NotImplementedError,
-                          virtual.AbstractChannel()._get, "queue")
+        with self.assertRaises(NotImplementedError):
+            virtual.AbstractChannel()._get("queue")
 
     def test_put(self):
-        self.assertRaises(NotImplementedError,
-                          virtual.AbstractChannel()._put, "queue", "m")
+        with self.assertRaises(NotImplementedError):
+            virtual.AbstractChannel()._put("queue", "m")
 
     def test_size(self):
         self.assertEqual(virtual.AbstractChannel()._size("queue"), 0)
 
     def test_purge(self):
-        self.assertRaises(NotImplementedError,
-                          virtual.AbstractChannel()._purge, "queue")
+        with self.assertRaises(NotImplementedError):
+            virtual.AbstractChannel()._purge("queue")
 
     def test_delete(self):
-        self.assertRaises(NotImplementedError,
-                          virtual.AbstractChannel()._delete, "queue")
+        with self.assertRaises(NotImplementedError):
+            virtual.AbstractChannel()._delete("queue")
 
     def test_new_queue(self):
         self.assertIsNone(virtual.AbstractChannel()._new_queue("queue"))
@@ -181,9 +181,9 @@ class test_Channel(unittest.TestCase):
         self.assertIn("test_exchange_declare", c.state.exchanges)
 
         # using different values raises NotEquivalentError
-        self.assertRaises(virtual.NotEquivalentError,
-            c.exchange_declare, "test_exchange_declare", "direct",
-            durable=False, auto_delete=True)
+        with self.assertRaises(virtual.NotEquivalentError):
+            c.exchange_declare("test_exchange_declare", "direct",
+                               durable=False, auto_delete=True)
 
     def test_exchange_delete(self, ex="test_exchange_delete"):
 
@@ -280,7 +280,8 @@ class test_Channel(unittest.TestCase):
                          "nthex quick brown fox...".encode("utf-8"))
         self.assertEqual(r2.delivery_info["exchange"], n)
         self.assertEqual(r2.delivery_info["routing_key"], n)
-        self.assertRaises(virtual.Empty, c.drain_events)
+        with self.assertRaises(virtual.Empty):
+            c.drain_events()
         c.basic_cancel(consumer_tag)
 
         c._restore(r2)
@@ -314,8 +315,8 @@ class test_Channel(unittest.TestCase):
         self.assertTrue(self.channel._qos.was_restored)
 
     def test_basic_recover(self):
-        self.assertRaises(NotImplementedError,
-                          self.channel.basic_recover, requeue=False)
+        with self.assertRaises(NotImplementedError):
+            self.channel.basic_recover(requeue=False)
 
     def test_basic_reject(self):
 
@@ -351,7 +352,8 @@ class test_Channel(unittest.TestCase):
         self.assertTrue(self.channel.cycle)
 
     def test_flow(self):
-        self.assertRaises(NotImplementedError, self.channel.flow, False)
+        with self.assertRaises(NotImplementedError):
+            self.channel.flow(False)
 
 
 class test_Transport(unittest.TestCase):
@@ -370,5 +372,5 @@ class test_Transport(unittest.TestCase):
 
     def test_drain_channel(self):
         channel = self.transport.create_channel(self.transport)
-        self.assertRaises(virtual.Empty, self.transport._drain_channel,
-                          channel)
+        with self.assertRaises(virtual.Empty):
+            self.transport._drain_channel(channel)

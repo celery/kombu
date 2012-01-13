@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+from __future__ import with_statement
 
 from Queue import Empty
 
@@ -38,7 +39,8 @@ class SimpleBase(unittest.TestCase):
         q.put({"hello": "Simple"})
 
         self.assertEqual(q.get(timeout=1).payload, {"hello": "Simple"})
-        self.assertRaises(Empty, q.get, timeout=0.1)
+        with self.assertRaises(Empty):
+            q.get(timeout=0.1)
 
     def test_produce__basic_get(self):
         if self.abstract:
@@ -46,11 +48,13 @@ class SimpleBase(unittest.TestCase):
         q = self.Queue("test_produce__basic_get", no_ack=True)
         q.put({"hello": "SimpleSync"})
         self.assertEqual(q.get_nowait().payload, {"hello": "SimpleSync"})
-        self.assertRaises(Empty, q.get_nowait)
+        with self.assertRaises(Empty):
+            q.get_nowait()
 
         q.put({"hello": "SimpleSync"})
         self.assertEqual(q.get(block=False).payload, {"hello": "SimpleSync"})
-        self.assertRaises(Empty, q.get, block=False)
+        with self.assertRaises(Empty):
+            q.get(block=False)
 
     def test_clear(self):
         if self.abstract:

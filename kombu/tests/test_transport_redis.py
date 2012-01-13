@@ -465,8 +465,8 @@ class test_Redis(unittest.TestCase):
         try:
             connection.drain_events(timeout=1)
             self.assertTrue(_received)
-            self.assertRaises(socket.timeout,
-                              connection.drain_events, timeout=0.01)
+            with self.assertRaises(socket.timeout):
+                connection.drain_events(timeout=0.01)
         finally:
             channel.close()
 
@@ -495,8 +495,9 @@ class test_Redis(unittest.TestCase):
                               transport=Transport).channel()
         self.assertEqual(c3.client.db, 1)
 
-        self.assertRaises(BrokerConnection(virtual_host="/foo",
-                              transport=Transport).channel)
+        with self.assertRaises(Exception):
+            BrokerConnection(virtual_host="/foo",
+                             transport=Transport).channel()
 
     def test_db_port(self):
         c1 = BrokerConnection(port=None, transport=Transport).channel()
@@ -529,7 +530,8 @@ class test_Redis(unittest.TestCase):
 
     def test_get__Empty(self):
         channel = self.connection.channel()
-        self.assertRaises(Empty, channel._get, "does-not-exist")
+        with self.assertRaises(Empty):
+            channel._get("does-not-exist")
         channel.close()
 
     def test_get_client(self):

@@ -19,7 +19,6 @@ class test_transport(unittest.TestCase):
                 ("kombu.transport.memory", "Transport"))
 
 
-
 class test_transport_gettoq(unittest.TestCase):
 
     @patch("warnings.warn")

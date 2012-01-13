@@ -50,7 +50,8 @@ class test_FairCycle(unittest.TestCase):
                         [("b", "b"), ("d", "d"), ("e", "e"),
                          ("a", "a"), ("b", "b")])
         cycle2 = FairCycle(echo, ["c", "c"], MyEmpty)
-        self.assertRaises(MyEmpty, consume, cycle2.get, 3)
+        with self.assertRaises(MyEmpty):
+            consume(cycle2.get, 3)
 
     def test_cycle_no_resources(self):
         cycle = FairCycle(None, [], MyEmpty)
