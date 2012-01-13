@@ -395,7 +395,7 @@ class Channel(AbstractChannel, base.StdChannel):
     def after_reply_message_received(self, queue):
         self.queue_delete(queue)
 
-    def queue_bind(self, queue, exchange, routing_key, arguments=None,
+    def queue_bind(self, queue, exchange, routing_key="", arguments=None,
             **kwargs):
         """Bind `queue` to `exchange` with `routing key`."""
         if queue in self.state.bindings:

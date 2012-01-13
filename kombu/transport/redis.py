@@ -115,7 +115,7 @@ class MultiChannelPoller(object):
                 chan, type = self._fd_to_chan[fileno]
                 if chan.qos.can_consume():
                     return chan.handlers[type](), self
-            elif event & eventio.POLL_HUP:
+            elif event & eventio.POLL_ERR:
                 chan, type = self._fd_to_chan[fileno]
                 chan._poll_error(type)
                 break
@@ -323,8 +323,7 @@ class Channel(virtual.Channel):
         import redis
 
         version = getattr(redis, "__version__", (0, 0, 0))
-        if version:
-            version = tuple(map(int, version.split(".")))
+        version = tuple(map(int, version.split(".")))
         if version < (2, 4, 4):
             raise VersionMismatch(
                 "Redis transport requires redis-py versions 2.4.4 or later. "
@@ -332,7 +331,7 @@ class Channel(virtual.Channel):
 
         # KombuRedis maintains a connection attribute on it's instance and
         # uses that when executing commands
-        class KombuRedis(redis.Redis):
+        class KombuRedis(redis.Redis):  # pragma: no cover
 
             def __init__(self, *args, **kwargs):
                 super(KombuRedis, self).__init__(*args, **kwargs)
