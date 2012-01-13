@@ -3,6 +3,8 @@ from __future__ import with_statement
 
 import anyjson
 
+from mock import patch
+
 from ..connection import BrokerConnection
 from ..exceptions import MessageStateError
 from ..messaging import Consumer, Producer
@@ -10,6 +12,7 @@ from ..entity import Exchange, Queue
 
 from .mocks import Transport
 from .utils import unittest
+from .utils import Mock
 
 
 class test_Producer(unittest.TestCase):
@@ -20,6 +23,19 @@ class test_Producer(unittest.TestCase):
         self.connection.connect()
         self.assertTrue(self.connection.connection.connected)
         self.assertFalse(self.exchange.is_bound)
+
+    @patch("kombu.common.maybe_declare")
+    def test_maybe_declare(self, maybe_declare):
+        p = self.connection.Producer()
+        q = Queue("foo")
+        p.maybe_declare(q)
+        maybe_declare.assert_called_with(q, p.channel, False)
+
+    @patch("kombu.common.maybe_declare")
+    def test_maybe_declare_when_entity_false(self, maybe_declare):
+        p = self.connection.Producer()
+        p.maybe_declare(None)
+        self.assertFalse(maybe_declare.called)
 
     def test_auto_declare(self):
         channel = self.connection.channel()
@@ -91,6 +107,45 @@ class test_Producer(unittest.TestCase):
         self.assertEqual(ctype, "text/plain")
         self.assertEqual(cencoding, "utf-8")
 
+    def test_publish_with_Exchange_instance(self):
+        p = self.connection.Producer()
+        p._publish = Mock()
+        p.publish("hello", exchange=Exchange("foo"))
+        self.assertEqual(p._publish.call_args[0][4], "foo")
+
+    def test_publish_retry_with_declare(self):
+        p = self.connection.Producer()
+        p.maybe_declare = Mock()
+        ensure = p.connection.ensure = Mock()
+        ex = Exchange("foo")
+        p.publish("hello", exchange=ex, declare=[ex], retry=True,
+                retry_policy={"step": 4})
+        p.maybe_declare.assert_called_with(ex, True, step=4)
+        ensure.assert_called_with(p, p._publish, step=4)
+
+    def test_revive_when_channel_is_connection(self):
+        p = self.connection.Producer()
+        p.exchange = Mock()
+        new_conn = BrokerConnection("memory://")
+        defchan = new_conn.default_channel
+        p.revive(new_conn)
+
+        self.assertIs(p.channel, defchan)
+        p.exchange.revive.assert_called_with(defchan)
+
+    def test_enter_exit(self):
+        p = self.connection.Producer()
+        p.release = Mock()
+
+        self.assertIs(p.__enter__(), p)
+        p.__exit__()
+        p.release.assert_called_with()
+
+    def test_connection_property_handles_AttributeError(self):
+        p = self.connection.Producer()
+        p.channel = object()
+        self.assertIsNone(p.connection)
+
     def test_publish(self):
         channel = self.connection.channel()
         p = Producer(channel, self.exchange, serializer="json")
@@ -145,6 +200,50 @@ class test_Consumer(unittest.TestCase):
         queue = Queue("qname", self.exchange, "rkey")
         consumer = Consumer(channel, queue, auto_declare=True, no_ack=True)
         self.assertTrue(consumer.no_ack)
+
+    def test_add_queue_when_auto_declare(self):
+        consumer = self.connection.Consumer(auto_declare=True)
+        q = Mock()
+        q.return_value = q
+        consumer.add_queue(q)
+        self.assertIn(q, consumer.queues)
+        q.declare.assert_called_with()
+
+    def test_add_queue_when_not_auto_declare(self):
+        consumer = self.connection.Consumer(auto_declare=False)
+        q = Mock()
+        q.return_value = q
+        consumer.add_queue(q)
+        self.assertIn(q, consumer.queues)
+        self.assertFalse(q.declare.call_count)
+
+    def test_consume_without_queues_returns(self):
+        consumer = self.connection.Consumer()
+        consumer.queues[:] = []
+        self.assertIsNone(consumer.consume())
+
+    def test_consuming_from(self):
+        consumer = self.connection.Consumer()
+        consumer.queues[:] = [Queue("a"), Queue("b")]
+        self.assertFalse(consumer.consuming_from(Queue("c")))
+        self.assertFalse(consumer.consuming_from("c"))
+        self.assertTrue(consumer.consuming_from(Queue("a")))
+        self.assertTrue(consumer.consuming_from(Queue("b")))
+        self.assertTrue(consumer.consuming_from("b"))
+
+    def test_receive_callback_without_m2p(self):
+        channel = self.connection.channel()
+        c = channel.Consumer()
+        m2p = getattr(channel, "message_to_python")
+        channel.message_to_python = None
+        try:
+            message = Mock()
+            message.decode.return_value = "Hello"
+            recv = c.receive = Mock()
+            c._receive_callback(message)
+            recv.assert_called_with("Hello", message)
+        finally:
+            channel.message_to_python = m2p
 
     def test_set_callbacks(self):
         channel = self.connection.channel()
@@ -401,3 +500,8 @@ class test_Consumer(unittest.TestCase):
         channel = self.connection.channel()
         b1 = Queue("qname1", self.exchange, "rkey")
         self.assertTrue(repr(Consumer(channel, [b1])))
+
+    def test_connection_property_handles_AttributeError(self):
+        p = self.connection.Consumer()
+        p.channel = object()
+        self.assertIsNone(p.connection)

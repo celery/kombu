@@ -1,11 +1,14 @@
 from __future__ import absolute_import
 from __future__ import with_statement
 
+import socket
+
 from .. import pidbox
 from ..connection import BrokerConnection
 from ..utils import uuid
 
 from .utils import unittest
+from .utils import Mock
 
 
 class test_Mailbox(unittest.TestCase):
@@ -53,6 +56,10 @@ class test_Mailbox(unittest.TestCase):
         mailbox._publish_reply({"biz": "boz"}, exchange, ticket)
         reply = mailbox._collect(ticket, limit=1, channel=channel)
         self.assertEqual(reply, [{"biz": "boz"}])
+
+        de = mailbox.connection.drain_events = Mock()
+        de.side_effect = socket.timeout
+        mailbox._collect(ticket, limit=1, channel=channel)
 
     def test_constructor(self):
         self.assertIsNone(self.mailbox.connection)

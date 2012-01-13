@@ -7,7 +7,7 @@ import sys
 
 from ..serialization import (registry, register, SerializerNotInstalled,
                              raw_encode, register_yaml, register_msgpack,
-                             decode, bytes_type, pickle,
+                             decode, bytes_t, pickle,
                              unregister, register_pickle)
 
 from .utils import unittest
@@ -62,7 +62,41 @@ def say(m):
     sys.stderr.write("%s\n" % (m, ))
 
 
+registry.register('testS', lambda s: s, lambda s: "decoded",
+                  "application/testS", "utf-8")
+
+
 class test_Serialization(unittest.TestCase):
+
+    def test_disable(self):
+        disabled = registry._disabled_content_types
+        try:
+            registry.disable("testS")
+            self.assertIn("application/testS", disabled)
+            disabled.clear()
+
+            registry.disable("application/testS")
+            self.assertIn("application/testS", disabled)
+        finally:
+            disabled.clear()
+
+    def test_decode_when_disabled(self):
+        disabled = registry._disabled_content_types
+        try:
+            registry.disable("testS")
+
+            with self.assertRaises(SerializerNotInstalled):
+                registry.decode("xxd", "application/testS", "utf-8",
+                                force=False)
+
+            ret = registry.decode("xxd", "application/testS", "utf-8",
+                            force=True)
+            self.assertEqual(ret, "decoded")
+        finally:
+            disabled.clear()
+
+    def test_decode_when_data_is_None(self):
+        registry.decode(None, "application/testS", "utf-8")
 
     def test_content_type_decoding(self):
         self.assertEqual(unicode_string,
@@ -80,7 +114,7 @@ class test_Serialization(unittest.TestCase):
         self.assertIsInstance(registry.decode(unicode_string_as_utf8,
                                               content_type='application/data',
                                               content_encoding='binary'),
-                              bytes_type)
+                              bytes_t)
 
         self.assertEqual(unicode_string_as_utf8,
                           registry.decode(

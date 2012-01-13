@@ -123,6 +123,7 @@ class Producer(object):
         :keyword properties: Additional properties, see the AMQP spec.
 
         """
+        retry_policy = {} if retry_policy is None else retry_policy
         headers = headers or {}
         if routing_key is None:
             routing_key = self.routing_key
@@ -134,7 +135,7 @@ class Producer(object):
 
         # Additional  entities to declare before publishing the message.
         for entity in declare:
-            self.maybe_declare(entity, retry, **retry_policy or {})
+            self.maybe_declare(entity, retry, **retry_policy)
 
         body, content_type, content_encoding = self._prepare(
                 body, serializer, content_type, content_encoding,
@@ -252,14 +253,14 @@ class Consumer(object):
 
     _next_tag = count(1).next   # global
 
-    def __init__(self, channel, queues, no_ack=None, auto_declare=None,
+    def __init__(self, channel, queues=None, no_ack=None, auto_declare=None,
             callbacks=None, on_decode_error=None):
         from .connection import BrokerConnection
         if isinstance(channel, BrokerConnection):
             channel = channel.default_channel
         self.channel = channel
 
-        self.queues = queues
+        self.queues = [] if queues is None else queues
         if no_ack is not None:
             self.no_ack = no_ack
         if auto_declare is not None:
@@ -465,7 +466,8 @@ class Consumer(object):
     def _receive_callback(self, message):
         channel = self.channel
         try:
-            if hasattr(channel, "message_to_python"):
+            m2p = getattr(channel, "message_to_python", None)
+            if m2p:
                 message = channel.message_to_python(message)
             decoded = message.decode()
         except Exception, exc:

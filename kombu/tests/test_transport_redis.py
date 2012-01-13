@@ -742,3 +742,13 @@ class test_MultiChannelPoller(unittest.TestCase):
             p.get()
 
         channel._poll_error.assert_called_with("BRPOP")
+
+    def test_get_receives_multiple(self):
+        p, channel = self.create_get(events=[(1, eventio.POLL_ERR),
+                                             (1, eventio.POLL_ERR)])
+        p._fd_to_chan[1] = (channel, "BRPOP")
+
+        with self.assertRaises(redis.Empty):
+            p.get()
+
+        channel._poll_error.assert_called_with("BRPOP")

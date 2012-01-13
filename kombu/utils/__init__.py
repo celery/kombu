@@ -265,7 +265,7 @@ def reprcall(name, args=(), kwargs=(), sep=', '):
 
 
 @contextmanager
-def nested(*managers):
+def nested(*managers):  # pragma: no cover
     """Combine multiple context managers into a single nested
     context manager."""
     exits = []

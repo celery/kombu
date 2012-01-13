@@ -5,6 +5,7 @@ from Queue import Empty
 
 from .. import BrokerConnection, Exchange, Queue
 from .utils import unittest
+from .utils import Mock
 
 
 class SimpleBase(unittest.TestCase):
@@ -65,6 +66,16 @@ class SimpleBase(unittest.TestCase):
             q.put({"hello": "SimplePurge%d" % (i, )})
 
         self.assertEqual(q.clear(), 10)
+
+    def test_enter_exit(self):
+        if self.abstract:
+            return
+        q = self.Queue("test_enter_exit")
+        q.close = Mock()
+
+        self.assertIs(q.__enter__(), q)
+        q.__exit__()
+        q.close.assert_called_with()
 
     def test_qsize(self):
         if self.abstract:
