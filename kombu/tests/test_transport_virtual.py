@@ -347,7 +347,11 @@ class test_Channel(unittest.TestCase):
 
         q._delivered = State({1: 1})
         ru = q.restore_unacked = Mock()
-        exc = KeyError()
+        exc = None
+        try:
+            raise KeyError()
+        except KeyError, exc_:
+            exc = exc_
         ru.return_value = [(exc, 1)]
 
         self.channel.do_restore = True

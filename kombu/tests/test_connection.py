@@ -8,7 +8,7 @@ from ..messaging import Consumer, Producer
 
 from .mocks import Transport
 from .utils import unittest
-from .utils import Mock
+from .utils import Mock, skip_if_not_module
 
 
 class test_connection_utils(unittest.TestCase):
@@ -42,6 +42,7 @@ class test_connection_utils(unittest.TestCase):
         self.assertEqual(conn.as_uri(), self.nopass)
         self.assertEqual(conn.as_uri(include_password=True), self.url)
 
+    @skip_if_not_module("pymongo")
     def test_as_uri_when_mongodb(self):
         x = BrokerConnection("mongodb://localhost")
         self.assertTrue(x.as_uri())

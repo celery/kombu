@@ -9,19 +9,71 @@
 :release-date: 2012-01-14 15:00 P.M GMT
 :by: Ask Solem
 
+.. _v200-important
+
+Important Notes
+===============
+
 * No longer supports Python 2.4
 
-    Users of Python 2.4 can still use the 1.x series.
+    Users of Python 2.4 can still use the 1.x series,
+    which will be maintained for bug fixes only.
 
-* django-kombu is now part of Kombu core.
+* ``django-kombu`` is now part of Kombu core.
 
     This change requires no code changes given that the
     ``django`` transport alias is used.
 
-* kombu-sqlalchemy is now part of Kombu core.
+* ``kombu-sqlalchemy`` is now part of Kombu core.
 
     This change requires no code changes given that the
     ``sqlalchemy` transport alias is used.
+
+.. _v200-news:
+
+News
+----
+
+* :class:`kombu.mixins.ConsumerMixin` is a mixin class that lets you
+  easily write consumer programs and threads.
+
+  See :ref:`examples` and :ref:`consumers`.
+
+* SQS Transport: Added support for SQS queue prefixes (Issue #84).
+
+    The queue prefix can be set using the transport option
+    ``queue_name_prefix``::
+
+        BrokerTransport("SQS://", transport_options={
+            "queue_name_prefix": "myapp"})
+
+    Contributed by Nitzan Miron.
+
+* ``Producer.publish`` now supports automatic retry.
+
+    Retry is enabled by the ``reply`` argument, and retry options
+    set by the ``retry_policy`` argument::
+
+        exchange = Exchange("foo")
+        producer.publish(message, exchange=exchange, retry=True,
+                         declare=[exchange], retry_policy={
+                            "interval_start": 1.0})
+
+    See :meth:`~kombu.connection.BrokerConnection.ensure`
+    for a list of supported retry policy options.
+
+* ``Producer.publish`` now supports a ``declare`` keyword argument.
+
+    This is a list of entities (:class:`Exchange`, or :class:`Queue`)
+    that should be declared before the message is published.
+
+.. _v200-fixes:
+
+Fixes
+-----
+
+* Redis transport: Timeout was multiplied by 1000 seconds when using
+  ``select`` for event I/O (Issue #86).
 
 .. _version-1.5.1:
 
