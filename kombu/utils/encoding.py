@@ -83,7 +83,13 @@ def safe_str(s, errors="replace"):
 
 def _safe_str(s, errors="replace"):
     if is_py3k:  # pragma: no cover
-        return s
+        if isinstance(s, str):
+            return s
+        try:
+            return str(s)
+        except Exception, exc:
+            return "<Unrepresentable %r: %r %r>" % (
+                    type(s), exc, "\n".join(traceback.format_stack()))
     encoding = default_encoding()
     try:
         if isinstance(s, unicode):

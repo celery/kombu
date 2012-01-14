@@ -616,6 +616,7 @@ class test_MultiChannelPoller(unittest.TestCase):
         p._chan_to_sock = Mock()
 
         p._chan_to_sock.itervalues.return_value = []
+        p._chan_to_sock.values.return_value = []  # py3k
 
         p.close()
         p._channels.clear.assert_called_with()

@@ -4,6 +4,7 @@ from .. import Connection
 from .. import pools
 from ..connection import ConnectionPool
 from ..messaging import Producer
+from ..utils import eqhash
 
 from .utils import unittest
 from .utils import Mock
@@ -175,3 +176,32 @@ class test_PoolGroup(unittest.TestCase):
         self.assertEqual(pools.get_limit(), limit - 1)
 
         pools.set_limit(pools.get_limit())
+
+
+
+class test_fun_PoolGroup(unittest.TestCase):
+
+    def test_connections_behavior(self):
+        c1u = "memory://localhost:123"
+        c2u = "memory://localhost:124"
+        c1 = Connection(c1u)
+        c2 = Connection(c2u)
+        c3 = Connection(c1u)
+
+        assert eqhash(c1) != eqhash(c2)
+        assert eqhash(c1) == eqhash(c3)
+
+        p1 = pools.connections[c1]
+        p2 = pools.connections[c2]
+        p3 = pools.connections[c3]
+
+        self.assertIsNot(p1, p2)
+        self.assertIs(p1, p3)
+
+        r1 = p1.acquire()
+        self.assertTrue(p1._dirty)
+        self.assertTrue(p3._dirty)
+        self.assertFalse(p2._dirty)
+        r1.release()
+        self.assertFalse(p1._dirty)
+        self.assertFalse(p3._dirty)

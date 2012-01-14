@@ -5,7 +5,11 @@ import anyjson
 from ..exceptions import VersionMismatch
 
 # avoid json implementation inconsistencies.
-anyjson.force_implementation("simplejson")
+try:
+    import json  # noqa
+    anyjson.force_implementation("json")
+except ImportError:
+    anyjson.force_implementation("simplejson")
 
 moduleindex = ("kombu.abstract",
                "kombu.compat",
