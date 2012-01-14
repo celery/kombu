@@ -2,6 +2,27 @@
  Change history
 ================
 
+.. _version-2.0.0:
+
+2.0.0
+=====
+:release-date: 2012-01-14 15:00 P.M GMT
+:by: Ask Solem
+
+* No longer supports Python 2.4
+
+    Users of Python 2.4 can still use the 1.x series.
+
+* django-kombu is now part of Kombu core.
+
+    This change requires no code changes given that the
+    ``django`` transport alias is used.
+
+* kombu-sqlalchemy is now part of Kombu core.
+
+    This change requires no code changes given that the
+    ``sqlalchemy` transport alias is used.
+
 .. _version-1.5.1:
 
 1.5.1
