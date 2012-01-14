@@ -35,7 +35,7 @@ class FairCycle(object):
                     raise self.predicate()
 
     def get(self, **kwargs):
-        for tried in count(0):
+        for tried in count(0):  # for infinity
             resource = self._next()
 
             try:

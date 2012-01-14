@@ -1,11 +1,14 @@
 from __future__ import absolute_import
 from __future__ import with_statement
 
+from mock import patch
+
 from .. import BrokerConnection, Exchange
 from .. import compat
 
 from .mocks import Transport, Channel
 from .utils import unittest
+from .utils import Mock
 
 
 class test_misc(unittest.TestCase):
@@ -104,6 +107,10 @@ class test_Publisher(unittest.TestCase):
                                 exchange=explicit)
         self.assertEqual(pub3.exchange, explicit)
 
+        compat.Publisher(self.connection,
+                         exchange="test_Publisher_constructor3",
+                         channel=self.connection.default_channel)
+
     def test_send(self):
         pub = compat.Publisher(self.connection,
                                exchange="test_Publisher_send",
@@ -126,6 +133,12 @@ class test_Consumer(unittest.TestCase):
 
     def setUp(self):
         self.connection = BrokerConnection(transport=Transport)
+
+    @patch("kombu.compat._iterconsume")
+    def test_iterconsume_calls__iterconsume(self, it, n="test_iterconsume"):
+        c = compat.Consumer(self.connection, queue=n, exchange=n)
+        c.iterconsume(limit=10, no_ack=True)
+        it.assert_called_with(c.connection, c, True, 10)
 
     def test_constructor(self, n="test_Consumer_constructor"):
         c = compat.Consumer(self.connection, queue=n, exchange=n,
@@ -157,6 +170,20 @@ class test_Consumer(unittest.TestCase):
         x.__exit__()
         self.assertIn("close", c.backend)
         self.assertTrue(c._closed)
+
+    def test_revive(self, n="test_revive"):
+        c = compat.Consumer(self.connection, queue=n, exchange=n)
+
+        with self.connection.channel() as c2:
+            c.revive(c2)
+            self.assertIs(c.backend, c2)
+
+    def test__iter__(self, n="test__iter__"):
+        c = compat.Consumer(self.connection, queue=n, exchange=n)
+        c.iterqueue = Mock()
+
+        c.__iter__()
+        c.iterqueue.assert_called_with(infinite=True)
 
     def test_iter(self, n="test_iterqueue"):
         c = compat.Consumer(self.connection, queue=n, exchange=n,
@@ -240,6 +267,21 @@ class test_ConsumerSet(unittest.TestCase):
 
     def setUp(self):
         self.connection = BrokerConnection(transport=Transport)
+
+    @patch("kombu.compat._iterconsume")
+    def test_iterconsume(self, _iterconsume, n="test_iterconsume"):
+        c = compat.Consumer(self.connection, queue=n, exchange=n)
+        cs = compat.ConsumerSet(self.connection, consumers=[c])
+        cs.iterconsume(limit=10, no_ack=True)
+        _iterconsume.assert_called_with(c.connection, cs, True, 10)
+
+    def test_revive(self, n="test_revive"):
+        c = compat.Consumer(self.connection, queue=n, exchange=n)
+        cs = compat.ConsumerSet(self.connection, consumers=[c])
+
+        with self.connection.channel() as c2:
+            cs.revive(c2)
+            self.assertIs(cs.backend, c2)
 
     def test_constructor(self, prefix="0daf8h21"):
         dcon = {"%s.xyx" % prefix: {"exchange": "%s.xyx" % prefix,

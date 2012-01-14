@@ -42,6 +42,10 @@ class test_connection_utils(unittest.TestCase):
         self.assertEqual(conn.as_uri(), self.nopass)
         self.assertEqual(conn.as_uri(include_password=True), self.url)
 
+    def test_as_uri_when_mongodb(self):
+        x = BrokerConnection("mongodb://localhost")
+        self.assertTrue(x.as_uri())
+
     def test_bogus_scheme(self):
         with self.assertRaises(KeyError):
             BrokerConnection("bogus://localhost:7421").transport
@@ -153,6 +157,22 @@ class test_Connection(unittest.TestCase):
         with self.assertRaises(_ConnectionError):
             ensured()
 
+    def test_autoretry(self):
+        myfun = Mock()
+        myfun.__name__ = "test_autoretry"
+
+        self.conn.transport.connection_errors = (KeyError, )
+
+        def on_call(*args, **kwargs):
+            myfun.side_effect = None
+            raise KeyError("foo")
+
+        myfun.side_effect = on_call
+        insured = self.conn.autoretry(myfun)
+        insured()
+
+        self.assertTrue(myfun.called)
+
     def test_SimpleQueue(self):
         conn = self.conn
         q = conn.SimpleQueue("foo")
@@ -221,6 +241,12 @@ class test_Connection_with_transport_options(unittest.TestCase):
         self.assertEqual(conn.transport_options, self.transport_options)
 
 
+class xResource(Resource):
+
+    def setup(self):
+        pass
+
+
 class ResourceCase(unittest.TestCase):
     abstract = True
 
@@ -249,6 +275,75 @@ class ResourceCase(unittest.TestCase):
         self.assertState(P, 1, 9)
         [chan.release() for chan in chans]
         self.assertState(P, 10, 0)
+
+    def test_acquire_no_limit(self):
+        if self.abstract:
+            return
+        P = self.create_resource(None, 0)
+        P.acquire().release()
+
+    def test_replace_when_limit(self):
+        if self.abstract:
+            return
+        P = self.create_resource(10, 0)
+        r = P.acquire()
+        P._dirty = Mock()
+        P.close_resource = Mock()
+
+        P.replace(r)
+        P._dirty.discard.assert_called_with(r)
+        P.close_resource.assert_called_with(r)
+
+    def test_replace_no_limit(self):
+        if self.abstract:
+            return
+        P = self.create_resource(None, 0)
+        r = P.acquire()
+        P._dirty = Mock()
+        P.close_resource = Mock()
+
+        P.replace(r)
+        self.assertFalse(P._dirty.discard.called)
+        P.close_resource.assert_called_with(r)
+
+    def test_interface_prepare(self):
+        if not self.abstract:
+            return
+        x = xResource()
+        self.assertEqual(x.prepare(10), 10)
+
+    def test_force_close_all_handles_AttributeError(self):
+        if self.abstract:
+            return
+        P = self.create_resource(10, 10)
+        cr = P.close_resource = Mock()
+        cr.side_effect = AttributeError("x")
+
+        P.acquire()
+        self.assertTrue(P._dirty)
+
+        P.force_close_all()
+
+    def test_force_close_all_no_mutex(self):
+        if self.abstract:
+            return
+        P = self.create_resource(10, 10)
+        P.close_resource = Mock()
+
+        m = P._resource = Mock()
+        m.mutex = None
+        m.queue.pop.side_effect = IndexError
+
+        P.force_close_all()
+
+    def test_add_when_empty(self):
+        if self.abstract:
+            return
+        P = self.create_resource(None, None)
+        P._resource.queue[:] = []
+        self.assertFalse(P._resource.queue)
+        P._add_when_empty()
+        self.assertTrue(P._resource.queue)
 
 
 class test_ConnectionPool(ResourceCase):

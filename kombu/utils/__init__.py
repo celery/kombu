@@ -153,7 +153,7 @@ def retry_over_time(fun, catch, args=[], kwargs={}, errback=None,
                              interval_max + interval_start,
                              interval_step, repeatlast=True)
 
-    for retries, interval in enumerate(interval_range):
+    for retries, interval in enumerate(interval_range):  # for infinity
         try:
             return fun(*args, **kwargs)
         except catch, exc:

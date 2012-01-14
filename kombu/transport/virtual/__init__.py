@@ -160,7 +160,7 @@ class QoS(object):
 
             try:
                 self.channel._restore(message)
-            except (KeyboardInterrupt, SystemExit, Exception), exc:
+            except BaseException, exc:
                 errors.append((exc, message))
         delivered.clear()
         return errors
@@ -175,7 +175,7 @@ class QoS(object):
         self._flush()
         state = self._delivered
 
-        if not self.channel.do_restore or getattr(state, "restored"):
+        if not self.channel.do_restore or getattr(state, "restored", None):
             assert not state
             return
 

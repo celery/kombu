@@ -3,13 +3,16 @@ from __future__ import with_statement
 
 import warnings
 
+from mock import patch
+
 from ..connection import BrokerConnection
+from ..exceptions import StdChannelError
 from ..transport import virtual
 from ..utils import uuid
 
 from .compat import catch_warnings
 from .utils import unittest
-from .utils import redirect_stdouts
+from .utils import Mock, redirect_stdouts
 
 
 def client():
@@ -108,6 +111,11 @@ class test_Message(unittest.TestCase):
         self.assertEqual(message.body,
                          "the quick brown fox...".encode("utf-8"))
         self.assertTrue(message.delivery_tag, tag)
+
+    def test_create_no_body(self):
+        virtual.Message(Mock(), {
+            "body": None,
+            "properties": {"delivery_tag": 1}})
 
     def test_serializable(self):
         c = client().channel()
@@ -314,6 +322,39 @@ class test_Channel(unittest.TestCase):
         self.channel.basic_recover(requeue=True)
         self.assertTrue(self.channel._qos.was_restored)
 
+    def test_restore_unacked_raises_BaseException(self):
+        q = self.channel.qos
+        q._flush = Mock()
+        q._delivered = {1: 1}
+
+        q.channel._restore = Mock()
+        q.channel._restore.side_effect = SystemExit
+
+        errors = q.restore_unacked()
+        self.assertIsInstance(errors[0][0], SystemExit)
+        self.assertEqual(errors[0][1], 1)
+        self.assertFalse(q._delivered)
+
+    @patch("kombu.transport.virtual.emergency_dump_state")
+    @patch("kombu.transport.virtual.say")
+    def test_restore_unacked_once_when_unrestored(self, say,
+            emergency_dump_state):
+        q = self.channel.qos
+        q._flush = Mock()
+
+        class State(dict):
+            restored = False
+
+        q._delivered = State({1: 1})
+        ru = q.restore_unacked = Mock()
+        exc = KeyError()
+        ru.return_value = [(exc, 1)]
+
+        self.channel.do_restore = True
+        q.restore_unacked_once()
+        self.assertTrue(say.called)
+        self.assertTrue(emergency_dump_state.called)
+
     def test_basic_recover(self):
         with self.assertRaises(NotImplementedError):
             self.channel.basic_recover(requeue=False)
@@ -354,6 +395,64 @@ class test_Channel(unittest.TestCase):
     def test_flow(self):
         with self.assertRaises(NotImplementedError):
             self.channel.flow(False)
+
+    def test_close_when_no_connection(self):
+        self.channel.connection = None
+        self.channel.close()
+        self.assertTrue(self.channel.closed)
+
+    def test_drain_events_has_get_many(self):
+        c = self.channel
+        c._get_many = Mock()
+        c._poll = Mock()
+        c._consumers = [1]
+        c._qos = Mock()
+        c._qos.can_consume.return_value = True
+
+        c.drain_events(timeout=10.0)
+        c._get_many.assert_called_with(c._active_queues, timeout=10.0)
+
+    def test_get_exchanges(self):
+        self.channel.exchange_declare(exchange="foo")
+        self.assertTrue(self.channel.get_exchanges())
+
+    def test_basic_cancel_not_in_active_queues(self):
+        c = self.channel
+        c._consumers.add("x")
+        c._tag_to_queue["x"] = "foo"
+        c._active_queues = Mock()
+        c._active_queues.remove.side_effect = ValueError()
+        c.auto_delete_queues["foo"] = 3
+
+        c.basic_cancel("x")
+        self.assertEqual(c.auto_delete_queues["foo"], 2)
+        c._active_queues.remove.assert_called_with("foo")
+
+    def test_basic_cancel_unknown_ctag(self):
+        self.assertIsNone(self.channel.basic_cancel("unknown-tag"))
+
+    def test_list_bindings(self):
+        c = self.channel
+        c.exchange_declare(exchange="foo")
+        c.queue_declare(queue="q")
+        c.queue_bind(queue="q", exchange="foo", routing_key="rk")
+
+        self.assertIn(("q", "foo", "rk"), list(c.list_bindings()))
+
+    def test_after_reply_message_received(self):
+        c = self.channel
+        c.queue_delete = Mock()
+        c.after_reply_message_received("foo")
+        c.queue_delete.assert_called_with("foo")
+
+    def test_queue_delete_unknown_queue(self):
+        self.assertIsNone(self.channel.queue_delete("xiwjqjwel"))
+
+    def test_queue_declare_passive(self):
+        has_queue = self.channel._has_queue = Mock()
+        has_queue.return_value = False
+        with self.assertRaises(StdChannelError):
+            self.channel.queue_declare(queue="21wisdjwqe", passive=True)
 
 
 class test_Transport(unittest.TestCase):

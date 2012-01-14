@@ -37,6 +37,12 @@ class StdChannel(object):
            after transient reply message received."""
         pass
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc_info):
+        self.close()
+
 
 class Message(object):
     """Base class for received messages."""

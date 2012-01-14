@@ -23,7 +23,7 @@ from Queue import Empty
 from urlparse import urlparse
 try:
     from urlparse import parse_qsl
-except ImportError:
+except ImportError:  # pragma: no cover
     from cgi import parse_qsl  # noqa
 
 from . import exceptions
@@ -289,7 +289,7 @@ class BrokerConnection(object):
         @wraps(fun)
         def _ensured(*args, **kwargs):
             got_connection = 0
-            for retries in count(0):
+            for retries in count(0):  # for infinity
                 try:
                     return fun(*args, **kwargs)
                 except self.connection_errors + self.channel_errors, exc:

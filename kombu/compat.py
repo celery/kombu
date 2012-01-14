@@ -23,7 +23,7 @@ __all__ = ["Publisher", "Consumer"]
 
 def _iterconsume(connection, consumer, no_ack=False, limit=None):
     consumer.consume(no_ack=no_ack)
-    for iteration in count(0):
+    for iteration in count(0):  # for infinity
         if limit and iteration >= limit:
             raise StopIteration
         yield connection.drain_events()
@@ -163,7 +163,7 @@ class Consumer(messaging.Consumer):
         return list(it)
 
     def iterqueue(self, limit=None, infinite=False):
-        for items_since_start in count():
+        for items_since_start in count():  # for infinity
             item = self.fetch()
             if (not infinite and item is None) or \
                     (limit and items_since_start >= limit):
