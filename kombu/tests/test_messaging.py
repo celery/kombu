@@ -61,7 +61,7 @@ class test_Producer(TestCase):
         channel = self.connection.channel()
         p = Producer(channel, self.exchange, serializer="json")
         m, ctype, cencoding = p._prepare(message, headers={})
-        self.assertDictEqual(message, anyjson.deserialize(m))
+        self.assertDictEqual(message, anyjson.loads(m))
         self.assertEqual(ctype, "application/json")
         self.assertEqual(cencoding, "utf-8")
 
@@ -76,7 +76,7 @@ class test_Producer(TestCase):
         self.assertEqual(cencoding, "utf-8")
         self.assertEqual(headers["compression"], "application/x-gzip")
         import zlib
-        self.assertEqual(anyjson.deserialize(
+        self.assertEqual(anyjson.loads(
                             zlib.decompress(m).decode("utf-8")), message)
 
     def test_prepare_custom_content_type(self):
@@ -155,7 +155,7 @@ class test_Producer(TestCase):
         self.assertIn("basic_publish", channel)
 
         m, exc, rkey = ret
-        self.assertDictEqual(message, anyjson.deserialize(m["body"]))
+        self.assertDictEqual(message, anyjson.loads(m["body"]))
         self.assertDictContainsSubset({"content_type": "application/json",
                                        "content_encoding": "utf-8",
                                        "priority": 0}, m)
@@ -476,7 +476,7 @@ class test_Consumer(TestCase):
 
         self.assertTrue(thrown)
         m, exc = thrown[0]
-        self.assertEqual(anyjson.deserialize(m), {"foo": "bar"})
+        self.assertEqual(anyjson.loads(m), {"foo": "bar"})
         self.assertIsInstance(exc, ValueError)
 
     def test_recover(self):

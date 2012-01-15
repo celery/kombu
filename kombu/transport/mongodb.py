@@ -14,7 +14,7 @@ from Queue import Empty
 
 import pymongo
 from pymongo import errors
-from anyjson import serialize, deserialize
+from anyjson import loads, dumps
 from pymongo.connection import Connection
 
 from . import virtual
@@ -43,13 +43,13 @@ class Channel(virtual.Channel):
         # as of mongo 2.0 empty results won't raise an error
         if msg['value'] is None:
             raise Empty()
-        return deserialize(msg["value"]["payload"])
+        return loads(msg["value"]["payload"])
 
     def _size(self, queue):
         return self.client.find({"queue": queue}).count()
 
     def _put(self, queue, message, **kwargs):
-        self.client.insert({"payload": serialize(message), "queue": queue})
+        self.client.insert({"payload": dumps(message), "queue": queue})
 
     def _purge(self, queue):
         size = self._size(queue)

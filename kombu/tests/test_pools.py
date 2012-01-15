@@ -178,7 +178,6 @@ class test_PoolGroup(TestCase):
         pools.set_limit(pools.get_limit())
 
 
-
 class test_fun_PoolGroup(TestCase):
 
     def test_connections_behavior(self):

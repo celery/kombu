@@ -12,7 +12,7 @@ from __future__ import absolute_import
 
 from Queue import Empty
 
-from anyjson import serialize, deserialize
+from anyjson import loads, dumps
 
 from ..exceptions import VersionMismatch
 from ..utils import eventio, cached_property
@@ -197,7 +197,7 @@ class Channel(virtual.Channel):
         if response is not None:
             payload = self._handle_message(c, response)
             if payload["type"] == "message":
-                return (deserialize(payload["data"]),
+                return (loads(payload["data"]),
                         self._fanout_to_queue[payload["channel"]])
         raise Empty()
 
@@ -222,7 +222,7 @@ class Channel(virtual.Channel):
                 raise Empty()
             if dest__item:
                 dest, item = dest__item
-                return deserialize(item), dest
+                return loads(item), dest
             else:
                 raise Empty()
         finally:
@@ -244,7 +244,7 @@ class Channel(virtual.Channel):
         """
         item = self._avail_client.rpop(queue)
         if item:
-            return deserialize(item)
+            return loads(item)
         raise Empty()
 
     def _size(self, queue):
@@ -252,11 +252,11 @@ class Channel(virtual.Channel):
 
     def _put(self, queue, message, **kwargs):
         """Deliver message."""
-        self._avail_client.lpush(queue, serialize(message))
+        self._avail_client.lpush(queue, dumps(message))
 
     def _put_fanout(self, exchange, message, **kwargs):
         """Deliver fanout message."""
-        self._avail_client.publish(exchange, serialize(message))
+        self._avail_client.publish(exchange, dumps(message))
 
     def _queue_bind(self, exchange, routing_key, pattern, queue):
         if self.typeof(exchange).type == "fanout":

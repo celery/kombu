@@ -15,7 +15,7 @@ from Queue import Empty
 import socket
 import couchdb
 
-from anyjson import serialize, deserialize
+from anyjson import loads, dumps
 
 from ..utils import uuid4
 from . import virtual
@@ -47,7 +47,7 @@ class Channel(virtual.Channel):
     def _put(self, queue, message, **kwargs):
         self.client.save({'_id': uuid4().hex,
                           'queue': queue,
-                          'payload': serialize(message)})
+                          'payload': dumps(message)})
 
     def _get(self, queue):
         result = self._query(queue, limit=1)
@@ -56,7 +56,7 @@ class Channel(virtual.Channel):
 
         item = result.rows[0].value
         self.client.delete(item)
-        return deserialize(item["payload"])
+        return loads(item["payload"])
 
     def _purge(self, queue):
         result = self._query(queue)

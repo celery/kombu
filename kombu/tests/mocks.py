@@ -96,7 +96,7 @@ class Channel(base.StdChannel):
 
     def message_to_python(self, message, *args, **kwargs):
         self._called("message_to_python")
-        return Message(self, body=anyjson.serialize(message),
+        return Message(self, body=anyjson.dumps(message),
                 delivery_tag=self.deliveries(),
                 throw_decode_error=self.throw_decode_error,
                 content_type="application/json", content_encoding="utf-8")

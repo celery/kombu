@@ -14,7 +14,7 @@ import socket
 
 from Queue import Empty
 
-from anyjson import serialize, deserialize
+from anyjson import loads, dumps
 from beanstalkc import Connection, BeanstalkcException, SocketError
 
 from . import virtual
@@ -31,7 +31,7 @@ class Channel(virtual.Channel):
         item, dest = None, None
         if job:
             try:
-                item = deserialize(job.body)
+                item = loads(job.body)
                 dest = job.stats()["tube"]
             except Exception:
                 job.bury()
@@ -44,7 +44,7 @@ class Channel(virtual.Channel):
     def _put(self, queue, message, **kwargs):
         priority = message["properties"]["delivery_info"]["priority"]
         self.client.use(queue)
-        self.client.put(serialize(message), priority=priority)
+        self.client.put(dumps(message), priority=priority)
 
     def _get(self, queue):
         if queue not in self.client.watching():

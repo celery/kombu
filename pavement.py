@@ -2,6 +2,8 @@ from paver.easy import *            # noqa
 from paver import doctools          # noqa
 from paver.setuputils import setup  # noqa
 
+PYCOMPILE_CACHES = ["*.pyc", "*$py.class"]
+
 options(
         sphinx=Bunch(builddir=".build"),
 )
@@ -149,7 +151,8 @@ def pep8(options):
 
 @task
 def removepyc(options):
-    sh("find . -name '*.pyc' | xargs rm")
+    sh("find . -type f -a \\( %s \\) | xargs rm" % (
+        " -o ".join("-name '%s'" % (pat, ) for pat in PYCOMPILE_CACHES), ))
 
 
 @task

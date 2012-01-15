@@ -15,7 +15,7 @@ import string
 
 from Queue import Empty
 
-from anyjson import serialize, deserialize
+from anyjson import loads, dumps
 
 from boto import exception
 from boto import sdb as _sdb
@@ -214,7 +214,7 @@ class Channel(virtual.Channel):
         """Put message onto queue."""
         q = self._new_queue(queue)
         m = Message()
-        m.set_body(serialize(message))
+        m.set_body(dumps(message))
         q.write(m)
 
     def _put_fanout(self, exchange, message, **kwargs):
@@ -228,7 +228,7 @@ class Channel(virtual.Channel):
         rs = q.get_messages(1)
         if rs:
             m = rs[0]
-            payload = deserialize(rs[0].get_body())
+            payload = loads(rs[0].get_body())
             if queue in self._noack_queues:
                 q.delete_message(m)
             else:

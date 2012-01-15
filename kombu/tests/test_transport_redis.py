@@ -4,7 +4,7 @@ from __future__ import with_statement
 import socket
 import types
 
-from anyjson import serialize
+from anyjson import dumps
 from itertools import count
 from Queue import Empty, Queue as _Queue
 
@@ -265,7 +265,7 @@ class test_Channel(TestCase):
         s = self.channel.subclient = Mock()
         self.channel._fanout_to_queue["a"] = "b"
         s.parse_response.return_value = ["message", "a",
-                                         serialize({"hello": "world"})]
+                                         dumps({"hello": "world"})]
         payload, queue = self.channel._receive()
         self.assertDictEqual(payload, {"hello": "world"})
         self.assertEqual(queue, "b")
@@ -325,7 +325,7 @@ class test_Channel(TestCase):
 
         body = {"hello": "world"}
         self.channel._put_fanout("exchange", body)
-        c.publish.assert_called_with("exchange", serialize(body))
+        c.publish.assert_called_with("exchange", dumps(body))
 
     def test_delete(self):
         x = self.channel
