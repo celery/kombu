@@ -6,28 +6,69 @@
 
 2.0.0
 =====
-:release-date: 2012-01-14 15:00 P.M GMT
+:release-date: 2012-01-15 18:34 P.M GMT
 :by: Ask Solem
 
-.. _v200-important
+.. _v200-important:
 
 Important Notes
 ===============
 
-* No longer supports Python 2.4
+.. _v200-python-compatibility:
 
-    Users of Python 2.4 can still use the 1.x series,
-    which will be maintained for bug fixes only.
+Python Compatibility
+--------------------
+
+* No longer supports Python 2.4.
+
+    Users of Python 2.4 can still use the 1.x series.
+
+    The 1.x series has entered bugfix-only maintenance mode, and will
+    stay that way as long as there is demand, and a willingness to
+    maintain it.
+
+
+.. _v200-new-transports:
+
+New Transports
+--------------
 
 * ``django-kombu`` is now part of Kombu core.
 
-    This change requires no code changes given that the
-    ``django`` transport alias is used.
+    The Django message transport uses the Django ORM to store messages.
+
+    It uses polling, with a default polling interval of 5 seconds.
+    The polling interval can be increased or decreased by configuring the
+    ``KOMBU_POLLING_INTERVAL`` Django setting, which is the polling
+    interval in seconds as an int or a float.  Note that shorter polling
+    intervals can cause extreme strain on the database: if responsiveness
+    is needed you shall consider switching to a non-polling transport.
+
+    To use it you must use transport alias ``"django"``,
+    or as an URL::
+
+        django://
+
+    and then add ``kombu.transport.django`` to ``INSTALLED_APPS``, and
+    run ``manage.py syncdb`` to create the necessary database tables.
+
+    **Upgrading**
+
+    If you have previously used ``django-kombu``, then the entry
+    in ``INSTALLED_APPS`` must be changed from ``djkombu``
+    to ``kombu.transport.django``::
+
+        INSTALLED_APPS = (…,
+                          "kombu.transport.django")
+
+    If you have previously used django-kombu, then there is no need
+    to recreate the tables, as the old tables will be fully compatible
+    with the new version.
 
 * ``kombu-sqlalchemy`` is now part of Kombu core.
 
     This change requires no code changes given that the
-    ``sqlalchemy` transport alias is used.
+    ``sqlalchemy`` transport alias is used.
 
 .. _v200-news:
 
@@ -37,7 +78,7 @@ News
 * :class:`kombu.mixins.ConsumerMixin` is a mixin class that lets you
   easily write consumer programs and threads.
 
-  See :ref:`examples` and :ref:`consumers`.
+  See :ref:`examples` and :ref:`guide-consumers`.
 
 * SQS Transport: Added support for SQS queue prefixes (Issue #84).
 

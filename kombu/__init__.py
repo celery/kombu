@@ -1,7 +1,7 @@
 """AMQP Messaging Framework for Python"""
 from __future__ import absolute_import
 
-VERSION = (2, 0, 0, "rc2")
+VERSION = (2, 0, 0)
 __version__ = ".".join(map(str, VERSION[0:3])) + "".join(VERSION[3:])
 __author__ = "Ask Solem"
 __contact__ = "ask@celeryproject.org"
@@ -13,10 +13,13 @@ __docformat__ = "restructuredtext en"
 import os
 import sys
 
-if sys.version_info < (2, 5):
-    raise Exception(
-        "Python 2.4 is not supported by this version. "
-        "Please use Kombu versions 1.3.x or earlier.")
+if sys.version_info < (2, 5):  # pragma: no cover
+    if sys.version_info >= (2, 4):
+        raise Exception(
+                "Python 2.4 is not supported by this version. "
+                "Please use Kombu versions 1.x.")
+    else:
+        raise Exception("Kombu requires Python versions 2.5 or later.")
 
 # Lazy loading.
 # - See werkzeug/__init__.py for the rationale behind this.
