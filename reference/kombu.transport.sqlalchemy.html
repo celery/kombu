@@ -1,0 +1,184 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>kombu.transport.sqlalchemy &mdash; Kombu 2.0.0 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/celery.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '2.0.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="Kombu 2.0.0 documentation" href="../index.html" />
+    <link rel="up" title="API Reference" href="index.html" />
+    <link rel="next" title="Models" href="kombu.transport.sqlalchemy.models.html" />
+    <link rel="prev" title="Django Management - clean_kombu_messages" href="kombu.transport.django.management.commands.clean_kombu_messages.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="kombu.transport.sqlalchemy.models.html" title="Models"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="kombu.transport.django.management.commands.clean_kombu_messages.html" title="Django Management - clean_kombu_messages"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../index.html">Kombu 2.0.0 documentation</a> &raquo;</li>
+          <li><a href="index.html" accesskey="U">API Reference</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-kombu.transport.sqlalchemy">
+<span id="kombu-transport-sqlalchemy"></span><h1>kombu.transport.sqlalchemy<a class="headerlink" href="#module-kombu.transport.sqlalchemy" title="Permalink to this headline">¶</a></h1>
+<p>Kombu transport using SQLAlchemy as the message store.</p>
+<div class="contents local topic" id="contents">
+<ul class="simple">
+<li><a class="reference internal" href="#transport" id="id1">Transport</a></li>
+<li><a class="reference internal" href="#channel" id="id2">Channel</a></li>
+</ul>
+</div>
+<div class="section" id="transport">
+<h2><a class="toc-backref" href="#id1">Transport</a><a class="headerlink" href="#transport" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="kombu.transport.sqlalchemy.Transport">
+<em class="property">class </em><tt class="descclassname">kombu.transport.sqlalchemy.</tt><tt class="descname">Transport</tt><big>(</big><em>client</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.transport.sqlalchemy.Transport" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="class">
+<dt id="kombu.transport.sqlalchemy.Transport.Channel">
+<em class="property">class </em><tt class="descname">Channel</tt><big>(</big><em>connection</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.transport.sqlalchemy.Transport.Channel" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="attribute">
+<dt id="kombu.transport.sqlalchemy.Transport.Channel.session">
+<tt class="descname">session</tt><a class="headerlink" href="#kombu.transport.sqlalchemy.Transport.Channel.session" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.sqlalchemy.Transport.channel_errors">
+<tt class="descclassname">Transport.</tt><tt class="descname">channel_errors</tt><em class="property"> = ()</em><a class="headerlink" href="#kombu.transport.sqlalchemy.Transport.channel_errors" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.sqlalchemy.Transport.connection_errors">
+<tt class="descclassname">Transport.</tt><tt class="descname">connection_errors</tt><em class="property"> = ()</em><a class="headerlink" href="#kombu.transport.sqlalchemy.Transport.connection_errors" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.sqlalchemy.Transport.default_port">
+<tt class="descclassname">Transport.</tt><tt class="descname">default_port</tt><em class="property"> = 0</em><a class="headerlink" href="#kombu.transport.sqlalchemy.Transport.default_port" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="channel">
+<h2><a class="toc-backref" href="#id2">Channel</a><a class="headerlink" href="#channel" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="kombu.transport.sqlalchemy.Channel">
+<em class="property">class </em><tt class="descclassname">kombu.transport.sqlalchemy.</tt><tt class="descname">Channel</tt><big>(</big><em>connection</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.transport.sqlalchemy.Channel" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="attribute">
+<dt id="kombu.transport.sqlalchemy.Channel.session">
+<tt class="descname">session</tt><a class="headerlink" href="#kombu.transport.sqlalchemy.Channel.session" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper"><p class="logo"><a href="../index.html">
+  <img class="logo" width="128" height="128" src="http://cloud.github.com/downloads/ask/kombu/kombusmall.jpg" alt="Logo"/>
+</a></p>
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">kombu.transport.sqlalchemy</a><ul>
+<li><a class="reference internal" href="#transport">Transport</a></li>
+<li><a class="reference internal" href="#channel">Channel</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="kombu.transport.django.management.commands.clean_kombu_messages.html"
+                        title="previous chapter">Django Management - clean_kombu_messages</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="kombu.transport.sqlalchemy.models.html"
+                        title="next chapter">Models</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/reference/kombu.transport.sqlalchemy.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="kombu.transport.sqlalchemy.models.html" title="Models"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="kombu.transport.django.management.commands.clean_kombu_messages.html" title="Django Management - clean_kombu_messages"
+             >previous</a> |</li>
+        <li><a href="../index.html">Kombu 2.0.0 documentation</a> &raquo;</li>
+          <li><a href="index.html" >API Reference</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2009-2012, Ask Solem.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
+    </div>
+  </body>
+</html>

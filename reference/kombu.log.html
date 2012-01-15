@@ -1,0 +1,197 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Logging - kombu.log &mdash; Kombu 2.0.0 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/celery.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '2.0.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="Kombu 2.0.0 documentation" href="../index.html" />
+    <link rel="up" title="API Reference" href="index.html" />
+    <link rel="next" title="kombu.transport" href="kombu.transport.html" />
+    <link rel="prev" title="kombu.exceptions" href="kombu.exceptions.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="kombu.transport.html" title="kombu.transport"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="kombu.exceptions.html" title="kombu.exceptions"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../index.html">Kombu 2.0.0 documentation</a> &raquo;</li>
+          <li><a href="index.html" accesskey="U">API Reference</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="logging-kombu-log">
+<h1>Logging - kombu.log<a class="headerlink" href="#logging-kombu-log" title="Permalink to this headline">¶</a></h1>
+<span class="target" id="module-kombu.log"></span><dl class="class">
+<dt id="kombu.log.LogMixin">
+<em class="property">class </em><tt class="descclassname">kombu.log.</tt><tt class="descname">LogMixin</tt><a class="headerlink" href="#kombu.log.LogMixin" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="kombu.log.LogMixin.annotate">
+<tt class="descname">annotate</tt><big>(</big><em>text</em><big>)</big><a class="headerlink" href="#kombu.log.LogMixin.annotate" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.log.LogMixin.critical">
+<tt class="descname">critical</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.log.LogMixin.critical" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.log.LogMixin.debug">
+<tt class="descname">debug</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.log.LogMixin.debug" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.log.LogMixin.error">
+<tt class="descname">error</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.log.LogMixin.error" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.log.LogMixin.get_logger">
+<tt class="descname">get_logger</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.log.LogMixin.get_logger" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.log.LogMixin.get_loglevel">
+<tt class="descname">get_loglevel</tt><big>(</big><em>level</em><big>)</big><a class="headerlink" href="#kombu.log.LogMixin.get_loglevel" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.log.LogMixin.info">
+<tt class="descname">info</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.log.LogMixin.info" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.log.LogMixin.is_enabled_for">
+<tt class="descname">is_enabled_for</tt><big>(</big><em>level</em><big>)</big><a class="headerlink" href="#kombu.log.LogMixin.is_enabled_for" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.log.LogMixin.log">
+<tt class="descname">log</tt><big>(</big><em>severity</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.log.LogMixin.log" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.log.LogMixin.logger">
+<tt class="descname">logger</tt><a class="headerlink" href="#kombu.log.LogMixin.logger" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.log.LogMixin.logger_name">
+<tt class="descname">logger_name</tt><a class="headerlink" href="#kombu.log.LogMixin.logger_name" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.log.LogMixin.warn">
+<tt class="descname">warn</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.log.LogMixin.warn" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="kombu.log.get_loglevel">
+<tt class="descclassname">kombu.log.</tt><tt class="descname">get_loglevel</tt><big>(</big><em>level</em><big>)</big><a class="headerlink" href="#kombu.log.get_loglevel" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="kombu.log.setup_logging">
+<tt class="descclassname">kombu.log.</tt><tt class="descname">setup_logging</tt><big>(</big><em>loglevel=None</em>, <em>logfile=None</em><big>)</big><a class="headerlink" href="#kombu.log.setup_logging" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper"><p class="logo"><a href="../index.html">
+  <img class="logo" width="128" height="128" src="http://cloud.github.com/downloads/ask/kombu/kombusmall.jpg" alt="Logo"/>
+</a></p>
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="kombu.exceptions.html"
+                        title="previous chapter">kombu.exceptions</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="kombu.transport.html"
+                        title="next chapter">kombu.transport</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/reference/kombu.log.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="kombu.transport.html" title="kombu.transport"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="kombu.exceptions.html" title="kombu.exceptions"
+             >previous</a> |</li>
+        <li><a href="../index.html">Kombu 2.0.0 documentation</a> &raquo;</li>
+          <li><a href="index.html" >API Reference</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2009-2012, Ask Solem.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
+    </div>
+  </body>
+</html>

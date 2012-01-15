@@ -1,0 +1,211 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Introduction &mdash; Kombu 2.0.0 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/celery.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '2.0.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="Kombu 2.0.0 documentation" href="../index.html" />
+    <link rel="up" title="User Guide" href="index.html" />
+    <link rel="next" title="Connections and transports" href="connections.html" />
+    <link rel="prev" title="User Guide" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="connections.html" title="Connections and transports"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="User Guide"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../index.html">Kombu 2.0.0 documentation</a> &raquo;</li>
+          <li><a href="index.html" accesskey="U">User Guide</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="introduction">
+<span id="guide-intro"></span><h1>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="what-is-messaging">
+<span id="intro-messaging"></span><h2>What is messaging?<a class="headerlink" href="#what-is-messaging" title="Permalink to this headline">¶</a></h2>
+<p>In times long ago people didn&#8217;t have email.
+They had the postal service, which with great courage would deliver mail
+from hand to hand all over the globe.  Soldiers deployed at wars far away could only
+communicate with their families through the postal service, and
+posting a letter would mean that the recipient wouldn&#8217;t actually
+receive the letter until weeks or months, sometimes years later.</p>
+<p>It&#8217;s hard to imagine this today when people are expected to be available
+for phone calls every minute of the day.</p>
+<p>So humans need to communicate with each other, this shouldn&#8217;t
+be news to anyone, but why would applications?</p>
+<p>One example is banks.
+When you transfer money from one bank to another, your bank sends
+a message to the banks messaging central.  The messaging central
+then record and coordinate the transaction.  Banks
+need to send and receive millions and millions of
+messages every day, and losing a single message would mean either losing
+your money (bad) or the banks money (very bad)</p>
+<p>Another example is the stock exchanges, which also have a need
+for very high message throughputs and have strict reliability
+requirements.</p>
+<p>Email is a great way for people to communicate.  It is much faster
+than using the postal service, but still using email as a means for
+programs to communicate would be like the soldier above, waiting
+for signs of life from his girlfriend back home.</p>
+</div>
+<div class="section" id="messaging-scenarios">
+<span id="id1"></span><h2>Messaging Scenarios<a class="headerlink" href="#messaging-scenarios" title="Permalink to this headline">¶</a></h2>
+<ul>
+<li><p class="first">Request/Reply</p>
+<p>The request/reply pattern works like the postal service example.
+A message is addressed to a single recipient, with a return address
+printed on the back.  The recipient may or may not reply to the
+message by sending it back to the original sender.</p>
+<p>Request-Reply is achieved using <em>direct</em> exchanges.</p>
+</li>
+<li><p class="first">Broadcast</p>
+<p>In a broadcast scenario a message is sent to all parties.
+This could be none, one or many recipients.</p>
+<p>Broadcast is achieved using <em>fanout</em> exchanges.</p>
+</li>
+<li><p class="first">Publish/Subscribe</p>
+<p>In a publish/subscribe scenario producers publish messages
+to topics, and consumers subscribe to the topics they are
+interested in.</p>
+<p>If no consumers subscribe to the topic, then the message
+will not be delivered to anyone.  If several consumers
+subscribe to the topic, then the message will be delivered
+to all of them.</p>
+<p>Pub-sub is achieved using <em>topic</em> exchanges.</p>
+</li>
+</ul>
+</div>
+<div class="section" id="reliability">
+<span id="messaging-reliability"></span><h2>Reliability<a class="headerlink" href="#reliability" title="Permalink to this headline">¶</a></h2>
+<p>For some applications reliability is very important.  Losing a message is
+a critical situation that must never happen.  For other applications
+losing a message is fine, it can maybe recover in other ways,
+or the message is resent anyway as periodic updates.</p>
+<p>AMQP defines two built-in delivery modes:</p>
+<ul>
+<li><p class="first">persistent</p>
+<blockquote>
+<div><p>Messages are written to disk and survives a broker restart.</p>
+</div></blockquote>
+</li>
+<li><p class="first">transient</p>
+<blockquote>
+<div><p>Messages may or may not be written to disk, as the broker sees fit
+to optimize memory contents.  The messages will not survive a broker
+restart.</p>
+</div></blockquote>
+</li>
+</ul>
+<p>Transient messaging is by far the fastest way to send and receive messages,
+so having persistent messages comes with a price, but for some
+applications this is a necessary cost.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper"><p class="logo"><a href="../index.html">
+  <img class="logo" width="128" height="128" src="http://cloud.github.com/downloads/ask/kombu/kombusmall.jpg" alt="Logo"/>
+</a></p>
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Introduction</a><ul>
+<li><a class="reference internal" href="#what-is-messaging">What is messaging?</a></li>
+<li><a class="reference internal" href="#messaging-scenarios">Messaging Scenarios</a></li>
+<li><a class="reference internal" href="#reliability">Reliability</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="index.html"
+                        title="previous chapter">User Guide</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="connections.html"
+                        title="next chapter">Connections and transports</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/userguide/introduction.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="connections.html" title="Connections and transports"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="User Guide"
+             >previous</a> |</li>
+        <li><a href="../index.html">Kombu 2.0.0 documentation</a> &raquo;</li>
+          <li><a href="index.html" >User Guide</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2009-2012, Ask Solem.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
+    </div>
+  </body>
+</html>
