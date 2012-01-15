@@ -7,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>kombu.entity &mdash; Kombu 1.5.0 documentation</title>
+    <title>kombu.entity &mdash; Kombu 2.0.0 documentation</title>
     
     <link rel="stylesheet" href="../_static/celery.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -15,7 +15,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '1.5.0',
+        VERSION:     '2.0.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -24,7 +24,7 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="Kombu 1.5.0 documentation" href="../index.html" />
+    <link rel="top" title="Kombu 2.0.0 documentation" href="../index.html" />
     <link rel="up" title="API Reference" href="index.html" />
     <link rel="next" title="Common Utilities - kombu.common" href="kombu.common.html" />
     <link rel="prev" title="kombu.messaging" href="kombu.messaging.html" /> 
@@ -45,7 +45,7 @@
         <li class="right" >
           <a href="kombu.messaging.html" title="kombu.messaging"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">Kombu 1.5.0 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 2.0.0 documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">API Reference</a> &raquo;</li> 
       </ul>
     </div>  
@@ -63,7 +63,7 @@
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">copyright:</th><td class="field-body"><ol class="first loweralpha simple" start="3">
-<li>2009 - 2011 by Ask Solem.</li>
+<li>2009 - 2012 by Ask Solem.</li>
 </ol>
 </td>
 </tr>
@@ -277,12 +277,17 @@ properly sets content_encoding.</li>
 
 <dl class="attribute">
 <dt id="kombu.entity.Exchange.attrs">
-<tt class="descname">attrs</tt><em class="property"> = (('name', None), ('type', None), ('arguments', None), ('durable', &lt;type 'bool'&gt;), ('auto_delete', &lt;type 'bool'&gt;), ('delivery_mode', &lt;function &lt;lambda&gt; at 0x1024dd9b0&gt;))</em><a class="headerlink" href="#kombu.entity.Exchange.attrs" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">attrs</tt><em class="property"> = (('name', None), ('type', None), ('arguments', None), ('durable', &lt;type 'bool'&gt;), ('auto_delete', &lt;type 'bool'&gt;), ('delivery_mode', &lt;function &lt;lambda&gt; at 0x102749410&gt;))</em><a class="headerlink" href="#kombu.entity.Exchange.attrs" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="attribute">
 <dt>
 <tt class="descname">auto_delete</tt><em class="property"> = False</em></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.entity.Exchange.can_cache_declaration">
+<tt class="descname">can_cache_declaration</tt><a class="headerlink" href="#kombu.entity.Exchange.can_cache_declaration" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="method">
@@ -531,6 +536,11 @@ generated queue names.</p>
 <tt class="descname">auto_delete</tt><em class="property"> = False</em></dt>
 <dd></dd></dl>
 
+<dl class="attribute">
+<dt id="kombu.entity.Queue.can_cache_declaration">
+<tt class="descname">can_cache_declaration</tt><a class="headerlink" href="#kombu.entity.Queue.can_cache_declaration" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
 <dl class="method">
 <dt id="kombu.entity.Queue.cancel">
 <tt class="descname">cancel</tt><big>(</big><em>consumer_tag</em><big>)</big><a class="headerlink" href="#kombu.entity.Queue.cancel" title="Permalink to this definition">¶</a></dt>
@@ -599,7 +609,7 @@ if it is empty. If it is not empty a channel error will be raised.</li>
 
 <dl class="attribute">
 <dt>
-<tt class="descname">exchange</tt><em class="property"> = None</em></dt>
+<tt class="descname">exchange</tt><em class="property"> = &lt;unbound Exchange (direct)&gt;</em></dt>
 <dd></dd></dl>
 
 <dl class="attribute">
@@ -759,12 +769,12 @@ without modifying the server state.</li>
         <li class="right" >
           <a href="kombu.messaging.html" title="kombu.messaging"
              >previous</a> |</li>
-        <li><a href="../index.html">Kombu 1.5.0 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 2.0.0 documentation</a> &raquo;</li>
           <li><a href="index.html" >API Reference</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
-        &copy; Copyright 2009-2011, Ask Solem.
+        &copy; Copyright 2009-2012, Ask Solem.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
     </div>
   </body>

@@ -7,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Change history &mdash; Kombu 1.5.0 documentation</title>
+    <title>Change history &mdash; Kombu 2.0.0 documentation</title>
     
     <link rel="stylesheet" href="_static/celery.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -15,7 +15,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '',
-        VERSION:     '1.5.0',
+        VERSION:     '2.0.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -24,8 +24,8 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="Kombu 1.5.0 documentation" href="index.html" />
-    <link rel="prev" title="Logging - kombu.utils.log" href="reference/kombu.utils.log.html" /> 
+    <link rel="top" title="Kombu 2.0.0 documentation" href="index.html" />
+    <link rel="prev" title="Finalize - kombu.utils.finalize" href="reference/kombu.utils.finalize.html" /> 
   </head>
   <body>
     <div class="related">
@@ -38,9 +38,9 @@
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="reference/kombu.utils.log.html" title="Logging - kombu.utils.log"
+          <a href="reference/kombu.utils.finalize.html" title="Finalize - kombu.utils.finalize"
              accesskey="P">previous</a> |</li>
-        <li><a href="index.html">Kombu 1.5.0 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Kombu 2.0.0 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -51,8 +51,152 @@
             
   <div class="section" id="change-history">
 <h1>Change history<a class="headerlink" href="#change-history" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="version-2-0-0">
+<span id="id1"></span><h2>2.0.0<a class="headerlink" href="#version-2-0-0" title="Permalink to this headline">¶</a></h2>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">release-date:</th><td class="field-body">2012-01-15 18:34 P.M GMT</td>
+</tr>
+<tr class="field-even field"><th class="field-name">by:</th><td class="field-body">Ask Solem</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="important-notes">
+<span id="v200-important"></span><h2>Important Notes<a class="headerlink" href="#important-notes" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="python-compatibility">
+<span id="v200-python-compatibility"></span><h3>Python Compatibility<a class="headerlink" href="#python-compatibility" title="Permalink to this headline">¶</a></h3>
+<ul>
+<li><p class="first">No longer supports Python 2.4.</p>
+<blockquote>
+<div><p>Users of Python 2.4 can still use the 1.x series.</p>
+<p>The 1.x series has entered bugfix-only maintenance mode, and will
+stay that way as long as there is demand, and a willingness to
+maintain it.</p>
+</div></blockquote>
+</li>
+</ul>
+</div>
+<div class="section" id="new-transports">
+<span id="v200-new-transports"></span><h3>New Transports<a class="headerlink" href="#new-transports" title="Permalink to this headline">¶</a></h3>
+<ul>
+<li><p class="first"><tt class="docutils literal"><span class="pre">django-kombu</span></tt> is now part of Kombu core.</p>
+<blockquote>
+<div><p>The Django message transport uses the Django ORM to store messages.</p>
+<p>It uses polling, with a default polling interval of 5 seconds.
+The polling interval can be increased or decreased by configuring the
+<tt class="docutils literal"><span class="pre">KOMBU_POLLING_INTERVAL</span></tt> Django setting, which is the polling
+interval in seconds as an int or a float.  Note that shorter polling
+intervals can cause extreme strain on the database: if responsiveness
+is needed you shall consider switching to a non-polling transport.</p>
+<p>To use it you must use transport alias <tt class="docutils literal"><span class="pre">&quot;django&quot;</span></tt>,
+or as an URL:</p>
+<div class="highlight-python"><pre>django://</pre>
+</div>
+<p>and then add <tt class="docutils literal"><span class="pre">kombu.transport.django</span></tt> to <tt class="docutils literal"><span class="pre">INSTALLED_APPS</span></tt>, and
+run <tt class="docutils literal"><span class="pre">manage.py</span> <span class="pre">syncdb</span></tt> to create the necessary database tables.</p>
+<p><strong>Upgrading</strong></p>
+<p>If you have previously used <tt class="docutils literal"><span class="pre">django-kombu</span></tt>, then the entry
+in <tt class="docutils literal"><span class="pre">INSTALLED_APPS</span></tt> must be changed from <tt class="docutils literal"><span class="pre">djkombu</span></tt>
+to <tt class="docutils literal"><span class="pre">kombu.transport.django</span></tt>:</p>
+<div class="highlight-python"><pre>INSTALLED_APPS = (…,
+                  "kombu.transport.django")</pre>
+</div>
+<p>If you have previously used django-kombu, then there is no need
+to recreate the tables, as the old tables will be fully compatible
+with the new version.</p>
+</div></blockquote>
+</li>
+<li><p class="first"><tt class="docutils literal"><span class="pre">kombu-sqlalchemy</span></tt> is now part of Kombu core.</p>
+<blockquote>
+<div><p>This change requires no code changes given that the
+<tt class="docutils literal"><span class="pre">sqlalchemy</span></tt> transport alias is used.</p>
+</div></blockquote>
+</li>
+</ul>
+</div>
+<div class="section" id="news">
+<span id="v200-news"></span><h3>News<a class="headerlink" href="#news" title="Permalink to this headline">¶</a></h3>
+<ul>
+<li><p class="first"><a class="reference internal" href="reference/kombu.mixins.html#kombu.mixins.ConsumerMixin" title="kombu.mixins.ConsumerMixin"><tt class="xref py py-class docutils literal"><span class="pre">kombu.mixins.ConsumerMixin</span></tt></a> is a mixin class that lets you
+easily write consumer programs and threads.</p>
+<p>See <a class="reference internal" href="userguide/examples.html#examples"><em>Examples</em></a> and <a class="reference internal" href="userguide/consumers.html#guide-consumers"><em>Consumers</em></a>.</p>
+</li>
+<li><p class="first">SQS Transport: Added support for SQS queue prefixes (Issue #84).</p>
+<blockquote>
+<div><p>The queue prefix can be set using the transport option
+<tt class="docutils literal"><span class="pre">queue_name_prefix</span></tt>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">BrokerTransport</span><span class="p">(</span><span class="s">&quot;SQS://&quot;</span><span class="p">,</span> <span class="n">transport_options</span><span class="o">=</span><span class="p">{</span>
+    <span class="s">&quot;queue_name_prefix&quot;</span><span class="p">:</span> <span class="s">&quot;myapp&quot;</span><span class="p">})</span>
+</pre></div>
+</div>
+<p>Contributed by Nitzan Miron.</p>
+</div></blockquote>
+</li>
+<li><p class="first"><tt class="docutils literal"><span class="pre">Producer.publish</span></tt> now supports automatic retry.</p>
+<blockquote>
+<div><p>Retry is enabled by the <tt class="docutils literal"><span class="pre">reply</span></tt> argument, and retry options
+set by the <tt class="docutils literal"><span class="pre">retry_policy</span></tt> argument:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">exchange</span> <span class="o">=</span> <span class="n">Exchange</span><span class="p">(</span><span class="s">&quot;foo&quot;</span><span class="p">)</span>
+<span class="n">producer</span><span class="o">.</span><span class="n">publish</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">exchange</span><span class="o">=</span><span class="n">exchange</span><span class="p">,</span> <span class="n">retry</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
+                 <span class="n">declare</span><span class="o">=</span><span class="p">[</span><span class="n">exchange</span><span class="p">],</span> <span class="n">retry_policy</span><span class="o">=</span><span class="p">{</span>
+                    <span class="s">&quot;interval_start&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">})</span>
+</pre></div>
+</div>
+<p>See <a class="reference internal" href="reference/kombu.connection.html#kombu.connection.BrokerConnection.ensure" title="kombu.connection.BrokerConnection.ensure"><tt class="xref py py-meth docutils literal"><span class="pre">ensure()</span></tt></a>
+for a list of supported retry policy options.</p>
+</div></blockquote>
+</li>
+<li><p class="first"><tt class="docutils literal"><span class="pre">Producer.publish</span></tt> now supports a <tt class="docutils literal"><span class="pre">declare</span></tt> keyword argument.</p>
+<blockquote>
+<div><p>This is a list of entities (<tt class="xref py py-class docutils literal"><span class="pre">Exchange</span></tt>, or <tt class="xref py py-class docutils literal"><span class="pre">Queue</span></tt>)
+that should be declared before the message is published.</p>
+</div></blockquote>
+</li>
+</ul>
+</div>
+<div class="section" id="fixes">
+<span id="v200-fixes"></span><h3>Fixes<a class="headerlink" href="#fixes" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Redis transport: Timeout was multiplied by 1000 seconds when using
+<tt class="docutils literal"><span class="pre">select</span></tt> for event I/O (Issue #86).</li>
+</ul>
+</div>
+</div>
+<div class="section" id="version-1-5-1">
+<span id="id2"></span><h2>1.5.1<a class="headerlink" href="#version-1-5-1" title="Permalink to this headline">¶</a></h2>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">release-date:</th><td class="field-body">2011-11-30 01:00 P.M GMT</td>
+</tr>
+<tr class="field-even field"><th class="field-name">by:</th><td class="field-body">Ask Solem</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><p class="first">Fixes issue with <tt class="docutils literal"><span class="pre">kombu.compat</span></tt> introduced in 1.5.0 (Issue #83).</p>
+</li>
+<li><p class="first">Adds the ability to disable content_types in the serializer registry.</p>
+<blockquote>
+<div><p>Any message with a content type that is disabled will be refused.
+One example would be to disable the Pickle serializer:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">kombu.serialization</span> <span class="kn">import</span> <span class="n">registry</span>
+<span class="go"># by name</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">registry</span><span class="o">.</span><span class="n">disable</span><span class="p">(</span><span class="s">&quot;pickle&quot;</span><span class="p">)</span>
+<span class="go"># or by mime-type.</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">registry</span><span class="o">.</span><span class="n">disable</span><span class="p">(</span><span class="s">&quot;application/x-python-serialize&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+</ul>
+</div>
 <div class="section" id="version-1-5-0">
-<span id="id1"></span><h2>1.5.0<a class="headerlink" href="#version-1-5-0" title="Permalink to this headline">¶</a></h2>
+<span id="id3"></span><h2>1.5.0<a class="headerlink" href="#version-1-5-0" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -120,13 +264,13 @@ a counter.</p>
 <li><p class="first">Redis version check could crash because of improper handling of types
 (Issue #63).</p>
 </li>
-<li><p class="first">Fixed error with <cite>Resource.force_close_all</cite>, when resources
-not yet properly initialized.  (Issue #78).</p>
+<li><p class="first">Fixed error with <cite>Resource.force_close_all</cite> when resources
+were not yet properly initialized (Issue #78).</p>
 </li>
 </ul>
 </div>
 <div class="section" id="version-1-4-3">
-<span id="id2"></span><h2>1.4.3<a class="headerlink" href="#version-1-4-3" title="Permalink to this headline">¶</a></h2>
+<span id="id4"></span><h2>1.4.3<a class="headerlink" href="#version-1-4-3" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -140,7 +284,7 @@ not yet properly initialized.  (Issue #78).</p>
 </ul>
 </div>
 <div class="section" id="version-1-4-2">
-<span id="id3"></span><h2>1.4.2<a class="headerlink" href="#version-1-4-2" title="Permalink to this headline">¶</a></h2>
+<span id="id5"></span><h2>1.4.2<a class="headerlink" href="#version-1-4-2" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -180,7 +324,7 @@ by <cite>on_decode_error</cite> (Issue #72)</p>
 </ul>
 </div>
 <div class="section" id="version-1-4-1">
-<span id="id4"></span><h2>1.4.1<a class="headerlink" href="#version-1-4-1" title="Permalink to this headline">¶</a></h2>
+<span id="id6"></span><h2>1.4.1<a class="headerlink" href="#version-1-4-1" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -197,7 +341,7 @@ established for every acquire.</li>
 </ul>
 </div>
 <div class="section" id="version-1-4-0">
-<span id="id5"></span><h2>1.4.0<a class="headerlink" href="#version-1-4-0" title="Permalink to this headline">¶</a></h2>
+<span id="id7"></span><h2>1.4.0<a class="headerlink" href="#version-1-4-0" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -267,7 +411,7 @@ of Lamports logical clock.</p>
 </ul>
 </div>
 <div class="section" id="version-1-3-5">
-<span id="id6"></span><h2>1.3.5<a class="headerlink" href="#version-1-3-5" title="Permalink to this headline">¶</a></h2>
+<span id="id8"></span><h2>1.3.5<a class="headerlink" href="#version-1-3-5" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -283,7 +427,7 @@ of Lamports logical clock.</p>
 </ul>
 </div>
 <div class="section" id="version-1-3-4">
-<span id="id7"></span><h2>1.3.4<a class="headerlink" href="#version-1-3-4" title="Permalink to this headline">¶</a></h2>
+<span id="id9"></span><h2>1.3.4<a class="headerlink" href="#version-1-3-4" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -299,7 +443,7 @@ of Lamports logical clock.</p>
 </ul>
 </div>
 <div class="section" id="version-1-3-3">
-<span id="id8"></span><h2>1.3.3<a class="headerlink" href="#version-1-3-3" title="Permalink to this headline">¶</a></h2>
+<span id="id10"></span><h2>1.3.3<a class="headerlink" href="#version-1-3-3" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -315,7 +459,7 @@ of Lamports logical clock.</p>
 </ul>
 </div>
 <div class="section" id="version-1-3-2">
-<span id="id9"></span><h2>1.3.2<a class="headerlink" href="#version-1-3-2" title="Permalink to this headline">¶</a></h2>
+<span id="id11"></span><h2>1.3.2<a class="headerlink" href="#version-1-3-2" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -338,7 +482,7 @@ than the previous limit.</li>
 </ul>
 </div>
 <div class="section" id="version-1-3-1">
-<span id="id10"></span><h2>1.3.1<a class="headerlink" href="#version-1-3-1" title="Permalink to this headline">¶</a></h2>
+<span id="id12"></span><h2>1.3.1<a class="headerlink" href="#version-1-3-1" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -370,7 +514,7 @@ also required by <tt class="xref py py-class docutils literal"><span class="pre"
 </ul>
 </div>
 <div class="section" id="version-1-3-0">
-<span id="id11"></span><h2>1.3.0<a class="headerlink" href="#version-1-3-0" title="Permalink to this headline">¶</a></h2>
+<span id="id13"></span><h2>1.3.0<a class="headerlink" href="#version-1-3-0" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -487,7 +631,7 @@ attribute.</p>
 </ul>
 </div>
 <div class="section" id="version-1-2-1">
-<span id="id12"></span><h2>1.2.1<a class="headerlink" href="#version-1-2-1" title="Permalink to this headline">¶</a></h2>
+<span id="id14"></span><h2>1.2.1<a class="headerlink" href="#version-1-2-1" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -537,7 +681,7 @@ the queue if <tt class="docutils literal"><span class="pre">auto_declare</span><
 </ul>
 </div>
 <div class="section" id="version-1-2-0">
-<span id="id13"></span><h2>1.2.0<a class="headerlink" href="#version-1-2-0" title="Permalink to this headline">¶</a></h2>
+<span id="id15"></span><h2>1.2.0<a class="headerlink" href="#version-1-2-0" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -558,7 +702,7 @@ arguments (Issue #48).</li>
 </ul>
 </div>
 <div class="section" id="version-1-1-6">
-<span id="id14"></span><h2>1.1.6<a class="headerlink" href="#version-1-1-6" title="Permalink to this headline">¶</a></h2>
+<span id="id16"></span><h2>1.1.6<a class="headerlink" href="#version-1-1-6" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -592,7 +736,7 @@ error.</p>
 </ul>
 </div>
 <div class="section" id="version-1-1-5">
-<span id="id15"></span><h2>1.1.5<a class="headerlink" href="#version-1-1-5" title="Permalink to this headline">¶</a></h2>
+<span id="id17"></span><h2>1.1.5<a class="headerlink" href="#version-1-1-5" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -606,7 +750,7 @@ error.</p>
 </ul>
 </div>
 <div class="section" id="version-1-1-4">
-<span id="id16"></span><h2>1.1.4<a class="headerlink" href="#version-1-1-4" title="Permalink to this headline">¶</a></h2>
+<span id="id18"></span><h2>1.1.4<a class="headerlink" href="#version-1-1-4" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -642,7 +786,7 @@ keyword argument.</p>
 </ul>
 </div>
 <div class="section" id="version-1-1-3">
-<span id="id17"></span><h2>1.1.3<a class="headerlink" href="#version-1-1-3" title="Permalink to this headline">¶</a></h2>
+<span id="id19"></span><h2>1.1.3<a class="headerlink" href="#version-1-1-3" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -676,7 +820,7 @@ connection related errors (<tt class="xref py py-attr docutils literal"><span cl
 </ul>
 </div>
 <div class="section" id="version-1-1-2">
-<span id="id18"></span><h2>1.1.2<a class="headerlink" href="#version-1-1-2" title="Permalink to this headline">¶</a></h2>
+<span id="id20"></span><h2>1.1.2<a class="headerlink" href="#version-1-1-2" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -698,7 +842,7 @@ issues.</p>
 </ul>
 </div>
 <div class="section" id="version-1-1-1">
-<span id="id19"></span><h2>1.1.1<a class="headerlink" href="#version-1-1-1" title="Permalink to this headline">¶</a></h2>
+<span id="id21"></span><h2>1.1.1<a class="headerlink" href="#version-1-1-1" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -713,7 +857,7 @@ in Python 2.6+ (Issue #33).  We now ship with our own LifoQueue.</li>
 </ul>
 </div>
 <div class="section" id="version-1-1-0">
-<span id="id20"></span><h2>1.1.0<a class="headerlink" href="#version-1-1-0" title="Permalink to this headline">¶</a></h2>
+<span id="id22"></span><h2>1.1.0<a class="headerlink" href="#version-1-1-0" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -722,8 +866,8 @@ in Python 2.6+ (Issue #33).  We now ship with our own LifoQueue.</li>
 </tr>
 </tbody>
 </table>
-<div class="section" id="important-notes">
-<span id="v110-important"></span><h3>Important Notes<a class="headerlink" href="#important-notes" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="v110-important">
+<span id="id23"></span><h3>Important Notes<a class="headerlink" href="#v110-important" title="Permalink to this headline">¶</a></h3>
 <ul>
 <li><p class="first">Virtual transports: Message body is now base64 encoded by default
 (Issue #27).</p>
@@ -801,7 +945,7 @@ log messages for connection related actions.</p>
 </div>
 </div>
 <div class="section" id="version-1-0-7">
-<span id="id21"></span><h2>1.0.7<a class="headerlink" href="#version-1-0-7" title="Permalink to this headline">¶</a></h2>
+<span id="id24"></span><h2>1.0.7<a class="headerlink" href="#version-1-0-7" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -851,8 +995,8 @@ set (Issue #8).</p>
 </li>
 </ul>
 </div>
-<div class="section" id="id22">
-<h2>1.0.6<a class="headerlink" href="#id22" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id25">
+<h2>1.0.6<a class="headerlink" href="#id25" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -898,7 +1042,7 @@ Channel open
 </ul>
 </div>
 <div class="section" id="version-1-0-5">
-<span id="id23"></span><h2>1.0.5<a class="headerlink" href="#version-1-0-5" title="Permalink to this headline">¶</a></h2>
+<span id="id26"></span><h2>1.0.5<a class="headerlink" href="#version-1-0-5" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -928,7 +1072,7 @@ consumer tag.</p>
 </ul>
 </div>
 <div class="section" id="version-1-0-4">
-<span id="id24"></span><h2>1.0.4<a class="headerlink" href="#version-1-0-4" title="Permalink to this headline">¶</a></h2>
+<span id="id27"></span><h2>1.0.4<a class="headerlink" href="#version-1-0-4" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -948,7 +1092,7 @@ there are no messages in the queue.</p>
 </ul>
 </div>
 <div class="section" id="version-1-0-3">
-<span id="id25"></span><h2>1.0.3<a class="headerlink" href="#version-1-0-3" title="Permalink to this headline">¶</a></h2>
+<span id="id28"></span><h2>1.0.3<a class="headerlink" href="#version-1-0-3" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -964,7 +1108,7 @@ there are no messages in the queue.</p>
 </ul>
 </div>
 <div class="section" id="version-1-0-2">
-<span id="id26"></span><h2>1.0.2<a class="headerlink" href="#version-1-0-2" title="Permalink to this headline">¶</a></h2>
+<span id="id29"></span><h2>1.0.2<a class="headerlink" href="#version-1-0-2" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -979,7 +1123,7 @@ there are no messages in the queue.</p>
 </ul>
 </div>
 <div class="section" id="version-1-0-1">
-<span id="id27"></span><h2>1.0.1<a class="headerlink" href="#version-1-0-1" title="Permalink to this headline">¶</a></h2>
+<span id="id30"></span><h2>1.0.1<a class="headerlink" href="#version-1-0-1" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -993,7 +1137,7 @@ there are no messages in the queue.</p>
 </ul>
 </div>
 <div class="section" id="version-1-0-0">
-<span id="id28"></span><h2>1.0.0<a class="headerlink" href="#version-1-0-0" title="Permalink to this headline">¶</a></h2>
+<span id="id31"></span><h2>1.0.0<a class="headerlink" href="#version-1-0-0" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -1007,7 +1151,7 @@ there are no messages in the queue.</p>
 </ul>
 </div>
 <div class="section" id="version-0-1-0">
-<span id="id29"></span><h2>0.1.0<a class="headerlink" href="#version-0-1-0" title="Permalink to this headline">¶</a></h2>
+<span id="id32"></span><h2>0.1.0<a class="headerlink" href="#version-0-1-0" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -1033,6 +1177,15 @@ there are no messages in the queue.</p>
   <h3><a href="index.html">Table Of Contents</a></h3>
   <ul>
 <li><a class="reference internal" href="#">Change history</a><ul>
+<li><a class="reference internal" href="#version-2-0-0">2.0.0</a></li>
+<li><a class="reference internal" href="#important-notes">Important Notes</a><ul>
+<li><a class="reference internal" href="#python-compatibility">Python Compatibility</a></li>
+<li><a class="reference internal" href="#new-transports">New Transports</a></li>
+<li><a class="reference internal" href="#news">News</a></li>
+<li><a class="reference internal" href="#fixes">Fixes</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#version-1-5-1">1.5.1</a></li>
 <li><a class="reference internal" href="#version-1-5-0">1.5.0</a></li>
 <li><a class="reference internal" href="#version-1-4-3">1.4.3</a></li>
 <li><a class="reference internal" href="#version-1-4-2">1.4.2</a></li>
@@ -1053,11 +1206,11 @@ there are no messages in the queue.</p>
 <li><a class="reference internal" href="#version-1-1-2">1.1.2</a></li>
 <li><a class="reference internal" href="#version-1-1-1">1.1.1</a></li>
 <li><a class="reference internal" href="#version-1-1-0">1.1.0</a><ul>
-<li><a class="reference internal" href="#important-notes">Important Notes</a></li>
+<li><a class="reference internal" href="#v110-important">Important Notes</a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#version-1-0-7">1.0.7</a></li>
-<li><a class="reference internal" href="#id22">1.0.6</a></li>
+<li><a class="reference internal" href="#id25">1.0.6</a></li>
 <li><a class="reference internal" href="#version-1-0-5">1.0.5</a></li>
 <li><a class="reference internal" href="#version-1-0-4">1.0.4</a></li>
 <li><a class="reference internal" href="#version-1-0-3">1.0.3</a></li>
@@ -1070,8 +1223,8 @@ there are no messages in the queue.</p>
 </ul>
 
   <h4>Previous topic</h4>
-  <p class="topless"><a href="reference/kombu.utils.log.html"
-                        title="previous chapter">Logging - kombu.utils.log</a></p>
+  <p class="topless"><a href="reference/kombu.utils.finalize.html"
+                        title="previous chapter">Finalize - kombu.utils.finalize</a></p>
   <h3>This Page</h3>
   <ul class="this-page-menu">
     <li><a href="_sources/changelog.txt"
@@ -1104,13 +1257,13 @@ there are no messages in the queue.</p>
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="reference/kombu.utils.log.html" title="Logging - kombu.utils.log"
+          <a href="reference/kombu.utils.finalize.html" title="Finalize - kombu.utils.finalize"
              >previous</a> |</li>
-        <li><a href="index.html">Kombu 1.5.0 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Kombu 2.0.0 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
-        &copy; Copyright 2009-2011, Ask Solem.
+        &copy; Copyright 2009-2012, Ask Solem.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
     </div>
   </body>

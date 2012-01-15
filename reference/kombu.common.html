@@ -7,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Common Utilities - kombu.common &mdash; Kombu 1.5.0 documentation</title>
+    <title>Common Utilities - kombu.common &mdash; Kombu 2.0.0 documentation</title>
     
     <link rel="stylesheet" href="../_static/celery.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -15,7 +15,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '1.5.0',
+        VERSION:     '2.0.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -24,7 +24,7 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="Kombu 1.5.0 documentation" href="../index.html" />
+    <link rel="top" title="Kombu 2.0.0 documentation" href="../index.html" />
     <link rel="up" title="API Reference" href="index.html" />
     <link rel="next" title="Mixin Classes - kombu.mixins" href="kombu.mixins.html" />
     <link rel="prev" title="kombu.entity" href="kombu.entity.html" /> 
@@ -45,7 +45,7 @@
         <li class="right" >
           <a href="kombu.entity.html" title="kombu.entity"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">Kombu 1.5.0 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 2.0.0 documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">API Reference</a> &raquo;</li> 
       </ul>
     </div>  
@@ -70,7 +70,7 @@
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">copyright:</th><td class="field-body"><ol class="first loweralpha simple" start="3">
-<li>2009 - 2011 by Ask Solem.</li>
+<li>2009 - 2012 by Ask Solem.</li>
 </ol>
 </td>
 </tr>
@@ -110,7 +110,47 @@ of additional keyword arguments supported.</li>
 
 <dl class="function">
 <dt id="kombu.common.maybe_declare">
-<tt class="descclassname">kombu.common.</tt><tt class="descname">maybe_declare</tt><big>(</big><em>entity</em>, <em>channel</em><big>)</big><a class="headerlink" href="#kombu.common.maybe_declare" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">kombu.common.</tt><tt class="descname">maybe_declare</tt><big>(</big><em>entity</em>, <em>channel</em>, <em>retry=False</em>, <em>**retry_policy</em><big>)</big><a class="headerlink" href="#kombu.common.maybe_declare" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="kombu.common.uuid">
+<tt class="descclassname">kombu.common.</tt><tt class="descname">uuid</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.common.uuid" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate a unique id, having - hopefully - a very small chance of
+collision.</p>
+<p>For now this is provided by <tt class="xref py py-func docutils literal"><span class="pre">uuid.uuid4()</span></tt>.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="kombu.common.itermessages">
+<tt class="descclassname">kombu.common.</tt><tt class="descname">itermessages</tt><big>(</big><em>conn</em>, <em>channel</em>, <em>queue</em>, <em>limit=1</em>, <em>timeout=None</em>, <em>Consumer=&lt;class 'kombu.messaging.Consumer'&gt;</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.common.itermessages" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="kombu.common.send_reply">
+<tt class="descclassname">kombu.common.</tt><tt class="descname">send_reply</tt><big>(</big><em>exchange</em>, <em>req</em>, <em>msg</em>, <em>producer=None</em>, <em>**props</em><big>)</big><a class="headerlink" href="#kombu.common.send_reply" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="kombu.common.isend_reply">
+<tt class="descclassname">kombu.common.</tt><tt class="descname">isend_reply</tt><big>(</big><em>pool</em>, <em>exchange</em>, <em>req</em>, <em>msg</em>, <em>props</em>, <em>**retry_policy</em><big>)</big><a class="headerlink" href="#kombu.common.isend_reply" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="kombu.common.collect_replies">
+<tt class="descclassname">kombu.common.</tt><tt class="descname">collect_replies</tt><big>(</big><em>conn</em>, <em>channel</em>, <em>queue</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.common.collect_replies" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="kombu.common.insured">
+<tt class="descclassname">kombu.common.</tt><tt class="descname">insured</tt><big>(</big><em>pool</em>, <em>fun</em>, <em>args</em>, <em>kwargs</em>, <em>errback=None</em>, <em>on_revive=None</em>, <em>**opts</em><big>)</big><a class="headerlink" href="#kombu.common.insured" title="Permalink to this definition">¶</a></dt>
+<dd><p>Ensures function performing broker commands completes
+despite intermittent connection failures.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="kombu.common.ipublish">
+<tt class="descclassname">kombu.common.</tt><tt class="descname">ipublish</tt><big>(</big><em>pool</em>, <em>fun</em>, <em>args=()</em>, <em>kwargs={}</em>, <em>errback=None</em>, <em>on_revive=None</em>, <em>**retry_policy</em><big>)</big><a class="headerlink" href="#kombu.common.ipublish" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -175,12 +215,12 @@ of additional keyword arguments supported.</li>
         <li class="right" >
           <a href="kombu.entity.html" title="kombu.entity"
              >previous</a> |</li>
-        <li><a href="../index.html">Kombu 1.5.0 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 2.0.0 documentation</a> &raquo;</li>
           <li><a href="index.html" >API Reference</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
-        &copy; Copyright 2009-2011, Ask Solem.
+        &copy; Copyright 2009-2012, Ask Solem.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
     </div>
   </body>

@@ -9,7 +9,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Index &mdash; Kombu 1.5.0 documentation</title>
+    <title>Index &mdash; Kombu 2.0.0 documentation</title>
     
     <link rel="stylesheet" href="_static/celery.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -17,7 +17,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '',
-        VERSION:     '1.5.0',
+        VERSION:     '2.0.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -26,7 +26,7 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="Kombu 1.5.0 documentation" href="index.html" /> 
+    <link rel="top" title="Kombu 2.0.0 documentation" href="index.html" /> 
   </head>
   <body>
     <div class="related">
@@ -38,7 +38,7 @@
         <li class="right" >
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li><a href="index.html">Kombu 1.5.0 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Kombu 2.0.0 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -122,6 +122,16 @@
 
       </dl></dd>
       
+  <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Connection.Channel.Message.ack_log_error">ack_log_error() (kombu.transport.librabbitmq.Connection.Channel.Message method)</a>
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="reference/kombu.transport.virtual.html#kombu.transport.virtual.Message.ack_log_error">(kombu.transport.virtual.Message method)</a>
+  </dt>
+
+      </dl></dd>
+      
   <dt><a href="reference/kombu.transport.base.html#kombu.transport.base.Message.acknowledged">acknowledged (kombu.transport.base.Message attribute)</a>
   </dt>
 
@@ -146,12 +156,12 @@
 
       </dl></dd>
       
-  <dt><a href="reference/kombu.transport.pyredis.html#kombu.transport.pyredis.Channel.active_queues">active_queues (kombu.transport.pyredis.Channel attribute)</a>
+  <dt><a href="reference/kombu.transport.redis.html#kombu.transport.redis.Channel.active_queues">active_queues (kombu.transport.redis.Channel attribute)</a>
   </dt>
 
       <dd><dl>
         
-  <dt><a href="reference/kombu.transport.pyredis.html#kombu.transport.pyredis.Transport.Channel.active_queues">(kombu.transport.pyredis.Transport.Channel attribute)</a>
+  <dt><a href="reference/kombu.transport.redis.html#kombu.transport.redis.Transport.Channel.active_queues">(kombu.transport.redis.Transport.Channel attribute)</a>
   </dt>
 
       </dl></dd>
@@ -195,6 +205,10 @@
       </dl></dd>
       
   <dt><a href="reference/kombu.entity.html#kombu.entity.Queue.alias">alias (kombu.entity.Queue attribute)</a>
+  </dt>
+
+      
+  <dt><a href="reference/kombu.log.html#kombu.log.LogMixin.annotate">annotate() (kombu.log.LogMixin method)</a>
   </dt>
 
       
@@ -302,7 +316,7 @@
 
       </dl></dd>
       
-  <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Connection.Channel.basic_cancel">basic_cancel() (kombu.transport.librabbitmq.Connection.Channel method)</a>
+  <dt><a href="reference/kombu.transport.amqplib.html#kombu.transport.amqplib.Channel.basic_cancel">basic_cancel() (kombu.transport.amqplib.Channel method)</a>
   </dt>
 
       <dd><dl>
@@ -315,15 +329,15 @@
   </dt>
 
         
-  <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Channel.basic_cancel">(kombu.transport.pyamqplib.Channel method)</a>
+  <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Connection.Channel.basic_cancel">(kombu.transport.librabbitmq.Connection.Channel method)</a>
   </dt>
 
         
-  <dt><a href="reference/kombu.transport.pyredis.html#kombu.transport.pyredis.Channel.basic_cancel">(kombu.transport.pyredis.Channel method)</a>
+  <dt><a href="reference/kombu.transport.redis.html#kombu.transport.redis.Channel.basic_cancel">(kombu.transport.redis.Channel method)</a>
   </dt>
 
         
-  <dt><a href="reference/kombu.transport.pyredis.html#kombu.transport.pyredis.Transport.Channel.basic_cancel">(kombu.transport.pyredis.Transport.Channel method)</a>
+  <dt><a href="reference/kombu.transport.redis.html#kombu.transport.redis.Transport.Channel.basic_cancel">(kombu.transport.redis.Transport.Channel method)</a>
   </dt>
 
         
@@ -332,7 +346,7 @@
 
       </dl></dd>
       
-  <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Connection.Channel.basic_consume">basic_consume() (kombu.transport.librabbitmq.Connection.Channel method)</a>
+  <dt><a href="reference/kombu.transport.amqplib.html#kombu.transport.amqplib.Channel.basic_consume">basic_consume() (kombu.transport.amqplib.Channel method)</a>
   </dt>
 
       <dd><dl>
@@ -345,15 +359,35 @@
   </dt>
 
         
-  <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Channel.basic_consume">(kombu.transport.pyamqplib.Channel method)</a>
+  <dt><a href="reference/kombu.transport.django.html#kombu.transport.django.Channel.basic_consume">(kombu.transport.django.Channel method)</a>
   </dt>
 
         
-  <dt><a href="reference/kombu.transport.pyredis.html#kombu.transport.pyredis.Channel.basic_consume">(kombu.transport.pyredis.Channel method)</a>
+  <dt><a href="reference/kombu.transport.django.html#kombu.transport.django.Transport.Channel.basic_consume">(kombu.transport.django.Transport.Channel method)</a>
   </dt>
 
         
-  <dt><a href="reference/kombu.transport.pyredis.html#kombu.transport.pyredis.Transport.Channel.basic_consume">(kombu.transport.pyredis.Transport.Channel method)</a>
+  <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Connection.Channel.basic_consume">(kombu.transport.librabbitmq.Connection.Channel method)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Channel.basic_consume">(kombu.transport.pika2.Channel method)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Connection.Channel.basic_consume">(kombu.transport.pika2.Connection.Channel method)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Transport.Connection.Channel.basic_consume">(kombu.transport.pika2.Transport.Connection.Channel method)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.transport.redis.html#kombu.transport.redis.Channel.basic_consume">(kombu.transport.redis.Channel method)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.transport.redis.html#kombu.transport.redis.Transport.Channel.basic_consume">(kombu.transport.redis.Transport.Channel method)</a>
   </dt>
 
         
@@ -367,6 +401,18 @@
 
       <dd><dl>
         
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Channel.basic_get">(kombu.transport.pika2.Channel method)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Connection.Channel.basic_get">(kombu.transport.pika2.Connection.Channel method)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Transport.Connection.Channel.basic_get">(kombu.transport.pika2.Transport.Connection.Channel method)</a>
+  </dt>
+
+        
   <dt><a href="reference/kombu.transport.virtual.html#kombu.transport.virtual.Channel.basic_get">(kombu.transport.virtual.Channel method)</a>
   </dt>
 
@@ -377,6 +423,18 @@
 
       <dd><dl>
         
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Channel.basic_publish">(kombu.transport.pika2.Channel method)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Connection.Channel.basic_publish">(kombu.transport.pika2.Connection.Channel method)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Transport.Connection.Channel.basic_publish">(kombu.transport.pika2.Transport.Connection.Channel method)</a>
+  </dt>
+
+        
   <dt><a href="reference/kombu.transport.virtual.html#kombu.transport.virtual.Channel.basic_publish">(kombu.transport.virtual.Channel method)</a>
   </dt>
 
@@ -386,6 +444,18 @@
   </dt>
 
       <dd><dl>
+        
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Channel.basic_qos">(kombu.transport.pika2.Channel method)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Connection.Channel.basic_qos">(kombu.transport.pika2.Connection.Channel method)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Transport.Connection.Channel.basic_qos">(kombu.transport.pika2.Transport.Connection.Channel method)</a>
+  </dt>
+
         
   <dt><a href="reference/kombu.transport.virtual.html#kombu.transport.virtual.Channel.basic_qos">(kombu.transport.virtual.Channel method)</a>
   </dt>
@@ -425,27 +495,7 @@
 
       <dd><dl>
         
-  <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Channel.Message.body">(kombu.transport.librabbitmq.Channel.Message attribute)</a>
-  </dt>
-
-        
-  <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Connection.Channel.Message.body">(kombu.transport.librabbitmq.Connection.Channel.Message attribute)</a>, <a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Connection.Channel.Message.body">[1]</a>
-  </dt>
-
-        
-  <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Message.body">(kombu.transport.librabbitmq.Message attribute)</a>
-  </dt>
-
-        
-  <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Transport.Connection.Channel.Message.body">(kombu.transport.librabbitmq.Transport.Connection.Channel.Message attribute)</a>
-  </dt>
-
-        
-  <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Channel.Message.body">(kombu.transport.pyamqplib.Channel.Message attribute)</a>
-  </dt>
-
-        
-  <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Message.body">(kombu.transport.pyamqplib.Message attribute)</a>
+  <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Connection.Channel.Message.body">(kombu.transport.librabbitmq.Connection.Channel.Message attribute)</a>
   </dt>
 
         
@@ -494,6 +544,20 @@
 
         
   <dt><a href="reference/kombu.messaging.html#kombu.messaging.Consumer.callbacks">(kombu.messaging.Consumer attribute)</a>
+  </dt>
+
+      </dl></dd>
+      
+  <dt><a href="reference/kombu.abstract.html#kombu.abstract.MaybeChannelBound.can_cache_declaration">can_cache_declaration (kombu.abstract.MaybeChannelBound attribute)</a>
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="reference/kombu.entity.html#kombu.entity.Exchange.can_cache_declaration">(kombu.entity.Exchange attribute)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.entity.html#kombu.entity.Queue.can_cache_declaration">(kombu.entity.Queue attribute)</a>
   </dt>
 
       </dl></dd>
@@ -552,12 +616,24 @@
   </dt>
 
       
-  <dt><a href="reference/kombu.transport.beanstalk.html#kombu.transport.beanstalk.Channel">Channel (class in kombu.transport.beanstalk)</a>
+  <dt><a href="reference/kombu.transport.amqplib.html#kombu.transport.amqplib.Channel">Channel (class in kombu.transport.amqplib)</a>
   </dt>
 
       <dd><dl>
         
   <dt><a href="reference/kombu.transport.SQS.html#kombu.transport.SQS.Channel">(class in kombu.transport.SQS)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.transport.beanstalk.html#kombu.transport.beanstalk.Channel">(class in kombu.transport.beanstalk)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.transport.couchdb.html#kombu.transport.couchdb.Channel">(class in kombu.transport.couchdb)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.transport.django.html#kombu.transport.django.Channel">(class in kombu.transport.django)</a>
   </dt>
 
         
@@ -573,15 +649,15 @@
   </dt>
 
         
-  <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Channel">(class in kombu.transport.pyamqplib)</a>
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Channel">(class in kombu.transport.pika2)</a>
   </dt>
 
         
-  <dt><a href="reference/kombu.transport.pycouchdb.html#kombu.transport.pycouchdb.Channel">(class in kombu.transport.pycouchdb)</a>
+  <dt><a href="reference/kombu.transport.redis.html#kombu.transport.redis.Channel">(class in kombu.transport.redis)</a>
   </dt>
 
         
-  <dt><a href="reference/kombu.transport.pyredis.html#kombu.transport.pyredis.Channel">(class in kombu.transport.pyredis)</a>
+  <dt><a href="reference/kombu.transport.sqlalchemy.html#kombu.transport.sqlalchemy.Channel">(class in kombu.transport.sqlalchemy)</a>
   </dt>
 
         
@@ -639,27 +715,7 @@
   </dt>
 
         
-  <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Channel.Message.channel">(kombu.transport.librabbitmq.Channel.Message attribute)</a>
-  </dt>
-
-        
-  <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Connection.Channel.Message.channel">(kombu.transport.librabbitmq.Connection.Channel.Message attribute)</a>, <a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Connection.Channel.Message.channel">[1]</a>
-  </dt>
-
-        
-  <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Message.channel">(kombu.transport.librabbitmq.Message attribute)</a>
-  </dt>
-
-        
-  <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Transport.Connection.Channel.Message.channel">(kombu.transport.librabbitmq.Transport.Connection.Channel.Message attribute)</a>
-  </dt>
-
-        
-  <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Channel.Message.channel">(kombu.transport.pyamqplib.Channel.Message attribute)</a>
-  </dt>
-
-        
-  <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Message.channel">(kombu.transport.pyamqplib.Message attribute)</a>
+  <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Connection.Channel.Message.channel">(kombu.transport.librabbitmq.Connection.Channel.Message attribute)</a>
   </dt>
 
         
@@ -677,25 +733,37 @@
 
       <dd><dl>
         
+  <dt><a href="reference/kombu.transport.amqplib.html#kombu.transport.amqplib.Connection.channel">(kombu.transport.amqplib.Connection method)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.transport.amqplib.html#kombu.transport.amqplib.Transport.Connection.channel">(kombu.transport.amqplib.Transport.Connection method)</a>
+  </dt>
+
+        
   <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Connection.channel">(kombu.transport.librabbitmq.Connection method)</a>
   </dt>
 
         
-  <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Connection.channel">(kombu.transport.pyamqplib.Connection method)</a>
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Connection.channel">(kombu.transport.pika2.Connection method)</a>
   </dt>
 
         
-  <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Transport.Connection.channel">(kombu.transport.pyamqplib.Transport.Connection method)</a>
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Transport.Connection.channel">(kombu.transport.pika2.Transport.Connection method)</a>
   </dt>
 
       </dl></dd>
       
-  <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Channel.Message">Channel.Message (class in kombu.transport.librabbitmq)</a>
+  <dt><a href="reference/kombu.transport.amqplib.html#kombu.transport.amqplib.Channel.Message">Channel.Message (class in kombu.transport.amqplib)</a>
   </dt>
 
       <dd><dl>
         
-  <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Channel.Message">(class in kombu.transport.pyamqplib)</a>
+  <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Channel.Message">(class in kombu.transport.librabbitmq)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Channel.Message">(class in kombu.transport.pika2)</a>
   </dt>
 
       </dl></dd>
@@ -709,7 +777,15 @@
 
       <dd><dl>
         
+  <dt><a href="reference/kombu.mixins.html#kombu.mixins.ConsumerMixin.channel_errors">(kombu.mixins.ConsumerMixin attribute)</a>
+  </dt>
+
+        
   <dt><a href="reference/kombu.transport.SQS.html#kombu.transport.SQS.Transport.channel_errors">(kombu.transport.SQS.Transport attribute)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.transport.amqplib.html#kombu.transport.amqplib.Transport.channel_errors">(kombu.transport.amqplib.Transport attribute)</a>
   </dt>
 
         
@@ -721,6 +797,14 @@
   </dt>
 
         
+  <dt><a href="reference/kombu.transport.couchdb.html#kombu.transport.couchdb.Transport.channel_errors">(kombu.transport.couchdb.Transport attribute)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.transport.django.html#kombu.transport.django.Transport.channel_errors">(kombu.transport.django.Transport attribute)</a>
+  </dt>
+
+        
   <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Transport.channel_errors">(kombu.transport.librabbitmq.Transport attribute)</a>
   </dt>
 
@@ -729,11 +813,25 @@
   </dt>
 
         
-  <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Transport.channel_errors">(kombu.transport.pyamqplib.Transport attribute)</a>
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Transport.channel_errors">(kombu.transport.pika2.Transport attribute)</a>
   </dt>
 
         
-  <dt><a href="reference/kombu.transport.pycouchdb.html#kombu.transport.pycouchdb.Transport.channel_errors">(kombu.transport.pycouchdb.Transport attribute)</a>
+  <dt><a href="reference/kombu.transport.sqlalchemy.html#kombu.transport.sqlalchemy.Transport.channel_errors">(kombu.transport.sqlalchemy.Transport attribute)</a>
+  </dt>
+
+      </dl></dd>
+      
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Channel.channel_id">channel_id (kombu.transport.pika2.Channel attribute)</a>
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Connection.Channel.channel_id">(kombu.transport.pika2.Connection.Channel attribute)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Transport.Connection.Channel.channel_id">(kombu.transport.pika2.Transport.Connection.Channel attribute)</a>
   </dt>
 
       </dl></dd>
@@ -755,6 +853,14 @@
 
       
   <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Connection.channels">channels (kombu.transport.librabbitmq.Connection attribute)</a>
+  </dt>
+
+      
+  <dt><a href="reference/kombu.transport.django.managers.html#kombu.transport.django.managers.MessageManager.cleanup">cleanup() (kombu.transport.django.managers.MessageManager method)</a>
+  </dt>
+
+      
+  <dt><a href="reference/kombu.transport.django.managers.html#kombu.transport.django.managers.MessageManager.cleanup_every">cleanup_every (kombu.transport.django.managers.MessageManager attribute)</a>
   </dt>
 
       
@@ -785,6 +891,14 @@
   </dt>
 
         
+  <dt><a href="reference/kombu.transport.couchdb.html#kombu.transport.couchdb.Channel.client">(kombu.transport.couchdb.Channel attribute)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.transport.couchdb.html#kombu.transport.couchdb.Transport.Channel.client">(kombu.transport.couchdb.Transport.Channel attribute)</a>
+  </dt>
+
+        
   <dt><a href="reference/kombu.transport.mongodb.html#kombu.transport.mongodb.Channel.client">(kombu.transport.mongodb.Channel attribute)</a>
   </dt>
 
@@ -793,19 +907,11 @@
   </dt>
 
         
-  <dt><a href="reference/kombu.transport.pycouchdb.html#kombu.transport.pycouchdb.Channel.client">(kombu.transport.pycouchdb.Channel attribute)</a>
+  <dt><a href="reference/kombu.transport.redis.html#kombu.transport.redis.Channel.client">(kombu.transport.redis.Channel attribute)</a>
   </dt>
 
         
-  <dt><a href="reference/kombu.transport.pycouchdb.html#kombu.transport.pycouchdb.Transport.Channel.client">(kombu.transport.pycouchdb.Transport.Channel attribute)</a>
-  </dt>
-
-        
-  <dt><a href="reference/kombu.transport.pyredis.html#kombu.transport.pyredis.Channel.client">(kombu.transport.pyredis.Channel attribute)</a>
-  </dt>
-
-        
-  <dt><a href="reference/kombu.transport.pyredis.html#kombu.transport.pyredis.Transport.Channel.client">(kombu.transport.pyredis.Transport.Channel attribute)</a>
+  <dt><a href="reference/kombu.transport.redis.html#kombu.transport.redis.Transport.Channel.client">(kombu.transport.redis.Transport.Channel attribute)</a>
   </dt>
 
       </dl></dd>
@@ -843,6 +949,14 @@
   </dt>
 
         
+  <dt><a href="reference/kombu.transport.amqplib.html#kombu.transport.amqplib.Channel.close">(kombu.transport.amqplib.Channel method)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.transport.amqplib.html#kombu.transport.amqplib.Connection.close">(kombu.transport.amqplib.Connection method)</a>
+  </dt>
+
+        
   <dt><a href="reference/kombu.transport.beanstalk.html#kombu.transport.beanstalk.Channel.close">(kombu.transport.beanstalk.Channel method)</a>
   </dt>
 
@@ -867,19 +981,31 @@
   </dt>
 
         
-  <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Channel.close">(kombu.transport.pyamqplib.Channel method)</a>
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Channel.close">(kombu.transport.pika2.Channel method)</a>
   </dt>
 
         
-  <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Connection.close">(kombu.transport.pyamqplib.Connection method)</a>
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Connection.close">(kombu.transport.pika2.Connection method)</a>
   </dt>
 
         
-  <dt><a href="reference/kombu.transport.pyredis.html#kombu.transport.pyredis.Channel.close">(kombu.transport.pyredis.Channel method)</a>
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Connection.Channel.close">(kombu.transport.pika2.Connection.Channel method)</a>
   </dt>
 
         
-  <dt><a href="reference/kombu.transport.pyredis.html#kombu.transport.pyredis.Transport.Channel.close">(kombu.transport.pyredis.Transport.Channel method)</a>
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Transport.Connection.close">(kombu.transport.pika2.Transport.Connection method)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Transport.Connection.Channel.close">(kombu.transport.pika2.Transport.Connection.Channel method)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.transport.redis.html#kombu.transport.redis.Channel.close">(kombu.transport.redis.Channel method)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.transport.redis.html#kombu.transport.redis.Transport.Channel.close">(kombu.transport.redis.Transport.Channel method)</a>
   </dt>
 
         
@@ -902,16 +1028,20 @@
 
       </dl></dd>
       
-  <dt><a href="reference/kombu.transport.base.html#kombu.transport.base.Transport.close_connection">close_connection() (kombu.transport.base.Transport method)</a>
+  <dt><a href="reference/kombu.transport.amqplib.html#kombu.transport.amqplib.Transport.close_connection">close_connection() (kombu.transport.amqplib.Transport method)</a>
   </dt>
 
       <dd><dl>
+        
+  <dt><a href="reference/kombu.transport.base.html#kombu.transport.base.Transport.close_connection">(kombu.transport.base.Transport method)</a>
+  </dt>
+
         
   <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Transport.close_connection">(kombu.transport.librabbitmq.Transport method)</a>
   </dt>
 
         
-  <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Transport.close_connection">(kombu.transport.pyamqplib.Transport method)</a>
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Transport.close_connection">(kombu.transport.pika2.Transport method)</a>
   </dt>
 
         
@@ -920,6 +1050,10 @@
 
       </dl></dd>
       
+  <dt><a href="reference/kombu.common.html#kombu.common.collect_replies">collect_replies() (in module kombu.common)</a>
+  </dt>
+
+      
   <dt><a href="reference/kombu.utils.compat.html#kombu.utils.compat.CompatOrderedDict">CompatOrderedDict (class in kombu.utils.compat)</a>
   </dt>
 
@@ -927,6 +1061,8 @@
   <dt><a href="reference/kombu.compression.html#kombu.compression.compress">compress() (in module kombu.compression)</a>
   </dt>
 
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="reference/kombu.compat.html#kombu.compat.Publisher.compression">compression (kombu.compat.Publisher attribute)</a>
   </dt>
@@ -937,8 +1073,6 @@
   </dt>
 
       </dl></dd>
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnection.connect">connect() (kombu.connection.BrokerConnection method)</a>
   </dt>
@@ -948,20 +1082,36 @@
   </dt>
 
       
-  <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Connection">Connection (class in kombu.transport.librabbitmq)</a>
+  <dt><a href="reference/kombu.transport.amqplib.html#kombu.transport.amqplib.Connection">Connection (class in kombu.transport.amqplib)</a>
   </dt>
 
       <dd><dl>
         
-  <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Connection">(class in kombu.transport.pyamqplib)</a>
+  <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Connection">(class in kombu.transport.librabbitmq)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Connection">(class in kombu.transport.pika2)</a>
   </dt>
 
       </dl></dd>
       
-  <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnection.connection">connection (kombu.connection.BrokerConnection attribute)</a>
+  <dt><a href="reference/kombu.compat.html#kombu.compat.Consumer.connection">connection (kombu.compat.Consumer attribute)</a>
   </dt>
 
       <dd><dl>
+        
+  <dt><a href="reference/kombu.compat.html#kombu.compat.ConsumerSet.connection">(kombu.compat.ConsumerSet attribute)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.compat.html#kombu.compat.Publisher.connection">(kombu.compat.Publisher attribute)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnection.connection">(kombu.connection.BrokerConnection attribute)</a>
+  </dt>
+
         
   <dt><a href="reference/kombu.pidbox.html#kombu.pidbox.Mailbox.connection">(kombu.pidbox.Mailbox attribute)</a>
   </dt>
@@ -971,10 +1121,22 @@
   <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Connection.Channel">Connection.Channel (class in kombu.transport.librabbitmq)</a>
   </dt>
 
+      <dd><dl>
+        
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Connection.Channel">(class in kombu.transport.pika2)</a>
+  </dt>
+
+      </dl></dd>
       
   <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Connection.Channel.Message">Connection.Channel.Message (class in kombu.transport.librabbitmq)</a>
   </dt>
 
+      <dd><dl>
+        
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Connection.Channel.Message">(class in kombu.transport.pika2)</a>
+  </dt>
+
+      </dl></dd>
       
   <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Connection.Channel.Message.MessageStateError">Connection.Channel.Message.MessageStateError</a>
   </dt>
@@ -985,7 +1147,15 @@
 
       <dd><dl>
         
+  <dt><a href="reference/kombu.mixins.html#kombu.mixins.ConsumerMixin.connection_errors">(kombu.mixins.ConsumerMixin attribute)</a>
+  </dt>
+
+        
   <dt><a href="reference/kombu.transport.SQS.html#kombu.transport.SQS.Transport.connection_errors">(kombu.transport.SQS.Transport attribute)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.transport.amqplib.html#kombu.transport.amqplib.Transport.connection_errors">(kombu.transport.amqplib.Transport attribute)</a>
   </dt>
 
         
@@ -997,6 +1167,14 @@
   </dt>
 
         
+  <dt><a href="reference/kombu.transport.couchdb.html#kombu.transport.couchdb.Transport.connection_errors">(kombu.transport.couchdb.Transport attribute)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.transport.django.html#kombu.transport.django.Transport.connection_errors">(kombu.transport.django.Transport attribute)</a>
+  </dt>
+
+        
   <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Transport.connection_errors">(kombu.transport.librabbitmq.Transport attribute)</a>
   </dt>
 
@@ -1005,14 +1183,18 @@
   </dt>
 
         
-  <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Transport.connection_errors">(kombu.transport.pyamqplib.Transport attribute)</a>
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Transport.connection_errors">(kombu.transport.pika2.Transport attribute)</a>
   </dt>
 
         
-  <dt><a href="reference/kombu.transport.pycouchdb.html#kombu.transport.pycouchdb.Transport.connection_errors">(kombu.transport.pycouchdb.Transport attribute)</a>
+  <dt><a href="reference/kombu.transport.sqlalchemy.html#kombu.transport.sqlalchemy.Transport.connection_errors">(kombu.transport.sqlalchemy.Transport attribute)</a>
   </dt>
 
       </dl></dd>
+      
+  <dt><a href="reference/kombu.transport.django.managers.html#kombu.transport.django.managers.MessageManager.connection_for_write">connection_for_write() (kombu.transport.django.managers.MessageManager method)</a>
+  </dt>
+
       
   <dt><a href="reference/kombu.exceptions.html#kombu.exceptions.ConnectionLimitExceeded">ConnectionLimitExceeded</a>
   </dt>
@@ -1152,16 +1334,20 @@
 
       </dl></dd>
       
-  <dt><a href="reference/kombu.transport.base.html#kombu.transport.base.Transport.create_channel">create_channel() (kombu.transport.base.Transport method)</a>
+  <dt><a href="reference/kombu.transport.amqplib.html#kombu.transport.amqplib.Transport.create_channel">create_channel() (kombu.transport.amqplib.Transport method)</a>
   </dt>
 
       <dd><dl>
+        
+  <dt><a href="reference/kombu.transport.base.html#kombu.transport.base.Transport.create_channel">(kombu.transport.base.Transport method)</a>
+  </dt>
+
         
   <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Transport.create_channel">(kombu.transport.librabbitmq.Transport method)</a>
   </dt>
 
         
-  <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Transport.create_channel">(kombu.transport.pyamqplib.Transport method)</a>
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Transport.create_channel">(kombu.transport.pika2.Transport method)</a>
   </dt>
 
         
@@ -1170,7 +1356,7 @@
 
       </dl></dd>
       
-  <dt><a href="reference/kombu.transport.pycouchdb.html#kombu.transport.pycouchdb.create_message_view">create_message_view() (in module kombu.transport.pycouchdb)</a>
+  <dt><a href="reference/kombu.transport.couchdb.html#kombu.transport.couchdb.create_message_view">create_message_view() (in module kombu.transport.couchdb)</a>
   </dt>
 
       
@@ -1179,6 +1365,10 @@
 
       
   <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnection.create_transport">create_transport() (kombu.connection.BrokerConnection method)</a>
+  </dt>
+
+      
+  <dt><a href="reference/kombu.log.html#kombu.log.LogMixin.critical">critical() (kombu.log.LogMixin method)</a>
   </dt>
 
       
@@ -1195,6 +1385,10 @@
 <h2 id="D">D</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%" valign="top"><dl>
+      
+  <dt><a href="reference/kombu.log.html#kombu.log.LogMixin.debug">debug() (kombu.log.LogMixin method)</a>
+  </dt>
+
       
   <dt><a href="reference/kombu.compat.html#kombu.compat.Consumer.declare">declare() (kombu.compat.Consumer method)</a>
   </dt>
@@ -1248,21 +1442,29 @@
   </dt>
 
       
-  <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Transport.default_connection_params">default_connection_params (kombu.transport.librabbitmq.Transport attribute)</a>
+  <dt><a href="reference/kombu.transport.amqplib.html#kombu.transport.amqplib.Transport.default_connection_params">default_connection_params (kombu.transport.amqplib.Transport attribute)</a>
   </dt>
 
       <dd><dl>
         
-  <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Transport.default_connection_params">(kombu.transport.pyamqplib.Transport attribute)</a>
+  <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Transport.default_connection_params">(kombu.transport.librabbitmq.Transport attribute)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Transport.default_connection_params">(kombu.transport.pika2.Transport attribute)</a>
   </dt>
 
       </dl></dd>
+      
+  <dt><a href="reference/kombu.utils.encoding.html#kombu.utils.encoding.default_encode">default_encode() (in module kombu.utils.encoding)</a>
+  </dt>
+
       
   <dt><a href="reference/kombu.utils.encoding.html#kombu.utils.encoding.default_encoding">default_encoding() (in module kombu.utils.encoding)</a>
   </dt>
 
       
-  <dt><a href="reference/kombu.transport.base.html#kombu.transport.base.Transport.default_port">default_port (kombu.transport.base.Transport attribute)</a>
+  <dt><a href="reference/kombu.transport.amqplib.html#kombu.transport.amqplib.Transport.default_port">default_port (kombu.transport.amqplib.Transport attribute)</a>
   </dt>
 
       <dd><dl>
@@ -1271,7 +1473,19 @@
   </dt>
 
         
+  <dt><a href="reference/kombu.transport.base.html#kombu.transport.base.Transport.default_port">(kombu.transport.base.Transport attribute)</a>
+  </dt>
+
+        
   <dt><a href="reference/kombu.transport.beanstalk.html#kombu.transport.beanstalk.Transport.default_port">(kombu.transport.beanstalk.Transport attribute)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.transport.couchdb.html#kombu.transport.couchdb.Transport.default_port">(kombu.transport.couchdb.Transport attribute)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.transport.django.html#kombu.transport.django.Transport.default_port">(kombu.transport.django.Transport attribute)</a>
   </dt>
 
         
@@ -1283,15 +1497,15 @@
   </dt>
 
         
-  <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Transport.default_port">(kombu.transport.pyamqplib.Transport attribute)</a>
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Transport.default_port">(kombu.transport.pika2.Transport attribute)</a>
   </dt>
 
         
-  <dt><a href="reference/kombu.transport.pycouchdb.html#kombu.transport.pycouchdb.Transport.default_port">(kombu.transport.pycouchdb.Transport attribute)</a>
+  <dt><a href="reference/kombu.transport.redis.html#kombu.transport.redis.Transport.default_port">(kombu.transport.redis.Transport attribute)</a>
   </dt>
 
         
-  <dt><a href="reference/kombu.transport.pyredis.html#kombu.transport.pyredis.Transport.default_port">(kombu.transport.pyredis.Transport attribute)</a>
+  <dt><a href="reference/kombu.transport.sqlalchemy.html#kombu.transport.sqlalchemy.Transport.default_port">(kombu.transport.sqlalchemy.Transport attribute)</a>
   </dt>
 
         
@@ -1351,39 +1565,19 @@
   </dt>
 
       </dl></dd>
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="reference/kombu.entity.html#kombu.entity.Exchange.delivery_mode">delivery_mode (kombu.entity.Exchange attribute)</a>, <a href="reference/kombu.entity.html#kombu.entity.Exchange.delivery_mode">[1]</a>
   </dt>
 
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="reference/kombu.transport.base.html#kombu.transport.base.Message.delivery_tag">delivery_tag (kombu.transport.base.Message attribute)</a>
   </dt>
 
       <dd><dl>
         
-  <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Channel.Message.delivery_tag">(kombu.transport.librabbitmq.Channel.Message attribute)</a>
-  </dt>
-
-        
-  <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Connection.Channel.Message.delivery_tag">(kombu.transport.librabbitmq.Connection.Channel.Message attribute)</a>, <a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Connection.Channel.Message.delivery_tag">[1]</a>
-  </dt>
-
-        
-  <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Message.delivery_tag">(kombu.transport.librabbitmq.Message attribute)</a>
-  </dt>
-
-        
-  <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Transport.Connection.Channel.Message.delivery_tag">(kombu.transport.librabbitmq.Transport.Connection.Channel.Message attribute)</a>
-  </dt>
-
-        
-  <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Channel.Message.delivery_tag">(kombu.transport.pyamqplib.Channel.Message attribute)</a>
-  </dt>
-
-        
-  <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Message.delivery_tag">(kombu.transport.pyamqplib.Message attribute)</a>
+  <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Connection.Channel.Message.delivery_tag">(kombu.transport.librabbitmq.Connection.Channel.Message attribute)</a>
   </dt>
 
         
@@ -1418,7 +1612,7 @@
   </dt>
 
       
-  <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Connection.dispatch_method">dispatch_method() (kombu.transport.pyamqplib.Connection method)</a>
+  <dt><a href="reference/kombu.transport.amqplib.html#kombu.transport.amqplib.Connection.dispatch_method">dispatch_method() (kombu.transport.amqplib.Connection method)</a>
   </dt>
 
       
@@ -1451,6 +1645,18 @@
 
       <dd><dl>
         
+  <dt><a href="reference/kombu.transport.amqplib.html#kombu.transport.amqplib.Connection.drain_events">(kombu.transport.amqplib.Connection method)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.transport.amqplib.html#kombu.transport.amqplib.Transport.drain_events">(kombu.transport.amqplib.Transport method)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.transport.amqplib.html#kombu.transport.amqplib.Transport.Connection.drain_events">(kombu.transport.amqplib.Transport.Connection method)</a>
+  </dt>
+
+        
   <dt><a href="reference/kombu.transport.base.html#kombu.transport.base.Transport.drain_events">(kombu.transport.base.Transport method)</a>
   </dt>
 
@@ -1463,15 +1669,15 @@
   </dt>
 
         
-  <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Connection.drain_events">(kombu.transport.pyamqplib.Connection method)</a>
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Connection.drain_events">(kombu.transport.pika2.Connection method)</a>
   </dt>
 
         
-  <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Transport.drain_events">(kombu.transport.pyamqplib.Transport method)</a>
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Transport.drain_events">(kombu.transport.pika2.Transport method)</a>
   </dt>
 
         
-  <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Transport.Connection.drain_events">(kombu.transport.pyamqplib.Transport.Connection method)</a>
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Transport.Connection.drain_events">(kombu.transport.pika2.Transport.Connection method)</a>
   </dt>
 
         
@@ -1509,10 +1715,6 @@
   <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="reference/kombu.utils.html#kombu.utils.emergency_dump_state">emergency_dump_state() (in module kombu.utils)</a>
-  </dt>
-
-      
-  <dt><a href="reference/kombu.utils.log.html#kombu.utils.log.NullHandler.emit">emit() (kombu.utils.log.NullHandler method)</a>
   </dt>
 
       
@@ -1577,10 +1779,6 @@
 
       </dl></dd>
       
-  <dt><a href="reference/kombu.utils.html#kombu.utils.eqhash">eqhash() (in module kombu.utils)</a>
-  </dt>
-
-      
   <dt><a href="reference/kombu.utils.html#kombu.utils.EqualityDict">EqualityDict (class in kombu.utils)</a>
   </dt>
 
@@ -1589,22 +1787,28 @@
   </dt>
 
       
-  <dt><a href="reference/kombu.mixins.html#kombu.mixins.ConsumerMixin.error">error() (kombu.mixins.ConsumerMixin method)</a>
+  <dt><a href="reference/kombu.log.html#kombu.log.LogMixin.error">error() (kombu.log.LogMixin method)</a>
   </dt>
 
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
       
-  <dt><a href="reference/kombu.transport.base.html#kombu.transport.base.Transport.establish_connection">establish_connection() (kombu.transport.base.Transport method)</a>
+  <dt><a href="reference/kombu.mixins.html#kombu.mixins.ConsumerMixin.establish_connection">establish_connection() (kombu.mixins.ConsumerMixin method)</a>
   </dt>
 
       <dd><dl>
+        
+  <dt><a href="reference/kombu.transport.amqplib.html#kombu.transport.amqplib.Transport.establish_connection">(kombu.transport.amqplib.Transport method)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.transport.base.html#kombu.transport.base.Transport.establish_connection">(kombu.transport.base.Transport method)</a>
+  </dt>
+
         
   <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Transport.establish_connection">(kombu.transport.librabbitmq.Transport method)</a>
   </dt>
 
         
-  <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Transport.establish_connection">(kombu.transport.pyamqplib.Transport method)</a>
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Transport.establish_connection">(kombu.transport.pika2.Transport method)</a>
   </dt>
 
         
@@ -1613,7 +1817,13 @@
 
       </dl></dd>
       
-  <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Channel.events">events (kombu.transport.pyamqplib.Channel attribute)</a>
+  <dt><a href="reference/kombu.utils.functional.html#kombu.utils.functional.promise.evaluate">evaluate() (kombu.utils.functional.promise method)</a>
+  </dt>
+
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
+      
+  <dt><a href="reference/kombu.transport.amqplib.html#kombu.transport.amqplib.Channel.events">events (kombu.transport.amqplib.Channel attribute)</a>
   </dt>
 
       
@@ -1653,10 +1863,14 @@
 
       </dl></dd>
       
-  <dt><a href="reference/kombu.transport.SQS.html#kombu.transport.SQS.Channel.exchange_delete">exchange_delete() (kombu.transport.SQS.Channel method)</a>
+  <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Connection.Channel.exchange_delete">exchange_delete() (kombu.transport.librabbitmq.Connection.Channel method)</a>
   </dt>
 
       <dd><dl>
+        
+  <dt><a href="reference/kombu.transport.SQS.html#kombu.transport.SQS.Channel.exchange_delete">(kombu.transport.SQS.Channel method)</a>
+  </dt>
+
         
   <dt><a href="reference/kombu.transport.SQS.html#kombu.transport.SQS.Channel.Table.exchange_delete">(kombu.transport.SQS.Channel.Table method)</a>
   </dt>
@@ -1742,6 +1956,12 @@
   <dt><a href="reference/kombu.compat.html#kombu.compat.Consumer.fetch">fetch() (kombu.compat.Consumer method)</a>
   </dt>
 
+      <dd><dl>
+        
+  <dt><a href="reference/kombu.transport.django.managers.html#kombu.transport.django.managers.QueueManager.fetch">(kombu.transport.django.managers.QueueManager method)</a>
+  </dt>
+
+      </dl></dd>
       
   <dt><a href="reference/kombu.utils.limits.html#kombu.utils.limits.TokenBucket.fill_rate">fill_rate (kombu.utils.limits.TokenBucket attribute)</a>
   </dt>
@@ -1783,6 +2003,10 @@
   </dt>
 
       
+  <dt><a href="reference/kombu.utils.encoding.html#kombu.utils.encoding.from_utf8">from_utf8() (in module kombu.utils.encoding)</a>
+  </dt>
+
+      
   <dt><a href="reference/kombu.utils.compat.html#kombu.utils.compat.CompatOrderedDict.fromkeys">fromkeys() (kombu.utils.compat.CompatOrderedDict class method)</a>
   </dt>
 
@@ -1800,10 +2024,6 @@
 <h2 id="G">G</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%" valign="top"><dl>
-      
-  <dt><a href="reference/kombu.utils.html#kombu.utils.gen_unique_id">gen_unique_id() (in module kombu.utils)</a>
-  </dt>
-
       
   <dt><a href="reference/kombu.entity.html#kombu.entity.Queue.get">get() (kombu.entity.Queue method)</a>
   </dt>
@@ -1866,16 +2086,26 @@
   </dt>
 
       </dl></dd>
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="reference/kombu.pools.html#kombu.pools.get_limit">get_limit() (in module kombu.pools)</a>
   </dt>
 
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
       
-  <dt><a href="reference/kombu.utils.log.html#kombu.utils.log.get_logger">get_logger() (in module kombu.utils.log)</a>
+  <dt><a href="reference/kombu.log.html#kombu.log.LogMixin.get_logger">get_logger() (kombu.log.LogMixin method)</a>
   </dt>
 
+      
+  <dt><a href="reference/kombu.log.html#kombu.log.get_loglevel">get_loglevel() (in module kombu.log)</a>
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="reference/kombu.log.html#kombu.log.LogMixin.get_loglevel">(kombu.log.LogMixin method)</a>
+  </dt>
+
+      </dl></dd>
       
   <dt><a href="reference/kombu.simple.html#kombu.simple.SimpleBuffer.get_nowait">get_nowait() (kombu.simple.SimpleBuffer method)</a>
   </dt>
@@ -1905,7 +2135,7 @@
   </dt>
 
       
-  <dt><a href="reference/kombu.transport.pyredis.html#kombu.transport.pyredis.Channel.get_table">get_table() (kombu.transport.pyredis.Channel method)</a>
+  <dt><a href="reference/kombu.transport.redis.html#kombu.transport.redis.Channel.get_table">get_table() (kombu.transport.redis.Channel method)</a>
   </dt>
 
       <dd><dl>
@@ -1918,7 +2148,7 @@
   </dt>
 
         
-  <dt><a href="reference/kombu.transport.pyredis.html#kombu.transport.pyredis.Transport.Channel.get_table">(kombu.transport.pyredis.Transport.Channel method)</a>
+  <dt><a href="reference/kombu.transport.redis.html#kombu.transport.redis.Transport.Channel.get_table">(kombu.transport.redis.Transport.Channel method)</a>
   </dt>
 
         
@@ -2001,30 +2231,44 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%" valign="top"><dl>
       
+  <dt><a href="reference/kombu.transport.sqlalchemy.models.html#kombu.transport.sqlalchemy.models.Message.id">id (kombu.transport.sqlalchemy.models.Message attribute)</a>
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="reference/kombu.transport.sqlalchemy.models.html#kombu.transport.sqlalchemy.models.Queue.id">(kombu.transport.sqlalchemy.models.Queue attribute)</a>
+  </dt>
+
+      </dl></dd>
+      
   <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnection.info">info() (kombu.connection.BrokerConnection method)</a>
   </dt>
 
       <dd><dl>
         
-  <dt><a href="reference/kombu.mixins.html#kombu.mixins.ConsumerMixin.info">(kombu.mixins.ConsumerMixin method)</a>
+  <dt><a href="reference/kombu.log.html#kombu.log.LogMixin.info">(kombu.log.LogMixin method)</a>
   </dt>
 
       </dl></dd>
+      
+  <dt><a href="reference/kombu.common.html#kombu.common.insured">insured() (in module kombu.common)</a>
+  </dt>
+
       
   <dt><a href="reference/kombu.transport.beanstalk.html#kombu.transport.beanstalk.Transport.interval">interval (kombu.transport.beanstalk.Transport attribute)</a>
   </dt>
 
       <dd><dl>
         
+  <dt><a href="reference/kombu.transport.couchdb.html#kombu.transport.couchdb.Transport.interval">(kombu.transport.couchdb.Transport attribute)</a>
+  </dt>
+
+        
   <dt><a href="reference/kombu.transport.mongodb.html#kombu.transport.mongodb.Transport.interval">(kombu.transport.mongodb.Transport attribute)</a>
   </dt>
 
         
-  <dt><a href="reference/kombu.transport.pycouchdb.html#kombu.transport.pycouchdb.Transport.interval">(kombu.transport.pycouchdb.Transport attribute)</a>
-  </dt>
-
-        
-  <dt><a href="reference/kombu.transport.pyredis.html#kombu.transport.pyredis.Transport.interval">(kombu.transport.pyredis.Transport attribute)</a>
+  <dt><a href="reference/kombu.transport.redis.html#kombu.transport.redis.Transport.interval">(kombu.transport.redis.Transport attribute)</a>
   </dt>
 
         
@@ -2033,19 +2277,31 @@
 
       </dl></dd>
       
+  <dt><a href="reference/kombu.common.html#kombu.common.ipublish">ipublish() (in module kombu.common)</a>
+  </dt>
+
+      
   <dt><a href="reference/kombu.abstract.html#kombu.abstract.MaybeChannelBound.is_bound">is_bound (kombu.abstract.MaybeChannelBound attribute)</a>
+  </dt>
+
+      
+  <dt><a href="reference/kombu.log.html#kombu.log.LogMixin.is_enabled_for">is_enabled_for() (kombu.log.LogMixin method)</a>
   </dt>
 
       
   <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Connection.Channel.is_open">is_open (kombu.transport.librabbitmq.Connection.Channel attribute)</a>
   </dt>
 
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
+      
+  <dt><a href="reference/kombu.common.html#kombu.common.isend_reply">isend_reply() (in module kombu.common)</a>
+  </dt>
+
       
   <dt><a href="reference/kombu.utils.compat.html#kombu.utils.compat.CompatOrderedDict.items">items() (kombu.utils.compat.CompatOrderedDict method)</a>
   </dt>
 
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="reference/kombu.compat.html#kombu.compat.Consumer.iterconsume">iterconsume() (kombu.compat.Consumer method)</a>
   </dt>
@@ -2062,6 +2318,10 @@
 
       
   <dt><a href="reference/kombu.utils.compat.html#kombu.utils.compat.CompatOrderedDict.iterkeys">iterkeys() (kombu.utils.compat.CompatOrderedDict method)</a>
+  </dt>
+
+      
+  <dt><a href="reference/kombu.common.html#kombu.common.itermessages">itermessages() (in module kombu.common)</a>
   </dt>
 
       
@@ -2083,12 +2343,12 @@
   </dt>
 
       
-  <dt><a href="reference/kombu.transport.pyredis.html#kombu.transport.pyredis.Channel.keyprefix_queue">keyprefix_queue (kombu.transport.pyredis.Channel attribute)</a>
+  <dt><a href="reference/kombu.transport.redis.html#kombu.transport.redis.Channel.keyprefix_queue">keyprefix_queue (kombu.transport.redis.Channel attribute)</a>
   </dt>
 
       <dd><dl>
         
-  <dt><a href="reference/kombu.transport.pyredis.html#kombu.transport.pyredis.Transport.Channel.keyprefix_queue">(kombu.transport.pyredis.Transport.Channel attribute)</a>
+  <dt><a href="reference/kombu.transport.redis.html#kombu.transport.redis.Transport.Channel.keyprefix_queue">(kombu.transport.redis.Transport.Channel attribute)</a>
   </dt>
 
       </dl></dd>
@@ -2129,6 +2389,10 @@
   </dt>
 
       
+  <dt><a href="reference/kombu.log.html#module-kombu.log">kombu.log (module)</a>
+  </dt>
+
+      
   <dt><a href="reference/kombu.messaging.html#module-kombu.messaging">kombu.messaging (module)</a>, <a href="userguide/producers.html#module-kombu.messaging">[1]</a>, <a href="userguide/consumers.html#module-kombu.messaging">[2]</a>
   </dt>
 
@@ -2161,6 +2425,10 @@
   </dt>
 
       
+  <dt><a href="reference/kombu.transport.amqplib.html#module-kombu.transport.amqplib">kombu.transport.amqplib (module)</a>
+  </dt>
+
+      
   <dt><a href="reference/kombu.transport.base.html#module-kombu.transport.base">kombu.transport.base (module)</a>
   </dt>
 
@@ -2169,11 +2437,31 @@
   </dt>
 
       
-  <dt><a href="reference/kombu.transport.librabbitmq.html#module-kombu.transport.librabbitmq">kombu.transport.librabbitmq (module)</a>
+  <dt><a href="reference/kombu.transport.couchdb.html#module-kombu.transport.couchdb">kombu.transport.couchdb (module)</a>
+  </dt>
+
+      
+  <dt><a href="reference/kombu.transport.django.html#module-kombu.transport.django">kombu.transport.django (module)</a>
   </dt>
 
   </dl></td>
   <td style="width: 33%" valign="top"><dl>
+      
+  <dt><a href="reference/kombu.transport.django.management.commands.clean_kombu_messages.html#module-kombu.transport.django.management.commands.clean_kombu_messages">kombu.transport.django.management.commands.clean_kombu_messages (module)</a>
+  </dt>
+
+      
+  <dt><a href="reference/kombu.transport.django.managers.html#module-kombu.transport.django.managers">kombu.transport.django.managers (module)</a>
+  </dt>
+
+      
+  <dt><a href="reference/kombu.transport.django.models.html#module-kombu.transport.django.models">kombu.transport.django.models (module)</a>
+  </dt>
+
+      
+  <dt><a href="reference/kombu.transport.librabbitmq.html#module-kombu.transport.librabbitmq">kombu.transport.librabbitmq (module)</a>
+  </dt>
+
       
   <dt><a href="reference/kombu.transport.memory.html#module-kombu.transport.memory">kombu.transport.memory (module)</a>
   </dt>
@@ -2183,15 +2471,19 @@
   </dt>
 
       
-  <dt><a href="reference/kombu.transport.pyamqplib.html#module-kombu.transport.pyamqplib">kombu.transport.pyamqplib (module)</a>
+  <dt><a href="reference/kombu.transport.pika2.html#module-kombu.transport.pika2">kombu.transport.pika2 (module)</a>
   </dt>
 
       
-  <dt><a href="reference/kombu.transport.pycouchdb.html#module-kombu.transport.pycouchdb">kombu.transport.pycouchdb (module)</a>
+  <dt><a href="reference/kombu.transport.redis.html#module-kombu.transport.redis">kombu.transport.redis (module)</a>
   </dt>
 
       
-  <dt><a href="reference/kombu.transport.pyredis.html#module-kombu.transport.pyredis">kombu.transport.pyredis (module)</a>
+  <dt><a href="reference/kombu.transport.sqlalchemy.html#module-kombu.transport.sqlalchemy">kombu.transport.sqlalchemy (module)</a>
+  </dt>
+
+      
+  <dt><a href="reference/kombu.transport.sqlalchemy.models.html#module-kombu.transport.sqlalchemy.models">kombu.transport.sqlalchemy.models (module)</a>
   </dt>
 
       
@@ -2236,10 +2528,6 @@
 
       
   <dt><a href="reference/kombu.utils.limits.html#module-kombu.utils.limits">kombu.utils.limits (module)</a>
-  </dt>
-
-      
-  <dt><a href="reference/kombu.utils.log.html#module-kombu.utils.log">kombu.utils.log (module)</a>
   </dt>
 
       
@@ -2290,10 +2578,26 @@
   <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Connection.Channel.list_bindings">list_bindings() (kombu.transport.librabbitmq.Connection.Channel method)</a>
   </dt>
 
+      
+  <dt><a href="reference/kombu.pidbox.html#kombu.pidbox.Node.listen">listen() (kombu.pidbox.Node method)</a>
+  </dt>
+
+      
+  <dt><a href="reference/kombu.log.html#kombu.log.LogMixin.log">log() (kombu.log.LogMixin method)</a>
+  </dt>
+
   </dl></td>
   <td style="width: 33%" valign="top"><dl>
       
-  <dt><a href="reference/kombu.pidbox.html#kombu.pidbox.Node.listen">listen() (kombu.pidbox.Node method)</a>
+  <dt><a href="reference/kombu.log.html#kombu.log.LogMixin.logger">logger (kombu.log.LogMixin attribute)</a>
+  </dt>
+
+      
+  <dt><a href="reference/kombu.log.html#kombu.log.LogMixin.logger_name">logger_name (kombu.log.LogMixin attribute)</a>
+  </dt>
+
+      
+  <dt><a href="reference/kombu.log.html#kombu.log.LogMixin">LogMixin (class in kombu.log)</a>
   </dt>
 
       
@@ -2347,11 +2651,25 @@
 
       </dl></dd>
       
-  <dt><a href="reference/kombu.common.html#kombu.common.maybe_declare">maybe_declare() (in module kombu.common)</a>
+  <dt><a href="reference/kombu.mixins.html#kombu.mixins.ConsumerMixin.maybe_conn_error">maybe_conn_error() (kombu.mixins.ConsumerMixin method)</a>
   </dt>
 
       
+  <dt><a href="reference/kombu.common.html#kombu.common.maybe_declare">maybe_declare() (in module kombu.common)</a>
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="reference/kombu.compat.html#kombu.compat.Publisher.maybe_declare">(kombu.compat.Publisher method)</a>
+  </dt>
+
+      </dl></dd>
+      
   <dt><a href="reference/kombu.utils.html#kombu.utils.maybe_list">maybe_list() (in module kombu.utils)</a>
+  </dt>
+
+      
+  <dt><a href="reference/kombu.utils.functional.html#kombu.utils.functional.maybe_promise">maybe_promise() (in module kombu.utils.functional)</a>
   </dt>
 
       
@@ -2359,16 +2677,28 @@
   </dt>
 
       
-  <dt><a href="reference/kombu.transport.base.html#kombu.transport.base.Message">Message (class in kombu.transport.base)</a>
+  <dt><a href="reference/kombu.transport.amqplib.html#kombu.transport.amqplib.Message">Message (class in kombu.transport.amqplib)</a>
   </dt>
 
       <dd><dl>
+        
+  <dt><a href="reference/kombu.transport.base.html#kombu.transport.base.Message">(class in kombu.transport.base)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.transport.django.models.html#kombu.transport.django.models.Message">(class in kombu.transport.django.models)</a>
+  </dt>
+
         
   <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Message">(class in kombu.transport.librabbitmq)</a>
   </dt>
 
         
-  <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Message">(class in kombu.transport.pyamqplib)</a>
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Message">(class in kombu.transport.pika2)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.transport.sqlalchemy.models.html#kombu.transport.sqlalchemy.models.Message">(class in kombu.transport.sqlalchemy.models)</a>
   </dt>
 
         
@@ -2380,12 +2710,12 @@
   <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Connection.Channel.Message.MessageStateError.message">message (kombu.transport.librabbitmq.Connection.Channel.Message.MessageStateError attribute)</a>
   </dt>
 
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="reference/kombu.transport.virtual.html#kombu.transport.virtual.Channel.Message">Message (kombu.transport.virtual.Channel attribute)</a>
   </dt>
 
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="reference/kombu.transport.virtual.html#kombu.transport.virtual.Message.MessageStateError.message">message (kombu.transport.virtual.Message.MessageStateError attribute)</a>
   </dt>
@@ -2395,28 +2725,50 @@
   </dt>
 
       
+  <dt><a href="reference/kombu.transport.django.models.html#kombu.transport.django.models.Message.DoesNotExist">Message.DoesNotExist</a>
+  </dt>
+
+      
   <dt><a href="reference/kombu.transport.virtual.html#kombu.transport.virtual.Message.MessageStateError">Message.MessageStateError</a>
   </dt>
 
       
-  <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Channel.message_to_python">message_to_python() (kombu.transport.librabbitmq.Channel method)</a>
+  <dt><a href="reference/kombu.transport.django.models.html#kombu.transport.django.models.Message.MultipleObjectsReturned">Message.MultipleObjectsReturned</a>
+  </dt>
+
+      
+  <dt><a href="reference/kombu.transport.amqplib.html#kombu.transport.amqplib.Channel.message_to_python">message_to_python() (kombu.transport.amqplib.Channel method)</a>
   </dt>
 
       <dd><dl>
         
-  <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Connection.Channel.message_to_python">(kombu.transport.librabbitmq.Connection.Channel method)</a>
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Channel.message_to_python">(kombu.transport.pika2.Channel method)</a>
   </dt>
 
         
-  <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Transport.Connection.Channel.message_to_python">(kombu.transport.librabbitmq.Transport.Connection.Channel method)</a>
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Connection.Channel.message_to_python">(kombu.transport.pika2.Connection.Channel method)</a>
   </dt>
 
         
-  <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Channel.message_to_python">(kombu.transport.pyamqplib.Channel method)</a>
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Transport.Connection.Channel.message_to_python">(kombu.transport.pika2.Transport.Connection.Channel method)</a>
   </dt>
 
         
   <dt><a href="reference/kombu.transport.virtual.html#kombu.transport.virtual.Channel.message_to_python">(kombu.transport.virtual.Channel method)</a>
+  </dt>
+
+      </dl></dd>
+      
+  <dt><a href="reference/kombu.transport.django.managers.html#kombu.transport.django.managers.MessageManager">MessageManager (class in kombu.transport.django.managers)</a>
+  </dt>
+
+      
+  <dt><a href="reference/kombu.transport.django.models.html#kombu.transport.django.models.Queue.messages">messages (kombu.transport.django.models.Queue attribute)</a>
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="reference/kombu.transport.sqlalchemy.models.html#kombu.transport.sqlalchemy.models.Queue.messages">(kombu.transport.sqlalchemy.models.Queue attribute)</a>
   </dt>
 
       </dl></dd>
@@ -2443,9 +2795,17 @@
   <dt><a href="reference/kombu.entity.html#kombu.entity.Queue.name">(kombu.entity.Queue attribute)</a>, <a href="reference/kombu.entity.html#kombu.entity.Queue.name">[1]</a>
   </dt>
 
+        
+  <dt><a href="reference/kombu.transport.sqlalchemy.models.html#kombu.transport.sqlalchemy.models.Queue.name">(kombu.transport.sqlalchemy.models.Queue attribute)</a>
+  </dt>
+
       </dl></dd>
       
   <dt><a href="reference/kombu.pidbox.html#kombu.pidbox.Mailbox.namespace">namespace (kombu.pidbox.Mailbox attribute)</a>
+  </dt>
+
+      
+  <dt><a href="reference/kombu.utils.html#kombu.utils.nested">nested() (in module kombu.utils)</a>
   </dt>
 
       
@@ -2478,12 +2838,12 @@
   </dt>
 
       </dl></dd>
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Connection.Channel.no_ack_consumers">no_ack_consumers (kombu.transport.librabbitmq.Connection.Channel attribute)</a>
   </dt>
 
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="reference/kombu.pidbox.html#kombu.pidbox.Node">Node (class in kombu.pidbox)</a>
   </dt>
@@ -2496,10 +2856,6 @@
   <dt><a href="reference/kombu.exceptions.html#kombu.exceptions.NotBoundError">NotBoundError</a>
   </dt>
 
-      
-  <dt><a href="reference/kombu.utils.log.html#kombu.utils.log.NullHandler">NullHandler (class in kombu.utils.log)</a>
-  </dt>
-
   </dl></td>
 </tr></table>
 
@@ -2507,11 +2863,25 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%" valign="top"><dl>
       
+  <dt><a href="reference/kombu.transport.django.models.html#kombu.transport.django.models.Message.objects">objects (kombu.transport.django.models.Message attribute)</a>
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="reference/kombu.transport.django.models.html#kombu.transport.django.models.Queue.objects">(kombu.transport.django.models.Queue attribute)</a>
+  </dt>
+
+      </dl></dd>
+      
   <dt><a href="reference/kombu.mixins.html#kombu.mixins.ConsumerMixin.on_connection_error">on_connection_error() (kombu.mixins.ConsumerMixin method)</a>
   </dt>
 
       
   <dt><a href="reference/kombu.mixins.html#kombu.mixins.ConsumerMixin.on_connection_revived">on_connection_revived() (kombu.mixins.ConsumerMixin method)</a>
+  </dt>
+
+      
+  <dt><a href="reference/kombu.mixins.html#kombu.mixins.ConsumerMixin.on_consume_end">on_consume_end() (kombu.mixins.ConsumerMixin method)</a>
   </dt>
 
       
@@ -2535,6 +2905,10 @@
 
       </dl></dd>
       
+  <dt><a href="reference/kombu.mixins.html#kombu.mixins.ConsumerMixin.on_decode_error">on_decode_error() (kombu.mixins.ConsumerMixin method)</a>
+  </dt>
+
+      
   <dt><a href="reference/kombu.mixins.html#kombu.mixins.ConsumerMixin.on_iteration">on_iteration() (kombu.mixins.ConsumerMixin method)</a>
   </dt>
 
@@ -2555,16 +2929,16 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%" valign="top"><dl>
       
-  <dt><a href="reference/kombu.utils.html#kombu.utils.partition">partition() (in module kombu.utils)</a>
-  </dt>
-
-      
   <dt><a href="reference/kombu.transport.base.html#kombu.transport.base.Message.payload">payload (kombu.transport.base.Message attribute)</a>
   </dt>
 
       <dd><dl>
         
   <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Connection.Channel.Message.payload">(kombu.transport.librabbitmq.Connection.Channel.Message attribute)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.transport.sqlalchemy.models.html#kombu.transport.sqlalchemy.models.Message.payload">(kombu.transport.sqlalchemy.models.Message attribute)</a>
   </dt>
 
         
@@ -2577,9 +2951,15 @@
   </dt>
 
       
-  <dt><a href="reference/kombu.transport.SQS.html#kombu.transport.SQS.Transport.polling_interval">polling_interval (kombu.transport.SQS.Transport attribute)</a>
+  <dt><a href="reference/kombu.transport.django.html#kombu.transport.django.Transport.polling_interval">polling_interval (kombu.transport.django.Transport attribute)</a>
   </dt>
 
+      <dd><dl>
+        
+  <dt><a href="reference/kombu.transport.SQS.html#kombu.transport.SQS.Transport.polling_interval">(kombu.transport.SQS.Transport attribute)</a>
+  </dt>
+
+      </dl></dd>
       
   <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnection.Pool">Pool() (kombu.connection.BrokerConnection method)</a>
   </dt>
@@ -2589,9 +2969,15 @@
   </dt>
 
       
-  <dt><a href="reference/kombu.utils.compat.html#kombu.utils.compat.CompatOrderedDict.pop">pop() (kombu.utils.compat.CompatOrderedDict method)</a>
+  <dt><a href="reference/kombu.transport.django.managers.html#kombu.transport.django.managers.MessageManager.pop">pop() (kombu.transport.django.managers.MessageManager method)</a>
   </dt>
 
+      <dd><dl>
+        
+  <dt><a href="reference/kombu.utils.compat.html#kombu.utils.compat.CompatOrderedDict.pop">(kombu.utils.compat.CompatOrderedDict method)</a>
+  </dt>
+
+      </dl></dd>
       
   <dt><a href="reference/kombu.utils.compat.html#kombu.utils.compat.CompatOrderedDict.popitem">popitem() (kombu.utils.compat.CompatOrderedDict method)</a>
   </dt>
@@ -2614,13 +3000,15 @@
   </dt>
 
       </dl></dd>
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
       
-  <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Channel.prepare_message">prepare_message() (kombu.transport.librabbitmq.Channel method)</a>
+  <dt><a href="reference/kombu.transport.amqplib.html#kombu.transport.amqplib.Channel.prepare_message">prepare_message() (kombu.transport.amqplib.Channel method)</a>
   </dt>
 
       <dd><dl>
+        
+  <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Channel.prepare_message">(kombu.transport.librabbitmq.Channel method)</a>
+  </dt>
+
         
   <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Connection.Channel.prepare_message">(kombu.transport.librabbitmq.Connection.Channel method)</a>
   </dt>
@@ -2630,7 +3018,15 @@
   </dt>
 
         
-  <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Channel.prepare_message">(kombu.transport.pyamqplib.Channel method)</a>
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Channel.prepare_message">(kombu.transport.pika2.Channel method)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Connection.Channel.prepare_message">(kombu.transport.pika2.Connection.Channel method)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Transport.Connection.Channel.prepare_message">(kombu.transport.pika2.Transport.Connection.Channel method)</a>
   </dt>
 
         
@@ -2638,6 +3034,8 @@
   </dt>
 
       </dl></dd>
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="reference/kombu.compat.html#kombu.compat.Consumer.process_next">process_next() (kombu.compat.Consumer method)</a>
   </dt>
@@ -2671,6 +3069,10 @@
   </dt>
 
       
+  <dt><a href="reference/kombu.utils.functional.html#kombu.utils.functional.promise">promise (class in kombu.utils.functional)</a>
+  </dt>
+
+      
   <dt><a href="reference/kombu.transport.base.html#kombu.transport.base.Message.properties">properties (kombu.transport.base.Message attribute)</a>
   </dt>
 
@@ -2697,6 +3099,10 @@
   <dt><a href="reference/kombu.messaging.html#kombu.messaging.Producer.publish">(kombu.messaging.Producer method)</a>
   </dt>
 
+        
+  <dt><a href="reference/kombu.transport.django.managers.html#kombu.transport.django.managers.QueueManager.publish">(kombu.transport.django.managers.QueueManager method)</a>
+  </dt>
+
       </dl></dd>
       
   <dt><a href="reference/kombu.compat.html#kombu.compat.Publisher">Publisher (class in kombu.compat)</a>
@@ -2717,6 +3123,10 @@
 
         
   <dt><a href="reference/kombu.messaging.html#kombu.messaging.Consumer.purge">(kombu.messaging.Consumer method)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.transport.django.managers.html#kombu.transport.django.managers.QueueManager.purge">(kombu.transport.django.managers.QueueManager method)</a>
   </dt>
 
       </dl></dd>
@@ -2772,6 +3182,16 @@
   <dt><a href="reference/kombu.entity.html#kombu.entity.Queue">Queue (class in kombu.entity)</a>
   </dt>
 
+      <dd><dl>
+        
+  <dt><a href="reference/kombu.transport.django.models.html#kombu.transport.django.models.Queue">(class in kombu.transport.django.models)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.transport.sqlalchemy.models.html#kombu.transport.sqlalchemy.models.Queue">(class in kombu.transport.sqlalchemy.models)</a>
+  </dt>
+
+      </dl></dd>
       
   <dt><a href="reference/kombu.compat.html#kombu.compat.Consumer.queue">queue (kombu.compat.Consumer attribute)</a>
   </dt>
@@ -2785,13 +3205,23 @@
   <dt><a href="reference/kombu.simple.html#kombu.simple.SimpleQueue.queue">(kombu.simple.SimpleQueue attribute)</a>
   </dt>
 
+        
+  <dt><a href="reference/kombu.transport.django.models.html#kombu.transport.django.models.Message.queue">(kombu.transport.django.models.Message attribute)</a>
+  </dt>
+
       </dl></dd>
+      
+  <dt><a href="reference/kombu.transport.django.models.html#kombu.transport.django.models.Queue.DoesNotExist">Queue.DoesNotExist</a>
+  </dt>
+
+      
+  <dt><a href="reference/kombu.transport.django.models.html#kombu.transport.django.models.Queue.MultipleObjectsReturned">Queue.MultipleObjectsReturned</a>
+  </dt>
+
       
   <dt><a href="reference/kombu.entity.html#kombu.entity.Queue.queue_arguments">queue_arguments (kombu.entity.Queue attribute)</a>
   </dt>
 
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="reference/kombu.entity.html#kombu.entity.Queue.queue_bind">queue_bind() (kombu.entity.Queue method)</a>
   </dt>
@@ -2814,6 +3244,8 @@
   </dt>
 
       </dl></dd>
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="reference/kombu.entity.html#kombu.entity.Queue.queue_declare">queue_declare() (kombu.entity.Queue method)</a>
   </dt>
@@ -2829,16 +3261,34 @@
 
       </dl></dd>
       
-  <dt><a href="reference/kombu.transport.SQS.html#kombu.transport.SQS.Channel.Table.queue_delete">queue_delete() (kombu.transport.SQS.Channel.Table method)</a>
+  <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Connection.Channel.queue_delete">queue_delete() (kombu.transport.librabbitmq.Connection.Channel method)</a>
   </dt>
 
       <dd><dl>
+        
+  <dt><a href="reference/kombu.transport.SQS.html#kombu.transport.SQS.Channel.Table.queue_delete">(kombu.transport.SQS.Channel.Table method)</a>
+  </dt>
+
         
   <dt><a href="reference/kombu.transport.SQS.html#kombu.transport.SQS.Transport.Channel.Table.queue_delete">(kombu.transport.SQS.Transport.Channel.Table method)</a>
   </dt>
 
         
   <dt><a href="reference/kombu.transport.virtual.html#kombu.transport.virtual.Channel.queue_delete">(kombu.transport.virtual.Channel method)</a>
+  </dt>
+
+      </dl></dd>
+      
+  <dt><a href="reference/kombu.transport.sqlalchemy.models.html#kombu.transport.sqlalchemy.models.Message.queue_id">queue_id (kombu.transport.sqlalchemy.models.Message attribute)</a>
+  </dt>
+
+      
+  <dt><a href="reference/kombu.transport.SQS.html#kombu.transport.SQS.Channel.queue_name_prefix">queue_name_prefix (kombu.transport.SQS.Channel attribute)</a>
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="reference/kombu.transport.SQS.html#kombu.transport.SQS.Transport.Channel.queue_name_prefix">(kombu.transport.SQS.Transport.Channel attribute)</a>
   </dt>
 
       </dl></dd>
@@ -2858,12 +3308,28 @@
 
       <dd><dl>
         
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Channel.queue_purge">(kombu.transport.pika2.Channel method)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Connection.Channel.queue_purge">(kombu.transport.pika2.Connection.Channel method)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Transport.Connection.Channel.queue_purge">(kombu.transport.pika2.Transport.Connection.Channel method)</a>
+  </dt>
+
+        
   <dt><a href="reference/kombu.transport.virtual.html#kombu.transport.virtual.Channel.queue_purge">(kombu.transport.virtual.Channel method)</a>
   </dt>
 
       </dl></dd>
       
   <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Connection.Channel.queue_unbind">queue_unbind() (kombu.transport.librabbitmq.Connection.Channel method)</a>
+  </dt>
+
+      
+  <dt><a href="reference/kombu.transport.django.managers.html#kombu.transport.django.managers.QueueManager">QueueManager (class in kombu.transport.django.managers)</a>
   </dt>
 
       
@@ -2899,12 +3365,12 @@
   </dt>
 
       
-  <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Connection.read_timeout">read_timeout() (kombu.transport.pyamqplib.Connection method)</a>
+  <dt><a href="reference/kombu.transport.amqplib.html#kombu.transport.amqplib.Connection.read_timeout">read_timeout() (kombu.transport.amqplib.Connection method)</a>
   </dt>
 
       <dd><dl>
         
-  <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Transport.Connection.read_timeout">(kombu.transport.pyamqplib.Transport.Connection method)</a>
+  <dt><a href="reference/kombu.transport.amqplib.html#kombu.transport.amqplib.Transport.Connection.read_timeout">(kombu.transport.amqplib.Transport.Connection method)</a>
   </dt>
 
       </dl></dd>
@@ -2923,6 +3389,10 @@
 
       </dl></dd>
       
+  <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Connection.reconnect">reconnect() (kombu.transport.librabbitmq.Connection method)</a>
+  </dt>
+
+      
   <dt><a href="reference/kombu.compat.html#kombu.compat.Consumer.recover">recover() (kombu.compat.Consumer method)</a>
   </dt>
 
@@ -2933,6 +3403,16 @@
 
         
   <dt><a href="reference/kombu.messaging.html#kombu.messaging.Consumer.recover">(kombu.messaging.Consumer method)</a>
+  </dt>
+
+      </dl></dd>
+      
+  <dt><a href="reference/kombu.transport.django.html#kombu.transport.django.Channel.refresh_connection">refresh_connection() (kombu.transport.django.Channel method)</a>
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="reference/kombu.transport.django.html#kombu.transport.django.Transport.Channel.refresh_connection">(kombu.transport.django.Transport.Channel method)</a>
   </dt>
 
       </dl></dd>
@@ -3022,6 +3502,8 @@
   <dt><a href="reference/kombu.pidbox.html#kombu.pidbox.Node.reply">reply() (kombu.pidbox.Node method)</a>
   </dt>
 
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="reference/kombu.pidbox.html#kombu.pidbox.Mailbox.reply_exchange">reply_exchange (kombu.pidbox.Mailbox attribute)</a>
   </dt>
@@ -3030,8 +3512,6 @@
   <dt><a href="reference/kombu.utils.html#kombu.utils.reprcall">reprcall() (in module kombu.utils)</a>
   </dt>
 
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="reference/kombu.utils.html#kombu.utils.reprkwargs">reprkwargs() (in module kombu.utils)</a>
   </dt>
@@ -3129,10 +3609,6 @@
 
       </dl></dd>
       
-  <dt><a href="reference/kombu.utils.html#kombu.utils.rpartition">rpartition() (in module kombu.utils)</a>
-  </dt>
-
-      
   <dt><a href="reference/kombu.mixins.html#kombu.mixins.ConsumerMixin.run">run() (kombu.mixins.ConsumerMixin method)</a>
   </dt>
 
@@ -3179,12 +3655,20 @@
   </dt>
 
       
-  <dt><a href="reference/kombu.transport.pyredis.html#kombu.transport.pyredis.Channel.sep">sep (kombu.transport.pyredis.Channel attribute)</a>
+  <dt><a href="reference/kombu.common.html#kombu.common.send_reply">send_reply() (in module kombu.common)</a>
+  </dt>
+
+      
+  <dt><a href="reference/kombu.transport.sqlalchemy.models.html#kombu.transport.sqlalchemy.models.Message.sent_at">sent_at (kombu.transport.sqlalchemy.models.Message attribute)</a>
+  </dt>
+
+      
+  <dt><a href="reference/kombu.transport.redis.html#kombu.transport.redis.Channel.sep">sep (kombu.transport.redis.Channel attribute)</a>
   </dt>
 
       <dd><dl>
         
-  <dt><a href="reference/kombu.transport.pyredis.html#kombu.transport.pyredis.Transport.Channel.sep">(kombu.transport.pyredis.Transport.Channel attribute)</a>
+  <dt><a href="reference/kombu.transport.redis.html#kombu.transport.redis.Transport.Channel.sep">(kombu.transport.redis.Transport.Channel attribute)</a>
   </dt>
 
       </dl></dd>
@@ -3207,6 +3691,16 @@
   </dt>
 
       
+  <dt><a href="reference/kombu.transport.sqlalchemy.html#kombu.transport.sqlalchemy.Channel.session">session (kombu.transport.sqlalchemy.Channel attribute)</a>
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="reference/kombu.transport.sqlalchemy.html#kombu.transport.sqlalchemy.Transport.Channel.session">(kombu.transport.sqlalchemy.Transport.Channel attribute)</a>
+  </dt>
+
+      </dl></dd>
+      
   <dt><a href="reference/kombu.pools.html#kombu.pools.set_limit">set_limit() (in module kombu.pools)</a>
   </dt>
 
@@ -3214,16 +3708,22 @@
   <dt><a href="reference/kombu.utils.compat.html#kombu.utils.compat.CompatOrderedDict.setdefault">setdefault() (kombu.utils.compat.CompatOrderedDict method)</a>
   </dt>
 
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="reference/kombu.pools.html#kombu.pools.ProducerPool.setup">setup() (kombu.pools.ProducerPool method)</a>
   </dt>
 
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
       
-  <dt><a href="reference/kombu.utils.debug.html#kombu.utils.debug.setup_logging">setup_logging() (in module kombu.utils.debug)</a>
+  <dt><a href="reference/kombu.log.html#kombu.log.setup_logging">setup_logging() (in module kombu.log)</a>
   </dt>
 
+      <dd><dl>
+        
+  <dt><a href="reference/kombu.utils.debug.html#kombu.utils.debug.setup_logging">(in module kombu.utils.debug)</a>
+  </dt>
+
+      </dl></dd>
       
   <dt><a href="reference/kombu.mixins.html#kombu.mixins.ConsumerMixin.should_stop">should_stop (kombu.mixins.ConsumerMixin attribute)</a>
   </dt>
@@ -3242,6 +3742,10 @@
 
       
   <dt><a href="reference/kombu.connection.html#kombu.connection.BrokerConnection.SimpleQueue">SimpleQueue() (kombu.connection.BrokerConnection method)</a>
+  </dt>
+
+      
+  <dt><a href="reference/kombu.transport.django.managers.html#kombu.transport.django.managers.QueueManager.size">size() (kombu.transport.django.managers.QueueManager method)</a>
   </dt>
 
       
@@ -3281,17 +3785,17 @@
   </dt>
 
       
-  <dt><a href="reference/kombu.transport.pyredis.html#kombu.transport.pyredis.Channel.subclient">subclient (kombu.transport.pyredis.Channel attribute)</a>
+  <dt><a href="reference/kombu.transport.redis.html#kombu.transport.redis.Channel.subclient">subclient (kombu.transport.redis.Channel attribute)</a>
   </dt>
 
       <dd><dl>
         
-  <dt><a href="reference/kombu.transport.pyredis.html#kombu.transport.pyredis.Transport.Channel.subclient">(kombu.transport.pyredis.Transport.Channel attribute)</a>
+  <dt><a href="reference/kombu.transport.redis.html#kombu.transport.redis.Transport.Channel.subclient">(kombu.transport.redis.Transport.Channel attribute)</a>
   </dt>
 
       </dl></dd>
       
-  <dt><a href="reference/kombu.transport.pyredis.html#kombu.transport.pyredis.Channel.supports_fanout">supports_fanout (kombu.transport.pyredis.Channel attribute)</a>
+  <dt><a href="reference/kombu.transport.redis.html#kombu.transport.redis.Channel.supports_fanout">supports_fanout (kombu.transport.redis.Channel attribute)</a>
   </dt>
 
       <dd><dl>
@@ -3304,7 +3808,7 @@
   </dt>
 
         
-  <dt><a href="reference/kombu.transport.pyredis.html#kombu.transport.pyredis.Transport.Channel.supports_fanout">(kombu.transport.pyredis.Transport.Channel attribute)</a>
+  <dt><a href="reference/kombu.transport.redis.html#kombu.transport.redis.Transport.Channel.supports_fanout">(kombu.transport.redis.Transport.Channel attribute)</a>
   </dt>
 
       </dl></dd>
@@ -3325,7 +3829,7 @@
 
       </dl></dd>
       
-  <dt><a href="reference/kombu.exceptions.html#kombu.exceptions.TimeoutError">TimeoutError</a>
+  <dt><a href="reference/kombu.exceptions.html#kombu.exceptions.TimeoutError">TimeoutError (in module kombu.exceptions)</a>
   </dt>
 
       
@@ -3345,7 +3849,7 @@
   </dt>
 
       
-  <dt><a href="reference/kombu.transport.base.html#kombu.transport.base.Transport">Transport (class in kombu.transport.base)</a>
+  <dt><a href="reference/kombu.transport.amqplib.html#kombu.transport.amqplib.Transport">Transport (class in kombu.transport.amqplib)</a>
   </dt>
 
       <dd><dl>
@@ -3354,7 +3858,19 @@
   </dt>
 
         
+  <dt><a href="reference/kombu.transport.base.html#kombu.transport.base.Transport">(class in kombu.transport.base)</a>
+  </dt>
+
+        
   <dt><a href="reference/kombu.transport.beanstalk.html#kombu.transport.beanstalk.Transport">(class in kombu.transport.beanstalk)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.transport.couchdb.html#kombu.transport.couchdb.Transport">(class in kombu.transport.couchdb)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.transport.django.html#kombu.transport.django.Transport">(class in kombu.transport.django)</a>
   </dt>
 
         
@@ -3370,15 +3886,15 @@
   </dt>
 
         
-  <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Transport">(class in kombu.transport.pyamqplib)</a>
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Transport">(class in kombu.transport.pika2)</a>
   </dt>
 
         
-  <dt><a href="reference/kombu.transport.pycouchdb.html#kombu.transport.pycouchdb.Transport">(class in kombu.transport.pycouchdb)</a>
+  <dt><a href="reference/kombu.transport.redis.html#kombu.transport.redis.Transport">(class in kombu.transport.redis)</a>
   </dt>
 
         
-  <dt><a href="reference/kombu.transport.pyredis.html#kombu.transport.pyredis.Transport">(class in kombu.transport.pyredis)</a>
+  <dt><a href="reference/kombu.transport.sqlalchemy.html#kombu.transport.sqlalchemy.Transport">(class in kombu.transport.sqlalchemy)</a>
   </dt>
 
         
@@ -3400,6 +3916,14 @@
   </dt>
 
         
+  <dt><a href="reference/kombu.transport.couchdb.html#kombu.transport.couchdb.Transport.Channel">(class in kombu.transport.couchdb)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.transport.django.html#kombu.transport.django.Transport.Channel">(class in kombu.transport.django)</a>
+  </dt>
+
+        
   <dt><a href="reference/kombu.transport.memory.html#kombu.transport.memory.Transport.Channel">(class in kombu.transport.memory)</a>
   </dt>
 
@@ -3408,11 +3932,11 @@
   </dt>
 
         
-  <dt><a href="reference/kombu.transport.pycouchdb.html#kombu.transport.pycouchdb.Transport.Channel">(class in kombu.transport.pycouchdb)</a>
+  <dt><a href="reference/kombu.transport.redis.html#kombu.transport.redis.Transport.Channel">(class in kombu.transport.redis)</a>
   </dt>
 
         
-  <dt><a href="reference/kombu.transport.pyredis.html#kombu.transport.pyredis.Transport.Channel">(class in kombu.transport.pyredis)</a>
+  <dt><a href="reference/kombu.transport.sqlalchemy.html#kombu.transport.sqlalchemy.Transport.Channel">(class in kombu.transport.sqlalchemy)</a>
   </dt>
 
       </dl></dd>
@@ -3423,12 +3947,16 @@
   </dt>
 
       
-  <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Transport.Connection">Transport.Connection (class in kombu.transport.librabbitmq)</a>
+  <dt><a href="reference/kombu.transport.amqplib.html#kombu.transport.amqplib.Transport.Connection">Transport.Connection (class in kombu.transport.amqplib)</a>
   </dt>
 
       <dd><dl>
         
-  <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Transport.Connection">(class in kombu.transport.pyamqplib)</a>
+  <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Transport.Connection">(class in kombu.transport.librabbitmq)</a>
+  </dt>
+
+        
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Transport.Connection">(class in kombu.transport.pika2)</a>
   </dt>
 
       </dl></dd>
@@ -3436,8 +3964,24 @@
   <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Transport.Connection.Channel">Transport.Connection.Channel (class in kombu.transport.librabbitmq)</a>
   </dt>
 
+      <dd><dl>
+        
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Transport.Connection.Channel">(class in kombu.transport.pika2)</a>
+  </dt>
+
+      </dl></dd>
       
   <dt><a href="reference/kombu.transport.librabbitmq.html#kombu.transport.librabbitmq.Transport.Connection.Channel.Message">Transport.Connection.Channel.Message (class in kombu.transport.librabbitmq)</a>
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Transport.Connection.Channel.Message">(class in kombu.transport.pika2)</a>
+  </dt>
+
+      </dl></dd>
+      
+  <dt><a href="reference/kombu.transport.pika2.html#kombu.transport.pika2.Transport.Message">Transport.Message (class in kombu.transport.pika2)</a>
   </dt>
 
       
@@ -3501,13 +4045,15 @@
   </dl></td>
   <td style="width: 33%" valign="top"><dl>
       
-  <dt><a href="reference/kombu.utils.html#kombu.utils.uuid">uuid() (in module kombu.utils)</a>
+  <dt><a href="reference/kombu.common.html#kombu.common.uuid">uuid() (in module kombu.common)</a>
   </dt>
 
-      
-  <dt><a href="reference/kombu.utils.html#kombu.utils.uuid4">uuid4() (in module kombu.utils)</a>
+      <dd><dl>
+        
+  <dt><a href="reference/kombu.utils.html#kombu.utils.uuid">(in module kombu.utils)</a>
   </dt>
 
+      </dl></dd>
   </dl></td>
 </tr></table>
 
@@ -3523,18 +4069,22 @@
   </dt>
 
       
-  <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Transport.verify_connection">verify_connection() (kombu.transport.pyamqplib.Transport method)</a>
+  <dt><a href="reference/kombu.transport.amqplib.html#kombu.transport.amqplib.Transport.verify_connection">verify_connection() (kombu.transport.amqplib.Transport method)</a>
+  </dt>
+
+      
+  <dt><a href="reference/kombu.transport.sqlalchemy.models.html#kombu.transport.sqlalchemy.models.Message.version">version (kombu.transport.sqlalchemy.models.Message attribute)</a>
   </dt>
 
   </dl></td>
   <td style="width: 33%" valign="top"><dl>
       
-  <dt><a href="reference/kombu.transport.pycouchdb.html#kombu.transport.pycouchdb.Channel.view_created">view_created (kombu.transport.pycouchdb.Channel attribute)</a>
+  <dt><a href="reference/kombu.transport.couchdb.html#kombu.transport.couchdb.Channel.view_created">view_created (kombu.transport.couchdb.Channel attribute)</a>
   </dt>
 
       <dd><dl>
         
-  <dt><a href="reference/kombu.transport.pycouchdb.html#kombu.transport.pycouchdb.Transport.Channel.view_created">(kombu.transport.pycouchdb.Transport.Channel attribute)</a>
+  <dt><a href="reference/kombu.transport.couchdb.html#kombu.transport.couchdb.Transport.Channel.view_created">(kombu.transport.couchdb.Transport.Channel attribute)</a>
   </dt>
 
       </dl></dd>
@@ -3548,6 +4098,10 @@
   </dt>
 
       </dl></dd>
+      
+  <dt><a href="reference/kombu.transport.sqlalchemy.models.html#kombu.transport.sqlalchemy.models.Message.visible">visible (kombu.transport.sqlalchemy.models.Message attribute)</a>
+  </dt>
+
   </dl></td>
 </tr></table>
 
@@ -3560,20 +4114,24 @@
 
       <dd><dl>
         
-  <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Connection.wait">(kombu.transport.pyamqplib.Connection method)</a>
+  <dt><a href="reference/kombu.transport.amqplib.html#kombu.transport.amqplib.Connection.wait">(kombu.transport.amqplib.Connection method)</a>
   </dt>
 
       </dl></dd>
       
-  <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Connection.wait_multi">wait_multi() (kombu.transport.pyamqplib.Connection method)</a>
+  <dt><a href="reference/kombu.transport.amqplib.html#kombu.transport.amqplib.Connection.wait_multi">wait_multi() (kombu.transport.amqplib.Connection method)</a>
   </dt>
 
       <dd><dl>
         
-  <dt><a href="reference/kombu.transport.pyamqplib.html#kombu.transport.pyamqplib.Transport.Connection.wait_multi">(kombu.transport.pyamqplib.Transport.Connection method)</a>
+  <dt><a href="reference/kombu.transport.amqplib.html#kombu.transport.amqplib.Transport.Connection.wait_multi">(kombu.transport.amqplib.Transport.Connection method)</a>
   </dt>
 
       </dl></dd>
+      
+  <dt><a href="reference/kombu.log.html#kombu.log.LogMixin.warn">warn() (kombu.log.LogMixin method)</a>
+  </dt>
+
   </dl></td>
   <td style="width: 33%" valign="top"><dl>
       
@@ -3628,11 +4186,11 @@
         <li class="right" >
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li><a href="index.html">Kombu 1.5.0 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Kombu 2.0.0 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
-        &copy; Copyright 2009-2011, Ask Solem.
+        &copy; Copyright 2009-2012, Ask Solem.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
     </div>
   </body>

@@ -7,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Examples &mdash; Kombu 1.5.0 documentation</title>
+    <title>Examples &mdash; Kombu 2.0.0 documentation</title>
     
     <link rel="stylesheet" href="../_static/celery.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -15,7 +15,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '1.5.0',
+        VERSION:     '2.0.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -24,7 +24,7 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="Kombu 1.5.0 documentation" href="../index.html" />
+    <link rel="top" title="Kombu 2.0.0 documentation" href="../index.html" />
     <link rel="up" title="User Guide" href="index.html" />
     <link rel="next" title="Simple Interface" href="simple.html" />
     <link rel="prev" title="Consumers" href="consumers.html" /> 
@@ -45,7 +45,7 @@
         <li class="right" >
           <a href="consumers.html" title="Consumers"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">Kombu 1.5.0 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 2.0.0 documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">User Guide</a> &raquo;</li> 
       </ul>
     </div>  
@@ -74,7 +74,7 @@ for priorities using different queues.</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">with_statement</span>
 
 <span class="kn">from</span> <span class="nn">kombu.mixins</span> <span class="kn">import</span> <span class="n">ConsumerMixin</span>
-<span class="kn">from</span> <span class="nn">kombu.utils</span> <span class="kn">import</span> <span class="n">kwdict</span>
+<span class="kn">from</span> <span class="nn">kombu.utils</span> <span class="kn">import</span> <span class="n">kwdict</span><span class="p">,</span> <span class="n">reprcall</span>
 
 <span class="kn">from</span> <span class="nn">queues</span> <span class="kn">import</span> <span class="n">task_queues</span>
 
@@ -86,13 +86,17 @@ for priorities using different queues.</p>
 
     <span class="k">def</span> <span class="nf">get_consumers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">Consumer</span><span class="p">,</span> <span class="n">channel</span><span class="p">):</span>
         <span class="k">return</span> <span class="p">[</span><span class="n">Consumer</span><span class="p">(</span><span class="n">queues</span><span class="o">=</span><span class="n">task_queues</span><span class="p">,</span>
-                        <span class="n">callbacks</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">process_task</span><span class="p">])]</span>
+                         <span class="n">callbacks</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">process_task</span><span class="p">])]</span>
 
     <span class="k">def</span> <span class="nf">process_task</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">body</span><span class="p">,</span> <span class="n">message</span><span class="p">):</span>
         <span class="n">fun</span> <span class="o">=</span> <span class="n">body</span><span class="p">[</span><span class="s">&quot;fun&quot;</span><span class="p">]</span>
         <span class="n">args</span> <span class="o">=</span> <span class="n">body</span><span class="p">[</span><span class="s">&quot;args&quot;</span><span class="p">]</span>
         <span class="n">kwargs</span> <span class="o">=</span> <span class="n">body</span><span class="p">[</span><span class="s">&quot;kwargs&quot;</span><span class="p">]</span>
-        <span class="n">fun</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwdict</span><span class="p">(</span><span class="n">kwargs</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;Got task: </span><span class="si">%s</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">reprcall</span><span class="p">(</span><span class="n">fun</span><span class="o">.</span><span class="n">__name__</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">))</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">fun</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwdict</span><span class="p">(</span><span class="n">kwargs</span><span class="p">))</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">,</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s">&quot;task raised exception: </span><span class="si">%r</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span>
         <span class="n">message</span><span class="o">.</span><span class="n">ack</span><span class="p">()</span>
 
 <span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&quot;__main__&quot;</span><span class="p">:</span>
@@ -101,7 +105,10 @@ for priorities using different queues.</p>
     <span class="n">setup_logging</span><span class="p">(</span><span class="n">loglevel</span><span class="o">=</span><span class="s">&quot;INFO&quot;</span><span class="p">)</span>
 
     <span class="k">with</span> <span class="n">BrokerConnection</span><span class="p">(</span><span class="s">&quot;amqp://guest:guest@localhost:5672//&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">conn</span><span class="p">:</span>
-        <span class="n">Worker</span><span class="p">(</span><span class="n">conn</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">Worker</span><span class="p">(</span><span class="n">conn</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+        <span class="k">except</span> <span class="ne">KeyboardInterrupt</span><span class="p">:</span>
+            <span class="k">print</span><span class="p">(</span><span class="s">&quot;bye bye&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 <p><tt class="file docutils literal"><span class="pre">tasks.py</span></tt>:</p>
@@ -125,14 +132,14 @@ for priorities using different queues.</p>
                            <span class="s">&quot;low&quot;</span><span class="p">:</span> <span class="s">&quot;lopri&quot;</span><span class="p">}</span>
 
 
-<span class="k">def</span> <span class="nf">send_as_task</span><span class="p">(</span><span class="n">connection</span><span class="p">,</span> <span class="n">fun</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">,</span> <span class="n">priority</span><span class="o">=</span><span class="s">&quot;mid&quot;</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">send_as_task</span><span class="p">(</span><span class="n">connection</span><span class="p">,</span> <span class="n">fun</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">(),</span> <span class="n">kwargs</span><span class="o">=</span><span class="p">{},</span> <span class="n">priority</span><span class="o">=</span><span class="s">&quot;mid&quot;</span><span class="p">):</span>
     <span class="n">payload</span> <span class="o">=</span> <span class="p">{</span><span class="s">&quot;fun&quot;</span><span class="p">:</span> <span class="n">fun</span><span class="p">,</span> <span class="s">&quot;args&quot;</span><span class="p">:</span> <span class="n">args</span><span class="p">,</span> <span class="s">&quot;kwargs&quot;</span><span class="p">:</span> <span class="n">kwargs</span><span class="p">}</span>
     <span class="n">routing_key</span> <span class="o">=</span> <span class="n">priority_to_routing_key</span><span class="p">[</span><span class="n">priority</span><span class="p">]</span>
 
     <span class="k">with</span> <span class="n">producers</span><span class="p">[</span><span class="n">connection</span><span class="p">]</span><span class="o">.</span><span class="n">acquire</span><span class="p">(</span><span class="n">block</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">producer</span><span class="p">:</span>
         <span class="n">maybe_declare</span><span class="p">(</span><span class="n">task_exchange</span><span class="p">,</span> <span class="n">producer</span><span class="o">.</span><span class="n">channel</span><span class="p">)</span>
         <span class="n">producer</span><span class="o">.</span><span class="n">publish</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span> <span class="n">serializer</span><span class="o">=</span><span class="s">&quot;pickle&quot;</span><span class="p">,</span>
-                                  <span class="n">compression</span><span class="o">=</span><span class="s">&quot;zlib&quot;</span><span class="p">,</span>
+                                  <span class="n">compression</span><span class="o">=</span><span class="s">&quot;bzip2&quot;</span><span class="p">,</span>
                                   <span class="n">routing_key</span><span class="o">=</span><span class="n">routing_key</span><span class="p">)</span>
 
 <span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&quot;__main__&quot;</span><span class="p">:</span>
@@ -206,12 +213,12 @@ for priorities using different queues.</p>
         <li class="right" >
           <a href="consumers.html" title="Consumers"
              >previous</a> |</li>
-        <li><a href="../index.html">Kombu 1.5.0 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 2.0.0 documentation</a> &raquo;</li>
           <li><a href="index.html" >User Guide</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
-        &copy; Copyright 2009-2011, Ask Solem.
+        &copy; Copyright 2009-2012, Ask Solem.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
     </div>
   </body>

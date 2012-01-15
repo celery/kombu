@@ -7,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Consumers &mdash; Kombu 1.5.0 documentation</title>
+    <title>Consumers &mdash; Kombu 2.0.0 documentation</title>
     
     <link rel="stylesheet" href="../_static/celery.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -15,7 +15,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '1.5.0',
+        VERSION:     '2.0.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -24,7 +24,7 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="Kombu 1.5.0 documentation" href="../index.html" />
+    <link rel="top" title="Kombu 2.0.0 documentation" href="../index.html" />
     <link rel="up" title="User Guide" href="index.html" />
     <link rel="next" title="Examples" href="examples.html" />
     <link rel="prev" title="Producers" href="producers.html" /> 
@@ -45,7 +45,7 @@
         <li class="right" >
           <a href="producers.html" title="Producers"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">Kombu 1.5.0 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 2.0.0 documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">User Guide</a> &raquo;</li> 
       </ul>
     </div>  
@@ -59,12 +59,72 @@
 <span id="guide-consumers"></span><h1>Consumers<a class="headerlink" href="#consumers" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="basics">
 <span id="consumer-basics"></span><h2>Basics<a class="headerlink" href="#basics" title="Permalink to this headline">¶</a></h2>
+<p>The <a class="reference internal" href="../reference/kombu.messaging.html#kombu.messaging.Consumer" title="kombu.messaging.Consumer"><tt class="xref py py-class docutils literal"><span class="pre">Consumer</span></tt></a> takes a connection (or channel) and a list of queues to
+consume from.  Several consumers can be mixed to consume from different
+channels, as they all bind to the same connection, and <tt class="docutils literal"><span class="pre">drain_events</span></tt> will
+drain events from all channels on that connection.</p>
+<p>Draining events from a single consumer:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">with</span> <span class="n">Consumer</span><span class="p">(</span><span class="n">connection</span><span class="p">,</span> <span class="n">queues</span><span class="p">):</span>
+    <span class="n">connection</span><span class="o">.</span><span class="n">drain_events</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Draining events from several consumers:</p>
+<div class="highlight-python"><pre>from kombu.utils import nested
+
+with connection.channel(), connection.channel() as (channel1, channel2):
+    consumers = [Consumer(channel1, queues1),
+                 Consumer(channel2, queues2)]
+    with nested(\*consumers):
+        connection.drain_events(timeout=1)</pre>
+</div>
+<p>Or using <a class="reference internal" href="../reference/kombu.mixins.html#kombu.mixins.ConsumerMixin" title="kombu.mixins.ConsumerMixin"><tt class="xref py py-class docutils literal"><span class="pre">ConsumerMixin</span></tt></a>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">kombu.mixins</span> <span class="kn">import</span> <span class="n">ConsumerMixin</span>
+
+<span class="k">class</span> <span class="nc">C</span><span class="p">(</span><span class="n">ConsumerMixin</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">connection</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">connection</span> <span class="o">=</span> <span class="n">connection</span>
+
+    <span class="k">def</span> <span class="nf">get_consumers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">Consumer</span><span class="p">,</span> <span class="n">channel</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">Consumer</span><span class="p">(</span><span class="n">queues</span><span class="p">,</span> <span class="n">callbacks</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">on_message</span><span class="p">])]</span>
+
+    <span class="k">def</span> <span class="nf">on_message</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">body</span><span class="p">,</span> <span class="n">message</span><span class="p">):</span>
+        <span class="k">print</span><span class="p">(</span><span class="s">&quot;RECEIVED MESSAGE: </span><span class="si">%r</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">body</span><span class="p">,</span> <span class="p">))</span>
+        <span class="n">message</span><span class="o">.</span><span class="n">ack</span><span class="p">()</span>
+
+<span class="n">C</span><span class="p">(</span><span class="n">connection</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>and with multiple channels again:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">kombu.messaging</span> <span class="kn">import</span> <span class="n">Consumer</span>
+<span class="kn">from</span> <span class="nn">kombu.mixins</span> <span class="kn">import</span> <span class="n">ConsumerMixin</span>
+
+<span class="k">class</span> <span class="nc">C</span><span class="p">(</span><span class="n">ConsumerMixin</span><span class="p">):</span>
+    <span class="n">channel2</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">connection</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">connection</span> <span class="o">=</span> <span class="n">connection</span>
+
+    <span class="k">def</span> <span class="nf">get_consumers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">default_channel</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channel2</span> <span class="o">=</span> <span class="n">default_channel</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">channel</span><span class="p">()</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">Consumer</span><span class="p">(</span><span class="n">default_channel</span><span class="p">,</span> <span class="n">queues1</span><span class="p">,</span>
+                         <span class="n">callbacks</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">on_message</span><span class="p">]),</span>
+                <span class="n">Consumer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">channel2</span><span class="p">,</span> <span class="n">queues2</span><span class="p">,</span>
+                         <span class="n">callbacks</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">on_special_message</span><span class="p">])]</span>
+
+    <span class="k">def</span> <span class="nf">on_consumer_end</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">connection</span><span class="p">,</span> <span class="n">default_channel</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">channel2</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">channel2</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+<span class="n">C</span><span class="p">(</span><span class="n">connection</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</pre></div>
+</div>
 </div>
 <div class="section" id="module-kombu.messaging">
 <span id="reference"></span><h2>Reference<a class="headerlink" href="#module-kombu.messaging" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt>
-<em class="property">class </em><tt class="descclassname">kombu.messaging.</tt><tt class="descname">Consumer</tt><big>(</big><em>channel</em>, <em>queues</em>, <em>no_ack=None</em>, <em>auto_declare=None</em>, <em>callbacks=None</em>, <em>on_decode_error=None</em><big>)</big></dt>
+<em class="property">class </em><tt class="descclassname">kombu.messaging.</tt><tt class="descname">Consumer</tt><big>(</big><em>channel</em>, <em>queues=None</em>, <em>no_ack=None</em>, <em>auto_declare=None</em>, <em>callbacks=None</em>, <em>on_decode_error=None</em><big>)</big></dt>
 <dd><p>Message consumer.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -116,7 +176,7 @@ mean the server will not send any more messages for this consumer.</p>
 <dl class="attribute">
 <dt>
 <tt class="descclassname">Consumer.</tt><tt class="descname">channel</tt><em class="property"> = None</em></dt>
-<dd><p>The connection channel to use.</p>
+<dd><p>The connection/channel to use for this consumer.</p>
 </dd></dl>
 
 <dl class="method">
@@ -344,12 +404,12 @@ and the <cite>Message</cite> instance (a subclass of
         <li class="right" >
           <a href="producers.html" title="Producers"
              >previous</a> |</li>
-        <li><a href="../index.html">Kombu 1.5.0 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 2.0.0 documentation</a> &raquo;</li>
           <li><a href="index.html" >User Guide</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
-        &copy; Copyright 2009-2011, Ask Solem.
+        &copy; Copyright 2009-2012, Ask Solem.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
     </div>
   </body>

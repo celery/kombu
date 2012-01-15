@@ -7,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>kombu.transport.virtual &mdash; Kombu 1.5.0 documentation</title>
+    <title>kombu.transport.virtual &mdash; Kombu 2.0.0 documentation</title>
     
     <link rel="stylesheet" href="../_static/celery.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -15,7 +15,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '1.5.0',
+        VERSION:     '2.0.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -24,7 +24,7 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="Kombu 1.5.0 documentation" href="../index.html" />
+    <link rel="top" title="Kombu 2.0.0 documentation" href="../index.html" />
     <link rel="up" title="API Reference" href="index.html" />
     <link rel="next" title="kombu.transport.virtual.exchange" href="kombu.transport.virtual.exchange.html" />
     <link rel="prev" title="kombu.transport.base" href="kombu.transport.base.html" /> 
@@ -45,7 +45,7 @@
         <li class="right" >
           <a href="kombu.transport.base.html" title="kombu.transport.base"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">Kombu 1.5.0 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 2.0.0 documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">API Reference</a> &raquo;</li> 
       </ul>
     </div>  
@@ -64,7 +64,7 @@
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">copyright:</th><td class="field-body"><ol class="first loweralpha simple" start="3">
-<li>2009, 2011 by Ask Solem.</li>
+<li>2009, 2012 by Ask Solem.</li>
 </ol>
 </td>
 </tr>
@@ -122,7 +122,7 @@
 
 <dl class="attribute">
 <dt id="kombu.transport.virtual.Transport.state">
-<tt class="descname">state</tt><em class="property"> = &lt;kombu.transport.virtual.BrokerState object at 0x10271f890&gt;</em><a class="headerlink" href="#kombu.transport.virtual.Transport.state" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">state</tt><em class="property"> = &lt;kombu.transport.virtual.BrokerState object at 0x103d2a850&gt;</em><a class="headerlink" href="#kombu.transport.virtual.Transport.state" title="Permalink to this definition">¶</a></dt>
 <dd><p><a class="reference internal" href="#kombu.transport.virtual.BrokerState" title="kombu.transport.virtual.BrokerState"><tt class="xref py py-class docutils literal"><span class="pre">BrokerState</span></tt></a> containing declared exchanges and
 bindings (set by constructor).</p>
 </dd></dl>
@@ -242,7 +242,7 @@ goes out of scope.</p>
 
 <dl class="method">
 <dt id="kombu.transport.virtual.Channel.queue_bind">
-<tt class="descname">queue_bind</tt><big>(</big><em>queue</em>, <em>exchange</em>, <em>routing_key</em>, <em>arguments=None</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.transport.virtual.Channel.queue_bind" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">queue_bind</tt><big>(</big><em>queue</em>, <em>exchange</em>, <em>routing_key=''</em>, <em>arguments=None</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.transport.virtual.Channel.queue_bind" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bind <cite>queue</cite> to <cite>exchange</cite> with <cite>routing key</cite>.</p>
 </dd></dl>
 
@@ -394,6 +394,11 @@ acknowledged/requeued/rejected.</td>
 </table>
 </dd></dl>
 
+<dl class="method">
+<dt id="kombu.transport.virtual.Message.ack_log_error">
+<tt class="descclassname">Message.</tt><tt class="descname">ack_log_error</tt><big>(</big><em>logger</em>, <em>errors</em><big>)</big><a class="headerlink" href="#kombu.transport.virtual.Message.ack_log_error" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
 <dl class="attribute">
 <dt id="kombu.transport.virtual.Message.acknowledged">
 <tt class="descclassname">Message.</tt><tt class="descname">acknowledged</tt><a class="headerlink" href="#kombu.transport.virtual.Message.acknowledged" title="Permalink to this definition">¶</a></dt>
@@ -402,22 +407,22 @@ acknowledged/requeued/rejected.</td>
 
 <dl class="attribute">
 <dt id="kombu.transport.virtual.Message.body">
-<tt class="descclassname">Message.</tt><tt class="descname">body</tt><em class="property"> = None</em><a class="headerlink" href="#kombu.transport.virtual.Message.body" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">Message.</tt><tt class="descname">body</tt><a class="headerlink" href="#kombu.transport.virtual.Message.body" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.transport.virtual.Message.channel">
-<tt class="descclassname">Message.</tt><tt class="descname">channel</tt><em class="property"> = None</em><a class="headerlink" href="#kombu.transport.virtual.Message.channel" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">Message.</tt><tt class="descname">channel</tt><a class="headerlink" href="#kombu.transport.virtual.Message.channel" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.transport.virtual.Message.content_encoding">
-<tt class="descclassname">Message.</tt><tt class="descname">content_encoding</tt><em class="property"> = None</em><a class="headerlink" href="#kombu.transport.virtual.Message.content_encoding" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">Message.</tt><tt class="descname">content_encoding</tt><a class="headerlink" href="#kombu.transport.virtual.Message.content_encoding" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.transport.virtual.Message.content_type">
-<tt class="descclassname">Message.</tt><tt class="descname">content_type</tt><em class="property"> = None</em><a class="headerlink" href="#kombu.transport.virtual.Message.content_type" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">Message.</tt><tt class="descname">content_type</tt><a class="headerlink" href="#kombu.transport.virtual.Message.content_type" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="method">
@@ -429,17 +434,17 @@ python structure sent by the publisher.</p>
 
 <dl class="attribute">
 <dt id="kombu.transport.virtual.Message.delivery_info">
-<tt class="descclassname">Message.</tt><tt class="descname">delivery_info</tt><em class="property"> = None</em><a class="headerlink" href="#kombu.transport.virtual.Message.delivery_info" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">Message.</tt><tt class="descname">delivery_info</tt><a class="headerlink" href="#kombu.transport.virtual.Message.delivery_info" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.transport.virtual.Message.delivery_tag">
-<tt class="descclassname">Message.</tt><tt class="descname">delivery_tag</tt><em class="property"> = None</em><a class="headerlink" href="#kombu.transport.virtual.Message.delivery_tag" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">Message.</tt><tt class="descname">delivery_tag</tt><a class="headerlink" href="#kombu.transport.virtual.Message.delivery_tag" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.transport.virtual.Message.headers">
-<tt class="descclassname">Message.</tt><tt class="descname">headers</tt><em class="property"> = None</em><a class="headerlink" href="#kombu.transport.virtual.Message.headers" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">Message.</tt><tt class="descname">headers</tt><a class="headerlink" href="#kombu.transport.virtual.Message.headers" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="attribute">
@@ -450,7 +455,7 @@ python structure sent by the publisher.</p>
 
 <dl class="attribute">
 <dt id="kombu.transport.virtual.Message.properties">
-<tt class="descclassname">Message.</tt><tt class="descname">properties</tt><em class="property"> = None</em><a class="headerlink" href="#kombu.transport.virtual.Message.properties" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">Message.</tt><tt class="descname">properties</tt><a class="headerlink" href="#kombu.transport.virtual.Message.properties" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="method">
@@ -653,12 +658,12 @@ prefetch limits.</p>
         <li class="right" >
           <a href="kombu.transport.base.html" title="kombu.transport.base"
              >previous</a> |</li>
-        <li><a href="../index.html">Kombu 1.5.0 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 2.0.0 documentation</a> &raquo;</li>
           <li><a href="index.html" >API Reference</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
-        &copy; Copyright 2009-2011, Ask Solem.
+        &copy; Copyright 2009-2012, Ask Solem.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
     </div>
   </body>

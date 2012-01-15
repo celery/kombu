@@ -7,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>kombu.compat &mdash; Kombu 1.5.0 documentation</title>
+    <title>kombu.compat &mdash; Kombu 2.0.0 documentation</title>
     
     <link rel="stylesheet" href="../_static/celery.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -15,7 +15,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '1.5.0',
+        VERSION:     '2.0.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -24,7 +24,7 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="Kombu 1.5.0 documentation" href="../index.html" />
+    <link rel="top" title="Kombu 2.0.0 documentation" href="../index.html" />
     <link rel="up" title="API Reference" href="index.html" />
     <link rel="next" title="kombu.pidbox" href="kombu.pidbox.html" />
     <link rel="prev" title="Clocks and Synchronization - kombu.clocks" href="kombu.clocks.html" /> 
@@ -45,7 +45,7 @@
         <li class="right" >
           <a href="kombu.clocks.html" title="Clocks and Synchronization - kombu.clocks"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">Kombu 1.5.0 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 2.0.0 documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">API Reference</a> &raquo;</li> 
       </ul>
     </div>  
@@ -64,7 +64,7 @@
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">copyright:</th><td class="field-body"><ol class="first loweralpha simple" start="3">
-<li>2009 - 2011 by Ask Solem.</li>
+<li>2009 - 2012 by Ask Solem.</li>
 </ol>
 </td>
 </tr>
@@ -116,6 +116,11 @@
 <tt class="descname">compression</tt><em class="property"> = None</em><a class="headerlink" href="#kombu.compat.Publisher.compression" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
+<dl class="attribute">
+<dt id="kombu.compat.Publisher.connection">
+<tt class="descname">connection</tt><a class="headerlink" href="#kombu.compat.Publisher.connection" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
 <dl class="method">
 <dt id="kombu.compat.Publisher.declare">
 <tt class="descname">declare</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.compat.Publisher.declare" title="Permalink to this definition">¶</a></dt>
@@ -139,6 +144,11 @@ is set to <tt class="xref py py-const docutils literal"><span class="pre">True</
 <tt class="descname">exchange_type</tt><em class="property"> = 'direct'</em><a class="headerlink" href="#kombu.compat.Publisher.exchange_type" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
+<dl class="method">
+<dt id="kombu.compat.Publisher.maybe_declare">
+<tt class="descname">maybe_declare</tt><big>(</big><em>entity</em>, <em>retry=False</em>, <em>**retry_policy</em><big>)</big><a class="headerlink" href="#kombu.compat.Publisher.maybe_declare" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
 <dl class="attribute">
 <dt id="kombu.compat.Publisher.on_return">
 <tt class="descname">on_return</tt><em class="property"> = None</em><a class="headerlink" href="#kombu.compat.Publisher.on_return" title="Permalink to this definition">¶</a></dt>
@@ -146,7 +156,7 @@ is set to <tt class="xref py py-const docutils literal"><span class="pre">True</
 
 <dl class="method">
 <dt id="kombu.compat.Publisher.publish">
-<tt class="descname">publish</tt><big>(</big><em>body</em>, <em>routing_key=None</em>, <em>delivery_mode=None</em>, <em>mandatory=False</em>, <em>immediate=False</em>, <em>priority=0</em>, <em>content_type=None</em>, <em>content_encoding=None</em>, <em>serializer=None</em>, <em>headers=None</em>, <em>compression=None</em>, <em>exchange=None</em>, <em>**properties</em><big>)</big><a class="headerlink" href="#kombu.compat.Publisher.publish" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">publish</tt><big>(</big><em>body</em>, <em>routing_key=None</em>, <em>delivery_mode=None</em>, <em>mandatory=False</em>, <em>immediate=False</em>, <em>priority=0</em>, <em>content_type=None</em>, <em>content_encoding=None</em>, <em>serializer=None</em>, <em>headers=None</em>, <em>compression=None</em>, <em>exchange=None</em>, <em>retry=False</em>, <em>retry_policy=None</em>, <em>declare=</em><span class="optional">[</span><span class="optional">]</span>, <em>**properties</em><big>)</big><a class="headerlink" href="#kombu.compat.Publisher.publish" title="Permalink to this definition">¶</a></dt>
 <dd><p>Publish message to the specified exchange.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -251,6 +261,11 @@ mean the server will not send any more messages for this consumer.</p>
 <dl class="method">
 <dt id="kombu.compat.Consumer.close">
 <tt class="descname">close</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.compat.Consumer.close" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.compat.Consumer.connection">
+<tt class="descname">connection</tt><a class="headerlink" href="#kombu.compat.Consumer.connection" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="method">
@@ -519,6 +534,11 @@ mean the server will not send any more messages for this consumer.</p>
 <tt class="descname">close</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.compat.ConsumerSet.close" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
+<dl class="attribute">
+<dt id="kombu.compat.ConsumerSet.connection">
+<tt class="descname">connection</tt><a class="headerlink" href="#kombu.compat.ConsumerSet.connection" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
 <dl class="method">
 <dt id="kombu.compat.ConsumerSet.consume">
 <tt class="descname">consume</tt><big>(</big><em>no_ack=None</em><big>)</big><a class="headerlink" href="#kombu.compat.ConsumerSet.consume" title="Permalink to this definition">¶</a></dt>
@@ -743,12 +763,12 @@ and the <cite>Message</cite> instance (a subclass of
         <li class="right" >
           <a href="kombu.clocks.html" title="Clocks and Synchronization - kombu.clocks"
              >previous</a> |</li>
-        <li><a href="../index.html">Kombu 1.5.0 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 2.0.0 documentation</a> &raquo;</li>
           <li><a href="index.html" >API Reference</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
-        &copy; Copyright 2009-2011, Ask Solem.
+        &copy; Copyright 2009-2012, Ask Solem.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
     </div>
   </body>

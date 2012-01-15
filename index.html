@@ -7,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Kombu Documentation &mdash; Kombu 1.5.0 documentation</title>
+    <title>Kombu Documentation &mdash; Kombu 2.0.0 documentation</title>
     
     <link rel="stylesheet" href="_static/celery.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -15,7 +15,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '',
-        VERSION:     '1.5.0',
+        VERSION:     '2.0.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -24,7 +24,7 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="Kombu 1.5.0 documentation" href="#" />
+    <link rel="top" title="Kombu 2.0.0 documentation" href="#" />
     <link rel="next" title="kombu - AMQP Messaging Framework for Python" href="introduction.html" /> 
   </head>
   <body>
@@ -40,7 +40,7 @@
         <li class="right" >
           <a href="introduction.html" title="kombu - AMQP Messaging Framework for Python"
              accesskey="N">next</a> |</li>
-        <li><a href="#">Kombu 1.5.0 documentation</a> &raquo;</li> 
+        <li><a href="#">Kombu 2.0.0 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -67,6 +67,7 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="userguide/index.html">User Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="userguide/introduction.html">Introduction</a></li>
 <li class="toctree-l2"><a class="reference internal" href="userguide/connections.html">Connections and transports</a></li>
 <li class="toctree-l2"><a class="reference internal" href="userguide/producers.html">Producers</a></li>
 <li class="toctree-l2"><a class="reference internal" href="userguide/consumers.html">Consumers</a></li>
@@ -91,14 +92,23 @@
 <li class="toctree-l2"><a class="reference internal" href="reference/kombu.compat.html">kombu.compat</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/kombu.pidbox.html">kombu.pidbox</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/kombu.exceptions.html">kombu.exceptions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/kombu.log.html">Logging - kombu.log</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/kombu.transport.html">kombu.transport</a></li>
-<li class="toctree-l2"><a class="reference internal" href="reference/kombu.transport.pyamqplib.html">kombu.transport.pyamqplib</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/kombu.transport.amqplib.html">kombu.transport.amqplib</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/kombu.transport.librabbitmq.html">kombu.transport.librabbitmq</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/kombu.transport.pika.html">kombu.transport.pika</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/kombu.transport.pika2.html">kombu.transport.pika</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/kombu.transport.memory.html">kombu.transport.memory</a></li>
-<li class="toctree-l2"><a class="reference internal" href="reference/kombu.transport.pyredis.html">kombu.transport.pyredis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/kombu.transport.redis.html">kombu.transport.redis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/kombu.transport.beanstalk.html">kombu.transport.beanstalk</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/kombu.transport.mongodb.html">kombu.transport.mongodb</a></li>
-<li class="toctree-l2"><a class="reference internal" href="reference/kombu.transport.pycouchdb.html">kombu.transport.pycouchdb</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/kombu.transport.couchdb.html">kombu.transport.couchdb</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/kombu.transport.django.html">kombu.transport.django</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/kombu.transport.django.models.html">Django Models - kombu.transport.django.models</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/kombu.transport.django.managers.html">Django Managers - kombu.transport.django.managers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/kombu.transport.django.management.commands.clean_kombu_messages.html">Django Management - clean_kombu_messages</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/kombu.transport.sqlalchemy.html">kombu.transport.sqlalchemy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/kombu.transport.sqlalchemy.models.html">Models</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/kombu.transport.SQS.html">kombu.transport.SQS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/kombu.transport.base.html">kombu.transport.base</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/kombu.transport.virtual.html">kombu.transport.virtual</a></li>
@@ -116,10 +126,12 @@
 <li class="toctree-l2"><a class="reference internal" href="reference/kombu.utils.encoding.html">String Encoding - kombu.utils.encoding</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/kombu.utils.functional.html">kombu.utils.functional</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/kombu.utils.finalize.html">Finalize - kombu.utils.finalize</a></li>
-<li class="toctree-l2"><a class="reference internal" href="reference/kombu.utils.log.html">Logging - kombu.utils.log</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="changelog.html">Change history</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#version-2-0-0">2.0.0</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#important-notes">Important Notes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#version-1-5-1">1.5.1</a></li>
 <li class="toctree-l2"><a class="reference internal" href="changelog.html#version-1-5-0">1.5.0</a></li>
 <li class="toctree-l2"><a class="reference internal" href="changelog.html#version-1-4-3">1.4.3</a></li>
 <li class="toctree-l2"><a class="reference internal" href="changelog.html#version-1-4-2">1.4.2</a></li>
@@ -141,7 +153,7 @@
 <li class="toctree-l2"><a class="reference internal" href="changelog.html#version-1-1-1">1.1.1</a></li>
 <li class="toctree-l2"><a class="reference internal" href="changelog.html#version-1-1-0">1.1.0</a></li>
 <li class="toctree-l2"><a class="reference internal" href="changelog.html#version-1-0-7">1.0.7</a></li>
-<li class="toctree-l2"><a class="reference internal" href="changelog.html#id22">1.0.6</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id25">1.0.6</a></li>
 <li class="toctree-l2"><a class="reference internal" href="changelog.html#version-1-0-5">1.0.5</a></li>
 <li class="toctree-l2"><a class="reference internal" href="changelog.html#version-1-0-4">1.0.4</a></li>
 <li class="toctree-l2"><a class="reference internal" href="changelog.html#version-1-0-3">1.0.3</a></li>
@@ -209,11 +221,11 @@
         <li class="right" >
           <a href="introduction.html" title="kombu - AMQP Messaging Framework for Python"
              >next</a> |</li>
-        <li><a href="#">Kombu 1.5.0 documentation</a> &raquo;</li> 
+        <li><a href="#">Kombu 2.0.0 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
-        &copy; Copyright 2009-2011, Ask Solem.
+        &copy; Copyright 2009-2012, Ask Solem.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
     </div>
   </body>

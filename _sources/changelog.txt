@@ -2,6 +2,140 @@
  Change history
 ================
 
+.. _version-2.0.0:
+
+2.0.0
+=====
+:release-date: 2012-01-15 18:34 P.M GMT
+:by: Ask Solem
+
+.. _v200-important:
+
+Important Notes
+===============
+
+.. _v200-python-compatibility:
+
+Python Compatibility
+--------------------
+
+* No longer supports Python 2.4.
+
+    Users of Python 2.4 can still use the 1.x series.
+
+    The 1.x series has entered bugfix-only maintenance mode, and will
+    stay that way as long as there is demand, and a willingness to
+    maintain it.
+
+
+.. _v200-new-transports:
+
+New Transports
+--------------
+
+* ``django-kombu`` is now part of Kombu core.
+
+    The Django message transport uses the Django ORM to store messages.
+
+    It uses polling, with a default polling interval of 5 seconds.
+    The polling interval can be increased or decreased by configuring the
+    ``KOMBU_POLLING_INTERVAL`` Django setting, which is the polling
+    interval in seconds as an int or a float.  Note that shorter polling
+    intervals can cause extreme strain on the database: if responsiveness
+    is needed you shall consider switching to a non-polling transport.
+
+    To use it you must use transport alias ``"django"``,
+    or as an URL::
+
+        django://
+
+    and then add ``kombu.transport.django`` to ``INSTALLED_APPS``, and
+    run ``manage.py syncdb`` to create the necessary database tables.
+
+    **Upgrading**
+
+    If you have previously used ``django-kombu``, then the entry
+    in ``INSTALLED_APPS`` must be changed from ``djkombu``
+    to ``kombu.transport.django``::
+
+        INSTALLED_APPS = (…,
+                          "kombu.transport.django")
+
+    If you have previously used django-kombu, then there is no need
+    to recreate the tables, as the old tables will be fully compatible
+    with the new version.
+
+* ``kombu-sqlalchemy`` is now part of Kombu core.
+
+    This change requires no code changes given that the
+    ``sqlalchemy`` transport alias is used.
+
+.. _v200-news:
+
+News
+----
+
+* :class:`kombu.mixins.ConsumerMixin` is a mixin class that lets you
+  easily write consumer programs and threads.
+
+  See :ref:`examples` and :ref:`guide-consumers`.
+
+* SQS Transport: Added support for SQS queue prefixes (Issue #84).
+
+    The queue prefix can be set using the transport option
+    ``queue_name_prefix``::
+
+        BrokerTransport("SQS://", transport_options={
+            "queue_name_prefix": "myapp"})
+
+    Contributed by Nitzan Miron.
+
+* ``Producer.publish`` now supports automatic retry.
+
+    Retry is enabled by the ``reply`` argument, and retry options
+    set by the ``retry_policy`` argument::
+
+        exchange = Exchange("foo")
+        producer.publish(message, exchange=exchange, retry=True,
+                         declare=[exchange], retry_policy={
+                            "interval_start": 1.0})
+
+    See :meth:`~kombu.connection.BrokerConnection.ensure`
+    for a list of supported retry policy options.
+
+* ``Producer.publish`` now supports a ``declare`` keyword argument.
+
+    This is a list of entities (:class:`Exchange`, or :class:`Queue`)
+    that should be declared before the message is published.
+
+.. _v200-fixes:
+
+Fixes
+-----
+
+* Redis transport: Timeout was multiplied by 1000 seconds when using
+  ``select`` for event I/O (Issue #86).
+
+.. _version-1.5.1:
+
+1.5.1
+=====
+:release-date: 2011-11-30 01:00 P.M GMT
+:by: Ask Solem
+
+* Fixes issue with ``kombu.compat`` introduced in 1.5.0 (Issue #83).
+
+* Adds the ability to disable content_types in the serializer registry.
+
+    Any message with a content type that is disabled will be refused.
+    One example would be to disable the Pickle serializer:
+
+        >>> from kombu.serialization import registry
+        # by name
+        >>> registry.disable("pickle")
+        # or by mime-type.
+        >>> registry.disable("application/x-python-serialize")
+
 .. _version-1.5.0:
 
 1.5.0
@@ -64,8 +198,8 @@
 * Redis version check could crash because of improper handling of types
   (Issue #63).
 
-* Fixed error with `Resource.force_close_all`, when resources
-  not yet properly initialized.  (Issue #78).
+* Fixed error with `Resource.force_close_all` when resources
+  were not yet properly initialized (Issue #78).
 
 .. _version-1.4.3:
 

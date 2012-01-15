@@ -7,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>kombu.utils.functional &mdash; Kombu 1.5.0 documentation</title>
+    <title>kombu.utils.functional &mdash; Kombu 2.0.0 documentation</title>
     
     <link rel="stylesheet" href="../_static/celery.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -15,7 +15,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '1.5.0',
+        VERSION:     '2.0.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -24,7 +24,7 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="Kombu 1.5.0 documentation" href="../index.html" />
+    <link rel="top" title="Kombu 2.0.0 documentation" href="../index.html" />
     <link rel="up" title="API Reference" href="index.html" />
     <link rel="next" title="Finalize - kombu.utils.finalize" href="kombu.utils.finalize.html" />
     <link rel="prev" title="String Encoding - kombu.utils.encoding" href="kombu.utils.encoding.html" /> 
@@ -45,7 +45,7 @@
         <li class="right" >
           <a href="kombu.utils.encoding.html" title="String Encoding - kombu.utils.encoding"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">Kombu 1.5.0 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 2.0.0 documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">API Reference</a> &raquo;</li> 
       </ul>
     </div>  
@@ -57,7 +57,30 @@
             
   <div class="section" id="kombu-utils-functional">
 <h1>kombu.utils.functional<a class="headerlink" href="#kombu-utils-functional" title="Permalink to this headline">¶</a></h1>
-<span class="target" id="module-kombu.utils.functional"></span><p>Functional utilities for Python 2.4 compatibility.</p>
+<span class="target" id="module-kombu.utils.functional"></span><dl class="function">
+<dt id="kombu.utils.functional.maybe_promise">
+<tt class="descclassname">kombu.utils.functional.</tt><tt class="descname">maybe_promise</tt><big>(</big><em>value</em><big>)</big><a class="headerlink" href="#kombu.utils.functional.maybe_promise" title="Permalink to this definition">¶</a></dt>
+<dd><p>Evaluates if the value is a promise.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="kombu.utils.functional.promise">
+<em class="property">class </em><tt class="descclassname">kombu.utils.functional.</tt><tt class="descname">promise</tt><big>(</big><em>fun</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.utils.functional.promise" title="Permalink to this definition">¶</a></dt>
+<dd><p>A promise.</p>
+<p>Evaluated when called or if the <a class="reference internal" href="#kombu.utils.functional.promise.evaluate" title="kombu.utils.functional.promise.evaluate"><tt class="xref py py-meth docutils literal"><span class="pre">evaluate()</span></tt></a> method is called.
+The function is evaluated on every access, so the value is not
+memoized (see <tt class="xref py py-class docutils literal"><span class="pre">mpromise</span></tt>).</p>
+<dl class="docutils">
+<dt>Overloaded operations that will evaluate the promise:</dt>
+<dd><tt class="xref py py-meth docutils literal"><span class="pre">__str__()</span></tt>, <tt class="xref py py-meth docutils literal"><span class="pre">__repr__()</span></tt>, <tt class="xref py py-meth docutils literal"><span class="pre">__cmp__()</span></tt>.</dd>
+</dl>
+<dl class="method">
+<dt id="kombu.utils.functional.promise.evaluate">
+<tt class="descname">evaluate</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.utils.functional.promise.evaluate" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
 </div>
 
 
@@ -111,12 +134,12 @@
         <li class="right" >
           <a href="kombu.utils.encoding.html" title="String Encoding - kombu.utils.encoding"
              >previous</a> |</li>
-        <li><a href="../index.html">Kombu 1.5.0 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 2.0.0 documentation</a> &raquo;</li>
           <li><a href="index.html" >API Reference</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
-        &copy; Copyright 2009-2011, Ask Solem.
+        &copy; Copyright 2009-2012, Ask Solem.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
     </div>
   </body>

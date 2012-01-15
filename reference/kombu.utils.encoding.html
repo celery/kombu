@@ -7,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>String Encoding - kombu.utils.encoding &mdash; Kombu 1.5.0 documentation</title>
+    <title>String Encoding - kombu.utils.encoding &mdash; Kombu 2.0.0 documentation</title>
     
     <link rel="stylesheet" href="../_static/celery.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -15,7 +15,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '1.5.0',
+        VERSION:     '2.0.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -24,7 +24,7 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="Kombu 1.5.0 documentation" href="../index.html" />
+    <link rel="top" title="Kombu 2.0.0 documentation" href="../index.html" />
     <link rel="up" title="API Reference" href="index.html" />
     <link rel="next" title="kombu.utils.functional" href="kombu.utils.functional.html" />
     <link rel="prev" title="Debugging - kombu.utils.debug" href="kombu.utils.debug.html" /> 
@@ -45,7 +45,7 @@
         <li class="right" >
           <a href="kombu.utils.debug.html" title="Debugging - kombu.utils.debug"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">Kombu 1.5.0 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 2.0.0 documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">API Reference</a> &raquo;</li> 
       </ul>
     </div>  
@@ -64,13 +64,15 @@
 </div>
 <span class="target" id="module-kombu.utils.encoding"></span><div class="section" id="kombu-utils-encoding">
 <h2><a class="toc-backref" href="#id1">kombu.utils.encoding</a><a class="headerlink" href="#kombu-utils-encoding" title="Permalink to this headline">¶</a></h2>
-<p>Unicode utilities.</p>
+<p>Utilities to encode text, and to safely emit text from running
+applications without crashing with the infamous <tt class="xref py py-exc docutils literal"><span class="pre">UnicodeDecodeError</span></tt>
+exception.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">copyright:</th><td class="field-body"><ol class="first loweralpha simple" start="3">
-<li>2009 - 2011 by Ask Solem.</li>
+<li>2009 - 2012 by Ask Solem.</li>
 </ol>
 </td>
 </tr>
@@ -85,6 +87,11 @@
 <dd></dd></dl>
 
 <dl class="function">
+<dt id="kombu.utils.encoding.default_encode">
+<tt class="descclassname">kombu.utils.encoding.</tt><tt class="descname">default_encode</tt><big>(</big><em>obj</em><big>)</big><a class="headerlink" href="#kombu.utils.encoding.default_encode" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
 <dt id="kombu.utils.encoding.default_encoding">
 <tt class="descclassname">kombu.utils.encoding.</tt><tt class="descname">default_encoding</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.utils.encoding.default_encoding" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
@@ -92,6 +99,11 @@
 <dl class="function">
 <dt id="kombu.utils.encoding.ensure_bytes">
 <tt class="descclassname">kombu.utils.encoding.</tt><tt class="descname">ensure_bytes</tt><big>(</big><em>s</em><big>)</big><a class="headerlink" href="#kombu.utils.encoding.ensure_bytes" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="kombu.utils.encoding.from_utf8">
+<tt class="descclassname">kombu.utils.encoding.</tt><tt class="descname">from_utf8</tt><big>(</big><em>s</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.utils.encoding.from_utf8" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
@@ -171,12 +183,12 @@
         <li class="right" >
           <a href="kombu.utils.debug.html" title="Debugging - kombu.utils.debug"
              >previous</a> |</li>
-        <li><a href="../index.html">Kombu 1.5.0 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 2.0.0 documentation</a> &raquo;</li>
           <li><a href="index.html" >API Reference</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
-        &copy; Copyright 2009-2011, Ask Solem.
+        &copy; Copyright 2009-2012, Ask Solem.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
     </div>
   </body>

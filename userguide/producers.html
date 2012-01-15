@@ -7,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Producers &mdash; Kombu 1.5.0 documentation</title>
+    <title>Producers &mdash; Kombu 2.0.0 documentation</title>
     
     <link rel="stylesheet" href="../_static/celery.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -15,7 +15,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '1.5.0',
+        VERSION:     '2.0.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -24,7 +24,7 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="Kombu 1.5.0 documentation" href="../index.html" />
+    <link rel="top" title="Kombu 2.0.0 documentation" href="../index.html" />
     <link rel="up" title="User Guide" href="index.html" />
     <link rel="next" title="Consumers" href="consumers.html" />
     <link rel="prev" title="Connections and transports" href="connections.html" /> 
@@ -45,7 +45,7 @@
         <li class="right" >
           <a href="connections.html" title="Connections and transports"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">Kombu 1.5.0 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 2.0.0 documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">User Guide</a> &raquo;</li> 
       </ul>
     </div>  
@@ -75,13 +75,13 @@
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>channel</strong> &#8211; Connection channel.</li>
-<li><strong>exchange</strong> &#8211; Default exchange.</li>
-<li><strong>routing_key</strong> &#8211; Default routing key.</li>
+<li><strong>channel</strong> &#8211; Connection or channel.</li>
+<li><strong>exchange</strong> &#8211; Optional default exchange.</li>
+<li><strong>routing_key</strong> &#8211; Optional default routing key.</li>
 <li><strong>serializer</strong> &#8211; Default serializer. Default is <cite>&#8220;json&#8221;</cite>.</li>
 <li><strong>compression</strong> &#8211; Default compression method. Default is no
 compression.</li>
-<li><strong>auto_declare</strong> &#8211; Automatically declare the exchange
+<li><strong>auto_declare</strong> &#8211; Automatically declare the default exchange
 at instantiation. Default is <tt class="xref py py-const docutils literal"><span class="pre">True</span></tt>.</li>
 <li><strong>on_return</strong> &#8211; Callback to call for undeliverable messages,
 when the <cite>mandatory</cite> or <cite>immediate</cite> arguments to
@@ -135,7 +135,7 @@ is set to <tt class="xref py py-const docutils literal"><span class="pre">True</
 
 <dl class="method">
 <dt>
-<tt class="descclassname">Producer.</tt><tt class="descname">publish</tt><big>(</big><em>body</em>, <em>routing_key=None</em>, <em>delivery_mode=None</em>, <em>mandatory=False</em>, <em>immediate=False</em>, <em>priority=0</em>, <em>content_type=None</em>, <em>content_encoding=None</em>, <em>serializer=None</em>, <em>headers=None</em>, <em>compression=None</em>, <em>exchange=None</em>, <em>**properties</em><big>)</big></dt>
+<tt class="descclassname">Producer.</tt><tt class="descname">publish</tt><big>(</big><em>body</em>, <em>routing_key=None</em>, <em>delivery_mode=None</em>, <em>mandatory=False</em>, <em>immediate=False</em>, <em>priority=0</em>, <em>content_type=None</em>, <em>content_encoding=None</em>, <em>serializer=None</em>, <em>headers=None</em>, <em>compression=None</em>, <em>exchange=None</em>, <em>retry=False</em>, <em>retry_policy=None</em>, <em>declare=</em><span class="optional">[</span><span class="optional">]</span>, <em>**properties</em><big>)</big></dt>
 <dd><p>Publish message to the specified exchange.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -241,12 +241,12 @@ must have been declared.</li>
         <li class="right" >
           <a href="connections.html" title="Connections and transports"
              >previous</a> |</li>
-        <li><a href="../index.html">Kombu 1.5.0 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 2.0.0 documentation</a> &raquo;</li>
           <li><a href="index.html" >User Guide</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
-        &copy; Copyright 2009-2011, Ask Solem.
+        &copy; Copyright 2009-2012, Ask Solem.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
     </div>
   </body>

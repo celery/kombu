@@ -7,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Connection and Producer Pools &mdash; Kombu 1.5.0 documentation</title>
+    <title>Connection and Producer Pools &mdash; Kombu 2.0.0 documentation</title>
     
     <link rel="stylesheet" href="../_static/celery.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -15,7 +15,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '1.5.0',
+        VERSION:     '2.0.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -24,7 +24,7 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="Kombu 1.5.0 documentation" href="../index.html" />
+    <link rel="top" title="Kombu 2.0.0 documentation" href="../index.html" />
     <link rel="up" title="User Guide" href="index.html" />
     <link rel="next" title="Serialization" href="serialization.html" />
     <link rel="prev" title="Simple Interface" href="simple.html" /> 
@@ -45,7 +45,7 @@
         <li class="right" >
           <a href="simple.html" title="Simple Interface"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">Kombu 1.5.0 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 2.0.0 documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">User Guide</a> &raquo;</li> 
       </ul>
     </div>  
@@ -122,9 +122,8 @@ with connections[c1].acquire(block=True) as conn1:
 <div class="section" id="the-producer-pool-group">
 <span id="default-producers"></span><h2>The producer pool group<a class="headerlink" href="#the-producer-pool-group" title="Permalink to this headline">¶</a></h2>
 <p>This is a pool group just like the connections, except
-that is manages <a class="reference internal" href="../reference/kombu.messaging.html#kombu.messaging.Producer" title="kombu.messaging.Producer"><tt class="xref py py-class docutils literal"><span class="pre">kombu.messaging.Producer</span></tt></a> instances
-used to publish messages with.  It also links to the connection pool
-group, by using the connection pool for the connection provided.</p>
+that it manages <a class="reference internal" href="../reference/kombu.messaging.html#kombu.messaging.Producer" title="kombu.messaging.Producer"><tt class="xref py py-class docutils literal"><span class="pre">Producer</span></tt></a> instances
+used to publish messages.</p>
 <p>Here is an example using the producer pool to publish a message
 to the <tt class="docutils literal"><span class="pre">news</span></tt> exchange:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">kombu</span> <span class="kn">import</span> <span class="n">BrokerConnection</span><span class="p">,</span> <span class="n">Exchange</span>
@@ -268,12 +267,12 @@ argument:</p>
         <li class="right" >
           <a href="simple.html" title="Simple Interface"
              >previous</a> |</li>
-        <li><a href="../index.html">Kombu 1.5.0 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 2.0.0 documentation</a> &raquo;</li>
           <li><a href="index.html" >User Guide</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
-        &copy; Copyright 2009-2011, Ask Solem.
+        &copy; Copyright 2009-2012, Ask Solem.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
     </div>
   </body>

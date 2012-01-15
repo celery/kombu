@@ -7,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Mixin Classes - kombu.mixins &mdash; Kombu 1.5.0 documentation</title>
+    <title>Mixin Classes - kombu.mixins &mdash; Kombu 2.0.0 documentation</title>
     
     <link rel="stylesheet" href="../_static/celery.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -15,7 +15,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '1.5.0',
+        VERSION:     '2.0.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -24,7 +24,7 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="Kombu 1.5.0 documentation" href="../index.html" />
+    <link rel="top" title="Kombu 2.0.0 documentation" href="../index.html" />
     <link rel="up" title="API Reference" href="index.html" />
     <link rel="next" title="Clocks and Synchronization - kombu.clocks" href="kombu.clocks.html" />
     <link rel="prev" title="Common Utilities - kombu.common" href="kombu.common.html" /> 
@@ -45,7 +45,7 @@
         <li class="right" >
           <a href="kombu.common.html" title="Common Utilities - kombu.common"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">Kombu 1.5.0 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 2.0.0 documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">API Reference</a> &raquo;</li> 
       </ul>
     </div>  
@@ -70,7 +70,7 @@
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">copyright:</th><td class="field-body"><ol class="first loweralpha simple" start="3">
-<li>2009 - 2011 by Ask Solem.</li>
+<li>2009 - 2012 by Ask Solem.</li>
 </ol>
 </td>
 </tr>
@@ -82,14 +82,111 @@
 <dl class="class">
 <dt id="kombu.mixins.ConsumerMixin">
 <em class="property">class </em><tt class="descclassname">kombu.mixins.</tt><tt class="descname">ConsumerMixin</tt><a class="headerlink" href="#kombu.mixins.ConsumerMixin" title="Permalink to this definition">¶</a></dt>
-<dd><dl class="method">
+<dd><p>Convenience mixin for implementing consumer threads.</p>
+<p>It can be used outside of threads, with threads, or greenthreads
+(eventlet/gevent) too.</p>
+<p>The basic class would need a <tt class="xref py py-attr docutils literal"><span class="pre">connection</span></tt> attribute
+which must be a <a class="reference internal" href="kombu.connection.html#kombu.connection.BrokerConnection" title="kombu.connection.BrokerConnection"><tt class="xref py py-class docutils literal"><span class="pre">BrokerConnection</span></tt></a> instance,
+and define a <a class="reference internal" href="#kombu.mixins.ConsumerMixin.get_consumers" title="kombu.mixins.ConsumerMixin.get_consumers"><tt class="xref py py-meth docutils literal"><span class="pre">get_consumers()</span></tt></a> method that returns a list
+of <a class="reference internal" href="kombu.messaging.html#kombu.messaging.Consumer" title="kombu.messaging.Consumer"><tt class="xref py py-class docutils literal"><span class="pre">kombu.messaging.Consumer</span></tt></a> instances to use.
+Supporting multiple consumers is important so that multiple
+channels can be used for different QoS requirements.</p>
+<p><strong>Example</strong>:</p>
+<div class="highlight-python"><pre>class Worker(ConsumerMixin):
+    task_queue = Queue("tasks", Exchange("tasks"), "tasks"))
+
+    def __init__(self, connection):
+        self.connection = None
+
+    def get_consumers(self, Consumer, channel):
+        return [Consumer(queues=[self.task_queue],
+                         callback=[self.on_task])]
+
+    def on_task(self, body, message):
+        print("Got task: %r" % (body, ))
+        message.ack()</pre>
+</div>
+<p><strong>Additional handler methods</strong>:</p>
+<blockquote>
+<div><ul>
+<li><p class="first"><a class="reference internal" href="#kombu.mixins.ConsumerMixin.extra_context" title="kombu.mixins.ConsumerMixin.extra_context"><tt class="xref py py-meth docutils literal"><span class="pre">extra_context()</span></tt></a></p>
+<blockquote>
+<div><p>Optional extra context manager that will be entered
+after the connection and consumers have been set up.</p>
+<p>Takes arguments <tt class="docutils literal"><span class="pre">(connection,</span> <span class="pre">channel)</span></tt>.</p>
+</div></blockquote>
+</li>
+<li><p class="first"><a class="reference internal" href="#kombu.mixins.ConsumerMixin.on_connection_error" title="kombu.mixins.ConsumerMixin.on_connection_error"><tt class="xref py py-meth docutils literal"><span class="pre">on_connection_error()</span></tt></a></p>
+<blockquote>
+<div><p>Handler called if the connection is lost/ or
+is unavailable.</p>
+<p>Takes arguments <tt class="docutils literal"><span class="pre">(exc,</span> <span class="pre">interval)</span></tt>, where interval
+is the time in seconds when the connection will be retried.</p>
+<p>The default handler will log the exception.</p>
+</div></blockquote>
+</li>
+<li><p class="first"><a class="reference internal" href="#kombu.mixins.ConsumerMixin.on_connection_revived" title="kombu.mixins.ConsumerMixin.on_connection_revived"><tt class="xref py py-meth docutils literal"><span class="pre">on_connection_revived()</span></tt></a></p>
+<blockquote>
+<div><p>Handler called when the connection is re-established
+after connection failure.</p>
+<p>Takes no arguments.</p>
+</div></blockquote>
+</li>
+<li><p class="first"><a class="reference internal" href="#kombu.mixins.ConsumerMixin.on_consume_ready" title="kombu.mixins.ConsumerMixin.on_consume_ready"><tt class="xref py py-meth docutils literal"><span class="pre">on_consume_ready()</span></tt></a></p>
+<blockquote>
+<div><p>Handler called when the consumer is ready to accept
+messages.</p>
+<p>Takes arguments <tt class="docutils literal"><span class="pre">(connection,</span> <span class="pre">channel,</span> <span class="pre">consumers)</span></tt>.
+Also keyword arguments to <tt class="docutils literal"><span class="pre">consume</span></tt> are forwarded
+to this handler.</p>
+</div></blockquote>
+</li>
+<li><p class="first"><a class="reference internal" href="#kombu.mixins.ConsumerMixin.on_consume_end" title="kombu.mixins.ConsumerMixin.on_consume_end"><tt class="xref py py-meth docutils literal"><span class="pre">on_consume_end()</span></tt></a></p>
+<blockquote>
+<div><p>Handler called after the consumers are cancelled.
+Takes arguments <tt class="docutils literal"><span class="pre">(connection,</span> <span class="pre">channel)</span></tt>.</p>
+</div></blockquote>
+</li>
+<li><p class="first"><a class="reference internal" href="#kombu.mixins.ConsumerMixin.on_iteration" title="kombu.mixins.ConsumerMixin.on_iteration"><tt class="xref py py-meth docutils literal"><span class="pre">on_iteration()</span></tt></a></p>
+<blockquote>
+<div><p>Handler called for every iteration while draining
+events.</p>
+<p>Takes no arguments.</p>
+</div></blockquote>
+</li>
+<li><p class="first"><a class="reference internal" href="#kombu.mixins.ConsumerMixin.on_decode_error" title="kombu.mixins.ConsumerMixin.on_decode_error"><tt class="xref py py-meth docutils literal"><span class="pre">on_decode_error()</span></tt></a></p>
+<blockquote>
+<div><p>Handler called if a consumer was unable to decode
+the body of a message.</p>
+<p>Takes arguments <tt class="docutils literal"><span class="pre">(message,</span> <span class="pre">exc)</span></tt> where message is the
+original message object.</p>
+<p>The default handler will log the error and
+acknowledge the message, so if you override make
+sure to call super, or perform these steps yourself.</p>
+</div></blockquote>
+</li>
+</ul>
+</div></blockquote>
+<dl class="method">
 <dt id="kombu.mixins.ConsumerMixin.Consumer">
 <tt class="descname">Consumer</tt><big>(</big><em>*args</em>, <em>**kwds</em><big>)</big><a class="headerlink" href="#kombu.mixins.ConsumerMixin.Consumer" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="attribute">
+<dt id="kombu.mixins.ConsumerMixin.channel_errors">
+<tt class="descname">channel_errors</tt><a class="headerlink" href="#kombu.mixins.ConsumerMixin.channel_errors" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
 <dt id="kombu.mixins.ConsumerMixin.connect_max_retries">
 <tt class="descname">connect_max_retries</tt><em class="property"> = None</em><a class="headerlink" href="#kombu.mixins.ConsumerMixin.connect_max_retries" title="Permalink to this definition">¶</a></dt>
+<dd><p>maximum number of retries trying to re-establish the connection,
+if the connection is lost/unavailable.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.mixins.ConsumerMixin.connection_errors">
+<tt class="descname">connection_errors</tt><a class="headerlink" href="#kombu.mixins.ConsumerMixin.connection_errors" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="method">
@@ -98,8 +195,8 @@
 <dd></dd></dl>
 
 <dl class="method">
-<dt id="kombu.mixins.ConsumerMixin.error">
-<tt class="descname">error</tt><big>(</big><em>msg</em>, <em>*args</em><big>)</big><a class="headerlink" href="#kombu.mixins.ConsumerMixin.error" title="Permalink to this definition">¶</a></dt>
+<dt id="kombu.mixins.ConsumerMixin.establish_connection">
+<tt class="descname">establish_connection</tt><big>(</big><em>*args</em>, <em>**kwds</em><big>)</big><a class="headerlink" href="#kombu.mixins.ConsumerMixin.establish_connection" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="method">
@@ -113,9 +210,11 @@
 <dd></dd></dl>
 
 <dl class="method">
-<dt id="kombu.mixins.ConsumerMixin.info">
-<tt class="descname">info</tt><big>(</big><em>msg</em>, <em>*args</em><big>)</big><a class="headerlink" href="#kombu.mixins.ConsumerMixin.info" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dt id="kombu.mixins.ConsumerMixin.maybe_conn_error">
+<tt class="descname">maybe_conn_error</tt><big>(</big><em>fun</em><big>)</big><a class="headerlink" href="#kombu.mixins.ConsumerMixin.maybe_conn_error" title="Permalink to this definition">¶</a></dt>
+<dd><p>Applies function but ignores any connection or channel
+errors raised.</p>
+</dd></dl>
 
 <dl class="method">
 <dt id="kombu.mixins.ConsumerMixin.on_connection_error">
@@ -128,8 +227,18 @@
 <dd></dd></dl>
 
 <dl class="method">
+<dt id="kombu.mixins.ConsumerMixin.on_consume_end">
+<tt class="descname">on_consume_end</tt><big>(</big><em>connection</em>, <em>channel</em><big>)</big><a class="headerlink" href="#kombu.mixins.ConsumerMixin.on_consume_end" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
 <dt id="kombu.mixins.ConsumerMixin.on_consume_ready">
-<tt class="descname">on_consume_ready</tt><big>(</big><em>connection</em>, <em>channel</em><big>)</big><a class="headerlink" href="#kombu.mixins.ConsumerMixin.on_consume_ready" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">on_consume_ready</tt><big>(</big><em>connection</em>, <em>channel</em>, <em>consumers</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.mixins.ConsumerMixin.on_consume_ready" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.mixins.ConsumerMixin.on_decode_error">
+<tt class="descname">on_decode_error</tt><big>(</big><em>message</em>, <em>exc</em><big>)</big><a class="headerlink" href="#kombu.mixins.ConsumerMixin.on_decode_error" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="method">
@@ -150,7 +259,10 @@
 <dl class="attribute">
 <dt id="kombu.mixins.ConsumerMixin.should_stop">
 <tt class="descname">should_stop</tt><em class="property"> = False</em><a class="headerlink" href="#kombu.mixins.ConsumerMixin.should_stop" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>When this is set to true the consumer should stop consuming
+and return, so that it can be joined if it is the implementation
+of a thread.</p>
+</dd></dl>
 
 </dd></dl>
 
@@ -216,12 +328,12 @@
         <li class="right" >
           <a href="kombu.common.html" title="Common Utilities - kombu.common"
              >previous</a> |</li>
-        <li><a href="../index.html">Kombu 1.5.0 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 2.0.0 documentation</a> &raquo;</li>
           <li><a href="index.html" >API Reference</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
-        &copy; Copyright 2009-2011, Ask Solem.
+        &copy; Copyright 2009-2012, Ask Solem.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
     </div>
   </body>
