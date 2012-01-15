@@ -19,6 +19,12 @@ except AttributeError:
     import unittest2 as unittest  # noqa
 
 
+class TestCase(unittest.TestCase):
+
+    if not hasattr(unittest.TestCase, "assertItemsEqual"):
+        assertItemsEqual = unittest.TestCase.assertSameElements
+
+
 class Mock(mock.Mock):
 
     def __init__(self, *args, **kwargs):

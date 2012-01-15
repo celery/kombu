@@ -14,7 +14,7 @@ from ..exceptions import VersionMismatch
 from ..messaging import Consumer, Producer
 from ..utils import eventio  # patch poll
 
-from .utils import unittest
+from .utils import TestCase
 from .utils import Mock, module_exists, skip_if_not_module
 
 
@@ -191,7 +191,7 @@ class Transport(redis.Transport):
         return ((KeyError, ), (IndexError, ))
 
 
-class test_Channel(unittest.TestCase):
+class test_Channel(TestCase):
 
     def setUp(self):
         self.connection = BrokerConnection(transport=Transport)
@@ -225,7 +225,9 @@ class test_Channel(unittest.TestCase):
         self.channel._fanout_queues.update(a="a", b="b")
 
         self.channel._subscribe()
-        self.channel.subclient.subscribe.assert_called_with(["a", "b"])
+        self.assertTrue(self.channel.subclient.subscribe.called)
+        s_args, _ = self.channel.subclient.subscribe.call_args
+        self.assertItemsEqual(s_args[0], ["a", "b"])
 
         self.channel.subclient.connection._sock = None
         self.channel._subscribe()
@@ -422,7 +424,7 @@ class test_Channel(unittest.TestCase):
                 exceptions.InvalidData = InvalidData
 
 
-class test_Redis(unittest.TestCase):
+class test_Redis(TestCase):
 
     def setUp(self):
         self.connection = BrokerConnection(transport=Transport)
@@ -584,7 +586,7 @@ def _redis_modules():
     return myredis, exceptions
 
 
-class test_MultiChannelPoller(unittest.TestCase):
+class test_MultiChannelPoller(TestCase):
     Poller = redis.MultiChannelPoller
 
     def test_close_unregisters_fds(self):
@@ -597,9 +599,9 @@ class test_MultiChannelPoller(unittest.TestCase):
         self.assertEqual(poller.unregister.call_count, 3)
         u_args = poller.unregister.call_args_list
 
-        self.assertListEqual(u_args, [((1, ), {}),
-                                      ((2, ), {}),
-                                      ((3, ), {})])
+        self.assertItemsEqual(u_args, [((1, ), {}),
+                                       ((2, ), {}),
+                                       ((3, ), {})])
 
     def test_close_when_unregister_raises_KeyError(self):
         p = self.Poller()

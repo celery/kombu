@@ -5,7 +5,7 @@ import sys
 from ..transport import amqplib
 from ..connection import BrokerConnection
 
-from .utils import unittest
+from .utils import TestCase
 from .utils import mask_modules, Mock
 
 
@@ -28,7 +28,7 @@ class Channel(amqplib.Channel):
         pass
 
 
-class test_Channel(unittest.TestCase):
+class test_Channel(TestCase):
 
     def setUp(self):
         self.conn = Mock()
@@ -68,7 +68,7 @@ class test_Channel(unittest.TestCase):
         self.assertNotIn("my-consumer-tag", self.channel.no_ack_consumers)
 
 
-class test_Transport(unittest.TestCase):
+class test_Transport(TestCase):
 
     def setUp(self):
         self.connection = BrokerConnection("amqplib://")
@@ -127,7 +127,7 @@ class test_Transport(unittest.TestCase):
                 sys.modules["kombu.transport.amqplib"] = pm
 
 
-class test_amqplib(unittest.TestCase):
+class test_amqplib(TestCase):
 
     def test_default_port(self):
 

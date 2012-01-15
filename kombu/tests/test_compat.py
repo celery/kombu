@@ -3,15 +3,15 @@ from __future__ import with_statement
 
 from mock import patch
 
-from .. import BrokerConnection, Exchange
-from .. import compat
+import kombu
+from kombu import compat
 
 from .mocks import Transport, Channel
-from .utils import unittest
+from .utils import TestCase
 from .utils import Mock
 
 
-class test_misc(unittest.TestCase):
+class test_misc(TestCase):
 
     def test_iterconsume(self):
 
@@ -78,10 +78,10 @@ class test_misc(unittest.TestCase):
                          compat.entry_to_queue("foo", **dict(defs)))
 
 
-class test_Publisher(unittest.TestCase):
+class test_Publisher(TestCase):
 
     def setUp(self):
-        self.connection = BrokerConnection(transport=Transport)
+        self.connection = kombu.Connection(transport=Transport)
 
     def test_constructor(self):
         pub = compat.Publisher(self.connection,
@@ -101,8 +101,8 @@ class test_Publisher(unittest.TestCase):
         self.assertTrue(pub2.exchange.auto_delete)
         self.assertFalse(pub2.exchange.durable)
 
-        explicit = Exchange("test_Publisher_constructor_explicit",
-                            type="topic")
+        explicit = kombu.Exchange("test_Publisher_constructor_explicit",
+                                  type="topic")
         pub3 = compat.Publisher(self.connection,
                                 exchange=explicit)
         self.assertEqual(pub3.exchange, explicit)
@@ -129,10 +129,10 @@ class test_Publisher(unittest.TestCase):
         self.assertTrue(pub._closed)
 
 
-class test_Consumer(unittest.TestCase):
+class test_Consumer(TestCase):
 
     def setUp(self):
-        self.connection = BrokerConnection(transport=Transport)
+        self.connection = kombu.Connection(transport=Transport)
 
     @patch("kombu.compat._iterconsume")
     def test_iterconsume_calls__iterconsume(self, it, n="test_iterconsume"):
@@ -263,10 +263,10 @@ class test_Consumer(unittest.TestCase):
         c.close()
 
 
-class test_ConsumerSet(unittest.TestCase):
+class test_ConsumerSet(TestCase):
 
     def setUp(self):
-        self.connection = BrokerConnection(transport=Transport)
+        self.connection = kombu.Connection(transport=Transport)
 
     @patch("kombu.compat._iterconsume")
     def test_iterconsume(self, _iterconsume, n="test_iterconsume"):

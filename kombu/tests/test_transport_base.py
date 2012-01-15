@@ -4,11 +4,11 @@ from __future__ import with_statement
 from .. import BrokerConnection, Consumer, Producer, Queue
 from ..transport.base import Message, StdChannel, Transport
 
-from .utils import unittest
+from .utils import TestCase
 from .utils import Mock
 
 
-class test_StdChannel(unittest.TestCase):
+class test_StdChannel(TestCase):
 
     def setUp(self):
         self.conn = BrokerConnection("memory://")
@@ -34,7 +34,7 @@ class test_StdChannel(unittest.TestCase):
                 Queue("foo")))
 
 
-class test_Message(unittest.TestCase):
+class test_Message(TestCase):
 
     def setUp(self):
         self.conn = BrokerConnection("memory://")
@@ -81,7 +81,7 @@ class test_Message(unittest.TestCase):
         self.assertIn("Couldn't ack", logger.critical.call_args[0][0])
 
 
-class test_interface(unittest.TestCase):
+class test_interface(TestCase):
 
     def test_establish_connection(self):
         with self.assertRaises(NotImplementedError):

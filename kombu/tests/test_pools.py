@@ -6,11 +6,11 @@ from ..connection import ConnectionPool
 from ..messaging import Producer
 from ..utils import eqhash
 
-from .utils import unittest
+from .utils import TestCase
 from .utils import Mock
 
 
-class test_ProducerPool(unittest.TestCase):
+class test_ProducerPool(TestCase):
     Pool = pools.ProducerPool
 
     class MyPool(pools.ProducerPool):
@@ -84,7 +84,7 @@ class test_ProducerPool(unittest.TestCase):
         self.assertIsNone(p.channel)
 
 
-class test_PoolGroup(unittest.TestCase):
+class test_PoolGroup(TestCase):
     Group = pools.PoolGroup
 
     class MyGroup(pools.PoolGroup):
@@ -179,7 +179,7 @@ class test_PoolGroup(unittest.TestCase):
 
 
 
-class test_fun_PoolGroup(unittest.TestCase):
+class test_fun_PoolGroup(TestCase):
 
     def test_connections_behavior(self):
         c1u = "memory://localhost:123"

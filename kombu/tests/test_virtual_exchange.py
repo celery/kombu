@@ -5,11 +5,11 @@ from .. import BrokerConnection
 from ..transport.virtual import exchange
 
 from .mocks import Transport
-from .utils import unittest
+from .utils import TestCase
 from .utils import Mock
 
 
-class ExchangeCase(unittest.TestCase):
+class ExchangeCase(TestCase):
     type = None
 
     def setUp(self):

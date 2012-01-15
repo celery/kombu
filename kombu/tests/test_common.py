@@ -8,11 +8,11 @@ from mock import patch
 from .. import common
 from ..common import (Broadcast, maybe_declare, declared_entities, send_reply,
                       isend_reply, collect_replies)
-from .utils import unittest
+from .utils import TestCase
 from .utils import ContextMock, Mock, MockPool
 
 
-class test_Broadcast(unittest.TestCase):
+class test_Broadcast(TestCase):
 
     def test_arguments(self):
         q = Broadcast(name="test_Broadcast")
@@ -27,7 +27,7 @@ class test_Broadcast(unittest.TestCase):
         self.assertEqual(q.exchange.name, "test_Broadcast")
 
 
-class test_maybe_declare(unittest.TestCase):
+class test_maybe_declare(TestCase):
 
     def test_cacheable(self):
         channel = Mock()
@@ -73,7 +73,7 @@ class test_maybe_declare(unittest.TestCase):
         self.assertTrue(channel.connection.client.ensure.call_count)
 
 
-class test_replies(unittest.TestCase):
+class test_replies(TestCase):
 
     def test_send_reply(self):
         req = Mock()
@@ -142,7 +142,7 @@ class test_replies(unittest.TestCase):
         self.assertFalse(channel.after_reply_message_received.called)
 
 
-class test_insured(unittest.TestCase):
+class test_insured(TestCase):
 
     @patch("kombu.common.insured_logger")
     def test_ensure_errback(self, insured_logger):
@@ -251,7 +251,7 @@ class MockConsumer(object):
         self.consumers.discard(self)
 
 
-class test_itermessages(unittest.TestCase):
+class test_itermessages(TestCase):
 
     class MockConnection(object):
         should_raise_timeout = False

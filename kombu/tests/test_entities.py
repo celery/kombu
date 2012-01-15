@@ -6,7 +6,7 @@ from ..entity import Exchange, Queue
 from ..exceptions import NotBoundError
 
 from .mocks import Transport
-from .utils import unittest
+from .utils import TestCase
 from .utils import Mock
 
 
@@ -14,7 +14,7 @@ def get_conn():
     return Connection(transport=Transport)
 
 
-class test_Exchange(unittest.TestCase):
+class test_Exchange(TestCase):
 
     def test_bound(self):
         exchange = Exchange("foo", "direct")
@@ -106,7 +106,7 @@ class test_Exchange(unittest.TestCase):
         self.assertIn("Exchange", repr(b))
 
 
-class test_Queue(unittest.TestCase):
+class test_Queue(TestCase):
 
     def setUp(self):
         self.exchange = Exchange("foo", "direct")

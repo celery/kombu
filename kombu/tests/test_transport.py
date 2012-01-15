@@ -4,10 +4,10 @@ from __future__ import with_statement
 from mock import patch
 
 from .. import transport
-from .utils import unittest
+from .utils import TestCase
 
 
-class test_transport(unittest.TestCase):
+class test_transport(TestCase):
 
     def test_resolve_transport__no_class_name(self):
         with self.assertRaises(KeyError):
@@ -19,7 +19,7 @@ class test_transport(unittest.TestCase):
                 ("kombu.transport.memory", "Transport"))
 
 
-class test_transport_gettoq(unittest.TestCase):
+class test_transport_gettoq(TestCase):
 
     @patch("warnings.warn")
     def test_compat(self, warn):

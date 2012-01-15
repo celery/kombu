@@ -3,14 +3,14 @@ from __future__ import absolute_import
 import pickle
 
 from ..utils.functional import promise, maybe_promise
-from .utils import unittest
+from .utils import TestCase
 
 
 def double(x):
     return x * 2
 
 
-class test_promise(unittest.TestCase):
+class test_promise(TestCase):
 
     def test__str__(self):
         self.assertEqual(str(promise(lambda: "the quick brown fox")),
@@ -43,7 +43,7 @@ class test_promise(unittest.TestCase):
         self.assertEqual(x(), y())
 
 
-class test_maybe_promise(unittest.TestCase):
+class test_maybe_promise(TestCase):
 
     def test_evaluates(self):
         self.assertEqual(maybe_promise(promise(lambda: 10)), 10)

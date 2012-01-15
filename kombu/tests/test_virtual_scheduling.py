@@ -3,7 +3,7 @@ from __future__ import with_statement
 
 from ..transport.virtual.scheduling import FairCycle
 
-from .utils import unittest
+from .utils import TestCase
 
 
 class MyEmpty(Exception):
@@ -17,7 +17,7 @@ def consume(fun, n):
     return r
 
 
-class test_FairCycle(unittest.TestCase):
+class test_FairCycle(TestCase):
 
     def test_cycle(self):
         resources = ["a", "b", "c", "d", "e"]

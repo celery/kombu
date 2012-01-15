@@ -9,7 +9,7 @@ from mock import patch
 from nose import SkipTest
 
 from ..utils.encoding import safe_str
-from .utils import unittest
+from .utils import TestCase
 
 
 @contextmanager
@@ -21,17 +21,21 @@ def clean_encoding():
         sys.modules["kombu.utils.encoding"] = old_encoding
 
 
-class test_default_encoding(unittest.TestCase):
+class test_default_encoding(TestCase):
 
     @patch("sys.getfilesystemencoding")
     def test_default(self, getfilesystemencoding):
         getfilesystemencoding.return_value = "ascii"
         with clean_encoding() as encoding:
-            self.assertEqual(encoding.default_encoding(), "ascii")
-        getfilesystemencoding.assert_called_with()
+            enc = encoding.default_encoding()
+            if sys.platform.startswith("java"):
+                self.assertEqual(enc, "utf-8")
+            else:
+                self.assertEqual(enc, "ascii")
+                getfilesystemencoding.assert_called_with()
 
 
-class test_encoding_utils(unittest.TestCase):
+class test_encoding_utils(TestCase):
 
     def setUp(self):
         if sys.version_info >= (3, 0):
@@ -51,7 +55,7 @@ class test_encoding_utils(unittest.TestCase):
             self.assertTrue(e.default_encode("foo"))
 
 
-class test_safe_str(unittest.TestCase):
+class test_safe_str(TestCase):
 
     def test_when_str(self):
         self.assertEqual(safe_str("foo"), "foo")

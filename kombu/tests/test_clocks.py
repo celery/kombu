@@ -1,10 +1,10 @@
 from __future__ import absolute_import
 
 from ..clocks import LamportClock
-from .utils import unittest
+from .utils import TestCase
 
 
-class test_LamportClock(unittest.TestCase):
+class test_LamportClock(TestCase):
 
     def test_clocks(self):
         c1 = LamportClock()

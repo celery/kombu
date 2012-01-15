@@ -10,7 +10,7 @@ from ..serialization import (registry, register, SerializerNotInstalled,
                              decode, bytes_t, pickle,
                              unregister, register_pickle)
 
-from .utils import unittest
+from .utils import TestCase
 from .utils import mask_modules, skip_if_not_module
 
 # For content_encoding tests
@@ -66,7 +66,7 @@ registry.register('testS', lambda s: s, lambda s: "decoded",
                   "application/testS", "utf-8")
 
 
-class test_Serialization(unittest.TestCase):
+class test_Serialization(TestCase):
 
     def test_disable(self):
         disabled = registry._disabled_content_types

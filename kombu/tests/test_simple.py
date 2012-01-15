@@ -4,11 +4,11 @@ from __future__ import with_statement
 from Queue import Empty
 
 from .. import BrokerConnection, Exchange, Queue
-from .utils import unittest
+from .utils import TestCase
 from .utils import Mock
 
 
-class SimpleBase(unittest.TestCase):
+class SimpleBase(TestCase):
     abstract = True
 
     def Queue(self, name, *args, **kwargs):

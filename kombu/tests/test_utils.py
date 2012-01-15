@@ -13,7 +13,7 @@ else:
 from .. import utils
 
 from .utils import redirect_stdouts, mask_modules, skip_if_module
-from .utils import unittest
+from .utils import TestCase
 
 
 class OldString(object):
@@ -31,7 +31,7 @@ class OldString(object):
         return self.value.rsplit(*args, **kwargs)
 
 
-class test_utils(unittest.TestCase):
+class test_utils(TestCase):
 
     def test_maybe_list(self):
         self.assertEqual(utils.maybe_list(None), [])
@@ -57,7 +57,7 @@ class test_utils(unittest.TestCase):
             (2, 2), {"copy": True}))
 
 
-class test_UUID(unittest.TestCase):
+class test_UUID(TestCase):
 
     def test_uuid4(self):
         self.assertNotEqual(utils.uuid4(),
@@ -88,7 +88,7 @@ class test_UUID(unittest.TestCase):
             sys.modules["celery.utils"] = old_utils
 
 
-class test_Misc(unittest.TestCase):
+class test_Misc(TestCase):
 
     def test_kwdict(self):
 
@@ -112,7 +112,7 @@ class MyBytesIO(BytesIO):
         pass
 
 
-class test_emergency_dump_state(unittest.TestCase):
+class test_emergency_dump_state(TestCase):
 
     @redirect_stdouts
     def test_dump(self, stdout, stderr):
@@ -154,7 +154,7 @@ def insomnia(fun):
     return _inner
 
 
-class test_retry_over_time(unittest.TestCase):
+class test_retry_over_time(TestCase):
 
     def setUp(self):
         self.index = 0
@@ -198,7 +198,7 @@ class test_retry_over_time(unittest.TestCase):
         self.assertEqual(self.index, 1)
 
 
-class test_cached_property(unittest.TestCase):
+class test_cached_property(TestCase):
 
     def test_when_access_from_class(self):
 

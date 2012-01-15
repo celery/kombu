@@ -7,10 +7,10 @@ from ..connection import BrokerConnection
 from ..entity import Exchange, Queue
 from ..messaging import Consumer, Producer
 
-from .utils import unittest
+from .utils import TestCase
 
 
-class test_MemoryTransport(unittest.TestCase):
+class test_MemoryTransport(TestCase):
 
     def setUp(self):
         self.c = BrokerConnection(transport="memory")

@@ -5,11 +5,11 @@ import sys
 from nose import SkipTest
 
 from .. import compression
-from .utils import unittest
+from .utils import TestCase
 from .utils import mask_modules
 
 
-class test_compression(unittest.TestCase):
+class test_compression(TestCase):
 
     def setUp(self):
         try:

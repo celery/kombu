@@ -7,11 +7,11 @@ from .. import pidbox
 from ..connection import BrokerConnection
 from ..utils import uuid
 
-from .utils import unittest
+from .utils import TestCase
 from .utils import Mock
 
 
-class test_Mailbox(unittest.TestCase):
+class test_Mailbox(TestCase):
 
     def _handler(self, state):
         return self.stats["var"]

@@ -11,11 +11,11 @@ from ..messaging import Consumer, Producer
 from ..entity import Exchange, Queue
 
 from .mocks import Transport
-from .utils import unittest
+from .utils import TestCase
 from .utils import Mock
 
 
-class test_Producer(unittest.TestCase):
+class test_Producer(TestCase):
 
     def setUp(self):
         self.exchange = Exchange("foo", "direct")
@@ -187,7 +187,7 @@ class test_Producer(unittest.TestCase):
         self.assertTrue(p.on_return)
 
 
-class test_Consumer(unittest.TestCase):
+class test_Consumer(TestCase):
 
     def setUp(self):
         self.connection = BrokerConnection(transport=Transport)

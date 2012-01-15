@@ -6,18 +6,18 @@ import sys
 from mock import patch
 
 from .. import log
-from .utils import unittest
+from .utils import TestCase
 from .utils import Mock
 
 
-class test_NullHandler(unittest.TestCase):
+class test_NullHandler(TestCase):
 
     def test_emit(self):
         h = log.NullHandler()
         h.emit("record")
 
 
-class test_get_logger(unittest.TestCase):
+class test_get_logger(TestCase):
 
     def test_when_string(self):
         l = log.get_logger("foo")
@@ -49,7 +49,7 @@ class test_get_logger(unittest.TestCase):
         self.assertEqual(log.get_loglevel(logging.INFO), logging.INFO)
 
 
-class test_safe_format(unittest.TestCase):
+class test_safe_format(TestCase):
 
     def test_formatting(self):
         fmt = "The %r jumped over the %s"
@@ -59,7 +59,7 @@ class test_safe_format(unittest.TestCase):
         self.assertListEqual(res, ["'frog'", "elephant"])
 
 
-class test_LogMixin(unittest.TestCase):
+class test_LogMixin(TestCase):
 
     def setUp(self):
         self.log = log.Log("Log", Mock())
@@ -124,7 +124,7 @@ class test_LogMixin(unittest.TestCase):
                 "Log - Host %s removed", "'example.com'")
 
 
-class test_setup_logging(unittest.TestCase):
+class test_setup_logging(TestCase):
 
     @patch("logging.getLogger")
     def test_set_up_default_values(self, getLogger):

@@ -7,11 +7,11 @@ from ..connection import BrokerConnection, Resource, parse_url
 from ..messaging import Consumer, Producer
 
 from .mocks import Transport
-from .utils import unittest
+from .utils import TestCase
 from .utils import Mock, skip_if_not_module
 
 
-class test_connection_utils(unittest.TestCase):
+class test_connection_utils(TestCase):
 
     def setUp(self):
         self.url = "amqp://user:pass@localhost:5672/my/vhost"
@@ -52,7 +52,7 @@ class test_connection_utils(unittest.TestCase):
             BrokerConnection("bogus://localhost:7421").transport
 
 
-class test_Connection(unittest.TestCase):
+class test_Connection(TestCase):
 
     def setUp(self):
         self.conn = BrokerConnection(port=5672, transport=Transport)
@@ -229,7 +229,7 @@ class test_Connection(unittest.TestCase):
         self.assertTupleEqual(conn.connection_errors, (KeyError, ValueError))
 
 
-class test_Connection_with_transport_options(unittest.TestCase):
+class test_Connection_with_transport_options(TestCase):
 
     transport_options = {"pool_recycler": 3600, "echo": True}
 
@@ -248,7 +248,7 @@ class xResource(Resource):
         pass
 
 
-class ResourceCase(unittest.TestCase):
+class ResourceCase(TestCase):
     abstract = True
 
     def create_resource(self, limit, preload):

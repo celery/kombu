@@ -11,7 +11,7 @@ from ..transport import virtual
 from ..utils import uuid
 
 from .compat import catch_warnings
-from .utils import unittest
+from .utils import TestCase
 from .utils import Mock, redirect_stdouts
 
 
@@ -23,7 +23,7 @@ def memory_client():
     return BrokerConnection(transport="memory")
 
 
-class test_BrokerState(unittest.TestCase):
+class test_BrokerState(TestCase):
 
     def test_constructor(self):
         s = virtual.BrokerState()
@@ -35,7 +35,7 @@ class test_BrokerState(unittest.TestCase):
         self.assertEqual(t.bindings, 32)
 
 
-class test_QoS(unittest.TestCase):
+class test_QoS(TestCase):
 
     def setUp(self):
         self.q = virtual.QoS(client().channel(), prefetch_count=10)
@@ -98,7 +98,7 @@ class test_QoS(unittest.TestCase):
         self.assertEqual(self.q.get("foo"), 1)
 
 
-class test_Message(unittest.TestCase):
+class test_Message(TestCase):
 
     def test_create(self):
         c = client().channel()
@@ -128,7 +128,7 @@ class test_Message(unittest.TestCase):
         self.assertEqual(dict_["properties"]["delivery_tag"], tag)
 
 
-class test_AbstractChannel(unittest.TestCase):
+class test_AbstractChannel(TestCase):
 
     def test_get(self):
         with self.assertRaises(NotImplementedError):
@@ -169,7 +169,7 @@ class test_AbstractChannel(unittest.TestCase):
         self.assertTrue(cycle.called)
 
 
-class test_Channel(unittest.TestCase):
+class test_Channel(TestCase):
 
     def setUp(self):
         self.channel = client().channel()
@@ -459,7 +459,7 @@ class test_Channel(unittest.TestCase):
             self.channel.queue_declare(queue="21wisdjwqe", passive=True)
 
 
-class test_Transport(unittest.TestCase):
+class test_Transport(TestCase):
 
     def setUp(self):
         self.transport = client().transport
