@@ -129,7 +129,7 @@ Quick overview
 
         # Declare the video queue so that the messages can be delivered.
         # It is a best practice in Kombu to have both publishers and
-        # consmers declare the queue.
+        # consumers declare the queue.
         video_queue(channel).declare()
 
         # produce
