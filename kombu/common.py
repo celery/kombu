@@ -87,16 +87,23 @@ def itermessages(conn, channel, queue, limit=1, timeout=None,
         acc.append((body, message))
 
     with Consumer(channel, [queue], callbacks=[on_message], **kwargs):
-        for i in limit and xrange(limit) or count():
+        for _ in eventloop(conn, limit=limit, timeout=timeout,
+                           ignore_timeouts=True):
             try:
-                conn.drain_events(timeout=timeout)
-            except socket.timeout:
-                break
-            else:
-                try:
-                    yield acc.popleft()
-                except IndexError:
-                    pass
+                yield acc.popleft()
+            except IndexError:
+                pass
+
+
+def eventloop(conn, limit=None, timeout=None, ignore_timeouts=False):
+    for i in limit and xrange(limit) or count():
+        try:
+            yield conn.drain_events(timeout=timeout)
+        except socket.timeout:
+            if timeout and not ignore_timeouts:
+                raise
+        except socket.error:
+            pass
 
 
 def send_reply(exchange, req, msg, producer=None, **props):
