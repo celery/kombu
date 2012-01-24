@@ -389,9 +389,8 @@ class Channel(virtual.Channel):
 class Transport(virtual.Transport):
     Channel = Channel
 
-    interval = 1
+    polling_interval = None  # disable sleep between unsuccessful polls.
     default_port = DEFAULT_PORT
-    # poller is global for all Redis BrokerConnection's
 
     def __init__(self, *args, **kwargs):
         super(Transport, self).__init__(*args, **kwargs)
