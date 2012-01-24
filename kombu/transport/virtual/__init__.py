@@ -650,9 +650,6 @@ class Transport(base.Transport):
     #: used to fairly drain events from channels (set by constructor).
     cycle = None
 
-    #: default interval between polling channels for new events.
-    interval = 1
-
     #: port number used when no port is specified.
     default_port = None
 
@@ -663,7 +660,7 @@ class Transport(base.Transport):
     _callbacks = None
 
     #: Time to sleep between unsuccessful polls.
-    polling_interval = 0.1
+    polling_interval = 1.0
 
     def __init__(self, client, **kwargs):
         self.client = client
@@ -711,14 +708,17 @@ class Transport(base.Transport):
     def drain_events(self, connection, timeout=None):
         loop = 0
         time_start = time()
+        get = self.cycle.get
+        polling_interval = self.polling_interval
         while 1:
             try:
-                item, channel = self.cycle.get(timeout=timeout)
+                item, channel = get(timeout=timeout)
             except Empty:
                 if timeout and time() - time_start >= timeout:
                     raise socket.timeout()
                 loop += 1
-                sleep(self.polling_interval)
+                if polling_interval is not None:
+                    sleep(polling_interval)
             else:
                 break
 

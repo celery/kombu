@@ -89,7 +89,7 @@ class Channel(virtual.Channel):
 class Transport(virtual.Transport):
     Channel = Channel
 
-    interval = 1
+    polling_interval = 1
     default_port = DEFAULT_PORT
     connection_errors = (errors.ConnectionFailure, )
     channel_errors = (errors.ConnectionFailure,
