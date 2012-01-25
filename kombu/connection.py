@@ -582,12 +582,15 @@ class BrokerConnection(object):
         """
         if not self._closed:
             if not self.connected:
+                self._default_channel = None
                 self._connection = self._establish_connection()
                 self._closed = False
             return self._connection
 
     @property
     def default_channel(self):
+        # make sure we're still connected, and if not refresh.
+        self.connection
         if self._default_channel is None:
             self._default_channel = self.channel()
         return self._default_channel

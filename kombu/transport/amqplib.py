@@ -10,6 +10,7 @@ amqplib transport.
 """
 from __future__ import absolute_import
 
+import errno
 import socket
 
 try:
@@ -36,6 +37,14 @@ transport.AMQP_PROTOCOL_HEADER = str_to_bytes("AMQP\x01\x01\x08\x00")
 
 
 class Connection(amqp.Connection):  # pragma: no cover
+
+    def _do_close(self, *args, **kwargs):
+        # amqplib does not ignore socket errors when connection
+        # is closed on the remote end.
+        try:
+            super(Connection, self)._do_close(*args, **kwargs)
+        except socket.error:
+            pass
 
     def _dispatch_basic_return(self, channel, args, msg):
         reply_code = args.read_short()
@@ -250,8 +259,17 @@ class Transport(base.Transport):
         connection.client = None
         connection.close()
 
+    def is_alive(self, connection):
+        try:
+            connection.drain_events(timeout=1/1e4)
+        except socket.timeout:
+            return True
+        except self.connection_errors:
+            return False
+        return True
+
     def verify_connection(self, connection):
-        return connection.channels is not None
+        return connection.channels is not None and self.is_alive(connection)
 
     @property
     def default_connection_params(self):
