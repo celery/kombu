@@ -669,6 +669,9 @@ class Transport(base.Transport):
         self._callbacks = {}
         self.cycle = self.Cycle(self._drain_channel, self.channels, Empty)
         self._next_channel_id = count(1).next
+        polling_interval = client.transport_options.get("polling_interval")
+        if polling_interval is not None:
+            self.polling_interval = polling_interval
 
     def create_channel(self, connection):
         try:

@@ -15,8 +15,9 @@ from .utils import TestCase
 from .utils import Mock, redirect_stdouts
 
 
-def client():
-    return BrokerConnection(transport="kombu.transport.virtual.Transport")
+def client(**kwargs):
+    return BrokerConnection(transport="kombu.transport.virtual.Transport",
+                            **kwargs)
 
 
 def memory_client():
@@ -463,6 +464,10 @@ class test_Transport(TestCase):
 
     def setUp(self):
         self.transport = client().transport
+
+    def test_custom_polling_interval(self):
+        x = client(transport_options=dict(polling_interval=32.3))
+        self.assertEqual(x.transport.polling_interval, 32.3)
 
     def test_close_connection(self):
         c1 = self.transport.create_channel(self.transport)
