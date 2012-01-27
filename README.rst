@@ -100,7 +100,8 @@ Transport Comparison
          must be declared by all clients that needs them.
 
 .. [#f2] Fanout supported via storing routing tables in SimpleDB.
-         Can be disabled by setting the ``supports_fanout`` transport option.
+         Disabled by default, but can be enabled by using the
+         ``supports_fanout`` transport option.
 
 
 Documentation
