@@ -14,10 +14,7 @@ import errno
 import select
 import socket
 
-try:
-    from eventlet.patcher import is_monkey_patched as is_eventlet
-except ImportError:
-    is_eventlet = lambda module: False  # noqa
+from ..syn import detect_environment
 
 __all__ = ["poll"]
 
@@ -126,14 +123,20 @@ class _select(Poller):
             events[fd] = events.get(fd, 0) | POLL_ERR
         return events.items()
 
-if is_eventlet(select):
-    # use Eventlet's non-blocking version of select.select
-    poll = _select
-elif hasattr(select, "epoll"):
-    # Py2.6+ Linux
-    poll = _epoll
-elif hasattr(select, "kqueue"):
-    # Py2.6+ on BSD / Darwin
-    poll = _kqueue
-else:
-    poll = _select
+
+def _get_poller():
+    if detect_environment() in ("eventlet", "gevent"):
+        # greenlet
+        return _select
+    elif hasattr(select, "epoll"):
+        # Py2.6+ Linux
+        return _epoll
+    elif hasattr(select, "kqueue"):
+        # Py2.6+ on BSD / Darwin
+        return _kqueue
+    else:
+        return _select
+
+
+def poll(*args, **kwargs):
+    return _get_poller()(*args, **kwargs)
