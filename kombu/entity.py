@@ -437,9 +437,13 @@ class Queue(MaybeChannelBound):
         is more important than performance.
 
         """
+        no_ack = self.no_ack if no_ack is None else no_ack
         message = self.channel.basic_get(queue=self.name, no_ack=no_ack)
         if message is not None:
-            return self.channel.message_to_python(message)
+            m2p = getattr(self.channel, "message_to_python", None)
+            if m2p:
+                message = m2p(message)
+            return message
 
     def purge(self, nowait=False):
         """Remove all messages from the queue."""

@@ -468,7 +468,7 @@ class Consumer(object):
         try:
             m2p = getattr(channel, "message_to_python", None)
             if m2p:
-                message = channel.message_to_python(message)
+                message = m2p(message)
             decoded = message.decode()
         except Exception, exc:
             if not self.on_decode_error:
