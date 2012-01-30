@@ -260,7 +260,7 @@ class Transport(base.Transport):
 
     def is_alive(self, connection):
         try:
-            connection.drain_events(timeout=1/1e4)
+            connection.drain_events(timeout=0.0001)
         except socket.timeout:
             return True
         except self.connection_errors:
