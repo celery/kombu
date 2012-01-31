@@ -146,6 +146,7 @@ class Channel(virtual.Channel):
         self.client.info()
 
         self.connection.cycle.add(self)  # add to channel poller.
+        self.connection_errors = self.connection.connection_errors
 
     def basic_consume(self, queue, *args, **kwargs):
         if queue in self._fanout_queues:
@@ -192,7 +193,7 @@ class Channel(virtual.Channel):
         response = None
         try:
             response = c.parse_response()
-        except self.connection.connection_errors:
+        except self.connection_errors:
             self._in_listen = False
         if response is not None:
             payload = self._handle_message(c, response)
@@ -215,7 +216,7 @@ class Channel(virtual.Channel):
                 dest__item = self.client.parse_response(self.client.connection,
                                                         "BRPOP",
                                                         **options)
-            except self.connection.connection_errors:
+            except self.connection_errors:
                 # if there's a ConnectionError, disconnect so the next
                 # iteration will reconnect automatically.
                 self.client.connection.disconnect()
@@ -231,7 +232,7 @@ class Channel(virtual.Channel):
     def _poll_error(self, type, **options):
         try:
             self.client.parse_response(type)
-        except self.connection.connection_errors:
+        except self.connection_errors:
             pass
 
     def _get(self, queue):
