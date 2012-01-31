@@ -146,6 +146,8 @@ class Channel(virtual.Channel):
         self.client.info()
 
         self.connection.cycle.add(self)  # add to channel poller.
+        # copy errors, in case channel closed but threads still
+        # are still waiting for data.
         self.connection_errors = self.connection.connection_errors
 
     def basic_consume(self, queue, *args, **kwargs):
