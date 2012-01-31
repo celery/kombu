@@ -24,41 +24,6 @@ class test_MongoDBTransport(TestCase):
                         exchange=self.e,
                         routing_key="test_transport_mongodb2")
                         
-    def test_fanout(self):
-        return
-        fanexch = Exchange("test_transport_mongodb_fanout", type="fanout")
-        channel = self.c.channel()
-        producer = Producer(channel, fanexch)
-        _received = []
-        
-        self.assertEqual(len(channel._queue_cursors), 0)
-        badMsg = {"please":"noFails"}
-        producer.publish(badMsg)
-        
-        def callback(message_data, message):
-            print "_callback"
-            _received.append(message)
-            message.ack()
-            
-        goodMsg = {"something":"important"}
-        fanqueue = Queue("test_transport_mongodb_fanq", exchange=fanexch, channel=channel)        
-        
-        consumer = Consumer(channel, fanqueue)
-        consumer.register_callback(callback)
-        consumer.register_callback(lambda p,x: sys.stdout("_derp"))
-        
-        self.assertIn("test_transport_mongodb_fanq", channel._fanout_queues)
-        
-        producer.publish(goodMsg)
-        consumer.consume()
-        channel.drain_events()
-        
-        self.assertIn(goodMsg, _received)
-        self.assertNotIn(badMsg, _received)
-        
-        fanqueue.delete()
-        self.assertEqual(len(channel._queue_cursors), 0)
-        
 
     def test_produce_consume(self):
         channel = self.c.channel()
