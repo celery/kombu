@@ -166,13 +166,17 @@ class Connection(blocking.BlockingConnection):
         super(Connection, self).close(*args)
 
 
+AuthenticationError = getattr(exceptions, "AuthenticationError",
+                              getattr(exceptions, "LoginError"))
+
+
 class Transport(base.Transport):
     default_port = DEFAULT_PORT
 
     connection_errors = (socket.error,
                          exceptions.ConnectionClosed,
                          exceptions.ChannelClosed,
-                         exceptions.AuthenticationError,
+                         AuthenticationError,
                          exceptions.NoFreeChannels,
                          exceptions.DuplicateConsumerTag,
                          exceptions.UnknownConsumerTag,
