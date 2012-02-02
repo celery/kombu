@@ -88,14 +88,16 @@ class Producer(object):
     def declare(self):
         """Declare the exchange.
 
-        This is done automatically at instantiation if :attr:`auto_declare`
-        is set to :const:`True`.
+        This happens automatically at instantiation if
+        :attr:`auto_declare` is enabled.
 
         """
         if self.exchange.name:
             self.exchange.declare()
 
     def maybe_declare(self, entity, retry=False, **retry_policy):
+        """Declare the exchange if it hasn't already been declared
+        during this session."""
         if entity:
             from .common import maybe_declare
             return maybe_declare(entity, self.channel, retry, **retry_policy)
@@ -116,26 +118,32 @@ class Producer(object):
         :keyword content_type: Content type. Default is auto-detect.
         :keyword content_encoding: Content encoding. Default is auto-detect.
         :keyword serializer: Serializer to use. Default is auto-detect.
+        :keyword compression: Compression method to use.  Default is none.
         :keyword headers: Mapping of arbitrary headers to pass along
           with the message body.
         :keyword exchange: Override the exchange.  Note that this exchange
           must have been declared.
-        :keyword properties: Additional properties, see the AMQP spec.
+        :keyword declare: Optional list of required entities that must
+            have been declared before publishing the message.  The entities
+            will be declared using :func:`~kombu.common.maybe_declare`.
+        :keyword retry: Retry publishing, or declaring entities if the
+            connection is lost.
+        :keyword retry_policy: Retry configuration, this is the keywords
+            supported by :meth:`~kombu.connection.Connection.ensure`.
+        :keyword \*\*properties: Additional message properties, see AMQP spec.
 
         """
+        headers = {} if headers is None else headers
         retry_policy = {} if retry_policy is None else retry_policy
-        headers = headers or {}
-        if routing_key is None:
-            routing_key = self.routing_key
-        if compression is None:
-            compression = self.compression
+        routing_key = self.routing_key if routing_key is None else routing_key
+        compression = self.compression if compression is None else compression
 
         if isinstance(exchange, Exchange):
             exchange = exchange.name
 
-        # Additional  entities to declare before publishing the message.
-        for entity in declare:
-            self.maybe_declare(entity, retry, **retry_policy)
+        if declare:
+            [self.maybe_declare(entity, retry, **retry_policy)
+                    for entity in declare]
 
         body, content_type, content_encoding = self._prepare(
                 body, serializer, content_type, content_encoding,
@@ -147,15 +155,11 @@ class Producer(object):
                                         content_encoding,
                                         headers=headers,
                                         properties=properties)
-        publish = self._publish
+        publish = self.exchange.publish
         if retry:
-            publish = self.connection.ensure(self, self._publish,
+            publish = self.connection.ensure(self, self.exchange.publish,
                                              **retry_policy)
         return publish(message, routing_key, mandatory, immediate, exchange)
-
-    def _publish(self, message, routing_key, mandatory, immediate, exchange):
-        return self.exchange.publish(message, routing_key, mandatory,
-                                     immediate, exchange=exchange)
 
     def revive(self, channel):
         """Revive the producer after connection loss."""
@@ -317,17 +321,13 @@ class Consumer(object):
         return queue
 
     def consume(self, no_ack=None):
-        """Register consumer on server.
+        if self.queues:
+            no_ack = self.no_ack if no_ack is None else no_ack
 
-        """
-        if not self.queues:
-            return
-        if no_ack is None:
-            no_ack = self.no_ack
-        H, T = self.queues[:-1], self.queues[-1]
-        for queue in H:
-            self._basic_consume(queue, no_ack=no_ack, nowait=True)
-        self._basic_consume(T, no_ack=no_ack, nowait=False)
+            H, T = self.queues[:-1], self.queues[-1]
+            for queue in H:
+                self._basic_consume(queue, no_ack=no_ack, nowait=True)
+            self._basic_consume(T, no_ack=no_ack, nowait=False)
 
     def cancel(self):
         """End all active queue consumers.
@@ -336,8 +336,9 @@ class Consumer(object):
         mean the server will not send any more messages for this consumer.
 
         """
-        for tag in self._active_tags.values():
-            self.channel.basic_cancel(tag)
+        cancel = self.channel.basic_cancel
+        for tag in self._active_tags.itervalues():
+            cancel(tag)
         self._active_tags.clear()
     close = cancel
 
@@ -362,7 +363,7 @@ class Consumer(object):
 
         .. warning::
             This will *delete all ready messages*, there is no
-            undo operation available.
+            undo operation.
 
         """
         return sum(queue.purge() for queue in self.queues)
@@ -438,7 +439,7 @@ class Consumer(object):
         """
         callbacks = self.callbacks
         if not callbacks:
-            raise NotImplementedError("No consumer callbacks registered")
+            raise NotImplementedError("Consumer does not have any callback")
         [callback(body, message) for callback in callbacks]
 
     def revive(self, channel):
@@ -452,10 +453,8 @@ class Consumer(object):
         tag = self._active_tags.get(queue.name)
         if tag is None:
             tag = self._add_tag(queue, consumer_tag)
-            queue.consume(tag,
-                          self._receive_callback,
-                          no_ack=no_ack,
-                          nowait=nowait)
+            queue.consume(tag, self._receive_callback,
+                          no_ack=no_ack, nowait=nowait)
         return tag
 
     def _add_tag(self, queue, consumer_tag=None):

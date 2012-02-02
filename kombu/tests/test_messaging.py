@@ -109,9 +109,9 @@ class test_Producer(TestCase):
 
     def test_publish_with_Exchange_instance(self):
         p = self.connection.Producer()
-        p._publish = Mock()
+        p.exchange.publish = Mock()
         p.publish("hello", exchange=Exchange("foo"))
-        self.assertEqual(p._publish.call_args[0][4], "foo")
+        self.assertEqual(p.exchange.publish.call_args[0][4], "foo")
 
     def test_publish_retry_with_declare(self):
         p = self.connection.Producer()
@@ -121,7 +121,7 @@ class test_Producer(TestCase):
         p.publish("hello", exchange=ex, declare=[ex], retry=True,
                 retry_policy={"step": 4})
         p.maybe_declare.assert_called_with(ex, True, step=4)
-        ensure.assert_called_with(p, p._publish, step=4)
+        ensure.assert_called_with(p, p.exchange.publish, step=4)
 
     def test_revive_when_channel_is_connection(self):
         p = self.connection.Producer()

@@ -185,7 +185,7 @@ class Exchange(MaybeChannelBound):
         :keyword headers: Message headers.
 
         """
-        properties = properties or {}
+        properties = {} if properties is None else properties
         delivery_mode = delivery_mode or self.delivery_mode
         properties["delivery_mode"] = DELIVERY_MODES.get(delivery_mode,
                                                          delivery_mode)
@@ -411,11 +411,7 @@ class Queue(MaybeChannelBound):
         return ret
 
     def queue_bind(self, nowait=False):
-        """Create the queue binding on the server.
-
-        :keyword nowait: Do not wait for a reply.
-
-        """
+        """Create the queue binding on the server."""
         return self.channel.queue_bind(queue=self.name,
                                        exchange=self.exchange.name,
                                        routing_key=self.routing_key,
@@ -446,7 +442,7 @@ class Queue(MaybeChannelBound):
             return message
 
     def purge(self, nowait=False):
-        """Remove all messages from the queue."""
+        """Remove all ready messages from the queue."""
         return self.channel.queue_purge(queue=self.name,
                                         nowait=nowait) or 0
 
