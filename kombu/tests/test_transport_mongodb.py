@@ -1,15 +1,11 @@
 from __future__ import absolute_import
 from __future__ import with_statement
 
-import socket
-
 from ..connection import BrokerConnection
 from ..entity import Exchange, Queue
 from ..messaging import Consumer, Producer
 
 from .utils import TestCase
-
-import sys
 
 
 class test_MongoDBTransport(TestCase):
@@ -23,7 +19,6 @@ class test_MongoDBTransport(TestCase):
         self.q2 = Queue("test_transport_memory2",
                         exchange=self.e,
                         routing_key="test_transport_mongodb2")
-                        
 
     def test_produce_consume(self):
         channel = self.c.channel()
