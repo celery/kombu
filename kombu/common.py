@@ -96,6 +96,36 @@ def itermessages(conn, channel, queue, limit=1, timeout=None,
 
 
 def eventloop(conn, limit=None, timeout=None, ignore_timeouts=False):
+    """Best practice generator wrapper around ``Connection.drain_events``.
+
+    Able to drain events forever, with a limit, and optionally ignoring
+    timeout errors (a timeout of 1 is often used in environments where
+    the socket can get "stuck", and is a best practice for Kombu consumers).
+
+    **Examples**
+
+    ``eventloop`` is a generator::
+
+        >>> from kombu.common import eventloop
+
+        >>> it = eventloop(connection, timeout=1, ignore_timeouts=True)
+        >>> it.next()   # one event consumed, or timed out.
+
+        >>> for _ in eventloop(connection, timeout=1, ignore_timeouts=True):
+        ...     pass  # loop forever.
+
+    It also takes an optional limit parameter, and timeout errors
+    are propagated by default::
+
+        for _ in eventloop(connection, limit=1, timeout=1):
+            pass
+
+    .. seealso::
+
+        :func:`itermessages`, which is an event loop bound to one or more
+        consumers, that yields any messages received.
+
+    """
     for i in limit and xrange(limit) or count():
         try:
             yield conn.drain_events(timeout=timeout)

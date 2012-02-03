@@ -2,6 +2,25 @@
  Change history
 ================
 
+.. _version-2.1.0:
+
+2.1.0
+=====
+:release-date: 2012-02-03 17:00 P.M GMT
+:by: Ask Solem
+
+* MongoDB: Now supports fanout (broadcast) (Issue #98).
+
+    Contributed by Scott Lyons
+
+* pika transport: Now works with pika 0.9.5 and 0.9.6dev.
+
+    The old pika transport (supporting 0.5.x) is now available
+    as alias ``oldpika``.
+
+    (Note terribly latency has been experienced with the new pika
+    versions, so this is still an experimental transport).
+
 .. _version-2.0.0:
 
 2.0.0
