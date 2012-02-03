@@ -112,20 +112,6 @@ class Connection(amqp.Connection):  # pragma: no cover
             if prev != timeout:
                 sock.settimeout(prev)
 
-    def is_alive(self):
-        sock = self.transport.sock
-        prev = sock.gettimeout()
-        sock.settimeout(0.0001)
-        try:
-            sock.recv(1, socket.MSG_PEEK)
-        except socket.timeout:
-            pass
-        except socket.error:
-            return False
-        finally:
-            sock.settimeout(prev)
-        return True
-
     def _wait_multiple(self, channel_ids, allowed_methods, timeout=None):
         for channel_id in channel_ids:
             method_queue = self.channels[channel_id].method_queue
@@ -273,7 +259,18 @@ class Transport(base.Transport):
         connection.close()
 
     def is_alive(self, connection):
-        return connection.is_alive()
+        sock = connection.transport.sock
+        prev = sock.gettimeout()
+        sock.settimeout(0.0001)
+        try:
+            sock.recv(1, socket.MSG_PEEK)
+        except socket.timeout:
+            pass
+        except socket.error:
+            return False
+        finally:
+            sock.settimeout(prev)
+        return True
 
     def verify_connection(self, connection):
         return connection.channels is not None and self.is_alive(connection)
