@@ -171,14 +171,14 @@ class TransportCase(unittest.TestCase):
                             for i in xrange(n)]
         digests = []
         chan1 = self.connection.channel()
-        consumer = chan1.Consumer(self.queue)
-        self.purge_consumer(consumer)
         producer = chan1.Producer(self.exchange)
         for i, message in enumerate(messages):
             producer.publish({"text": message,
                               "i": i}, routing_key=self.prefix)
             digests.append(self._digest(message))
 
+        consumer = chan1.Consumer(self.queue)
+        self.purge_consumer(consumer)
         received = [(msg["i"], msg["text"])
                         for msg in consumeN(self.connection, consumer, n)]
         self.assertEqual(len(received), n)
