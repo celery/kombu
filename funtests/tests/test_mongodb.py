@@ -1,3 +1,6 @@
+from kombu import Consumer, Producer, Exchange, Queue
+from kombu.utils import nested
+
 from funtests import transport
 
 
@@ -7,4 +10,60 @@ class test_mongodb(transport.TransportCase):
     event_loop_max = 100
 
     def after_connect(self, connection):
-        connection.channel().client
+        connection.channel().client  # evaluate connection.
+
+        self.c = self.connection   # shortcut
+
+    def test_fanout(self, name="test_mongodb_fanout"):
+        c = self.connection
+        e = Exchange(name, type="fanout")
+        q = Queue(name, exchange=e, routing_key=name)
+        q2 = Queue(name + "2", exchange=e, routing_key=name + "2")
+
+        channel = c.default_channel
+        producer = Producer(channel, e)
+        consumer1 = Consumer(channel, q)
+        consumer2 = Consumer(channel, q2)
+        self.q2(channel).declare()
+
+        for i in xrange(10):
+            producer.publish({"foo": i}, routing_key=name)
+        for i in xrange(10):
+            producer.publish({"foo": i}, routing_key=name + "2")
+
+        _received1 = []
+        _received2 = []
+
+        def callback1(message_data, message):
+            _received1.append(message)
+            message.ack()
+
+        def callback2(message_data, message):
+            _received2.append(message)
+            message.ack()
+
+        consumer1.register_callback(callback1)
+        consumer2.register_callback(callback2)
+
+        with nested(consumer1, consumer2):
+
+            while 1:
+                if len(_received1) + len(_received2) == 20:
+                    break
+                c.drain_events(timeout=60)
+        self.assertEqual(len(_received1) + len(_received2), 20)
+
+        # queue.delete
+        for i in xrange(10):
+            producer.publish({"foo": i}, routing_key=name)
+        self.assertTrue(self.q(channel).get())
+        self.q(channel).delete()
+        self.q(channel).declare()
+        self.assertIsNone(self.q(channel).get())
+
+        # queue.purge
+        for i in xrange(10):
+            producer.publish({"foo": i}, routing_key=name + "2")
+        self.assertTrue(self.q2(channel).get())
+        self.q2(channel).purge()
+        self.assertIsNone(self.q2(channel).get())
