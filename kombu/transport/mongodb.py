@@ -112,7 +112,8 @@ class Channel(virtual.Channel):
         col.ensure_index([("queue", 1)])
 
         if "messages.broadcast" not in database.collection_names():
-            capsize = conninfo.capped_queue_size or 100000
+            capsize = conninfo.transport_options.get(
+                            "capped_queue_size") or 100000
             database.create_collection("messages.broadcast", size=capsize,
                                                              capped=True)
 
