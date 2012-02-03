@@ -40,7 +40,7 @@ TRANSPORT_ALIASES = {
     "amqplib": "kombu.transport.amqplib.Transport",
     "librabbitmq": "kombu.transport.librabbitmq.Transport",
     "pika": "kombu.transport.pika2.Transport",
-    "syncpika": "kombu.transport.pika.SyncTransport",
+    "oldpika": "kombu.transport.pika.SyncTransport",
     "memory": "kombu.transport.memory.Transport",
     "redis": "kombu.transport.redis.Transport",
     "SQS": "kombu.transport.SQS.Transport",
