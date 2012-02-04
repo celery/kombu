@@ -7,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Serialization &mdash; Kombu 2.0.0 documentation</title>
+    <title>Serialization &mdash; Kombu 2.1.0 documentation</title>
     
     <link rel="stylesheet" href="../_static/celery.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -15,7 +15,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '2.0.0',
+        VERSION:     '2.1.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -24,7 +24,7 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="Kombu 2.0.0 documentation" href="../index.html" />
+    <link rel="top" title="Kombu 2.1.0 documentation" href="../index.html" />
     <link rel="up" title="User Guide" href="index.html" />
     <link rel="next" title="Frequently Asked Questions" href="../faq.html" />
     <link rel="prev" title="Connection and Producer Pools" href="pools.html" /> 
@@ -45,7 +45,7 @@
         <li class="right" >
           <a href="pools.html" title="Connection and Producer Pools"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">Kombu 2.0.0 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 2.1.0 documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">User Guide</a> &raquo;</li> 
       </ul>
     </div>  
@@ -95,7 +95,7 @@ cross-language compatibility, then <cite>YAML</cite> may be a better fit
 than the above.</p>
 </dd>
 </dl>
-<p>To instruct carrot to use an alternate serialization method,
+<p>To instruct <cite>Kombu</cite> to use an alternate serialization method,
 use one of the following options.</p>
 <blockquote>
 <div><ol class="arabic">
@@ -121,7 +121,7 @@ content-type is sent as a message header.</p>
 <div class="section" id="sending-raw-data-without-serialization">
 <span id="sending-raw-data"></span><h2>Sending raw data without Serialization<a class="headerlink" href="#sending-raw-data-without-serialization" title="Permalink to this headline">¶</a></h2>
 <p>In some cases, you don&#8217;t need your message data to be serialized. If you
-pass in a plain string or Unicode object as your message, then carrot will
+pass in a plain string or Unicode object as your message, then <cite>Kombu</cite> will
 not waste cycles serializing/deserializing the data.</p>
 <p>You can optionally specify a <cite>content_type</cite> and <cite>content_encoding</cite>
 for the raw data:</p>
@@ -197,7 +197,7 @@ for the raw data:</p>
         <li class="right" >
           <a href="pools.html" title="Connection and Producer Pools"
              >previous</a> |</li>
-        <li><a href="../index.html">Kombu 2.0.0 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 2.1.0 documentation</a> &raquo;</li>
           <li><a href="index.html" >User Guide</a> &raquo;</li> 
       </ul>
     </div>

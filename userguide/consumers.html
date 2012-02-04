@@ -7,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Consumers &mdash; Kombu 2.0.0 documentation</title>
+    <title>Consumers &mdash; Kombu 2.1.0 documentation</title>
     
     <link rel="stylesheet" href="../_static/celery.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -15,7 +15,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '2.0.0',
+        VERSION:     '2.1.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -24,7 +24,7 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="Kombu 2.0.0 documentation" href="../index.html" />
+    <link rel="top" title="Kombu 2.1.0 documentation" href="../index.html" />
     <link rel="up" title="User Guide" href="index.html" />
     <link rel="next" title="Examples" href="examples.html" />
     <link rel="prev" title="Producers" href="producers.html" /> 
@@ -45,7 +45,7 @@
         <li class="right" >
           <a href="producers.html" title="Producers"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">Kombu 2.0.0 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 2.1.0 documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">User Guide</a> &raquo;</li> 
       </ul>
     </div>  
@@ -189,12 +189,6 @@ mean the server will not send any more messages for this consumer.</p>
 
 <dl class="method">
 <dt>
-<tt class="descclassname">Consumer.</tt><tt class="descname">consume</tt><big>(</big><em>no_ack=None</em><big>)</big></dt>
-<dd><p>Register consumer on server.</p>
-</dd></dl>
-
-<dl class="method">
-<dt>
 <tt class="descclassname">Consumer.</tt><tt class="descname">declare</tt><big>(</big><big>)</big></dt>
 <dd><p>Declare queues, exchanges and bindings.</p>
 <p>This is done automatically at instantiation if <tt class="xref py py-attr docutils literal"><span class="pre">auto_declare</span></tt>
@@ -236,7 +230,7 @@ that occurred while trying to decode it.</p>
 <div class="admonition warning">
 <p class="first admonition-title">Warning</p>
 <p class="last">This will <em>delete all ready messages</em>, there is no
-undo operation available.</p>
+undo operation.</p>
 </div>
 </dd></dl>
 
@@ -404,7 +398,7 @@ and the <cite>Message</cite> instance (a subclass of
         <li class="right" >
           <a href="producers.html" title="Producers"
              >previous</a> |</li>
-        <li><a href="../index.html">Kombu 2.0.0 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 2.1.0 documentation</a> &raquo;</li>
           <li><a href="index.html" >User Guide</a> &raquo;</li> 
       </ul>
     </div>

@@ -7,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Connections and transports &mdash; Kombu 2.0.0 documentation</title>
+    <title>Connections and transports &mdash; Kombu 2.1.0 documentation</title>
     
     <link rel="stylesheet" href="../_static/celery.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -15,7 +15,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '2.0.0',
+        VERSION:     '2.1.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -24,7 +24,7 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="Kombu 2.0.0 documentation" href="../index.html" />
+    <link rel="top" title="Kombu 2.1.0 documentation" href="../index.html" />
     <link rel="up" title="User Guide" href="index.html" />
     <link rel="next" title="Producers" href="producers.html" />
     <link rel="prev" title="Introduction" href="introduction.html" /> 
@@ -45,7 +45,7 @@
         <li class="right" >
           <a href="introduction.html" title="Introduction"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">Kombu 2.0.0 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 2.1.0 documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">User Guide</a> &raquo;</li> 
       </ul>
     </div>  
@@ -184,11 +184,11 @@ documentation for available options.</td>
 <h2>Transport Comparison<a class="headerlink" href="#transport-comparison" title="Permalink to this headline">¶</a></h2>
 <table border="1" class="docutils">
 <colgroup>
-<col width="24%" />
+<col width="23%" />
 <col width="16%" />
 <col width="19%" />
-<col width="17%" />
-<col width="24%" />
+<col width="19%" />
+<col width="23%" />
 </colgroup>
 <tbody valign="top">
 <tr class="row-odd"><td><strong>Client</strong></td>
@@ -212,52 +212,52 @@ documentation for available options.</td>
 <tr class="row-even"><td><em>redis</em></td>
 <td>Virtual</td>
 <td>Yes</td>
-<td>Yes[*]_</td>
+<td>Yes <a class="footnote-reference" href="#f1" id="id1">[1]</a></td>
 <td>Yes (PUB/SUB)</td>
 </tr>
 <tr class="row-odd"><td><em>beanstalk</em></td>
 <td>Virtual</td>
 <td>Yes</td>
-<td>Yes[*]_</td>
+<td>Yes <a class="footnote-reference" href="#f1" id="id2">[1]</a></td>
 <td>No</td>
 </tr>
 <tr class="row-even"><td><em>SQS</em></td>
 <td>Virtual</td>
 <td>Yes</td>
-<td>Yes[*]_</td>
-<td>Yes[#]_</td>
+<td>Yes <a class="footnote-reference" href="#f1" id="id3">[1]</a></td>
+<td>Yes <a class="footnote-reference" href="#f2" id="id4">[2]</a></td>
 </tr>
 <tr class="row-odd"><td><em>mongodb</em></td>
 <td>Virtual</td>
 <td>Yes</td>
-<td>Yes[*]_</td>
+<td>Yes <a class="footnote-reference" href="#f1" id="id5">[1]</a></td>
 <td>No</td>
 </tr>
 <tr class="row-even"><td><em>couchdb</em></td>
 <td>Virtual</td>
 <td>Yes</td>
-<td>Yes[*]_</td>
+<td>Yes <a class="footnote-reference" href="#f1" id="id6">[1]</a></td>
 <td>No</td>
 </tr>
 <tr class="row-odd"><td><em>in-memory</em></td>
 <td>Virtual</td>
 <td>Yes</td>
-<td>Yes[*]_</td>
+<td>Yes <a class="footnote-reference" href="#f1" id="id7">[1]</a></td>
 <td>No</td>
 </tr>
 </tbody>
 </table>
-<table class="docutils footnote" frame="void" id="id1" rules="none">
+<table class="docutils footnote" frame="void" id="f1" rules="none">
 <colgroup><col class="label" /><col /></colgroup>
 <tbody valign="top">
-<tr><td class="label">[*]</td><td>Declarations only kept in memory, so exchanges/queues
+<tr><td class="label">[1]</td><td><em>(<a class="fn-backref" href="#id1">1</a>, <a class="fn-backref" href="#id2">2</a>, <a class="fn-backref" href="#id3">3</a>, <a class="fn-backref" href="#id5">4</a>, <a class="fn-backref" href="#id6">5</a>, <a class="fn-backref" href="#id7">6</a>)</em> Declarations only kept in memory, so exchanges/queues
 must be declared by all clients that needs them.</td></tr>
 </tbody>
 </table>
-<table class="docutils footnote" frame="void" id="id2" rules="none">
+<table class="docutils footnote" frame="void" id="f2" rules="none">
 <colgroup><col class="label" /><col /></colgroup>
 <tbody valign="top">
-<tr><td class="label">[1]</td><td>Fanout supported via storing routing tables in SimpleDB.
+<tr><td class="label"><a class="fn-backref" href="#id4">[2]</a></td><td>Fanout supported via storing routing tables in SimpleDB.
 Can be disabled by setting the <tt class="docutils literal"><span class="pre">supports_fanout</span></tt> transport option.</td></tr>
 </tbody>
 </table>
@@ -326,7 +326,7 @@ Can be disabled by setting the <tt class="docutils literal"><span class="pre">su
         <li class="right" >
           <a href="introduction.html" title="Introduction"
              >previous</a> |</li>
-        <li><a href="../index.html">Kombu 2.0.0 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 2.1.0 documentation</a> &raquo;</li>
           <li><a href="index.html" >User Guide</a> &raquo;</li> 
       </ul>
     </div>
