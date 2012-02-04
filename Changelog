@@ -13,6 +13,12 @@
 
     Contributed by Scott Lyons.
 
+* amqplib: Now detects broken connections by using ``MSG_PEEK``.
+
+* pylibrabbitmq: Now supports ``basic_get`` (Issue #97).
+
+* gevent: Now always uses the ``select`` polling backend.
+
 * pika transport: Now works with pika 0.9.5 and 0.9.6dev.
 
     The old pika transport (supporting 0.5.x) is now available
@@ -21,12 +27,26 @@
     (Note terribly latency has been experienced with the new pika
     versions, so this is still an experimental transport).
 
+* Virtual transports: can now set polling interval via the
+  transport options (Issue #96).
+
+    Example::
+
+        >>> BrokerConnection("sqs://", transport_options={
+        ...     "polling_interval": 5.0})
+
+    The default interval is transport specific, but usually
+    1.0s (or 5.0s for the Django database transport, which
+    can also be set using the ``KOMBU_POLLING_INTERVAL`` setting).
+
+* Adds convenience function: :func:`kombu.common.eventloop`.
+
 .. _version-2.0.0:
 
 2.0.0
 =====
 :release-date: 2012-01-15 18:34 P.M GMT
-:by: Ask Solem
+uby: Ask Solem
 
 .. _v200-important:
 
