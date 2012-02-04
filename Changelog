@@ -46,17 +46,17 @@
 2.0.0
 =====
 :release-date: 2012-01-15 18:34 P.M GMT
-uby: Ask Solem
+:by: Ask Solem
 
 .. _v200-important:
 
 Important Notes
-===============
+---------------
 
 .. _v200-python-compatibility:
 
 Python Compatibility
---------------------
+~~~~~~~~~~~~~~~~~~~~
 
 * No longer supports Python 2.4.
 
@@ -70,7 +70,7 @@ Python Compatibility
 .. _v200-new-transports:
 
 New Transports
---------------
+~~~~~~~~~~~~~~
 
 * ``django-kombu`` is now part of Kombu core.
 
