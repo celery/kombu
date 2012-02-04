@@ -16,14 +16,14 @@ class test_mongodb(transport.TransportCase):
 
     def test_fanout(self, name="test_mongodb_fanout"):
         c = self.connection
-        e = Exchange(name, type="fanout")
-        q = Queue(name, exchange=e, routing_key=name)
-        q2 = Queue(name + "2", exchange=e, routing_key=name + "2")
+        self.e = Exchange(name, type="fanout")
+        self.q = Queue(name, exchange=self.e, routing_key=name)
+        self.q2 = Queue(name + "2", exchange=self.e, routing_key=name + "2")
 
         channel = c.default_channel
-        producer = Producer(channel, e)
-        consumer1 = Consumer(channel, q)
-        consumer2 = Consumer(channel, q2)
+        producer = Producer(channel, self.e)
+        consumer1 = Consumer(channel, self.q)
+        consumer2 = Consumer(channel, self.q2)
         self.q2(channel).declare()
 
         for i in xrange(10):
