@@ -28,6 +28,7 @@ Flavio [FlaPer87] Percoco Premoli <flaper87@flaper87.org>;\
 Scott Lyons <scottalyons@gmail.com>;\
 """
 
+
 class Channel(virtual.Channel):
     _client = None
     supports_fanout = True
