@@ -28,7 +28,6 @@ Flavio [FlaPer87] Percoco Premoli <flaper87@flaper87.org>;\
 Scott Lyons <scottalyons@gmail.com>;\
 """
 
-
 class Channel(virtual.Channel):
     _client = None
     supports_fanout = True
@@ -90,7 +89,7 @@ class Channel(virtual.Channel):
     def close(self):
         super(Channel, self).close()
         if self._client:
-            self._client.database.connection.end_request()
+            self._client.connection.end_request()
 
     def _open(self):
         conninfo = self.connection.client
@@ -124,6 +123,7 @@ class Channel(virtual.Channel):
         self.routing.ensure_index([("queue", 1), ("exchange", 1)])
         return database
 
+    #TODO: Store a more complete exchange metatable in the routing collection
     def get_table(self, exchange):
         """Get table of bindings for ``exchange``."""
         brokerRoutes = self.client.messages.routing.find({
