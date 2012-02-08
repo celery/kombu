@@ -168,7 +168,6 @@ class test_Consumer(TestCase):
         x = c.__enter__()
         self.assertIs(x, c)
         x.__exit__()
-        self.assertIn("close", c.backend)
         self.assertTrue(c._closed)
 
     def test_revive(self, n="test_revive"):
