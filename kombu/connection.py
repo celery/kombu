@@ -20,7 +20,7 @@ from copy import copy
 from functools import wraps
 from itertools import count
 from Queue import Empty
-from urlparse import urlparse
+from urlparse import urlparse, unquote
 try:
     from urlparse import parse_qsl
 except ImportError:  # pragma: no cover
@@ -46,6 +46,7 @@ __all__ = ["parse_url", "BrokerConnection", "Resource",
 
 def parse_url(url):
     port = path = auth = userid = password = None
+    # parse with HTTP URL semantics
     scheme = urlparse(url).scheme
     parts = urlparse(url.replace("%s://" % (scheme, ), "http://"))
 
@@ -68,12 +69,12 @@ def parse_url(url):
             path = path[1:]
         port = port and int(port) or port
 
-    return dict({"hostname": hostname,
+    return dict({"hostname": unquote(hostname or "") or None,
                  "port": port or None,
-                 "userid": userid or None,
-                 "password": password or None,
+                 "userid": unquote(userid or "") or None,
+                 "password": unquote(password or "") or None,
                  "transport": scheme,
-                 "virtual_host": path or None},
+                 "virtual_host": unquote(path or "") or None},
                 **kwdict(dict(parse_qsl(parts.query))))
 
 
