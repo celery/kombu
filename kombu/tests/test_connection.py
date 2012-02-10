@@ -3,6 +3,8 @@ from __future__ import with_statement
 
 import pickle
 
+from nose import SkipTest
+
 from ..connection import BrokerConnection, Resource, parse_url
 from ..messaging import Consumer, Producer
 
@@ -50,6 +52,89 @@ class test_connection_utils(TestCase):
     def test_bogus_scheme(self):
         with self.assertRaises(KeyError):
             BrokerConnection("bogus://localhost:7421").transport
+
+    def assert_info(self, conn, **fields):
+        info = conn.info()
+        for field, expected in fields.iteritems():
+            self.assertEqual(info[field], expected)
+
+    def test_rabbitmq_example_urls(self):
+        # see Appendix A of http://www.rabbitmq.com/uri-spec.html
+        C = BrokerConnection
+
+        self.assert_info(
+            C("amqp://user:pass@host:10000/vhost"),
+                userid="user", password="pass", hostname="host",
+                port=10000, virtual_host="vhost")
+
+        self.assert_info(
+            C("amqp://user%61:%61pass@ho%61st:10000/v%2fhost"),
+                userid="usera", password="apass",
+                hostname="hoast", port=10000,
+                virtual_host="v/host")
+
+        self.assert_info(
+            C("amqp://"),
+                userid="guest", password="guest",
+                hostname="localhost", port=5672,
+                virtual_host="/")
+
+        self.assert_info(
+            C("amqp://:@/"),
+                userid="guest", password="guest",
+                hostname="localhost", port=5672,
+                virtual_host="/")
+
+        self.assert_info(
+            C("amqp://user@/"),
+                userid="user", password="guest",
+                hostname="localhost", port=5672,
+                virtual_host="/")
+
+        self.assert_info(
+            C("amqp://user:pass@/"),
+                userid="user", password="pass",
+                hostname="localhost", port=5672,
+                virtual_host="/")
+
+        self.assert_info(
+            C("amqp://host"),
+                userid="guest", password="guest",
+                hostname="host", port=5672,
+                virtual_host="/")
+
+        self.assert_info(
+            C("amqp://:10000"),
+                userid="guest", password="guest",
+                hostname="localhost", port=10000,
+                virtual_host="/")
+
+        self.assert_info(
+            C("amqp:///vhost"),
+                userid="guest", password="guest",
+                hostname="localhost", port=5672,
+                virtual_host="vhost")
+
+        self.assert_info(
+            C("amqp://host/"),
+                userid="guest", password="guest",
+                hostname="host", port=5672,
+                virtual_host="/")
+
+        self.assert_info(
+            C("amqp://host/%2f"),
+                userid="guest", password="guest",
+                hostname="host", port=5672,
+                virtual_host="/")
+
+    def test_url_IPV6(self):
+        raise SkipTest("urllib can't parse ipv6 urls")
+
+        self.assert_info(
+            C("amqp://[::1]"),
+                userid="guest", password="guest",
+                hostname="[::1]", port=5672,
+                virtual_host="/")
 
 
 class test_Connection(TestCase):
