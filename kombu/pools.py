@@ -59,7 +59,8 @@ class ProducerPool(Resource):
         return p
 
     def release(self, resource):
-        resource.connection.release()
+        if resource.connection:
+            resource.connection.release()
         resource.channel = None
         super(ProducerPool, self).release(resource)
 
