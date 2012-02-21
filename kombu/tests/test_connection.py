@@ -128,6 +128,7 @@ class test_connection_utils(TestCase):
                 virtual_host="/")
 
     def test_url_IPV6(self):
+        C = BrokerConnection
         raise SkipTest("urllib can't parse ipv6 urls")
 
         self.assert_info(

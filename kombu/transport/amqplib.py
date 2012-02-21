@@ -35,6 +35,19 @@ DEFAULT_PORT = 5672
 transport.AMQP_PROTOCOL_HEADER = str_to_bytes("AMQP\x01\x01\x08\x00")
 
 
+# - fixes warning when socket is not connected.
+_del = transport._AbstractTransport.__del__
+for cls in transport.TCPTransport, transport.SSLTransport:
+    class _Transport(cls):
+
+        def __del__(self):
+            try:
+                _del(self)
+            except socket.error:
+                pass
+    setattr(transport, cls.__name__, _Transport)
+
+
 class Connection(amqp.Connection):  # pragma: no cover
 
     def _do_close(self, *args, **kwargs):
