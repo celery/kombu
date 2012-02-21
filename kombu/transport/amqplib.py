@@ -45,6 +45,8 @@ for cls in transport.TCPTransport, transport.SSLTransport:
                 _del(self)
             except socket.error:
                 pass
+            finally:
+                self.sock = None
     setattr(transport, cls.__name__, _Transport)
 
 
