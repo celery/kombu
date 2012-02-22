@@ -94,7 +94,22 @@ class Channel(virtual.Channel):
 
     def _open(self):
         conninfo = self.connection.client
-        mongoconn = Connection(host=conninfo.hostname, port=conninfo.port)
+        username = None
+        password = None
+        host = conninfo.hostname or DEFAULT_HOST
+        port = conninfo.port or DEFAULT_PORT
+        database = None
+        if "@" in host:
+            (username, host) = host.split("@")
+        if "/" in host:
+            (host, database) = host.split("/")
+        if ":" in host:
+            (host, port) = host.split(":")
+        if ":" in username:
+            (username, password) = username.split(":")
+        # TODO: use port and username
+        port = int(port)
+        mongoconn = Connection(host=host, port=port)
         dbname = conninfo.virtual_host
         version = mongoconn.server_info()["version"]
         if tuple(map(int, version.split(".")[:2])) < (1, 3):
