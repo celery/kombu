@@ -105,10 +105,9 @@ class Channel(virtual.Channel):
             (host, database) = host.split("/")
         if ":" in host:
             (host, port) = host.split(":")
+            port = int(port)
         if ":" in username:
             (username, password) = username.split(":")
-        # TODO: use port and username
-        port = int(port)
         mongoconn = Connection(host=host, port=port)
         dbname = conninfo.virtual_host
         version = mongoconn.server_info()["version"]
