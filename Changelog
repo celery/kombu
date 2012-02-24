@@ -2,6 +2,26 @@
  Change history
 ================
 
+.. _version-2.1.1:
+
+2.1.1
+=====
+:release-date: 2011-02-24 02:00 P.M GMT
+:by: Ask Solem
+
+* Connection URLs now supports encoded characters.
+
+* Fixed a case where connection pool could not recover from connection loss.
+
+    Fix contributed by Florian Munz.
+
+* We now patch amqplib's ``__del__`` method to skip trying to close the socket
+  if it is not connected, as this resulted in an annoying warning.
+
+* Compression can now be used with binary message payloads.
+
+    Fix contributed by Steeve Morin.
+
 .. _version-2.1.0:
 
 2.1.0
