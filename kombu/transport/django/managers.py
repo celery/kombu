@@ -36,13 +36,22 @@ class QueueManager(models.Manager):
         return count
 
 
+def select_for_update(qs):
+    try:
+        return qs.select_for_update()
+    except AttributeError:
+        return qs
+
+
 class MessageManager(models.Manager):
     _messages_received = [0]
     cleanup_every = 10
 
+    @transaction.commit_manually
     def pop(self):
         try:
-            resultset = self.filter(visible=True).order_by('sent_at', 'id')
+            resultset = select_for_update(self.filter(visible=True)
+                                            .order_by('sent_at', 'id'))
             result = resultset[0:1].get()
             result.visible = False
             result.save()
@@ -50,9 +59,12 @@ class MessageManager(models.Manager):
             recv[0] += 1
             if not recv[0] % self.cleanup_every:
                 self.cleanup()
+            transaction.commit()
             return result.payload
         except self.model.DoesNotExist:
             pass
+        except:
+            transaction.rollback()
 
     def cleanup(self):
         cursor = self.connection_for_write().cursor()
