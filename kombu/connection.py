@@ -20,7 +20,8 @@ from copy import copy
 from functools import wraps
 from itertools import count
 from Queue import Empty
-from urlparse import urlparse, unquote
+from urllib import unquote
+from urlparse import urlparse
 try:
     from urlparse import parse_qsl
 except ImportError:  # pragma: no cover
