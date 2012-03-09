@@ -335,7 +335,7 @@ class Queue(MaybeChannelBound):
 
     .. attribute:: alias
 
-        Unused in Kombu, but application can take advantage of this.
+        Unused in Kombu, but applications can take advantage of this.
         For example to give alternate names to queues with automatically
         generated queue names.
 
