@@ -208,7 +208,8 @@ class Channel(virtual.Channel):
         queues = self.active_queues
         if not queues:
             return
-        keys = list(queues) + [timeout or 0]
+        keys = ['%s%s%d' % (queue, self.sep, 9 - priority) for priority in range(10) for queue in queues]
+        keys += [timeout or 0]
         self.client.connection.send_command("BRPOP", *keys)
         self._in_poll = True
 
@@ -225,6 +226,7 @@ class Channel(virtual.Channel):
                 raise Empty()
             if dest__item:
                 dest, item = dest__item
+                dest = dest.rsplit(self.sep, 1)[0]
                 return loads(item), dest
             else:
                 raise Empty()
@@ -245,17 +247,30 @@ class Channel(virtual.Channel):
             Implies ``no_ack=True``
 
         """
-        item = self._avail_client.rpop(queue)
-        if item:
-            return loads(item)
+        for priority in range(10):
+            item = self._avail_client.rpop('%s%s%d' % (queue, self.sep, 9 - priority))
+            if item:
+                return loads(item)
         raise Empty()
 
     def _size(self, queue):
-        return self._avail_client.llen(queue)
+        cmds = self._avail_client.pipeline()
+        for priority in range(10):
+            cmds = cmds.llen('%s%s%d' % (queue, self.sep, 9 - priority))
+        sizes = cmds.execute()
+        return sum(sizes)
 
     def _put(self, queue, message, **kwargs):
         """Deliver message."""
-        self._avail_client.lpush(queue, dumps(message))
+        try:
+            priority = int(message["properties"]["delivery_info"]["priority"])
+            if priority < 0:
+                priority = 0
+            elif priority > 9:
+                priority = 9
+        except (TypeError, ValueError):
+            priority = 0
+        self._avail_client.lpush('%s%s%d' % (queue, self.sep, priority), dumps(message))
 
     def _put_fanout(self, exchange, message, **kwargs):
         """Deliver fanout message."""
@@ -275,10 +290,16 @@ class Channel(virtual.Channel):
                                 self.sep.join([routing_key or "",
                                                pattern or "",
                                                queue or ""]))
-        self._avail_client.delete(queue)
+        cmds = self._avail_client.pipeline()
+        for priority in range(10):
+            cmds = cmds.delete('%s%s%d' % (queue, self.sep, 9 - priority))
+        cmds.execute()
 
     def _has_queue(self, queue, **kwargs):
-        return self._avail_client.exists(queue)
+        cmds = self._avail_client.pipeline()
+        for priority in range(10):
+            cmds = cmds.exists('%s%s%d' % (queue, self.sep, 9 - priority))
+        return any(cmds.execute())
 
     def get_table(self, exchange):
         return [tuple(val.split(self.sep))
@@ -286,9 +307,11 @@ class Channel(virtual.Channel):
                             self.keyprefix_queue % exchange)]
 
     def _purge(self, queue):
-        size, _ = self._avail_client.pipeline().llen(queue) \
-                                        .delete(queue).execute()
-        return size
+        cmds = self._avail_client.pipeline()
+        for priority in range(10):
+            cmds = cmds.llen('%s%s%d' % (queue, self.sep, 9 - priority)).delete('%s%s%d' % (queue, self.sep, 9 - priority))
+        sizes = cmds.execute()
+        return sum(sizes[::2])
 
     def close(self):
         if not self.closed:
