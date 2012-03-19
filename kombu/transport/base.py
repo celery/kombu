@@ -105,6 +105,13 @@ class Message(object):
             logger.critical("Couldn't ack %r, reason:%r",
                     self.delivery_tag, exc, exc_info=True)
 
+    def reject_log_error(self, logger, errors):
+        try:
+            self.reject()
+        except errors, exc:
+            logger.critical("Couldn't ack %r, reason: %r",
+                    self.delivery_tag, exc, exc_info=True)
+
     def reject(self):
         """Reject this message.
 
