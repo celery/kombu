@@ -27,7 +27,9 @@ try:
 except ImportError:  # pragma: no cover
     from cgi import parse_qsl  # noqa
 
-from . import exceptions
+# jython breaks on relative import for .exceptions for some reason
+# (Issue #112)
+from kombu import exceptions
 from .transport import get_transport_cls
 from .utils import kwdict, retry_over_time
 from .utils.compat import OrderedDict, LifoQueue as _LifoQueue
