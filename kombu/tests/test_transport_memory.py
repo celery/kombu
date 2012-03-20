@@ -3,9 +3,9 @@ from __future__ import with_statement
 
 import socket
 
-from ..connection import BrokerConnection
-from ..entity import Exchange, Queue
-from ..messaging import Consumer, Producer
+from kombu.connection import BrokerConnection
+from kombu.entity import Exchange, Queue
+from kombu.messaging import Consumer, Producer
 
 from .utils import TestCase
 

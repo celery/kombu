@@ -5,10 +5,10 @@ from __future__ import with_statement
 
 import sys
 
-from ..serialization import (registry, register, SerializerNotInstalled,
-                             raw_encode, register_yaml, register_msgpack,
-                             decode, bytes_t, pickle,
-                             unregister, register_pickle)
+from kombu.serialization import (registry, register, SerializerNotInstalled,
+                                 raw_encode, register_yaml, register_msgpack,
+                                 decode, bytes_t, pickle,
+                                 unregister, register_pickle)
 
 from .utils import TestCase
 from .utils import mask_modules, skip_if_not_module

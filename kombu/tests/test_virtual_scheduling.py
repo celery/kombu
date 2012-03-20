@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 from __future__ import with_statement
 
-from ..transport.virtual.scheduling import FairCycle
+from kombu.transport.virtual.scheduling import FairCycle
 
 from .utils import TestCase
 

@@ -3,7 +3,7 @@ from __future__ import with_statement
 
 from mock import patch
 
-import kombu
+from kombu import Connection, Exchange
 from kombu import compat
 
 from .mocks import Transport, Channel
@@ -81,7 +81,7 @@ class test_misc(TestCase):
 class test_Publisher(TestCase):
 
     def setUp(self):
-        self.connection = kombu.Connection(transport=Transport)
+        self.connection = Connection(transport=Transport)
 
     def test_constructor(self):
         pub = compat.Publisher(self.connection,
@@ -101,7 +101,7 @@ class test_Publisher(TestCase):
         self.assertTrue(pub2.exchange.auto_delete)
         self.assertFalse(pub2.exchange.durable)
 
-        explicit = kombu.Exchange("test_Publisher_constructor_explicit",
+        explicit = Exchange("test_Publisher_constructor_explicit",
                                   type="topic")
         pub3 = compat.Publisher(self.connection,
                                 exchange=explicit)
@@ -132,7 +132,7 @@ class test_Publisher(TestCase):
 class test_Consumer(TestCase):
 
     def setUp(self):
-        self.connection = kombu.Connection(transport=Transport)
+        self.connection = Connection(transport=Transport)
 
     @patch("kombu.compat._iterconsume")
     def test_iterconsume_calls__iterconsume(self, it, n="test_iterconsume"):
@@ -265,7 +265,7 @@ class test_Consumer(TestCase):
 class test_ConsumerSet(TestCase):
 
     def setUp(self):
-        self.connection = kombu.Connection(transport=Transport)
+        self.connection = Connection(transport=Transport)
 
     @patch("kombu.compat._iterconsume")
     def test_iterconsume(self, _iterconsume, n="test_iterconsume"):

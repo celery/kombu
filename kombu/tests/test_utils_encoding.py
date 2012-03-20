@@ -8,7 +8,8 @@ from contextlib import contextmanager
 from mock import patch
 from nose import SkipTest
 
-from ..utils.encoding import safe_str
+from kombu.utils.encoding import safe_str
+
 from .utils import TestCase
 
 

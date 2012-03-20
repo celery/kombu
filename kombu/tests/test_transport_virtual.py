@@ -5,10 +5,10 @@ import warnings
 
 from mock import patch
 
-from ..connection import BrokerConnection
-from ..exceptions import StdChannelError
-from ..transport import virtual
-from ..utils import uuid
+from kombu.connection import BrokerConnection
+from kombu.exceptions import StdChannelError
+from kombu.transport import virtual
+from kombu.utils import uuid
 
 from .compat import catch_warnings
 from .utils import TestCase

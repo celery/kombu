@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 
-from ..clocks import LamportClock
+from kombu.clocks import LamportClock
+
 from .utils import TestCase
 
 

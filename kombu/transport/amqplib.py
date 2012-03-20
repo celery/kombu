@@ -28,6 +28,7 @@ from . import base
 from ..utils.encoding import str_to_bytes
 
 DEFAULT_PORT = 5672
+HAS_MSG_PEEK = hasattr(socket, "MSG_PEEK")
 
 # amqplib's handshake mistakenly identifies as protocol version 1191,
 # this breaks in RabbitMQ tip, which no longer falls back to
@@ -283,17 +284,18 @@ class Transport(base.Transport):
         connection.close()
 
     def is_alive(self, connection):
-        sock = connection.transport.sock
-        prev = sock.gettimeout()
-        sock.settimeout(0.0001)
-        try:
-            sock.recv(1, socket.MSG_PEEK)
-        except socket.timeout:
-            pass
-        except socket.error:
-            return False
-        finally:
-            sock.settimeout(prev)
+        if HAS_MSG_PEEK:
+            sock = connection.transport.sock
+            prev = sock.gettimeout()
+            sock.settimeout(0.0001)
+            try:
+                sock.recv(1, socket.MSG_PEEK)
+            except socket.timeout:
+                pass
+            except socket.error:
+                return False
+            finally:
+                sock.settimeout(prev)
         return True
 
     def verify_connection(self, connection):

@@ -1,8 +1,8 @@
 from __future__ import absolute_import
 from __future__ import with_statement
 
-from .. import BrokerConnection, Consumer, Producer, Queue
-from ..transport.base import Message, StdChannel, Transport
+from kombu import BrokerConnection, Consumer, Producer, Queue
+from kombu.transport.base import Message, StdChannel, Transport
 
 from .utils import TestCase
 from .utils import Mock

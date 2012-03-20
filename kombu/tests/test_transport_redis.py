@@ -8,11 +8,11 @@ from anyjson import dumps
 from itertools import count
 from Queue import Empty, Queue as _Queue
 
-from ..connection import BrokerConnection
-from ..entity import Exchange, Queue
-from ..exceptions import VersionMismatch
-from ..messaging import Consumer, Producer
-from ..utils import eventio  # patch poll
+from kombu.connection import BrokerConnection
+from kombu.entity import Exchange, Queue
+from kombu.exceptions import VersionMismatch
+from kombu.messaging import Consumer, Producer
+from kombu.utils import eventio  # patch poll
 
 from .utils import TestCase
 from .utils import Mock, module_exists, skip_if_not_module

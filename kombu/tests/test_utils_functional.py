@@ -2,7 +2,8 @@ from __future__ import absolute_import
 
 import pickle
 
-from ..utils.functional import promise, maybe_promise
+from kombu.utils.functional import promise, maybe_promise
+
 from .utils import TestCase
 
 

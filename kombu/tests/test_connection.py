@@ -5,8 +5,8 @@ import pickle
 
 from nose import SkipTest
 
-from ..connection import BrokerConnection, Resource, parse_url
-from ..messaging import Consumer, Producer
+from kombu.connection import BrokerConnection, Resource, parse_url
+from kombu.messaging import Consumer, Producer
 
 from .mocks import Transport
 from .utils import TestCase

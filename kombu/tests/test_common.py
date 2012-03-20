@@ -5,9 +5,10 @@ import socket
 
 from mock import patch
 
-from .. import common
-from ..common import (Broadcast, maybe_declare, declared_entities, send_reply,
-                      isend_reply, collect_replies)
+from kombu import common
+from kombu.common import (Broadcast, maybe_declare, declared_entities,
+                          send_reply, isend_reply, collect_replies)
+
 from .utils import TestCase
 from .utils import ContextMock, Mock, MockPool
 

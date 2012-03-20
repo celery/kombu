@@ -4,7 +4,7 @@ import anyjson
 import os
 import sys
 
-from ..exceptions import VersionMismatch
+from kombu.exceptions import VersionMismatch
 
 # avoid json implementation inconsistencies.
 try:
