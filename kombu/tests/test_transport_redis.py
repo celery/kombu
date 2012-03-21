@@ -423,6 +423,20 @@ class test_Channel(TestCase):
             if InvalidData is not None:
                 exceptions.InvalidData = InvalidData
 
+    def test_empty_queues_key(self):
+        self.channel._in_poll = False
+        c = self.channel.client = Mock()
+
+        # Everything is fine, there is a list of queues.
+        c.smembers.return_value = ['celery\x06\x16\x06\x16celery']
+        self.assertEquals(self.channel.get_table('celery'),
+            [('celery', '', 'celery')])
+
+        # For some reason, the _kombu.binding.celery key gets lost
+        c.smembers.return_value = []
+
+        # We assert, that there should be at least one entry in the table.
+        self.assertRaises(AssertionError, self.channel.get_table, 'celery')
 
 class test_Redis(TestCase):
 
