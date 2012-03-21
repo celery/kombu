@@ -281,9 +281,12 @@ class Channel(virtual.Channel):
         return self._avail_client.exists(queue)
 
     def get_table(self, exchange):
-        return [tuple(val.split(self.sep))
+        tables = [tuple(val.split(self.sep))
                     for val in self._avail_client.smembers(
                             self.keyprefix_queue % exchange)]
+        assert len(tables) > 0, 'Queue list empty or key does not exist: %s' % (
+            self.keyprefix_queue % exchange)
+        return tables
 
     def _purge(self, queue):
         size, _ = self._avail_client.pipeline().llen(queue) \
