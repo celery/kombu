@@ -15,7 +15,7 @@ class test_misc(TestCase):
 
     def test_iterconsume(self):
 
-        class Connection(object):
+        class MyConnection(object):
             drained = 0
 
             def drain_events(self, *args, **kwargs):
@@ -28,7 +28,7 @@ class test_misc(TestCase):
             def consume(self, *args, **kwargs):
                 self.active = True
 
-        conn = Connection()
+        conn = MyConnection()
         consumer = Consumer()
         it = compat._iterconsume(conn, consumer)
         self.assertEqual(it.next(), 1)

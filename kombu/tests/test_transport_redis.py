@@ -436,7 +436,9 @@ class test_Channel(TestCase):
         c.smembers.return_value = []
 
         # We assert, that there should be at least one entry in the table.
-        self.assertRaises(AssertionError, self.channel.get_table, 'celery')
+        with self.assertRaises(AssertionError):
+            self.channel.get_table("celery")
+
 
 class test_Redis(TestCase):
 
