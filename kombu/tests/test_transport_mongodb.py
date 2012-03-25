@@ -2,12 +2,12 @@ from __future__ import absolute_import
 
 import sys
 
-from kombu.transport import mongodb
 from kombu.connection import BrokerConnection
 
 from .utils import TestCase
 from .utils import mask_modules, Mock
 from .utils import Mock, skip_if_not_module
+
 
 class MockConnection(dict):
 
@@ -19,6 +19,7 @@ class test_mongodb(TestCase):
 
     @skip_if_not_module("pymongo")
     def test_url_parser(self):
+        from kombu.transport import mongodb
         from pymongo.errors import ConfigurationError
 
         class Transport(mongodb.Transport):
