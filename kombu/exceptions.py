@@ -20,17 +20,21 @@ __all__ = ["NotBoundError", "MessageStateError", "TimeoutError",
 TimeoutError = socket.timeout
 
 
-class NotBoundError(Exception):
+class KombuError(Exception):
+    """Common subclass for all Kombu exceptions."""
+
+
+class NotBoundError(KombuError):
     """Trying to call channel dependent method on unbound entity."""
     pass
 
 
-class MessageStateError(Exception):
+class MessageStateError(KombuError):
     """The message has already been acknowledged."""
     pass
 
 
-class LimitExceeded(Exception):
+class LimitExceeded(KombuError):
     """Limit exceeded."""
     pass
 
@@ -45,14 +49,14 @@ class ChannelLimitExceeded(LimitExceeded):
     pass
 
 
-class StdChannelError(Exception):
+class StdChannelError(KombuError):
     pass
 
 
-class VersionMismatch(Exception):
+class VersionMismatch(KombuError):
     pass
 
 
-class SerializerNotInstalled(StandardError):
+class SerializerNotInstalled(KombuError):
     """Support for the requested serialization type is not installed"""
     pass
