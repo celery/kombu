@@ -19,6 +19,7 @@ from anyjson import loads, dumps
 from pymongo.connection import Connection
 
 from . import virtual
+from ..exceptions import StdChannelError
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 27017
@@ -178,5 +179,6 @@ class Transport(virtual.Transport):
     polling_interval = 1
     default_port = DEFAULT_PORT
     connection_errors = (errors.ConnectionFailure, )
-    channel_errors = (errors.ConnectionFailure,
+    channel_errors = (StdChannelError,
+                      errors.ConnectionFailure,
                       errors.OperationFailure, )

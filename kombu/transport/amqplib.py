@@ -25,6 +25,7 @@ from amqplib.client_0_8.exceptions import AMQPConnectionException
 from amqplib.client_0_8.exceptions import AMQPChannelException
 
 from . import base
+from ..exceptions import StdChannelError
 from ..utils.encoding import str_to_bytes
 
 DEFAULT_PORT = 5672
@@ -247,7 +248,7 @@ class Transport(base.Transport):
                          IOError,
                          OSError,
                          AttributeError)
-    channel_errors = (AMQPChannelException, )
+    channel_errors = (StdChannelError, AMQPChannelException, )
 
     def __init__(self, client, **kwargs):
         self.client = client

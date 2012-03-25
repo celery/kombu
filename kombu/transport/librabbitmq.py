@@ -15,6 +15,7 @@ import pylibrabbitmq as amqp
 from pylibrabbitmq import ChannelError, ConnectionError
 
 from . import base
+from ..exceptions import StdChannelError
 
 DEFAULT_PORT = 5672
 
@@ -59,7 +60,7 @@ class Transport(base.Transport):
                          socket.error,
                          IOError,
                          OSError)
-    channel_errors = (ChannelError, )
+    channel_errors = (StdChannelError, ChannelError, )
 
     def __init__(self, client, **kwargs):
         self.client = client

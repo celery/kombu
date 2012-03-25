@@ -14,7 +14,7 @@ from Queue import Empty
 
 from anyjson import loads, dumps
 
-from ..exceptions import InconsistencyError, VersionMismatch
+from ..exceptions import InconsistencyError, StdChannelError, VersionMismatch
 from ..utils import eventio, cached_property
 from ..utils.encoding import str_t
 
@@ -414,9 +414,9 @@ class Transport(virtual.Transport):
         else:
             DataError = exceptions.DataError
         return ((exceptions.ConnectionError,
-                 exceptions.AuthenticationError,
-                 InconsistencyError),
+                 exceptions.AuthenticationError),
                 (exceptions.ConnectionError,
                  DataError,
                  exceptions.InvalidResponse,
-                 exceptions.ResponseError))
+                 exceptions.ResponseError,
+                 StdChannelError))

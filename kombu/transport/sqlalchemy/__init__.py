@@ -8,6 +8,7 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
 
 from .. import virtual
+from .. exceptions import StdChannelError
 
 from .models import Queue, Message, metadata
 
@@ -108,4 +109,4 @@ class Transport(virtual.Transport):
 
     default_port = 0
     connection_errors = ()
-    channel_errors = ()
+    channel_errors = (StdChannelError, )

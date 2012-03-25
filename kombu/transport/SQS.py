@@ -25,6 +25,7 @@ from boto.sdb.connection import SDBConnection
 from boto.sqs.connection import SQSConnection
 from boto.sqs.message import Message
 
+from ..exceptions import StdChannelError
 from ..utils import cached_property, uuid
 from ..utils.encoding import safe_str
 
@@ -343,4 +344,4 @@ class Transport(virtual.Transport):
     polling_interval = 1
     default_port = None
     connection_errors = (exception.SQSError, socket.error)
-    channel_errors = (exception.SQSDecodeError, )
+    channel_errors = (exception.SQSDecodeError, StdChannelError)

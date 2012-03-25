@@ -18,6 +18,7 @@ from anyjson import loads, dumps
 from beanstalkc import Connection, BeanstalkcException, SocketError
 
 from . import virtual
+from ..exceptions import StdChannelError
 
 DEFAULT_PORT = 11300
 
@@ -119,7 +120,8 @@ class Transport(virtual.Transport):
     connection_errors = (socket.error,
                          SocketError,
                          IOError)
-    channel_errors = (socket.error,
+    channel_errors = (StdChannelError,
+                      socket.error,
                       IOError,
                       SocketError,
                       BeanstalkcException)
