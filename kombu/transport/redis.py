@@ -14,7 +14,7 @@ from Queue import Empty
 
 from anyjson import loads, dumps
 
-from ..exceptions import VersionMismatch
+from ..exceptions import InconsistencyError, VersionMismatch
 from ..utils import eventio, cached_property
 from ..utils.encoding import str_t
 
@@ -281,17 +281,16 @@ class Channel(virtual.Channel):
         return self._avail_client.exists(queue)
 
     def get_table(self, exchange):
-        tables = [tuple(val.split(self.sep))
-                    for val in self._avail_client.smembers(
-                            self.keyprefix_queue % exchange)]
-        assert(len(tables) > 0,
-               'Queue list empty or key does not exist: %s' % (
-                    self.keyprefix_queue % exchange))
-        return tables
+        key = self.keyprefix_queue % exchange
+        exists, values = self.pipeline().exists(key).smembers(key).execute()
+        if not exists:
+            raise InconsistencyError(
+                    "Queue list empty or key does not exist: %r" % (
+                        self.keyprefix_queue % exchange))
+        return [tuple(val.split(self.sep)) for val in values]
 
     def _purge(self, queue):
-        size, _ = self._avail_client.pipeline().llen(queue) \
-                                        .delete(queue).execute()
+        size, _ = self.pipeline().llen(queue).delete(queue).execute()
         return size
 
     def close(self):
@@ -361,6 +360,9 @@ class Channel(virtual.Channel):
         from redis import exceptions
         return exceptions.ResponseError
 
+    def pipeline(self):
+        return self._avail_client.pipeline()
+
     @property
     def _avail_client(self):
         if self._in_poll:
@@ -412,7 +414,8 @@ class Transport(virtual.Transport):
         else:
             DataError = exceptions.DataError
         return ((exceptions.ConnectionError,
-                 exceptions.AuthenticationError),
+                 exceptions.AuthenticationError,
+                 InconsistencyError),
                 (exceptions.ConnectionError,
                  DataError,
                  exceptions.InvalidResponse,

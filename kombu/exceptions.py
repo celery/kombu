@@ -60,3 +60,9 @@ class VersionMismatch(KombuError):
 class SerializerNotInstalled(KombuError):
     """Support for the requested serialization type is not installed"""
     pass
+
+
+class InconsistencyError(StdChannelError):
+    """Data or environment has been found to be inconsistent,
+    depending on the cause it may be possible to retry the operation."""
+    pass
