@@ -93,19 +93,49 @@ class Channel(virtual.Channel):
             self._client.connection.end_request()
 
     def _open(self):
+        """
+        See mongodb uri documentation:
+        http://www.mongodb.org/display/DOCS/Connections
+        """
         conninfo = self.connection.client
-        mongoconn = Connection(host=conninfo.hostname, port=conninfo.port)
-        dbname = conninfo.virtual_host
+
+        dbname = None
+        hostname = None
+
+        if not conninfo.hostname:
+            conninfo.hostname = DEFAULT_HOST
+
+        for part in conninfo.hostname.split("/"):
+            if not hostname:
+                hostname = "mongodb://" + part
+                continue
+
+            dbname = part
+            if "?" in part:
+                # In case someone is passing options
+                # to the mongodb connection. Right now
+                # it is not permitted by kombu
+                dbname, options = part.split("?")
+                hostname += "/?" + options
+
+        # At this point we expect the hostname to be something like
+        # (considering replica set form too):
+        # mongodb://[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]][/[?options]]
+        mongoconn = Connection(host=hostname)
         version = mongoconn.server_info()["version"]
         if tuple(map(int, version.split(".")[:2])) < (1, 3):
             raise NotImplementedError(
                 "Kombu requires MongoDB version 1.3+, but connected to %s" % (
                     version, ))
+
         if not dbname or dbname == "/":
             dbname = "kombu_default"
+
         database = getattr(mongoconn, dbname)
-        if conninfo.userid:
-            database.authenticate(conninfo.userid, conninfo.password)
+
+        # This is done by the connection uri
+        # if conninfo.userid:
+        #     database.authenticate(conninfo.userid, conninfo.password)
 
         self.db = database
         col = database.messages
