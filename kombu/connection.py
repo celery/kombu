@@ -20,23 +20,16 @@ from copy import copy
 from functools import wraps
 from itertools import count
 from Queue import Empty
-from urllib import unquote
-from urlparse import urlparse
-try:
-    from urlparse import parse_qsl
-except ImportError:  # pragma: no cover
-    from cgi import parse_qsl  # noqa
-
 # jython breaks on relative import for .exceptions for some reason
 # (Issue #112)
 from kombu import exceptions
 from .transport import get_transport_cls
-from .utils import kwdict, retry_over_time
+from .utils import retry_over_time
 from .utils.compat import OrderedDict, LifoQueue as _LifoQueue
+from .utils.url import parse_url
 
 _LOG_CONNECTION = os.environ.get("KOMBU_LOG_CONNECTION", False)
 _LOG_CHANNEL = os.environ.get("KOMBU_LOG_CHANNEL", False)
-
 
 #: Connection info -> URI
 URI_FORMAT = """\
@@ -45,40 +38,6 @@ URI_FORMAT = """\
 
 __all__ = ["parse_url", "BrokerConnection", "Resource",
            "ConnectionPool", "ChannelPool"]
-
-
-def parse_url(url):
-    port = path = auth = userid = password = None
-    # parse with HTTP URL semantics
-    scheme = urlparse(url).scheme
-    parts = urlparse(url.replace("%s://" % (scheme, ), "http://"))
-
-    # The first pymongo.Connection() argument (host) can be
-    # a mongodb connection URI. If this is the case, don't
-    # use port but let pymongo get the port(s) from the URI instead.
-    # This enables the use of replica sets and sharding.
-    # See pymongo.Connection() for more info.
-    if scheme == 'mongodb':
-        # strip the scheme since it is appended automatically.
-        hostname = url[len('mongodb://'):]
-    else:
-        netloc = parts.netloc
-        if '@' in netloc:
-            auth, _, netloc = parts.netloc.partition('@')
-            userid, _, password = auth.partition(':')
-        hostname, _, port = netloc.partition(':')
-        path = parts.path or ""
-        if path and path[0] == '/':
-            path = path[1:]
-        port = port and int(port) or port
-
-    return dict({"hostname": unquote(hostname or "") or None,
-                 "port": port or None,
-                 "userid": unquote(userid or "") or None,
-                 "password": unquote(password or "") or None,
-                 "transport": scheme,
-                 "virtual_host": unquote(path or "") or None},
-                **kwdict(dict(parse_qsl(parts.query))))
 
 
 class BrokerConnection(object):
