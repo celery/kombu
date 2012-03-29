@@ -8,7 +8,7 @@ except ImportError:  # pragma: no cover
 from . import kwdict
 
 
-def parse_url(url):
+def _parse_url(url):
     scheme = urlparse(url).scheme
     schemeless = url[len(scheme) + 3:]
     # parse with HTTP URL semantics
@@ -21,10 +21,16 @@ def parse_url(url):
     # See pymongo.Connection() for more info.
     hostname = schemeless if scheme == 'mongodb' else parts.hostname
     path = (parts.path or '').lstrip('/')
-    return dict(transport=scheme,
-                hostname=unquote(hostname or '') or None,
-                port=int(parts.port) if parts.port else None,
-                userid=unquote(parts.username or '') or None,
-                password=unquote(parts.password or '') or None,
-                virtual_host=unquote(path or '') or None,
-                **kwdict(dict(parse_qsl(parts.query))))
+    return (scheme, unquote(hostname or '') or None,
+            int(parts.port) if parts.port else None,
+            unquote(parts.username or '') or None,
+            unquote(parts.password or '') or None,
+            unquote(path or '') or None,
+            kwdict(dict(parse_qsl(parts.query))))
+
+
+def parse_url(url):
+    scheme, host, port, user, password, path, query = _parse_url(url)
+    return dict(transport=scheme, hostname=host,
+                port=port, userid=user,
+                password=password, virtual_host=path, **query)
