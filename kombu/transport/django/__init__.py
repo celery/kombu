@@ -9,7 +9,7 @@ from django.conf import settings
 from django.core import exceptions as errors
 
 from .. import virtual
-from ..exceptions import StdChannelError
+from ...exceptions import StdChannelError
 
 from .models import Queue
 
