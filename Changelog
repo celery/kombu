@@ -2,6 +2,42 @@
  Change history
 ================
 
+.. _version-2.1.4:
+
+2.1.4
+=====
+:release-date: 2012-04-03 4:00 P.M GMT
+
+* MongoDB:  URL parsing are now delegated to the pymongo library
+  (Fixes Issue #103 and Issue #87).
+
+    Fix contributed by Flavio Percoco Premoli and James Sullivan
+
+* SQS:  A bug caused SimpleDB to be used even if sdb persistence
+  was not enabled (Issue #108).
+
+    Fix contributed by Anand Kumria.
+
+* Django:  Transaction was committed in the wrong place, causing
+  data cleanup to fail (Issue #115).
+
+    Fix contributed by Daisuke Fujiwara.
+
+* MongoDB: Now supports replica set URLs.
+
+    Contributed by Flavio Percoco Premoli.
+
+* Redis: Now raises a channel error if a queue key that is currently
+  being consumed from disappears.
+
+    Fix contributed by Stephan Jaekel.
+
+* All transport 'channel_errors' lists now includes
+  :exc:`~kombu.exception.StdChannelError`.
+
+* All kombu exceptions now inherit from a common
+  :exc:`~kombu.exceptions.KombuError`.
+
 .. _version-2.1.3:
 
 2.1.3
