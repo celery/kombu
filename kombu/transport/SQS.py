@@ -196,7 +196,8 @@ class Channel(virtual.Channel):
     def _delete(self, queue, *args):
         """delete queue by name."""
         self._queue_cache.pop(queue, None)
-        self.table.queue_delete(queue)
+        if self.supports_fanout:
+            self.table.queue_delete(queue)
         super(Channel, self)._delete(queue)
 
     def exchange_delete(self, exchange, **kwargs):
