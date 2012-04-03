@@ -2,6 +2,82 @@
  Change history
 ================
 
+.. _version-2.1.4:
+
+2.1.4
+=====
+:release-date: 2012-04-03 4:00 P.M GMT
+
+* MongoDB:  URL parsing are now delegated to the pymongo library
+  (Fixes Issue #103 and Issue #87).
+
+    Fix contributed by Flavio Percoco Premoli and James Sullivan
+
+* SQS:  A bug caused SimpleDB to be used even if sdb persistence
+  was not enabled (Issue #108).
+
+    Fix contributed by Anand Kumria.
+
+* Django:  Transaction was committed in the wrong place, causing
+  data cleanup to fail (Issue #115).
+
+    Fix contributed by Daisuke Fujiwara.
+
+* MongoDB: Now supports replica set URLs.
+
+    Contributed by Flavio Percoco Premoli.
+
+* Redis: Now raises a channel error if a queue key that is currently
+  being consumed from disappears.
+
+    Fix contributed by Stephan Jaekel.
+
+* All transport 'channel_errors' lists now includes
+  :exc:`~kombu.exception.StdChannelError`.
+
+* All kombu exceptions now inherit from a common
+  :exc:`~kombu.exceptions.KombuError`.
+
+.. _version-2.1.3:
+
+2.1.3
+=====
+:release-date: 2012-03-20 3:00 P.M GMT
+:by: Ask Solem
+
+* Fixes Jython compatibility issues.
+
+* Fixes Python 2.5 compatibility issues.
+
+.. _version-2.1.2:
+
+2.1.2
+=====
+:release-date: 2012-03-01 01:00 P.M GMT
+:by: Ask Solem
+
+* amqplib: Last version broke SSL support.
+
+.. _version-2.1.1:
+
+2.1.1
+=====
+:release-date: 2012-02-24 02:00 P.M GMT
+:by: Ask Solem
+
+* Connection URLs now supports encoded characters.
+
+* Fixed a case where connection pool could not recover from connection loss.
+
+    Fix contributed by Florian Munz.
+
+* We now patch amqplib's ``__del__`` method to skip trying to close the socket
+  if it is not connected, as this resulted in an annoying warning.
+
+* Compression can now be used with binary message payloads.
+
+    Fix contributed by Steeve Morin.
+
 .. _version-2.1.0:
 
 2.1.0
@@ -13,6 +89,12 @@
 
     Contributed by Scott Lyons.
 
+* amqplib: Now detects broken connections by using ``MSG_PEEK``.
+
+* pylibrabbitmq: Now supports ``basic_get`` (Issue #97).
+
+* gevent: Now always uses the ``select`` polling backend.
+
 * pika transport: Now works with pika 0.9.5 and 0.9.6dev.
 
     The old pika transport (supporting 0.5.x) is now available
@@ -20,6 +102,20 @@
 
     (Note terribly latency has been experienced with the new pika
     versions, so this is still an experimental transport).
+
+* Virtual transports: can now set polling interval via the
+  transport options (Issue #96).
+
+    Example::
+
+        >>> BrokerConnection("sqs://", transport_options={
+        ...     "polling_interval": 5.0})
+
+    The default interval is transport specific, but usually
+    1.0s (or 5.0s for the Django database transport, which
+    can also be set using the ``KOMBU_POLLING_INTERVAL`` setting).
+
+* Adds convenience function: :func:`kombu.common.eventloop`.
 
 .. _version-2.0.0:
 
@@ -31,12 +127,12 @@
 .. _v200-important:
 
 Important Notes
-===============
+---------------
 
 .. _v200-python-compatibility:
 
 Python Compatibility
---------------------
+~~~~~~~~~~~~~~~~~~~~
 
 * No longer supports Python 2.4.
 
@@ -50,7 +146,7 @@ Python Compatibility
 .. _v200-new-transports:
 
 New Transports
---------------
+~~~~~~~~~~~~~~
 
 * ``django-kombu`` is now part of Kombu core.
 
