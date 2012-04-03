@@ -1,12 +1,8 @@
 from __future__ import absolute_import
 
-import sys
-
 from kombu.connection import BrokerConnection
 
-from .utils import TestCase
-from .utils import mask_modules, Mock
-from .utils import Mock, skip_if_not_module
+from .utils import TestCase, skip_if_not_module
 
 
 class MockConnection(dict):

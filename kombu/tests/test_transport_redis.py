@@ -442,7 +442,6 @@ class test_Channel(TestCase):
         self.assertListEqual(channel.get_table('celery'),
                              [('celery', '', 'celery')])
 
-
         # ... then for some reason, the _kombu.binding.celery key gets lost
         channel.client.srem(key)
 

@@ -121,7 +121,9 @@ class Channel(virtual.Channel):
 
         # At this point we expect the hostname to be something like
         # (considering replica set form too):
-        # mongodb://[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]][/[?options]]
+        #
+        #   mongodb://[username:password@]host1[:port1][,host2[:port2],
+        #   ...[,hostN[:portN]]][/[?options]]
         mongoconn = Connection(host=hostname)
         version = mongoconn.server_info()["version"]
         if tuple(map(int, version.split(".")[:2])) < (1, 3):
