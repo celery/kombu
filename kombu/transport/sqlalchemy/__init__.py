@@ -8,7 +8,7 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
 
 from .. import virtual
-from .. exceptions import StdChannelError
+from ...exceptions import StdChannelError
 
 from .models import Queue, Message, metadata
 
