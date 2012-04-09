@@ -45,7 +45,7 @@ class Channel(virtual.Channel):
     def _put(self, queue, message, **kwargs):
         priority = message["properties"]["delivery_info"]["priority"]
         client_kwargs = {}
-        if 'ttr' in message['properties']:
+        if message['properties'].get('ttr', None) is not None:
             client_kwargs["ttr"] = message["properties"]["ttr"]
         self.client.use(queue)
         self.client.put(dumps(message), priority=priority, **client_kwargs)
