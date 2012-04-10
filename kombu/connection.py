@@ -17,8 +17,9 @@ import socket
 
 from contextlib import contextmanager
 from copy import copy
-from functools import wraps
+from functools import partial, wraps
 from itertools import count
+from urllib import quote
 from Queue import Empty
 # jython breaks on relative import for .exceptions for some reason
 # (Issue #112)
@@ -364,6 +365,7 @@ class BrokerConnection(object):
         return hash("|".join(map(str, self.info().itervalues())))
 
     def as_uri(self, include_password=False):
+        quoteS = partial(quote, safe="")   # strict quote
         fields = self.info()
         port = fields["port"]
         userid = fields["userid"]
@@ -371,11 +373,11 @@ class BrokerConnection(object):
         transport = fields["transport"]
         url = "%s://" % transport
         if userid:
-            url += userid
+            url += quoteS(userid)
             if include_password and password:
-                url += ':' + password
+                url += ':' + quoteS(password)
             url += '@'
-        url += fields["hostname"]
+        url += quoteS(fields["hostname"])
 
         # If the transport equals 'mongodb' the
         # hostname contains a full mongodb connection
@@ -383,7 +385,7 @@ class BrokerConnection(object):
         if port and transport != "mongodb":
             url += ':' + str(port)
 
-        url += '/' + fields["virtual_host"]
+        url += '/' + quote(fields["virtual_host"])
         return url
 
     def Pool(self, limit=None, preload=None):
