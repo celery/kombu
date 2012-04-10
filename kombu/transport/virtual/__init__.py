@@ -65,12 +65,12 @@ class BrokerState(object):
     bindings = None
 
     def __init__(self, exchanges=None, bindings=None):
-        if exchanges is None:
-            exchanges = {}
-        if bindings is None:
-            bindings = {}
-        self.exchanges = exchanges
-        self.bindings = bindings
+        self.exchanges = {} if exchanges is None else exchanges
+        self.bindings = {}  if bindings  is None else bindings
+
+    def clear(self):
+        self.exchanges.clear()
+        self.bindings.clear()
 
 
 class QoS(object):
