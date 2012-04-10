@@ -32,11 +32,6 @@ from .utils.url import parse_url
 _LOG_CONNECTION = os.environ.get("KOMBU_LOG_CONNECTION", False)
 _LOG_CHANNEL = os.environ.get("KOMBU_LOG_CHANNEL", False)
 
-#: Connection info -> URI
-URI_FORMAT = """\
-%(transport)s://%(userid)s@%(hostname)s%(port)s/%(virtual_host)s\
-"""
-
 __all__ = ["parse_url", "BrokerConnection", "Resource",
            "ConnectionPool", "ChannelPool"]
 
@@ -74,8 +69,6 @@ class BrokerConnection(object):
             >>> conn.release()
 
     """
-    URI_FORMAT = URI_FORMAT
-
     port = None
     virtual_host = "/"
     connect_timeout = 5
@@ -85,7 +78,7 @@ class BrokerConnection(object):
     _default_channel = None
     _transport = None
     _logger = None
-    skip_uri_transports = set(["sqlalchemy", "sqlakombu.transport.Transport"])
+    uri_passthrough = set(["sqla", "sqlalchemy"])
 
     def __init__(self, hostname="localhost", userid=None,
             password=None, virtual_host=None, port=None, insist=False,
@@ -97,9 +90,12 @@ class BrokerConnection(object):
                   "port": port, "insist": insist, "ssl": ssl,
                   "transport": transport, "connect_timeout": connect_timeout,
                   "login_method": login_method}
-        if hostname and "://" in hostname \
-                and transport not in self.skip_uri_transports:
-            params.update(parse_url(hostname))
+        if hostname and "://" in hostname:
+            if '+' in hostname[:hostname.index("://")]:
+                # e.g. sqla+mysql://root:masterkey@localhost/
+                params["transport"], params["hostname"] = hostname.split('+')
+            else:
+                params.update(parse_url(hostname))
         self._init_params(**params)
 
         # backend_cls argument will be removed shortly.
@@ -365,6 +361,8 @@ class BrokerConnection(object):
         return hash("|".join(map(str, self.info().itervalues())))
 
     def as_uri(self, include_password=False):
+        if self.transport_cls in self.uri_passthrough:
+            return self.transport_cls + '+' + self.hostname
         quoteS = partial(quote, safe="")   # strict quote
         fields = self.info()
         port = fields["port"]

@@ -50,6 +50,7 @@ TRANSPORT_ALIASES = {
     "couchdb": "kombu.transport.couchdb.Transport",
     "django": "kombu.transport.django.Transport",
     "sqlalchemy": "kombu.transport.sqlalchemy.Transport",
+    "sqla": "kombu.transport.sqlalchemy.Transport",
     "ghettoq.taproot.Redis": _ghettoq("Redis", "redis", "redis"),
     "ghettoq.taproot.Database": _ghettoq("Database", "django", "django"),
     "ghettoq.taproot.MongoDB": _ghettoq("MongoDB", "mongodb"),
