@@ -2,6 +2,30 @@
  Change history
 ================
 
+.. _version-2.1.5:
+
+2.1.5
+=====
+:release-date: 2012-04-13 3:30 P.M GMT
+
+* The url parser removed more than the first leading slash (Issue #121).
+
+* SQLAlchemy: Can now specify url using + separator
+
+    Example::
+
+        BrokerConnection("sqla+mysql://localhost/db")
+
+* Better support for anonymous queues (Issue #116).
+
+    Contributed by Michael Barrett.
+
+* ``Connection.as_uri`` now quotes url parts (Issue #117).
+
+* Beanstalk: Can now set message TTR as a message property.
+
+    Contributed by Andrii Kostenko
+
 .. _version-2.1.4:
 
 2.1.4
