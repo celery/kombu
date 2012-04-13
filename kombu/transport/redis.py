@@ -320,7 +320,7 @@ class Channel(virtual.Channel):
                 raise ValueError(
                     "Database name must be int between 0 and limit - 1")
 
-        return self.Client(host=conninfo.hostname,
+        return self.Client(host=conninfo.hostname or "127.0.0.1",
                            port=conninfo.port or DEFAULT_PORT,
                            db=database,
                            password=conninfo.password)

@@ -20,7 +20,8 @@ def _parse_url(url):
     # This enables the use of replica sets and sharding.
     # See pymongo.Connection() for more info.
     hostname = schemeless if scheme == 'mongodb' else parts.hostname
-    path = (parts.path or '').lstrip('/')
+    path = parts.path or ''
+    path = path[1:] if path and path[0] == '/' else path
     return (scheme, unquote(hostname or '') or None,
             int(parts.port) if parts.port else None,
             unquote(parts.username or '') or None,
