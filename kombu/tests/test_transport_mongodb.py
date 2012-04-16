@@ -1,5 +1,7 @@
 from __future__ import absolute_import
 
+from nose import SkipTest
+
 from kombu.connection import BrokerConnection
 
 from .utils import TestCase, skip_if_not_module
@@ -17,6 +19,9 @@ class test_mongodb(TestCase):
     def test_url_parser(self):
         from kombu.transport import mongodb
         from pymongo.errors import ConfigurationError
+
+        raise SkipTest(
+            "Test is functional: it actually connects to mongod")
 
         class Transport(mongodb.Transport):
             Connection = MockConnection
