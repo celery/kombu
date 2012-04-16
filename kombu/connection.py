@@ -25,7 +25,7 @@ from Queue import Empty
 # (Issue #112)
 from kombu import exceptions
 from .transport import get_transport_cls
-from .utils import retry_over_time
+from .utils import cached_property, retry_over_time
 from .utils.compat import OrderedDict, LifoQueue as _LifoQueue
 from .utils.url import parse_url
 
@@ -568,6 +568,13 @@ class BrokerConnection(object):
         if self._transport is None:
             self._transport = self.create_transport()
         return self._transport
+
+    @cached_property
+    def manager(self):
+        return self.transport.manager
+
+    def get_manager(self, *args, **kwargs):
+        return self.transport.get_manager(*args, **kwargs)
 
     @property
     def connection_errors(self):

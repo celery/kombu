@@ -307,3 +307,17 @@ class Transport(base.Transport):
         return {"userid": "guest", "password": "guest",
                 "port": self.default_port,
                 "hostname": "localhost", "login_method": "AMQPLAIN"}
+
+    def get_manager(self, hostname=None, port=None, userid=None,
+            password=None):
+        import pyrabbit
+        c = self.client
+        opt = c.transport_options.get
+        host = (hostname if hostname is not None
+                         else opt("manager_hostname", c.hostname))
+        port = port if port is not None else opt("manager_port", 55672)
+        return pyrabbit.Client("%s:%s" % (host, port),
+            userid if userid is not None
+                   else opt("manager_userid", c.userid),
+            password if password is not None
+                   else opt("manager_password", c.password))
