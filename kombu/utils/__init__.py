@@ -259,7 +259,7 @@ def reprkwargs(kwargs, sep=', ', fmt="%s=%s"):
 
 
 def reprcall(name, args=(), kwargs=(), sep=', '):
-    return "%s(%s%s%s)" % (name, sep.join(map(_safe_repr, args)),
+    return "%s(%s%s%s)" % (name, sep.join(map(_safe_repr, args or ())),
                            (args and kwargs) and sep or "",
                            reprkwargs(kwargs, sep))
 
