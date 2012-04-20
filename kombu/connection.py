@@ -79,21 +79,25 @@ class BrokerConnection(object):
     _transport = None
     _logger = None
     uri_passthrough = set(["sqla", "sqlalchemy"])
+    uri_prefix = None
 
     def __init__(self, hostname="localhost", userid=None,
             password=None, virtual_host=None, port=None, insist=False,
             ssl=False, transport=None, connect_timeout=5,
-            transport_options=None, login_method=None, **kwargs):
+            transport_options=None, login_method=None, uri_prefix=None,
+            **kwargs):
         # have to spell the args out, just to get nice docstrings :(
         params = {"hostname": hostname, "userid": userid,
                   "password": password, "virtual_host": virtual_host,
                   "port": port, "insist": insist, "ssl": ssl,
                   "transport": transport, "connect_timeout": connect_timeout,
                   "login_method": login_method}
-        if hostname and "://" in hostname:
+        if hostname and "://" in hostname \
+                and transport not in self.uri_passthrough:
             if '+' in hostname[:hostname.index("://")]:
                 # e.g. sqla+mysql://root:masterkey@localhost/
                 params["transport"], params["hostname"] = hostname.split('+')
+                self.uri_prefix = params["transport"]
             else:
                 params.update(parse_url(hostname))
         self._init_params(**params)
@@ -108,6 +112,9 @@ class BrokerConnection(object):
         if _LOG_CONNECTION:  # pragma: no cover
             from .log import get_logger
             self._logger = get_logger("kombu.connection")
+
+        if uri_prefix:
+            self.uri_prefix = uri_prefix
 
     def _init_params(self, hostname, userid, password, virtual_host, port,
             insist, ssl, transport, connect_timeout, login_method):
@@ -341,7 +348,10 @@ class BrokerConnection(object):
         transport_cls = self.transport_cls or "amqp"
         transport_cls = {"amqplib": "amqp"}.get(transport_cls, transport_cls)
         defaults = self.transport.default_connection_params
-        info = OrderedDict((("hostname", self.hostname),
+        hostname = self.hostname
+        if self.uri_prefix:
+            hostname = "%s+%s" % (self.uri_prefix, hostname)
+        info = OrderedDict((("hostname", hostname),
                             ("userid", self.userid),
                             ("password", self.password),
                             ("virtual_host", self.virtual_host),
@@ -351,7 +361,8 @@ class BrokerConnection(object):
                             ("transport", transport_cls),
                             ("connect_timeout", self.connect_timeout),
                             ("transport_options", self.transport_options),
-                            ("login_method", self.login_method)))
+                            ("login_method", self.login_method),
+                            ("uri_prefix", self.uri_prefix)))
         for key, value in defaults.iteritems():
             if info[key] is None:
                 info[key] = value
@@ -384,6 +395,8 @@ class BrokerConnection(object):
             url += ':' + str(port)
 
         url += '/' + quote(fields["virtual_host"])
+        if self.uri_prefix:
+            return "%s+%s" % (self.uri_prefix, url)
         return url
 
     def Pool(self, limit=None, preload=None):
