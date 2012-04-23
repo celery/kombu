@@ -55,6 +55,10 @@ class Broadcast(Queue):
                            }, **kwargs))
 
 
+def declaration_cached(entity, channel):
+    return entity in channel.connection.client.declared_entities
+
+
 def maybe_declare(entity, channel, retry=False, **retry_policy):
     if retry:
         return _imaybe_declare(entity, channel, **retry_policy)
