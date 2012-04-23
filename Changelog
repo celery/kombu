@@ -2,11 +2,27 @@
  Change history
 ================
 
+.. _version-2.1.6:
+
+2.1.6
+=====
+:release-date: 2012-04-23 1:30 P.M BST
+
+* SQLAlchemy transport was not working correctly after URL parser change.
+
+* maybe_declare now stores cached declarations per underlying connection
+  instead of globally, in the rare case that data disappears from the
+  broker after connection loss.
+
+* Django: Added South migrations.
+
+    Contributed by Joseph Crosland.
+
 .. _version-2.1.5:
 
 2.1.5
 =====
-:release-date: 2012-04-13 3:30 P.M GMT
+:release-date: 2012-04-13 3:30 P.M BST
 
 * The url parser removed more than the first leading slash (Issue #121).
 
