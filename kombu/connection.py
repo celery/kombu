@@ -81,6 +81,10 @@ class BrokerConnection(object):
     uri_passthrough = set(["sqla", "sqlalchemy"])
     uri_prefix = None
 
+    #: The cache of declared entities is per connection,
+    #: in case the server loses data.
+    declared_entities = None
+
     def __init__(self, hostname="localhost", userid=None,
             password=None, virtual_host=None, port=None, insist=False,
             ssl=False, transport=None, connect_timeout=5,
@@ -115,6 +119,8 @@ class BrokerConnection(object):
 
         if uri_prefix:
             self.uri_prefix = uri_prefix
+
+        self.declared_entities = set()
 
     def _init_params(self, hostname, userid, password, virtual_host, port,
             insist, ssl, transport, connect_timeout, login_method):
@@ -166,7 +172,9 @@ class BrokerConnection(object):
         except (self.connection_errors + self.channel_errors):
             pass
 
-    def _close(self):
+    def _do_close_self(self):
+        # Closes only the connection and channel(s) not transport.
+        self.declared_entities.clear()
         if self._default_channel:
             self.maybe_close_channel(self._default_channel)
         if self._connection:
@@ -175,10 +183,13 @@ class BrokerConnection(object):
             except self.connection_errors + (AttributeError, socket.error):
                 pass
             self._connection = None
-            self._debug("closed")
+
+    def _close(self):
+        self._do_close_self()
         if self._transport:
             self._transport.client = None
             self._transport = None
+        self._debug("closed")
         self._closed = True
 
     def release(self):
@@ -268,7 +279,7 @@ class BrokerConnection(object):
                         raise
                     errback and errback(exc, 0)
                     self._connection = None
-                    self.close()
+                    self._do_close_self()
                     remaining_retries = None
                     if max_retries is not None:
                         remaining_retries = max(max_retries - retries, 1)
@@ -558,6 +569,7 @@ class BrokerConnection(object):
         """
         if not self._closed:
             if not self.connected:
+                self.declared_entities.clear()
                 self._default_channel = None
                 self._connection = self._establish_connection()
                 self._closed = False

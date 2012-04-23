@@ -6,7 +6,7 @@ import socket
 from mock import patch
 
 from kombu import common
-from kombu.common import (Broadcast, maybe_declare, declared_entities,
+from kombu.common import (Broadcast, maybe_declare,
                           send_reply, isend_reply, collect_replies)
 
 from .utils import TestCase
@@ -32,13 +32,15 @@ class test_maybe_declare(TestCase):
 
     def test_cacheable(self):
         channel = Mock()
+        client = channel.connection.client = Mock()
+        client.declared_entities = set()
         entity = Mock()
         entity.can_cache_declaration = True
         entity.is_bound = True
 
         maybe_declare(entity, channel)
         self.assertEqual(entity.declare.call_count, 1)
-        self.assertIn(entity, declared_entities[channel.connection.client])
+        self.assertIn(entity, channel.connection.client.declared_entities)
 
         maybe_declare(entity, channel)
         self.assertEqual(entity.declare.call_count, 1)
@@ -57,6 +59,7 @@ class test_maybe_declare(TestCase):
 
     def test_binds_entities(self):
         channel = Mock()
+        channel.connection.client.declared_entities = set()
         entity = Mock()
         entity.can_cache_declaration = True
         entity.is_bound = False
@@ -84,6 +87,7 @@ class test_replies(TestCase):
         exchange = Mock()
         exchange.is_bound = True
         producer = Mock()
+        producer.channel.connection.client.declared_entities = set()
         send_reply(exchange, req, {"hello": "world"}, producer)
 
         self.assertTrue(producer.publish.call_count)
