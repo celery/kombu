@@ -2,6 +2,14 @@
  Change history
 ================
 
+.. _version-2.1.7:
+
+2.1.7
+=====
+:release-date: 2012-04-27 6:00 P.M BST
+
+* compat consumerset now accepts optional channel argument.
+
 .. _version-2.1.6:
 
 2.1.6
