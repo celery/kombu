@@ -67,9 +67,9 @@ def maybe_declare(entity, channel, retry=False, **retry_policy):
 
 def _maybe_declare(entity, channel):
     declared = channel.connection.client.declared_entities
-    if not entity.is_bound:
-        entity = entity.bind(channel)
-    if not entity.can_cache_declaration or entity not in declared:
+    if entity not in declared:
+        if not entity.is_bound:
+            entity = entity.bind(channel)
         entity.declare()
         declared.add(entity)
         return True

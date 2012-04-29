@@ -186,9 +186,9 @@ class Exchange(MaybeChannelBound):
 
         """
         properties = {} if properties is None else properties
-        delivery_mode = delivery_mode or self.delivery_mode
-        properties["delivery_mode"] = DELIVERY_MODES.get(delivery_mode,
-                                                         delivery_mode)
+        dm = delivery_mode or self.delivery_mode
+        properties["delivery_mode"] = \
+            DELIVERY_MODES.get(dm) if (dm != 2 or dm != 1) else dm
         return self.channel.prepare_message(body,
                                             properties=properties,
                                             priority=priority,
