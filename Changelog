@@ -2,6 +2,90 @@
  Change history
 ================
 
+.. _version-2.1.7:
+
+2.1.7
+=====
+:release-date: 2012-04-27 6:00 P.M BST
+
+* compat consumerset now accepts optional channel argument.
+
+.. _version-2.1.6:
+
+2.1.6
+=====
+:release-date: 2012-04-23 1:30 P.M BST
+
+* SQLAlchemy transport was not working correctly after URL parser change.
+
+* maybe_declare now stores cached declarations per underlying connection
+  instead of globally, in the rare case that data disappears from the
+  broker after connection loss.
+
+* Django: Added South migrations.
+
+    Contributed by Joseph Crosland.
+
+.. _version-2.1.5:
+
+2.1.5
+=====
+:release-date: 2012-04-13 3:30 P.M BST
+
+* The url parser removed more than the first leading slash (Issue #121).
+
+* SQLAlchemy: Can now specify url using + separator
+
+    Example::
+
+        BrokerConnection("sqla+mysql://localhost/db")
+
+* Better support for anonymous queues (Issue #116).
+
+    Contributed by Michael Barrett.
+
+* ``Connection.as_uri`` now quotes url parts (Issue #117).
+
+* Beanstalk: Can now set message TTR as a message property.
+
+    Contributed by Andrii Kostenko
+
+.. _version-2.1.4:
+
+2.1.4
+=====
+:release-date: 2012-04-03 4:00 P.M GMT
+
+* MongoDB:  URL parsing are now delegated to the pymongo library
+  (Fixes Issue #103 and Issue #87).
+
+    Fix contributed by Flavio Percoco Premoli and James Sullivan
+
+* SQS:  A bug caused SimpleDB to be used even if sdb persistence
+  was not enabled (Issue #108).
+
+    Fix contributed by Anand Kumria.
+
+* Django:  Transaction was committed in the wrong place, causing
+  data cleanup to fail (Issue #115).
+
+    Fix contributed by Daisuke Fujiwara.
+
+* MongoDB: Now supports replica set URLs.
+
+    Contributed by Flavio Percoco Premoli.
+
+* Redis: Now raises a channel error if a queue key that is currently
+  being consumed from disappears.
+
+    Fix contributed by Stephan Jaekel.
+
+* All transport 'channel_errors' lists now includes
+  :exc:`~kombu.exception.StdChannelError`.
+
+* All kombu exceptions now inherit from a common
+  :exc:`~kombu.exceptions.KombuError`.
+
 .. _version-2.1.3:
 
 2.1.3

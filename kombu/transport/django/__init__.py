@@ -9,6 +9,7 @@ from django.conf import settings
 from django.core import exceptions as errors
 
 from .. import virtual
+from ...exceptions import StdChannelError
 
 from .models import Queue
 
@@ -58,5 +59,6 @@ class Transport(virtual.Transport):
     default_port = 0
     polling_interval = POLLING_INTERVAL
     connection_errors = ()
-    channel_errors = (errors.ObjectDoesNotExist,
+    channel_errors = (StdChannelError,
+                      errors.ObjectDoesNotExist,
                       errors.MultipleObjectsReturned)

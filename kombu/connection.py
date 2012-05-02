@@ -17,68 +17,23 @@ import socket
 
 from contextlib import contextmanager
 from copy import copy
-from functools import wraps
+from functools import partial, wraps
 from itertools import count
+from urllib import quote
 from Queue import Empty
-from urllib import unquote
-from urlparse import urlparse
-try:
-    from urlparse import parse_qsl
-except ImportError:  # pragma: no cover
-    from cgi import parse_qsl  # noqa
-
 # jython breaks on relative import for .exceptions for some reason
 # (Issue #112)
 from kombu import exceptions
 from .transport import get_transport_cls
-from .utils import kwdict, retry_over_time
+from .utils import cached_property, retry_over_time
 from .utils.compat import OrderedDict, LifoQueue as _LifoQueue
+from .utils.url import parse_url
 
 _LOG_CONNECTION = os.environ.get("KOMBU_LOG_CONNECTION", False)
 _LOG_CHANNEL = os.environ.get("KOMBU_LOG_CHANNEL", False)
 
-
-#: Connection info -> URI
-URI_FORMAT = """\
-%(transport)s://%(userid)s@%(hostname)s%(port)s/%(virtual_host)s\
-"""
-
 __all__ = ["parse_url", "BrokerConnection", "Resource",
            "ConnectionPool", "ChannelPool"]
-
-
-def parse_url(url):
-    port = path = auth = userid = password = None
-    # parse with HTTP URL semantics
-    scheme = urlparse(url).scheme
-    parts = urlparse(url.replace("%s://" % (scheme, ), "http://"))
-
-    # The first pymongo.Connection() argument (host) can be
-    # a mongodb connection URI. If this is the case, don't
-    # use port but let pymongo get the port(s) from the URI instead.
-    # This enables the use of replica sets and sharding.
-    # See pymongo.Connection() for more info.
-    if scheme == 'mongodb':
-        # strip the scheme since it is appended automatically.
-        hostname = url[len('mongodb://'):]
-    else:
-        netloc = parts.netloc
-        if '@' in netloc:
-            auth, _, netloc = parts.netloc.partition('@')
-            userid, _, password = auth.partition(':')
-        hostname, _, port = netloc.partition(':')
-        path = parts.path or ""
-        if path and path[0] == '/':
-            path = path[1:]
-        port = port and int(port) or port
-
-    return dict({"hostname": unquote(hostname or "") or None,
-                 "port": port or None,
-                 "userid": unquote(userid or "") or None,
-                 "password": unquote(password or "") or None,
-                 "transport": scheme,
-                 "virtual_host": unquote(path or "") or None},
-                **kwdict(dict(parse_qsl(parts.query))))
 
 
 class BrokerConnection(object):
@@ -114,8 +69,6 @@ class BrokerConnection(object):
             >>> conn.release()
 
     """
-    URI_FORMAT = URI_FORMAT
-
     port = None
     virtual_host = "/"
     connect_timeout = 5
@@ -125,12 +78,18 @@ class BrokerConnection(object):
     _default_channel = None
     _transport = None
     _logger = None
-    skip_uri_transports = set(["sqlalchemy", "sqlakombu.transport.Transport"])
+    uri_passthrough = set(["sqla", "sqlalchemy"])
+    uri_prefix = None
+
+    #: The cache of declared entities is per connection,
+    #: in case the server loses data.
+    declared_entities = None
 
     def __init__(self, hostname="localhost", userid=None,
             password=None, virtual_host=None, port=None, insist=False,
             ssl=False, transport=None, connect_timeout=5,
-            transport_options=None, login_method=None, **kwargs):
+            transport_options=None, login_method=None, uri_prefix=None,
+            **kwargs):
         # have to spell the args out, just to get nice docstrings :(
         params = {"hostname": hostname, "userid": userid,
                   "password": password, "virtual_host": virtual_host,
@@ -138,8 +97,13 @@ class BrokerConnection(object):
                   "transport": transport, "connect_timeout": connect_timeout,
                   "login_method": login_method}
         if hostname and "://" in hostname \
-                and transport not in self.skip_uri_transports:
-            params.update(parse_url(hostname))
+                and transport not in self.uri_passthrough:
+            if '+' in hostname[:hostname.index("://")]:
+                # e.g. sqla+mysql://root:masterkey@localhost/
+                params["transport"], params["hostname"] = hostname.split('+')
+                self.uri_prefix = params["transport"]
+            else:
+                params.update(parse_url(hostname))
         self._init_params(**params)
 
         # backend_cls argument will be removed shortly.
@@ -152,6 +116,11 @@ class BrokerConnection(object):
         if _LOG_CONNECTION:  # pragma: no cover
             from .log import get_logger
             self._logger = get_logger("kombu.connection")
+
+        if uri_prefix:
+            self.uri_prefix = uri_prefix
+
+        self.declared_entities = set()
 
     def _init_params(self, hostname, userid, password, virtual_host, port,
             insist, ssl, transport, connect_timeout, login_method):
@@ -203,7 +172,9 @@ class BrokerConnection(object):
         except (self.connection_errors + self.channel_errors):
             pass
 
-    def _close(self):
+    def _do_close_self(self):
+        # Closes only the connection and channel(s) not transport.
+        self.declared_entities.clear()
         if self._default_channel:
             self.maybe_close_channel(self._default_channel)
         if self._connection:
@@ -212,10 +183,13 @@ class BrokerConnection(object):
             except self.connection_errors + (AttributeError, socket.error):
                 pass
             self._connection = None
-            self._debug("closed")
+
+    def _close(self):
+        self._do_close_self()
         if self._transport:
             self._transport.client = None
             self._transport = None
+        self._debug("closed")
         self._closed = True
 
     def release(self):
@@ -305,7 +279,7 @@ class BrokerConnection(object):
                         raise
                     errback and errback(exc, 0)
                     self._connection = None
-                    self.close()
+                    self._do_close_self()
                     remaining_retries = None
                     if max_retries is not None:
                         remaining_retries = max(max_retries - retries, 1)
@@ -385,7 +359,10 @@ class BrokerConnection(object):
         transport_cls = self.transport_cls or "amqp"
         transport_cls = {"amqplib": "amqp"}.get(transport_cls, transport_cls)
         defaults = self.transport.default_connection_params
-        info = OrderedDict((("hostname", self.hostname),
+        hostname = self.hostname
+        if self.uri_prefix:
+            hostname = "%s+%s" % (self.uri_prefix, hostname)
+        info = OrderedDict((("hostname", hostname),
                             ("userid", self.userid),
                             ("password", self.password),
                             ("virtual_host", self.virtual_host),
@@ -395,7 +372,8 @@ class BrokerConnection(object):
                             ("transport", transport_cls),
                             ("connect_timeout", self.connect_timeout),
                             ("transport_options", self.transport_options),
-                            ("login_method", self.login_method)))
+                            ("login_method", self.login_method),
+                            ("uri_prefix", self.uri_prefix)))
         for key, value in defaults.iteritems():
             if info[key] is None:
                 info[key] = value
@@ -405,6 +383,9 @@ class BrokerConnection(object):
         return hash("|".join(map(str, self.info().itervalues())))
 
     def as_uri(self, include_password=False):
+        if self.transport_cls in self.uri_passthrough:
+            return self.transport_cls + '+' + self.hostname
+        quoteS = partial(quote, safe="")   # strict quote
         fields = self.info()
         port = fields["port"]
         userid = fields["userid"]
@@ -412,11 +393,11 @@ class BrokerConnection(object):
         transport = fields["transport"]
         url = "%s://" % transport
         if userid:
-            url += userid
+            url += quoteS(userid)
             if include_password and password:
-                url += ':' + password
+                url += ':' + quoteS(password)
             url += '@'
-        url += fields["hostname"]
+        url += quoteS(fields["hostname"])
 
         # If the transport equals 'mongodb' the
         # hostname contains a full mongodb connection
@@ -424,7 +405,9 @@ class BrokerConnection(object):
         if port and transport != "mongodb":
             url += ':' + str(port)
 
-        url += '/' + fields["virtual_host"]
+        url += '/' + quote(fields["virtual_host"])
+        if self.uri_prefix:
+            return "%s+%s" % (self.uri_prefix, url)
         return url
 
     def Pool(self, limit=None, preload=None):
@@ -586,6 +569,7 @@ class BrokerConnection(object):
         """
         if not self._closed:
             if not self.connected:
+                self.declared_entities.clear()
                 self._default_channel = None
                 self._connection = self._establish_connection()
                 self._closed = False
@@ -609,6 +593,13 @@ class BrokerConnection(object):
         if self._transport is None:
             self._transport = self.create_transport()
         return self._transport
+
+    @cached_property
+    def manager(self):
+        return self.transport.manager
+
+    def get_manager(self, *args, **kwargs):
+        return self.transport.get_manager(*args, **kwargs)
 
     @property
     def connection_errors(self):

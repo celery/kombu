@@ -10,7 +10,7 @@ from Queue import Empty, Queue as _Queue
 
 from kombu.connection import BrokerConnection
 from kombu.entity import Exchange, Queue
-from kombu.exceptions import VersionMismatch
+from kombu.exceptions import InconsistencyError, VersionMismatch
 from kombu.messaging import Consumer, Producer
 from kombu.utils import eventio  # patch poll
 
@@ -62,8 +62,14 @@ class Client(object):
             self.sets[key] = set()
         self.sets[key].add(member)
 
+    def exists(self, key):
+        return key in self.queues or key in self.sets
+
     def smembers(self, key):
         return self.sets.get(key, set())
+
+    def srem(self, key):
+        self.sets.pop(key, None)
 
     def llen(self, key):
         return self.queues[key].qsize()
@@ -182,6 +188,9 @@ class Channel(redis.Channel):
 
     def _new_queue(self, queue, **kwargs):
         self.client._new_queue(queue)
+
+    def pipeline(self):
+        return Pipeline(Client())
 
 
 class Transport(redis.Transport):
@@ -424,19 +433,21 @@ class test_Channel(TestCase):
                 exceptions.InvalidData = InvalidData
 
     def test_empty_queues_key(self):
-        self.channel._in_poll = False
-        c = self.channel.client = Mock()
+        channel = self.channel
+        channel._in_poll = False
+        key = channel.keyprefix_queue % 'celery'
 
         # Everything is fine, there is a list of queues.
-        c.smembers.return_value = ['celery\x06\x16\x06\x16celery']
-        self.assertEquals(self.channel.get_table('celery'),
-            [('celery', '', 'celery')])
+        channel.client.sadd(key, 'celery\x06\x16\x06\x16celery')
+        self.assertListEqual(channel.get_table('celery'),
+                             [('celery', '', 'celery')])
 
-        # For some reason, the _kombu.binding.celery key gets lost
-        c.smembers.return_value = []
+        # ... then for some reason, the _kombu.binding.celery key gets lost
+        channel.client.srem(key)
 
-        # We assert, that there should be at least one entry in the table.
-        with self.assertRaises(AssertionError):
+        # which raises a channel error so that the consumer/publisher
+        # can recover by redeclaring the required entities.
+        with self.assertRaises(InconsistencyError):
             self.channel.get_table("celery")
 
 

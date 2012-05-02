@@ -14,7 +14,7 @@ from __future__ import with_statement
 import socket
 import sys
 
-from collections import defaultdict, deque
+from collections import deque
 from functools import partial
 from itertools import count
 
@@ -28,7 +28,6 @@ __all__ = ["Broadcast", "entry_to_queue", "maybe_declare", "uuid",
            "itermessages", "send_reply", "isend_reply",
            "collect_replies", "insured", "ipublish"]
 
-declared_entities = defaultdict(lambda: set())
 insured_logger = Log("kombu.insurance")
 
 
@@ -56,6 +55,10 @@ class Broadcast(Queue):
                            }, **kwargs))
 
 
+def declaration_cached(entity, channel):
+    return entity in channel.connection.client.declared_entities
+
+
 def maybe_declare(entity, channel, retry=False, **retry_policy):
     if retry:
         return _imaybe_declare(entity, channel, **retry_policy)
@@ -63,7 +66,7 @@ def maybe_declare(entity, channel, retry=False, **retry_policy):
 
 
 def _maybe_declare(entity, channel):
-    declared = declared_entities[channel.connection.client]
+    declared = channel.connection.client.declared_entities
     if not entity.is_bound:
         entity = entity.bind(channel)
     if not entity.can_cache_declaration or entity not in declared:

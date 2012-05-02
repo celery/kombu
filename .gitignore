@@ -7,7 +7,7 @@
 settings_local.py
 .build
 build
-.*.sw[po]
+.*.sw[pon]
 dist/
 *.egg-info
 doc/__build/*

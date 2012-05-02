@@ -14,7 +14,7 @@ from Queue import Empty
 
 from anyjson import loads, dumps
 
-from ..exceptions import VersionMismatch
+from ..exceptions import InconsistencyError, StdChannelError, VersionMismatch
 from ..utils import eventio, cached_property
 from ..utils.encoding import str_t
 
@@ -281,17 +281,16 @@ class Channel(virtual.Channel):
         return self._avail_client.exists(queue)
 
     def get_table(self, exchange):
-        tables = [tuple(val.split(self.sep))
-                    for val in self._avail_client.smembers(
-                            self.keyprefix_queue % exchange)]
-        assert(len(tables) > 0,
-               'Queue list empty or key does not exist: %s' % (
-                    self.keyprefix_queue % exchange))
-        return tables
+        key = self.keyprefix_queue % exchange
+        exists, values = self.pipeline().exists(key).smembers(key).execute()
+        if not exists:
+            raise InconsistencyError(
+                    "Queue list empty or key does not exist: %r" % (
+                        self.keyprefix_queue % exchange))
+        return [tuple(val.split(self.sep)) for val in values]
 
     def _purge(self, queue):
-        size, _ = self._avail_client.pipeline().llen(queue) \
-                                        .delete(queue).execute()
+        size, _ = self.pipeline().llen(queue).delete(queue).execute()
         return size
 
     def close(self):
@@ -321,7 +320,7 @@ class Channel(virtual.Channel):
                 raise ValueError(
                     "Database name must be int between 0 and limit - 1")
 
-        return self.Client(host=conninfo.hostname,
+        return self.Client(host=conninfo.hostname or "127.0.0.1",
                            port=conninfo.port or DEFAULT_PORT,
                            db=database,
                            password=conninfo.password)
@@ -360,6 +359,9 @@ class Channel(virtual.Channel):
     def _get_response_error(self):
         from redis import exceptions
         return exceptions.ResponseError
+
+    def pipeline(self):
+        return self._avail_client.pipeline()
 
     @property
     def _avail_client(self):
@@ -416,4 +418,5 @@ class Transport(virtual.Transport):
                 (exceptions.ConnectionError,
                  DataError,
                  exceptions.InvalidResponse,
-                 exceptions.ResponseError))
+                 exceptions.ResponseError,
+                 StdChannelError))

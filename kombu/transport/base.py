@@ -13,6 +13,7 @@ from __future__ import absolute_import
 from ..serialization import decode
 from ..compression import decompress
 from ..exceptions import MessageStateError
+from ..utils import cached_property
 
 ACKNOWLEDGED_STATES = frozenset(["ACK", "REJECTED", "REQUEUED"])
 
@@ -162,8 +163,19 @@ class Message(object):
         return self._decoded_cache
 
 
+class Management(object):
+
+    def __init__(self, transport):
+        self.transport = transport
+
+    def list_bindings(self):
+        raise NotImplementedError(
+            "Your transport does not implement list_bindings")
+
+
 class Transport(object):
     """Base class for transports."""
+    Management = Management
 
     #: The :class:`~kombu.connection.BrokerConnection` owning this instance.
     client = None
@@ -201,3 +213,10 @@ class Transport(object):
     @property
     def default_connection_params(self):
         return {}
+
+    def get_manager(self, *args, **kwargs):
+        return self.Management(self)
+
+    @cached_property
+    def manager(self):
+        return self.get_manager()

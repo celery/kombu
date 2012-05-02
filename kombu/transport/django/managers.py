@@ -57,9 +57,9 @@ class MessageManager(models.Manager):
             result.save()
             recv = self.__class__._messages_received
             recv[0] += 1
-            transaction.commit()
             if not recv[0] % self.cleanup_every:
                 self.cleanup()
+            transaction.commit()
             return result.payload
         except self.model.DoesNotExist:
             transaction.commit()

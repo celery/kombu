@@ -65,12 +65,12 @@ class BrokerState(object):
     bindings = None
 
     def __init__(self, exchanges=None, bindings=None):
-        if exchanges is None:
-            exchanges = {}
-        if bindings is None:
-            bindings = {}
-        self.exchanges = exchanges
-        self.bindings = bindings
+        self.exchanges = {} if exchanges is None else exchanges
+        self.bindings = {}  if bindings  is None else bindings
+
+    def clear(self):
+        self.exchanges.clear()
+        self.bindings.clear()
 
 
 class QoS(object):
@@ -630,17 +630,29 @@ class Channel(AbstractChannel, base.StdChannel):
         return self._cycle
 
 
+class Management(base.Management):
+
+    def __init__(self, transport):
+        super(Management, self).__init__(transport)
+        self.channel = transport.client.channel()
+
+    def get_bindings(self):
+        return [dict(destination=q, source=e, routing_key=r)
+                    for q, e, r in self.channel.list_bindings()]
+
+    def close(self):
+        self.channel.close()
+
+
 class Transport(base.Transport):
     """Virtual transport.
 
     :param client: :class:`~kombu.connection.BrokerConnection` instance
 
     """
-    #: channel class used.
     Channel = Channel
-
-    #: cycle class used.
     Cycle = FairCycle
+    Management = Management
 
     #: :class:`BrokerState` containing declared exchanges and
     #: bindings (set by constructor).

@@ -15,6 +15,7 @@ import socket
 from operator import attrgetter
 
 from . import base
+from ..exceptions import StdChannelError
 
 import pika
 from pika import spec
@@ -183,7 +184,8 @@ class Transport(base.Transport):
                          exceptions.RecursiveOperationDetected,
                          exceptions.ProtocolSyntaxError)
 
-    channel_errors = (exceptions.ChannelClosed,
+    channel_errors = (StdChannelError,
+                      exceptions.ChannelClosed,
                       exceptions.DuplicateConsumerTag,
                       exceptions.UnknownConsumerTag,
                       exceptions.ProtocolSyntaxError)

@@ -173,8 +173,14 @@ class Consumer(messaging.Consumer):
 
 class ConsumerSet(messaging.Consumer):
 
-    def __init__(self, connection, from_dict=None, consumers=None, **kwargs):
-        self.backend = connection.channel()
+    def __init__(self, connection, from_dict=None, consumers=None,
+            channel=None, **kwargs):
+        if channel:
+            self._provided_channel = True
+            self.backend = channel
+        else:
+            self._provided_channel = False
+            self.backend = connection.channel()
 
         queues = []
         if consumers:
@@ -205,4 +211,5 @@ class ConsumerSet(messaging.Consumer):
 
     def close(self):
         self.cancel()
-        self.channel.close()
+        if not self._provided_channel:
+            self.channel.close()

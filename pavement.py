@@ -1,3 +1,5 @@
+import os
+
 from paver.easy import *            # noqa
 from paver import doctools          # noqa
 from paver.setuputils import setup  # noqa
@@ -117,8 +119,15 @@ def test(options):
 ])
 def flake8(options):
     noerror = getattr(options, "noerror", False)
-    sh("""flake8 kombu""", ignore_error=noerror)
-
+    complexity = getattr(options, "complexity", 22)
+    migrations_path = os.path.join("kombu", "transport", "django",
+                                   "migrations", "0.+?\.py")
+    sh("""flake8 kombu | perl -mstrict -mwarnings -nle'
+        my $ignore = (m/too complex \((\d+)\)/ && $1 le %s)
+                   || (m{^%s});
+        if (! $ignore) { print STDERR; our $FOUND_FLAKE = 1 }
+        }{exit $FOUND_FLAKE;
+        '""" % (complexity, migrations_path), ignore_error=noerror)
 
 @task
 @cmdopts([

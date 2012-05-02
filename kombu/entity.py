@@ -381,12 +381,12 @@ class Queue(MaybeChannelBound):
     def declare(self, nowait=False):
         """Declares the queue, the exchange and binds the queue to
         the exchange."""
-        name = self.name
-        if name:
-            if self.exchange:
-                self.exchange.declare(nowait)
+        if self.exchange:
+            self.exchange.declare(nowait)
         self.queue_declare(nowait, passive=False)
-        if name:
+        # self.name should be set by queue_declare in the case that
+        # we're working with anonymous queues
+        if self.name:
             self.queue_bind(nowait)
         return self.name
 

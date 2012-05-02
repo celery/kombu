@@ -18,6 +18,7 @@ import couchdb
 from anyjson import loads, dumps
 
 from ..utils import uuid4
+from ..exceptions import StdChannelError
 from . import virtual
 
 DEFAULT_PORT = 5984
@@ -110,7 +111,8 @@ class Transport(virtual.Transport):
                          couchdb.HTTPError,
                          couchdb.ServerError,
                          couchdb.Unauthorized)
-    channel_errors = (couchdb.HTTPError,
+    channel_errors = (StdChannelError,
+                      couchdb.HTTPError,
                       couchdb.ServerError,
                       couchdb.PreconditionFailed,
                       couchdb.ResourceConflict,

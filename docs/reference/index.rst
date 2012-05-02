@@ -52,3 +52,4 @@
     kombu.utils.encoding
     kombu.utils.functional
     kombu.utils.finalize
+    kombu.utils.url
