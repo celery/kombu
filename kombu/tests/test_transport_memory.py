@@ -3,8 +3,10 @@ from __future__ import with_statement
 
 import socket
 
+from kombu.common import eventloop, itermessages
 from kombu.connection import BrokerConnection
 from kombu.entity import Exchange, Queue
+from kombu.exceptions import StdChannelError
 from kombu.messaging import Consumer, Producer
 
 from .utils import TestCase
@@ -44,6 +46,43 @@ class test_MemoryTransport(TestCase):
             self.c.drain_events()
 
         self.assertEqual(len(_received), 10)
+
+    def test_auto_delete(self, name="test_memory_autodelete"):
+        _received = []
+        channel = self.c.channel()
+        queue = Queue(name,
+                      exchange=Exchange(name),
+                      routing_key=name,
+                      auto_delete=True,
+                      no_ack=True)
+        queue(channel).declare()
+        self.assertIn(name, channel.auto_delete_queues)
+
+        def callback(body, message):
+            _received.append(body)
+
+        producer = Producer(channel, queue.exchange)
+        for i in range(10):
+            producer.publish({"foo": i}, routing_key=name)
+
+        with Consumer(channel, queue, callbacks=[callback]) as consumer:
+            self.assertEqual(channel.auto_delete_queues[name], 1)
+
+            for _ in eventloop(self.c, limit=10):
+                pass
+        self.assertEqual(channel.auto_delete_queues[name], 0)
+        self.assertTrue(len(_received), 10)
+
+        # all messages consumed, should be deleted now.
+        with self.assertRaises(StdChannelError):
+            channel.queue_declare(name, passive=True)
+
+        queue(channel).declare()
+        producer.publish({"foo": i+1}, routing_key=name)
+        list(itermessages(self.c, channel, queue))
+        with self.assertRaises(StdChannelError):
+            channel.queue_declare(name, passive=True)
+
 
     def test_produce_consume(self):
         channel = self.c.channel()

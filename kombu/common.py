@@ -82,21 +82,27 @@ def _imaybe_declare(entity, channel, **retry_policy):
                              **retry_policy)(entity, channel)
 
 
-def itermessages(conn, channel, queue, limit=1, timeout=None,
-        Consumer=_Consumer, **kwargs):
+def drain_consumer(consumer, limit=1, timeout=None, callbacks=None):
     acc = deque()
 
     def on_message(body, message):
         acc.append((body, message))
 
-    with Consumer(channel, [queue], callbacks=[on_message], **kwargs):
-        for _ in eventloop(conn, limit=limit, timeout=timeout,
-                           ignore_timeouts=True):
+    consumer.callbacks = [on_message] + (callbacks or [])
+
+    with consumer:
+        for _ in eventloop(consumer.channel.connection.client,
+                           limit=limit, timeout=timeout, ignore_timeouts=True):
             try:
                 yield acc.popleft()
             except IndexError:
                 pass
 
+
+def itermessages(conn, channel, queue, limit=1, timeout=None,
+        Consumer=_Consumer, callbacks=None, **kwargs):
+    return drain_consumer(Consumer(channel, queues=[queue], **kwargs),
+                          limit=limit, timeout=timeout, callbacks=callbacks)
 
 def eventloop(conn, limit=None, timeout=None, ignore_timeouts=False):
     """Best practice generator wrapper around ``Connection.drain_events``.
