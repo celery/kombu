@@ -75,7 +75,7 @@ class test_UUID(TestCase):
 
         @mask_modules("ctypes")
         def with_ctypes_masked():
-            from ..utils import ctypes, uuid
+            from kombu.utils import ctypes, uuid
 
             self.assertIsNone(ctypes)
             tid = uuid()

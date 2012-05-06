@@ -25,9 +25,9 @@ from boto.sdb.connection import SDBConnection
 from boto.sqs.connection import SQSConnection
 from boto.sqs.message import Message
 
-from ..exceptions import StdChannelError
-from ..utils import cached_property, uuid
-from ..utils.encoding import safe_str
+from kombu.exceptions import StdChannelError
+from kombu.utils import cached_property, uuid
+from kombu.utils.encoding import safe_str
 
 from . import virtual
 

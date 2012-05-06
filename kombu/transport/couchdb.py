@@ -17,8 +17,9 @@ import couchdb
 
 from anyjson import loads, dumps
 
-from ..utils import uuid4
-from ..exceptions import StdChannelError
+from kombu.exceptions import StdChannelError
+from kombu.utils import uuid4
+
 from . import virtual
 
 DEFAULT_PORT = 5984

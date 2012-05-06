@@ -17,8 +17,9 @@ from Queue import Empty
 from anyjson import loads, dumps
 from beanstalkc import Connection, BeanstalkcException, SocketError
 
+from kombu.exceptions import StdChannelError
+
 from . import virtual
-from ..exceptions import StdChannelError
 
 DEFAULT_PORT = 11300
 

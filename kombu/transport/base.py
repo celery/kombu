@@ -10,10 +10,10 @@ Base transport interface.
 """
 from __future__ import absolute_import
 
-from ..serialization import decode
-from ..compression import decompress
-from ..exceptions import MessageStateError
-from ..utils import cached_property
+from kombu.compression import decompress
+from kombu.exceptions import MessageStateError
+from kombu.serialization import decode
+from kombu.utils import cached_property
 
 ACKNOWLEDGED_STATES = frozenset(["ACK", "REJECTED", "REQUEUED"])
 
@@ -22,11 +22,11 @@ class StdChannel(object):
     no_ack_consumers = None
 
     def Consumer(self, *args, **kwargs):
-        from ..messaging import Consumer
+        from kombu.messaging import Consumer
         return Consumer(self, *args, **kwargs)
 
     def Producer(self, *args, **kwargs):
-        from ..messaging import Producer
+        from kombu.messaging import Producer
         return Producer(self, *args, **kwargs)
 
     def list_bindings(self):

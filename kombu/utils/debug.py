@@ -14,7 +14,7 @@ import logging
 
 from functools import wraps
 
-from ..log import get_logger
+from kombu.log import get_logger
 
 __all__ = ["setup_logging", "Logwrapped"]
 

@@ -20,13 +20,13 @@ from itertools import count
 from time import sleep, time
 from Queue import Empty
 
-from ...exceptions import StdChannelError
-from ...utils import emergency_dump_state, say
-from ...utils.compat import OrderedDict
-from ...utils.encoding import str_to_bytes, bytes_to_str
-from ...utils.finalize import Finalize
+from kombu.exceptions import StdChannelError
+from kombu.utils import emergency_dump_state, say
+from kombu.utils.compat import OrderedDict
+from kombu.utils.encoding import str_to_bytes, bytes_to_str
+from kombu.utils.finalize import Finalize
 
-from .. import base
+from kombu import base
 
 from .scheduling import FairCycle
 from .exchange import STANDARD_EXCHANGE_TYPES

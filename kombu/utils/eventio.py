@@ -14,7 +14,7 @@ import errno
 import select
 import socket
 
-from ..syn import detect_environment
+from kombu.syn import detect_environment
 
 __all__ = ["poll"]
 

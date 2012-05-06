@@ -14,9 +14,13 @@ from Queue import Empty
 
 from anyjson import loads, dumps
 
-from ..exceptions import InconsistencyError, StdChannelError, VersionMismatch
-from ..utils import eventio, cached_property
-from ..utils.encoding import str_t
+from kombu.exceptions import (
+    InconsistencyError,
+    StdChannelError,
+    VersionMismatch,
+)
+from kombu.utils import eventio, cached_property
+from kombu.utils.encoding import str_t
 
 from . import virtual
 
