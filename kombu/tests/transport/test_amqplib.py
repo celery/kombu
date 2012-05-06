@@ -5,8 +5,8 @@ import sys
 from kombu.transport import amqplib
 from kombu.connection import BrokerConnection
 
-from .utils import TestCase
-from .utils import mask_modules, Mock
+from kombu.tests.utils import TestCase
+from kombu.tests.utils import mask_modules, Mock
 
 
 class MockConnection(dict):

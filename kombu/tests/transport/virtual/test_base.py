@@ -10,9 +10,9 @@ from kombu.exceptions import StdChannelError
 from kombu.transport import virtual
 from kombu.utils import uuid
 
-from .compat import catch_warnings
-from .utils import TestCase
-from .utils import Mock, redirect_stdouts
+from kombu.tests.compat import catch_warnings
+from kombu.tests.utils import TestCase
+from kombu.tests.utils import Mock, redirect_stdouts
 
 
 def client(**kwargs):

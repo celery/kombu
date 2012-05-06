@@ -4,7 +4,7 @@ import pickle
 
 from kombu.utils.functional import promise, maybe_promise
 
-from .utils import TestCase
+from kombu.tests.utils import TestCase
 
 
 def double(x):

@@ -4,8 +4,8 @@ from __future__ import with_statement
 from kombu import BrokerConnection, Consumer, Producer, Queue
 from kombu.transport.base import Message, StdChannel, Transport
 
-from .utils import TestCase
-from .utils import Mock
+from kombu.tests.utils import TestCase
+from kombu.tests.utils import Mock
 
 
 class test_StdChannel(TestCase):

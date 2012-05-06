@@ -4,7 +4,7 @@ from nose import SkipTest
 
 from kombu.connection import BrokerConnection
 
-from .utils import TestCase, skip_if_not_module
+from kombu.tests.utils import TestCase, skip_if_not_module
 
 
 class MockConnection(dict):

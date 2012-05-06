@@ -14,8 +14,8 @@ from kombu.exceptions import InconsistencyError, VersionMismatch
 from kombu.messaging import Consumer, Producer
 from kombu.utils import eventio  # patch poll
 
-from .utils import TestCase
-from .utils import Mock, module_exists, skip_if_not_module
+from kombu.tests.utils import TestCase
+from kombu.tests.utils import Mock, module_exists, skip_if_not_module
 
 
 class _poll(eventio._select):
@@ -29,7 +29,7 @@ class _poll(eventio._select):
 
 
 eventio.poll = _poll
-from ..transport import redis  # must import after poller patch
+from kombu.transport import redis  # must import after poller patch
 
 
 class ResponseError(Exception):
