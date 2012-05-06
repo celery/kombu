@@ -10,7 +10,7 @@ from nose import SkipTest
 
 from kombu.utils.encoding import safe_str
 
-from .utils import TestCase
+from kombu.tests.utils import TestCase
 
 
 @contextmanager

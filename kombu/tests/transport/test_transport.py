@@ -5,7 +5,7 @@ from mock import patch
 
 from kombu import transport
 
-from .utils import TestCase
+from kombu.tests.utils import TestCase
 
 
 class test_transport(TestCase):

@@ -9,7 +9,7 @@ from kombu.entity import Exchange, Queue
 from kombu.exceptions import StdChannelError
 from kombu.messaging import Consumer, Producer
 
-from .utils import TestCase
+from kombu.tests.utils import TestCase
 
 
 class test_MemoryTransport(TestCase):

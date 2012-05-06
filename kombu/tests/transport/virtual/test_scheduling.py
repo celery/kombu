@@ -3,7 +3,7 @@ from __future__ import with_statement
 
 from kombu.transport.virtual.scheduling import FairCycle
 
-from .utils import TestCase
+from kombu.tests.utils import TestCase
 
 
 class MyEmpty(Exception):

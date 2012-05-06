@@ -4,9 +4,9 @@ from __future__ import with_statement
 from kombu import BrokerConnection
 from kombu.transport.virtual import exchange
 
-from .mocks import Transport
-from .utils import TestCase
-from .utils import Mock
+from kombu.tests.mocks import Transport
+from kombu.tests.utils import TestCase
+from kombu.tests.utils import Mock
 
 
 class ExchangeCase(TestCase):
