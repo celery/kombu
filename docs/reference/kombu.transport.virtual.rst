@@ -14,7 +14,7 @@
 
         .. autoattribute:: Cycle
 
-        .. autoattribute:: interval
+        .. autoattribute:: polling_interval
 
         .. autoattribute:: default_port
 

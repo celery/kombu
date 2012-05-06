@@ -5,10 +5,10 @@ import anyjson
 
 from mock import patch
 
-from ..connection import BrokerConnection
-from ..exceptions import MessageStateError
-from ..messaging import Consumer, Producer
-from ..entity import Exchange, Queue
+from kombu.connection import BrokerConnection
+from kombu.exceptions import MessageStateError
+from kombu.messaging import Consumer, Producer
+from kombu.entity import Exchange, Queue
 
 from .mocks import Transport
 from .utils import TestCase

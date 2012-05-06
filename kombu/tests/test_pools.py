@@ -1,10 +1,10 @@
 from __future__ import with_statement
 
-from .. import Connection
-from .. import pools
-from ..connection import ConnectionPool
-from ..messaging import Producer
-from ..utils import eqhash
+from kombu import Connection
+from kombu import pools
+from kombu.connection import ConnectionPool
+from kombu.messaging import Producer
+from kombu.utils import eqhash
 
 from .utils import TestCase
 from .utils import Mock

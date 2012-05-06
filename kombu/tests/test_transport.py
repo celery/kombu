@@ -3,7 +3,8 @@ from __future__ import with_statement
 
 from mock import patch
 
-from .. import transport
+from kombu import transport
+
 from .utils import TestCase
 
 

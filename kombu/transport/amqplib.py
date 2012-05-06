@@ -25,14 +25,40 @@ from amqplib.client_0_8.exceptions import AMQPConnectionException
 from amqplib.client_0_8.exceptions import AMQPChannelException
 
 from . import base
+from ..exceptions import StdChannelError
 from ..utils.encoding import str_to_bytes
 
 DEFAULT_PORT = 5672
+HAS_MSG_PEEK = hasattr(socket, "MSG_PEEK")
 
 # amqplib's handshake mistakenly identifies as protocol version 1191,
 # this breaks in RabbitMQ tip, which no longer falls back to
 # 0-8 for unknown ids.
 transport.AMQP_PROTOCOL_HEADER = str_to_bytes("AMQP\x01\x01\x08\x00")
+
+
+# - fixes warnings when socket is not connected.
+class _TCPTransport(transport.TCPTransport):
+
+    def __del__(self):
+        try:
+            transport._AbstractTransport.__del__(self)
+        except socket.error:
+            pass
+        finally:
+            self.sock = None
+transport.TCPTransport = _TCPTransport
+
+
+class _SSLTransport(transport.SSLTransport):
+
+    def __init__(self, host, connect_timeout, ssl):
+        if isinstance(ssl, dict):
+            self.sslopts = ssl
+        self.sslobj = None
+
+        transport._AbstractTransport.__init__(self, host, connect_timeout)
+transport.SSLTransport = _SSLTransport
 
 
 class Connection(amqp.Connection):  # pragma: no cover
@@ -222,7 +248,7 @@ class Transport(base.Transport):
                          IOError,
                          OSError,
                          AttributeError)
-    channel_errors = (AMQPChannelException, )
+    channel_errors = (StdChannelError, AMQPChannelException, )
 
     def __init__(self, client, **kwargs):
         self.client = client
@@ -259,12 +285,18 @@ class Transport(base.Transport):
         connection.close()
 
     def is_alive(self, connection):
-        try:
-            connection.drain_events(timeout=0.0001)
-        except socket.timeout:
-            return True
-        except self.connection_errors:
-            return False
+        if HAS_MSG_PEEK:
+            sock = connection.transport.sock
+            prev = sock.gettimeout()
+            sock.settimeout(0.0001)
+            try:
+                sock.recv(1, socket.MSG_PEEK)
+            except socket.timeout:
+                pass
+            except socket.error:
+                return False
+            finally:
+                sock.settimeout(prev)
         return True
 
     def verify_connection(self, connection):
@@ -275,3 +307,17 @@ class Transport(base.Transport):
         return {"userid": "guest", "password": "guest",
                 "port": self.default_port,
                 "hostname": "localhost", "login_method": "AMQPLAIN"}
+
+    def get_manager(self, hostname=None, port=None, userid=None,
+            password=None):
+        import pyrabbit
+        c = self.client
+        opt = c.transport_options.get
+        host = (hostname if hostname is not None
+                         else opt("manager_hostname", c.hostname))
+        port = port if port is not None else opt("manager_port", 55672)
+        return pyrabbit.Client("%s:%s" % (host, port),
+            userid if userid is not None
+                   else opt("manager_userid", c.userid),
+            password if password is not None
+                   else opt("manager_password", c.password))

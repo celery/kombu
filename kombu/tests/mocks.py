@@ -4,7 +4,7 @@ from itertools import count
 
 import anyjson
 
-from ..transport import base
+from kombu.transport import base
 
 
 class Message(base.Message):

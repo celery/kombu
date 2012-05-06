@@ -14,7 +14,7 @@ from Queue import Empty
 
 from anyjson import loads, dumps
 
-from ..exceptions import VersionMismatch
+from ..exceptions import InconsistencyError, StdChannelError, VersionMismatch
 from ..utils import eventio, cached_property
 from ..utils.encoding import str_t
 
@@ -208,7 +208,8 @@ class Channel(virtual.Channel):
         queues = self.active_queues
         if not queues:
             return
-        keys = list(queues) + [timeout or 0]
+        keys = [self._q_for_pri(queue, pri) for pri in range(10)
+                        for queue in queues] + [timeout or 0]
         self.client.connection.send_command("BRPOP", *keys)
         self._in_poll = True
 
@@ -225,6 +226,7 @@ class Channel(virtual.Channel):
                 raise Empty()
             if dest__item:
                 dest, item = dest__item
+                dest = dest.rsplit(self.sep, 1)[0]
                 return loads(item), dest
             else:
                 raise Empty()
@@ -238,24 +240,30 @@ class Channel(virtual.Channel):
             pass
 
     def _get(self, queue):
-        """basic.get
-
-        .. note::
-
-            Implies ``no_ack=True``
-
-        """
-        item = self._avail_client.rpop(queue)
-        if item:
-            return loads(item)
+        for pri in range(10):
+            item = self._avail_client.rpop(self._q_for_pri(queue, pri))
+            if item:
+                return loads(item)
         raise Empty()
 
     def _size(self, queue):
-        return self._avail_client.llen(queue)
+        cmds = self._avail_client.pipeline()
+        for pri in range(10):
+            cmds = cmds.llen(self._q_for_pri(queue, pri))
+        sizes = cmds.execute()
+        return sum(sizes)
+
+    def _q_for_pri(self, queue, pri):
+        return '%s%s%s' % ((queue, self.sep, pri) if pri else (queue, '', ''))
 
     def _put(self, queue, message, **kwargs):
         """Deliver message."""
-        self._avail_client.lpush(queue, dumps(message))
+        try:
+            pri = max(min(int(
+                message["properties"]["delivery_info"]["priority"]), 9), 0)
+        except (TypeError, ValueError, KeyError):
+            pri = 0
+        self._avail_client.lpush(self._q_for_pri(queue, pri), dumps(message))
 
     def _put_fanout(self, exchange, message, **kwargs):
         """Deliver fanout message."""
@@ -275,20 +283,33 @@ class Channel(virtual.Channel):
                                 self.sep.join([routing_key or "",
                                                pattern or "",
                                                queue or ""]))
-        self._avail_client.delete(queue)
+        cmds = self._avail_client.pipeline()
+        for pri in range(10):
+            cmds = cmds.delete(self._q_for_pri(queue, pri))
+        cmds.execute()
 
     def _has_queue(self, queue, **kwargs):
-        return self._avail_client.exists(queue)
+        cmds = self._avail_client.pipeline()
+        for pri in range(10):
+            cmds = cmds.exists(self._q_for_pri(queue, pri))
+        return any(cmds.execute())
 
     def get_table(self, exchange):
-        return [tuple(val.split(self.sep))
-                    for val in self._avail_client.smembers(
-                            self.keyprefix_queue % exchange)]
+        key = self.keyprefix_queue % exchange
+        exists, values = self.pipeline().exists(key).smembers(key).execute()
+        if not exists:
+            raise InconsistencyError(
+                    "Queue list empty or key does not exist: %r" % (
+                        self.keyprefix_queue % exchange))
+        return [tuple(val.split(self.sep)) for val in values]
 
     def _purge(self, queue):
-        size, _ = self._avail_client.pipeline().llen(queue) \
-                                        .delete(queue).execute()
-        return size
+        cmds = self.pipeline()
+        for pri in range(10):
+            priq = self._q_for_pri(queue, pri)
+            cmds = cmds.llen(priq).delete(priq)
+        sizes = cmds.execute()
+        return sum(sizes[::2])
 
     def close(self):
         if not self.closed:
@@ -317,7 +338,7 @@ class Channel(virtual.Channel):
                 raise ValueError(
                     "Database name must be int between 0 and limit - 1")
 
-        return self.Client(host=conninfo.hostname,
+        return self.Client(host=conninfo.hostname or "127.0.0.1",
                            port=conninfo.port or DEFAULT_PORT,
                            db=database,
                            password=conninfo.password)
@@ -356,6 +377,9 @@ class Channel(virtual.Channel):
     def _get_response_error(self):
         from redis import exceptions
         return exceptions.ResponseError
+
+    def pipeline(self):
+        return self._avail_client.pipeline()
 
     @property
     def _avail_client(self):
@@ -412,4 +436,5 @@ class Transport(virtual.Transport):
                 (exceptions.ConnectionError,
                  DataError,
                  exceptions.InvalidResponse,
-                 exceptions.ResponseError))
+                 exceptions.ResponseError,
+                 StdChannelError))

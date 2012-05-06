@@ -101,7 +101,7 @@ def maybe_list(v):
 def fxrange(start=1.0, stop=None, step=1.0, repeatlast=False):
     cur = start * 1.0
     while 1:
-        if cur <= stop:
+        if not stop or cur <= stop:
             yield cur
             cur += step
         else:
@@ -259,7 +259,7 @@ def reprkwargs(kwargs, sep=', ', fmt="%s=%s"):
 
 
 def reprcall(name, args=(), kwargs=(), sep=', '):
-    return "%s(%s%s%s)" % (name, sep.join(map(_safe_repr, args)),
+    return "%s(%s%s%s)" % (name, sep.join(map(_safe_repr, args or ())),
                            (args and kwargs) and sep or "",
                            reprkwargs(kwargs, sep))
 

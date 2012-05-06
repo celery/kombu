@@ -14,7 +14,7 @@ import socket
 
 from operator import attrgetter
 
-from ..exceptions import VersionMismatch
+from ..exceptions import StdChannelError, VersionMismatch
 from . import base
 
 from pika import channel  # must be here to raise import error
@@ -205,7 +205,8 @@ class SyncTransport(base.Transport):
                          exceptions.ContentTransmissionForbidden,
                          exceptions.ProtocolSyntaxError)
 
-    channel_errors = (exceptions.ChannelClosed,
+    channel_errors = (StdChannelError,
+                      exceptions.ChannelClosed,
                       exceptions.DuplicateConsumerTag,
                       exceptions.UnknownConsumerTag,
                       exceptions.ProtocolSyntaxError)

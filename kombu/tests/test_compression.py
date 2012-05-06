@@ -4,7 +4,8 @@ import sys
 
 from nose import SkipTest
 
-from .. import compression
+from kombu import compression
+
 from .utils import TestCase
 from .utils import mask_modules
 

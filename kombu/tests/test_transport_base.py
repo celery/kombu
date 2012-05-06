@@ -1,8 +1,8 @@
 from __future__ import absolute_import
 from __future__ import with_statement
 
-from .. import BrokerConnection, Consumer, Producer, Queue
-from ..transport.base import Message, StdChannel, Transport
+from kombu import BrokerConnection, Consumer, Producer, Queue
+from kombu.transport.base import Message, StdChannel, Transport
 
 from .utils import TestCase
 from .utils import Mock
@@ -13,9 +13,12 @@ class test_StdChannel(TestCase):
     def setUp(self):
         self.conn = BrokerConnection("memory://")
         self.channel = self.conn.channel()
+        self.channel.queues.clear()
+        self.conn.connection.state.clear()
 
     def test_Consumer(self):
         q = Queue("foo")
+        print(self.channel.queues)
         cons = self.channel.Consumer(q)
         self.assertIsInstance(cons, Consumer)
         self.assertIs(cons.channel, self.channel)

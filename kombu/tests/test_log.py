@@ -5,7 +5,8 @@ import sys
 
 from mock import patch
 
-from .. import log
+from kombu import log
+
 from .utils import TestCase
 from .utils import Mock
 

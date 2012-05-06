@@ -5,10 +5,10 @@ import warnings
 
 from mock import patch
 
-from ..connection import BrokerConnection
-from ..exceptions import StdChannelError
-from ..transport import virtual
-from ..utils import uuid
+from kombu.connection import BrokerConnection
+from kombu.exceptions import StdChannelError
+from kombu.transport import virtual
+from kombu.utils import uuid
 
 from .compat import catch_warnings
 from .utils import TestCase
@@ -427,10 +427,8 @@ class test_Channel(TestCase):
         c._tag_to_queue["x"] = "foo"
         c._active_queues = Mock()
         c._active_queues.remove.side_effect = ValueError()
-        c.auto_delete_queues["foo"] = 3
 
         c.basic_cancel("x")
-        self.assertEqual(c.auto_delete_queues["foo"], 2)
         c._active_queues.remove.assert_called_with("foo")
 
     def test_basic_cancel_unknown_ctag(self):

@@ -1,9 +1,9 @@
 from __future__ import absolute_import
 from __future__ import with_statement
 
-from .. import Connection
-from ..entity import Exchange, Queue
-from ..exceptions import NotBoundError
+from kombu import Connection
+from kombu.entity import Exchange, Queue
+from kombu.exceptions import NotBoundError
 
 from .mocks import Transport
 from .utils import TestCase

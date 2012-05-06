@@ -14,7 +14,7 @@ from __future__ import with_statement
 import socket
 import sys
 
-from collections import defaultdict, deque
+from collections import deque
 from functools import partial
 from itertools import count
 
@@ -28,7 +28,6 @@ __all__ = ["Broadcast", "entry_to_queue", "maybe_declare", "uuid",
            "itermessages", "send_reply", "isend_reply",
            "collect_replies", "insured", "ipublish"]
 
-declared_entities = defaultdict(lambda: set())
 insured_logger = Log("kombu.insurance")
 
 
@@ -56,6 +55,10 @@ class Broadcast(Queue):
                            }, **kwargs))
 
 
+def declaration_cached(entity, channel):
+    return entity in channel.connection.client.declared_entities
+
+
 def maybe_declare(entity, channel, retry=False, **retry_policy):
     if retry:
         return _imaybe_declare(entity, channel, **retry_policy)
@@ -63,10 +66,10 @@ def maybe_declare(entity, channel, retry=False, **retry_policy):
 
 
 def _maybe_declare(entity, channel):
-    declared = declared_entities[channel.connection.client]
-    if not entity.is_bound:
-        entity = entity.bind(channel)
-    if not entity.can_cache_declaration or entity not in declared:
+    declared = channel.connection.client.declared_entities
+    if entity not in declared:
+        if not entity.is_bound:
+            entity = entity.bind(channel)
         entity.declare()
         declared.add(entity)
         return True
@@ -79,21 +82,27 @@ def _imaybe_declare(entity, channel, **retry_policy):
                              **retry_policy)(entity, channel)
 
 
-def itermessages(conn, channel, queue, limit=1, timeout=None,
-        Consumer=_Consumer, **kwargs):
+def drain_consumer(consumer, limit=1, timeout=None, callbacks=None):
     acc = deque()
 
     def on_message(body, message):
         acc.append((body, message))
 
-    with Consumer(channel, [queue], callbacks=[on_message], **kwargs):
-        for _ in eventloop(conn, limit=limit, timeout=timeout,
-                           ignore_timeouts=True):
+    consumer.callbacks = [on_message] + (callbacks or [])
+
+    with consumer:
+        for _ in eventloop(consumer.channel.connection.client,
+                           limit=limit, timeout=timeout, ignore_timeouts=True):
             try:
                 yield acc.popleft()
             except IndexError:
                 pass
 
+
+def itermessages(conn, channel, queue, limit=1, timeout=None,
+        Consumer=_Consumer, callbacks=None, **kwargs):
+    return drain_consumer(Consumer(channel, queues=[queue], **kwargs),
+                          limit=limit, timeout=timeout, callbacks=callbacks)
 
 def eventloop(conn, limit=None, timeout=None, ignore_timeouts=False):
     """Best practice generator wrapper around ``Connection.drain_events``.

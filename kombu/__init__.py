@@ -1,7 +1,7 @@
-"""AMQP Messaging Framework for Python"""
+"""Messaging Framework for Python"""
 from __future__ import absolute_import
 
-VERSION = (2, 0, 0)
+VERSION = (2, 1, 7)
 __version__ = ".".join(map(str, VERSION[0:3])) + "".join(VERSION[3:])
 __author__ = "Ask Solem"
 __contact__ = "ask@celeryproject.org"
@@ -56,6 +56,12 @@ class module(ModuleType):
                        "__contact__", "__homepage__", "__docformat__"))
         return result
 
+# 2.5 does not define __package__
+try:
+    package = __package__
+except NameError:
+    package = "kombu"
+
 # keep a reference to this module so that it's not garbage collected
 old_module = sys.modules[__name__]
 
@@ -70,6 +76,7 @@ new_module.__dict__.update({
     "__contact__": __contact__,
     "__homepage__": __homepage__,
     "__docformat__": __docformat__,
+    "__package__": package,
     "VERSION": VERSION})
 
 if os.environ.get("KOMBU_LOG_DEBUG"):

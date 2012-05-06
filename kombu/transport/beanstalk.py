@@ -18,6 +18,7 @@ from anyjson import loads, dumps
 from beanstalkc import Connection, BeanstalkcException, SocketError
 
 from . import virtual
+from ..exceptions import StdChannelError
 
 DEFAULT_PORT = 11300
 
@@ -42,9 +43,14 @@ class Channel(virtual.Channel):
         return item, dest
 
     def _put(self, queue, message, **kwargs):
+        extra = {}
         priority = message["properties"]["delivery_info"]["priority"]
+        ttr = message["properties"].get("ttr")
+        if ttr is not None:
+            extra["ttr"] = ttr
+
         self.client.use(queue)
-        self.client.put(dumps(message), priority=priority)
+        self.client.put(dumps(message), priority=priority, **extra)
 
     def _get(self, queue):
         if queue not in self.client.watching():
@@ -119,7 +125,8 @@ class Transport(virtual.Transport):
     connection_errors = (socket.error,
                          SocketError,
                          IOError)
-    channel_errors = (socket.error,
+    channel_errors = (StdChannelError,
+                      socket.error,
                       IOError,
                       SocketError,
                       BeanstalkcException)

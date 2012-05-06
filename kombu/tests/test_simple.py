@@ -3,7 +3,8 @@ from __future__ import with_statement
 
 from Queue import Empty
 
-from .. import BrokerConnection, Exchange, Queue
+from kombu import BrokerConnection, Exchange, Queue
+
 from .utils import TestCase
 from .utils import Mock
 

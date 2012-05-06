@@ -2,8 +2,8 @@ from __future__ import absolute_import
 
 import sys
 
-from ..transport import amqplib
-from ..connection import BrokerConnection
+from kombu.transport import amqplib
+from kombu.connection import BrokerConnection
 
 from .utils import TestCase
 from .utils import mask_modules, Mock

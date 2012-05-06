@@ -8,11 +8,11 @@ from anyjson import dumps
 from itertools import count
 from Queue import Empty, Queue as _Queue
 
-from ..connection import BrokerConnection
-from ..entity import Exchange, Queue
-from ..exceptions import VersionMismatch
-from ..messaging import Consumer, Producer
-from ..utils import eventio  # patch poll
+from kombu.connection import BrokerConnection
+from kombu.entity import Exchange, Queue
+from kombu.exceptions import InconsistencyError, VersionMismatch
+from kombu.messaging import Consumer, Producer
+from kombu.utils import eventio  # patch poll
 
 from .utils import TestCase
 from .utils import Mock, module_exists, skip_if_not_module
@@ -58,15 +58,25 @@ class Client(object):
         self.queues.pop(key, None)
 
     def sadd(self, key, member):
+        print("SADD %r: %r" % (key, member))
         if key not in self.sets:
             self.sets[key] = set()
         self.sets[key].add(member)
 
+    def exists(self, key):
+        return key in self.queues or key in self.sets
+
     def smembers(self, key):
         return self.sets.get(key, set())
 
+    def srem(self, key):
+        self.sets.pop(key, None)
+
     def llen(self, key):
-        return self.queues[key].qsize()
+        try:
+            return self.queues[key].qsize()
+        except KeyError:
+            return 0
 
     def lpush(self, key, value):
         self.queues[key].put_nowait(value)
@@ -182,6 +192,9 @@ class Channel(redis.Channel):
 
     def _new_queue(self, queue, **kwargs):
         self.client._new_queue(queue)
+
+    def pipeline(self):
+        return Pipeline(Client())
 
 
 class Transport(redis.Transport):
@@ -330,21 +343,22 @@ class test_Channel(TestCase):
     def test_delete(self):
         x = self.channel
         self.channel._in_poll = False
-        c = x.client = Mock()
+        delete = x.client.delete = Mock()
+        srem = x.client.srem = Mock()
 
         x._delete("queue", "exchange", "routing_key", None)
-        c.delete.assert_called_with("queue")
-        c.srem.assert_called_with(x.keyprefix_queue % ("exchange", ),
-                                  x.sep.join(["routing_key", "", "queue"]))
+        delete.assert_has_call("queue")
+        srem.assert_has_call(x.keyprefix_queue % ("exchange", ),
+                             x.sep.join(["routing_key", "", "queue"]))
 
     def test_has_queue(self):
         self.channel._in_poll = False
-        c = self.channel.client = Mock()
-        c.exists.return_value = True
+        exists = self.channel.client.exists = Mock()
+        exists.return_value = True
         self.assertTrue(self.channel._has_queue("foo"))
-        c.exists.assert_called_with("foo")
+        exists.assert_has_call("foo")
 
-        c.exists.return_value = False
+        exists.return_value = False
         self.assertFalse(self.channel._has_queue("foo"))
 
     def test_close_when_closed(self):
@@ -422,6 +436,24 @@ class test_Channel(TestCase):
                 exceptions.DataError = DataError
             if InvalidData is not None:
                 exceptions.InvalidData = InvalidData
+
+    def test_empty_queues_key(self):
+        channel = self.channel
+        channel._in_poll = False
+        key = channel.keyprefix_queue % 'celery'
+
+        # Everything is fine, there is a list of queues.
+        channel.client.sadd(key, 'celery\x06\x16\x06\x16celery')
+        self.assertListEqual(channel.get_table('celery'),
+                             [('celery', '', 'celery')])
+
+        # ... then for some reason, the _kombu.binding.celery key gets lost
+        channel.client.srem(key)
+
+        # which raises a channel error so that the consumer/publisher
+        # can recover by redeclaring the required entities.
+        with self.assertRaises(InconsistencyError):
+            self.channel.get_table("celery")
 
 
 class test_Redis(TestCase):

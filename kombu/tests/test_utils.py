@@ -10,7 +10,7 @@ if sys.version_info >= (3, 0):
 else:
     from StringIO import StringIO, StringIO as BytesIO  # noqa
 
-from .. import utils
+from kombu import utils
 
 from .utils import redirect_stdouts, mask_modules, skip_if_module
 from .utils import TestCase

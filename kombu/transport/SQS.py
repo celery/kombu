@@ -25,6 +25,7 @@ from boto.sdb.connection import SDBConnection
 from boto.sqs.connection import SQSConnection
 from boto.sqs.message import Message
 
+from ..exceptions import StdChannelError
 from ..utils import cached_property, uuid
 from ..utils.encoding import safe_str
 
@@ -154,7 +155,7 @@ class Channel(virtual.Channel):
 
     def entity_name(self, name, table=CHARS_REPLACE_TABLE):
         """Format AMQP queue name into a legal SQS queue name."""
-        return safe_str(name).translate(table)
+        return unicode(safe_str(name)).translate(table)
 
     def _new_queue(self, queue, **kwargs):
         """Ensures a queue exists in SQS."""
@@ -195,7 +196,8 @@ class Channel(virtual.Channel):
     def _delete(self, queue, *args):
         """delete queue by name."""
         self._queue_cache.pop(queue, None)
-        self.table.queue_delete(queue)
+        if self.supports_fanout:
+            self.table.queue_delete(queue)
         super(Channel, self)._delete(queue)
 
     def exchange_delete(self, exchange, **kwargs):
@@ -343,4 +345,4 @@ class Transport(virtual.Transport):
     polling_interval = 1
     default_port = None
     connection_errors = (exception.SQSError, socket.error)
-    channel_errors = (exception.SQSDecodeError, )
+    channel_errors = (exception.SQSDecodeError, StdChannelError)

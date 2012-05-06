@@ -3,9 +3,9 @@ from __future__ import with_statement
 
 import socket
 
-from .. import pidbox
-from ..connection import BrokerConnection
-from ..utils import uuid
+from kombu import pidbox
+from kombu.connection import BrokerConnection
+from kombu.utils import uuid
 
 from .utils import TestCase
 from .utils import Mock

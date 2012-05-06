@@ -1,8 +1,8 @@
 from __future__ import absolute_import
 from __future__ import with_statement
 
-from .. import BrokerConnection
-from ..transport.virtual import exchange
+from kombu import BrokerConnection
+from kombu.transport.virtual import exchange
 
 from .mocks import Transport
 from .utils import TestCase
