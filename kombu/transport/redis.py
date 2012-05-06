@@ -208,8 +208,7 @@ class Channel(virtual.Channel):
         queues = self.active_queues
         if not queues:
             return
-        keys = [self._q_for_pri(queue, pri) for pri in range(10)
-                        for queue in queues] + [timeout or 0]
+        keys = list(queues) + [timeout or 0]
         self.client.connection.send_command("BRPOP", *keys)
         self._in_poll = True
 
@@ -226,7 +225,6 @@ class Channel(virtual.Channel):
                 raise Empty()
             if dest__item:
                 dest, item = dest__item
-                dest = dest.rsplit(self.sep, 1)[0]
                 return loads(item), dest
             else:
                 raise Empty()
@@ -240,30 +238,24 @@ class Channel(virtual.Channel):
             pass
 
     def _get(self, queue):
-        for pri in range(10):
-            item = self._avail_client.rpop(self._q_for_pri(queue, pri))
-            if item:
-                return loads(item)
+        """basic.get
+
+        .. note::
+
+            Implies ``no_ack=True``
+
+        """
+        item = self._avail_client.rpop(queue)
+        if item:
+            return loads(item)
         raise Empty()
 
     def _size(self, queue):
-        cmds = self._avail_client.pipeline()
-        for pri in range(10):
-            cmds = cmds.llen(self._q_for_pri(queue, pri))
-        sizes = cmds.execute()
-        return sum(sizes)
-
-    def _q_for_pri(self, queue, pri):
-        return '%s%s%s' % ((queue, self.sep, pri) if pri else (queue, '', ''))
+        return self._avail_client.llen(queue)
 
     def _put(self, queue, message, **kwargs):
         """Deliver message."""
-        try:
-            pri = max(min(int(
-                message["properties"]["delivery_info"]["priority"]), 9), 0)
-        except (TypeError, ValueError, KeyError):
-            pri = 0
-        self._avail_client.lpush(self._q_for_pri(queue, pri), dumps(message))
+        self._avail_client.lpush(queue, dumps(message))
 
     def _put_fanout(self, exchange, message, **kwargs):
         """Deliver fanout message."""
@@ -283,16 +275,10 @@ class Channel(virtual.Channel):
                                 self.sep.join([routing_key or "",
                                                pattern or "",
                                                queue or ""]))
-        cmds = self._avail_client.pipeline()
-        for pri in range(10):
-            cmds = cmds.delete(self._q_for_pri(queue, pri))
-        cmds.execute()
+        self._avail_client.delete(queue)
 
     def _has_queue(self, queue, **kwargs):
-        cmds = self._avail_client.pipeline()
-        for pri in range(10):
-            cmds = cmds.exists(self._q_for_pri(queue, pri))
-        return any(cmds.execute())
+        return self._avail_client.exists(queue)
 
     def get_table(self, exchange):
         key = self.keyprefix_queue % exchange
@@ -304,12 +290,8 @@ class Channel(virtual.Channel):
         return [tuple(val.split(self.sep)) for val in values]
 
     def _purge(self, queue):
-        cmds = self.pipeline()
-        for pri in range(10):
-            priq = self._q_for_pri(queue, pri)
-            cmds = cmds.llen(priq).delete(priq)
-        sizes = cmds.execute()
-        return sum(sizes[::2])
+        size, _ = self.pipeline().llen(queue).delete(queue).execute()
+        return size
 
     def close(self):
         if not self.closed:
