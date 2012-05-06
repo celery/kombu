@@ -65,7 +65,6 @@ class Producer(object):
             serializer=None, auto_declare=None, compression=None,
             on_return=None):
         self.channel = channel
-
         self.exchange = exchange or self.exchange
         if self.exchange is None:
             self.exchange = Exchange("")
@@ -266,28 +265,30 @@ class Consumer(object):
 
     def __init__(self, channel, queues=None, no_ack=None, auto_declare=None,
             callbacks=None, on_decode_error=None):
-        from .connection import BrokerConnection
-        if isinstance(channel, BrokerConnection):
-            channel = channel.default_channel
         self.channel = channel
-
-        queues = queues or self.queues
-        self.queues = [] if queues is None else queues
-        if no_ack is not None:
-            self.no_ack = no_ack
+        self.queues = self.queues or [] if queues is None else queues
+        self.no_ack = self.no_ack if no_ack is None else no_ack
+        self.callbacks = (self.callbacks or [] if callbacks is None
+                                               else callbacks)
         if auto_declare is not None:
             self.auto_declare = auto_declare
         if on_decode_error is not None:
             self.on_decode_error = on_decode_error
 
-        if callbacks is not None:
-            self.callbacks = callbacks
-        if self.callbacks is None:
-            self.callbacks = []
-        self._active_tags = {}
+        if self.channel:
+            self.revive(self.channel)
 
+    def revive(self, channel):
+        """Revive consumer after connection loss."""
+        self._active_tags = {}
+        from .connection import BrokerConnection
+        if isinstance(channel, BrokerConnection):
+            channel = channel.default_channel
+        self.channel = channel
         self.queues = [queue(self.channel)
                             for queue in maybe_list(self.queues)]
+        for queue in self.queues:
+            queue.revive(channel)
 
         if self.auto_declare:
             self.declare()
@@ -449,12 +450,6 @@ class Consumer(object):
         if not callbacks:
             raise NotImplementedError("Consumer does not have any callback")
         [callback(body, message) for callback in callbacks]
-
-    def revive(self, channel):
-        """Revive consumer after connection loss."""
-        for queue in self.queues:
-            queue.revive(channel)
-        self.channel = channel
 
     def _basic_consume(self, queue, consumer_tag=None,
             no_ack=no_ack, nowait=True):
