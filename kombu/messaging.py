@@ -64,9 +64,6 @@ class Producer(object):
     def __init__(self, channel, exchange=None, routing_key=None,
             serializer=None, auto_declare=None, compression=None,
             on_return=None):
-        from .connection import BrokerConnection
-        if isinstance(channel, BrokerConnection):
-            channel = channel.default_channel
         self.channel = channel
 
         self.exchange = exchange or self.exchange
@@ -79,11 +76,15 @@ class Producer(object):
         if auto_declare is not None:
             self.auto_declare = auto_declare
 
-        self.exchange = self.exchange(self.channel)
-        if self.auto_declare:
-            self.declare()
-        if self.on_return:
-            self.channel.events["basic_return"].append(self.on_return)
+        if self.channel:
+            self.revive(self.channel)
+
+    def __reduce__(self):
+        return self.__class__, self.__reduce_args__()
+
+    def __reduce_args__(self):
+        return (None, self.exchange, self.routing_key, self.serializer,
+                self.auto_declare, self.compression)
 
     def declare(self):
         """Declare the exchange.
@@ -167,7 +168,13 @@ class Producer(object):
         if isinstance(channel, BrokerConnection):
             channel = channel.default_channel
         self.channel = channel
+        self.exchange = self.exchange(channel)
         self.exchange.revive(channel)
+
+        if self.auto_declare:
+            self.declare()
+        if self.on_return:
+            self.channel.events["basic_return"].append(self.on_return)
 
     def __enter__(self):
         return self
@@ -264,6 +271,7 @@ class Consumer(object):
             channel = channel.default_channel
         self.channel = channel
 
+        queues = queues or self.queues
         self.queues = [] if queues is None else queues
         if no_ack is not None:
             self.no_ack = no_ack
