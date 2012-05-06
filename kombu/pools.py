@@ -31,10 +31,8 @@ class ProducerPool(Resource):
 
     def __init__(self, connections, *args, **kwargs):
         self.connections = connections
+        self.Producer = kwargs.pop("Producer") or Producer
         super(ProducerPool, self).__init__(*args, **kwargs)
-
-    def Producer(self, connection):
-        return Producer(connection)
 
     def _acquire_connection(self):
         return self.connections.acquire(block=True)
