@@ -14,7 +14,8 @@ import socket
 
 from operator import attrgetter
 
-from ..exceptions import StdChannelError, VersionMismatch
+from kombu.exceptions import StdChannelError, VersionMismatch
+
 from . import base
 
 from pika import channel  # must be here to raise import error

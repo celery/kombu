@@ -24,9 +24,10 @@ from amqplib.client_0_8.channel import Channel as _Channel
 from amqplib.client_0_8.exceptions import AMQPConnectionException
 from amqplib.client_0_8.exceptions import AMQPChannelException
 
+from kombu.exceptions import StdChannelError
+from kombu.utils.encoding import str_to_bytes
+
 from . import base
-from ..exceptions import StdChannelError
-from ..utils.encoding import str_to_bytes
 
 DEFAULT_PORT = 5672
 HAS_MSG_PEEK = hasattr(socket, "MSG_PEEK")

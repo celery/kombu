@@ -14,8 +14,9 @@ import pylibrabbitmq as amqp
 
 from pylibrabbitmq import ChannelError, ConnectionError
 
+from kombu.exceptions import StdChannelError
+
 from . import base
-from ..exceptions import StdChannelError
 
 DEFAULT_PORT = 5672
 

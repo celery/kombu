@@ -8,8 +8,8 @@ from anyjson import loads, dumps
 from django.conf import settings
 from django.core import exceptions as errors
 
-from .. import virtual
-from ...exceptions import StdChannelError
+from kombu.transport import virtual
+from kombu.exceptions import StdChannelError
 
 from .models import Queue
 

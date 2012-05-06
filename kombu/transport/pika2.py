@@ -14,8 +14,9 @@ import socket
 
 from operator import attrgetter
 
+from kombu.exceptions import StdChannelError
+
 from . import base
-from ..exceptions import StdChannelError
 
 import pika
 from pika import spec

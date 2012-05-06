@@ -18,8 +18,9 @@ from pymongo import errors
 from anyjson import loads, dumps
 from pymongo.connection import Connection
 
+from kombu.exceptions import StdChannelError
+
 from . import virtual
-from ..exceptions import StdChannelError
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 27017
