@@ -26,7 +26,7 @@ from kombu.utils.compat import OrderedDict
 from kombu.utils.encoding import str_to_bytes, bytes_to_str
 from kombu.utils.finalize import Finalize
 
-from kombu import base
+from kombu.transport import base
 
 from .scheduling import FairCycle
 from .exchange import STANDARD_EXCHANGE_TYPES
