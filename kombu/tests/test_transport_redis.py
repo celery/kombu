@@ -58,6 +58,7 @@ class Client(object):
         self.queues.pop(key, None)
 
     def sadd(self, key, member):
+        print("SADD %r: %r" % (key, member))
         if key not in self.sets:
             self.sets[key] = set()
         self.sets[key].add(member)
@@ -72,7 +73,10 @@ class Client(object):
         self.sets.pop(key, None)
 
     def llen(self, key):
-        return self.queues[key].qsize()
+        try:
+            return self.queues[key].qsize()
+        except KeyError:
+            return 0
 
     def lpush(self, key, value):
         self.queues[key].put_nowait(value)
@@ -339,21 +343,22 @@ class test_Channel(TestCase):
     def test_delete(self):
         x = self.channel
         self.channel._in_poll = False
-        c = x.client = Mock()
+        delete = x.client.delete = Mock()
+        srem = x.client.srem = Mock()
 
         x._delete("queue", "exchange", "routing_key", None)
-        c.delete.assert_called_with("queue")
-        c.srem.assert_called_with(x.keyprefix_queue % ("exchange", ),
-                                  x.sep.join(["routing_key", "", "queue"]))
+        delete.assert_has_call("queue")
+        srem.assert_has_call(x.keyprefix_queue % ("exchange", ),
+                             x.sep.join(["routing_key", "", "queue"]))
 
     def test_has_queue(self):
         self.channel._in_poll = False
-        c = self.channel.client = Mock()
-        c.exists.return_value = True
+        exists = self.channel.client.exists = Mock()
+        exists.return_value = True
         self.assertTrue(self.channel._has_queue("foo"))
-        c.exists.assert_called_with("foo")
+        exists.assert_has_call("foo")
 
-        c.exists.return_value = False
+        exists.return_value = False
         self.assertFalse(self.channel._has_queue("foo"))
 
     def test_close_when_closed(self):

@@ -208,8 +208,8 @@ class Channel(virtual.Channel):
         queues = self.active_queues
         if not queues:
             return
-        keys = ['%s%s%s' % ((queue, self.sep, 9 - priority) if priority != 9 else (queue, '', '')) for priority in range(10) for queue in queues]
-        keys += [timeout or 0]
+        keys = [self._q_for_pri(queue, pri) for pri in range(10)
+                        for queue in queues] + [timeout or 0]
         self.client.connection.send_command("BRPOP", *keys)
         self._in_poll = True
 
@@ -240,40 +240,30 @@ class Channel(virtual.Channel):
             pass
 
     def _get(self, queue):
-        """basic.get
-
-        .. note::
-
-            Implies ``no_ack=True``
-
-        """
-        for priority in range(10):
-            queue_name = '%s%s%s' % ((queue, self.sep, 9 - priority) if priority != 9 else (queue, '', ''))
-            item = self._avail_client.rpop(queue_name)
+        for pri in range(10):
+            item = self._avail_client.rpop(self._q_for_pri(queue, pri))
             if item:
                 return loads(item)
         raise Empty()
 
     def _size(self, queue):
         cmds = self._avail_client.pipeline()
-        for priority in range(10):
-            queue_name = '%s%s%s' % ((queue, self.sep, 9 - priority) if priority != 9 else (queue, '', ''))
-            cmds = cmds.llen(queue_name)
+        for pri in range(10):
+            cmds = cmds.llen(self._q_for_pri(queue, pri))
         sizes = cmds.execute()
         return sum(sizes)
+
+    def _q_for_pri(self, queue, pri):
+        return '%s%s%s' % ((queue, self.sep, pri) if pri else (queue, '', ''))
 
     def _put(self, queue, message, **kwargs):
         """Deliver message."""
         try:
-            priority = int(message["properties"]["delivery_info"]["priority"])
-            if priority < 0:
-                priority = 0
-            elif priority > 9:
-                priority = 9
-        except (TypeError, ValueError):
-            priority = 0
-        queue_name = '%s%s%s' % ((queue, self.sep, priority) if priority else (queue, '', ''))
-        self._avail_client.lpush(queue_name, dumps(message))
+            pri = max(min(int(
+                message["properties"]["delivery_info"]["priority"]), 9), 0)
+        except (TypeError, ValueError, KeyError):
+            pri = 0
+        self._avail_client.lpush(self._q_for_pri(queue, pri), dumps(message))
 
     def _put_fanout(self, exchange, message, **kwargs):
         """Deliver fanout message."""
@@ -294,16 +284,14 @@ class Channel(virtual.Channel):
                                                pattern or "",
                                                queue or ""]))
         cmds = self._avail_client.pipeline()
-        for priority in range(10):
-            queue_name = '%s%s%s' % ((queue, self.sep, 9 - priority) if priority != 9 else (queue, '', ''))
-            cmds = cmds.delete(queue_name)
+        for pri in range(10):
+            cmds = cmds.delete(self._q_for_pri(queue, pri))
         cmds.execute()
 
     def _has_queue(self, queue, **kwargs):
         cmds = self._avail_client.pipeline()
-        for priority in range(10):
-            queue_name = '%s%s%s' % ((queue, self.sep, 9 - priority) if priority != 9 else (queue, '', ''))
-            cmds = cmds.exists(queue_name)
+        for pri in range(10):
+            cmds = cmds.exists(self._q_for_pri(queue, pri))
         return any(cmds.execute())
 
     def get_table(self, exchange):
@@ -317,11 +305,9 @@ class Channel(virtual.Channel):
 
     def _purge(self, queue):
         cmds = self.pipeline()
-        for priority in range(10):
-            queue_name = '%s%s%s' % (
-                (queue, self.sep, 9 - priority) if priority != 9
-                                                else (queue, '', ''))
-            cmds = cmds.llen(queue_name).delete(queue_name)
+        for pri in range(10):
+            priq = self._q_for_pri(queue, pri)
+            cmds = cmds.llen(priq).delete(priq)
         sizes = cmds.execute()
         return sum(sizes[::2])
 
