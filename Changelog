@@ -6,6 +6,8 @@
 
 2.1.8
 =====
+:release-date: 2012-05-06 3:06 P.M BST
+:by: Ask Solem
 
 * Bound Exchange/Queue's are now pickleable.
 
