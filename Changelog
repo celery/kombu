@@ -2,6 +2,34 @@
  Change history
 ================
 
+.. _version-2.1.8:
+
+2.1.8
+=====
+
+* Bound Exchange/Queue's are now pickleable.
+
+* Consumer/Producer can now be instantiated without a channel,
+  and only later bound using ``.revive(channel)``.
+
+* ProducerPool now takes ``Producer`` argument.
+
+* :func:`~kombu.utils.fxrange` now counts forever if the
+  stop argument is set to None.
+  (fxrange is like xrange but for decimals).
+
+* Auto delete support for virtual transports were incomplete
+  and could lead to problems so it was removed.
+
+* Cached declarations (:func:`~kombu.common.maybe_declare`)
+  are now bound to the underlying connection, so that
+  entities are redeclared if the connection is lost.
+
+    This also means that previously uncacheable entities
+    (e.g. non-durable) can now be cached.
+
+* compat ConsumerSet: can now specify channel.
+
 .. _version-2.1.7:
 
 2.1.7
