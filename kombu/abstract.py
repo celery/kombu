@@ -17,6 +17,10 @@ from .exceptions import NotBoundError
 __all__ = ["Object", "MaybeChannelBound"]
 
 
+def unpickle_dict(cls, kwargs):
+    return cls(**kwargs)
+
+
 class Object(object):
     """Common base class supporting automatic kwargs->attributes handling,
     and cloning."""
@@ -34,12 +38,20 @@ class Object(object):
                 except AttributeError:
                     setattr(self, name, None)
 
+    def setdefault(self, **defaults):
+        for key, value in defaults.iteritems():
+            if getattr(self, key) is None:
+                setattr(self, key, value)
+
     def as_dict(self, recurse=False):
         def f(obj):
             if recurse and isinstance(obj, Object):
                 return obj.as_dict(recurse=True)
             return obj
         return dict((attr, f(getattr(self, attr))) for attr, _ in self.attrs)
+
+    def __reduce__(self):
+        return unpickle_dict, (self.__class__, self.as_dict())
 
     def __copy__(self):
         return self.__class__(**self.as_dict())

@@ -28,10 +28,11 @@ disable_limit_protection = os.environ.get("KOMBU_DISABLE_LIMIT_PROTECTION")
 
 
 class ProducerPool(Resource):
+    Producer = Producer
 
     def __init__(self, connections, *args, **kwargs):
         self.connections = connections
-        self.Producer = kwargs.pop("Producer") or Producer
+        self.Producer = kwargs.pop("Producer", None) or self.Producer
         super(ProducerPool, self).__init__(*args, **kwargs)
 
     def _acquire_connection(self):
