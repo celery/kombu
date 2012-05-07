@@ -1,7 +1,7 @@
-"""AMQP Messaging Framework for Python"""
+"""Messaging Framework for Python"""
 from __future__ import absolute_import
 
-VERSION = (2, 0, 0, "a2")
+VERSION = (2, 1, 7)
 __version__ = ".".join(map(str, VERSION[0:3])) + "".join(VERSION[3:])
 __author__ = "Ask Solem"
 __contact__ = "ask@celeryproject.org"
@@ -13,10 +13,13 @@ __docformat__ = "restructuredtext en"
 import os
 import sys
 
-if sys.version_info < (2, 5):
-    raise Exception(
-        "Python 2.4 is not supported by this version. "
-        "Please use Kombu versions 1.3.x or earlier.")
+if sys.version_info < (2, 5):  # pragma: no cover
+    if sys.version_info >= (2, 4):
+        raise Exception(
+                "Python 2.4 is not supported by this version. "
+                "Please use Kombu versions 1.x.")
+    else:
+        raise Exception("Kombu requires Python versions 2.5 or later.")
 
 # Lazy loading.
 # - See werkzeug/__init__.py for the rationale behind this.
@@ -53,6 +56,12 @@ class module(ModuleType):
                        "__contact__", "__homepage__", "__docformat__"))
         return result
 
+# 2.5 does not define __package__
+try:
+    package = __package__
+except NameError:
+    package = "kombu"
+
 # keep a reference to this module so that it's not garbage collected
 old_module = sys.modules[__name__]
 
@@ -67,6 +76,7 @@ new_module.__dict__.update({
     "__contact__": __contact__,
     "__homepage__": __homepage__,
     "__docformat__": __docformat__,
+    "__package__": package,
     "VERSION": VERSION})
 
 if os.environ.get("KOMBU_LOG_DEBUG"):

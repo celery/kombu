@@ -1,12 +1,16 @@
 from __future__ import absolute_import
 
+import sys
+
 from nose import SkipTest
 
-from .. import compression
-from .utils import unittest
+from kombu import compression
+
+from .utils import TestCase
+from .utils import mask_modules
 
 
-class test_compression(unittest.TestCase):
+class test_compression(TestCase):
 
     def setUp(self):
         try:
@@ -15,6 +19,16 @@ class test_compression(unittest.TestCase):
             self.has_bzip2 = False
         else:
             self.has_bzip2 = True
+
+    @mask_modules("bz2")
+    def test_no_bz2(self):
+        c = sys.modules.pop("kombu.compression")
+        try:
+            import kombu.compression
+            self.assertFalse(hasattr(kombu.compression, "bz2"))
+        finally:
+            if c is not None:
+                sys.modules["kombu.compression"] = c
 
     def test_encoders(self):
         encoders = compression.encoders()

@@ -7,7 +7,7 @@ Utilities to encode text, and to safely emit text from running
 applications without crashing with the infamous :exc:`UnicodeDecodeError`
 exception.
 
-:copyright: (c) 2009 - 2011 by Ask Solem.
+:copyright: (c) 2009 - 2012 by Ask Solem.
 :license: BSD, see LICENSE for more details.
 
 """
@@ -18,8 +18,16 @@ import traceback
 
 is_py3k = sys.version_info >= (3, 0)
 
+if sys.platform.startswith("java"):  # pragma: no cover
 
-if is_py3k:
+    def default_encoding():
+        return "utf-8"
+else:
+
+    def default_encoding():       # noqa
+        return sys.getfilesystemencoding()
+
+if is_py3k:  # pragma: no cover
 
     def str_to_bytes(s):
         if isinstance(s, str):
@@ -39,6 +47,9 @@ if is_py3k:
             return str_to_bytes(s)
         return s
 
+    def default_encode(obj):
+        return obj
+
     str_t = str
     bytes_t = bytes
 
@@ -55,19 +66,12 @@ else:
     def from_utf8(s, *args, **kwargs):  # noqa
         return s.encode("utf-8", *args, **kwargs)
 
+    def default_encode(obj):            # noqa
+        return unicode(obj, default_encoding())
+
     str_t = unicode
     bytes_t = str
     ensure_bytes = str_to_bytes
-
-
-if sys.platform.startswith("java"):
-
-    def default_encoding():
-        return "utf-8"
-else:
-
-    def default_encoding():       # noqa
-        return sys.getfilesystemencoding()
 
 
 def safe_str(s, errors="replace"):
@@ -78,8 +82,14 @@ def safe_str(s, errors="replace"):
 
 
 def _safe_str(s, errors="replace"):
-    if is_py3k:
-        return s
+    if is_py3k:  # pragma: no cover
+        if isinstance(s, str):
+            return s
+        try:
+            return str(s)
+        except Exception, exc:
+            return "<Unrepresentable %r: %r %r>" % (
+                    type(s), exc, "\n".join(traceback.format_stack()))
     encoding = default_encoding()
     try:
         if isinstance(s, unicode):

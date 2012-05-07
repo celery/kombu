@@ -4,7 +4,7 @@ kombu.common
 
 Common Utilities.
 
-:copyright: (c) 2009 - 2011 by Ask Solem.
+:copyright: (c) 2009 - 2012 by Ask Solem.
 :license: BSD, see LICENSE for more details.
 
 """
@@ -14,21 +14,20 @@ from __future__ import with_statement
 import socket
 import sys
 
-from collections import defaultdict, deque
+from collections import deque
 from functools import partial
 from itertools import count
 
 from . import serialization
 from .entity import Exchange, Queue
 from .log import Log
-from .messaging import Consumer
+from .messaging import Consumer as _Consumer
 from .utils import uuid
 
 __all__ = ["Broadcast", "entry_to_queue", "maybe_declare", "uuid",
            "itermessages", "send_reply", "isend_reply",
            "collect_replies", "insured", "ipublish"]
 
-declared_entities = defaultdict(lambda: set())
 insured_logger = Log("kombu.insurance")
 
 
@@ -52,8 +51,12 @@ class Broadcast(Queue):
                     name=queue or "bcast.%s" % (uuid(), ),
                     **dict({"alias": name,
                             "auto_delete": True,
-                            "exchange": Exchange(name, type="fanout",
-                                                 auto_delete=True)}, **kwargs))
+                            "exchange": Exchange(name, type="fanout"),
+                           }, **kwargs))
+
+
+def declaration_cached(entity, channel):
+    return entity in channel.connection.client.declared_entities
 
 
 def maybe_declare(entity, channel, retry=False, **retry_policy):
@@ -63,10 +66,10 @@ def maybe_declare(entity, channel, retry=False, **retry_policy):
 
 
 def _maybe_declare(entity, channel):
-    declared = declared_entities[channel.connection.client]
-    if not entity.is_bound:
-        entity = entity(channel)
+    declared = channel.connection.client.declared_entities
     if entity not in declared:
+        if not entity.is_bound:
+            entity = entity.bind(channel)
         entity.declare()
         declared.add(entity)
         return True
@@ -79,23 +82,67 @@ def _imaybe_declare(entity, channel, **retry_policy):
                              **retry_policy)(entity, channel)
 
 
-def itermessages(conn, channel, queue, limit=1, timeout=None, **kwargs):
+def drain_consumer(consumer, limit=1, timeout=None, callbacks=None):
     acc = deque()
 
     def on_message(body, message):
         acc.append((body, message))
 
-    with Consumer(channel, [queue], callbacks=[on_message], **kwargs):
-        for i in limit and xrange(limit) or count():
+    consumer.callbacks = [on_message] + (callbacks or [])
+
+    with consumer:
+        for _ in eventloop(consumer.channel.connection.client,
+                           limit=limit, timeout=timeout, ignore_timeouts=True):
             try:
-                conn.drain_events(timeout=timeout)
-            except socket.timeout:
-                break
-            else:
-                try:
-                    yield acc.popleft()
-                except IndexError:
-                    pass
+                yield acc.popleft()
+            except IndexError:
+                pass
+
+
+def itermessages(conn, channel, queue, limit=1, timeout=None,
+        Consumer=_Consumer, callbacks=None, **kwargs):
+    return drain_consumer(Consumer(channel, queues=[queue], **kwargs),
+                          limit=limit, timeout=timeout, callbacks=callbacks)
+
+def eventloop(conn, limit=None, timeout=None, ignore_timeouts=False):
+    """Best practice generator wrapper around ``Connection.drain_events``.
+
+    Able to drain events forever, with a limit, and optionally ignoring
+    timeout errors (a timeout of 1 is often used in environments where
+    the socket can get "stuck", and is a best practice for Kombu consumers).
+
+    **Examples**
+
+    ``eventloop`` is a generator::
+
+        >>> from kombu.common import eventloop
+
+        >>> it = eventloop(connection, timeout=1, ignore_timeouts=True)
+        >>> it.next()   # one event consumed, or timed out.
+
+        >>> for _ in eventloop(connection, timeout=1, ignore_timeouts=True):
+        ...     pass  # loop forever.
+
+    It also takes an optional limit parameter, and timeout errors
+    are propagated by default::
+
+        for _ in eventloop(connection, limit=1, timeout=1):
+            pass
+
+    .. seealso::
+
+        :func:`itermessages`, which is an event loop bound to one or more
+        consumers, that yields any messages received.
+
+    """
+    for i in limit and xrange(limit) or count():
+        try:
+            yield conn.drain_events(timeout=timeout)
+        except socket.timeout:
+            if timeout and not ignore_timeouts:
+                raise
+        except socket.error:
+            pass
 
 
 def send_reply(exchange, req, msg, producer=None, **props):

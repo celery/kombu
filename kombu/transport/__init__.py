@@ -4,7 +4,7 @@ kombu.transport
 
 Built-in transports.
 
-:copyright: (c) 2009 - 2011 by Ask Solem.
+:copyright: (c) 2009 - 2012 by Ask Solem.
 :license: BSD, see LICENSE for more details.
 
 """
@@ -40,7 +40,7 @@ TRANSPORT_ALIASES = {
     "amqplib": "kombu.transport.amqplib.Transport",
     "librabbitmq": "kombu.transport.librabbitmq.Transport",
     "pika": "kombu.transport.pika2.Transport",
-    "syncpika": "kombu.transport.pika.SyncTransport",
+    "oldpika": "kombu.transport.pika.SyncTransport",
     "memory": "kombu.transport.memory.Transport",
     "redis": "kombu.transport.redis.Transport",
     "SQS": "kombu.transport.SQS.Transport",
@@ -50,6 +50,7 @@ TRANSPORT_ALIASES = {
     "couchdb": "kombu.transport.couchdb.Transport",
     "django": "kombu.transport.django.Transport",
     "sqlalchemy": "kombu.transport.sqlalchemy.Transport",
+    "sqla": "kombu.transport.sqlalchemy.Transport",
     "ghettoq.taproot.Redis": _ghettoq("Redis", "redis", "redis"),
     "ghettoq.taproot.Database": _ghettoq("Database", "django", "django"),
     "ghettoq.taproot.MongoDB": _ghettoq("MongoDB", "mongodb"),

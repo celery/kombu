@@ -1,8 +1,8 @@
 #############################################
- kombu - AMQP Messaging Framework for Python
+ kombu - Messaging Framework for Python
 #############################################
 
-:Version: 2.0.0a2
+:Version: 2.1.7
 
 Synopsis
 ========
@@ -75,32 +75,33 @@ and the `Wikipedia article about AMQP`_.
 Transport Comparison
 ====================
 
-+---------------+----------+------------+-----------+---------------+
-| **Client**    | **Type** | **Direct** | **Topic** | **Fanout**    |
-+---------------+----------+------------+-----------+---------------+
-| *amqplib*     | Native   | Yes        | Yes       | Yes           |
-+---------------+----------+------------+-----------+---------------+
-| *pika*        | Native   | Yes        | Yes       | Yes           |
-+---------------+----------+------------+-----------+---------------+
-| *redis*       | Virtual  | Yes        | Yes[*]_   | Yes (PUB/SUB) |
-+---------------+----------+------------+-----------+---------------+
-| *beanstalk*   | Virtual  | Yes        | Yes[*]_   | No            |
-+---------------+----------+------------+-----------+---------------+
-| *SQS*         | Virtual  | Yes        | Yes[*]_   | Yes[#]_       |
-+---------------+----------+------------+-----------+---------------+
-| *mongodb*     | Virtual  | Yes        | Yes[*]_   | No            |
-+---------------+----------+------------+-----------+---------------+
-| *couchdb*     | Virtual  | Yes        | Yes[*]_   | No            |
-+---------------+----------+------------+-----------+---------------+
-| *in-memory*   | Virtual  | Yes        | Yes[*]_   | No            |
-+---------------+----------+------------+-----------+---------------+
++---------------+----------+------------+------------+---------------+
+| **Client**    | **Type** | **Direct** | **Topic**  | **Fanout**    |
++---------------+----------+------------+------------+---------------+
+| *amqplib*     | Native   | Yes        | Yes        | Yes           |
++---------------+----------+------------+------------+---------------+
+| *pika*        | Native   | Yes        | Yes        | Yes           |
++---------------+----------+------------+------------+---------------+
+| *redis*       | Virtual  | Yes        | Yes [#f1]_ | Yes (PUB/SUB) |
++---------------+----------+------------+------------+---------------+
+| *beanstalk*   | Virtual  | Yes        | Yes [#f1]_ | No            |
++---------------+----------+------------+------------+---------------+
+| *SQS*         | Virtual  | Yes        | Yes [#f1]_ | Yes [#f2]_    |
++---------------+----------+------------+------------+---------------+
+| *mongodb*     | Virtual  | Yes        | Yes [#f1]_ | Yes           |
++---------------+----------+------------+------------+---------------+
+| *couchdb*     | Virtual  | Yes        | Yes [#f1]_ | No            |
++---------------+----------+------------+------------+---------------+
+| *in-memory*   | Virtual  | Yes        | Yes [#f1]_ | No            |
++---------------+----------+------------+------------+---------------+
 
 
-.. [*] Declarations only kept in memory, so exchanges/queues
-       must be declared by all clients that needs them.
+.. [#f1] Declarations only kept in memory, so exchanges/queues
+         must be declared by all clients that needs them.
 
-.. [#] Fanout supported via storing routing tables in SimpleDB.
-       Can be disabled by setting the ``supports_fanout`` transport option.
+.. [#f2] Fanout supported via storing routing tables in SimpleDB.
+         Disabled by default, but can be enabled by using the
+         ``supports_fanout`` transport option.
 
 
 Documentation
@@ -129,8 +130,8 @@ Quick overview
 
         # Declare the video queue so that the messages can be delivered.
         # It is a best practice in Kombu to have both publishers and
-        # consmers declare the queue.
-        video_queue(channel).declare()
+        # consumers declare the queue.
+        video_queue(conn.channel()).declare()
 
         # produce
         with conn.Producer(exchange=media_exchange,

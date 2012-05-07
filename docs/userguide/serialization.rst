@@ -55,7 +55,7 @@ Each option has its advantages and disadvantages.
     cross-language compatibility, then `YAML` may be a better fit
     than the above.
 
-To instruct carrot to use an alternate serialization method,
+To instruct `Kombu` to use an alternate serialization method,
 use one of the following options.
 
     1.  Set the serialization option on a per-producer basis::
@@ -79,7 +79,7 @@ Sending raw data without Serialization
 ======================================
 
 In some cases, you don't need your message data to be serialized. If you
-pass in a plain string or Unicode object as your message, then carrot will
+pass in a plain string or Unicode object as your message, then `Kombu` will
 not waste cycles serializing/deserializing the data.
 
 You can optionally specify a `content_type` and `content_encoding`

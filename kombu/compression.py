@@ -4,11 +4,13 @@ kombu.compression
 
 Compression utilities.
 
-:copyright: (c) 2009 - 2011 by Ask Solem.
+:copyright: (c) 2009 - 2012 by Ask Solem.
 :license: BSD, see LICENSE for more details.
 
 """
 from __future__ import absolute_import
+
+from kombu.utils.encoding import ensure_bytes, bytes_to_str
 
 import zlib
 
@@ -58,7 +60,7 @@ def compress(body, content_type):
 
     """
     encoder, content_type = get_encoder(content_type)
-    return encoder(body.encode("utf-8")), content_type
+    return encoder(ensure_bytes(body)), content_type
 
 
 def decompress(body, content_type):
@@ -68,7 +70,7 @@ def decompress(body, content_type):
     :param content_type: mime-type of compression method used.
 
     """
-    return get_decoder(content_type)(body).decode("utf-8")
+    return bytes_to_str(get_decoder(content_type)(body))
 
 
 register(zlib.compress,

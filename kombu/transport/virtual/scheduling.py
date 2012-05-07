@@ -4,7 +4,7 @@
 
     Consumer utilities.
 
-    :copyright: (c) 2009 - 2011 by Ask Solem.
+    :copyright: (c) 2009 - 2012 by Ask Solem.
     :license: BSD, see LICENSE for more details.
 
 """
@@ -35,7 +35,7 @@ class FairCycle(object):
                     raise self.predicate()
 
     def get(self, **kwargs):
-        for tried in count(0):
+        for tried in count(0):  # for infinity
             resource = self._next()
 
             try:

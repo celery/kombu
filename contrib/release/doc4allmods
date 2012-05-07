@@ -2,7 +2,11 @@
 
 PACKAGE="$1"
 SKIP_PACKAGES="$PACKAGE tests management urls"
-SKIP_FILES="kombu.utils.eventio.rst"
+SKIP_FILES="kombu.utils.eventio.rst
+            kombu.transport.django.migrations.rst
+            kombu.transport.django.migrations.0001_initial.rst
+            kombu.transport.django.management.rst
+            kombu.transport.django.management.commands.rst"
 
 modules=$(find "$PACKAGE" -name "*.py")
 

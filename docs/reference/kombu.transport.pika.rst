@@ -1,6 +1,10 @@
-.. currentmodule:: kombu.transport.pypika
+=======================================
+ kombu.transport.pika
+=======================================
 
-.. automodule:: kombu.transport.pypika
+.. currentmodule:: kombu.transport.pika
+
+.. automodule:: kombu.transport.pika
 
     .. contents::
         :local:

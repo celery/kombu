@@ -4,7 +4,7 @@ kombu.compression
 
 Object utilities.
 
-:copyright: (c) 2009 - 2011 by Ask Solem.
+:copyright: (c) 2009 - 2012 by Ask Solem.
 :license: BSD, see LICENSE for more details.
 
 """
@@ -15,6 +15,10 @@ from copy import copy
 from .exceptions import NotBoundError
 
 __all__ = ["Object", "MaybeChannelBound"]
+
+
+def unpickle_dict(cls, kwargs):
+    return cls(**kwargs)
 
 
 class Object(object):
@@ -34,12 +38,20 @@ class Object(object):
                 except AttributeError:
                     setattr(self, name, None)
 
+    def setdefault(self, **defaults):
+        for key, value in defaults.iteritems():
+            if getattr(self, key) is None:
+                setattr(self, key, value)
+
     def as_dict(self, recurse=False):
         def f(obj):
             if recurse and isinstance(obj, Object):
                 return obj.as_dict(recurse=True)
             return obj
         return dict((attr, f(getattr(self, attr))) for attr, _ in self.attrs)
+
+    def __reduce__(self):
+        return unpickle_dict, (self.__class__, self.as_dict())
 
     def __copy__(self):
         return self.__class__(**self.as_dict())
@@ -49,6 +61,9 @@ class MaybeChannelBound(Object):
     """Mixin for classes that can be bound to an AMQP channel."""
     _channel = None
     _is_bound = False
+
+    #: Defines whether maybe_declare can skip declaring this entity twice.
+    can_cache_declaration = False
 
     def __call__(self, channel):
         """`self(channel) -> self.bind(channel)`"""

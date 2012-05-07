@@ -4,7 +4,7 @@ kombu.transport.SQS
 
 Amazon SQS transport.
 
-:copyright: (c) 2010 - 2011 by Ask Solem
+:copyright: (c) 2010 - 2012 by Ask Solem
 :license: BSD, see LICENSE for more details.
 
 """
@@ -15,7 +15,7 @@ import string
 
 from Queue import Empty
 
-from anyjson import serialize, deserialize
+from anyjson import loads, dumps
 
 from boto import exception
 from boto import sdb as _sdb
@@ -25,8 +25,9 @@ from boto.sdb.connection import SDBConnection
 from boto.sqs.connection import SQSConnection
 from boto.sqs.message import Message
 
-from ..utils import cached_property, uuid
-from ..utils.encoding import safe_str
+from kombu.exceptions import StdChannelError
+from kombu.utils import cached_property, uuid
+from kombu.utils.encoding import safe_str
 
 from . import virtual
 
@@ -154,10 +155,11 @@ class Channel(virtual.Channel):
 
     def entity_name(self, name, table=CHARS_REPLACE_TABLE):
         """Format AMQP queue name into a legal SQS queue name."""
-        return safe_str(name).translate(table)
+        return unicode(safe_str(name)).translate(table)
 
     def _new_queue(self, queue, **kwargs):
         """Ensures a queue exists in SQS."""
+        queue = self.queue_name_prefix + queue
         try:
             return self._queue_cache[queue]
         except KeyError:
@@ -194,7 +196,8 @@ class Channel(virtual.Channel):
     def _delete(self, queue, *args):
         """delete queue by name."""
         self._queue_cache.pop(queue, None)
-        self.table.queue_delete(queue)
+        if self.supports_fanout:
+            self.table.queue_delete(queue)
         super(Channel, self)._delete(queue)
 
     def exchange_delete(self, exchange, **kwargs):
@@ -213,7 +216,7 @@ class Channel(virtual.Channel):
         """Put message onto queue."""
         q = self._new_queue(queue)
         m = Message()
-        m.set_body(serialize(message))
+        m.set_body(dumps(message))
         q.write(m)
 
     def _put_fanout(self, exchange, message, **kwargs):
@@ -227,7 +230,7 @@ class Channel(virtual.Channel):
         rs = q.get_messages(1)
         if rs:
             m = rs[0]
-            payload = deserialize(rs[0].get_body())
+            payload = loads(rs[0].get_body())
             if queue in self._noack_queues:
                 q.delete_message(m)
             else:
@@ -324,6 +327,10 @@ class Channel(virtual.Channel):
         return self.transport_options.get("visibility_timeout")
 
     @cached_property
+    def queue_name_prefix(self):
+        return self.transport_options.get("queue_name_prefix", '')
+
+    @cached_property
     def supports_fanout(self):
         return self.transport_options.get("sdb_persistence", False)
 
@@ -338,4 +345,4 @@ class Transport(virtual.Transport):
     polling_interval = 1
     default_port = None
     connection_errors = (exception.SQSError, socket.error)
-    channel_errors = (exception.SQSDecodeError, )
+    channel_errors = (exception.SQSDecodeError, StdChannelError)

@@ -4,7 +4,7 @@ kombu.utils
 
 Internal utilities.
 
-:copyright: (c) 2009 - 2011 by Ask Solem.
+:copyright: (c) 2009 - 2012 by Ask Solem.
 :license: BSD, see LICENSE for more details.
 
 """
@@ -57,7 +57,7 @@ def say(m, *s):
 
 def uuid4():
     # Workaround for http://bugs.python.org/issue4607
-    if ctypes and _uuid_generate_random:
+    if ctypes and _uuid_generate_random:  # pragma: no cover
         buffer = ctypes.create_string_buffer(16)
         _uuid_generate_random(buffer)
         return UUID(bytes=buffer.raw)
@@ -74,12 +74,12 @@ def uuid():
 gen_unique_id = uuid
 
 
-if sys.version_info >= (3, 0):
+if sys.version_info >= (2, 6, 5):
 
     def kwdict(kwargs):
         return kwargs
 else:
-    def kwdict(kwargs):  # noqa
+    def kwdict(kwargs):  # pragma: no cover  # noqa
         """Make sure keyword arguments are not in Unicode.
 
         This should be fixed in newer Python versions,
@@ -101,7 +101,7 @@ def maybe_list(v):
 def fxrange(start=1.0, stop=None, step=1.0, repeatlast=False):
     cur = start * 1.0
     while 1:
-        if cur <= stop:
+        if not stop or cur <= stop:
             yield cur
             cur += step
         else:
@@ -153,7 +153,7 @@ def retry_over_time(fun, catch, args=[], kwargs={}, errback=None,
                              interval_max + interval_start,
                              interval_step, repeatlast=True)
 
-    for retries, interval in enumerate(interval_range):
+    for retries, interval in enumerate(interval_range):  # for infinity
         try:
             return fun(*args, **kwargs)
         except catch, exc:
@@ -259,13 +259,13 @@ def reprkwargs(kwargs, sep=', ', fmt="%s=%s"):
 
 
 def reprcall(name, args=(), kwargs=(), sep=', '):
-    return "%s(%s%s%s)" % (name, sep.join(map(_safe_repr, args)),
+    return "%s(%s%s%s)" % (name, sep.join(map(_safe_repr, args or ())),
                            (args and kwargs) and sep or "",
                            reprkwargs(kwargs, sep))
 
 
 @contextmanager
-def nested(*managers):
+def nested(*managers):  # pragma: no cover
     """Combine multiple context managers into a single nested
     context manager."""
     exits = []

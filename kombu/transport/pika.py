@@ -4,7 +4,7 @@ kombu.transport.pika
 
 Pika transport.
 
-:copyright: (c) 2009 - 2011 by Ask Solem.
+:copyright: (c) 2009 - 2012 by Ask Solem.
 :license: BSD, see LICENSE for more details.
 
 """
@@ -14,10 +14,11 @@ import socket
 
 from operator import attrgetter
 
-from ..exceptions import VersionMismatch
+from kombu.exceptions import StdChannelError, VersionMismatch
+
 from . import base
 
-from pika import channel  # must be here to raise importerror for below.
+from pika import channel  # must be here to raise import error
 try:
     from pika import asyncore_adapter
 except ImportError:
@@ -205,7 +206,8 @@ class SyncTransport(base.Transport):
                          exceptions.ContentTransmissionForbidden,
                          exceptions.ProtocolSyntaxError)
 
-    channel_errors = (exceptions.ChannelClosed,
+    channel_errors = (StdChannelError,
+                      exceptions.ChannelClosed,
                       exceptions.DuplicateConsumerTag,
                       exceptions.UnknownConsumerTag,
                       exceptions.ProtocolSyntaxError)

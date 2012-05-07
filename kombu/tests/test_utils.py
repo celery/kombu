@@ -10,10 +10,10 @@ if sys.version_info >= (3, 0):
 else:
     from StringIO import StringIO, StringIO as BytesIO  # noqa
 
-from .. import utils
+from kombu import utils
 
 from .utils import redirect_stdouts, mask_modules, skip_if_module
-from .utils import unittest
+from .utils import TestCase
 
 
 class OldString(object):
@@ -31,15 +31,33 @@ class OldString(object):
         return self.value.rsplit(*args, **kwargs)
 
 
-class test_utils(unittest.TestCase):
+class test_utils(TestCase):
 
     def test_maybe_list(self):
         self.assertEqual(utils.maybe_list(None), [])
         self.assertEqual(utils.maybe_list(1), [1])
         self.assertEqual(utils.maybe_list([1, 2, 3]), [1, 2, 3])
 
+    def test_fxrange_no_repeatlast(self):
+        self.assertEqual(list(utils.fxrange(1.0, 3.0, 1.0)),
+                         [1.0, 2.0, 3.0])
 
-class test_UUID(unittest.TestCase):
+    def test_fxrangemax(self):
+        self.assertEqual(list(utils.fxrangemax(1.0, 3.0, 1.0, 30.0)),
+                         [1.0, 2.0, 3.0, 3.0, 3.0, 3.0,
+                          3.0, 3.0, 3.0, 3.0, 3.0])
+        self.assertEqual(list(utils.fxrangemax(1.0, None, 1.0, 30.0)),
+                         [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0])
+
+    def test_reprkwargs(self):
+        self.assertTrue(utils.reprkwargs({"foo": "bar", 1: 2, u"k": "v"}))
+
+    def test_reprcall(self):
+        self.assertTrue(utils.reprcall("add",
+            (2, 2), {"copy": True}))
+
+
+class test_UUID(TestCase):
 
     def test_uuid4(self):
         self.assertNotEqual(utils.uuid4(),
@@ -57,7 +75,7 @@ class test_UUID(unittest.TestCase):
 
         @mask_modules("ctypes")
         def with_ctypes_masked():
-            from ..utils import ctypes, uuid
+            from kombu.utils import ctypes, uuid
 
             self.assertIsNone(ctypes)
             tid = uuid()
@@ -70,7 +88,7 @@ class test_UUID(unittest.TestCase):
             sys.modules["celery.utils"] = old_utils
 
 
-class test_Misc(unittest.TestCase):
+class test_Misc(TestCase):
 
     def test_kwdict(self):
 
@@ -94,7 +112,7 @@ class MyBytesIO(BytesIO):
         pass
 
 
-class test_emergency_dump_state(unittest.TestCase):
+class test_emergency_dump_state(TestCase):
 
     @redirect_stdouts
     def test_dump(self, stdout, stderr):
@@ -136,7 +154,7 @@ def insomnia(fun):
     return _inner
 
 
-class test_retry_over_time(unittest.TestCase):
+class test_retry_over_time(TestCase):
 
     def setUp(self):
         self.index = 0
@@ -167,6 +185,10 @@ class test_retry_over_time(unittest.TestCase):
                 self.myfun, self.Predicate,
                 max_retries=1, errback=self.errback, interval_max=14)
         self.assertEqual(self.index, 2)
+        # no errback
+        self.assertRaises(self.Predicate, utils.retry_over_time,
+                self.myfun, self.Predicate,
+                max_retries=1, errback=None, interval_max=14)
 
     @insomnia
     def test_retry_never(self):
@@ -174,3 +196,33 @@ class test_retry_over_time(unittest.TestCase):
                 self.myfun, self.Predicate,
                 max_retries=0, errback=self.errback, interval_max=14)
         self.assertEqual(self.index, 1)
+
+
+class test_cached_property(TestCase):
+
+    def test_when_access_from_class(self):
+
+        class X(object):
+            xx = None
+
+            @utils.cached_property
+            def foo(self):
+                return 42
+
+            @foo.setter  # noqa
+            def foo(self, value):
+                self.xx = 10
+
+        desc = X.__dict__["foo"]
+        self.assertIs(X.foo, desc)
+
+        self.assertIs(desc.__get__(None), desc)
+        self.assertIs(desc.__set__(None, 1), desc)
+        self.assertIs(desc.__delete__(None), desc)
+        self.assertTrue(desc.setter(1))
+
+        x = X()
+        x.foo = 30
+        self.assertEqual(x.xx, 10)
+
+        del(x.foo)

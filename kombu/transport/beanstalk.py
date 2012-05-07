@@ -4,7 +4,7 @@ kombu.transport.beanstalk
 
 Beanstalk transport.
 
-:copyright: (c) 2010 - 2011 by David Ziegler.
+:copyright: (c) 2010 - 2012 by David Ziegler.
 :license: BSD, see LICENSE for more details.
 
 """
@@ -14,8 +14,10 @@ import socket
 
 from Queue import Empty
 
-from anyjson import serialize, deserialize
+from anyjson import loads, dumps
 from beanstalkc import Connection, BeanstalkcException, SocketError
+
+from kombu.exceptions import StdChannelError
 
 from . import virtual
 
@@ -31,7 +33,7 @@ class Channel(virtual.Channel):
         item, dest = None, None
         if job:
             try:
-                item = deserialize(job.body)
+                item = loads(job.body)
                 dest = job.stats()["tube"]
             except Exception:
                 job.bury()
@@ -42,9 +44,14 @@ class Channel(virtual.Channel):
         return item, dest
 
     def _put(self, queue, message, **kwargs):
+        extra = {}
         priority = message["properties"]["delivery_info"]["priority"]
+        ttr = message["properties"].get("ttr")
+        if ttr is not None:
+            extra["ttr"] = ttr
+
         self.client.use(queue)
-        self.client.put(serialize(message), priority=priority)
+        self.client.put(dumps(message), priority=priority, **extra)
 
     def _get(self, queue):
         if queue not in self.client.watching():
@@ -114,12 +121,13 @@ class Channel(virtual.Channel):
 class Transport(virtual.Transport):
     Channel = Channel
 
-    interval = 1
+    polling_interval = 1
     default_port = DEFAULT_PORT
     connection_errors = (socket.error,
                          SocketError,
                          IOError)
-    channel_errors = (socket.error,
+    channel_errors = (StdChannelError,
+                      socket.error,
                       IOError,
                       SocketError,
                       BeanstalkcException)

@@ -1,18 +1,20 @@
 from __future__ import absolute_import
+from __future__ import with_statement
 
-from .. import Connection
-from ..entity import Exchange, Queue
-from ..exceptions import NotBoundError
+from kombu import Connection
+from kombu.entity import Exchange, Queue
+from kombu.exceptions import NotBoundError
 
 from .mocks import Transport
-from .utils import unittest
+from .utils import TestCase
+from .utils import Mock
 
 
 def get_conn():
     return Connection(transport=Transport)
 
 
-class test_Exchange(unittest.TestCase):
+class test_Exchange(TestCase):
 
     def test_bound(self):
         exchange = Exchange("foo", "direct")
@@ -24,6 +26,14 @@ class test_Exchange(unittest.TestCase):
         self.assertTrue(bound.is_bound)
         self.assertIs(bound.channel, chan)
         self.assertIn("<bound", repr(bound))
+
+    def test_hash(self):
+        self.assertEqual(hash(Exchange("a")), hash(Exchange("a")))
+        self.assertNotEqual(hash(Exchange("a")), hash(Exchange("b")))
+
+    def test_can_cache_declaration(self):
+        self.assertTrue(Exchange("a", durable=True).can_cache_declaration)
+        self.assertFalse(Exchange("a", durable=False).can_cache_declaration)
 
     def test_eq(self):
         e1 = Exchange("foo", "direct")
@@ -56,7 +66,8 @@ class test_Exchange(unittest.TestCase):
 
     def test_assert_is_bound(self):
         exchange = Exchange("foo", "direct")
-        self.assertRaises(NotBoundError, exchange.declare)
+        with self.assertRaises(NotBoundError):
+            exchange.declare()
         conn = get_conn()
 
         chan = conn.channel()
@@ -95,10 +106,33 @@ class test_Exchange(unittest.TestCase):
         self.assertIn("Exchange", repr(b))
 
 
-class test_Queue(unittest.TestCase):
+class test_Queue(TestCase):
 
     def setUp(self):
         self.exchange = Exchange("foo", "direct")
+
+    def test_hash(self):
+        self.assertEqual(hash(Queue("a")), hash(Queue("a")))
+        self.assertNotEqual(hash(Queue("a")), hash(Queue("b")))
+
+    def test_when_bound_but_no_exchange(self):
+        q = Queue("a")
+        q.exchange = None
+        self.assertIsNone(q.when_bound())
+
+    def test_declare_but_no_exchange(self):
+        q = Queue("a")
+        q.queue_declare = Mock()
+        q.queue_bind = Mock()
+        q.exchange = None
+
+        q.declare()
+        q.queue_declare.assert_called_with(False, passive=False)
+        q.queue_bind.assert_called_with(False)
+
+    def test_can_cache_declaration(self):
+        self.assertTrue(Queue("a", durable=True).can_cache_declaration)
+        self.assertFalse(Queue("a", durable=False).can_cache_declaration)
 
     def test_eq(self):
         q1 = Queue("xxx", Exchange("xxx", "direct"), "xxx")
@@ -166,6 +200,11 @@ class test_Queue(unittest.TestCase):
         b = Queue("foo", self.exchange, "foo", channel=get_conn().channel())
         b.unbind()
         self.assertIn("queue_unbind", b.channel)
+
+    def test_as_dict(self):
+        q = Queue("foo", self.exchange, "rk")
+        d = q.as_dict(recurse=True)
+        self.assertEqual(d["exchange"]["name"], self.exchange.name)
 
     def test__repr__(self):
         b = Queue("foo", self.exchange, "foo")

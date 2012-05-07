@@ -147,5 +147,5 @@ def setup_logging(loglevel=None, logfile=None):
         else:
             handler = WatchedFileHandler(logfile)
         logger.addHandler(handler)
-        logger.setLevel(logging.INFO)
+        logger.setLevel(loglevel)
     return logger

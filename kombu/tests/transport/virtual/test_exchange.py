@@ -1,13 +1,15 @@
 from __future__ import absolute_import
+from __future__ import with_statement
 
-from .. import BrokerConnection
-from ..transport.virtual import exchange
+from kombu import BrokerConnection
+from kombu.transport.virtual import exchange
 
-from .mocks import Transport
-from .utils import unittest
+from kombu.tests.mocks import Transport
+from kombu.tests.utils import TestCase
+from kombu.tests.utils import Mock
 
 
-class ExchangeCase(unittest.TestCase):
+class ExchangeCase(TestCase):
     type = None
 
     def setUp(self):
@@ -46,6 +48,21 @@ class test_Fanout(ExchangeCase):
                 self.table, "eFoo", "rFoo", None),
                 ["qFoo", "qFox", "qBar"])
 
+    def test_deliver_when_fanout_supported(self):
+        self.e.channel = Mock()
+        self.e.channel.supports_fanout = True
+        message = Mock()
+
+        self.e.deliver(message, "exchange", None)
+        self.e.channel._put_fanout.assert_called_with("exchange", message)
+
+    def test_deliver_when_fanout_unsupported(self):
+        self.e.channel = Mock()
+        self.e.channel.supports_fanout = False
+
+        self.e.deliver(Mock(), "exchange", None)
+        self.assertFalse(self.e.channel._put_fanout.called)
+
 
 class test_Topic(ExchangeCase):
     type = exchange.TopicExchange
@@ -76,13 +93,23 @@ class test_Topic(ExchangeCase):
                 self.table, "eFoo", "candy.schleckpulver.snap_crackle", None),
                 [])
 
+    def test_deliver(self):
+        self.e.channel = Mock()
+        self.e.channel._lookup.return_value = ("a", "b")
+        message = Mock()
+        self.e.deliver(message, "exchange", "rkey")
+
+        expected = [(("a", message), {}),
+                    (("b", message), {})]
+        self.assertListEqual(self.e.channel._put.call_args_list, expected)
+
 
 class test_ExchangeType(ExchangeCase):
     type = exchange.ExchangeType
 
     def test_lookup(self):
-        self.assertRaises(NotImplementedError, self.e.lookup,
-                [], "eFoo", "rFoo", None)
+        with self.assertRaises(NotImplementedError):
+            self.e.lookup([], "eFoo", "rFoo", None)
 
     def test_prepare_bind(self):
         self.assertTupleEqual(self.e.prepare_bind("qFoo", "eFoo", "rFoo", {}),

@@ -1,3 +1,11 @@
+.. _guide-intro:
+
+==============
+ Introduction
+==============
+
+.. _intro-messaging:
+
 What is messaging?
 ==================
 
@@ -31,6 +39,8 @@ than using the postal service, but still using email as a means for
 programs to communicate would be like the soldier above, waiting
 for signs of life from his girlfriend back home.
 
+.. _messaging-scenarios:
+
 Messaging Scenarios
 ===================
 
@@ -62,6 +72,8 @@ Messaging Scenarios
   to all of them.
 
   Pub-sub is achieved using *topic* exchanges.
+
+.. _messaging-reliability:
 
 Reliability
 ===========

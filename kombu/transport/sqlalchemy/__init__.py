@@ -2,12 +2,13 @@
 
 from Queue import Empty
 
-from anyjson import serialize, deserialize
+from anyjson import loads, dumps
 from sqlalchemy import create_engine
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
 
-from .. import virtual
+from kombu import virtual
+from kombu.exceptions import StdChannelError
 
 from .models import Queue, Message, metadata
 
@@ -59,7 +60,7 @@ class Channel(virtual.Channel):
 
     def _put(self, queue, payload, **kwargs):
         obj = self._get_or_create(queue)
-        message = Message(serialize(payload), obj)
+        message = Message(dumps(payload), obj)
         self.session.add(message)
         try:
             self.session.commit()
@@ -81,7 +82,7 @@ class Channel(virtual.Channel):
                         .first()
             if msg:
                 msg.visible = False
-                return deserialize(msg.payload)
+                return loads(msg.payload)
             raise Empty()
         finally:
             self.session.commit()
@@ -108,4 +109,4 @@ class Transport(virtual.Transport):
 
     default_port = 0
     connection_errors = ()
-    channel_errors = ()
+    channel_errors = (StdChannelError, )

@@ -3,19 +3,21 @@ from __future__ import absolute_import
 
 from Queue import Empty
 
-from anyjson import serialize, deserialize
+from anyjson import loads, dumps
 
 from django.conf import settings
 from django.core import exceptions as errors
 
-from .. import virtual
+from kombu.transport import virtual
+from kombu.exceptions import StdChannelError
 
 from .models import Queue
 
-VERSION = (0, 9, 4)
+VERSION = (1, 0, 0)
 __version__ = ".".join(map(str, VERSION))
 
-POLLING_INTERVAL = getattr(settings, "DJKOMBU_POLLING_INTERVAL", 5.0)
+POLLING_INTERVAL = getattr(settings, "KOMBU_POLLING_INTERVAL",
+                       getattr(settings, "DJKOMBU_POLLING_INTERVAL", 5.0))
 
 
 class Channel(virtual.Channel):
@@ -24,7 +26,7 @@ class Channel(virtual.Channel):
         Queue.objects.get_or_create(name=queue)
 
     def _put(self, queue, message, **kwargs):
-        Queue.objects.publish(queue, serialize(message))
+        Queue.objects.publish(queue, dumps(message))
 
     def basic_consume(self, queue, *args, **kwargs):
         qinfo = self.state.bindings[queue]
@@ -37,7 +39,7 @@ class Channel(virtual.Channel):
         #self.refresh_connection()
         m = Queue.objects.fetch(queue)
         if m:
-            return deserialize(m)
+            return loads(m)
         raise Empty()
 
     def _size(self, queue):
@@ -51,11 +53,12 @@ class Channel(virtual.Channel):
         db.close_connection()
 
 
-class DatabaseTransport(virtual.Transport):
+class Transport(virtual.Transport):
     Channel = Channel
 
     default_port = 0
     polling_interval = POLLING_INTERVAL
     connection_errors = ()
-    channel_errors = (errors.ObjectDoesNotExist,
+    channel_errors = (StdChannelError,
+                      errors.ObjectDoesNotExist,
                       errors.MultipleObjectsReturned)

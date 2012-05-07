@@ -4,7 +4,7 @@ kombu.utils.debug
 
 Debugging support.
 
-:copyright: (c) 2009 - 2011 by Ask Solem.
+:copyright: (c) 2009 - 2012 by Ask Solem.
 :license: BSD, see LICENSE for more details.
 
 """
@@ -14,7 +14,7 @@ import logging
 
 from functools import wraps
 
-from ..log import get_logger
+from kombu.log import get_logger
 
 __all__ = ["setup_logging", "Logwrapped"]
 

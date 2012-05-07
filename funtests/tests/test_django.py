@@ -22,6 +22,9 @@ class test_django(transport.TransportCase):
             if not settings.configured:
                 settings.configure(DATABASE_ENGINE="sqlite3",
                                    DATABASE_NAME=":memory:",
+                                   DATABASES={"default": {
+                                       "ENGINE": "django.db.backends.sqlite3",
+                                       "NAME": ":memory:"}},
                                    INSTALLED_APPS=("djkombu", ))
             from django.core.management import call_command
             call_command("syncdb")

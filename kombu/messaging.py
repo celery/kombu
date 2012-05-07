@@ -4,7 +4,7 @@ kombu.messaging
 
 Sending and receiving messages.
 
-:copyright: (c) 2009 - 2011 by Ask Solem.
+:copyright: (c) 2009 - 2012 by Ask Solem.
 :license: BSD, see LICENSE for more details.
 
 """
@@ -64,11 +64,7 @@ class Producer(object):
     def __init__(self, channel, exchange=None, routing_key=None,
             serializer=None, auto_declare=None, compression=None,
             on_return=None):
-        from .connection import BrokerConnection
-        if isinstance(channel, BrokerConnection):
-            channel = channel.default_channel
         self.channel = channel
-
         self.exchange = exchange or self.exchange
         if self.exchange is None:
             self.exchange = Exchange("")
@@ -79,23 +75,29 @@ class Producer(object):
         if auto_declare is not None:
             self.auto_declare = auto_declare
 
-        self.exchange = self.exchange(self.channel)
-        if self.auto_declare:
-            self.declare()
-        if self.on_return:
-            self.channel.events["basic_return"].append(self.on_return)
+        if self.channel:
+            self.revive(self.channel)
+
+    def __reduce__(self):
+        return self.__class__, self.__reduce_args__()
+
+    def __reduce_args__(self):
+        return (None, self.exchange, self.routing_key, self.serializer,
+                self.auto_declare, self.compression)
 
     def declare(self):
         """Declare the exchange.
 
-        This is done automatically at instantiation if :attr:`auto_declare`
-        is set to :const:`True`.
+        This happens automatically at instantiation if
+        :attr:`auto_declare` is enabled.
 
         """
         if self.exchange.name:
             self.exchange.declare()
 
     def maybe_declare(self, entity, retry=False, **retry_policy):
+        """Declare the exchange if it hasn't already been declared
+        during this session."""
         if entity:
             from .common import maybe_declare
             return maybe_declare(entity, self.channel, retry, **retry_policy)
@@ -116,25 +118,32 @@ class Producer(object):
         :keyword content_type: Content type. Default is auto-detect.
         :keyword content_encoding: Content encoding. Default is auto-detect.
         :keyword serializer: Serializer to use. Default is auto-detect.
+        :keyword compression: Compression method to use.  Default is none.
         :keyword headers: Mapping of arbitrary headers to pass along
           with the message body.
         :keyword exchange: Override the exchange.  Note that this exchange
           must have been declared.
-        :keyword properties: Additional properties, see the AMQP spec.
+        :keyword declare: Optional list of required entities that must
+            have been declared before publishing the message.  The entities
+            will be declared using :func:`~kombu.common.maybe_declare`.
+        :keyword retry: Retry publishing, or declaring entities if the
+            connection is lost.
+        :keyword retry_policy: Retry configuration, this is the keywords
+            supported by :meth:`~kombu.connection.Connection.ensure`.
+        :keyword \*\*properties: Additional message properties, see AMQP spec.
 
         """
-        headers = headers or {}
-        if routing_key is None:
-            routing_key = self.routing_key
-        if compression is None:
-            compression = self.compression
+        headers = {} if headers is None else headers
+        retry_policy = {} if retry_policy is None else retry_policy
+        routing_key = self.routing_key if routing_key is None else routing_key
+        compression = self.compression if compression is None else compression
 
         if isinstance(exchange, Exchange):
             exchange = exchange.name
 
-        # Additional  entities to declare before publishing the message.
-        for entity in declare:
-            self.maybe_declare(entity, retry, **retry_policy or {})
+        if declare:
+            [self.maybe_declare(entity, retry, **retry_policy)
+                    for entity in declare]
 
         body, content_type, content_encoding = self._prepare(
                 body, serializer, content_type, content_encoding,
@@ -146,15 +155,11 @@ class Producer(object):
                                         content_encoding,
                                         headers=headers,
                                         properties=properties)
-        publish = self._publish
+        publish = self.exchange.publish
         if retry:
-            publish = self.connection.ensure(self, self._publish,
+            publish = self.connection.ensure(self, self.exchange.publish,
                                              **retry_policy)
         return publish(message, routing_key, mandatory, immediate, exchange)
-
-    def _publish(self, message, routing_key, mandatory, immediate, exchange):
-        return self.exchange.publish(message, routing_key, mandatory,
-                                     immediate, exchange=exchange)
 
     def revive(self, channel):
         """Revive the producer after connection loss."""
@@ -162,7 +167,13 @@ class Producer(object):
         if isinstance(channel, BrokerConnection):
             channel = channel.default_channel
         self.channel = channel
+        self.exchange = self.exchange(channel)
         self.exchange.revive(channel)
+
+        if self.auto_declare:
+            self.declare()
+        if self.on_return:
+            self.channel.events["basic_return"].append(self.on_return)
 
     def __enter__(self):
         return self
@@ -252,29 +263,32 @@ class Consumer(object):
 
     _next_tag = count(1).next   # global
 
-    def __init__(self, channel, queues, no_ack=None, auto_declare=None,
+    def __init__(self, channel, queues=None, no_ack=None, auto_declare=None,
             callbacks=None, on_decode_error=None):
-        from .connection import BrokerConnection
-        if isinstance(channel, BrokerConnection):
-            channel = channel.default_channel
         self.channel = channel
-
-        self.queues = queues
-        if no_ack is not None:
-            self.no_ack = no_ack
+        self.queues = self.queues or [] if queues is None else queues
+        self.no_ack = self.no_ack if no_ack is None else no_ack
+        self.callbacks = (self.callbacks or [] if callbacks is None
+                                               else callbacks)
         if auto_declare is not None:
             self.auto_declare = auto_declare
         if on_decode_error is not None:
             self.on_decode_error = on_decode_error
 
-        if callbacks is not None:
-            self.callbacks = callbacks
-        if self.callbacks is None:
-            self.callbacks = []
-        self._active_tags = {}
+        if self.channel:
+            self.revive(self.channel)
 
+    def revive(self, channel):
+        """Revive consumer after connection loss."""
+        self._active_tags = {}
+        from .connection import BrokerConnection
+        if isinstance(channel, BrokerConnection):
+            channel = channel.default_channel
+        self.channel = channel
         self.queues = [queue(self.channel)
                             for queue in maybe_list(self.queues)]
+        for queue in self.queues:
+            queue.revive(channel)
 
         if self.auto_declare:
             self.declare()
@@ -316,17 +330,13 @@ class Consumer(object):
         return queue
 
     def consume(self, no_ack=None):
-        """Register consumer on server.
+        if self.queues:
+            no_ack = self.no_ack if no_ack is None else no_ack
 
-        """
-        if not self.queues:
-            return
-        if no_ack is None:
-            no_ack = self.no_ack
-        H, T = self.queues[:-1], self.queues[-1]
-        for queue in H:
-            self._basic_consume(queue, no_ack=no_ack, nowait=True)
-        self._basic_consume(T, no_ack=no_ack, nowait=False)
+            H, T = self.queues[:-1], self.queues[-1]
+            for queue in H:
+                self._basic_consume(queue, no_ack=no_ack, nowait=True)
+            self._basic_consume(T, no_ack=no_ack, nowait=False)
 
     def cancel(self):
         """End all active queue consumers.
@@ -335,8 +345,9 @@ class Consumer(object):
         mean the server will not send any more messages for this consumer.
 
         """
-        for tag in self._active_tags.values():
-            self.channel.basic_cancel(tag)
+        cancel = self.channel.basic_cancel
+        for tag in self._active_tags.itervalues():
+            cancel(tag)
         self._active_tags.clear()
     close = cancel
 
@@ -361,7 +372,7 @@ class Consumer(object):
 
         .. warning::
             This will *delete all ready messages*, there is no
-            undo operation available.
+            undo operation.
 
         """
         return sum(queue.purge() for queue in self.queues)
@@ -435,26 +446,18 @@ class Consumer(object):
           registered.
 
         """
-        if not self.callbacks:
-            raise NotImplementedError("No consumer callbacks registered")
-        for callback in self.callbacks:
-            callback(body, message)
-
-    def revive(self, channel):
-        """Revive consumer after connection loss."""
-        for queue in self.queues:
-            queue.revive(channel)
-        self.channel = channel
+        callbacks = self.callbacks
+        if not callbacks:
+            raise NotImplementedError("Consumer does not have any callback")
+        [callback(body, message) for callback in callbacks]
 
     def _basic_consume(self, queue, consumer_tag=None,
             no_ack=no_ack, nowait=True):
         tag = self._active_tags.get(queue.name)
         if tag is None:
             tag = self._add_tag(queue, consumer_tag)
-            queue.consume(tag,
-                          self._receive_callback,
-                          no_ack=no_ack,
-                          nowait=nowait)
+            queue.consume(tag, self._receive_callback,
+                          no_ack=no_ack, nowait=nowait)
         return tag
 
     def _add_tag(self, queue, consumer_tag=None):
@@ -462,10 +465,13 @@ class Consumer(object):
         self._active_tags[queue.name] = tag
         return tag
 
-    def _receive_callback(self, raw_message):
+    def _receive_callback(self, message):
+        channel = self.channel
         try:
-            message = self.channel.message_to_python(raw_message)
-            decoded = message.payload
+            m2p = getattr(channel, "message_to_python", None)
+            if m2p:
+                message = m2p(message)
+            decoded = message.decode()
         except Exception, exc:
             if not self.on_decode_error:
                 raise

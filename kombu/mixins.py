@@ -4,7 +4,7 @@ kombu.mixins
 
 Useful mixin classes.
 
-:copyright: (c) 2009 - 2011 by Ask Solem.
+:copyright: (c) 2009 - 2012 by Ask Solem.
 :license: BSD, see LICENSE for more details.
 
 """
@@ -222,10 +222,8 @@ class ConsumerMixin(LogMixin):
             self.on_consume_end(conn, channel)
         self.debug("Connection closed")
 
-    @contextmanager
     def _consume_from(self, *consumers):
-        with nested(*consumers) as context:
-            yield context
+        return nested(*consumers)
 
     @cached_property
     def restart_limit(self):

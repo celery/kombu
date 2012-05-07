@@ -2,6 +2,303 @@
  Change history
 ================
 
+.. _version-2.1.7:
+
+2.1.7
+=====
+:release-date: 2012-04-27 6:00 P.M BST
+
+* compat consumerset now accepts optional channel argument.
+
+.. _version-2.1.6:
+
+2.1.6
+=====
+:release-date: 2012-04-23 1:30 P.M BST
+
+* SQLAlchemy transport was not working correctly after URL parser change.
+
+* maybe_declare now stores cached declarations per underlying connection
+  instead of globally, in the rare case that data disappears from the
+  broker after connection loss.
+
+* Django: Added South migrations.
+
+    Contributed by Joseph Crosland.
+
+.. _version-2.1.5:
+
+2.1.5
+=====
+:release-date: 2012-04-13 3:30 P.M BST
+
+* The url parser removed more than the first leading slash (Issue #121).
+
+* SQLAlchemy: Can now specify url using + separator
+
+    Example::
+
+        BrokerConnection("sqla+mysql://localhost/db")
+
+* Better support for anonymous queues (Issue #116).
+
+    Contributed by Michael Barrett.
+
+* ``Connection.as_uri`` now quotes url parts (Issue #117).
+
+* Beanstalk: Can now set message TTR as a message property.
+
+    Contributed by Andrii Kostenko
+
+.. _version-2.1.4:
+
+2.1.4
+=====
+:release-date: 2012-04-03 4:00 P.M GMT
+
+* MongoDB:  URL parsing are now delegated to the pymongo library
+  (Fixes Issue #103 and Issue #87).
+
+    Fix contributed by Flavio Percoco Premoli and James Sullivan
+
+* SQS:  A bug caused SimpleDB to be used even if sdb persistence
+  was not enabled (Issue #108).
+
+    Fix contributed by Anand Kumria.
+
+* Django:  Transaction was committed in the wrong place, causing
+  data cleanup to fail (Issue #115).
+
+    Fix contributed by Daisuke Fujiwara.
+
+* MongoDB: Now supports replica set URLs.
+
+    Contributed by Flavio Percoco Premoli.
+
+* Redis: Now raises a channel error if a queue key that is currently
+  being consumed from disappears.
+
+    Fix contributed by Stephan Jaekel.
+
+* All transport 'channel_errors' lists now includes
+  :exc:`~kombu.exception.StdChannelError`.
+
+* All kombu exceptions now inherit from a common
+  :exc:`~kombu.exceptions.KombuError`.
+
+.. _version-2.1.3:
+
+2.1.3
+=====
+:release-date: 2012-03-20 3:00 P.M GMT
+:by: Ask Solem
+
+* Fixes Jython compatibility issues.
+
+* Fixes Python 2.5 compatibility issues.
+
+.. _version-2.1.2:
+
+2.1.2
+=====
+:release-date: 2012-03-01 01:00 P.M GMT
+:by: Ask Solem
+
+* amqplib: Last version broke SSL support.
+
+.. _version-2.1.1:
+
+2.1.1
+=====
+:release-date: 2012-02-24 02:00 P.M GMT
+:by: Ask Solem
+
+* Connection URLs now supports encoded characters.
+
+* Fixed a case where connection pool could not recover from connection loss.
+
+    Fix contributed by Florian Munz.
+
+* We now patch amqplib's ``__del__`` method to skip trying to close the socket
+  if it is not connected, as this resulted in an annoying warning.
+
+* Compression can now be used with binary message payloads.
+
+    Fix contributed by Steeve Morin.
+
+.. _version-2.1.0:
+
+2.1.0
+=====
+:release-date: 2012-02-04 10:38 P.M GMT
+:by: Ask Solem
+
+* MongoDB: Now supports fanout (broadcast) (Issue #98).
+
+    Contributed by Scott Lyons.
+
+* amqplib: Now detects broken connections by using ``MSG_PEEK``.
+
+* pylibrabbitmq: Now supports ``basic_get`` (Issue #97).
+
+* gevent: Now always uses the ``select`` polling backend.
+
+* pika transport: Now works with pika 0.9.5 and 0.9.6dev.
+
+    The old pika transport (supporting 0.5.x) is now available
+    as alias ``oldpika``.
+
+    (Note terribly latency has been experienced with the new pika
+    versions, so this is still an experimental transport).
+
+* Virtual transports: can now set polling interval via the
+  transport options (Issue #96).
+
+    Example::
+
+        >>> BrokerConnection("sqs://", transport_options={
+        ...     "polling_interval": 5.0})
+
+    The default interval is transport specific, but usually
+    1.0s (or 5.0s for the Django database transport, which
+    can also be set using the ``KOMBU_POLLING_INTERVAL`` setting).
+
+* Adds convenience function: :func:`kombu.common.eventloop`.
+
+.. _version-2.0.0:
+
+2.0.0
+=====
+:release-date: 2012-01-15 18:34 P.M GMT
+:by: Ask Solem
+
+.. _v200-important:
+
+Important Notes
+---------------
+
+.. _v200-python-compatibility:
+
+Python Compatibility
+~~~~~~~~~~~~~~~~~~~~
+
+* No longer supports Python 2.4.
+
+    Users of Python 2.4 can still use the 1.x series.
+
+    The 1.x series has entered bugfix-only maintenance mode, and will
+    stay that way as long as there is demand, and a willingness to
+    maintain it.
+
+
+.. _v200-new-transports:
+
+New Transports
+~~~~~~~~~~~~~~
+
+* ``django-kombu`` is now part of Kombu core.
+
+    The Django message transport uses the Django ORM to store messages.
+
+    It uses polling, with a default polling interval of 5 seconds.
+    The polling interval can be increased or decreased by configuring the
+    ``KOMBU_POLLING_INTERVAL`` Django setting, which is the polling
+    interval in seconds as an int or a float.  Note that shorter polling
+    intervals can cause extreme strain on the database: if responsiveness
+    is needed you shall consider switching to a non-polling transport.
+
+    To use it you must use transport alias ``"django"``,
+    or as an URL::
+
+        django://
+
+    and then add ``kombu.transport.django`` to ``INSTALLED_APPS``, and
+    run ``manage.py syncdb`` to create the necessary database tables.
+
+    **Upgrading**
+
+    If you have previously used ``django-kombu``, then the entry
+    in ``INSTALLED_APPS`` must be changed from ``djkombu``
+    to ``kombu.transport.django``::
+
+        INSTALLED_APPS = (…,
+                          "kombu.transport.django")
+
+    If you have previously used django-kombu, then there is no need
+    to recreate the tables, as the old tables will be fully compatible
+    with the new version.
+
+* ``kombu-sqlalchemy`` is now part of Kombu core.
+
+    This change requires no code changes given that the
+    ``sqlalchemy`` transport alias is used.
+
+.. _v200-news:
+
+News
+----
+
+* :class:`kombu.mixins.ConsumerMixin` is a mixin class that lets you
+  easily write consumer programs and threads.
+
+  See :ref:`examples` and :ref:`guide-consumers`.
+
+* SQS Transport: Added support for SQS queue prefixes (Issue #84).
+
+    The queue prefix can be set using the transport option
+    ``queue_name_prefix``::
+
+        BrokerTransport("SQS://", transport_options={
+            "queue_name_prefix": "myapp"})
+
+    Contributed by Nitzan Miron.
+
+* ``Producer.publish`` now supports automatic retry.
+
+    Retry is enabled by the ``reply`` argument, and retry options
+    set by the ``retry_policy`` argument::
+
+        exchange = Exchange("foo")
+        producer.publish(message, exchange=exchange, retry=True,
+                         declare=[exchange], retry_policy={
+                            "interval_start": 1.0})
+
+    See :meth:`~kombu.connection.BrokerConnection.ensure`
+    for a list of supported retry policy options.
+
+* ``Producer.publish`` now supports a ``declare`` keyword argument.
+
+    This is a list of entities (:class:`Exchange`, or :class:`Queue`)
+    that should be declared before the message is published.
+
+.. _v200-fixes:
+
+Fixes
+-----
+
+* Redis transport: Timeout was multiplied by 1000 seconds when using
+  ``select`` for event I/O (Issue #86).
+
+.. _version-1.5.1:
+
+1.5.1
+=====
+:release-date: 2011-11-30 01:00 P.M GMT
+:by: Ask Solem
+
+* Fixes issue with ``kombu.compat`` introduced in 1.5.0 (Issue #83).
+
+* Adds the ability to disable content_types in the serializer registry.
+
+    Any message with a content type that is disabled will be refused.
+    One example would be to disable the Pickle serializer:
+
+        >>> from kombu.serialization import registry
+        # by name
+        >>> registry.disable("pickle")
+        # or by mime-type.
+        >>> registry.disable("application/x-python-serialize")
+
 .. _version-1.5.0:
 
 1.5.0

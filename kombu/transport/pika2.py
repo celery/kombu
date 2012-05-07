@@ -4,7 +4,7 @@ kombu.transport.pika
 
 Pika transport.
 
-:copyright: (c) 2009 - 2011 by Ask Solem.
+:copyright: (c) 2009 - 2012 by Ask Solem.
 :license: BSD, see LICENSE for more details.
 
 """
@@ -13,6 +13,8 @@ from __future__ import absolute_import
 import socket
 
 from operator import attrgetter
+
+from kombu.exceptions import StdChannelError
 
 from . import base
 
@@ -166,20 +168,25 @@ class Connection(blocking.BlockingConnection):
         super(Connection, self).close(*args)
 
 
+AuthenticationError = getattr(exceptions, "AuthenticationError",
+                              getattr(exceptions, "LoginError"))
+
+
 class Transport(base.Transport):
     default_port = DEFAULT_PORT
 
     connection_errors = (socket.error,
                          exceptions.ConnectionClosed,
                          exceptions.ChannelClosed,
-                         exceptions.AuthenticationError,
+                         AuthenticationError,
                          exceptions.NoFreeChannels,
                          exceptions.DuplicateConsumerTag,
                          exceptions.UnknownConsumerTag,
                          exceptions.RecursiveOperationDetected,
                          exceptions.ProtocolSyntaxError)
 
-    channel_errors = (exceptions.ChannelClosed,
+    channel_errors = (StdChannelError,
+                      exceptions.ChannelClosed,
                       exceptions.DuplicateConsumerTag,
                       exceptions.UnknownConsumerTag,
                       exceptions.ProtocolSyntaxError)

@@ -1,6 +1,11 @@
-.. currentmodule:: kombu.transport.pycouchdb
+====================================
+ kombu.transport.sqlalchemy
+====================================
 
-.. automodule:: kombu.transport.pycouchdb
+
+.. currentmodule:: kombu.transport.sqlalchemy
+
+.. automodule:: kombu.transport.sqlalchemy
 
     .. contents::
         :local:
@@ -18,8 +23,3 @@
     .. autoclass:: Channel
         :members:
         :undoc-members:
-
-    Functions
-    ---------
-
-    .. autofunction:: create_message_view

@@ -1,25 +1,30 @@
 from __future__ import absolute_import
+from __future__ import with_statement
 
 import warnings
 
-from ..connection import BrokerConnection
-from ..transport import virtual
-from ..utils import uuid
+from mock import patch
 
-from .compat import catch_warnings
-from .utils import unittest
-from .utils import redirect_stdouts
+from kombu.connection import BrokerConnection
+from kombu.exceptions import StdChannelError
+from kombu.transport import virtual
+from kombu.utils import uuid
+
+from kombu.tests.compat import catch_warnings
+from kombu.tests.utils import TestCase
+from kombu.tests.utils import Mock, redirect_stdouts
 
 
-def client():
-    return BrokerConnection(transport="kombu.transport.virtual.Transport")
+def client(**kwargs):
+    return BrokerConnection(transport="kombu.transport.virtual.Transport",
+                            **kwargs)
 
 
 def memory_client():
     return BrokerConnection(transport="memory")
 
 
-class test_BrokerState(unittest.TestCase):
+class test_BrokerState(TestCase):
 
     def test_constructor(self):
         s = virtual.BrokerState()
@@ -31,7 +36,7 @@ class test_BrokerState(unittest.TestCase):
         self.assertEqual(t.bindings, 32)
 
 
-class test_QoS(unittest.TestCase):
+class test_QoS(TestCase):
 
     def setUp(self):
         self.q = virtual.QoS(client().channel(), prefetch_count=10)
@@ -89,8 +94,12 @@ class test_QoS(unittest.TestCase):
         self.assertTrue(stderr.getvalue())
         self.assertFalse(stdout.getvalue())
 
+    def test_get(self):
+        self.q._delivered["foo"] = 1
+        self.assertEqual(self.q.get("foo"), 1)
 
-class test_Message(unittest.TestCase):
+
+class test_Message(TestCase):
 
     def test_create(self):
         c = client().channel()
@@ -104,6 +113,11 @@ class test_Message(unittest.TestCase):
                          "the quick brown fox...".encode("utf-8"))
         self.assertTrue(message.delivery_tag, tag)
 
+    def test_create_no_body(self):
+        virtual.Message(Mock(), {
+            "body": None,
+            "properties": {"delivery_tag": 1}})
+
     def test_serializable(self):
         c = client().channel()
         data = c.prepare_message("the quick brown fox...")
@@ -115,29 +129,32 @@ class test_Message(unittest.TestCase):
         self.assertEqual(dict_["properties"]["delivery_tag"], tag)
 
 
-class test_AbstractChannel(unittest.TestCase):
+class test_AbstractChannel(TestCase):
 
     def test_get(self):
-        self.assertRaises(NotImplementedError,
-                          virtual.AbstractChannel()._get, "queue")
+        with self.assertRaises(NotImplementedError):
+            virtual.AbstractChannel()._get("queue")
 
     def test_put(self):
-        self.assertRaises(NotImplementedError,
-                          virtual.AbstractChannel()._put, "queue", "m")
+        with self.assertRaises(NotImplementedError):
+            virtual.AbstractChannel()._put("queue", "m")
 
     def test_size(self):
         self.assertEqual(virtual.AbstractChannel()._size("queue"), 0)
 
     def test_purge(self):
-        self.assertRaises(NotImplementedError,
-                          virtual.AbstractChannel()._purge, "queue")
+        with self.assertRaises(NotImplementedError):
+            virtual.AbstractChannel()._purge("queue")
 
     def test_delete(self):
-        self.assertRaises(NotImplementedError,
-                          virtual.AbstractChannel()._delete, "queue")
+        with self.assertRaises(NotImplementedError):
+            virtual.AbstractChannel()._delete("queue")
 
     def test_new_queue(self):
         self.assertIsNone(virtual.AbstractChannel()._new_queue("queue"))
+
+    def test_has_queue(self):
+        self.assertTrue(virtual.AbstractChannel()._has_queue("queue"))
 
     def test_poll(self):
 
@@ -153,7 +170,7 @@ class test_AbstractChannel(unittest.TestCase):
         self.assertTrue(cycle.called)
 
 
-class test_Channel(unittest.TestCase):
+class test_Channel(TestCase):
 
     def setUp(self):
         self.channel = client().channel()
@@ -173,9 +190,9 @@ class test_Channel(unittest.TestCase):
         self.assertIn("test_exchange_declare", c.state.exchanges)
 
         # using different values raises NotEquivalentError
-        self.assertRaises(virtual.NotEquivalentError,
-            c.exchange_declare, "test_exchange_declare", "direct",
-            durable=False, auto_delete=True)
+        with self.assertRaises(virtual.NotEquivalentError):
+            c.exchange_declare("test_exchange_declare", "direct",
+                               durable=False, auto_delete=True)
 
     def test_exchange_delete(self, ex="test_exchange_delete"):
 
@@ -272,7 +289,8 @@ class test_Channel(unittest.TestCase):
                          "nthex quick brown fox...".encode("utf-8"))
         self.assertEqual(r2.delivery_info["exchange"], n)
         self.assertEqual(r2.delivery_info["routing_key"], n)
-        self.assertRaises(virtual.Empty, c.drain_events)
+        with self.assertRaises(virtual.Empty):
+            c.drain_events()
         c.basic_cancel(consumer_tag)
 
         c._restore(r2)
@@ -305,9 +323,46 @@ class test_Channel(unittest.TestCase):
         self.channel.basic_recover(requeue=True)
         self.assertTrue(self.channel._qos.was_restored)
 
+    def test_restore_unacked_raises_BaseException(self):
+        q = self.channel.qos
+        q._flush = Mock()
+        q._delivered = {1: 1}
+
+        q.channel._restore = Mock()
+        q.channel._restore.side_effect = SystemExit
+
+        errors = q.restore_unacked()
+        self.assertIsInstance(errors[0][0], SystemExit)
+        self.assertEqual(errors[0][1], 1)
+        self.assertFalse(q._delivered)
+
+    @patch("kombu.transport.virtual.emergency_dump_state")
+    @patch("kombu.transport.virtual.say")
+    def test_restore_unacked_once_when_unrestored(self, say,
+            emergency_dump_state):
+        q = self.channel.qos
+        q._flush = Mock()
+
+        class State(dict):
+            restored = False
+
+        q._delivered = State({1: 1})
+        ru = q.restore_unacked = Mock()
+        exc = None
+        try:
+            raise KeyError()
+        except KeyError, exc_:
+            exc = exc_
+        ru.return_value = [(exc, 1)]
+
+        self.channel.do_restore = True
+        q.restore_unacked_once()
+        self.assertTrue(say.called)
+        self.assertTrue(emergency_dump_state.called)
+
     def test_basic_recover(self):
-        self.assertRaises(NotImplementedError,
-                          self.channel.basic_recover, requeue=False)
+        with self.assertRaises(NotImplementedError):
+            self.channel.basic_recover(requeue=False)
 
     def test_basic_reject(self):
 
@@ -343,13 +398,74 @@ class test_Channel(unittest.TestCase):
         self.assertTrue(self.channel.cycle)
 
     def test_flow(self):
-        self.assertRaises(NotImplementedError, self.channel.flow, False)
+        with self.assertRaises(NotImplementedError):
+            self.channel.flow(False)
+
+    def test_close_when_no_connection(self):
+        self.channel.connection = None
+        self.channel.close()
+        self.assertTrue(self.channel.closed)
+
+    def test_drain_events_has_get_many(self):
+        c = self.channel
+        c._get_many = Mock()
+        c._poll = Mock()
+        c._consumers = [1]
+        c._qos = Mock()
+        c._qos.can_consume.return_value = True
+
+        c.drain_events(timeout=10.0)
+        c._get_many.assert_called_with(c._active_queues, timeout=10.0)
+
+    def test_get_exchanges(self):
+        self.channel.exchange_declare(exchange="foo")
+        self.assertTrue(self.channel.get_exchanges())
+
+    def test_basic_cancel_not_in_active_queues(self):
+        c = self.channel
+        c._consumers.add("x")
+        c._tag_to_queue["x"] = "foo"
+        c._active_queues = Mock()
+        c._active_queues.remove.side_effect = ValueError()
+
+        c.basic_cancel("x")
+        c._active_queues.remove.assert_called_with("foo")
+
+    def test_basic_cancel_unknown_ctag(self):
+        self.assertIsNone(self.channel.basic_cancel("unknown-tag"))
+
+    def test_list_bindings(self):
+        c = self.channel
+        c.exchange_declare(exchange="foo")
+        c.queue_declare(queue="q")
+        c.queue_bind(queue="q", exchange="foo", routing_key="rk")
+
+        self.assertIn(("q", "foo", "rk"), list(c.list_bindings()))
+
+    def test_after_reply_message_received(self):
+        c = self.channel
+        c.queue_delete = Mock()
+        c.after_reply_message_received("foo")
+        c.queue_delete.assert_called_with("foo")
+
+    def test_queue_delete_unknown_queue(self):
+        self.assertIsNone(self.channel.queue_delete("xiwjqjwel"))
+
+    def test_queue_declare_passive(self):
+        has_queue = self.channel._has_queue = Mock()
+        has_queue.return_value = False
+        with self.assertRaises(StdChannelError):
+            self.channel.queue_declare(queue="21wisdjwqe", passive=True)
 
 
-class test_Transport(unittest.TestCase):
+class test_Transport(TestCase):
 
     def setUp(self):
         self.transport = client().transport
+
+    def test_custom_polling_interval(self):
+        x = client(transport_options=dict(polling_interval=32.3))
+        self.assertEqual(x.transport.polling_interval, 32.3)
 
     def test_close_connection(self):
         c1 = self.transport.create_channel(self.transport)
@@ -362,5 +478,5 @@ class test_Transport(unittest.TestCase):
 
     def test_drain_channel(self):
         channel = self.transport.create_channel(self.transport)
-        self.assertRaises(virtual.Empty, self.transport._drain_channel,
-                          channel)
+        with self.assertRaises(virtual.Empty):
+            self.transport._drain_channel(channel)

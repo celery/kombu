@@ -4,7 +4,7 @@ kombu.entity
 
 Exchange and Queue declarations.
 
-:copyright: (c) 2009 - 2011 by Ask Solem.
+:copyright: (c) 2009 - 2012 by Ask Solem.
 :license: BSD, see LICENSE for more details.
 
 """
@@ -185,10 +185,10 @@ class Exchange(MaybeChannelBound):
         :keyword headers: Message headers.
 
         """
-        properties = properties or {}
-        delivery_mode = delivery_mode or self.delivery_mode
-        properties["delivery_mode"] = DELIVERY_MODES.get(delivery_mode,
-                                                         delivery_mode)
+        properties = {} if properties is None else properties
+        dm = delivery_mode or self.delivery_mode
+        properties["delivery_mode"] = \
+            DELIVERY_MODES[dm] if (dm != 2 and dm != 1) else dm
         return self.channel.prepare_message(body,
                                             properties=properties,
                                             priority=priority,
@@ -240,6 +240,10 @@ class Exchange(MaybeChannelBound):
     def __repr__(self):
         return super(Exchange, self).__repr__("Exchange %s(%s)" % (self.name,
                                                                    self.type))
+
+    @property
+    def can_cache_declaration(self):
+        return self.durable
 
 
 class Queue(MaybeChannelBound):
@@ -331,13 +335,13 @@ class Queue(MaybeChannelBound):
 
     .. attribute:: alias
 
-        Unused in Kombu, but application can take advantage of this.
+        Unused in Kombu, but applications can take advantage of this.
         For example to give alternate names to queues with automatically
         generated queue names.
 
     """
     name = ""
-    exchange = None
+    exchange = Exchange("")
     routing_key = ""
 
     durable = True
@@ -377,12 +381,12 @@ class Queue(MaybeChannelBound):
     def declare(self, nowait=False):
         """Declares the queue, the exchange and binds the queue to
         the exchange."""
-        name = self.name
-        if name:
-            if self.exchange:
-                self.exchange.declare(nowait)
+        if self.exchange:
+            self.exchange.declare(nowait)
         self.queue_declare(nowait, passive=False)
-        if name:
+        # self.name should be set by queue_declare in the case that
+        # we're working with anonymous queues
+        if self.name:
             self.queue_bind(nowait)
         return self.name
 
@@ -407,11 +411,7 @@ class Queue(MaybeChannelBound):
         return ret
 
     def queue_bind(self, nowait=False):
-        """Create the queue binding on the server.
-
-        :keyword nowait: Do not wait for a reply.
-
-        """
+        """Create the queue binding on the server."""
         return self.channel.queue_bind(queue=self.name,
                                        exchange=self.exchange.name,
                                        routing_key=self.routing_key,
@@ -433,12 +433,16 @@ class Queue(MaybeChannelBound):
         is more important than performance.
 
         """
+        no_ack = self.no_ack if no_ack is None else no_ack
         message = self.channel.basic_get(queue=self.name, no_ack=no_ack)
         if message is not None:
-            return self.channel.message_to_python(message)
+            m2p = getattr(self.channel, "message_to_python", None)
+            if m2p:
+                message = m2p(message)
+            return message
 
     def purge(self, nowait=False):
-        """Remove all messages from the queue."""
+        """Remove all ready messages from the queue."""
         return self.channel.queue_purge(queue=self.name,
                                         nowait=nowait) or 0
 
@@ -516,3 +520,7 @@ class Queue(MaybeChannelBound):
                  "Queue %s -> %s -> %s" % (self.name,
                                            self.exchange,
                                            self.routing_key))
+
+    @property
+    def can_cache_declaration(self):
+        return self.durable

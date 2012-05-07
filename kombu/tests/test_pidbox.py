@@ -1,13 +1,17 @@
 from __future__ import absolute_import
+from __future__ import with_statement
 
-from .. import pidbox
-from ..connection import BrokerConnection
-from ..utils import uuid
+import socket
 
-from .utils import unittest
+from kombu import pidbox
+from kombu.connection import BrokerConnection
+from kombu.utils import uuid
+
+from .utils import TestCase
+from .utils import Mock
 
 
-class test_Mailbox(unittest.TestCase):
+class test_Mailbox(TestCase):
 
     def _handler(self, state):
         return self.stats["var"]
@@ -52,6 +56,10 @@ class test_Mailbox(unittest.TestCase):
         mailbox._publish_reply({"biz": "boz"}, exchange, ticket)
         reply = mailbox._collect(ticket, limit=1, channel=channel)
         self.assertEqual(reply, [{"biz": "boz"}])
+
+        de = mailbox.connection.drain_events = Mock()
+        de.side_effect = socket.timeout
+        mailbox._collect(ticket, limit=1, channel=channel)
 
     def test_constructor(self):
         self.assertIsNone(self.mailbox.connection)
@@ -109,8 +117,8 @@ class test_Mailbox(unittest.TestCase):
         def my_handler_name(state):
             raise SystemExit
 
-        self.assertRaises(SystemExit,
-                          node.dispatch, "my_handler_name")
+        with self.assertRaises(SystemExit):
+            node.dispatch("my_handler_name")
 
     def test_dispatch_raising(self):
         node = self.bound.Node("test_dispatch_raising", state=self.state)
@@ -196,8 +204,8 @@ class test_Mailbox(unittest.TestCase):
         self.assertIsCast(self.get_next(consumer))
 
     def test_call_destination_must_be_sequence(self):
-        self.assertRaises(ValueError,
-                          self.bound.call, "some_node", "mymethod")
+        with self.assertRaises(ValueError):
+            self.bound.call("some_node", "mymethod")
 
     def test_call(self):
         self.assertEqual(self.bound.call(["some_node"], "mymethod"),

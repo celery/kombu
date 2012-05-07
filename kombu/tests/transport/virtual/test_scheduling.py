@@ -1,8 +1,9 @@
 from __future__ import absolute_import
+from __future__ import with_statement
 
-from ..transport.virtual.scheduling import FairCycle
+from kombu.transport.virtual.scheduling import FairCycle
 
-from .utils import unittest
+from kombu.tests.utils import TestCase
 
 
 class MyEmpty(Exception):
@@ -16,7 +17,7 @@ def consume(fun, n):
     return r
 
 
-class test_FairCycle(unittest.TestCase):
+class test_FairCycle(TestCase):
 
     def test_cycle(self):
         resources = ["a", "b", "c", "d", "e"]
@@ -49,7 +50,15 @@ class test_FairCycle(unittest.TestCase):
                         [("b", "b"), ("d", "d"), ("e", "e"),
                          ("a", "a"), ("b", "b")])
         cycle2 = FairCycle(echo, ["c", "c"], MyEmpty)
-        self.assertRaises(MyEmpty, consume, cycle2.get, 3)
+        with self.assertRaises(MyEmpty):
+            consume(cycle2.get, 3)
+
+    def test_cycle_no_resources(self):
+        cycle = FairCycle(None, [], MyEmpty)
+        cycle.pos = 10
+
+        with self.assertRaises(MyEmpty):
+            cycle._next()
 
     def test__repr__(self):
         self.assertTrue(repr(FairCycle(lambda x: x, [1, 2, 3], MyEmpty)))

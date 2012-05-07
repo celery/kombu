@@ -1,6 +1,10 @@
+import os
+
 from paver.easy import *            # noqa
 from paver import doctools          # noqa
 from paver.setuputils import setup  # noqa
+
+PYCOMPILE_CACHES = ["*.pyc", "*$py.class"]
 
 options(
         sphinx=Bunch(builddir=".build"),
@@ -87,7 +91,7 @@ def readme(options):
 ])
 def bump(options):
     s = "-- '%s'" % (options.custom, ) \
-            if getattr(options, "custom") else ""
+            if getattr(options, "custom", None) else ""
     sh("contrib/release/bump_version.py \
             kombu/__init__.py README.rst %s" % (s, ))
 
@@ -115,8 +119,15 @@ def test(options):
 ])
 def flake8(options):
     noerror = getattr(options, "noerror", False)
-    sh("""flake8 kombu""", ignore_error=noerror)
-
+    complexity = getattr(options, "complexity", 22)
+    migrations_path = os.path.join("kombu", "transport", "django",
+                                   "migrations", "0.+?\.py")
+    sh("""flake8 kombu | perl -mstrict -mwarnings -nle'
+        my $ignore = (m/too complex \((\d+)\)/ && $1 le %s)
+                   || (m{^%s});
+        if (! $ignore) { print STDERR; our $FOUND_FLAKE = 1 }
+        }{exit $FOUND_FLAKE;
+        '""" % (complexity, migrations_path), ignore_error=noerror)
 
 @task
 @cmdopts([
@@ -149,7 +160,8 @@ def pep8(options):
 
 @task
 def removepyc(options):
-    sh("find . -name '*.pyc' | xargs rm")
+    sh("find . -type f -a \\( %s \\) | xargs rm" % (
+        " -o ".join("-name '%s'" % (pat, ) for pat in PYCOMPILE_CACHES), ))
 
 
 @task

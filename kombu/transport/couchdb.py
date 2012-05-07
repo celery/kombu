@@ -4,7 +4,7 @@ kombu.transport.couchdb
 
 CouchDB transport.
 
-:copyright: (c) 2010 - 2011 by David Clymer.
+:copyright: (c) 2010 - 2012 by David Clymer.
 :license: BSD, see LICENSE for more details.
 
 """
@@ -15,9 +15,11 @@ from Queue import Empty
 import socket
 import couchdb
 
-from anyjson import serialize, deserialize
+from anyjson import loads, dumps
 
-from ..utils import uuid4
+from kombu.exceptions import StdChannelError
+from kombu.utils import uuid4
+
 from . import virtual
 
 DEFAULT_PORT = 5984
@@ -47,7 +49,7 @@ class Channel(virtual.Channel):
     def _put(self, queue, message, **kwargs):
         self.client.save({'_id': uuid4().hex,
                           'queue': queue,
-                          'payload': serialize(message)})
+                          'payload': dumps(message)})
 
     def _get(self, queue):
         result = self._query(queue, limit=1)
@@ -56,7 +58,7 @@ class Channel(virtual.Channel):
 
         item = result.rows[0].value
         self.client.delete(item)
-        return deserialize(item["payload"])
+        return loads(item["payload"])
 
     def _purge(self, queue):
         result = self._query(queue)
@@ -104,13 +106,14 @@ class Channel(virtual.Channel):
 class Transport(virtual.Transport):
     Channel = Channel
 
-    interval = 1
+    polling_interval = 1
     default_port = DEFAULT_PORT
     connection_errors = (socket.error,
                          couchdb.HTTPError,
                          couchdb.ServerError,
                          couchdb.Unauthorized)
-    channel_errors = (couchdb.HTTPError,
+    channel_errors = (StdChannelError,
+                      couchdb.HTTPError,
                       couchdb.ServerError,
                       couchdb.PreconditionFailed,
                       couchdb.ResourceConflict,

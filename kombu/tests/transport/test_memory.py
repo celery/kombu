@@ -1,15 +1,18 @@
 from __future__ import absolute_import
+from __future__ import with_statement
 
 import socket
 
-from ..connection import BrokerConnection
-from ..entity import Exchange, Queue
-from ..messaging import Consumer, Producer
+from kombu.common import eventloop, itermessages
+from kombu.connection import BrokerConnection
+from kombu.entity import Exchange, Queue
+from kombu.exceptions import StdChannelError
+from kombu.messaging import Consumer, Producer
 
-from .utils import unittest
+from kombu.tests.utils import TestCase
 
 
-class test_MemoryTransport(unittest.TestCase):
+class test_MemoryTransport(TestCase):
 
     def setUp(self):
         self.c = BrokerConnection(transport="memory")
@@ -103,12 +106,14 @@ class test_MemoryTransport(unittest.TestCase):
         self.assertIsNone(self.q2(channel).get())
 
     def test_drain_events(self):
-        self.assertRaises(socket.timeout, self.c.drain_events, timeout=0.1)
+        with self.assertRaises(socket.timeout):
+            self.c.drain_events(timeout=0.1)
 
         c1 = self.c.channel()
         c2 = self.c.channel()
 
-        self.assertRaises(socket.timeout, self.c.drain_events, timeout=0.1)
+        with self.assertRaises(socket.timeout):
+            self.c.drain_events(timeout=0.1)
 
         del(c1)  # so pyflakes doesn't complain.
         del(c2)
@@ -122,4 +127,13 @@ class test_MemoryTransport(unittest.TestCase):
                 return ("foo", "foo"), c1
 
         self.c.transport.cycle = Cycle()
-        self.assertRaises(KeyError, self.c.drain_events)
+        with self.assertRaises(KeyError):
+            self.c.drain_events()
+
+    def test_queue_for(self):
+        chan = self.c.channel()
+        chan.queues.clear()
+
+        x = chan._queue_for("foo")
+        self.assertTrue(x)
+        self.assertIs(chan._queue_for("foo"), x)

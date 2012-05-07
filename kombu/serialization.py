@@ -4,7 +4,7 @@ kombu.serialization
 
 Serialization utilities.
 
-:copyright: (c) 2009 - 2011 by Ask Solem
+:copyright: (c) 2009 - 2012 by Ask Solem
 :license: BSD, see LICENSE for more details.
 
 """
@@ -16,23 +16,22 @@ import sys
 import pickle as pypickle
 try:
     import cPickle as cpickle
-except ImportError:
+except ImportError:  # pragma: no cover
     cpickle = None  # noqa
 
 from .exceptions import SerializerNotInstalled
-from .utils.encoding import str_to_bytes
+from .utils.encoding import bytes_to_str, str_to_bytes, bytes_t
 
-__all__ = ["pickle", "bytes_type", "encode", "decode",
+__all__ = ["pickle", "encode", "decode",
            "register", "unregister"]
+SKIP_DECODE = frozenset(["binary", "ascii-8bit"])
 
-if sys.platform.startswith("java"):
+if sys.platform.startswith("java"):  # pragma: no cover
 
     def _decode(t, coding):
         return codecs.getdecoder(coding)(t)[0]
-
 else:
     _decode = codecs.decode
-
 
 if sys.version_info < (2, 6):  # pragma: no cover
     # cPickle is broken in Python <= 2.5.
@@ -49,11 +48,6 @@ if sys.version_info < (2, 6):  # pragma: no cover
     pickle = pypickle
 else:
     pickle = cpickle or pypickle
-
-
-bytes_type = str
-if sys.version_info >= (3, 0):
-    bytes_type = bytes
 
 
 class SerializerRegistry(object):
@@ -78,7 +72,7 @@ class SerializerRegistry(object):
 
     def disable(self, name):
         if '/' not in name:
-            name = self.type_to_name[name]
+            name, _, _ = self._encoders[name]
         self._disabled_content_types.add(name)
 
     def unregister(self, name):
@@ -119,7 +113,7 @@ class SerializerRegistry(object):
         # If a raw string was sent, assume binary encoding
         # (it's likely either ASCII or a raw binary file, and a character
         # set of 'binary' will encompass both, even if not ideal.
-        if not serializer and isinstance(data, bytes_type):
+        if not serializer and isinstance(data, bytes_t):
             # In Python 3+, this would be "bytes"; allow binary data to be
             # sent as a message without getting encoder errors
             return "application/data", "binary", data
@@ -141,26 +135,20 @@ class SerializerRegistry(object):
         return content_type, content_encoding, payload
 
     def decode(self, data, content_type, content_encoding, force=False):
-        if content_type in self._disabled_content_types:
+        if content_type in self._disabled_content_types and not force:
             raise SerializerNotInstalled(
                 "Content-type %r has been disabled." % (content_type, ))
         content_type = content_type or 'application/data'
         content_encoding = (content_encoding or 'utf-8').lower()
 
-        # Don't decode 8-bit strings or Unicode objects
-        if content_encoding not in ('binary', 'ascii-8bit') and \
-                not isinstance(data, unicode):
-            data = _decode(data, content_encoding)
-
-        try:
-            decoder = self._decoders[content_type]
-        except KeyError:
-            return data
-
-        if not data:
-            return data
-
-        return decoder(data)
+        if data:
+            decode = self._decoders.get(content_type)
+            if decode:
+                return decode(data)
+            if content_encoding not in SKIP_DECODE and \
+                    not isinstance(data, unicode):
+                return _decode(data, content_encoding)
+        return data
 
 
 """
@@ -276,10 +264,12 @@ def raw_encode(data):
 
 def register_json():
     """Register a encoder/decoder for JSON serialization."""
-    from anyjson import serialize as json_serialize
-    from anyjson import deserialize as json_deserialize
+    from anyjson import loads, dumps
 
-    registry.register('json', json_serialize, json_deserialize,
+    def _loads(obj):
+        return loads(bytes_to_str(obj))
+
+    registry.register('json', dumps, _loads,
                       content_type='application/json',
                       content_encoding='utf-8')
 
