@@ -9,6 +9,7 @@ Redis transport.
 
 """
 from __future__ import absolute_import
+from __future__ import with_statement
 
 from threading import Lock
 from time import time
@@ -55,11 +56,10 @@ class DummyLock(object):
 
 
 class QoS(virtual.QoS):
-    restore_at_shutdown = False
+    restore_at_shutdown = True
 
     def __init__(self, *args, **kwargs):
         super(QoS, self).__init__(*args, **kwargs)
-        from threading import Lock
         self.mutex = DummyLock()  # XXX let's see how this works out
         self._vrestore_count = 0
 
@@ -74,6 +74,11 @@ class QoS(virtual.QoS):
                    .execute()
             super(QoS, self).append(message, delivery_tag)
 
+    def restore_unacked(self):
+        for tag in self._delivered.iterkeys():
+            self.restore_by_tag(tag)
+        self._delivered.clear()
+
     def ack(self, delivery_tag):
         with self.mutex:
             self._remove_from_indices(delivery_tag).execute()
@@ -86,23 +91,24 @@ class QoS(virtual.QoS):
                 .hdel(self.unacked_key, delivery_tag)
 
     def restore_visible(self, start=0, num=10, interval=10):
-        if self._vrestore_count % interval:
+        self._vrestore_count += 1
+        if (self._vrestore_count - 1) % interval:
             return
         with self.mutex:
-            client = self.client
-            unacked_key = self.unacked_key
             ceil = time() - self.visibility_timeout
-            visible = client.zrevrangebyscore(
+            visible = self.client.zrevrangebyscore(
                     self.unacked_index_key, ceil, 0,
                     start=start, num=num, withscores=True)
             for tag, score in visible or []:
-                p, _, _ = self._remove_from_indices(tag,
-                                    client.pipeline().hget(unacked_key, tag)) \
-                                .execute()
-                if p:
-                    M, EX, RK = loads(p)
-                    self.channel._do_restore_message(M, EX, RK)
-            self._vrestore_count += 1
+                self.restore_by_tag(tag)
+
+    def restore_by_tag(self, tag):
+        p, _, _ = self._remove_from_indices(tag,
+                        self.client.pipeline().hget(self.unacked_key, tag)) \
+                            .execute()
+        if p:
+            M, EX, RK = loads(p)
+            self.channel._do_restore_message(M, EX, RK)
 
     @cached_property
     def client(self):
@@ -195,7 +201,7 @@ class MultiChannelPoller(object):
                 self._register_LISTEN(channel)
 
         events = self._poller.poll(timeout)
-        for fileno, event in events:
+        for fileno, event in events or []:
             if event & eventio.POLL_READ:
                 chan, type = self._fd_to_chan[fileno]
                 if chan.qos.can_consume():
