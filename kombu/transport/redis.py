@@ -70,7 +70,7 @@ class QoS(virtual.QoS):
             self.client.pipeline() \
                    .zadd(self.unacked_index_key, delivery_tag, time()) \
                    .hset(self.unacked_key, delivery_tag,
-                       serialize([message._raw, EX, RK])) \
+                       dumps([message._raw, EX, RK])) \
                    .execute()
             super(QoS, self).append(message, delivery_tag)
 
@@ -100,7 +100,7 @@ class QoS(virtual.QoS):
                                     client.pipeline().hget(unacked_key, tag)) \
                                 .execute()
                 if p:
-                    M, EX, RK = deserialize(p)
+                    M, EX, RK = loads(p)
                     self.channel._do_restore_message(M, EX, RK)
             self._vrestore_count += 1
 
@@ -252,7 +252,7 @@ class Channel(virtual.Channel):
     def _do_restore_message(self, payload, exchange, routing_key):
         # NOTE does not set 'redelivered' header.
         for queue in self._lookup(exchange, routing_key):
-            self._avail_client.lpush(queue, serialize(payload))
+            self._avail_client.lpush(queue, dumps(payload))
 
     def _restore(self, message, payload=None):
         tag = message.delivery_tag
@@ -261,7 +261,7 @@ class Channel(virtual.Channel):
                             .hdel(self.unacked_key, tag) \
                          .execute()
         if P:
-            M, EX, RK = deserialize(P)
+            M, EX, RK = loads(P)
             self._do_restore_message(M, EX, RK)
 
     def _next_delivery_tag(self):
