@@ -56,6 +56,10 @@ class test_mongodb(TestCase):
         # c = BrokerConnection(url, transport=Transport).connect()
         # client = c.channels[0].client
 
+        url = "mongodb://localhost:27017,localhost2:29017/dbname"
+        c = BrokerConnection(url, transport=Transport).connect()
+        client = c.channels[0].client
+
         url = "mongodb://username:password@localhost/dbname"
         c = BrokerConnection(url, transport=Transport).connect()
         # Assuming there's no user 'username' with password 'password'
