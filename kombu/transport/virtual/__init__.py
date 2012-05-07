@@ -96,6 +96,9 @@ class QoS(object):
     #: them.
     _dirty = set()
 
+    #: If disabled, unacked messages won't be restored at shutdown.
+    restore_at_shutdown = True
+
     def __init__(self, channel, prefetch_count=0):
         self.channel = channel
         self.prefetch_count = prefetch_count or 0
@@ -166,7 +169,7 @@ class QoS(object):
         return errors
 
     def restore_unacked_once(self):
-        """Restores all uncknowledged message at shutdown/gc collect.
+        """Restores all unacknowledged message at shutdown/gc collect.
 
         Will only be done once for each instance.
 
@@ -175,7 +178,9 @@ class QoS(object):
         self._flush()
         state = self._delivered
 
-        if not self.channel.do_restore or getattr(state, "restored", None):
+        if not self.restore_at_shutdown:
+            return
+        elif not self.channel.do_restore or getattr(state, "restored", None):
             assert not state
             return
 
@@ -196,6 +201,7 @@ class QoS(object):
 class Message(base.Message):
 
     def __init__(self, channel, payload, **kwargs):
+        self._raw = payload
         properties = payload["properties"]
         body = payload.get("body")
         if body:
@@ -287,6 +293,9 @@ class Channel(AbstractChannel, base.StdChannel):
     """
     #: message class used.
     Message = Message
+
+    #: QoS class used.
+    QoS = QoS
 
     #: flag to restore unacked messages when channel
     #: goes out of scope.
@@ -608,7 +617,7 @@ class Channel(AbstractChannel, base.StdChannel):
     def qos(self):
         """:class:`QoS` manager for this channel."""
         if self._qos is None:
-            self._qos = QoS(self)
+            self._qos = self.QoS(self)
         return self._qos
 
     @property

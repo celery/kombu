@@ -58,7 +58,6 @@ class Client(object):
         self.queues.pop(key, None)
 
     def sadd(self, key, member):
-        print("SADD %r: %r" % (key, member))
         if key not in self.sets:
             self.sets[key] = set()
         self.sets[key].add(member)

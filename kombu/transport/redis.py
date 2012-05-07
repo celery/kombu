@@ -9,7 +9,10 @@ Redis transport.
 
 """
 from __future__ import absolute_import
+from __future__ import with_statement
 
+from threading import Lock
+from time import time
 from Queue import Empty
 
 from anyjson import loads, dumps
@@ -19,7 +22,7 @@ from kombu.exceptions import (
     StdChannelError,
     VersionMismatch,
 )
-from kombu.utils import eventio, cached_property
+from kombu.utils import eventio, cached_property, uuid
 from kombu.utils.encoding import str_t
 
 from . import virtual
@@ -41,6 +44,87 @@ DEFAULT_DB = 0
 # Also it means we can easily use PUBLISH/SUBSCRIBE to do fanout
 # exchanges (broadcast), as an alternative to pushing messages to fanout-bound
 # queues manually.
+
+
+class DummyLock(object):
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc_info):
+        pass
+
+
+class QoS(virtual.QoS):
+    restore_at_shutdown = True
+
+    def __init__(self, *args, **kwargs):
+        super(QoS, self).__init__(*args, **kwargs)
+        self.mutex = DummyLock()  # XXX let's see how this works out
+        self._vrestore_count = 0
+
+    def append(self, message, delivery_tag):
+        with self.mutex:
+            delivery = message.delivery_info
+            EX, RK = delivery["exchange"], delivery["routing_key"]
+            self.client.pipeline() \
+                   .zadd(self.unacked_index_key, delivery_tag, time()) \
+                   .hset(self.unacked_key, delivery_tag,
+                       dumps([message._raw, EX, RK])) \
+                   .execute()
+            super(QoS, self).append(message, delivery_tag)
+
+    def restore_unacked(self):
+        for tag in self._delivered.iterkeys():
+            self.restore_by_tag(tag)
+        self._delivered.clear()
+
+    def ack(self, delivery_tag):
+        with self.mutex:
+            self._remove_from_indices(delivery_tag).execute()
+            super(QoS, self).ack(delivery_tag)
+    reject = ack
+
+    def _remove_from_indices(self, delivery_tag, pipe=None):
+        return (pipe or self.client.pipeline()) \
+                .zrem(self.unacked_index_key, delivery_tag) \
+                .hdel(self.unacked_key, delivery_tag)
+
+    def restore_visible(self, start=0, num=10, interval=10):
+        self._vrestore_count += 1
+        if (self._vrestore_count - 1) % interval:
+            return
+        with self.mutex:
+            ceil = time() - self.visibility_timeout
+            visible = self.client.zrevrangebyscore(
+                    self.unacked_index_key, ceil, 0,
+                    start=start, num=num, withscores=True)
+            for tag, score in visible or []:
+                self.restore_by_tag(tag)
+
+    def restore_by_tag(self, tag):
+        p, _, _ = self._remove_from_indices(tag,
+                        self.client.pipeline().hget(self.unacked_key, tag)) \
+                            .execute()
+        if p:
+            M, EX, RK = loads(p)
+            self.channel._do_restore_message(M, EX, RK)
+
+    @cached_property
+    def client(self):
+        return self.channel._avail_client
+
+    @cached_property
+    def unacked_key(self):
+        return self.channel.unacked_key
+
+    @cached_property
+    def unacked_index_key(self):
+        return self.channel.unacked_index_key
+
+    @cached_property
+    def visibility_timeout(self):
+        return self.channel.visibility_timeout
 
 
 class MultiChannelPoller(object):
@@ -106,15 +190,18 @@ class MultiChannelPoller(object):
             channel._subscribe()  # send SUBSCRIBE
 
     def get(self, timeout=None):
+        # - reset active redis commands.
+        direct_channels = set()
         for channel in self._channels:
             if channel.active_queues:           # BRPOP mode?
+                direct_channels.add(channel)
                 if channel.qos.can_consume():
                     self._register_BRPOP(channel)
             if channel.active_fanout_queues:    # LISTEN mode?
                 self._register_LISTEN(channel)
 
         events = self._poller.poll(timeout)
-        for fileno, event in events:
+        for fileno, event in events or []:
             if event & eventio.POLL_READ:
                 chan, type = self._fd_to_chan[fileno]
                 if chan.qos.can_consume():
@@ -123,10 +210,16 @@ class MultiChannelPoller(object):
                 chan, type = self._fd_to_chan[fileno]
                 chan._poll_error(type)
                 break
+
+        # - no new data, so try to restore messages.
+        for channel in direct_channels:
+            channel.qos.restore_visible()
         raise Empty()
 
 
 class Channel(virtual.Channel):
+    QoS = QoS
+
     _client = None
     _subclient = None
     supports_fanout = True
@@ -135,6 +228,14 @@ class Channel(virtual.Channel):
     _in_poll = False
     _in_listen = False
     _fanout_queues = {}
+    unacked_key = "unacked"
+    unacked_index_key = "unacked_index"
+    visibility_timeout = 18000  # 5 hours
+
+    from_transport_options = (virtual.Channel.from_transport_options
+                            + ("unacked_key",
+                               "unacked_index_key",
+                               "visibility_timeout"))
 
     def __init__(self, *args, **kwargs):
         super_ = super(Channel, self)
@@ -153,6 +254,24 @@ class Channel(virtual.Channel):
         # copy errors, in case channel closed but threads still
         # are still waiting for data.
         self.connection_errors = self.connection.connection_errors
+
+    def _do_restore_message(self, payload, exchange, routing_key):
+        # NOTE does not set 'redelivered' header.
+        for queue in self._lookup(exchange, routing_key):
+            self._avail_client.lpush(queue, dumps(payload))
+
+    def _restore(self, message, payload=None):
+        tag = message.delivery_tag
+        P, _ = self.client.pipeline() \
+                            .hget(self.unacked_key, tag) \
+                            .hdel(self.unacked_key, tag) \
+                         .execute()
+        if P:
+            M, EX, RK = loads(P)
+            self._do_restore_message(M, EX, RK)
+
+    def _next_delivery_tag(self):
+        return uuid()
 
     def basic_consume(self, queue, *args, **kwargs):
         if queue in self._fanout_queues:
