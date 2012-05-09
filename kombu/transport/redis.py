@@ -11,6 +11,7 @@ Redis transport.
 from __future__ import absolute_import
 from __future__ import with_statement
 
+from itertools import cycle, islice
 from threading import Lock
 from time import time
 from Queue import Empty
@@ -278,7 +279,9 @@ class Channel(virtual.Channel):
             exchange = self._fanout_queues[queue]
             self.active_fanout_queues.add(queue)
             self._fanout_to_queue[exchange] = queue
-        return super(Channel, self).basic_consume(queue, *args, **kwargs)
+        ret = super(Channel, self).basic_consume(queue, *args, **kwargs)
+        self._update_cycle()
+        return ret
 
     def basic_cancel(self, consumer_tag):
         try:
@@ -290,7 +293,9 @@ class Channel(virtual.Channel):
             self._fanout_to_queue.pop(self._fanout_queues[queue])
         except KeyError:
             pass
-        return super(Channel, self).basic_cancel(consumer_tag)
+        ret = super(Channel, self).basic_cancel(consumer_tag)
+        self._update_cycle()
+        return ret
 
     def _subscribe(self):
         keys = [self._fanout_queues[queue]
@@ -328,7 +333,7 @@ class Channel(virtual.Channel):
         raise Empty()
 
     def _brpop_start(self, timeout=1):
-        queues = self.active_queues
+        queues = self._consume_cycle()
         if not queues:
             return
         keys = [self._q_for_pri(queue, pri) for pri in range(10)
@@ -374,7 +379,7 @@ class Channel(virtual.Channel):
         for pri in range(10):
             cmds = cmds.llen(self._q_for_pri(queue, pri))
         sizes = cmds.execute()
-        return sum(sizes)
+        return sum(size for size in sizes if isinstance(size, int))
 
     def _q_for_pri(self, queue, pri):
         return '%s%s%s' % ((queue, self.sep, pri) if pri else (queue, '', ''))
@@ -529,6 +534,13 @@ class Channel(virtual.Channel):
     @subclient.deleter  # noqa
     def subclient(self, client):
         client.connection.disconnect()
+
+    def _update_cycle(self):
+        self._queue_cycle = cycle(self.active_queues)
+
+    def _consume_cycle(self):
+        active = len(self.active_queues)
+        return list(islice(self._queue_cycle, 0, active + 1))[:active]
 
     @property
     def active_queues(self):
