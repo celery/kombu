@@ -7,7 +7,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
 
-from kombu import virtual
+from kombu.transport import virtual
 from kombu.exceptions import StdChannelError
 
 from .models import Queue, Message, metadata
