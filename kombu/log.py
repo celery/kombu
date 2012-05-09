@@ -80,7 +80,7 @@ class LogMixin(object):
         return self._error(logging.CRITICAL, *args, **kwargs)
 
     def _error(self, severity, *args, **kwargs):
-        kwargs.setdefault("exc_info", sys.exc_info())
+        kwargs.setdefault("exc_info", True)
         if DISABLE_TRACEBACKS:
             kwargs.pop("exc_info", None)
         return self.log(severity, *args, **kwargs)

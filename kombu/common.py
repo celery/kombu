@@ -176,7 +176,7 @@ def collect_replies(conn, channel, queue, *args, **kwargs):
 def _ensure_errback(exc, interval):
     insured_logger.error(
         "Connection error: %r. Retry in %ss\n" % (exc, interval),
-            exc_info=sys.exc_info())
+            exc_info=True)
 
 
 def revive_connection(connection, channel, on_revive=None):

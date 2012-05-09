@@ -272,7 +272,7 @@ class BrokerConnection(object):
                     return fun(*args, **kwargs)
                 except self.connection_errors + self.channel_errors, exc:
                     self._debug("ensure got exception: %r" % (exc, ),
-                                exc_info=sys.exc_info())
+                                exc_info=True)
                     if got_connection:
                         raise
                     if max_retries is not None and retries > max_retries:
