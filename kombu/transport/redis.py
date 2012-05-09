@@ -242,6 +242,7 @@ class Channel(virtual.Channel):
         super_ = super(Channel, self)
         super_.__init__(*args, **kwargs)
 
+        self._queue_cycle = cycle([])
         self.Client = self._get_client()
         self.ResponseError = self._get_response_error()
         self.active_fanout_queues = set()

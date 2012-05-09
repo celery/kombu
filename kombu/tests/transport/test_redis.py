@@ -281,7 +281,6 @@ class test_Channel(TestCase):
                               "data": "data"})
 
     def test_brpop_start_but_no_queues(self):
-        self.channel.active_queues.clear()
         self.assertIsNone(self.channel._brpop_start())
 
     def test_receive(self):
