@@ -5,6 +5,7 @@ import socket
 import types
 
 from anyjson import dumps
+from collections import defaultdict
 from itertools import count
 from Queue import Empty, Queue as _Queue
 
@@ -38,7 +39,8 @@ class ResponseError(Exception):
 
 class Client(object):
     queues = {}
-    sets = {}
+    sets = defaultdict(set)
+    hashes = defaultdict(dict)
     shard_hint = None
 
     def __init__(self, db=None, port=None, **kwargs):
@@ -57,19 +59,28 @@ class Client(object):
     def delete(self, key):
         self.queues.pop(key, None)
 
-    def sadd(self, key, member):
-        if key not in self.sets:
-            self.sets[key] = set()
-        self.sets[key].add(member)
-
     def exists(self, key):
         return key in self.queues or key in self.sets
+
+    def hset(self, key, k, v):
+        self.hashes[key][k] = v
+
+    def hget(self, key, k):
+        return self.hashes[key].get(k)
+
+    def hdel(self, key, k):
+        self.hashes[key].pop(k, None)
+
+    def sadd(self, key, member, *args):
+        self.sets[key].add(member)
+    zadd = sadd
 
     def smembers(self, key):
         return self.sets.get(key, set())
 
-    def srem(self, key):
+    def srem(self, key, *args):
         self.sets.pop(key, None)
+    zrem = srem
 
     def llen(self, key):
         try:
