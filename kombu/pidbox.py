@@ -207,34 +207,31 @@ class Mailbox(object):
 
     def _broadcast(self, command, arguments=None, destination=None,
             reply=False, timeout=1, limit=None, callback=None, channel=None):
-        arguments = arguments or {}
-        reply_ticket = reply and uuid() or None
-
         if destination is not None and \
                 not isinstance(destination, (list, tuple)):
             raise ValueError("destination must be a list/tuple not %s" % (
                     type(destination)))
 
+        arguments = arguments or {}
+        reply_ticket = reply and uuid() or None
+        chan = channel or self.connection.default_channel
+
         # Set reply limit to number of destinations (if specified)
         if limit is None and destination:
             limit = destination and len(destination) or None
 
-        chan = channel or self.connection.channel()
-        try:
-            if reply_ticket:
-                self.get_reply_queue(reply_ticket)(chan).declare()
+        if reply_ticket:
+            self.get_reply_queue(reply_ticket)(chan).declare()
 
-            self._publish(command, arguments, destination=destination,
-                                              reply_ticket=reply_ticket,
-                                              channel=chan)
+        self._publish(command, arguments, destination=destination,
+                                          reply_ticket=reply_ticket,
+                                          channel=chan)
 
-            if reply_ticket:
-                return self._collect(reply_ticket, limit=limit,
-                                                   timeout=timeout,
-                                                   callback=callback,
-                                                   channel=chan)
-        finally:
-            channel or chan.close()
+        if reply_ticket:
+            return self._collect(reply_ticket, limit=limit,
+                                               timeout=timeout,
+                                               callback=callback,
+                                               channel=chan)
 
     def _collect(self, ticket, limit=None, timeout=1,
             callback=None, channel=None):
