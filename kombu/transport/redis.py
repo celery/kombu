@@ -31,6 +31,17 @@ from . import virtual
 DEFAULT_PORT = 6379
 DEFAULT_DB = 0
 
+PRIORITY_STEPS = [0, 3, 6, 9]
+
+
+def priority(n):
+    if n >= 0 and n < 3:
+        return 0
+    elif n >= 3 and n < 6:
+        return 3
+    elif n >= 6 and n < 9:
+        return 6
+    return 9
 
 # This implementation may seem overly complex, but I assure you there is
 # a good reason for doing it this way.
@@ -337,7 +348,7 @@ class Channel(virtual.Channel):
         queues = self._consume_cycle()
         if not queues:
             return
-        keys = [self._q_for_pri(queue, pri) for pri in range(10)
+        keys = [self._q_for_pri(queue, pri) for pri in PRIORITY_STEPS
                         for queue in queues] + [timeout or 0]
         self.client.connection.send_command("BRPOP", *keys)
         self._in_poll = True
@@ -369,7 +380,7 @@ class Channel(virtual.Channel):
             pass
 
     def _get(self, queue):
-        for pri in range(10):
+        for pri in PRIORITY_STEPS:
             item = self._avail_client.rpop(self._q_for_pri(queue, pri))
             if item:
                 return loads(item)
@@ -377,12 +388,13 @@ class Channel(virtual.Channel):
 
     def _size(self, queue):
         cmds = self._avail_client.pipeline()
-        for pri in range(10):
+        for pri in PRIORITY_STEPS:
             cmds = cmds.llen(self._q_for_pri(queue, pri))
         sizes = cmds.execute()
         return sum(size for size in sizes if isinstance(size, int))
 
     def _q_for_pri(self, queue, pri):
+        pri = priority(pri)
         return '%s%s%s' % ((queue, self.sep, pri) if pri else (queue, '', ''))
 
     def _put(self, queue, message, **kwargs):
@@ -413,13 +425,13 @@ class Channel(virtual.Channel):
                                                pattern or "",
                                                queue or ""]))
         cmds = self._avail_client.pipeline()
-        for pri in range(10):
+        for pri in PRIORITY_STEPS:
             cmds = cmds.delete(self._q_for_pri(queue, pri))
         cmds.execute()
 
     def _has_queue(self, queue, **kwargs):
         cmds = self._avail_client.pipeline()
-        for pri in range(10):
+        for pri in PRIORITY_STEPS:
             cmds = cmds.exists(self._q_for_pri(queue, pri))
         return any(cmds.execute())
 
@@ -434,7 +446,7 @@ class Channel(virtual.Channel):
 
     def _purge(self, queue):
         cmds = self.pipeline()
-        for pri in range(10):
+        for pri in PRIORITY_STEPS:
             priq = self._q_for_pri(queue, pri)
             cmds = cmds.llen(priq).delete(priq)
         sizes = cmds.execute()
