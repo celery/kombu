@@ -11,6 +11,7 @@ Redis transport.
 from __future__ import absolute_import
 from __future__ import with_statement
 
+from bisect import bisect
 from itertools import cycle, islice
 from threading import Lock
 from time import time
@@ -32,16 +33,6 @@ DEFAULT_PORT = 6379
 DEFAULT_DB = 0
 
 PRIORITY_STEPS = [0, 3, 6, 9]
-
-
-def priority(n):
-    if n >= 0 and n < 3:
-        return 0
-    elif n >= 3 and n < 6:
-        return 3
-    elif n >= 6 and n < 9:
-        return 6
-    return 9
 
 # This implementation may seem overly complex, but I assure you there is
 # a good reason for doing it this way.
@@ -243,11 +234,13 @@ class Channel(virtual.Channel):
     unacked_key = "unacked"
     unacked_index_key = "unacked_index"
     visibility_timeout = 18000  # 5 hours
+    priority_steps = PRIORITY_STEPS
 
     from_transport_options = (virtual.Channel.from_transport_options
                             + ("unacked_key",
                                "unacked_index_key",
-                               "visibility_timeout"))
+                               "visibility_timeout",
+                               "priority_steps"))
 
     def __init__(self, *args, **kwargs):
         super_ = super(Channel, self)
@@ -394,8 +387,12 @@ class Channel(virtual.Channel):
         return sum(size for size in sizes if isinstance(size, int))
 
     def _q_for_pri(self, queue, pri):
-        pri = priority(pri)
+        pri = self.priority(pri)
         return '%s%s%s' % ((queue, self.sep, pri) if pri else (queue, '', ''))
+
+    def priority(self, n):
+        steps = self.priority_steps
+        return steps[bisect(steps, n) - 1]
 
     def _put(self, queue, message, **kwargs):
         """Deliver message."""
