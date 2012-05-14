@@ -3,10 +3,8 @@ from __future__ import with_statement
 
 import socket
 
-from kombu.common import eventloop, itermessages
 from kombu.connection import BrokerConnection
 from kombu.entity import Exchange, Queue
-from kombu.exceptions import StdChannelError
 from kombu.messaging import Consumer, Producer
 
 from kombu.tests.utils import TestCase

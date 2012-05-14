@@ -13,7 +13,6 @@ from __future__ import with_statement
 
 from bisect import bisect
 from itertools import cycle, islice
-from threading import Lock
 from time import time
 from Queue import Empty
 

@@ -12,7 +12,6 @@ from __future__ import absolute_import
 from __future__ import with_statement
 
 import socket
-import sys
 
 from collections import deque
 from functools import partial
@@ -103,6 +102,7 @@ def itermessages(conn, channel, queue, limit=1, timeout=None,
         Consumer=_Consumer, callbacks=None, **kwargs):
     return drain_consumer(Consumer(channel, queues=[queue], **kwargs),
                           limit=limit, timeout=timeout, callbacks=callbacks)
+
 
 def eventloop(conn, limit=None, timeout=None, ignore_timeouts=False):
     """Best practice generator wrapper around ``Connection.drain_events``.

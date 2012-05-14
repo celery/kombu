@@ -12,7 +12,6 @@ from __future__ import absolute_import
 from __future__ import with_statement
 
 import os
-import sys
 import socket
 
 from contextlib import contextmanager

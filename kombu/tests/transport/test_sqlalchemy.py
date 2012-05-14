@@ -1,24 +1,23 @@
 from __future__ import absolute_import
+from __future__ import with_statement
 
-import tempfile
+from mock import patch
 
 from kombu.connection import BrokerConnection
 from kombu.tests.utils import TestCase
 
+
 class test_sqlalchemy(TestCase):
 
-    def test_url_parser(self):
-        from kombu.transport import sqlalchemy
+    @patch("kombu.transport.sqlalchemy.Channel._open")
+    def test_url_parser(self, _open):
+        url = "sqlalchemy+sqlite://celerydb.sqlite"
+        BrokerConnection(url).connect()
 
-        tmppath = tempfile.mkdtemp()
-
-        url = "sqlalchemy+sqlite://{path}/celerydb.sqlite".format(path=tmppath)
-        connection = BrokerConnection(url).connect()
-
-        url = "sqla+sqlite://{path}/celerydb.sqlite".format(path=tmppath)
-        connection = BrokerConnection(url).connect()
+        url = "sqla+sqlite://celerydb.sqlite"
+        BrokerConnection(url).connect()
 
         # Should prevent regression fixed by f187ccd
-        url = "sqlb+sqlite://{path}/celerydb.sqlite".format(path=tmppath)
+        url = "sqlb+sqlite://celerydb.sqlite"
         with self.assertRaises(KeyError):
             BrokerConnection(url).connect()
