@@ -23,10 +23,13 @@ from kombu.exceptions import (
     StdChannelError,
     VersionMismatch,
 )
+from kombu.log import get_logger
 from kombu.utils import eventio, cached_property, uuid
 from kombu.utils.encoding import str_t
 
 from . import virtual
+
+logger = get_logger("kombu.transport.redis")
 
 DEFAULT_PORT = 6379
 DEFAULT_DB = 0
@@ -261,9 +264,16 @@ class Channel(virtual.Channel):
         self.connection_errors = self.connection.connection_errors
 
     def _do_restore_message(self, payload, exchange, routing_key):
-        # NOTE does not set 'redelivered' header.
-        for queue in self._lookup(exchange, routing_key):
-            self._avail_client.lpush(queue, dumps(payload))
+        try:
+            try:
+                payload["headers"]["redelivered"] = True
+            except KeyError:
+                pass
+            for queue in self._lookup(exchange, routing_key):
+                self._avail_client.lpush(queue, dumps(payload))
+        except Exception:
+            logger.critical("Could not restore message: %r", payload,
+                    exc_info=True)
 
     def _restore(self, message, payload=None):
         tag = message.delivery_tag
