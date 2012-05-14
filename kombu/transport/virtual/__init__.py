@@ -221,7 +221,7 @@ class Message(base.Message):
         props = self.properties
         body, _ = self.channel.encode_body(self.body,
                                            props.get("body_encoding"))
-        headers = dict(headers)
+        headers = dict(self.headers)
         # remove compression header
         headers.pop("compression", None)
         return {"body": body,
