@@ -186,7 +186,8 @@ class QoS(object):
 
         try:
             if state:
-                say("Restoring unacknowledged messages: %s", state)
+                say("Restoring %r unacknowledged message(s).",
+                        len(self._delivered))
                 unrestored = self.restore_unacked()
 
                 if unrestored:
