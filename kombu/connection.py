@@ -170,9 +170,12 @@ class BrokerConnection(object):
         while 1:
             try:
                 self.drain_events(timeout=0.0)
+            except socket.timeout:
+                return
             except socket.error, exc:
                 if exc.errno == errno.EAGAIN:
                     return
+                raise
 
     def maybe_close_channel(self, channel):
         try:
