@@ -74,7 +74,7 @@ class _kqueue(Poller):
         self._active[fd] = events
 
     def unregister(self, fd):
-        events = self._active.pop(fd)
+        events = self._active.pop(fd, None)
         try:
             self._control(fd, events, select.KQ_EV_DELETE)
         except socket.error:
