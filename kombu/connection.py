@@ -11,6 +11,7 @@ Broker connection and pools.
 from __future__ import absolute_import
 from __future__ import with_statement
 
+import errno
 import os
 import socket
 
@@ -164,6 +165,14 @@ class BrokerConnection(object):
 
         """
         return self.transport.drain_events(self.connection, **kwargs)
+
+    def drain_all_events(self):
+        while 1:
+            try:
+                self.drain_events(timeout=0.0)
+            except socket.error, exc:
+                if exc.errno == errno.EAGAIN:
+                    return
 
     def maybe_close_channel(self, channel):
         try:
@@ -609,6 +618,10 @@ class BrokerConnection(object):
     def channel_errors(self):
         """List of exceptions that may be raised by the channel."""
         return self.transport.channel_errors
+
+    @property
+    def eventmap(self):
+        return self.transport.eventmap(self.connection)
 Connection = BrokerConnection
 
 

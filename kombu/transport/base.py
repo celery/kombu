@@ -207,6 +207,11 @@ class Transport(object):
     def drain_events(self, connection, **kwargs):
         raise NotImplementedError("Subclass responsibility")
 
+    def eventmap(self, connection):
+        """Map of fd -> event handler for event based use.
+        Unconvenient to use, and limited transport support."""
+        return {}
+
     def verify_connection(self, connection):
         return True
 
