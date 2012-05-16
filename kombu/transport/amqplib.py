@@ -307,6 +307,12 @@ class Transport(base.Transport):
         return {connection.method_reader.source.sock:
                     self.client.drain_all_events}
 
+    def on_poll_init(self, poller):
+        pass
+
+    def on_poll_start(self):
+        return {}
+
     @property
     def default_connection_params(self):
         return {"userid": "guest", "password": "guest",

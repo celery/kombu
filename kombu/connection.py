@@ -166,7 +166,7 @@ class BrokerConnection(object):
         """
         return self.transport.drain_events(self.connection, **kwargs)
 
-    def drain_all_events(self):
+    def drain_all_events(self, *args):
         while 1:
             try:
                 self.drain_events(timeout=0.0)
@@ -625,6 +625,10 @@ class BrokerConnection(object):
     @property
     def eventmap(self):
         return self.transport.eventmap(self.connection)
+
+    @property
+    def is_evented(self):
+        return self.eventmap or getattr(self.transport, "on_poll_start", None)
 Connection = BrokerConnection
 
 

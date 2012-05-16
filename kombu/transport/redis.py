@@ -143,18 +143,18 @@ class MultiChannelPoller(object):
         # channel -> socket map
         self._chan_to_sock = {}
         # poll implementation (epoll/kqueue/select)
-        self._poller = eventio.poll()
+        self.poller = eventio.poll()
 
     def close(self):
         for fd in self._chan_to_sock.itervalues():
             try:
-                self._poller.unregister(fd)
+                self.poller.unregister(fd)
             except KeyError:
                 pass
         self._channels.clear()
         self._fd_to_chan.clear()
         self._chan_to_sock.clear()
-        self._poller = None
+        self.poller = None
 
     def add(self, channel):
         self._channels.add(channel)
@@ -170,10 +170,10 @@ class MultiChannelPoller(object):
         sock = client.connection._sock
         self._fd_to_chan[sock.fileno()] = (channel, type)
         self._chan_to_sock[(channel, client, type)] = sock
-        self._poller.register(sock, self.eventflags)
+        self.poller.register(sock, self.eventflags)
 
     def _unregister(self, channel, client, type):
-        self._poller.unregister(self._chan_to_sock[(channel, client, type)])
+        self.poller.unregister(self._chan_to_sock[(channel, client, type)])
 
     def _register_BRPOP(self, channel):
         """enable BRPOP mode for channel."""
@@ -194,32 +194,47 @@ class MultiChannelPoller(object):
         if not channel._in_listen:
             channel._subscribe()  # send SUBSCRIBE
 
-    def get(self, timeout=None):
-        # - reset active redis commands.
-        direct_channels = set()
+    def on_poll_start(self):
         for channel in self._channels:
             if channel.active_queues:           # BRPOP mode?
-                direct_channels.add(channel)
                 if channel.qos.can_consume():
                     self._register_BRPOP(channel)
             if channel.active_fanout_queues:    # LISTEN mode?
                 self._register_LISTEN(channel)
 
-        events = self._poller.poll(timeout)
+    def handle_event(self, fileno, event):
+        if event & eventio.POLL_READ:
+            chan, type = self._fd_to_chan[fileno]
+            if chan.qos.can_consume():
+                return chan.handlers[type](), self
+        elif event & eventio.POLL_ERR:
+            chan, type = self._fd_to_chan[fileno]
+            chan._poll_error(type)
+
+    def get(self, timeout=None):
+        for channel in self._channels:
+            if channel.active_queues:           # BRPOP mode?
+                if channel.qos.can_consume():
+                    self._register_BRPOP(channel)
+            if channel.active_fanout_queues:    # LISTEN mode?
+                self._register_LISTEN(channel)
+
+        events = self.poller.poll(timeout)
         for fileno, event in events or []:
-            if event & eventio.POLL_READ:
-                chan, type = self._fd_to_chan[fileno]
-                if chan.qos.can_consume():
-                    return chan.handlers[type](), self
-            elif event & eventio.POLL_ERR:
-                chan, type = self._fd_to_chan[fileno]
-                chan._poll_error(type)
-                break
+            ret = self.handle_event(fileno, event)
+            if ret:
+                return ret
 
         # - no new data, so try to restore messages.
-        for channel in direct_channels:
-            channel.qos.restore_visible()
+        # - reset active redis commands.
+        for channel in self._channels:
+            if channel.active_queues:
+                channel.qos.restore_visible()
         raise Empty()
+
+    @property
+    def fds(self):
+        return self._fd_to_chan
 
 
 class Channel(virtual.Channel):
@@ -362,7 +377,7 @@ class Channel(virtual.Channel):
                 dest__item = self.client.parse_response(self.client.connection,
                                                         "BRPOP",
                                                         **options)
-            except self.connection_errors:
+            except self.connection_errors, exc:
                 # if there's a ConnectionError, disconnect so the next
                 # iteration will reconnect automatically.
                 self.client.connection.disconnect()
@@ -588,6 +603,25 @@ class Transport(virtual.Transport):
         super(Transport, self).__init__(*args, **kwargs)
         self.connection_errors, self.channel_errors = self._get_errors()
         self.cycle = MultiChannelPoller()
+
+    def on_poll_init(self, poller):
+        self.cycle.poller = poller
+
+    def on_poll_start(self):
+        cycle = self.cycle
+        cycle.on_poll_start()
+        return dict((fd, self.handle_event) for fd in cycle.fds)
+
+    def handle_event(self, fileno, event):
+        ret = self.cycle.handle_event(fileno, event)
+        if ret:
+            item, channel = ret
+            message, queue = item
+            if not queue or queue not in self._callbacks:
+                raise KeyError(
+                    "Received message for queue '%s' without consumers: %s" % (
+                        queue, message))
+            self._callbacks[queue](message)
 
     def _get_errors(self):
         from redis import exceptions

@@ -632,7 +632,7 @@ class test_MultiChannelPoller(TestCase):
 
     def test_close_unregisters_fds(self):
         p = self.Poller()
-        poller = p._poller = Mock()
+        poller = p.poller = Mock()
         p._chan_to_sock.update({1: 1, 2: 2, 3: 3})
 
         p.close()
@@ -646,14 +646,14 @@ class test_MultiChannelPoller(TestCase):
 
     def test_close_when_unregister_raises_KeyError(self):
         p = self.Poller()
-        p._poller = Mock()
+        p.poller = Mock()
         p._chan_to_sock.update({1: 1})
-        p._poller.unregister.side_effect = KeyError(1)
+        p.poller.unregister.side_effect = KeyError(1)
         p.close()
 
     def test_close_resets_state(self):
         p = self.Poller()
-        p._poller = Mock()
+        p.poller = Mock()
         p._channels = Mock()
         p._fd_to_chan = Mock()
         p._chan_to_sock = Mock()
@@ -665,21 +665,21 @@ class test_MultiChannelPoller(TestCase):
         p._channels.clear.assert_called_with()
         p._fd_to_chan.clear.assert_called_with()
         p._chan_to_sock.clear.assert_called_with()
-        self.assertIsNone(p._poller)
+        self.assertIsNone(p.poller)
 
     def test_register_when_registered_reregisters(self):
         p = self.Poller()
-        p._poller = Mock()
+        p.poller = Mock()
         channel, client, type = Mock(), Mock(), Mock()
         sock = client.connection._sock = Mock()
         sock.fileno.return_value = 10
 
         p._chan_to_sock = {(channel, client, type): 6}
         p._register(channel, client, type)
-        p._poller.unregister.assert_called_with(6)
+        p.poller.unregister.assert_called_with(6)
         self.assertTupleEqual(p._fd_to_chan[10], (channel, type))
         self.assertEqual(p._chan_to_sock[(channel, client, type)], sock)
-        p._poller.register.assert_called_with(sock, p.eventflags)
+        p.poller.register.assert_called_with(sock, p.eventflags)
 
         # when client not connected yet
         client.connection._sock = None
@@ -733,8 +733,8 @@ class test_MultiChannelPoller(TestCase):
         _aq = [] if queues is None else queues
         _af = [] if fanouts is None else fanouts
         p = self.Poller()
-        p._poller = Mock()
-        p._poller.poll.return_value = _pr
+        p.poller = Mock()
+        p.poller.poll.return_value = _pr
 
         p._register_BRPOP = Mock()
         p._register_LISTEN = Mock()
