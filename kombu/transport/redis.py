@@ -88,7 +88,9 @@ class QoS(virtual.QoS):
         with self.mutex:
             self._remove_from_indices(delivery_tag).execute()
             super(QoS, self).ack(delivery_tag)
-    reject = ack
+
+    def reject(self, delivery_tag, requeue=False):
+        self.ack(delivery_tag)
 
     def _remove_from_indices(self, delivery_tag, pipe=None):
         return (pipe or self.client.pipeline()) \
