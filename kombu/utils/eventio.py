@@ -51,7 +51,11 @@ class _epoll(Poller):
         self._epoll = select.epoll()
 
     def register(self, fd, events):
-        self._epoll.register(fd, events)
+        try:
+            self._epoll.register(fd, events)
+        except Exception, exc:
+            if get_errno(exc) != errno.EEXIST:
+                raise
 
     def unregister(self, fd):
         try:
