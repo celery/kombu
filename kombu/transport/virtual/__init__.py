@@ -378,7 +378,7 @@ class Channel(AbstractChannel, base.StdChannel):
             self.queue_delete(queue, if_unused=True, if_empty=True)
         self.state.exchanges.pop(exchange, None)
 
-    def queue_declare(self, queue, passive=False, auto_delete=False, **kwargs):
+    def queue_declare(self, queue, passive=False, **kwargs):
         """Declare queue."""
         if passive and not self._has_queue(queue, **kwargs):
             raise StdChannelError("404",

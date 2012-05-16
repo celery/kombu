@@ -252,6 +252,7 @@ class Channel(virtual.Channel):
         self.Client = self._get_client()
         self.ResponseError = self._get_response_error()
         self.active_fanout_queues = set()
+        self.auto_delete_queues = set()
         self._fanout_to_queue = {}
         self.handlers = {"BRPOP": self._brpop_read, "LISTEN": self._receive}
 
@@ -416,6 +417,10 @@ class Channel(virtual.Channel):
         """Deliver fanout message."""
         self._avail_client.publish(exchange, dumps(message))
 
+    def _new_queue(self, queue, auto_delete=False, **kwargs):
+        if auto_delete:
+            self.auto_delete_queues.add(queue)
+
     def _queue_bind(self, exchange, routing_key, pattern, queue):
         if self.typeof(exchange).type == "fanout":
             # Mark exchange as fanout.
@@ -426,6 +431,7 @@ class Channel(virtual.Channel):
                                            queue or ""]))
 
     def _delete(self, queue, exchange, routing_key, pattern, *args):
+        self.auto_delete_queues.discard(queue)
         self._avail_client.srem(self.keyprefix_queue % (exchange, ),
                                 self.sep.join([routing_key or "",
                                                pattern or "",
@@ -462,6 +468,11 @@ class Channel(virtual.Channel):
         if not self.closed:
             # remove from channel poller.
             self.connection.cycle.discard(self)
+
+            # delete fanout bindings
+            for queue in self._fanout_queues.iterkeys():
+                if queue in self.auto_delete_queues:
+                    self.queue_delete(queue)
 
             # Close connections
             for attr in "client", "subclient":
