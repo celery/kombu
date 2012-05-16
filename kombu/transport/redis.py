@@ -377,7 +377,7 @@ class Channel(virtual.Channel):
                 dest__item = self.client.parse_response(self.client.connection,
                                                         "BRPOP",
                                                         **options)
-            except self.connection_errors, exc:
+            except self.connection_errors:
                 # if there's a ConnectionError, disconnect so the next
                 # iteration will reconnect automatically.
                 self.client.connection.disconnect()
