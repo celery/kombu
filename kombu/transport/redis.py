@@ -464,8 +464,8 @@ class Channel(virtual.Channel):
 
     def get_table(self, exchange):
         key = self.keyprefix_queue % exchange
-        exists, values = self.pipeline().exists(key).smembers(key).execute()
-        if not exists:
+        values = self.client.smembers(key)
+        if not values:
             raise InconsistencyError(
                     "Queue list empty or key does not exist: %r" % (
                         self.keyprefix_queue % exchange))
