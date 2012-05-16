@@ -12,7 +12,7 @@ class test_sqlalchemy(TestCase):
 
     def test_url_parser(self):
         try:
-            import sqlalchemy
+            import sqlalchemy  # noqa
         except ImportError:
             raise SkipTest("sqlalchemy not installed")
         with patch("kombu.transport.sqlalchemy.Channel._open"):

@@ -304,7 +304,8 @@ class Transport(base.Transport):
         return connection.channels is not None and self.is_alive(connection)
 
     def eventmap(self, connection):
-        return {connection.method_reader.source.sock: self.client.drain_all_events}
+        return {connection.method_reader.source.sock:
+                    self.client.drain_all_events}
 
     @property
     def default_connection_params(self):
