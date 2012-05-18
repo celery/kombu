@@ -209,7 +209,8 @@ class BrokerConnection(object):
     close = release
 
     def ensure_connection(self, errback=None, max_retries=None,
-            interval_start=2, interval_step=2, interval_max=30):
+            interval_start=2, interval_step=2, interval_max=30,
+            callback=None):
         """Ensure we have a connection to the server.
 
         If not retry establishing the connection with the settings
@@ -227,11 +228,15 @@ class BrokerConnection(object):
           for each retry.
         :keyword interval_max: Maximum number of seconds to sleep between
           each retry.
+        :keyword callback: Optional callback that is called for every
+           internal iteration (1 s)
+        :keyword callback: Optional callback that is called for every
+           internal iteration (1 s).
 
         """
         retry_over_time(self.connect, self.connection_errors, (), {},
                         errback, max_retries,
-                        interval_start, interval_step, interval_max)
+                        interval_start, interval_step, interval_max, callback)
         return self
 
     def revive(self, new_channel):
@@ -628,7 +633,7 @@ class BrokerConnection(object):
 
     @property
     def is_evented(self):
-        return self.eventmap or getattr(self.transport, "on_poll_start", None)
+        return getattr(self.transport, "on_poll_start", None)
 Connection = BrokerConnection
 
 

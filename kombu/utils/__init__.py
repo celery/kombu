@@ -124,7 +124,8 @@ def fxrangemax(start=1.0, stop=None, step=1.0, max=100.0):
 
 
 def retry_over_time(fun, catch, args=[], kwargs={}, errback=None,
-        max_retries=None, interval_start=2, interval_step=2, interval_max=30):
+        max_retries=None, interval_start=2, interval_step=2, interval_max=30,
+        callback=None):
     """Retry the function over and over until max retries is exceeded.
 
     For each retry we sleep a for a while before we try again, this interval
@@ -159,9 +160,14 @@ def retry_over_time(fun, catch, args=[], kwargs={}, errback=None,
         except catch, exc:
             if max_retries is not None and retries > max_retries:
                 raise
+            if callback:
+                callback()
             if errback:
                 errback(exc, interval)
-            sleep(interval)
+            for i in fxrange(stop=interval):
+                if i and callback:
+                    callback()
+                sleep(1.0)
 
 
 def emergency_dump_state(state, open_file=open, dump=None):
