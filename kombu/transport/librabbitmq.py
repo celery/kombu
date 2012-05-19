@@ -95,6 +95,15 @@ class Transport(base.Transport):
         """Close the AMQP broker connection."""
         connection.close()
 
+    def on_poll_init(self, poller):
+        pass
+
+    def on_poll_start(self):
+        return {}
+
+    def eventmap(self, connection):
+        return {connection.fileno(): self.client.drain_all_events}
+
     @property
     def default_connection_params(self):
         return {"userid": "guest", "password": "guest",

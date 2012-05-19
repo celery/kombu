@@ -169,7 +169,7 @@ class BrokerConnection(object):
     def drain_all_events(self, *args):
         while 1:
             try:
-                self.drain_events(timeout=0.0)
+                self.drain_events(timeout=0)
             except socket.timeout:
                 return
             except socket.error, exc:
