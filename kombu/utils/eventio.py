@@ -14,12 +14,35 @@ import errno
 import select
 import socket
 
+from select import select as _selectf
+
 from kombu.syn import detect_environment
 
 __all__ = ["poll"]
 
 POLL_READ = 0x001
-POLL_ERR = 0x008 | 0x010 | 0x2000
+POLL_WRITE = 0x004
+POLL_ERR = 0x008 | 0x010
+
+try:
+    from select import epoll
+except ImportError:
+    epoll = None  # noqa
+
+try:
+    from select import (
+        kqueue,
+        kevent,
+        KQ_EV_ADD,
+        KQ_EV_DELETE,
+        KQ_EV_EOF,
+        KQ_EV_ERROR,
+        KQ_FILTER_WRITE,
+        KQ_FILTER_READ,
+    )
+except ImportError:
+    kqueue = kevent = KQ_EV_ADD = KQ_EV_DELETE = KQ_EV_EOF = \
+            KQ_EV_ERROR = KQ_FILTER_WRITE = KQ_FILTER_READ = None  # noqa
 
 
 def get_errno(exc):
@@ -48,7 +71,7 @@ class Poller(object):
 class _epoll(Poller):
 
     def __init__(self):
-        self._epoll = select.epoll()
+        self._epoll = epoll()
 
     def register(self, fd, events):
         try:
@@ -66,76 +89,113 @@ class _epoll(Poller):
     def _poll(self, timeout):
         return self._epoll.poll(timeout or -1)
 
+    def close(self):
+        self._epoll.close()
+
 
 class _kqueue(Poller):
 
     def __init__(self):
-        self._kqueue = select.kqueue()
+        self._kqueue = kqueue()
         self._active = {}
+        self._kcontrol = self._kqueue.control
 
     def register(self, fd, events):
-        self._control(fd, events, select.KQ_EV_ADD)
+        self._control(fd, events, KQ_EV_ADD)
         self._active[fd] = events
 
     def unregister(self, fd):
         events = self._active.pop(fd, None)
-        try:
-            self._control(fd, events, select.KQ_EV_DELETE)
-        except socket.error:
-            pass
+        if events:
+            try:
+                self._control(fd, events, KQ_EV_DELETE)
+            except socket.error:
+                pass
 
     def _control(self, fd, events, flags):
-        self._kqueue.control([select.kevent(fd, filter=select.KQ_FILTER_READ,
-                                                flags=flags)], 0)
+        if not events:
+            return
+        kevents = []
+        if events & POLL_WRITE:
+            kevents.append(kevent(fd,
+                          filter=KQ_FILTER_WRITE,
+                          flags=flags))
+        if not kevents or events & POLL_READ:
+            kevents.append(kevent(fd,
+                filter=KQ_FILTER_READ, flags=flags))
+        control = self._kcontrol
+        [control([e], 0) for e in kevents]
 
     def _poll(self, timeout):
-        kevents = self._kqueue.control(None, 1000, timeout)
+        kevents = self._kcontrol(None, 1000, timeout)
         events = {}
         for kevent in kevents:
             fd = kevent.ident
-            if kevent.filter == select.KQ_FILTER_READ:
+            if kevent.filter == KQ_FILTER_READ:
                 events[fd] = events.get(fd, 0) | POLL_READ
-            if kevent.filter == select.KQ_EV_ERROR:
+            if kevent.filter == KQ_FILTER_WRITE:
+                if kevent.flags & KQ_EV_EOF:
+                    events[fd] = POLL_ERR
+                else:
+                    events[fd] = events.get(fd, 0) | POLL_WRITE
+            if kevent.filter == KQ_EV_ERROR:
                 events[fd] = events.get(fd, 0) | POLL_ERR
         return events.items()
+
+    def close(self):
+        self._kqueue.close()
 
 
 class _select(Poller):
 
     def __init__(self):
-        self._all = self._rfd, self._efd = set(), set()
+        self._all = (self._rfd,
+                     self._wfd,
+                     self._efd) = set(), set(), set()
 
     def register(self, fd, events):
         if events & POLL_ERR:
             self._efd.add(fd)
             self._rfd.add(fd)
-        elif events & POLL_READ:
+        if events & POLL_WRITE:
+            self._wfd.add(fd)
+        if events & POLL_READ:
             self._rfd.add(fd)
 
     def unregister(self, fd):
         self._rfd.discard(fd)
+        self._wfd.discard(fd)
         self._efd.discard(fd)
 
     def _poll(self, timeout):
-        read, _write, error = select.select(self._rfd, [], self._efd, timeout)
+        read, write, error = _selectf(self._rfd, self._wfd, self._efd, timeout)
         events = {}
         for fd in read:
-            fd = fd.fileno()
+            if not isinstance(fd, int):
+                fd = fd.fileno()
             events[fd] = events.get(fd, 0) | POLL_READ
+        for fd in write:
+            if not isinstance(fd, int):
+                fd = fd.fileno()
+            events[fd] = events.get(fd, 0) | POLL_WRITE
         for fd in error:
-            fd = fd.fileno()
+            if not isinstance(fd, int):
+                fd = fd.fileno()
             events[fd] = events.get(fd, 0) | POLL_ERR
         return events.items()
+
+    def close(self):
+        pass
 
 
 def _get_poller():
     if detect_environment() in ("eventlet", "gevent"):
         # greenlet
         return _select
-    elif hasattr(select, "epoll"):
+    elif epoll:
         # Py2.6+ Linux
         return _epoll
-    elif hasattr(select, "kqueue"):
+    elif kqueue:
         # Py2.6+ on BSD / Darwin
         return _kqueue
     else:
