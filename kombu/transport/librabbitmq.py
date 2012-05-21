@@ -2,17 +2,24 @@
 kombu.transport.librabbitmq
 ===========================
 
-pylibrabbitmq transport.
+`librabbitmq`_ transport.
+
+.. _`librabbitmq`: http://pypi.python.org/librabbitmq/
 
 :copyright: (c) 2010 - 2012 by Ask Solem.
 :license: BSD, see LICENSE for more details.
 
 """
 from __future__ import absolute_import
-import socket
-import pylibrabbitmq as amqp
 
-from pylibrabbitmq import ChannelError, ConnectionError
+import socket
+
+try:
+    import librabbitmq as amqp
+    from librabbitmq import ChannelError, ConnectionError
+except ImportError:
+    import pylibrabbitmq as amqp                             #  noqa
+    from pylibrabbitmq import ChannelError, ConnectionError  # noqa
 
 from kombu.exceptions import StdChannelError
 
