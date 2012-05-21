@@ -166,14 +166,14 @@ class BrokerConnection(object):
         """
         return self.transport.drain_events(self.connection, **kwargs)
 
-    def drain_all_events(self, *args):
+    def drain_nowait(self, *args):
         while 1:
             try:
                 self.drain_events(timeout=0)
             except socket.timeout:
                 return
             except socket.error, exc:
-                if exc.errno == errno.EAGAIN:
+                if exc.errno in (errno.EAGAIN, errno.EINTR):
                     return
                 raise
 
