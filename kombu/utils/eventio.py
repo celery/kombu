@@ -11,18 +11,9 @@ Evented IO support for multiple platforms.
 from __future__ import absolute_import
 
 import errno
-import select
 import socket
 
 from select import select as _selectf
-
-from kombu.syn import detect_environment
-
-__all__ = ["poll"]
-
-POLL_READ = 0x001
-POLL_WRITE = 0x004
-POLL_ERR = 0x008 | 0x010
 
 try:
     from select import epoll
@@ -41,8 +32,17 @@ try:
         KQ_FILTER_READ,
     )
 except ImportError:
-    kqueue = kevent = KQ_EV_ADD = KQ_EV_DELETE = KQ_EV_EOF = \
-            KQ_EV_ERROR = KQ_FILTER_WRITE = KQ_FILTER_READ = None  # noqa
+    kqueue = kevent = None                                      # noqa
+    KQ_EV_ADD = KQ_EV_DELETE = KQ_EV_EOF = KQ_EV_ERROR = None   # noqa
+    KQ_FILTER_WRITE = KQ_FILTER_READ = None                     # noqa
+
+from kombu.syn import detect_environment
+
+__all__ = ["poll"]
+
+READ = POLL_READ = 0x001
+WRITE = POLL_WRITE = 0x004
+ERR = POLL_ERR = 0x008 | 0x010
 
 
 def get_errno(exc):
@@ -116,11 +116,11 @@ class _kqueue(Poller):
         if not events:
             return
         kevents = []
-        if events & POLL_WRITE:
+        if events & WRITE:
             kevents.append(kevent(fd,
                           filter=KQ_FILTER_WRITE,
                           flags=flags))
-        if not kevents or events & POLL_READ:
+        if not kevents or events & READ:
             kevents.append(kevent(fd,
                 filter=KQ_FILTER_READ, flags=flags))
         control = self._kcontrol
@@ -132,14 +132,14 @@ class _kqueue(Poller):
         for kevent in kevents:
             fd = kevent.ident
             if kevent.filter == KQ_FILTER_READ:
-                events[fd] = events.get(fd, 0) | POLL_READ
+                events[fd] = events.get(fd, 0) | READ
             if kevent.filter == KQ_FILTER_WRITE:
                 if kevent.flags & KQ_EV_EOF:
-                    events[fd] = POLL_ERR
+                    events[fd] = ERR
                 else:
-                    events[fd] = events.get(fd, 0) | POLL_WRITE
+                    events[fd] = events.get(fd, 0) | WRITE
             if kevent.filter == KQ_EV_ERROR:
-                events[fd] = events.get(fd, 0) | POLL_ERR
+                events[fd] = events.get(fd, 0) | ERR
         return events.items()
 
     def close(self):
@@ -154,12 +154,12 @@ class _select(Poller):
                      self._efd) = set(), set(), set()
 
     def register(self, fd, events):
-        if events & POLL_ERR:
+        if events & ERR:
             self._efd.add(fd)
             self._rfd.add(fd)
-        if events & POLL_WRITE:
+        if events & WRITE:
             self._wfd.add(fd)
-        if events & POLL_READ:
+        if events & READ:
             self._rfd.add(fd)
 
     def unregister(self, fd):
@@ -173,15 +173,15 @@ class _select(Poller):
         for fd in read:
             if not isinstance(fd, int):
                 fd = fd.fileno()
-            events[fd] = events.get(fd, 0) | POLL_READ
+            events[fd] = events.get(fd, 0) | READ
         for fd in write:
             if not isinstance(fd, int):
                 fd = fd.fileno()
-            events[fd] = events.get(fd, 0) | POLL_WRITE
+            events[fd] = events.get(fd, 0) | WRITE
         for fd in error:
             if not isinstance(fd, int):
                 fd = fd.fileno()
-            events[fd] = events.get(fd, 0) | POLL_ERR
+            events[fd] = events.get(fd, 0) | ERR
         return events.items()
 
     def close(self):

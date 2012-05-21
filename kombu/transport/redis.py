@@ -24,8 +24,9 @@ from kombu.exceptions import (
     VersionMismatch,
 )
 from kombu.log import get_logger
-from kombu.utils import eventio, cached_property, uuid
+from kombu.utils import cached_property, uuid
 from kombu.utils.encoding import str_t
+from kombu.utils.eventio import poll, READ, ERR
 
 from . import virtual
 
@@ -135,7 +136,7 @@ class QoS(virtual.QoS):
 
 
 class MultiChannelPoller(object):
-    eventflags = eventio.POLL_READ | eventio.POLL_ERR
+    eventflags = READ | ERR
 
     def __init__(self):
         # active channels
@@ -145,7 +146,7 @@ class MultiChannelPoller(object):
         # channel -> socket map
         self._chan_to_sock = {}
         # poll implementation (epoll/kqueue/select)
-        self.poller = eventio.poll()
+        self.poller = poll()
 
     def close(self):
         for fd in self._chan_to_sock.itervalues():
@@ -205,11 +206,11 @@ class MultiChannelPoller(object):
                 self._register_LISTEN(channel)
 
     def handle_event(self, fileno, event):
-        if event & eventio.POLL_READ:
+        if event & READ:
             chan, type = self._fd_to_chan[fileno]
             if chan.qos.can_consume():
                 return chan.handlers[type](), self
-        elif event & eventio.POLL_ERR:
+        elif event & ERR:
             chan, type = self._fd_to_chan[fileno]
             chan._poll_error(type)
 

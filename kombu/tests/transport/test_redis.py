@@ -25,7 +25,7 @@ class _poll(eventio._select):
         events = []
         for fd in self._rfd:
             if fd.data:
-                events.append((fd.fileno(), eventio.POLL_READ))
+                events.append((fd.fileno(), eventio.READ))
         return events
 
 
@@ -778,8 +778,8 @@ class test_MultiChannelPoller(TestCase):
 
         p._register_LISTEN.assert_called_with(channel)
 
-    def test_get_receives_POLL_ERR(self):
-        p, channel = self.create_get(events=[(1, eventio.POLL_ERR)])
+    def test_get_receives_ERR(self):
+        p, channel = self.create_get(events=[(1, eventio.ERR)])
         p._fd_to_chan[1] = (channel, "BRPOP")
 
         with self.assertRaises(redis.Empty):
@@ -788,8 +788,8 @@ class test_MultiChannelPoller(TestCase):
         channel._poll_error.assert_called_with("BRPOP")
 
     def test_get_receives_multiple(self):
-        p, channel = self.create_get(events=[(1, eventio.POLL_ERR),
-                                             (1, eventio.POLL_ERR)])
+        p, channel = self.create_get(events=[(1, eventio.ERR),
+                                             (1, eventio.ERR)])
         p._fd_to_chan[1] = (channel, "BRPOP")
 
         with self.assertRaises(redis.Empty):
