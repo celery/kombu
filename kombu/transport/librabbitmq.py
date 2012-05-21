@@ -102,7 +102,7 @@ class Transport(base.Transport):
         return {}
 
     def eventmap(self, connection):
-        return {connection.fileno(): self.client.drain_all_events}
+        return {connection.fileno(): self.client.drain_nowait}
 
     @property
     def default_connection_params(self):
