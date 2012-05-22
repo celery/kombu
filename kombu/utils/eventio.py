@@ -140,17 +140,18 @@ class _kqueue(Poller):
         self._kcontrol([ev], 0)
 
     def _control(self, fd, events, flags):
-        if events:
-            kevents = []
-            if events & WRITE:
-                kevents.append(kevent(fd,
-                               filter=KQ_FILTER_WRITE,
-                               flags=flags))
-                if not kevents or events & READ:
-                    kevents.append(kevent(fd,
-                        filter=KQ_FILTER_READ, flags=flags))
-            control = self._kcontrol
-            [control([e], 0) for e in kevents]
+        if not events:
+            return
+        kevents = []
+        if events & WRITE:
+            kevents.append(kevent(fd,
+                           filter=KQ_FILTER_WRITE,
+                           flags=flags))
+        if not kevents or events & READ:
+            kevents.append(kevent(fd,
+                filter=KQ_FILTER_READ, flags=flags))
+        control = self._kcontrol
+        [control([e], 0) for e in kevents]
 
     def _poll(self, timeout):
         kevents = self._kcontrol(None, 1000, timeout)
