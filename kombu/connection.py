@@ -85,6 +85,10 @@ class BrokerConnection(object):
     #: in case the server loses data.
     declared_entities = None
 
+    #: This is set to True if there is still more data to read
+    #: after a call to :meth:`drain_nowait`.
+    more_to_read = False
+
     def __init__(self, hostname="localhost", userid=None,
             password=None, virtual_host=None, port=None, insist=False,
             ssl=False, transport=None, connect_timeout=5,
@@ -166,16 +170,19 @@ class BrokerConnection(object):
         """
         return self.transport.drain_events(self.connection, **kwargs)
 
-    def drain_nowait(self, *args):
-        while 1:
-            try:
-                self.drain_events(timeout=0)
-            except socket.timeout:
-                return
-            except socket.error, exc:
-                if exc.errno in (errno.EAGAIN, errno.EINTR):
-                    return
-                raise
+    def drain_nowait(self, *args, **kwargs):
+        try:
+            self.drain_events(timeout=0)
+        except socket.timeout:
+            self.more_to_read = False
+            return False
+        except socket.error, exc:
+            if exc.errno in (errno.EAGAIN, errno.EINTR):
+                self.more_to_read = False
+                return False
+            raise
+        self.more_to_read = True
+        return True
 
     def maybe_close_channel(self, channel):
         try:
