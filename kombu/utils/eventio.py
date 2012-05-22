@@ -28,13 +28,23 @@ try:
         KQ_EV_DELETE,
         KQ_EV_EOF,
         KQ_EV_ERROR,
+        KQ_EV_ENABLE,
+        KQ_EV_CLEAR,
         KQ_FILTER_WRITE,
         KQ_FILTER_READ,
+        KQ_FILTER_VNODE,
+        KQ_NOTE_WRITE,
+        KQ_NOTE_EXTEND,
+        KQ_NOTE_DELETE,
+        KQ_NOTE_ATTRIB,
     )
 except ImportError:
     kqueue = kevent = None                                      # noqa
-    KQ_EV_ADD = KQ_EV_DELETE = KQ_EV_EOF = KQ_EV_ERROR = None   # noqa
-    KQ_FILTER_WRITE = KQ_FILTER_READ = None                     # noqa
+    KQ_EV_ADD = KQ_EV_DELETE = KQ_EV_EOF = KQ_EV_ERROR = 0      # noqa
+    KQ_EV_ENABLE = KQ_EV_CLEAR = KQ_EV_VNODE = 0                # noqa
+    KQ_FILTER_WRITE = KQ_FILTER_READ = 0                        # noqa
+    KQ_NOTE_WRITE = KQ_NOTE_EXTEND = 0                          # noqa
+    KQ_NOTE_ATTRIB = KQ_NOTE_DELETE = 0                         # noqa
 
 from kombu.syn import detect_environment
 
@@ -94,10 +104,13 @@ class _epoll(Poller):
 
 
 class _kqueue(Poller):
+    w_fflags = (KQ_NOTE_WRITE | KQ_NOTE_EXTEND |
+                KQ_NOTE_ATTRIB | KQ_NOTE_DELETE)
 
     def __init__(self):
         self._kqueue = kqueue()
         self._active = {}
+        self.on_file_change = None
         self._kcontrol = self._kqueue.control
 
     def register(self, fd, events):
@@ -112,34 +125,53 @@ class _kqueue(Poller):
             except socket.error:
                 pass
 
+    def watch_file(self, fd):
+        ev = kevent(fd,
+                    filter=KQ_FILTER_VNODE,
+                    flags=KQ_EV_ADD | KQ_EV_ENABLE | KQ_EV_CLEAR,
+                    fflags=self.w_fflags)
+        self._kcontrol([ev], 0)
+
+    def unwatch_file(self, fd):
+        ev = kevent(fd,
+                    filter=KQ_FILTER_VNODE,
+                    flags=KQ_EV_DELETE,
+                    fflags=self.w_fflags)
+        self._kcontrol([ev], 0)
+
     def _control(self, fd, events, flags):
-        if not events:
-            return
-        kevents = []
-        if events & WRITE:
-            kevents.append(kevent(fd,
-                          filter=KQ_FILTER_WRITE,
-                          flags=flags))
-        if not kevents or events & READ:
-            kevents.append(kevent(fd,
-                filter=KQ_FILTER_READ, flags=flags))
-        control = self._kcontrol
-        [control([e], 0) for e in kevents]
+        if events:
+            kevents = []
+            if events & WRITE:
+                kevents.append(kevent(fd,
+                               filter=KQ_FILTER_WRITE,
+                               flags=flags))
+                if not kevents or events & READ:
+                    kevents.append(kevent(fd,
+                        filter=KQ_FILTER_READ, flags=flags))
+            control = self._kcontrol
+            [control([e], 0) for e in kevents]
 
     def _poll(self, timeout):
         kevents = self._kcontrol(None, 1000, timeout)
-        events = {}
-        for kevent in kevents:
-            fd = kevent.ident
-            if kevent.filter == KQ_FILTER_READ:
+        events, file_changes = {}, []
+        for k in kevents:
+            fd = k.ident
+            if k.filter == KQ_FILTER_READ:
                 events[fd] = events.get(fd, 0) | READ
-            if kevent.filter == KQ_FILTER_WRITE:
-                if kevent.flags & KQ_EV_EOF:
+            elif k.filter == KQ_FILTER_WRITE:
+                if k.flags & KQ_EV_EOF:
                     events[fd] = ERR
                 else:
                     events[fd] = events.get(fd, 0) | WRITE
-            if kevent.filter == KQ_EV_ERROR:
+            elif k.filter == KQ_EV_ERROR:
                 events[fd] = events.get(fd, 0) | ERR
+            elif k.filter == KQ_FILTER_VNODE:
+                if k.fflags & KQ_NOTE_DELETE:
+                    self.unregister(fd)
+                file_changes.append(k)
+        if file_changes:
+            self.on_file_change(file_changes)
         return events.items()
 
     def close(self):
