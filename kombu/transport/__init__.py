@@ -12,7 +12,14 @@ from __future__ import absolute_import
 
 import sys
 
-DEFAULT_TRANSPORT = "kombu.transport.amqplib.Transport"
+DEFAULT_TRANSPORT = "amqp"
+
+try:
+    import librabbitmq  # noqa
+except ImportError:
+    AMQP_TRANSPORT = "kombu.transport.amqplib.Transport"
+else:
+    AMQP_TRANSPORT = "kombu.transport.librabbitmq.Transport"
 
 
 def _ghettoq(name, new, alias=None):
@@ -36,7 +43,7 @@ def _ghettoq(name, new, alias=None):
 
 
 TRANSPORT_ALIASES = {
-    "amqp": "kombu.transport.amqplib.Transport",
+    "amqp": AMQP_TRANSPORT,
     "amqplib": "kombu.transport.amqplib.Transport",
     "librabbitmq": "kombu.transport.librabbitmq.Transport",
     "pika": "kombu.transport.pika2.Transport",

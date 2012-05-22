@@ -100,6 +100,17 @@ if os.path.exists("README.rst"):
 else:
     long_description = "See http://pypi.python.org/pypi/kombu"
 
+install_requires = ["anyjson>=0.3.1"]
+
+is_jython = sys.platform.startswith("java")
+is_pypy = hasattr(sys, "pypy_version_info")
+is_py3k = sys.version_info[0] == 3
+is_win = platform.system() == "Windows"
+if is_jython or is_pypy or is_py3k or is_win:
+    install_requires.append("amqplib>=1.0.1")
+else:
+    install_requires.append("librabbitmq>=0.9.3")
+
 setup(
     name='kombu',
     version=meta["VERSION"],
@@ -112,10 +123,7 @@ setup(
     data_files=data_files,
     zip_safe=False,
     test_suite="nose.collector",
-    install_requires=[
-        'anyjson>=0.3.1',
-        'amqplib>=1.0',
-    ],
+    install_requires=install_requires,
     tests_require=tests_require,
     classifiers=[
         "Development Status :: 5 - Production/Stable",
