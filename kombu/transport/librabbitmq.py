@@ -18,7 +18,7 @@ try:
     import librabbitmq as amqp
     from librabbitmq import ChannelError, ConnectionError
 except ImportError:
-    import pylibrabbitmq as amqp                             #  noqa
+    import pylibrabbitmq as amqp                             # noqa
     from pylibrabbitmq import ChannelError, ConnectionError  # noqa
 
 from kombu.exceptions import StdChannelError
