@@ -178,17 +178,14 @@ class Mailbox(object):
                      auto_delete=True)
 
     def _publish_reply(self, reply, exchange, routing_key, channel=None):
-        chan = channel or self.connection.channel()
-        try:
-            exchange = Exchange(exchange, exchange_type="direct",
-                                          delivery_mode="transient",
-                                          durable=False,
-                                          auto_delete=True)
-            producer = Producer(chan, exchange=exchange,
-                                      auto_declare=True)
-            producer.publish(reply, routing_key=routing_key)
-        finally:
-            channel or chan.close()
+        chan = channel or self.connection.default_channel
+        exchange = Exchange(exchange, exchange_type="direct",
+                                      delivery_mode="transient",
+                                      durable=False,
+                                      auto_delete=True)
+        producer = Producer(chan, exchange=exchange,
+                                  auto_declare=True)
+        producer.publish(reply, routing_key=routing_key)
 
     def _publish(self, type, arguments, destination=None, reply_ticket=None,
             channel=None):
@@ -198,12 +195,9 @@ class Mailbox(object):
         if reply_ticket:
             message["reply_to"] = {"exchange": self.reply_exchange.name,
                                    "routing_key": reply_ticket}
-        chan = channel or self.connection.channel()
+        chan = channel or self.connection.default_channel
         producer = Producer(chan, exchange=self.exchange)
-        try:
-            producer.publish(message)
-        finally:
-            channel or chan.close()
+        producer.publish(message)
 
     def _broadcast(self, command, arguments=None, destination=None,
             reply=False, timeout=1, limit=None, callback=None, channel=None):
@@ -235,7 +229,7 @@ class Mailbox(object):
 
     def _collect(self, ticket, limit=None, timeout=1,
             callback=None, channel=None):
-        chan = channel or self.connection.channel()
+        chan = channel or self.connection.default_channel
         queue = self.get_reply_queue(ticket)
         consumer = Consumer(channel, [queue], no_ack=True)
         responses = []
@@ -245,18 +239,15 @@ class Mailbox(object):
                 callback(body)
             responses.append(body)
 
-        try:
-            consumer.register_callback(on_message)
-            consumer.consume()
+        consumer.register_callback(on_message)
+        with consumer:
             for i in limit and range(limit) or count():
                 try:
                     self.connection.drain_events(timeout=timeout)
                 except socket.timeout:
                     break
-            chan.after_reply_message_received(queue.name)
             return responses
-        finally:
-            channel or chan.close()
+        chan.after_reply_message_received(queue.name)
 
     def _get_exchange(self, namespace, type):
         return Exchange(self.exchange_fmt % namespace,
