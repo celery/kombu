@@ -24,7 +24,7 @@ from Queue import Empty
 # jython breaks on relative import for .exceptions for some reason
 # (Issue #112)
 from kombu import exceptions
-from .transport import get_transport_cls
+from .transport import AMQP_ALIAS, get_transport_cls
 from .utils import cached_property, retry_over_time
 from .utils.compat import OrderedDict, LifoQueue as _LifoQueue
 from .utils.url import parse_url
@@ -380,7 +380,7 @@ class BrokerConnection(object):
     def info(self):
         """Get connection info."""
         transport_cls = self.transport_cls or "amqp"
-        transport_cls = {"amqplib": "amqp"}.get(transport_cls, transport_cls)
+        transport_cls = {AMQP_ALIAS: "amqp"}.get(transport_cls, transport_cls)
         defaults = self.transport.default_connection_params
         hostname = self.hostname
         if self.uri_prefix:
@@ -403,11 +403,13 @@ class BrokerConnection(object):
         return info
 
     def __eqhash__(self):
-        return hash("|".join(map(str, self.info().itervalues())))
+        return hash("%s|%s|%s|%s|%s|%s" % (
+            self.transport_cls, self.hostname, self.userid,
+            self.password, self.virtual_host, self.port))
 
     def as_uri(self, include_password=False):
         if self.transport_cls in self.uri_passthrough:
-            return self.transport_cls + '+' + self.hostname
+            return self.transport_cls + '+' + (self.hostname or "localhost")
         quoteS = partial(quote, safe="")   # strict quote
         fields = self.info()
         port = fields["port"]

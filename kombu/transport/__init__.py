@@ -18,8 +18,10 @@ try:
     import librabbitmq  # noqa
 except ImportError:
     AMQP_TRANSPORT = "kombu.transport.amqplib.Transport"
+    AMQP_ALIAS = "librabbitmq"
 else:
     AMQP_TRANSPORT = "kombu.transport.librabbitmq.Transport"
+    AMQP_ALIAS = "amqp"
 
 
 def _ghettoq(name, new, alias=None):
