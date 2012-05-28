@@ -30,7 +30,7 @@ DEFAULT_PORT = 5672
 
 class Message(base.Message):
 
-    def __init__(self, body, props, info, channel):
+    def __init__(self, channel, props, info, body):
         super(Message, self).__init__(channel,
                 body=body,
                 delivery_info=info,
@@ -53,11 +53,12 @@ class Channel(amqp.Channel, base.StdChannel):
                            "content_encoding": content_encoding,
                            "headers": headers,
                            "priority": priority})
-        return amqp.Message(body, properties=properties)
+        return body, properties
 
 
 class Connection(amqp.Connection):
     Channel = Channel
+    Message = Message
 
 
 class Transport(base.Transport):
