@@ -46,9 +46,24 @@ if sys.version_info < (2, 6):  # pragma: no cover
     # as while the pure pickle version has worse performance,
     # it is the only safe option for older Python versions.
     pickle = pypickle
+    pickle_load = pypickle.load
+    pickle_loads = pypickle.loads
 else:
     pickle = cpickle or pypickle
+    pickle_load = pickle.load
+    pickle_loads = pickle.loads
 
+
+# cPickle.loads does not support buffer() objects,
+# but we can just create a StringIO and use load.
+if sys.version_info[0] == 2:
+    try:
+        from cStringIO import StringIO
+    except ImportError:
+        from StringIO import StringIO
+
+    def pickle_loads(s, load=pickle_load):
+        return load(StringIO(s))
 
 class SerializerRegistry(object):
     """The registry keeps track of serialization methods."""
@@ -294,14 +309,18 @@ def register_yaml():
         registry.register('yaml', None, not_available, 'application/x-yaml')
 
 
+if sys.version_info[0] == 3:
+
+    def unpickle(s):
+        return pickle_loads(str_to_bytes(s))
+
+else:
+    unpickle = pickle_loads  # noqa
+
+
 def register_pickle():
     """The fastest serialization method, but restricts
     you to python clients."""
-
-    # pickle doesn't handle unicode.
-    def unpickle(s):
-        return pickle.loads(str_to_bytes(s))
-
     registry.register('pickle', pickle.dumps, unpickle,
                       content_type='application/x-python-serialize',
                       content_encoding='binary')
