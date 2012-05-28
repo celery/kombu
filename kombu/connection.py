@@ -34,6 +34,7 @@ _LOG_CHANNEL = os.environ.get("KOMBU_LOG_CHANNEL", False)
 
 __all__ = ["parse_url", "BrokerConnection", "Resource",
            "ConnectionPool", "ChannelPool"]
+URI_PASSTHROUGH = frozenset(["sqla", "sqlalchemy"])
 
 
 class BrokerConnection(object):
@@ -78,7 +79,6 @@ class BrokerConnection(object):
     _default_channel = None
     _transport = None
     _logger = None
-    uri_passthrough = set(["sqla", "sqlalchemy"])
     uri_prefix = None
 
     #: The cache of declared entities is per connection,
@@ -101,7 +101,7 @@ class BrokerConnection(object):
                   "transport": transport, "connect_timeout": connect_timeout,
                   "login_method": login_method}
         if hostname and "://" in hostname \
-                and transport not in self.uri_passthrough:
+                and transport not in URI_PASSTHROUGH:
             if '+' in hostname[:hostname.index("://")]:
                 # e.g. sqla+mysql://root:masterkey@localhost/
                 params["transport"], params["hostname"] = hostname.split('+')
@@ -287,7 +287,6 @@ class BrokerConnection(object):
 
         """
 
-        @wraps(fun)
         def _ensured(*args, **kwargs):
             got_connection = 0
             for retries in count(0):  # for infinity
@@ -317,8 +316,9 @@ class BrokerConnection(object):
                     if on_revive:
                         on_revive(new_channel)
                     got_connection += 1
-
         _ensured.func_name = _ensured.__name__ = "%s(ensured)" % fun.__name__
+        _ensured.__doc__ = fun.__doc__
+        _ensured.__module__ = fun.__module__
         return _ensured
 
     def autoretry(self, fun, channel=None, **ensure_options):
@@ -375,32 +375,32 @@ class BrokerConnection(object):
     def clone(self, **kwargs):
         """Create a copy of the connection with the same connection
         settings."""
-        return self.__class__(**dict(self.info(), **kwargs))
+        return self.__class__(**dict(self._info(), **kwargs))
 
-    def info(self):
-        """Get connection info."""
+    def _info(self):
         transport_cls = self.transport_cls or "amqp"
         transport_cls = {AMQP_ALIAS: "amqp"}.get(transport_cls, transport_cls)
-        defaults = self.transport.default_connection_params
+        D = self.transport.default_connection_params
         hostname = self.hostname
         if self.uri_prefix:
             hostname = "%s+%s" % (self.uri_prefix, hostname)
-        info = OrderedDict((("hostname", hostname),
-                            ("userid", self.userid),
-                            ("password", self.password),
-                            ("virtual_host", self.virtual_host),
-                            ("port", self.port),
-                            ("insist", self.insist),
-                            ("ssl", self.ssl),
-                            ("transport", transport_cls),
-                            ("connect_timeout", self.connect_timeout),
-                            ("transport_options", self.transport_options),
-                            ("login_method", self.login_method),
-                            ("uri_prefix", self.uri_prefix)))
-        for key, value in defaults.iteritems():
-            if info[key] is None:
-                info[key] = value
+        info = (("hostname", hostname or D.get("hostname")),
+                ("userid", self.userid or D.get("userid")),
+                ("password", self.password or D.get("password")),
+                ("virtual_host", self.virtual_host or D.get("virtual_host")),
+                ("port", self.port or D.get("port")),
+                ("insist", self.insist),
+                ("ssl", self.ssl),
+                ("transport", transport_cls),
+                ("connect_timeout", self.connect_timeout),
+                ("transport_options", self.transport_options),
+                ("login_method", self.login_method or D.get("login_method")),
+                ("uri_prefix", self.uri_prefix))
         return info
+
+    def info(self):
+        """Get connection info."""
+        return OrderedDict(self._info())
 
     def __eqhash__(self):
         return hash("%s|%s|%s|%s|%s|%s" % (
@@ -408,7 +408,7 @@ class BrokerConnection(object):
             self.password, self.virtual_host, self.port))
 
     def as_uri(self, include_password=False):
-        if self.transport_cls in self.uri_passthrough:
+        if self.transport_cls in URI_PASSTHROUGH:
             return self.transport_cls + '+' + (self.hostname or "localhost")
         quoteS = partial(quote, safe="")   # strict quote
         fields = self.info()
@@ -693,10 +693,16 @@ class Resource(object):
         else:
             R = self.prepare(self.new())
 
-        @wraps(self.release)
-        def _release():
+        def release():
+            """Release resource so it can be used by another thread.
+
+            The caller is responsible for discarding the object,
+            and to never use the resource again.  A new resource must
+            be acquired if so needed.
+
+            """
             self.release(R)
-        R.release = _release
+        R.release = release
 
         return R
 
@@ -717,13 +723,6 @@ class Resource(object):
         self.close_resource(resource)
 
     def release(self, resource):
-        """Release resource so it can be used by another thread.
-
-        The caller is responsible for discarding the object,
-        and to never use the resource again.  A new resource must
-        be acquired if so needed.
-
-        """
         if self.limit:
             self._dirty.discard(resource)
             self._resource.put_nowait(resource)
@@ -803,7 +802,7 @@ class ConnectionPool(Resource):
                                              preload=preload)
 
     def new(self):
-        return copy(self.connection)
+        return self.connection.clone()
 
     def release_resource(self, resource):
         resource._debug("released")
