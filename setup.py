@@ -3,6 +3,7 @@
 import os
 import sys
 import codecs
+import platform
 
 extra = {}
 tests_require = ["nose", "nose-cover3"]
