@@ -89,15 +89,11 @@ class Connection(amqp.Connection):  # pragma: no cover
         super(Connection, self).__init__(*args, **kwargs)
         self._method_override = {(60, 50): self._dispatch_basic_return}
 
-    def drain_events(self, allowed_methods=None, timeout=None):
-        """Wait for an event on any channel."""
-        return self.wait_multi(self.channels.values(), timeout=timeout)
-
-    def wait_multi(self, channels, allowed_methods=None, timeout=None):
+    def drain_events(self, timeout=None):
         """Wait for an event on a channel."""
-        chanmap = dict((chan.channel_id, chan) for chan in channels)
+        chanmap = self.channels
         chanid, method_sig, args, content = self._wait_multiple(
-                chanmap.keys(), allowed_methods, timeout=timeout)
+                chanmap, None, timeout=timeout)
 
         channel = chanmap[chanid]
 
@@ -139,9 +135,9 @@ class Connection(amqp.Connection):  # pragma: no cover
             if prev != timeout:
                 sock.settimeout(prev)
 
-    def _wait_multiple(self, channel_ids, allowed_methods, timeout=None):
-        for channel_id in channel_ids:
-            method_queue = self.channels[channel_id].method_queue
+    def _wait_multiple(self, channels, allowed_methods, timeout=None):
+        for channel_id, channel in channels.iteritems():
+            method_queue = channel.method_queue
             for queued_method in method_queue:
                 method_sig = queued_method[0]
                 if (allowed_methods is None) \
@@ -153,12 +149,11 @@ class Connection(amqp.Connection):  # pragma: no cover
 
         # Nothing queued, need to wait for a method from the peer
         read_timeout = self.read_timeout
-        channels = self.channels
         wait = self.wait
         while 1:
             channel, method_sig, args, content = read_timeout(timeout)
 
-            if (channel in channel_ids) \
+            if (channel in channels) \
             and ((allowed_methods is None) \
                 or (method_sig in allowed_methods) \
                 or (method_sig == (20, 40))):
