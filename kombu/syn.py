@@ -12,6 +12,8 @@ import sys
 
 __all__ = ["detect_environment"]
 
+_environment = None
+
 
 def blocking(fun, *args, **kwargs):
     return fun(*args, **kwargs)
@@ -21,9 +23,10 @@ def select_blocking_method(type):
     pass
 
 
-def detect_environment():
+def _detect_environment():
     ## -eventlet-
     if "eventlet" in sys.modules:
+        print("PATH: %r" % (sys.path, ))
         try:
             from eventlet.patcher import is_monkey_patched as is_eventlet
             import socket
@@ -45,3 +48,10 @@ def detect_environment():
             pass
 
     return "default"
+
+
+def detect_environment():
+    global _environment
+    if _environment is None:
+        _environment = _detect_environment()
+    return _environment
