@@ -181,8 +181,7 @@ class Mailbox(object):
         chan = channel or self.connection.default_channel
         exchange = Exchange(exchange, exchange_type="direct",
                                       delivery_mode="transient",
-                                      durable=False,
-                                      auto_delete=True)
+                                      durable=False)
         producer = Producer(chan, exchange=exchange,
                                   auto_declare=True)
         producer.publish(reply, routing_key=routing_key)
