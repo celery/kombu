@@ -12,16 +12,19 @@ from __future__ import absolute_import
 
 import sys
 
+from kombu.syn import detect_environment
+
 DEFAULT_TRANSPORT = "amqp"
 
-try:
-    import librabbitmq  # noqa
-except ImportError:
-    AMQP_TRANSPORT = "kombu.transport.amqplib.Transport"
-    AMQP_ALIAS = "librabbitmq"
-else:
-    AMQP_TRANSPORT = "kombu.transport.librabbitmq.Transport"
-    AMQP_ALIAS = "amqp"
+AMQP_TRANSPORT = "kombu.transport.amqplib.Transport"
+AMQP_ALIAS = "librabbitmq"
+if detect_environment() == "default":
+    try:
+        import librabbitmq
+        AMQP_TRANSPORT = "kombu.transport.librabbitmq.Transport"  # noqa
+        AMQP_ALIAS = "amqp"                                       # noqa
+    except ImportError:
+        pass
 
 
 def _ghettoq(name, new, alias=None):
