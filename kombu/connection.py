@@ -16,8 +16,7 @@ import os
 import socket
 
 from contextlib import contextmanager
-from copy import copy
-from functools import partial, wraps
+from functools import partial
 from itertools import count
 from urllib import quote
 from Queue import Empty

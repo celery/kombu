@@ -26,7 +26,6 @@ def select_blocking_method(type):
 def _detect_environment():
     ## -eventlet-
     if "eventlet" in sys.modules:
-        print("PATH: %r" % (sys.path, ))
         try:
             from eventlet.patcher import is_monkey_patched as is_eventlet
             import socket

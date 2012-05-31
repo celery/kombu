@@ -60,10 +60,11 @@ if sys.version_info[0] == 2:
     try:
         from cStringIO import StringIO
     except ImportError:
-        from StringIO import StringIO
+        from StringIO import StringIO  # noqa
 
     def pickle_loads(s, load=pickle_load):
         return load(StringIO(s))
+
 
 class SerializerRegistry(object):
     """The registry keeps track of serialization methods."""

@@ -20,7 +20,7 @@ AMQP_TRANSPORT = "kombu.transport.amqplib.Transport"
 AMQP_ALIAS = "librabbitmq"
 if detect_environment() == "default":
     try:
-        import librabbitmq
+        import librabbitmq  # noqa
         AMQP_TRANSPORT = "kombu.transport.librabbitmq.Transport"  # noqa
         AMQP_ALIAS = "amqp"                                       # noqa
     except ImportError:

@@ -296,7 +296,6 @@ class test_Connection(TestCase):
 
     def test__reduce__(self):
         x = pickle.loads(pickle.dumps(self.conn))
-        print("SELF: %r" % (self.conn.info(), ))
         self.assertDictEqual(x.info(), self.conn.info())
 
     def test_channel_errors(self):

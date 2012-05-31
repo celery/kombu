@@ -95,7 +95,7 @@ class _epoll(Poller):
             self._epoll.unregister(fd)
         except socket.error:
             pass
-        except IOError:
+        except IOError, exc:
             if get_errno(exc) != errno.ENOENT:
                 raise
 
