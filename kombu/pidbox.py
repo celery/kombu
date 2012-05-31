@@ -253,12 +253,10 @@ class Mailbox(object):
         return Exchange(self.exchange_fmt % namespace,
                         type=type,
                         durable=False,
-                        auto_delete=True,
                         delivery_mode="transient")
 
     def _get_reply_exchange(self, namespace):
         return Exchange(self.reply_exchange_fmt % namespace,
                         type="direct",
                         durable=False,
-                        auto_delete=True,
                         delivery_mode="transient")
