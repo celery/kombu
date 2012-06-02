@@ -71,6 +71,8 @@ class Transport(base.Transport):
                          OSError)
     channel_errors = (StdChannelError, ChannelError, )
 
+    nb_keep_draining = True
+
     def __init__(self, client, **kwargs):
         self.client = client
         self.default_port = kwargs.get("default_port") or self.default_port

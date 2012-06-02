@@ -189,6 +189,10 @@ class Transport(object):
     #: Tuple of errors that can happen due to channel/method failure.
     channel_errors = ()
 
+    #: For non-blocking use, an eventloop should keep
+    #: draining events as long as ``connection.more_to_read`` is True.
+    nb_keep_draining = False
+
     def __init__(self, client, **kwargs):
         self.client = client
 

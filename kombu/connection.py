@@ -23,6 +23,7 @@ from Queue import Empty
 # jython breaks on relative import for .exceptions for some reason
 # (Issue #112)
 from kombu import exceptions
+from .log import get_logger
 from .transport import AMQP_ALIAS, get_transport_cls
 from .utils import cached_property, retry_over_time
 from .utils.compat import OrderedDict, LifoQueue as _LifoQueue
@@ -34,6 +35,8 @@ _LOG_CHANNEL = os.environ.get("KOMBU_LOG_CHANNEL", False)
 __all__ = ["parse_url", "BrokerConnection", "Resource",
            "ConnectionPool", "ChannelPool"]
 URI_PASSTHROUGH = frozenset(["sqla", "sqlalchemy"])
+
+logger = get_logger(__name__)
 
 
 class BrokerConnection(object):
@@ -77,7 +80,7 @@ class BrokerConnection(object):
     _connection = None
     _default_channel = None
     _transport = None
-    _logger = None
+    _logger = False
     uri_prefix = None
 
     #: The cache of declared entities is per connection,
@@ -117,8 +120,7 @@ class BrokerConnection(object):
         self.transport_options = transport_options
 
         if _LOG_CONNECTION:  # pragma: no cover
-            from .log import get_logger
-            self._logger = get_logger("kombu.connection")
+            self._logger = True
 
         if uri_prefix:
             self.uri_prefix = uri_prefix
@@ -140,8 +142,8 @@ class BrokerConnection(object):
 
     def _debug(self, msg, ident="[Kombu connection:0x%(id)x] ", **kwargs):
         if self._logger:  # pragma: no cover
-            self._logger.debug((ident + unicode(msg)) % {"id": id(self)},
-                               **kwargs)
+            logger.debug((ident + unicode(msg)) % {"id": id(self)},
+                         **kwargs)
 
     def connect(self):
         """Establish connection to server immediately."""
@@ -249,6 +251,10 @@ class BrokerConnection(object):
         if self._default_channel:
             self.maybe_close_channel(self._default_channel)
             self._default_channel = None
+
+    def _default_ensure_callback(exc, interval):
+        logger.error("Ensure: Couldn't send message: %r. Retry in %ss",
+                     exc, interval, exc_info=True)
 
     def ensure(self, obj, fun, errback=None, max_retries=None,
             interval_start=1, interval_step=1, interval_max=1, on_revive=None):
