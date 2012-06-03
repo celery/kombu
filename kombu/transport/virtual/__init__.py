@@ -94,7 +94,7 @@ class QoS(object):
     #: Instead of a mutex, which doesn't perform well here, we mark
     #: the delivery tags as dirty, so subsequent calls to append() can remove
     #: them.
-    _dirty = set()
+    _dirty = None
 
     #: If disabled, unacked messages won't be restored at shutdown.
     restore_at_shutdown = True
@@ -105,6 +105,7 @@ class QoS(object):
 
         self._delivered = OrderedDict()
         self._delivered.restored = False
+        self._dirty = set()
         self._on_collect = Finalize(self,
                                     self.restore_unacked_once,
                                     exitpriority=1)
