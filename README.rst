@@ -27,12 +27,6 @@ Features
     * AMQP transports for both the `amqplib`_ (sync) and
       `pika`_ (sync + async) clients.
 
-    * Fast AMQP transport using `librabbitmq`_, written in C.
-
-      This is automatically enabled if :mod:`librabbitmq` is installed::
-
-        $ pip install librabbitmq
-
     * Virtual transports makes it really easy to add support for non-AMQP
       transports.  There is already built-in support for `Redis`_,
       `Beanstalk`_, `Amazon SQS`_, `CouchDB`_, and `MongoDB`_.
