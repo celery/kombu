@@ -7,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>kombu - Messaging Framework for Python &mdash; Kombu 2.1.3 documentation</title>
+    <title>kombu - Messaging Framework for Python &mdash; Kombu 2.2.0rc2 documentation</title>
     
     <link rel="stylesheet" href="_static/celery.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -15,7 +15,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '',
-        VERSION:     '2.1.3',
+        VERSION:     '2.2.0rc2',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -24,7 +24,7 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="Kombu 2.1.3 documentation" href="index.html" />
+    <link rel="top" title="Kombu 2.2.0rc2 documentation" href="index.html" />
     <link rel="next" title="User Guide" href="userguide/index.html" />
     <link rel="prev" title="Kombu Documentation" href="index.html" /> 
   </head>
@@ -44,7 +44,7 @@
         <li class="right" >
           <a href="index.html" title="Kombu Documentation"
              accesskey="P">previous</a> |</li>
-        <li><a href="index.html">Kombu 2.1.3 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Kombu 2.2.0rc2 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -59,7 +59,7 @@
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Version:</th><td class="field-body">2.1.3</td>
+<tr class="field-odd field"><th class="field-name">Version:</th><td class="field-body">2.2.0rc2</td>
 </tr>
 </tbody>
 </table>
@@ -79,15 +79,24 @@ provide proven and tested solutions to common messaging problems.</p>
 <li><p class="first">Allows application authors to support several message server
 solutions by using pluggable transports.</p>
 <blockquote>
-<div><ul class="simple">
-<li>AMQP transports for both the <a class="reference external" href="http://barryp.org/software/py-amqplib/">amqplib</a> (sync) and
-<a class="reference external" href="http://github.com/pika/pika">pika</a> (sync + async) clients.</li>
-<li>Virtual transports makes it really easy to add support for non-AMQP
+<div><ul>
+<li><p class="first">AMQP transports for both the <a class="reference external" href="http://barryp.org/software/py-amqplib/">amqplib</a> (sync) and
+<a class="reference external" href="http://github.com/pika/pika">pika</a> (sync + async) clients.</p>
+</li>
+<li><p class="first">Fast AMQP transport using <a class="reference external" href="http://pypi.python.org/pypi/librabbitmq">librabbitmq</a>, written in C.</p>
+<p>This is automatically enabled if <tt class="xref py py-mod docutils literal"><span class="pre">librabbitmq</span></tt> is installed:</p>
+<div class="highlight-python"><pre>$ pip install librabbitmq</pre>
+</div>
+</li>
+<li><p class="first">Virtual transports makes it really easy to add support for non-AMQP
 transports.  There is already built-in support for <a class="reference external" href="http://code.google.com/p/redis/">Redis</a>,
-<a class="reference external" href="http://kr.github.com/beanstalkd/">Beanstalk</a>, <a class="reference external" href="http://aws.amazon.com/sqs/">Amazon SQS</a>, <a class="reference external" href="http://couchdb.apache.org/">CouchDB</a>, and <a class="reference external" href="http://www.mongodb.org/">MongoDB</a>.</li>
-<li>SQLAlchemy and Django ORM transports exists as plug-ins (
-<a class="reference external" href="http://github.com/ask/kombu-sqlalchemy/">kombu-sqlalchemy</a> and <a class="reference external" href="http://github.com/ask/django-kombu/">django-kombu</a>).</li>
-<li>In-memory transport for unit testing.</li>
+<a class="reference external" href="http://kr.github.com/beanstalkd/">Beanstalk</a>, <a class="reference external" href="http://aws.amazon.com/sqs/">Amazon SQS</a>, <a class="reference external" href="http://couchdb.apache.org/">CouchDB</a>, and <a class="reference external" href="http://www.mongodb.org/">MongoDB</a>.</p>
+</li>
+<li><p class="first">You can also use the SQLAlchemy and Django ORM transports to
+use a database as the broker.</p>
+</li>
+<li><p class="first">In-memory transport for unit testing.</p>
+</li>
 </ul>
 </div></blockquote>
 </li>
@@ -141,34 +150,46 @@ and the <a class="reference external" href="http://en.wikipedia.org/wiki/AMQP">W
 <tr class="row-even"><td><em>redis</em></td>
 <td>Virtual</td>
 <td>Yes</td>
-<td>Yes <a class="footnote-reference" href="#f1" id="id1">[1]</a></td>
+<td>Yes</td>
 <td>Yes (PUB/SUB)</td>
-</tr>
-<tr class="row-odd"><td><em>beanstalk</em></td>
-<td>Virtual</td>
-<td>Yes</td>
-<td>Yes <a class="footnote-reference" href="#f1" id="id2">[1]</a></td>
-<td>No</td>
-</tr>
-<tr class="row-even"><td><em>SQS</em></td>
-<td>Virtual</td>
-<td>Yes</td>
-<td>Yes <a class="footnote-reference" href="#f1" id="id3">[1]</a></td>
-<td>Yes <a class="footnote-reference" href="#f2" id="id4">[2]</a></td>
 </tr>
 <tr class="row-odd"><td><em>mongodb</em></td>
 <td>Virtual</td>
 <td>Yes</td>
-<td>Yes <a class="footnote-reference" href="#f1" id="id5">[1]</a></td>
+<td>Yes</td>
 <td>Yes</td>
 </tr>
+<tr class="row-even"><td><em>beanstalk</em></td>
+<td>Virtual</td>
+<td>Yes</td>
+<td>Yes <a class="footnote-reference" href="#f1" id="id1">[1]</a></td>
+<td>No</td>
+</tr>
+<tr class="row-odd"><td><em>SQS</em></td>
+<td>Virtual</td>
+<td>Yes</td>
+<td>Yes <a class="footnote-reference" href="#f1" id="id2">[1]</a></td>
+<td>Yes <a class="footnote-reference" href="#f2" id="id3">[2]</a></td>
+</tr>
 <tr class="row-even"><td><em>couchdb</em></td>
+<td>Virtual</td>
+<td>Yes</td>
+<td>Yes <a class="footnote-reference" href="#f1" id="id4">[1]</a></td>
+<td>No</td>
+</tr>
+<tr class="row-odd"><td><em>in-memory</em></td>
+<td>Virtual</td>
+<td>Yes</td>
+<td>Yes <a class="footnote-reference" href="#f1" id="id5">[1]</a></td>
+<td>No</td>
+</tr>
+<tr class="row-even"><td><em>django</em></td>
 <td>Virtual</td>
 <td>Yes</td>
 <td>Yes <a class="footnote-reference" href="#f1" id="id6">[1]</a></td>
 <td>No</td>
 </tr>
-<tr class="row-odd"><td><em>in-memory</em></td>
+<tr class="row-odd"><td><em>sqlalchemy</em></td>
 <td>Virtual</td>
 <td>Yes</td>
 <td>Yes <a class="footnote-reference" href="#f1" id="id7">[1]</a></td>
@@ -179,23 +200,23 @@ and the <a class="reference external" href="http://en.wikipedia.org/wiki/AMQP">W
 <table class="docutils footnote" frame="void" id="f1" rules="none">
 <colgroup><col class="label" /><col /></colgroup>
 <tbody valign="top">
-<tr><td class="label">[1]</td><td><em>(<a class="fn-backref" href="#id1">1</a>, <a class="fn-backref" href="#id2">2</a>, <a class="fn-backref" href="#id3">3</a>, <a class="fn-backref" href="#id5">4</a>, <a class="fn-backref" href="#id6">5</a>, <a class="fn-backref" href="#id7">6</a>)</em> Declarations only kept in memory, so exchanges/queues
+<tr><td class="label">[1]</td><td><em>(<a class="fn-backref" href="#id1">1</a>, <a class="fn-backref" href="#id2">2</a>, <a class="fn-backref" href="#id4">3</a>, <a class="fn-backref" href="#id5">4</a>, <a class="fn-backref" href="#id6">5</a>, <a class="fn-backref" href="#id7">6</a>)</em> Declarations only kept in memory, so exchanges/queues
 must be declared by all clients that needs them.</td></tr>
 </tbody>
 </table>
 <table class="docutils footnote" frame="void" id="f2" rules="none">
 <colgroup><col class="label" /><col /></colgroup>
 <tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#id4">[2]</a></td><td>Fanout supported via storing routing tables in SimpleDB.
+<tr><td class="label"><a class="fn-backref" href="#id3">[2]</a></td><td>Fanout supported via storing routing tables in SimpleDB.
 Disabled by default, but can be enabled by using the
 <tt class="docutils literal"><span class="pre">supports_fanout</span></tt> transport option.</td></tr>
 </tbody>
 </table>
 <div class="section" id="documentation">
 <h3>Documentation<a class="headerlink" href="#documentation" title="Permalink to this headline">¶</a></h3>
-<p>Kombu is using Sphinx, and the latest documentation is available at GitHub:</p>
+<p>Kombu is using Sphinx, and the latest documentation can be found here:</p>
 <blockquote>
-<div><a class="reference external" href="http://ask.github.com/kombu">http://ask.github.com/kombu</a></div></blockquote>
+<div><a class="reference external" href="http://kombu.readthedocs.org/">http://kombu.readthedocs.org/</a></div></blockquote>
 </div>
 <div class="section" id="quick-overview">
 <h3>Quick overview<a class="headerlink" href="#quick-overview" title="Permalink to this headline">¶</a></h3>
@@ -379,11 +400,11 @@ routing keys <cite>&#8220;usd.stock&#8221;</cite> and <cite>&#8220;eur.stock.db&
 <div class="section" id="bug-tracker">
 <h2>Bug tracker<a class="headerlink" href="#bug-tracker" title="Permalink to this headline">¶</a></h2>
 <p>If you have any suggestions, bug reports or annoyances please report them
-to our issue tracker at <a class="reference external" href="http://github.com/ask/kombu/issues/">http://github.com/ask/kombu/issues/</a></p>
+to our issue tracker at <a class="reference external" href="http://github.com/celery/kombu/issues/">http://github.com/celery/kombu/issues/</a></p>
 </div>
 <div class="section" id="contributing">
 <h2>Contributing<a class="headerlink" href="#contributing" title="Permalink to this headline">¶</a></h2>
-<p>Development of <cite>Kombu</cite> happens at Github: <a class="reference external" href="http://github.com/ask/kombu">http://github.com/ask/kombu</a></p>
+<p>Development of <cite>Kombu</cite> happens at Github: <a class="reference external" href="http://github.com/celery/kombu">http://github.com/celery/kombu</a></p>
 <p>You are highly encouraged to participate in the development. If you don&#8217;t
 like Github (for some reason) you&#8217;re welcome to send regular patches.</p>
 </div>
@@ -468,12 +489,12 @@ file in the top distribution directory for the full license text.</p>
         <li class="right" >
           <a href="index.html" title="Kombu Documentation"
              >previous</a> |</li>
-        <li><a href="index.html">Kombu 2.1.3 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Kombu 2.2.0rc2 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2009-2012, Ask Solem.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
   </body>
 </html>

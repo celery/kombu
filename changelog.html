@@ -7,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Change history &mdash; Kombu 2.1.3 documentation</title>
+    <title>Change history &mdash; Kombu 2.2.0rc2 documentation</title>
     
     <link rel="stylesheet" href="_static/celery.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -15,7 +15,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '',
-        VERSION:     '2.1.3',
+        VERSION:     '2.2.0rc2',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -24,7 +24,7 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="Kombu 2.1.3 documentation" href="index.html" />
+    <link rel="top" title="Kombu 2.2.0rc2 documentation" href="index.html" />
     <link rel="prev" title="kombu.utils.url" href="reference/kombu.utils.url.html" /> 
   </head>
   <body>
@@ -40,7 +40,7 @@
         <li class="right" >
           <a href="reference/kombu.utils.url.html" title="kombu.utils.url"
              accesskey="P">previous</a> |</li>
-        <li><a href="index.html">Kombu 2.1.3 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Kombu 2.2.0rc2 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -51,8 +51,81 @@
             
   <div class="section" id="change-history">
 <h1>Change history<a class="headerlink" href="#change-history" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="version-2-1-7">
+<span id="id1"></span><h2>2.1.7<a class="headerlink" href="#version-2-1-7" title="Permalink to this headline">¶</a></h2>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">release-date:</th><td class="field-body">2012-04-27 6:00 P.M BST</td>
+</tr>
+</tbody>
+</table>
+<ul class="simple">
+<li>compat consumerset now accepts optional channel argument.</li>
+</ul>
+</div>
+<div class="section" id="version-2-1-6">
+<span id="id2"></span><h2>2.1.6<a class="headerlink" href="#version-2-1-6" title="Permalink to this headline">¶</a></h2>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">release-date:</th><td class="field-body">2012-04-23 1:30 P.M BST</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><p class="first">SQLAlchemy transport was not working correctly after URL parser change.</p>
+</li>
+<li><p class="first">maybe_declare now stores cached declarations per underlying connection
+instead of globally, in the rare case that data disappears from the
+broker after connection loss.</p>
+</li>
+<li><p class="first">Django: Added South migrations.</p>
+<blockquote>
+<div><p>Contributed by Joseph Crosland.</p>
+</div></blockquote>
+</li>
+</ul>
+</div>
+<div class="section" id="version-2-1-5">
+<span id="id3"></span><h2>2.1.5<a class="headerlink" href="#version-2-1-5" title="Permalink to this headline">¶</a></h2>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">release-date:</th><td class="field-body">2012-04-13 3:30 P.M BST</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><p class="first">The url parser removed more than the first leading slash (Issue #121).</p>
+</li>
+<li><p class="first">SQLAlchemy: Can now specify url using + separator</p>
+<blockquote>
+<div><p>Example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">BrokerConnection</span><span class="p">(</span><span class="s">&quot;sqla+mysql://localhost/db&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+<li><p class="first">Better support for anonymous queues (Issue #116).</p>
+<blockquote>
+<div><p>Contributed by Michael Barrett.</p>
+</div></blockquote>
+</li>
+<li><p class="first"><tt class="docutils literal"><span class="pre">Connection.as_uri</span></tt> now quotes url parts (Issue #117).</p>
+</li>
+<li><p class="first">Beanstalk: Can now set message TTR as a message property.</p>
+<blockquote>
+<div><p>Contributed by Andrii Kostenko</p>
+</div></blockquote>
+</li>
+</ul>
+</div>
 <div class="section" id="version-2-1-4">
-<span id="id1"></span><h2>2.1.4<a class="headerlink" href="#version-2-1-4" title="Permalink to this headline">¶</a></h2>
+<span id="id4"></span><h2>2.1.4<a class="headerlink" href="#version-2-1-4" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -100,7 +173,7 @@ being consumed from disappears.</p>
 </ul>
 </div>
 <div class="section" id="version-2-1-3">
-<span id="id2"></span><h2>2.1.3<a class="headerlink" href="#version-2-1-3" title="Permalink to this headline">¶</a></h2>
+<span id="id5"></span><h2>2.1.3<a class="headerlink" href="#version-2-1-3" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -117,7 +190,7 @@ being consumed from disappears.</p>
 </ul>
 </div>
 <div class="section" id="version-2-1-2">
-<span id="id3"></span><h2>2.1.2<a class="headerlink" href="#version-2-1-2" title="Permalink to this headline">¶</a></h2>
+<span id="id6"></span><h2>2.1.2<a class="headerlink" href="#version-2-1-2" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -133,7 +206,7 @@ being consumed from disappears.</p>
 </ul>
 </div>
 <div class="section" id="version-2-1-1">
-<span id="id4"></span><h2>2.1.1<a class="headerlink" href="#version-2-1-1" title="Permalink to this headline">¶</a></h2>
+<span id="id7"></span><h2>2.1.1<a class="headerlink" href="#version-2-1-1" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -163,7 +236,7 @@ if it is not connected, as this resulted in an annoying warning.</p>
 </ul>
 </div>
 <div class="section" id="version-2-1-0">
-<span id="id5"></span><h2>2.1.0<a class="headerlink" href="#version-2-1-0" title="Permalink to this headline">¶</a></h2>
+<span id="id8"></span><h2>2.1.0<a class="headerlink" href="#version-2-1-0" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -212,7 +285,7 @@ can also be set using the <tt class="docutils literal"><span class="pre">KOMBU_P
 </ul>
 </div>
 <div class="section" id="version-2-0-0">
-<span id="id6"></span><h2>2.0.0<a class="headerlink" href="#version-2-0-0" title="Permalink to this headline">¶</a></h2>
+<span id="id9"></span><h2>2.0.0<a class="headerlink" href="#version-2-0-0" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -326,7 +399,7 @@ that should be declared before the message is published.</p>
 </div>
 </div>
 <div class="section" id="version-1-5-1">
-<span id="id7"></span><h2>1.5.1<a class="headerlink" href="#version-1-5-1" title="Permalink to this headline">¶</a></h2>
+<span id="id10"></span><h2>1.5.1<a class="headerlink" href="#version-1-5-1" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -356,7 +429,7 @@ One example would be to disable the Pickle serializer:</p>
 </ul>
 </div>
 <div class="section" id="version-1-5-0">
-<span id="id8"></span><h2>1.5.0<a class="headerlink" href="#version-1-5-0" title="Permalink to this headline">¶</a></h2>
+<span id="id11"></span><h2>1.5.0<a class="headerlink" href="#version-1-5-0" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -430,7 +503,7 @@ were not yet properly initialized (Issue #78).</p>
 </ul>
 </div>
 <div class="section" id="version-1-4-3">
-<span id="id9"></span><h2>1.4.3<a class="headerlink" href="#version-1-4-3" title="Permalink to this headline">¶</a></h2>
+<span id="id12"></span><h2>1.4.3<a class="headerlink" href="#version-1-4-3" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -444,7 +517,7 @@ were not yet properly initialized (Issue #78).</p>
 </ul>
 </div>
 <div class="section" id="version-1-4-2">
-<span id="id10"></span><h2>1.4.2<a class="headerlink" href="#version-1-4-2" title="Permalink to this headline">¶</a></h2>
+<span id="id13"></span><h2>1.4.2<a class="headerlink" href="#version-1-4-2" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -484,7 +557,7 @@ by <cite>on_decode_error</cite> (Issue #72)</p>
 </ul>
 </div>
 <div class="section" id="version-1-4-1">
-<span id="id11"></span><h2>1.4.1<a class="headerlink" href="#version-1-4-1" title="Permalink to this headline">¶</a></h2>
+<span id="id14"></span><h2>1.4.1<a class="headerlink" href="#version-1-4-1" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -501,7 +574,7 @@ established for every acquire.</li>
 </ul>
 </div>
 <div class="section" id="version-1-4-0">
-<span id="id12"></span><h2>1.4.0<a class="headerlink" href="#version-1-4-0" title="Permalink to this headline">¶</a></h2>
+<span id="id15"></span><h2>1.4.0<a class="headerlink" href="#version-1-4-0" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -571,7 +644,7 @@ of Lamports logical clock.</p>
 </ul>
 </div>
 <div class="section" id="version-1-3-5">
-<span id="id13"></span><h2>1.3.5<a class="headerlink" href="#version-1-3-5" title="Permalink to this headline">¶</a></h2>
+<span id="id16"></span><h2>1.3.5<a class="headerlink" href="#version-1-3-5" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -587,7 +660,7 @@ of Lamports logical clock.</p>
 </ul>
 </div>
 <div class="section" id="version-1-3-4">
-<span id="id14"></span><h2>1.3.4<a class="headerlink" href="#version-1-3-4" title="Permalink to this headline">¶</a></h2>
+<span id="id17"></span><h2>1.3.4<a class="headerlink" href="#version-1-3-4" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -603,7 +676,7 @@ of Lamports logical clock.</p>
 </ul>
 </div>
 <div class="section" id="version-1-3-3">
-<span id="id15"></span><h2>1.3.3<a class="headerlink" href="#version-1-3-3" title="Permalink to this headline">¶</a></h2>
+<span id="id18"></span><h2>1.3.3<a class="headerlink" href="#version-1-3-3" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -619,7 +692,7 @@ of Lamports logical clock.</p>
 </ul>
 </div>
 <div class="section" id="version-1-3-2">
-<span id="id16"></span><h2>1.3.2<a class="headerlink" href="#version-1-3-2" title="Permalink to this headline">¶</a></h2>
+<span id="id19"></span><h2>1.3.2<a class="headerlink" href="#version-1-3-2" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -642,7 +715,7 @@ than the previous limit.</li>
 </ul>
 </div>
 <div class="section" id="version-1-3-1">
-<span id="id17"></span><h2>1.3.1<a class="headerlink" href="#version-1-3-1" title="Permalink to this headline">¶</a></h2>
+<span id="id20"></span><h2>1.3.1<a class="headerlink" href="#version-1-3-1" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -674,7 +747,7 @@ also required by <tt class="xref py py-class docutils literal"><span class="pre"
 </ul>
 </div>
 <div class="section" id="version-1-3-0">
-<span id="id18"></span><h2>1.3.0<a class="headerlink" href="#version-1-3-0" title="Permalink to this headline">¶</a></h2>
+<span id="id21"></span><h2>1.3.0<a class="headerlink" href="#version-1-3-0" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -791,7 +864,7 @@ attribute.</p>
 </ul>
 </div>
 <div class="section" id="version-1-2-1">
-<span id="id19"></span><h2>1.2.1<a class="headerlink" href="#version-1-2-1" title="Permalink to this headline">¶</a></h2>
+<span id="id22"></span><h2>1.2.1<a class="headerlink" href="#version-1-2-1" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -841,7 +914,7 @@ the queue if <tt class="docutils literal"><span class="pre">auto_declare</span><
 </ul>
 </div>
 <div class="section" id="version-1-2-0">
-<span id="id20"></span><h2>1.2.0<a class="headerlink" href="#version-1-2-0" title="Permalink to this headline">¶</a></h2>
+<span id="id23"></span><h2>1.2.0<a class="headerlink" href="#version-1-2-0" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -862,7 +935,7 @@ arguments (Issue #48).</li>
 </ul>
 </div>
 <div class="section" id="version-1-1-6">
-<span id="id21"></span><h2>1.1.6<a class="headerlink" href="#version-1-1-6" title="Permalink to this headline">¶</a></h2>
+<span id="id24"></span><h2>1.1.6<a class="headerlink" href="#version-1-1-6" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -896,7 +969,7 @@ error.</p>
 </ul>
 </div>
 <div class="section" id="version-1-1-5">
-<span id="id22"></span><h2>1.1.5<a class="headerlink" href="#version-1-1-5" title="Permalink to this headline">¶</a></h2>
+<span id="id25"></span><h2>1.1.5<a class="headerlink" href="#version-1-1-5" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -910,7 +983,7 @@ error.</p>
 </ul>
 </div>
 <div class="section" id="version-1-1-4">
-<span id="id23"></span><h2>1.1.4<a class="headerlink" href="#version-1-1-4" title="Permalink to this headline">¶</a></h2>
+<span id="id26"></span><h2>1.1.4<a class="headerlink" href="#version-1-1-4" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -946,7 +1019,7 @@ keyword argument.</p>
 </ul>
 </div>
 <div class="section" id="version-1-1-3">
-<span id="id24"></span><h2>1.1.3<a class="headerlink" href="#version-1-1-3" title="Permalink to this headline">¶</a></h2>
+<span id="id27"></span><h2>1.1.3<a class="headerlink" href="#version-1-1-3" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -980,7 +1053,7 @@ connection related errors (<tt class="xref py py-attr docutils literal"><span cl
 </ul>
 </div>
 <div class="section" id="version-1-1-2">
-<span id="id25"></span><h2>1.1.2<a class="headerlink" href="#version-1-1-2" title="Permalink to this headline">¶</a></h2>
+<span id="id28"></span><h2>1.1.2<a class="headerlink" href="#version-1-1-2" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -1002,7 +1075,7 @@ issues.</p>
 </ul>
 </div>
 <div class="section" id="version-1-1-1">
-<span id="id26"></span><h2>1.1.1<a class="headerlink" href="#version-1-1-1" title="Permalink to this headline">¶</a></h2>
+<span id="id29"></span><h2>1.1.1<a class="headerlink" href="#version-1-1-1" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -1017,7 +1090,7 @@ in Python 2.6+ (Issue #33).  We now ship with our own LifoQueue.</li>
 </ul>
 </div>
 <div class="section" id="version-1-1-0">
-<span id="id27"></span><h2>1.1.0<a class="headerlink" href="#version-1-1-0" title="Permalink to this headline">¶</a></h2>
+<span id="id30"></span><h2>1.1.0<a class="headerlink" href="#version-1-1-0" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -1027,7 +1100,7 @@ in Python 2.6+ (Issue #33).  We now ship with our own LifoQueue.</li>
 </tbody>
 </table>
 <div class="section" id="v110-important">
-<span id="id28"></span><h3>Important Notes<a class="headerlink" href="#v110-important" title="Permalink to this headline">¶</a></h3>
+<span id="id31"></span><h3>Important Notes<a class="headerlink" href="#v110-important" title="Permalink to this headline">¶</a></h3>
 <ul>
 <li><p class="first">Virtual transports: Message body is now base64 encoded by default
 (Issue #27).</p>
@@ -1105,7 +1178,7 @@ log messages for connection related actions.</p>
 </div>
 </div>
 <div class="section" id="version-1-0-7">
-<span id="id29"></span><h2>1.0.7<a class="headerlink" href="#version-1-0-7" title="Permalink to this headline">¶</a></h2>
+<span id="id32"></span><h2>1.0.7<a class="headerlink" href="#version-1-0-7" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -1155,8 +1228,8 @@ set (Issue #8).</p>
 </li>
 </ul>
 </div>
-<div class="section" id="id30">
-<h2>1.0.6<a class="headerlink" href="#id30" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id33">
+<h2>1.0.6<a class="headerlink" href="#id33" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -1202,7 +1275,7 @@ Channel open
 </ul>
 </div>
 <div class="section" id="version-1-0-5">
-<span id="id31"></span><h2>1.0.5<a class="headerlink" href="#version-1-0-5" title="Permalink to this headline">¶</a></h2>
+<span id="id34"></span><h2>1.0.5<a class="headerlink" href="#version-1-0-5" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -1232,7 +1305,7 @@ consumer tag.</p>
 </ul>
 </div>
 <div class="section" id="version-1-0-4">
-<span id="id32"></span><h2>1.0.4<a class="headerlink" href="#version-1-0-4" title="Permalink to this headline">¶</a></h2>
+<span id="id35"></span><h2>1.0.4<a class="headerlink" href="#version-1-0-4" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -1252,7 +1325,7 @@ there are no messages in the queue.</p>
 </ul>
 </div>
 <div class="section" id="version-1-0-3">
-<span id="id33"></span><h2>1.0.3<a class="headerlink" href="#version-1-0-3" title="Permalink to this headline">¶</a></h2>
+<span id="id36"></span><h2>1.0.3<a class="headerlink" href="#version-1-0-3" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -1268,7 +1341,7 @@ there are no messages in the queue.</p>
 </ul>
 </div>
 <div class="section" id="version-1-0-2">
-<span id="id34"></span><h2>1.0.2<a class="headerlink" href="#version-1-0-2" title="Permalink to this headline">¶</a></h2>
+<span id="id37"></span><h2>1.0.2<a class="headerlink" href="#version-1-0-2" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -1283,7 +1356,7 @@ there are no messages in the queue.</p>
 </ul>
 </div>
 <div class="section" id="version-1-0-1">
-<span id="id35"></span><h2>1.0.1<a class="headerlink" href="#version-1-0-1" title="Permalink to this headline">¶</a></h2>
+<span id="id38"></span><h2>1.0.1<a class="headerlink" href="#version-1-0-1" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -1297,7 +1370,7 @@ there are no messages in the queue.</p>
 </ul>
 </div>
 <div class="section" id="version-1-0-0">
-<span id="id36"></span><h2>1.0.0<a class="headerlink" href="#version-1-0-0" title="Permalink to this headline">¶</a></h2>
+<span id="id39"></span><h2>1.0.0<a class="headerlink" href="#version-1-0-0" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -1311,7 +1384,7 @@ there are no messages in the queue.</p>
 </ul>
 </div>
 <div class="section" id="version-0-1-0">
-<span id="id37"></span><h2>0.1.0<a class="headerlink" href="#version-0-1-0" title="Permalink to this headline">¶</a></h2>
+<span id="id40"></span><h2>0.1.0<a class="headerlink" href="#version-0-1-0" title="Permalink to this headline">¶</a></h2>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -1337,6 +1410,9 @@ there are no messages in the queue.</p>
   <h3><a href="index.html">Table Of Contents</a></h3>
   <ul>
 <li><a class="reference internal" href="#">Change history</a><ul>
+<li><a class="reference internal" href="#version-2-1-7">2.1.7</a></li>
+<li><a class="reference internal" href="#version-2-1-6">2.1.6</a></li>
+<li><a class="reference internal" href="#version-2-1-5">2.1.5</a></li>
 <li><a class="reference internal" href="#version-2-1-4">2.1.4</a></li>
 <li><a class="reference internal" href="#version-2-1-3">2.1.3</a></li>
 <li><a class="reference internal" href="#version-2-1-2">2.1.2</a></li>
@@ -1377,7 +1453,7 @@ there are no messages in the queue.</p>
 </ul>
 </li>
 <li><a class="reference internal" href="#version-1-0-7">1.0.7</a></li>
-<li><a class="reference internal" href="#id30">1.0.6</a></li>
+<li><a class="reference internal" href="#id33">1.0.6</a></li>
 <li><a class="reference internal" href="#version-1-0-5">1.0.5</a></li>
 <li><a class="reference internal" href="#version-1-0-4">1.0.4</a></li>
 <li><a class="reference internal" href="#version-1-0-3">1.0.3</a></li>
@@ -1426,12 +1502,12 @@ there are no messages in the queue.</p>
         <li class="right" >
           <a href="reference/kombu.utils.url.html" title="kombu.utils.url"
              >previous</a> |</li>
-        <li><a href="index.html">Kombu 2.1.3 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Kombu 2.2.0rc2 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2009-2012, Ask Solem.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
   </body>
 </html>

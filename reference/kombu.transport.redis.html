@@ -7,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>kombu.transport.redis &mdash; Kombu 2.1.3 documentation</title>
+    <title>kombu.transport.redis &mdash; Kombu 2.2.0rc2 documentation</title>
     
     <link rel="stylesheet" href="../_static/celery.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -15,7 +15,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '2.1.3',
+        VERSION:     '2.2.0rc2',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -24,7 +24,7 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="Kombu 2.1.3 documentation" href="../index.html" />
+    <link rel="top" title="Kombu 2.2.0rc2 documentation" href="../index.html" />
     <link rel="up" title="API Reference" href="index.html" />
     <link rel="next" title="kombu.transport.beanstalk" href="kombu.transport.beanstalk.html" />
     <link rel="prev" title="kombu.transport.memory" href="kombu.transport.memory.html" /> 
@@ -45,7 +45,7 @@
         <li class="right" >
           <a href="kombu.transport.memory.html" title="kombu.transport.memory"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">Kombu 2.1.3 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 2.2.0rc2 documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">API Reference</a> &raquo;</li> 
       </ul>
     </div>  
@@ -86,59 +86,149 @@
 <dd><dl class="class">
 <dt id="kombu.transport.redis.Transport.Channel">
 <em class="property">class </em><tt class="descname">Channel</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.transport.redis.Transport.Channel" title="Permalink to this definition">¶</a></dt>
-<dd><dl class="attribute">
+<dd><dl class="class">
+<dt id="kombu.transport.redis.Transport.Channel.QoS">
+<em class="property">class </em><tt class="descname">QoS</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.transport.redis.Transport.Channel.QoS" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="kombu.transport.redis.Transport.Channel.QoS.ack">
+<tt class="descname">ack</tt><big>(</big><em>delivery_tag</em><big>)</big><a class="headerlink" href="#kombu.transport.redis.Transport.Channel.QoS.ack" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.redis.Transport.Channel.QoS.append">
+<tt class="descname">append</tt><big>(</big><em>message</em>, <em>delivery_tag</em><big>)</big><a class="headerlink" href="#kombu.transport.redis.Transport.Channel.QoS.append" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.redis.Transport.Channel.QoS.client">
+<tt class="descname">client</tt><a class="headerlink" href="#kombu.transport.redis.Transport.Channel.QoS.client" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.redis.Transport.Channel.QoS.reject">
+<tt class="descname">reject</tt><big>(</big><em>delivery_tag</em>, <em>requeue=False</em><big>)</big><a class="headerlink" href="#kombu.transport.redis.Transport.Channel.QoS.reject" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.redis.Transport.Channel.QoS.restore_at_shutdown">
+<tt class="descname">restore_at_shutdown</tt><em class="property"> = True</em><a class="headerlink" href="#kombu.transport.redis.Transport.Channel.QoS.restore_at_shutdown" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.redis.Transport.Channel.QoS.restore_by_tag">
+<tt class="descname">restore_by_tag</tt><big>(</big><em>tag</em><big>)</big><a class="headerlink" href="#kombu.transport.redis.Transport.Channel.QoS.restore_by_tag" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.redis.Transport.Channel.QoS.restore_unacked">
+<tt class="descname">restore_unacked</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.transport.redis.Transport.Channel.QoS.restore_unacked" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.redis.Transport.Channel.QoS.restore_visible">
+<tt class="descname">restore_visible</tt><big>(</big><em>start=0</em>, <em>num=10</em>, <em>interval=10</em><big>)</big><a class="headerlink" href="#kombu.transport.redis.Transport.Channel.QoS.restore_visible" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.redis.Transport.Channel.QoS.unacked_index_key">
+<tt class="descname">unacked_index_key</tt><a class="headerlink" href="#kombu.transport.redis.Transport.Channel.QoS.unacked_index_key" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.redis.Transport.Channel.QoS.unacked_key">
+<tt class="descname">unacked_key</tt><a class="headerlink" href="#kombu.transport.redis.Transport.Channel.QoS.unacked_key" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.redis.Transport.Channel.QoS.visibility_timeout">
+<tt class="descname">visibility_timeout</tt><a class="headerlink" href="#kombu.transport.redis.Transport.Channel.QoS.visibility_timeout" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="attribute">
 <dt id="kombu.transport.redis.Transport.Channel.active_queues">
-<tt class="descname">active_queues</tt><a class="headerlink" href="#kombu.transport.redis.Transport.Channel.active_queues" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">Transport.Channel.</tt><tt class="descname">active_queues</tt><a class="headerlink" href="#kombu.transport.redis.Transport.Channel.active_queues" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="method">
 <dt id="kombu.transport.redis.Transport.Channel.basic_cancel">
-<tt class="descname">basic_cancel</tt><big>(</big><em>consumer_tag</em><big>)</big><a class="headerlink" href="#kombu.transport.redis.Transport.Channel.basic_cancel" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">Transport.Channel.</tt><tt class="descname">basic_cancel</tt><big>(</big><em>consumer_tag</em><big>)</big><a class="headerlink" href="#kombu.transport.redis.Transport.Channel.basic_cancel" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="method">
 <dt id="kombu.transport.redis.Transport.Channel.basic_consume">
-<tt class="descname">basic_consume</tt><big>(</big><em>queue</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.transport.redis.Transport.Channel.basic_consume" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">Transport.Channel.</tt><tt class="descname">basic_consume</tt><big>(</big><em>queue</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.transport.redis.Transport.Channel.basic_consume" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.transport.redis.Transport.Channel.client">
-<tt class="descname">client</tt><a class="headerlink" href="#kombu.transport.redis.Transport.Channel.client" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">Transport.Channel.</tt><tt class="descname">client</tt><a class="headerlink" href="#kombu.transport.redis.Transport.Channel.client" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="method">
 <dt id="kombu.transport.redis.Transport.Channel.close">
-<tt class="descname">close</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.transport.redis.Transport.Channel.close" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">Transport.Channel.</tt><tt class="descname">close</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.transport.redis.Transport.Channel.close" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.redis.Transport.Channel.from_transport_options">
+<tt class="descclassname">Transport.Channel.</tt><tt class="descname">from_transport_options</tt><em class="property"> = ('body_encoding', 'deadletter_queue', 'unacked_key', 'unacked_index_key', 'visibility_timeout', 'priority_steps')</em><a class="headerlink" href="#kombu.transport.redis.Transport.Channel.from_transport_options" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="method">
 <dt id="kombu.transport.redis.Transport.Channel.get_table">
-<tt class="descname">get_table</tt><big>(</big><em>exchange</em><big>)</big><a class="headerlink" href="#kombu.transport.redis.Transport.Channel.get_table" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">Transport.Channel.</tt><tt class="descname">get_table</tt><big>(</big><em>exchange</em><big>)</big><a class="headerlink" href="#kombu.transport.redis.Transport.Channel.get_table" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.transport.redis.Transport.Channel.keyprefix_queue">
-<tt class="descname">keyprefix_queue</tt><em class="property"> = '_kombu.binding.%s'</em><a class="headerlink" href="#kombu.transport.redis.Transport.Channel.keyprefix_queue" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">Transport.Channel.</tt><tt class="descname">keyprefix_queue</tt><em class="property"> = '_kombu.binding.%s'</em><a class="headerlink" href="#kombu.transport.redis.Transport.Channel.keyprefix_queue" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="method">
 <dt id="kombu.transport.redis.Transport.Channel.pipeline">
-<tt class="descname">pipeline</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.transport.redis.Transport.Channel.pipeline" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">Transport.Channel.</tt><tt class="descname">pipeline</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.transport.redis.Transport.Channel.pipeline" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.redis.Transport.Channel.priority">
+<tt class="descclassname">Transport.Channel.</tt><tt class="descname">priority</tt><big>(</big><em>n</em><big>)</big><a class="headerlink" href="#kombu.transport.redis.Transport.Channel.priority" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.redis.Transport.Channel.priority_steps">
+<tt class="descclassname">Transport.Channel.</tt><tt class="descname">priority_steps</tt><em class="property"> = [0, 3, 6, 9]</em><a class="headerlink" href="#kombu.transport.redis.Transport.Channel.priority_steps" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.transport.redis.Transport.Channel.sep">
-<tt class="descname">sep</tt><em class="property"> = '\x06\x16'</em><a class="headerlink" href="#kombu.transport.redis.Transport.Channel.sep" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">Transport.Channel.</tt><tt class="descname">sep</tt><em class="property"> = '\x06\x16'</em><a class="headerlink" href="#kombu.transport.redis.Transport.Channel.sep" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.transport.redis.Transport.Channel.subclient">
-<tt class="descname">subclient</tt><a class="headerlink" href="#kombu.transport.redis.Transport.Channel.subclient" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">Transport.Channel.</tt><tt class="descname">subclient</tt><a class="headerlink" href="#kombu.transport.redis.Transport.Channel.subclient" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.transport.redis.Transport.Channel.supports_fanout">
-<tt class="descname">supports_fanout</tt><em class="property"> = True</em><a class="headerlink" href="#kombu.transport.redis.Transport.Channel.supports_fanout" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">Transport.Channel.</tt><tt class="descname">supports_fanout</tt><em class="property"> = True</em><a class="headerlink" href="#kombu.transport.redis.Transport.Channel.supports_fanout" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.redis.Transport.Channel.unacked_index_key">
+<tt class="descclassname">Transport.Channel.</tt><tt class="descname">unacked_index_key</tt><em class="property"> = 'unacked_index'</em><a class="headerlink" href="#kombu.transport.redis.Transport.Channel.unacked_index_key" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.redis.Transport.Channel.unacked_key">
+<tt class="descclassname">Transport.Channel.</tt><tt class="descname">unacked_key</tt><em class="property"> = 'unacked'</em><a class="headerlink" href="#kombu.transport.redis.Transport.Channel.unacked_key" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.redis.Transport.Channel.visibility_timeout">
+<tt class="descclassname">Transport.Channel.</tt><tt class="descname">visibility_timeout</tt><em class="property"> = 18000</em><a class="headerlink" href="#kombu.transport.redis.Transport.Channel.visibility_timeout" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
@@ -146,6 +236,21 @@
 <dl class="attribute">
 <dt id="kombu.transport.redis.Transport.default_port">
 <tt class="descclassname">Transport.</tt><tt class="descname">default_port</tt><em class="property"> = 6379</em><a class="headerlink" href="#kombu.transport.redis.Transport.default_port" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.redis.Transport.handle_event">
+<tt class="descclassname">Transport.</tt><tt class="descname">handle_event</tt><big>(</big><em>fileno</em>, <em>event</em><big>)</big><a class="headerlink" href="#kombu.transport.redis.Transport.handle_event" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.redis.Transport.on_poll_init">
+<tt class="descclassname">Transport.</tt><tt class="descname">on_poll_init</tt><big>(</big><em>poller</em><big>)</big><a class="headerlink" href="#kombu.transport.redis.Transport.on_poll_init" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.redis.Transport.on_poll_start">
+<tt class="descclassname">Transport.</tt><tt class="descname">on_poll_start</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.transport.redis.Transport.on_poll_start" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="attribute">
@@ -161,59 +266,149 @@
 <dl class="class">
 <dt id="kombu.transport.redis.Channel">
 <em class="property">class </em><tt class="descclassname">kombu.transport.redis.</tt><tt class="descname">Channel</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.transport.redis.Channel" title="Permalink to this definition">¶</a></dt>
-<dd><dl class="attribute">
+<dd><dl class="class">
+<dt id="kombu.transport.redis.Channel.QoS">
+<em class="property">class </em><tt class="descname">QoS</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.transport.redis.Channel.QoS" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="kombu.transport.redis.Channel.QoS.ack">
+<tt class="descname">ack</tt><big>(</big><em>delivery_tag</em><big>)</big><a class="headerlink" href="#kombu.transport.redis.Channel.QoS.ack" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.redis.Channel.QoS.append">
+<tt class="descname">append</tt><big>(</big><em>message</em>, <em>delivery_tag</em><big>)</big><a class="headerlink" href="#kombu.transport.redis.Channel.QoS.append" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.redis.Channel.QoS.client">
+<tt class="descname">client</tt><a class="headerlink" href="#kombu.transport.redis.Channel.QoS.client" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.redis.Channel.QoS.reject">
+<tt class="descname">reject</tt><big>(</big><em>delivery_tag</em>, <em>requeue=False</em><big>)</big><a class="headerlink" href="#kombu.transport.redis.Channel.QoS.reject" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.redis.Channel.QoS.restore_at_shutdown">
+<tt class="descname">restore_at_shutdown</tt><em class="property"> = True</em><a class="headerlink" href="#kombu.transport.redis.Channel.QoS.restore_at_shutdown" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.redis.Channel.QoS.restore_by_tag">
+<tt class="descname">restore_by_tag</tt><big>(</big><em>tag</em><big>)</big><a class="headerlink" href="#kombu.transport.redis.Channel.QoS.restore_by_tag" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.redis.Channel.QoS.restore_unacked">
+<tt class="descname">restore_unacked</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.transport.redis.Channel.QoS.restore_unacked" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.redis.Channel.QoS.restore_visible">
+<tt class="descname">restore_visible</tt><big>(</big><em>start=0</em>, <em>num=10</em>, <em>interval=10</em><big>)</big><a class="headerlink" href="#kombu.transport.redis.Channel.QoS.restore_visible" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.redis.Channel.QoS.unacked_index_key">
+<tt class="descname">unacked_index_key</tt><a class="headerlink" href="#kombu.transport.redis.Channel.QoS.unacked_index_key" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.redis.Channel.QoS.unacked_key">
+<tt class="descname">unacked_key</tt><a class="headerlink" href="#kombu.transport.redis.Channel.QoS.unacked_key" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.redis.Channel.QoS.visibility_timeout">
+<tt class="descname">visibility_timeout</tt><a class="headerlink" href="#kombu.transport.redis.Channel.QoS.visibility_timeout" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="attribute">
 <dt id="kombu.transport.redis.Channel.active_queues">
-<tt class="descname">active_queues</tt><a class="headerlink" href="#kombu.transport.redis.Channel.active_queues" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">Channel.</tt><tt class="descname">active_queues</tt><a class="headerlink" href="#kombu.transport.redis.Channel.active_queues" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="method">
 <dt id="kombu.transport.redis.Channel.basic_cancel">
-<tt class="descname">basic_cancel</tt><big>(</big><em>consumer_tag</em><big>)</big><a class="headerlink" href="#kombu.transport.redis.Channel.basic_cancel" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">Channel.</tt><tt class="descname">basic_cancel</tt><big>(</big><em>consumer_tag</em><big>)</big><a class="headerlink" href="#kombu.transport.redis.Channel.basic_cancel" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="method">
 <dt id="kombu.transport.redis.Channel.basic_consume">
-<tt class="descname">basic_consume</tt><big>(</big><em>queue</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.transport.redis.Channel.basic_consume" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">Channel.</tt><tt class="descname">basic_consume</tt><big>(</big><em>queue</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.transport.redis.Channel.basic_consume" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.transport.redis.Channel.client">
-<tt class="descname">client</tt><a class="headerlink" href="#kombu.transport.redis.Channel.client" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">Channel.</tt><tt class="descname">client</tt><a class="headerlink" href="#kombu.transport.redis.Channel.client" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="method">
 <dt id="kombu.transport.redis.Channel.close">
-<tt class="descname">close</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.transport.redis.Channel.close" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">Channel.</tt><tt class="descname">close</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.transport.redis.Channel.close" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.redis.Channel.from_transport_options">
+<tt class="descclassname">Channel.</tt><tt class="descname">from_transport_options</tt><em class="property"> = ('body_encoding', 'deadletter_queue', 'unacked_key', 'unacked_index_key', 'visibility_timeout', 'priority_steps')</em><a class="headerlink" href="#kombu.transport.redis.Channel.from_transport_options" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="method">
 <dt id="kombu.transport.redis.Channel.get_table">
-<tt class="descname">get_table</tt><big>(</big><em>exchange</em><big>)</big><a class="headerlink" href="#kombu.transport.redis.Channel.get_table" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">Channel.</tt><tt class="descname">get_table</tt><big>(</big><em>exchange</em><big>)</big><a class="headerlink" href="#kombu.transport.redis.Channel.get_table" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.transport.redis.Channel.keyprefix_queue">
-<tt class="descname">keyprefix_queue</tt><em class="property"> = '_kombu.binding.%s'</em><a class="headerlink" href="#kombu.transport.redis.Channel.keyprefix_queue" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">Channel.</tt><tt class="descname">keyprefix_queue</tt><em class="property"> = '_kombu.binding.%s'</em><a class="headerlink" href="#kombu.transport.redis.Channel.keyprefix_queue" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="method">
 <dt id="kombu.transport.redis.Channel.pipeline">
-<tt class="descname">pipeline</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.transport.redis.Channel.pipeline" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">Channel.</tt><tt class="descname">pipeline</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.transport.redis.Channel.pipeline" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.redis.Channel.priority">
+<tt class="descclassname">Channel.</tt><tt class="descname">priority</tt><big>(</big><em>n</em><big>)</big><a class="headerlink" href="#kombu.transport.redis.Channel.priority" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.redis.Channel.priority_steps">
+<tt class="descclassname">Channel.</tt><tt class="descname">priority_steps</tt><em class="property"> = [0, 3, 6, 9]</em><a class="headerlink" href="#kombu.transport.redis.Channel.priority_steps" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.transport.redis.Channel.sep">
-<tt class="descname">sep</tt><em class="property"> = '\x06\x16'</em><a class="headerlink" href="#kombu.transport.redis.Channel.sep" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">Channel.</tt><tt class="descname">sep</tt><em class="property"> = '\x06\x16'</em><a class="headerlink" href="#kombu.transport.redis.Channel.sep" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.transport.redis.Channel.subclient">
-<tt class="descname">subclient</tt><a class="headerlink" href="#kombu.transport.redis.Channel.subclient" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">Channel.</tt><tt class="descname">subclient</tt><a class="headerlink" href="#kombu.transport.redis.Channel.subclient" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.transport.redis.Channel.supports_fanout">
-<tt class="descname">supports_fanout</tt><em class="property"> = True</em><a class="headerlink" href="#kombu.transport.redis.Channel.supports_fanout" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">Channel.</tt><tt class="descname">supports_fanout</tt><em class="property"> = True</em><a class="headerlink" href="#kombu.transport.redis.Channel.supports_fanout" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.redis.Channel.unacked_index_key">
+<tt class="descclassname">Channel.</tt><tt class="descname">unacked_index_key</tt><em class="property"> = 'unacked_index'</em><a class="headerlink" href="#kombu.transport.redis.Channel.unacked_index_key" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.redis.Channel.unacked_key">
+<tt class="descclassname">Channel.</tt><tt class="descname">unacked_key</tt><em class="property"> = 'unacked'</em><a class="headerlink" href="#kombu.transport.redis.Channel.unacked_key" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.redis.Channel.visibility_timeout">
+<tt class="descclassname">Channel.</tt><tt class="descname">visibility_timeout</tt><em class="property"> = 18000</em><a class="headerlink" href="#kombu.transport.redis.Channel.visibility_timeout" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
@@ -281,13 +476,13 @@
         <li class="right" >
           <a href="kombu.transport.memory.html" title="kombu.transport.memory"
              >previous</a> |</li>
-        <li><a href="../index.html">Kombu 2.1.3 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 2.2.0rc2 documentation</a> &raquo;</li>
           <li><a href="index.html" >API Reference</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2009-2012, Ask Solem.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
   </body>
 </html>

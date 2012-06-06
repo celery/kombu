@@ -7,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>kombu.transport.virtual &mdash; Kombu 2.1.3 documentation</title>
+    <title>kombu.transport.virtual &mdash; Kombu 2.2.0rc2 documentation</title>
     
     <link rel="stylesheet" href="../_static/celery.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -15,7 +15,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '2.1.3',
+        VERSION:     '2.2.0rc2',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -24,7 +24,7 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="Kombu 2.1.3 documentation" href="../index.html" />
+    <link rel="top" title="Kombu 2.2.0rc2 documentation" href="../index.html" />
     <link rel="up" title="API Reference" href="index.html" />
     <link rel="next" title="kombu.transport.virtual.exchange" href="kombu.transport.virtual.exchange.html" />
     <link rel="prev" title="kombu.transport.base" href="kombu.transport.base.html" /> 
@@ -45,7 +45,7 @@
         <li class="right" >
           <a href="kombu.transport.base.html" title="kombu.transport.base"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">Kombu 2.1.3 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 2.2.0rc2 documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">API Reference</a> &raquo;</li> 
       </ul>
     </div>  
@@ -99,14 +99,12 @@
 <dl class="attribute">
 <dt id="kombu.transport.virtual.Transport.Channel">
 <tt class="descname">Channel</tt><em class="property"> = &lt;class 'kombu.transport.virtual.Channel'&gt;</em><a class="headerlink" href="#kombu.transport.virtual.Transport.Channel" title="Permalink to this definition">¶</a></dt>
-<dd><p>channel class used.</p>
-</dd></dl>
+<dd></dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.transport.virtual.Transport.Cycle">
 <tt class="descname">Cycle</tt><em class="property"> = &lt;class 'kombu.transport.virtual.scheduling.FairCycle'&gt;</em><a class="headerlink" href="#kombu.transport.virtual.Transport.Cycle" title="Permalink to this definition">¶</a></dt>
-<dd><p>cycle class used.</p>
-</dd></dl>
+<dd></dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.transport.virtual.Transport.polling_interval">
@@ -122,7 +120,7 @@
 
 <dl class="attribute">
 <dt id="kombu.transport.virtual.Transport.state">
-<tt class="descname">state</tt><em class="property"> = &lt;kombu.transport.virtual.BrokerState object at 0x103d33d50&gt;</em><a class="headerlink" href="#kombu.transport.virtual.Transport.state" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">state</tt><em class="property"> = &lt;kombu.transport.virtual.BrokerState object at 0x103b5f550&gt;</em><a class="headerlink" href="#kombu.transport.virtual.Transport.state" title="Permalink to this definition">¶</a></dt>
 <dd><p><a class="reference internal" href="#kombu.transport.virtual.BrokerState" title="kombu.transport.virtual.BrokerState"><tt class="xref py py-class docutils literal"><span class="pre">BrokerState</span></tt></a> containing declared exchanges and
 bindings (set by constructor).</p>
 </dd></dl>
@@ -230,7 +228,7 @@ goes out of scope.</p>
 
 <dl class="method">
 <dt id="kombu.transport.virtual.Channel.queue_declare">
-<tt class="descname">queue_declare</tt><big>(</big><em>queue</em>, <em>passive=False</em>, <em>auto_delete=False</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.transport.virtual.Channel.queue_declare" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">queue_declare</tt><big>(</big><em>queue</em>, <em>passive=False</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kombu.transport.virtual.Channel.queue_declare" title="Permalink to this definition">¶</a></dt>
 <dd><p>Declare queue.</p>
 </dd></dl>
 
@@ -562,6 +560,12 @@ prefetch limits.</p>
 <dd><p>Remove from transactional state and requeue message.</p>
 </dd></dl>
 
+<dl class="attribute">
+<dt id="kombu.transport.virtual.QoS.restore_at_shutdown">
+<tt class="descname">restore_at_shutdown</tt><em class="property"> = True</em><a class="headerlink" href="#kombu.transport.virtual.QoS.restore_at_shutdown" title="Permalink to this definition">¶</a></dt>
+<dd><p>If disabled, unacked messages won&#8217;t be restored at shutdown.</p>
+</dd></dl>
+
 <dl class="method">
 <dt id="kombu.transport.virtual.QoS.restore_unacked">
 <tt class="descname">restore_unacked</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.transport.virtual.QoS.restore_unacked" title="Permalink to this definition">¶</a></dt>
@@ -571,7 +575,7 @@ prefetch limits.</p>
 <dl class="method">
 <dt id="kombu.transport.virtual.QoS.restore_unacked_once">
 <tt class="descname">restore_unacked_once</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.transport.virtual.QoS.restore_unacked_once" title="Permalink to this definition">¶</a></dt>
-<dd><p>Restores all uncknowledged message at shutdown/gc collect.</p>
+<dd><p>Restores all unacknowledged message at shutdown/gc collect.</p>
 <p>Will only be done once for each instance.</p>
 </dd></dl>
 
@@ -588,6 +592,11 @@ prefetch limits.</p>
 <tt class="descname">bindings</tt><em class="property"> = None</em><a class="headerlink" href="#kombu.transport.virtual.BrokerState.bindings" title="Permalink to this definition">¶</a></dt>
 <dd><p>active bindings.</p>
 </dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.virtual.BrokerState.clear">
+<tt class="descname">clear</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.transport.virtual.BrokerState.clear" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
 
 <dl class="attribute">
 <dt id="kombu.transport.virtual.BrokerState.exchanges">
@@ -663,13 +672,13 @@ prefetch limits.</p>
         <li class="right" >
           <a href="kombu.transport.base.html" title="kombu.transport.base"
              >previous</a> |</li>
-        <li><a href="../index.html">Kombu 2.1.3 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 2.2.0rc2 documentation</a> &raquo;</li>
           <li><a href="index.html" >API Reference</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2009-2012, Ask Solem.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
   </body>
 </html>

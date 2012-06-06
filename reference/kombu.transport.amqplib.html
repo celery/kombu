@@ -7,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>kombu.transport.amqplib &mdash; Kombu 2.1.3 documentation</title>
+    <title>kombu.transport.amqplib &mdash; Kombu 2.2.0rc2 documentation</title>
     
     <link rel="stylesheet" href="../_static/celery.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -15,7 +15,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '2.1.3',
+        VERSION:     '2.2.0rc2',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -24,7 +24,7 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="Kombu 2.1.3 documentation" href="../index.html" />
+    <link rel="top" title="Kombu 2.2.0rc2 documentation" href="../index.html" />
     <link rel="up" title="API Reference" href="index.html" />
     <link rel="next" title="kombu.transport.librabbitmq" href="kombu.transport.librabbitmq.html" />
     <link rel="prev" title="kombu.transport" href="kombu.transport.html" /> 
@@ -45,7 +45,7 @@
         <li class="right" >
           <a href="kombu.transport.html" title="kombu.transport"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">Kombu 2.1.3 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 2.2.0rc2 documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">API Reference</a> &raquo;</li> 
       </ul>
     </div>  
@@ -95,20 +95,14 @@
 
 <dl class="method">
 <dt id="kombu.transport.amqplib.Transport.Connection.drain_events">
-<tt class="descname">drain_events</tt><big>(</big><em>allowed_methods=None</em>, <em>timeout=None</em><big>)</big><a class="headerlink" href="#kombu.transport.amqplib.Transport.Connection.drain_events" title="Permalink to this definition">¶</a></dt>
-<dd><p>Wait for an event on any channel.</p>
+<tt class="descname">drain_events</tt><big>(</big><em>timeout=None</em><big>)</big><a class="headerlink" href="#kombu.transport.amqplib.Transport.Connection.drain_events" title="Permalink to this definition">¶</a></dt>
+<dd><p>Wait for an event on a channel.</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="kombu.transport.amqplib.Transport.Connection.read_timeout">
 <tt class="descname">read_timeout</tt><big>(</big><em>timeout=None</em><big>)</big><a class="headerlink" href="#kombu.transport.amqplib.Transport.Connection.read_timeout" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
-
-<dl class="method">
-<dt id="kombu.transport.amqplib.Transport.Connection.wait_multi">
-<tt class="descname">wait_multi</tt><big>(</big><em>channels</em>, <em>allowed_methods=None</em>, <em>timeout=None</em><big>)</big><a class="headerlink" href="#kombu.transport.amqplib.Transport.Connection.wait_multi" title="Permalink to this definition">¶</a></dt>
-<dd><p>Wait for an event on a channel.</p>
-</dd></dl>
 
 </dd></dl>
 
@@ -155,8 +149,33 @@
 </dd></dl>
 
 <dl class="method">
+<dt id="kombu.transport.amqplib.Transport.eventmap">
+<tt class="descclassname">Transport.</tt><tt class="descname">eventmap</tt><big>(</big><em>connection</em><big>)</big><a class="headerlink" href="#kombu.transport.amqplib.Transport.eventmap" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.amqplib.Transport.get_manager">
+<tt class="descclassname">Transport.</tt><tt class="descname">get_manager</tt><big>(</big><em>hostname=None</em>, <em>port=None</em>, <em>userid=None</em>, <em>password=None</em><big>)</big><a class="headerlink" href="#kombu.transport.amqplib.Transport.get_manager" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
 <dt id="kombu.transport.amqplib.Transport.is_alive">
 <tt class="descclassname">Transport.</tt><tt class="descname">is_alive</tt><big>(</big><em>connection</em><big>)</big><a class="headerlink" href="#kombu.transport.amqplib.Transport.is_alive" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kombu.transport.amqplib.Transport.nb_keep_draining">
+<tt class="descclassname">Transport.</tt><tt class="descname">nb_keep_draining</tt><em class="property"> = True</em><a class="headerlink" href="#kombu.transport.amqplib.Transport.nb_keep_draining" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.amqplib.Transport.on_poll_init">
+<tt class="descclassname">Transport.</tt><tt class="descname">on_poll_init</tt><big>(</big><em>poller</em><big>)</big><a class="headerlink" href="#kombu.transport.amqplib.Transport.on_poll_init" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kombu.transport.amqplib.Transport.on_poll_start">
+<tt class="descclassname">Transport.</tt><tt class="descname">on_poll_start</tt><big>(</big><big>)</big><a class="headerlink" href="#kombu.transport.amqplib.Transport.on_poll_start" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="method">
@@ -235,8 +254,8 @@ is the ID of the method.</p>
 
 <dl class="method">
 <dt id="kombu.transport.amqplib.Connection.drain_events">
-<tt class="descname">drain_events</tt><big>(</big><em>allowed_methods=None</em>, <em>timeout=None</em><big>)</big><a class="headerlink" href="#kombu.transport.amqplib.Connection.drain_events" title="Permalink to this definition">¶</a></dt>
-<dd><p>Wait for an event on any channel.</p>
+<tt class="descname">drain_events</tt><big>(</big><em>timeout=None</em><big>)</big><a class="headerlink" href="#kombu.transport.amqplib.Connection.drain_events" title="Permalink to this definition">¶</a></dt>
+<dd><p>Wait for an event on a channel.</p>
 </dd></dl>
 
 <dl class="method">
@@ -249,12 +268,6 @@ is the ID of the method.</p>
 <tt class="descname">wait</tt><big>(</big><em>allowed_methods=None</em><big>)</big><a class="headerlink" href="#kombu.transport.amqplib.Connection.wait" title="Permalink to this definition">¶</a></dt>
 <dd><p>Wait for a method that matches our allowed_methods parameter (the
 default value of None means match any method), and dispatch to it.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="kombu.transport.amqplib.Connection.wait_multi">
-<tt class="descname">wait_multi</tt><big>(</big><em>channels</em>, <em>allowed_methods=None</em>, <em>timeout=None</em><big>)</big><a class="headerlink" href="#kombu.transport.amqplib.Connection.wait_multi" title="Permalink to this definition">¶</a></dt>
-<dd><p>Wait for an event on a channel.</p>
 </dd></dl>
 
 </dd></dl>
@@ -377,13 +390,13 @@ default value of None means match any method), and dispatch to it.</p>
         <li class="right" >
           <a href="kombu.transport.html" title="kombu.transport"
              >previous</a> |</li>
-        <li><a href="../index.html">Kombu 2.1.3 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 2.2.0rc2 documentation</a> &raquo;</li>
           <li><a href="index.html" >API Reference</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2009-2012, Ask Solem.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
   </body>
 </html>

@@ -7,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Connection and Producer Pools &mdash; Kombu 2.1.3 documentation</title>
+    <title>Connection and Producer Pools &mdash; Kombu 2.2.0rc2 documentation</title>
     
     <link rel="stylesheet" href="../_static/celery.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -15,7 +15,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '2.1.3',
+        VERSION:     '2.2.0rc2',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -24,7 +24,7 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="Kombu 2.1.3 documentation" href="../index.html" />
+    <link rel="top" title="Kombu 2.2.0rc2 documentation" href="../index.html" />
     <link rel="up" title="User Guide" href="index.html" />
     <link rel="next" title="Serialization" href="serialization.html" />
     <link rel="prev" title="Simple Interface" href="simple.html" /> 
@@ -45,7 +45,7 @@
         <li class="right" >
           <a href="simple.html" title="Simple Interface"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">Kombu 2.1.3 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 2.2.0rc2 documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">User Guide</a> &raquo;</li> 
       </ul>
     </div>  
@@ -107,15 +107,16 @@ exception will be raised.</p>
 </div>
 <p>That&#8217;s about it.  If you need to connect to multiple brokers
 at once you can do that too:</p>
-<div class="highlight-python"><pre>from kombu import BrokerConnection
-from kombu.pools import connections
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">kombu</span> <span class="kn">import</span> <span class="n">BrokerConnection</span>
+<span class="kn">from</span> <span class="nn">kombu.pools</span> <span class="kn">import</span> <span class="n">connections</span>
 
-c1 = BrokerConnection("amqp://")
-c2 = BrokerConnection("redis://")
+<span class="n">c1</span> <span class="o">=</span> <span class="n">BrokerConnection</span><span class="p">(</span><span class="s">&quot;amqp://&quot;</span><span class="p">)</span>
+<span class="n">c2</span> <span class="o">=</span> <span class="n">BrokerConnection</span><span class="p">(</span><span class="s">&quot;redis://&quot;</span><span class="p">)</span>
 
-with connections[c1].acquire(block=True) as conn1:
-    with connections[c2].acquire(block=True) as conn2:
-        # ....</pre>
+<span class="k">with</span> <span class="n">connections</span><span class="p">[</span><span class="n">c1</span><span class="p">]</span><span class="o">.</span><span class="n">acquire</span><span class="p">(</span><span class="n">block</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">conn1</span><span class="p">:</span>
+    <span class="k">with</span> <span class="n">connections</span><span class="p">[</span><span class="n">c2</span><span class="p">]</span><span class="o">.</span><span class="n">acquire</span><span class="p">(</span><span class="n">block</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">conn2</span><span class="p">:</span>
+        <span class="c"># ....</span>
+</pre></div>
 </div>
 </div>
 </div>
@@ -177,16 +178,17 @@ so that forked processes start with clean pool groups.</p>
 <p>To maintain your own pool groups you should create your own
 <tt class="xref py py-class docutils literal"><span class="pre">Connections</span></tt> and <tt class="xref py py-class docutils literal"><span class="pre">kombu.pools.Producers</span></tt>
 instances:</p>
-<div class="highlight-python"><pre>from kombu import pools
-from kombu import BrokerConnection
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">kombu</span> <span class="kn">import</span> <span class="n">pools</span>
+<span class="kn">from</span> <span class="nn">kombu</span> <span class="kn">import</span> <span class="n">BrokerConnection</span>
 
-connections = pools.Connection(limit=100)
-producers = pools.Producers(limit=connections.limit)
+<span class="n">connections</span> <span class="o">=</span> <span class="n">pools</span><span class="o">.</span><span class="n">Connection</span><span class="p">(</span><span class="n">limit</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+<span class="n">producers</span> <span class="o">=</span> <span class="n">pools</span><span class="o">.</span><span class="n">Producers</span><span class="p">(</span><span class="n">limit</span><span class="o">=</span><span class="n">connections</span><span class="o">.</span><span class="n">limit</span><span class="p">)</span>
 
-connection = BrokerConnection("amqp://guest:guest@localhost:5672//")
+<span class="n">connection</span> <span class="o">=</span> <span class="n">BrokerConnection</span><span class="p">(</span><span class="s">&quot;amqp://guest:guest@localhost:5672//&quot;</span><span class="p">)</span>
 
-with connections[connection].acquire(block=True):
-    # ...</pre>
+<span class="k">with</span> <span class="n">connections</span><span class="p">[</span><span class="n">connection</span><span class="p">]</span><span class="o">.</span><span class="n">acquire</span><span class="p">(</span><span class="n">block</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+    <span class="c"># ...</span>
+</pre></div>
 </div>
 <p>If you want to use the global limit that can be set with
 <a class="reference internal" href="../reference/kombu.pools.html#kombu.pools.set_limit" title="kombu.pools.set_limit"><tt class="xref py py-func docutils literal"><span class="pre">set_limit()</span></tt></a> you can use a special value as the <tt class="docutils literal"><span class="pre">limit</span></tt>
@@ -267,13 +269,13 @@ argument:</p>
         <li class="right" >
           <a href="simple.html" title="Simple Interface"
              >previous</a> |</li>
-        <li><a href="../index.html">Kombu 2.1.3 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 2.2.0rc2 documentation</a> &raquo;</li>
           <li><a href="index.html" >User Guide</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2009-2012, Ask Solem.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
   </body>
 </html>

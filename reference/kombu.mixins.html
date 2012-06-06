@@ -7,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Mixin Classes - kombu.mixins &mdash; Kombu 2.1.3 documentation</title>
+    <title>Mixin Classes - kombu.mixins &mdash; Kombu 2.2.0rc2 documentation</title>
     
     <link rel="stylesheet" href="../_static/celery.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -15,7 +15,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '2.1.3',
+        VERSION:     '2.2.0rc2',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -24,7 +24,7 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="Kombu 2.1.3 documentation" href="../index.html" />
+    <link rel="top" title="Kombu 2.2.0rc2 documentation" href="../index.html" />
     <link rel="up" title="API Reference" href="index.html" />
     <link rel="next" title="Clocks and Synchronization - kombu.clocks" href="kombu.clocks.html" />
     <link rel="prev" title="Common Utilities - kombu.common" href="kombu.common.html" /> 
@@ -45,7 +45,7 @@
         <li class="right" >
           <a href="kombu.common.html" title="Common Utilities - kombu.common"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">Kombu 2.1.3 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 2.2.0rc2 documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">API Reference</a> &raquo;</li> 
       </ul>
     </div>  
@@ -92,19 +92,20 @@ of <a class="reference internal" href="kombu.messaging.html#kombu.messaging.Cons
 Supporting multiple consumers is important so that multiple
 channels can be used for different QoS requirements.</p>
 <p><strong>Example</strong>:</p>
-<div class="highlight-python"><pre>class Worker(ConsumerMixin):
-    task_queue = Queue("tasks", Exchange("tasks"), "tasks"))
+<div class="highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">Worker</span><span class="p">(</span><span class="n">ConsumerMixin</span><span class="p">):</span>
+    <span class="n">task_queue</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">(</span><span class="s">&quot;tasks&quot;</span><span class="p">,</span> <span class="n">Exchange</span><span class="p">(</span><span class="s">&quot;tasks&quot;</span><span class="p">),</span> <span class="s">&quot;tasks&quot;</span><span class="p">))</span>
 
-    def __init__(self, connection):
-        self.connection = None
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">connection</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">connection</span> <span class="o">=</span> <span class="bp">None</span>
 
-    def get_consumers(self, Consumer, channel):
-        return [Consumer(queues=[self.task_queue],
-                         callback=[self.on_task])]
+    <span class="k">def</span> <span class="nf">get_consumers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">Consumer</span><span class="p">,</span> <span class="n">channel</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">Consumer</span><span class="p">(</span><span class="n">queues</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">task_queue</span><span class="p">],</span>
+                         <span class="n">callback</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">on_task</span><span class="p">])]</span>
 
-    def on_task(self, body, message):
-        print("Got task: %r" % (body, ))
-        message.ack()</pre>
+    <span class="k">def</span> <span class="nf">on_task</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">body</span><span class="p">,</span> <span class="n">message</span><span class="p">):</span>
+        <span class="k">print</span><span class="p">(</span><span class="s">&quot;Got task: </span><span class="si">%r</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">body</span><span class="p">,</span> <span class="p">))</span>
+        <span class="n">message</span><span class="o">.</span><span class="n">ack</span><span class="p">()</span>
+</pre></div>
 </div>
 <p><strong>Additional handler methods</strong>:</p>
 <blockquote>
@@ -328,13 +329,13 @@ of a thread.</p>
         <li class="right" >
           <a href="kombu.common.html" title="Common Utilities - kombu.common"
              >previous</a> |</li>
-        <li><a href="../index.html">Kombu 2.1.3 documentation</a> &raquo;</li>
+        <li><a href="../index.html">Kombu 2.2.0rc2 documentation</a> &raquo;</li>
           <li><a href="index.html" >API Reference</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2009-2012, Ask Solem.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
   </body>
 </html>

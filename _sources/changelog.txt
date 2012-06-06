@@ -2,6 +2,54 @@
  Change history
 ================
 
+.. _version-2.1.7:
+
+2.1.7
+=====
+:release-date: 2012-04-27 6:00 P.M BST
+
+* compat consumerset now accepts optional channel argument.
+
+.. _version-2.1.6:
+
+2.1.6
+=====
+:release-date: 2012-04-23 1:30 P.M BST
+
+* SQLAlchemy transport was not working correctly after URL parser change.
+
+* maybe_declare now stores cached declarations per underlying connection
+  instead of globally, in the rare case that data disappears from the
+  broker after connection loss.
+
+* Django: Added South migrations.
+
+    Contributed by Joseph Crosland.
+
+.. _version-2.1.5:
+
+2.1.5
+=====
+:release-date: 2012-04-13 3:30 P.M BST
+
+* The url parser removed more than the first leading slash (Issue #121).
+
+* SQLAlchemy: Can now specify url using + separator
+
+    Example::
+
+        BrokerConnection("sqla+mysql://localhost/db")
+
+* Better support for anonymous queues (Issue #116).
+
+    Contributed by Michael Barrett.
+
+* ``Connection.as_uri`` now quotes url parts (Issue #117).
+
+* Beanstalk: Can now set message TTR as a message property.
+
+    Contributed by Andrii Kostenko
+
 .. _version-2.1.4:
 
 2.1.4
