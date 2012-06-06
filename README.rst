@@ -27,12 +27,18 @@ Features
     * AMQP transports for both the `amqplib`_ (sync) and
       `pika`_ (sync + async) clients.
 
+    * Fast AMQP transport using `librabbitmq`_, written in C.
+
+      This is automatically enabled if :mod:`librabbitmq` is installed::
+
+        $ pip install librabbitmq
+
     * Virtual transports makes it really easy to add support for non-AMQP
       transports.  There is already built-in support for `Redis`_,
       `Beanstalk`_, `Amazon SQS`_, `CouchDB`_, and `MongoDB`_.
 
-    * SQLAlchemy and Django ORM transports exists as plug-ins (
-      `kombu-sqlalchemy`_ and `django-kombu`_).
+    * You can also use the SQLAlchemy and Django ORM transports to
+      use a database as the broker.
 
     * In-memory transport for unit testing.
 
@@ -67,9 +73,8 @@ and the `Wikipedia article about AMQP`_.
 .. _`amqplib`: http://barryp.org/software/py-amqplib/
 .. _`pika`: http://github.com/pika/pika
 .. _`Wikipedia article about AMQP`: http://en.wikipedia.org/wiki/AMQP
-.. _`kombu-sqlalchemy`: http://github.com/ask/kombu-sqlalchemy/
-.. _`django-kombu`: http://github.com/ask/django-kombu/
 .. _`carrot`: http://pypi.python.org/pypi/carrot/
+.. _`librabbitmq`: http://pypi.python.org/pypi/librabbitmq
 
 
 Transport Comparison
@@ -111,9 +116,9 @@ Transport Comparison
 Documentation
 -------------
 
-Kombu is using Sphinx, and the latest documentation is available at GitHub:
+Kombu is using Sphinx, and the latest documentation can be found here:
 
-    http://ask.github.com/kombu
+    http://kombu.readthedocs.org/
 
 Quick overview
 --------------
@@ -298,12 +303,12 @@ Bug tracker
 ===========
 
 If you have any suggestions, bug reports or annoyances please report them
-to our issue tracker at http://github.com/ask/kombu/issues/
+to our issue tracker at http://github.com/celery/kombu/issues/
 
 Contributing
 ============
 
-Development of `Kombu` happens at Github: http://github.com/ask/kombu
+Development of `Kombu` happens at Github: http://github.com/celery/kombu
 
 You are highly encouraged to participate in the development. If you don't
 like Github (for some reason) you're welcome to send regular patches.
