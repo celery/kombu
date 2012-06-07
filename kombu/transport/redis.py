@@ -28,6 +28,12 @@ from kombu.utils import cached_property, uuid
 from kombu.utils.encoding import str_t
 from kombu.utils.eventio import poll, READ, ERR
 
+try:
+    import redis
+except ImportError:
+    redis = None
+
+
 from . import virtual
 
 logger = get_logger("kombu.transport.redis")
@@ -253,7 +259,7 @@ class Channel(virtual.Channel):
     _fanout_queues = {}
     unacked_key = "unacked"
     unacked_index_key = "unacked_index"
-    visibility_timeout = 18000  # 5 hours
+    visibility_timeout = 3600  # 1 hour
     priority_steps = PRIORITY_STEPS
 
     from_transport_options = (virtual.Channel.from_transport_options
@@ -520,8 +526,6 @@ class Channel(virtual.Channel):
                            password=conninfo.password)
 
     def _get_client(self):
-        import redis
-
         version = getattr(redis, "__version__", (0, 0, 0))
         version = tuple(map(int, version.split(".")))
         if version < (2, 4, 4):
@@ -531,6 +535,7 @@ class Channel(virtual.Channel):
 
         # KombuRedis maintains a connection attribute on it's instance and
         # uses that when executing commands
+        # This was added after redis-py was changed.
         class KombuRedis(redis.Redis):  # pragma: no cover
 
             def __init__(self, *args, **kwargs):
@@ -550,48 +555,54 @@ class Channel(virtual.Channel):
 
         return KombuRedis
 
-    def _get_response_error(self):
-        from redis import exceptions
-        return exceptions.ResponseError
-
     def pipeline(self):
+        """Create a new pipeline using available connection."""
         return self._avail_client.pipeline()
 
     @property
     def _avail_client(self):
+        """Returns new connection from the pool if the main client is
+        currently in polling-mode."""
         if self._in_poll:
             return self._create_client()
         return self.client
 
     @cached_property
     def client(self):
+        """Client used to publish messages, BRPOP etc."""
         return self._create_client()
-
-    @client.deleter     # noqa
-    def client(self, client):
-        client.connection.disconnect()
 
     @cached_property
     def subclient(self):
+        """Pub/Sub connection used to consume fanout queues."""
         client = self._create_client()
         pubsub = client.pubsub()
         pool = pubsub.connection_pool
         pubsub.connection = pool.get_connection("pubsub", pubsub.shard_hint)
         return pubsub
 
-    @subclient.deleter  # noqa
-    def subclient(self, client):
-        client.connection.disconnect()
-
     def _update_cycle(self):
+        """Update fair cycle between queues.
+
+        We cycle between queues fairly to make sure that
+        each queue is equally likely to be consumed from,
+        so that a very busy queue will not block others.
+
+        """
         self._queue_cycle = cycle(self.active_queues)
 
     def _consume_cycle(self):
+        """Get a fresh list of queues from the queue cycle."""
         active = len(self.active_queues)
         return list(islice(self._queue_cycle, 0, active + 1))[:active]
 
+    def _get_response_error(self):
+        from redis import exceptions
+        return exceptions.ResponseError
+
     @property
     def active_queues(self):
+        """Set of queues being consumed from (excluding fanout queues)."""
         return set(queue for queue in self._active_queues
                             if queue not in self.active_fanout_queues)
 
@@ -604,18 +615,24 @@ class Transport(virtual.Transport):
 
     def __init__(self, *args, **kwargs):
         super(Transport, self).__init__(*args, **kwargs)
+
+        # Get redis-py exceptions.
         self.connection_errors, self.channel_errors = self._get_errors()
+        # All channels share the same poller.
         self.cycle = MultiChannelPoller()
 
     def on_poll_init(self, poller):
+        """Called when hub starts."""
         self.cycle.poller = poller
 
     def on_poll_start(self):
+        """Called by hub before each ``poll()``"""
         cycle = self.cycle
         cycle.on_poll_start()
         return dict((fd, self.handle_event) for fd in cycle.fds)
 
     def handle_event(self, fileno, event):
+        """Handle AIO event for one of our file descriptors."""
         ret = self.cycle.handle_event(fileno, event)
         if ret:
             item, channel = ret
@@ -627,6 +644,7 @@ class Transport(virtual.Transport):
             self._callbacks[queue](message)
 
     def _get_errors(self):
+        """Utility to import redis-py's exceptions at runtime."""
         from redis import exceptions
         # This exception suddenly changed name between redis-py versions
         if hasattr(exceptions, "InvalidData"):
