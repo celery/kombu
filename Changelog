@@ -35,10 +35,10 @@ Important Notes
             $(sudo rabbitmqctl -q list_exchanges -p "$VHOST" \
             | grep \.pidbox | awk '{print $1}') "$URL"
 
-    The ``VHOST`` variable must be set to the target RabbitMQ virtual host,
-    and the URL must be the AMQP url for the server.
+    The :envvar:`VHOST` variable must be set to the target RabbitMQ virtual host,
+    and the :envvar:`URL` must be the AMQP URL to the server.
 
-- The 'amqp' transport alias will now use :mod:`librabbitmq`
+- The ``amqp`` transport alias will now use :mod:`librabbitmq`
   if installed.
 
     `py-librabbitmq`_ is a fast AMQP client for Python
@@ -48,9 +48,9 @@ Important Notes
 
         $ pip install librabbitmq
 
-    librabbitmq will not be used if running under eventlet/gevent.
+    It will not be used if the process is monkey patched by eventlet/gevent.
 
-.. `py-librabbitmq`: https://github.com/celery/librabbitmq
+.. _`py-librabbitmq`: https://github.com/celery/librabbitmq
 
 .. _v220-news:
 
