@@ -58,33 +58,22 @@ PRIORITY_STEPS = [0, 3, 6, 9]
 # queues manually.
 
 
-class DummyLock(object):
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *exc_info):
-        pass
-
-
 class QoS(virtual.QoS):
     restore_at_shutdown = True
 
     def __init__(self, *args, **kwargs):
         super(QoS, self).__init__(*args, **kwargs)
-        self.mutex = DummyLock()  # XXX let's see how this works out
         self._vrestore_count = 0
 
     def append(self, message, delivery_tag):
-        with self.mutex:
-            delivery = message.delivery_info
-            EX, RK = delivery["exchange"], delivery["routing_key"]
-            self.client.pipeline() \
-                   .zadd(self.unacked_index_key, delivery_tag, time()) \
-                   .hset(self.unacked_key, delivery_tag,
-                       dumps([message._raw, EX, RK])) \
-                   .execute()
-            super(QoS, self).append(message, delivery_tag)
+        delivery = message.delivery_info
+        EX, RK = delivery["exchange"], delivery["routing_key"]
+        self.client.pipeline() \
+                .zadd(self.unacked_index_key, delivery_tag, time()) \
+                .hset(self.unacked_key, delivery_tag,
+                    dumps([message._raw, EX, RK])) \
+                .execute()
+        super(QoS, self).append(message, delivery_tag)
 
     def restore_unacked(self):
         for tag in self._delivered.iterkeys():
@@ -92,9 +81,8 @@ class QoS(virtual.QoS):
         self._delivered.clear()
 
     def ack(self, delivery_tag):
-        with self.mutex:
-            self._remove_from_indices(delivery_tag).execute()
-            super(QoS, self).ack(delivery_tag)
+        self._remove_from_indices(delivery_tag).execute()
+        super(QoS, self).ack(delivery_tag)
 
     def reject(self, delivery_tag, requeue=False):
         self.ack(delivery_tag)
@@ -108,13 +96,12 @@ class QoS(virtual.QoS):
         self._vrestore_count += 1
         if (self._vrestore_count - 1) % interval:
             return
-        with self.mutex:
-            ceil = time() - self.visibility_timeout
-            visible = self.client.zrevrangebyscore(
-                    self.unacked_index_key, ceil, 0,
-                    start=start, num=num, withscores=True)
-            for tag, score in visible or []:
-                self.restore_by_tag(tag)
+        ceil = time() - self.visibility_timeout
+        visible = self.client.zrevrangebyscore(
+                self.unacked_index_key, ceil, 0,
+                start=start, num=num, withscores=True)
+        for tag, score in visible or []:
+            self.restore_by_tag(tag)
 
     def restore_by_tag(self, tag):
         p, _, _ = self._remove_from_indices(tag,

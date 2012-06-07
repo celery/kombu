@@ -57,9 +57,9 @@ Important Notes
 News
 ----
 
-- Redis: Improved implementation of Ack emulation.
+- Redis: Ack emulation improvements.
 
-    This improvement reduces the possibility of data loss.
+    Reducing the possibility of data loss.
 
     Acks are now implemented by storing a copy of the message when the message
     is consumed.  The copy is not removed until the consumer acknowledges
