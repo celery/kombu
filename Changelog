@@ -6,8 +6,8 @@
 
 2.2.0
 =====
-:release-date: TBA
-
+:release-date: 2012-06-07 3:10 P.M BST
+:by: Ask Solem
 
 .. _v220-important:
 
@@ -23,9 +23,20 @@ Important Notes
     Auto delete has been described as a misfeature,
     and therefore we are disabled it.
 
-    Old exchanges used by pidbox must be removed,
+    For RabbitMQ users old exchanges used by pidbox must be removed,
     these are named ``mailbox_name.pidbox``,
     and ``reply.mailbox_name.pidbox``.
+
+    The following can command can be used to clean up these exchanges::
+
+        VHOST=/ URL=amqp:// python -c'import sys,kombu;[kombu.Connection(
+            sys.argv[-1]).channel().exchange_delete(x)
+                for x in sys.argv[1:-1]]' \
+            $(sudo rabbitmqctl -q list_exchanges -p "$VHOST" \
+            | grep \.pidbox | awk '{print $1}') "$URL"
+
+    The ``VHOST`` variable must be set to the target RabbitMQ virtual host,
+    and the URL must be the AMQP url for the server.
 
 - The 'amqp' transport alias will now use :mod:`librabbitmq`
   if installed.
@@ -83,6 +94,13 @@ News
     for messages to be redelivered in the event of a power failure,
     but if so happens you could temporarily set the visibility timeout lower
     to flush out messages when you start up the systems again.
+
+- Experimental `Apache ZooKeeper`_ transport
+
+    More information is in the module reference:
+    :mod:`kombu.transport.zookeeper`.
+
+    Contributed by Mahendra M.
 
 - Redis: Priority support.
 
