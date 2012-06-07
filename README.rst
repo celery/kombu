@@ -1,19 +1,17 @@
-#############################################
+========================================
  kombu - Messaging Framework for Python
-#############################################
+========================================
 
-:Version: 2.2.0rc2
+:Version: 2.2.0
 
-`Kombu` is an `AMQP`_ messaging framework for Python.
+`Kombu` is a messaging framework for Python.
+
+The aim of `Kombu` is to make messaging in Python as easy as possible by
+providing an idiomatic high-level interface for the AMQ protocol, and also
+provide proven and tested solutions to common messaging problems.
 
 AMQP is the Advanced Message Queuing Protocol, an open standard protocol
 for message orientation, queuing, routing, reliability and security.
-
-One of the most popular implementations of AMQP is `RabbitMQ`_.
-
-The aim of `Kombu` is to make messaging in Python as easy as possible by
-providing an idiomatic high-level interface for the AMQP protocol, and also
-provide proven and tested solutions to common messaging problems.
 
 Features
 ========
