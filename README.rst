@@ -10,8 +10,9 @@ The aim of `Kombu` is to make messaging in Python as easy as possible by
 providing an idiomatic high-level interface for the AMQ protocol, and also
 provide proven and tested solutions to common messaging problems.
 
-AMQP is the Advanced Message Queuing Protocol, an open standard protocol
-for message orientation, queuing, routing, reliability and security.
+`AMQP`_ is the Advanced Message Queuing Protocol, an open standard protocol
+for message orientation, queuing, routing, reliability and security,
+for which the `RabbitMQ`_ messaging server is the most popular implementation.
 
 Features
 ========
@@ -24,7 +25,7 @@ Features
 
     * Fast AMQP transport using `librabbitmq`_, written in C.
 
-      This is automatically enabled if :mod:`librabbitmq` is installed::
+      This is automatically enabled if librabbitmq is installed::
 
         $ pip install librabbitmq
 
