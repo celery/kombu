@@ -269,7 +269,7 @@ class AbstractChannel(object):
     def _new_queue(self, queue, **kwargs):
         """Create new queue.
 
-        Some implementations needs to do additiona actions when
+        Some implementations needs to do additional actions when
         the queue is created.  You can do so by overriding this
         method.
 

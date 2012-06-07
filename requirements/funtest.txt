@@ -13,6 +13,9 @@ pika==0.5.2
 # Beanstalk transport
 beanstalkc
 
+# Zookeeper transport
+kazoo
+
 # SQLAlchemy transport
 kombu-sqlalchemy
 
