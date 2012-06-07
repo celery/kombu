@@ -54,18 +54,17 @@ News
     is consumed.  The copy is not removed until the consumer acknowledges
     or rejects it.
 
-    This means that unacked messages will be redelivered either when the
-    connection is closed, or when the visibility timeout is exceeded.
+    This means that unacknowledged messages will be redelivered either
+    when the connection is closed, or when the visibility timeout is exceeded.
 
     - Visibility timeout
 
-        There is now a timeout for acks, so that if the consumer
-        does not ack the message within the time limit, the message
+        This is a timeout for acks, so that if the consumer
+        does not ack the message within this time limit, the message
         is redelivered to another consumer.
 
-        The visibility timeout is 1 hour by default, and
-        can be changed by setting the transport option with
-        the same name::
+        The timeout is set to one hour by default, but
+        can be changed by configuring a transport option:
 
             >>> BrokerConnection("redis://", transport_options={
             ...     "visibility_timeout": 1800,  # 30 minutes
@@ -80,7 +79,7 @@ News
 
         BROKER_TRANSPORT_OPTIONS = {"visibility_timeout": 18000}  # 5 hours
 
-    Setting a long timeout means that it will take long time
+    Setting a long timeout means that it will take a long time
     for messages to be redelivered in the event of a power failure,
     but if so happens you could temporarily set the visibility timeout lower
     to flush out messages when you start up the systems again.
@@ -94,8 +93,8 @@ News
     The priority field is a number in the range of 0 - 9, where
     0 is the default and highest priority.
 
-    The priority range is collapsed into 4 steps by defalt, since it is
-    unlikely that 9 steps will mean more benefit than using 4 priority steps.
+    The priority range is collapsed into four steps by default, since it is
+    unlikely that nine steps will yield more benefit than using four steps.
     The number of steps can be configured by setting the ``priority_steps``
     transport option, which must be a list of numbers in **sorted order**::
 
@@ -104,15 +103,15 @@ News
         ... })
 
     Priorities implemented in this way is not as reliable as
-    priorities implemented on the server side, which is why
-    we call the feature "quasi-priorities";
+    priorities on the server side, which is why
+    nickname the feature "quasi-priorities";
     **Using routing is still the suggested way of ensuring
     quality of service**, as client implemented priorities
     fall short in a number of ways, e.g. if the worker
     is busy with long running tasks, has prefetched many messages,
     or the queues are congested.
 
-    Still, it is possible that using prioritis in combination
+    Still, it is possible that using priorities in combination
     with routing can be more beneficial than using routing
     or priorities alone.  Experimentation and monitoring
     should be used to prove this.
@@ -123,7 +122,7 @@ News
 
     This ensures that a very busy queue won't block messages
     from other queues, and ensures that all queues have
-    an equall chance of being consumed from.
+    an equal chance of being consumed from.
 
     This used to be the case before, but the behavior was
     accidentally changed while switching to using blocking pop.
@@ -138,13 +137,13 @@ News
 - Pickle serialization: Can now decode buffer objects.
 
 - Exchange/Queue declarations can now be cached even if
-  the entitiy is non-durable.
+  the entity is non-durable.
 
     This is possible because the list of cached declarations
     are now kept with the connection, so that the entities
     will be redeclared if the connection is lost.
 
-- Kombu source code now only uses one-level of explcit relative imports.
+- Kombu source code now only uses one-level of explicit relative imports.
 
 .. _v220-fixes:
 
@@ -156,9 +155,9 @@ Fixes
 
 - eventio: kqueue now ignores :exc:`KeyError` on unregister.
 
-- Redis: ``Message.reject`` now supports requeue argument.
+- Redis: ``Message.reject`` now supports the ``requeue`` argument.
 
-- Redis: Remove superflous pipeline call.
+- Redis: Remove superfluous pipeline call.
 
     Fix contributed by Thomas Johansson.
 
@@ -172,7 +171,7 @@ Fixes
 
     Contributed by Franck Cuny.
 
-- Url parsing did not handle MongoDB URL's properly.
+- Url parsing did not handle MongoDB URLs properly.
 
     Fix contributed by Flavio Percoco Premoli.
 

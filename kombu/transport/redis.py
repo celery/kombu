@@ -31,7 +31,7 @@ from kombu.utils.eventio import poll, READ, ERR
 try:
     import redis
 except ImportError:
-    redis = None
+    redis = None  # noqa
 
 
 from . import virtual
@@ -501,8 +501,8 @@ class Channel(virtual.Channel):
             # Close connections
             for attr in "client", "subclient":
                 try:
-                    delattr(self, attr)
-                except (AttributeError, self.ResponseError):
+                    self.__dict__[attr].connection.disconnect()
+                except (KeyError, AttributeError, self.ResponseError):
                     pass
         super(Channel, self).close()
 
