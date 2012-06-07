@@ -52,6 +52,7 @@ setup(
         "msgpack-python",
         "pymongo",
         "couchdb",
+        "kazoo",
         "pika",
         "beanstalkc",
         "kombu-sqlalchemy",

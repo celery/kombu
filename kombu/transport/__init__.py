@@ -60,6 +60,7 @@ TRANSPORT_ALIASES = {
     "beanstalk": "kombu.transport.beanstalk.Transport",
     "mongodb": "kombu.transport.mongodb.Transport",
     "couchdb": "kombu.transport.couchdb.Transport",
+    "zookeeper": "kombu.transport.zookeeper.Transport",
     "django": "kombu.transport.django.Transport",
     "sqlalchemy": "kombu.transport.sqlalchemy.Transport",
     "sqla": "kombu.transport.sqlalchemy.Transport",

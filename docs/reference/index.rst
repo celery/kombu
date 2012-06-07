@@ -29,6 +29,7 @@
     kombu.transport.beanstalk
     kombu.transport.mongodb
     kombu.transport.couchdb
+    kombu.transport.zookeeper
     kombu.transport.django
     kombu.transport.django.models
     kombu.transport.django.managers
