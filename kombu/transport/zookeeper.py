@@ -7,7 +7,6 @@ Zookeeper transport.
 :copyright: (c) 2010 - 2012 by Mahendra M.
 :license: BSD, see LICENSE for more details.
 
-========
 Synopsis
 ========
 
@@ -42,7 +41,6 @@ from Queue import Empty
 
 import kazoo
 import socket
-import threading
 
 from anyjson import loads, dumps
 
@@ -166,4 +164,3 @@ class Transport(virtual.Transport):
                       kazoo.zkclient.NotEmptyException,
                       kazoo.zkclient.SessionExpiredException,
                       kazoo.zkclient.InvalidCallbackException)
-
