@@ -35,7 +35,7 @@ setup(
     description="Functional test suite for Kombu",
     author="Ask Solem",
     author_email="ask@celeryproject.org",
-    url="http://github.com/ask/kombu",
+    url="http://github.com/celery/kombu",
     platforms=["any"],
     packages=[],
     data_files=[],

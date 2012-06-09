@@ -7,6 +7,34 @@ Zookeeper transport.
 :copyright: (c) 2010 - 2012 by Mahendra M.
 :license: BSD, see LICENSE for more details.
 
+========
+Synopsis
+========
+
+- Connects to a zookeeper node as <server>:<port>/<vhost>
+  The <vhost> becomes the base for all the other znodes. So we can use
+  it like a vhost
+- A queue is a znode under the <vhost> path
+- Creates a new sequential node under the queue and writes the message to it
+- If priority is used, we will use it in the node name, so that higher
+  priority messages are picked up first
+- Keep consuming messages from the top of the queue, till we
+  are able to delete a particular message. If deletion raises a
+  NoNode exception, we try again with the next message
+
+References
+----------
+
+- https://zookeeper.apache.org/doc/trunk/recipes.html#sc_recipes_Queues
+- http://bit.ly/cZHf9g
+
+Limitations
+-----------
+
+- A queue cannot handle more than 2^32 messages. This is an internal
+  limitation with zookeeper. This has to be handled internally in this
+  module.
+
 """
 from __future__ import absolute_import
 
@@ -27,53 +55,32 @@ DEFAULT_PORT = 2181
 __author__ = "Mahendra M <mahendra.m@gmail.com>"
 
 
-'''
-* Connects to a zookeeper node as <server>:<port>/<vhost>
-  The <vhost> becomes the base for all the other znodes. So we can use
-  it like a vhost
-* A queue is a znode under the <vhost> path
-* Creates a new sequential node under the queue and writes the message to it
-* If priority is used, we will use it in the node name, so that higher
-  priority messages are picked up first
-* Keep consuming messages from the top of the queue, till we
-  are able to delete a particular message. If deletion raises a
-  NoNode exception, we try again with the next message
-
-References:
-* https://zookeeper.apache.org/doc/trunk/recipes.html#sc_recipes_Queues
-* http://www.cloudera.com/blog/2009/05/building-a-distributed-concurrent-queue-with-apache-zookeeper/
-
-TODO:
-* A queue cannot handle more than 2^32 messages. This is an internal
-  limitation with zookeeper. This has to be handled internally in this
-  module.
-'''
-
 class Channel(virtual.Channel):
 
     _client = None
 
     def _get_queue(self, queue):
-        return '/' + queue
+        return '/%s' % (queue, )
 
     def _put(self, queue, message, **kwargs):
-        priority = message["properties"]["delivery_info"]["priority"]
-        msg_id = '%s/msg-%02d' % (self._get_queue(queue), priority % 10)
+        try:
+            priority = message["properties"]["delivery_info"]["priority"]
+        except KeyError:
+            priority = 0
 
+        msg_id = '%s/msg-%02d' % (self._get_queue(queue), priority % 10)
         self.client.create(msg_id, dumps(message), sequence=True)
 
     def _get_msg(self, queue, msgs):
-        # This is a bad hack, but required
-        msgs.sort()
+        msgs.sort()  # this is a bad hack, but required
 
         for msg_id in msgs:
             msg_id = '%s/%s' % (queue, msg_id)
             try:
                 message, headers = self.client.get(msg_id)
                 self.client.delete(msg_id)
-            except kazoo.zkclient.NoNodeException, exp:
-                # Someone has got this message
-                pass
+            except kazoo.zkclient.NoNodeException:
+                pass  # Someone has got this message
             else:
                 return loads(message)
 
@@ -81,31 +88,28 @@ class Channel(virtual.Channel):
 
     def _get(self, queue):
         queue = self._get_queue(queue)
-        msgs  = self.client.get_children(queue)
-
+        msgs = self.client.get_children(queue)
         return self._get_msg(queue, msgs)
 
     def _purge(self, queue):
-        count = 0
+        failures = 0
         queue = self._get_queue(queue)
 
-        for msg_id in self.client.get_children(queue):
+        for count, msg_id in enumerate(self.client.get_children(queue)):
             try:
                 self.client.delete('%s/%s' % (queue, msg_id))
-            except kazoo.zkclient.NoNodeException, exp:
-                pass
-            else:
-                count += 1
-        return count
+            except kazoo.zkclient.NoNodeException:
+                failures += 1
+        return count - failures
 
     def _delete(self, queue, *args, **kwargs):
-        if _has_queue(queue):
+        if self._has_queue(queue):
             queue = self._get_queue(queue)
             self._purge(queue)
             self.client.delete(queue)
 
     def _size(self, queue):
-        data, meta = self.client.get(self._get_queue(queue))
+        _, meta = self.client.get(self._get_queue(queue))
         return meta['numChildren']
 
     def _new_queue(self, queue, **kwargs):

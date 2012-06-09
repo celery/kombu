@@ -1,11 +1,11 @@
 """Messaging Framework for Python"""
 from __future__ import absolute_import
 
-VERSION = (2, 2, 0, "rc2")
+VERSION = (2, 2, 0)
 __version__ = ".".join(map(str, VERSION[0:3])) + "".join(VERSION[3:])
 __author__ = "Ask Solem"
 __contact__ = "ask@celeryproject.org"
-__homepage__ = "http://github.com/ask/kombu/"
+__homepage__ = "http://kombu.readthedocs.org"
 __docformat__ = "restructuredtext en"
 
 # -eof meta-

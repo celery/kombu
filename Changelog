@@ -2,6 +2,277 @@
  Change history
 ================
 
+.. _version-2.2.0:
+
+2.2.0
+=====
+:release-date: 2012-06-07 3:10 P.M BST
+:by: Ask Solem
+
+.. _v220-important:
+
+Important Notes
+---------------
+
+- The canonical source code repository has been moved to
+
+    http://github.com/celery/kombu
+
+- Pidbox: Exchanges used by pidbox are no longer auto_delete.
+
+    Auto delete has been described as a misfeature,
+    and therefore we are disabled it.
+
+    For RabbitMQ users old exchanges used by pidbox must be removed,
+    these are named ``mailbox_name.pidbox``,
+    and ``reply.mailbox_name.pidbox``.
+
+    The following can command can be used to clean up these exchanges::
+
+        VHOST=/ URL=amqp:// python -c'import sys,kombu;[kombu.Connection(
+            sys.argv[-1]).channel().exchange_delete(x)
+                for x in sys.argv[1:-1]]' \
+            $(sudo rabbitmqctl -q list_exchanges -p "$VHOST" \
+            | grep \.pidbox | awk '{print $1}') "$URL"
+
+    The :envvar:`VHOST` variable must be set to the target RabbitMQ virtual host,
+    and the :envvar:`URL` must be the AMQP URL to the server.
+
+- The ``amqp`` transport alias will now use :mod:`librabbitmq`
+  if installed.
+
+    `py-librabbitmq`_ is a fast AMQP client for Python
+    using the librabbitmq C library.
+
+    It can be installed by::
+
+        $ pip install librabbitmq
+
+    It will not be used if the process is monkey patched by eventlet/gevent.
+
+.. _`py-librabbitmq`: https://github.com/celery/librabbitmq
+
+.. _v220-news:
+
+News
+----
+
+- Redis: Improved implementation of Ack emulation.
+
+    This improvement reduces the possibility of data loss.
+
+    Acks are now implemented by storing a copy of the message when the message
+    is consumed.  The copy is not removed until the consumer acknowledges
+    or rejects it.
+
+    This means that unacknowledged messages will be redelivered either
+    when the connection is closed, or when the visibility timeout is exceeded.
+
+    - Visibility timeout
+
+        This is a timeout for acks, so that if the consumer
+        does not ack the message within this time limit, the message
+        is redelivered to another consumer.
+
+        The timeout is set to one hour by default, but
+        can be changed by configuring a transport option:
+
+            >>> BrokerConnection("redis://", transport_options={
+            ...     "visibility_timeout": 1800,  # 30 minutes
+            ... })
+
+    **NOTE**: Messages that have not been acked will be redelivered
+    if the visibility timeout is exceeded, for Celery users
+    this means that ETA/countdown tasks that are scheduled to execute
+    with a time that exceeds the visibility timeout will be executed
+    twice (or more).  If you plan on using long ETA/countdowns you
+    should tweak the visibility timeout accordingly::
+
+        BROKER_TRANSPORT_OPTIONS = {"visibility_timeout": 18000}  # 5 hours
+
+    Setting a long timeout means that it will take a long time
+    for messages to be redelivered in the event of a power failure,
+    but if so happens you could temporarily set the visibility timeout lower
+    to flush out messages when you start up the systems again.
+
+- Experimental `Apache ZooKeeper`_ transport
+
+    More information is in the module reference:
+    :mod:`kombu.transport.zookeeper`.
+
+    Contributed by Mahendra M.
+
+- Redis: Priority support.
+
+    The message's ``priority`` field is now respected by the Redis
+    transport by having multiple lists for each named queue.
+    The queues are then consumed by in order of priority.
+
+    The priority field is a number in the range of 0 - 9, where
+    0 is the default and highest priority.
+
+    The priority range is collapsed into four steps by default, since it is
+    unlikely that nine steps will yield more benefit than using four steps.
+    The number of steps can be configured by setting the ``priority_steps``
+    transport option, which must be a list of numbers in **sorted order**::
+
+        >>> x = BrokerConnection("redis://", transport_options={
+        ...     "priority_steps": [0, 2, 4, 6, 8, 9],
+        ... })
+
+    Priorities implemented in this way is not as reliable as
+    priorities on the server side, which is why
+    nickname the feature "quasi-priorities";
+    **Using routing is still the suggested way of ensuring
+    quality of service**, as client implemented priorities
+    fall short in a number of ways, e.g. if the worker
+    is busy with long running tasks, has prefetched many messages,
+    or the queues are congested.
+
+    Still, it is possible that using priorities in combination
+    with routing can be more beneficial than using routing
+    or priorities alone.  Experimentation and monitoring
+    should be used to prove this.
+
+    Contributed by Germán M. Bravo.
+
+- Redis: Now cycles queues so that consuming is fair.
+
+    This ensures that a very busy queue won't block messages
+    from other queues, and ensures that all queues have
+    an equal chance of being consumed from.
+
+    This used to be the case before, but the behavior was
+    accidentally changed while switching to using blocking pop.
+
+- Redis: Auto delete queues that are bound to fanout exchanges
+  is now deleted at channel.close.
+
+- amqplib: Refactored the drain_events implementation.
+
+- Pidbox: Now uses ``connection.default_channel``.
+
+- Pickle serialization: Can now decode buffer objects.
+
+- Exchange/Queue declarations can now be cached even if
+  the entity is non-durable.
+
+    This is possible because the list of cached declarations
+    are now kept with the connection, so that the entities
+    will be redeclared if the connection is lost.
+
+- Kombu source code now only uses one-level of explicit relative imports.
+
+.. _v220-fixes:
+
+Fixes
+-----
+
+- eventio: Now ignores ENOENT raised by ``epoll.register``, and
+  EEXIST from ``epoll.unregister``.
+
+- eventio: kqueue now ignores :exc:`KeyError` on unregister.
+
+- Redis: ``Message.reject`` now supports the ``requeue`` argument.
+
+- Redis: Remove superfluous pipeline call.
+
+    Fix contributed by Thomas Johansson.
+
+- Redis: Now sets redelivered header for redelivered messages.
+
+- Now always makes sure references to :func:`sys.exc_info` is removed.
+
+- Virtual: The compression header is now removed before restoring messages.
+
+- More tests for the SQLAlchemy backend.
+
+    Contributed by Franck Cuny.
+
+- Url parsing did not handle MongoDB URLs properly.
+
+    Fix contributed by Flavio Percoco Premoli.
+
+- Beanstalk: Ignore default tube when reserving.
+
+    Fix contributed by Zhao Xiaohong.
+
+Nonblocking consume support
+---------------------------
+
+librabbitmq, amqplib and redis transports can now be used
+non-blocking.
+
+The interface is very manual, and only consuming messages
+is non-blocking so far.
+
+The API should not be regarded as stable or final
+in any way. It is used by Celery which has very limited
+needs at this point. Hopefully we can introduce a proper
+callback-based API later.
+
+- ``Transport.eventmap``
+
+    Is a map of ``fd -> callback(fileno, event)``
+    to register in an eventloop.
+
+- ``Transport.on_poll_start()``
+
+    Is called before every call to poll.
+    The poller must support ``register(fd, callback)``
+    and ``unregister(fd)`` methods.
+
+- ``Transport.on_poll_start(poller)``
+
+    Called when the hub is initialized.
+    The poller argument must support the same
+    interface as :class:`kombu.utils.eventio.poll`.
+
+- ``Connection.ensure_connection`` now takes a callback
+  argument which is called for every loop while
+  the connection is down.
+
+- Adds ``connection.drain_nowait``
+
+    This is a non-blocking alternative to drain_events,
+    but only supported by amqplib/librabbitmq.
+
+- drain_events now sets ``connection.more_to_read`` if
+  there is more data to read.
+
+    This is to support eventloops where other things
+    must be handled between draining events.
+
+.. _version-2.1.8:
+
+2.1.8
+=====
+:release-date: 2012-05-06 3:06 P.M BST
+:by: Ask Solem
+
+* Bound Exchange/Queue's are now pickleable.
+
+* Consumer/Producer can now be instantiated without a channel,
+  and only later bound using ``.revive(channel)``.
+
+* ProducerPool now takes ``Producer`` argument.
+
+* :func:`~kombu.utils.fxrange` now counts forever if the
+  stop argument is set to None.
+  (fxrange is like xrange but for decimals).
+
+* Auto delete support for virtual transports were incomplete
+  and could lead to problems so it was removed.
+
+* Cached declarations (:func:`~kombu.common.maybe_declare`)
+  are now bound to the underlying connection, so that
+  entities are redeclared if the connection is lost.
+
+    This also means that previously uncacheable entities
+    (e.g. non-durable) can now be cached.
+
+* compat ConsumerSet: can now specify channel.
+
 .. _version-2.1.7:
 
 2.1.7
