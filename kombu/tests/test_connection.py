@@ -263,22 +263,18 @@ class test_Connection(TestCase):
     def test_SimpleQueue(self):
         conn = self.conn
         q = conn.SimpleQueue("foo")
-        self.assertTrue(q.channel)
-        self.assertTrue(q.channel_autoclose)
+        self.assertIs(q.channel, conn.default_channel)
         chan = conn.channel()
         q2 = conn.SimpleQueue("foo", channel=chan)
         self.assertIs(q2.channel, chan)
-        self.assertFalse(q2.channel_autoclose)
 
     def test_SimpleBuffer(self):
         conn = self.conn
         q = conn.SimpleBuffer("foo")
-        self.assertTrue(q.channel)
-        self.assertTrue(q.channel_autoclose)
+        self.assertIs(q.channel, conn.default_channel)
         chan = conn.channel()
         q2 = conn.SimpleBuffer("foo", channel=chan)
         self.assertIs(q2.channel, chan)
-        self.assertFalse(q2.channel_autoclose)
 
     def test_Producer(self):
         conn = self.conn

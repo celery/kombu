@@ -140,4 +140,3 @@ class Transport(virtual.Transport):
 
     def driver_version(self):
         return beanstalkc.__version__
-

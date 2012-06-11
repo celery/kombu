@@ -14,9 +14,8 @@ from __future__ import absolute_import
 
 from itertools import count
 
-from . import entity
 from . import messaging
-from .common import entry_to_queue
+from .entity import Exchange, Queue
 
 __all__ = ["Publisher", "Consumer"]
 
@@ -52,12 +51,12 @@ class Publisher(messaging.Producer):
         if durable is not None:
             self.durable = durable
 
-        if not isinstance(self.exchange, entity.Exchange):
-            self.exchange = entity.Exchange(name=self.exchange,
-                                            type=self.exchange_type,
-                                            routing_key=self.routing_key,
-                                            auto_delete=self.auto_delete,
-                                            durable=self.durable)
+        if not isinstance(self.exchange, Exchange):
+            self.exchange = Exchange(name=self.exchange,
+                                     type=self.exchange_type,
+                                     routing_key=self.routing_key,
+                                     auto_delete=self.auto_delete,
+                                     durable=self.durable)
         super(Publisher, self).__init__(connection, self.exchange, **kwargs)
 
     def send(self, *args, **kwargs):
@@ -106,17 +105,17 @@ class Consumer(messaging.Consumer):
         self.exchange_type = exchange_type or self.exchange_type
         self.routing_key = routing_key or self.routing_key
 
-        exchange = entity.Exchange(self.exchange,
-                                   type=self.exchange_type,
-                                   routing_key=self.routing_key,
-                                   auto_delete=self.auto_delete,
-                                   durable=self.durable)
-        queue = entity.Queue(self.queue,
-                             exchange=exchange,
-                             routing_key=self.routing_key,
-                             durable=self.durable,
-                             exclusive=self.exclusive,
-                             auto_delete=self.auto_delete)
+        exchange = Exchange(self.exchange,
+                            type=self.exchange_type,
+                            routing_key=self.routing_key,
+                            auto_delete=self.auto_delete,
+                            durable=self.durable)
+        queue = Queue(self.queue,
+                      exchange=exchange,
+                      routing_key=self.routing_key,
+                      durable=self.durable,
+                      exclusive=self.exclusive,
+                      auto_delete=self.auto_delete)
         super(Consumer, self).__init__(self.backend, queue, **kwargs)
 
     def revive(self, channel):
@@ -188,7 +187,7 @@ class ConsumerSet(messaging.Consumer):
                 queues.extend(consumer.queues)
         if from_dict:
             for queue_name, queue_options in from_dict.items():
-                queues.append(entry_to_queue(queue_name, **queue_options))
+                queues.append(Queue.from_dict(queue_name, **queue_options))
 
         super(ConsumerSet, self).__init__(self.backend, queues, **kwargs)
 

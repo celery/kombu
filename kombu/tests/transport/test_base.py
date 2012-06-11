@@ -28,9 +28,9 @@ class test_StdChannel(TestCase):
         self.assertIsInstance(prod, Producer)
         self.assertIs(prod.channel, self.channel)
 
-    def test_interface_list_bindings(self):
+    def test_interface_get_bindings(self):
         with self.assertRaises(NotImplementedError):
-            StdChannel().list_bindings()
+            StdChannel().get_bindings()
 
     def test_interface_after_reply_message_received(self):
         self.assertIsNone(StdChannel().after_reply_message_received(

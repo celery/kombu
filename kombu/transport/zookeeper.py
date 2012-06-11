@@ -164,3 +164,9 @@ class Transport(virtual.Transport):
                       kazoo.zkclient.NotEmptyException,
                       kazoo.zkclient.SessionExpiredException,
                       kazoo.zkclient.InvalidCallbackException)
+    driver_type = "zookeeper"
+    driver_name = "kazoo"
+
+    def driver_version(self):
+        return kazoo.__version__
+

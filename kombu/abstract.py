@@ -12,6 +12,7 @@ from __future__ import absolute_import
 
 from copy import copy
 
+from .connection import maybe_channel
 from .exceptions import NotBoundError
 
 __all__ = ["Object", "MaybeChannelBound"]
@@ -76,7 +77,7 @@ class MaybeChannelBound(Object):
     def maybe_bind(self, channel):
         """Bind instance to channel if not already bound."""
         if not self.is_bound and channel:
-            self._channel = channel
+            self._channel = maybe_channel(channel)
             self.when_bound()
             self._is_bound = True
         return self

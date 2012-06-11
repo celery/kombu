@@ -3,7 +3,7 @@ from __future__ import with_statement
 
 from mock import patch
 
-from kombu import Connection, Exchange
+from kombu import Connection, Exchange, Queue
 from kombu import compat
 
 from .mocks import Transport, Channel
@@ -37,14 +37,14 @@ class test_misc(TestCase):
         it2 = compat._iterconsume(conn, consumer, limit=10)
         self.assertEqual(list(it2), [2, 3, 4, 5, 6, 7, 8, 9, 10, 11])
 
-    def test_entry_to_queue(self):
+    def test_Queue_from_dict(self):
         defs = {"binding_key": "foo.#",
                 "exchange": "fooex",
                 "exchange_type": "topic",
                 "durable": True,
                 "auto_delete": False}
 
-        q1 = compat.entry_to_queue("foo", **dict(defs))
+        q1 = Queue.from_dict("foo", **dict(defs))
         self.assertEqual(q1.name, "foo")
         self.assertEqual(q1.routing_key, "foo.#")
         self.assertEqual(q1.exchange.name, "fooex")
@@ -54,28 +54,28 @@ class test_misc(TestCase):
         self.assertFalse(q1.auto_delete)
         self.assertFalse(q1.exchange.auto_delete)
 
-        q2 = compat.entry_to_queue("foo", **dict(defs,
-                                                 exchange_durable=False))
+        q2 = Queue.from_dict("foo", **dict(defs,
+                                           exchange_durable=False))
         self.assertTrue(q2.durable)
         self.assertFalse(q2.exchange.durable)
 
-        q3 = compat.entry_to_queue("foo", **dict(defs,
-                                                 exchange_auto_delete=True))
+        q3 = Queue.from_dict("foo", **dict(defs,
+                                           exchange_auto_delete=True))
         self.assertFalse(q3.auto_delete)
         self.assertTrue(q3.exchange.auto_delete)
 
-        q4 = compat.entry_to_queue("foo", **dict(defs,
-                                                 queue_durable=False))
+        q4 = Queue.from_dict("foo", **dict(defs,
+                                           queue_durable=False))
         self.assertFalse(q4.durable)
         self.assertTrue(q4.exchange.durable)
 
-        q5 = compat.entry_to_queue("foo", **dict(defs,
-                                                 queue_auto_delete=True))
+        q5 = Queue.from_dict("foo", **dict(defs,
+                                           queue_auto_delete=True))
         self.assertTrue(q5.auto_delete)
         self.assertFalse(q5.exchange.auto_delete)
 
-        self.assertEqual(compat.entry_to_queue("foo", **dict(defs)),
-                         compat.entry_to_queue("foo", **dict(defs)))
+        self.assertEqual(Queue.from_dict("foo", **dict(defs)),
+                         Queue.from_dict("foo", **dict(defs)))
 
 
 class test_Publisher(TestCase):

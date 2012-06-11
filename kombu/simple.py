@@ -18,6 +18,7 @@ from Queue import Empty
 
 from . import entity
 from . import messaging
+from .connection import maybe_channel
 
 __all__ = ["SimpleQueue", "SimpleBuffer"]
 
@@ -31,13 +32,11 @@ class SimpleBase(object):
     def __exit__(self, *exc_info):
         self.close()
 
-    def __init__(self, channel, producer, consumer, no_ack=False,
-            channel_autoclose=False):
-        self.channel = channel
+    def __init__(self, channel, producer, consumer, no_ack=False):
+        self.channel = maybe_channel(channel)
         self.producer = producer
         self.consumer = consumer
         self.no_ack = no_ack
-        self.channel_autoclose = channel_autoclose
         self.queue = self.consumer.queues[0]
         self.buffer = deque()
         self.consumer.register_callback(self._receive)
@@ -83,8 +82,6 @@ class SimpleBase(object):
         return size
 
     def close(self):
-        if self.channel_autoclose:
-            self.channel.close()
         self.consumer.cancel()
 
     def _receive(self, message_data, message):

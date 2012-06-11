@@ -530,13 +530,8 @@ class BrokerConnection(object):
 
         """
         from .simple import SimpleQueue
-
-        channel_autoclose = False
-        if channel is None:
-            channel = self.channel()
-            channel_autoclose = True
-        return SimpleQueue(channel, name, no_ack, queue_opts, exchange_opts,
-                           channel_autoclose=channel_autoclose, **kwargs)
+        return SimpleQueue(channel or self, name, no_ack, queue_opts,
+                           exchange_opts, **kwargs)
 
     def SimpleBuffer(self, name, no_ack=None, queue_opts=None,
             exchange_opts=None, channel=None, **kwargs):
@@ -550,13 +545,8 @@ class BrokerConnection(object):
 
         """
         from .simple import SimpleBuffer
-
-        channel_autoclose = False
-        if channel is None:
-            channel = self.channel()
-            channel_autoclose = True
-        return SimpleBuffer(channel, name, no_ack, queue_opts, exchange_opts,
-                            channel_autoclose=channel_autoclose, **kwargs)
+        return SimpleBuffer(channel or self, name, no_ack, queue_opts,
+                            exchange_opts, **kwargs)
 
     def _establish_connection(self):
         self._debug("establishing connection...")
@@ -860,3 +850,11 @@ class ChannelPool(Resource):
             channel = channel()
 
         return channel
+
+
+def maybe_channel(channel):
+    """Returns channel, or returns the default_channel if it's a
+    connection."""
+    if isinstance(channel, BrokerConnection):
+        return channel.default_channel
+    return channel

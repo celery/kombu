@@ -12,6 +12,7 @@ from __future__ import absolute_import
 
 from itertools import count
 
+from .connection import maybe_channel
 from .entity import Exchange, Queue
 from .compression import compress
 from .serialization import encode
@@ -163,10 +164,7 @@ class Producer(object):
 
     def revive(self, channel):
         """Revive the producer after connection loss."""
-        from .connection import BrokerConnection
-        if isinstance(channel, BrokerConnection):
-            channel = channel.default_channel
-        self.channel = channel
+        channel = self.channel = maybe_channel(channel)
         self.exchange = self.exchange(channel)
         self.exchange.revive(channel)
 
@@ -281,10 +279,7 @@ class Consumer(object):
     def revive(self, channel):
         """Revive consumer after connection loss."""
         self._active_tags = {}
-        from .connection import BrokerConnection
-        if isinstance(channel, BrokerConnection):
-            channel = channel.default_channel
-        self.channel = channel
+        channel = self.channel = maybe_channel(channel)
         self.queues = [queue(self.channel)
                             for queue in maybe_list(self.queues)]
         for queue in self.queues:
@@ -330,7 +325,7 @@ class Consumer(object):
         return queue
 
     def add_queue_from_dict(self, queue, **options):
-        return self.add_queue(entry_to_queue(queue, **options))
+        return self.add_queue(Queue.from_dict(queue, **options))
 
     def consume(self, no_ack=None):
         if self.queues:
