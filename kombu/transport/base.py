@@ -168,7 +168,7 @@ class Management(object):
     def __init__(self, transport):
         self.transport = transport
 
-    def list_bindings(self):
+    def get_bindings(self):
         raise NotImplementedError(
             "Your transport does not implement list_bindings")
 

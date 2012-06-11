@@ -22,6 +22,7 @@ except ImportError:
     from pylibrabbitmq import ChannelError, ConnectionError  # noqa
 
 from kombu.exceptions import StdChannelError
+from kombu.utils.amq_manager import get_manager
 
 from . import base
 
@@ -118,6 +119,9 @@ class Transport(base.Transport):
 
     def eventmap(self, connection):
         return {connection.fileno(): self.client.drain_nowait}
+
+    def get_manager(self, *args, **kwargs):
+        return get_manager(self.client, *args, **kwargs)
 
     @property
     def default_connection_params(self):

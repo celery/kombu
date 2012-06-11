@@ -15,6 +15,7 @@ import socket
 from operator import attrgetter
 
 from kombu.exceptions import StdChannelError
+from kombu.utils.amq_manager import get_manager
 
 from . import base
 
@@ -224,6 +225,9 @@ class Transport(base.Transport):
     def close_connection(self, connection):
         """Close the AMQP broker connection."""
         connection.close()
+
+    def get_manager(self, *args, **kwargs):
+        return get_manager(self.client, *args, **kwargs)
 
     @property
     def default_connection_params(self):

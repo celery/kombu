@@ -26,6 +26,7 @@ from amqplib.client_0_8.exceptions import AMQPChannelException
 
 from kombu.exceptions import StdChannelError
 from kombu.utils.encoding import str_to_bytes
+from kombu.utils.amq_manager import get_manager
 
 from . import base
 
@@ -317,16 +318,5 @@ class Transport(base.Transport):
                 "port": self.default_port,
                 "hostname": "localhost", "login_method": "AMQPLAIN"}
 
-    def get_manager(self, hostname=None, port=None, userid=None,
-            password=None):
-        import pyrabbit
-        c = self.client
-        opt = c.transport_options.get
-        host = (hostname if hostname is not None
-                         else opt("manager_hostname", c.hostname))
-        port = port if port is not None else opt("manager_port", 55672)
-        return pyrabbit.Client("%s:%s" % (host, port),
-            userid if userid is not None
-                   else opt("manager_userid", c.userid),
-            password if password is not None
-                   else opt("manager_password", c.password))
+    def get_manager(self, *args, **kwargs):
+        return get_manager(self.client, *args, **kwargs)
