@@ -173,8 +173,10 @@ AuthenticationError = getattr(exceptions, "AuthenticationError",
 
 
 class Transport(base.Transport):
-    default_port = DEFAULT_PORT
+    Message = Message
+    Connection = Connection
 
+    default_port = DEFAULT_PORT
     connection_errors = (socket.error,
                          exceptions.ConnectionClosed,
                          exceptions.ChannelClosed,
@@ -184,19 +186,20 @@ class Transport(base.Transport):
                          exceptions.UnknownConsumerTag,
                          exceptions.RecursiveOperationDetected,
                          exceptions.ProtocolSyntaxError)
-
     channel_errors = (StdChannelError,
                       exceptions.ChannelClosed,
                       exceptions.DuplicateConsumerTag,
                       exceptions.UnknownConsumerTag,
                       exceptions.ProtocolSyntaxError)
-
-    Message = Message
-    Connection = Connection
+    driver_type = "amqp"
+    driver_name = "pika"
 
     def __init__(self, client, **kwargs):
         self.client = client
         self.default_port = kwargs.get("default_port", self.default_port)
+
+    def driver_version(self):
+        return pika.__version__
 
     def create_channel(self, connection):
         return connection.channel()

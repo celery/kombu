@@ -29,7 +29,7 @@ class StdChannel(object):
         from kombu.messaging import Producer
         return Producer(self, *args, **kwargs)
 
-    def list_bindings(self):
+    def get_bindings(self):
         raise NotImplementedError("%r does not implement list_bindings" % (
             self.__class__, ))
 
@@ -193,6 +193,14 @@ class Transport(object):
     #: draining events as long as ``connection.more_to_read`` is True.
     nb_keep_draining = False
 
+    #: Type of driver, can be used to separate transports
+    #: using the AMQP protocol (driver_type: 'amqp'),
+    #: Redis (driver_type: 'redis'), etc...
+    driver_type = "N/A"
+
+    #: Name of driver library (e.g. "amqplib", "redis", "beanstalkc").
+    driver_name = "N/A"
+
     def __init__(self, client, **kwargs):
         self.client = client
 
@@ -210,6 +218,9 @@ class Transport(object):
 
     def drain_events(self, connection, **kwargs):
         raise NotImplementedError("Subclass responsibility")
+
+    def driver_version(self):
+        return "N/A"
 
     def eventmap(self, connection):
         """Map of fd -> event handler for event based use.

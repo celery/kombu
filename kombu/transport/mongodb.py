@@ -215,3 +215,8 @@ class Transport(virtual.Transport):
     channel_errors = (StdChannelError,
                       errors.ConnectionFailure,
                       errors.OperationFailure, )
+    driver_type = "mongodb"
+    driver_name = "pymongo"
+
+    def driver_version(self):
+        return pymongo.version

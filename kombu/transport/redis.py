@@ -599,6 +599,8 @@ class Transport(virtual.Transport):
 
     polling_interval = None  # disable sleep between unsuccessful polls.
     default_port = DEFAULT_PORT
+    driver_type = "redis"
+    driver_name = "redis"
 
     def __init__(self, *args, **kwargs):
         super(Transport, self).__init__(*args, **kwargs)
@@ -607,6 +609,9 @@ class Transport(virtual.Transport):
         self.connection_errors, self.channel_errors = self._get_errors()
         # All channels share the same poller.
         self.cycle = MultiChannelPoller()
+
+    def driver_version(self):
+        return redis.__version__
 
     def on_poll_init(self, poller):
         """Called when hub starts."""

@@ -329,6 +329,9 @@ class Consumer(object):
         self.queues.append(queue)
         return queue
 
+    def add_queue_from_dict(self, queue, **options):
+        return self.add_queue(entry_to_queue(queue, **options))
+
     def consume(self, no_ack=None):
         if self.queues:
             no_ack = self.no_ack if no_ack is None else no_ack

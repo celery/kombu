@@ -70,12 +70,17 @@ class Transport(base.Transport):
                          IOError,
                          OSError)
     channel_errors = (StdChannelError, ChannelError, )
+    driver_type = "amqp"
+    driver_name = "librabbitmq"
 
     nb_keep_draining = True
 
     def __init__(self, client, **kwargs):
         self.client = client
         self.default_port = kwargs.get("default_port") or self.default_port
+
+    def driver_version(self):
+        return amqp.__version__
 
     def create_channel(self, connection):
         return connection.channel()

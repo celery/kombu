@@ -118,3 +118,8 @@ class Transport(virtual.Transport):
                       couchdb.PreconditionFailed,
                       couchdb.ResourceConflict,
                       couchdb.ResourceNotFound)
+    driver_type = "couchdb"
+    driver_name = "couchdb"
+
+    def driver_version(self):
+        return couchdb.__version__

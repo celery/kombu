@@ -10,12 +10,11 @@ Beanstalk transport.
 """
 from __future__ import absolute_import
 
+import beanstalkc
 import socket
 
-from Queue import Empty
-
 from anyjson import loads, dumps
-from beanstalkc import Connection, BeanstalkcException, SocketError
+from Queue import Empty
 
 from kombu.exceptions import StdChannelError
 
@@ -107,7 +106,7 @@ class Channel(virtual.Channel):
     def _open(self):
         conninfo = self.connection.client
         port = conninfo.port or DEFAULT_PORT
-        conn = Connection(host=conninfo.hostname, port=port)
+        conn = beanstalkc.Connection(host=conninfo.hostname, port=port)
         conn.connect()
         return conn
 
@@ -129,10 +128,16 @@ class Transport(virtual.Transport):
     polling_interval = 1
     default_port = DEFAULT_PORT
     connection_errors = (socket.error,
-                         SocketError,
+                         beanstalkc.SocketError,
                          IOError)
     channel_errors = (StdChannelError,
                       socket.error,
                       IOError,
-                      SocketError,
-                      BeanstalkcException)
+                      beanstalkc.SocketError,
+                      beanstalkc.BeanstalkcException)
+    driver_type = "beanstalk"
+    driver_name = "beanstalkc"
+
+    def driver_version(self):
+        return beanstalkc.__version__
+

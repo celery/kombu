@@ -110,3 +110,9 @@ class Transport(virtual.Transport):
     default_port = 0
     connection_errors = ()
     channel_errors = (StdChannelError, )
+    driver_type = "sql"
+    driver_name = "sqlalchemy"
+
+    def driver_version(self):
+        import sqlalchemy
+        return sqlalchemy.__version__

@@ -247,6 +247,8 @@ class Transport(base.Transport):
     channel_errors = (StdChannelError, AMQPChannelException, )
 
     nb_keep_draining = True
+    driver_name = "amqplib"
+    driver_type = "amqp"
 
     def __init__(self, client, **kwargs):
         self.client = client

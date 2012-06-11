@@ -199,7 +199,7 @@ class ConsumerSet(messaging.Consumer):
         return self.purge()
 
     def add_consumer_from_dict(self, queue, **options):
-        return self.add_queue(entry_to_queue(queue, **options))
+        return self.add_queue_from_dict(queue, **options)
 
     def add_consumer(self, consumer):
         for queue in consumer.queues:

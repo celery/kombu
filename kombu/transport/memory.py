@@ -58,3 +58,9 @@ class Transport(virtual.Transport):
 
     #: memory backend state is global.
     state = virtual.BrokerState()
+
+    driver_type = "memory"
+    driver_name = "memory"
+
+    def driver_version(self):
+        return "N/A"

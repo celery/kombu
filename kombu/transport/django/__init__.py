@@ -62,3 +62,9 @@ class Transport(virtual.Transport):
     channel_errors = (StdChannelError,
                       errors.ObjectDoesNotExist,
                       errors.MultipleObjectsReturned)
+    driver_type = "sql"
+    driver_name = "django"
+
+    def driver_version(self):
+        import django
+        return '.'.join(map(str, django.VERSION))

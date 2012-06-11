@@ -193,8 +193,10 @@ class AsyncoreConnection(asyncore_adapter.AsyncoreConnection):
 
 
 class SyncTransport(base.Transport):
-    default_port = DEFAULT_PORT
+    Message = Message
+    Connection = BlockingConnection
 
+    default_port = DEFAULT_PORT
     connection_errors = (socket.error,
                          exceptions.ConnectionClosed,
                          exceptions.ChannelClosed,
@@ -205,19 +207,21 @@ class SyncTransport(base.Transport):
                          exceptions.RecursiveOperationDetected,
                          exceptions.ContentTransmissionForbidden,
                          exceptions.ProtocolSyntaxError)
-
     channel_errors = (StdChannelError,
                       exceptions.ChannelClosed,
                       exceptions.DuplicateConsumerTag,
                       exceptions.UnknownConsumerTag,
                       exceptions.ProtocolSyntaxError)
-
-    Message = Message
-    Connection = BlockingConnection
+    driver_type = "amqp"
+    driver_name = "pika"
 
     def __init__(self, client, **kwargs):
         self.client = client
         self.default_port = kwargs.get("default_port", self.default_port)
+
+    def driver_version(self):
+        import pika
+        return pika.__version__
 
     def create_channel(self, connection):
         return connection.channel()
