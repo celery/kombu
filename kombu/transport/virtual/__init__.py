@@ -352,8 +352,15 @@ class Channel(AbstractChannel, base.StdChannel):
                 pass
 
     def exchange_declare(self, exchange, type="direct", durable=False,
-            auto_delete=False, arguments=None, nowait=False):
+            auto_delete=False, arguments=None, nowait=False, passive=False):
         """Declare exchange."""
+        if passive:
+            if exchange not in self.state.exchanges:
+                raise StdChannelError("404",
+                    u"NOT_FOUND - no exchange %r in vhost %r" % (
+                        exchange, self.connection.client.virtual_host or '/'),
+                    (50, 10), "Channel.exchange_declare")
+            return
         try:
             prev = self.state.exchanges[exchange]
             if not self.typeof(exchange).equivalent(prev, exchange, type,
