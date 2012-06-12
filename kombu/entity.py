@@ -140,7 +140,7 @@ class Exchange(MaybeChannelBound):
     def __hash__(self):
         return hash("E|%s" % (self.name, ))
 
-    def declare(self, nowait=False):
+    def declare(self, nowait=False, passive=False):
         """Declare the exchange.
 
         Creates the exchange on the broker.
@@ -154,7 +154,8 @@ class Exchange(MaybeChannelBound):
                                              durable=self.durable,
                                              auto_delete=self.auto_delete,
                                              arguments=self.arguments,
-                                             nowait=nowait)
+                                             nowait=nowait,
+                                             passive=passive)
 
     def Message(self, body, delivery_mode=None, priority=None,
             content_type=None, content_encoding=None, properties=None,
