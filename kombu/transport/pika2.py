@@ -25,11 +25,11 @@ from pika.adapters import blocking_connection as blocking
 from pika import exceptions
 
 DEFAULT_PORT = 5672
-BASIC_PROPERTIES = ("content_type", "content_encoding",
-                    "headers", "delivery_mode", "priority",
-                    "correlation_id", "reply_to", "expiration",
-                    "message_id", "timestamp", "type", "user_id",
-                    "app_id", "cluster_id")
+BASIC_PROPERTIES = ('content_type', 'content_encoding',
+                    'headers', 'delivery_mode', 'priority',
+                    'correlation_id', 'reply_to', 'expiration',
+                    'message_id', 'timestamp', 'type', 'user_id',
+                    'app_id', 'cluster_id')
 
 
 class Message(base.Message):
@@ -39,14 +39,14 @@ class Message(base.Message):
         propdict = dict(zip(BASIC_PROPERTIES,
                         attrgetter(*BASIC_PROPERTIES)(props)))
 
-        kwargs.update({"body": body,
-                       "delivery_tag": method.delivery_tag,
-                       "content_type": props.content_type,
-                       "content_encoding": props.content_encoding,
-                       "headers": props.headers,
-                       "properties": propdict,
-                       "delivery_info": dict(
-                            consumer_tag=getattr(method, "consumer_tag", None),
+        kwargs.update({'body': body,
+                       'delivery_tag': method.delivery_tag,
+                       'content_type': props.content_type,
+                       'content_encoding': props.content_encoding,
+                       'headers': props.headers,
+                       'properties': propdict,
+                       'delivery_info': dict(
+                            consumer_tag=getattr(method, 'consumer_tag', None),
                             routing_key=method.routing_key,
                             delivery_tag=method.delivery_tag,
                             redelivered=method.redelivered,
@@ -124,8 +124,8 @@ class Channel(blocking.BlockingChannel, base.StdChannel):
     def close(self, *args):
         super(Channel, self).close(*args)
         self.connection = None
-        if getattr(self, "handler", None):
-            if getattr(self.handler, "connection", None):
+        if getattr(self, 'handler', None):
+            if getattr(self.handler, 'connection', None):
                 self.handler.connection.channels.pop(
                         self.handler.channel_number, None)
                 self.handler.connection = None
@@ -169,8 +169,8 @@ class Connection(blocking.BlockingConnection):
         super(Connection, self).close(*args)
 
 
-AuthenticationError = getattr(exceptions, "AuthenticationError",
-                              getattr(exceptions, "LoginError"))
+AuthenticationError = getattr(exceptions, 'AuthenticationError',
+                              getattr(exceptions, 'LoginError'))
 
 
 class Transport(base.Transport):
@@ -192,12 +192,12 @@ class Transport(base.Transport):
                       exceptions.DuplicateConsumerTag,
                       exceptions.UnknownConsumerTag,
                       exceptions.ProtocolSyntaxError)
-    driver_type = "amqp"
-    driver_name = "pika"
+    driver_type = 'amqp'
+    driver_name = 'pika'
 
     def __init__(self, client, **kwargs):
         self.client = client
-        self.default_port = kwargs.get("default_port", self.default_port)
+        self.default_port = kwargs.get('default_port', self.default_port)
 
     def driver_version(self):
         return pika.__version__
@@ -231,5 +231,5 @@ class Transport(base.Transport):
 
     @property
     def default_connection_params(self):
-        return {"hostname": "localhost", "port": self.default_port,
-                "userid": "guest", "password": "guest"}
+        return {'hostname': 'localhost', 'port': self.default_port,
+                'userid': 'guest', 'password': 'guest'}

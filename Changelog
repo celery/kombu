@@ -2,6 +2,12 @@
  Change history
 ================
 
+.. _version-2.2.1:
+
+2.2.1
+=====
+:release-date: 2012-06-12 7:07 P.M BST
+
 .. _version-2.2.0:
 
 2.2.0
@@ -21,7 +27,7 @@ Important Notes
 - Pidbox: Exchanges used by pidbox are no longer auto_delete.
 
     Auto delete has been described as a misfeature,
-    and therefore we are disabled it.
+    and therefore we have disabled it.
 
     For RabbitMQ users old exchanges used by pidbox must be removed,
     these are named ``mailbox_name.pidbox``,

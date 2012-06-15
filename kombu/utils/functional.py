@@ -40,8 +40,8 @@ class promise(object):
         return self
 
     def __reduce__(self):
-        return (self.__class__, (self._fun, ), {"_args": self._args,
-                                                "_kwargs": self._kwargs})
+        return (self.__class__, (self._fun, ), {'_args': self._args,
+                                                '_kwargs': self._kwargs})
 
 
 def maybe_promise(value):

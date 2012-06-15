@@ -55,7 +55,7 @@ class CompatOrderedDict(dict, MutableMapping):
 
         """
         if len(args) > 1:
-            raise TypeError("expected at most 1 arguments, got %d" % (
+            raise TypeError('expected at most 1 arguments, got %d' % (
                                 len(args)))
         try:
             self.__root
@@ -136,7 +136,7 @@ class CompatOrderedDict(dict, MutableMapping):
         if isinstance(other, dict):
             for key in other:
                 self[key] = other[key]
-        elif hasattr(other, "keys"):
+        elif hasattr(other, 'keys'):
             for key in other.keys():
                 self[key] = other[key]
         else:
@@ -187,7 +187,7 @@ class CompatOrderedDict(dict, MutableMapping):
         if not self:
             raise KeyError('dictionary is empty')
         if last:
-            if sys.platform.startswith("java"):
+            if sys.platform.startswith('java'):
                 key = self.keys()[-1]
             else:
                 key = reversed(self).next()
@@ -258,7 +258,7 @@ import platform as _platform
 
 from stat import ST_DEV, ST_INO
 
-if _platform.system() == "Windows":
+if _platform.system() == 'Windows':
     #since windows doesn't go with WatchedFileHandler use FileHandler instead
     WatchedFileHandler = logging.FileHandler
 else:

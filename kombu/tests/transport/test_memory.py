@@ -13,14 +13,14 @@ from kombu.tests.utils import TestCase
 class test_MemoryTransport(TestCase):
 
     def setUp(self):
-        self.c = BrokerConnection(transport="memory")
-        self.e = Exchange("test_transport_memory")
-        self.q = Queue("test_transport_memory",
+        self.c = BrokerConnection(transport='memory')
+        self.e = Exchange('test_transport_memory')
+        self.q = Queue('test_transport_memory',
                        exchange=self.e,
-                       routing_key="test_transport_memory")
-        self.q2 = Queue("test_transport_memory2",
+                       routing_key='test_transport_memory')
+        self.q2 = Queue('test_transport_memory2',
                         exchange=self.e,
-                        routing_key="test_transport_memory2")
+                        routing_key='test_transport_memory2')
 
     def test_produce_consume_noack(self):
         channel = self.c.channel()
@@ -28,7 +28,7 @@ class test_MemoryTransport(TestCase):
         consumer = Consumer(channel, self.q, no_ack=True)
 
         for i in range(10):
-            producer.publish({"foo": i}, routing_key="test_transport_memory")
+            producer.publish({'foo': i}, routing_key='test_transport_memory')
 
         _received = []
 
@@ -53,9 +53,9 @@ class test_MemoryTransport(TestCase):
         self.q2(channel).declare()
 
         for i in range(10):
-            producer.publish({"foo": i}, routing_key="test_transport_memory")
+            producer.publish({'foo': i}, routing_key='test_transport_memory')
         for i in range(10):
-            producer.publish({"foo": i}, routing_key="test_transport_memory2")
+            producer.publish({'foo': i}, routing_key='test_transport_memory2')
 
         _received1 = []
         _received2 = []
@@ -82,15 +82,15 @@ class test_MemoryTransport(TestCase):
         self.assertEqual(len(_received1) + len(_received2), 20)
 
         # compression
-        producer.publish({"compressed": True},
-                         routing_key="test_transport_memory",
-                         compression="zlib")
+        producer.publish({'compressed': True},
+                         routing_key='test_transport_memory',
+                         compression='zlib')
         m = self.q(channel).get()
-        self.assertDictEqual(m.payload, {"compressed": True})
+        self.assertDictEqual(m.payload, {'compressed': True})
 
         # queue.delete
         for i in range(10):
-            producer.publish({"foo": i}, routing_key="test_transport_memory")
+            producer.publish({'foo': i}, routing_key='test_transport_memory')
         self.assertTrue(self.q(channel).get())
         self.q(channel).delete()
         self.q(channel).declare()
@@ -98,7 +98,7 @@ class test_MemoryTransport(TestCase):
 
         # queue.purge
         for i in range(10):
-            producer.publish({"foo": i}, routing_key="test_transport_memory2")
+            producer.publish({'foo': i}, routing_key='test_transport_memory2')
         self.assertTrue(self.q2(channel).get())
         self.q2(channel).purge()
         self.assertIsNone(self.q2(channel).get())
@@ -122,7 +122,7 @@ class test_MemoryTransport(TestCase):
         class Cycle(object):
 
             def get(self, timeout=None):
-                return ("foo", "foo"), c1
+                return ('foo', 'foo'), c1
 
         self.c.transport.cycle = Cycle()
         with self.assertRaises(KeyError):
@@ -132,6 +132,6 @@ class test_MemoryTransport(TestCase):
         chan = self.c.channel()
         chan.queues.clear()
 
-        x = chan._queue_for("foo")
+        x = chan._queue_for('foo')
         self.assertTrue(x)
-        self.assertIs(chan._queue_for("foo"), x)
+        self.assertIs(chan._queue_for('foo'), x)

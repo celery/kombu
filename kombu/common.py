@@ -23,11 +23,11 @@ from .log import Log
 from .messaging import Consumer as _Consumer
 from .utils import uuid
 
-__all__ = ["Broadcast", "maybe_declare", "uuid",
-           "itermessages", "send_reply", "isend_reply",
-           "collect_replies", "insured", "ipublish"]
+__all__ = ['Broadcast', 'maybe_declare', 'uuid',
+           'itermessages', 'send_reply', 'isend_reply',
+           'collect_replies', 'insured', 'ipublish']
 
-insured_logger = Log("kombu.insurance")
+insured_logger = Log('kombu.insurance')
 
 
 class Broadcast(Queue):
@@ -47,10 +47,10 @@ class Broadcast(Queue):
 
     def __init__(self, name=None, queue=None, **kwargs):
         return super(Broadcast, self).__init__(
-                    name=queue or "bcast.%s" % (uuid(), ),
-                    **dict({"alias": name,
-                            "auto_delete": True,
-                            "exchange": Exchange(name, type="fanout"),
+                    name=queue or 'bcast.%s' % (uuid(), ),
+                    **dict({'alias': name,
+                            'auto_delete': True,
+                            'exchange': Exchange(name, type='fanout'),
                            }, **kwargs))
 
 
@@ -150,9 +150,9 @@ def send_reply(exchange, req, msg, producer=None, **props):
     serializer = serialization.registry.type_to_name[content_type]
     maybe_declare(exchange, producer.channel)
     producer.publish(msg, exchange=exchange,
-            **dict({"routing_key": req.properties["reply_to"],
-                    "correlation_id": req.properties.get("correlation_id"),
-                    "serializer": serializer},
+            **dict({'routing_key': req.properties['reply_to'],
+                    'correlation_id': req.properties.get('correlation_id'),
+                    'serializer': serializer},
                     **props))
 
 
@@ -162,7 +162,7 @@ def isend_reply(pool, exchange, req, msg, props, **retry_policy):
 
 
 def collect_replies(conn, channel, queue, *args, **kwargs):
-    no_ack = kwargs.setdefault("no_ack", True)
+    no_ack = kwargs.setdefault('no_ack', True)
     received = False
     for body, message in itermessages(conn, channel, queue, *args, **kwargs):
         if not no_ack:
@@ -175,7 +175,7 @@ def collect_replies(conn, channel, queue, *args, **kwargs):
 
 def _ensure_errback(exc, interval):
     insured_logger.error(
-        "Connection error: %r. Retry in %ss\n" % (exc, interval),
+        'Connection error: %r. Retry in %ss\n' % (exc, interval),
             exc_info=True)
 
 

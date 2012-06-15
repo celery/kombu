@@ -181,19 +181,19 @@ class QoS(object):
 
         if not self.restore_at_shutdown:
             return
-        elif not self.channel.do_restore or getattr(state, "restored", None):
+        elif not self.channel.do_restore or getattr(state, 'restored', None):
             assert not state
             return
 
         try:
             if state:
-                say("Restoring %r unacknowledged message(s).",
+                say('Restoring %r unacknowledged message(s).',
                         len(self._delivered))
                 unrestored = self.restore_unacked()
 
                 if unrestored:
                     errors, messages = zip(*unrestored)
-                    say("UNABLE TO RESTORE %s MESSAGES: %s",
+                    say('UNABLE TO RESTORE %s MESSAGES: %s',
                             len(errors), errors)
                     emergency_dump_state(messages)
         finally:
@@ -204,32 +204,32 @@ class Message(base.Message):
 
     def __init__(self, channel, payload, **kwargs):
         self._raw = payload
-        properties = payload["properties"]
-        body = payload.get("body")
+        properties = payload['properties']
+        body = payload.get('body')
         if body:
-            body = channel.decode_body(body, properties.get("body_encoding"))
-        fields = {"body": body,
-                  "delivery_tag": properties["delivery_tag"],
-                  "content_type": payload.get("content-type"),
-                  "content_encoding": payload.get("content-encoding"),
-                  "headers": payload.get("headers"),
-                  "properties": properties,
-                  "delivery_info": properties.get("delivery_info"),
-                  "postencode": "utf-8"}
+            body = channel.decode_body(body, properties.get('body_encoding'))
+        fields = {'body': body,
+                  'delivery_tag': properties['delivery_tag'],
+                  'content_type': payload.get('content-type'),
+                  'content_encoding': payload.get('content-encoding'),
+                  'headers': payload.get('headers'),
+                  'properties': properties,
+                  'delivery_info': properties.get('delivery_info'),
+                  'postencode': 'utf-8'}
         super(Message, self).__init__(channel, **dict(kwargs, **fields))
 
     def serializable(self):
         props = self.properties
         body, _ = self.channel.encode_body(self.body,
-                                           props.get("body_encoding"))
+                                           props.get('body_encoding'))
         headers = dict(self.headers)
         # remove compression header
-        headers.pop("compression", None)
-        return {"body": body,
-                "properties": props,
-                "content-type": self.content_type,
-                "content-encoding": self.content_encoding,
-                "headers": self.headers}
+        headers.pop('compression', None)
+        return {'body': body,
+                'properties': props,
+                'content-type': self.content_type,
+                'content-encoding': self.content_encoding,
+                'headers': self.headers}
 
 
 class AbstractChannel(object):
@@ -243,15 +243,15 @@ class AbstractChannel(object):
 
     def _get(self, queue, timeout=None):
         """Get next message from `queue`."""
-        raise NotImplementedError("Virtual channels must implement _get")
+        raise NotImplementedError('Virtual channels must implement _get')
 
     def _put(self, queue, message):
         """Put `message` onto `queue`."""
-        raise NotImplementedError("Virtual channels must implement _put")
+        raise NotImplementedError('Virtual channels must implement _put')
 
     def _purge(self, queue):
         """Remove all messages from `queue`."""
-        raise NotImplementedError("Virtual channels must implement _purge")
+        raise NotImplementedError('Virtual channels must implement _purge')
 
     def _size(self, queue):
         """Return the number of messages in `queue` as an :class:`int`."""
@@ -313,21 +313,21 @@ class Channel(AbstractChannel, base.StdChannel):
     supports_fanout = False
 
     #: Binary <-> ASCII codecs.
-    codecs = {"base64": Base64()}
+    codecs = {'base64': Base64()}
 
     #: Default body encoding.
-    #: NOTE: ``transport_options["body_encoding"]`` will override this value.
-    body_encoding = "base64"
+    #: NOTE: ``transport_options['body_encoding']`` will override this value.
+    body_encoding = 'base64'
 
     #: counter used to generate delivery tags for this channel.
     _next_delivery_tag = count(1).next
 
     #: Optional queue where messages with no route is delivered.
-    #: Set by ``transport_options["deadletter_queue"]``.
+    #: Set by ``transport_options['deadletter_queue']``.
     deadletter_queue = None
 
     # List of options to transfer from :attr:`transport_options`.
-    from_transport_options = ("body_encoding", "deadletter_queue")
+    from_transport_options = ('body_encoding', 'deadletter_queue')
 
     def __init__(self, connection, **kwargs):
         self.connection = connection
@@ -351,15 +351,15 @@ class Channel(AbstractChannel, base.StdChannel):
             except KeyError:
                 pass
 
-    def exchange_declare(self, exchange, type="direct", durable=False,
+    def exchange_declare(self, exchange, type='direct', durable=False,
             auto_delete=False, arguments=None, nowait=False, passive=False):
         """Declare exchange."""
         if passive:
             if exchange not in self.state.exchanges:
-                raise StdChannelError("404",
-                    u"NOT_FOUND - no exchange %r in vhost %r" % (
+                raise StdChannelError('404',
+                    u'NOT_FOUND - no exchange %r in vhost %r' % (
                         exchange, self.connection.client.virtual_host or '/'),
-                    (50, 10), "Channel.exchange_declare")
+                    (50, 10), 'Channel.exchange_declare')
             return
         try:
             prev = self.state.exchanges[exchange]
@@ -367,17 +367,17 @@ class Channel(AbstractChannel, base.StdChannel):
                                                     durable, auto_delete,
                                                     arguments):
                 raise NotEquivalentError(
-                        "Cannot redeclare exchange %r in vhost %r with "
-                        "different type, durable or autodelete value" % (
+                        'Cannot redeclare exchange %r in vhost %r with '
+                        'different type, durable or autodelete value' % (
                             exchange,
-                            self.connection.client.virtual_host or "/"))
+                            self.connection.client.virtual_host or '/'))
         except KeyError:
             self.state.exchanges[exchange] = {
-                    "type": type,
-                    "durable": durable,
-                    "auto_delete": auto_delete,
-                    "arguments": arguments or {},
-                    "table": [],
+                    'type': type,
+                    'durable': durable,
+                    'auto_delete': auto_delete,
+                    'arguments': arguments or {},
+                    'table': [],
             }
 
     def exchange_delete(self, exchange, if_unused=False, nowait=False):
@@ -389,10 +389,10 @@ class Channel(AbstractChannel, base.StdChannel):
     def queue_declare(self, queue, passive=False, **kwargs):
         """Declare queue."""
         if passive and not self._has_queue(queue, **kwargs):
-            raise StdChannelError("404",
-                    u"NOT_FOUND - no queue %r in vhost %r" % (
+            raise StdChannelError('404',
+                    u'NOT_FOUND - no queue %r in vhost %r' % (
                         queue, self.connection.client.virtual_host or '/'),
-                    (50, 10), "Channel.queue_declare")
+                    (50, 10), 'Channel.queue_declare')
         else:
             self._new_queue(queue, **kwargs)
         return queue, self._size(queue), 0
@@ -413,12 +413,12 @@ class Channel(AbstractChannel, base.StdChannel):
     def after_reply_message_received(self, queue):
         self.queue_delete(queue)
 
-    def queue_bind(self, queue, exchange, routing_key="", arguments=None,
+    def queue_bind(self, queue, exchange, routing_key='', arguments=None,
             **kwargs):
         """Bind `queue` to `exchange` with `routing key`."""
         if queue in self.state.bindings:
             return
-        table = self.state.exchanges[exchange].setdefault("table", [])
+        table = self.state.exchanges[exchange].setdefault('table', [])
         self.state.bindings[queue] = exchange, routing_key, arguments
         meta = self.typeof(exchange).prepare_bind(queue,
                                                   exchange,
@@ -440,12 +440,12 @@ class Channel(AbstractChannel, base.StdChannel):
 
     def basic_publish(self, message, exchange, routing_key, **kwargs):
         """Publish message."""
-        props = message["properties"]
-        message["body"], props["body_encoding"] = \
-                self.encode_body(message["body"], self.body_encoding)
-        props["delivery_info"]["exchange"] = exchange
-        props["delivery_info"]["routing_key"] = routing_key
-        props["delivery_tag"] = self._next_delivery_tag()
+        props = message['properties']
+        message['body'], props['body_encoding'] = \
+                self.encode_body(message['body'], self.body_encoding)
+        props['delivery_info']['exchange'] = exchange
+        props['delivery_info']['routing_key'] = routing_key
+        props['delivery_tag'] = self._next_delivery_tag()
         self.typeof(exchange).deliver(message,
                                       exchange, routing_key, **kwargs)
 
@@ -492,7 +492,7 @@ class Channel(AbstractChannel, base.StdChannel):
         """Recover unacked messages."""
         if requeue:
             return self.qos.restore_unacked()
-        raise NotImplementedError("Does not support recover(requeue=False)")
+        raise NotImplementedError('Does not support recover(requeue=False)')
 
     def basic_reject(self, delivery_tag, requeue=False):
         """Reject message."""
@@ -512,11 +512,11 @@ class Channel(AbstractChannel, base.StdChannel):
 
     def get_table(self, exchange):
         """Get table of bindings for `exchange`."""
-        return self.state.exchanges[exchange]["table"]
+        return self.state.exchanges[exchange]['table']
 
     def typeof(self, exchange):
         """Get the exchange type instance for `exchange`."""
-        type = self.state.exchanges[exchange]["type"]
+        type = self.state.exchanges[exchange]['type']
         return self.exchange_types[type]
 
     def _lookup(self, exchange, routing_key, default=None):
@@ -535,7 +535,7 @@ class Channel(AbstractChannel, base.StdChannel):
 
         if not R and default is not None:
             warnings.warn(UndeliverableWarning(UNDELIVERABLE_FMT % {
-                "exchange": exchange, "routing_key": routing_key}))
+                'exchange': exchange, 'routing_key': routing_key}))
             self._new_queue(default)
             R = [default]
         return R
@@ -544,14 +544,14 @@ class Channel(AbstractChannel, base.StdChannel):
         """Redeliver message to its original destination."""
         delivery_info = message.delivery_info
         message = message.serializable()
-        message["redelivered"] = True
-        for queue in self._lookup(delivery_info["exchange"],
-                                  delivery_info["routing_key"]):
+        message['redelivered'] = True
+        for queue in self._lookup(delivery_info['exchange'],
+                                  delivery_info['routing_key']):
             self._put(queue, message)
 
     def drain_events(self, timeout=None):
         if self._consumers and self.qos.can_consume():
-            if hasattr(self, "_get_many"):
+            if hasattr(self, '_get_many'):
                 return self._get_many(self._active_queues, timeout=timeout)
             return self._poll(self.cycle, timeout=timeout)
         raise Empty()
@@ -567,14 +567,14 @@ class Channel(AbstractChannel, base.StdChannel):
             properties=None):
         """Prepare message data."""
         properties = properties or {}
-        info = properties.setdefault("delivery_info", {})
-        info["priority"] = priority or 0
+        info = properties.setdefault('delivery_info', {})
+        info['priority'] = priority or 0
 
-        return {"body": message_data,
-                "content-encoding": content_encoding,
-                "content-type": content_type,
-                "headers": headers or {},
-                "properties": properties or {}}
+        return {'body': message_data,
+                'content-encoding': content_encoding,
+                'content-type': content_type,
+                'headers': headers or {},
+                'properties': properties or {}}
 
     def flow(self, active=True):
         """Enable/disable message flow.
@@ -583,7 +583,7 @@ class Channel(AbstractChannel, base.StdChannel):
             is not implemented by the base virtual implementation.
 
         """
-        raise NotImplementedError("virtual channels does not support flow.")
+        raise NotImplementedError('virtual channels does not support flow.')
 
     def close(self):
         """Close channel, cancel all consumers, and requeue unacked
@@ -690,7 +690,7 @@ class Transport(base.Transport):
         self._callbacks = {}
         self.cycle = self.Cycle(self._drain_channel, self.channels, Empty)
         self._next_channel_id = count(1).next
-        polling_interval = client.transport_options.get("polling_interval")
+        polling_interval = client.transport_options.get('polling_interval')
         if polling_interval is not None:
             self.polling_interval = polling_interval
 
@@ -760,4 +760,4 @@ class Transport(base.Transport):
 
     @property
     def default_connection_params(self):
-        return {"port": self.default_port, "hostname": "localhost"}
+        return {'port': self.default_port, 'hostname': 'localhost'}

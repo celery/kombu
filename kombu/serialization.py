@@ -22,11 +22,11 @@ except ImportError:  # pragma: no cover
 from .exceptions import SerializerNotInstalled
 from .utils.encoding import bytes_to_str, str_to_bytes, bytes_t
 
-__all__ = ["pickle", "encode", "decode",
-           "register", "unregister"]
-SKIP_DECODE = frozenset(["binary", "ascii-8bit"])
+__all__ = ['pickle', 'encode', 'decode',
+           'register', 'unregister']
+SKIP_DECODE = frozenset(['binary', 'ascii-8bit'])
 
-if sys.platform.startswith("java"):  # pragma: no cover
+if sys.platform.startswith('java'):  # pragma: no cover
 
     def _decode(t, coding):
         return codecs.getdecoder(coding)(t)[0]
@@ -99,7 +99,7 @@ class SerializerRegistry(object):
             self.type_to_name.pop(content_type, None)
         except KeyError:
             raise SerializerNotInstalled(
-                "No encoder/decoder installed for %s" % name)
+                'No encoder/decoder installed for %s' % name)
 
     def _set_default_serializer(self, name):
         """
@@ -117,14 +117,14 @@ class SerializerRegistry(object):
              self._default_encode) = self._encoders[name]
         except KeyError:
             raise SerializerNotInstalled(
-                "No encoder installed for %s" % name)
+                'No encoder installed for %s' % name)
 
     def encode(self, data, serializer=None):
-        if serializer == "raw":
+        if serializer == 'raw':
             return raw_encode(data)
         if serializer and not self._encoders.get(serializer):
             raise SerializerNotInstalled(
-                        "No encoder installed for %s" % serializer)
+                        'No encoder installed for %s' % serializer)
 
         # If a raw string was sent, assume binary encoding
         # (it's likely either ASCII or a raw binary file, and a character
@@ -132,12 +132,12 @@ class SerializerRegistry(object):
         if not serializer and isinstance(data, bytes_t):
             # In Python 3+, this would be "bytes"; allow binary data to be
             # sent as a message without getting encoder errors
-            return "application/data", "binary", data
+            return 'application/data', 'binary', data
 
         # For Unicode objects, force it into a string
         if not serializer and isinstance(data, unicode):
-            payload = data.encode("utf-8")
-            return "text/plain", "utf-8", payload
+            payload = data.encode('utf-8')
+            return 'text/plain', 'utf-8', payload
 
         if serializer:
             content_type, content_encoding, encoder = \
@@ -153,7 +153,7 @@ class SerializerRegistry(object):
     def decode(self, data, content_type, content_encoding, force=False):
         if content_type in self._disabled_content_types and not force:
             raise SerializerNotInstalled(
-                "Content-type %r has been disabled." % (content_type, ))
+                'Content-type %r has been disabled.' % (content_type, ))
         content_type = content_type or 'application/data'
         content_encoding = (content_encoding or 'utf-8').lower()
 
@@ -230,7 +230,7 @@ decode = registry.decode
 
 """
 .. function:: register(name, encoder, decoder, content_type,
-                       content_encoding="utf-8"):
+                       content_encoding='utf-8'):
     Register a new encoder/decoder.
 
     :param name: A convenience name for the serialization method.
@@ -252,7 +252,7 @@ decode = registry.decode
         the `decoder` method will be returning. Will usually be
         utf-8`, `us-ascii`, or `binary`.
 
-        """
+"""
 register = registry.register
 
 
@@ -262,7 +262,7 @@ register = registry.register
 
     :param name: Registered serialization method name.
 
-        """
+"""
 unregister = registry.unregister
 
 
@@ -306,7 +306,7 @@ def register_yaml():
             """In case a client receives a yaml message, but yaml
             isn't installed."""
             raise SerializerNotInstalled(
-                "No decoder installed for YAML. Install the PyYAML library")
+                'No decoder installed for YAML. Install the PyYAML library')
         registry.register('yaml', None, not_available, 'application/x-yaml')
 
 
@@ -340,8 +340,8 @@ def register_msgpack():
             """In case a client receives a msgpack message, but yaml
             isn't installed."""
             raise SerializerNotInstalled(
-                    "No decoder installed for msgpack. "
-                    "Install the msgpack library")
+                    'No decoder installed for msgpack. '
+                    'Install the msgpack library')
         registry.register('msgpack', None, not_available,
                           'application/x-msgpack')
 

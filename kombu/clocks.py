@@ -13,7 +13,7 @@ from __future__ import with_statement
 
 from threading import Lock
 
-__all__ = ["LamportClock"]
+__all__ = ['LamportClock']
 
 
 class LamportClock(object):

@@ -14,10 +14,10 @@ from .abstract import MaybeChannelBound
 
 TRANSIENT_DELIVERY_MODE = 1
 PERSISTENT_DELIVERY_MODE = 2
-DELIVERY_MODES = {"transient": TRANSIENT_DELIVERY_MODE,
-                  "persistent": PERSISTENT_DELIVERY_MODE}
+DELIVERY_MODES = {'transient': TRANSIENT_DELIVERY_MODE,
+                  'persistent': PERSISTENT_DELIVERY_MODE}
 
-__all__ = ["Exchange", "Queue"]
+__all__ = ['Exchange', 'Queue']
 
 
 class Exchange(MaybeChannelBound):
@@ -118,27 +118,27 @@ class Exchange(MaybeChannelBound):
     TRANSIENT_DELIVERY_MODE = TRANSIENT_DELIVERY_MODE
     PERSISTENT_DELIVERY_MODE = PERSISTENT_DELIVERY_MODE
 
-    name = ""
-    type = "direct"
+    name = ''
+    type = 'direct'
     durable = True
     auto_delete = False
     delivery_mode = PERSISTENT_DELIVERY_MODE
 
-    attrs = (("name", None),
-             ("type", None),
-             ("arguments", None),
-             ("durable", bool),
-             ("auto_delete", bool),
-             ("delivery_mode", lambda m: DELIVERY_MODES.get(m) or m))
+    attrs = (('name', None),
+             ('type', None),
+             ('arguments', None),
+             ('durable', bool),
+             ('auto_delete', bool),
+             ('delivery_mode', lambda m: DELIVERY_MODES.get(m) or m))
 
-    def __init__(self, name="", type="", channel=None, **kwargs):
+    def __init__(self, name='', type='', channel=None, **kwargs):
         super(Exchange, self).__init__(**kwargs)
         self.name = name or self.name
         self.type = type or self.type
         self.maybe_bind(channel)
 
     def __hash__(self):
-        return hash("E|%s" % (self.name, ))
+        return hash('E|%s' % (self.name, ))
 
     def declare(self, nowait=False, passive=False):
         """Declare the exchange.
@@ -188,7 +188,7 @@ class Exchange(MaybeChannelBound):
         """
         properties = {} if properties is None else properties
         dm = delivery_mode or self.delivery_mode
-        properties["delivery_mode"] = \
+        properties['delivery_mode'] = \
             DELIVERY_MODES[dm] if (dm != 2 and dm != 1) else dm
         return self.channel.prepare_message(body,
                                             properties=properties,
@@ -239,7 +239,7 @@ class Exchange(MaybeChannelBound):
         return False
 
     def __repr__(self):
-        return super(Exchange, self).__repr__("Exchange %s(%s)" % (self.name,
+        return super(Exchange, self).__repr__('Exchange %s(%s)' % (self.name,
                                                                    self.type))
 
     @property
@@ -341,27 +341,27 @@ class Queue(MaybeChannelBound):
         generated queue names.
 
     """
-    name = ""
-    exchange = Exchange("")
-    routing_key = ""
+    name = ''
+    exchange = Exchange('')
+    routing_key = ''
 
     durable = True
     exclusive = False
     auto_delete = False
     no_ack = False
 
-    attrs = (("name", None),
-             ("exchange", None),
-             ("routing_key", None),
-             ("queue_arguments", None),
-             ("binding_arguments", None),
-             ("durable", bool),
-             ("exclusive", bool),
-             ("auto_delete", bool),
-             ("no_ack", None),
-             ("alias", None))
+    attrs = (('name', None),
+             ('exchange', None),
+             ('routing_key', None),
+             ('queue_arguments', None),
+             ('binding_arguments', None),
+             ('durable', bool),
+             ('exclusive', bool),
+             ('auto_delete', bool),
+             ('no_ack', None),
+             ('alias', None))
 
-    def __init__(self, name="", exchange=None, routing_key="", channel=None,
+    def __init__(self, name='', exchange=None, routing_key='', channel=None,
             **kwargs):
         super(Queue, self).__init__(**kwargs)
         self.name = name or self.name
@@ -373,7 +373,7 @@ class Queue(MaybeChannelBound):
         self.maybe_bind(channel)
 
     def __hash__(self):
-        return hash("Q|%s" % (self.name, ))
+        return hash('Q|%s' % (self.name, ))
 
     def when_bound(self):
         if self.exchange:
@@ -437,7 +437,7 @@ class Queue(MaybeChannelBound):
         no_ack = self.no_ack if no_ack is None else no_ack
         message = self.channel.basic_get(queue=self.name, no_ack=no_ack)
         if message is not None:
-            m2p = getattr(self.channel, "message_to_python", None)
+            m2p = getattr(self.channel, 'message_to_python', None)
             if m2p:
                 message = m2p(message)
             return message
@@ -518,7 +518,7 @@ class Queue(MaybeChannelBound):
 
     def __repr__(self):
         return super(Queue, self).__repr__(
-                 "Queue %s -> %s -> %s" % (self.name,
+                 'Queue %s -> %s -> %s' % (self.name,
                                            self.exchange,
                                            self.routing_key))
 
@@ -528,32 +528,32 @@ class Queue(MaybeChannelBound):
 
     @classmethod
     def from_dict(self, queue, **options):
-        binding_key = options.get("binding_key") or options.get("routing_key")
+        binding_key = options.get('binding_key') or options.get('routing_key')
 
-        e_durable = options.get("exchange_durable")
+        e_durable = options.get('exchange_durable')
         if e_durable is None:
-            e_durable = options.get("durable")
+            e_durable = options.get('durable')
 
-        e_auto_delete = options.get("exchange_auto_delete")
+        e_auto_delete = options.get('exchange_auto_delete')
         if e_auto_delete is None:
-            e_auto_delete = options.get("auto_delete")
+            e_auto_delete = options.get('auto_delete')
 
-        q_durable = options.get("queue_durable")
+        q_durable = options.get('queue_durable')
         if q_durable is None:
-            q_durable = options.get("durable")
+            q_durable = options.get('durable')
 
-        q_auto_delete = options.get("queue_auto_delete")
+        q_auto_delete = options.get('queue_auto_delete')
         if q_auto_delete is None:
-            q_auto_delete = options.get("auto_delete")
+            q_auto_delete = options.get('auto_delete')
 
-        e_arguments = options.get("exchange_arguments")
-        q_arguments = options.get("queue_arguments")
-        b_arguments = options.get("binding_arguments")
+        e_arguments = options.get('exchange_arguments')
+        q_arguments = options.get('queue_arguments')
+        b_arguments = options.get('binding_arguments')
 
-        exchange = Exchange(options.get("exchange"),
-                            type=options.get("exchange_type"),
-                            delivery_mode=options.get("delivery_mode"),
-                            routing_key=options.get("routing_key"),
+        exchange = Exchange(options.get('exchange'),
+                            type=options.get('exchange_type'),
+                            delivery_mode=options.get('delivery_mode'),
+                            routing_key=options.get('routing_key'),
                             durable=e_durable,
                             auto_delete=e_auto_delete,
                             arguments=e_arguments)
@@ -561,8 +561,8 @@ class Queue(MaybeChannelBound):
                      exchange=exchange,
                      routing_key=binding_key,
                      durable=q_durable,
-                     exclusive=options.get("exclusive"),
+                     exclusive=options.get('exclusive'),
                      auto_delete=q_auto_delete,
-                     no_ack=options.get("no_ack"),
+                     no_ack=options.get('no_ack'),
                      queue_arguments=q_arguments,
                      binding_arguments=b_arguments)

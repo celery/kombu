@@ -18,7 +18,7 @@ from .compression import compress
 from .serialization import encode
 from .utils import maybe_list
 
-__all__ = ["Exchange", "Queue", "Producer", "Consumer"]
+__all__ = ['Exchange', 'Queue', 'Producer', 'Consumer']
 
 
 class Producer(object):
@@ -46,7 +46,7 @@ class Producer(object):
     exchange = None
 
     # Default routing key.
-    routing_key = ""
+    routing_key = ''
 
     #: Default serializer to use. Default is JSON.
     serializer = None
@@ -68,7 +68,7 @@ class Producer(object):
         self.channel = channel
         self.exchange = exchange or self.exchange
         if self.exchange is None:
-            self.exchange = Exchange("")
+            self.exchange = Exchange('')
         self.routing_key = routing_key or self.routing_key
         self.serializer = serializer or self.serializer
         self.compression = compression or self.compression
@@ -171,7 +171,7 @@ class Producer(object):
         if self.auto_declare:
             self.declare()
         if self.on_return:
-            self.channel.events["basic_return"].append(self.on_return)
+            self.channel.events['basic_return'].append(self.on_return)
 
     def __enter__(self):
         return self
@@ -206,7 +206,7 @@ class Producer(object):
                 content_encoding = 'binary'
 
         if compression:
-            body, headers["compression"] = compress(body, compression)
+            body, headers['compression'] = compress(body, compression)
 
         return body, content_type, content_encoding
 
@@ -446,7 +446,7 @@ class Consumer(object):
         """
         callbacks = self.callbacks
         if not callbacks:
-            raise NotImplementedError("Consumer does not have any callback")
+            raise NotImplementedError('Consumer does not have any callback')
         [callback(body, message) for callback in callbacks]
 
     def _basic_consume(self, queue, consumer_tag=None,
@@ -466,7 +466,7 @@ class Consumer(object):
     def _receive_callback(self, message):
         channel = self.channel
         try:
-            m2p = getattr(channel, "message_to_python", None)
+            m2p = getattr(channel, 'message_to_python', None)
             if m2p:
                 message = m2p(message)
             decoded = message.decode()
@@ -478,7 +478,7 @@ class Consumer(object):
             self.receive(decoded, message)
 
     def __repr__(self):
-        return "<Consumer: %s>" % (self.queues, )
+        return '<Consumer: %s>' % (self.queues, )
 
     @property
     def connection(self):

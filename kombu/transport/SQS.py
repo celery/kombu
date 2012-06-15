@@ -61,7 +61,7 @@ class Table(Domain):
         """
         item = self.get_queue(queue)
         if item:
-            return item, item["id"]
+            return item, item['id']
         id = uuid()
         return self.new_item(id), id
 
@@ -69,9 +69,9 @@ class Table(Domain):
         if queue not in self._already_bound:
             binding, id = self.create_binding(queue)
             binding.update(exchange=exchange,
-                           routing_key=routing_key or "",
-                           pattern=pattern or "",
-                           queue=queue or "",
+                           routing_key=routing_key or '',
+                           pattern=pattern or '',
+                           queue=queue or '',
                            id=id)
             binding.save()
             self._already_bound.add(queue)
@@ -86,7 +86,7 @@ class Table(Domain):
     def exchange_delete(self, exchange):
         """Delete all routes for `exchange`."""
         for item in self.routes_for(exchange):
-            self.delete_item(item["id"])
+            self.delete_item(item['id'])
 
     def get_item(self, item_name):
         """Uses `consistent_read` by default."""
@@ -109,7 +109,7 @@ class Table(Domain):
                 return item
 
     def get_exchanges(self):
-        return list(set(i["exchange"] for i in self.select()))
+        return list(set(i['exchange'] for i in self.select()))
 
     def _get_queue_item(self, queue):
         return self._try_first("""WHERE queue = '%s' limit 1""" % queue)
@@ -117,14 +117,14 @@ class Table(Domain):
     def _get_queue_id(self, queue):
         item = self._get_queue_item(queue)
         if item:
-            return item["id"]
+            return item['id']
 
 
 class Channel(virtual.Channel):
     Table = Table
 
-    default_region = "us-east-1"
-    domain_format = "kombu%(vhost)s"
+    default_region = 'us-east-1'
+    domain_format = 'kombu%(vhost)s'
     _sdb = None
     _sqs = None
     _queue_cache = {}
@@ -184,7 +184,7 @@ class Channel(virtual.Channel):
 
         """
         if self.supports_fanout:
-            return [(r["routing_key"], r["pattern"], r["queue"])
+            return [(r['routing_key'], r['pattern'], r['queue'])
                         for r in self.table.routes_for(exchange)]
         return super(Channel, self).get_table(exchange)
 
@@ -222,7 +222,7 @@ class Channel(virtual.Channel):
     def _put_fanout(self, exchange, message, **kwargs):
         """Deliver fanout message to all queues in ``exchange``."""
         for route in self.table.routes_for(exchange):
-            self._put(route["queue"], message, **kwargs)
+            self._put(route['queue'], message, **kwargs)
 
     def _get(self, queue):
         """Try to retrieve a single message off ``queue``."""
@@ -234,19 +234,19 @@ class Channel(virtual.Channel):
             if queue in self._noack_queues:
                 q.delete_message(m)
             else:
-                payload["properties"]["delivery_info"].update({
-                    "sqs_message": m, "sqs_queue": q, })
+                payload['properties']['delivery_info'].update({
+                    'sqs_message': m, 'sqs_queue': q, })
             return payload
         raise Empty()
 
     def basic_ack(self, delivery_tag):
         delivery_info = self.qos.get(delivery_tag).delivery_info
         try:
-            queue = delivery_info["sqs_queue"]
+            queue = delivery_info['sqs_queue']
         except KeyError:
             pass
         else:
-            queue.delete_message(delivery_info["sqs_message"])
+            queue.delete_message(delivery_info['sqs_message'])
         super(Channel, self).basic_ack(delivery_tag)
 
     def _size(self, queue):
@@ -308,8 +308,8 @@ class Channel(virtual.Channel):
     @property
     def table(self):
         name = self.entity_name(self.domain_format % {
-                                    "vhost": self.conninfo.virtual_host})
-        d = self.sdb.get_object("CreateDomain", {"DomainName": name},
+                                    'vhost': self.conninfo.virtual_host})
+        d = self.sdb.get_object('CreateDomain', {'DomainName': name},
                                 self.Table)
         d.name = name
         return d
@@ -324,19 +324,19 @@ class Channel(virtual.Channel):
 
     @cached_property
     def visibility_timeout(self):
-        return self.transport_options.get("visibility_timeout")
+        return self.transport_options.get('visibility_timeout')
 
     @cached_property
     def queue_name_prefix(self):
-        return self.transport_options.get("queue_name_prefix", '')
+        return self.transport_options.get('queue_name_prefix', '')
 
     @cached_property
     def supports_fanout(self):
-        return self.transport_options.get("sdb_persistence", False)
+        return self.transport_options.get('sdb_persistence', False)
 
     @cached_property
     def region(self):
-        return self.transport_options.get("region") or self.default_region
+        return self.transport_options.get('region') or self.default_region
 
 
 class Transport(virtual.Transport):

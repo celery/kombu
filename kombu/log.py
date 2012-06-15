@@ -9,12 +9,12 @@ from .utils.compat import WatchedFileHandler
 from .utils.encoding import safe_repr, safe_str
 from .utils.functional import maybe_promise
 
-__all__ = ["LogMixin", "LOG_LEVELS", "get_loglevel", "setup_logging"]
+__all__ = ['LogMixin', 'LOG_LEVELS', 'get_loglevel', 'setup_logging']
 
 LOG_LEVELS = dict(logging._levelNames)
-LOG_LEVELS["FATAL"] = logging.FATAL
-LOG_LEVELS[logging.FATAL] = "FATAL"
-DISABLE_TRACEBACKS = os.environ.get("DISABLE_TRACEBACKS")
+LOG_LEVELS['FATAL'] = logging.FATAL
+LOG_LEVELS[logging.FATAL] = 'FATAL'
+DISABLE_TRACEBACKS = os.environ.get('DISABLE_TRACEBACKS')
 
 
 class NullHandler(logging.Handler):
@@ -48,7 +48,7 @@ def naive_format_parts(fmt):
     for i, e in enumerate(l[1:]):
         if not e or not l[i - 1]:
             yield
-        elif e[0] in ["r", "s"]:
+        elif e[0] in ['r', 's']:
             yield e[0]
 
 
@@ -80,13 +80,13 @@ class LogMixin(object):
         return self._error(logging.CRITICAL, *args, **kwargs)
 
     def _error(self, severity, *args, **kwargs):
-        kwargs.setdefault("exc_info", True)
+        kwargs.setdefault('exc_info', True)
         if DISABLE_TRACEBACKS:
-            kwargs.pop("exc_info", None)
+            kwargs.pop('exc_info', None)
         return self.log(severity, *args, **kwargs)
 
     def annotate(self, text):
-        return "%s - %s" % (self.logger_name, text)
+        return '%s - %s' % (self.logger_name, text)
 
     def log(self, severity, *args, **kwargs):
         if self.logger.isEnabledFor(severity):
@@ -98,7 +98,7 @@ class LogMixin(object):
                           *list(safeify_format(args[0], *expand)), **kwargs)
             else:
                 return self.logger.log(severity,
-                            self.annotate(" ".join(map(safe_str, args))),
+                            self.annotate(' '.join(map(safe_str, args))),
                             **kwargs)
 
     def get_logger(self):
@@ -139,10 +139,10 @@ class Log(LogMixin):
 
 def setup_logging(loglevel=None, logfile=None):
     logger = logging.getLogger()
-    loglevel = get_loglevel(loglevel or "ERROR")
+    loglevel = get_loglevel(loglevel or 'ERROR')
     logfile = logfile if logfile else sys.__stderr__
     if not logger.handlers:
-        if hasattr(logfile, "write"):
+        if hasattr(logfile, 'write'):
             handler = logging.StreamHandler(logfile)
         else:
             handler = WatchedFileHandler(logfile)

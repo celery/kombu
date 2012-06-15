@@ -12,7 +12,7 @@ def _parse_url(url):
     scheme = urlparse(url).scheme
     schemeless = url[len(scheme) + 3:]
     # parse with HTTP URL semantics
-    parts = urlparse("http://" + schemeless)
+    parts = urlparse('http://' + schemeless)
 
     # The first pymongo.Connection() argument (host) can be
     # a mongodb connection URI. If this is the case, don't

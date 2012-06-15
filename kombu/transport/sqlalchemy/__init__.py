@@ -14,7 +14,7 @@ from .models import Queue, Message, metadata
 
 
 VERSION = (1, 1, 0)
-__version__ = ".".join(map(str, VERSION))
+__version__ = '.'.join(map(str, VERSION))
 
 
 class Channel(virtual.Channel):
@@ -110,8 +110,8 @@ class Transport(virtual.Transport):
     default_port = 0
     connection_errors = ()
     channel_errors = (StdChannelError, )
-    driver_type = "sql"
-    driver_name = "sqlalchemy"
+    driver_type = 'sql'
+    driver_name = 'sqlalchemy'
 
     def driver_version(self):
         import sqlalchemy

@@ -22,7 +22,7 @@ from . import virtual
 
 DEFAULT_PORT = 11300
 
-__author__ = "David Ziegler <david.ziegler@gmail.com>"
+__author__ = 'David Ziegler <david.ziegler@gmail.com>'
 
 
 class Channel(virtual.Channel):
@@ -33,7 +33,7 @@ class Channel(virtual.Channel):
         if job:
             try:
                 item = loads(job.body)
-                dest = job.stats()["tube"]
+                dest = job.stats()['tube']
             except Exception:
                 job.bury()
             else:
@@ -44,10 +44,10 @@ class Channel(virtual.Channel):
 
     def _put(self, queue, message, **kwargs):
         extra = {}
-        priority = message["properties"]["delivery_info"]["priority"]
-        ttr = message["properties"].get("ttr")
+        priority = message['properties']['delivery_info']['priority']
+        ttr = message['properties'].get('ttr')
         if ttr is not None:
-            extra["ttr"] = ttr
+            extra['ttr'] = ttr
 
         self.client.use(queue)
         self.client.put(dumps(message), priority=priority, **extra)
@@ -135,8 +135,8 @@ class Transport(virtual.Transport):
                       IOError,
                       beanstalkc.SocketError,
                       beanstalkc.BeanstalkcException)
-    driver_type = "beanstalk"
-    driver_name = "beanstalkc"
+    driver_type = 'beanstalk'
+    driver_name = 'beanstalkc'
 
     def driver_version(self):
         return beanstalkc.__version__

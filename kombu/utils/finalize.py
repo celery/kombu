@@ -16,7 +16,7 @@ import weakref
 
 from itertools import count
 
-__all__ = ["Finalize"]
+__all__ = ['Finalize']
 
 
 class Finalize(object):
@@ -72,7 +72,7 @@ class Finalize(object):
         try:
             obj = self._weakref()
         except (AttributeError, TypeError):
-            return "<Finalize: (dead)>"
+            return '<Finalize: (dead)>'
 
         if obj is None:
             return

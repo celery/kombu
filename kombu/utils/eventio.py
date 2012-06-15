@@ -48,7 +48,7 @@ except ImportError:
 
 from kombu.syn import detect_environment
 
-__all__ = ["poll"]
+__all__ = ['poll']
 
 READ = POLL_READ = 0x001
 WRITE = POLL_WRITE = 0x004
@@ -229,7 +229,7 @@ class _select(Poller):
 
 
 def _get_poller():
-    if detect_environment() in ("eventlet", "gevent"):
+    if detect_environment() != 'default':
         # greenlet
         return _select
     elif epoll:

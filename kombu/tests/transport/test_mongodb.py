@@ -15,52 +15,52 @@ class MockConnection(dict):
 
 class test_mongodb(TestCase):
 
-    @skip_if_not_module("pymongo")
+    @skip_if_not_module('pymongo')
     def test_url_parser(self):
         from kombu.transport import mongodb
         from pymongo.errors import ConfigurationError
 
         raise SkipTest(
-            "Test is functional: it actually connects to mongod")
+            'Test is functional: it actually connects to mongod')
 
         class Transport(mongodb.Transport):
             Connection = MockConnection
 
-        url = "mongodb://"
+        url = 'mongodb://'
         c = BrokerConnection(url, transport=Transport).connect()
         client = c.channels[0].client
-        self.assertEquals(client.name, "kombu_default")
-        self.assertEquals(client.connection.host, "127.0.0.1")
+        self.assertEquals(client.name, 'kombu_default')
+        self.assertEquals(client.connection.host, '127.0.0.1')
 
-        url = "mongodb://localhost"
+        url = 'mongodb://localhost'
         c = BrokerConnection(url, transport=Transport).connect()
         client = c.channels[0].client
-        self.assertEquals(client.name, "kombu_default")
+        self.assertEquals(client.name, 'kombu_default')
 
-        url = "mongodb://localhost/dbname"
+        url = 'mongodb://localhost/dbname'
         c = BrokerConnection(url, transport=Transport).connect()
         client = c.channels[0].client
-        self.assertEquals(client.name, "dbname")
+        self.assertEquals(client.name, 'dbname')
 
-        url = "mongodb://localhost,example.org:29017/dbname"
+        url = 'mongodb://localhost,example.org:29017/dbname'
         c = BrokerConnection(url, transport=Transport).connect()
         client = c.channels[0].client
 
         nodes = client.connection.nodes
         self.assertEquals(len(nodes), 2)
-        self.assertTrue(("example.org", 29017) in nodes)
-        self.assertEquals(client.name, "dbname")
+        self.assertTrue(('example.org', 29017) in nodes)
+        self.assertEquals(client.name, 'dbname')
 
         # Passing options breaks kombu's _init_params method
-        # url = "mongodb://localhost,localhost2:29017/dbname?safe=true"
+        # url = 'mongodb://localhost,localhost2:29017/dbname?safe=true'
         # c = BrokerConnection(url, transport=Transport).connect()
         # client = c.channels[0].client
 
-        url = "mongodb://localhost:27017,localhost2:29017/dbname"
+        url = 'mongodb://localhost:27017,localhost2:29017/dbname'
         c = BrokerConnection(url, transport=Transport).connect()
         client = c.channels[0].client
 
-        url = "mongodb://username:password@localhost/dbname"
+        url = 'mongodb://username:password@localhost/dbname'
         c = BrokerConnection(url, transport=Transport).connect()
         # Assuming there's no user 'username' with password 'password'
         # configured in mongodb

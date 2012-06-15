@@ -23,10 +23,10 @@ try:
 except:
     ctypes = None  # noqa
 
-__all__ = ["EqualityDict", "say", "uuid", "kwdict", "maybe_list",
-           "fxrange", "fxrangemax", "retry_over_time",
-           "emergency_dump_state", "cached_property",
-           "reprkwargs", "reprcall", "nested"]
+__all__ = ['EqualityDict', 'say', 'uuid', 'kwdict', 'maybe_list',
+           'fxrange', 'fxrangemax', 'retry_over_time',
+           'emergency_dump_state', 'cached_property',
+           'reprkwargs', 'reprcall', 'nested']
 
 
 def eqhash(o):
@@ -52,7 +52,7 @@ class EqualityDict(dict):
 
 
 def say(m, *s):
-    sys.stderr.write(str(m) % s + "\n")
+    sys.stderr.write(str(m) % s + '\n')
 
 
 def uuid4():
@@ -86,14 +86,14 @@ else:
         see: http://bugs.python.org/issue4978.
 
         """
-        return dict((key.encode("utf-8"), value)
+        return dict((key.encode('utf-8'), value)
                         for key, value in kwargs.items())
 
 
 def maybe_list(v):
     if v is None:
         return []
-    if hasattr(v, "__iter__"):
+    if hasattr(v, '__iter__'):
         return v
     return [v]
 
@@ -178,13 +178,13 @@ def emergency_dump_state(state, open_file=open, dump=None):
         import pickle
         dump = pickle.dump
     persist = mktemp()
-    say("EMERGENCY DUMP STATE TO FILE -> %s <-" % persist)
-    fh = open_file(persist, "w")
+    say('EMERGENCY DUMP STATE TO FILE -> %s <-' % persist)
+    fh = open_file(persist, 'w')
     try:
         try:
             dump(state, fh, protocol=0)
         except Exception, exc:
-            say("Cannot pickle state: %r. Fallback to pformat." % (exc, ))
+            say('Cannot pickle state: %r. Fallback to pformat.' % (exc, ))
             fh.write(pformat(state))
     finally:
         fh.flush()
@@ -207,14 +207,14 @@ class cached_property(object):
         @connection.setter  # Prepares stored value
         def connection(self, value):
             if value is None:
-                raise TypeError("Connection must be a connection")
+                raise TypeError('Connection must be a connection')
             return value
 
         @connection.deleter
         def connection(self, value):
             # Additional action to do at del(self.attr)
             if value is not None:
-                print("Connection %r deleted" % (value, ))
+                print('Connection %r deleted' % (value, ))
 
     """
 
@@ -260,13 +260,13 @@ class cached_property(object):
         return self.__class__(self.__get, self.__set, fdel)
 
 
-def reprkwargs(kwargs, sep=', ', fmt="%s=%s"):
+def reprkwargs(kwargs, sep=', ', fmt='%s=%s'):
     return sep.join(fmt % (k, _safe_repr(v)) for k, v in kwargs.iteritems())
 
 
 def reprcall(name, args=(), kwargs=(), sep=', '):
-    return "%s(%s%s%s)" % (name, sep.join(map(_safe_repr, args or ())),
-                           (args and kwargs) and sep or "",
+    return '%s(%s%s%s)' % (name, sep.join(map(_safe_repr, args or ())),
+                           (args and kwargs) and sep or '',
                            reprkwargs(kwargs, sep))
 
 

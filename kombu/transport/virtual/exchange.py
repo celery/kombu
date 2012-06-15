@@ -31,7 +31,7 @@ class ExchangeType(object):
         :returns: `default` if no queues matched.
 
         """
-        raise NotImplementedError("subclass responsibility")
+        raise NotImplementedError('subclass responsibility')
 
     def prepare_bind(self, queue, exchange, routing_key, arguments):
         """Returns tuple of `(routing_key, regex, queue)` to be stored
@@ -41,15 +41,15 @@ class ExchangeType(object):
     def equivalent(self, prev, exchange, type, durable, auto_delete,
             arguments):
         """Returns true if `prev` and `exchange` is equivalent."""
-        return (type == prev["type"] and
-                durable == prev["durable"] and
-                auto_delete == prev["auto_delete"] and
-                (arguments or {}) == (prev["arguments"] or {}))
+        return (type == prev['type'] and
+                durable == prev['durable'] and
+                auto_delete == prev['auto_delete'] and
+                (arguments or {}) == (prev['arguments'] or {}))
 
 
 class DirectExchange(ExchangeType):
     """The `direct` exchange routes based on exact routing keys."""
-    type = "direct"
+    type = 'direct'
 
     def lookup(self, table, exchange, routing_key, default):
         return [queue for rkey, _, queue in table
@@ -66,11 +66,11 @@ class TopicExchange(ExchangeType):
     """The `topic` exchange routes messages based on words separated by
     dots, using wildcard characters ``*`` (any single word), and ``#``
     (one or more words)."""
-    type = "topic"
+    type = 'topic'
 
     #: map of wildcard to regex conversions
-    wildcards = {"*": r".*?[^\.]",
-                 "#": r".*?"}
+    wildcards = {'*': r'.*?[^\.]',
+                 '#': r'.*?'}
 
     #: compiled regex cache
     _compiled = {}
@@ -92,8 +92,8 @@ class TopicExchange(ExchangeType):
 
     def key_to_pattern(self, rkey):
         """Get the corresponding regex for any routing key."""
-        return "^%s$" % ("\.".join(self.wildcards.get(word, word)
-                                        for word in rkey.split(".")))
+        return '^%s$' % ('\.'.join(self.wildcards.get(word, word)
+                                        for word in rkey.split('.')))
 
     def _match(self, pattern, string):
         """Same as :func:`re.match`, except the regex is compiled and cached,
@@ -116,7 +116,7 @@ class FanoutExchange(ExchangeType):
     for an example implementation of these methods.
 
     """
-    type = "fanout"
+    type = 'fanout'
 
     def lookup(self, table, exchange, routing_key, default):
         return [queue for _, _, queue in table]
@@ -127,6 +127,6 @@ class FanoutExchange(ExchangeType):
 
 
 #: Map of standard exchange types and corresponding classes.
-STANDARD_EXCHANGE_TYPES = {"direct": DirectExchange,
-                           "topic": TopicExchange,
-                           "fanout": FanoutExchange}
+STANDARD_EXCHANGE_TYPES = {'direct': DirectExchange,
+                           'topic': TopicExchange,
+                           'fanout': FanoutExchange}

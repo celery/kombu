@@ -23,7 +23,7 @@ from .utils import cached_property, nested
 from .utils.encoding import safe_repr
 from .utils.limits import TokenBucket
 
-__all__ = ["ConsumerMixin"]
+__all__ = ['ConsumerMixin']
 
 
 class ConsumerMixin(LogMixin):
@@ -45,7 +45,7 @@ class ConsumerMixin(LogMixin):
 
 
         class Worker(ConsumerMixin):
-            task_queue = Queue("tasks", Exchange("tasks"), "tasks"))
+            task_queue = Queue('tasks', Exchange('tasks'), 'tasks'))
 
             def __init__(self, connection):
                 self.connection = None
@@ -55,7 +55,7 @@ class ConsumerMixin(LogMixin):
                                  callback=[self.on_task])]
 
             def on_task(self, body, message):
-                print("Got task: %r" % (body, ))
+                print('Got task: %r' % (body, ))
                 message.ack()
 
     **Additional handler methods**:
@@ -129,7 +129,7 @@ class ConsumerMixin(LogMixin):
     should_stop = False
 
     def get_consumers(self, Consumer, channel):
-        raise NotImplementedError("Subclass responsibility")
+        raise NotImplementedError('Subclass responsibility')
 
     def on_connection_revived(self):
         pass
@@ -151,8 +151,8 @@ class ConsumerMixin(LogMixin):
         message.ack()
 
     def on_connection_error(self, exc, interval):
-        self.error("Broker connection error: %r. "
-                   "Trying again in %s seconds.", exc, interval)
+        self.error('Broker connection error: %r. '
+                   'Trying again in %s seconds.', exc, interval)
 
     @contextmanager
     def extra_context(self, connection, channel):
@@ -165,8 +165,8 @@ class ConsumerMixin(LogMixin):
                     for _ in self.consume(limit=None):
                         pass
             except self.connection.connection_errors:
-                self.error("Connection to broker lost. "
-                           "Trying to re-establish the connection...")
+                self.error('Connection to broker lost. '
+                           'Trying to re-establish the connection...')
 
     def consume(self, limit=None, timeout=None, safety_interval=1, **kwargs):
         elapsed = 0
@@ -189,7 +189,7 @@ class ConsumerMixin(LogMixin):
                     else:
                         yield
                         elapsed = 0
-        self.debug("consume exiting")
+        self.debug('consume exiting')
 
     def maybe_conn_error(self, fun):
         """Applies function but ignores any connection or channel
@@ -212,15 +212,15 @@ class ConsumerMixin(LogMixin):
     def Consumer(self):
         with self.establish_connection() as conn:
             self.on_connection_revived()
-            self.info("Connected to %s", conn.as_uri())
+            self.info('Connected to %s', conn.as_uri())
             channel = conn.default_channel
             cls = partial(Consumer, channel,
                           on_decode_error=self.on_decode_error)
             with self._consume_from(*self.get_consumers(cls, channel)) as c:
                 yield conn, channel, c
-            self.debug("Consumers cancelled")
+            self.debug('Consumers cancelled')
             self.on_consume_end(conn, channel)
-        self.debug("Connection closed")
+        self.debug('Connection closed')
 
     def _consume_from(self, *consumers):
         return nested(*consumers)

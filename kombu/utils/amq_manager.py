@@ -6,10 +6,10 @@ def get_manager(client, hostname=None, port=None, userid=None,
     import pyrabbit
     opt = client.transport_options.get
     host = (hostname if hostname is not None
-                        else opt("manager_hostname", client.hostname))
-    port = port if port is not None else opt("manager_port", 55672)
-    return pyrabbit.Client("%s:%s" % (host, port),
+                        else opt('manager_hostname', client.hostname))
+    port = port if port is not None else opt('manager_port', 55672)
+    return pyrabbit.Client('%s:%s' % (host, port),
         userid if userid is not None
-                else opt("manager_userid", client.userid),
+                else opt('manager_userid', client.userid),
         password if password is not None
-                else opt("manager_password", client.password))
+                else opt('manager_password', client.password))

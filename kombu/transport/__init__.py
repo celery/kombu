@@ -14,15 +14,15 @@ import sys
 
 from kombu.syn import detect_environment
 
-DEFAULT_TRANSPORT = "amqp"
+DEFAULT_TRANSPORT = 'amqp'
 
-AMQP_TRANSPORT = "kombu.transport.amqplib.Transport"
-AMQP_ALIAS = "librabbitmq"
-if detect_environment() == "default":
+AMQP_TRANSPORT = 'kombu.transport.amqplib.Transport'
+AMQP_ALIAS = 'librabbitmq'
+if detect_environment() == 'default':
     try:
         import librabbitmq  # noqa
-        AMQP_TRANSPORT = "kombu.transport.librabbitmq.Transport"  # noqa
-        AMQP_ALIAS = "amqp"                                       # noqa
+        AMQP_TRANSPORT = 'kombu.transport.librabbitmq.Transport'  # noqa
+        AMQP_ALIAS = 'amqp'                                       # noqa
     except ImportError:
         pass
 
@@ -33,8 +33,8 @@ def _ghettoq(name, new, alias=None):
     def __inner():
         import warnings
         _new = callable(xxx) and xxx() or xxx
-        gtransport = "ghettoq.taproot.%s" % name
-        ktransport = "kombu.transport.%s.Transport" % _new
+        gtransport = 'ghettoq.taproot.%s' % name
+        ktransport = 'kombu.transport.%s.Transport' % _new
         this = alias or name
         warnings.warn("""
     Ghettoq does not work with Kombu, but there is now a built-in version
@@ -48,27 +48,27 @@ def _ghettoq(name, new, alias=None):
 
 
 TRANSPORT_ALIASES = {
-    "amqp": AMQP_TRANSPORT,
-    "amqplib": "kombu.transport.amqplib.Transport",
-    "librabbitmq": "kombu.transport.librabbitmq.Transport",
-    "pika": "kombu.transport.pika2.Transport",
-    "oldpika": "kombu.transport.pika.SyncTransport",
-    "memory": "kombu.transport.memory.Transport",
-    "redis": "kombu.transport.redis.Transport",
-    "SQS": "kombu.transport.SQS.Transport",
-    "sqs": "kombu.transport.SQS.Transport",
-    "beanstalk": "kombu.transport.beanstalk.Transport",
-    "mongodb": "kombu.transport.mongodb.Transport",
-    "couchdb": "kombu.transport.couchdb.Transport",
-    "zookeeper": "kombu.transport.zookeeper.Transport",
-    "django": "kombu.transport.django.Transport",
-    "sqlalchemy": "kombu.transport.sqlalchemy.Transport",
-    "sqla": "kombu.transport.sqlalchemy.Transport",
-    "ghettoq.taproot.Redis": _ghettoq("Redis", "redis", "redis"),
-    "ghettoq.taproot.Database": _ghettoq("Database", "django", "django"),
-    "ghettoq.taproot.MongoDB": _ghettoq("MongoDB", "mongodb"),
-    "ghettoq.taproot.Beanstalk": _ghettoq("Beanstalk", "beanstalk"),
-    "ghettoq.taproot.CouchDB": _ghettoq("CouchDB", "couchdb"),
+    'amqp': AMQP_TRANSPORT,
+    'amqplib': 'kombu.transport.amqplib.Transport',
+    'librabbitmq': 'kombu.transport.librabbitmq.Transport',
+    'pika': 'kombu.transport.pika2.Transport',
+    'oldpika': 'kombu.transport.pika.SyncTransport',
+    'memory': 'kombu.transport.memory.Transport',
+    'redis': 'kombu.transport.redis.Transport',
+    'SQS': 'kombu.transport.SQS.Transport',
+    'sqs': 'kombu.transport.SQS.Transport',
+    'beanstalk': 'kombu.transport.beanstalk.Transport',
+    'mongodb': 'kombu.transport.mongodb.Transport',
+    'couchdb': 'kombu.transport.couchdb.Transport',
+    'zookeeper': 'kombu.transport.zookeeper.Transport',
+    'django': 'kombu.transport.django.Transport',
+    'sqlalchemy': 'kombu.transport.sqlalchemy.Transport',
+    'sqla': 'kombu.transport.sqlalchemy.Transport',
+    'ghettoq.taproot.Redis': _ghettoq('Redis', 'redis', 'redis'),
+    'ghettoq.taproot.Database': _ghettoq('Database', 'django', 'django'),
+    'ghettoq.taproot.MongoDB': _ghettoq('MongoDB', 'mongodb'),
+    'ghettoq.taproot.Beanstalk': _ghettoq('Beanstalk', 'beanstalk'),
+    'ghettoq.taproot.CouchDB': _ghettoq('CouchDB', 'couchdb'),
 }
 
 _transport_cache = {}
@@ -78,9 +78,9 @@ def resolve_transport(transport=None):
     transport = TRANSPORT_ALIASES.get(transport, transport)
     if callable(transport):
         transport = transport()
-    transport_module_name, _, transport_cls_name = transport.rpartition(".")
+    transport_module_name, _, transport_cls_name = transport.rpartition('.')
     if not transport_module_name:
-        raise KeyError("No such transport: %s" % (transport, ))
+        raise KeyError('No such transport: %s' % (transport, ))
     return transport_module_name, transport_cls_name
 
 

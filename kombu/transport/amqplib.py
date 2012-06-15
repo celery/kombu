@@ -31,12 +31,12 @@ from kombu.utils.amq_manager import get_manager
 from . import base
 
 DEFAULT_PORT = 5672
-HAS_MSG_PEEK = hasattr(socket, "MSG_PEEK")
+HAS_MSG_PEEK = hasattr(socket, 'MSG_PEEK')
 
 # amqplib's handshake mistakenly identifies as protocol version 1191,
 # this breaks in RabbitMQ tip, which no longer falls back to
 # 0-8 for unknown ids.
-transport.AMQP_PROTOCOL_HEADER = str_to_bytes("AMQP\x01\x01\x08\x00")
+transport.AMQP_PROTOCOL_HEADER = str_to_bytes('AMQP\x01\x01\x08\x00')
 
 
 # - fixes warnings when socket is not connected.
@@ -80,8 +80,8 @@ class Connection(amqp.Connection):  # pragma: no cover
         routing_key = args.read_shortstr()
 
         exc = AMQPChannelException(reply_code, reply_text, (50, 60))
-        if channel.events["basic_return"]:
-            for callback in channel.events["basic_return"]:
+        if channel.events['basic_return']:
+            for callback in channel.events['basic_return']:
                 callback(exc, exchange, routing_key, msg)
         else:
             raise exc
@@ -129,7 +129,7 @@ class Connection(amqp.Connection):  # pragma: no cover
                 return self.method_reader.read_method()
             except SSLError, exc:
                 # http://bugs.python.org/issue10272
-                if "timed out" in str(exc):
+                if 'timed out' in str(exc):
                     raise socket.timeout()
                 raise
         finally:
@@ -186,17 +186,17 @@ class Message(base.Message):
         super(Message, self).__init__(channel,
                 body=msg.body,
                 delivery_tag=msg.delivery_tag,
-                content_type=props.get("content_type"),
-                content_encoding=props.get("content_encoding"),
+                content_type=props.get('content_type'),
+                content_encoding=props.get('content_encoding'),
                 delivery_info=msg.delivery_info,
                 properties=msg.properties,
-                headers=props.get("application_headers") or {},
+                headers=props.get('application_headers') or {},
                 **kwargs)
 
 
 class Channel(_Channel, base.StdChannel):
     Message = Message
-    events = {"basic_return": []}
+    events = {'basic_return': []}
 
     def __init__(self, *args, **kwargs):
         self.no_ack_consumers = set()
@@ -224,7 +224,7 @@ class Channel(_Channel, base.StdChannel):
 
     def basic_consume(self, *args, **kwargs):
         consumer_tag = super(Channel, self).basic_consume(*args, **kwargs)
-        if kwargs["no_ack"]:
+        if kwargs['no_ack']:
             self.no_ack_consumers.add(consumer_tag)
         return consumer_tag
 
@@ -267,8 +267,8 @@ class Transport(base.Transport):
         for name, default_value in self.default_connection_params.items():
             if not getattr(conninfo, name, None):
                 setattr(conninfo, name, default_value)
-        if conninfo.hostname == "localhost":
-            conninfo.hostname = "127.0.0.1"
+        if conninfo.hostname == 'localhost':
+            conninfo.hostname = '127.0.0.1'
         conn = self.Connection(host=conninfo.host,
                                userid=conninfo.userid,
                                password=conninfo.password,
@@ -314,9 +314,9 @@ class Transport(base.Transport):
 
     @property
     def default_connection_params(self):
-        return {"userid": "guest", "password": "guest",
-                "port": self.default_port,
-                "hostname": "localhost", "login_method": "AMQPLAIN"}
+        return {'userid': 'guest', 'password': 'guest',
+                'port': self.default_port,
+                'hostname': 'localhost', 'login_method': 'AMQPLAIN'}
 
     def get_manager(self, *args, **kwargs):
         return get_manager(self.client, *args, **kwargs)

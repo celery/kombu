@@ -18,8 +18,8 @@ _aliases = {}
 _encoders = {}
 _decoders = {}
 
-__all__ = ["register", "encoders", "get_encoder",
-           "get_decoder", "compress", "decompress"]
+__all__ = ['register', 'encoders', 'get_encoder',
+           'get_decoder', 'compress', 'decompress']
 
 
 def register(encoder, decoder, content_type, aliases=[]):
@@ -75,7 +75,7 @@ def decompress(body, content_type):
 
 register(zlib.compress,
          zlib.decompress,
-         "application/x-gzip", aliases=["gzip", "zlib"])
+         'application/x-gzip', aliases=['gzip', 'zlib'])
 try:
     import bz2
 except ImportError:
@@ -83,4 +83,4 @@ except ImportError:
 else:
     register(bz2.compress,
              bz2.decompress,
-             "application/x-bz2", aliases=["bzip2", "bzip"])
+             'application/x-bz2', aliases=['bzip2', 'bzip'])

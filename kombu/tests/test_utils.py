@@ -50,11 +50,11 @@ class test_utils(TestCase):
                          [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0])
 
     def test_reprkwargs(self):
-        self.assertTrue(utils.reprkwargs({"foo": "bar", 1: 2, u"k": "v"}))
+        self.assertTrue(utils.reprkwargs({'foo': 'bar', 1: 2, u'k': 'v'}))
 
     def test_reprcall(self):
-        self.assertTrue(utils.reprcall("add",
-            (2, 2), {"copy": True}))
+        self.assertTrue(utils.reprcall('add',
+            (2, 2), {'copy': True}))
 
 
 class test_UUID(TestCase):
@@ -71,9 +71,9 @@ class test_UUID(TestCase):
 
     @skip_if_module('__pypy__')
     def test_uuid_without_ctypes(self):
-        old_utils = sys.modules.pop("kombu.utils")
+        old_utils = sys.modules.pop('kombu.utils')
 
-        @mask_modules("ctypes")
+        @mask_modules('ctypes')
         def with_ctypes_masked():
             from kombu.utils import ctypes, uuid
 
@@ -85,7 +85,7 @@ class test_UUID(TestCase):
         try:
             with_ctypes_masked()
         finally:
-            sys.modules["celery.utils"] = old_utils
+            sys.modules['celery.utils'] = old_utils
 
 
 class test_Misc(TestCase):
@@ -95,8 +95,8 @@ class test_Misc(TestCase):
         def f(**kwargs):
             return kwargs
 
-        kw = {u"foo": "foo",
-              u"bar": "bar"}
+        kw = {u'foo': 'foo',
+              u'bar': 'bar'}
         self.assertTrue(f(**utils.kwdict(kw)))
 
 
@@ -118,8 +118,8 @@ class test_emergency_dump_state(TestCase):
     def test_dump(self, stdout, stderr):
         fh = MyBytesIO()
 
-        utils.emergency_dump_state({"foo": "bar"}, open_file=lambda n, m: fh)
-        self.assertDictEqual(pickle.loads(fh.getvalue()), {"foo": "bar"})
+        utils.emergency_dump_state({'foo': 'bar'}, open_file=lambda n, m: fh)
+        self.assertDictEqual(pickle.loads(fh.getvalue()), {'foo': 'bar'})
         self.assertTrue(stderr.getvalue())
         self.assertFalse(stdout.getvalue())
 
@@ -128,9 +128,9 @@ class test_emergency_dump_state(TestCase):
         fh = MyStringIO()
 
         def raise_something(*args, **kwargs):
-            raise KeyError("foo")
+            raise KeyError('foo')
 
-        utils.emergency_dump_state({"foo": "bar"}, open_file=lambda n, m: fh,
+        utils.emergency_dump_state({'foo': 'bar'}, open_file=lambda n, m: fh,
                                                    dump=raise_something)
         self.assertIn("'foo': 'bar'", fh.getvalue())
         self.assertTrue(stderr.getvalue())
@@ -213,7 +213,7 @@ class test_cached_property(TestCase):
             def foo(self, value):
                 self.xx = 10
 
-        desc = X.__dict__["foo"]
+        desc = X.__dict__['foo']
         self.assertIs(X.foo, desc)
 
         self.assertIs(desc.__get__(None), desc)

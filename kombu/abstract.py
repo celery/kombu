@@ -15,7 +15,7 @@ from copy import copy
 from .connection import maybe_channel
 from .exceptions import NotBoundError
 
-__all__ = ["Object", "MaybeChannelBound"]
+__all__ = ['Object', 'MaybeChannelBound']
 
 
 def unpickle_dict(cls, kwargs):
@@ -96,11 +96,11 @@ class MaybeChannelBound(Object):
         """Callback called when the class is bound."""
         pass
 
-    def __repr__(self, item=""):
+    def __repr__(self, item=''):
         if self.is_bound:
-            return "<bound %s of %s>" % (item or self.__class__.__name__,
+            return '<bound %s of %s>' % (item or self.__class__.__name__,
                                          self.channel)
-        return "<unbound %s>" % (item, )
+        return '<unbound %s>' % (item, )
 
     @property
     def is_bound(self):

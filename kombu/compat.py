@@ -17,7 +17,7 @@ from itertools import count
 from . import messaging
 from .entity import Exchange, Queue
 
-__all__ = ["Publisher", "Consumer"]
+__all__ = ['Publisher', 'Consumer']
 
 
 def _iterconsume(connection, consumer, no_ack=False, limit=None):
@@ -29,9 +29,9 @@ def _iterconsume(connection, consumer, no_ack=False, limit=None):
 
 
 class Publisher(messaging.Producer):
-    exchange = ""
-    exchange_type = "direct"
-    routing_key = ""
+    exchange = ''
+    exchange_type = 'direct'
+    routing_key = ''
     durable = True
     auto_delete = False
     _closed = False
@@ -78,14 +78,14 @@ class Publisher(messaging.Producer):
 
 
 class Consumer(messaging.Consumer):
-    queue = ""
-    exchange = ""
-    routing_key = ""
-    exchange_type = "direct"
+    queue = ''
+    exchange = ''
+    routing_key = ''
+    exchange_type = 'direct'
     durable = True
     exclusive = False
     auto_delete = False
-    exchange_type = "direct"
+    exchange_type = 'direct'
     _closed = False
 
     def __init__(self, connection, queue=None, exchange=None,
@@ -146,12 +146,12 @@ class Consumer(messaging.Consumer):
         return message
 
     def process_next(self):
-        raise NotImplementedError("Use fetch(enable_callbacks=True)")
+        raise NotImplementedError('Use fetch(enable_callbacks=True)')
 
     def discard_all(self, filterfunc=None):
         if filterfunc is not None:
             raise NotImplementedError(
-                    "discard_all does not implement filters")
+                    'discard_all does not implement filters')
         return self.purge()
 
     def iterconsume(self, limit=None, no_ack=None):
