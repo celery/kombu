@@ -134,6 +134,7 @@ class Producer(object):
         :keyword \*\*properties: Additional message properties, see AMQP spec.
 
         """
+        connection = self.connection
         headers = {} if headers is None else headers
         retry_policy = {} if retry_policy is None else retry_policy
         routing_key = self.routing_key if routing_key is None else routing_key
@@ -141,10 +142,6 @@ class Producer(object):
 
         if isinstance(exchange, Exchange):
             exchange = exchange.name
-
-        if declare:
-            [self.maybe_declare(entity, retry, **retry_policy)
-                    for entity in declare]
 
         body, content_type, content_encoding = self._prepare(
                 body, serializer, content_type, content_encoding,
@@ -156,11 +153,18 @@ class Producer(object):
                                         content_encoding,
                                         headers=headers,
                                         properties=properties)
-        publish = self.exchange.publish
+        publish = self._publish
         if retry:
-            publish = self.connection.ensure(self, self.exchange.publish,
-                                             **retry_policy)
-        return publish(message, routing_key, mandatory, immediate, exchange)
+            publish = self.connection.ensure(self, publish, **retry_policy)
+        publish(message, routing_key, mandatory, immediate, exchange, declare)
+
+    def _publish(self, message, routing_key, mandatory, immediate, exchange,
+            declare):
+        if declare:
+            maybe_declare = self.maybe_declare
+            [maybe_declare(entity) for entity in declare]
+        return self.exchange.publish(message, routing_key,
+                                     mandatory, immediate, exchange)
 
     def revive(self, channel):
         """Revive the producer after connection loss."""

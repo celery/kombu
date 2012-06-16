@@ -19,6 +19,7 @@ from itertools import count
 
 from . import serialization
 from .entity import Exchange, Queue
+from .exceptions import StdChannelError
 from .log import Log
 from .messaging import Consumer as _Consumer
 from .utils import uuid
@@ -58,27 +59,30 @@ def declaration_cached(entity, channel):
     return entity in channel.connection.client.declared_entities
 
 
-def maybe_declare(entity, channel, retry=False, **retry_policy):
+def maybe_declare(entity, channel=None, retry=False, **retry_policy):
+    if not entity.is_bound:
+        assert channel
+        entity = entity.bind(channel)
     if retry:
-        return _imaybe_declare(entity, channel, **retry_policy)
-    return _maybe_declare(entity, channel)
+        return _imaybe_declare(entity, **retry_policy)
+    return _maybe_declare(entity)
 
 
-def _maybe_declare(entity, channel):
+def _maybe_declare(entity):
+    channel = entity.channel
+    if not channel.connection:
+        raise StdChannelError("channel disconnected")
     declared = channel.connection.client.declared_entities
     if entity not in declared:
-        if not entity.is_bound:
-            entity = entity.bind(channel)
         entity.declare()
         declared.add(entity)
         return True
     return False
 
 
-def _imaybe_declare(entity, channel, **retry_policy):
-    entity = entity(channel)
-    return channel.connection.client.ensure(entity, _maybe_declare,
-                             **retry_policy)(entity, channel)
+def _imaybe_declare(entity, **retry_policy):
+    return entity.channel.connection.client.ensure(entity, _maybe_declare,
+                             **retry_policy)(entity)
 
 
 def drain_consumer(consumer, limit=1, timeout=None, callbacks=None):
