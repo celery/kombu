@@ -124,6 +124,7 @@ class Channel(virtual.Channel):
     Table = Table
 
     default_region = 'us-east-1'
+    default_visibility_timeout = 1800  # 30 minutes.
     domain_format = 'kombu%(vhost)s'
     _sdb = None
     _sqs = None
@@ -324,7 +325,8 @@ class Channel(virtual.Channel):
 
     @cached_property
     def visibility_timeout(self):
-        return self.transport_options.get('visibility_timeout')
+        return (self.transport_options.get('visibility_timeout') or
+                self.default_visibility_timeout)
 
     @cached_property
     def queue_name_prefix(self):
