@@ -157,6 +157,11 @@ class SerializerRegistry(object):
         content_type = content_type or 'application/data'
         content_encoding = (content_encoding or 'utf-8').lower()
 
+        from types import BufferType
+
+        if type(data) == BufferType:
+          data = str(data)
+
         if data:
             decode = self._decoders.get(content_type)
             if decode:
