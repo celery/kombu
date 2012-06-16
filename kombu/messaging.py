@@ -134,7 +134,6 @@ class Producer(object):
         :keyword \*\*properties: Additional message properties, see AMQP spec.
 
         """
-        connection = self.connection
         headers = {} if headers is None else headers
         retry_policy = {} if retry_policy is None else retry_policy
         routing_key = self.routing_key if routing_key is None else routing_key
@@ -156,7 +155,8 @@ class Producer(object):
         publish = self._publish
         if retry:
             publish = self.connection.ensure(self, publish, **retry_policy)
-        publish(message, routing_key, mandatory, immediate, exchange, declare)
+        return publish(message, routing_key, mandatory,
+                       immediate, exchange, declare)
 
     def _publish(self, message, routing_key, mandatory, immediate, exchange,
             declare):

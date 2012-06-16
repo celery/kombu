@@ -37,6 +37,7 @@ class test_maybe_declare(TestCase):
         entity = Mock()
         entity.can_cache_declaration = True
         entity.is_bound = True
+        entity.channel = channel
 
         maybe_declare(entity, channel)
         self.assertEqual(entity.declare.call_count, 1)
@@ -51,6 +52,8 @@ class test_maybe_declare(TestCase):
         entity = Mock()
         entity.can_cache_declaration = True
         entity.is_bound = False
+        entity.bind.return_value = entity
+        entity.bind.return_value.channel = channel
 
         maybe_declare(entity, channel)
         entity.bind.assert_called_with(channel)
@@ -60,6 +63,7 @@ class test_maybe_declare(TestCase):
         entity = Mock()
         entity.can_cache_declaration = True
         entity.is_bound = True
+        entity.channel = channel
 
         maybe_declare(entity, channel, retry=True)
         self.assertTrue(channel.connection.client.ensure.call_count)
@@ -72,9 +76,12 @@ class test_replies(TestCase):
         req.content_type = 'application/json'
         req.properties = {'reply_to': 'hello',
                           'correlation_id': 'world'}
+        channel = Mock()
         exchange = Mock()
         exchange.is_bound = True
+        exchange.channel = channel
         producer = Mock()
+        producer.channel = channel
         producer.channel.connection.client.declared_entities = set()
         send_reply(exchange, req, {'hello': 'world'}, producer)
 

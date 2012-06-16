@@ -30,11 +30,11 @@ py_data = {'string': 'The quick brown fox jumps over the lazy dog',
 }
 
 # JSON serialization tests
-json_data = ('''{"int": 10, "float": 3.1415926500000002, '
+json_data = ('{"int": 10, "float": 3.1415926500000002, '
              '"list": ["george", "jerry", "elaine", "cosmo"], '
              '"string": "The quick brown fox jumps over the lazy '
              'dog", "unicode": "Th\\u00e9 quick brown fox jumps over '
-             'th\\u00e9 lazy dog"}''')
+             'th\\u00e9 lazy dog"}')
 
 # Pickle serialization tests
 pickle_data = pickle.dumps(py_data)
