@@ -197,15 +197,17 @@ just remember to close the objects after use::
 and used in configuration files etc.
 
 They also support operations, but to do so they need to be bound
-to a channel:
+to a channel.
+
+Binding exchanges and queues to a connection will make it use
+that connections default channel.
 
 ::
 
     >>> exchange = Exchange("tasks", "direct")
 
     >>> connection = BrokerConnection()
-    >>> channel = connection.channel()
-    >>> bound_exchange = exchange(channel)
+    >>> bound_exchange = exchange(connection)
     >>> bound_exchange.delete()
 
     # the original exchange is not affected, and stays unbound.

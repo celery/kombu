@@ -56,14 +56,16 @@ else:
 
 # cPickle.loads does not support buffer() objects,
 # but we can just create a StringIO and use load.
-if sys.version_info[0] == 2:
+if sys.version_info[0] == 3:
+    from io import StringIO
+else:
     try:
-        from cStringIO import StringIO
+        from cStringIO import StringIO  # noqa
     except ImportError:
-        from StringIO import StringIO  # noqa
+        from StringIO import StringIO   # noqa
 
-    def pickle_loads(s, load=pickle_load):
-        return load(StringIO(s))
+def pickle_loads(s, load=pickle_load):
+    return load(StringIO(s))
 
 
 class SerializerRegistry(object):

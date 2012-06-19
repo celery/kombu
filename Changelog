@@ -8,6 +8,46 @@
 =====
 :release-date: 2012-06-12 7:07 P.M BST
 
+- SQS: Default visibility timeout is now 30 minutes.
+
+    Since we have ack emulation the visibility timeout is
+    only in effect if the consumer is abrubtly terminated.
+
+- retry argument to ``Producer.publish`` now works properly,
+  when the declare argument is specified.
+
+- Json serializer: didn't handle buffer objects (Issue #135).
+
+    Fix contributed by Jens Hoffrichter.
+
+- Virtual: Now supports passive argument to ``exchange_declare``.
+
+- Exchange & Queue can now be bound to connections (which will use the default
+  channel):
+
+    >>> exchange = Exchange("name")
+    >>> bound_exchange = exchange(connection)
+    >>> bound_exchange.declare()
+
+- SimpleQueue & SimpleBuffer can now be bound to connections (which will use
+  the default channel).
+
+- Connection.manager.get_bindings now works for librabbitmq and pika.
+
+- Adds new transport info attributes::
+
+    - ``Transport.driver_type``
+
+        Type of underlying driver, e.g. "amqp", "redis", "sql".
+
+    - ``Transport.driver_name``
+
+        Name of library used e.g. "amqplib", "redis", "pymongo".
+
+    - ``Transport.driver_version()``
+
+        Version of underlying library.
+
 .. _version-2.2.0:
 
 2.2.0
