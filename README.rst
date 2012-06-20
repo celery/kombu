@@ -64,6 +64,7 @@ and the `Wikipedia article about AMQP`_.
 .. _`Amazon SQS`: http://aws.amazon.com/sqs/
 .. _`MongoDB`: http://www.mongodb.org/
 .. _`CouchDB`: http://couchdb.apache.org/
+.. _`0MQ`: http://www.zeromq.org/
 .. _`Zookeeper`: https://zookeeper.apache.org/
 .. _`Beanstalk`: http://kr.github.com/beanstalkd/
 .. _`Rabbits and warrens`: http://blogs.digitar.com/jjww/2009/01/rabbits-and-warrens/
@@ -93,6 +94,8 @@ Transport Comparison
 | *SQS*         | Virtual  | Yes        | Yes [#f1]_ | Yes [#f2]_    |
 +---------------+----------+------------+------------+---------------+
 | *couchdb*     | Virtual  | Yes        | Yes [#f1]_ | No            |
++---------------+----------+------------+------------+---------------+
+| *zeromq*      | Virtual  | Yes        | Yes [#f1]_ | Yes           |
 +---------------+----------+------------+------------+---------------+
 | *zookeeper*   | Virtual  | Yes        | Yes [#f1]_ | No            |
 +---------------+----------+------------+------------+---------------+

@@ -30,6 +30,7 @@
     kombu.transport.beanstalk
     kombu.transport.mongodb
     kombu.transport.couchdb
+    kombu.transport.zeromq
     kombu.transport.zookeeper
     kombu.transport.filesystem
     kombu.transport.django
