@@ -64,6 +64,7 @@ else:
     except ImportError:
         from StringIO import StringIO   # noqa
 
+
 def pickle_loads(s, load=pickle_load):
     return load(StringIO(s))
 
