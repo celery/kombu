@@ -2,6 +2,21 @@
  Change history
 ================
 
+.. _version-2.2.2:
+
+2.2.2
+=====
+:release-date: 2012-06-22 04:30 P.M BST
+
+- Now depends on :mod:`anyjson` 0.3.2
+
+- Json serializer: Now passes :class:`buffer` objects directly,
+  since this is supported in the latest :mod:`anyjson` version.
+
+- setup.py now takes requirements from the :file:`requirements/` directory.
+
+- The distribution directory :file:`contrib/` is now renamed to :file:`extra/`
+
 .. _version-2.2.1:
 
 2.2.1
