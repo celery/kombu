@@ -6,7 +6,7 @@
 
 2.2.1
 =====
-:release-date: 2012-06-12 7:07 P.M BST
+:release-date: 2012-06-21 01:00 P.M BST
 
 - SQS: Default visibility timeout is now 30 minutes.
 
@@ -29,10 +29,10 @@
     >>> bound_exchange = exchange(connection)
     >>> bound_exchange.declare()
 
-- SimpleQueue & SimpleBuffer can now be bound to connections (which will use
-  the default channel).
+- ``SimpleQueue`` & ``SimpleBuffer`` can now be bound to connections (which
+  will use the default channel).
 
-- Connection.manager.get_bindings now works for librabbitmq and pika.
+- ``Connection.manager.get_bindings`` now works for librabbitmq and pika.
 
 - Adds new transport info attributes::
 
