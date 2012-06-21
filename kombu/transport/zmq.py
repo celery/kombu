@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 
 import errno
+import os
 import socket
 
 from Queue import Empty
@@ -62,11 +63,10 @@ class MultiChannelPoller(object):
 
     def handle_event(self, fileno, event):
         chan = self._fd_to_chan[fileno]
-        return chan.drain_events(), chan
+        return (chan.drain_events(), chan)
 
     def get(self, timeout=None):
-        for channel in self._channels:
-            self._register(channel)
+        self.on_poll_start()
 
         events = self.poller.poll(timeout)
         for fileno, event in events or []:
@@ -235,15 +235,22 @@ class Transport(virtual.Transport):
         return dict((fd, self.handle_event) for fd in cycle.fds)
 
     def handle_event(self, fileno, event):
-        ret = self.cycle.handle_event(fileno, event)
-        if ret:
-            self._handle_event(ret)
+        evt = self.cycle.handle_event(fileno, event)
+        self._handle_event(evt)
 
     def drain_events(self, connection, timeout=None):
         for channel in connection.channels:
-            ret = channel.cycle.get(timeout=timeout)
-            if ret:
-                connection._handle_event((ret, channel))
+            while 1:
+                try:
+                    evt = channel.cycle.get(timeout=timeout)
+                except socket.error, e:
+                    if e.errno == errno.EAGAIN:
+                        break
+                    raise
+                else:
+                    connection._handle_event((evt, channel))
+
+        raise socket.error(errno.EAGAIN, os.strerror(errno.EAGAIN))
 
     def _handle_event(self, evt):
         item, channel = evt
