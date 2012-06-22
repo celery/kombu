@@ -81,7 +81,11 @@ class MultiChannelPoller(object):
 
 class Client(object):
     def __init__(self, uri='tcp://127.0.0.1', port=DEFAULT_PORT, hwm=DEFAULT_HWM, swap_size=None, enable_sink=True, context=None):
-        scheme, parts = uri.split('://')
+        try:
+            scheme, parts = uri.split('://')
+        except ValueError:
+            scheme = 'tcp'
+            parts = uri
         endpoints = parts.split(';')
 
         if scheme != 'tcp':
@@ -274,7 +278,3 @@ class Transport(virtual.Transport):
     @cached_property
     def context(self):
         return zmq.Context(1)
-
-    @property
-    def default_connection_params(self):
-        return {'port': self.default_port, 'hostname': 'tcp://127.0.0.1'}
