@@ -18,8 +18,11 @@ try:
     import librabbitmq as amqp
     from librabbitmq import ChannelError, ConnectionError
 except ImportError:
-    import pylibrabbitmq as amqp                             # noqa
-    from pylibrabbitmq import ChannelError, ConnectionError  # noqa
+    try:
+        import pylibrabbitmq as amqp                             # noqa
+        from pylibrabbitmq import ChannelError, ConnectionError  # noqa
+    except ImportError:
+        raise ImportError("No module named librabbitmq")
 
 from kombu.exceptions import StdChannelError
 from kombu.utils.amq_manager import get_manager
