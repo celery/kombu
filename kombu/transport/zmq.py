@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 
 import errno
+import os
 import socket
 
 from Queue import Empty
@@ -236,6 +237,7 @@ class Transport(virtual.Transport):
         self._handle_event(evt)
 
     def drain_events(self, connection, timeout=None):
+        more_to_read = False
         for channel in connection.channels:
             try:
                 evt = channel.cycle.get(timeout=timeout)
@@ -245,6 +247,9 @@ class Transport(virtual.Transport):
                 raise
             else:
                 connection._handle_event((evt, channel))
+                more_to_read = True
+        if not more_to_read:
+            raise socket.error(errno.EAGAIN, os.strerror(errno.EAGAIN))
 
     def _handle_event(self, evt):
         item, channel = evt
