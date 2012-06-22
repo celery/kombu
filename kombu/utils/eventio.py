@@ -100,7 +100,7 @@ class _epoll(Poller):
                 raise
 
     def _poll(self, timeout):
-        return self._epoll.poll(timeout or -1)
+        return self._epoll.poll(timeout if timeout is not None else -1)
 
     def close(self):
         self._epoll.close()
