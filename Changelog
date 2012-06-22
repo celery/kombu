@@ -2,16 +2,18 @@
  Change history
 ================
 
-.. _version-2.2.2:
-
 2.2.2
 =====
-:release-date: 2012-06-22 04:30 P.M BST
+:release-date: 2012-06-22 02:30 P.M BST
 
 - Now depends on :mod:`anyjson` 0.3.3
 
 - Json serializer: Now passes :class:`buffer` objects directly,
   since this is supported in the latest :mod:`anyjson` version.
+
+- Fixes blocking epoll call if timeout was set to 0.
+
+    Fix contributed by John Watson.
 
 - setup.py now takes requirements from the :file:`requirements/` directory.
 
