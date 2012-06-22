@@ -1,7 +1,6 @@
 from __future__ import absolute_import
 
 import errno
-import os
 import socket
 
 from Queue import Empty
@@ -20,7 +19,7 @@ from . import virtual
 logger = get_logger('kombu.transport.zmq')
 
 DEFAULT_PORT = 5555
-DEFAULT_HWM = 16
+DEFAULT_HWM = 128
 DEFAULT_INCR = 1
 
 
@@ -70,9 +69,7 @@ class MultiChannelPoller(object):
 
         events = self.poller.poll(timeout)
         for fileno, event in events or []:
-            ret = self.handle_event(fileno, event)
-            if ret:
-                return ret
+            return self.handle_event(fileno, event)
 
         raise Empty()
 
@@ -240,17 +237,14 @@ class Transport(virtual.Transport):
 
     def drain_events(self, connection, timeout=None):
         for channel in connection.channels:
-            while 1:
-                try:
-                    evt = channel.cycle.get(timeout=timeout)
-                except socket.error, e:
-                    if e.errno == errno.EAGAIN:
-                        break
-                    raise
-                else:
-                    connection._handle_event((evt, channel))
-
-        raise socket.error(errno.EAGAIN, os.strerror(errno.EAGAIN))
+            try:
+                evt = channel.cycle.get(timeout=timeout)
+            except socket.error, e:
+                if e.errno == errno.EAGAIN:
+                    continue
+                raise
+            else:
+                connection._handle_event((evt, channel))
 
     def _handle_event(self, evt):
         item, channel = evt
