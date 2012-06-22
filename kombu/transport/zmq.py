@@ -4,9 +4,8 @@ import errno
 import os
 import socket
 
+from cPickle import loads, dumps
 from Queue import Empty
-
-from anyjson import loads, dumps
 
 import zmq
 
@@ -165,24 +164,22 @@ class Channel(virtual.Channel):
         self.connection_errors = self.connection.connection_errors
 
     def _get(self, queue, timeout=None):
-        ret = self.client.get(queue, timeout)
-        if ret:
-            return loads(ret)
-        raise Empty()
+        try:
+            return loads(self.client.get(queue, timeout))
+        except socket.error, exc:
+            if exc.errno == errno.EAGAIN and timeout != 0:
+                raise Empty()
+            else:
+                raise
 
     def _put(self, queue, message, **kwargs):
-        self.client.put(queue, dumps(message), **kwargs)
+        self.client.put(queue, dumps(message, -1), **kwargs)
 
     def _purge(self, queue):
         return 0
 
     def _poll(self, cycle, timeout=None):
-        try:
-            return cycle.get(timeout=timeout)
-        except socket.error, exc:
-            if exc.errno == errno.EAGAIN:
-                raise Empty()
-            raise
+         return cycle.get(timeout=timeout)
 
     def close(self):
         if not self.closed:
