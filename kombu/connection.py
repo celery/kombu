@@ -34,7 +34,7 @@ _LOG_CHANNEL = os.environ.get('KOMBU_LOG_CHANNEL', False)
 
 __all__ = ['parse_url', 'BrokerConnection', 'Resource',
            'ConnectionPool', 'ChannelPool']
-URI_PASSTHROUGH = frozenset(['sqla', 'sqlalchemy'])
+URI_PASSTHROUGH = frozenset(['sqla', 'sqlalchemy', 'zeromq', 'zmq'])
 
 logger = get_logger(__name__)
 

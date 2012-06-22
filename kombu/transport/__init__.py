@@ -70,6 +70,7 @@ TRANSPORT_ALIASES = {
     'ghettoq.taproot.Beanstalk': _ghettoq('Beanstalk', 'beanstalk'),
     'ghettoq.taproot.CouchDB': _ghettoq('CouchDB', 'couchdb'),
     'zeromq': 'kombu.transport.zmq.Transport',
+    'zmq': 'kombu.transport.zmq.Transport',
 }
 
 _transport_cache = {}
