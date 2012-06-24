@@ -168,13 +168,15 @@ def isend_reply(pool, exchange, req, msg, props, **retry_policy):
 def collect_replies(conn, channel, queue, *args, **kwargs):
     no_ack = kwargs.setdefault('no_ack', True)
     received = False
-    for body, message in itermessages(conn, channel, queue, *args, **kwargs):
-        if not no_ack:
-            message.ack()
-        received = True
-        yield body
-    if received:
-        channel.after_reply_message_received(queue.name)
+    try:
+        for body, message in itermessages(conn, channel, queue, *args, **kwargs):
+            if not no_ack:
+                message.ack()
+            received = True
+            yield body
+    finally:
+        if received:
+            channel.after_reply_message_received(queue.name)
 
 
 def _ensure_errback(exc, interval):
