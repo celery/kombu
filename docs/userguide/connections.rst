@@ -15,12 +15,12 @@ and you can even create your own. The default transport is amqplib.
 
 Create a connection using the default transport::
 
-    >>> from kombu import BrokerConnection
-    >>> connection = BrokerConnection("amqp://guest:guest@localhost:5672//")
+    >>> from kombu import Connection
+    >>> connection = Connection('amqp://guest:guest@localhost:5672//')
 
 The connection will not be established yet, as the connection is established
 when needed. If you want to explicitly establish the connection
-you have to call the :meth:`~kombu.connection.BrokerConnection.connect`
+you have to call the :meth:`~kombu.connection.Connection.connect`
 method::
 
     >>> connection.connect()
@@ -49,7 +49,7 @@ Of course, the connection can be used as a context, and you are
 encouraged to do so as it makes it harder to forget releasing open
 resources::
 
-    with BrokerConnection() as connection:
+    with Connection() as connection:
         # work with connection
 
 .. _connection-urls:
@@ -87,7 +87,7 @@ which is using the localhost host, default port, user name `guest`,
 password `guest` and virtual host "/". A connection without arguments
 is the same as::
 
-    >>> BrokerConnection("amqp://guest:guest@localhost:5672//")
+    >>> Connection('amqp://guest:guest@localhost:5672//')
 
 The default port is transport specific, for AMQP this is 5672.
 
@@ -100,7 +100,7 @@ the redis database number.
 Keyword arguments
 =================
 
-The :class:`BrokerConnection` class supports additional
+The :class:`~kombu.connection.Connection` class supports additional
 keyword arguments, these are:
 
 :hostname: Default host name if not provided in the URL.

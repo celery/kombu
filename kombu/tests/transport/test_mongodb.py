@@ -2,7 +2,7 @@ from __future__ import absolute_import
 
 from nose import SkipTest
 
-from kombu.connection import BrokerConnection
+from kombu.connection import Connection
 
 from kombu.tests.utils import TestCase, skip_if_not_module
 
@@ -27,23 +27,23 @@ class test_mongodb(TestCase):
             Connection = MockConnection
 
         url = 'mongodb://'
-        c = BrokerConnection(url, transport=Transport).connect()
+        c = Connection(url, transport=Transport).connect()
         client = c.channels[0].client
         self.assertEquals(client.name, 'kombu_default')
         self.assertEquals(client.connection.host, '127.0.0.1')
 
         url = 'mongodb://localhost'
-        c = BrokerConnection(url, transport=Transport).connect()
+        c = Connection(url, transport=Transport).connect()
         client = c.channels[0].client
         self.assertEquals(client.name, 'kombu_default')
 
         url = 'mongodb://localhost/dbname'
-        c = BrokerConnection(url, transport=Transport).connect()
+        c = Connection(url, transport=Transport).connect()
         client = c.channels[0].client
         self.assertEquals(client.name, 'dbname')
 
         url = 'mongodb://localhost,example.org:29017/dbname'
-        c = BrokerConnection(url, transport=Transport).connect()
+        c = Connection(url, transport=Transport).connect()
         client = c.channels[0].client
 
         nodes = client.connection.nodes
@@ -53,15 +53,15 @@ class test_mongodb(TestCase):
 
         # Passing options breaks kombu's _init_params method
         # url = 'mongodb://localhost,localhost2:29017/dbname?safe=true'
-        # c = BrokerConnection(url, transport=Transport).connect()
+        # c = Connection(url, transport=Transport).connect()
         # client = c.channels[0].client
 
         url = 'mongodb://localhost:27017,localhost2:29017/dbname'
-        c = BrokerConnection(url, transport=Transport).connect()
+        c = Connection(url, transport=Transport).connect()
         client = c.channels[0].client
 
         url = 'mongodb://username:password@localhost/dbname'
-        c = BrokerConnection(url, transport=Transport).connect()
+        c = Connection(url, transport=Transport).connect()
         # Assuming there's no user 'username' with password 'password'
         # configured in mongodb
 

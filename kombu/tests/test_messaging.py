@@ -5,7 +5,7 @@ import anyjson
 
 from mock import patch
 
-from kombu.connection import BrokerConnection
+from kombu import Connection
 from kombu.exceptions import MessageStateError
 from kombu.messaging import Consumer, Producer
 from kombu.entity import Exchange, Queue
@@ -19,7 +19,7 @@ class test_Producer(TestCase):
 
     def setUp(self):
         self.exchange = Exchange('foo', 'direct')
-        self.connection = BrokerConnection(transport=Transport)
+        self.connection = Connection(transport=Transport)
         self.connection.connect()
         self.assertTrue(self.connection.connection.connected)
         self.assertFalse(self.exchange.is_bound)
@@ -124,7 +124,7 @@ class test_Producer(TestCase):
     def test_revive_when_channel_is_connection(self):
         p = self.connection.Producer()
         p.exchange = Mock()
-        new_conn = BrokerConnection('memory://')
+        new_conn = Connection('memory://')
         defchan = new_conn.default_channel
         p.revive(new_conn)
 
@@ -188,7 +188,7 @@ class test_Producer(TestCase):
 class test_Consumer(TestCase):
 
     def setUp(self):
-        self.connection = BrokerConnection(transport=Transport)
+        self.connection = Connection(transport=Transport)
         self.connection.connect()
         self.assertTrue(self.connection.connection.connected)
         self.exchange = Exchange('foo', 'direct')

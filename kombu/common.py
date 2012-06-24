@@ -26,7 +26,8 @@ from .utils import uuid
 
 __all__ = ['Broadcast', 'maybe_declare', 'uuid',
            'itermessages', 'send_reply', 'isend_reply',
-           'collect_replies', 'insured', 'ipublish']
+           'collect_replies', 'insured', 'ipublish', 'drain_consumer',
+           'eventloop']
 
 insured_logger = Log('kombu.insurance')
 

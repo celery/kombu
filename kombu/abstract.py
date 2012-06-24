@@ -85,7 +85,7 @@ class MaybeChannelBound(Object):
     def revive(self, channel):
         """Revive channel after the connection has been re-established.
 
-        Used by :meth:`~kombu.connection.BrokerConnection.ensure`.
+        Used by :meth:`~kombu.Connection.ensure`.
 
         """
         if self.is_bound:

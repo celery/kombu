@@ -3,7 +3,7 @@ from __future__ import with_statement
 
 from Queue import Empty
 
-from kombu import BrokerConnection, Exchange, Queue
+from kombu import Connection, Exchange, Queue
 
 from .utils import TestCase
 from .utils import Mock
@@ -25,7 +25,7 @@ class SimpleBase(TestCase):
 
     def setUp(self):
         if not self.abstract:
-            self.connection = BrokerConnection(transport='memory')
+            self.connection = Connection(transport='memory')
             self.q = self.Queue(None, no_ack=True)
 
     def tearDown(self):

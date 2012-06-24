@@ -1,6 +1,18 @@
+.. _changelog:
+
 ================
  Change history
 ================
+
+.. _version-2.2.3:
+
+2.2.3
+=====
+:release-date: TBA
+
+- Connection.clone()
+
+.. _version-2.2.2:
 
 2.2.2
 =====
@@ -42,7 +54,7 @@
 - Exchange & Queue can now be bound to connections (which will use the default
   channel):
 
-    >>> exchange = Exchange("name")
+    >>> exchange = Exchange('name')
     >>> bound_exchange = exchange(connection)
     >>> bound_exchange.declare()
 
@@ -140,8 +152,8 @@ News
         The timeout is set to one hour by default, but
         can be changed by configuring a transport option:
 
-            >>> BrokerConnection("redis://", transport_options={
-            ...     "visibility_timeout": 1800,  # 30 minutes
+            >>> Connection('redis://', transport_options={
+            ...     'visibility_timeout': 1800,  # 30 minutes
             ... })
 
     **NOTE**: Messages that have not been acked will be redelivered
@@ -151,7 +163,7 @@ News
     twice (or more).  If you plan on using long ETA/countdowns you
     should tweak the visibility timeout accordingly::
 
-        BROKER_TRANSPORT_OPTIONS = {"visibility_timeout": 18000}  # 5 hours
+        BROKER_TRANSPORT_OPTIONS = {'visibility_timeout': 18000}  # 5 hours
 
     Setting a long timeout means that it will take a long time
     for messages to be redelivered in the event of a power failure,
@@ -179,8 +191,8 @@ News
     The number of steps can be configured by setting the ``priority_steps``
     transport option, which must be a list of numbers in **sorted order**::
 
-        >>> x = BrokerConnection("redis://", transport_options={
-        ...     "priority_steps": [0, 2, 4, 6, 8, 9],
+        >>> x = Connection('redis://', transport_options={
+        ...     'priority_steps': [0, 2, 4, 6, 8, 9],
         ... })
 
     Priorities implemented in this way is not as reliable as
@@ -372,7 +384,7 @@ callback-based API later.
 
     Example::
 
-        BrokerConnection("sqla+mysql://localhost/db")
+        Connection('sqla+mysql://localhost/db')
 
 * Better support for anonymous queues (Issue #116).
 
@@ -490,8 +502,8 @@ callback-based API later.
 
     Example::
 
-        >>> BrokerConnection("sqs://", transport_options={
-        ...     "polling_interval": 5.0})
+        >>> Connection('sqs://', transport_options={
+        ...     'polling_interval': 5.0})
 
     The default interval is transport specific, but usually
     1.0s (or 5.0s for the Django database transport, which
@@ -556,7 +568,7 @@ New Transports
     to ``kombu.transport.django``::
 
         INSTALLED_APPS = (…,
-                          "kombu.transport.django")
+                          'kombu.transport.django')
 
     If you have previously used django-kombu, then there is no need
     to recreate the tables, as the old tables will be fully compatible
@@ -582,8 +594,8 @@ News
     The queue prefix can be set using the transport option
     ``queue_name_prefix``::
 
-        BrokerTransport("SQS://", transport_options={
-            "queue_name_prefix": "myapp"})
+        BrokerTransport('SQS://', transport_options={
+            'queue_name_prefix': 'myapp'})
 
     Contributed by Nitzan Miron.
 
@@ -592,12 +604,12 @@ News
     Retry is enabled by the ``reply`` argument, and retry options
     set by the ``retry_policy`` argument::
 
-        exchange = Exchange("foo")
+        exchange = Exchange('foo')
         producer.publish(message, exchange=exchange, retry=True,
                          declare=[exchange], retry_policy={
-                            "interval_start": 1.0})
+                            'interval_start': 1.0})
 
-    See :meth:`~kombu.connection.BrokerConnection.ensure`
+    See :meth:`~kombu.connection.Connection.ensure`
     for a list of supported retry policy options.
 
 * ``Producer.publish`` now supports a ``declare`` keyword argument.
@@ -629,9 +641,9 @@ Fixes
 
         >>> from kombu.serialization import registry
         # by name
-        >>> registry.disable("pickle")
+        >>> registry.disable('pickle')
         # or by mime-type.
-        >>> registry.disable("application/x-python-serialize")
+        >>> registry.disable('application/x-python-serialize')
 
 .. _version-1.5.0:
 
@@ -656,8 +668,8 @@ Fixes
     If wanted the dead-letter queue can still be enabled, by using
     the ``deadletter_queue`` transport option::
 
-        >>> x = BrokerConnection("redis://",
-        ...       transport_options={"deadletter_queue": "ae.undeliver"})
+        >>> x = Connection('redis://',
+        ...       transport_options={'deadletter_queue': 'ae.undeliver'})
 
     In addition, an :class:`UndeliverableWarning` is now emitted when
     the dead-letter queue is enabled and a message ends up there.
@@ -730,7 +742,7 @@ Fixes
 
     Fix contributed by Rafael Duran Castaneda
 
-* BrokerConnection.Consumer had the wrong signature.
+* Connection.Consumer had the wrong signature.
 
     Fix contributed by Pavel Skvazh
 
@@ -778,12 +790,12 @@ Fixes
 
     The connections default channel will then be used.
 
-    In addition shortcut methods has been added to BrokerConnection::
+    In addition shortcut methods has been added to Connection::
 
         >>> connection.Producer(exchange)
         >>> connection.Consumer(queues=..., callbacks=...)
 
-* BrokerConnection has aquired a ``connected`` attribute that
+* Connection has aquired a ``connected`` attribute that
   can be used to check if the connection instance has established
   a connection.
 
@@ -858,11 +870,11 @@ Fixes
 * Last release broke after fork for pool reinitialization.
 
 * Producer/Consumer now has a ``connection`` attribute,
-  giving access to the :class:`BrokerConnection` of the
+  giving access to the :class:`Connection` of the
   instance.
 
 * Pika: Channels now have access to the underlying
-  :class:`BrokerConnection` instance using ``channel.connection.client``.
+  :class:`Connection` instance using ``channel.connection.client``.
 
     This was previously required by the ``Simple`` classes and is now
     also required by :class:`Consumer` and :class:`Producer`.
@@ -887,7 +899,7 @@ Fixes
 
     for example the default broker is expressed as::
 
-        >>> BrokerConnection("amqp://guest:guest@localhost:5672//")
+        >>> Connection('amqp://guest:guest@localhost:5672//')
 
     Transport defaults to amqp, and is not required.
     user, password, port and virtual_host is also not mandatory and
@@ -912,20 +924,20 @@ Fixes
 * Now comes with default global connection and producer pools.
 
     The acquire a connection using the connection parameters
-    from a :class:`BrokerConnection`::
+    from a :class:`Connection`::
 
-        >>> from kombu import BrokerConnection, connections
-        >>> connection = BrokerConnection("amqp://guest:guest@localhost//")
+        >>> from kombu import Connection, connections
+        >>> connection = Connection('amqp://guest:guest@localhost//')
         >>> with connections[connection].acquire(block=True):
         ...     # do something with connection
 
     To acquire a producer using the connection parameters
-    from a :class:`BrokerConnection`::
+    from a :class:`Connection`::
 
-        >>> from kombu import BrokerConnection, producers
-        >>> connection = BrokerConnection("amqp://guest:guest@localhost//")
+        >>> from kombu import Connection, producers
+        >>> connection = Connection('amqp://guest:guest@localhost//')
         >>> with producers[connection].acquire(block=True):
-        ...     producer.publish({"hello": "world"}, exchange="hello")
+        ...     producer.publish({'hello': 'world'}, exchange='hello')
 
     Acquiring a producer will in turn also acquire a connection
     from the associated pool in ``connections``, so you the number
@@ -998,7 +1010,7 @@ Fixes
 
 * Fixes MemoryError while importing ctypes on SELinux (Issue #52).
 
-* ``BrokerConnection.autoretry`` is a version of ``ensure`` that works
+* ``Connection.autoretry`` is a version of ``ensure`` that works
   with arbitrary functions (i.e. it does not need an associated object
   that implements the ``revive`` method.
 
@@ -1016,7 +1028,7 @@ Fixes
 
     The connection will be established as needed.
 
-* ``BrokerConnection.ensure`` now supports an ``on_revive`` callback
+* ``Connection.ensure`` now supports an ``on_revive`` callback
   that is applied whenever the connection is re-established.
 
 * ``Consumer.consuming_from(queue)`` returns True if the Consumer is
@@ -1062,8 +1074,8 @@ Fixes
 
     This can be disabled by setting the `supports_fanout` transport option:
 
-        >>> BrokerConnection(transport="SQS",
-        ...                  transport_options={"supports_fanout": False})
+        >>> Connection(transport='SQS',
+        ...            transport_options={'supports_fanout': False})
 
 * SQS: Now properly deletes a message when a message is acked.
 
@@ -1093,9 +1105,9 @@ Fixes
 
     Usage:
 
-        >>> conn = BrokerConnection(transport="SQS",
-        ...                         userid=aws_access_key_id,
-        ...                         password=aws_secret_access_key)
+        >>> conn = Connection(transport='SQS',
+        ...                   userid=aws_access_key_id,
+        ...                   password=aws_secret_access_key)
 
     The environment variables :envvar:`AWS_ACCESS_KEY_ID` and
     :envvar:`AWS_SECRET_ACCESS_KEY` are also supported.
@@ -1104,7 +1116,7 @@ Fixes
 
 * amqplib transport: Now supports `login_method` for SSL auth.
 
-    :class:`BrokerConnection` now supports the `login_method`
+    :class:`Connection` now supports the `login_method`
     keyword argument.
 
     Default `login_method` is ``AMQPLAIN``.
@@ -1186,8 +1198,8 @@ Important Notes
     If you need to disable base64 encoding then you can do so
     via the transport options::
 
-        BrokerConnection(transport="...",
-                         transport_options={"body_encoding": None})
+        Connection(transport='...',
+                   transport_options={'body_encoding': None})
 
     **For transport authors**:
 
@@ -1212,20 +1224,20 @@ Important Notes
     acquired next.  I.e. if only a single thread is using the pool
     this means only a single connection will ever be used.
 
-* BrokerConnection: Cloned connections did not inherit transport_options
+* Connection: Cloned connections did not inherit transport_options
   (``__copy__``).
 
 * contrib/requirements is now located in the top directory
   of the distribution.
 
 * MongoDB: Now supports authentication using the ``userid`` and ``password``
-  arguments to :class:`BrokerConnection` (Issue #30).
+  arguments to :class:`Connection` (Issue #30).
 
-* BrokerConnection: Default autentication credentials are now delegated to
+* Connection: Default autentication credentials are now delegated to
   the individual transports.
- 
+
     This means that the ``userid`` and ``password`` arguments to
-    BrokerConnection is no longer *guest/guest* by default.
+    Connection is no longer *guest/guest* by default.
 
     The amqplib and pika transports will still have the default
     credentials.
@@ -1265,7 +1277,7 @@ Important Notes
 
 * Redis: Creating a connection now ensures the connection is established.
 
-    This means ``BrokerConnection.ensure_connection`` works properly with
+    This means ``Connection.ensure_connection`` works properly with
     Redis.
 
 * consumer_tag argument to ``Queue.consume`` can't be :const:`None`
@@ -1274,7 +1286,7 @@ Important Notes
     A None value is now automatically converted to empty string.
     An empty string will make the server generate a unique tag.
 
-* BrokerConnection now supports a ``transport_options`` argument.
+* Connection now supports a ``transport_options`` argument.
 
     This can be used to pass additional arguments to transports.
 
@@ -1308,15 +1320,15 @@ Important Notes
     **Example Usage**::
 
         $ KOMBU_LOG_DEBUG=1 python
-        >>> from kombu import BrokerConnection
-        >>> conn = BrokerConnection()
+        >>> from kombu import Connection
+        >>> conn = Connection()
         >>> channel = conn.channel()
         Start from server, version: 8.0, properties:
             {u'product': 'RabbitMQ',..............  }
         Open OK! known_hosts []
         using channel_id: 1
         Channel open
-        >>> channel.queue_declare("myq", passive=True)
+        >>> channel.queue_declare('myq', passive=True)
         [Kombu channel:1] queue_declare('myq', passive=True)
         (u'myq', 0, 1)
 

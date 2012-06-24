@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 from __future__ import with_statement
 
-from kombu import BrokerConnection, Consumer, Producer, Queue
+from kombu import Connection, Consumer, Producer, Queue
 from kombu.transport.base import Message, StdChannel, Transport
 
 from kombu.tests.utils import TestCase
@@ -11,7 +11,7 @@ from kombu.tests.utils import Mock
 class test_StdChannel(TestCase):
 
     def setUp(self):
-        self.conn = BrokerConnection('memory://')
+        self.conn = Connection('memory://')
         self.channel = self.conn.channel()
         self.channel.queues.clear()
         self.conn.connection.state.clear()
@@ -40,7 +40,7 @@ class test_StdChannel(TestCase):
 class test_Message(TestCase):
 
     def setUp(self):
-        self.conn = BrokerConnection('memory://')
+        self.conn = Connection('memory://')
         self.channel = self.conn.channel()
         self.message = Message(self.channel, delivery_tag=313)
 

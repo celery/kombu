@@ -18,10 +18,10 @@ two arguments, a connection channel and a name. The name is used as the
 queue, exchange and routing key. If the need arises, you can specify
 a :class:`~kombu.entity.Queue` as the name argument instead.
 
-In addition, the :class:`~kombu.connection.BrokerConnection` comes with
+In addition, the :class:`~kombu.connection.Connection` comes with
 shortcuts to create simple queues using the current connection::
 
-    >>> queue = connection.SimpleQueue("myqueue")
+    >>> queue = connection.SimpleQueue('myqueue')
     >>> # ... do something with queue
     >>> queue.close()
 
@@ -56,23 +56,23 @@ to produce and consume logging messages:
     from socket import gethostname
     from time import time
 
-    from kombu import BrokerConnection
+    from kombu import Connection
 
 
     class Logger(object):
 
-        def __init__(self, connection, queue_name="log_queue",
-                serializer="json", compression=None):
+        def __init__(self, connection, queue_name='log_queue',
+                serializer='json', compression=None):
             self.queue = connection.SimpleQueue(self.queue_name)
             self.serializer = serializer
             self.compression = compression
 
-        def log(self, message, level="INFO", context={}):
-            self.queue.put({"message": message,
-                            "level": level,
-                            "context": context,
-                            "hostname": socket.gethostname(),
-                            "timestamp": time()},
+        def log(self, message, level='INFO', context={}):
+            self.queue.put({'message': message,
+                            'level': level,
+                            'context': context,
+                            'hostname': socket.gethostname(),
+                            'timestamp': time()},
                             serializer=self.serializer,
                             compression=self.compression)
 
@@ -87,28 +87,28 @@ to produce and consume logging messages:
             self.queue.close()
 
 
-    if __name__ == "__main__":
+    if __name__ == '__main__':
         from contextlib import closing
 
-        with BrokerConnection("amqp://guest:guest@localhost:5672//") as conn:
+        with Connection('amqp://guest:guest@localhost:5672//') as conn:
             with closing(Logger(connection)) as logger:
 
                 # Send message
-                logger.log("Error happened while encoding video",
-                            level="ERROR",
-                            context={"filename": "cutekitten.mpg"})
+                logger.log('Error happened while encoding video',
+                            level='ERROR',
+                            context={'filename': 'cutekitten.mpg'})
 
                 # Consume and process message
 
                 # This is the callback called when a log message is
                 # received.
                 def dump_entry(entry):
-                    date = datetime.fromtimestamp(entry["timestamp"])
-                    print("[%s %s %s] %s %r" % (date,
-                                                entry["hostname"],
-                                                entry["level"],
-                                                entry["message"],
-                                                entry["context"]))
+                    date = datetime.fromtimestamp(entry['timestamp'])
+                    print('[%s %s %s] %s %r' % (date,
+                                                entry['hostname'],
+                                                entry['level'],
+                                                entry['message'],
+                                                entry['context']))
 
                 # Process a single message using the callback above.
                 logger.process(dump_entry, n=1)

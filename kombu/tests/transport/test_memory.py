@@ -3,7 +3,7 @@ from __future__ import with_statement
 
 import socket
 
-from kombu.connection import BrokerConnection
+from kombu.connection import Connection
 from kombu.entity import Exchange, Queue
 from kombu.messaging import Consumer, Producer
 
@@ -13,7 +13,7 @@ from kombu.tests.utils import TestCase
 class test_MemoryTransport(TestCase):
 
     def setUp(self):
-        self.c = BrokerConnection(transport='memory')
+        self.c = Connection(transport='memory')
         self.e = Exchange('test_transport_memory')
         self.q = Queue('test_transport_memory',
                        exchange=self.e,

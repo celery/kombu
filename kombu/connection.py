@@ -32,14 +32,13 @@ from .utils.url import parse_url
 _LOG_CONNECTION = os.environ.get('KOMBU_LOG_CONNECTION', False)
 _LOG_CHANNEL = os.environ.get('KOMBU_LOG_CHANNEL', False)
 
-__all__ = ['parse_url', 'BrokerConnection', 'Resource',
-           'ConnectionPool', 'ChannelPool']
+__all__ = ['Connection', 'ConnectionPool', 'ChannelPool']
 URI_PASSTHROUGH = frozenset(['sqla', 'sqlalchemy'])
 
 logger = get_logger(__name__)
 
 
-class BrokerConnection(object):
+class Connection(object):
     """A connection to the broker.
 
     :param URL:  Connection URL.
@@ -552,7 +551,7 @@ class BrokerConnection(object):
 
     def __repr__(self):
         """``x.__repr__() <==> repr(x)``"""
-        return '<BrokerConnection: %s at 0x%x>' % (self.as_uri(), id(self))
+        return '<Connection: %s at 0x%x>' % (self.as_uri(), id(self))
 
     def __copy__(self):
         """``x.__copy__() <==> copy(x)``"""
@@ -634,7 +633,7 @@ class BrokerConnection(object):
     @property
     def is_evented(self):
         return getattr(self.transport, 'on_poll_start', None)
-Connection = BrokerConnection
+BrokerConnection = Connection
 
 
 class Resource(object):
@@ -851,6 +850,6 @@ class ChannelPool(Resource):
 def maybe_channel(channel):
     """Returns channel, or returns the default_channel if it's a
     connection."""
-    if isinstance(channel, BrokerConnection):
+    if isinstance(channel, Connection):
         return channel.default_channel
     return channel

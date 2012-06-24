@@ -177,7 +177,7 @@ class Transport(object):
     """Base class for transports."""
     Management = Management
 
-    #: The :class:`~kombu.connection.BrokerConnection` owning this instance.
+    #: The :class:`~kombu.Connection` owning this instance.
     client = None
 
     #: Default port used when no port has been specified.

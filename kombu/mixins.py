@@ -33,7 +33,7 @@ class ConsumerMixin(LogMixin):
     (eventlet/gevent) too.
 
     The basic class would need a :attr:`connection` attribute
-    which must be a :class:`~kombu.connection.BrokerConnection` instance,
+    which must be a :class:`~kombu.Connection` instance,
     and define a :meth:`get_consumers` method that returns a list
     of :class:`kombu.messaging.Consumer` instances to use.
     Supporting multiple consumers is important so that multiple

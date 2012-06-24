@@ -9,7 +9,7 @@ from collections import defaultdict
 from itertools import count
 from Queue import Empty, Queue as _Queue
 
-from kombu.connection import BrokerConnection
+from kombu.connection import Connection
 from kombu.entity import Exchange, Queue
 from kombu.exceptions import InconsistencyError, VersionMismatch
 from kombu.messaging import Consumer, Producer
@@ -217,7 +217,7 @@ class Transport(redis.Transport):
 class test_Channel(TestCase):
 
     def setUp(self):
-        self.connection = BrokerConnection(transport=Transport)
+        self.connection = Connection(transport=Transport)
         self.channel = self.connection.channel()
 
     def test_basic_consume_when_fanout_queue(self):
@@ -468,7 +468,7 @@ class test_Channel(TestCase):
 class test_Redis(TestCase):
 
     def setUp(self):
-        self.connection = BrokerConnection(transport=Transport)
+        self.connection = Connection(transport=Transport)
         self.exchange = Exchange('test_Redis', type='direct')
         self.queue = Queue('test_Redis', self.exchange, 'test_Redis')
 
@@ -489,7 +489,7 @@ class test_Redis(TestCase):
         self.assertIsNone(self.queue(channel).get())
 
     def test_publish__consume(self):
-        connection = BrokerConnection(transport=Transport)
+        connection = Connection(transport=Transport)
         channel = connection.channel()
         producer = Producer(channel, self.exchange, routing_key='test_Redis')
         consumer = Consumer(channel, self.queue)
@@ -526,45 +526,45 @@ class test_Redis(TestCase):
         channel.close()
 
     def test_db_values(self):
-        c1 = BrokerConnection(virtual_host=1,
+        c1 = Connection(virtual_host=1,
                               transport=Transport).channel()
         self.assertEqual(c1.client.db, 1)
 
-        c2 = BrokerConnection(virtual_host='1',
+        c2 = Connection(virtual_host='1',
                               transport=Transport).channel()
         self.assertEqual(c2.client.db, 1)
 
-        c3 = BrokerConnection(virtual_host='/1',
+        c3 = Connection(virtual_host='/1',
                               transport=Transport).channel()
         self.assertEqual(c3.client.db, 1)
 
         with self.assertRaises(Exception):
-            BrokerConnection(virtual_host='/foo',
-                             transport=Transport).channel()
+            Connection(virtual_host='/foo',
+                       transport=Transport).channel()
 
     def test_db_port(self):
-        c1 = BrokerConnection(port=None, transport=Transport).channel()
+        c1 = Connection(port=None, transport=Transport).channel()
         self.assertEqual(c1.client.port, Transport.default_port)
         c1.close()
 
-        c2 = BrokerConnection(port=9999, transport=Transport).channel()
+        c2 = Connection(port=9999, transport=Transport).channel()
         self.assertEqual(c2.client.port, 9999)
         c2.close()
 
     def test_close_poller_not_active(self):
-        c = BrokerConnection(transport=Transport).channel()
+        c = Connection(transport=Transport).channel()
         cycle = c.connection.cycle
         c.client.connection
         c.close()
         self.assertNotIn(c, cycle._channels)
 
     def test_close_ResponseError(self):
-        c = BrokerConnection(transport=Transport).channel()
+        c = Connection(transport=Transport).channel()
         c.client.bgsave_raises_ResponseError = True
         c.close()
 
     def test_close_disconnects(self):
-        c = BrokerConnection(transport=Transport).channel()
+        c = Connection(transport=Transport).channel()
         conn1 = c.client.connection
         conn2 = c.subclient.connection
         c.close()
@@ -583,7 +583,7 @@ class test_Redis(TestCase):
 
         @module_exists(myredis, exceptions)
         def _do_test():
-            conn = BrokerConnection(transport=Transport)
+            conn = Connection(transport=Transport)
             chan = conn.channel()
             self.assertTrue(chan.Client)
             self.assertTrue(chan.ResponseError)

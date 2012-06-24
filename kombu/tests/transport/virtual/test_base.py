@@ -5,7 +5,7 @@ import warnings
 
 from mock import patch
 
-from kombu.connection import BrokerConnection
+from kombu import Connection
 from kombu.exceptions import StdChannelError
 from kombu.transport import virtual
 from kombu.utils import uuid
@@ -16,12 +16,11 @@ from kombu.tests.utils import Mock, redirect_stdouts
 
 
 def client(**kwargs):
-    return BrokerConnection(transport='kombu.transport.virtual.Transport',
-                            **kwargs)
+    return Connection(transport='kombu.transport.virtual.Transport', **kwargs)
 
 
 def memory_client():
-    return BrokerConnection(transport='memory')
+    return Connection(transport='memory')
 
 
 class test_BrokerState(TestCase):

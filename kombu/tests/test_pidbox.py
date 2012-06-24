@@ -3,8 +3,8 @@ from __future__ import with_statement
 
 import socket
 
+from kombu import Connection
 from kombu import pidbox
-from kombu.connection import BrokerConnection
 from kombu.utils import uuid
 
 from .utils import TestCase
@@ -24,7 +24,7 @@ class test_Mailbox(TestCase):
                 return 'COLLECTED'
 
         self.mailbox = Mailbox('test_pidbox')
-        self.connection = BrokerConnection(transport='memory')
+        self.connection = Connection(transport='memory')
         self.state = {'var': 1}
         self.handlers = {'mymethod': self._handler}
         self.bound = self.mailbox(self.connection)

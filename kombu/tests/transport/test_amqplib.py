@@ -3,7 +3,7 @@ from __future__ import absolute_import
 import sys
 
 from kombu.transport import amqplib
-from kombu.connection import BrokerConnection
+from kombu.connection import Connection
 
 from kombu.tests.utils import TestCase
 from kombu.tests.utils import mask_modules, Mock
@@ -71,7 +71,7 @@ class test_Channel(TestCase):
 class test_Transport(TestCase):
 
     def setUp(self):
-        self.connection = BrokerConnection('amqplib://')
+        self.connection = Connection('amqplib://')
         self.transport = self.connection.transport
 
     def test_create_channel(self):
@@ -134,7 +134,7 @@ class test_amqplib(TestCase):
         class Transport(amqplib.Transport):
             Connection = MockConnection
 
-        c = BrokerConnection(port=None, transport=Transport).connect()
+        c = Connection(port=None, transport=Transport).connect()
         self.assertEqual(c['host'],
                          '127.0.0.1:%s' % (Transport.default_port, ))
 
@@ -143,5 +143,5 @@ class test_amqplib(TestCase):
         class Transport(amqplib.Transport):
             Connection = MockConnection
 
-        c = BrokerConnection(port=1337, transport=Transport).connect()
+        c = Connection(port=1337, transport=Transport).connect()
         self.assertEqual(c['host'], '127.0.0.1:1337')

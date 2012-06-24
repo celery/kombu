@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 from __future__ import with_statement
 
-from kombu import BrokerConnection
+from kombu import Connection
 from kombu.transport.virtual import exchange
 
 from kombu.tests.mocks import Transport
@@ -14,8 +14,7 @@ class ExchangeCase(TestCase):
 
     def setUp(self):
         if self.type:
-            self.e = self.type(BrokerConnection(transport=Transport)
-                                               .channel())
+            self.e = self.type(Connection(transport=Transport).channel())
 
 
 class test_Direct(ExchangeCase):

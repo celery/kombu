@@ -31,25 +31,25 @@ instance to support multiple connections in the same app.
 All connection instances with the same connection parameters will
 get the same pool::
 
-    >>> from kombu import BrokerConnection
+    >>> from kombu import Connection
     >>> from kombu.pools import connections
 
-    >>> connections[BrokerConnection("redis://localhost:6379")]
+    >>> connections[Connection('redis://localhost:6379')]
     <kombu.connection.ConnectionPool object at 0x101805650>
-    >>> connections[BrokerConnection("redis://localhost:6379")]
+    >>> connections[Connection('redis://localhost:6379')]
     <kombu.connection.ConnectionPool object at 0x101805650>
 
 Let's acquire and release a connection:
 
 .. code-block:: python
 
-    from kombu import BrokerConnection
+    from kombu import Connection
     from kombu.pools import connections
 
-    connection = BrokerConnection("redis://localhost:6379")
+    connection = Connection('redis://localhost:6379')
 
     with connections[connection].acquire(block=True) as conn:
-        print("Got connection: %r" % (connection.as_uri(), ))
+        print('Got connection: %r' % (connection.as_uri(), ))
 
 .. note::
 
@@ -69,11 +69,11 @@ at once you can do that too:
 
 .. code-block:: python
 
-    from kombu import BrokerConnection
+    from kombu import Connection
     from kombu.pools import connections
 
-    c1 = BrokerConnection("amqp://")
-    c2 = BrokerConnection("redis://")
+    c1 = Connection('amqp://')
+    c2 = Connection('redis://')
 
     with connections[c1].acquire(block=True) as conn1:
         with connections[c2].acquire(block=True) as conn2:
@@ -93,27 +93,27 @@ to the ``news`` exchange:
 
 .. code-block:: python
 
-    from kombu import BrokerConnection, Exchange
+    from kombu import Connection, Exchange
     from kombu.common import maybe_declare
     from kombu.pools import producers
 
     # The exchange we send our news articles to.
-    news_exchange = Exchange("news")
+    news_exchange = Exchange('news')
 
     # The article we want to send
-    article = {"title": "No cellular coverage on the tube for 2012",
-               "ingress": "yadda yadda yadda"}
+    article = {'title': 'No cellular coverage on the tube for 2012',
+               'ingress': 'yadda yadda yadda'}
 
     # The broker where our exchange is.
-    connection = BrokerConnection("amqp://guest:guest@localhost:5672//")
+    connection = Connection('amqp://guest:guest@localhost:5672//')
 
     with producers[connection].acquire(block=True) as producer:
         # maybe_declare knows what entities have already been declared
         # so we don't have to do so multiple times in the same process.
         maybe_declare(news_exchange)
-        producer.publish(article, routing_key="domestic",
-                                  serializer="json",
-                                  compression="zlib")
+        producer.publish(article, routing_key='domestic',
+                                  serializer='json',
+                                  compression='zlib')
 
 .. _default-pool-limits:
 
@@ -153,12 +153,12 @@ instances:
 .. code-block:: python
 
     from kombu import pools
-    from kombu import BrokerConnection
+    from kombu import Connection
 
     connections = pools.Connection(limit=100)
     producers = pools.Producers(limit=connections.limit)
 
-    connection = BrokerConnection("amqp://guest:guest@localhost:5672//")
+    connection = Connection('amqp://guest:guest@localhost:5672//')
 
     with connections[connection].acquire(block=True):
         # ...

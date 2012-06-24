@@ -656,7 +656,7 @@ class Management(base.Management):
 class Transport(base.Transport):
     """Virtual transport.
 
-    :param client: :class:`~kombu.connection.BrokerConnection` instance
+    :param client: :class:`~kombu.Connection` instance
 
     """
     Channel = Channel
