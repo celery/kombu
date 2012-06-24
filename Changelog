@@ -8,9 +8,32 @@
 
 2.2.3
 =====
-:release-date: TBA
+:release-date: 2012-06-24 17:00 P.M BST
 
-- Connection.clone()
+- ``BrokerConnection`` now renamed to ``Connection``.
+
+    The name ``Connection`` has been an alias for a very long time,
+    but now the rename is official in the documentation as well.
+
+    The Connection alias has been available since version 1.1.3,
+    and ``BrokerConnection`` will still work and is not deprecated.
+
+- ``Connection.clone()`` now works for the sqlalchemy transport.
+
+- :func:`kombu.common.eventloop`, :func:`kombu.utils.uuid`,
+  and :func:`kombu.utils.url.parse_url` can now be
+  imported from the :mod:`kombu` module directly.
+
+- Pidbox transport callback ``after_reply_message_received`` now happens
+  in a finally block.
+
+- Trying to use the ``librabbitmq://`` transport will now show the right
+  name in the :exc:`ImportError` if :mod:`librabbitmq` is not installed.
+
+    The librabbitmq falls back to the older ``pylibrabbitmq`` name for
+    compatibility reasons and would therefore show ``No module named
+    pylibrabbitmq`` instead of librabbitmq.
+
 
 .. _version-2.2.2:
 
