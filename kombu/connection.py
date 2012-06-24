@@ -102,14 +102,14 @@ class BrokerConnection(object):
                   'port': port, 'insist': insist, 'ssl': ssl,
                   'transport': transport, 'connect_timeout': connect_timeout,
                   'login_method': login_method}
-        if hostname and '://' in hostname \
-                and transport not in URI_PASSTHROUGH:
+        if hostname and '://' in hostname:
             if '+' in hostname[:hostname.index('://')]:
                 # e.g. sqla+mysql://root:masterkey@localhost/
                 params['transport'], params['hostname'] = hostname.split('+')
                 self.uri_prefix = params['transport']
             else:
-                params.update(parse_url(hostname))
+                if transport and transport not in URI_PASSTHROUGH:
+                    params.update(parse_url(hostname))
         self._init_params(**params)
 
         # backend_cls argument will be removed shortly.
@@ -386,10 +386,10 @@ class BrokerConnection(object):
         transport_cls = self.transport_cls or 'amqp'
         transport_cls = {AMQP_ALIAS: 'amqp'}.get(transport_cls, transport_cls)
         D = self.transport.default_connection_params
-        hostname = self.hostname
+        hostname = self.hostname or D.get('hostname')
         if self.uri_prefix:
             hostname = '%s+%s' % (self.uri_prefix, hostname)
-        info = (('hostname', hostname or D.get('hostname')),
+        info = (('hostname', hostname),
                 ('userid', self.userid or D.get('userid')),
                 ('password', self.password or D.get('password')),
                 ('virtual_host', self.virtual_host or D.get('virtual_host')),
