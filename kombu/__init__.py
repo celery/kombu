@@ -26,10 +26,12 @@ if sys.version_info < (2, 5):  # pragma: no cover
 from types import ModuleType
 
 all_by_module = {
-    'kombu.connection': ['BrokerConnection', 'Connection'],
-    'kombu.entity': ['Exchange', 'Queue'],
-    'kombu.messaging': ['Consumer', 'Producer'],
-    'kombu.pools': ['connections', 'producers'],
+    'kombu.connection': ['Connection', 'BrokerConnection'],
+    'kombu.entity':     ['Exchange', 'Queue'],
+    'kombu.messaging':  ['Consumer', 'Producer'],
+    'kombu.pools':      ['connections', 'producers'],
+    'kombu.utils.url':  ['parse_url'],
+    'kombu.common':     ['eventloop', 'uuid']
 }
 
 object_origins = {}
