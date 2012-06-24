@@ -107,7 +107,7 @@ class Connection(object):
                 params['transport'], params['hostname'] = hostname.split('+')
                 self.uri_prefix = params['transport']
             else:
-                if transport and transport not in URI_PASSTHROUGH:
+                if transport not in URI_PASSTHROUGH:
                     params.update(parse_url(hostname))
         self._init_params(**params)
 

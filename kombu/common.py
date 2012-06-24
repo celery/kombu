@@ -170,7 +170,8 @@ def collect_replies(conn, channel, queue, *args, **kwargs):
     no_ack = kwargs.setdefault('no_ack', True)
     received = False
     try:
-        for body, message in itermessages(conn, channel, queue, *args, **kwargs):
+        for body, message in itermessages(conn, channel, queue,
+                                          *args, **kwargs):
             if not no_ack:
                 message.ack()
             received = True
