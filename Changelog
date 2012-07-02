@@ -125,7 +125,7 @@ Important Notes
     these are named ``mailbox_name.pidbox``,
     and ``reply.mailbox_name.pidbox``.
 
-    The following can command can be used to clean up these exchanges::
+    The following command can be used to clean up these exchanges::
 
         VHOST=/ URL=amqp:// python -c'import sys,kombu;[kombu.Connection(
             sys.argv[-1]).channel().exchange_delete(x)
