@@ -67,15 +67,6 @@ class Node(object):
         consumer.consume()
         return consumer
 
-    def dispatch_from_message(self, message):
-        message = dict(message)
-        method = message['method']
-        destination = message.get('destination')
-        reply_to = message.get('reply_to')
-        arguments = message.get('arguments')
-        if not destination or self.hostname in destination:
-            return self.dispatch(method, arguments, reply_to)
-
     def dispatch(self, method, arguments=None, reply_to=None):
         arguments = arguments or {}
         handle = reply_to and self.handle_call or self.handle_cast
@@ -101,8 +92,13 @@ class Node(object):
     def handle_cast(self, method, arguments):
         return self.handle(method, arguments)
 
-    def handle_message(self, body, message):
-        return self.dispatch_from_message(body)
+    def handle_message(self, body, message=None):
+        method = body['method']
+        destination = body.get('destination')
+        reply_to = body.get('reply_to')
+        arguments = body.get('arguments')
+        if not destination or self.hostname in destination:
+            return self.dispatch(method, arguments, reply_to)
 
     def reply(self, data, exchange, routing_key, **kwargs):
         self.mailbox._publish_reply(data, exchange, routing_key,

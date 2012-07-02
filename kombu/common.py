@@ -74,7 +74,7 @@ def _maybe_declare(entity):
     if not channel.connection:
         raise StdChannelError("channel disconnected")
     declared = channel.connection.client.declared_entities
-    if entity not in declared:
+    if entity not in declared or getattr(entity, 'auto_delete', None):
         entity.declare()
         declared.add(entity)
         return True
