@@ -336,7 +336,7 @@ def register_msgpack():
     """See http://msgpack.sourceforge.net/"""
     try:
         import msgpack
-        registry.register('msgpack', msgpack.packs, msgpack.unpacks,
+        registry.register('msgpack', msgpack.packb, msgpack.unpackb,
                 content_type='application/x-msgpack',
                 content_encoding='binary')
     except ImportError:
