@@ -3,6 +3,8 @@ from __future__ import with_statement
 
 import tempfile
 
+from nose import SkipTest
+
 from kombu.connection import Connection
 from kombu.entity import Exchange, Queue
 from kombu.messaging import Consumer, Producer
@@ -13,10 +15,21 @@ from kombu.tests.utils import TestCase
 class test_FilesystemTransport(TestCase):
 
     def setUp(self):
-        data_folder_in = tempfile.mkdtemp()
-        data_folder_out = tempfile.mkdtemp()
-        self.c = Connection(transport='filesystem', transport_options={'data_folder_in': data_folder_in, 'data_folder_out': data_folder_out})
-        self.p = Connection(transport='filesystem', transport_options={'data_folder_in': data_folder_out, 'data_folder_out': data_folder_in})
+        try:
+            data_folder_in = tempfile.mkdtemp()
+            data_folder_out = tempfile.mkdtemp()
+        except Exception:
+            raise SkipTest('filesystem transport: cannot create tempfiles')
+        self.c = Connection(transport='filesystem',
+                            transport_options={
+                                'data_folder_in': data_folder_in,
+                                'data_folder_out': data_folder_out,
+                            })
+        self.p = Connection(transport='filesystem',
+                            transport_options={
+                                'data_folder_in': data_folder_out,
+                                'data_folder_out': data_folder_in,
+                            })
         self.e = Exchange('test_transport_filesystem')
         self.q = Queue('test_transport_filesystem',
                        exchange=self.e,
@@ -30,7 +43,8 @@ class test_FilesystemTransport(TestCase):
         consumer = Consumer(self.c.channel(), self.q, no_ack=True)
 
         for i in range(10):
-            producer.publish({'foo': i}, routing_key='test_transport_filesystem')
+            producer.publish({'foo': i},
+                             routing_key='test_transport_filesystem')
 
         _received = []
 
@@ -56,9 +70,11 @@ class test_FilesystemTransport(TestCase):
         self.q2(consumer_channel).declare()
 
         for i in range(10):
-            producer.publish({'foo': i}, routing_key='test_transport_filesystem')
+            producer.publish({'foo': i},
+                             routing_key='test_transport_filesystem')
         for i in range(10):
-            producer.publish({'foo': i}, routing_key='test_transport_filesystem2')
+            producer.publish({'foo': i},
+                             routing_key='test_transport_filesystem2')
 
         _received1 = []
         _received2 = []
@@ -93,7 +109,8 @@ class test_FilesystemTransport(TestCase):
 
         # queue.delete
         for i in range(10):
-            producer.publish({'foo': i}, routing_key='test_transport_filesystem')
+            producer.publish({'foo': i},
+                             routing_key='test_transport_filesystem')
         self.assertTrue(self.q(consumer_channel).get())
         self.q(consumer_channel).delete()
         self.q(consumer_channel).declare()
@@ -101,8 +118,8 @@ class test_FilesystemTransport(TestCase):
 
         # queue.purge
         for i in range(10):
-            producer.publish({'foo': i}, routing_key='test_transport_filesystem2')
+            producer.publish({'foo': i},
+                             routing_key='test_transport_filesystem2')
         self.assertTrue(self.q2(consumer_channel).get())
         self.q2(consumer_channel).purge()
         self.assertIsNone(self.q2(consumer_channel).get())
-

@@ -1,4 +1,5 @@
 """Kombu transport using a filesystem as the message store."""
+from __future__ import absolute_import
 
 from Queue import Empty
 
@@ -20,11 +21,14 @@ __version__ = ".".join(map(str, VERSION))
 # needs win32all to work on Windows
 if os.name == 'nt':
 
-    import win32con, win32file, pywintypes
+    import win32con
+    import win32file
+    import pywintypes
 
     LOCK_EX = win32con.LOCKFILE_EXCLUSIVE_LOCK
-    LOCK_SH = 0 # the default
-    LOCK_NB = win32con.LOCKFILE_FAIL_IMMEDIATELY
+    # 0 is the default
+    LOCK_SH = 0                                     # noqa
+    LOCK_NB = win32con.LOCKFILE_FAIL_IMMEDIATELY    # noqa
     __overlapped = pywintypes.OVERLAPPED()
 
     def lock(file, flags):
@@ -38,30 +42,34 @@ if os.name == 'nt':
 elif os.name == 'posix':
 
     import fcntl
-    from fcntl import LOCK_EX, LOCK_SH, LOCK_NB
+    from fcntl import LOCK_EX, LOCK_SH, LOCK_NB     # noqa
 
-    def lock(file, flags):
+    def lock(file, flags):  # noqa
         fcntl.flock(file.fileno(), flags)
 
-    def unlock(file):
+    def unlock(file):       # noqa
         fcntl.flock(file.fileno(), fcntl.LOCK_UN)
 else:
-    raise RuntimeError('Filesystem plugin only defined for nt and posix platforms')
+    raise RuntimeError(
+        'Filesystem plugin only defined for NT and POSIX platforms')
+
 
 class Channel(virtual.Channel):
 
     def _put(self, queue, payload, **kwargs):
         """Put `message` onto `queue`."""
 
-        filename = '%s_%s.%s.msg' % (int(round(time.time()*1000)), uuid.uuid4(), queue)
+        filename = '%s_%s.%s.msg' % (int(round(time.time() * 1000)),
+                                     uuid.uuid4(), queue)
         filename = os.path.join(self.data_folder_out, filename)
 
         try:
             f = open(filename, 'wb')
             lock(f, LOCK_EX)
             f.write(dumps(payload))
-        except IOError, OSError:
-            raise Exception('Filename [%s] could not be placed into folder.' % filename)
+        except (IOError, OSError):
+            raise StdChannelError(
+                'Filename [%s] could not be placed into folder.' % filename)
         finally:
             unlock(f)
             f.close()
@@ -86,9 +94,10 @@ class Channel(virtual.Channel):
 
             try:
                 # move the file to the tmp/processed folder
-                shutil.move(os.path.join(self.data_folder_in, filename), processed_folder)
+                shutil.move(os.path.join(self.data_folder_in, filename),
+                            processed_folder)
             except IOError:
-                pass # file could be locked, or removed in meantime so ignore
+                pass  # file could be locked, or removed in meantime so ignore
 
             filename = os.path.join(processed_folder, filename)
             try:
@@ -97,8 +106,9 @@ class Channel(virtual.Channel):
                 f.close()
                 if not self.store_processed:
                     os.remove(filename)
-            except IOError, OSError:
-                raise Exception('Filename [%s] could not be read from queue.' % filename)
+            except (IOError, OSError):
+                raise StdChannelError(
+                    'Filename [%s] could not be read from queue.' % filename)
 
             return loads(payload)
 
@@ -123,9 +133,9 @@ class Channel(virtual.Channel):
                 count += 1
 
             except OSError:
-              # we simply ignore its existence, as it was probably
-              # processed by another worker
-              pass
+                # we simply ignore its existence, as it was probably
+                # processed by another worker
+                pass
 
         return count
 
@@ -165,6 +175,7 @@ class Channel(virtual.Channel):
     @cached_property
     def processed_folder(self):
         return self.transport_options.get('processed_folder', 'processed')
+
 
 class Transport(virtual.Transport):
     Channel = Channel

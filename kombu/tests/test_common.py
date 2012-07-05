@@ -36,6 +36,7 @@ class test_maybe_declare(TestCase):
         client.declared_entities = set()
         entity = Mock()
         entity.can_cache_declaration = True
+        entity.auto_delete = False
         entity.is_bound = True
         entity.channel = channel
 
