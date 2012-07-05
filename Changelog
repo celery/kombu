@@ -4,6 +4,28 @@
  Change history
 ================
 
+.. _version-2.2.4:
+
+2.2.4
+=====
+:release-date: 2012-07-05 16:00 P.M BST
+
+- Support for msgpack-python 0.2.0 (Issue #143)
+
+    The latest msgpack version no longer supports Python 2.5, so if you're
+    still using that you need to depend on an earlier msgpack-python version.
+
+    Fix contributed by Sebastian Insua
+
+- :func:`~kombu.common.maybe_declare` no longer caches entities with the
+  ``auto_delete`` flag set.
+
+- New experimental filesystem transport.
+
+    Contributed by Bobby Beever.
+
+- Virtual Transports: Now support anonymous queues and exchanges.
+
 .. _version-2.2.3:
 
 2.2.3
