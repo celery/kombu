@@ -1,4 +1,10 @@
-"""Kombu transport using a filesystem as the message store."""
+"""
+kombu.transport.filesystem
+==========================
+
+Transport using the file system as the message store.
+
+"""
 from __future__ import absolute_import
 
 from Queue import Empty
