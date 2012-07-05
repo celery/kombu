@@ -335,8 +335,12 @@ def register_pickle():
 def register_msgpack():
     """See http://msgpack.sourceforge.net/"""
     try:
-        import msgpack
-        registry.register('msgpack', msgpack.packb, msgpack.unpackb,
+        try:
+            from msgpack import packb as dumps, unpackb as loads
+        except ImportError:
+            # msgpack < 0.2.0 and Python 2.5
+            from msgpack import packs as dumps, unpacks as loads  # noqa
+        registry.register('msgpack', dumps, loads,
                 content_type='application/x-msgpack',
                 content_encoding='binary')
     except ImportError:
