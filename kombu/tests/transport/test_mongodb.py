@@ -20,8 +20,8 @@ class test_mongodb(TestCase):
         from kombu.transport import mongodb
         from pymongo.errors import ConfigurationError
 
-        #raise SkipTest(
-        #    'Test is functional: it actually connects to mongod')
+        raise SkipTest(
+            'Test is functional: it actually connects to mongod')
 
         class Transport(mongodb.Transport):
             Connection = MockConnection
