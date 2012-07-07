@@ -120,6 +120,11 @@ class Channel(virtual.Channel):
                 dbname, options = part.split('?')
                 hostname += '/?' + options
 
+        hostname = "%s/%s" % (hostname, dbname in [None, "/"] and "admin" \
+                                                                    or dbname)
+        if not dbname or dbname == "/":
+            dbname = "kombu_default"
+
         # At this point we expect the hostname to be something like
         # (considering replica set form too):
         #
@@ -132,15 +137,11 @@ class Channel(virtual.Channel):
                 'Kombu requires MongoDB version 1.3+, but connected to %s' % (
                     version, ))
 
-        if not dbname or dbname == '/':
-            dbname = 'kombu_default'
-
         database = getattr(mongoconn, dbname)
 
         # This is done by the connection uri
         # if conninfo.userid:
         #     database.authenticate(conninfo.userid, conninfo.password)
-
         self.db = database
         col = database.messages
         col.ensure_index([('queue', 1)])
