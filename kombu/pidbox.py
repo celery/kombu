@@ -20,6 +20,10 @@ from .entity import Exchange, Queue
 from .messaging import Consumer, Producer
 from .utils import kwdict, uuid
 
+#: Must be the same at both producer and consumer,
+#: so probably not a good idea to change this(!)
+REPLY_QUEUE_EXPIRES = 10
+
 __all__ = ['Node', 'Mailbox']
 
 
@@ -166,7 +170,10 @@ class Mailbox(object):
                      exchange=self.reply_exchange,
                      routing_key=ticket,
                      durable=False,
-                     auto_delete=True)
+                     auto_delete=True,
+                     queue_arguments={
+                         'x-expires': int(REPLY_QUEUE_EXPIRES * 1000),
+                     })
 
     def get_queue(self, hostname):
         return Queue('%s.%s.pidbox' % (hostname, self.namespace),
