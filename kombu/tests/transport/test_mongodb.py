@@ -60,10 +60,28 @@ class test_mongodb(TestCase):
         c = Connection(url, transport=Transport).connect()
         client = c.channels[0].client
 
-        url = 'mongodb://username:password@localhost/dbname'
+        # Login to admin db since there's no db specified
+        url = "mongodb://adminusername:adminpassword@localhost"
         c = Connection(url, transport=Transport).connect()
-        # Assuming there's no user 'username' with password 'password'
+        client = c.channels[0].client
+        self.assertEquals(client.name, "kombu_default")
+
+        # Lets make sure that using admin db doesn't break anything
+        # when no user is specified
+        url = "mongodb://localhost"
+        c = Connection(url, transport=Transport).connect()
+        client = c.channels[0].client
+
+        # Assuming there's user 'username' with password 'password'
         # configured in mongodb
+        url = "mongodb://username:password@localhost/dbname"
+        c = Connection(url, transport=Transport).connect()
+        client = c.channels[0].client
+
+        # Assuming there's no user 'nousername' with password 'nopassword'
+        # configured in mongodb
+        url = "mongodb://nousername:nopassword@localhost/dbname"
+        c = Connection(url, transport=Transport).connect()
 
         # Needed, otherwise the error would be rose before
         # the assertRaises is called
