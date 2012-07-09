@@ -4,6 +4,19 @@
  Change history
 ================
 
+.. _version-2.2.5:
+
+2.2.5
+=====
+
+- Pidbox: Now sets queue expire at 10 seconds for reply queues.
+
+- EventIO: Now ignores ``ValueError`` raised by epoll unregister.
+
+- MongoDB: Fixes Issue #142
+
+    Fix by Flavio Percoco Premoli
+
 .. _version-2.2.4:
 
 2.2.4

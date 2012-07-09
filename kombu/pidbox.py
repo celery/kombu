@@ -20,8 +20,6 @@ from .entity import Exchange, Queue
 from .messaging import Consumer, Producer
 from .utils import kwdict, uuid
 
-#: Must be the same at both producer and consumer,
-#: so probably not a good idea to change this(!)
 REPLY_QUEUE_EXPIRES = 10
 
 __all__ = ['Node', 'Mailbox']
