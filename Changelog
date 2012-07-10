@@ -8,6 +8,7 @@
 
 2.2.5
 =====
+:release-date: 2012-07-10 17:00 P.M BST
 
 - Pidbox: Now sets queue expire at 10 seconds for reply queues.
 
