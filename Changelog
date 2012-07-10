@@ -4,6 +4,14 @@
  Change history
 ================
 
+.. _version-2.2.6:
+
+2.2.6
+=====
+:release-date: 2012-07-10 17:00 P.M BST
+
+- Adds ``messaging.entry_to_queue`` for compat with previous versions.
+
 .. _version-2.2.5:
 
 2.2.5
