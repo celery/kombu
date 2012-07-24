@@ -56,7 +56,7 @@ class Connection(object):
     :keyword transport_options: A dict of additional connection arguments to
       pass to alternate kombu channel implementations.  Consult the transport
       documentation for available options.
-    :keyword insist: *Deprecated*
+    :keyword heartbeat: Heartbeat interval in int/float seconds.
 
     .. note::
 
@@ -94,13 +94,13 @@ class Connection(object):
             password=None, virtual_host=None, port=None, insist=False,
             ssl=False, transport=None, connect_timeout=5,
             transport_options=None, login_method=None, uri_prefix=None,
-            **kwargs):
+            heartbeat=0, **kwargs):
         # have to spell the args out, just to get nice docstrings :(
         params = {'hostname': hostname, 'userid': userid,
                   'password': password, 'virtual_host': virtual_host,
                   'port': port, 'insist': insist, 'ssl': ssl,
                   'transport': transport, 'connect_timeout': connect_timeout,
-                  'login_method': login_method}
+                  'login_method': login_method, 'heartbeat': heartbeat}
         if hostname and '://' in hostname:
             if '+' in hostname[:hostname.index('://')]:
                 # e.g. sqla+mysql://root:masterkey@localhost/
@@ -127,7 +127,7 @@ class Connection(object):
         self.declared_entities = set()
 
     def _init_params(self, hostname, userid, password, virtual_host, port,
-            insist, ssl, transport, connect_timeout, login_method):
+            insist, ssl, transport, connect_timeout, login_method, heartbeat):
         self.hostname = hostname
         self.userid = userid
         self.password = password
@@ -138,6 +138,7 @@ class Connection(object):
         self.connect_timeout = connect_timeout
         self.ssl = ssl
         self.transport_cls = transport
+        self.heartbeat = heartbeat
 
     def _debug(self, msg, ident='[Kombu connection:0x%(id)x] ', **kwargs):
         if self._logger:  # pragma: no cover
@@ -399,7 +400,8 @@ class Connection(object):
                 ('connect_timeout', self.connect_timeout),
                 ('transport_options', self.transport_options),
                 ('login_method', self.login_method or D.get('login_method')),
-                ('uri_prefix', self.uri_prefix))
+                ('uri_prefix', self.uri_prefix),
+                ('heartbeat', self.heartbeat))
         return info
 
     def info(self):
