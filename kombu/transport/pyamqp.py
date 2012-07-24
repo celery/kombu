@@ -11,10 +11,8 @@ pure python amqp transport.
 from __future__ import absolute_import
 
 import amqp
-import socket
 
 from kombu.exceptions import StdChannelError
-from kombu.utils.encoding import str_to_bytes
 from kombu.utils.amq_manager import get_manager
 
 from . import base

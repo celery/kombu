@@ -5,7 +5,7 @@ import sys
 from nose import SkipTest
 
 try:
-    import amqp
+    import amqp    # noqa
 except ImportError:
     pyamqp = None  # noqa
 else:
