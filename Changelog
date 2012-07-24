@@ -12,7 +12,7 @@
 
 - New ``pyamqp://`` transport!
 
-    The new :mod:`amqp` library is a fork of amqplib started with the
+    The new `py-amqp`_ library is a fork of amqplib started with the
     following goals:
 
         - Uses AMQP 0.9.1 instead of 0.8
@@ -20,6 +20,8 @@
         - API compatible with :mod:`librabbitmq` so that it can be used
           as a pure-python replacement in environments where rabbitmq-c cannot
           be compiled.
+
+    .. _`py-amqp`: http://amqp.readthedocs.org/
 
     If you start using use py-amqp instead of amqplib you can enjoy many
     advantages including:
