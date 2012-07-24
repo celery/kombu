@@ -57,6 +57,11 @@ class Connection(object):
       pass to alternate kombu channel implementations.  Consult the transport
       documentation for available options.
     :keyword heartbeat: Heartbeat interval in int/float seconds.
+        Note that if heartbeats are enabled then the :meth:`heartbeat_check`
+        method must be called at an interval twice the frequency of the
+        heartbeat: e.g. if the heartbeat is 10, then the heartbeats must be
+        checked every 5 seconds (the rate can also be controlled by
+        the ``rate`` argument to :meth:`heartbeat_check``).
 
     .. note::
 
@@ -159,6 +164,17 @@ class Connection(object):
             return Logwrapped(chan, 'kombu.channel',
                     '[Kombu channel:%(channel_id)s] ')
         return chan
+
+    def heartbeat_check(self, rate=2):
+        """Verify that hartbeats are sent and received.
+
+        :keyword rate: Rate is how often the tick is called
+            compared to the actual heartbeat value.  E.g. if
+            the heartbeat is set to 3 seconds, and the tick
+            is called every 3 / 2 seconds, then the rate is 2.
+
+        """
+        return self.transport.heartbeat_check(self.connection, rate=rate)
 
     def drain_events(self, **kwargs):
         """Wait for a single event from the server.
@@ -631,6 +647,10 @@ class Connection(object):
     @property
     def eventmap(self):
         return self.transport.eventmap(self.connection)
+
+    @property
+    def supports_heartbeats(self):
+        return self.transport.supports_heartbeats
 
     @property
     def is_evented(self):

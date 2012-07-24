@@ -201,6 +201,10 @@ class Transport(object):
     #: Name of driver library (e.g. 'amqplib', 'redis', 'beanstalkc').
     driver_name = 'N/A'
 
+    #: Whether this transports support heartbeats,
+    #: and that the :meth:`heartbeat_check` method has any effect.
+    supports_heartbeats = False
+
     def __init__(self, client, **kwargs):
         self.client = client
 
@@ -218,6 +222,9 @@ class Transport(object):
 
     def drain_events(self, connection, **kwargs):
         raise NotImplementedError('Subclass responsibility')
+
+    def heartbeat_check(self, connection, rate=2):
+        pass
 
     def driver_version(self):
         return 'N/A'

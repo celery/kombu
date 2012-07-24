@@ -72,6 +72,7 @@ class Transport(base.Transport):
     nb_keep_draining = True
     driver_name = "py-amqp"
     driver_type = "amqp"
+    supports_heartbeats = True
 
     def __init__(self, client, **kwargs):
         self.client = client
@@ -122,6 +123,9 @@ class Transport(base.Transport):
 
     def on_poll_start(self):
         return {}
+
+    def heartbeat_check(self, connection, rate=2):
+        return connection.heartbeat_tick(rate=rate)
 
     @property
     def default_connection_params(self):
