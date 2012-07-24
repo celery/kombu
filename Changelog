@@ -4,6 +4,74 @@
  Change history
 ================
 
+.. _version-2.3.0:
+
+2.3.0
+=====
+:release-date: 2012-07-24 03:50 P.M BST
+
+- New ``pyamqp://`` transport!
+
+    The new :mod:`amqp` library is a fork of amqplib started with the
+    following goals:
+
+        - Uses AMQP 0.9.1 instead of 0.8
+        - Should support all RabbitMQ extensions
+        - API compatible with :mod:`librabbitmq` so that it can be used
+          as a pure-python replacement in environments where rabbitmq-c cannot
+          be compiled.
+
+    If you start using use py-amqp instead of amqplib you can enjoy many
+    advantages including:
+
+        - Heartbeat support (Issue #79 + Issue #131)
+        - Consumer Cancel Notifications (Issue #131)
+        - Publisher Confirms
+
+    amqplib has not been updated in a long while, so maintaining our own fork
+    ensures that we can quickly roll out new features and fixes without
+    resorting to monkey patching.
+
+    To use the py-amqp transport you must install the :mod:`amqp` library::
+
+        $ pip install amqp
+
+    and change the connection URL to use the correct transport::
+
+        >>> conn = Connection('pyamqp://guest:guest@localhost//')
+
+
+    The ``pyamqp://`` transport will be the default fallback transport
+    in Kombu version 3.0, when :mod:`librabbitmq` is not installed,
+    and librabbitmq will also be updated to support the same features.
+
+- Connection now supports heartbeat argument.
+
+    If enabled you must make sure to manually maintain heartbeats
+    by calling the ``Connection.heartbeat_check`` at twice the rate
+    of the specified heartbeat interval.
+
+    E.g. if you have ``Connection(heartbeat=10)``,
+    then you must call ``Connection.heartbeat_check()`` every 5 seconds.
+
+    if the server has not sent heartbeats at a suitable rate then
+    the heartbeat check method must raise an error that is listed
+    in ``Connection.connection_errors``.
+
+    The attribute ``Connection.supports_heartbeats`` has been added
+    for the ability to inspect if a transport supports heartbeats
+    or not.
+
+    Calling ``heartbeat_check`` on a transport that does
+    not support heartbeats results in a noop operation.
+
+- SQS: Fixed bug with invalid characters in queue names.
+
+    Fix contributed by Zach Smith.
+
+- utils.reprcall: Fixed typo where kwargs argument was an empty tuple by
+  default, and not an empty dict.
+
 .. _version-2.2.6:
 
 2.2.6

@@ -168,6 +168,9 @@ class Connection(object):
     def heartbeat_check(self, rate=2):
         """Verify that hartbeats are sent and received.
 
+        If the current transport does not support heartbeats then
+        this is a noop operation.
+
         :keyword rate: Rate is how often the tick is called
             compared to the actual heartbeat value.  E.g. if
             the heartbeat is set to 3 seconds, and the tick
