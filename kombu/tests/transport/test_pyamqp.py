@@ -2,7 +2,14 @@ from __future__ import absolute_import
 
 import sys
 
-from kombu.transport import pyamqp
+from nose import SkipTest
+
+try:
+    import amqp
+except ImportError:
+    pyamqp = None  # noqa
+else:
+    from kombu.transport import pyamqp
 from kombu.connection import Connection
 
 from kombu.tests.utils import TestCase
@@ -15,22 +22,24 @@ class MockConnection(dict):
         self[key] = value
 
 
-class Channel(pyamqp.Channel):
-    wait_returns = []
-
-    def _x_open(self, *args, **kwargs):
-        pass
-
-    def wait(self, *args, **kwargs):
-        return self.wait_returns
-
-    def _send_method(self, *args, **kwargs):
-        pass
-
-
 class test_Channel(TestCase):
 
     def setUp(self):
+        if pyamqp is None:
+            raise SkipTest('py-amqp not installed')
+
+        class Channel(pyamqp.Channel):
+            wait_returns = []
+
+            def _x_open(self, *args, **kwargs):
+                pass
+
+            def wait(self, *args, **kwargs):
+                return self.wait_returns
+
+            def _send_method(self, *args, **kwargs):
+                pass
+
         self.conn = Mock()
         self.conn.channels = {}
         self.channel = Channel(self.conn, 0)
@@ -71,6 +80,8 @@ class test_Channel(TestCase):
 class test_Transport(TestCase):
 
     def setUp(self):
+        if pyamqp is None:
+            raise SkipTest('py-amqp not installed')
         self.connection = Connection('pyamqp://')
         self.transport = self.connection.transport
 
@@ -128,6 +139,10 @@ class test_Transport(TestCase):
 
 
 class test_pyamqp(TestCase):
+
+    def setUp(self):
+        if pyamqp is None:
+            raise SkipTest('py-amqp not installed')
 
     def test_default_port(self):
 
