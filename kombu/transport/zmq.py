@@ -79,7 +79,8 @@ class MultiChannelPoller(object):
 
 
 class Client(object):
-    def __init__(self, uri='tcp://127.0.0.1', port=DEFAULT_PORT, hwm=DEFAULT_HWM, swap_size=None, enable_sink=True, context=None):
+    def __init__(self, uri='tcp://127.0.0.1', port=DEFAULT_PORT,
+            hwm=DEFAULT_HWM, swap_size=None, enable_sink=True, context=None):
         try:
             scheme, parts = uri.split('://')
         except ValueError:
@@ -179,7 +180,7 @@ class Channel(virtual.Channel):
         return 0
 
     def _poll(self, cycle, timeout=None):
-         return cycle.get(timeout=timeout)
+        return cycle.get(timeout=timeout)
 
     def close(self):
         if not self.closed:
@@ -190,10 +191,14 @@ class Channel(virtual.Channel):
                 pass
         super(Channel, self).close()
 
+    def _prepare_port(self, port):
+        return (port + self.channel_id - 1) * self.port_incr
+
     def _create_client(self):
         conninfo = self.connection.client
+        port = self._prepare_port(conninfo.port or DEFAULT_PORT)
         return self.Client(uri=conninfo.hostname or 'tcp://127.0.0.1',
-                           port=(conninfo.port or DEFAULT_PORT) + ((self.channel_id - 1) * self.port_incr),
+                           port=port,
                            hwm=self.hwm,
                            swap_size=self.swap_size,
                            enable_sink=self.enable_sink,
