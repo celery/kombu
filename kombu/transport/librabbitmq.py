@@ -39,9 +39,9 @@ class Message(base.Message):
                 body=body,
                 delivery_info=info,
                 properties=props,
-                delivery_tag=info['delivery_tag'],
-                content_type=props['content_type'],
-                content_encoding=props['content_encoding'],
+                delivery_tag=info.get('delivery_tag'),
+                content_type=props.get('content_type'),
+                content_encoding=props.get('content_encoding'),
                 headers=props.get('headers'))
 
 
