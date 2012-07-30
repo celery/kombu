@@ -105,8 +105,9 @@ class Channel(virtual.Channel):
 
     def _open(self):
         conninfo = self.connection.client
+        host = conninfo.hostname or 'localhost'
         port = conninfo.port or DEFAULT_PORT
-        conn = beanstalkc.Connection(host=conninfo.hostname, port=port)
+        conn = beanstalkc.Connection(host=host, port=port)
         conn.connect()
         return conn
 
