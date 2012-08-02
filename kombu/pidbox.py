@@ -201,7 +201,6 @@ class Mailbox(object):
 
     def collect(self, tickets, limit=None, timeout=1,
             callback=None, channel=None):
-        chan = channel or self.connection.default_channel
         queues = map(self.get_reply_queue, tickets)
         consumer = Consumer(channel, queues, no_ack=True)
         responses = []
@@ -219,7 +218,10 @@ class Mailbox(object):
                 except socket.timeout:
                     break
             return responses
-        for queue in queues:
+
+    def cleanup(self, tickets, channel=None):
+        chan = channel or self.connection.default_channel
+        for queue in map(self.get_reply_queue, tickets):
             chan.after_reply_message_received(queue.name)
 
     def _publish_reply(self, reply, exchange, routing_key, channel=None):
@@ -254,10 +256,13 @@ class Mailbox(object):
             limit = destination and len(destination) or None
 
         if reply_ticket:
-            return self.collect([reply_ticket], limit=limit,
-                                                timeout=timeout,
-                                                callback=callback,
-                                                channel=channel)
+            try:
+                return self.collect([reply_ticket], limit=limit,
+                                                    timeout=timeout,
+                                                    callback=callback,
+                                                    channel=channel)
+            finally:
+                self.cleanup([reply_ticket], channel)
 
     def _get_exchange(self, namespace, type):
         return Exchange(self.exchange_fmt % namespace,
