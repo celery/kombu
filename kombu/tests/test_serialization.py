@@ -7,7 +7,7 @@ import sys
 
 from kombu.serialization import (registry, register, SerializerNotInstalled,
                                  raw_encode, register_yaml, register_msgpack,
-                                 decode, bytes_t, pickle,
+                                 decode, bytes_t, pickle, pickle_protocol,
                                  unregister, register_pickle)
 
 from .utils import TestCase
@@ -37,7 +37,7 @@ json_data = ('{"int": 10, "float": 3.1415926500000002, '
              'th\\u00e9 lazy dog"}')
 
 # Pickle serialization tests
-pickle_data = pickle.dumps(py_data)
+pickle_data = pickle.dumps(py_data, protocol=pickle_protocol)
 
 # YAML serialization tests
 yaml_data = ('float: 3.1415926500000002\nint: 10\n'
@@ -204,9 +204,9 @@ class test_Serialization(TestCase):
                               content_encoding='binary'))
 
     def test_pickle_encode(self):
-        self.assertEqual(pickle_data,
-                          registry.encode(py_data,
-                              serializer='pickle')[-1])
+        self.assertEqual(pickle.loads(pickle_data),
+                          pickle.loads(registry.encode(py_data,
+                              serializer='pickle')[-1]))
 
     def test_register(self):
         register(None, None, None, None)
