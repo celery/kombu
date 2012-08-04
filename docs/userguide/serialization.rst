@@ -44,6 +44,10 @@ Each option has its advantages and disadvantages.
     smaller messages when sending binary files, and a slight speedup
     over `JSON` processing.
 
+    By default Kombu uses pickle protocol 2, but this can be changed
+    using the :envvar:`PICKLE_PROTOCOL` environment variable or by changing
+    the global :data:`kombu.serialization.pickle_protocol` flag.
+
 `yaml` -- YAML has many of the same characteristics as `json`,
     except that it natively supports more data types (including dates,
     recursive references, etc.)

@@ -11,6 +11,7 @@ Serialization utilities.
 from __future__ import absolute_import
 
 import codecs
+import os
 import sys
 
 import pickle as pypickle
@@ -63,6 +64,10 @@ else:
         from cStringIO import StringIO  # noqa
     except ImportError:
         from StringIO import StringIO   # noqa
+
+#: Kombu requires Python 2.5 or later so we use protocol 2 by default.
+#: There's a new protocol (3) but this is only supported by Python 3.
+pickle_protocol = int(os.environ.get('PICKLE_PROTOCOL', 2))
 
 
 def pickle_loads(s, load=pickle_load):
@@ -327,7 +332,12 @@ else:
 def register_pickle():
     """The fastest serialization method, but restricts
     you to python clients."""
-    registry.register('pickle', pickle.dumps, unpickle,
+
+    def dumps(obj, dumper=pickle.dumps):
+        print("PROTOCOL IS: %r" % (pickle_protocol, ))
+        return dumper(obj, protocol=pickle_protocol)
+
+    registry.register('pickle', dumps, unpickle,
                       content_type='application/x-python-serialize',
                       content_encoding='binary')
 
