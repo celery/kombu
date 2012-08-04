@@ -334,7 +334,6 @@ def register_pickle():
     you to python clients."""
 
     def dumps(obj, dumper=pickle.dumps):
-        print("PROTOCOL IS: %r" % (pickle_protocol, ))
         return dumper(obj, protocol=pickle_protocol)
 
     registry.register('pickle', dumps, unpickle,
