@@ -66,7 +66,7 @@ class test_QoS(TestCase):
         self.q.append(i + 1, uuid())
         self.assertFalse(self.q.can_consume())
 
-        tag1 = self.q._delivered.keys()[0]
+        tag1 = iter(self.q._delivered).next()
         self.q.ack(tag1)
         self.assertTrue(self.q.can_consume())
 
