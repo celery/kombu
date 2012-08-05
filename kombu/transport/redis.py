@@ -76,7 +76,7 @@ class QoS(virtual.QoS):
         super(QoS, self).append(message, delivery_tag)
 
     def restore_unacked(self):
-        for tag in self._delivered.iterkeys():
+        for tag in self._delivered:
             self.restore_by_tag(tag)
         self._delivered.clear()
 
@@ -481,7 +481,7 @@ class Channel(virtual.Channel):
             self.connection.cycle.discard(self)
 
             # delete fanout bindings
-            for queue in self._fanout_queues.iterkeys():
+            for queue in self._fanout_queues:
                 if queue in self.auto_delete_queues:
                     self.queue_delete(queue)
 

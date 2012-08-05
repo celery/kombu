@@ -19,6 +19,9 @@ from .entity import Exchange, Queue
 
 __all__ = ['Publisher', 'Consumer']
 
+# XXX compat attribute
+entry_to_queue = Queue.from_dict
+
 
 def _iterconsume(connection, consumer, no_ack=False, limit=None):
     consumer.consume(no_ack=no_ack)

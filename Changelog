@@ -4,6 +4,27 @@
  Change history
 ================
 
+.. _version-2.3.2:
+
+2.3.2
+=====
+:release-date: 2012-08-01 06:00 P.M BST
+
+- Fixes problem with deserialization in Python 3.
+
+.. _version-2.3.1:
+
+2.3.1
+=====
+:release-date: 2012-08-01 04:00 P.M BST
+
+- librabbitmq: Can now handle messages that does not have a
+  content_encoding/content_type set (Issue #149).
+
+    Fix contributed by C Anthony Risinger.
+
+- Beanstalk: Now uses localhost by default if the URL does not contain a host.
+
 .. _version-2.3.0:
 
 2.3.0

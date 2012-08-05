@@ -58,12 +58,16 @@ else:
 # cPickle.loads does not support buffer() objects,
 # but we can just create a StringIO and use load.
 if sys.version_info[0] == 3:
-    from io import StringIO
+    from io import BytesIO
 else:
     try:
-        from cStringIO import StringIO  # noqa
+        from cStringIO import StringIO as BytesIO # noqa
     except ImportError:
-        from StringIO import StringIO   # noqa
+        from StringIO import StringIO  as BytesIO # noqa
+
+#: Kombu requires Python 2.5 or later so we use protocol 2 by default.
+#: There's a new protocol (3) but this is only supported by Python 3.
+pickle_protocol = int(os.environ.get('PICKLE_PROTOCOL', 2))
 
 #: Kombu requires Python 2.5 or later so we use protocol 2 by default.
 #: There's a new protocol (3) but this is only supported by Python 3.
@@ -71,7 +75,7 @@ pickle_protocol = int(os.environ.get('PICKLE_PROTOCOL', 2))
 
 
 def pickle_loads(s, load=pickle_load):
-    return load(StringIO(s))
+    return load(BytesIO(s))
 
 
 class SerializerRegistry(object):
