@@ -11,7 +11,7 @@ Logical Clocks and Synchronization.
 from __future__ import absolute_import
 from __future__ import with_statement
 
-from threading import Lock
+import threading
 
 __all__ = ['LamportClock']
 
@@ -57,7 +57,7 @@ class LamportClock(object):
 
     def __init__(self, initial_value=0):
         self.value = initial_value
-        self.mutex = Lock()
+        self.mutex = threading.Lock()
 
     def adjust(self, other):
         with self.mutex:
