@@ -67,8 +67,8 @@ class Channel(blocking.BlockingChannel, base.StdChannel):
         return None, method, method._properties, method._body
 
     def queue_purge(self, queue=None, nowait=False):
-        return super(Channel, self).queue_purge(queue=queue,
-                                                nowait=nowait).message_count
+        return super(Channel, self).\
+            queue_purge(queue=queue, nowait=nowait).method.message_count
 
     def basic_publish(self, message, exchange, routing_key, mandatory=False,
             immediate=False):
