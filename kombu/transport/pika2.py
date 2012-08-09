@@ -103,8 +103,7 @@ class Channel(blocking.BlockingChannel, base.StdChannel):
         properties = spec.BasicProperties(priority=priority,
                                           content_type=content_type,
                                           content_encoding=content_encoding,
-                                          headers=headers,
-                                          **properties)
+                                          headers=headers)
         return body, properties
 
     def message_to_python(self, raw_message):
