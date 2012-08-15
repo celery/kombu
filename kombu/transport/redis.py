@@ -198,6 +198,16 @@ class MultiChannelPoller(object):
             if channel.active_fanout_queues:    # LISTEN mode?
                 self._register_LISTEN(channel)
 
+    def on_poll_init(self, poller):
+        self.poller = poller
+        for channel in self._channels:
+            channel.qos.restore_visible()
+
+    def on_poll_empty(self):
+        for channel in self._channels:
+            if channel.active_queues:
+                channel.qos.restore_visible()
+
     def handle_event(self, fileno, event):
         if event & READ:
             chan, type = self._fd_to_chan[fileno]
@@ -223,9 +233,8 @@ class MultiChannelPoller(object):
 
         # - no new data, so try to restore messages.
         # - reset active redis commands.
-        for channel in self._channels:
-            if channel.active_queues:
-                channel.qos.restore_visible()
+        self.on_poll_empty()
+
         raise Empty()
 
     @property
@@ -289,7 +298,7 @@ class Channel(virtual.Channel):
 
     def _restore(self, message, payload=None):
         tag = message.delivery_tag
-        P, _ = self.client.pipeline() \
+        P, _ = self._avail_client.pipeline() \
                             .hget(self.unacked_key, tag) \
                             .hdel(self.unacked_key, tag) \
                          .execute()
@@ -460,7 +469,7 @@ class Channel(virtual.Channel):
 
     def get_table(self, exchange):
         key = self.keyprefix_queue % exchange
-        values = self.client.smembers(key)
+        values = self._avail_client.smembers(key)
         if not values:
             raise InconsistencyError(
                     'Queue list empty or key does not exist: %r' % (
@@ -599,6 +608,7 @@ class Transport(virtual.Transport):
 
     polling_interval = None  # disable sleep between unsuccessful polls.
     default_port = DEFAULT_PORT
+    supports_ev = True
     driver_type = 'redis'
     driver_name = 'redis'
 
@@ -615,13 +625,16 @@ class Transport(virtual.Transport):
 
     def on_poll_init(self, poller):
         """Called when hub starts."""
-        self.cycle.poller = poller
+        self.cycle.on_poll_init(poller)
 
     def on_poll_start(self):
         """Called by hub before each ``poll()``"""
         cycle = self.cycle
         cycle.on_poll_start()
         return dict((fd, self.handle_event) for fd in cycle.fds)
+
+    def on_poll_empty(self):
+        self.cycle.on_poll_empty()
 
     def handle_event(self, fileno, event):
         """Handle AIO event for one of our file descriptors."""
