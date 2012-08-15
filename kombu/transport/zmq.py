@@ -219,6 +219,7 @@ class Transport(virtual.Transport):
     connection_errors = (zmq.ZMQError,)
     channel_errors = (zmq.ZMQError, StdChannelError,)
 
+    supports_ev = True
     polling_interval = None
     nb_keep_draining = True
 

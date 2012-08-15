@@ -205,6 +205,9 @@ class Transport(object):
     #: and that the :meth:`heartbeat_check` method has any effect.
     supports_heartbeats = False
 
+    #: Set to true if the transport supports the AIO interface.
+    supports_ev = False
+
     def __init__(self, client, **kwargs):
         self.client = client
 
@@ -233,6 +236,15 @@ class Transport(object):
         """Map of fd -> event handler for event based use.
         Unconvenient to use, and limited transport support."""
         return {}
+
+    def on_poll_init(self, poller):
+        pass
+
+    def on_poll_start(self):
+        raise NotImplementedError('transport: no eventloop support')
+
+    def on_poll_empty(self):
+        pass
 
     def verify_connection(self, connection):
         return True

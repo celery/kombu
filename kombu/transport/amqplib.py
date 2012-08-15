@@ -250,6 +250,7 @@ class Transport(base.Transport):
     nb_keep_draining = True
     driver_name = "amqplib"
     driver_type = "amqp"
+    supports_ev = True
 
     def __init__(self, client, **kwargs):
         self.client = client

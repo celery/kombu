@@ -657,7 +657,7 @@ class Connection(object):
 
     @property
     def is_evented(self):
-        return getattr(self.transport, 'on_poll_start', None)
+        return self.transport.supports_ev
 BrokerConnection = Connection
 
 

@@ -71,6 +71,7 @@ class Transport(base.Transport):
     driver_name = "py-amqp"
     driver_type = "amqp"
     supports_heartbeats = True
+    supports_ev = True
 
     def __init__(self, client, **kwargs):
         self.client = client

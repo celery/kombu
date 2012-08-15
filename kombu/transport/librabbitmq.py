@@ -77,6 +77,7 @@ class Transport(base.Transport):
     driver_type = 'amqp'
     driver_name = 'librabbitmq'
 
+    supports_ev = True
     nb_keep_draining = True
 
     def __init__(self, client, **kwargs):
