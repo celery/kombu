@@ -27,6 +27,7 @@
     kombu.transport.pika2
     kombu.transport.memory
     kombu.transport.redis
+    kombu.transport.zmq
     kombu.transport.beanstalk
     kombu.transport.mongodb
     kombu.transport.couchdb
