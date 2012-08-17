@@ -4,6 +4,33 @@
  Change history
 ================
 
+.. _version-2.4.0:
+
+2.4.0
+=====
+:release-date: 2012-08-17 08:00 P.M BST
+
+- New experimental :mod:`ZeroMQ <kombu.transport.zmq` transport.
+
+    Contributed by John Watson.
+
+- Redis: Ack timed-out messages were not restored when using the eventloop.
+
+- Now uses pickle protocol 2 by default to be cross-compatible with Python 3.
+
+    The protocol can also now be changed using the :envvar:`PICKLE_PROTOCOL`
+    environment variable.
+
+- Adds ``Transport.supports_ev`` attribute.
+
+- Pika: Queue purge was not working properly.
+
+    Fix contributed by Steeve Morin.
+
+- Pika backend was no longer working since Kombu 2.3
+
+    Fix contributed by Steeve Morin.
+
 .. _version-2.3.2:
 
 2.3.2
