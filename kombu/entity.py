@@ -157,6 +157,27 @@ class Exchange(MaybeChannelBound):
                                              nowait=nowait,
                                              passive=passive)
 
+    def exchange_bind(self, source = '', routing_key = None, 
+                      nowait = False, **kwargs):
+        """Binds the exchange to another exchange.
+
+        Binds exchange to an exchange.
+
+        :keyword nowait: If set the server will not respond, and a
+            response will not be waited for. Default is :const:`False`.
+
+        """
+        return self.channel.exchange_bind(destination=self.name,
+                                          source = source.name, 
+                                          routing_key = routing_key, 
+                                          nowait=nowait, 
+                                          arguments = None)
+    
+    def exchange_unbind(self, source, routing_key, nowait = False):
+        return self.channel.exchange_bind(destination=self.name,
+                                          source = source.name, 
+                                          routing_key = routing_key)
+    
     def Message(self, body, delivery_mode=None, priority=None,
             content_type=None, content_encoding=None, properties=None,
             headers=None):
