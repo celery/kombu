@@ -157,7 +157,7 @@ class Exchange(MaybeChannelBound):
                                              nowait=nowait,
                                              passive=passive)
 
-    def exchange_bind(self, source = '', routing_key = None, 
+    def exchange_bind(self, source = '', routing_key = '', 
                       nowait = False, **kwargs):
         """Binds the exchange to another exchange.
 
