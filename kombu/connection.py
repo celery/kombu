@@ -24,7 +24,7 @@ from Queue import Empty
 # (Issue #112)
 from kombu import exceptions
 from .log import get_logger
-from .transport import AMQP_ALIAS, get_transport_cls
+from .transport import get_transport_cls, supports_librabbitmq
 from .utils import cached_property, retry_over_time
 from .utils.compat import OrderedDict, LifoQueue as _LifoQueue
 from .utils.url import parse_url
@@ -133,6 +133,8 @@ class Connection(object):
 
     def _init_params(self, hostname, userid, password, virtual_host, port,
             insist, ssl, transport, connect_timeout, login_method, heartbeat):
+        if transport == 'amqp' and supports_librabbitmq():
+            transport = 'librabbitmq'
         self.hostname = hostname
         self.userid = userid
         self.password = password
@@ -403,7 +405,6 @@ class Connection(object):
 
     def _info(self):
         transport_cls = self.transport_cls or 'amqp'
-        transport_cls = {AMQP_ALIAS: 'amqp'}.get(transport_cls, transport_cls)
         D = self.transport.default_connection_params
         hostname = self.hostname or D.get('hostname')
         if self.uri_prefix:
