@@ -10,8 +10,6 @@ from pprint import pformat
 
 #: By default messages sent to exchanges are persistent (delivery_mode=2),
 #: and queues and exchanges are durable.
-exchange = Exchange('kombu_demo', type='direct')
-queue = Queue('kombu_demo', exchange, routing_key='kombu_demo')
 
 
 def pretty(obj):
@@ -29,8 +27,18 @@ def handle_message(body, message):
 #: If hostname, userid, password and virtual_host is not specified
 #: the values below are the default, but listed here so it can
 #: be easily changed.
-with Connection('amqp://guest:guest@localhost:5672//') as connection:
-
+with Connection('pyamqp://guest:guest@localhost:5672//') as connection:
+    
+    """The configuration of the message flow is as follows:
+    gateway_kombu_exchange -> internal_kombu_exchange -> kombu_demo queue 
+    """
+    gateway_exchange = Exchange('gateway_kombu_demo', type='direct')
+    exchange = Exchange('internal_kombu_demo', type='direct')
+    binded = exchange.bind(connection.channel())
+    binded.exchange_bind(gateway_exchange, routing_key = 'kombu_demo')
+    
+    queue = Queue('kombu_demo', exchange, routing_key='kombu_demo')
+    
     #: Create consumer using our callback and queue.
     #: Second argument can also be a list to consume from
     #: any number of queues.
@@ -38,5 +46,7 @@ with Connection('amqp://guest:guest@localhost:5672//') as connection:
 
         #: This waits for a single event.  Note that this event may not
         #: be a message, or a message that is to be delivered to the consumers
-        #: channel, but any event received on the connection.
-        eventloop(connection, limit=1, timeout=10.0)
+        #: channel, but any event received on the connection.        
+        recv = eventloop(connection)
+        while True:
+            recv.next()
