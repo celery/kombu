@@ -136,6 +136,7 @@ class Connection(object):
 
     def _init_params(self, hostname, userid, password, virtual_host, port,
             insist, ssl, transport, connect_timeout, login_method, heartbeat):
+        transport = transport or 'amqp'
         if transport == 'amqp' and supports_librabbitmq():
             transport = 'librabbitmq'
         self.hostname = hostname
@@ -407,7 +408,7 @@ class Connection(object):
         return self.__class__(**dict(self._info(), **kwargs))
 
     def _info(self):
-        transport_cls = self.transport_cls or 'amqp'
+        transport_cls = self.transport_cls
         transport_cls = RESOLVE_ALIASES.get(transport_cls, transport_cls)
         D = self.transport.default_connection_params
         hostname = self.hostname or D.get('hostname')
