@@ -29,6 +29,9 @@ from .utils import cached_property, retry_over_time
 from .utils.compat import OrderedDict, LifoQueue as _LifoQueue
 from .utils.url import parse_url
 
+RESOLVE_ALIASES = {'amqplib': 'amqp',
+                   'librabbitmq': 'amqp'}
+
 _LOG_CONNECTION = os.environ.get('KOMBU_LOG_CONNECTION', False)
 _LOG_CHANNEL = os.environ.get('KOMBU_LOG_CHANNEL', False)
 
@@ -405,6 +408,7 @@ class Connection(object):
 
     def _info(self):
         transport_cls = self.transport_cls or 'amqp'
+        transport_cls = RESOLVE_ALIASES.get(transport_cls, transport_cls)
         D = self.transport.default_connection_params
         hostname = self.hostname or D.get('hostname')
         if self.uri_prefix:
