@@ -4,6 +4,21 @@
  Change history
 ================
 
+.. _version-2.4.1:
+
+2.4.1
+=====
+:release-date: 2012-08-24 03:00 P.M BST
+
+- Redis: Fixed race condition that could cause the consumer to crash (Issue #151)
+
+    Often leading to the error message ``"could not convert string to float"``
+
+- Connection retry could cause an inifite loop (Issue #145).
+
+- The ``amqp`` alias is now resolved at runtime, so that eventlet detection
+  works even if patching was done later.
+
 .. _version-2.4.0:
 
 2.4.0
