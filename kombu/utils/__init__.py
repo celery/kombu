@@ -153,7 +153,6 @@ def retry_over_time(fun, catch, args=[], kwargs={}, errback=None,
     interval_range = fxrange(interval_start,
                              interval_max + interval_start,
                              interval_step, repeatlast=True)
-
     for retries, interval in enumerate(interval_range):  # for infinity
         try:
             return fun(*args, **kwargs)
@@ -164,10 +163,10 @@ def retry_over_time(fun, catch, args=[], kwargs={}, errback=None,
                 callback()
             if errback:
                 errback(exc, interval)
-            for i in fxrange(stop=interval):
+            for i in fxrange(stop=interval or 1.0):
                 if i and callback:
                     callback()
-                sleep(1.0)
+                sleep(i)
 
 
 def emergency_dump_state(state, open_file=open, dump=None):
