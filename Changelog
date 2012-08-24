@@ -4,11 +4,20 @@
  Change history
 ================
 
+.. _version-2.4.2:
+
+2.4.2
+=====
+:release-date: 2012-09-24 05:00 P.M BST
+
+- Having an empty transport name broke in 2.4.1.
+
+
 .. _version-2.4.1:
 
 2.4.1
 =====
-:release-date: 2012-08-24 04:00 P.M BST
+:release-date: 2012-09-24 04:00 P.M BST
 
 - Redis: Fixed race condition that could cause the consumer to crash (Issue #151)
 
