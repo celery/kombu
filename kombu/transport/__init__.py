@@ -46,6 +46,7 @@ def _ghettoq(name, new, alias=None):
 
 
 TRANSPORT_ALIASES = {
+    'amqp': 'kombu.transport.amqplib.Transport',
     'pyamqp': 'kombu.transport.pyamqp.Transport',
     'amqplib': 'kombu.transport.amqplib.Transport',
     'librabbitmq': 'kombu.transport.librabbitmq.Transport',

@@ -405,11 +405,12 @@ class Connection(object):
     def clone(self, **kwargs):
         """Create a copy of the connection with the same connection
         settings."""
-        return self.__class__(**dict(self._info(), **kwargs))
+        return self.__class__(**dict(self._info(resolve=False), **kwargs))
 
-    def _info(self):
+    def _info(self, resolve=True):
         transport_cls = self.transport_cls
-        transport_cls = RESOLVE_ALIASES.get(transport_cls, transport_cls)
+        if resolve:
+            transport_cls = RESOLVE_ALIASES.get(transport_cls, transport_cls)
         D = self.transport.default_connection_params
         hostname = self.hostname or D.get('hostname')
         if self.uri_prefix:
