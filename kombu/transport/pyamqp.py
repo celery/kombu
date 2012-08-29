@@ -12,12 +12,15 @@ from __future__ import absolute_import
 
 import amqp
 
-from kombu.exceptions import StdChannelError
+from kombu.exceptions import StdChannelError, VersionMismatch
 from kombu.utils.amq_manager import get_manager
 
 from . import base
 
 DEFAULT_PORT = 5672
+
+if amqp.VERSION < (0, 9, 3):
+    raise VersionMismatch('Please install amqp version 0.9.3 or higher.')
 
 
 class Message(base.Message):
