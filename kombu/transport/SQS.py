@@ -160,13 +160,14 @@ class Channel(virtual.Channel):
 
     def _new_queue(self, queue, **kwargs):
         """Ensures a queue exists in SQS."""
-        queue = self.queue_name_prefix + queue
+        # Translate to SQS name for consistency with initial
+        # _queue_cache population.
+        queue = self.entity_name(self.queue_name_prefix + queue)
         try:
             return self._queue_cache[queue]
         except KeyError:
             q = self._queue_cache[queue] = self.sqs.create_queue(
-                    self.entity_name(queue),
-                                        self.visibility_timeout)
+                    queue, self.visibility_timeout)
             return q
 
     def _queue_bind(self, *args):

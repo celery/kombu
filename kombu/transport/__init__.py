@@ -12,19 +12,17 @@ from __future__ import absolute_import
 
 import sys
 
-from kombu.syn import detect_environment
+from kombu.syn import _detect_environment
 
-DEFAULT_TRANSPORT = 'amqp'
 
-AMQP_TRANSPORT = 'kombu.transport.amqplib.Transport'
-AMQP_ALIAS = 'librabbitmq'
-if detect_environment() == 'default':
-    try:
-        import librabbitmq  # noqa
-        AMQP_TRANSPORT = 'kombu.transport.librabbitmq.Transport'  # noqa
-        AMQP_ALIAS = 'amqp'                                       # noqa
-    except ImportError:
-        pass
+def supports_librabbitmq():
+    if _detect_environment() == 'default':
+        try:
+            import librabbitmq  # noqa
+            return True
+        except ImportError:
+            pass
+    return False
 
 
 def _ghettoq(name, new, alias=None):
@@ -48,7 +46,8 @@ def _ghettoq(name, new, alias=None):
 
 
 TRANSPORT_ALIASES = {
-    'amqp': AMQP_TRANSPORT,
+    'amqp': 'kombu.transport.amqplib.Transport',
+    'pyamqp': 'kombu.transport.pyamqp.Transport',
     'amqplib': 'kombu.transport.amqplib.Transport',
     'librabbitmq': 'kombu.transport.librabbitmq.Transport',
     'pika': 'kombu.transport.pika2.Transport',
@@ -70,6 +69,8 @@ TRANSPORT_ALIASES = {
     'ghettoq.taproot.Beanstalk': _ghettoq('Beanstalk', 'beanstalk'),
     'ghettoq.taproot.CouchDB': _ghettoq('CouchDB', 'couchdb'),
     'filesystem': 'kombu.transport.filesystem.Transport',
+    'zeromq': 'kombu.transport.zmq.Transport',
+    'zmq': 'kombu.transport.zmq.Transport',
 }
 
 _transport_cache = {}
@@ -103,7 +104,6 @@ def get_transport_cls(transport=None):
     the alias table will be consulted.
 
     """
-    transport = transport or DEFAULT_TRANSPORT
     if transport not in _transport_cache:
         _transport_cache[transport] = _get_transport_cls(transport)
     return _transport_cache[transport]

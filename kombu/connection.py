@@ -24,16 +24,19 @@ from Queue import Empty
 # (Issue #112)
 from kombu import exceptions
 from .log import get_logger
-from .transport import AMQP_ALIAS, get_transport_cls
+from .transport import get_transport_cls, supports_librabbitmq
 from .utils import cached_property, retry_over_time
 from .utils.compat import OrderedDict, LifoQueue as _LifoQueue
 from .utils.url import parse_url
+
+RESOLVE_ALIASES = {'amqplib': 'amqp',
+                   'librabbitmq': 'amqp'}
 
 _LOG_CONNECTION = os.environ.get('KOMBU_LOG_CONNECTION', False)
 _LOG_CHANNEL = os.environ.get('KOMBU_LOG_CHANNEL', False)
 
 __all__ = ['Connection', 'ConnectionPool', 'ChannelPool']
-URI_PASSTHROUGH = frozenset(['sqla', 'sqlalchemy'])
+URI_PASSTHROUGH = frozenset(['sqla', 'sqlalchemy', 'zeromq', 'zmq'])
 
 logger = get_logger(__name__)
 
@@ -56,7 +59,12 @@ class Connection(object):
     :keyword transport_options: A dict of additional connection arguments to
       pass to alternate kombu channel implementations.  Consult the transport
       documentation for available options.
-    :keyword insist: *Deprecated*
+    :keyword heartbeat: Heartbeat interval in int/float seconds.
+        Note that if heartbeats are enabled then the :meth:`heartbeat_check`
+        method must be called at an interval twice the frequency of the
+        heartbeat: e.g. if the heartbeat is 10, then the heartbeats must be
+        checked every 5 seconds (the rate can also be controlled by
+        the ``rate`` argument to :meth:`heartbeat_check``).
 
     .. note::
 
@@ -94,13 +102,13 @@ class Connection(object):
             password=None, virtual_host=None, port=None, insist=False,
             ssl=False, transport=None, connect_timeout=5,
             transport_options=None, login_method=None, uri_prefix=None,
-            **kwargs):
+            heartbeat=0, **kwargs):
         # have to spell the args out, just to get nice docstrings :(
         params = {'hostname': hostname, 'userid': userid,
                   'password': password, 'virtual_host': virtual_host,
                   'port': port, 'insist': insist, 'ssl': ssl,
                   'transport': transport, 'connect_timeout': connect_timeout,
-                  'login_method': login_method}
+                  'login_method': login_method, 'heartbeat': heartbeat}
         if hostname and '://' in hostname:
             if '+' in hostname[:hostname.index('://')]:
                 # e.g. sqla+mysql://root:masterkey@localhost/
@@ -127,7 +135,10 @@ class Connection(object):
         self.declared_entities = set()
 
     def _init_params(self, hostname, userid, password, virtual_host, port,
-            insist, ssl, transport, connect_timeout, login_method):
+            insist, ssl, transport, connect_timeout, login_method, heartbeat):
+        transport = transport or 'amqp'
+        if transport == 'amqp' and supports_librabbitmq():
+            transport = 'librabbitmq'
         self.hostname = hostname
         self.userid = userid
         self.password = password
@@ -138,6 +149,7 @@ class Connection(object):
         self.connect_timeout = connect_timeout
         self.ssl = ssl
         self.transport_cls = transport
+        self.heartbeat = heartbeat
 
     def _debug(self, msg, ident='[Kombu connection:0x%(id)x] ', **kwargs):
         if self._logger:  # pragma: no cover
@@ -158,6 +170,20 @@ class Connection(object):
             return Logwrapped(chan, 'kombu.channel',
                     '[Kombu channel:%(channel_id)s] ')
         return chan
+
+    def heartbeat_check(self, rate=2):
+        """Verify that hartbeats are sent and received.
+
+        If the current transport does not support heartbeats then
+        this is a noop operation.
+
+        :keyword rate: Rate is how often the tick is called
+            compared to the actual heartbeat value.  E.g. if
+            the heartbeat is set to 3 seconds, and the tick
+            is called every 3 / 2 seconds, then the rate is 2.
+
+        """
+        return self.transport.heartbeat_check(self.connection, rate=rate)
 
     def drain_events(self, **kwargs):
         """Wait for a single event from the server.
@@ -379,11 +405,12 @@ class Connection(object):
     def clone(self, **kwargs):
         """Create a copy of the connection with the same connection
         settings."""
-        return self.__class__(**dict(self._info(), **kwargs))
+        return self.__class__(**dict(self._info(resolve=False), **kwargs))
 
-    def _info(self):
-        transport_cls = self.transport_cls or 'amqp'
-        transport_cls = {AMQP_ALIAS: 'amqp'}.get(transport_cls, transport_cls)
+    def _info(self, resolve=True):
+        transport_cls = self.transport_cls
+        if resolve:
+            transport_cls = RESOLVE_ALIASES.get(transport_cls, transport_cls)
         D = self.transport.default_connection_params
         hostname = self.hostname or D.get('hostname')
         if self.uri_prefix:
@@ -399,7 +426,8 @@ class Connection(object):
                 ('connect_timeout', self.connect_timeout),
                 ('transport_options', self.transport_options),
                 ('login_method', self.login_method or D.get('login_method')),
-                ('uri_prefix', self.uri_prefix))
+                ('uri_prefix', self.uri_prefix),
+                ('heartbeat', self.heartbeat))
         return info
 
     def info(self):
@@ -631,8 +659,12 @@ class Connection(object):
         return self.transport.eventmap(self.connection)
 
     @property
+    def supports_heartbeats(self):
+        return self.transport.supports_heartbeats
+
+    @property
     def is_evented(self):
-        return getattr(self.transport, 'on_poll_start', None)
+        return self.transport.supports_ev
 BrokerConnection = Connection
 
 

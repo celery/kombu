@@ -20,6 +20,9 @@ from .utils import maybe_list
 
 __all__ = ['Exchange', 'Queue', 'Producer', 'Consumer']
 
+# XXX compat attribute
+entry_to_queue = Queue.from_dict
+
 
 class Producer(object):
     """Message Producer.

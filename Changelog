@@ -4,6 +4,164 @@
  Change history
 ================
 
+.. _version-2.4.3:
+
+2.4.3
+=====
+:release-date: 2012-08-25 10:30 P.M BST
+
+- Fixed problem with amqp transport alias (Issue #154).
+
+.. _version-2.4.2:
+
+2.4.2
+=====
+:release-date: 2012-08-24 05:00 P.M BST
+
+- Having an empty transport name broke in 2.4.1.
+
+
+.. _version-2.4.1:
+
+2.4.1
+=====
+:release-date: 2012-08-24 04:00 P.M BST
+
+- Redis: Fixed race condition that could cause the consumer to crash (Issue #151)
+
+    Often leading to the error message ``"could not convert string to float"``
+
+- Connection retry could cause an inifite loop (Issue #145).
+
+- The ``amqp`` alias is now resolved at runtime, so that eventlet detection
+  works even if patching was done later.
+
+.. _version-2.4.0:
+
+2.4.0
+=====
+:release-date: 2012-08-17 08:00 P.M BST
+
+- New experimental :mod:`ZeroMQ <kombu.transport.zmq` transport.
+
+    Contributed by John Watson.
+
+- Redis: Ack timed-out messages were not restored when using the eventloop.
+
+- Now uses pickle protocol 2 by default to be cross-compatible with Python 3.
+
+    The protocol can also now be changed using the :envvar:`PICKLE_PROTOCOL`
+    environment variable.
+
+- Adds ``Transport.supports_ev`` attribute.
+
+- Pika: Queue purge was not working properly.
+
+    Fix contributed by Steeve Morin.
+
+- Pika backend was no longer working since Kombu 2.3
+
+    Fix contributed by Steeve Morin.
+
+.. _version-2.3.2:
+
+2.3.2
+=====
+:release-date: 2012-08-01 06:00 P.M BST
+
+- Fixes problem with deserialization in Python 3.
+
+.. _version-2.3.1:
+
+2.3.1
+=====
+:release-date: 2012-08-01 04:00 P.M BST
+
+- librabbitmq: Can now handle messages that does not have a
+  content_encoding/content_type set (Issue #149).
+
+    Fix contributed by C Anthony Risinger.
+
+- Beanstalk: Now uses localhost by default if the URL does not contain a host.
+
+.. _version-2.3.0:
+
+2.3.0
+=====
+:release-date: 2012-07-24 03:50 P.M BST
+
+- New ``pyamqp://`` transport!
+
+    The new `py-amqp`_ library is a fork of amqplib started with the
+    following goals:
+
+        - Uses AMQP 0.9.1 instead of 0.8
+        - Should support all RabbitMQ extensions
+        - API compatible with :mod:`librabbitmq` so that it can be used
+          as a pure-python replacement in environments where rabbitmq-c cannot
+          be compiled.
+
+    .. _`py-amqp`: http://amqp.readthedocs.org/
+
+    If you start using use py-amqp instead of amqplib you can enjoy many
+    advantages including:
+
+        - Heartbeat support (Issue #79 + Issue #131)
+        - Consumer Cancel Notifications (Issue #131)
+        - Publisher Confirms
+
+    amqplib has not been updated in a long while, so maintaining our own fork
+    ensures that we can quickly roll out new features and fixes without
+    resorting to monkey patching.
+
+    To use the py-amqp transport you must install the :mod:`amqp` library::
+
+        $ pip install amqp
+
+    and change the connection URL to use the correct transport::
+
+        >>> conn = Connection('pyamqp://guest:guest@localhost//')
+
+
+    The ``pyamqp://`` transport will be the default fallback transport
+    in Kombu version 3.0, when :mod:`librabbitmq` is not installed,
+    and librabbitmq will also be updated to support the same features.
+
+- Connection now supports heartbeat argument.
+
+    If enabled you must make sure to manually maintain heartbeats
+    by calling the ``Connection.heartbeat_check`` at twice the rate
+    of the specified heartbeat interval.
+
+    E.g. if you have ``Connection(heartbeat=10)``,
+    then you must call ``Connection.heartbeat_check()`` every 5 seconds.
+
+    if the server has not sent heartbeats at a suitable rate then
+    the heartbeat check method must raise an error that is listed
+    in ``Connection.connection_errors``.
+
+    The attribute ``Connection.supports_heartbeats`` has been added
+    for the ability to inspect if a transport supports heartbeats
+    or not.
+
+    Calling ``heartbeat_check`` on a transport that does
+    not support heartbeats results in a noop operation.
+
+- SQS: Fixed bug with invalid characters in queue names.
+
+    Fix contributed by Zach Smith.
+
+- utils.reprcall: Fixed typo where kwargs argument was an empty tuple by
+  default, and not an empty dict.
+
+.. _version-2.2.6:
+
+2.2.6
+=====
+:release-date: 2012-07-10 17:00 P.M BST
+
+- Adds ``messaging.entry_to_queue`` for compat with previous versions.
+
 .. _version-2.2.5:
 
 2.2.5

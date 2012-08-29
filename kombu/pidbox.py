@@ -101,6 +101,7 @@ class Node(object):
         arguments = body.get('arguments')
         if not destination or self.hostname in destination:
             return self.dispatch(method, arguments, reply_to)
+    dispatch_from_message = handle_message
 
     def reply(self, data, exchange, routing_key, **kwargs):
         self.mailbox._publish_reply(data, exchange, routing_key,

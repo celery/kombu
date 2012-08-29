@@ -201,6 +201,13 @@ class Transport(object):
     #: Name of driver library (e.g. 'amqplib', 'redis', 'beanstalkc').
     driver_name = 'N/A'
 
+    #: Whether this transports support heartbeats,
+    #: and that the :meth:`heartbeat_check` method has any effect.
+    supports_heartbeats = False
+
+    #: Set to true if the transport supports the AIO interface.
+    supports_ev = False
+
     def __init__(self, client, **kwargs):
         self.client = client
 
@@ -219,6 +226,9 @@ class Transport(object):
     def drain_events(self, connection, **kwargs):
         raise NotImplementedError('Subclass responsibility')
 
+    def heartbeat_check(self, connection, rate=2):
+        pass
+
     def driver_version(self):
         return 'N/A'
 
@@ -226,6 +236,15 @@ class Transport(object):
         """Map of fd -> event handler for event based use.
         Unconvenient to use, and limited transport support."""
         return {}
+
+    def on_poll_init(self, poller):
+        pass
+
+    def on_poll_start(self):
+        raise NotImplementedError('transport: no eventloop support')
+
+    def on_poll_empty(self):
+        pass
 
     def verify_connection(self, connection):
         return True
