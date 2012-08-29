@@ -275,6 +275,7 @@ class Consumer(object):
         self.no_ack = self.no_ack if no_ack is None else no_ack
         self.callbacks = (self.callbacks or [] if callbacks is None
                                                else callbacks)
+        self._active_tags = {}
         if auto_declare is not None:
             self.auto_declare = auto_declare
         if on_decode_error is not None:
@@ -285,7 +286,7 @@ class Consumer(object):
 
     def revive(self, channel):
         """Revive consumer after connection loss."""
-        self._active_tags = {}
+        self._active_tags.clear()
         channel = self.channel = maybe_channel(channel)
         self.queues = [queue(self.channel)
                             for queue in maybe_list(self.queues)]
