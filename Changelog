@@ -4,6 +4,15 @@
  Change history
 ================
 
+.. _version-2.4.5:
+
+2.4.5
+=====
+:release-date: 2012-08-30 03:36 P.M BST
+
+- Last version broke installtion on PyPy and Jython due
+  to test requirements clean-up.
+
 .. _version-2.4.4:
 
 2.4.4
