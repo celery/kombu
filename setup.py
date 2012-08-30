@@ -116,10 +116,6 @@ install_requires = reqs('default.txt')
 
 if is_py3k:
     tests_require = reqs('test-py3k.txt')
-elif is_jython:
-    tests_require = reqs('test-jython.txt')
-elif is_pypy:
-    tests_require = reqs('test-pypy.txt')
 else:
     tests_require = reqs('test.txt')
 
