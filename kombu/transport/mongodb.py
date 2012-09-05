@@ -48,13 +48,15 @@ class Channel(virtual.Channel):
 
     def _get(self, queue):
         try:
-            if queue in self._fanout_queues:
+            try:
+            # if queue in self._fanout_queues:
+                # Ask for forgiveness instead of permission
                 msg = self._queue_cursors[queue].next()
                 self._queue_readcounts[queue] += 1
                 return loads(msg['payload'])
-            else:
-                msg = self.client.command('findandmodify', 'messages',
-                    query={'queue': queue},
+            except KeyError:
+                msg = self.client.command('findandmodify', queue,
+                    # query={'queue': queue},
                     sort={'_id': pymongo.ASCENDING}, remove=True)
         except errors.OperationFailure, exc:
             if 'No matching object found' in exc.args[0]:
@@ -73,11 +75,10 @@ class Channel(virtual.Channel):
             return (self._queue_cursors[queue].count() -
                     self._queue_readcounts[queue])
 
-        return self.client.messages.find({'queue': queue}).count()
+        return getattr(self.client, queue).count()
 
     def _put(self, queue, message, **kwargs):
-        self.client.messages.insert({'payload': dumps(message),
-                                     'queue': queue})
+        getattr(self.client, queue).insert({'payload': dumps(message)})
 
     def _purge(self, queue):
         size = self._size(queue)
@@ -86,7 +87,7 @@ class Channel(virtual.Channel):
             cursor.rewind()
             self._queue_cursors[queue] = cursor.skip(cursor.count())
         else:
-            self.client.messages.remove({'queue': queue})
+            getattr(self.client, queue).remove()
         return size
 
     def close(self):
