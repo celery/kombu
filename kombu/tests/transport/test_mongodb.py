@@ -42,14 +42,17 @@ class test_mongodb(TestCase):
         client = c.channels[0].client
         self.assertEquals(client.name, 'dbname')
 
-        url = 'mongodb://localhost,example.org:29017/dbname'
+        url = 'mongodb://localhost,localhost:29017/dbname'
         c = Connection(url, transport=Transport).connect()
         client = c.channels[0].client
 
         nodes = client.connection.nodes
-        self.assertEquals(len(nodes), 2)
-        self.assertTrue(('example.org', 29017) in nodes)
-        self.assertEquals(client.name, 'dbname')
+        # If there's just 1 node it is because we're 
+        # connecting to a single server instead of a 
+        # repl / mongoss
+        if len(nodes) == 2:
+            self.assertTrue(('localhost', 29017) in nodes)
+            self.assertEquals(client.name, 'dbname')
 
         # Passing options breaks kombu's _init_params method
         # url = 'mongodb://localhost,localhost2:29017/dbname?safe=true'
