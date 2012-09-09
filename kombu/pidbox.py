@@ -180,6 +180,51 @@ class Mailbox(object):
                      durable=False,
                      auto_delete=True)
 
+    def broadcast(self, command, arguments=None, destination=None,
+            reply=False, timeout=1, channel=None):
+        if destination is not None and \
+                not isinstance(destination, (list, tuple)):
+            raise ValueError('destination must be a list/tuple not %s' % (
+                    type(destination)))
+
+        arguments = arguments or {}
+        reply_ticket = reply and uuid() or None
+        chan = channel or self.connection.default_channel
+
+        if reply_ticket:
+            self.get_reply_queue(reply_ticket)(chan).declare()
+
+        self._publish(command, arguments, destination=destination,
+                                          reply_ticket=reply_ticket,
+                                          channel=chan)
+
+        return reply_ticket
+
+    def collect(self, tickets, limit=None, timeout=1,
+            callback=None, channel=None):
+        queues = map(self.get_reply_queue, tickets)
+        consumer = Consumer(channel, queues, no_ack=True)
+        responses = []
+
+        def on_message(body, message):
+            if callback:
+                callback(body)
+            responses.append(body)
+
+        consumer.register_callback(on_message)
+        with consumer:
+            for i in limit and range(limit) or count():
+                try:
+                    self.connection.drain_events(timeout=timeout)
+                except socket.timeout:
+                    break
+            return responses
+
+    def cleanup(self, tickets, channel=None):
+        chan = channel or self.connection.default_channel
+        for queue in map(self.get_reply_queue, tickets):
+            chan.after_reply_message_received(queue.name)
+
     def _publish_reply(self, reply, exchange, routing_key, channel=None):
         chan = channel or self.connection.default_channel
         exchange = Exchange(exchange, exchange_type='direct',
@@ -203,53 +248,22 @@ class Mailbox(object):
 
     def _broadcast(self, command, arguments=None, destination=None,
             reply=False, timeout=1, limit=None, callback=None, channel=None):
-        if destination is not None and \
-                not isinstance(destination, (list, tuple)):
-            raise ValueError('destination must be a list/tuple not %s' % (
-                    type(destination)))
-
-        arguments = arguments or {}
-        reply_ticket = reply and uuid() or None
-        chan = channel or self.connection.default_channel
+        reply_ticket = self.broadcast(command,
+                arguments=arguments, destination=destination,
+                reply=reply, channel=channel)
 
         # Set reply limit to number of destinations (if specified)
         if limit is None and destination:
             limit = destination and len(destination) or None
 
         if reply_ticket:
-            self.get_reply_queue(reply_ticket)(chan).declare()
-
-        self._publish(command, arguments, destination=destination,
-                                          reply_ticket=reply_ticket,
-                                          channel=chan)
-
-        if reply_ticket:
-            return self._collect(reply_ticket, limit=limit,
-                                               timeout=timeout,
-                                               callback=callback,
-                                               channel=chan)
-
-    def _collect(self, ticket, limit=None, timeout=1,
-            callback=None, channel=None):
-        chan = channel or self.connection.default_channel
-        queue = self.get_reply_queue(ticket)
-        consumer = Consumer(channel, [queue], no_ack=True)
-        responses = []
-
-        def on_message(body, message):
-            if callback:
-                callback(body)
-            responses.append(body)
-
-        consumer.register_callback(on_message)
-        with consumer:
-            for i in limit and range(limit) or count():
-                try:
-                    self.connection.drain_events(timeout=timeout)
-                except socket.timeout:
-                    break
-            return responses
-        chan.after_reply_message_received(queue.name)
+            try:
+                return self.collect([reply_ticket], limit=limit,
+                                                    timeout=timeout,
+                                                    callback=callback,
+                                                    channel=channel)
+            finally:
+                self.cleanup([reply_ticket], channel)
 
     def _get_exchange(self, namespace, type):
         return Exchange(self.exchange_fmt % namespace,
