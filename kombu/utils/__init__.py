@@ -30,8 +30,6 @@ __all__ = ['EqualityDict', 'say', 'uuid', 'kwdict', 'maybe_list',
            'emergency_dump_state', 'cached_property',
            'reprkwargs', 'reprcall', 'nested']
 
-RetryNow = object()
-
 
 def eqhash(o):
     try:
@@ -166,8 +164,8 @@ def retry_over_time(fun, catch, args=[], kwargs={}, errback=None,
             if callback:
                 callback()
             tts = errback(exc, interval_range, retries) if errback else None
-            if tts is not RetryNow:
-                for i in fxrange(stop=tts or 1.0):
+            if tts:
+                for i in fxrange(stop=tts):
                     if i and callback:
                         callback()
                     sleep(i)

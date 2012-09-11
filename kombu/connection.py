@@ -26,7 +26,7 @@ from Queue import Empty
 from kombu import exceptions
 from .log import get_logger
 from .transport import get_transport_cls, supports_librabbitmq
-from .utils import cached_property, retry_over_time, RetryNow, shufflecycle
+from .utils import cached_property, retry_over_time, shufflecycle
 from .utils.compat import OrderedDict, LifoQueue as _LifoQueue, next
 from .utils.url import parse_url
 
@@ -306,7 +306,7 @@ class Connection(object):
                 errback(exc, interval)
             self.switch_next()  # select next host
 
-            return interval if round else RetryNow
+            return interval if round else 0
 
         retry_over_time(self.connect, self.connection_errors, (), {},
                         on_error, max_retries,
