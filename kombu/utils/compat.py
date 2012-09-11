@@ -10,6 +10,18 @@ Helps compatibility with older Python versions.
 """
 import sys
 
+############## __builtins__.next #############################################
+try:
+    next = next
+except NameError:
+    def next(it, *args):  # noqa
+        try:
+            return it.__next__()
+        except StopIteration:
+            if not args:
+                raise
+            return args[0]
+
 ############## collections.OrderedDict #######################################
 
 import weakref

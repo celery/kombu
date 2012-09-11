@@ -11,6 +11,7 @@ else:
     from StringIO import StringIO, StringIO as BytesIO  # noqa
 
 from kombu import utils
+from kombu.utils.compat import next
 
 from .utils import redirect_stdouts, mask_modules, skip_if_module
 from .utils import TestCase
@@ -167,10 +168,12 @@ class test_retry_over_time(TestCase):
             raise self.Predicate()
         return 42
 
-    def errback(self, exc, interval):
+    def errback(self, exc, intervals, retries):
+        interval = next(intervals)
         sleepvals = (None, 2.0, 4.0, 6.0, 8.0, 10.0, 12.0, 14.0, 16.0, 16.0)
         self.index += 1
         self.assertEqual(interval, sleepvals[self.index])
+        return interval
 
     @insomnia
     def test_simple(self):
