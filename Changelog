@@ -4,6 +4,16 @@
  Change history
 ================
 
+.. _version-2.4.7:
+
+2.4.7
+=====
+:release-date: TBA
+
+- MongoDB: Fixed memory leak when merging keys stored in the db (Issue #159)
+
+    Fix contributed by Michael Korbakov.
+
 .. _version-2.4.6:
 
 2.4.6
