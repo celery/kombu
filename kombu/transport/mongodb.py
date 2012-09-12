@@ -162,14 +162,13 @@ class Channel(virtual.Channel):
     #TODO: Store a more complete exchange metatable in the routing collection
     def get_table(self, exchange):
         """Get table of bindings for ``exchange``."""
+        localRoutes = frozenset(self.state.exchanges[exchange]['table'])
         brokerRoutes = self.client.messages.routing.find({
                             'exchange': exchange})
 
-        localRoutes = set(self.state.exchanges[exchange]['table'])
-        brokerRoutes = set((route['routing_key'],
-                            route['pattern'],
-                            route['queue']) for route in brokerRoutes)
-        return localRoutes | brokerRoutes
+        return localRoutes | frozenset((r['routing_key'],
+                                        r['pattern'],
+                                        r['queue']) for r in brokerRoutes)
 
     def _put_fanout(self, exchange, message, **kwargs):
         """Deliver fanout message."""
