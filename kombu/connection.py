@@ -105,6 +105,10 @@ class Connection(object):
     #: after a call to :meth:`drain_nowait`.
     more_to_read = False
 
+    #: Iterator returning the next broker URL to try in the event
+    #: of connection failure (initialized by :attr:`failover_strategy`).
+    cycle = None
+
     def __init__(self, hostname='localhost', userid=None,
             password=None, virtual_host=None, port=None, insist=False,
             ssl=False, transport=None, connect_timeout=5,
@@ -164,8 +168,9 @@ class Connection(object):
         self._closed = False
         self._init_params(**dict(self._initial_params, **parse_url(url)))
 
-    def switch_next(self):
-        self.switch(next(self.cycle))
+    def maybe_switch_next(self):
+        if self.cycle:
+            self.switch(next(self.cycle))
 
     def _init_params(self, hostname, userid, password, virtual_host, port,
             insist, ssl, transport, connect_timeout, login_method, heartbeat):
@@ -304,7 +309,7 @@ class Connection(object):
                 interval = next(intervals)
             if errback:
                 errback(exc, interval)
-            self.switch_next()  # select next host
+            self.maybe_switch_next()  # select next host
 
             return interval if round else 0
 
