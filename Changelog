@@ -4,6 +4,31 @@
  Change history
 ================
 
+.. _version-2.4.6:
+
+2.4.6
+=====
+:release-date: 2012-09-12 03:00 P.M BST
+
+- Adds additional compatibility dependencies:
+
+    - Python <= 2.6:
+
+        - importlib
+        - ordereddict
+
+    - Python <= 2.5
+
+        - simplejson
+
+.. _version-2.4.5:
+
+2.4.5
+=====
+:release-date: 2012-08-30 04:00 P.M BST
+
+- Fixed Jython + PyPy installation.
+
 .. _version-2.4.4:
 
 2.4.4
