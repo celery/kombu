@@ -165,12 +165,11 @@ class Channel(virtual.Channel):
         brokerRoutes = self.client.messages.routing.find({
                             'exchange': exchange})
 
-        localRoutes = self.state.exchanges[exchange]['table']
-        for route in brokerRoutes:
-            localRoutes.append((route['routing_key'],
-                                route['pattern'],
-                                route['queue']))
-        return set(localRoutes)
+        localRoutes = set(self.state.exchanges[exchange]['table'])
+        brokerRoutes = set((route['routing_key'],
+                            route['pattern'],
+                            route['queue']) for route in brokerRoutes)
+        return localRoutes | brokerRoutes
 
     def _put_fanout(self, exchange, message, **kwargs):
         """Deliver fanout message."""
