@@ -23,7 +23,7 @@ Features
     * AMQP transports for both the `amqplib`_ (sync) and
       `pika`_ (sync + async) clients.
 
-    * Fast AMQP transport using `librabbitmq`_, written in C.
+    * High performance AMQP transport written in C - when using `librabbitmq`_
 
       This is automatically enabled if librabbitmq is installed::
 
