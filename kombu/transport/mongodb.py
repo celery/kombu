@@ -165,6 +165,7 @@ class Channel(virtual.Channel):
         localRoutes = frozenset(self.state.exchanges[exchange]['table'])
         brokerRoutes = self.client.messages.routing.find({
                             'exchange': exchange})
+
         return localRoutes | frozenset((r['routing_key'],
                                         r['pattern'],
                                         r['queue']) for r in brokerRoutes)
