@@ -144,7 +144,7 @@ class Channel(virtual.Channel):
         #     database.authenticate(conninfo.userid, conninfo.password)
         self.db = database
         col = database.messages
-        col.ensure_index([('queue', 1)])
+        col.ensure_index([('queue', 1), ('_id', 1)])
 
         if 'messages.broadcast' not in database.collection_names():
             capsize = conninfo.transport_options.get(
