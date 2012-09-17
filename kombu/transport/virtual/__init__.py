@@ -518,9 +518,12 @@ class Channel(AbstractChannel, base.StdChannel):
         """Get table of bindings for `exchange`."""
         return self.state.exchanges[exchange]['table']
 
-    def typeof(self, exchange):
+    def typeof(self, exchange, default='direct'):
         """Get the exchange type instance for `exchange`."""
-        type = self.state.exchanges[exchange]['type']
+        try:
+            type = self.state.exchanges[exchange]['type']
+        except KeyError:
+            type = default
         return self.exchange_types[type]
 
     def _lookup(self, exchange, routing_key, default=None):
