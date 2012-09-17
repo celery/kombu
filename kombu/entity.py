@@ -559,7 +559,7 @@ class Queue(MaybeChannelBound):
                     self.durable == other.durable and
                     self.exclusive == other.exclusive and
                     self.auto_delete == other.auto_delete and 
-                    self.bindings == other.bindins)
+                    self.bindings == other.bindings)
         return False
 
     def __repr__(self):
