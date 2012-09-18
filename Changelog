@@ -10,6 +10,8 @@
 =====
 :release-date: 2012-09-18 03:00 P.M BST
 
+- Virtual: Unknown exchanges now default to 'direct' when sending a message.
+
 - MongoDB: Fixed memory leak when merging keys stored in the db (Issue #159)
 
     Fix contributed by Michael Korbakov.
