@@ -2,7 +2,7 @@
  kombu - Messaging Framework for Python
 ========================================
 
-:Version: 2.4.6
+:Version: 2.4.7
 
 `Kombu` is a messaging framework for Python.
 
