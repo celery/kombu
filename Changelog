@@ -8,17 +8,18 @@
 
 2.4.7
 =====
-:release-date: TBA
+:release-date: 2012-09-18 03:00 P.M BST
 
 - MongoDB: Fixed memory leak when merging keys stored in the db (Issue #159)
 
     Fix contributed by Michael Korbakov.
 
-- MongoDB: Better index for MongoDB transport (Issue #158). 
-    
-    This improvement will create a new compund index for queue and _id in order to be able
-    to use both indexed fields for getting a new message (using queue field) and sorting by _id.
-    It'll be necessary to manually delete the old index from the collection.
+- MongoDB: Better index for MongoDB transport (Issue #158).
+
+    This improvement will create a new compund index for queue and _id in order
+    to be able to use both indexed fields for getting a new message (using
+    queue field) and sorting by _id.  It'll be necessary to manually delete
+    the old index from the collection.
 
     Improvement contributed by rmihael
 
