@@ -11,11 +11,12 @@ from kombu import Connection, Producer, Exchange, Queue
 
 #: By default messages sent to exchanges are persistent (delivery_mode=2),
 #: and queues and exchanges are durable.
-gateway_exchange = Exchange('gateway_kombu_demo', type='direct')
+exchange = Exchange('kombu_demo', type='direct')
+queue = Queue('kombu_demo', exchange, routing_key='kombu_demo')
 
-with Connection('pyamqp://guest:guest@localhost:5672//') as connection:
-    #binded = exchange.bind(connection.channel())
-    #binded.exchange_bind(gateway_exchange, routing_key = 'kombu_demo')
+
+with Connection('amqp://guest:guest@localhost:5672//') as connection:
+
     #: Producers are used to publish messages.
     #: a default exchange and routing key can also be specifed
     #: as arguments the Producer, but we rather specify this explicitly
@@ -26,6 +27,6 @@ with Connection('pyamqp://guest:guest@localhost:5672//') as connection:
     #: and zlib compression.  The kombu consumer will automatically detect
     #: encoding, serialization and compression used and decode accordingly.
     producer.publish({'hello': 'world'},
-                     exchange=gateway_exchange,
+                     exchange=exchange,
                      routing_key='kombu_demo',
                      serializer='json', compression='zlib')
