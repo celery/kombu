@@ -4,6 +4,51 @@
  Change history
 ================
 
+.. _version-2.5.0:
+
+2.5.0
+=====
+:release-date: TBA
+
+- :class:`~kombu.entity.Queue` now supports multiple bindings.
+
+    You can now have multiple bindings in the same queue by having
+    the second argument be a list:
+
+    .. code-block:: python
+
+        from kombu import binding, Queue
+
+        Queue('name', [
+            binding(Exchange('E1'), routing_key='foo'),
+            binding(Exchange('E1'), routing_key='bar'),
+            binding(Exchange('E2'), routing_key='baz'),
+        ])
+
+    To enable this, helper methods have been added:
+
+        - :meth:`~kombu.entity.Queue.bind_to`
+        - :meth:`~kombu.entity.Queue.unbind_from`
+
+    Contributed by Rumyana Neykova.
+
+- Support for exchange-to-exchange bindings.
+
+    The :class:`~kombu.entity.Exchange` entity gained ``bind_to``
+    and ``unbind_from`` methods:
+
+    .. code-block:: python
+
+        e1 = Exchange('A')(connection)
+        e2 = Exchange('B')(connection)
+
+        e2.bind_to(e1, routing_key='rkey', arguments=None)
+        e2.unbind_from(e1, routing_key='rkey', arguments=None)
+
+    This is currently only supported by the ``pyamqp`` transport.
+
+    Contributed by Rumyana Neykova.
+
 .. _version-2.4.7:
 
 2.4.7
