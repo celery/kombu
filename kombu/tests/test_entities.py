@@ -105,18 +105,18 @@ class test_Exchange(TestCase):
         self.assertIn('foo(topic)', repr(b))
         self.assertIn('Exchange', repr(b))
 
-    def test_exchange_bind(self):
+    def test_bind_to(self):
         chan = get_conn().channel()
         foo = Exchange('foo', 'topic')
         bar = Exchange('bar', 'topic')
-        foo.exchange_bind(bar)
+        foo(chan).bind_to(bar)
         self.assertIn('exchange_bind', chan)
 
-    def test_exchange_unbind(self):
+    def test_unbind_from(self):
         chan = get_conn().channel()
         foo = Exchange('foo', 'topic')
         bar = Exchange('bar', 'topic')
-        foo.exchange_unbind(bar)
+        foo(chan).unbind_from(bar)
         self.assertIn('exchange_unbind', chan)
 
 
@@ -210,9 +210,9 @@ class test_Queue(TestCase):
         b.delete()
         self.assertIn('queue_delete', b.channel)
 
-    def test_unbind(self):
+    def test_queue_unbind(self):
         b = Queue('foo', self.exchange, 'foo', channel=get_conn().channel())
-        b.unbind()
+        b.queue_unbind()
         self.assertIn('queue_unbind', b.channel)
 
     def test_as_dict(self):

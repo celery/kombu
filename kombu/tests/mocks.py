@@ -91,6 +91,12 @@ class Channel(base.StdChannel):
     def basic_recover(self, requeue=False):
         self._called('basic_recover')
 
+    def exchange_bind(self, *args, **kwargs):
+        self._called('exchange_bind')
+
+    def exchange_unbind(self, *args, **kwargs):
+        self._called('exchange_unbind')
+
     def close(self):
         self._called('close')
 

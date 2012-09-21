@@ -440,6 +440,10 @@ class Channel(AbstractChannel, base.StdChannel):
         if self.supports_fanout:
             self._queue_bind(exchange, *meta)
 
+    def queue_unbind(self, queue, exchange=None, routing_key='',
+            arguments=None, **kwargs):
+        raise NotImplementedError('transport does not support queue_unbind')
+
     def list_bindings(self):
         for exchange in self.state.exchanges:
             table = self.get_table(exchange)
