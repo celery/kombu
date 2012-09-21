@@ -104,20 +104,21 @@ class test_Exchange(TestCase):
         b = Exchange('foo', 'topic')
         self.assertIn('foo(topic)', repr(b))
         self.assertIn('Exchange', repr(b))
-        
+
     def test_exchange_bind(self):
         chan = get_conn().channel()
         foo = Exchange('foo', 'topic')
         bar = Exchange('bar', 'topic')
         foo.exchange_bind(bar)
         self.assertIn('exchange_bind', chan)
-        
+
     def test_exchange_unbind(self):
         chan = get_conn().channel()
         foo = Exchange('foo', 'topic')
         bar = Exchange('bar', 'topic')
         foo.exchange_unbind(bar)
         self.assertIn('exchange_unbind', chan)
+
 
 class test_Queue(TestCase):
 

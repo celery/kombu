@@ -416,6 +416,14 @@ class Channel(AbstractChannel, base.StdChannel):
     def after_reply_message_received(self, queue):
         self.queue_delete(queue)
 
+    def exchange_bind(self, destination, source='', routing_key='',
+            nowait=False, arguments=None):
+        raise NotImplementedError('transport does not support exchange_bind')
+
+    def exchange_unbind(self, destination, source='', routing_key='',
+            nowait=False, arguments=None):
+        raise NotImplementedError('transport does not support exchange_unbind')
+
     def queue_bind(self, queue, exchange=None, routing_key='', arguments=None,
             **kwargs):
         """Bind `queue` to `exchange` with `routing key`."""

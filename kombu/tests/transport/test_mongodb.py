@@ -47,9 +47,8 @@ class test_mongodb(TestCase):
         client = c.channels[0].client
 
         nodes = client.connection.nodes
-        # If there's just 1 node it is because we're 
-        # connecting to a single server instead of a 
-        # repl / mongoss
+        # If there's just 1 node it is because we're  connecting to a single
+        # server instead of a repl / mongoss.
         if len(nodes) == 2:
             self.assertTrue(('localhost', 29017) in nodes)
             self.assertEquals(client.name, 'dbname')

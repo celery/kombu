@@ -11,7 +11,6 @@ Exchange and Queue declarations.
 from __future__ import absolute_import
 
 from .abstract import MaybeChannelBound
-from symbol import argument
 
 TRANSIENT_DELIVERY_MODE = 1
 PERSISTENT_DELIVERY_MODE = 2
@@ -158,27 +157,34 @@ class Exchange(MaybeChannelBound):
                                              nowait=nowait,
                                              passive=passive)
 
-    def exchange_bind(self, source = '', routing_key = '', 
-                      nowait = False, **kwargs):
+    def exchange_bind(self, source='', routing_key='',
+                      arguments=None, nowait=False, **kwargs):
         """Binds the exchange to another exchange.
 
         Binds exchange to an exchange.
 
-        :keyword nowait: If set the server will not respond, and a
-            response will not be waited for. Default is :const:`False`.
+        :keyword nowait: If set the server will not respond, and the call
+            will not block waiting for a response.  Default is :const:`False`.
 
         """
+        if isinstance(source, Exchange):
+            source = source.name
         return self.channel.exchange_bind(destination=self.name,
-                                          source = source, 
-                                          routing_key = routing_key, 
-                                          nowait=nowait, 
-                                          arguments = None)
-    
-    def exchange_unbind(self, source, routing_key, nowait = False):
+                                          source=source,
+                                          routing_key=routing_key,
+                                          nowait=nowait,
+                                          arguments=arguments)
+
+    def exchange_unbind(self, source='', routing_key='', nowait=False,
+            arguments=None):
+        if isinstance(source, Exchange):
+            source = source.name
         return self.channel.exchange_bind(destination=self.name,
-                                          source = source.name, 
-                                          routing_key = routing_key)
-    
+                                          source=source,
+                                          routing_key=routing_key,
+                                          nowait=nowait,
+                                          arguments=arguments)
+
     def Message(self, body, delivery_mode=None, priority=None,
             content_type=None, content_encoding=None, properties=None,
             headers=None):
@@ -371,7 +377,7 @@ class Queue(MaybeChannelBound):
     exclusive = False
     auto_delete = False
     no_ack = False
-    
+
     attrs = (('name', None),
              ('exchange', None),
              ('routing_key', None),
@@ -382,7 +388,7 @@ class Queue(MaybeChannelBound):
              ('auto_delete', bool),
              ('no_ack', None),
              ('alias', None))
-    
+
     def __init__(self, name='', exchange=None, routing_key='', channel=None,
             **kwargs):
         super(Queue, self).__init__(**kwargs)
@@ -391,7 +397,7 @@ class Queue(MaybeChannelBound):
         self.routing_key = routing_key or self.routing_key
         self.bindings = {}
         if self.exchange:
-            self.bindings[(exchange.name , routing_key)] = \
+            self.bindings[(exchange.name, routing_key)] = \
                                 (self.exchange, self.binding_arguments)
         # exclusive implies auto-delete.
         if self.exclusive:
@@ -405,28 +411,25 @@ class Queue(MaybeChannelBound):
         for key, (exchange, args) in self.bindings.iteritems():
             bound_exchange = exchange(self.channel)
             self.bindings[key] = (bound_exchange, args)
-            
 
     def declare(self, nowait=False):
         """Declares the queue, the exchange and binds the queue to
         the exchange."""
         self.queue_declare(nowait, passive=False)
-        for (exch_name, routing_key), (exchange, args) in self.bindings.items():
+        for (_, routing_key), (exchange, args) in self.bindings.items():
             exchange.declare(nowait)
             # self.name should be set by queue_declare in the case that
             # we're working with anonymous queues
             if self.name:
                 self.queue_bind(nowait=nowait, exchange=exchange,
-                                routing_key=routing_key, 
+                                routing_key=routing_key,
                                 arguments=args)
         return self.name
-    
+
     def add_binding(self, exchange, routing_key='', args=None):
-        if (exchange.name, routing_key) not in self.bindings: 
+        if (exchange.name, routing_key) not in self.bindings:
             self.bindings[(exchange.name, routing_key)] = (exchange, args)
-        #@TODO:what should happened if the binding is set with different args 
-            
-             
+        # TODO what should happened if the binding is set with different args
 
     def queue_declare(self, nowait=False, passive=False):
         """Declare queue on the server.
@@ -448,13 +451,13 @@ class Queue(MaybeChannelBound):
             self.name = ret[0]
         return ret
 
-    def queue_bind(self, nowait=False, 
+    def queue_bind(self, nowait=False,
                    exchange=None, routing_key=None, arguments=None):
         """Create the queue binding on the server."""
-        
+
         exchange = exchange if exchange else self.exchange
         routing_key = routing_key if routing_key else self.routing_key
-        arguments = arguments if arguments else self.binding_arguments 
+        arguments = arguments if arguments else self.binding_arguments
         if (exchange.name, routing_key) not in self.bindings:
             self.add_binding(exchange, routing_key, arguments)
         return self.channel.queue_bind(queue=self.name,
@@ -546,17 +549,18 @@ class Queue(MaybeChannelBound):
         routing_key = routing_key if routing_key else self.routing_key
         if (exchange.name, routing_key) in self.bindings:
             _, args = self.bindings.pop((exchange.name, routing_key))
-        else: 
-            #TODO:Sell we allow unbinding when the binding is not registered  
+        else:
+            #TODO:Sell we allow unbinding when the binding is not registered
             args = self.binding_arguments
-            print 'Be warned: Binding is not registered in queue bindings', self.bindings
-        
+            print('Be warned: Binding is not registered in queue bindings',
+                  self.bindings)
+
         """Delete the binding on the server."""
         return self.channel.queue_unbind(queue=self.name,
                                          exchange=exchange.name,
                                          routing_key=routing_key,
                                          arguments=args)
-        
+
     def __eq__(self, other):
         if isinstance(other, Queue):
             return (self.name == other.name and
@@ -566,7 +570,7 @@ class Queue(MaybeChannelBound):
                     self.binding_arguments == other.binding_arguments and
                     self.durable == other.durable and
                     self.exclusive == other.exclusive and
-                    self.auto_delete == other.auto_delete and 
+                    self.auto_delete == other.auto_delete and
                     self.bindings == other.bindings)
         return False
 
@@ -620,5 +624,5 @@ class Queue(MaybeChannelBound):
                      auto_delete=q_auto_delete,
                      no_ack=options.get('no_ack'),
                      queue_arguments=q_arguments,
-                     binding_arguments=b_arguments, 
-                     bindings = bindings)
+                     binding_arguments=b_arguments,
+                     bindings=bindings)
