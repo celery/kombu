@@ -242,14 +242,16 @@ class Mailbox(object):
             responses.append(body)
 
         consumer.register_callback(on_message)
-        with consumer:
-            for i in limit and range(limit) or count():
-                try:
-                    self.connection.drain_events(timeout=timeout)
-                except socket.timeout:
-                    break
-            return responses
-        chan.after_reply_message_received(queue.name)
+        try:
+            with consumer:
+                for i in limit and range(limit) or count():
+                    try:
+                        self.connection.drain_events(timeout=timeout)
+                    except socket.timeout:
+                        break
+                return responses
+        finally:
+            chan.after_reply_message_received(queue.name)
 
     def _get_exchange(self, namespace, type):
         return Exchange(self.exchange_fmt % namespace,

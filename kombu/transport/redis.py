@@ -111,7 +111,7 @@ class QoS(virtual.QoS):
             M, EX, RK = loads(p)
             self.channel._do_restore_message(M, EX, RK)
 
-    @cached_property
+    @property
     def client(self):
         return self.channel._avail_client
 
@@ -206,7 +206,8 @@ class MultiChannelPoller(object):
     def on_poll_empty(self):
         for channel in self._channels:
             if channel.active_queues:
-                channel.qos.restore_visible()
+                # only need to do this once, as they are not local to channel.
+                return channel.qos.restore_visible()
 
     def handle_event(self, fileno, event):
         if event & READ:

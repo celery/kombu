@@ -10,9 +10,12 @@ Internal utilities.
 """
 from __future__ import absolute_import
 
+import importlib
+import random
 import sys
 
 from contextlib import contextmanager
+from itertools import count, repeat
 from time import sleep
 from uuid import UUID, uuid4 as _uuid4, _uuid_generate_random
 
@@ -27,6 +30,65 @@ __all__ = ['EqualityDict', 'say', 'uuid', 'kwdict', 'maybe_list',
            'fxrange', 'fxrangemax', 'retry_over_time',
            'emergency_dump_state', 'cached_property',
            'reprkwargs', 'reprcall', 'nested']
+
+
+def symbol_by_name(name, aliases={}, imp=None, package=None,
+        sep='.', default=None, **kwargs):
+    """Get symbol by qualified name.
+
+    The name should be the full dot-separated path to the class::
+
+        modulename.ClassName
+
+    Example::
+
+        celery.concurrency.processes.TaskPool
+                                    ^- class name
+
+    or using ':' to separate module and symbol::
+
+        celery.concurrency.processes:TaskPool
+
+    If `aliases` is provided, a dict containing short name/long name
+    mappings, the name is looked up in the aliases first.
+
+    Examples:
+
+        >>> symbol_by_name('celery.concurrency.processes.TaskPool')
+        <class 'celery.concurrency.processes.TaskPool'>
+
+        >>> symbol_by_name('default', {
+        ...     'default': 'celery.concurrency.processes.TaskPool'})
+        <class 'celery.concurrency.processes.TaskPool'>
+
+        # Does not try to look up non-string names.
+        >>> from celery.concurrency.processes import TaskPool
+        >>> symbol_by_name(TaskPool) is TaskPool
+        True
+
+    """
+    if imp is None:
+        imp = importlib.import_module
+
+    if not isinstance(name, basestring):
+        return name                                 # already a class
+
+    name = aliases.get(name) or name
+    sep = ':' if ':' in name else sep
+    module_name, _, cls_name = name.rpartition(sep)
+    if not module_name:
+        cls_name, module_name = None, package if package else cls_name
+    try:
+        try:
+            module = imp(module_name, package=package, **kwargs)
+        except ValueError, exc:
+            raise ValueError, ValueError(
+                    "Couldn't import %r: %s" % (name, exc)), sys.exc_info()[2]
+        return getattr(module, cls_name) if cls_name else module
+    except (ImportError, AttributeError):
+        if default is None:
+            raise
+    return default
 
 
 def eqhash(o):
@@ -153,8 +215,7 @@ def retry_over_time(fun, catch, args=[], kwargs={}, errback=None,
     interval_range = fxrange(interval_start,
                              interval_max + interval_start,
                              interval_step, repeatlast=True)
-
-    for retries, interval in enumerate(interval_range):  # for infinity
+    for retries in count():
         try:
             return fun(*args, **kwargs)
         except catch, exc:
@@ -162,12 +223,12 @@ def retry_over_time(fun, catch, args=[], kwargs={}, errback=None,
                 raise
             if callback:
                 callback()
-            if errback:
-                errback(exc, interval)
-            for i in fxrange(stop=interval):
-                if i and callback:
-                    callback()
-                sleep(1.0)
+            tts = errback(exc, interval_range, retries) if errback else None
+            if tts:
+                for i in fxrange(stop=tts):
+                    if i and callback:
+                        callback()
+                    sleep(i)
 
 
 def emergency_dump_state(state, open_file=open, dump=None):
@@ -302,3 +363,11 @@ def nested(*managers):  # pragma: no cover
                 raise exc[0], exc[1], exc[2]
     finally:
         del(exc)
+
+
+def shufflecycle(it):
+    it = list(it)  # don't modify callers list
+    shuffle = random.shuffle
+    for _ in repeat(None):
+        shuffle(it)
+        yield it[0]

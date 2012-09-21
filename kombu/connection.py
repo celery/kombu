@@ -17,17 +17,21 @@ import socket
 
 from contextlib import contextmanager
 from functools import partial
-from itertools import count
+from itertools import count, cycle
 from urllib import quote
 from Queue import Empty
+
 # jython breaks on relative import for .exceptions for some reason
 # (Issue #112)
 from kombu import exceptions
 from .log import get_logger
-from .transport import AMQP_ALIAS, get_transport_cls
-from .utils import cached_property, retry_over_time
-from .utils.compat import OrderedDict, LifoQueue as _LifoQueue
+from .transport import get_transport_cls, supports_librabbitmq
+from .utils import cached_property, retry_over_time, shufflecycle
+from .utils.compat import OrderedDict, LifoQueue as _LifoQueue, next
 from .utils.url import parse_url
+
+RESOLVE_ALIASES = {'amqplib': 'amqp',
+                   'librabbitmq': 'amqp'}
 
 _LOG_CONNECTION = os.environ.get('KOMBU_LOG_CONNECTION', False)
 _LOG_CHANNEL = os.environ.get('KOMBU_LOG_CHANNEL', False)
@@ -36,6 +40,12 @@ __all__ = ['Connection', 'ConnectionPool', 'ChannelPool']
 URI_PASSTHROUGH = frozenset(['sqla', 'sqlalchemy', 'zeromq', 'zmq'])
 
 logger = get_logger(__name__)
+roundrobin_failover = cycle
+
+failover_strategies = {
+    'round-robin': cycle,
+    'shuffle': shufflecycle,
+}
 
 
 class Connection(object):
@@ -95,18 +105,32 @@ class Connection(object):
     #: after a call to :meth:`drain_nowait`.
     more_to_read = False
 
+    #: Iterator returning the next broker URL to try in the event
+    #: of connection failure (initialized by :attr:`failover_strategy`).
+    cycle = None
+
     def __init__(self, hostname='localhost', userid=None,
             password=None, virtual_host=None, port=None, insist=False,
             ssl=False, transport=None, connect_timeout=5,
             transport_options=None, login_method=None, uri_prefix=None,
-            heartbeat=0, **kwargs):
+            heartbeat=0, failover_strategy='round-robin', **kwargs):
+        alt = []
         # have to spell the args out, just to get nice docstrings :(
-        params = {'hostname': hostname, 'userid': userid,
-                  'password': password, 'virtual_host': virtual_host,
-                  'port': port, 'insist': insist, 'ssl': ssl,
-                  'transport': transport, 'connect_timeout': connect_timeout,
-                  'login_method': login_method, 'heartbeat': heartbeat}
+        params = self._initial_params = {
+            'hostname': hostname, 'userid': userid,
+            'password': password, 'virtual_host': virtual_host,
+            'port': port, 'insist': insist, 'ssl': ssl,
+            'transport': transport, 'connect_timeout': connect_timeout,
+            'login_method': login_method, 'heartbeat': heartbeat
+        }
+
+        if hostname and not isinstance(hostname, basestring):
+            alt.extend(hostname)
+            hostname = alt[0]
         if hostname and '://' in hostname:
+            if ';' in hostname:
+                alt.extend(hostname.split(';'))
+                hostname = alt[0]
             if '+' in hostname[:hostname.index('://')]:
                 # e.g. sqla+mysql://root:masterkey@localhost/
                 params['transport'], params['hostname'] = hostname.split('+')
@@ -115,6 +139,14 @@ class Connection(object):
                 if transport not in URI_PASSTHROUGH:
                     params.update(parse_url(hostname))
         self._init_params(**params)
+
+        # fallback hosts
+        self.alt = alt
+        self.failover_strategy = failover_strategies.get(
+            failover_strategy or 'round-robin') or failover_strategy
+        if self.alt:
+            self.cycle = self.failover_strategy(self.alt)
+            next(self.cycle)  # skip first entry
 
         # backend_cls argument will be removed shortly.
         self.transport_cls = self.transport_cls or kwargs.get('backend_cls')
@@ -131,8 +163,20 @@ class Connection(object):
 
         self.declared_entities = set()
 
+    def switch(self, url):
+        self.close()
+        self._closed = False
+        self._init_params(**dict(self._initial_params, **parse_url(url)))
+
+    def maybe_switch_next(self):
+        if self.cycle:
+            self.switch(next(self.cycle))
+
     def _init_params(self, hostname, userid, password, virtual_host, port,
             insist, ssl, transport, connect_timeout, login_method, heartbeat):
+        transport = transport or 'amqp'
+        if transport == 'amqp' and supports_librabbitmq():
+            transport = 'librabbitmq'
         self.hostname = hostname
         self.userid = userid
         self.password = password
@@ -257,14 +301,25 @@ class Connection(object):
           each retry.
         :keyword callback: Optional callback that is called for every
            internal iteration (1 s)
-        :keyword callback: Optional callback that is called for every
-           internal iteration (1 s).
 
         """
+        def on_error(exc, intervals, retries, interval=0):
+            round = self.completes_cycle(retries)
+            if round:
+                interval = next(intervals)
+            if errback:
+                errback(exc, interval)
+            self.maybe_switch_next()  # select next host
+
+            return interval if round else 0
+
         retry_over_time(self.connect, self.connection_errors, (), {},
-                        errback, max_retries,
+                        on_error, max_retries,
                         interval_start, interval_step, interval_max, callback)
         return self
+
+    def completes_cycle(self, retries):
+        return not (retries + 1) % len(self.alt) if self.alt else True
 
     def revive(self, new_channel):
         if self._default_channel:
@@ -399,11 +454,12 @@ class Connection(object):
     def clone(self, **kwargs):
         """Create a copy of the connection with the same connection
         settings."""
-        return self.__class__(**dict(self._info(), **kwargs))
+        return self.__class__(**dict(self._info(resolve=False), **kwargs))
 
-    def _info(self):
-        transport_cls = self.transport_cls or 'amqp'
-        transport_cls = {AMQP_ALIAS: 'amqp'}.get(transport_cls, transport_cls)
+    def _info(self, resolve=True):
+        transport_cls = self.transport_cls
+        if resolve:
+            transport_cls = RESOLVE_ALIASES.get(transport_cls, transport_cls)
         D = self.transport.default_connection_params
         hostname = self.hostname or D.get('hostname')
         if self.uri_prefix:

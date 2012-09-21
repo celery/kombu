@@ -144,7 +144,7 @@ class Channel(virtual.Channel):
         #     database.authenticate(conninfo.userid, conninfo.password)
         self.db = database
         col = database.messages
-        col.ensure_index([('queue', 1)])
+        col.ensure_index([('queue', 1), ('_id', 1)], background=True)
 
         if 'messages.broadcast' not in database.collection_names():
             capsize = conninfo.transport_options.get(
@@ -162,15 +162,13 @@ class Channel(virtual.Channel):
     #TODO: Store a more complete exchange metatable in the routing collection
     def get_table(self, exchange):
         """Get table of bindings for ``exchange``."""
+        localRoutes = frozenset(self.state.exchanges[exchange]['table'])
         brokerRoutes = self.client.messages.routing.find({
                             'exchange': exchange})
 
-        localRoutes = self.state.exchanges[exchange]['table']
-        for route in brokerRoutes:
-            localRoutes.append((route['routing_key'],
-                                route['pattern'],
-                                route['queue']))
-        return set(localRoutes)
+        return localRoutes | frozenset((r['routing_key'],
+                                        r['pattern'],
+                                        r['queue']) for r in brokerRoutes)
 
     def _put_fanout(self, exchange, message, **kwargs):
         """Deliver fanout message."""

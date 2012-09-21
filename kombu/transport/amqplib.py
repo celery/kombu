@@ -10,6 +10,7 @@ amqplib transport.
 """
 from __future__ import absolute_import
 
+import errno
 import socket
 
 try:
@@ -17,6 +18,7 @@ try:
 except ImportError:
     class SSLError(Exception):  # noqa
         pass
+from struct import unpack
 
 from amqplib import client_0_8 as amqp
 from amqplib.client_0_8 import transport
@@ -40,19 +42,47 @@ transport.AMQP_PROTOCOL_HEADER = str_to_bytes('AMQP\x01\x01\x08\x00')
 
 
 # - fixes warnings when socket is not connected.
-class _TCPTransport(transport.TCPTransport):
+class TCPTransport(transport.TCPTransport):
+
+    def read_frame(self):
+        frame_type, channel, size = unpack('>BHI', self._read(7, True))
+        payload = self._read(size)
+        ch = ord(self._read(1))
+        if ch == 206:  # '\xce'
+            return frame_type, channel, payload
+        else:
+            raise Exception(
+                'Framing Error, received 0x%02x while expecting 0xce' % ch)
+
+    def _read(self, n, initial=False):
+        while len(self._read_buffer) < n:
+            try:
+                s = self.sock.recv(65536)
+            except socket.error, exc:
+                if not initial and exc.errno in (errno.EAGAIN, errno.EINTR):
+                    continue
+                raise
+            if not s:
+                raise IOError('Socket closed')
+            self._read_buffer += s
+
+        result = self._read_buffer[:n]
+        self._read_buffer = self._read_buffer[n:]
+
+        return result
 
     def __del__(self):
         try:
-            transport._AbstractTransport.__del__(self)
-        except socket.error:
+            self.close()
+        except Exception:
             pass
         finally:
             self.sock = None
-transport.TCPTransport = _TCPTransport
+
+transport.TCPTransport = TCPTransport
 
 
-class _SSLTransport(transport.SSLTransport):
+class SSLTransport(transport.SSLTransport):
 
     def __init__(self, host, connect_timeout, ssl):
         if isinstance(ssl, dict):
@@ -60,7 +90,41 @@ class _SSLTransport(transport.SSLTransport):
         self.sslobj = None
 
         transport._AbstractTransport.__init__(self, host, connect_timeout)
-transport.SSLTransport = _SSLTransport
+
+    def read_frame(self):
+        frame_type, channel, size = unpack('>BHI', self._read(7, True))
+        payload = self._read(size)
+        ch = ord(self._read(1))
+        if ch == 206:  # '\xce'
+            return frame_type, channel, payload
+        else:
+            raise Exception(
+                'Framing Error, received 0x%02x while expecting 0xce' % ch)
+
+    def _read(self, n, initial=False):
+        result = ''
+
+        while len(result) < n:
+            try:
+                s = self.sslobj.read(n - len(result))
+            except socket.error, exc:
+                if not initial and exc.errno in (errno.EAGAIN, errno.EINTR):
+                    continue
+                raise
+            if not s:
+                raise IOError('Socket closed')
+            result += s
+
+        return result
+
+    def __del__(self):
+        try:
+            self.close()
+        except Exception:
+            pass
+        finally:
+            self.sock = None
+transport.SSLTransport = SSLTransport
 
 
 class Connection(amqp.Connection):  # pragma: no cover

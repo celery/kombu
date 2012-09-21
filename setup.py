@@ -111,20 +111,17 @@ def reqs(f):
         os.path.join(os.getcwd(), 'requirements', f)).readlines()])
 
 install_requires = reqs('default.txt')
+if py_version[0:2] == (2, 6):
+    install_requires.extend(reqs('py26.txt'))
+elif py_version[0:2] == (2, 5):
+    install_requires.extend(reqs('py25.txt'))
 
 # -*- Tests Requires -*-
 
 if is_py3k:
     tests_require = reqs('test-py3k.txt')
-elif is_jython:
-    tests_require = reqs('test-jython.txt')
-elif is_pypy:
-    tests_require = reqs('test-pypy.txt')
 else:
     tests_require = reqs('test.txt')
-
-if py_version[0:2] == (2, 5):
-    tests_require.extend('test-py25.txt')
 
 setup(
     name='kombu',

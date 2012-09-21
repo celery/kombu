@@ -4,6 +4,97 @@
  Change history
 ================
 
+.. _version-2.4.7:
+
+2.4.7
+=====
+:release-date: 2012-09-18 03:00 P.M BST
+
+- Virtual: Unknown exchanges now default to 'direct' when sending a message.
+
+- MongoDB: Fixed memory leak when merging keys stored in the db (Issue #159)
+
+    Fix contributed by Michael Korbakov.
+
+- MongoDB: Better index for MongoDB transport (Issue #158).
+
+    This improvement will create a new compund index for queue and _id in order
+    to be able to use both indexed fields for getting a new message (using
+    queue field) and sorting by _id.  It'll be necessary to manually delete
+    the old index from the collection.
+
+    Improvement contributed by rmihael
+
+.. _version-2.4.6:
+
+2.4.6
+=====
+:release-date: 2012-09-12 03:00 P.M BST
+
+- Adds additional compatibility dependencies:
+
+    - Python <= 2.6:
+
+        - importlib
+        - ordereddict
+
+    - Python <= 2.5
+
+        - simplejson
+
+.. _version-2.4.5:
+
+2.4.5
+=====
+:release-date: 2012-08-30 03:36 P.M BST
+
+- Last version broke installtion on PyPy and Jython due
+  to test requirements clean-up.
+
+.. _version-2.4.4:
+
+2.4.4
+=====
+:release-date: 2012-08-29 04:00 P.M BST
+
+- amqplib: Fixed a bug with asynchronously reading large messages.
+
+- pyamqp: Now requires amqp 0.9.3
+
+- Cleaned up test requirements.
+
+.. _version-2.4.3:
+
+2.4.3
+=====
+:release-date: 2012-08-25 10:30 P.M BST
+
+- Fixed problem with amqp transport alias (Issue #154).
+
+.. _version-2.4.2:
+
+2.4.2
+=====
+:release-date: 2012-08-24 05:00 P.M BST
+
+- Having an empty transport name broke in 2.4.1.
+
+
+.. _version-2.4.1:
+
+2.4.1
+=====
+:release-date: 2012-08-24 04:00 P.M BST
+
+- Redis: Fixed race condition that could cause the consumer to crash (Issue #151)
+
+    Often leading to the error message ``"could not convert string to float"``
+
+- Connection retry could cause an inifite loop (Issue #145).
+
+- The ``amqp`` alias is now resolved at runtime, so that eventlet detection
+  works even if patching was done later.
+
 .. _version-2.4.0:
 
 2.4.0
