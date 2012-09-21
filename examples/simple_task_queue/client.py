@@ -15,7 +15,9 @@ def send_as_task(connection, fun, args=(), kwargs={}, priority='mid'):
     routing_key = priority_to_routing_key[priority]
 
     with producers[connection].acquire(block=True) as producer:
+        producer.exchange = task_exchange
         maybe_declare(task_exchange, producer.channel)
+        task_exchange.maybe_bind(producer.channel)
         producer.publish(payload, serializer='pickle',
                                   compression='bzip2',
                                   routing_key=routing_key)
