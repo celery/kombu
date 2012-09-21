@@ -40,4 +40,4 @@ def wait_many(timeout=1):
                     message.ack()
                     print(message.payload)
 
-spawn(wait_many).wait()
+eventlet.spawn(wait_many).wait()
