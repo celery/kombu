@@ -27,7 +27,7 @@ from types import ModuleType
 
 all_by_module = {
     'kombu.connection': ['Connection', 'BrokerConnection'],
-    'kombu.entity':     ['Exchange', 'Queue'],
+    'kombu.entity':     ['Exchange', 'Queue', 'binding'],
     'kombu.messaging':  ['Consumer', 'Producer'],
     'kombu.pools':      ['connections', 'producers'],
     'kombu.utils.url':  ['parse_url'],
