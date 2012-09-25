@@ -12,6 +12,7 @@ from __future__ import absolute_import
 from __future__ import with_statement
 
 import socket
+import threading
 
 from collections import deque
 from functools import partial
@@ -29,7 +30,11 @@ __all__ = ['Broadcast', 'maybe_declare', 'uuid',
            'collect_replies', 'insured', 'ipublish', 'drain_consumer',
            'eventloop']
 
+#: Prefetch count can't exceed short.
+PREFETCH_COUNT_MAX = 0xFFFF
+
 insured_logger = Log('kombu.insurance')
+klogger = Log('kombu')
 
 
 class Broadcast(Queue):
@@ -227,3 +232,60 @@ def ipublish(pool, fun, args=(), kwargs={}, errback=None, on_revive=None,
 
 def entry_to_queue(queue, **options):
     return Queue.from_dict(queue, **options)
+
+
+class QoS(object):
+    """Thread safe increment/decrement of a channels prefetch_count.
+
+    :param consumer: A :class:`kombu.messaging.Consumer` instance.
+    :param initial_value: Initial prefetch count value.
+
+    """
+    prev = None
+
+    def __init__(self, consumer, initial_value):
+        self.consumer = consumer
+        self._mutex = threading.RLock()
+        self.value = initial_value or 0
+
+    def increment_eventually(self, n=1):
+        """Increment the value, but do not update the channels QoS.
+
+        The MainThread will be responsible for calling :meth:`update`
+        when necessary.
+
+        """
+        with self._mutex:
+            if self.value:
+                self.value = self.value + max(n, 0)
+        return self.value
+
+    def decrement_eventually(self, n=1):
+        """Decrement the value, but do not update the channels QoS.
+
+        The MainThread will be responsible for calling :meth:`update`
+        when necessary.
+
+        """
+        with self._mutex:
+            if self.value:
+                self.value -= n
+        return self.value
+
+    def set(self, pcount):
+        """Set channel prefetch_count setting."""
+        if pcount != self.prev:
+            new_value = pcount
+            if pcount > PREFETCH_COUNT_MAX:
+                klogger.warn('QoS: Disabled: prefetch_count exceeds %r',
+                             PREFETCH_COUNT_MAX)
+                new_value = 0
+            klogger.debug('basic.qos: prefetch_count->%s', new_value)
+            self.consumer.qos(prefetch_count=new_value)
+            self.prev = pcount
+        return pcount
+
+    def update(self):
+        """Update prefetch count with current value."""
+        with self._mutex:
+            return self.set(self.value)
