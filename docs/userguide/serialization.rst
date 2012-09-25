@@ -97,3 +97,64 @@ for the raw data::
 
 The `Message` object returned by the `Consumer` class will have a
 `content_type` and `content_encoding` attribute.
+
+
+Creating extensions using Setuptools entry-points
+=================================================
+
+A package can also register new serializers using Setuptools
+entry-points.
+
+The entry-point must provide the name of the serializer along
+with the path to a tuple providing the rest of the args:
+``decoder_function, encoder_function, content_type, content_encoding``.
+
+An example entrypoint could be:
+
+.. code-block:: python
+
+    from setuptools import setup
+
+    setup(
+        entry_points={
+            'kombu.serializers': [
+                'my_serializer = my_module.serializer:register_args'
+            ]
+        }
+    )
+
+
+Then the module ``my_module.serializer`` would look like:
+
+.. code-block:: python
+
+    register_args = (my_decoder, my_encoder, 'application/x-mimetype', 'utf-8')
+
+
+When this package is installed the new 'my_serializer' serializer will be
+supported by Kombu.
+
+
+.. admonition:: Buffer Objects
+
+The decoder function of custom serializer must support both strings
+and Python's old-style buffer objects.
+
+Python pickle and json modules usually don't do this via its ``loads``
+function, but you can easily add support by making a wrapper around the
+``load`` function that takes file objects instead of strings.
+
+Here's an example wrapping :func:`pickle.loads` in such a way:
+
+.. code-block:: python
+
+    import pickle
+    from kombu.serialization import BytesIO, register
+
+
+    def loads(s):
+        return pickle.load(BytesIO(s))
+
+    register('my_pickle', loads, pickle.dumps,
+             content_type='application/x-pickle2',
+             content_encoding='binary')

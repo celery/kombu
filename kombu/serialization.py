@@ -21,6 +21,7 @@ except ImportError:  # pragma: no cover
     cpickle = None  # noqa
 
 from .exceptions import SerializerNotInstalled
+from .utils import entrypoints
 from .utils.encoding import bytes_to_str, str_to_bytes, bytes_t
 
 __all__ = ['pickle', 'encode', 'decode',
@@ -376,3 +377,9 @@ register_msgpack()
 # JSON is assumed to always be available, so is the default.
 # (this matches the historical use of kombu.)
 registry._set_default_serializer('json')
+
+# Load entrypoints from installed extensions
+for ep, args in entrypoints('kombu.serializers'):
+    register(ep.name, *args)
+
+

@@ -371,3 +371,11 @@ def shufflecycle(it):
     for _ in repeat(None):
         shuffle(it)
         yield it[0]
+
+
+def entrypoints(namespace):
+    try:
+        from pkg_resources import iter_entry_points
+    except ImportError:
+        return iter([])
+    return ((ep, ep.load()) for ep in iter_entry_points(namespace))
