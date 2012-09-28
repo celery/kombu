@@ -69,7 +69,7 @@ class MessageManager(models.Manager):
     def cleanup(self):
         cursor = self.connection_for_write().cursor()
         try:
-            cursor.execute("DELETE FROM %s WHERE visible=%%s" % (
+            cursor.execute('DELETE FROM %s WHERE visible=%%s' % (
                             self.model._meta.db_table, ), (False, ))
         except:
             transaction.rollback_unless_managed()

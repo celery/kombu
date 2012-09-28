@@ -10,9 +10,12 @@ Internal utilities.
 """
 from __future__ import absolute_import
 
+import importlib
+import random
 import sys
 
 from contextlib import contextmanager
+from itertools import count, repeat
 from time import sleep
 from uuid import UUID, uuid4 as _uuid4, _uuid_generate_random
 
@@ -23,10 +26,69 @@ try:
 except:
     ctypes = None  # noqa
 
-__all__ = ["EqualityDict", "say", "uuid", "kwdict", "maybe_list",
-           "fxrange", "fxrangemax", "retry_over_time",
-           "emergency_dump_state", "cached_property",
-           "reprkwargs", "reprcall", "nested"]
+__all__ = ['EqualityDict', 'say', 'uuid', 'kwdict', 'maybe_list',
+           'fxrange', 'fxrangemax', 'retry_over_time',
+           'emergency_dump_state', 'cached_property',
+           'reprkwargs', 'reprcall', 'nested']
+
+
+def symbol_by_name(name, aliases={}, imp=None, package=None,
+        sep='.', default=None, **kwargs):
+    """Get symbol by qualified name.
+
+    The name should be the full dot-separated path to the class::
+
+        modulename.ClassName
+
+    Example::
+
+        celery.concurrency.processes.TaskPool
+                                    ^- class name
+
+    or using ':' to separate module and symbol::
+
+        celery.concurrency.processes:TaskPool
+
+    If `aliases` is provided, a dict containing short name/long name
+    mappings, the name is looked up in the aliases first.
+
+    Examples:
+
+        >>> symbol_by_name('celery.concurrency.processes.TaskPool')
+        <class 'celery.concurrency.processes.TaskPool'>
+
+        >>> symbol_by_name('default', {
+        ...     'default': 'celery.concurrency.processes.TaskPool'})
+        <class 'celery.concurrency.processes.TaskPool'>
+
+        # Does not try to look up non-string names.
+        >>> from celery.concurrency.processes import TaskPool
+        >>> symbol_by_name(TaskPool) is TaskPool
+        True
+
+    """
+    if imp is None:
+        imp = importlib.import_module
+
+    if not isinstance(name, basestring):
+        return name                                 # already a class
+
+    name = aliases.get(name) or name
+    sep = ':' if ':' in name else sep
+    module_name, _, cls_name = name.rpartition(sep)
+    if not module_name:
+        cls_name, module_name = None, package if package else cls_name
+    try:
+        try:
+            module = imp(module_name, package=package, **kwargs)
+        except ValueError, exc:
+            raise ValueError, ValueError(
+                    "Couldn't import %r: %s" % (name, exc)), sys.exc_info()[2]
+        return getattr(module, cls_name) if cls_name else module
+    except (ImportError, AttributeError):
+        if default is None:
+            raise
+    return default
 
 
 def eqhash(o):
@@ -52,7 +114,7 @@ class EqualityDict(dict):
 
 
 def say(m, *s):
-    sys.stderr.write(str(m) % s + "\n")
+    sys.stderr.write(str(m) % s + '\n')
 
 
 def uuid4():
@@ -86,14 +148,14 @@ else:
         see: http://bugs.python.org/issue4978.
 
         """
-        return dict((key.encode("utf-8"), value)
+        return dict((key.encode('utf-8'), value)
                         for key, value in kwargs.items())
 
 
 def maybe_list(v):
     if v is None:
         return []
-    if hasattr(v, "__iter__"):
+    if hasattr(v, '__iter__'):
         return v
     return [v]
 
@@ -153,8 +215,7 @@ def retry_over_time(fun, catch, args=[], kwargs={}, errback=None,
     interval_range = fxrange(interval_start,
                              interval_max + interval_start,
                              interval_step, repeatlast=True)
-
-    for retries, interval in enumerate(interval_range):  # for infinity
+    for retries in count():
         try:
             return fun(*args, **kwargs)
         except catch, exc:
@@ -162,12 +223,12 @@ def retry_over_time(fun, catch, args=[], kwargs={}, errback=None,
                 raise
             if callback:
                 callback()
-            if errback:
-                errback(exc, interval)
-            for i in fxrange(stop=interval):
-                if i and callback:
-                    callback()
-                sleep(1.0)
+            tts = errback(exc, interval_range, retries) if errback else None
+            if tts:
+                for i in fxrange(stop=tts):
+                    if i and callback:
+                        callback()
+                    sleep(i)
 
 
 def emergency_dump_state(state, open_file=open, dump=None):
@@ -178,13 +239,13 @@ def emergency_dump_state(state, open_file=open, dump=None):
         import pickle
         dump = pickle.dump
     persist = mktemp()
-    say("EMERGENCY DUMP STATE TO FILE -> %s <-" % persist)
-    fh = open_file(persist, "w")
+    say('EMERGENCY DUMP STATE TO FILE -> %s <-' % persist)
+    fh = open_file(persist, 'w')
     try:
         try:
             dump(state, fh, protocol=0)
         except Exception, exc:
-            say("Cannot pickle state: %r. Fallback to pformat." % (exc, ))
+            say('Cannot pickle state: %r. Fallback to pformat.' % (exc, ))
             fh.write(pformat(state))
     finally:
         fh.flush()
@@ -207,14 +268,14 @@ class cached_property(object):
         @connection.setter  # Prepares stored value
         def connection(self, value):
             if value is None:
-                raise TypeError("Connection must be a connection")
+                raise TypeError('Connection must be a connection')
             return value
 
         @connection.deleter
         def connection(self, value):
             # Additional action to do at del(self.attr)
             if value is not None:
-                print("Connection %r deleted" % (value, ))
+                print('Connection %r deleted' % (value, ))
 
     """
 
@@ -260,13 +321,13 @@ class cached_property(object):
         return self.__class__(self.__get, self.__set, fdel)
 
 
-def reprkwargs(kwargs, sep=', ', fmt="%s=%s"):
+def reprkwargs(kwargs, sep=', ', fmt='%s=%s'):
     return sep.join(fmt % (k, _safe_repr(v)) for k, v in kwargs.iteritems())
 
 
-def reprcall(name, args=(), kwargs=(), sep=', '):
-    return "%s(%s%s%s)" % (name, sep.join(map(_safe_repr, args or ())),
-                           (args and kwargs) and sep or "",
+def reprcall(name, args=(), kwargs={}, sep=', '):
+    return '%s(%s%s%s)' % (name, sep.join(map(_safe_repr, args or ())),
+                           (args and kwargs) and sep or '',
                            reprkwargs(kwargs, sep))
 
 
@@ -302,3 +363,19 @@ def nested(*managers):  # pragma: no cover
                 raise exc[0], exc[1], exc[2]
     finally:
         del(exc)
+
+
+def shufflecycle(it):
+    it = list(it)  # don't modify callers list
+    shuffle = random.shuffle
+    for _ in repeat(None):
+        shuffle(it)
+        yield it[0]
+
+
+def entrypoints(namespace):
+    try:
+        from pkg_resources import iter_entry_points
+    except ImportError:
+        return iter([])
+    return ((ep, ep.load()) for ep in iter_entry_points(namespace))

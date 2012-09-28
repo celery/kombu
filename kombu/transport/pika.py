@@ -22,7 +22,7 @@ from pika import channel  # must be here to raise import error
 try:
     from pika import asyncore_adapter
 except ImportError:
-    raise VersionMismatch("Kombu only works with pika version 0.5.2")
+    raise VersionMismatch('Kombu only works with pika version 0.5.2')
 from pika import blocking_adapter
 from pika import connection
 from pika import exceptions
@@ -32,11 +32,11 @@ from pika.spec import Basic, BasicProperties
 DEFAULT_PORT = 5672
 
 
-BASIC_PROPERTIES = ("content_type", "content_encoding",
-                    "headers", "delivery_mode", "priority",
-                    "correlation_id", "reply_to", "expiration",
-                    "message_id", "timestamp", "type", "user_id",
-                    "app_id", "cluster_id")
+BASIC_PROPERTIES = ('content_type', 'content_encoding',
+                    'headers', 'delivery_mode', 'priority',
+                    'correlation_id', 'reply_to', 'expiration',
+                    'message_id', 'timestamp', 'type', 'user_id',
+                    'app_id', 'cluster_id')
 
 
 class Message(base.Message):
@@ -46,14 +46,14 @@ class Message(base.Message):
         propdict = dict(zip(BASIC_PROPERTIES,
                         attrgetter(*BASIC_PROPERTIES)(props)))
 
-        kwargs.update({"body": body,
-                       "delivery_tag": method.delivery_tag,
-                       "content_type": props.content_type,
-                       "content_encoding": props.content_encoding,
-                       "headers": props.headers,
-                       "properties": propdict,
-                       "delivery_info": dict(
-                            consumer_tag=getattr(method, "consumer_tag", None),
+        kwargs.update({'body': body,
+                       'delivery_tag': method.delivery_tag,
+                       'content_type': props.content_type,
+                       'content_encoding': props.content_encoding,
+                       'headers': props.headers,
+                       'properties': propdict,
+                       'delivery_info': dict(
+                            consumer_tag=getattr(method, 'consumer_tag', None),
                             routing_key=method.routing_key,
                             delivery_tag=method.delivery_tag,
                             redelivered=method.redelivered,
@@ -129,8 +129,8 @@ class Channel(channel.Channel, base.StdChannel):
 
     def close(self):
         super(Channel, self).close()
-        if getattr(self, "handler", None):
-            if getattr(self.handler, "connection", None):
+        if getattr(self, 'handler', None):
+            if getattr(self.handler, 'connection', None):
                 self.handler.connection.channels.pop(
                         self.handler.channel_number, None)
                 self.handler.connection = None
@@ -181,7 +181,7 @@ class AsyncoreConnection(asyncore_adapter.AsyncoreConnection):
         current_events = self._event_counter
         self.drain_events(timeout=timeout)
         if timeout and self._event_counter <= current_events:
-            raise socket.timeout("timed out")
+            raise socket.timeout('timed out')
 
     def on_data_available(self, buf):
         self._event_counter += 1
@@ -193,8 +193,10 @@ class AsyncoreConnection(asyncore_adapter.AsyncoreConnection):
 
 
 class SyncTransport(base.Transport):
-    default_port = DEFAULT_PORT
+    Message = Message
+    Connection = BlockingConnection
 
+    default_port = DEFAULT_PORT
     connection_errors = (socket.error,
                          exceptions.ConnectionClosed,
                          exceptions.ChannelClosed,
@@ -205,19 +207,21 @@ class SyncTransport(base.Transport):
                          exceptions.RecursiveOperationDetected,
                          exceptions.ContentTransmissionForbidden,
                          exceptions.ProtocolSyntaxError)
-
     channel_errors = (StdChannelError,
                       exceptions.ChannelClosed,
                       exceptions.DuplicateConsumerTag,
                       exceptions.UnknownConsumerTag,
                       exceptions.ProtocolSyntaxError)
-
-    Message = Message
-    Connection = BlockingConnection
+    driver_type = 'amqp'
+    driver_name = 'pika'
 
     def __init__(self, client, **kwargs):
         self.client = client
-        self.default_port = kwargs.get("default_port", self.default_port)
+        self.default_port = kwargs.get('default_port', self.default_port)
+
+    def driver_version(self):
+        import pika
+        return pika.__version__
 
     def create_channel(self, connection):
         return connection.channel()
@@ -245,8 +249,8 @@ class SyncTransport(base.Transport):
 
     @property
     def default_connection_params(self):
-        return {"hostname": "localhost", "port": self.default_port,
-                "userid": "guest", "password": "guest"}
+        return {'hostname': 'localhost', 'port': self.default_port,
+                'userid': 'guest', 'password': 'guest'}
 
 
 class AsyncoreTransport(SyncTransport):

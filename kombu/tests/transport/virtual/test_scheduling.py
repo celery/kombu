@@ -20,12 +20,12 @@ def consume(fun, n):
 class test_FairCycle(TestCase):
 
     def test_cycle(self):
-        resources = ["a", "b", "c", "d", "e"]
+        resources = ['a', 'b', 'c', 'd', 'e']
 
         def echo(r, timeout=None):
             return r
 
-        # cycle should be ["a", "b", "c", "d", "e", ... repeat]
+        # cycle should be ['a', 'b', 'c', 'd', 'e', ... repeat]
         cycle = FairCycle(echo, resources, MyEmpty)
         for i in range(len(resources)):
             self.assertEqual(cycle.get(), (resources[i],
@@ -35,21 +35,21 @@ class test_FairCycle(TestCase):
                                            resources[i]))
 
     def test_cycle_breaks(self):
-        resources = ["a", "b", "c", "d", "e"]
+        resources = ['a', 'b', 'c', 'd', 'e']
 
         def echo(r):
-            if r == "c":
+            if r == 'c':
                 raise MyEmpty(r)
             return r
 
         cycle = FairCycle(echo, resources, MyEmpty)
         self.assertEqual(consume(cycle.get, len(resources)),
-                        [("a", "a"), ("b", "b"), ("d", "d"),
-                         ("e", "e"), ("a", "a")])
+                        [('a', 'a'), ('b', 'b'), ('d', 'd'),
+                         ('e', 'e'), ('a', 'a')])
         self.assertEqual(consume(cycle.get, len(resources)),
-                        [("b", "b"), ("d", "d"), ("e", "e"),
-                         ("a", "a"), ("b", "b")])
-        cycle2 = FairCycle(echo, ["c", "c"], MyEmpty)
+                        [('b', 'b'), ('d', 'd'), ('e', 'e'),
+                         ('a', 'a'), ('b', 'b')])
+        cycle2 = FairCycle(echo, ['c', 'c'], MyEmpty)
         with self.assertRaises(MyEmpty):
             consume(cycle2.get, 3)
 

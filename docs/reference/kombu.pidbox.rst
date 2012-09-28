@@ -28,7 +28,7 @@
 
     .. code-block:: python
 
-        >>> connection = kombu.BrokerConnection()
+        >>> connection = kombu.Connection()
         >>> state = {"beat": beat,
                     "connection": connection}
         >>> consumer = mailbox(connection).Node(hostname).listen()

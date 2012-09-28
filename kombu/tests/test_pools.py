@@ -100,24 +100,24 @@ class test_PoolGroup(TestCase):
     def test_getitem_using_global_limit(self):
         pools._used[0] = False
         g = self.MyGroup(limit=pools.use_global_limit)
-        res = g["foo"]
-        self.assertTupleEqual(res, ("foo", pools.get_limit()))
+        res = g['foo']
+        self.assertTupleEqual(res, ('foo', pools.get_limit()))
         self.assertTrue(pools._used[0])
 
     def test_getitem_using_custom_limit(self):
         pools._used[0] = True
         g = self.MyGroup(limit=102456)
-        res = g["foo"]
-        self.assertTupleEqual(res, ("foo", 102456))
+        res = g['foo']
+        self.assertTupleEqual(res, ('foo', 102456))
 
     def test_delitem(self):
         g = self.MyGroup()
-        g["foo"]
-        del(g["foo"])
-        self.assertNotIn("foo", g)
+        g['foo']
+        del(g['foo'])
+        self.assertNotIn('foo', g)
 
     def test_Connections(self):
-        conn = Connection("memory://")
+        conn = Connection('memory://')
         p = pools.connections[conn]
         self.assertTrue(p)
         self.assertIsInstance(p, ConnectionPool)
@@ -125,7 +125,7 @@ class test_PoolGroup(TestCase):
         self.assertEqual(p.limit, pools.get_limit())
 
     def test_Producers(self):
-        conn = Connection("memory://")
+        conn = Connection('memory://')
         p = pools.producers[conn]
         self.assertTrue(p)
         self.assertIsInstance(p, pools.ProducerPool)
@@ -134,7 +134,7 @@ class test_PoolGroup(TestCase):
         self.assertEqual(p.limit, pools.get_limit())
 
     def test_all_groups(self):
-        conn = Connection("memory://")
+        conn = Connection('memory://')
         pools.connections[conn]
 
         self.assertTrue(list(pools._all_pools()))
@@ -148,7 +148,7 @@ class test_PoolGroup(TestCase):
             def clear(self):
                 self.clear_called = True
 
-        p1 = pools.connections["foo"] = Mock()
+        p1 = pools.connections['foo'] = Mock()
         g1 = MyGroup()
         pools._groups.append(g1)
 
@@ -156,7 +156,7 @@ class test_PoolGroup(TestCase):
         p1.force_close_all.assert_called_with()
         self.assertTrue(g1.clear_called)
 
-        p1 = pools.connections["foo"] = Mock()
+        p1 = pools.connections['foo'] = Mock()
         p1.force_close_all.side_effect = KeyError()
         pools.reset()
 
@@ -166,7 +166,7 @@ class test_PoolGroup(TestCase):
         limit = pools.get_limit()
         self.assertEqual(limit, 34576)
 
-        pools.connections[Connection("memory://")]
+        pools.connections[Connection('memory://')]
         pools.set_limit(limit + 1)
         self.assertEqual(pools.get_limit(), limit + 1)
         limit = pools.get_limit()
@@ -181,8 +181,8 @@ class test_PoolGroup(TestCase):
 class test_fun_PoolGroup(TestCase):
 
     def test_connections_behavior(self):
-        c1u = "memory://localhost:123"
-        c2u = "memory://localhost:124"
+        c1u = 'memory://localhost:123'
+        c2u = 'memory://localhost:124'
         c1 = Connection(c1u)
         c2 = Connection(c2u)
         c3 = Connection(c1u)

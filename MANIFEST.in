@@ -9,7 +9,7 @@ include README
 include THANKS
 include TODO
 include setup.cfg
-recursive-include contrib *
+recursive-include extra *
 recursive-include docs *
 recursive-include kombu *.py
 recursive-include requirements *.txt

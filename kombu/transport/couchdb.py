@@ -23,15 +23,15 @@ from kombu.utils import uuid4
 from . import virtual
 
 DEFAULT_PORT = 5984
-DEFAULT_DATABASE = "kombu_default"
+DEFAULT_DATABASE = 'kombu_default'
 
-__author__ = "David Clymer <david@zettazebra.com>"
+__author__ = 'David Clymer <david@zettazebra.com>'
 
 
 def create_message_view(db):
     from couchdb import design
 
-    view = design.ViewDefinition("kombu", "messages", """
+    view = design.ViewDefinition('kombu', 'messages', """
         function (doc) {
           if (doc.queue && doc.payload)
             emit(doc.queue, doc);
@@ -58,7 +58,7 @@ class Channel(virtual.Channel):
 
         item = result.rows[0].value
         self.client.delete(item)
-        return loads(item["payload"])
+        return loads(item['payload'])
 
     def _purge(self, queue):
         result = self._query(queue)
@@ -72,8 +72,8 @@ class Channel(virtual.Channel):
     def _open(self):
         conninfo = self.connection.client
         dbname = conninfo.virtual_host
-        proto = conninfo.ssl and "https" or "http"
-        if not dbname or dbname == "/":
+        proto = conninfo.ssl and 'https' or 'http'
+        if not dbname or dbname == '/':
             dbname = DEFAULT_DATABASE
         port = conninfo.port or DEFAULT_PORT
         server = couchdb.Server('%s://%s:%s/' % (proto,
@@ -94,7 +94,7 @@ class Channel(virtual.Channel):
             # if the message view is not yet set up, we'll need it now.
             create_message_view(self.client)
             self.view_created = True
-        return self.client.view("kombu/messages", key=queue, **kwargs)
+        return self.client.view('kombu/messages', key=queue, **kwargs)
 
     @property
     def client(self):
@@ -118,3 +118,8 @@ class Transport(virtual.Transport):
                       couchdb.PreconditionFailed,
                       couchdb.ResourceConflict,
                       couchdb.ResourceNotFound)
+    driver_type = 'couchdb'
+    driver_name = 'couchdb'
+
+    def driver_version(self):
+        return couchdb.__version__

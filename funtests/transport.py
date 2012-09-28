@@ -9,7 +9,7 @@ import weakref
 
 from nose import SkipTest
 
-from kombu import BrokerConnection
+from kombu import Connection
 from kombu import Exchange, Queue
 from kombu.tests.utils import skip_if_quick
 
@@ -104,7 +104,7 @@ class TransportCase(unittest.TestCase):
             options.setdefault("userid", self.userid)
         if self.password:
             options.setdefault("password", self.password)
-        return BrokerConnection(transport=self.transport, **options)
+        return Connection(transport=self.transport, **options)
 
     def do_connect(self):
         self.connection = self.get_connection(**self.connection_options)

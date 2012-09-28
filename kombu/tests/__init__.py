@@ -9,31 +9,31 @@ from kombu.exceptions import VersionMismatch
 # avoid json implementation inconsistencies.
 try:
     import json  # noqa
-    anyjson.force_implementation("json")
+    anyjson.force_implementation('json')
 except ImportError:
-    anyjson.force_implementation("simplejson")
+    anyjson.force_implementation('simplejson')
 
 
 def find_distribution_modules(name=__name__, file=__file__):
-    current_dist_depth = len(name.split(".")) - 1
+    current_dist_depth = len(name.split('.')) - 1
     current_dist = os.path.join(os.path.dirname(file),
                                 *([os.pardir] * current_dist_depth))
     abs = os.path.abspath(current_dist)
     dist_name = os.path.basename(abs)
 
     for dirpath, dirnames, filenames in os.walk(abs):
-        package = (dist_name + dirpath[len(abs):]).replace("/", ".")
-        if "__init__.py" in filenames:
+        package = (dist_name + dirpath[len(abs):]).replace('/', '.')
+        if '__init__.py' in filenames:
             yield package
             for filename in filenames:
-                if filename.endswith(".py") and filename != "__init__.py":
-                    yield ".".join([package, filename])[:-3]
+                if filename.endswith('.py') and filename != '__init__.py':
+                    yield '.'.join([package, filename])[:-3]
 
 
 def import_all_modules(name=__name__, file=__file__, skip=[]):
     for module in find_distribution_modules(name, file):
         if module not in skip:
-            print("preimporting %r for coverage..." % (module, ))
+            print('preimporting %r for coverage...' % (module, ))
             try:
                 __import__(module)
             except (ImportError, VersionMismatch, AttributeError):
@@ -41,8 +41,8 @@ def import_all_modules(name=__name__, file=__file__, skip=[]):
 
 
 def is_in_coverage():
-    return (os.environ.get("COVER_ALL_MODULES") or
-            "--with-coverage3" in sys.argv)
+    return (os.environ.get('COVER_ALL_MODULES') or
+            '--with-coverage3' in sys.argv)
 
 
 def setup_django_env():
@@ -52,12 +52,12 @@ def setup_django_env():
         return
 
     if not settings.configured:
-        settings.configure(DATABASES={"default": {
-                                "ENGINE": "django.db.backends.sqlite3",
-                                "NAME": ":memory:"}},
-                           DATABASE_ENGINE="sqlite3",
-                           DATABASE_NAME=":memory:",
-                           INSTALLED_APPS=("kombu.transport.django", ))
+        settings.configure(DATABASES={'default': {
+                                'ENGINE': 'django.db.backends.sqlite3',
+                                'NAME': ':memory:'}},
+                           DATABASE_ENGINE='sqlite3',
+                           DATABASE_NAME=':memory:',
+                           INSTALLED_APPS=('kombu.transport.django', ))
 
 
 def setup():

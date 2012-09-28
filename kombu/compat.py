@@ -14,11 +14,13 @@ from __future__ import absolute_import
 
 from itertools import count
 
-from . import entity
 from . import messaging
-from .common import entry_to_queue
+from .entity import Exchange, Queue
 
-__all__ = ["Publisher", "Consumer"]
+__all__ = ['Publisher', 'Consumer']
+
+# XXX compat attribute
+entry_to_queue = Queue.from_dict
 
 
 def _iterconsume(connection, consumer, no_ack=False, limit=None):
@@ -30,9 +32,9 @@ def _iterconsume(connection, consumer, no_ack=False, limit=None):
 
 
 class Publisher(messaging.Producer):
-    exchange = ""
-    exchange_type = "direct"
-    routing_key = ""
+    exchange = ''
+    exchange_type = 'direct'
+    routing_key = ''
     durable = True
     auto_delete = False
     _closed = False
@@ -52,12 +54,12 @@ class Publisher(messaging.Producer):
         if durable is not None:
             self.durable = durable
 
-        if not isinstance(self.exchange, entity.Exchange):
-            self.exchange = entity.Exchange(name=self.exchange,
-                                            type=self.exchange_type,
-                                            routing_key=self.routing_key,
-                                            auto_delete=self.auto_delete,
-                                            durable=self.durable)
+        if not isinstance(self.exchange, Exchange):
+            self.exchange = Exchange(name=self.exchange,
+                                     type=self.exchange_type,
+                                     routing_key=self.routing_key,
+                                     auto_delete=self.auto_delete,
+                                     durable=self.durable)
         super(Publisher, self).__init__(connection, self.exchange, **kwargs)
 
     def send(self, *args, **kwargs):
@@ -79,14 +81,14 @@ class Publisher(messaging.Producer):
 
 
 class Consumer(messaging.Consumer):
-    queue = ""
-    exchange = ""
-    routing_key = ""
-    exchange_type = "direct"
+    queue = ''
+    exchange = ''
+    routing_key = ''
+    exchange_type = 'direct'
     durable = True
     exclusive = False
     auto_delete = False
-    exchange_type = "direct"
+    exchange_type = 'direct'
     _closed = False
 
     def __init__(self, connection, queue=None, exchange=None,
@@ -106,17 +108,17 @@ class Consumer(messaging.Consumer):
         self.exchange_type = exchange_type or self.exchange_type
         self.routing_key = routing_key or self.routing_key
 
-        exchange = entity.Exchange(self.exchange,
-                                   type=self.exchange_type,
-                                   routing_key=self.routing_key,
-                                   auto_delete=self.auto_delete,
-                                   durable=self.durable)
-        queue = entity.Queue(self.queue,
-                             exchange=exchange,
-                             routing_key=self.routing_key,
-                             durable=self.durable,
-                             exclusive=self.exclusive,
-                             auto_delete=self.auto_delete)
+        exchange = Exchange(self.exchange,
+                            type=self.exchange_type,
+                            routing_key=self.routing_key,
+                            auto_delete=self.auto_delete,
+                            durable=self.durable)
+        queue = Queue(self.queue,
+                      exchange=exchange,
+                      routing_key=self.routing_key,
+                      durable=self.durable,
+                      exclusive=self.exclusive,
+                      auto_delete=self.auto_delete)
         super(Consumer, self).__init__(self.backend, queue, **kwargs)
 
     def revive(self, channel):
@@ -147,12 +149,12 @@ class Consumer(messaging.Consumer):
         return message
 
     def process_next(self):
-        raise NotImplementedError("Use fetch(enable_callbacks=True)")
+        raise NotImplementedError('Use fetch(enable_callbacks=True)')
 
     def discard_all(self, filterfunc=None):
         if filterfunc is not None:
             raise NotImplementedError(
-                    "discard_all does not implement filters")
+                    'discard_all does not implement filters')
         return self.purge()
 
     def iterconsume(self, limit=None, no_ack=None):
@@ -188,7 +190,7 @@ class ConsumerSet(messaging.Consumer):
                 queues.extend(consumer.queues)
         if from_dict:
             for queue_name, queue_options in from_dict.items():
-                queues.append(entry_to_queue(queue_name, **queue_options))
+                queues.append(Queue.from_dict(queue_name, **queue_options))
 
         super(ConsumerSet, self).__init__(self.backend, queues, **kwargs)
 
@@ -199,7 +201,7 @@ class ConsumerSet(messaging.Consumer):
         return self.purge()
 
     def add_consumer_from_dict(self, queue, **options):
-        return self.add_queue(entry_to_queue(queue, **options))
+        return self.add_queue_from_dict(queue, **options)
 
     def add_consumer(self, consumer):
         for queue in consumer.queues:

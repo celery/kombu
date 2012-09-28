@@ -12,9 +12,10 @@ from __future__ import absolute_import
 
 from copy import copy
 
+from .connection import maybe_channel
 from .exceptions import NotBoundError
 
-__all__ = ["Object", "MaybeChannelBound"]
+__all__ = ['Object', 'MaybeChannelBound']
 
 
 def unpickle_dict(cls, kwargs):
@@ -76,7 +77,7 @@ class MaybeChannelBound(Object):
     def maybe_bind(self, channel):
         """Bind instance to channel if not already bound."""
         if not self.is_bound and channel:
-            self._channel = channel
+            self._channel = maybe_channel(channel)
             self.when_bound()
             self._is_bound = True
         return self
@@ -84,7 +85,7 @@ class MaybeChannelBound(Object):
     def revive(self, channel):
         """Revive channel after the connection has been re-established.
 
-        Used by :meth:`~kombu.connection.BrokerConnection.ensure`.
+        Used by :meth:`~kombu.Connection.ensure`.
 
         """
         if self.is_bound:
@@ -95,11 +96,11 @@ class MaybeChannelBound(Object):
         """Callback called when the class is bound."""
         pass
 
-    def __repr__(self, item=""):
+    def __repr__(self, item=''):
         if self.is_bound:
-            return "<bound %s of %s>" % (item or self.__class__.__name__,
+            return '<bound %s of %s>' % (item or self.__class__.__name__,
                                          self.channel)
-        return "<unbound %s>" % (item, )
+        return '<unbound %s>' % (item, )
 
     @property
     def is_bound(self):

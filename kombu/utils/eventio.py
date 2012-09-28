@@ -48,7 +48,7 @@ except ImportError:
 
 from kombu.syn import detect_environment
 
-__all__ = ["poll"]
+__all__ = ['poll']
 
 READ = POLL_READ = 0x001
 WRITE = POLL_WRITE = 0x004
@@ -95,12 +95,14 @@ class _epoll(Poller):
             self._epoll.unregister(fd)
         except socket.error:
             pass
+        except ValueError:
+            pass
         except IOError, exc:
             if get_errno(exc) != errno.ENOENT:
                 raise
 
     def _poll(self, timeout):
-        return self._epoll.poll(timeout or -1)
+        return self._epoll.poll(timeout if timeout is not None else -1)
 
     def close(self):
         self._epoll.close()
@@ -229,7 +231,7 @@ class _select(Poller):
 
 
 def _get_poller():
-    if detect_environment() in ("eventlet", "gevent"):
+    if detect_environment() != 'default':
         # greenlet
         return _select
     elif epoll:

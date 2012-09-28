@@ -10,7 +10,7 @@
     Connection
     ----------
 
-    .. autoclass:: BrokerConnection
+    .. autoclass:: Connection
 
         .. admonition:: Attributes
 
@@ -44,8 +44,8 @@
 
     .. seealso::
 
-        The shortcut methods :meth:`BrokerConnection.Pool` and
-        :meth:`BrokerConnection.ChannelPool` is the recommended way
+        The shortcut methods :meth:`Connection.Pool` and
+        :meth:`Connection.ChannelPool` is the recommended way
         to instantiate these classes.
 
     .. autoclass:: ConnectionPool

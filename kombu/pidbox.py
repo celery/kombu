@@ -20,7 +20,9 @@ from .entity import Exchange, Queue
 from .messaging import Consumer, Producer
 from .utils import kwdict, uuid
 
-__all__ = ["Node", "Mailbox"]
+REPLY_QUEUE_EXPIRES = 10
+
+__all__ = ['Node', 'Mailbox']
 
 
 class Node(object):
@@ -51,7 +53,7 @@ class Node(object):
         self.handlers = handlers
 
     def Consumer(self, channel=None, **options):
-        options.setdefault("no_ack", True)
+        options.setdefault('no_ack', True)
         return Consumer(channel or self.channel,
                         [self.mailbox.get_queue(self.hostname)],
                         **options)
@@ -67,15 +69,6 @@ class Node(object):
         consumer.consume()
         return consumer
 
-    def dispatch_from_message(self, message):
-        message = dict(message)
-        method = message["method"]
-        destination = message.get("destination")
-        reply_to = message.get("reply_to")
-        arguments = message.get("arguments")
-        if not destination or self.hostname in destination:
-            return self.dispatch(method, arguments, reply_to)
-
     def dispatch(self, method, arguments=None, reply_to=None):
         arguments = arguments or {}
         handle = reply_to and self.handle_call or self.handle_cast
@@ -84,12 +77,12 @@ class Node(object):
         except SystemExit:
             raise
         except Exception, exc:
-            reply = {"error": repr(exc)}
+            reply = {'error': repr(exc)}
 
         if reply_to:
             self.reply({self.hostname: reply},
-                       exchange=reply_to["exchange"],
-                       routing_key=reply_to["routing_key"])
+                       exchange=reply_to['exchange'],
+                       routing_key=reply_to['routing_key'])
         return reply
 
     def handle(self, method, arguments={}):
@@ -101,8 +94,14 @@ class Node(object):
     def handle_cast(self, method, arguments):
         return self.handle(method, arguments)
 
-    def handle_message(self, body, message):
-        return self.dispatch_from_message(body)
+    def handle_message(self, body, message=None):
+        method = body['method']
+        destination = body.get('destination')
+        reply_to = body.get('reply_to')
+        arguments = body.get('arguments')
+        if not destination or self.hostname in destination:
+            return self.dispatch(method, arguments, reply_to)
+    dispatch_from_message = handle_message
 
     def reply(self, data, exchange, routing_key, **kwargs):
         self.mailbox._publish_reply(data, exchange, routing_key,
@@ -111,8 +110,8 @@ class Node(object):
 
 class Mailbox(object):
     node_cls = Node
-    exchange_fmt = "%s.pidbox"
-    reply_exchange_fmt = "reply.%s.pidbox"
+    exchange_fmt = '%s.pidbox'
+    reply_exchange_fmt = 'reply.%s.pidbox'
 
     #: Name of application.
     namespace = None
@@ -121,7 +120,7 @@ class Mailbox(object):
     connection = None
 
     #: Exchange type (usually direct, or fanout for broadcast).
-    type = "direct"
+    type = 'direct'
 
     #: mailbox exchange (init by constructor).
     exchange = None
@@ -129,7 +128,7 @@ class Mailbox(object):
     #: exchange to send replies to.
     reply_exchange = None
 
-    def __init__(self, namespace, type="direct", connection=None):
+    def __init__(self, namespace, type='direct', connection=None):
         self.namespace = namespace
         self.connection = connection
         self.type = type
@@ -166,22 +165,25 @@ class Mailbox(object):
                                channel=channel)
 
     def get_reply_queue(self, ticket):
-        return Queue("%s.%s" % (ticket, self.reply_exchange.name),
+        return Queue('%s.%s' % (ticket, self.reply_exchange.name),
                      exchange=self.reply_exchange,
                      routing_key=ticket,
                      durable=False,
-                     auto_delete=True)
+                     auto_delete=True,
+                     queue_arguments={
+                         'x-expires': int(REPLY_QUEUE_EXPIRES * 1000),
+                     })
 
     def get_queue(self, hostname):
-        return Queue("%s.%s.pidbox" % (hostname, self.namespace),
+        return Queue('%s.%s.pidbox' % (hostname, self.namespace),
                      exchange=self.exchange,
                      durable=False,
                      auto_delete=True)
 
     def _publish_reply(self, reply, exchange, routing_key, channel=None):
         chan = channel or self.connection.default_channel
-        exchange = Exchange(exchange, exchange_type="direct",
-                                      delivery_mode="transient",
+        exchange = Exchange(exchange, exchange_type='direct',
+                                      delivery_mode='transient',
                                       durable=False)
         producer = Producer(chan, exchange=exchange,
                                   auto_declare=True)
@@ -189,12 +191,12 @@ class Mailbox(object):
 
     def _publish(self, type, arguments, destination=None, reply_ticket=None,
             channel=None):
-        message = {"method": type,
-                   "arguments": arguments,
-                   "destination": destination}
+        message = {'method': type,
+                   'arguments': arguments,
+                   'destination': destination}
         if reply_ticket:
-            message["reply_to"] = {"exchange": self.reply_exchange.name,
-                                   "routing_key": reply_ticket}
+            message['reply_to'] = {'exchange': self.reply_exchange.name,
+                                   'routing_key': reply_ticket}
         chan = channel or self.connection.default_channel
         producer = Producer(chan, exchange=self.exchange)
         producer.publish(message)
@@ -203,7 +205,7 @@ class Mailbox(object):
             reply=False, timeout=1, limit=None, callback=None, channel=None):
         if destination is not None and \
                 not isinstance(destination, (list, tuple)):
-            raise ValueError("destination must be a list/tuple not %s" % (
+            raise ValueError('destination must be a list/tuple not %s' % (
                     type(destination)))
 
         arguments = arguments or {}
@@ -240,23 +242,25 @@ class Mailbox(object):
             responses.append(body)
 
         consumer.register_callback(on_message)
-        with consumer:
-            for i in limit and range(limit) or count():
-                try:
-                    self.connection.drain_events(timeout=timeout)
-                except socket.timeout:
-                    break
-            return responses
-        chan.after_reply_message_received(queue.name)
+        try:
+            with consumer:
+                for i in limit and range(limit) or count():
+                    try:
+                        self.connection.drain_events(timeout=timeout)
+                    except socket.timeout:
+                        break
+                return responses
+        finally:
+            chan.after_reply_message_received(queue.name)
 
     def _get_exchange(self, namespace, type):
         return Exchange(self.exchange_fmt % namespace,
                         type=type,
                         durable=False,
-                        delivery_mode="transient")
+                        delivery_mode='transient')
 
     def _get_reply_exchange(self, namespace):
         return Exchange(self.reply_exchange_fmt % namespace,
-                        type="direct",
+                        type='direct',
                         durable=False,
-                        delivery_mode="transient")
+                        delivery_mode='transient')

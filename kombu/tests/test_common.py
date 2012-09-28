@@ -16,16 +16,16 @@ from .utils import ContextMock, Mock, MockPool
 class test_Broadcast(TestCase):
 
     def test_arguments(self):
-        q = Broadcast(name="test_Broadcast")
-        self.assertTrue(q.name.startswith("bcast."))
-        self.assertEqual(q.alias, "test_Broadcast")
+        q = Broadcast(name='test_Broadcast')
+        self.assertTrue(q.name.startswith('bcast.'))
+        self.assertEqual(q.alias, 'test_Broadcast')
         self.assertTrue(q.auto_delete)
-        self.assertEqual(q.exchange.name, "test_Broadcast")
-        self.assertEqual(q.exchange.type, "fanout")
+        self.assertEqual(q.exchange.name, 'test_Broadcast')
+        self.assertEqual(q.exchange.type, 'fanout')
 
-        q = Broadcast("test_Broadcast", "explicit_queue_name")
-        self.assertEqual(q.name, "explicit_queue_name")
-        self.assertEqual(q.exchange.name, "test_Broadcast")
+        q = Broadcast('test_Broadcast', 'explicit_queue_name')
+        self.assertEqual(q.name, 'explicit_queue_name')
+        self.assertEqual(q.exchange.name, 'test_Broadcast')
 
 
 class test_maybe_declare(TestCase):
@@ -36,7 +36,9 @@ class test_maybe_declare(TestCase):
         client.declared_entities = set()
         entity = Mock()
         entity.can_cache_declaration = True
+        entity.auto_delete = False
         entity.is_bound = True
+        entity.channel = channel
 
         maybe_declare(entity, channel)
         self.assertEqual(entity.declare.call_count, 1)
@@ -51,6 +53,8 @@ class test_maybe_declare(TestCase):
         entity = Mock()
         entity.can_cache_declaration = True
         entity.is_bound = False
+        entity.bind.return_value = entity
+        entity.bind.return_value.channel = channel
 
         maybe_declare(entity, channel)
         entity.bind.assert_called_with(channel)
@@ -60,6 +64,7 @@ class test_maybe_declare(TestCase):
         entity = Mock()
         entity.can_cache_declaration = True
         entity.is_bound = True
+        entity.channel = channel
 
         maybe_declare(entity, channel, retry=True)
         self.assertTrue(channel.connection.client.ensure.call_count)
@@ -69,26 +74,29 @@ class test_replies(TestCase):
 
     def test_send_reply(self):
         req = Mock()
-        req.content_type = "application/json"
-        req.properties = {"reply_to": "hello",
-                          "correlation_id": "world"}
+        req.content_type = 'application/json'
+        req.properties = {'reply_to': 'hello',
+                          'correlation_id': 'world'}
+        channel = Mock()
         exchange = Mock()
         exchange.is_bound = True
+        exchange.channel = channel
         producer = Mock()
+        producer.channel = channel
         producer.channel.connection.client.declared_entities = set()
-        send_reply(exchange, req, {"hello": "world"}, producer)
+        send_reply(exchange, req, {'hello': 'world'}, producer)
 
         self.assertTrue(producer.publish.call_count)
         args = producer.publish.call_args
-        self.assertDictEqual(args[0][0], {"hello": "world"})
-        self.assertDictEqual(args[1], {"exchange": exchange,
-                                       "routing_key": "hello",
-                                       "correlation_id": "world",
-                                       "serializer": "json"})
+        self.assertDictEqual(args[0][0], {'hello': 'world'})
+        self.assertDictEqual(args[1], {'exchange': exchange,
+                                       'routing_key': 'hello',
+                                       'correlation_id': 'world',
+                                       'serializer': 'json'})
 
         exchange.declare.assert_called_with()
 
-    @patch("kombu.common.ipublish")
+    @patch('kombu.common.ipublish')
     def test_isend_reply(self, ipublish):
         pool, exchange, req, msg, props = (Mock(), Mock(), Mock(),
                                            Mock(), Mock())
@@ -97,7 +105,7 @@ class test_replies(TestCase):
         ipublish.assert_called_with(pool, send_reply,
                                     (exchange, req, msg), props)
 
-    @patch("kombu.common.itermessages")
+    @patch('kombu.common.itermessages')
     def test_collect_replies_with_ack(self, itermessages):
         conn, channel, queue = Mock(), Mock(), Mock()
         body, message = Mock(), Mock()
@@ -113,7 +121,7 @@ class test_replies(TestCase):
 
         channel.after_reply_message_received.assert_called_with(queue.name)
 
-    @patch("kombu.common.itermessages")
+    @patch('kombu.common.itermessages')
     def test_collect_replies_no_ack(self, itermessages):
         conn, channel, queue = Mock(), Mock(), Mock()
         body, message = Mock(), Mock()
@@ -124,7 +132,7 @@ class test_replies(TestCase):
         itermessages.assert_called_with(conn, channel, queue, no_ack=True)
         self.assertFalse(message.ack.called)
 
-    @patch("kombu.common.itermessages")
+    @patch('kombu.common.itermessages')
     def test_collect_replies_no_replies(self, itermessages):
         conn, channel, queue = Mock(), Mock(), Mock()
         itermessages.return_value = []
@@ -137,9 +145,9 @@ class test_replies(TestCase):
 
 class test_insured(TestCase):
 
-    @patch("kombu.common.insured_logger")
+    @patch('kombu.common.insured_logger')
     def test_ensure_errback(self, insured_logger):
-        common._ensure_errback("foo", 30)
+        common._ensure_errback('foo', 30)
         self.assertTrue(insured_logger.error.called)
 
     def test_revive_connection(self):
@@ -158,7 +166,7 @@ class test_insured(TestCase):
 
         common.revive_producer(Mock(), channel, None)
 
-    def get_insured_mocks(self, insured_returns=("works", "ignored")):
+    def get_insured_mocks(self, insured_returns=('works', 'ignored')):
         conn = ContextMock()
         pool = MockPool(conn)
         fun = Mock()
@@ -169,28 +177,28 @@ class test_insured(TestCase):
     def test_insured(self):
         conn, pool, fun, insured = self.get_insured_mocks()
 
-        ret = common.insured(pool, fun, (2, 2), {"foo": "bar"})
-        self.assertEqual(ret, "works")
+        ret = common.insured(pool, fun, (2, 2), {'foo': 'bar'})
+        self.assertEqual(ret, 'works')
         conn.ensure_connection.assert_called_with(
                 errback=common._ensure_errback)
 
         self.assertTrue(insured.called)
         i_args, i_kwargs = insured.call_args
         self.assertTupleEqual(i_args, (2, 2))
-        self.assertDictEqual(i_kwargs, {"foo": "bar",
-                                        "connection": conn})
+        self.assertDictEqual(i_kwargs, {'foo': 'bar',
+                                        'connection': conn})
 
         self.assertTrue(conn.autoretry.called)
         ar_args, ar_kwargs = conn.autoretry.call_args
         self.assertTupleEqual(ar_args, (fun, conn.default_channel))
-        self.assertTrue(ar_kwargs.get("on_revive"))
-        self.assertTrue(ar_kwargs.get("errback"))
+        self.assertTrue(ar_kwargs.get('on_revive'))
+        self.assertTrue(ar_kwargs.get('errback'))
 
     def test_insured_custom_errback(self):
         conn, pool, fun, insured = self.get_insured_mocks()
 
         custom_errback = Mock()
-        common.insured(pool, fun, (2, 2), {"foo": "bar"},
+        common.insured(pool, fun, (2, 2), {'foo': 'bar'},
                        errback=custom_errback)
         conn.ensure_connection.assert_called_with(errback=custom_errback)
 
@@ -206,26 +214,26 @@ class test_insured(TestCase):
 
     def test_ipublish(self):
         producer, pool, fun, ensure_returns = self.get_ipublish_args()
-        ensure_returns.return_value = "works"
+        ensure_returns.return_value = 'works'
 
-        ret = common.ipublish(pool, fun, (2, 2), {"foo": "bar"})
-        self.assertEqual(ret, "works")
+        ret = common.ipublish(pool, fun, (2, 2), {'foo': 'bar'})
+        self.assertEqual(ret, 'works')
 
         self.assertTrue(producer.connection.ensure.called)
         e_args, e_kwargs = producer.connection.ensure.call_args
         self.assertTupleEqual(e_args, (producer, fun))
-        self.assertTrue(e_kwargs.get("on_revive"))
-        self.assertEqual(e_kwargs.get("errback"), common._ensure_errback)
+        self.assertTrue(e_kwargs.get('on_revive'))
+        self.assertEqual(e_kwargs.get('errback'), common._ensure_errback)
 
-        ensure_returns.assert_called_with(2, 2, foo="bar", producer=producer)
+        ensure_returns.assert_called_with(2, 2, foo='bar', producer=producer)
 
     def test_ipublish_with_custom_errback(self):
         producer, pool, fun, _ = self.get_ipublish_args()
 
         errback = Mock()
-        common.ipublish(pool, fun, (2, 2), {"foo": "bar"}, errback=errback)
+        common.ipublish(pool, fun, (2, 2), {'foo': 'bar'}, errback=errback)
         _, e_kwargs = producer.connection.ensure.call_args
-        self.assertEqual(e_kwargs.get("errback"), errback)
+        self.assertEqual(e_kwargs.get('errback'), errback)
 
 
 class MockConsumer(object):
@@ -254,17 +262,17 @@ class test_itermessages(TestCase):
                 raise socket.timeout()
             for consumer in MockConsumer.consumers:
                 for callback in consumer.callbacks:
-                    callback("body", "message")
+                    callback('body', 'message')
 
     def test_default(self):
         conn = self.MockConnection()
         channel = Mock()
         channel.connection.client = conn
-        it = common.itermessages(conn, channel, "q", limit=1,
+        it = common.itermessages(conn, channel, 'q', limit=1,
                                  Consumer=MockConsumer)
 
         ret = it.next()
-        self.assertTupleEqual(ret, ("body", "message"))
+        self.assertTupleEqual(ret, ('body', 'message'))
 
         with self.assertRaises(StopIteration):
             it.next()
@@ -274,19 +282,19 @@ class test_itermessages(TestCase):
         conn.should_raise_timeout = True
         channel = Mock()
         channel.connection.client = conn
-        it = common.itermessages(conn, channel, "q", limit=1,
+        it = common.itermessages(conn, channel, 'q', limit=1,
                                  Consumer=MockConsumer)
 
         with self.assertRaises(StopIteration):
             it.next()
 
-    @patch("kombu.common.deque")
+    @patch('kombu.common.deque')
     def test_when_raises_IndexError(self, deque):
         deque_instance = deque.return_value = Mock()
         deque_instance.popleft.side_effect = IndexError()
         conn = self.MockConnection()
         channel = Mock()
-        it = common.itermessages(conn, channel, "q", limit=1,
+        it = common.itermessages(conn, channel, 'q', limit=1,
                                  Consumer=MockConsumer)
 
         with self.assertRaises(StopIteration):

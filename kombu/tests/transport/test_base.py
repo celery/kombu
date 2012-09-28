@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 from __future__ import with_statement
 
-from kombu import BrokerConnection, Consumer, Producer, Queue
+from kombu import Connection, Consumer, Producer, Queue
 from kombu.transport.base import Message, StdChannel, Transport
 
 from kombu.tests.utils import TestCase
@@ -11,13 +11,13 @@ from kombu.tests.utils import Mock
 class test_StdChannel(TestCase):
 
     def setUp(self):
-        self.conn = BrokerConnection("memory://")
+        self.conn = Connection('memory://')
         self.channel = self.conn.channel()
         self.channel.queues.clear()
         self.conn.connection.state.clear()
 
     def test_Consumer(self):
-        q = Queue("foo")
+        q = Queue('foo')
         print(self.channel.queues)
         cons = self.channel.Consumer(q)
         self.assertIsInstance(cons, Consumer)
@@ -28,33 +28,33 @@ class test_StdChannel(TestCase):
         self.assertIsInstance(prod, Producer)
         self.assertIs(prod.channel, self.channel)
 
-    def test_interface_list_bindings(self):
+    def test_interface_get_bindings(self):
         with self.assertRaises(NotImplementedError):
-            StdChannel().list_bindings()
+            StdChannel().get_bindings()
 
     def test_interface_after_reply_message_received(self):
         self.assertIsNone(StdChannel().after_reply_message_received(
-                Queue("foo")))
+                Queue('foo')))
 
 
 class test_Message(TestCase):
 
     def setUp(self):
-        self.conn = BrokerConnection("memory://")
+        self.conn = Connection('memory://')
         self.channel = self.conn.channel()
         self.message = Message(self.channel, delivery_tag=313)
 
     def test_ack_respects_no_ack_consumers(self):
-        self.channel.no_ack_consumers = set(["abc"])
-        self.message.delivery_info["consumer_tag"] = "abc"
+        self.channel.no_ack_consumers = set(['abc'])
+        self.message.delivery_info['consumer_tag'] = 'abc'
         ack = self.channel.basic_ack = Mock()
 
         self.message.ack()
-        self.assertNotEqual(self.message._state, "ACK")
+        self.assertNotEqual(self.message._state, 'ACK')
         self.assertFalse(ack.called)
 
     def test_ack_missing_consumer_tag(self):
-        self.channel.no_ack_consumers = set(["abc"])
+        self.channel.no_ack_consumers = set(['abc'])
         self.message.delivery_info = {}
         ack = self.channel.basic_ack = Mock()
 
@@ -63,7 +63,7 @@ class test_Message(TestCase):
 
     def test_ack_not_no_ack(self):
         self.channel.no_ack_consumers = set()
-        self.message.delivery_info["consumer_tag"] = "abc"
+        self.message.delivery_info['consumer_tag'] = 'abc'
         ack = self.channel.basic_ack = Mock()
 
         self.message.ack()
@@ -76,7 +76,7 @@ class test_Message(TestCase):
 
     def test_ack_log_error_when_error(self):
         ack = self.message.ack = Mock()
-        ack.side_effect = KeyError("foo")
+        ack.side_effect = KeyError('foo')
         logger = Mock()
         self.message.ack_log_error(logger, KeyError)
         ack.assert_called_with()

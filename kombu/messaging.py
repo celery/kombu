@@ -12,12 +12,16 @@ from __future__ import absolute_import
 
 from itertools import count
 
+from .connection import maybe_channel
 from .entity import Exchange, Queue
 from .compression import compress
 from .serialization import encode
 from .utils import maybe_list
 
-__all__ = ["Exchange", "Queue", "Producer", "Consumer"]
+__all__ = ['Exchange', 'Queue', 'Producer', 'Consumer']
+
+# XXX compat attribute
+entry_to_queue = Queue.from_dict
 
 
 class Producer(object):
@@ -45,7 +49,7 @@ class Producer(object):
     exchange = None
 
     # Default routing key.
-    routing_key = ""
+    routing_key = ''
 
     #: Default serializer to use. Default is JSON.
     serializer = None
@@ -67,7 +71,7 @@ class Producer(object):
         self.channel = channel
         self.exchange = exchange or self.exchange
         if self.exchange is None:
-            self.exchange = Exchange("")
+            self.exchange = Exchange('')
         self.routing_key = routing_key or self.routing_key
         self.serializer = serializer or self.serializer
         self.compression = compression or self.compression
@@ -141,10 +145,6 @@ class Producer(object):
         if isinstance(exchange, Exchange):
             exchange = exchange.name
 
-        if declare:
-            [self.maybe_declare(entity, retry, **retry_policy)
-                    for entity in declare]
-
         body, content_type, content_encoding = self._prepare(
                 body, serializer, content_type, content_encoding,
                 compression, headers)
@@ -155,25 +155,30 @@ class Producer(object):
                                         content_encoding,
                                         headers=headers,
                                         properties=properties)
-        publish = self.exchange.publish
+        publish = self._publish
         if retry:
-            publish = self.connection.ensure(self, self.exchange.publish,
-                                             **retry_policy)
-        return publish(message, routing_key, mandatory, immediate, exchange)
+            publish = self.connection.ensure(self, publish, **retry_policy)
+        return publish(message, routing_key, mandatory,
+                       immediate, exchange, declare)
+
+    def _publish(self, message, routing_key, mandatory, immediate, exchange,
+            declare):
+        if declare:
+            maybe_declare = self.maybe_declare
+            [maybe_declare(entity) for entity in declare]
+        return self.exchange.publish(message, routing_key,
+                                     mandatory, immediate, exchange)
 
     def revive(self, channel):
         """Revive the producer after connection loss."""
-        from .connection import BrokerConnection
-        if isinstance(channel, BrokerConnection):
-            channel = channel.default_channel
-        self.channel = channel
+        channel = self.channel = maybe_channel(channel)
         self.exchange = self.exchange(channel)
         self.exchange.revive(channel)
 
         if self.auto_declare:
             self.declare()
         if self.on_return:
-            self.channel.events["basic_return"].append(self.on_return)
+            self.channel.events['basic_return'].append(self.on_return)
 
     def __enter__(self):
         return self
@@ -208,7 +213,7 @@ class Producer(object):
                 content_encoding = 'binary'
 
         if compression:
-            body, headers["compression"] = compress(body, compression)
+            body, headers['compression'] = compress(body, compression)
 
         return body, content_type, content_encoding
 
@@ -270,6 +275,7 @@ class Consumer(object):
         self.no_ack = self.no_ack if no_ack is None else no_ack
         self.callbacks = (self.callbacks or [] if callbacks is None
                                                else callbacks)
+        self._active_tags = {}
         if auto_declare is not None:
             self.auto_declare = auto_declare
         if on_decode_error is not None:
@@ -280,11 +286,8 @@ class Consumer(object):
 
     def revive(self, channel):
         """Revive consumer after connection loss."""
-        self._active_tags = {}
-        from .connection import BrokerConnection
-        if isinstance(channel, BrokerConnection):
-            channel = channel.default_channel
-        self.channel = channel
+        self._active_tags.clear()
+        channel = self.channel = maybe_channel(channel)
         self.queues = [queue(self.channel)
                             for queue in maybe_list(self.queues)]
         for queue in self.queues:
@@ -328,6 +331,9 @@ class Consumer(object):
             queue.declare()
         self.queues.append(queue)
         return queue
+
+    def add_queue_from_dict(self, queue, **options):
+        return self.add_queue(Queue.from_dict(queue, **options))
 
     def consume(self, no_ack=None):
         if self.queues:
@@ -448,7 +454,7 @@ class Consumer(object):
         """
         callbacks = self.callbacks
         if not callbacks:
-            raise NotImplementedError("Consumer does not have any callback")
+            raise NotImplementedError('Consumer does not have any callback')
         [callback(body, message) for callback in callbacks]
 
     def _basic_consume(self, queue, consumer_tag=None,
@@ -468,7 +474,7 @@ class Consumer(object):
     def _receive_callback(self, message):
         channel = self.channel
         try:
-            m2p = getattr(channel, "message_to_python", None)
+            m2p = getattr(channel, 'message_to_python', None)
             if m2p:
                 message = m2p(message)
             decoded = message.decode()
@@ -480,7 +486,7 @@ class Consumer(object):
             self.receive(decoded, message)
 
     def __repr__(self):
-        return "<Consumer: %s>" % (self.queues, )
+        return '<Consumer: %s>' % (self.queues, )
 
     @property
     def connection(self):

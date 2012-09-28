@@ -10,6 +10,7 @@ amqplib transport.
 """
 from __future__ import absolute_import
 
+import errno
 import socket
 
 try:
@@ -17,6 +18,7 @@ try:
 except ImportError:
     class SSLError(Exception):  # noqa
         pass
+from struct import unpack
 
 from amqplib import client_0_8 as amqp
 from amqplib.client_0_8 import transport
@@ -26,32 +28,61 @@ from amqplib.client_0_8.exceptions import AMQPChannelException
 
 from kombu.exceptions import StdChannelError
 from kombu.utils.encoding import str_to_bytes
+from kombu.utils.amq_manager import get_manager
 
 from . import base
 
 DEFAULT_PORT = 5672
-HAS_MSG_PEEK = hasattr(socket, "MSG_PEEK")
+HAS_MSG_PEEK = hasattr(socket, 'MSG_PEEK')
 
 # amqplib's handshake mistakenly identifies as protocol version 1191,
 # this breaks in RabbitMQ tip, which no longer falls back to
 # 0-8 for unknown ids.
-transport.AMQP_PROTOCOL_HEADER = str_to_bytes("AMQP\x01\x01\x08\x00")
+transport.AMQP_PROTOCOL_HEADER = str_to_bytes('AMQP\x01\x01\x08\x00')
 
 
 # - fixes warnings when socket is not connected.
-class _TCPTransport(transport.TCPTransport):
+class TCPTransport(transport.TCPTransport):
+
+    def read_frame(self):
+        frame_type, channel, size = unpack('>BHI', self._read(7, True))
+        payload = self._read(size)
+        ch = ord(self._read(1))
+        if ch == 206:  # '\xce'
+            return frame_type, channel, payload
+        else:
+            raise Exception(
+                'Framing Error, received 0x%02x while expecting 0xce' % ch)
+
+    def _read(self, n, initial=False):
+        while len(self._read_buffer) < n:
+            try:
+                s = self.sock.recv(65536)
+            except socket.error, exc:
+                if not initial and exc.errno in (errno.EAGAIN, errno.EINTR):
+                    continue
+                raise
+            if not s:
+                raise IOError('Socket closed')
+            self._read_buffer += s
+
+        result = self._read_buffer[:n]
+        self._read_buffer = self._read_buffer[n:]
+
+        return result
 
     def __del__(self):
         try:
-            transport._AbstractTransport.__del__(self)
-        except socket.error:
+            self.close()
+        except Exception:
             pass
         finally:
             self.sock = None
-transport.TCPTransport = _TCPTransport
+
+transport.TCPTransport = TCPTransport
 
 
-class _SSLTransport(transport.SSLTransport):
+class SSLTransport(transport.SSLTransport):
 
     def __init__(self, host, connect_timeout, ssl):
         if isinstance(ssl, dict):
@@ -59,7 +90,41 @@ class _SSLTransport(transport.SSLTransport):
         self.sslobj = None
 
         transport._AbstractTransport.__init__(self, host, connect_timeout)
-transport.SSLTransport = _SSLTransport
+
+    def read_frame(self):
+        frame_type, channel, size = unpack('>BHI', self._read(7, True))
+        payload = self._read(size)
+        ch = ord(self._read(1))
+        if ch == 206:  # '\xce'
+            return frame_type, channel, payload
+        else:
+            raise Exception(
+                'Framing Error, received 0x%02x while expecting 0xce' % ch)
+
+    def _read(self, n, initial=False):
+        result = ''
+
+        while len(result) < n:
+            try:
+                s = self.sslobj.read(n - len(result))
+            except socket.error, exc:
+                if not initial and exc.errno in (errno.EAGAIN, errno.EINTR):
+                    continue
+                raise
+            if not s:
+                raise IOError('Socket closed')
+            result += s
+
+        return result
+
+    def __del__(self):
+        try:
+            self.close()
+        except Exception:
+            pass
+        finally:
+            self.sock = None
+transport.SSLTransport = SSLTransport
 
 
 class Connection(amqp.Connection):  # pragma: no cover
@@ -79,8 +144,8 @@ class Connection(amqp.Connection):  # pragma: no cover
         routing_key = args.read_shortstr()
 
         exc = AMQPChannelException(reply_code, reply_text, (50, 60))
-        if channel.events["basic_return"]:
-            for callback in channel.events["basic_return"]:
+        if channel.events['basic_return']:
+            for callback in channel.events['basic_return']:
                 callback(exc, exchange, routing_key, msg)
         else:
             raise exc
@@ -128,7 +193,7 @@ class Connection(amqp.Connection):  # pragma: no cover
                 return self.method_reader.read_method()
             except SSLError, exc:
                 # http://bugs.python.org/issue10272
-                if "timed out" in str(exc):
+                if 'timed out' in str(exc):
                     raise socket.timeout()
                 raise
         finally:
@@ -185,17 +250,17 @@ class Message(base.Message):
         super(Message, self).__init__(channel,
                 body=msg.body,
                 delivery_tag=msg.delivery_tag,
-                content_type=props.get("content_type"),
-                content_encoding=props.get("content_encoding"),
+                content_type=props.get('content_type'),
+                content_encoding=props.get('content_encoding'),
                 delivery_info=msg.delivery_info,
                 properties=msg.properties,
-                headers=props.get("application_headers") or {},
+                headers=props.get('application_headers') or {},
                 **kwargs)
 
 
 class Channel(_Channel, base.StdChannel):
     Message = Message
-    events = {"basic_return": []}
+    events = {'basic_return': []}
 
     def __init__(self, *args, **kwargs):
         self.no_ack_consumers = set()
@@ -223,7 +288,7 @@ class Channel(_Channel, base.StdChannel):
 
     def basic_consume(self, *args, **kwargs):
         consumer_tag = super(Channel, self).basic_consume(*args, **kwargs)
-        if kwargs["no_ack"]:
+        if kwargs['no_ack']:
             self.no_ack_consumers.add(consumer_tag)
         return consumer_tag
 
@@ -247,6 +312,9 @@ class Transport(base.Transport):
     channel_errors = (StdChannelError, AMQPChannelException, )
 
     nb_keep_draining = True
+    driver_name = "amqplib"
+    driver_type = "amqp"
+    supports_ev = True
 
     def __init__(self, client, **kwargs):
         self.client = client
@@ -264,8 +332,8 @@ class Transport(base.Transport):
         for name, default_value in self.default_connection_params.items():
             if not getattr(conninfo, name, None):
                 setattr(conninfo, name, default_value)
-        if conninfo.hostname == "localhost":
-            conninfo.hostname = "127.0.0.1"
+        if conninfo.hostname == 'localhost':
+            conninfo.hostname = '127.0.0.1'
         conn = self.Connection(host=conninfo.host,
                                userid=conninfo.userid,
                                password=conninfo.password,
@@ -311,20 +379,9 @@ class Transport(base.Transport):
 
     @property
     def default_connection_params(self):
-        return {"userid": "guest", "password": "guest",
-                "port": self.default_port,
-                "hostname": "localhost", "login_method": "AMQPLAIN"}
+        return {'userid': 'guest', 'password': 'guest',
+                'port': self.default_port,
+                'hostname': 'localhost', 'login_method': 'AMQPLAIN'}
 
-    def get_manager(self, hostname=None, port=None, userid=None,
-            password=None):
-        import pyrabbit
-        c = self.client
-        opt = c.transport_options.get
-        host = (hostname if hostname is not None
-                         else opt("manager_hostname", c.hostname))
-        port = port if port is not None else opt("manager_port", 55672)
-        return pyrabbit.Client("%s:%s" % (host, port),
-            userid if userid is not None
-                   else opt("manager_userid", c.userid),
-            password if password is not None
-                   else opt("manager_password", c.password))
+    def get_manager(self, *args, **kwargs):
+        return get_manager(self.client, *args, **kwargs)

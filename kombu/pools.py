@@ -18,13 +18,13 @@ from .connection import Resource
 from .messaging import Producer
 from .utils import EqualityDict
 
-__all__ = ["ProducerPool", "PoolGroup", "register_group",
-           "connections", "producers", "get_limit", "set_limit", "reset"]
+__all__ = ['ProducerPool', 'PoolGroup', 'register_group',
+           'connections', 'producers', 'get_limit', 'set_limit', 'reset']
 _limit = [200]
 _used = [False]
 _groups = []
 use_global_limit = object()
-disable_limit_protection = os.environ.get("KOMBU_DISABLE_LIMIT_PROTECTION")
+disable_limit_protection = os.environ.get('KOMBU_DISABLE_LIMIT_PROTECTION')
 
 
 class ProducerPool(Resource):
@@ -32,7 +32,7 @@ class ProducerPool(Resource):
 
     def __init__(self, connections, *args, **kwargs):
         self.connections = connections
-        self.Producer = kwargs.pop("Producer", None) or self.Producer
+        self.Producer = kwargs.pop('Producer', None) or self.Producer
         super(ProducerPool, self).__init__(*args, **kwargs)
 
     def _acquire_connection(self):
@@ -70,7 +70,7 @@ class PoolGroup(EqualityDict):
         self.limit = limit
 
     def create(self, resource, limit):
-        raise NotImplementedError("PoolGroups must define ``create``")
+        raise NotImplementedError('PoolGroups must define ``create``')
 
     def __missing__(self, resource):
         limit = self.limit

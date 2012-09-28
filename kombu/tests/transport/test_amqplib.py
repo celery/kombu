@@ -3,7 +3,7 @@ from __future__ import absolute_import
 import sys
 
 from kombu.transport import amqplib
-from kombu.connection import BrokerConnection
+from kombu.connection import Connection
 
 from kombu.tests.utils import TestCase
 from kombu.tests.utils import mask_modules, Mock
@@ -39,8 +39,8 @@ class test_Channel(TestCase):
         self.assertFalse(self.channel.no_ack_consumers)
 
     def test_prepare_message(self):
-        x = self.channel.prepare_message("foobar", 10,
-                "application/data", "utf-8",
+        x = self.channel.prepare_message('foobar', 10,
+                'application/data', 'utf-8',
                 properties={})
         self.assertTrue(x)
 
@@ -56,22 +56,22 @@ class test_Channel(TestCase):
         self.assertIsNone(self.channel.connection)
 
     def test_basic_consume_registers_ack_status(self):
-        self.channel.wait_returns = "my-consumer-tag"
-        self.channel.basic_consume("foo", no_ack=True)
-        self.assertIn("my-consumer-tag", self.channel.no_ack_consumers)
+        self.channel.wait_returns = 'my-consumer-tag'
+        self.channel.basic_consume('foo', no_ack=True)
+        self.assertIn('my-consumer-tag', self.channel.no_ack_consumers)
 
-        self.channel.wait_returns = "other-consumer-tag"
-        self.channel.basic_consume("bar", no_ack=False)
-        self.assertNotIn("other-consumer-tag", self.channel.no_ack_consumers)
+        self.channel.wait_returns = 'other-consumer-tag'
+        self.channel.basic_consume('bar', no_ack=False)
+        self.assertNotIn('other-consumer-tag', self.channel.no_ack_consumers)
 
-        self.channel.basic_cancel("my-consumer-tag")
-        self.assertNotIn("my-consumer-tag", self.channel.no_ack_consumers)
+        self.channel.basic_cancel('my-consumer-tag')
+        self.assertNotIn('my-consumer-tag', self.channel.no_ack_consumers)
 
 
 class test_Transport(TestCase):
 
     def setUp(self):
-        self.connection = BrokerConnection("amqplib://")
+        self.connection = Connection('amqplib://')
         self.transport = self.connection.transport
 
     def test_create_channel(self):
@@ -92,13 +92,13 @@ class test_Transport(TestCase):
                 vars(self).update(kwargs)
 
         self.transport.Connection = Conn
-        self.transport.client.hostname = "localhost"
+        self.transport.client.hostname = 'localhost'
         conn1 = self.transport.establish_connection()
-        self.assertEqual(conn1.host, "127.0.0.1:5672")
+        self.assertEqual(conn1.host, '127.0.0.1:5672')
 
-        self.transport.client.hostname = "example.com"
+        self.transport.client.hostname = 'example.com'
         conn2 = self.transport.establish_connection()
-        self.assertEqual(conn2.host, "example.com:5672")
+        self.assertEqual(conn2.host, 'example.com:5672')
 
     def test_close_connection(self):
         connection = Mock()
@@ -116,15 +116,15 @@ class test_Transport(TestCase):
         connection.channels = {1: 1, 2: 2}
         self.assertTrue(self.transport.verify_connection(connection))
 
-    @mask_modules("ssl")
+    @mask_modules('ssl')
     def test_import_no_ssl(self):
-        pm = sys.modules.pop("kombu.transport.amqplib")
+        pm = sys.modules.pop('kombu.transport.amqplib')
         try:
             from kombu.transport.amqplib import SSLError
-            self.assertEqual(SSLError.__module__, "kombu.transport.amqplib")
+            self.assertEqual(SSLError.__module__, 'kombu.transport.amqplib')
         finally:
             if pm is not None:
-                sys.modules["kombu.transport.amqplib"] = pm
+                sys.modules['kombu.transport.amqplib'] = pm
 
 
 class test_amqplib(TestCase):
@@ -134,14 +134,14 @@ class test_amqplib(TestCase):
         class Transport(amqplib.Transport):
             Connection = MockConnection
 
-        c = BrokerConnection(port=None, transport=Transport).connect()
-        self.assertEqual(c["host"],
-                         "127.0.0.1:%s" % (Transport.default_port, ))
+        c = Connection(port=None, transport=Transport).connect()
+        self.assertEqual(c['host'],
+                         '127.0.0.1:%s' % (Transport.default_port, ))
 
     def test_custom_port(self):
 
         class Transport(amqplib.Transport):
             Connection = MockConnection
 
-        c = BrokerConnection(port=1337, transport=Transport).connect()
-        self.assertEqual(c["host"], "127.0.0.1:1337")
+        c = Connection(port=1337, transport=Transport).connect()
+        self.assertEqual(c['host'], '127.0.0.1:1337')

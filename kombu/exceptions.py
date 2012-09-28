@@ -12,10 +12,10 @@ from __future__ import absolute_import
 
 import socket
 
-__all__ = ["NotBoundError", "MessageStateError", "TimeoutError",
-           "LimitExceeded", "ConnectionLimitExceeded",
-           "ChannelLimitExceeded", "StdChannelError", "VersionMismatch",
-           "SerializerNotInstalled"]
+__all__ = ['NotBoundError', 'MessageStateError', 'TimeoutError',
+           'LimitExceeded', 'ConnectionLimitExceeded',
+           'ChannelLimitExceeded', 'StdChannelError', 'VersionMismatch',
+           'SerializerNotInstalled']
 
 TimeoutError = socket.timeout
 

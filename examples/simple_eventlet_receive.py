@@ -6,12 +6,13 @@ You can use `simple_receive.py` (or `complete_receive.py`) to receive the
 message sent.
 
 """
+from __future__ import with_statement
+
 import eventlet
-from eventlet import spawn
 
 from Queue import Empty
 
-from kombu import BrokerConnection
+from kombu import Connection
 
 eventlet.monkey_patch()
 
@@ -22,25 +23,21 @@ def wait_many(timeout=1):
     #: If hostname, userid, password and virtual_host is not specified
     #: the values below are the default, but listed here so it can
     #: be easily changed.
-    connection = BrokerConnection("amqp://guest:guest@localhost:5672//")
+    with Connection('amqp://guest:guest@localhost:5672//') as connection:
 
-    #: SimpleQueue mimics the interface of the Python Queue module.
-    #: First argument can either be a queue name or a kombu.Queue object.
-    #: If a name, then the queue will be declared with the name as the queue
-    #: name, exchange name and routing key.
-    queue = connection.SimpleQueue("kombu_demo")
+        #: SimpleQueue mimics the interface of the Python Queue module.
+        #: First argument can either be a queue name or a kombu.Queue object.
+        #: If a name, then the queue will be declared with the name as the
+        #: queue name, exchange name and routing key.
+        with connection.SimpleQueue('kombu_demo') as queue:
 
-    while True:
-        try:
-            message = queue.get(block=False, timeout=timeout)
-        except Empty:
-            break
-        else:
-            spawn(message.ack)
-            print(message.payload)
+            while True:
+                try:
+                    message = queue.get(block=False, timeout=timeout)
+                except Empty:
+                    break
+                else:
+                    message.ack()
+                    print(message.payload)
 
-    queue.close()
-    connection.close()
-
-
-spawn(wait_many).wait()
+eventlet.spawn(wait_many).wait()

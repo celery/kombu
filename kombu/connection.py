@@ -17,29 +17,38 @@ import socket
 
 from contextlib import contextmanager
 from functools import partial
-from itertools import count
+from itertools import count, cycle
 from urllib import quote
 from Queue import Empty
+
 # jython breaks on relative import for .exceptions for some reason
 # (Issue #112)
 from kombu import exceptions
 from .log import get_logger
-from .transport import AMQP_ALIAS, get_transport_cls
-from .utils import cached_property, retry_over_time
-from .utils.compat import OrderedDict, LifoQueue as _LifoQueue
+from .transport import get_transport_cls, supports_librabbitmq
+from .utils import cached_property, retry_over_time, shufflecycle
+from .utils.compat import OrderedDict, LifoQueue as _LifoQueue, next
 from .utils.url import parse_url
 
-_LOG_CONNECTION = os.environ.get("KOMBU_LOG_CONNECTION", False)
-_LOG_CHANNEL = os.environ.get("KOMBU_LOG_CHANNEL", False)
+RESOLVE_ALIASES = {'amqplib': 'amqp',
+                   'librabbitmq': 'amqp'}
 
-__all__ = ["parse_url", "BrokerConnection", "Resource",
-           "ConnectionPool", "ChannelPool"]
-URI_PASSTHROUGH = frozenset(["sqla", "sqlalchemy"])
+_LOG_CONNECTION = os.environ.get('KOMBU_LOG_CONNECTION', False)
+_LOG_CHANNEL = os.environ.get('KOMBU_LOG_CHANNEL', False)
+
+__all__ = ['Connection', 'ConnectionPool', 'ChannelPool']
+URI_PASSTHROUGH = frozenset(['sqla', 'sqlalchemy', 'zeromq', 'zmq'])
 
 logger = get_logger(__name__)
+roundrobin_failover = cycle
+
+failover_strategies = {
+    'round-robin': cycle,
+    'shuffle': shufflecycle,
+}
 
 
-class BrokerConnection(object):
+class Connection(object):
     """A connection to the broker.
 
     :param URL:  Connection URL.
@@ -57,7 +66,12 @@ class BrokerConnection(object):
     :keyword transport_options: A dict of additional connection arguments to
       pass to alternate kombu channel implementations.  Consult the transport
       documentation for available options.
-    :keyword insist: *Deprecated*
+    :keyword heartbeat: Heartbeat interval in int/float seconds.
+        Note that if heartbeats are enabled then the :meth:`heartbeat_check`
+        method must be called at an interval twice the frequency of the
+        heartbeat: e.g. if the heartbeat is 10, then the heartbeats must be
+        checked every 5 seconds (the rate can also be controlled by
+        the ``rate`` argument to :meth:`heartbeat_check``).
 
     .. note::
 
@@ -73,7 +87,7 @@ class BrokerConnection(object):
 
     """
     port = None
-    virtual_host = "/"
+    virtual_host = '/'
     connect_timeout = 5
 
     _closed = None
@@ -91,29 +105,51 @@ class BrokerConnection(object):
     #: after a call to :meth:`drain_nowait`.
     more_to_read = False
 
-    def __init__(self, hostname="localhost", userid=None,
+    #: Iterator returning the next broker URL to try in the event
+    #: of connection failure (initialized by :attr:`failover_strategy`).
+    cycle = None
+
+    def __init__(self, hostname='localhost', userid=None,
             password=None, virtual_host=None, port=None, insist=False,
             ssl=False, transport=None, connect_timeout=5,
             transport_options=None, login_method=None, uri_prefix=None,
-            **kwargs):
+            heartbeat=0, failover_strategy='round-robin', **kwargs):
+        alt = []
         # have to spell the args out, just to get nice docstrings :(
-        params = {"hostname": hostname, "userid": userid,
-                  "password": password, "virtual_host": virtual_host,
-                  "port": port, "insist": insist, "ssl": ssl,
-                  "transport": transport, "connect_timeout": connect_timeout,
-                  "login_method": login_method}
-        if hostname and "://" in hostname \
-                and transport not in URI_PASSTHROUGH:
-            if '+' in hostname[:hostname.index("://")]:
+        params = self._initial_params = {
+            'hostname': hostname, 'userid': userid,
+            'password': password, 'virtual_host': virtual_host,
+            'port': port, 'insist': insist, 'ssl': ssl,
+            'transport': transport, 'connect_timeout': connect_timeout,
+            'login_method': login_method, 'heartbeat': heartbeat
+        }
+
+        if hostname and not isinstance(hostname, basestring):
+            alt.extend(hostname)
+            hostname = alt[0]
+        if hostname and '://' in hostname:
+            if ';' in hostname:
+                alt.extend(hostname.split(';'))
+                hostname = alt[0]
+            if '+' in hostname[:hostname.index('://')]:
                 # e.g. sqla+mysql://root:masterkey@localhost/
-                params["transport"], params["hostname"] = hostname.split('+')
-                self.uri_prefix = params["transport"]
+                params['transport'], params['hostname'] = hostname.split('+')
+                self.uri_prefix = params['transport']
             else:
-                params.update(parse_url(hostname))
+                if transport not in URI_PASSTHROUGH:
+                    params.update(parse_url(hostname))
         self._init_params(**params)
 
+        # fallback hosts
+        self.alt = alt
+        self.failover_strategy = failover_strategies.get(
+            failover_strategy or 'round-robin') or failover_strategy
+        if self.alt:
+            self.cycle = self.failover_strategy(self.alt)
+            next(self.cycle)  # skip first entry
+
         # backend_cls argument will be removed shortly.
-        self.transport_cls = self.transport_cls or kwargs.get("backend_cls")
+        self.transport_cls = self.transport_cls or kwargs.get('backend_cls')
 
         if transport_options is None:
             transport_options = {}
@@ -127,8 +163,20 @@ class BrokerConnection(object):
 
         self.declared_entities = set()
 
+    def switch(self, url):
+        self.close()
+        self._closed = False
+        self._init_params(**dict(self._initial_params, **parse_url(url)))
+
+    def maybe_switch_next(self):
+        if self.cycle:
+            self.switch(next(self.cycle))
+
     def _init_params(self, hostname, userid, password, virtual_host, port,
-            insist, ssl, transport, connect_timeout, login_method):
+            insist, ssl, transport, connect_timeout, login_method, heartbeat):
+        transport = transport or 'amqp'
+        if transport == 'amqp' and supports_librabbitmq():
+            transport = 'librabbitmq'
         self.hostname = hostname
         self.userid = userid
         self.password = password
@@ -139,10 +187,11 @@ class BrokerConnection(object):
         self.connect_timeout = connect_timeout
         self.ssl = ssl
         self.transport_cls = transport
+        self.heartbeat = heartbeat
 
-    def _debug(self, msg, ident="[Kombu connection:0x%(id)x] ", **kwargs):
+    def _debug(self, msg, ident='[Kombu connection:0x%(id)x] ', **kwargs):
         if self._logger:  # pragma: no cover
-            logger.debug((ident + unicode(msg)) % {"id": id(self)},
+            logger.debug((ident + unicode(msg)) % {'id': id(self)},
                          **kwargs)
 
     def connect(self):
@@ -152,13 +201,27 @@ class BrokerConnection(object):
 
     def channel(self):
         """Request a new channel."""
-        self._debug("create channel")
+        self._debug('create channel')
         chan = self.transport.create_channel(self.connection)
         if _LOG_CHANNEL:  # pragma: no cover
             from .utils.debug import Logwrapped
-            return Logwrapped(chan, "kombu.channel",
-                    "[Kombu channel:%(channel_id)s] ")
+            return Logwrapped(chan, 'kombu.channel',
+                    '[Kombu channel:%(channel_id)s] ')
         return chan
+
+    def heartbeat_check(self, rate=2):
+        """Verify that hartbeats are sent and received.
+
+        If the current transport does not support heartbeats then
+        this is a noop operation.
+
+        :keyword rate: Rate is how often the tick is called
+            compared to the actual heartbeat value.  E.g. if
+            the heartbeat is set to 3 seconds, and the tick
+            is called every 3 / 2 seconds, then the rate is 2.
+
+        """
+        return self.transport.heartbeat_check(self.connection, rate=rate)
 
     def drain_events(self, **kwargs):
         """Wait for a single event from the server.
@@ -208,7 +271,7 @@ class BrokerConnection(object):
         if self._transport:
             self._transport.client = None
             self._transport = None
-        self._debug("closed")
+        self._debug('closed')
         self._closed = True
 
     def release(self):
@@ -238,14 +301,25 @@ class BrokerConnection(object):
           each retry.
         :keyword callback: Optional callback that is called for every
            internal iteration (1 s)
-        :keyword callback: Optional callback that is called for every
-           internal iteration (1 s).
 
         """
+        def on_error(exc, intervals, retries, interval=0):
+            round = self.completes_cycle(retries)
+            if round:
+                interval = next(intervals)
+            if errback:
+                errback(exc, interval)
+            self.maybe_switch_next()  # select next host
+
+            return interval if round else 0
+
         retry_over_time(self.connect, self.connection_errors, (), {},
-                        errback, max_retries,
+                        on_error, max_retries,
                         interval_start, interval_step, interval_max, callback)
         return self
+
+    def completes_cycle(self, retries):
+        return not (retries + 1) % len(self.alt) if self.alt else True
 
     def revive(self, new_channel):
         if self._default_channel:
@@ -298,7 +372,7 @@ class BrokerConnection(object):
                 try:
                     return fun(*args, **kwargs)
                 except self.connection_errors + self.channel_errors, exc:
-                    self._debug("ensure got exception: %r" % (exc, ),
+                    self._debug('ensure got exception: %r' % (exc, ),
                                 exc_info=True)
                     if got_connection:
                         raise
@@ -360,7 +434,7 @@ class BrokerConnection(object):
             def __call__(self, *args, **kwargs):
                 if channels[0] is None:
                     self.revive(create_channel())
-                kwargs["channel"] = channels[0]
+                kwargs['channel'] = channels[0]
                 return fun(*args, **kwargs), channels[0]
 
         revive = Revival()
@@ -380,27 +454,29 @@ class BrokerConnection(object):
     def clone(self, **kwargs):
         """Create a copy of the connection with the same connection
         settings."""
-        return self.__class__(**dict(self._info(), **kwargs))
+        return self.__class__(**dict(self._info(resolve=False), **kwargs))
 
-    def _info(self):
-        transport_cls = self.transport_cls or "amqp"
-        transport_cls = {AMQP_ALIAS: "amqp"}.get(transport_cls, transport_cls)
+    def _info(self, resolve=True):
+        transport_cls = self.transport_cls
+        if resolve:
+            transport_cls = RESOLVE_ALIASES.get(transport_cls, transport_cls)
         D = self.transport.default_connection_params
-        hostname = self.hostname
+        hostname = self.hostname or D.get('hostname')
         if self.uri_prefix:
-            hostname = "%s+%s" % (self.uri_prefix, hostname)
-        info = (("hostname", hostname or D.get("hostname")),
-                ("userid", self.userid or D.get("userid")),
-                ("password", self.password or D.get("password")),
-                ("virtual_host", self.virtual_host or D.get("virtual_host")),
-                ("port", self.port or D.get("port")),
-                ("insist", self.insist),
-                ("ssl", self.ssl),
-                ("transport", transport_cls),
-                ("connect_timeout", self.connect_timeout),
-                ("transport_options", self.transport_options),
-                ("login_method", self.login_method or D.get("login_method")),
-                ("uri_prefix", self.uri_prefix))
+            hostname = '%s+%s' % (self.uri_prefix, hostname)
+        info = (('hostname', hostname),
+                ('userid', self.userid or D.get('userid')),
+                ('password', self.password or D.get('password')),
+                ('virtual_host', self.virtual_host or D.get('virtual_host')),
+                ('port', self.port or D.get('port')),
+                ('insist', self.insist),
+                ('ssl', self.ssl),
+                ('transport', transport_cls),
+                ('connect_timeout', self.connect_timeout),
+                ('transport_options', self.transport_options),
+                ('login_method', self.login_method or D.get('login_method')),
+                ('uri_prefix', self.uri_prefix),
+                ('heartbeat', self.heartbeat))
         return info
 
     def info(self):
@@ -408,36 +484,36 @@ class BrokerConnection(object):
         return OrderedDict(self._info())
 
     def __eqhash__(self):
-        return hash("%s|%s|%s|%s|%s|%s" % (
+        return hash('%s|%s|%s|%s|%s|%s' % (
             self.transport_cls, self.hostname, self.userid,
             self.password, self.virtual_host, self.port))
 
     def as_uri(self, include_password=False):
         if self.transport_cls in URI_PASSTHROUGH:
-            return self.transport_cls + '+' + (self.hostname or "localhost")
-        quoteS = partial(quote, safe="")   # strict quote
+            return self.transport_cls + '+' + (self.hostname or 'localhost')
+        quoteS = partial(quote, safe='')   # strict quote
         fields = self.info()
-        port = fields["port"]
-        userid = fields["userid"]
-        password = fields["password"]
-        transport = fields["transport"]
-        url = "%s://" % transport
+        port = fields['port']
+        userid = fields['userid']
+        password = fields['password']
+        transport = fields['transport']
+        url = '%s://' % transport
         if userid:
             url += quoteS(userid)
             if include_password and password:
                 url += ':' + quoteS(password)
             url += '@'
-        url += quoteS(fields["hostname"])
+        url += quoteS(fields['hostname'])
 
         # If the transport equals 'mongodb' the
         # hostname contains a full mongodb connection
         # URI. Let pymongo retreive the port from there.
-        if port and transport != "mongodb":
+        if port and transport != 'mongodb':
             url += ':' + str(port)
 
-        url += '/' + quote(fields["virtual_host"])
+        url += '/' + quote(fields['virtual_host'])
         if self.uri_prefix:
-            return "%s+%s" % (self.uri_prefix, url)
+            return '%s+%s' % (self.uri_prefix, url)
         return url
 
     def Pool(self, limit=None, preload=None):
@@ -496,15 +572,11 @@ class BrokerConnection(object):
 
     def Producer(self, channel=None, *args, **kwargs):
         from .messaging import Producer
-        if channel is None:
-            channel = self   # use default channel support.
-        return Producer(channel, *args, **kwargs)
+        return Producer(channel or self, *args, **kwargs)
 
     def Consumer(self, queues=None, channel=None, *args, **kwargs):
         from .messaging import Consumer
-        if channel is None:
-            channel = self  # use default channel support.
-        return Consumer(channel, queues, *args, **kwargs)
+        return Consumer(channel or self, queues, *args, **kwargs)
 
     def SimpleQueue(self, name, no_ack=None, queue_opts=None,
             exchange_opts=None, channel=None, **kwargs):
@@ -530,13 +602,8 @@ class BrokerConnection(object):
 
         """
         from .simple import SimpleQueue
-
-        channel_autoclose = False
-        if channel is None:
-            channel = self.channel()
-            channel_autoclose = True
-        return SimpleQueue(channel, name, no_ack, queue_opts, exchange_opts,
-                           channel_autoclose=channel_autoclose, **kwargs)
+        return SimpleQueue(channel or self, name, no_ack, queue_opts,
+                           exchange_opts, **kwargs)
 
     def SimpleBuffer(self, name, no_ack=None, queue_opts=None,
             exchange_opts=None, channel=None, **kwargs):
@@ -550,23 +617,18 @@ class BrokerConnection(object):
 
         """
         from .simple import SimpleBuffer
-
-        channel_autoclose = False
-        if channel is None:
-            channel = self.channel()
-            channel_autoclose = True
-        return SimpleBuffer(channel, name, no_ack, queue_opts, exchange_opts,
-                            channel_autoclose=channel_autoclose, **kwargs)
+        return SimpleBuffer(channel or self, name, no_ack, queue_opts,
+                            exchange_opts, **kwargs)
 
     def _establish_connection(self):
-        self._debug("establishing connection...")
+        self._debug('establishing connection...')
         conn = self.transport.establish_connection()
-        self._debug("connection established: %r" % (conn, ))
+        self._debug('connection established: %r' % (conn, ))
         return conn
 
     def __repr__(self):
         """``x.__repr__() <==> repr(x)``"""
-        return "<BrokerConnection: %s at 0x%x>" % (self.as_uri(), id(self))
+        return '<Connection: %s at 0x%x>' % (self.as_uri(), id(self))
 
     def __copy__(self):
         """``x.__copy__() <==> copy(x)``"""
@@ -616,7 +678,7 @@ class BrokerConnection(object):
     @property
     def host(self):
         """The host as a host name/port pair separated by colon."""
-        return ":".join([self.hostname, str(self.port)])
+        return ':'.join([self.hostname, str(self.port)])
 
     @property
     def transport(self):
@@ -646,9 +708,13 @@ class BrokerConnection(object):
         return self.transport.eventmap(self.connection)
 
     @property
+    def supports_heartbeats(self):
+        return self.transport.supports_heartbeats
+
+    @property
     def is_evented(self):
-        return getattr(self.transport, "on_poll_start", None)
-Connection = BrokerConnection
+        return self.transport.supports_ev
+BrokerConnection = Connection
 
 
 class Resource(object):
@@ -663,7 +729,7 @@ class Resource(object):
         self.setup()
 
     def setup(self):
-        raise NotImplementedError("subclass responsibility")
+        raise NotImplementedError('subclass responsibility')
 
     def _add_when_empty(self):
         if self.limit and len(self._dirty) >= self.limit:
@@ -754,7 +820,7 @@ class Resource(object):
             except AttributeError:  # Issue #78
                 pass
 
-        mutex = getattr(resource, "mutex", None)
+        mutex = getattr(resource, 'mutex', None)
         if mutex:
             mutex.acquire()
         try:
@@ -771,7 +837,7 @@ class Resource(object):
             if mutex:
                 mutex.release()
 
-    if os.environ.get("KOMBU_DEBUG_POOL"):  # pragma: no cover
+    if os.environ.get('KOMBU_DEBUG_POOL'):  # pragma: no cover
         _orig_acquire = acquire
         _orig_release = release
 
@@ -780,20 +846,20 @@ class Resource(object):
         def acquire(self, *args, **kwargs):  # noqa
             import traceback
             id = self._next_resource_id = self._next_resource_id + 1
-            print("+%s ACQUIRE %s" % (id, self.__class__.__name__, ))
+            print('+%s ACQUIRE %s' % (id, self.__class__.__name__, ))
             r = self._orig_acquire(*args, **kwargs)
             r._resource_id = id
-            print("-%s ACQUIRE %s" % (id, self.__class__.__name__, ))
-            if not hasattr(r, "acquired_by"):
+            print('-%s ACQUIRE %s' % (id, self.__class__.__name__, ))
+            if not hasattr(r, 'acquired_by'):
                 r.acquired_by = []
             r.acquired_by.append(traceback.format_stack())
             return r
 
         def release(self, resource):  # noqa
             id = resource._resource_id
-            print("+%s RELEASE %s" % (id, self.__class__.__name__, ))
+            print('+%s RELEASE %s' % (id, self.__class__.__name__, ))
             r = self._orig_release(resource)
-            print("-%s RELEASE %s" % (id, self.__class__.__name__, ))
+            print('-%s RELEASE %s' % (id, self.__class__.__name__, ))
             self._next_resource_id -= 1
             return r
 
@@ -810,7 +876,7 @@ class ConnectionPool(Resource):
         return self.connection.clone()
 
     def release_resource(self, resource):
-        resource._debug("released")
+        resource._debug('released')
 
     def close_resource(self, resource):
         resource._close()
@@ -833,7 +899,7 @@ class ConnectionPool(Resource):
     def prepare(self, resource):
         if callable(resource):
             resource = resource()
-        resource._debug("acquired")
+        resource._debug('acquired')
         return resource
 
 
@@ -860,3 +926,11 @@ class ChannelPool(Resource):
             channel = channel()
 
         return channel
+
+
+def maybe_channel(channel):
+    """Returns channel, or returns the default_channel if it's a
+    connection."""
+    if isinstance(channel, Connection):
+        return channel.default_channel
+    return channel

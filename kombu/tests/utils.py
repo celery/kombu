@@ -21,14 +21,14 @@ except AttributeError:
 
 class TestCase(unittest.TestCase):
 
-    if not hasattr(unittest.TestCase, "assertItemsEqual"):
+    if not hasattr(unittest.TestCase, 'assertItemsEqual'):
         assertItemsEqual = unittest.TestCase.assertSameElements
 
 
 class Mock(mock.Mock):
 
     def __init__(self, *args, **kwargs):
-        attrs = kwargs.pop("attrs", None) or {}
+        attrs = kwargs.pop('attrs', None) or {}
         super(Mock, self).__init__(*args, **kwargs)
         for attr_name, attr_value in attrs.items():
             setattr(self, attr_name, attr_value)
@@ -94,12 +94,12 @@ def mask_modules(*modnames):
 
     For example:
 
-        >>> @missing_modules("sys"):
+        >>> @missing_modules('sys'):
         >>> def foo():
         ...     try:
         ...         import sys
         ...     except ImportError:
-        ...         print("sys not found")
+        ...         print('sys not found')
         sys not found
 
         >>> import sys
@@ -116,7 +116,7 @@ def mask_modules(*modnames):
 
             def myimp(name, *args, **kwargs):
                 if name in modnames:
-                    raise ImportError("No module named %s" % name)
+                    raise ImportError('No module named %s' % name)
                 else:
                     return realimport(name, *args, **kwargs)
 
@@ -137,7 +137,7 @@ def skip_if_environ(env_var_name):
         @wraps(fun)
         def _skips_if_environ(*args, **kwargs):
             if os.environ.get(env_var_name):
-                raise SkipTest("SKIP %s: %s set\n" % (
+                raise SkipTest('SKIP %s: %s set\n' % (
                     fun.__name__, env_var_name))
             return fun(*args, **kwargs)
 
@@ -152,7 +152,7 @@ def skip_if_module(module):
         def _skip_if_module(*args, **kwargs):
             try:
                 __import__(module)
-                raise SkipTest("SKIP %s: %s available\n" % (
+                raise SkipTest('SKIP %s: %s available\n' % (
                     fun.__name__, module))
             except ImportError:
                 pass
@@ -168,7 +168,7 @@ def skip_if_not_module(module):
             try:
                 __import__(module)
             except ImportError:
-                raise SkipTest("SKIP %s: %s available\n" % (
+                raise SkipTest('SKIP %s: %s available\n' % (
                     fun.__name__, module))
             return fun(*args, **kwargs)
         return _skip_if_not_module
@@ -176,4 +176,4 @@ def skip_if_not_module(module):
 
 
 def skip_if_quick(fun):
-    return skip_if_environ("QUICKTEST")(fun)
+    return skip_if_environ('QUICKTEST')(fun)

@@ -5,8 +5,8 @@ import pickle
 
 from nose import SkipTest
 
-from kombu.connection import BrokerConnection, Resource, parse_url
-from kombu.messaging import Consumer, Producer
+from kombu import Connection, Consumer, Producer, parse_url
+from kombu.connection import Resource
 
 from .mocks import Transport
 from .utils import TestCase
@@ -16,15 +16,15 @@ from .utils import Mock, skip_if_not_module
 class test_connection_utils(TestCase):
 
     def setUp(self):
-        self.url = "amqp://user:pass@localhost:5672/my/vhost"
-        self.nopass = "amqp://user@localhost:5672/my/vhost"
+        self.url = 'amqp://user:pass@localhost:5672/my/vhost'
+        self.nopass = 'amqp://user@localhost:5672/my/vhost'
         self.expected = {
-            "transport": "amqp",
-            "userid": "user",
-            "password": "pass",
-            "hostname": "localhost",
-            "port": 5672,
-            "virtual_host": "my/vhost",
+            'transport': 'amqp',
+            'userid': 'user',
+            'password': 'pass',
+            'hostname': 'localhost',
+            'port': 5672,
+            'virtual_host': 'my/vhost',
         }
 
     def test_parse_url(self):
@@ -32,11 +32,11 @@ class test_connection_utils(TestCase):
         self.assertDictEqual(result, self.expected)
 
     def test_parse_url_mongodb(self):
-        result = parse_url("mongodb://example.com/")
-        self.assertEqual(result["hostname"], "example.com/")
+        result = parse_url('mongodb://example.com/')
+        self.assertEqual(result['hostname'], 'example.com/')
 
     def test_parse_generated_as_uri(self):
-        conn = BrokerConnection(self.url)
+        conn = Connection(self.url)
         info = conn.info()
         for k, v in self.expected.items():
             self.assertEqual(info[k], v)
@@ -44,14 +44,14 @@ class test_connection_utils(TestCase):
         self.assertEqual(conn.as_uri(), self.nopass)
         self.assertEqual(conn.as_uri(include_password=True), self.url)
 
-    @skip_if_not_module("pymongo")
+    @skip_if_not_module('pymongo')
     def test_as_uri_when_mongodb(self):
-        x = BrokerConnection("mongodb://localhost")
+        x = Connection('mongodb://localhost')
         self.assertTrue(x.as_uri())
 
     def test_bogus_scheme(self):
         with self.assertRaises(KeyError):
-            BrokerConnection("bogus://localhost:7421").transport
+            Connection('bogus://localhost:7421').transport
 
     def assert_info(self, conn, **fields):
         info = conn.info()
@@ -60,97 +60,95 @@ class test_connection_utils(TestCase):
 
     def test_rabbitmq_example_urls(self):
         # see Appendix A of http://www.rabbitmq.com/uri-spec.html
-        C = BrokerConnection
 
         self.assert_info(
-            C("amqp://user:pass@host:10000/vhost"),
-                userid="user", password="pass", hostname="host",
-                port=10000, virtual_host="vhost")
+            Connection('amqp://user:pass@host:10000/vhost'),
+                userid='user', password='pass', hostname='host',
+                port=10000, virtual_host='vhost')
 
         self.assert_info(
-            C("amqp://user%61:%61pass@ho%61st:10000/v%2fhost"),
-                userid="usera", password="apass",
-                hostname="hoast", port=10000,
-                virtual_host="v/host")
+            Connection('amqp://user%61:%61pass@ho%61st:10000/v%2fhost'),
+                userid='usera', password='apass',
+                hostname='hoast', port=10000,
+                virtual_host='v/host')
 
         self.assert_info(
-            C("amqp://"),
-                userid="guest", password="guest",
-                hostname="localhost", port=5672,
-                virtual_host="/")
+            Connection('amqp://'),
+                userid='guest', password='guest',
+                hostname='localhost', port=5672,
+                virtual_host='/')
 
         self.assert_info(
-            C("amqp://:@/"),
-                userid="guest", password="guest",
-                hostname="localhost", port=5672,
-                virtual_host="/")
+            Connection('amqp://:@/'),
+                userid='guest', password='guest',
+                hostname='localhost', port=5672,
+                virtual_host='/')
 
         self.assert_info(
-            C("amqp://user@/"),
-                userid="user", password="guest",
-                hostname="localhost", port=5672,
-                virtual_host="/")
+            Connection('amqp://user@/'),
+                userid='user', password='guest',
+                hostname='localhost', port=5672,
+                virtual_host='/')
 
         self.assert_info(
-            C("amqp://user:pass@/"),
-                userid="user", password="pass",
-                hostname="localhost", port=5672,
-                virtual_host="/")
+            Connection('amqp://user:pass@/'),
+                userid='user', password='pass',
+                hostname='localhost', port=5672,
+                virtual_host='/')
 
         self.assert_info(
-            C("amqp://host"),
-                userid="guest", password="guest",
-                hostname="host", port=5672,
-                virtual_host="/")
+            Connection('amqp://host'),
+                userid='guest', password='guest',
+                hostname='host', port=5672,
+                virtual_host='/')
 
         self.assert_info(
-            C("amqp://:10000"),
-                userid="guest", password="guest",
-                hostname="localhost", port=10000,
-                virtual_host="/")
+            Connection('amqp://:10000'),
+                userid='guest', password='guest',
+                hostname='localhost', port=10000,
+                virtual_host='/')
 
         self.assert_info(
-            C("amqp:///vhost"),
-                userid="guest", password="guest",
-                hostname="localhost", port=5672,
-                virtual_host="vhost")
+            Connection('amqp:///vhost'),
+                userid='guest', password='guest',
+                hostname='localhost', port=5672,
+                virtual_host='vhost')
 
         self.assert_info(
-            C("amqp://host/"),
-                userid="guest", password="guest",
-                hostname="host", port=5672,
-                virtual_host="/")
+            Connection('amqp://host/'),
+                userid='guest', password='guest',
+                hostname='host', port=5672,
+                virtual_host='/')
 
         self.assert_info(
-            C("amqp://host/%2f"),
-                userid="guest", password="guest",
-                hostname="host", port=5672,
-                virtual_host="/")
+            Connection('amqp://host/%2f'),
+                userid='guest', password='guest',
+                hostname='host', port=5672,
+                virtual_host='/')
 
     def test_url_IPV6(self):
-        C = BrokerConnection
         raise SkipTest("urllib can't parse ipv6 urls")
 
         self.assert_info(
-            C("amqp://[::1]"),
-                userid="guest", password="guest",
-                hostname="[::1]", port=5672,
-                virtual_host="/")
+            Connection('amqp://[::1]'),
+                userid='guest', password='guest',
+                hostname='[::1]', port=5672,
+                virtual_host='/')
 
 
 class test_Connection(TestCase):
 
     def setUp(self):
-        self.conn = BrokerConnection(port=5672, transport=Transport)
+        self.conn = Connection(port=5672, transport=Transport)
 
     def test_establish_connection(self):
         conn = self.conn
         conn.connect()
         self.assertTrue(conn.connection.connected)
-        self.assertEqual(conn.host, "localhost:5672")
+        self.assertEqual(conn.host, 'localhost:5672')
         channel = conn.channel()
         self.assertTrue(channel.open)
-        self.assertEqual(conn.drain_events(), "event")
+        self.assertEqual(conn.drain_events(), 'event')
         _connection = conn.connection
         conn.close()
         self.assertFalse(_connection.connected)
@@ -175,9 +173,9 @@ class test_Connection(TestCase):
             connection_errors = (_CustomError, )
 
             def close_connection(self, connection):
-                raise _CustomError("foo")
+                raise _CustomError('foo')
 
-        conn = BrokerConnection(transport=MyTransport)
+        conn = Connection(transport=MyTransport)
         conn.connect()
         conn.close()
         self.assertTrue(conn._closed)
@@ -190,13 +188,13 @@ class test_Connection(TestCase):
 
     def test_close_when_default_channel_close_raises(self):
 
-        class Conn(BrokerConnection):
+        class Conn(Connection):
 
             @property
             def connection_errors(self):
                 return (KeyError, )
 
-        conn = Conn("memory://")
+        conn = Conn('memory://')
         conn._default_channel = Mock()
         conn._default_channel.close.side_effect = KeyError()
 
@@ -216,17 +214,17 @@ class test_Connection(TestCase):
 
     def test_ensure_success(self):
         def publish():
-            return "foobar"
+            return 'foobar'
 
         ensured = self.conn.ensure(None, publish)
-        self.assertEqual(ensured(), "foobar")
+        self.assertEqual(ensured(), 'foobar')
 
     def test_ensure_failure(self):
         class _CustomError(Exception):
             pass
 
         def publish():
-            raise _CustomError("bar")
+            raise _CustomError('bar')
 
         ensured = self.conn.ensure(None, publish)
         with self.assertRaises(_CustomError):
@@ -237,7 +235,7 @@ class test_Connection(TestCase):
             pass
 
         def publish():
-            raise _ConnectionError("failed connection")
+            raise _ConnectionError('failed connection')
 
         self.conn.transport.connection_errors = (_ConnectionError,)
         ensured = self.conn.ensure(self.conn, publish)
@@ -246,13 +244,13 @@ class test_Connection(TestCase):
 
     def test_autoretry(self):
         myfun = Mock()
-        myfun.__name__ = "test_autoretry"
+        myfun.__name__ = 'test_autoretry'
 
         self.conn.transport.connection_errors = (KeyError, )
 
         def on_call(*args, **kwargs):
             myfun.side_effect = None
-            raise KeyError("foo")
+            raise KeyError('foo')
 
         myfun.side_effect = on_call
         insured = self.conn.autoretry(myfun)
@@ -262,23 +260,19 @@ class test_Connection(TestCase):
 
     def test_SimpleQueue(self):
         conn = self.conn
-        q = conn.SimpleQueue("foo")
-        self.assertTrue(q.channel)
-        self.assertTrue(q.channel_autoclose)
+        q = conn.SimpleQueue('foo')
+        self.assertIs(q.channel, conn.default_channel)
         chan = conn.channel()
-        q2 = conn.SimpleQueue("foo", channel=chan)
+        q2 = conn.SimpleQueue('foo', channel=chan)
         self.assertIs(q2.channel, chan)
-        self.assertFalse(q2.channel_autoclose)
 
     def test_SimpleBuffer(self):
         conn = self.conn
-        q = conn.SimpleBuffer("foo")
-        self.assertTrue(q.channel)
-        self.assertTrue(q.channel_autoclose)
+        q = conn.SimpleBuffer('foo')
+        self.assertIs(q.channel, conn.default_channel)
         chan = conn.channel()
-        q2 = conn.SimpleBuffer("foo", channel=chan)
+        q2 = conn.SimpleBuffer('foo', channel=chan)
         self.assertIs(q2.channel, chan)
-        self.assertFalse(q2.channel_autoclose)
 
     def test_Producer(self):
         conn = self.conn
@@ -303,7 +297,7 @@ class test_Connection(TestCase):
         class MyTransport(Transport):
             channel_errors = (KeyError, ValueError)
 
-        conn = BrokerConnection(transport=MyTransport)
+        conn = Connection(transport=MyTransport)
         self.assertTupleEqual(conn.channel_errors, (KeyError, ValueError))
 
     def test_connection_errors(self):
@@ -311,17 +305,17 @@ class test_Connection(TestCase):
         class MyTransport(Transport):
             connection_errors = (KeyError, ValueError)
 
-        conn = BrokerConnection(transport=MyTransport)
+        conn = Connection(transport=MyTransport)
         self.assertTupleEqual(conn.connection_errors, (KeyError, ValueError))
 
 
 class test_Connection_with_transport_options(TestCase):
 
-    transport_options = {"pool_recycler": 3600, "echo": True}
+    transport_options = {'pool_recycler': 3600, 'echo': True}
 
     def setUp(self):
-        self.conn = BrokerConnection(port=5672, transport=Transport,
-                                     transport_options=self.transport_options)
+        self.conn = Connection(port=5672, transport=Transport,
+                               transport_options=self.transport_options)
 
     def test_establish_connection(self):
         conn = self.conn
@@ -338,7 +332,7 @@ class ResourceCase(TestCase):
     abstract = True
 
     def create_resource(self, limit, preload):
-        raise NotImplementedError("subclass responsibility")
+        raise NotImplementedError('subclass responsibility')
 
     def assertState(self, P, avail, dirty):
         self.assertEqual(P._resource.qsize(), avail)
@@ -404,7 +398,7 @@ class ResourceCase(TestCase):
             return
         P = self.create_resource(10, 10)
         cr = P.close_resource = Mock()
-        cr.side_effect = AttributeError("x")
+        cr.side_effect = AttributeError('x')
 
         P.acquire()
         self.assertTrue(P._dirty)
@@ -437,8 +431,7 @@ class test_ConnectionPool(ResourceCase):
     abstract = False
 
     def create_resource(self, limit, preload):
-        return BrokerConnection(port=5672, transport=Transport) \
-                    .Pool(limit, preload)
+        return Connection(port=5672, transport=Transport).Pool(limit, preload)
 
     def test_setup(self):
         P = self.create_resource(10, 2)
@@ -454,7 +447,7 @@ class test_ConnectionPool(ResourceCase):
 
     def test_prepare_not_callable(self):
         P = self.create_resource(None, None)
-        conn = BrokerConnection("memory://")
+        conn = Connection('memory://')
         self.assertIs(P.prepare(conn), conn)
 
     def test_acquire_channel(self):
@@ -467,7 +460,7 @@ class test_ChannelPool(ResourceCase):
     abstract = False
 
     def create_resource(self, limit, preload):
-        return BrokerConnection(port=5672, transport=Transport) \
+        return Connection(port=5672, transport=Transport) \
                     .ChannelPool(limit, preload)
 
     def test_setup(self):
@@ -476,7 +469,7 @@ class test_ChannelPool(ResourceCase):
         self.assertTrue(q[0].basic_consume)
         self.assertTrue(q[1].basic_consume)
         with self.assertRaises(AttributeError):
-            getattr(q[2], "basic_consume")
+            getattr(q[2], 'basic_consume')
 
     def test_setup_no_limit(self):
         P = self.create_resource(None, None)
@@ -485,6 +478,6 @@ class test_ChannelPool(ResourceCase):
 
     def test_prepare_not_callable(self):
         P = self.create_resource(10, 0)
-        conn = BrokerConnection("memory://")
+        conn = Connection('memory://')
         chan = conn.default_channel
         self.assertIs(P.prepare(chan), chan)

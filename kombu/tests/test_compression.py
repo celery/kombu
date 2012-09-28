@@ -20,34 +20,34 @@ class test_compression(TestCase):
         else:
             self.has_bzip2 = True
 
-    @mask_modules("bz2")
+    @mask_modules('bz2')
     def test_no_bz2(self):
-        c = sys.modules.pop("kombu.compression")
+        c = sys.modules.pop('kombu.compression')
         try:
             import kombu.compression
-            self.assertFalse(hasattr(kombu.compression, "bz2"))
+            self.assertFalse(hasattr(kombu.compression, 'bz2'))
         finally:
             if c is not None:
-                sys.modules["kombu.compression"] = c
+                sys.modules['kombu.compression'] = c
 
     def test_encoders(self):
         encoders = compression.encoders()
-        self.assertIn("application/x-gzip", encoders)
+        self.assertIn('application/x-gzip', encoders)
         if self.has_bzip2:
-            self.assertIn("application/x-bz2", encoders)
+            self.assertIn('application/x-bz2', encoders)
 
     def test_compress__decompress__zlib(self):
-        text = "The Quick Brown Fox Jumps Over The Lazy Dog"
-        c, ctype = compression.compress(text, "zlib")
+        text = 'The Quick Brown Fox Jumps Over The Lazy Dog'
+        c, ctype = compression.compress(text, 'zlib')
         self.assertNotEqual(text, c)
         d = compression.decompress(c, ctype)
         self.assertEqual(d, text)
 
     def test_compress__decompress__bzip2(self):
         if not self.has_bzip2:
-            raise SkipTest("bzip2 not available")
-        text = "The Brown Quick Fox Over The Lazy Dog Jumps"
-        c, ctype = compression.compress(text, "bzip2")
+            raise SkipTest('bzip2 not available')
+        text = 'The Brown Quick Fox Over The Lazy Dog Jumps'
+        c, ctype = compression.compress(text, 'bzip2')
         self.assertNotEqual(text, c)
         d = compression.decompress(c, ctype)
         self.assertEqual(d, text)

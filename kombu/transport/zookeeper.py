@@ -50,7 +50,7 @@ from . import virtual
 
 DEFAULT_PORT = 2181
 
-__author__ = "Mahendra M <mahendra.m@gmail.com>"
+__author__ = 'Mahendra M <mahendra.m@gmail.com>'
 
 
 class Channel(virtual.Channel):
@@ -62,7 +62,7 @@ class Channel(virtual.Channel):
 
     def _put(self, queue, message, **kwargs):
         try:
-            priority = message["properties"]["delivery_info"]["priority"]
+            priority = message['properties']['delivery_info']['priority']
         except KeyError:
             priority = 0
 
@@ -164,3 +164,8 @@ class Transport(virtual.Transport):
                       kazoo.zkclient.NotEmptyException,
                       kazoo.zkclient.SessionExpiredException,
                       kazoo.zkclient.InvalidCallbackException)
+    driver_type = 'zookeeper'
+    driver_name = 'kazoo'
+
+    def driver_version(self):
+        return kazoo.__version__

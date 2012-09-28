@@ -9,7 +9,7 @@ from collections import defaultdict
 from itertools import count
 from Queue import Empty, Queue as _Queue
 
-from kombu.connection import BrokerConnection
+from kombu.connection import Connection
 from kombu.entity import Exchange, Queue
 from kombu.exceptions import InconsistencyError, VersionMismatch
 from kombu.messaging import Consumer, Producer
@@ -52,7 +52,7 @@ class Client(object):
         self.connection = self._sconnection(self)
 
     def bgsave(self):
-        self._called.append("BGSAVE")
+        self._called.append('BGSAVE')
         if self.bgsave_raises_ResponseError:
             raise ResponseError()
 
@@ -95,7 +95,7 @@ class Client(object):
         cmd, queues = self.connection._sock.data.pop()
         assert cmd == type
         self.connection._sock.data = []
-        if type == "BRPOP":
+        if type == 'BRPOP':
             item = self.brpop(queues, 0.001)
             if item:
                 return item
@@ -156,7 +156,7 @@ class Client(object):
             self._sock.data.append((cmd, args))
 
     def info(self):
-        return {"foo": 1}
+        return {'foo': 1}
 
     def pubsub(self, *args, **kwargs):
         connection = self.connection
@@ -217,22 +217,22 @@ class Transport(redis.Transport):
 class test_Channel(TestCase):
 
     def setUp(self):
-        self.connection = BrokerConnection(transport=Transport)
+        self.connection = Connection(transport=Transport)
         self.channel = self.connection.channel()
 
     def test_basic_consume_when_fanout_queue(self):
-        self.channel.exchange_declare(exchange="txconfan", type="fanout")
-        self.channel.queue_declare(queue="txconfanq")
-        self.channel.queue_bind(queue="txconfanq", exchange="txconfan")
+        self.channel.exchange_declare(exchange='txconfan', type='fanout')
+        self.channel.queue_declare(queue='txconfanq')
+        self.channel.queue_bind(queue='txconfanq', exchange='txconfan')
 
-        self.assertIn("txconfanq", self.channel._fanout_queues)
-        self.channel.basic_consume("txconfanq", False, None, 1)
-        self.assertIn("txconfanq", self.channel.active_fanout_queues)
-        self.assertEqual(self.channel._fanout_to_queue.get("txconfan"),
-                         "txconfanq")
+        self.assertIn('txconfanq', self.channel._fanout_queues)
+        self.channel.basic_consume('txconfanq', False, None, 1)
+        self.assertIn('txconfanq', self.channel.active_fanout_queues)
+        self.assertEqual(self.channel._fanout_to_queue.get('txconfan'),
+                         'txconfanq')
 
     def test_basic_cancel_unknown_delivery_tag(self):
-        self.assertIsNone(self.channel.basic_cancel("txaseqwewq"))
+        self.assertIsNone(self.channel.basic_cancel('txaseqwewq'))
 
     def test_subscribe_no_queues(self):
         self.channel.subclient = Mock()
@@ -243,14 +243,14 @@ class test_Channel(TestCase):
 
     def test_subscribe(self):
         self.channel.subclient = Mock()
-        self.channel.active_fanout_queues.add("a")
-        self.channel.active_fanout_queues.add("b")
-        self.channel._fanout_queues.update(a="a", b="b")
+        self.channel.active_fanout_queues.add('a')
+        self.channel.active_fanout_queues.add('b')
+        self.channel._fanout_queues.update(a='a', b='b')
 
         self.channel._subscribe()
         self.assertTrue(self.channel.subclient.subscribe.called)
         s_args, _ = self.channel.subclient.subscribe.call_args
-        self.assertItemsEqual(s_args[0], ["a", "b"])
+        self.assertItemsEqual(s_args[0], ['a', 'b'])
 
         self.channel.subclient.connection._sock = None
         self.channel._subscribe()
@@ -259,43 +259,43 @@ class test_Channel(TestCase):
     def test_handle_unsubscribe_message(self):
         s = self.channel.subclient
         s.subscribed = True
-        self.channel._handle_message(s, ["unsubscribe", "a", 0])
+        self.channel._handle_message(s, ['unsubscribe', 'a', 0])
         self.assertFalse(s.subscribed)
 
     def test_handle_pmessage_message(self):
         self.assertDictEqual(self.channel._handle_message(
                                 self.channel.subclient,
-                                ["pmessage", "pattern", "channel", "data"]),
-                            {"type": "pmessage",
-                             "pattern": "pattern",
-                             "channel": "channel",
-                             "data": "data"})
+                                ['pmessage', 'pattern', 'channel', 'data']),
+                            {'type': 'pmessage',
+                             'pattern': 'pattern',
+                             'channel': 'channel',
+                             'data': 'data'})
 
     def test_handle_message(self):
         self.assertDictEqual(self.channel._handle_message(
                                 self.channel.subclient,
-                                ["type", "channel", "data"]),
-                             {"type": "type",
-                              "pattern": None,
-                              "channel": "channel",
-                              "data": "data"})
+                                ['type', 'channel', 'data']),
+                             {'type': 'type',
+                              'pattern': None,
+                              'channel': 'channel',
+                              'data': 'data'})
 
     def test_brpop_start_but_no_queues(self):
         self.assertIsNone(self.channel._brpop_start())
 
     def test_receive(self):
         s = self.channel.subclient = Mock()
-        self.channel._fanout_to_queue["a"] = "b"
-        s.parse_response.return_value = ["message", "a",
-                                         dumps({"hello": "world"})]
+        self.channel._fanout_to_queue['a'] = 'b'
+        s.parse_response.return_value = ['message', 'a',
+                                         dumps({'hello': 'world'})]
         payload, queue = self.channel._receive()
-        self.assertDictEqual(payload, {"hello": "world"})
-        self.assertEqual(queue, "b")
+        self.assertDictEqual(payload, {'hello': 'world'})
+        self.assertEqual(queue, 'b')
 
     def test_receive_raises(self):
         self.channel._in_listen = True
         s = self.channel.subclient = Mock()
-        s.parse_response.side_effect = KeyError("foo")
+        s.parse_response.side_effect = KeyError('foo')
 
         with self.assertRaises(redis.Empty):
             self.channel._receive()
@@ -310,14 +310,14 @@ class test_Channel(TestCase):
 
     def test_receive_different_message_Type(self):
         s = self.channel.subclient = Mock()
-        s.parse_response.return_value = ["pmessage", "/foo/", 0, "data"]
+        s.parse_response.return_value = ['pmessage', '/foo/', 0, 'data']
 
         with self.assertRaises(redis.Empty):
             self.channel._receive()
 
     def test_brpop_read_raises(self):
         c = self.channel.client = Mock()
-        c.parse_response.side_effect = KeyError("foo")
+        c.parse_response.side_effect = KeyError('foo')
 
         with self.assertRaises(redis.Empty):
             self.channel._brpop_read()
@@ -334,20 +334,20 @@ class test_Channel(TestCase):
     def test_poll_error(self):
         c = self.channel.client = Mock()
         c.parse_response = Mock()
-        self.channel._poll_error("BRPOP")
+        self.channel._poll_error('BRPOP')
 
-        c.parse_response.assert_called_with("BRPOP")
+        c.parse_response.assert_called_with('BRPOP')
 
-        c.parse_response.side_effect = KeyError("foo")
-        self.assertIsNone(self.channel._poll_error("BRPOP"))
+        c.parse_response.side_effect = KeyError('foo')
+        self.assertIsNone(self.channel._poll_error('BRPOP'))
 
     def test_put_fanout(self):
         self.channel._in_poll = False
         c = self.channel.client = Mock()
 
-        body = {"hello": "world"}
-        self.channel._put_fanout("exchange", body)
-        c.publish.assert_called_with("exchange", dumps(body))
+        body = {'hello': 'world'}
+        self.channel._put_fanout('exchange', body)
+        c.publish.assert_called_with('exchange', dumps(body))
 
     def test_delete(self):
         x = self.channel
@@ -355,20 +355,20 @@ class test_Channel(TestCase):
         delete = x.client.delete = Mock()
         srem = x.client.srem = Mock()
 
-        x._delete("queue", "exchange", "routing_key", None)
-        delete.assert_has_call("queue")
-        srem.assert_has_call(x.keyprefix_queue % ("exchange", ),
-                             x.sep.join(["routing_key", "", "queue"]))
+        x._delete('queue', 'exchange', 'routing_key', None)
+        delete.assert_has_call('queue')
+        srem.assert_has_call(x.keyprefix_queue % ('exchange', ),
+                             x.sep.join(['routing_key', '', 'queue']))
 
     def test_has_queue(self):
         self.channel._in_poll = False
         exists = self.channel.client.exists = Mock()
         exists.return_value = True
-        self.assertTrue(self.channel._has_queue("foo"))
-        exists.assert_has_call("foo")
+        self.assertTrue(self.channel._has_queue('foo'))
+        exists.assert_has_call('foo')
 
         exists.return_value = False
-        self.assertFalse(self.channel._has_queue("foo"))
+        self.assertFalse(self.channel._has_queue('foo'))
 
     def test_close_when_closed(self):
         self.channel.closed = True
@@ -382,27 +382,27 @@ class test_Channel(TestCase):
         c.connection.disconnect.assert_called_with()
 
     def test_invalid_database_raises_ValueError(self):
-        self.channel.connection.client.virtual_host = "xfeqwewkfk"
+        self.channel.connection.client.virtual_host = 'xfeqwewkfk'
 
         with self.assertRaises(ValueError):
             self.channel._create_client()
 
-    @skip_if_not_module("redis")
+    @skip_if_not_module('redis')
     def test_get_client(self):
         import redis as R
         KombuRedis = redis.Channel._get_client(self.channel)
         self.assertTrue(KombuRedis)
 
-        Rv = getattr(R, "__version__")
+        Rv = getattr(R, '__version__')
         try:
-            R.__version__ = "2.4.0"
+            R.__version__ = '2.4.0'
             with self.assertRaises(VersionMismatch):
                 redis.Channel._get_client(self.channel)
         finally:
             if Rv is not None:
                 R.__version__ = Rv
 
-    @skip_if_not_module("redis")
+    @skip_if_not_module('redis')
     def test_get_response_error(self):
         from redis.exceptions import ResponseError
         self.assertIs(redis.Channel._get_response_error(self.channel),
@@ -421,19 +421,19 @@ class test_Channel(TestCase):
         self.assertTrue(self.channel._avail_client)
         cc.assert_called_with()
 
-    @skip_if_not_module("redis")
+    @skip_if_not_module('redis')
     def test_transport_get_errors(self):
         self.assertTrue(redis.Transport._get_errors(self.connection.transport))
 
-    @skip_if_not_module("redis")
+    @skip_if_not_module('redis')
     def test_transport_get_errors_when_InvalidData_used(self):
         from redis import exceptions
 
         class ID(Exception):
             pass
 
-        DataError = getattr(exceptions, "DataError", None)
-        InvalidData = getattr(exceptions, "InvalidData", None)
+        DataError = getattr(exceptions, 'DataError', None)
+        InvalidData = getattr(exceptions, 'InvalidData', None)
         exceptions.InvalidData = ID
         exceptions.DataError = None
         try:
@@ -462,39 +462,39 @@ class test_Channel(TestCase):
         # which raises a channel error so that the consumer/publisher
         # can recover by redeclaring the required entities.
         with self.assertRaises(InconsistencyError):
-            self.channel.get_table("celery")
+            self.channel.get_table('celery')
 
 
 class test_Redis(TestCase):
 
     def setUp(self):
-        self.connection = BrokerConnection(transport=Transport)
-        self.exchange = Exchange("test_Redis", type="direct")
-        self.queue = Queue("test_Redis", self.exchange, "test_Redis")
+        self.connection = Connection(transport=Transport)
+        self.exchange = Exchange('test_Redis', type='direct')
+        self.queue = Queue('test_Redis', self.exchange, 'test_Redis')
 
     def tearDown(self):
         self.connection.close()
 
     def test_publish__get(self):
         channel = self.connection.channel()
-        producer = Producer(channel, self.exchange, routing_key="test_Redis")
+        producer = Producer(channel, self.exchange, routing_key='test_Redis')
         self.queue(channel).declare()
 
-        producer.publish({"hello": "world"})
+        producer.publish({'hello': 'world'})
 
         self.assertDictEqual(self.queue(channel).get().payload,
-                             {"hello": "world"})
+                             {'hello': 'world'})
         self.assertIsNone(self.queue(channel).get())
         self.assertIsNone(self.queue(channel).get())
         self.assertIsNone(self.queue(channel).get())
 
     def test_publish__consume(self):
-        connection = BrokerConnection(transport=Transport)
+        connection = Connection(transport=Transport)
         channel = connection.channel()
-        producer = Producer(channel, self.exchange, routing_key="test_Redis")
+        producer = Producer(channel, self.exchange, routing_key='test_Redis')
         consumer = Consumer(channel, self.queue)
 
-        producer.publish({"hello2": "world2"})
+        producer.publish({'hello2': 'world2'})
         _received = []
 
         def callback(message_data, message):
@@ -515,56 +515,56 @@ class test_Redis(TestCase):
 
     def test_purge(self):
         channel = self.connection.channel()
-        producer = Producer(channel, self.exchange, routing_key="test_Redis")
+        producer = Producer(channel, self.exchange, routing_key='test_Redis')
         self.queue(channel).declare()
 
         for i in range(10):
-            producer.publish({"hello": "world-%s" % (i, )})
+            producer.publish({'hello': 'world-%s' % (i, )})
 
-        self.assertEqual(channel._size("test_Redis"), 10)
+        self.assertEqual(channel._size('test_Redis'), 10)
         self.assertEqual(self.queue(channel).purge(), 10)
         channel.close()
 
     def test_db_values(self):
-        c1 = BrokerConnection(virtual_host=1,
+        c1 = Connection(virtual_host=1,
                               transport=Transport).channel()
         self.assertEqual(c1.client.db, 1)
 
-        c2 = BrokerConnection(virtual_host="1",
+        c2 = Connection(virtual_host='1',
                               transport=Transport).channel()
         self.assertEqual(c2.client.db, 1)
 
-        c3 = BrokerConnection(virtual_host="/1",
+        c3 = Connection(virtual_host='/1',
                               transport=Transport).channel()
         self.assertEqual(c3.client.db, 1)
 
         with self.assertRaises(Exception):
-            BrokerConnection(virtual_host="/foo",
-                             transport=Transport).channel()
+            Connection(virtual_host='/foo',
+                       transport=Transport).channel()
 
     def test_db_port(self):
-        c1 = BrokerConnection(port=None, transport=Transport).channel()
+        c1 = Connection(port=None, transport=Transport).channel()
         self.assertEqual(c1.client.port, Transport.default_port)
         c1.close()
 
-        c2 = BrokerConnection(port=9999, transport=Transport).channel()
+        c2 = Connection(port=9999, transport=Transport).channel()
         self.assertEqual(c2.client.port, 9999)
         c2.close()
 
     def test_close_poller_not_active(self):
-        c = BrokerConnection(transport=Transport).channel()
+        c = Connection(transport=Transport).channel()
         cycle = c.connection.cycle
         c.client.connection
         c.close()
         self.assertNotIn(c, cycle._channels)
 
     def test_close_ResponseError(self):
-        c = BrokerConnection(transport=Transport).channel()
+        c = Connection(transport=Transport).channel()
         c.client.bgsave_raises_ResponseError = True
         c.close()
 
     def test_close_disconnects(self):
-        c = BrokerConnection(transport=Transport).channel()
+        c = Connection(transport=Transport).channel()
         conn1 = c.client.connection
         conn2 = c.subclient.connection
         c.close()
@@ -574,7 +574,7 @@ class test_Redis(TestCase):
     def test_get__Empty(self):
         channel = self.connection.channel()
         with self.assertRaises(Empty):
-            channel._get("does-not-exist")
+            channel._get('does-not-exist')
         channel.close()
 
     def test_get_client(self):
@@ -583,7 +583,7 @@ class test_Redis(TestCase):
 
         @module_exists(myredis, exceptions)
         def _do_test():
-            conn = BrokerConnection(transport=Transport)
+            conn = Connection(transport=Transport)
             chan = conn.channel()
             self.assertTrue(chan.Client)
             self.assertTrue(chan.ResponseError)
@@ -610,7 +610,7 @@ def _redis_modules():
     class ResponseError(Exception):
         pass
 
-    exceptions = types.ModuleType("redis.exceptions")
+    exceptions = types.ModuleType('redis.exceptions')
     exceptions.ConnectionError = ConnectionError
     exceptions.AuthenticationError = AuthenticationError
     exceptions.InvalidData = InvalidData
@@ -620,7 +620,7 @@ def _redis_modules():
     class Redis(object):
         pass
 
-    myredis = types.ModuleType("redis")
+    myredis = types.ModuleType('redis')
     myredis.exceptions = exceptions
     myredis.Redis = Redis
 
@@ -703,7 +703,7 @@ class test_MultiChannelPoller(TestCase):
         self.assertEqual(p._register.call_count, 1)
 
         channel.client.connection._sock = Mock()
-        p._chan_to_sock[(channel, channel.client, "BRPOP")] = True
+        p._chan_to_sock[(channel, channel.client, 'BRPOP')] = True
         channel._in_poll = True
         p._register_BRPOP(channel)
         self.assertEqual(channel._brpop_start.call_count, 1)
@@ -717,7 +717,7 @@ class test_MultiChannelPoller(TestCase):
         p._register = Mock()
 
         p._register_LISTEN(channel)
-        p._register.assert_called_with(channel, channel.subclient, "LISTEN")
+        p._register.assert_called_with(channel, channel.subclient, 'LISTEN')
         self.assertEqual(p._register.call_count, 1)
         self.assertEqual(channel._subscribe.call_count, 1)
 
@@ -753,7 +753,7 @@ class test_MultiChannelPoller(TestCase):
             p.get()
 
     def test_get_brpop_qos_allow(self):
-        p, channel = self.create_get(queues=["a_queue"])
+        p, channel = self.create_get(queues=['a_queue'])
         channel.qos.can_consume.return_value = True
 
         with self.assertRaises(redis.Empty):
@@ -762,7 +762,7 @@ class test_MultiChannelPoller(TestCase):
         p._register_BRPOP.assert_called_with(channel)
 
     def test_get_brpop_qos_disallow(self):
-        p, channel = self.create_get(queues=["a_queue"])
+        p, channel = self.create_get(queues=['a_queue'])
         channel.qos.can_consume.return_value = False
 
         with self.assertRaises(redis.Empty):
@@ -771,7 +771,7 @@ class test_MultiChannelPoller(TestCase):
         self.assertFalse(p._register_BRPOP.called)
 
     def test_get_listen(self):
-        p, channel = self.create_get(fanouts=["f_queue"])
+        p, channel = self.create_get(fanouts=['f_queue'])
 
         with self.assertRaises(redis.Empty):
             p.get()
@@ -780,19 +780,19 @@ class test_MultiChannelPoller(TestCase):
 
     def test_get_receives_ERR(self):
         p, channel = self.create_get(events=[(1, eventio.ERR)])
-        p._fd_to_chan[1] = (channel, "BRPOP")
+        p._fd_to_chan[1] = (channel, 'BRPOP')
 
         with self.assertRaises(redis.Empty):
             p.get()
 
-        channel._poll_error.assert_called_with("BRPOP")
+        channel._poll_error.assert_called_with('BRPOP')
 
     def test_get_receives_multiple(self):
         p, channel = self.create_get(events=[(1, eventio.ERR),
                                              (1, eventio.ERR)])
-        p._fd_to_chan[1] = (channel, "BRPOP")
+        p._fd_to_chan[1] = (channel, 'BRPOP')
 
         with self.assertRaises(redis.Empty):
             p.get()
 
-        channel._poll_error.assert_called_with("BRPOP")
+        channel._poll_error.assert_called_with('BRPOP')

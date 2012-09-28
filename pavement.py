@@ -63,12 +63,12 @@ def upload_docs(options):
 
 @task
 def autodoc(options):
-    sh("contrib/release/doc4allmods kombu")
+    sh("extra/release/doc4allmods kombu")
 
 
 @task
 def verifyindex(options):
-    sh("contrib/release/verify-reference-index.sh")
+    sh("extra/release/verify-reference-index.sh")
 
 
 @task
@@ -80,7 +80,7 @@ def clean_readme(options):
 @task
 @needs("clean_readme")
 def readme(options):
-    sh("python contrib/release/sphinx-to-rst.py docs/templates/readme.txt \
+    sh("python extra/release/sphinx-to-rst.py docs/templates/readme.txt \
             > README.rst")
     sh("ln -sf README.rst README")
 
@@ -92,7 +92,7 @@ def readme(options):
 def bump(options):
     s = "-- '%s'" % (options.custom, ) \
             if getattr(options, "custom", None) else ""
-    sh("contrib/release/bump_version.py \
+    sh("extra/release/bump_version.py \
             kombu/__init__.py README.rst %s" % (s, ))
 
 
@@ -135,7 +135,7 @@ def flake8(options):
 ])
 def flakeplus(options):
     noerror = getattr(options, "noerror", False)
-    sh("python contrib/release/flakeplus.py kombu",
+    sh("python extra/release/flakeplus.py kombu",
        ignore_error=noerror)
 
 

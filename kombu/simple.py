@@ -18,8 +18,9 @@ from Queue import Empty
 
 from . import entity
 from . import messaging
+from .connection import maybe_channel
 
-__all__ = ["SimpleQueue", "SimpleBuffer"]
+__all__ = ['SimpleQueue', 'SimpleBuffer']
 
 
 class SimpleBase(object):
@@ -31,13 +32,11 @@ class SimpleBase(object):
     def __exit__(self, *exc_info):
         self.close()
 
-    def __init__(self, channel, producer, consumer, no_ack=False,
-            channel_autoclose=False):
-        self.channel = channel
+    def __init__(self, channel, producer, consumer, no_ack=False):
+        self.channel = maybe_channel(channel)
         self.producer = producer
         self.consumer = consumer
         self.no_ack = no_ack
-        self.channel_autoclose = channel_autoclose
         self.queue = self.consumer.queues[0]
         self.buffer = deque()
         self.consumer.register_callback(self._receive)
@@ -83,8 +82,6 @@ class SimpleBase(object):
         return size
 
     def close(self):
-        if self.channel_autoclose:
-            self.channel.close()
         self.consumer.cancel()
 
     def _receive(self, message_data, message):
@@ -116,7 +113,7 @@ class SimpleQueue(SimpleBase):
         if no_ack is None:
             no_ack = self.no_ack
         if not isinstance(queue, entity.Queue):
-            exchange = entity.Exchange(name, "direct", **exchange_opts)
+            exchange = entity.Exchange(name, 'direct', **exchange_opts)
             queue = entity.Queue(name, exchange, name, **queue_opts)
         else:
             name = queue.name
@@ -135,5 +132,5 @@ class SimpleBuffer(SimpleQueue):
     queue_opts = dict(durable=False,
                       auto_delete=True)
     exchange_opts = dict(durable=False,
-                         delivery_mode="transient",
+                         delivery_mode='transient',
                          auto_delete=True)
