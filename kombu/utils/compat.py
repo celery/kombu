@@ -8,6 +8,21 @@ Helps compatibility with older Python versions.
 :license: BSD, see LICENSE for more details.
 
 """
+############## py3k #########################################################
+import sys
+is_py3k = sys.version_info[0] == 3
+
+if is_py3k:                                 # pragma: no cover
+    from io import StringIO, BytesIO
+    from .encoding import bytes_to_str
+
+    class WhateverIO(StringIO):
+
+        def write(self, data):
+            StringIO.write(self, bytes_to_str(data))
+else:
+    from StringIO import StringIO           # noqa
+    BytesIO = WhateverIO = StringIO         # noqa
 
 ############## __builtins__.next #############################################
 try:
