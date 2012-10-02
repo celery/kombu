@@ -192,6 +192,13 @@ def _ensure_errback(exc, interval):
             exc_info=True)
 
 
+def ignore_errors(conn, fun, *args, **kwargs):
+    try:
+        fun(*args, **kwargs)
+    except (AttributeError, ) + conn.connection_errors + conn.channel_errors:
+        pass
+
+
 def revive_connection(connection, channel, on_revive=None):
     if on_revive:
         on_revive(channel)
