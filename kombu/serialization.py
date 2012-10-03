@@ -1,4 +1,5 @@
 """
+ns
 kombu.serialization
 ===================
 
@@ -381,5 +382,3 @@ registry._set_default_serializer('json')
 # Load entrypoints from installed extensions
 for ep, args in entrypoints('kombu.serializers'):
     register(ep.name, *args)
-
-

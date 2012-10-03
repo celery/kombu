@@ -475,7 +475,7 @@ class Consumer(object):
         """
         callbacks = self.callbacks
         if not callbacks:
-            raise NotImplementedError('Consumer does not have any callback')
+            raise NotImplementedError('Consumer does not have any callbacks')
         [callback(body, message) for callback in callbacks]
 
     def _basic_consume(self, queue, consumer_tag=None,
@@ -503,8 +503,8 @@ class Consumer(object):
             if not self.on_decode_error:
                 raise
             self.on_decode_error(message, exc)
-
-        return on_m(message) if on_m else self.receive(decoded, message)
+        else:
+            return on_m(message) if on_m else self.receive(decoded, message)
 
     def __repr__(self):
         return '<Consumer: %s>' % (self.queues, )
