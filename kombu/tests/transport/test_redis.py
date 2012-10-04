@@ -393,14 +393,14 @@ class test_Channel(TestCase):
         KombuRedis = redis.Channel._get_client(self.channel)
         self.assertTrue(KombuRedis)
 
-        Rv = getattr(R, '__version__')
+        Rv = getattr(R, 'VERSION')
         try:
-            R.__version__ = '2.4.0'
+            R.VERSION = (2, 4, 0)
             with self.assertRaises(VersionMismatch):
                 redis.Channel._get_client(self.channel)
         finally:
             if Rv is not None:
-                R.__version__ = Rv
+                R.VERSION = Rv
 
     @skip_if_not_module('redis')
     def test_get_response_error(self):
