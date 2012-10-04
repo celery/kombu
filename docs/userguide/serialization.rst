@@ -98,6 +98,7 @@ for the raw data::
 The `Message` object returned by the `Consumer` class will have a
 `content_type` and `content_encoding` attribute.
 
+.. _serialization-entrypoints:
 
 Creating extensions using Setuptools entry-points
 =================================================

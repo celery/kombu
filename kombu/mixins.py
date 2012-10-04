@@ -17,6 +17,7 @@ from contextlib import contextmanager
 from functools import partial
 from itertools import count
 
+from .common import ignore_errors
 from .messaging import Consumer
 from .log import LogMixin
 from .utils import cached_property, nested
@@ -192,14 +193,8 @@ class ConsumerMixin(LogMixin):
         self.debug('consume exiting')
 
     def maybe_conn_error(self, fun):
-        """Applies function but ignores any connection or channel
-        errors raised."""
-        try:
-            fun()
-        except (AttributeError, ) + \
-                self.connection_errors + \
-                self.channel_errors:
-            pass
+        """Use :func:`kombu.common.ignore_errors` instead."""
+        return ignore_errors(self, fun)
 
     @contextmanager
     def establish_connection(self):

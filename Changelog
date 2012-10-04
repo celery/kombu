@@ -32,6 +32,18 @@
 
     Contributed by Rumyana Neykova.
 
+- Consumer now supports a ``on_message`` callback that can be used to process
+  raw undecoded messages.
+
+    Other callbacks specified using the ``callbacks`` argument, and
+    the ``receive`` method will be not be called when a on message callback
+    is present.
+
+- New utility :func:`kombu.common.ignore_errors` ignores connection and
+  channel errors.
+
+    Must only be used for cleanup actions at shutdown or on connection loss.
+
 - Support for exchange-to-exchange bindings.
 
     The :class:`~kombu.entity.Exchange` entity gained ``bind_to``
