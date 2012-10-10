@@ -10,6 +10,43 @@
 =====
 :release-date: TBA
 
+- Support for multiple connection URL's used for failover.
+
+    The first argument to :class:`~kombu.Connection` can now be a list of
+    connection URLs:
+
+    .. code-block:: python
+
+        Connection(['amqp://foo', 'amqp://bar'])
+
+    or it can be a single string argument with several URLs separated by
+    semicolon:
+
+    .. code-block:: python
+
+        Connection('amqp://foo;amqp://bar')
+
+    There is also a new keyword argument ``failover_strategy`` that defines
+    how :meth:`~kombu.Connection.ensure_connection`/
+    :meth:`~kombu.Connection.ensure`/:meth:`kombu.Connection.autoretry` will
+    reconnect in the event of connection failures.
+
+    The default reconnection strategy is ``round-robin``, which will simply
+    cycle through the list forever, and there's also a ``shuffle`` strategy
+    that will select random hosts from the list.  Custom strategies can also
+    be used, in that case the argument must be a generator yielding the URL
+    to connect to.
+
+    Example:
+
+    .. code-block:: python
+
+        Connection('amqp://foo;amqp://bar')
+
+
+
+
+
 - :class:`~kombu.entity.Queue` now supports multiple bindings.
 
     You can now have multiple bindings in the same queue by having
@@ -31,6 +68,16 @@
         - :meth:`~kombu.entity.Queue.unbind_from`
 
     Contributed by Rumyana Neykova.
+
+- Custom serializers can now be registered using Setuptools entry-points.
+
+    See :ref:`serialization-entrypoints`.
+
+- New :class:`kombu.common.QoS` class used as a thread-safe way to manage
+  changes to a consumer or channels prefetch_count.
+
+    This was previously an internal class used in Celery now moved to
+    the :mod:`kombu.common` module.
 
 - Consumer now supports a ``on_message`` callback that can be used to process
   raw undecoded messages.
