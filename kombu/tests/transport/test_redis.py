@@ -197,6 +197,9 @@ class Channel(redis.Channel):
     def _get_client(self):
         return Client
 
+    def _get_pool(self):
+        return Mock()
+
     def _get_response_error(self):
         return ResponseError
 
