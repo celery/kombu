@@ -195,6 +195,9 @@ class Connection(amqp.Connection):  # pragma: no cover
                 # http://bugs.python.org/issue10272
                 if 'timed out' in str(exc):
                     raise socket.timeout()
+                # Non-blocking SSL sockets can throw SSLError
+                if 'The operation did not complete' in str(exc):
+                    raise socket.timeout()
                 raise
         finally:
             if prev != timeout:
