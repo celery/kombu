@@ -18,6 +18,7 @@ def send_as_task(connection, fun, args=(), kwargs={}, priority='mid'):
         maybe_declare(task_exchange, producer.channel)
         producer.publish(payload, serializer='pickle',
                                   compression='bzip2',
+                                  exchange=task_exchange,
                                   routing_key=routing_key)
 
 if __name__ == '__main__':
