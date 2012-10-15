@@ -12,6 +12,7 @@ from __future__ import absolute_import
 from __future__ import with_statement
 
 from bisect import bisect
+from contextlib import contextmanager
 from itertools import cycle, islice
 from time import time
 from Queue import Empty
@@ -25,7 +26,6 @@ from kombu.exceptions import (
 )
 from kombu.log import get_logger
 from kombu.utils import cached_property, uuid
-from kombu.utils.encoding import str_t
 from kombu.utils.eventio import poll, READ, ERR
 
 try:
@@ -56,6 +56,33 @@ PRIORITY_STEPS = [0, 3, 6, 9]
 # Also it means we can easily use PUBLISH/SUBSCRIBE to do fanout
 # exchanges (broadcast), as an alternative to pushing messages to fanout-bound
 # queues manually.
+
+
+class MutexHeld(Exception):
+    pass
+
+
+@contextmanager
+def Mutex(client, name, expire):
+    lock_id = uuid()
+    if client.setnx(name, lock_id):
+        client.expire(name, expire)
+        yield
+    else:
+        if not client.ttl(name):
+            client.expire(name, expire)
+        raise MutexHeld()
+
+    pipe = client.pipeline(True)
+    try:
+        pipe.watch(name)
+        if pipe.get(name) == lock_id:
+            pipe.multi()
+            pipe.delete(name)
+            pipe.execute()
+        pipe.unwatch()
+    except redis.WatchError:
+        pass
 
 
 class QoS(virtual.QoS):
@@ -96,20 +123,26 @@ class QoS(virtual.QoS):
         self._vrestore_count += 1
         if (self._vrestore_count - 1) % interval:
             return
+        client = self.client
         ceil = time() - self.visibility_timeout
-        visible = self.client.zrevrangebyscore(
-                self.unacked_index_key, ceil, 0,
-                start=start, num=num, withscores=True)
-        for tag, score in visible or []:
-            self.restore_by_tag(tag)
+        try:
+            with Mutex(client, self.unacked_mutex_key,
+                               self.unacked_mutex_expire):
+                visible = client.zrevrangebyscore(
+                        self.unacked_index_key, ceil, 0,
+                        start=start, num=num, withscores=True)
+                for tag, score in visible or []:
+                    self.restore_by_tag(tag, client)
+        except MutexHeld:
+            pass
 
-    def restore_by_tag(self, tag):
+    def restore_by_tag(self, tag, client=None):
+        client = client or self.client
         p, _, _ = self._remove_from_indices(tag,
-                        self.client.pipeline().hget(self.unacked_key, tag)) \
-                            .execute()
+            client.pipeline().hget(self.unacked_key, tag)).execute()
         if p:
             M, EX, RK = loads(p)
-            self.channel._do_restore_message(M, EX, RK)
+            self.channel._do_restore_message(M, EX, RK, client)
 
     @property
     def client(self):
@@ -122,6 +155,14 @@ class QoS(virtual.QoS):
     @cached_property
     def unacked_index_key(self):
         return self.channel.unacked_index_key
+
+    @cached_property
+    def unacked_mutex_key(self):
+        return self.channel.unacked_mutex_key
+
+    @cached_property
+    def unacked_mutex_expire(self):
+        return self.channel.unacked_mutex_expire
 
     @cached_property
     def visibility_timeout(self):
@@ -256,12 +297,16 @@ class Channel(virtual.Channel):
     _fanout_queues = {}
     unacked_key = 'unacked'
     unacked_index_key = 'unacked_index'
+    unacked_mutex_key = 'unacked_mutex'
+    unacked_mutex_expire = 60
     visibility_timeout = 3600  # 1 hour
     priority_steps = PRIORITY_STEPS
 
     from_transport_options = (virtual.Channel.from_transport_options
                             + ('unacked_key',
                                'unacked_index_key',
+                               'unacked_mutex_key',
+                               'unacked_mutex_expire',
                                'visibility_timeout',
                                'priority_steps'))
 
@@ -285,27 +330,29 @@ class Channel(virtual.Channel):
         # are still waiting for data.
         self.connection_errors = self.connection.connection_errors
 
-    def _do_restore_message(self, payload, exchange, routing_key):
+    def _do_restore_message(self, payload, exchange, routing_key, client=None):
+        client = client or self._avail_client
         try:
             try:
                 payload['headers']['redelivered'] = True
             except KeyError:
                 pass
             for queue in self._lookup(exchange, routing_key):
-                self._avail_client.lpush(queue, dumps(payload))
+                client.lpush(queue, dumps(payload))
         except Exception:
             logger.critical('Could not restore message: %r', payload,
                     exc_info=True)
 
     def _restore(self, message, payload=None):
         tag = message.delivery_tag
-        P, _ = self._avail_client.pipeline() \
-                            .hget(self.unacked_key, tag) \
-                            .hdel(self.unacked_key, tag) \
-                         .execute()
+        client = self._avail_client
+        P, _ = client.pipeline() \
+                    .hget(self.unacked_key, tag) \
+                    .hdel(self.unacked_key, tag) \
+                .execute()
         if P:
             M, EX, RK = loads(P)
-            self._do_restore_message(M, EX, RK)
+            self._do_restore_message(M, EX, RK, client)
 
     def _next_delivery_tag(self):
         return uuid()
