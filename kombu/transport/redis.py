@@ -130,7 +130,7 @@ class QoS(virtual.QoS):
                                self.unacked_mutex_expire):
                 visible = client.zrevrangebyscore(
                         self.unacked_index_key, ceil, 0,
-                        start=start, num=num, withscores=True)
+                        start=num and start, num=num, withscores=True)
                 for tag, score in visible or []:
                     self.restore_by_tag(tag, client)
         except MutexHeld:
@@ -242,13 +242,17 @@ class MultiChannelPoller(object):
     def on_poll_init(self, poller):
         self.poller = poller
         for channel in self._channels:
-            channel.qos.restore_visible()
+            return channel.qos.restore_visible(
+                num=channel.unacked_restore_limit,
+            )
 
     def on_poll_empty(self):
         for channel in self._channels:
             if channel.active_queues:
                 # only need to do this once, as they are not local to channel.
-                return channel.qos.restore_visible()
+                return channel.qos.restore_visible(
+                    num=channel.unacked_restore_limit,
+                )
 
     def handle_event(self, fileno, event):
         if event & READ:
@@ -299,6 +303,7 @@ class Channel(virtual.Channel):
     unacked_index_key = 'unacked_index'
     unacked_mutex_key = 'unacked_mutex'
     unacked_mutex_expire = 60
+    unacked_restore_limit = None
     visibility_timeout = 3600  # 1 hour
     priority_steps = PRIORITY_STEPS
 
@@ -308,6 +313,7 @@ class Channel(virtual.Channel):
                                'unacked_mutex_key',
                                'unacked_mutex_expire',
                                'visibility_timeout',
+                               'unacked_restore_limit',
                                'priority_steps'))
 
     def __init__(self, *args, **kwargs):
