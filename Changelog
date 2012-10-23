@@ -43,6 +43,7 @@
 
         Connection('amqp://foo;amqp://bar')
 
+- Now supports PyDev, PyCharm, pylint and other static code analysis tools.
 
 - :class:`~kombu.entity.Queue` now supports multiple bindings.
 
