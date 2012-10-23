@@ -21,6 +21,19 @@ if sys.version_info < (2, 5):  # pragma: no cover
     else:
         raise Exception('Kombu requires Python versions 2.5 or later.')
 
+STATICA_HACK = True
+globals()['kcah_acitats'[::-1].upper()] = False
+if STATICA_HACK:
+    # This is never executed, but tricks static analyzers (PyDev, PyCharm,
+    # pylint, etc.) into knowing the types of these symbols, and what
+    # they contain.
+    from kombu.connection import Connection, BrokerConnection   # noqa
+    from kombu.entitiy import Exchange, Queue, binding          # noqa
+    from kombu.messaging import Consumer, Producer              # noqa
+    from kombu.pools import connections, producers              # noqa
+    from kombu.utils.url import parse_url                       # noqa
+    from kombu.common import eventloop, uuid                    # noqa
+
 # Lazy loading.
 # - See werkzeug/__init__.py for the rationale behind this.
 from types import ModuleType
