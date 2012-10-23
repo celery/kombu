@@ -133,7 +133,7 @@ class Producer(object):
         :keyword retry: Retry publishing, or declaring entities if the
             connection is lost.
         :keyword retry_policy: Retry configuration, this is the keywords
-            supported by :meth:`~kombu.connection.Connection.ensure`.
+            supported by :meth:`~kombu.Connection.ensure`.
         :keyword \*\*properties: Additional message properties, see AMQP spec.
 
         """

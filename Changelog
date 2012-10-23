@@ -350,7 +350,7 @@
 =====
 :release-date: 2012-07-10 17:00 P.M BST
 
-- Adds ``messaging.entry_to_queue`` for compat with previous versions.
+- Adds ``kombu.messaging.entry_to_queue`` for compat with previous versions.
 
 .. _version-2.2.5:
 
@@ -1016,7 +1016,7 @@ News
                          declare=[exchange], retry_policy={
                             'interval_start': 1.0})
 
-    See :meth:`~kombu.connection.Connection.ensure`
+    See :meth:`~kombu.Connection.ensure`
     for a list of supported retry policy options.
 
 * ``Producer.publish`` now supports a ``declare`` keyword argument.
@@ -1176,7 +1176,7 @@ Fixes
     This module contains a :class:`~kombu.mixins.ConsumerMixin` class
     that can be used to easily implement a message consumer
     thread that consumes messages from one or more
-    :class:`kombu.messaging.Consumer` instances.
+    :class:`kombu.Consumer` instances.
 
 * New example: :ref:`task-queue-example`
 

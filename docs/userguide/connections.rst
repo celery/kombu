@@ -20,7 +20,7 @@ Create a connection using the default transport::
 
 The connection will not be established yet, as the connection is established
 when needed. If you want to explicitly establish the connection
-you have to call the :meth:`~kombu.connection.Connection.connect`
+you have to call the :meth:`~kombu.Connection.connect`
 method::
 
     >>> connection.connect()
@@ -100,7 +100,7 @@ the redis database number.
 Keyword arguments
 =================
 
-The :class:`~kombu.connection.Connection` class supports additional
+The :class:`~kombu.Connection` class supports additional
 keyword arguments, these are:
 
 :hostname: Default host name if not provided in the URL.

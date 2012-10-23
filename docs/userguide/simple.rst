@@ -18,7 +18,7 @@ two arguments, a connection channel and a name. The name is used as the
 queue, exchange and routing key. If the need arises, you can specify
 a :class:`~kombu.entity.Queue` as the name argument instead.
 
-In addition, the :class:`~kombu.connection.Connection` comes with
+In addition, the :class:`~kombu.Connection` comes with
 shortcuts to create simple queues using the current connection::
 
     >>> queue = connection.SimpleQueue('myqueue')

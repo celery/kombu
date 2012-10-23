@@ -16,11 +16,11 @@
 
         .. attribute:: producer
 
-            :class:`~kombu.messaging.Producer` used to publish messages.
+            :class:`~kombu.Producer` used to publish messages.
 
         .. attribute:: consumer
 
-            :class:`~kombu.messaging.Consumer` used to receive messages.
+            :class:`~kombu.Consumer` used to receive messages.
 
         .. attribute:: no_ack
 
@@ -57,11 +57,11 @@
 
         .. attribute:: producer
 
-            :class:`~kombu.messaging.Producer` used to publish messages.
+            :class:`~kombu.Producer` used to publish messages.
 
         .. attribute:: consumer
 
-            :class:`~kombu.messaging.Consumer` used to receive messages.
+            :class:`~kombu.Consumer` used to receive messages.
 
         .. attribute:: no_ack
 

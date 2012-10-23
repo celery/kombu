@@ -8,17 +8,20 @@
 .. toctree::
     :maxdepth: 2
 
-    kombu.connection
-    kombu.simple
-    kombu.messaging
-    kombu.entity
+    kombu
     kombu.common
     kombu.mixins
+    kombu.simple
     kombu.clocks
     kombu.compat
     kombu.pidbox
     kombu.exceptions
     kombu.log
+    kombu.connection
+    kombu.compression
+    kombu.pools
+    kombu.abstract
+    kombu.syn
     kombu.transport
     kombu.transport.amqplib
     kombu.transport.librabbitmq
@@ -45,10 +48,6 @@
     kombu.transport.virtual.exchange
     kombu.transport.virtual.scheduling
     kombu.serialization
-    kombu.compression
-    kombu.pools
-    kombu.abstract
-    kombu.syn
     kombu.utils
     kombu.utils.limits
     kombu.utils.compat

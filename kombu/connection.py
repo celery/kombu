@@ -51,7 +51,28 @@ failover_strategies = {
 class Connection(object):
     """A connection to the broker.
 
-    :param URL:  Connection URL.
+    :param URL:  Broker URL, or a list of URLs, e.g.
+
+    .. code-block:: python
+
+        Connection('amqp://guest:guest@localhost:5672//')
+        Connection('amqp://foo;amqp://bar', failover_strategy='round-robin')
+        Connection('redis://', transport_options={
+            'visibility_timeout': 3000,
+        })
+
+        import ssl
+        Connection('amqp://', login_method='EXTERNAL', ssl={
+            'ca_certs': '/etc/pki/tls/certs/something.crt',
+            'keyfile': '/etc/something/system.key',
+            'certfile': '/etc/something/system.cert',
+            'cert_reqs': ssl.CERT_REQUIRED,
+        })
+
+    .. admonition:: SSL compatibility
+
+        SSL currently only works with amqplib and py-amqp transport. For other
+        transports you can use stunnel.
 
     :keyword hostname: Default host name/address if not provided in the URL.
     :keyword userid: Default user name if not provided in the URL.
@@ -109,6 +130,20 @@ class Connection(object):
     #: of connection failure (initialized by :attr:`failover_strategy`).
     cycle = None
 
+    #: Additional transport specific options, passed on to the transport
+    #: instance.
+    transport_options = None
+
+    #: Strategy used to select new hosts when reconnecting after connection
+    #: failure.  One of "round-robin", "shuffle" or any custom iterator
+    #: constantly yielding new URLs to try.
+    failover_strategy = 'round-robin'
+
+    #: Heartbeat value, currently only supported by the py-amqp transport.
+    hertbeat = None
+
+    userid = password = ssl = login_method = None
+
     def __init__(self, hostname='localhost', userid=None,
             password=None, virtual_host=None, port=None, insist=False,
             ssl=False, transport=None, connect_timeout=5,
@@ -164,11 +199,15 @@ class Connection(object):
         self.declared_entities = set()
 
     def switch(self, url):
+        """Switch connection parameters to use a new URL (does not
+        reconnect)"""
         self.close()
         self._closed = False
         self._init_params(**dict(self._initial_params, **parse_url(url)))
 
     def maybe_switch_next(self):
+        """Switch to next URL given by the current failover strategy (if
+        any)."""
         if self.cycle:
             self.switch(next(self.cycle))
 
@@ -200,7 +239,7 @@ class Connection(object):
         return self.connection
 
     def channel(self):
-        """Request a new channel."""
+        """Create and return a new channel."""
         self._debug('create channel')
         chan = self.transport.create_channel(self.connection)
         if _LOG_CHANNEL:  # pragma: no cover
@@ -235,6 +274,13 @@ class Connection(object):
         return self.transport.drain_events(self.connection, **kwargs)
 
     def drain_nowait(self, *args, **kwargs):
+        """Non-blocking version of :meth:`drain_events`.
+
+        Sets :attr:`more_to_read` if there is more data to read.
+        The application MUST call this method until this is unset, and before
+        calling select/epoll/kqueue's poll() again.
+
+        """
         try:
             self.drain_events(timeout=0)
         except socket.timeout:
@@ -249,6 +295,7 @@ class Connection(object):
         return True
 
     def maybe_close_channel(self, channel):
+        """Close given channel, but ignore connection and channel errors."""
         try:
             channel.close()
         except (self.connection_errors + self.channel_errors):
@@ -267,6 +314,7 @@ class Connection(object):
             self._connection = None
 
     def _close(self):
+        """Really close connection, even if part of a connection pool."""
         self._do_close_self()
         if self._transport:
             self._transport.client = None
@@ -319,9 +367,11 @@ class Connection(object):
         return self
 
     def completes_cycle(self, retries):
+        """Returns true if the cycle is complete after number of `retries`."""
         return not (retries + 1) % len(self.alt) if self.alt else True
 
     def revive(self, new_channel):
+        """Revive connection after connection re-established."""
         if self._default_channel:
             self.maybe_close_channel(self._default_channel)
             self._default_channel = None
@@ -489,6 +539,7 @@ class Connection(object):
             self.password, self.virtual_host, self.port))
 
     def as_uri(self, include_password=False):
+        """Convert connection parameters to URL form."""
         if self.transport_cls in URI_PASSTHROUGH:
             return self.transport_cls + '+' + (self.hostname or 'localhost')
         quoteS = partial(quote, safe='')   # strict quote
@@ -571,10 +622,14 @@ class Connection(object):
         return ChannelPool(self, limit, preload)
 
     def Producer(self, channel=None, *args, **kwargs):
+        """Create new :class:`kombu.Producer` instance using this
+        connection."""
         from .messaging import Producer
         return Producer(channel or self, *args, **kwargs)
 
     def Consumer(self, queues=None, channel=None, *args, **kwargs):
+        """Create new :class:`kombu.Consumer` instance using this
+        connection."""
         from .messaging import Consumer
         return Consumer(channel or self, queues, *args, **kwargs)
 
@@ -669,6 +724,14 @@ class Connection(object):
 
     @property
     def default_channel(self):
+        """Default channel, created upon access and closed when the connection
+        is closed.
+
+        Can be used for automatic channel handling when you only need one
+        channel, and also it is the channel implicitly used if a connection is passed on
+        instead of a channel, to functions that require a channel.
+
+        """
         # make sure we're still connected, and if not refresh.
         self.connection
         if self._default_channel is None:
@@ -688,6 +751,8 @@ class Connection(object):
 
     @cached_property
     def manager(self):
+        """Experimental manager that can be used to manage/monitor the broker
+        instance.  Not available for all transports."""
         return self.transport.manager
 
     def get_manager(self, *args, **kwargs):
@@ -705,6 +770,8 @@ class Connection(object):
 
     @property
     def eventmap(self):
+        """Map of events to be registered in an eventloop for this connection
+        to be used in non-blocking fashion."""
         return self.transport.eventmap(self.connection)
 
     @property
