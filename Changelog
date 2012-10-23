@@ -44,9 +44,6 @@
         Connection('amqp://foo;amqp://bar')
 
 
-
-
-
 - :class:`~kombu.entity.Queue` now supports multiple bindings.
 
     You can now have multiple bindings in the same queue by having
@@ -107,6 +104,35 @@
     This is currently only supported by the ``pyamqp`` transport.
 
     Contributed by Rumyana Neykova.
+
+- Redis: Unacked message restore limit is now unlimited by default.
+
+    Also, the limit can now be configured using the ``unacked_restore_limit``
+    transport option:
+
+    .. code-block:: python
+
+        Connection('redis://', transport_options={
+            'unacked_restore_limit': 100,
+        })
+
+        A limit of 100 means that the consumer will restore at most 100
+        messages at each pass.
+
+- Redis: Now uses a mutex to ensure only one consumer restores messages at a
+  time.
+
+    The mutex expires after 5 minutes by default, but can be configured
+    using the ``unacked_mutex_expire`` transport option.
+
+- Redis: Each channel is now using a specific connection pool instance,
+  which is disconnected on connection failure.
+
+- amqplib: Fixed bug with timeouts when SSL is used in non-blocking mode.
+
+    Fix contributed by Mher Movsisyan
+
+
 
 .. _version-2.4.7:
 
