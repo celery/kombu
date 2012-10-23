@@ -302,9 +302,9 @@ class Channel(virtual.Channel):
     unacked_key = 'unacked'
     unacked_index_key = 'unacked_index'
     unacked_mutex_key = 'unacked_mutex'
-    unacked_mutex_expire = 60
+    unacked_mutex_expire = 300  # 5 minutes
     unacked_restore_limit = None
-    visibility_timeout = 3600  # 1 hour
+    visibility_timeout = 3600   # 1 hour
     priority_steps = PRIORITY_STEPS
 
     from_transport_options = (virtual.Channel.from_transport_options
