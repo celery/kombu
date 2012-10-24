@@ -728,8 +728,8 @@ class Connection(object):
         is closed.
 
         Can be used for automatic channel handling when you only need one
-        channel, and also it is the channel implicitly used if a connection is passed on
-        instead of a channel, to functions that require a channel.
+        channel, and also it is the channel implicitly used if a connection
+        is passed instead of a channel, to functions that require a channel.
 
         """
         # make sure we're still connected, and if not refresh.

@@ -11,8 +11,10 @@ Common Utilities.
 from __future__ import absolute_import
 from __future__ import with_statement
 
+import os
 import socket
 import threading
+import uuid as _uuid
 
 from collections import deque
 from contextlib import contextmanager
@@ -26,6 +28,14 @@ from .log import Log
 from .messaging import Consumer as _Consumer
 from .utils import uuid
 
+try:
+    from thread import get_ident            # noqa
+except ImportError:                         # pragma: no cover
+    try:
+        from dummy_thread import get_ident  # noqa
+    except ImportError:                     # pragma: no cover
+        from _thread import get_ident       # noqa
+
 __all__ = ['Broadcast', 'maybe_declare', 'uuid',
            'itermessages', 'send_reply', 'isend_reply',
            'collect_replies', 'insured', 'ipublish', 'drain_consumer',
@@ -36,6 +46,16 @@ PREFETCH_COUNT_MAX = 0xFFFF
 
 insured_logger = Log('kombu.insurance')
 klogger = Log('kombu')
+_nodeid = _uuid.getnode()
+
+
+def generate_oid(node_id, process_id, thread_id, instance):
+    ent = '%x-%x-%x-%x' % (node_id, process_id, thread_id, id(instance))
+    return bytes(_uuid.uuid3(_uuid.NAMESPACE_OID, ent))
+
+
+def oid_from(instance):
+    return generate_oid(_nodeid, os.getpid(), get_ident(), instance)
 
 
 class Broadcast(Queue):

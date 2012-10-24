@@ -7,8 +7,7 @@ Zookeeper transport.
 :copyright: (c) 2010 - 2012 by Mahendra M.
 :license: BSD, see LICENSE for more details.
 
-Synopsis
-========
+**Synopsis**
 
 - Connects to a zookeeper node as <server>:<port>/<vhost>
   The <vhost> becomes the base for all the other znodes. So we can use
@@ -21,14 +20,12 @@ Synopsis
   are able to delete a particular message. If deletion raises a
   NoNode exception, we try again with the next message
 
-References
-----------
+**References**
 
 - https://zookeeper.apache.org/doc/trunk/recipes.html#sc_recipes_Queues
 - http://bit.ly/cZHf9g
 
-Limitations
------------
+**Limitations**
 
 - A queue cannot handle more than 2^32 messages. This is an internal
   limitation with zookeeper. This has to be handled internally in this
