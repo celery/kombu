@@ -17,7 +17,9 @@ from collections import defaultdict, deque
 from copy import copy
 from itertools import count
 from threading import local
+from time import time
 
+from .clocks import LamportClock
 from .common import maybe_declare, oid_from
 from .entity import Exchange, Queue
 from .messaging import Consumer, Producer
@@ -51,6 +53,7 @@ class Node(object):
         self.mailbox = mailbox
         self.hostname = hostname
         self.state = state
+        self.adjust_clock = self.mailbox.clock.adjust
         if handlers is None:
             handlers = {}
         self.handlers = handlers
@@ -101,6 +104,8 @@ class Node(object):
 
     def handle_message(self, body, message=None):
         destination = body.get('destination')
+        if message:
+            self.adjust_clock(message.headers.get('clock') or 0)
         if not destination or self.hostname in destination:
             return self.dispatch(**body)
     dispatch_from_message = handle_message
@@ -130,10 +135,11 @@ class Mailbox(object):
     #: exchange to send replies to.
     reply_exchange = None
 
-    def __init__(self, namespace, type='direct', connection=None):
+    def __init__(self, namespace, type='direct', connection=None, clock=None):
         self.namespace = namespace
         self.connection = connection
         self.type = type
+        self.clock = LamportClock() if clock is None else clock
         self.exchange = self._get_exchange(self.namespace, self.type)
         self.reply_exchange = self._get_reply_exchange(self.namespace)
         self._tls = local()
@@ -189,28 +195,33 @@ class Mailbox(object):
                      durable=False,
                      auto_delete=True)
 
-    def _publish_reply(self, reply, exchange, routing_key, ticket, channel=None):
+    def _publish_reply(self, reply, exchange, routing_key, ticket,
+            channel=None):
         chan = channel or self.connection.default_channel
         exchange = Exchange(exchange, exchange_type='direct',
                                       delivery_mode='transient',
-                                      durable=False)(chan)
+                                      durable=False)
         producer = Producer(chan, auto_declare=False)
         producer.publish(reply, exchange=exchange, routing_key=routing_key,
-                         headers={'ticket': ticket}, declare=[exchange])
+                         declare=[exchange], headers={
+                             'ticket': ticket, 'clock': self.clock.forward()})
 
     def _publish(self, type, arguments, destination=None, reply_ticket=None,
-            channel=None):
+            channel=None, timeout=None):
         message = {'method': type,
                    'arguments': arguments,
                    'destination': destination}
         chan = channel or self.connection.default_channel
+        exchange = self.exchange
         if reply_ticket:
             maybe_declare(self.reply_queue(channel))
             message.update(ticket=reply_ticket,
                            reply_to={'exchange': self.reply_exchange.name,
                                      'routing_key': self.oid})
-        producer = Producer(chan, exchange=self.exchange)
-        producer.publish(message)
+        producer = Producer(chan, auto_declare=False)
+        producer.publish(message, exchange=exchange.name, declare=[exchange],
+                headers={'clock': self.clock.forward(),
+                         'expires': time() + timeout if timeout else None})
 
     def _broadcast(self, command, arguments=None, destination=None,
             reply=False, timeout=1, limit=None, callback=None, channel=None):
@@ -229,7 +240,8 @@ class Mailbox(object):
 
         self._publish(command, arguments, destination=destination,
                                           reply_ticket=reply_ticket,
-                                          channel=chan)
+                                          channel=chan,
+                                          timeout=timeout)
 
         if reply_ticket:
             return self._collect(reply_ticket, limit=limit,
@@ -244,6 +256,7 @@ class Mailbox(object):
         consumer = Consumer(channel, [queue], no_ack=True)
         responses = []
         unclaimed = self.unclaimed
+        adjust_clock = self.clock.adjust
 
         try:
             return unclaimed.pop(ticket)
@@ -252,13 +265,18 @@ class Mailbox(object):
 
         def on_message(body, message):
             # ticket header added in kombu 2.5
-            this_id = message.headers.get('ticket', ticket)
+            header = message.headers.get
+            adjust_clock(header('clock') or 0)
+            expires = header('expires')
+            if expires and time() > expires:
+                return
+            this_id = header('ticket', ticket)
             if this_id == ticket:
                 if callback:
                     callback(body)
                 responses.append(body)
             else:
-                self.unclaimed[this_id].append(body)
+                unclaimed[this_id].append(body)
 
         consumer.register_callback(on_message)
         try:

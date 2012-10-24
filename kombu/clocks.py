@@ -67,3 +67,9 @@ class LamportClock(object):
         with self.mutex:
             self.value += 1
             return self.value
+
+    def __str__(self):
+        return str(self.value)
+
+    def __repr__(self):
+        return '<LamportClock: %r>' % (self.value, )
