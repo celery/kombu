@@ -36,24 +36,23 @@ class test_Mailbox(TestCase):
     def test_reply__collect(self):
         mailbox = pidbox.Mailbox('test_reply__collect')(self.connection)
         exchange = mailbox.reply_exchange.name
+        channel = self.connection.channel()
+        mailbox.reply_queue(channel).declare()
 
         ticket = uuid()
-        mailbox.get_reply_queue(ticket)(self.connection.channel()).declare()
-        mailbox._publish_reply({'foo': 'bar'}, exchange, ticket)
+        mailbox._publish_reply({'foo': 'bar'}, exchange, mailbox.oid, ticket)
         _callback_called = [False]
 
         def callback(body):
             _callback_called[0] = True
 
-        channel = self.connection.channel()
         reply = mailbox._collect(ticket, limit=1, callback=callback,
                                                   channel=channel)
         self.assertEqual(reply, [{'foo': 'bar'}])
         self.assertTrue(_callback_called[0])
 
         ticket = uuid()
-        mailbox.get_reply_queue(ticket)(self.connection.channel()).declare()
-        mailbox._publish_reply({'biz': 'boz'}, exchange, ticket)
+        mailbox._publish_reply({'biz': 'boz'}, exchange, mailbox.oid, ticket)
         reply = mailbox._collect(ticket, limit=1, channel=channel)
         self.assertEqual(reply, [{'biz': 'boz'}])
 
@@ -152,8 +151,8 @@ class test_Mailbox(TestCase):
     def test_reply(self):
         _replied = [(None, None, None)]
 
-        def publish_reply(data, exchange, routing_key, **kwargs):
-            _replied[0] = (data, exchange, routing_key)
+        def publish_reply(data, exchange, routing_key, ticket, **kwargs):
+            _replied[0] = (data, exchange, routing_key, ticket)
 
         mailbox = self.mailbox(self.connection)
         mailbox._publish_reply = publish_reply
@@ -165,11 +164,13 @@ class test_Mailbox(TestCase):
 
         node.dispatch('my_handler_name',
                       reply_to={'exchange': 'exchange',
-                                'routing_key': 'rkey'})
-        data, exchange, routing_key = _replied[0]
+                                'routing_key': 'rkey'},
+                      ticket='TICKET')
+        data, exchange, routing_key, ticket = _replied[0]
         self.assertEqual(data, {'test_reply': 42})
         self.assertEqual(exchange, 'exchange')
         self.assertEqual(routing_key, 'rkey')
+        self.assertEqual(ticket, 'TICKET')
 
     def test_handle_message(self):
         node = self.bound.Node('test_dispatch_from_message')

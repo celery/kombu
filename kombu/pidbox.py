@@ -193,11 +193,10 @@ class Mailbox(object):
         chan = channel or self.connection.default_channel
         exchange = Exchange(exchange, exchange_type='direct',
                                       delivery_mode='transient',
-                                      durable=False)
-        producer = Producer(chan, exchange=exchange,
-                                  auto_declare=True)
-        producer.publish(reply, routing_key=routing_key,
-                         headers={'ticket': ticket})
+                                      durable=False)(chan)
+        producer = Producer(chan, auto_declare=False)
+        producer.publish(reply, exchange=exchange, routing_key=routing_key,
+                         headers={'ticket': ticket}, declare=[exchange])
 
     def _publish(self, type, arguments, destination=None, reply_ticket=None,
             channel=None):
