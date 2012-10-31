@@ -226,7 +226,7 @@ class Connection(object):
         self.connect_timeout = connect_timeout
         self.ssl = ssl
         self.transport_cls = transport
-        self.heartbeat = heartbeat
+        self.heartbeat = float(heartbeat)
 
     def _debug(self, msg, ident='[Kombu connection:0x%(id)x] ', **kwargs):
         if self._logger:  # pragma: no cover
