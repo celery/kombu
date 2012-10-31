@@ -68,6 +68,40 @@ class LamportClock(object):
             self.value += 1
             return self.value
 
+    def sort(self, d):
+        return d[sorted(d)[0]]
+
+    def sort_heap(self, h):
+        """List of tuples containing at least two elements, representing
+        an event, where the first element is the event's scalar clock value,
+        and the second element is the id of the process (usually
+        ``"hostname:pid"``): ``sh([(clock, processid, ...?), (...)])``
+
+        The list must already be sorted, which is why we refer to it as a
+        heap.
+
+        The tuple will not be unpacked, so more than two elements can be
+        present.  Returns the latest event.
+
+        """
+        if h[0][0] == h[1][0]:
+            same = []
+            for i, PN in izip(h, islice(h, 1, None)):
+                if PN[0][0] != pn[1][0]:
+                    break  # Prev and Next's clocks differ
+                same.append(pn[0])
+            # return first item sorted by process id
+            return sorted(same, key=lambda event: event[1])[0]
+        # all clock values unique, return first item
+        return h[0]
+
+    def _sort_same_heap(self, h):
+        for i, pn in izip(h, islice(h, 1, None)):
+            if pn[0][0] == pn[1][0]:
+                yield pn[0]
+            else:
+                break
+
     def __str__(self):
         return str(self.value)
 
