@@ -51,7 +51,6 @@ if is_py3k:  # pragma: no cover
         return obj
 
     str_t = str
-    bytes_t = bytes
 
 else:
 
@@ -70,8 +69,13 @@ else:
         return unicode(obj, default_encoding())
 
     str_t = unicode
-    bytes_t = str
     ensure_bytes = str_to_bytes
+
+
+try:
+    bytes_t = bytes
+except NameError:
+    bytes_t = str  # noqa
 
 
 def safe_str(s, errors='replace'):

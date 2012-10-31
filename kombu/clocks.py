@@ -13,6 +13,8 @@ from __future__ import with_statement
 
 import threading
 
+from itertools import islice, izip
+
 __all__ = ['LamportClock']
 
 
@@ -87,20 +89,13 @@ class LamportClock(object):
         if h[0][0] == h[1][0]:
             same = []
             for i, PN in izip(h, islice(h, 1, None)):
-                if PN[0][0] != pn[1][0]:
+                if PN[0][0] != PN[1][0]:
                     break  # Prev and Next's clocks differ
-                same.append(pn[0])
+                same.append(PN[0])
             # return first item sorted by process id
             return sorted(same, key=lambda event: event[1])[0]
         # all clock values unique, return first item
         return h[0]
-
-    def _sort_same_heap(self, h):
-        for i, pn in izip(h, islice(h, 1, None)):
-            if pn[0][0] == pn[1][0]:
-                yield pn[0]
-            else:
-                break
 
     def __str__(self):
         return str(self.value)

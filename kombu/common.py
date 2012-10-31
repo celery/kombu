@@ -27,6 +27,7 @@ from .exceptions import StdChannelError
 from .log import Log
 from .messaging import Consumer as _Consumer
 from .utils import uuid
+from .utils.encoding import bytes_t
 
 try:
     from thread import get_ident            # noqa
@@ -51,7 +52,7 @@ _nodeid = _uuid.getnode()
 
 def generate_oid(node_id, process_id, thread_id, instance):
     ent = '%x-%x-%x-%x' % (node_id, process_id, thread_id, id(instance))
-    return bytes(_uuid.uuid3(_uuid.NAMESPACE_OID, ent))
+    return bytes_t(_uuid.uuid3(_uuid.NAMESPACE_OID, ent))
 
 
 def oid_from(instance):
