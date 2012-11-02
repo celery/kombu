@@ -19,15 +19,18 @@ from itertools import count
 
 from .common import ignore_errors
 from .messaging import Consumer
-from .log import LogMixin
+from .log import get_logger
 from .utils import cached_property, nested
 from .utils.encoding import safe_repr
 from .utils.limits import TokenBucket
 
 __all__ = ['ConsumerMixin']
 
+logger = get_logger(__name__)
+debug, info, warn, error = logger.debug, logger.info, logger.warn, logger.error
 
-class ConsumerMixin(LogMixin):
+
+class ConsumerMixin(object):
     """Convenience mixin for implementing consumer threads.
 
     It can be used outside of threads, with threads, or greenthreads
@@ -145,15 +148,14 @@ class ConsumerMixin(LogMixin):
         pass
 
     def on_decode_error(self, message, exc):
-        self.critical(
-            "Can't decode message body: %r (type:%r encoding:%r raw:%r')",
-                    exc, message.content_type, message.content_encoding,
-                    safe_repr(message.body))
+        error("Can't decode message body: %r (type:%r encoding:%r raw:%r')",
+            exc, message.content_type, message.content_encoding,
+            safe_repr(message.body))
         message.ack()
 
     def on_connection_error(self, exc, interval):
-        self.error('Broker connection error: %r. '
-                   'Trying again in %s seconds.', exc, interval)
+        warn('Broker connection error: %r. '
+             'Trying again in %s seconds.', exc, interval)
 
     @contextmanager
     def extra_context(self, connection, channel):
@@ -166,8 +168,8 @@ class ConsumerMixin(LogMixin):
                     for _ in self.consume(limit=None):
                         pass
             except self.connection.connection_errors:
-                self.error('Connection to broker lost. '
-                           'Trying to re-establish the connection...')
+                warn('Connection to broker lost. '
+                     'Trying to re-establish the connection...')
 
     def consume(self, limit=None, timeout=None, safety_interval=1, **kwargs):
         elapsed = 0
@@ -190,7 +192,7 @@ class ConsumerMixin(LogMixin):
                     else:
                         yield
                         elapsed = 0
-        self.debug('consume exiting')
+        debug('consume exiting')
 
     def maybe_conn_error(self, fun):
         """Use :func:`kombu.common.ignore_errors` instead."""
@@ -207,15 +209,15 @@ class ConsumerMixin(LogMixin):
     def Consumer(self):
         with self.establish_connection() as conn:
             self.on_connection_revived()
-            self.info('Connected to %s', conn.as_uri())
+            info('Connected to %s', conn.as_uri())
             channel = conn.default_channel
             cls = partial(Consumer, channel,
                           on_decode_error=self.on_decode_error)
             with self._consume_from(*self.get_consumers(cls, channel)) as c:
                 yield conn, channel, c
-            self.debug('Consumers cancelled')
+            debug('Consumers cancelled')
             self.on_consume_end(conn, channel)
-        self.debug('Connection closed')
+        debug('Connection closed')
 
     def _consume_from(self, *consumers):
         return nested(*consumers)

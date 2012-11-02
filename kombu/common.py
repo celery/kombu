@@ -24,7 +24,7 @@ from itertools import count
 from . import serialization
 from .entity import Exchange, Queue
 from .exceptions import StdChannelError
-from .log import Log
+from .log import get_logger
 from .messaging import Consumer as _Consumer
 from .utils import uuid
 from .utils.encoding import bytes_t
@@ -45,8 +45,7 @@ __all__ = ['Broadcast', 'maybe_declare', 'uuid',
 #: Prefetch count can't exceed short.
 PREFETCH_COUNT_MAX = 0xFFFF
 
-insured_logger = Log('kombu.insurance')
-klogger = Log('kombu')
+logger = get_logger(__name__)
 _nodeid = _uuid.getnode()
 
 
@@ -209,8 +208,8 @@ def collect_replies(conn, channel, queue, *args, **kwargs):
 
 
 def _ensure_errback(exc, interval):
-    insured_logger.error(
-        'Connection error: %r. Retry in %ss\n' % (exc, interval),
+    logger.error(
+        'Connection error: %r. Retry in %ss\n', exc, interval,
             exc_info=True)
 
 
@@ -370,10 +369,10 @@ class QoS(object):
         if pcount != self.prev:
             new_value = pcount
             if pcount > PREFETCH_COUNT_MAX:
-                klogger.warn('QoS: Disabled: prefetch_count exceeds %r',
+                logger.warn('QoS: Disabled: prefetch_count exceeds %r',
                              PREFETCH_COUNT_MAX)
                 new_value = 0
-            klogger.debug('basic.qos: prefetch_count->%s', new_value)
+            logger.debug('basic.qos: prefetch_count->%s', new_value)
             self.callback(prefetch_count=new_value)
             self.prev = pcount
         return pcount
