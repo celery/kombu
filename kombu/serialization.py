@@ -296,10 +296,16 @@ def register_json():
     """Register a encoder/decoder for JSON serialization."""
     from anyjson import loads, dumps
 
-    def _loads(obj):
-        if isinstance(obj, str):
-            obj = bytes_to_str(obj)
-        return loads(obj)
+    if sys.version_info[0] == 3:
+        def _loads(obj):
+            if isinstance(obj, bytes):
+                obj = bytes_to_str(obj)
+            return loads(obj)
+    else:
+        def _loads(obj):
+            if isinstance(obj, str):
+                obj = bytes_to_str(obj)
+            return loads(obj)
 
     registry.register('json', dumps, _loads,
                       content_type='application/json',
