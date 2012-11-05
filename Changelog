@@ -150,6 +150,32 @@
 
     Fix contributed by Mher Movsisyan
 
+.. _version-2.4.8:
+
+2.4.8
+=====
+:release-date: 2012-11-02 05:00 P.M UTC
+
+- Redis:  Fair queue cyle implementation improved (Issue #166).
+
+    Contributed by Kevin McCarthy.
+
+- Redis: Number of messages to restore in one iteration is now unlimited,
+  but can be configured using the unacked_restore_limit transport option.
+
+- Redis: A Redis based mutex is now used while restoring messages.
+
+- LamportClock.adjust now returns the new clock value.
+
+- Heartbeats can now be specified in URLs.
+
+    Fix contributed by Mher Movsisyan.
+
+- Kombu can now be used with PyDev, PyCharm and other static analysis tools.
+
+- Fixes problem with msgpack on Python 3 (Issue #162).
+
+    Fix contributed by Jasper Bryant-Greene
 
 
 .. _version-2.4.7:
