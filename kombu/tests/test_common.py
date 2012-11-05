@@ -145,10 +145,10 @@ class test_replies(TestCase):
 
 class test_insured(TestCase):
 
-    @patch('kombu.common.insured_logger')
-    def test_ensure_errback(self, insured_logger):
+    @patch('kombu.common.logger')
+    def test_ensure_errback(self, logger):
         common._ensure_errback('foo', 30)
-        self.assertTrue(insured_logger.error.called)
+        self.assertTrue(logger.error.called)
 
     def test_revive_connection(self):
         on_revive = Mock()
