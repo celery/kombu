@@ -217,7 +217,7 @@ def _ensure_errback(exc, interval):
 def _ignore_errors(conn):
     try:
         yield
-    except (AttributeError, ) + conn.connection_errors + conn.channel_errors:
+    except conn.connection_errors + conn.channel_errors:
         pass
 
 

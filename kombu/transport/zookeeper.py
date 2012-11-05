@@ -41,7 +41,7 @@ import socket
 
 from anyjson import loads, dumps
 
-from kombu.exceptions import StdChannelError
+from kombu.exceptions import StdConnectionError, StdChannelError
 
 from . import virtual
 
@@ -135,7 +135,8 @@ class Transport(virtual.Transport):
     Channel = Channel
     polling_interval = 1
     default_port = DEFAULT_PORT
-    connection_errors = (socket.error,
+    connection_errors = (StdConnectionError,
+                         socket.error,
                          kazoo.zkclient.SystemErrorException,
                          kazoo.zkclient.ConnectionLossException,
                          kazoo.zkclient.MarshallingErrorException,

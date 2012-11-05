@@ -14,8 +14,8 @@ import socket
 
 __all__ = ['NotBoundError', 'MessageStateError', 'TimeoutError',
            'LimitExceeded', 'ConnectionLimitExceeded',
-           'ChannelLimitExceeded', 'StdChannelError', 'VersionMismatch',
-           'SerializerNotInstalled']
+           'ChannelLimitExceeded', 'StdConnectionError',
+           'StdChannelError', 'VersionMismatch', 'SerializerNotInstalled']
 
 TimeoutError = socket.timeout
 
@@ -49,6 +49,10 @@ class ChannelLimitExceeded(LimitExceeded):
     pass
 
 
+class StdConnectionError(KombuError):
+    pass
+
+
 class StdChannelError(KombuError):
     pass
 
@@ -62,7 +66,7 @@ class SerializerNotInstalled(KombuError):
     pass
 
 
-class InconsistencyError(StdChannelError):
+class InconsistencyError(StdConnectionError):
     """Data or environment has been found to be inconsistent,
     depending on the cause it may be possible to retry the operation."""
     pass

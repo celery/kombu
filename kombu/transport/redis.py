@@ -20,6 +20,7 @@ from anyjson import loads, dumps
 
 from kombu.exceptions import (
     InconsistencyError,
+    StdConnectionError,
     StdChannelError,
     VersionMismatch,
 )
@@ -738,10 +739,10 @@ class Transport(virtual.Transport):
             DataError = exceptions.InvalidData
         else:
             DataError = exceptions.DataError
-        return ((exceptions.ConnectionError,
+        return ((StdConnectionError,
+                 exceptions.ConnectionError,
                  exceptions.AuthenticationError),
-                (exceptions.ConnectionError,
-                 DataError,
+                (DataError,
                  exceptions.InvalidResponse,
                  exceptions.ResponseError,
                  StdChannelError))

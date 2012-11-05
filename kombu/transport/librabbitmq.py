@@ -24,7 +24,7 @@ except ImportError:
     except ImportError:
         raise ImportError("No module named librabbitmq")
 
-from kombu.exceptions import StdChannelError
+from kombu.exceptions import StdConnectionError, StdChannelError
 from kombu.utils.amq_manager import get_manager
 
 from . import base
@@ -69,7 +69,8 @@ class Transport(base.Transport):
     Connection = Connection
 
     default_port = DEFAULT_PORT
-    connection_errors = (ConnectionError,
+    connection_errors = (StdConnectionError,
+                         ConnectionError,
                          socket.error,
                          IOError,
                          OSError)

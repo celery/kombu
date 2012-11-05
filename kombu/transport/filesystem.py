@@ -18,7 +18,7 @@ import uuid
 import tempfile
 
 from . import virtual
-from kombu.exceptions import StdChannelError
+from kombu.exceptions import StdConnectionError, StdChannelError
 from kombu.utils import cached_property
 
 VERSION = (1, 0, 0)
@@ -187,7 +187,7 @@ class Transport(virtual.Transport):
     Channel = Channel
 
     default_port = 0
-    connection_errors = ()
+    connection_errors = (StdConnectionError, )
     channel_errors = (StdChannelError, )
 
     driver_type = 'filesystem'

@@ -16,7 +16,7 @@ from Queue import Empty
 
 import zmq
 
-from kombu.exceptions import StdChannelError
+from kombu.exceptions import StdConnectionError, StdChannelError
 from kombu.log import get_logger
 from kombu.utils import cached_property
 from kombu.utils.eventio import poll, READ
@@ -223,8 +223,8 @@ class Transport(virtual.Transport):
     driver_type = 'zeromq'
     driver_name = 'zmq'
 
-    connection_errors = (zmq.ZMQError,)
-    channel_errors = (zmq.ZMQError, StdChannelError,)
+    connection_errors = (StdConnectionError, zmq.ZMQError,)
+    channel_errors = (StdChannelError, )
 
     supports_ev = True
     polling_interval = None

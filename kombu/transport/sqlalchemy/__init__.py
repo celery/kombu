@@ -8,7 +8,7 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
 
 from kombu.transport import virtual
-from kombu.exceptions import StdChannelError
+from kombu.exceptions import StdConnectionError, StdChannelError
 
 from .models import Queue, Message, metadata
 
@@ -108,7 +108,7 @@ class Transport(virtual.Transport):
     Channel = Channel
 
     default_port = 0
-    connection_errors = ()
+    connection_errors = (StdConnectionError, )
     channel_errors = (StdChannelError, )
     driver_type = 'sql'
     driver_name = 'sqlalchemy'

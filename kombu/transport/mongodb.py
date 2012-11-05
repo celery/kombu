@@ -18,7 +18,7 @@ from pymongo import errors
 from anyjson import loads, dumps
 from pymongo.connection import Connection
 
-from kombu.exceptions import StdChannelError
+from kombu.exceptions import StdConnectionError, StdChannelError
 
 from . import virtual
 
@@ -210,10 +210,10 @@ class Transport(virtual.Transport):
 
     polling_interval = 1
     default_port = DEFAULT_PORT
-    connection_errors = (errors.ConnectionFailure, )
+    connection_errors = (StdConnectionError, errors.ConnectionFailure)
     channel_errors = (StdChannelError,
                       errors.ConnectionFailure,
-                      errors.OperationFailure, )
+                      errors.OperationFailure)
     driver_type = 'mongodb'
     driver_name = 'pymongo'
 

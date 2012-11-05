@@ -25,7 +25,7 @@ from boto.sdb.connection import SDBConnection
 from boto.sqs.connection import SQSConnection
 from boto.sqs.message import Message
 
-from kombu.exceptions import StdChannelError
+from kombu.exceptions import StdConnectionError, StdChannelError
 from kombu.utils import cached_property, uuid
 from kombu.utils.encoding import safe_str
 
@@ -347,5 +347,5 @@ class Transport(virtual.Transport):
 
     polling_interval = 1
     default_port = None
-    connection_errors = (exception.SQSError, socket.error)
+    connection_errors = (StdConnectionError, exception.SQSError, socket.error)
     channel_errors = (exception.SQSDecodeError, StdChannelError)

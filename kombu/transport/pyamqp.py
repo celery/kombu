@@ -12,7 +12,11 @@ from __future__ import absolute_import
 
 import amqp
 
-from kombu.exceptions import StdChannelError, VersionMismatch
+from kombu.exceptions import (
+    StdConnectionError,
+    StdChannelError,
+    VersionMismatch,
+)
 from kombu.utils.amq_manager import get_manager
 
 from . import base
@@ -67,7 +71,8 @@ class Transport(base.Transport):
 
     # it's very annoying that pyamqp sometimes raises AttributeError
     # if the connection is lost, but nothing we can do about that here.
-    connection_errors = amqp.Connection.connection_errors
+    connection_errors = (StdConnectionError, ) + \
+                        amqp.Connection.connection_errors
     channel_errors = (StdChannelError, ) + amqp.Connection.channel_errors
 
     nb_keep_draining = True

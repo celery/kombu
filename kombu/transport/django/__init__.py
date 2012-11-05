@@ -9,7 +9,7 @@ from django.conf import settings
 from django.core import exceptions as errors
 
 from kombu.transport import virtual
-from kombu.exceptions import StdChannelError
+from kombu.exceptions import StdConnectionError, StdChannelError
 
 from .models import Queue
 
@@ -58,7 +58,7 @@ class Transport(virtual.Transport):
 
     default_port = 0
     polling_interval = POLLING_INTERVAL
-    connection_errors = ()
+    connection_errors = (StdConnectionError, )
     channel_errors = (StdChannelError,
                       errors.ObjectDoesNotExist,
                       errors.MultipleObjectsReturned)

@@ -14,7 +14,11 @@ import socket
 
 from operator import attrgetter
 
-from kombu.exceptions import StdChannelError, VersionMismatch
+from kombu.exceptions import (
+    StdConnectionError,
+    StdChannelError,
+    VersionMismatch,
+)
 
 from . import base
 
@@ -197,7 +201,8 @@ class SyncTransport(base.Transport):
     Connection = BlockingConnection
 
     default_port = DEFAULT_PORT
-    connection_errors = (socket.error,
+    connection_errors = (StdConnectionError,
+                         socket.error,
                          exceptions.ConnectionClosed,
                          exceptions.ChannelClosed,
                          exceptions.LoginError,

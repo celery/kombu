@@ -26,7 +26,7 @@ from amqplib.client_0_8.channel import Channel as _Channel
 from amqplib.client_0_8.exceptions import AMQPConnectionException
 from amqplib.client_0_8.exceptions import AMQPChannelException
 
-from kombu.exceptions import StdChannelError
+from kombu.exceptions import StdConnectionError, StdChannelError
 from kombu.utils.encoding import str_to_bytes
 from kombu.utils.amq_manager import get_manager
 
@@ -307,7 +307,8 @@ class Transport(base.Transport):
 
     # it's very annoying that amqplib sometimes raises AttributeError
     # if the connection is lost, but nothing we can do about that here.
-    connection_errors = (AMQPConnectionException,
+    connection_errors = (StdConnectionError,
+                         AMQPConnectionException,
                          socket.error,
                          IOError,
                          OSError,

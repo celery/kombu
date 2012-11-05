@@ -14,7 +14,7 @@ import socket
 
 from operator import attrgetter
 
-from kombu.exceptions import StdChannelError
+from kombu.exceptions import StdConnectionError, StdChannelError
 from kombu.utils.amq_manager import get_manager
 
 from . import base
@@ -177,7 +177,8 @@ class Transport(base.Transport):
     Connection = Connection
 
     default_port = DEFAULT_PORT
-    connection_errors = (socket.error,
+    connection_errors = (StdConnectionError,
+                         socket.error,
                          exceptions.ConnectionClosed,
                          exceptions.ChannelClosed,
                          AuthenticationError,

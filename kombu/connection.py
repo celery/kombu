@@ -71,8 +71,8 @@ class Connection(object):
 
     .. admonition:: SSL compatibility
 
-        SSL currently only works with the py-amqp & amqplib transports. For other
-        transports you can use stunnel.
+        SSL currently only works with the py-amqp & amqplib transports.
+        For other transports you can use stunnel.
 
     :keyword hostname: Default host name/address if not provided in the URL.
     :keyword userid: Default user name if not provided in the URL.
@@ -228,10 +228,11 @@ class Connection(object):
         self.transport_cls = transport
         self.heartbeat = heartbeat and float(heartbeat)
 
-    def _debug(self, msg, ident='[Kombu connection:0x%(id)x] ', **kwargs):
+    def _debug(self, msg, *args, **kwargs):
+        fmt = '[Kombu connection:0x%(id)x] %(msg)s'
         if self._logger:  # pragma: no cover
-            logger.debug((ident + unicode(msg)) % {'id': id(self)},
-                         **kwargs)
+            logger.debug(fmt % {'id': id(self), 'msg': unicode(msg)},
+                         *args, **kwargs)
 
     def connect(self):
         """Establish connection to server immediately."""
@@ -415,22 +416,22 @@ class Connection(object):
             >>> publish(message, routing_key)
 
         """
+        conn_errors, chan_errors = self.connection_errors, self.channel_errors
 
         def _ensured(*args, **kwargs):
             got_connection = 0
             for retries in count(0):  # for infinity
                 try:
                     return fun(*args, **kwargs)
-                except self.connection_errors + self.channel_errors, exc:
-                    self._debug('ensure got exception: %r' % (exc, ),
-                                exc_info=True)
+                except self.connection_errors, exc:
                     if got_connection:
                         raise
                     if max_retries is not None and retries > max_retries:
                         raise
-                    errback and errback(exc, 0)
+                    self._debug('ensure connection error: %r', exc, exc_info=1)
                     self._connection = None
                     self._do_close_self()
+                    errback and errback(exc, 0)
                     remaining_retries = None
                     if max_retries is not None:
                         remaining_retries = max(max_retries - retries, 1)
@@ -445,6 +446,11 @@ class Connection(object):
                     if on_revive:
                         on_revive(new_channel)
                     got_connection += 1
+                except self.channel_errors, exc:
+                    if max_retries is not None and retries > max_retries:
+                        raise
+                    self._debug('ensure channel error: %r', exc, exc_info=1)
+                    errback and errback(exc, 0)
         _ensured.func_name = _ensured.__name__ = "%s(ensured)" % fun.__name__
         _ensured.__doc__ = fun.__doc__
         _ensured.__module__ = fun.__module__
