@@ -23,11 +23,11 @@
     kombu.abstract
     kombu.syn
     kombu.transport
-    kombu.transport.amqplib
-    kombu.transport.librabbitmq
     kombu.transport.pyamqp
+    kombu.transport.librabbitmq
     kombu.transport.pika
     kombu.transport.pika2
+    kombu.transport.amqplib
     kombu.transport.memory
     kombu.transport.redis
     kombu.transport.zmq

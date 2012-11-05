@@ -45,31 +45,31 @@ def _ghettoq(name, new, alias=None):
 
 
 TRANSPORT_ALIASES = {
-    'amqp': 'kombu.transport.amqplib.Transport',
-    'pyamqp': 'kombu.transport.pyamqp.Transport',
-    'amqplib': 'kombu.transport.amqplib.Transport',
-    'librabbitmq': 'kombu.transport.librabbitmq.Transport',
-    'pika': 'kombu.transport.pika2.Transport',
-    'oldpika': 'kombu.transport.pika.SyncTransport',
-    'memory': 'kombu.transport.memory.Transport',
-    'redis': 'kombu.transport.redis.Transport',
-    'SQS': 'kombu.transport.SQS.Transport',
-    'sqs': 'kombu.transport.SQS.Transport',
-    'beanstalk': 'kombu.transport.beanstalk.Transport',
-    'mongodb': 'kombu.transport.mongodb.Transport',
-    'couchdb': 'kombu.transport.couchdb.Transport',
-    'zookeeper': 'kombu.transport.zookeeper.Transport',
-    'django': 'kombu.transport.django.Transport',
-    'sqlalchemy': 'kombu.transport.sqlalchemy.Transport',
-    'sqla': 'kombu.transport.sqlalchemy.Transport',
+    'amqp': 'kombu.transport.pyamqp:Transport',
+    'pyamqp': 'kombu.transport.pyamqp:Transport',
+    'librabbitmq': 'kombu.transport.librabbitmq:Transport',
+    'pika': 'kombu.transport.pika2:Transport',
+    'oldpika': 'kombu.transport.pika:SyncTransport',
+    'memory': 'kombu.transport.memory:Transport',
+    'redis': 'kombu.transport.redis:Transport',
+    'SQS': 'kombu.transport.SQS:Transport',
+    'sqs': 'kombu.transport.SQS:Transport',
+    'beanstalk': 'kombu.transport.beanstalk:Transport',
+    'mongodb': 'kombu.transport.mongodb:Transport',
+    'couchdb': 'kombu.transport.couchdb:Transport',
+    'zookeeper': 'kombu.transport.zookeeper:Transport',
+    'django': 'kombu.transport.django:Transport',
+    'sqlalchemy': 'kombu.transport.sqlalchemy:Transport',
+    'sqla': 'kombu.transport.sqlalchemy:Transport',
     'ghettoq.taproot.Redis': _ghettoq('Redis', 'redis', 'redis'),
     'ghettoq.taproot.Database': _ghettoq('Database', 'django', 'django'),
     'ghettoq.taproot.MongoDB': _ghettoq('MongoDB', 'mongodb'),
     'ghettoq.taproot.Beanstalk': _ghettoq('Beanstalk', 'beanstalk'),
     'ghettoq.taproot.CouchDB': _ghettoq('CouchDB', 'couchdb'),
-    'filesystem': 'kombu.transport.filesystem.Transport',
-    'zeromq': 'kombu.transport.zmq.Transport',
-    'zmq': 'kombu.transport.zmq.Transport',
+    'filesystem': 'kombu.transport.filesystem:Transport',
+    'zeromq': 'kombu.transport.zmq:Transport',
+    'zmq': 'kombu.transport.zmq:Transport',
+    'amqplib': 'kombu.transport.amqplib:Transport',
 }
 
 _transport_cache = {}
@@ -94,7 +94,7 @@ def get_transport_cls(transport=None):
 
     The transport string is the full path to a transport class, e.g.::
 
-        "kombu.transport.amqplib.Transport"
+        "kombu.transport.pyamqp:Transport"
 
     If the name does not include `"."` (is not fully qualified),
     the alias table will be consulted.

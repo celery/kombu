@@ -10,6 +10,23 @@
 =====
 :release-date: TBA
 
+- `py-amqp`_ is now the new default transport, replacing ``amqplib``.
+
+    The new `py-amqp`_ library is a fork of amqplib started with the
+    following goals:
+
+        - Uses AMQP 0.9.1 instead of 0.8
+        - Support for heartbeats (Issue #79 + Issue #131)
+        - Automatically revives channels on channel errors.
+        - Support for all RabbitMQ extensions
+            - Consumer Cancel Notifications (Issue #131)
+            - Publisher Confirms (Issue #131).
+            - Exchange-to-exchange bindings: ``exchange_bind`` / ``exchange_unbind``.
+        - API compatible with :mod:`librabbitmq` so that it can be used
+          as a pure-python replacement in environments where rabbitmq-c cannot
+          be compiled.  librabbitmq will be updated to support all the same
+          features as py-amqp.
+
 - Support for multiple connection URL's used for failover.
 
     The first argument to :class:`~kombu.Connection` can now be a list of

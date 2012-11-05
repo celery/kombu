@@ -10,8 +10,8 @@ Basics
 ======
 
 To send and receive messages you need a transport and a connection.
-There are several transports to choose from (amqplib, pika, redis, in-memory),
-and you can even create your own. The default transport is amqplib.
+There are several transports to choose from (amqp, librabbitmq, redis, in-memory, etc.),
+and you can even create your own. The default transport is amqp.
 
 Create a connection using the default transport::
 
@@ -110,8 +110,8 @@ keyword arguments, these are:
 :port: Default port if not provided in the URL.
 :transport: Default transport if not provided in the URL.
   Can be a string specifying the path to the class. (e.g.
-  ``kombu.transport.pyamqplib.Transport``), or one of the aliases:
-  ``amqplib``, ``pika``, ``redis``, ``memory``, and so on.
+  ``kombu.transport.pyamqp:Transport``), or one of the aliases:
+  ``pyamqp``, ``librabbitmq``, ``redis``, ``memory``, and so on.
 
 :ssl: Use SSL to connect to the server. Default is ``False``.
   Only supported by the amqp transport.
@@ -132,17 +132,17 @@ Transport Comparison
 +---------------+----------+------------+------------+---------------+
 | **Client**    | **Type** | **Direct** | **Topic**  | **Fanout**    |
 +---------------+----------+------------+------------+---------------+
-| *amqplib*     | Native   | Yes        | Yes        | Yes           |
+| *amqp*        | Native   | Yes        | Yes        | Yes           |
 +---------------+----------+------------+------------+---------------+
-| *pika*        | Native   | Yes        | Yes        | Yes           |
+| *redis*       | Virtual  | Yes        | Yes        | Yes (PUB/SUB) |
 +---------------+----------+------------+------------+---------------+
-| *redis*       | Virtual  | Yes        | Yes [#f1]_ | Yes (PUB/SUB) |
+| *mongodb*     | Virtual  | Yes        | Yes        | Yes           |
 +---------------+----------+------------+------------+---------------+
 | *beanstalk*   | Virtual  | Yes        | Yes [#f1]_ | No            |
 +---------------+----------+------------+------------+---------------+
 | *SQS*         | Virtual  | Yes        | Yes [#f1]_ | Yes [#f2]_    |
 +---------------+----------+------------+------------+---------------+
-| *mongodb*     | Virtual  | Yes        | Yes [#f1]_ | No            |
+| *pika*        | Native   | Yes        | Yes        | Yes           |
 +---------------+----------+------------+------------+---------------+
 | *couchdb*     | Virtual  | Yes        | Yes [#f1]_ | No            |
 +---------------+----------+------------+------------+---------------+
@@ -150,10 +150,15 @@ Transport Comparison
 +---------------+----------+------------+------------+---------------+
 | *in-memory*   | Virtual  | Yes        | Yes [#f1]_ | No            |
 +---------------+----------+------------+------------+---------------+
+| *django*      | Virtual  | Yes        | Yes [#f1]_ | No            |
++---------------+----------+------------+------------+---------------+
+| *sqlalchemy*  | Virtual  | Yes        | Yes [#f1]_ | No            |
++---------------+----------+------------+------------+---------------+
 
 
 .. [#f1] Declarations only kept in memory, so exchanges/queues
          must be declared by all clients that needs them.
 
 .. [#f2] Fanout supported via storing routing tables in SimpleDB.
-         Can be disabled by setting the ``supports_fanout`` transport option.
+         Disabled by default, but can be enabled by using the
+         ``supports_fanout`` transport option.

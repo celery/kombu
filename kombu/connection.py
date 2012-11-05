@@ -30,7 +30,7 @@ from .utils import cached_property, retry_over_time, shufflecycle
 from .utils.compat import OrderedDict, LifoQueue as _LifoQueue, next
 from .utils.url import parse_url
 
-RESOLVE_ALIASES = {'amqplib': 'amqp',
+RESOLVE_ALIASES = {'pyamqp': 'amqp',
                    'librabbitmq': 'amqp'}
 
 _LOG_CONNECTION = os.environ.get('KOMBU_LOG_CONNECTION', False)
@@ -71,7 +71,7 @@ class Connection(object):
 
     .. admonition:: SSL compatibility
 
-        SSL currently only works with amqplib and py-amqp transport. For other
+        SSL currently only works with the py-amqp & amqplib transports. For other
         transports you can use stunnel.
 
     :keyword hostname: Default host name/address if not provided in the URL.

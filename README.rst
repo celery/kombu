@@ -20,8 +20,7 @@ Features
 * Allows application authors to support several message server
   solutions by using pluggable transports.
 
-    * AMQP transports for both the `amqplib`_ (sync) and
-      `pika`_ (sync + async) clients.
+    * AMQP transport using the `py-amqp`_ or `librabbitmq`_ client libraries.
 
     * High performance AMQP transport written in C - when using `librabbitmq`_
 
@@ -60,6 +59,7 @@ and the `Wikipedia article about AMQP`_.
 
 .. _`RabbitMQ`: http://www.rabbitmq.com/
 .. _`AMQP`: http://amqp.org
+.. _`py-amqp`: http://pypi.python.org/pypi/amqp/
 .. _`Redis`: http://code.google.com/p/redis/
 .. _`Amazon SQS`: http://aws.amazon.com/sqs/
 .. _`MongoDB`: http://www.mongodb.org/
@@ -80,9 +80,7 @@ Transport Comparison
 +---------------+----------+------------+------------+---------------+
 | **Client**    | **Type** | **Direct** | **Topic**  | **Fanout**    |
 +---------------+----------+------------+------------+---------------+
-| *amqplib*     | Native   | Yes        | Yes        | Yes           |
-+---------------+----------+------------+------------+---------------+
-| *pika*        | Native   | Yes        | Yes        | Yes           |
+| *amqp*        | Native   | Yes        | Yes        | Yes           |
 +---------------+----------+------------+------------+---------------+
 | *redis*       | Virtual  | Yes        | Yes        | Yes (PUB/SUB) |
 +---------------+----------+------------+------------+---------------+
@@ -91,6 +89,8 @@ Transport Comparison
 | *beanstalk*   | Virtual  | Yes        | Yes [#f1]_ | No            |
 +---------------+----------+------------+------------+---------------+
 | *SQS*         | Virtual  | Yes        | Yes [#f1]_ | Yes [#f2]_    |
++---------------+----------+------------+------------+---------------+
+| *pika*        | Native   | Yes        | Yes        | Yes           |
 +---------------+----------+------------+------------+---------------+
 | *couchdb*     | Virtual  | Yes        | Yes [#f1]_ | No            |
 +---------------+----------+------------+------------+---------------+

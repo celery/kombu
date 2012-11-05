@@ -198,7 +198,7 @@ class Transport(object):
     #: Redis (driver_type: 'redis'), etc...
     driver_type = 'N/A'
 
-    #: Name of driver library (e.g. 'amqplib', 'redis', 'beanstalkc').
+    #: Name of driver library (e.g. 'py-amqp', 'redis', 'beanstalkc').
     driver_name = 'N/A'
 
     #: Whether this transports support heartbeats,

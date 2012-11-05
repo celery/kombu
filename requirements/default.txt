@@ -1,2 +1,2 @@
 anyjson>=0.3.3
-amqplib>=1.0.2
+amqp>=1.0.1
