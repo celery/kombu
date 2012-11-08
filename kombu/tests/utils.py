@@ -21,8 +21,9 @@ except AttributeError:
 
 class TestCase(unittest.TestCase):
 
-    if not hasattr(unittest.TestCase, 'assertItemsEqual'):
-        assertItemsEqual = unittest.TestCase.assertSameElements
+    def assertItemsEqual(self, a, b, *args, **kwargs):
+        return self.assertEqual(sorted(a), sorted(b), *args, **kwargs)
+    assertSameElements = assertItemsEqual
 
 
 class Mock(mock.Mock):
