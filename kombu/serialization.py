@@ -297,8 +297,8 @@ def register_json():
     from anyjson import loads, dumps
 
     def _loads(obj):
-        if isinstance(obj, str):
-            obj = bytes_to_str(obj)
+        if isinstance(obj, bytes):
+            obj = obj.decode()
         return loads(obj)
 
     registry.register('json', dumps, _loads,
