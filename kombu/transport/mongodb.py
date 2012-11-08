@@ -56,7 +56,7 @@ class Channel(virtual.Channel):
                 msg = self.client.command('findandmodify', 'messages',
                     query={'queue': queue},
                     sort={'_id': pymongo.ASCENDING}, remove=True)
-        except errors.OperationFailure, exc:
+        except errors.OperationFailure as exc:
             if 'No matching object found' in exc.args[0]:
                 raise Empty()
             raise
