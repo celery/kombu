@@ -49,10 +49,8 @@ class Message(object):
     """Base class for received messages."""
     __slots__ = ('_state', 'channel', 'delivery_tag',
                  'content_type', 'content_encoding',
-                 'delivery_info', 'headers',
-                 'properties', 'body',
-                 '_decoded_cache',
-                 'MessageStateError', '__dict__')
+                 'delivery_info', 'headers', 'properties',
+                 'body', '_decoded_cache', '__dict__')
     MessageStateError = MessageStateError
 
     def __init__(self, channel, body=None, delivery_tag=None,
