@@ -22,6 +22,7 @@ except ImportError:  # pragma: no cover
     cpickle = None  # noqa
 
 from .exceptions import SerializerNotInstalled
+from .five import text_t
 from .utils import entrypoints
 from .utils.encoding import bytes_to_str, str_to_bytes, bytes_t
 
@@ -149,7 +150,7 @@ class SerializerRegistry(object):
             return 'application/data', 'binary', data
 
         # For Unicode objects, force it into a string
-        if not serializer and isinstance(data, unicode):
+        if not serializer and isinstance(data, text_t):
             payload = data.encode('utf-8')
             return 'text/plain', 'utf-8', payload
 
@@ -176,7 +177,7 @@ class SerializerRegistry(object):
             if decode:
                 return decode(data)
             if content_encoding not in SKIP_DECODE and \
-                    not isinstance(data, unicode):
+                    not isinstance(data, text_t):
                 return _decode(data, content_encoding)
         return data
 
@@ -284,7 +285,7 @@ def raw_encode(data):
     """Special case serializer."""
     content_type = 'application/data'
     payload = data
-    if isinstance(payload, unicode):
+    if isinstance(payload, text_t):
         content_encoding = 'utf-8'
         payload = payload.encode(content_encoding)
     else:

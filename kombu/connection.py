@@ -14,19 +14,23 @@ import errno
 import os
 import socket
 
+from collections import Callable
 from contextlib import contextmanager
 from functools import partial
 from itertools import count, cycle
-from urllib import quote
-from Queue import Empty
+try:
+    from urllib.parse import quote
+except ImportError:  # Py2
+    from urllib import quote
 
 # jython breaks on relative import for .exceptions for some reason
 # (Issue #112)
 from kombu import exceptions
+from .five import Empty, range, string_t, text_t, LifoQueue as _LifoQueue
 from .log import get_logger
 from .transport import get_transport_cls, supports_librabbitmq
 from .utils import cached_property, retry_over_time, shufflecycle
-from .utils.compat import OrderedDict, LifoQueue as _LifoQueue, next
+from .utils.compat import OrderedDict
 from .utils.url import parse_url
 
 RESOLVE_ALIASES = {'pyamqp': 'amqp',
@@ -158,7 +162,7 @@ class Connection(object):
             'login_method': login_method, 'heartbeat': heartbeat
         }
 
-        if hostname and not isinstance(hostname, basestring):
+        if hostname and not isinstance(hostname, string_t):
             alt.extend(hostname)
             hostname = alt[0]
         if hostname and '://' in hostname:
@@ -230,7 +234,7 @@ class Connection(object):
     def _debug(self, msg, *args, **kwargs):
         fmt = '[Kombu connection:0x%(id)x] %(msg)s'
         if self._logger:  # pragma: no cover
-            logger.debug(fmt % {'id': id(self), 'msg': unicode(msg)},
+            logger.debug(fmt % {'id': id(self), 'msg': text_t(msg)},
                          *args, **kwargs)
 
     def connect(self):
@@ -450,7 +454,7 @@ class Connection(object):
                         raise
                     self._debug('ensure channel error: %r', exc, exc_info=1)
                     errback and errback(exc, 0)
-        _ensured.func_name = _ensured.__name__ = "%s(ensured)" % fun.__name__
+        _ensured.__name__ = "%s(ensured)" % fun.__name__
         _ensured.__doc__ = fun.__doc__
         _ensured.__module__ = fun.__module__
         return _ensured
@@ -502,7 +506,7 @@ class Connection(object):
     def get_transport_cls(self):
         """Get the currently used transport class."""
         transport_cls = self.transport_cls
-        if not transport_cls or isinstance(transport_cls, basestring):
+        if not transport_cls or isinstance(transport_cls, string_t):
             transport_cls = get_transport_cls(transport_cls)
         return transport_cls
 
@@ -960,7 +964,7 @@ class ConnectionPool(Resource):
 
     def setup(self):
         if self.limit:
-            for i in xrange(self.limit):
+            for i in range(self.limit):
                 if i < self.preload:
                     conn = self.new()
                     conn.connect()
@@ -969,7 +973,7 @@ class ConnectionPool(Resource):
                 self._resource.put_nowait(conn)
 
     def prepare(self, resource):
-        if callable(resource):
+        if isinstance(resource, Callable):
             resource = resource()
         resource._debug('acquired')
         return resource
@@ -989,12 +993,12 @@ class ChannelPool(Resource):
     def setup(self):
         channel = self.new()
         if self.limit:
-            for i in xrange(self.limit):
+            for i in range(self.limit):
                 self._resource.put_nowait(
                     i < self.preload and channel() or channel)
 
     def prepare(self, channel):
-        if callable(channel):
+        if isinstance(channel, Callable):
             channel = channel()
 
         return channel

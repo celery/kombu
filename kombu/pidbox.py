@@ -21,6 +21,7 @@ from time import time
 from .clocks import LamportClock
 from .common import maybe_declare, oid_from
 from .entity import Exchange, Queue
+from .five import range
 from .messaging import Consumer, Producer
 from .utils import cached_property, kwdict, uuid
 

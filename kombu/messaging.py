@@ -12,9 +12,10 @@ from __future__ import absolute_import
 
 from itertools import count
 
+from .compression import compress
 from .connection import maybe_channel
 from .entity import Exchange, Queue
-from .compression import compress
+from .five import text_t, values
 from .serialization import encode
 from .utils import maybe_list
 
@@ -202,7 +203,7 @@ class Producer(object):
         else:
             # If the programmer doesn't want us to serialize,
             # make sure content_encoding is set.
-            if isinstance(body, unicode):
+            if isinstance(body, text_t):
                 if not content_encoding:
                     content_encoding = 'utf-8'
                 body = body.encode(content_encoding)
@@ -286,7 +287,7 @@ class Consumer(object):
     #: that occurred while trying to decode it.
     on_decode_error = None
 
-    _next_tag = count(1).next   # global
+    _tags = count(1)   # global
 
     def __init__(self, channel, queues=None, no_ack=None, auto_declare=None,
             callbacks=None, on_decode_error=None, on_message=None):
@@ -373,7 +374,7 @@ class Consumer(object):
 
         """
         cancel = self.channel.basic_cancel
-        for tag in self._active_tags.itervalues():
+        for tag in values(self._active_tags):
             cancel(tag)
         self._active_tags.clear()
     close = cancel
@@ -488,7 +489,7 @@ class Consumer(object):
         return tag
 
     def _add_tag(self, queue, consumer_tag=None):
-        tag = consumer_tag or str(self._next_tag())
+        tag = consumer_tag or str(next(self._tags))
         self._active_tags[queue.name] = tag
         return tag
 

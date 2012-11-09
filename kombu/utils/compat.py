@@ -24,42 +24,11 @@ else:
     from StringIO import StringIO           # noqa
     BytesIO = WhateverIO = StringIO         # noqa
 
-############## __builtins__.next #############################################
-try:
-    next = next
-except NameError:
-    def next(it, *args):  # noqa
-        try:
-            return it.next()
-        except StopIteration:
-            if not args:
-                raise
-            return args[0]
-
 ############## collections.OrderedDict #######################################
 try:
     from collections import OrderedDict
 except ImportError:
     from ordereddict import OrderedDict  # noqa
-
-############## queue.LifoQueue ##############################################
-from Queue import Queue
-
-
-class LifoQueue(Queue):
-
-    def _init(self, maxsize):
-        self.queue = []
-        self.maxsize = maxsize
-
-    def _qsize(self, len=len):
-        return len(self.queue)
-
-    def _put(self, item):
-        self.queue.append(item)
-
-    def _get(self):
-        return self.queue.pop()
 
 ############## logging.handlers.WatchedFileHandler ##########################
 import logging

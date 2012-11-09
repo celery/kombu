@@ -17,6 +17,7 @@ from functools import partial
 from itertools import count
 
 from .common import ignore_errors
+from .five import range
 from .messaging import Consumer
 from .log import get_logger
 from .utils import cached_property, nested
@@ -175,7 +176,7 @@ class ConsumerMixin(object):
         with self.Consumer() as (connection, channel, consumers):
             with self.extra_context(connection, channel):
                 self.on_consume_ready(connection, channel, consumers, **kwargs)
-                for i in limit and xrange(limit) or count():
+                for i in limit and range(limit) or count():
                     if self.should_stop:
                         break
                     self.on_iteration()

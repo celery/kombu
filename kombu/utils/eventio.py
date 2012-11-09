@@ -182,7 +182,7 @@ class _kqueue(Poller):
                 file_changes.append(k)
         if file_changes:
             self.on_file_change(file_changes)
-        return events.items()
+        return list(events.items())
 
     def close(self):
         self._kqueue.close()
@@ -224,7 +224,7 @@ class _select(Poller):
             if not isinstance(fd, int):
                 fd = fd.fileno()
             events[fd] = events.get(fd, 0) | ERR
-        return events.items()
+        return list(events.items())
 
     def close(self):
         pass

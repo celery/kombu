@@ -11,7 +11,6 @@ else:
     from StringIO import StringIO, StringIO as BytesIO  # noqa
 
 from kombu import utils
-from kombu.utils.compat import next
 
 from .utils import redirect_stdouts, mask_modules, skip_if_module
 from .utils import TestCase

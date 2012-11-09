@@ -14,6 +14,7 @@ from copy import copy
 
 from .connection import maybe_channel
 from .exceptions import NotBoundError
+from .five import items
 
 __all__ = ['Object', 'MaybeChannelBound']
 
@@ -40,7 +41,7 @@ class Object(object):
                     setattr(self, name, None)
 
     def setdefault(self, **defaults):
-        for key, value in defaults.iteritems():
+        for key, value in items(defaults):
             if getattr(self, key) is None:
                 setattr(self, key, value)
 

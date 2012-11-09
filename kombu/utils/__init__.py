@@ -19,6 +19,8 @@ from itertools import count, repeat
 from time import sleep
 from uuid import UUID, uuid4 as _uuid4, _uuid_generate_random
 
+from kombu.five import items, reraise, string_t
+
 from .encoding import safe_repr as _safe_repr
 
 try:
@@ -70,7 +72,7 @@ def symbol_by_name(name, aliases={}, imp=None, package=None,
     if imp is None:
         imp = importlib.import_module
 
-    if not isinstance(name, basestring):
+    if not isinstance(name, string_t):
         return name                                 # already a class
 
     name = aliases.get(name) or name
@@ -82,8 +84,8 @@ def symbol_by_name(name, aliases={}, imp=None, package=None,
         try:
             module = imp(module_name, package=package, **kwargs)
         except ValueError as exc:
-            raise ValueError, ValueError(
-                    "Couldn't import %r: %s" % (name, exc)), sys.exc_info()[2]
+            reraise(ValueError, ValueError(
+                    "Couldn't import %r: %s" % (name, exc)), sys.exc_info()[2])
         return getattr(module, cls_name) if cls_name else module
     except (ImportError, AttributeError):
         if default is None:
@@ -149,7 +151,7 @@ else:
 
         """
         return dict((key.encode('utf-8'), value)
-                        for key, value in kwargs.items())
+                        for key, value in items(kwargs))
 
 
 def maybe_list(v):
@@ -322,7 +324,7 @@ class cached_property(object):
 
 
 def reprkwargs(kwargs, sep=', ', fmt='%s=%s'):
-    return sep.join(fmt % (k, _safe_repr(v)) for k, v in kwargs.iteritems())
+    return sep.join(fmt % (k, _safe_repr(v)) for k, v in items(kwargs))
 
 
 def reprcall(name, args=(), kwargs={}, sep=', '):
@@ -360,7 +362,7 @@ def nested(*managers):  # pragma: no cover
                 # Don't rely on sys.exc_info() still containing
                 # the right information. Another exception may
                 # have been raised and caught by an exit method
-                raise exc[0], exc[1], exc[2]
+                reraise(exc[0], exc[1], exc[2])
     finally:
         del(exc)
 
