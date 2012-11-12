@@ -21,7 +21,7 @@ __all__ = ['Finalize']
 
 class Finalize(object):
     """Object finalization using weakrefs."""
-    _count = count().next
+    _count = count()
     _registry = {}
 
     def __init__(self, obj, callback, args=(), kwargs=None,
@@ -35,7 +35,7 @@ class Finalize(object):
         self._callback = callback
         self._args = args
         self._kwargs = kwargs or {}
-        self._key = (exitpriority, self._count())
+        self._key = (exitpriority, next(self._count))
 
         self._registry[self._key] = self
 

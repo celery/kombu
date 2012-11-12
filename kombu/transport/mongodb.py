@@ -10,8 +10,6 @@ MongoDB transport.
 """
 from __future__ import absolute_import
 
-from Queue import Empty
-
 import pymongo
 
 from pymongo import errors
@@ -19,6 +17,7 @@ from anyjson import loads, dumps
 from pymongo.connection import Connection
 
 from kombu.exceptions import StdConnectionError, StdChannelError
+from kombu.five import Empty
 
 from . import virtual
 

@@ -21,7 +21,7 @@ from itertools import count, cycle
 try:
     from urllib.parse import quote
 except ImportError:  # Py2
-    from urllib import quote
+    from urllib import quote  # noqa
 
 # jython breaks on relative import for .exceptions for some reason
 # (Issue #112)

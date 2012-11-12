@@ -16,6 +16,8 @@ from __future__ import absolute_import
 import sys
 import traceback
 
+from kombu.five import text_t
+
 is_py3k = sys.version_info >= (3, 0)
 
 if sys.platform.startswith('java'):  # pragma: no cover
@@ -80,7 +82,7 @@ except NameError:
 
 def safe_str(s, errors='replace'):
     s = bytes_to_str(s)
-    if not isinstance(s, basestring):
+    if not isinstance(s, (text_t, bytes)):
         return safe_repr(s, errors)
     return _safe_str(s, errors)
 

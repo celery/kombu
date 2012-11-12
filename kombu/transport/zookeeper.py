@@ -34,14 +34,13 @@ Zookeeper transport.
 """
 from __future__ import absolute_import
 
-from Queue import Empty
-
 import kazoo
 import socket
 
 from anyjson import loads, dumps
 
 from kombu.exceptions import StdConnectionError, StdChannelError
+from kombu.five import Empty
 
 from . import virtual
 

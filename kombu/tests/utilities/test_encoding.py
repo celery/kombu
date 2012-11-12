@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import
+from __future__ import absolute_import, unicode_literals
 
 import sys
 
@@ -43,16 +43,16 @@ class test_encoding_utils(TestCase):
 
     def test_str_to_bytes(self):
         with clean_encoding() as e:
-            self.assertIsInstance(e.str_to_bytes(u'foobar'), str)
+            self.assertIsInstance(e.str_to_bytes('foobar'), str)
             self.assertIsInstance(e.str_to_bytes('foobar'), str)
 
     def test_from_utf8(self):
         with clean_encoding() as e:
-            self.assertIsInstance(e.from_utf8(u'foobar'), str)
+            self.assertIsInstance(e.from_utf8('foobar'), str)
 
     def test_default_encode(self):
         with clean_encoding() as e:
-            self.assertTrue(e.default_encode('foo'))
+            self.assertTrue(e.default_encode(b'foo'))
 
 
 class test_safe_str(TestCase):
@@ -61,10 +61,10 @@ class test_safe_str(TestCase):
         self.assertEqual(safe_str('foo'), 'foo')
 
     def test_when_unicode(self):
-        self.assertIsInstance(safe_str(u'foo'), str)
+        self.assertIsInstance(safe_str('foo'), str)
 
     def test_when_containing_high_chars(self):
-        s = u'The quiæk fåx jømps øver the lazy dåg'
+        s = 'The quiæk fåx jømps øver the lazy dåg'
         res = safe_str(s)
         self.assertIsInstance(res, str)
 

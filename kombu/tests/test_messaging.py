@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, unicode_literals
 
 import anyjson
 
@@ -56,7 +56,7 @@ class test_Producer(TestCase):
                       'p.declare() declares exchange')
 
     def test_prepare(self):
-        message = {u'the quick brown fox': u'jumps over the lazy dog'}
+        message = {'the quick brown fox': 'jumps over the lazy dog'}
         channel = self.connection.channel()
         p = Producer(channel, self.exchange, serializer='json')
         m, ctype, cencoding = p._prepare(message, headers={})
@@ -65,7 +65,7 @@ class test_Producer(TestCase):
         self.assertEqual(cencoding, 'utf-8')
 
     def test_prepare_compression(self):
-        message = {u'the quick brown fox': u'jumps over the lazy dog'}
+        message = {'the quick brown fox': 'jumps over the lazy dog'}
         channel = self.connection.channel()
         p = Producer(channel, self.exchange, serializer='json')
         headers = {}
@@ -93,7 +93,7 @@ class test_Producer(TestCase):
         self.assertEqual(cencoding, 'alien')
 
     def test_prepare_is_already_unicode(self):
-        message = u'the quick brown fox'
+        message = 'the quick brown fox'
         channel = self.connection.channel()
         p = Producer(channel, self.exchange, serializer='json')
         m, ctype, cencoding = p._prepare(message, content_type='text/plain')
@@ -146,7 +146,7 @@ class test_Producer(TestCase):
     def test_publish(self):
         channel = self.connection.channel()
         p = Producer(channel, self.exchange, serializer='json')
-        message = {u'the quick brown fox': u'jumps over the lazy dog'}
+        message = {'the quick brown fox': 'jumps over the lazy dog'}
         ret = p.publish(message, routing_key='process')
         self.assertIn('prepare_message', channel)
         self.assertIn('basic_publish', channel)
@@ -372,11 +372,11 @@ class test_Consumer(TestCase):
             message.payload     # trigger cache
 
         consumer.register_callback(callback)
-        consumer._receive_callback({u'foo': u'bar'})
+        consumer._receive_callback({'foo': 'bar'})
 
         self.assertIn('basic_ack', channel)
         self.assertIn('message_to_python', channel)
-        self.assertEqual(received[0], {u'foo': u'bar'})
+        self.assertEqual(received[0], {'foo': 'bar'})
 
     def test_basic_ack_twice(self):
         channel = self.connection.channel()

@@ -1,8 +1,7 @@
 from __future__ import absolute_import
 
-from Queue import Empty
-
 from kombu import Connection, Exchange, Queue
+from kombu.five import Empty
 
 from .utils import TestCase
 from .utils import Mock

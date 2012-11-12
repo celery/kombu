@@ -1,4 +1,6 @@
 # encoding: utf-8
+from __future__ import absolute_import
+
 import datetime
 from south.db import db
 from south.v2 import SchemaMigration
@@ -7,7 +9,7 @@ from django.db import models
 class Migration(SchemaMigration):
 
     def forwards(self, orm):
-        
+
         # Adding model 'Queue'
         db.create_table('djkombu_queue', (
             ('id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
@@ -27,7 +29,7 @@ class Migration(SchemaMigration):
 
 
     def backwards(self, orm):
-        
+
         # Deleting model 'Queue'
         db.delete_table('djkombu_queue')
 

@@ -21,7 +21,7 @@ from uuid import UUID, uuid4 as _uuid4, _uuid_generate_random
 
 from kombu.five import items, reraise, string_t
 
-from .encoding import safe_repr as _safe_repr
+from .encoding import default_encode, safe_repr as _safe_repr
 
 try:
     import ctypes
@@ -248,7 +248,7 @@ def emergency_dump_state(state, open_file=open, dump=None):
             dump(state, fh, protocol=0)
         except Exception as exc:
             say('Cannot pickle state: %r. Fallback to pformat.' % (exc, ))
-            fh.write(pformat(state))
+            fh.write(default_encode(pformat(state)))
     finally:
         fh.flush()
         fh.close()

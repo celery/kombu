@@ -12,10 +12,13 @@ from __future__ import absolute_import
 
 import socket
 
+from amqp import ResourceError
+
 __all__ = ['NotBoundError', 'MessageStateError', 'TimeoutError',
            'LimitExceeded', 'ConnectionLimitExceeded',
            'ChannelLimitExceeded', 'StdConnectionError',
-           'StdChannelError', 'VersionMismatch', 'SerializerNotInstalled']
+           'StdChannelError', 'VersionMismatch', 'SerializerNotInstalled',
+           'ResourceError']
 
 TimeoutError = socket.timeout
 

@@ -27,6 +27,7 @@ from amqplib.client_0_8.exceptions import AMQPConnectionException
 from amqplib.client_0_8.exceptions import AMQPChannelException
 
 from kombu.exceptions import StdConnectionError, StdChannelError
+from kombu.five import items
 from kombu.utils.encoding import str_to_bytes
 from kombu.utils.amq_manager import get_manager
 
@@ -204,7 +205,7 @@ class Connection(amqp.Connection):  # pragma: no cover
                 sock.settimeout(prev)
 
     def _wait_multiple(self, channels, allowed_methods, timeout=None):
-        for channel_id, channel in channels.iteritems():
+        for channel_id, channel in items(channels):
             method_queue = channel.method_queue
             for queued_method in method_queue:
                 method_sig = queued_method[0]

@@ -1,8 +1,10 @@
+from __future__ import absolute_import
+
 try:
     from urllib.parse import unquote, urlparse, parse_qsl
 except ImportError:
-    from urllib import unquote
-    from urlparse import urlparse, parse_qsl
+    from urllib import unquote                  # noqa
+    from urlparse import urlparse, parse_qsl    # noqa
 
 from . import kwdict
 

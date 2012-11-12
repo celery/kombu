@@ -22,9 +22,9 @@ except ImportError:  # pragma: no cover
     cpickle = None  # noqa
 
 from .exceptions import SerializerNotInstalled
-from .five import text_t
+from .five import BytesIO, text_t
 from .utils import entrypoints
-from .utils.encoding import bytes_to_str, str_to_bytes, bytes_t
+from .utils.encoding import str_to_bytes, bytes_t
 
 __all__ = ['pickle', 'encode', 'decode',
            'register', 'unregister']
@@ -56,17 +56,6 @@ else:
     pickle = cpickle or pypickle
     pickle_load = pickle.load
     pickle_loads = pickle.loads
-
-
-# cPickle.loads does not support buffer() objects,
-# but we can just create a StringIO and use load.
-if sys.version_info[0] == 3:
-    from io import BytesIO
-else:
-    try:
-        from cStringIO import StringIO as BytesIO # noqa
-    except ImportError:
-        from StringIO import StringIO  as BytesIO # noqa
 
 #: Kombu requires Python 2.5 or later so we use protocol 2 by default.
 #: There's a new protocol (3) but this is only supported by Python 3.

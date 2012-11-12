@@ -10,17 +10,19 @@ Emulates the AMQ API for non-AMQ transports.
 :license: BSD, see LICENSE for more details.
 
 """
-from __future__ import absolute_import
+from __future__ import absolute_import, unicode_literals
 
 import base64
 import socket
+import sys
 import warnings
 
+from array import array
 from itertools import count
 from time import sleep, time
-from Queue import Empty
 
-from kombu.exceptions import StdChannelError
+from kombu.exceptions import ResourceError, StdChannelError
+from kombu.five import Empty
 from kombu.utils import emergency_dump_state, say, uuid
 from kombu.utils.compat import OrderedDict
 from kombu.utils.encoding import str_to_bytes, bytes_to_str
@@ -30,6 +32,11 @@ from kombu.transport import base
 
 from .scheduling import FairCycle
 from .exchange import STANDARD_EXCHANGE_TYPES
+
+if sys.version_info[0] == 3:
+    ARRAY_TYPE_H = 'H'
+else:
+    ARRAY_TYPE_H = b'H'
 
 UNDELIVERABLE_FMT = """\
 Message could not be delivered: No queues bound to exchange %(exchange)r
@@ -320,7 +327,7 @@ class Channel(AbstractChannel, base.StdChannel):
     body_encoding = 'base64'
 
     #: counter used to generate delivery tags for this channel.
-    _next_delivery_tag = count(1).next
+    _delivery_tags = count(1)
 
     #: Optional queue where messages with no route is delivered.
     #: Set by ``transport_options['deadletter_queue']``.
@@ -342,7 +349,12 @@ class Channel(AbstractChannel, base.StdChannel):
         self.exchange_types = dict((typ, cls(self))
                     for typ, cls in self.exchange_types.items())
 
-        self.channel_id = self.connection._next_channel_id()
+        try:
+            self.channel_id = self.connection._avail_channel_ids.pop()
+        except IndexError:
+            raise ResourceError(506,
+                'No free channel ids, current=%d, channel_max=%d' % (
+                    len(self.channels), self.channel_max, (20, 10)))
 
         topts = self.connection.client.transport_options
         for opt_name in self.from_transport_options:
@@ -359,7 +371,7 @@ class Channel(AbstractChannel, base.StdChannel):
         if passive:
             if exchange not in self.state.exchanges:
                 raise StdChannelError('404',
-                    u'NOT_FOUND - no exchange %r in vhost %r' % (
+                    'NOT_FOUND - no exchange %r in vhost %r' % (
                         exchange, self.connection.client.virtual_host or '/'),
                     (50, 10), 'Channel.exchange_declare')
             return
@@ -393,7 +405,7 @@ class Channel(AbstractChannel, base.StdChannel):
         queue = queue or 'amq.gen-%s' % uuid()
         if passive and not self._has_queue(queue, **kwargs):
             raise StdChannelError('404',
-                    u'NOT_FOUND - no queue %r in vhost %r' % (
+                    'NOT_FOUND - no queue %r in vhost %r' % (
                         queue, self.connection.client.virtual_host or '/'),
                     (50, 10), 'Channel.queue_declare')
         else:
@@ -461,7 +473,7 @@ class Channel(AbstractChannel, base.StdChannel):
                 self.encode_body(message['body'], self.body_encoding)
         props['delivery_info']['exchange'] = exchange
         props['delivery_info']['routing_key'] = routing_key
-        props['delivery_tag'] = self._next_delivery_tag()
+        props['delivery_tag'] = next(self._delivery_tags)
         self.typeof(exchange).deliver(message,
                                       exchange, routing_key, **kwargs)
 
@@ -702,16 +714,20 @@ class Transport(base.Transport):
     #: Time to sleep between unsuccessful polls.
     polling_interval = 1.0
 
+    #: Max number of channels
+    channel_max = 65535
+
     def __init__(self, client, **kwargs):
         self.client = client
         self.channels = []
         self._avail_channels = []
         self._callbacks = {}
         self.cycle = self.Cycle(self._drain_channel, self.channels, Empty)
-        self._next_channel_id = count(1).next
         polling_interval = client.transport_options.get('polling_interval')
         if polling_interval is not None:
             self.polling_interval = polling_interval
+        self._avail_channel_ids = array(ARRAY_TYPE_H,
+                                        range(self.channel_max, 0, -1))
 
     def create_channel(self, connection):
         try:
@@ -723,6 +739,7 @@ class Transport(base.Transport):
 
     def close_channel(self, channel):
         try:
+            self._avail_channel_ids.append(channel.channel_id)
             try:
                 self.channels.remove(channel)
             except ValueError:

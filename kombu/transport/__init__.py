@@ -10,6 +10,9 @@ Built-in transports.
 """
 from __future__ import absolute_import
 
+from collections import Callable
+
+from kombu.five import string_t
 from kombu.syn import _detect_environment
 from kombu.utils import symbol_by_name
 
@@ -29,7 +32,7 @@ def _ghettoq(name, new, alias=None):
 
     def __inner():
         import warnings
-        _new = callable(xxx) and xxx() or xxx
+        _new = isinstance(xxx, Callable) and xxx() or xxx
         gtransport = 'ghettoq.taproot.%s' % name
         ktransport = 'kombu.transport.%s.Transport' % _new
         this = alias or name
@@ -76,14 +79,14 @@ _transport_cache = {}
 
 
 def resolve_transport(transport=None):
-    if isinstance(transport, basestring):
+    if isinstance(transport, string_t):
         try:
             transport = TRANSPORT_ALIASES[transport]
         except KeyError:
             if '.' not in transport and ':' not in transport:
                 raise KeyError('No such transport: %s' % transport)
         else:
-            if callable(transport):
+            if isinstance(transport, Callable):
                 transport = transport()
         return symbol_by_name(transport)
     return transport

@@ -82,7 +82,11 @@ else:
         izip as zip,
         izip_longest as zip_longest,
     )
-    from StringIO import StringIO   # noqa
+    try:
+        from cStringIO import StringIO  # noqa
+    except ImportError:
+        from StringIO import StringIO   # noqa
+
     string = unicode                # noqa
     string_t = basestring           # noqa
     text_t = unicode

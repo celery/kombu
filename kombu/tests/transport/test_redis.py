@@ -6,11 +6,11 @@ import types
 from anyjson import dumps
 from collections import defaultdict
 from itertools import count
-from Queue import Empty, Queue as _Queue
 
 from kombu.connection import Connection
 from kombu.entity import Exchange, Queue
 from kombu.exceptions import InconsistencyError, VersionMismatch
+from kombu.five import Empty, Queue as _Queue
 from kombu.messaging import Consumer, Producer
 from kombu.utils import eventio  # patch poll
 
@@ -132,10 +132,10 @@ class Client(object):
 
         class _socket(object):
             blocking = True
-            next_fileno = count(30).next
+            filenos = count(30)
 
             def __init__(self, *args):
-                self._fileno = self.next_fileno()
+                self._fileno = next(self.filenos)
                 self.data = []
 
             def fileno(self):

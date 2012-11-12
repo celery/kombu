@@ -12,6 +12,7 @@ from __future__ import absolute_import
 
 from kombu.compression import decompress
 from kombu.exceptions import MessageStateError
+from kombu.five import text_t
 from kombu.serialization import decode
 from kombu.utils import cached_property
 
@@ -71,7 +72,7 @@ class Message(object):
             body = decompress(body, self.headers['compression'])
         except KeyError:
             pass
-        if postencode and isinstance(body, unicode):
+        if postencode and isinstance(body, text_t):
             body = body.encode(postencode)
         self.body = body
 

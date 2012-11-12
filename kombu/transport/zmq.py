@@ -11,13 +11,12 @@ import errno
 import os
 import socket
 
-from cPickle import loads, dumps
-from Queue import Empty
-
 import zmq
 
 from kombu.exceptions import StdConnectionError, StdChannelError
+from kombu.five import Empty
 from kombu.log import get_logger
+from kombu.serialization import pickle
 from kombu.utils import cached_property
 from kombu.utils.eventio import poll, READ
 
@@ -28,6 +27,8 @@ logger = get_logger('kombu.transport.zmq')
 DEFAULT_PORT = 5555
 DEFAULT_HWM = 128
 DEFAULT_INCR = 1
+
+dumps, loads = pickle.dumps, pickle.loads
 
 
 class MultiChannelPoller(object):

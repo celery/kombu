@@ -13,7 +13,6 @@ from __future__ import absolute_import
 from bisect import bisect
 from contextlib import contextmanager
 from time import time
-from Queue import Empty
 
 from anyjson import loads, dumps
 
@@ -23,6 +22,7 @@ from kombu.exceptions import (
     StdChannelError,
     VersionMismatch,
 )
+from kombu.five import Empty, values
 from kombu.log import get_logger
 from kombu.utils import cached_property, uuid
 from kombu.utils.eventio import poll, READ, ERR
@@ -182,7 +182,7 @@ class MultiChannelPoller(object):
         self.poller = poll()
 
     def close(self):
-        for fd in self._chan_to_sock.itervalues():
+        for fd in values(self._chan_to_sock):
             try:
                 self.poller.unregister(fd)
             except KeyError:
