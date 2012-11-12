@@ -352,7 +352,7 @@ class Channel(AbstractChannel, base.StdChannel):
         try:
             self.channel_id = self.connection._avail_channel_ids.pop()
         except IndexError:
-            raise ResourceError(506,
+            raise ResourceError(
                 'No free channel ids, current=%d, channel_max=%d' % (
                     len(self.channels), self.channel_max, (20, 10)))
 
