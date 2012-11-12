@@ -46,9 +46,14 @@ yaml_data = ('float: 3.1415926500000002\nint: 10\n'
              'jumps over th\\xE9 lazy dog"\n')
 
 
-msgpack_py_data = dict(py_data)
+msgpack_py_data = {b'string': b'The quick brown fox jumps over the lazy dog',
+        b'int': 10,
+        b'float': 3.14159265,
+        'unicode': 'Thé quick brown fox jumps over thé lazy dog',
+        b'list': [b'george', b'jerry', b'elaine', b'cosmo'],
+}
 # msgpack only supports tuples
-msgpack_py_data['list'] = tuple(msgpack_py_data['list'])
+msgpack_py_data[b'list'] = tuple(msgpack_py_data[b'list'])
 # Unicode chars are lost in transmit :(
 msgpack_py_data['unicode'] = 'Th quick brown fox jumps over th lazy dog'
 msgpack_data = ('\x85\xa3int\n\xa5float\xcb@\t!\xfbS\xc8\xd4\xf1\xa4list'
