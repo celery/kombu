@@ -56,10 +56,6 @@ msgpack_py_data = {b'string': b'The quick brown fox jumps over the lazy dog',
 msgpack_py_data[b'list'] = tuple(msgpack_py_data[b'list'])
 # Unicode chars are lost in transmit :(
 msgpack_py_data['unicode'] = 'Th quick brown fox jumps over th lazy dog'
-msgpack_data = ('\x85\xa3int\n\xa5float\xcb@\t!\xfbS\xc8\xd4\xf1\xa4list'
-                '\x94\xa6george\xa5jerry\xa6elaine\xa5cosmo\xa6string\xda'
-                '\x00+The quick brown fox jumps over the lazy dog\xa7unicode'
-                '\xda\x00)Th quick brown fox jumps over th lazy dog')
 
 
 def say(m):
@@ -163,21 +159,10 @@ class test_Serialization(TestCase):
         register_msgpack()
         self.assertEqual(msgpack_py_data,
                           registry.decode(
-                              msgpack_data,
+                              registry.encode(msgpack_py_data,
+                                  serializer='msgpack')[-1],
                               content_type='application/x-msgpack',
                               content_encoding='binary'))
-
-    @skip_if_not_module('msgpack')
-    def test_msgpack_encode(self):
-        register_msgpack()
-        self.assertEqual(registry.decode(
-                registry.encode(msgpack_py_data, serializer='msgpack')[-1],
-                content_type='application/x-msgpack',
-                content_encoding='binary'),
-                registry.decode(
-                    msgpack_data,
-                    content_type='application/x-msgpack',
-                    content_encoding='binary'))
 
     @skip_if_not_module('yaml')
     def test_yaml_decode(self):
