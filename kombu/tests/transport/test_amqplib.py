@@ -2,7 +2,8 @@ from __future__ import absolute_import
 
 import sys
 
-from kombu.transport import amqplib
+from nose import SkipTest
+
 from kombu.connection import Connection
 
 from kombu.tests.utils import TestCase
@@ -14,23 +15,41 @@ class MockConnection(dict):
     def __setattr__(self, key, value):
         self[key] = value
 
+try:
+    __import__('amqplib')
+except ImportError:
+    amqplib = Channel = None
+else:
+    from kombu.transport import amqplib
 
-class Channel(amqplib.Channel):
-    wait_returns = []
+    class Channel(amqplib.Channel):
+        wait_returns = []
 
-    def _x_open(self, *args, **kwargs):
-        pass
+        def _x_open(self, *args, **kwargs):
+            pass
 
-    def wait(self, *args, **kwargs):
-        return self.wait_returns
+        def wait(self, *args, **kwargs):
+            return self.wait_returns
 
-    def _send_method(self, *args, **kwargs):
-        pass
+        def _send_method(self, *args, **kwargs):
+            pass
 
 
-class test_Channel(TestCase):
+
+class amqplibCase(TestCase):
 
     def setUp(self):
+        if amqplib is None:
+            raise SkipTest('amqplib not installed')
+        self.setup()
+
+    def setup(self):
+        pass
+
+
+class test_Channel(amqplibCase):
+
+    def setup(self):
         self.conn = Mock()
         self.conn.channels = {}
         self.channel = Channel(self.conn, 0)
@@ -68,9 +87,9 @@ class test_Channel(TestCase):
         self.assertNotIn('my-consumer-tag', self.channel.no_ack_consumers)
 
 
-class test_Transport(TestCase):
+class test_Transport(amqplibCase):
 
-    def setUp(self):
+    def setup(self):
         self.connection = Connection('amqplib://')
         self.transport = self.connection.transport
 
@@ -127,7 +146,7 @@ class test_Transport(TestCase):
                 sys.modules['kombu.transport.amqplib'] = pm
 
 
-class test_amqplib(TestCase):
+class test_amqplib(amqplibCase):
 
     def test_default_port(self):
 
