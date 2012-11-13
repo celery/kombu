@@ -25,6 +25,8 @@
 
             .. autoattribute:: default_channel
             .. autoattribute:: connected
+            .. autoattribute:: recoverable_connection_errors
+            .. autoattribute:: recoverable_channel_errors
             .. autoattribute:: connection_errors
             .. autoattribute:: channel_errors
             .. autoattribute:: transport
