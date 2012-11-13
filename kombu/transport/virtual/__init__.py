@@ -19,6 +19,7 @@ import warnings
 
 from array import array
 from itertools import count
+from multiprocessing.util import Finalize
 from time import sleep, time
 
 from kombu.exceptions import ResourceError, StdChannelError
@@ -26,7 +27,6 @@ from kombu.five import Empty
 from kombu.utils import emergency_dump_state, say, uuid
 from kombu.utils.compat import OrderedDict
 from kombu.utils.encoding import str_to_bytes, bytes_to_str
-from kombu.utils.finalize import Finalize
 
 from kombu.transport import base
 
