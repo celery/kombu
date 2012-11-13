@@ -767,6 +767,8 @@ class Connection(object):
 
     @cached_property
     def recoverable_connection_errors(self):
+        """List of connection related exceptions that can be recovered from,
+        but where the connection must be closed and re-established first."""
         try:
             return self.transport.recoverable_connection_errors
         except AttributeError:
@@ -778,6 +780,8 @@ class Connection(object):
 
     @cached_property
     def recoverable_channel_errors(self):
+        """List of channel related exceptions that can be automatically
+        recovered from without re-establishing the connection."""
         try:
             return self.transport.recoverable_channel_errors
         except AttributeError:
