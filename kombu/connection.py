@@ -361,8 +361,8 @@ class Connection(object):
 
             return interval if round else 0
 
-        retry_over_time(self.connect, self.connection_errors, (), {},
-                        on_error, max_retries,
+        retry_over_time(self.connect, self.recoverable_connection_errors,
+                        (), {}, on_error, max_retries,
                         interval_start, interval_step, interval_max, callback)
         return self
 
@@ -415,14 +415,12 @@ class Connection(object):
             >>> publish(message, routing_key)
 
         """
-        conn_errors, chan_errors = self.connection_errors, self.channel_errors
-
         def _ensured(*args, **kwargs):
             got_connection = 0
             for retries in count(0):  # for infinity
                 try:
                     return fun(*args, **kwargs)
-                except self.connection_errors as exc:
+                except self.recoverable_connection_errors as exc:
                     if got_connection:
                         raise
                     if max_retries is not None and retries > max_retries:
@@ -445,12 +443,12 @@ class Connection(object):
                     if on_revive:
                         on_revive(new_channel)
                     got_connection += 1
-                except self.channel_errors as exc:
+                except self.recoverable_channel_errors as exc:
                     if max_retries is not None and retries > max_retries:
                         raise
                     self._debug('ensure channel error: %r', exc, exc_info=1)
                     errback and errback(exc, 0)
-        _ensured.func_name = _ensured.__name__ = "%s(ensured)" % fun.__name__
+        _ensured.__name__ = "%s(ensured)" % fun.__name__
         _ensured.__doc__ = fun.__doc__
         _ensured.__module__ = fun.__module__
         return _ensured
@@ -763,12 +761,30 @@ class Connection(object):
     def get_manager(self, *args, **kwargs):
         return self.transport.get_manager(*args, **kwargs)
 
-    @property
+    @cached_property
+    def recoverable_connection_errors(self):
+        try:
+            return self.transport.recoverable_connection_errors
+        except AttributeError:
+            # There were no such classification before,
+            # and all errors were assumed to be recoverable,
+            # so this is a fallback for transports that do
+            # not support the new recoverable/irrecoverable classes.
+            return self.connection_errors + self.channel_errors
+
+    @cached_property
+    def recoverable_channel_errors(self):
+        try:
+            return self.transport.recoverable_channel_errors
+        except AttributeError:
+            return ()
+
+    @cached_property
     def connection_errors(self):
         """List of exceptions that may be raised by the connection."""
         return self.transport.connection_errors
 
-    @property
+    @cached_property
     def channel_errors(self):
         """List of exceptions that may be raised by the channel."""
         return self.transport.channel_errors
