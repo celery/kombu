@@ -103,7 +103,7 @@ class SerializerRegistry(object):
             self.type_to_name.pop(content_type, None)
         except KeyError:
             raise SerializerNotInstalled(
-                'No encoder/decoder installed for %s' % name)
+                'No encoder/decoder installed for {0}'.format(name))
 
     def _set_default_serializer(self, name):
         """
@@ -121,14 +121,14 @@ class SerializerRegistry(object):
              self._default_encode) = self._encoders[name]
         except KeyError:
             raise SerializerNotInstalled(
-                'No encoder installed for %s' % name)
+                'No encoder installed for {0}'.format(name))
 
     def encode(self, data, serializer=None):
         if serializer == 'raw':
             return raw_encode(data)
         if serializer and not self._encoders.get(serializer):
             raise SerializerNotInstalled(
-                        'No encoder installed for %s' % serializer)
+                'No encoder installed for {0}'.format(serializer))
 
         # If a raw string was sent, assume binary encoding
         # (it's likely either ASCII or a raw binary file, and a character
@@ -157,7 +157,7 @@ class SerializerRegistry(object):
     def decode(self, data, content_type, content_encoding, force=False):
         if content_type in self._disabled_content_types and not force:
             raise SerializerNotInstalled(
-                'Content-type %r has been disabled.' % (content_type, ))
+                'Content-type {0!r} has been disabled.'.format(content_type))
         content_type = content_type or 'application/data'
         content_encoding = (content_encoding or 'utf-8').lower()
 

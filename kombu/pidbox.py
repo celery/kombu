@@ -227,7 +227,7 @@ class Mailbox(object):
             reply=False, timeout=1, limit=None, callback=None, channel=None):
         if destination is not None and \
                 not isinstance(destination, (list, tuple)):
-            raise ValueError('destination must be a list/tuple not %s' % (
+            raise ValueError('destination must be a list/tuple not {0}'.format(
                     type(destination)))
 
         arguments = arguments or {}

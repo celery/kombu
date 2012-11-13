@@ -119,8 +119,8 @@ class Channel(virtual.Channel):
                 dbname, options = part.split('?')
                 hostname += '/?' + options
 
-        hostname = "%s/%s" % (hostname, dbname in [None, "/"] and "admin" \
-                                                                    or dbname)
+        hostname = "%s/%s" % (hostname,
+            dbname in [None, "/"] and "admin" or dbname)
         if not dbname or dbname == "/":
             dbname = "kombu_default"
 
@@ -133,8 +133,8 @@ class Channel(virtual.Channel):
         version = mongoconn.server_info()['version']
         if tuple(map(int, version.split('.')[:2])) < (1, 3):
             raise NotImplementedError(
-                'Kombu requires MongoDB version 1.3+, but connected to %s' % (
-                    version, ))
+                'Kombu requires MongoDB version 1.3+ (server is {0})'.format(
+                    version))
 
         database = getattr(mongoconn, dbname)
 

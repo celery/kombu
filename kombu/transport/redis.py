@@ -532,8 +532,7 @@ class Channel(virtual.Channel):
         values = self._avail_client.smembers(key)
         if not values:
             raise InconsistencyError(
-                    'Queue list empty or key does not exist: %r' % (
-                        self.keyprefix_queue % exchange))
+                'Queue list empty or key does not exist: {0!r}'.format(key))
         return [tuple(val.split(self.sep)) for val in values]
 
     def _purge(self, queue):
@@ -591,7 +590,7 @@ class Channel(virtual.Channel):
         if redis.VERSION < (2, 4, 4):
             raise VersionMismatch(
                 'Redis transport requires redis-py versions 2.4.4 or later. '
-                'You have %r' % (redis.__version__, ))
+                'You have {0.__version__}'.format(redis))
 
         # KombuRedis maintains a connection attribute on it's instance and
         # uses that when executing commands
@@ -726,7 +725,7 @@ class Transport(virtual.Transport):
             message, queue = item
             if not queue or queue not in self._callbacks:
                 raise KeyError(
-                    "Received message for queue '%s' without consumers: %s" % (
+                    'Message for queue {0!r} without consumers: {1}'.format(
                         queue, message))
             self._callbacks[queue](message)
 

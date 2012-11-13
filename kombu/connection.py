@@ -232,9 +232,9 @@ class Connection(object):
         self.heartbeat = heartbeat and float(heartbeat)
 
     def _debug(self, msg, *args, **kwargs):
-        fmt = '[Kombu connection:0x%(id)x] %(msg)s'
+        fmt = '[Kombu connection:0x{id:x}] {msg}'
         if self._logger:  # pragma: no cover
-            logger.debug(fmt % {'id': id(self), 'msg': text_t(msg)},
+            logger.debug(fmt.format(id=id(self), msg=text_t(msg)),
                          *args, **kwargs)
 
     def connect(self):
@@ -249,7 +249,7 @@ class Connection(object):
         if _LOG_CHANNEL:  # pragma: no cover
             from .utils.debug import Logwrapped
             return Logwrapped(chan, 'kombu.channel',
-                    '[Kombu channel:%(channel_id)s] ')
+                    '[Kombu channel:{0.channel_id}] ')
         return chan
 
     def heartbeat_check(self, rate=2):
@@ -412,8 +412,8 @@ class Connection(object):
         This is an example ensuring a publish operation::
 
             >>> def errback(exc, interval):
-            ...     print("Couldn't publish message: %r. Retry in %ds" % (
-            ...             exc, interval))
+            ...     print('Cannot publish message: {0!r}. '
+                          'Retry in {1}s'.format(exc, interval))
             >>> publish = conn.ensure(producer, producer.publish,
             ...                       errback=errback, max_retries=3)
             >>> publish(message, routing_key)
@@ -491,8 +491,7 @@ class Connection(object):
             def __call__(self, *args, **kwargs):
                 if channels[0] is None:
                     self.revive(create_channel())
-                kwargs['channel'] = channels[0]
-                return fun(*args, **kwargs), channels[0]
+                return fun(*args, channel=channels[0], **kwargs), channels[0]
 
         revive = Revival()
         return self.ensure(revive, revive, **ensure_options)
@@ -685,12 +684,12 @@ class Connection(object):
     def _establish_connection(self):
         self._debug('establishing connection...')
         conn = self.transport.establish_connection()
-        self._debug('connection established: %r' % (conn, ))
+        self._debug('connection established: %r', conn)
         return conn
 
     def __repr__(self):
         """``x.__repr__() <==> repr(x)``"""
-        return '<Connection: %s at 0x%x>' % (self.as_uri(), id(self))
+        return '<Connection: {0} at 0x{1:x}>'.format(self.as_uri(), id(self))
 
     def __copy__(self):
         """``x.__copy__() <==> copy(x)``"""
@@ -942,10 +941,10 @@ class Resource(object):
         def acquire(self, *args, **kwargs):  # noqa
             import traceback
             id = self._next_resource_id = self._next_resource_id + 1
-            print('+%s ACQUIRE %s' % (id, self.__class__.__name__, ))
+            print('+{0} ACQUIRE {1}'.format(id, self.__class__.__name__))
             r = self._orig_acquire(*args, **kwargs)
             r._resource_id = id
-            print('-%s ACQUIRE %s' % (id, self.__class__.__name__, ))
+            print('-{0} ACQUIRE {1}'.format(id, self.__class__.__name__))
             if not hasattr(r, 'acquired_by'):
                 r.acquired_by = []
             r.acquired_by.append(traceback.format_stack())
@@ -953,9 +952,9 @@ class Resource(object):
 
         def release(self, resource):  # noqa
             id = resource._resource_id
-            print('+%s RELEASE %s' % (id, self.__class__.__name__, ))
+            print('+{0} RELEASE {1}'.format(id, self.__class__.__name__))
             r = self._orig_release(resource)
-            print('-%s RELEASE %s' % (id, self.__class__.__name__, ))
+            print('-{0} RELEASE {1}'.format(id, self.__class__.__name__))
             self._next_resource_id -= 1
             return r
 

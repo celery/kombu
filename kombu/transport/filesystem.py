@@ -76,7 +76,7 @@ class Channel(virtual.Channel):
             f.write(str_to_bytes(dumps(payload)))
         except (IOError, OSError):
             raise StdChannelError(
-                'Filename [%s] could not be placed into folder.' % filename)
+                'Cannot add file {0!r} to directory'.format(filename))
         finally:
             unlock(f)
             f.close()
@@ -115,7 +115,7 @@ class Channel(virtual.Channel):
                     os.remove(filename)
             except (IOError, OSError):
                 raise StdChannelError(
-                    'Filename [%s] could not be read from queue.' % filename)
+                    'Cannot read file {0!r} from queue.'.format(filename))
 
             return loads(bytes_to_str(payload))
 

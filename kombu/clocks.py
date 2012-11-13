@@ -102,4 +102,4 @@ class LamportClock(object):
         return str(self.value)
 
     def __repr__(self):
-        return '<LamportClock: %r>' % (self.value, )
+        return '<LamportClock: {0.value}>'.format(self)

@@ -87,6 +87,7 @@ class MultiChannelPoller(object):
 
 
 class Client(object):
+
     def __init__(self, uri='tcp://127.0.0.1', port=DEFAULT_PORT,
             hwm=DEFAULT_HWM, swap_size=None, enable_sink=True, context=None):
         try:
@@ -95,6 +96,7 @@ class Client(object):
             scheme = 'tcp'
             parts = uri
         endpoints = parts.split(';')
+        self.port = port
 
         if scheme != 'tcp':
             raise NotImplementedError('Currently only TCP can be used')
@@ -103,7 +105,7 @@ class Client(object):
 
         if enable_sink:
             self.sink = self.context.socket(zmq.PULL)
-            self.sink.bind('tcp://*:%s' % port)
+            self.sink.bind('tcp://*:{0.port}'.format(self))
         else:
             self.sink = None
 
@@ -271,7 +273,7 @@ class Transport(virtual.Transport):
         message, queue = item
         if not queue or queue not in self._callbacks:
             raise KeyError(
-                "Received message for queue '%s' without consumers: %s" % (
+                'Message for queue {0!r} without consumers: {1}'.format(
                     queue, message))
         self._callbacks[queue](message)
 

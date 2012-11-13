@@ -83,6 +83,9 @@ class Producer(object):
         if self.channel:
             self.revive(self.channel)
 
+    def __repr__(self):
+        return '<Producer: {0.channel}>'.format(self)
+
     def __reduce__(self):
         return self.__class__, self.__reduce_args__()
 
@@ -508,7 +511,7 @@ class Consumer(object):
             return on_m(message) if on_m else self.receive(decoded, message)
 
     def __repr__(self):
-        return '<Consumer: %s>' % (self.queues, )
+        return '<Consumer: {0.queues}>'.format(self)
 
     @property
     def connection(self):

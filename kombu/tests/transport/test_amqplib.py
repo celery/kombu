@@ -35,7 +35,6 @@ else:
             pass
 
 
-
 class amqplibCase(TestCase):
 
     def setUp(self):

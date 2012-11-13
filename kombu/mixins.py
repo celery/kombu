@@ -59,7 +59,7 @@ class ConsumerMixin(object):
                                  callback=[self.on_task])]
 
             def on_task(self, body, message):
-                print('Got task: %r' % (body, ))
+                print('Got task: {0!r}'.format(body))
                 message.ack()
 
     **Additional handler methods**:

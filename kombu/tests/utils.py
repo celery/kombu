@@ -117,7 +117,7 @@ def mask_modules(*modnames):
 
             def myimp(name, *args, **kwargs):
                 if name in modnames:
-                    raise ImportError('No module named %s' % name)
+                    raise ImportError('No module named {0}'.format(name))
                 else:
                     return realimport(name, *args, **kwargs)
 
@@ -138,7 +138,7 @@ def skip_if_environ(env_var_name):
         @wraps(fun)
         def _skips_if_environ(*args, **kwargs):
             if os.environ.get(env_var_name):
-                raise SkipTest('SKIP %s: %s set\n' % (
+                raise SkipTest('SKIP {0}: {1} set'.format(
                     fun.__name__, env_var_name))
             return fun(*args, **kwargs)
 
@@ -153,7 +153,7 @@ def skip_if_module(module):
         def _skip_if_module(*args, **kwargs):
             try:
                 __import__(module)
-                raise SkipTest('SKIP %s: %s available\n' % (
+                raise SkipTest('SKIP {0}: {1} available'.format(
                     fun.__name__, module))
             except ImportError:
                 pass
@@ -169,7 +169,7 @@ def skip_if_not_module(module):
             try:
                 __import__(module)
             except ImportError:
-                raise SkipTest('SKIP %s: %s available\n' % (
+                raise SkipTest('SKIP {0}: {1} available'.format(
                     fun.__name__, module))
             return fun(*args, **kwargs)
         return _skip_if_not_module

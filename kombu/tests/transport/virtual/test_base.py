@@ -9,7 +9,6 @@ from kombu.exceptions import StdChannelError
 from kombu.transport import virtual
 from kombu.utils import uuid
 
-from kombu.tests.compat import catch_warnings
 from kombu.tests.utils import TestCase
 from kombu.tests.utils import Mock, redirect_stdouts
 
@@ -380,7 +379,7 @@ class test_Channel(TestCase):
 
     def test_lookup__undeliverable(self, n='test_lookup__undeliverable'):
         warnings.resetwarnings()
-        with catch_warnings(record=True) as log:
+        with warnings.catch_warnings(record=True) as log:
             self.assertListEqual(self.channel._lookup(n, n, 'ae.undeliver'),
                                                       ['ae.undeliver'])
             self.assertTrue(log)

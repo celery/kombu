@@ -39,8 +39,13 @@ else:
     ARRAY_TYPE_H = b'H'
 
 UNDELIVERABLE_FMT = """\
-Message could not be delivered: No queues bound to exchange %(exchange)r
-using binding key %(routing_key)r
+Message could not be delivered: No queues bound to exchange {exchange!r} \
+using binding key {routing_key!r}.
+"""
+
+NOT_EQUIVALENT_FMT = """\
+Cannot redeclare exchange {0!r} in vhost {1!r} with \
+different type, durable, autodelete or arguments value.\
 """
 
 
@@ -194,13 +199,13 @@ class QoS(object):
 
         try:
             if state:
-                say('Restoring %r unacknowledged message(s).',
+                say('Restoring {0!r} unacknowledged message(s).',
                         len(self._delivered))
                 unrestored = self.restore_unacked()
 
                 if unrestored:
                     errors, messages = zip(*unrestored)
-                    say('UNABLE TO RESTORE %s MESSAGES: %s',
+                    say('UNABLE TO RESTORE {0} MESSAGES: {1}',
                             len(errors), errors)
                     emergency_dump_state(messages)
         finally:
@@ -353,8 +358,8 @@ class Channel(AbstractChannel, base.StdChannel):
             self.channel_id = self.connection._avail_channel_ids.pop()
         except IndexError:
             raise ResourceError(
-                'No free channel ids, current=%d, channel_max=%d' % (
-                    len(self.channels), self.channel_max, (20, 10)))
+                'No free channel ids, current={0}, channel_max={1}'.format(
+                    len(self.channels), self.channel_max), (20, 10))
 
         topts = self.connection.client.transport_options
         for opt_name in self.from_transport_options:
@@ -367,11 +372,11 @@ class Channel(AbstractChannel, base.StdChannel):
             auto_delete=False, arguments=None, nowait=False, passive=False):
         """Declare exchange."""
         type = type or 'direct'
-        exchange = exchange or 'amq.%s' % (type, )
+        exchange = exchange or 'amq.%s' % type
         if passive:
             if exchange not in self.state.exchanges:
                 raise StdChannelError('404',
-                    'NOT_FOUND - no exchange %r in vhost %r' % (
+                    'NOT_FOUND - no exchange {0!r} in vhost {1!r}'.format(
                         exchange, self.connection.client.virtual_host or '/'),
                     (50, 10), 'Channel.exchange_declare')
             return
@@ -380,11 +385,8 @@ class Channel(AbstractChannel, base.StdChannel):
             if not self.typeof(exchange).equivalent(prev, exchange, type,
                                                     durable, auto_delete,
                                                     arguments):
-                raise NotEquivalentError(
-                        'Cannot redeclare exchange %r in vhost %r with '
-                        'different type, durable or autodelete value' % (
-                            exchange,
-                            self.connection.client.virtual_host or '/'))
+                raise NotEquivalentError(NOT_EQUIVALENT_FMT.format(
+                        exchange, self.connection.client.virtual_host or '/'))
         except KeyError:
             self.state.exchanges[exchange] = {
                     'type': type,
@@ -405,7 +407,7 @@ class Channel(AbstractChannel, base.StdChannel):
         queue = queue or 'amq.gen-%s' % uuid()
         if passive and not self._has_queue(queue, **kwargs):
             raise StdChannelError('404',
-                    'NOT_FOUND - no queue %r in vhost %r' % (
+                    'NOT_FOUND - no queue {0!r} in vhost {1!r}'.format(
                         queue, self.connection.client.virtual_host or '/'),
                     (50, 10), 'Channel.queue_declare')
         else:
@@ -565,8 +567,8 @@ class Channel(AbstractChannel, base.StdChannel):
             R = []
 
         if not R and default is not None:
-            warnings.warn(UndeliverableWarning(UNDELIVERABLE_FMT % {
-                'exchange': exchange, 'routing_key': routing_key}))
+            warnings.warn(UndeliverableWarning(UNDELIVERABLE_FMT.format(
+                exchange=exchange, routing_key=routing_key)))
             self._new_queue(default)
             R = [default]
         return R
@@ -786,7 +788,7 @@ class Transport(base.Transport):
 
         if not queue or queue not in self._callbacks:
             raise KeyError(
-                "Received message for queue '%s' without consumers: %s" % (
+                'Message for queue {0!r} without consumers: {1}'.format(
                     queue, message))
 
         self._callbacks[queue](message)

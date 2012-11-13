@@ -54,7 +54,7 @@ class Channel(virtual.Channel):
     _client = None
 
     def _get_queue(self, queue):
-        return '/%s' % (queue, )
+        return '/%s' % queue
 
     def _put(self, queue, message, **kwargs):
         try:

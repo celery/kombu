@@ -47,14 +47,14 @@ class Logwrapped(object):
         def __wrapped(*args, **kwargs):
             info = ''
             if self.ident:
-                info += self.ident % vars(self.instance)
-            info += '%s(' % (meth.__name__, )
+                info += self.ident.format(self.instance)
+            info += '{0.__name__}('.format(meth)
             if args:
                 info += ', '.join(map(repr, args))
             if kwargs:
                 if args:
                     info += ', '
-                info += ', '.join('%s=%r' % (key, value)
+                info += ', '.join('{k}={v!r}'.format(k=key, v=value)
                                     for key, value in items(kwargs))
             info += ')'
             self.logger.debug(info)

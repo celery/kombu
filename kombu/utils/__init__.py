@@ -8,7 +8,7 @@ Internal utilities.
 :license: BSD, see LICENSE for more details.
 
 """
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
 
 import importlib
 import random
@@ -84,8 +84,9 @@ def symbol_by_name(name, aliases={}, imp=None, package=None,
         try:
             module = imp(module_name, package=package, **kwargs)
         except ValueError as exc:
-            reraise(ValueError, ValueError(
-                    "Couldn't import %r: %s" % (name, exc)), sys.exc_info()[2])
+            reraise(ValueError,
+                    ValueError("Couldn't import {0!r}: {1}".format(name, exc)),
+                    sys.exc_info()[2])
         return getattr(module, cls_name) if cls_name else module
     except (ImportError, AttributeError):
         if default is None:
@@ -115,8 +116,8 @@ class EqualityDict(dict):
         return dict.__delitem__(self, eqhash(key))
 
 
-def say(m, *s):
-    sys.stderr.write(str(m) % s + '\n')
+def say(m, *fargs, **fkwargs):
+    print(str(m).format(*fargs, **fkwargs), file=sys.stderr)
 
 
 def uuid4():
@@ -241,13 +242,13 @@ def emergency_dump_state(state, open_file=open, dump=None):
         import pickle
         dump = pickle.dump
     persist = mktemp()
-    say('EMERGENCY DUMP STATE TO FILE -> %s <-' % persist)
+    say('EMERGENCY DUMP STATE TO FILE -> {0} <-', persist)
     fh = open_file(persist, 'w')
     try:
         try:
             dump(state, fh, protocol=0)
         except Exception as exc:
-            say('Cannot pickle state: %r. Fallback to pformat.' % (exc, ))
+            say('Cannot pickle state: {0!r}. Fallback to pformat.', exc)
             fh.write(default_encode(pformat(state)))
     finally:
         fh.flush()
@@ -277,7 +278,7 @@ class cached_property(object):
         def connection(self, value):
             # Additional action to do at del(self.attr)
             if value is not None:
-                print('Connection %r deleted' % (value, ))
+                print('Connection {0!r} deleted'.format(value)
 
     """
 
@@ -323,14 +324,16 @@ class cached_property(object):
         return self.__class__(self.__get, self.__set, fdel)
 
 
-def reprkwargs(kwargs, sep=', ', fmt='%s=%s'):
-    return sep.join(fmt % (k, _safe_repr(v)) for k, v in items(kwargs))
+def reprkwargs(kwargs, sep=', ', fmt='{0}={1}'):
+    return sep.join(fmt.format(k, _safe_repr(v)) for k, v in items(kwargs))
 
 
 def reprcall(name, args=(), kwargs={}, sep=', '):
-    return '%s(%s%s%s)' % (name, sep.join(map(_safe_repr, args or ())),
-                           (args and kwargs) and sep or '',
-                           reprkwargs(kwargs, sep))
+    return '{0}({1}{2}{3})'.format(
+        name, sep.join(map(_safe_repr, args or ())),
+        (args and kwargs) and sep or '',
+        reprkwargs(kwargs, sep),
+    )
 
 
 @contextmanager

@@ -33,15 +33,15 @@ def _ghettoq(name, new, alias=None):
     def __inner():
         import warnings
         _new = isinstance(xxx, Callable) and xxx() or xxx
-        gtransport = 'ghettoq.taproot.%s' % name
-        ktransport = 'kombu.transport.%s.Transport' % _new
+        gtransport = 'ghettoq.taproot.{0}'.format(name)
+        ktransport = 'kombu.transport.{0}.Transport'.format(_new)
         this = alias or name
         warnings.warn("""
     Ghettoq does not work with Kombu, but there is now a built-in version
-    of the %s transport.
+    of the {0} transport.
 
-    You should replace %r with simply: %r
-        """ % (name, gtransport, this))
+    You should replace {1!r} with: {2!r}
+        """.format(name, gtransport, this))
         return ktransport
 
     return __inner
@@ -84,7 +84,7 @@ def resolve_transport(transport=None):
             transport = TRANSPORT_ALIASES[transport]
         except KeyError:
             if '.' not in transport and ':' not in transport:
-                raise KeyError('No such transport: %s' % transport)
+                raise KeyError('No such transport: {0}'.format(transport))
         else:
             if isinstance(transport, Callable):
                 transport = transport()

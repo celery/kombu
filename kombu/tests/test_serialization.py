@@ -2,12 +2,20 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, unicode_literals
 
-import sys
-
-from kombu.serialization import (registry, register, SerializerNotInstalled,
-                                 raw_encode, register_yaml, register_msgpack,
-                                 decode, bytes_t, pickle, pickle_protocol,
-                                 unregister, register_pickle)
+from kombu.serialization import (
+    registry,
+    register,
+    SerializerNotInstalled,
+    raw_encode,
+    register_yaml,
+    register_msgpack,
+    decode,
+    bytes_t,
+    pickle,
+    pickle_protocol,
+    unregister,
+    register_pickle,
+)
 
 from .utils import TestCase
 from .utils import mask_modules, skip_if_not_module
@@ -56,11 +64,6 @@ msgpack_py_data = {'string': 'The quick brown fox jumps over the lazy dog',
 msgpack_py_data['list'] = tuple(msgpack_py_data['list'])
 # Unicode chars are lost in transmit :(
 msgpack_py_data['unicode'] = 'Th quick brown fox jumps over th lazy dog'
-
-
-def say(m):
-    sys.stderr.write('%s\n' % (m, ))
-
 
 registry.register('testS', lambda s: s, lambda s: 'decoded',
                   'application/testS', 'utf-8')
