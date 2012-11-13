@@ -2,6 +2,9 @@
 Example of simple consumer that waits for a single message, acknowledges it
 and exits.
 """
+
+from __future__ import with_statement
+
 from kombu import Connection, Exchange, Queue, Consumer, eventloop
 from pprint import pformat
 

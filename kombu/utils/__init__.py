@@ -81,7 +81,7 @@ def symbol_by_name(name, aliases={}, imp=None, package=None,
     try:
         try:
             module = imp(module_name, package=package, **kwargs)
-        except ValueError as exc:
+        except ValueError, exc:
             raise ValueError, ValueError(
                     "Couldn't import %r: %s" % (name, exc)), sys.exc_info()[2]
         return getattr(module, cls_name) if cls_name else module
@@ -218,7 +218,7 @@ def retry_over_time(fun, catch, args=[], kwargs={}, errback=None,
     for retries in count():
         try:
             return fun(*args, **kwargs)
-        except catch as exc:
+        except catch, exc:
             if max_retries is not None and retries > max_retries:
                 raise
             if callback:
@@ -244,7 +244,7 @@ def emergency_dump_state(state, open_file=open, dump=None):
     try:
         try:
             dump(state, fh, protocol=0)
-        except Exception as exc:
+        except Exception, exc:
             say('Cannot pickle state: %r. Fallback to pformat.' % (exc, ))
             fh.write(pformat(state))
     finally:

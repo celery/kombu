@@ -9,6 +9,7 @@ Generic process mailbox.
 
 """
 from __future__ import absolute_import
+from __future__ import with_statement
 
 import socket
 
@@ -82,7 +83,7 @@ class Node(object):
             reply = handle(method, kwdict(arguments))
         except SystemExit:
             raise
-        except Exception as exc:
+        except Exception, exc:
             reply = {'error': repr(exc)}
 
         if reply_to:

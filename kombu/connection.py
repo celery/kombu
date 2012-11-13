@@ -9,6 +9,7 @@ Broker connection and pools.
 
 """
 from __future__ import absolute_import
+from __future__ import with_statement
 
 import errno
 import os
@@ -286,7 +287,7 @@ class Connection(object):
         except socket.timeout:
             self.more_to_read = False
             return False
-        except socket.error as exc:
+        except socket.error, exc:
             if exc.errno in (errno.EAGAIN, errno.EINTR):
                 self.more_to_read = False
                 return False
@@ -420,7 +421,7 @@ class Connection(object):
             for retries in count(0):  # for infinity
                 try:
                     return fun(*args, **kwargs)
-                except self.recoverable_connection_errors as exc:
+                except self.recoverable_connection_errors, exc:
                     if got_connection:
                         raise
                     if max_retries is not None and retries > max_retries:
@@ -443,7 +444,7 @@ class Connection(object):
                     if on_revive:
                         on_revive(new_channel)
                     got_connection += 1
-                except self.recoverable_channel_errors as exc:
+                except self.recoverable_channel_errors, exc:
                     if max_retries is not None and retries > max_retries:
                         raise
                     self._debug('ensure channel error: %r', exc, exc_info=1)

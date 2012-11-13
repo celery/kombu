@@ -1,3 +1,5 @@
+from __future__ import with_statement
+
 from kombu.common import maybe_declare
 from kombu.pools import producers
 

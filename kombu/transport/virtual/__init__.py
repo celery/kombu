@@ -164,7 +164,7 @@ class QoS(object):
 
             try:
                 self.channel._restore(message)
-            except BaseException as exc:
+            except BaseException, exc:
                 errors.append((exc, message))
         delivered.clear()
         return errors

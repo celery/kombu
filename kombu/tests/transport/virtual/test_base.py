@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+from __future__ import with_statement
 
 import warnings
 
@@ -349,7 +350,7 @@ class test_Channel(TestCase):
         exc = None
         try:
             raise KeyError()
-        except KeyError as exc_:
+        except KeyError, exc_:
             exc = exc_
         ru.return_value = [(exc, 1)]
 

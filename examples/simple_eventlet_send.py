@@ -6,6 +6,8 @@ You can use `simple_receive.py` (or `complete_receive.py`) to receive the
 message sent.
 
 """
+from __future__ import with_statement
+
 import eventlet
 
 from kombu import Connection
