@@ -263,17 +263,17 @@ class Message(base.Message):
 
 class Channel(_Channel, base.StdChannel):
     Message = Message
-    events = {'basic_return': []}
+    events = {'basic_return': set()}
 
     def __init__(self, *args, **kwargs):
         self.no_ack_consumers = set()
         super(Channel, self).__init__(*args, **kwargs)
 
-    def prepare_message(self, message_data, priority=None,
+    def prepare_message(self, body, priority=None,
                 content_type=None, content_encoding=None, headers=None,
                 properties=None):
         """Encapsulate data into a AMQP message."""
-        return amqp.Message(message_data, priority=priority,
+        return amqp.Message(body, priority=priority,
                             content_type=content_type,
                             content_encoding=content_encoding,
                             application_headers=headers,

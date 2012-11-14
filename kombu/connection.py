@@ -30,20 +30,23 @@ from .utils import cached_property, retry_over_time, shufflecycle
 from .utils.compat import OrderedDict, LifoQueue as _LifoQueue, next
 from .utils.url import parse_url
 
+__all__ = ['Connection', 'ConnectionPool', 'ChannelPool']
+
 RESOLVE_ALIASES = {'pyamqp': 'amqp',
                    'librabbitmq': 'amqp'}
 
 _LOG_CONNECTION = os.environ.get('KOMBU_LOG_CONNECTION', False)
 _LOG_CHANNEL = os.environ.get('KOMBU_LOG_CHANNEL', False)
 
-__all__ = ['Connection', 'ConnectionPool', 'ChannelPool']
+#: List of URI schemes that should not be parsed, but sent
+#: directly to the transport instead.
 URI_PASSTHROUGH = frozenset(['sqla', 'sqlalchemy', 'zeromq', 'zmq'])
 
 logger = get_logger(__name__)
 roundrobin_failover = cycle
 
 failover_strategies = {
-    'round-robin': cycle,
+    'round-robin': roundrobin_failover,
     'shuffle': shufflecycle,
 }
 
@@ -97,12 +100,12 @@ class Connection(object):
     .. note::
 
         The connection is established lazily when needed. If you need the
-        connection to be established, then force it to do so using
+        connection to be established, then force it by calling
         :meth:`connect`::
 
             >>> conn.connect()
 
-        Remember to always close the connection::
+        and always remember to close the connection::
 
             >>> conn.release()
 
@@ -130,8 +133,8 @@ class Connection(object):
     #: of connection failure (initialized by :attr:`failover_strategy`).
     cycle = None
 
-    #: Additional transport specific options, passed on to the transport
-    #: instance.
+    #: Additional transport specific options,
+    #: passed on to the transport instance.
     transport_options = None
 
     #: Strategy used to select new hosts when reconnecting after connection
@@ -1013,7 +1016,6 @@ class ChannelPool(Resource):
     def prepare(self, channel):
         if callable(channel):
             channel = channel()
-
         return channel
 
 
@@ -1023,3 +1025,7 @@ def maybe_channel(channel):
     if isinstance(channel, Connection):
         return channel.default_channel
     return channel
+
+
+def is_connection(obj):
+    return isinstance(obj, Connection)

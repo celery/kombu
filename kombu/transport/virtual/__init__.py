@@ -581,7 +581,7 @@ class Channel(AbstractChannel, base.StdChannel):
             return self.Message(self, payload=raw_message)
         return raw_message
 
-    def prepare_message(self, message_data, priority=None,
+    def prepare_message(self, body, priority=None,
             content_type=None, content_encoding=None, headers=None,
             properties=None):
         """Prepare message data."""
@@ -589,7 +589,7 @@ class Channel(AbstractChannel, base.StdChannel):
         info = properties.setdefault('delivery_info', {})
         info['priority'] = priority or 0
 
-        return {'body': message_data,
+        return {'body': body,
                 'content-encoding': content_encoding,
                 'content-type': content_type,
                 'headers': headers or {},

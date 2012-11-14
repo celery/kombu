@@ -109,7 +109,7 @@ class Channel(channel.Channel, base.StdChannel):
                                              queue, no_ack,
                                              False, consumer_tag)
 
-    def prepare_message(self, message_data, priority=None,
+    def prepare_message(self, body, priority=None,
             content_type=None, content_encoding=None, headers=None,
             properties=None):
         properties = BasicProperties(priority=priority,
@@ -117,7 +117,7 @@ class Channel(channel.Channel, base.StdChannel):
                                      content_encoding=content_encoding,
                                      headers=headers,
                                      **properties)
-        return message_data, properties
+        return body, properties
 
     def message_to_python(self, raw_message):
         return self.Message(channel=self, amqp_message=raw_message)

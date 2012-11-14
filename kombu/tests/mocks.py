@@ -28,7 +28,7 @@ class Channel(base.StdChannel):
         self.called = []
         self.deliveries = count(1).next
         self.to_deliver = []
-        self.events = {'basic_return': []}
+        self.events = {'basic_return': set()}
 
     def _called(self, name):
         self.called.append(name)
@@ -39,10 +39,10 @@ class Channel(base.StdChannel):
     def exchange_declare(self, *args, **kwargs):
         self._called('exchange_declare')
 
-    def prepare_message(self, message_data, properties={}, priority=0,
-            content_type=None, content_encoding=None, headers=None):
+    def prepare_message(self, body, priority=0, content_type=None,
+            content_encoding=None, headers=None, properties={}):
         self._called('prepare_message')
-        return dict(body=message_data,
+        return dict(body=body,
                     headers=headers,
                     properties=properties,
                     priority=priority,

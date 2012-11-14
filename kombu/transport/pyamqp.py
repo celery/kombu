@@ -45,11 +45,11 @@ class Message(base.Message):
 class Channel(amqp.Channel, base.StdChannel):
     Message = Message
 
-    def prepare_message(self, message_data, priority=None,
+    def prepare_message(self, body, priority=None,
                 content_type=None, content_encoding=None, headers=None,
                 properties=None):
         """Encapsulate data into a AMQP message."""
-        return amqp.Message(message_data, priority=priority,
+        return amqp.Message(body, priority=priority,
                             content_type=content_type,
                             content_encoding=content_encoding,
                             application_headers=headers,

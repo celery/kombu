@@ -12,11 +12,11 @@ from __future__ import absolute_import
 
 from itertools import count
 
-from .connection import maybe_channel
-from .entity import Exchange, Queue
+from .connection import maybe_channel, is_connection
+from .entity import Exchange, Queue, DELIVERY_MODES
 from .compression import compress
 from .serialization import encode
-from .utils import maybe_list
+from .utils import ChannelPromise, maybe_list
 
 __all__ = ['Exchange', 'Queue', 'Producer', 'Consumer']
 
@@ -42,13 +42,11 @@ class Producer(object):
         Note that the producer needs to drain events to use this feature.
 
     """
-    #: The connection channel used.
-    channel = None
 
-    #: Default exchange.
+    #: Default exchange
     exchange = None
 
-    # Default routing key.
+    #: Default routing key.
     routing_key = ''
 
     #: Default serializer to use. Default is JSON.
@@ -65,22 +63,27 @@ class Producer(object):
     #: Basic return callback.
     on_return = None
 
+    #: Set if channel argument was a Connection instance (using
+    #: default_channel).
+    __connection__ = None
+
     def __init__(self, channel, exchange=None, routing_key=None,
             serializer=None, auto_declare=None, compression=None,
             on_return=None):
-        self.channel = channel
-        self.exchange = exchange or self.exchange
-        if self.exchange is None:
-            self.exchange = Exchange('')
+        self._channel = channel
+        self.exchange = exchange
         self.routing_key = routing_key or self.routing_key
         self.serializer = serializer or self.serializer
         self.compression = compression or self.compression
         self.on_return = on_return or self.on_return
+        self._channel_promise = None
+        if self.exchange is None:
+            self.exchange = Exchange('')
         if auto_declare is not None:
             self.auto_declare = auto_declare
 
-        if self.channel:
-            self.revive(self.channel)
+        if self._channel:
+            self.revive(self._channel)
 
     def __reduce__(self):
         return self.__class__, self.__reduce_args__()
@@ -141,44 +144,74 @@ class Producer(object):
         retry_policy = {} if retry_policy is None else retry_policy
         routing_key = self.routing_key if routing_key is None else routing_key
         compression = self.compression if compression is None else compression
+        exchange = exchange or self.exchange
 
         if isinstance(exchange, Exchange):
+            delivery_mode = delivery_mode or exchange.delivery_mode
             exchange = exchange.name
+        else:
+            delivery_mode = delivery_mode or self.exchange.delivery_mode
+        if not isinstance(delivery_mode, (int, long)):
+            delivery_mode = DELIVERY_MODES[delivery_mode]
+        properties['delivery_mode'] = delivery_mode
 
         body, content_type, content_encoding = self._prepare(
                 body, serializer, content_type, content_encoding,
                 compression, headers)
-        message = self.exchange.Message(body,
-                                        delivery_mode,
-                                        priority,
-                                        content_type,
-                                        content_encoding,
-                                        headers=headers,
-                                        properties=properties)
+
         publish = self._publish
         if retry:
             publish = self.connection.ensure(self, publish, **retry_policy)
-        return publish(message, routing_key, mandatory,
-                       immediate, exchange, declare)
+        return publish(body, priority, content_type,
+                       content_encoding, headers, properties,
+                        routing_key, mandatory, immediate, exchange, declare)
 
-    def _publish(self, message, routing_key, mandatory, immediate, exchange,
-            declare):
+    def _publish(self, body, priority, content_type, content_encoding,
+            headers, properties, routing_key, mandatory,
+            immediate, exchange, declare):
+        channel = self.channel
+        message = channel.prepare_message(
+            body, priority, content_type,
+            content_encoding, headers, properties,
+        )
         if declare:
             maybe_declare = self.maybe_declare
             [maybe_declare(entity) for entity in declare]
-        return self.exchange.publish(message, routing_key,
-                                     mandatory, immediate, exchange)
+        return channel.basic_publish(message,
+            exchange=exchange, routing_key=routing_key,
+            mandatory=mandatory, immediate=immediate,
+        )
+
+    def _get_channel(self):
+        channel = self._channel
+        if isinstance(channel, ChannelPromise):
+            channel = self._channel = channel()
+            self.exchange.revive(channel)
+            if self.on_return:
+                channel.events['basic_return'].add(self.on_return)
+        return channel
+
+    def _set_channel(self, channel):
+        self._channel = channel
+    channel = property(_get_channel, _set_channel)
 
     def revive(self, channel):
         """Revive the producer after connection loss."""
-        channel = self.channel = maybe_channel(channel)
-        self.exchange = self.exchange(channel)
-        self.exchange.revive(channel)
-
+        if is_connection(channel):
+            promise = ChannelPromise(lambda: channel.default_channel)
+            self.__connection__ = channel
+            self._channel = promise
+            self.exchange = self.exchange(promise)
+        else:
+            # Channel already concrete
+            self._channel = channel
+            if self.on_return:
+                self._channel.events['basic_return'].add(self.on_return)
+            self.exchange = self.exchange(channel)
         if self.auto_declare:
+            # auto_decare is not recommended as this will force
+            # evaluation of the channel.
             self.declare()
-        if self.on_return:
-            self.channel.events['basic_return'].append(self.on_return)
 
     def __enter__(self):
         return self
@@ -220,7 +253,7 @@ class Producer(object):
     @property
     def connection(self):
         try:
-            return self.channel.connection.client
+            return self.__connection__ or self.channel.connection.client
         except AttributeError:
             pass
 

@@ -53,13 +53,12 @@ class ProducerPool(Resource):
         if callable(p):
             p = p()
         if not p.channel:
-            connection = self._acquire_connection()
-            p.revive(connection.default_channel)
+            p.revive(self._acquire_connection())
         return p
 
     def release(self, resource):
-        if resource.connection:
-            resource.connection.release()
+        if resource.__connection__:
+            resource.__connection__.release()
         resource.channel = None
         super(ProducerPool, self).release(resource)
 

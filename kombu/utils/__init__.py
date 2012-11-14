@@ -379,3 +379,19 @@ def entrypoints(namespace):
     except ImportError:
         return iter([])
     return ((ep, ep.load()) for ep in iter_entry_points(namespace))
+
+
+class ChannelPromise(object):
+
+    def __init__(self, contract):
+        self.__contract__ = contract
+
+    def __call__(self):
+        try:
+            return self.__value__
+        except AttributeError:
+            value = self.__value__ = self.__contract__()
+            return value
+
+    def __repr__(self):
+        return '<promise: %r>' % (self(), )
