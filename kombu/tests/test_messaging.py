@@ -108,16 +108,18 @@ class test_Producer(TestCase):
 
     def test_publish_with_Exchange_instance(self):
         p = self.connection.Producer()
-        p.exchange.publish = Mock()
+        p.channel = Mock()
         p.publish('hello', exchange=Exchange('foo'))
-        self.assertEqual(p.exchange.publish.call_args[0][4], 'foo')
+        self.assertEqual(
+            p._channel.basic_publish.call_args[1]['exchange'], 'foo',
+        )
 
     def test_publish_retry_with_declare(self):
         p = self.connection.Producer()
         p.maybe_declare = Mock()
         p.connection.ensure = Mock()
         ex = Exchange('foo')
-        p._publish('hello', 'rk', 0, 0, ex, declare=[ex])
+        p._publish('hello', 0, '', '', {}, {}, 'rk', 0, 0, ex, declare=[ex])
         p.maybe_declare.assert_called_with(ex)
 
     def test_revive_when_channel_is_connection(self):
@@ -141,6 +143,7 @@ class test_Producer(TestCase):
     def test_connection_property_handles_AttributeError(self):
         p = self.connection.Producer()
         p.channel = object()
+        p.__connection__ = None
         self.assertIsNone(p.connection)
 
     def test_publish(self):

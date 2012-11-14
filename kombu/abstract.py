@@ -15,6 +15,7 @@ from copy import copy
 from .connection import maybe_channel
 from .exceptions import NotBoundError
 from .five import items
+from .utils import ChannelPromise
 
 __all__ = ['Object', 'MaybeChannelBound']
 
@@ -111,8 +112,11 @@ class MaybeChannelBound(Object):
     @property
     def channel(self):
         """Current channel if the object is bound."""
-        if self._channel is None:
+        channel = self._channel
+        if channel is None:
             raise NotBoundError(
                 "Can't call method on {0} not bound to a channel".format(
                     type(self).__name__))
-        return self._channel
+        if isinstance(channel, ChannelPromise):
+            channel = self._channel = channel()
+        return channel
