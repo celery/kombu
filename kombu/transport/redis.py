@@ -400,8 +400,8 @@ class Channel(virtual.Channel):
         c = self.subclient
         if c.connection._sock is None:
             c.connection.connect()
-        self.subclient.subscribe(keys)
         self._in_listen = True
+        self.subclient.subscribe(keys)
 
     def _handle_message(self, client, r):
         if r[0] == 'unsubscribe' and r[2] == 0:
@@ -433,8 +433,8 @@ class Channel(virtual.Channel):
             return
         keys = [self._q_for_pri(queue, pri) for pri in PRIORITY_STEPS
                         for queue in queues] + [timeout or 0]
-        self.client.connection.send_command('BRPOP', *keys)
         self._in_poll = True
+        self.client.connection.send_command('BRPOP', *keys)
 
     def _brpop_read(self, **options):
         try:
