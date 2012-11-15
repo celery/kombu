@@ -98,8 +98,8 @@ class MaybeChannelBound(Object):
 
     def __repr__(self, item=''):
         if self.is_bound:
-            return '<bound %s of %s>' % (item or self.__class__.__name__,
-                                         self.channel)
+            return '<%s bound to chan:%s>' % (
+                item or type(self).__name__, self.channel.channel_id)
         return '<unbound %s>' % (item, )
 
     @property
