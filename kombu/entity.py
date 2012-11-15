@@ -266,8 +266,10 @@ class Exchange(MaybeChannelBound):
         return False
 
     def __repr__(self):
-        return super(Exchange, self).__repr__('Exchange %s(%s)' % (self.name,
-                                                                   self.type))
+        return super(Exchange, self).__repr__(str(self))
+
+    def __str__(self):
+        return 'Exchange %s(%s)' % (self.name, self.type)
 
     @property
     def can_cache_declaration(self):
