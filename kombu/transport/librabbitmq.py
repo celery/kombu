@@ -116,6 +116,9 @@ class Transport(base.Transport):
         """Close the AMQP broker connection."""
         connection.close()
 
+    def verify_connection(self, connection):
+        return connection.connected
+
     def on_poll_init(self, poller):
         pass
 
