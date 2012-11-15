@@ -225,10 +225,10 @@ def retry_over_time(fun, catch, args=[], kwargs={}, errback=None,
                 callback()
             tts = errback(exc, interval_range, retries) if errback else None
             if tts:
-                for i in fxrange(stop=tts):
-                    if i and callback:
+                for i in range(int(tts / interval_step)):
+                    if callback:
                         callback()
-                    sleep(i)
+                    sleep(interval_step)
 
 
 def emergency_dump_state(state, open_file=open, dump=None):
