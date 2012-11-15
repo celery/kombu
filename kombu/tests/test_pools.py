@@ -57,7 +57,7 @@ class test_ProducerPool(TestCase):
     def test_prepare(self):
         connection = self.connections.acquire.return_value = Mock()
         pool = self.MyPool(self.connections, limit=10)
-        pool.instance.channel = None
+        pool.instance._channel = None
         first = pool._resource.get_nowait()
         producer = pool.prepare(first)
         self.assertTrue(self.connections.acquire.called)
@@ -66,7 +66,7 @@ class test_ProducerPool(TestCase):
     def test_prepare_channel_already_created(self):
         self.connections.acquire.return_value = Mock()
         pool = self.MyPool(self.connections, limit=10)
-        pool.instance.channel = Mock()
+        pool.instance._channel = Mock()
         first = pool._resource.get_nowait()
         self.connections.acquire.reset()
         producer = pool.prepare(first)

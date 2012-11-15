@@ -850,7 +850,12 @@ class Resource(object):
                 except Empty:
                     self._add_when_empty()
                 else:
-                    R = self.prepare(R)
+                    try:
+                        R = self.prepare(R)
+                    except BaseException:
+                        self.release_resource(R)
+                        raise
+
                     self._dirty.add(R)
                     break
         else:
