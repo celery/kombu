@@ -49,6 +49,9 @@ class ProducerPool(Resource):
             for _ in xrange(self.limit):
                 self._resource.put_nowait(self.new())
 
+    def close_resource(self, resource):
+        pass
+
     def prepare(self, p):
         if callable(p):
             p = p()
