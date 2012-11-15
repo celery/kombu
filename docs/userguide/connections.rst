@@ -116,10 +116,7 @@ keyword arguments, these are:
 :ssl: Use SSL to connect to the server. Default is ``False``.
   Only supported by the amqp transport.
 :insist: Insist on connecting to a server.
-  In a configuration with multiple load-sharing servers, the insist
-  option tells the server that the client is insisting on a connection
-  to the specified server.  Default is ``False``.
-  Only supported by the amqp and pika transports, and not by AMQP 0-9-1.
+  *No longer supported, relic from AMQP 0.8*
 :connect_timeout: Timeout in seconds for connecting to the
   server. May not be supported by the specified transport.
 :transport_options: A dict of additional connection arguments to
@@ -141,8 +138,6 @@ Transport Comparison
 | *beanstalk*   | Virtual  | Yes        | Yes [#f1]_ | No            |
 +---------------+----------+------------+------------+---------------+
 | *SQS*         | Virtual  | Yes        | Yes [#f1]_ | Yes [#f2]_    |
-+---------------+----------+------------+------------+---------------+
-| *pika*        | Native   | Yes        | Yes        | Yes           |
 +---------------+----------+------------+------------+---------------+
 | *couchdb*     | Virtual  | Yes        | Yes [#f1]_ | No            |
 +---------------+----------+------------+------------+---------------+

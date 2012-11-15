@@ -48,8 +48,6 @@ TRANSPORT_ALIASES = {
     'amqp': 'kombu.transport.pyamqp:Transport',
     'pyamqp': 'kombu.transport.pyamqp:Transport',
     'librabbitmq': 'kombu.transport.librabbitmq:Transport',
-    'pika': 'kombu.transport.pika2:Transport',
-    'oldpika': 'kombu.transport.pika:SyncTransport',
     'memory': 'kombu.transport.memory:Transport',
     'redis': 'kombu.transport.redis:Transport',
     'SQS': 'kombu.transport.SQS:Transport',

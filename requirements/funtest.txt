@@ -7,9 +7,6 @@ pymongo
 # CouchDB transport
 couchdb
 
-# Pika transport
-pika==0.5.2
-
 # Beanstalk transport
 beanstalkc
 
