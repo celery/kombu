@@ -25,7 +25,6 @@ from kombu.exceptions import (
 )
 from kombu.log import get_logger
 from kombu.utils import cached_property, uuid
-from kombu.utils.encoding import str_t
 from kombu.utils.eventio import poll, READ, ERR
 
 try:

@@ -21,7 +21,7 @@ except ImportError:  # pragma: no cover
     cpickle = None  # noqa
 
 from .exceptions import SerializerNotInstalled
-from .utils.encoding import bytes_to_str, str_to_bytes, bytes_t
+from .utils.encoding import str_to_bytes, bytes_t
 
 __all__ = ['pickle', 'encode', 'decode',
            'register', 'unregister']
