@@ -15,6 +15,9 @@
 
     Fix contributed by Ollie Walsh.
 
+- Redis: Each channel is now using a specific connection pool instance,
+  which is disconnected on connection failure.
+
 - ProducerPool: Fixed possible dead-lock in the acquire method.
 
 - ProducerPool: ``force_close_all`` no longer tries to call the non-existent
@@ -29,21 +32,35 @@
 
 - Python3: Fixed problem with JSON codec.
 
-
 .. _version-2.4.8:
 
 2.4.8
 =====
 :release-date: 2012-11-02 05:00 P.M UTC
 
-- Redis:  Fair queue cyle implementation improved (Issue #166).
+- Redis:  Improved fair queue cycle implementation (Issue #166).
 
     Contributed by Kevin McCarthy.
 
-- Redis: Number of messages to restore in one iteration is now unlimited,
-  but can be configured using the unacked_restore_limit transport option.
+- Redis: Unacked message restore limit is now unlimited by default.
 
-- Redis: A Redis based mutex is now used while restoring messages.
+    Also, the limit can now be configured using the ``unacked_restore_limit``
+    transport option:
+
+    .. code-block:: python
+
+        Connection('redis://', transport_options={
+            'unacked_restore_limit': 100,
+        })
+
+        A limit of 100 means that the consumer will restore at most 100
+        messages at each pass.
+
+- Redis: Now uses a mutex to ensure only one consumer restores messages at a
+  time.
+
+    The mutex expires after 5 minutes by default, but can be configured
+    using the ``unacked_mutex_expire`` transport option.
 
 - LamportClock.adjust now returns the new clock value.
 
@@ -56,6 +73,11 @@
 - Fixes problem with msgpack on Python 3 (Issue #162).
 
     Fix contributed by Jasper Bryant-Greene
+
+- amqplib: Fixed bug with timeouts when SSL is used in non-blocking mode.
+
+    Fix contributed by Mher Movsisyan
+
 
 .. _version-2.4.7:
 
@@ -99,9 +121,10 @@
 
 2.4.5
 =====
-:release-date: 2012-08-30 04:00 P.M BST
+:release-date: 2012-08-30 03:36 P.M BST
 
-- Fixed Jython + PyPy installation.
+- Last version broke installtion on PyPy and Jython due
+  to test requirements clean-up.
 
 .. _version-2.4.4:
 
@@ -271,7 +294,7 @@
 =====
 :release-date: 2012-07-10 17:00 P.M BST
 
-- Adds ``messaging.entry_to_queue`` for compat with previous versions.
+- Adds ``kombu.messaging.entry_to_queue`` for compat with previous versions.
 
 .. _version-2.2.5:
 
@@ -937,7 +960,7 @@ News
                          declare=[exchange], retry_policy={
                             'interval_start': 1.0})
 
-    See :meth:`~kombu.connection.Connection.ensure`
+    See :meth:`~kombu.Connection.ensure`
     for a list of supported retry policy options.
 
 * ``Producer.publish`` now supports a ``declare`` keyword argument.
@@ -1097,7 +1120,7 @@ Fixes
     This module contains a :class:`~kombu.mixins.ConsumerMixin` class
     that can be used to easily implement a message consumer
     thread that consumes messages from one or more
-    :class:`kombu.messaging.Consumer` instances.
+    :class:`kombu.Consumer` instances.
 
 * New example: :ref:`task-queue-example`
 
