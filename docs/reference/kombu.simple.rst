@@ -28,7 +28,7 @@
 
         .. attribute:: queue
 
-            :class:`~kombu.entity.Queue` to consume from (if consuming).
+            :class:`~kombu.Queue` to consume from (if consuming).
 
         .. attribute:: queue_opts
 
@@ -69,7 +69,7 @@
 
         .. attribute:: queue
 
-            :class:`~kombu.entity.Queue` to consume from (if consuming).
+            :class:`~kombu.Queue` to consume from (if consuming).
 
         .. attribute:: queue_opts
 

@@ -16,7 +16,7 @@ messaging needs.
 Instead of defining exchanges and queues, the simple classes only requires
 two arguments, a connection channel and a name. The name is used as the
 queue, exchange and routing key. If the need arises, you can specify
-a :class:`~kombu.entity.Queue` as the name argument instead.
+a :class:`~kombu.Queue` as the name argument instead.
 
 In addition, the :class:`~kombu.Connection` comes with
 shortcuts to create simple queues using the current connection::

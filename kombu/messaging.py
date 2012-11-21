@@ -273,7 +273,7 @@ class Consumer(object):
     #: The connection/channel to use for this consumer.
     channel = None
 
-    #: A single :class:`~kombu.entity.Queue`, or a list of queues to
+    #: A single :class:`~kombu.Queue`, or a list of queues to
     #: consume from.
     queues = None
 

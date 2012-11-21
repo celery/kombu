@@ -62,7 +62,7 @@
 
 - Now supports PyDev, PyCharm, pylint and other static code analysis tools.
 
-- :class:`~kombu.entity.Queue` now supports multiple bindings.
+- :class:`~kombu.Queue` now supports multiple bindings.
 
     You can now have multiple bindings in the same queue by having
     the second argument be a list:
@@ -79,8 +79,8 @@
 
     To enable this, helper methods have been added:
 
-        - :meth:`~kombu.entity.Queue.bind_to`
-        - :meth:`~kombu.entity.Queue.unbind_from`
+        - :meth:`~kombu.Queue.bind_to`
+        - :meth:`~kombu.Queue.unbind_from`
 
     Contributed by Rumyana Neykova.
 
@@ -108,7 +108,7 @@
 
 - Support for exchange-to-exchange bindings.
 
-    The :class:`~kombu.entity.Exchange` entity gained ``bind_to``
+    The :class:`~kombu.Exchange` entity gained ``bind_to``
     and ``unbind_from`` methods:
 
     .. code-block:: python
@@ -646,6 +646,8 @@ News
     :mod:`kombu.transport.zookeeper`.
 
     Contributed by Mahendra M.
+
+.. _`Apache ZooKeeper`: http://zookeeper.apache.org/
 
 - Redis: Priority support.
 

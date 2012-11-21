@@ -67,7 +67,7 @@ class Broadcast(Queue):
     :keyword queue: By default a unique id is used for the queue
        name for every consumer.  You can specify a custom queue
        name here.
-    :keyword \*\*kwargs: See :class:`~kombu.entity.Queue` for a list
+    :keyword \*\*kwargs: See :class:`~kombu.Queue` for a list
         of additional keyword arguments supported.
 
     """

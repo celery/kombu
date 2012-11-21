@@ -47,6 +47,7 @@
     kombu.transport.virtual.scheduling
     kombu.serialization
     kombu.utils
+    kombu.utils.eventio
     kombu.utils.limits
     kombu.utils.compat
     kombu.utils.debug
@@ -54,3 +55,4 @@
     kombu.utils.functional
     kombu.utils.finalize
     kombu.utils.url
+    kombu.utils.amq_manager

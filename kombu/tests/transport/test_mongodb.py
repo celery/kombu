@@ -2,7 +2,7 @@ from __future__ import absolute_import
 
 from nose import SkipTest
 
-from kombu.connection import Connection
+from kombu import Connection
 
 from kombu.tests.utils import TestCase, skip_if_not_module
 

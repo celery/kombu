@@ -4,7 +4,7 @@ import sys
 
 from nose import SkipTest
 
-from kombu.connection import Connection
+from kombu import Connection
 
 from kombu.tests.utils import TestCase
 from kombu.tests.utils import mask_modules, Mock

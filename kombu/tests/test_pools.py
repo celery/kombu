@@ -1,9 +1,8 @@
 from __future__ import with_statement
 
-from kombu import Connection
+from kombu import Connection, Producer
 from kombu import pools
 from kombu.connection import ConnectionPool
-from kombu.messaging import Producer
 from kombu.utils import eqhash
 
 from .utils import TestCase

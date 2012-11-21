@@ -9,10 +9,8 @@ from collections import defaultdict
 from itertools import count
 from Queue import Empty, Queue as _Queue
 
-from kombu.connection import Connection
-from kombu.entity import Exchange, Queue
+from kombu import Connection, Exchange, Queue, Consumer, Producer
 from kombu.exceptions import InconsistencyError, VersionMismatch
-from kombu.messaging import Consumer, Producer
 from kombu.utils import eventio  # patch poll
 
 from kombu.tests.utils import TestCase

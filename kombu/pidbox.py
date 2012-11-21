@@ -19,10 +19,9 @@ from itertools import count
 from threading import local
 from time import time
 
+from . import Exchange, Queue, Consumer, Producer
 from .clocks import LamportClock
 from .common import maybe_declare, oid_from
-from .entity import Exchange, Queue
-from .messaging import Consumer, Producer
 from .utils import cached_property, kwdict, uuid
 
 REPLY_QUEUE_EXPIRES = 10

@@ -10,7 +10,7 @@ except ImportError:
     pyamqp = None  # noqa
 else:
     from kombu.transport import pyamqp
-from kombu.connection import Connection
+from kombu import Connection
 
 from kombu.tests.utils import TestCase
 from kombu.tests.utils import mask_modules, Mock

@@ -1,8 +1,7 @@
 from __future__ import absolute_import
 from __future__ import with_statement
 
-from kombu import Connection
-from kombu.entity import Exchange, Queue
+from kombu import Connection, Exchange, Queue
 from kombu.exceptions import NotBoundError
 
 from .mocks import Transport

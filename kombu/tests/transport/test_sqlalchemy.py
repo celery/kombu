@@ -4,7 +4,7 @@ from __future__ import with_statement
 from mock import patch
 from nose import SkipTest
 
-from kombu.connection import Connection
+from kombu import Connection
 from kombu.tests.utils import TestCase
 
 
