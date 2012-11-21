@@ -4,6 +4,32 @@
  Change history
 ================
 
+.. _version-2.4.9:
+
+2.4.9
+=====
+:release-date: 2012-11-21 03:00 P.M UTC
+
+- Redis: Fixed race condition that could occur while trying to restore
+  messages (Issue #171).
+
+    Fix contributed by Ollie Walsh.
+
+- ProducerPool: Fixed possible dead-lock in the acquire method.
+
+- ProducerPool: ``force_close_all`` no longer tries to call the non-existent
+  ``Producer._close``.
+
+- librabbitmq: Now implements ``transport.verify_connection`` so that
+  connection pools will not give back connections that are no longer working.
+
+- New and better ``repr()`` for Queue and Exchange objects.
+
+- Python3:  Fixed problem with running the unit test suite.
+
+- Python3: Fixed problem with JSON codec.
+
+
 .. _version-2.4.8:
 
 2.4.8
