@@ -93,6 +93,9 @@ class test_QoS(TestCase):
         self.assertTrue(stderr.getvalue())
         self.assertFalse(stdout.getvalue())
 
+        self.q.restore_at_shutdown = False
+        self.q.restore_unacked_once()
+
     def test_get(self):
         self.q._delivered['foo'] = 1
         self.assertEqual(self.q.get('foo'), 1)
@@ -178,10 +181,34 @@ class test_Channel(TestCase):
         if self.channel._qos is not None:
             self.channel._qos._on_collect.cancel()
 
+    def test_exchange_bind_interface(self):
+        with self.assertRaises(NotImplementedError):
+            self.channel.exchange_bind('dest', 'src', 'key')
+
+    def test_exchange_unbind_interface(self):
+        with self.assertRaises(NotImplementedError):
+            self.channel.exchange_unbind('dest', 'src', 'key')
+
+    def test_queue_unbind_interface(self):
+        with self.assertRaises(NotImplementedError):
+            self.channel.queue_unbind('dest', 'ex', 'key')
+
+    def test_management(self):
+        m = self.channel.connection.client.get_manager()
+        self.assertTrue(m)
+        m.get_bindings()
+        m.close()
+
     def test_exchange_declare(self):
         c = self.channel
+
+        with self.assertRaises(StdChannelError):
+            c.exchange_declare('test_exchange_declare', 'direct',
+                               durable=True, auto_delete=True, passive=True)
         c.exchange_declare('test_exchange_declare', 'direct',
                            durable=True, auto_delete=True)
+        c.exchange_declare('test_exchange_declare', 'direct',
+                           durable=True, auto_delete=True, passive=True)
         self.assertIn('test_exchange_declare', c.state.exchanges)
         # can declare again with same values
         c.exchange_declare('test_exchange_declare', 'direct',
