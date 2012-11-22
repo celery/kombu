@@ -524,14 +524,14 @@ class test_Redis(TestCase):
         channel.close()
 
     def test_db_values(self):
-        c1 = Connection(virtual_host=1,
-                              transport=Transport).channel()
+        Connection(virtual_host=1,
+                   transport=Transport).channel()
 
-        c2 = Connection(virtual_host='1',
-                              transport=Transport).channel()
+        Connection(virtual_host='1',
+                   transport=Transport).channel()
 
-        c3 = Connection(virtual_host='/1',
-                              transport=Transport).channel()
+        Connection(virtual_host='/1',
+                   transport=Transport).channel()
 
         with self.assertRaises(Exception):
             Connection(virtual_host='/foo',
