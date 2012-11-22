@@ -37,11 +37,6 @@ class Object(object):
                 except AttributeError:
                     setattr(self, name, None)
 
-    def setdefault(self, **defaults):
-        for key, value in defaults.iteritems():
-            if getattr(self, key) is None:
-                setattr(self, key, value)
-
     def as_dict(self, recurse=False):
         def f(obj):
             if recurse and isinstance(obj, Object):

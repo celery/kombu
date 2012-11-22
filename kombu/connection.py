@@ -970,7 +970,10 @@ class ConnectionPool(Resource):
         return self.connection.clone()
 
     def release_resource(self, resource):
-        resource._debug('released')
+        try:
+            resource._debug('released')
+        except AttributeError:
+            pass
 
     def close_resource(self, resource):
         resource._close()

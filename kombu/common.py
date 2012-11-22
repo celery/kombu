@@ -166,9 +166,9 @@ def eventloop(conn, limit=None, timeout=None, ignore_timeouts=False):
         try:
             yield conn.drain_events(timeout=timeout)
         except socket.timeout:
-            if timeout and not ignore_timeouts:
+            if timeout and not ignore_timeouts:  # pragma: no cover
                 raise
-        except socket.error:
+        except socket.error:  # pragma: no cover
             pass
 
 

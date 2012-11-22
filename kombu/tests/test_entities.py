@@ -1,6 +1,8 @@
 from __future__ import absolute_import
 from __future__ import with_statement
 
+import pickle
+
 from kombu import Connection, Exchange, Queue
 from kombu.exceptions import NotBoundError
 
@@ -34,6 +36,11 @@ class test_Exchange(TestCase):
     def test_can_cache_declaration(self):
         self.assertTrue(Exchange('a', durable=True).can_cache_declaration)
         self.assertFalse(Exchange('a', durable=False).can_cache_declaration)
+
+    def test_pickle(self):
+        e1 = Exchange('foo', 'direct')
+        e2 = pickle.loads(pickle.dumps(e1))
+        self.assertEqual(e1, e2)
 
     def test_eq(self):
         e1 = Exchange('foo', 'direct')
