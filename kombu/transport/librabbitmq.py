@@ -6,9 +6,6 @@ kombu.transport.librabbitmq
 
 .. _`librabbitmq`: http://pypi.python.org/librabbitmq/
 
-:copyright: (c) 2010 - 2012 by Ask Solem.
-:license: BSD, see LICENSE for more details.
-
 """
 from __future__ import absolute_import
 

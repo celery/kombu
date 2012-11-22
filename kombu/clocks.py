@@ -4,9 +4,6 @@ kombu.clocks
 
 Logical Clocks and Synchronization.
 
-:copyright: (c) 2009 - 2012 by Ask Solem.
-:license: BSD, see LICENSE for more details.
-
 """
 from __future__ import absolute_import
 from __future__ import with_statement

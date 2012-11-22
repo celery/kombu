@@ -6,9 +6,6 @@ Carrot compatible interface for :class:`Publisher` and :class:`Producer`.
 
 See http://packages.python.org/pypi/carrot for documentation.
 
-:copyright: (c) 2009 - 2012 by Ask Solem.
-:license: BSD, see LICENSE for more details.
-
 """
 from __future__ import absolute_import
 

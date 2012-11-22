@@ -6,9 +6,6 @@ Execute cleanup handlers when objects go out of scope.
 
 Taken from :class:`multiprocessing.util.Finalize`.
 
-:copyright: (c) 2009 - 2012 by Ask Solem.
-:license: BSD, see LICENSE for more details.
-
 """
 from __future__ import absolute_import
 
