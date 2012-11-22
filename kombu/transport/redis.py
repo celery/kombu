@@ -564,7 +564,7 @@ class Channel(virtual.Channel):
                     pass
         super(Channel, self).close()
 
-    def _create_client(self):
+    def _connparams(self):
         conninfo = self.connection.client
         database = conninfo.virtual_host
         if not isinstance(database, int):
@@ -577,15 +577,16 @@ class Channel(virtual.Channel):
             except ValueError:
                 raise ValueError(
                     'Database name must be int between 0 and limit - 1')
+        return {'host': conninfo.hostname or '127.0.0.1',
+                'port': conninfo.port or DEFAULT_PORT,
+                'db': database,
+                'password': conninfo.password}
 
-        return self.Client(host=conninfo.hostname or '127.0.0.1',
-                           port=conninfo.port or DEFAULT_PORT,
-                           db=database,
-                           password=conninfo.password,
-                           connection_pool=self.pool)
+    def _create_client(self):
+        return self.Client(connection_pool=self.pool)
 
     def _get_pool(self):
-        return redis.ConnectionPool()
+        return redis.ConnectionPool(**self._connparams())
 
     def _get_client(self):
         if redis.VERSION < (2, 4, 4):
