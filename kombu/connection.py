@@ -850,7 +850,7 @@ class Resource(object):
                     try:
                         R = self.prepare(R)
                     except BaseException:
-                        self.release_resource(R)
+                        self.release(R)
                         raise
                     self._dirty.add(R)
                     break
