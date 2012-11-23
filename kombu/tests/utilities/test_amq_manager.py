@@ -1,9 +1,9 @@
-from __future__ import absolute_import, with_statement
+from __future__ import absolute_import
+from __future__ import with_statement
 
-from mock import Mock, patch
+from mock import patch
 
 from kombu import Connection
-from kombu.utils.amq_manager import get_manager
 from kombu.tests.utils import TestCase, mask_modules, module_exists
 
 
@@ -18,6 +18,7 @@ class test_get_manager(TestCase):
     def test_with_pyrabbit(self):
         with patch('pyrabbit.Client', create=True) as Client:
             manager = Connection('amqp://').get_manager()
+            self.assertIsNotNone(manager)
             Client.assert_called_with('localhost:55672',
                     'guest', 'guest')
 
@@ -30,7 +31,6 @@ class test_get_manager(TestCase):
                 'manager_userid': 'george',
                 'manager_password': 'bosco',
             }).get_manager()
+            self.assertIsNotNone(manager)
             Client.assert_called_with('admin.mq.vandelay.com:808',
                     'george', 'bosco')
-
-

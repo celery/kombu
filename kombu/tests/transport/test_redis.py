@@ -41,9 +41,7 @@ class Client(object):
     hashes = defaultdict(dict)
     shard_hint = None
 
-    def __init__(self, db=None, port=None, **kwargs):
-        self.port = port
-        self.db = db
+    def __init__(self, db=None, port=None, connection_pool=None, **kwargs):
         self._called = []
         self._connection = None
         self.bgsave_raises_ResponseError = False
@@ -383,10 +381,9 @@ class test_Channel(TestCase):
         c.connection.disconnect.assert_called_with()
 
     def test_invalid_database_raises_ValueError(self):
-        self.channel.connection.client.virtual_host = 'xfeqwewkfk'
 
         with self.assertRaises(ValueError):
-            self.channel._create_client()
+            Connection('redis:///dwqwewqe').channel()
 
     @skip_if_not_module('redis')
     def test_get_client(self):
@@ -394,7 +391,7 @@ class test_Channel(TestCase):
         KombuRedis = redis.Channel._get_client(self.channel)
         self.assertTrue(KombuRedis)
 
-        Rv = getattr(R, 'VERSION')
+        Rv = getattr(R, 'VERSION', None)
         try:
             R.VERSION = (2, 4, 0)
             with self.assertRaises(VersionMismatch):
@@ -527,29 +524,23 @@ class test_Redis(TestCase):
         channel.close()
 
     def test_db_values(self):
-        c1 = Connection(virtual_host=1,
-                              transport=Transport).channel()
-        self.assertEqual(c1.client.db, 1)
+        Connection(virtual_host=1,
+                   transport=Transport).channel()
 
-        c2 = Connection(virtual_host='1',
-                              transport=Transport).channel()
-        self.assertEqual(c2.client.db, 1)
+        Connection(virtual_host='1',
+                   transport=Transport).channel()
 
-        c3 = Connection(virtual_host='/1',
-                              transport=Transport).channel()
-        self.assertEqual(c3.client.db, 1)
+        Connection(virtual_host='/1',
+                   transport=Transport).channel()
 
         with self.assertRaises(Exception):
-            Connection(virtual_host='/foo',
-                       transport=Transport).channel()
+            Connection('redis:///foo').channel()
 
     def test_db_port(self):
         c1 = Connection(port=None, transport=Transport).channel()
-        self.assertEqual(c1.client.port, Transport.default_port)
         c1.close()
 
         c2 = Connection(port=9999, transport=Transport).channel()
-        self.assertEqual(c2.client.port, 9999)
         c2.close()
 
     def test_close_poller_not_active(self):

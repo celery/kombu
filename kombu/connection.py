@@ -852,7 +852,6 @@ class Resource(object):
                     except BaseException:
                         self.release_resource(R)
                         raise
-
                     self._dirty.add(R)
                     break
         else:

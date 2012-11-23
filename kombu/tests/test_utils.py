@@ -1,4 +1,5 @@
-from __future__ import absolute_import, with_statement
+from __future__ import absolute_import
+from __future__ import with_statement
 
 import pickle
 import sys
@@ -226,7 +227,7 @@ class test_cached_property(TestCase):
             def foo(self):
                 return 42
 
-            @foo.deleter
+            @foo.deleter  # noqa
             def foo(self, value):
                 self.xx = value
 
@@ -285,7 +286,6 @@ class test_symbol_by_name(TestCase):
         imp.side_effect = ValueError()
         with self.assertRaises(ValueError):
             utils.symbol_by_name('kombu.Connection', imp=imp)
-
 
     def test_package(self):
         from kombu.entity import Exchange
