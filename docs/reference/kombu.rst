@@ -1,11 +1,11 @@
 .. currentmodule:: kombu
 
+.. contents::
+    :local:
+
 .. automodule:: kombu
 
-    .. contents::
-        :local:
-
-     Connection
+    Connection
     ----------
 
     .. autoclass:: Connection
@@ -73,8 +73,6 @@
             .. automethod:: SimpleQueue
             .. automethod:: SimpleBuffer
 
-
-
     Exchange
     --------
 
@@ -110,9 +108,9 @@
     Example creating a queue using our exchange in the :class:`Exchange`
     example::
 
-        >>> science_news = Queue("science_news",
+        >>> science_news = Queue('science_news',
         ...                      exchange=news_exchange,
-        ...                      routing_key="news.science")
+        ...                      routing_key='news.science')
 
     For now `science_news` is just a declaration, you can't perform
     actions on it. It just describes the name and options for the queue.
@@ -124,7 +122,9 @@
 
         >>> bound_science_news = science_news(channel)
 
-    Now you can perform operations like :meth:`declare` or :meth:`purge`::
+    Now you can perform operations like :meth:`declare` or :meth:`purge`:
+
+    .. code-block:: python
 
         >>> bound_sicence_news.declare()
         >>> bound_science_news.purge()

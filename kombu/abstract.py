@@ -4,9 +4,6 @@ kombu.compression
 
 Object utilities.
 
-:copyright: (c) 2009 - 2012 by Ask Solem.
-:license: BSD, see LICENSE for more details.
-
 """
 from __future__ import absolute_import
 
@@ -14,7 +11,6 @@ from copy import copy
 
 from .connection import maybe_channel
 from .exceptions import NotBoundError
-from .five import items
 from .utils import ChannelPromise
 
 __all__ = ['Object', 'MaybeChannelBound']
@@ -40,11 +36,6 @@ class Object(object):
                     getattr(self, name)
                 except AttributeError:
                     setattr(self, name, None)
-
-    def setdefault(self, **defaults):
-        for key, value in items(defaults):
-            if getattr(self, key) is None:
-                setattr(self, key, value)
 
     def as_dict(self, recurse=False):
         def f(obj):
@@ -101,7 +92,8 @@ class MaybeChannelBound(Object):
     def __repr__(self, item=''):
         item = item or type(self).__name__
         if self.is_bound:
-            return '<bound {0} of {1}>'.format(item, self.channel)
+            return '<{0} bound to chan:{1}>'.format(
+                item or type(self).__name__, self.channel.channel_id)
         return '<unbound {0}>'.format(item)
 
     @property

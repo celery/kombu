@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 from __future__ import absolute_import
 
 import errno
@@ -22,7 +21,7 @@ def cmd(*args):
 def no_enoent():
     try:
         yield
-    except OSError as exc:
+    except OSError, exc:
         if exc.errno != errno.ENOENT:
             raise
 

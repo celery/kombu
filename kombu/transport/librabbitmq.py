@@ -6,9 +6,6 @@ kombu.transport.librabbitmq
 
 .. _`librabbitmq`: http://pypi.python.org/librabbitmq/
 
-:copyright: (c) 2010 - 2012 by Ask Solem.
-:license: BSD, see LICENSE for more details.
-
 """
 from __future__ import absolute_import
 
@@ -115,6 +112,9 @@ class Transport(base.Transport):
     def close_connection(self, connection):
         """Close the AMQP broker connection."""
         connection.close()
+
+    def verify_connection(self, connection):
+        return connection.connected
 
     def on_poll_init(self, poller):
         pass

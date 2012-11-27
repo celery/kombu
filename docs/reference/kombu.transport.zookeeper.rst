@@ -1,3 +1,7 @@
+===========================
+ kombu.transport.zookeeper
+===========================
+
 .. currentmodule:: kombu.transport.zookeeper
 
 .. automodule:: kombu.transport.zookeeper

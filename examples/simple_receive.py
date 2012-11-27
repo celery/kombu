@@ -1,6 +1,7 @@
 """
 Example receiving a message using the SimpleQueue interface.
 """
+
 from kombu import Connection
 
 #: Create connection

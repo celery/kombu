@@ -4,9 +4,7 @@ import tempfile
 
 from nose import SkipTest
 
-from kombu.connection import Connection
-from kombu.entity import Exchange, Queue
-from kombu.messaging import Consumer, Producer
+from kombu import Connection, Exchange, Queue, Consumer, Producer
 
 from kombu.tests.utils import TestCase
 

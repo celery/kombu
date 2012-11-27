@@ -5,11 +5,53 @@ import socket
 from mock import patch
 
 from kombu import common
-from kombu.common import (Broadcast, maybe_declare,
-                          send_reply, isend_reply, collect_replies)
+from kombu.common import (
+    Broadcast, maybe_declare,
+    send_reply, isend_reply, collect_replies,
+    declaration_cached, ignore_errors,
+    QoS, PREFETCH_COUNT_MAX,
+    entry_to_queue,
+)
+from kombu.exceptions import StdChannelError
 
 from .utils import TestCase
 from .utils import ContextMock, Mock, MockPool
+
+
+class test_ignore_errors(TestCase):
+
+    def test_ignored(self):
+        connection = Mock()
+        connection.channel_errors = (KeyError, )
+        connection.connection_errors = (KeyError, )
+
+        with ignore_errors(connection):
+            raise KeyError()
+
+        def raising():
+            raise KeyError()
+
+        ignore_errors(connection, raising)
+
+        connection.channel_errors = connection.connection_errors = \
+            ()
+
+        with self.assertRaises(KeyError):
+            with ignore_errors(connection):
+                raise KeyError()
+
+
+class test_declaration_cached(TestCase):
+
+    def test_when_cached(self):
+        chan = Mock()
+        chan.connection.client.declared_entities = ['foo']
+        self.assertTrue(declaration_cached('foo', chan))
+
+    def test_when_not_cached(self):
+        chan = Mock()
+        chan.connection.client.declared_entities = ['bar']
+        self.assertFalse(declaration_cached('foo', chan))
 
 
 class test_Broadcast(TestCase):
@@ -45,6 +87,10 @@ class test_maybe_declare(TestCase):
 
         maybe_declare(entity, channel)
         self.assertEqual(entity.declare.call_count, 1)
+
+        entity.channel.connection = None
+        with self.assertRaises(StdChannelError):
+            maybe_declare(entity)
 
     def test_binds_entities(self):
         channel = Mock()
@@ -298,3 +344,125 @@ class test_itermessages(TestCase):
 
         with self.assertRaises(StopIteration):
             next(it)
+
+
+class test_entry_to_queue(TestCase):
+
+    def test_calls_Queue_from_dict(self):
+        with patch('kombu.common.Queue') as Queue:
+            entry_to_queue('name', exchange='bar')
+            Queue.from_dict.assert_called_with('name', exchange='bar')
+
+
+class test_QoS(TestCase):
+
+    class _QoS(QoS):
+        def __init__(self, value):
+            self.value = value
+            QoS.__init__(self, None, value)
+
+        def set(self, value):
+            return value
+
+    def test_qos_exceeds_16bit(self):
+        with patch('kombu.common.logger') as logger:
+            callback = Mock()
+            qos = QoS(callback, 10)
+            qos.prev = 100
+            qos.set(2 ** 32)
+            self.assertTrue(logger.warn.called)
+            callback.assert_called_with(prefetch_count=0)
+
+    def test_qos_increment_decrement(self):
+        qos = self._QoS(10)
+        self.assertEqual(qos.increment_eventually(), 11)
+        self.assertEqual(qos.increment_eventually(3), 14)
+        self.assertEqual(qos.increment_eventually(-30), 14)
+        self.assertEqual(qos.decrement_eventually(7), 7)
+        self.assertEqual(qos.decrement_eventually(), 6)
+
+    def test_qos_disabled_increment_decrement(self):
+        qos = self._QoS(0)
+        self.assertEqual(qos.increment_eventually(), 0)
+        self.assertEqual(qos.increment_eventually(3), 0)
+        self.assertEqual(qos.increment_eventually(-30), 0)
+        self.assertEqual(qos.decrement_eventually(7), 0)
+        self.assertEqual(qos.decrement_eventually(), 0)
+        self.assertEqual(qos.decrement_eventually(10), 0)
+
+    def test_qos_thread_safe(self):
+        qos = self._QoS(10)
+
+        def add():
+            for i in range(1000):
+                qos.increment_eventually()
+
+        def sub():
+            for i in range(1000):
+                qos.decrement_eventually()
+
+        def threaded(funs):
+            from threading import Thread
+            threads = [Thread(target=fun) for fun in funs]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join()
+
+        threaded([add, add])
+        self.assertEqual(qos.value, 2010)
+
+        qos.value = 1000
+        threaded([add, sub])  # n = 2
+        self.assertEqual(qos.value, 1000)
+
+    def test_exceeds_short(self):
+        qos = QoS(Mock(), PREFETCH_COUNT_MAX - 1)
+        qos.update()
+        self.assertEqual(qos.value, PREFETCH_COUNT_MAX - 1)
+        qos.increment_eventually()
+        self.assertEqual(qos.value, PREFETCH_COUNT_MAX)
+        qos.increment_eventually()
+        self.assertEqual(qos.value, PREFETCH_COUNT_MAX + 1)
+        qos.decrement_eventually()
+        self.assertEqual(qos.value, PREFETCH_COUNT_MAX)
+        qos.decrement_eventually()
+        self.assertEqual(qos.value, PREFETCH_COUNT_MAX - 1)
+
+    def test_consumer_increment_decrement(self):
+        mconsumer = Mock()
+        qos = QoS(mconsumer.qos, 10)
+        qos.update()
+        self.assertEqual(qos.value, 10)
+        mconsumer.qos.assert_called_with(prefetch_count=10)
+        qos.decrement_eventually()
+        qos.update()
+        self.assertEqual(qos.value, 9)
+        mconsumer.qos.assert_called_with(prefetch_count=9)
+        qos.decrement_eventually()
+        self.assertEqual(qos.value, 8)
+        mconsumer.qos.assert_called_with(prefetch_count=9)
+        self.assertIn({'prefetch_count': 9}, mconsumer.qos.call_args)
+
+        # Does not decrement 0 value
+        qos.value = 0
+        qos.decrement_eventually()
+        self.assertEqual(qos.value, 0)
+        qos.increment_eventually()
+        self.assertEqual(qos.value, 0)
+
+    def test_consumer_decrement_eventually(self):
+        mconsumer = Mock()
+        qos = QoS(mconsumer.qos, 10)
+        qos.decrement_eventually()
+        self.assertEqual(qos.value, 9)
+        qos.value = 0
+        qos.decrement_eventually()
+        self.assertEqual(qos.value, 0)
+
+    def test_set(self):
+        mconsumer = Mock()
+        qos = QoS(mconsumer.qos, 10)
+        qos.set(12)
+        self.assertEqual(qos.prev, 12)
+        qos.set(qos.prev)

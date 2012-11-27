@@ -6,9 +6,6 @@ Virtual transport implementation.
 
 Emulates the AMQ API for non-AMQ transports.
 
-:copyright: (c) 2009, 2012 by Ask Solem.
-:license: BSD, see LICENSE for more details.
-
 """
 from __future__ import absolute_import, unicode_literals
 
@@ -176,7 +173,7 @@ class QoS(object):
 
             try:
                 self.channel._restore(message)
-            except BaseException as exc:
+            except BaseException, exc:
                 errors.append((exc, message))
         delivered.clear()
         return errors

@@ -25,9 +25,6 @@
     kombu.transport
     kombu.transport.pyamqp
     kombu.transport.librabbitmq
-    kombu.transport.pika
-    kombu.transport.pika2
-    kombu.transport.amqplib
     kombu.transport.memory
     kombu.transport.redis
     kombu.transport.zmq
@@ -43,15 +40,18 @@
     kombu.transport.sqlalchemy
     kombu.transport.sqlalchemy.models
     kombu.transport.SQS
+    kombu.transport.amqplib
     kombu.transport.base
     kombu.transport.virtual
     kombu.transport.virtual.exchange
     kombu.transport.virtual.scheduling
     kombu.serialization
     kombu.utils
+    kombu.utils.eventio
     kombu.utils.limits
     kombu.utils.compat
     kombu.utils.debug
     kombu.utils.encoding
     kombu.utils.functional
     kombu.utils.url
+    kombu.utils.amq_manager

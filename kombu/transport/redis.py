@@ -4,9 +4,6 @@ kombu.transport.redis
 
 Redis transport.
 
-:copyright: (c) 2009 - 2012 by Ask Solem.
-:license: BSD, see LICENSE for more details.
-
 """
 from __future__ import absolute_import
 
@@ -399,8 +396,8 @@ class Channel(virtual.Channel):
         c = self.subclient
         if c.connection._sock is None:
             c.connection.connect()
-        self.subclient.subscribe(keys)
         self._in_listen = True
+        self.subclient.subscribe(keys)
 
     def _handle_message(self, client, r):
         if r[0] == 'unsubscribe' and r[2] == 0:
@@ -432,8 +429,8 @@ class Channel(virtual.Channel):
             return
         keys = [self._q_for_pri(queue, pri) for pri in PRIORITY_STEPS
                         for queue in queues] + [timeout or 0]
-        self.client.connection.send_command('BRPOP', *keys)
         self._in_poll = True
+        self.client.connection.send_command('BRPOP', *keys)
 
     def _brpop_read(self, **options):
         try:
@@ -563,7 +560,7 @@ class Channel(virtual.Channel):
                     pass
         super(Channel, self).close()
 
-    def _create_client(self):
+    def _connparams(self):
         conninfo = self.connection.client
         database = conninfo.virtual_host
         if not isinstance(database, int):
@@ -576,15 +573,16 @@ class Channel(virtual.Channel):
             except ValueError:
                 raise ValueError(
                     'Database name must be int between 0 and limit - 1')
+        return {'host': conninfo.hostname or '127.0.0.1',
+                'port': conninfo.port or DEFAULT_PORT,
+                'db': database,
+                'password': conninfo.password}
 
-        return self.Client(host=conninfo.hostname or '127.0.0.1',
-                           port=conninfo.port or DEFAULT_PORT,
-                           db=database,
-                           password=conninfo.password,
-                           connection_pool=self.pool)
+    def _create_client(self):
+        return self.Client(connection_pool=self.pool)
 
     def _get_pool(self):
-        return redis.ConnectionPool()
+        return redis.ConnectionPool(**self._connparams())
 
     def _get_client(self):
         if redis.VERSION < (2, 4, 4):

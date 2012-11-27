@@ -8,7 +8,7 @@
 
 2.5.0
 =====
-:release-date: TBA
+:release-date: 2012-11-27 04:00 P.M UTC
 
 - `py-amqp`_ is now the new default transport, replacing ``amqplib``.
 
@@ -27,7 +27,7 @@
           be compiled.  librabbitmq will be updated to support all the same
           features as py-amqp.
 
-- Support for multiple connection URL's used for failover.
+- Support for using multiple connection URL's for failover.
 
     The first argument to :class:`~kombu.Connection` can now be a list of
     connection URLs:
@@ -62,7 +62,7 @@
 
 - Now supports PyDev, PyCharm, pylint and other static code analysis tools.
 
-- :class:`~kombu.entity.Queue` now supports multiple bindings.
+- :class:`~kombu.Queue` now supports multiple bindings.
 
     You can now have multiple bindings in the same queue by having
     the second argument be a list:
@@ -79,8 +79,8 @@
 
     To enable this, helper methods have been added:
 
-        - :meth:`~kombu.entity.Queue.bind_to`
-        - :meth:`~kombu.entity.Queue.unbind_from`
+        - :meth:`~kombu.Queue.bind_to`
+        - :meth:`~kombu.Queue.unbind_from`
 
     Contributed by Rumyana Neykova.
 
@@ -95,7 +95,7 @@
     the :mod:`kombu.common` module.
 
 - Consumer now supports a ``on_message`` callback that can be used to process
-  raw undecoded messages.
+  raw messages (not decoded).
 
     Other callbacks specified using the ``callbacks`` argument, and
     the ``receive`` method will be not be called when a on message callback
@@ -108,7 +108,7 @@
 
 - Support for exchange-to-exchange bindings.
 
-    The :class:`~kombu.entity.Exchange` entity gained ``bind_to``
+    The :class:`~kombu.Exchange` entity gained ``bind_to``
     and ``unbind_from`` methods:
 
     .. code-block:: python
@@ -122,6 +122,54 @@
     This is currently only supported by the ``pyamqp`` transport.
 
     Contributed by Rumyana Neykova.
+
+.. _version-2.4.10:
+
+2.4.10
+======
+:release-date: 2012-11-22 06:00 P.M UTC
+
+- The previous versions connection pool changes broke Redis support so that
+  it would always connect to localhost (default setting) no matter what
+  connection parameters were provided (Issue #176).
+
+.. _version-2.4.9:
+
+2.4.9
+=====
+:release-date: 2012-11-21 03:00 P.M UTC
+
+- Redis: Fixed race condition that could occur while trying to restore
+  messages (Issue #171).
+
+    Fix contributed by Ollie Walsh.
+
+- Redis: Each channel is now using a specific connection pool instance,
+  which is disconnected on connection failure.
+
+- ProducerPool: Fixed possible dead-lock in the acquire method.
+
+- ProducerPool: ``force_close_all`` no longer tries to call the non-existent
+  ``Producer._close``.
+
+- librabbitmq: Now implements ``transport.verify_connection`` so that
+  connection pools will not give back connections that are no longer working.
+
+- New and better ``repr()`` for Queue and Exchange objects.
+
+- Python3:  Fixed problem with running the unit test suite.
+
+- Python3: Fixed problem with JSON codec.
+
+.. _version-2.4.8:
+
+2.4.8
+=====
+:release-date: 2012-11-02 05:00 P.M UTC
+
+- Redis:  Improved fair queue cycle implementation (Issue #166).
+
+    Contributed by Kevin McCarthy.
 
 - Redis: Unacked message restore limit is now unlimited by default.
 
@@ -143,28 +191,6 @@
     The mutex expires after 5 minutes by default, but can be configured
     using the ``unacked_mutex_expire`` transport option.
 
-- Redis: Each channel is now using a specific connection pool instance,
-  which is disconnected on connection failure.
-
-- amqplib: Fixed bug with timeouts when SSL is used in non-blocking mode.
-
-    Fix contributed by Mher Movsisyan
-
-.. _version-2.4.8:
-
-2.4.8
-=====
-:release-date: 2012-11-02 05:00 P.M UTC
-
-- Redis:  Fair queue cyle implementation improved (Issue #166).
-
-    Contributed by Kevin McCarthy.
-
-- Redis: Number of messages to restore in one iteration is now unlimited,
-  but can be configured using the unacked_restore_limit transport option.
-
-- Redis: A Redis based mutex is now used while restoring messages.
-
 - LamportClock.adjust now returns the new clock value.
 
 - Heartbeats can now be specified in URLs.
@@ -176,6 +202,10 @@
 - Fixes problem with msgpack on Python 3 (Issue #162).
 
     Fix contributed by Jasper Bryant-Greene
+
+- amqplib: Fixed bug with timeouts when SSL is used in non-blocking mode.
+
+    Fix contributed by Mher Movsisyan
 
 
 .. _version-2.4.7:
@@ -626,6 +656,8 @@ News
     :mod:`kombu.transport.zookeeper`.
 
     Contributed by Mahendra M.
+
+.. _`Apache ZooKeeper`: http://zookeeper.apache.org/
 
 - Redis: Priority support.
 

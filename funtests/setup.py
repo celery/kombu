@@ -53,7 +53,6 @@ setup(
         "pymongo",
         "couchdb",
         "kazoo",
-        "pika",
         "beanstalkc",
         "kombu-sqlalchemy",
         "django",

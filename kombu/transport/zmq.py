@@ -11,7 +11,11 @@ import errno
 import os
 import socket
 
-import zmq
+try:
+    import zmq
+    from zmq import ZMQError
+except ImportError:
+    zmq = ZMQError = None  # noqa
 
 from kombu.exceptions import StdConnectionError, StdChannelError
 from kombu.five import Empty
@@ -128,9 +132,9 @@ class Client(object):
     def get(self, queue=None, timeout=None):
         try:
             return self.sink.recv(flags=zmq.NOBLOCK)
-        except zmq.ZMQError as exc:
-            if exc.errno == zmq.EAGAIN:
-                raise socket.error(errno.EAGAIN, exc.strerror)
+        except ZMQError, e:
+            if e.errno == zmq.EAGAIN:
+                raise socket.error(errno.EAGAIN, e.strerror)
             else:
                 raise
 
@@ -177,7 +181,7 @@ class Channel(virtual.Channel):
     def _get(self, queue, timeout=None):
         try:
             return loads(self.client.get(queue, timeout))
-        except socket.error as exc:
+        except socket.error, exc:
             if exc.errno == errno.EAGAIN and timeout != 0:
                 raise Empty()
             else:
@@ -226,7 +230,7 @@ class Transport(virtual.Transport):
     driver_type = 'zeromq'
     driver_name = 'zmq'
 
-    connection_errors = (StdConnectionError, zmq.ZMQError,)
+    connection_errors = (StdConnectionError, ZMQError,)
     channel_errors = (StdChannelError, )
 
     supports_ev = True
@@ -234,8 +238,9 @@ class Transport(virtual.Transport):
     nb_keep_draining = True
 
     def __init__(self, *args, **kwargs):
+        if zmq is None:
+            raise ImportError('The zmq library is not installed')
         super(Transport, self).__init__(*args, **kwargs)
-
         self.cycle = MultiChannelPoller()
 
     def driver_version(self):
@@ -258,8 +263,8 @@ class Transport(virtual.Transport):
         for channel in connection.channels:
             try:
                 evt = channel.cycle.get(timeout=timeout)
-            except socket.error as exc:
-                if exc.errno == errno.EAGAIN:
+            except socket.error, e:
+                if e.errno == errno.EAGAIN:
                     continue
                 raise
             else:

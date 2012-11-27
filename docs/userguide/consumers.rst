@@ -1,4 +1,3 @@
-.. currentmodule:: kombu.messaging
 .. _guide-consumers:
 
 ===========
@@ -62,7 +61,7 @@ and with multiple channels again:
 
 .. code-block:: python
 
-    from kombu.messaging import Consumer
+    from kombu import Consumer
     from kombu.mixins import ConsumerMixin
 
     class C(ConsumerMixin):
@@ -88,8 +87,6 @@ and with multiple channels again:
 Reference
 =========
 
-.. module:: kombu.messaging
-
-.. autoclass:: Consumer
+.. autoclass:: kombu.Consumer
     :noindex:
     :members:

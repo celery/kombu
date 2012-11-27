@@ -4,9 +4,6 @@ kombu.transport
 
 Built-in transports.
 
-:copyright: (c) 2009 - 2012 by Ask Solem.
-:license: BSD, see LICENSE for more details.
-
 """
 from __future__ import absolute_import
 
@@ -51,8 +48,6 @@ TRANSPORT_ALIASES = {
     'amqp': 'kombu.transport.pyamqp:Transport',
     'pyamqp': 'kombu.transport.pyamqp:Transport',
     'librabbitmq': 'kombu.transport.librabbitmq:Transport',
-    'pika': 'kombu.transport.pika2:Transport',
-    'oldpika': 'kombu.transport.pika:SyncTransport',
     'memory': 'kombu.transport.memory:Transport',
     'redis': 'kombu.transport.redis:Transport',
     'SQS': 'kombu.transport.SQS:Transport',

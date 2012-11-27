@@ -1,7 +1,11 @@
 from __future__ import absolute_import
 
+import errno
 import pickle
+import socket
 
+from copy import copy
+from mock import patch
 from nose import SkipTest
 
 from kombu import Connection, Consumer, Producer, parse_url
@@ -10,6 +14,7 @@ from kombu.five import items
 
 from .mocks import Transport
 from .utils import TestCase
+
 from .utils import Mock, skip_if_not_module
 
 
@@ -153,6 +158,157 @@ class test_Connection(TestCase):
         conn.close()
         self.assertFalse(_connection.connected)
         self.assertIsInstance(conn.transport, Transport)
+
+    def test_multiple_urls(self):
+        conn1 = Connection('amqp://foo;amqp://bar')
+        self.assertEqual(conn1.hostname, 'foo')
+        self.assertListEqual(conn1.alt, ['amqp://foo', 'amqp://bar'])
+
+        conn2 = Connection(['amqp://foo', 'amqp://bar'])
+        self.assertEqual(conn2.hostname, 'foo')
+        self.assertListEqual(conn2.alt, ['amqp://foo', 'amqp://bar'])
+
+    def test_uri_passthrough(self):
+        from kombu import connection as mod
+        prev, mod.URI_PASSTHROUGH = mod.URI_PASSTHROUGH, set(['foo'])
+        try:
+            with patch('kombu.connection.parse_url') as parse_url:
+                c = Connection('foo+mysql://some_host')
+                self.assertEqual(c.transport_cls, 'foo')
+                self.assertFalse(parse_url.called)
+                self.assertEqual(c.hostname, 'mysql://some_host')
+                self.assertTrue(c.as_uri().startswith('foo+'))
+            with patch('kombu.connection.parse_url') as parse_url:
+                c = Connection('mysql://some_host', transport='foo')
+                self.assertEqual(c.transport_cls, 'foo')
+                self.assertFalse(parse_url.called)
+                self.assertEqual(c.hostname, 'mysql://some_host')
+        finally:
+            mod.URI_PASSTHROUGH = prev
+        c = Connection('amqp+sqlite://some_host')
+        self.assertTrue(c.as_uri().startswith('amqp+'))
+
+    def test_default_ensure_callback(self):
+        with patch('kombu.connection.logger') as logger:
+            c = Connection(transport=Mock)
+            c._default_ensure_callback(KeyError(), 3)
+            self.assertTrue(logger.error.called)
+
+    def test_ensure_connection_on_error(self):
+        c = Connection('amqp://A;amqp://B')
+        with patch('kombu.connection.retry_over_time') as rot:
+            c.ensure_connection()
+            self.assertTrue(rot.called)
+
+            args = rot.call_args[0]
+            cb = args[4]
+            intervals = iter([1, 2, 3, 4, 5])
+            self.assertEqual(cb(KeyError(), intervals, 0), 0)
+            self.assertEqual(cb(KeyError(), intervals, 1), 1)
+            self.assertEqual(cb(KeyError(), intervals, 2), 0)
+            self.assertEqual(cb(KeyError(), intervals, 3), 2)
+            self.assertEqual(cb(KeyError(), intervals, 4), 0)
+            self.assertEqual(cb(KeyError(), intervals, 5), 3)
+            self.assertEqual(cb(KeyError(), intervals, 6), 0)
+            self.assertEqual(cb(KeyError(), intervals, 7), 4)
+
+            errback = Mock()
+            c.ensure_connection(errback=errback)
+            args = rot.call_args[0]
+            cb = args[4]
+            self.assertEqual(cb(KeyError(), intervals, 0), 0)
+            self.assertTrue(errback.called)
+
+    def test_drain_nowait(self):
+        c = Connection(transport=Mock)
+        c.drain_events = Mock()
+        c.drain_events.side_effect = socket.timeout()
+
+        c.more_to_read = True
+        self.assertFalse(c.drain_nowait())
+        self.assertFalse(c.more_to_read)
+
+        c.drain_events.side_effect = socket.error()
+        c.drain_events.side_effect.errno = errno.EAGAIN
+        c.more_to_read = True
+        self.assertFalse(c.drain_nowait())
+        self.assertFalse(c.more_to_read)
+
+        c.drain_events.side_effect = socket.error()
+        c.drain_events.side_effect.errno = errno.EPERM
+        with self.assertRaises(socket.error):
+            c.drain_nowait()
+
+        c.more_to_read = False
+        c.drain_events = Mock()
+        self.assertTrue(c.drain_nowait())
+        c.drain_events.assert_called_with(timeout=0)
+        self.assertTrue(c.more_to_read)
+
+    def test_supports_heartbeats(self):
+        c = Connection(transport=Mock)
+        c.transport.supports_heartbeats = False
+        self.assertFalse(c.supports_heartbeats)
+
+    def test_is_evented(self):
+        c = Connection(transport=Mock)
+        c.transport.supports_ev = False
+        self.assertFalse(c.is_evented)
+
+    def test_eventmap(self):
+        c = Connection(transport=Mock)
+        c.transport.eventmap.return_value = {1: 1, 2: 2}
+        self.assertDictEqual(c.eventmap, {1: 1, 2: 2})
+        c.transport.eventmap.assert_called_with(c.connection)
+
+    def test_manager(self):
+        c = Connection(transport=Mock)
+        self.assertIs(c.manager, c.transport.manager)
+
+    def test_copy(self):
+        c = Connection('amqp://example.com')
+        self.assertEqual(copy(c).info(), c.info())
+
+    def test_switch(self):
+        c = Connection('amqp://foo')
+        c._closed = True
+        c.switch('redis://example.com//3')
+        self.assertFalse(c._closed)
+        self.assertEqual(c.hostname, 'example.com')
+        self.assertEqual(c.transport_cls, 'redis')
+        self.assertEqual(c.virtual_host, '/3')
+
+    def test_maybe_switch_next(self):
+        c = Connection('amqp://foo;redis://example.com//3')
+        c.maybe_switch_next()
+        self.assertFalse(c._closed)
+        self.assertEqual(c.hostname, 'example.com')
+        self.assertEqual(c.transport_cls, 'redis')
+        self.assertEqual(c.virtual_host, '/3')
+
+    def test_maybe_switch_next_no_cycle(self):
+        c = Connection('amqp://foo')
+        c.maybe_switch_next()
+        self.assertFalse(c._closed)
+        self.assertEqual(c.hostname, 'foo')
+        self.assertIn(c.transport_cls, ('librabbitmq', 'pyamqp'))
+
+    def test_heartbeat_check(self):
+        c = Connection(transport=Transport)
+        c.transport.heartbeat_check = Mock()
+        c.heartbeat_check(3)
+        c.transport.heartbeat_check.assert_called_with(c.connection, rate=3)
+
+    def test_completes_cycle_no_cycle(self):
+        c = Connection('amqp://')
+        self.assertTrue(c.completes_cycle(0))
+        self.assertTrue(c.completes_cycle(1))
+
+    def test_completes_cycle(self):
+        c = Connection('amqp://a;amqp://b;amqp://c')
+        self.assertFalse(c.completes_cycle(0))
+        self.assertFalse(c.completes_cycle(1))
+        self.assertTrue(c.completes_cycle(2))
 
     def test__enter____exit__(self):
         conn = self.conn
@@ -357,6 +513,18 @@ class ResourceCase(TestCase):
         [chan.release() for chan in chans]
         self.assertState(P, 10, 0)
 
+    def test_acquire_prepare_raises(self):
+        if self.abstract:
+            return
+        P = self.create_resource(10, 0)
+
+        self.assertEqual(len(P._resource.queue), 10)
+        P.prepare = Mock()
+        P.prepare.side_effect = IOError()
+        with self.assertRaises(IOError):
+            P.acquire(block=True)
+        self.assertEqual(len(P._resource.queue), 10)
+
     def test_acquire_no_limit(self):
         if self.abstract:
             return
@@ -439,6 +607,12 @@ class test_ConnectionPool(ResourceCase):
         self.assertIsNotNone(q[0]._connection)
         self.assertIsNotNone(q[1]._connection)
         self.assertIsNone(q[2]()._connection)
+
+    def test_release_no__debug(self):
+        P = self.create_resource(10, 2)
+        R = Mock()
+        R._debug.side_effect = AttributeError()
+        P.release_resource(R)
 
     def test_setup_no_limit(self):
         P = self.create_resource(None, None)

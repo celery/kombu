@@ -4,9 +4,6 @@ kombu.transport.SQS
 
 Amazon SQS transport.
 
-:copyright: (c) 2010 - 2012 by Ask Solem
-:license: BSD, see LICENSE for more details.
-
 """
 from __future__ import absolute_import
 
@@ -273,7 +270,7 @@ class Channel(virtual.Channel):
             if conn:
                 try:
                     conn.close()
-                except AttributeError as exc:  # FIXME ???
+                except AttributeError, exc:  # FIXME ???
                     if "can't set attribute" not in str(exc):
                         raise
 

@@ -4,9 +4,6 @@ kombu.common
 
 Common Utilities.
 
-:copyright: (c) 2009 - 2012 by Ask Solem.
-:license: BSD, see LICENSE for more details.
-
 """
 from __future__ import absolute_import
 
@@ -67,7 +64,7 @@ class Broadcast(Queue):
     :keyword queue: By default a unique id is used for the queue
        name for every consumer.  You can specify a custom queue
        name here.
-    :keyword \*\*kwargs: See :class:`~kombu.entity.Queue` for a list
+    :keyword \*\*kwargs: See :class:`~kombu.Queue` for a list
         of additional keyword arguments supported.
 
     """
@@ -169,9 +166,9 @@ def eventloop(conn, limit=None, timeout=None, ignore_timeouts=False):
         try:
             yield conn.drain_events(timeout=timeout)
         except socket.timeout:
-            if timeout and not ignore_timeouts:
+            if timeout and not ignore_timeouts:  # pragma: no cover
                 raise
-        except socket.error:
+        except socket.error:  # pragma: no cover
             pass
 
 

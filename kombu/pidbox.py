@@ -4,9 +4,6 @@ kombu.pidbox
 
 Generic process mailbox.
 
-:copyright: (c) 2009 - 2012 by Ask Solem.
-:license: BSD, see LICENSE for more details.
-
 """
 from __future__ import absolute_import
 
@@ -18,11 +15,10 @@ from itertools import count
 from threading import local
 from time import time
 
+from . import Exchange, Queue, Consumer, Producer
 from .clocks import LamportClock
 from .common import maybe_declare, oid_from
-from .entity import Exchange, Queue
 from .five import range
-from .messaging import Consumer, Producer
 from .utils import cached_property, kwdict, uuid
 
 REPLY_QUEUE_EXPIRES = 10
@@ -83,7 +79,7 @@ class Node(object):
             reply = handle(method, kwdict(arguments))
         except SystemExit:
             raise
-        except Exception as exc:
+        except Exception, exc:
             reply = {'error': repr(exc)}
 
         if reply_to:

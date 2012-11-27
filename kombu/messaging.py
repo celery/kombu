@@ -4,9 +4,6 @@ kombu.messaging
 
 Sending and receiving messages.
 
-:copyright: (c) 2009 - 2012 by Ask Solem.
-:license: BSD, see LICENSE for more details.
-
 """
 from __future__ import absolute_import
 
@@ -202,10 +199,12 @@ class Producer(object):
     def revive(self, channel):
         """Revive the producer after connection loss."""
         if is_connection(channel):
-            promise = ChannelPromise(lambda: channel.default_channel)
-            self.__connection__ = channel
-            self._channel = promise
-            self.exchange = self.exchange(promise)
+            connection = channel
+            self.__connection__ = connection
+            channel = ChannelPromise(lambda: connection.default_channel)
+        if isinstance(channel, ChannelPromise):
+            self._channel = channel
+            self.exchange = self.exchange(channel)
         else:
             # Channel already concrete
             self._channel = channel
@@ -277,7 +276,7 @@ class Consumer(object):
     #: The connection/channel to use for this consumer.
     channel = None
 
-    #: A single :class:`~kombu.entity.Queue`, or a list of queues to
+    #: A single :class:`~kombu.Queue`, or a list of queues to
     #: consume from.
     queues = None
 
@@ -536,7 +535,7 @@ class Consumer(object):
             if m2p:
                 message = m2p(message)
             decoded = None if on_m else message.decode()
-        except Exception as exc:
+        except Exception, exc:
             if not self.on_decode_error:
                 raise
             self.on_decode_error(message, exc)

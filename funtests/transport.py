@@ -79,7 +79,7 @@ class TransportCase(unittest.TestCase):
         if self.transport:
             try:
                 self.before_connect()
-            except SkipTest as exc:
+            except SkipTest, exc:
                 self.skip_test_reason = str(exc)
             else:
                 self.do_connect()

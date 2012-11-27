@@ -23,7 +23,7 @@ class Worker(ConsumerMixin):
         logger.info('Got task: %s', reprcall(fun.__name__, args, kwargs))
         try:
             fun(*args, **kwdict(kwargs))
-        except Exception as exc:
+        except Exception, exc:
             logger.error('task raised exception: %r', exc)
         message.ack()
 

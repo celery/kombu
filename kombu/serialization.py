@@ -5,9 +5,6 @@ kombu.serialization
 
 Serialization utilities.
 
-:copyright: (c) 2009 - 2012 by Ask Solem
-:license: BSD, see LICENSE for more details.
-
 """
 from __future__ import absolute_import
 
@@ -287,7 +284,7 @@ def register_json():
     from anyjson import loads, dumps
 
     def _loads(obj):
-        if isinstance(obj, bytes):
+        if isinstance(obj, bytes_t):
             obj = obj.decode()
         return loads(obj)
 

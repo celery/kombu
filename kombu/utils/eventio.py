@@ -4,9 +4,6 @@ kombu.utils.eventio
 
 Evented IO support for multiple platforms.
 
-:copyright: (c) 2009 - 2012 by Ask Solem.
-:license: BSD, see LICENSE for more details.
-
 """
 from __future__ import absolute_import
 
@@ -73,7 +70,7 @@ class Poller(object):
     def poll(self, timeout):
         try:
             return self._poll(timeout)
-        except Exception as exc:
+        except Exception, exc:
             if get_errno(exc) != errno.EINTR:
                 raise
 
@@ -86,7 +83,7 @@ class _epoll(Poller):
     def register(self, fd, events):
         try:
             self._epoll.register(fd, events)
-        except Exception as exc:
+        except Exception, exc:
             if get_errno(exc) != errno.EEXIST:
                 raise
 
@@ -97,7 +94,7 @@ class _epoll(Poller):
             pass
         except ValueError:
             pass
-        except IOError as exc:
+        except IOError, exc:
             if get_errno(exc) != errno.ENOENT:
                 raise
 

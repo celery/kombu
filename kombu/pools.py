@@ -4,9 +4,6 @@ kombu.pools
 
 Public resource pools.
 
-:copyright: (c) 2009 - 2012 by Ask Solem.
-:license: BSD, see LICENSE for more details.
-
 """
 from __future__ import absolute_import
 
@@ -41,7 +38,12 @@ class ProducerPool(Resource):
         return self.connections.acquire(block=True)
 
     def create_producer(self):
-        return self.Producer(self._acquire_connection())
+        conn = self._acquire_connection()
+        try:
+            return self.Producer(conn)
+        except BaseException:
+            conn.release()
+            raise
 
     def new(self):
         return lambda: self.create_producer()
@@ -51,11 +53,19 @@ class ProducerPool(Resource):
             for _ in range(self.limit):
                 self._resource.put_nowait(self.new())
 
+    def close_resource(self, resource):
+        pass
+
     def prepare(self, p):
         if isinstance(p, Callable):
             p = p()
-        if not p.channel:
-            p.revive(self._acquire_connection())
+        if p._channel is None:
+            conn = self._acquire_connection()
+            try:
+                p.revive(conn)
+            except BaseException:
+                conn.release()
+                raise
         return p
 
     def release(self, resource):

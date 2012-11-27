@@ -4,9 +4,6 @@ kombu.clocks
 
 Logical Clocks and Synchronization.
 
-:copyright: (c) 2009 - 2012 by Ask Solem.
-:license: BSD, see LICENSE for more details.
-
 """
 from __future__ import absolute_import
 
@@ -71,9 +68,6 @@ class LamportClock(object):
             self.value += 1
             return self.value
 
-    def sort(self, d):
-        return d[sorted(d)[0]]
-
     def sort_heap(self, h):
         """List of tuples containing at least two elements, representing
         an event, where the first element is the event's scalar clock value,
@@ -89,13 +83,13 @@ class LamportClock(object):
         """
         if h[0][0] == h[1][0]:
             same = []
-            for i, PN in zip(h, islice(h, 1, None)):
+            for PN in zip(h, islice(h, 1, None)):
                 if PN[0][0] != PN[1][0]:
                     break  # Prev and Next's clocks differ
                 same.append(PN[0])
             # return first item sorted by process id
             return sorted(same, key=lambda event: event[1])[0]
-        # all clock values unique, return first item
+        # clock values unique, return first item
         return h[0]
 
     def __str__(self):

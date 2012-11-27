@@ -4,9 +4,6 @@ kombu.transport.base
 
 Base transport interface.
 
-:copyright: (c) 2009 - 2012 by Ask Solem.
-:license: BSD, see LICENSE for more details.
-
 """
 from __future__ import absolute_import
 
@@ -107,14 +104,14 @@ class Message(object):
     def ack_log_error(self, logger, errors):
         try:
             self.ack()
-        except errors as exc:
+        except errors, exc:
             logger.critical("Couldn't ack %r, reason:%r",
                     self.delivery_tag, exc, exc_info=True)
 
     def reject_log_error(self, logger, errors):
         try:
             self.reject()
-        except errors as exc:
+        except errors, exc:
             logger.critical("Couldn't ack %r, reason: %r",
                     self.delivery_tag, exc, exc_info=True)
 

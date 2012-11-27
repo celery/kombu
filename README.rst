@@ -2,7 +2,7 @@
  kombu - Messaging Framework for Python
 ========================================
 
-:Version: 2.5.0rc1
+:Version: 2.5.0
 
 `Kombu` is a messaging framework for Python.
 
@@ -68,7 +68,6 @@ and the `Wikipedia article about AMQP`_.
 .. _`Beanstalk`: http://kr.github.com/beanstalkd/
 .. _`Rabbits and warrens`: http://blogs.digitar.com/jjww/2009/01/rabbits-and-warrens/
 .. _`amqplib`: http://barryp.org/software/py-amqplib/
-.. _`pika`: http://github.com/pika/pika
 .. _`Wikipedia article about AMQP`: http://en.wikipedia.org/wiki/AMQP
 .. _`carrot`: http://pypi.python.org/pypi/carrot/
 .. _`librabbitmq`: http://pypi.python.org/pypi/librabbitmq
@@ -89,8 +88,6 @@ Transport Comparison
 | *beanstalk*   | Virtual  | Yes        | Yes [#f1]_ | No            |
 +---------------+----------+------------+------------+---------------+
 | *SQS*         | Virtual  | Yes        | Yes [#f1]_ | Yes [#f2]_    |
-+---------------+----------+------------+------------+---------------+
-| *pika*        | Native   | Yes        | Yes        | Yes           |
 +---------------+----------+------------+------------+---------------+
 | *couchdb*     | Virtual  | Yes        | Yes [#f1]_ | No            |
 +---------------+----------+------------+------------+---------------+

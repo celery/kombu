@@ -4,9 +4,6 @@ kombu.connection
 
 Broker connection and pools.
 
-:copyright: (c) 2009 - 2012 by Ask Solem.
-:license: BSD, see LICENSE for more details.
-
 """
 from __future__ import absolute_import
 
@@ -146,9 +143,9 @@ class Connection(object):
     failover_strategy = 'round-robin'
 
     #: Heartbeat value, currently only supported by the py-amqp transport.
-    hertbeat = None
+    heartbeat = None
 
-    userid = password = ssl = login_method = None
+    hostname = userid = password = ssl = login_method = None
 
     def __init__(self, hostname='localhost', userid=None,
             password=None, virtual_host=None, port=None, insist=False,
@@ -293,7 +290,7 @@ class Connection(object):
         except socket.timeout:
             self.more_to_read = False
             return False
-        except socket.error as exc:
+        except socket.error, exc:
             if exc.errno in (errno.EAGAIN, errno.EINTR):
                 self.more_to_read = False
                 return False
@@ -383,8 +380,8 @@ class Connection(object):
             self.maybe_close_channel(self._default_channel)
             self._default_channel = None
 
-    def _default_ensure_callback(exc, interval):
-        logger.error("Ensure: Couldn't send message: %r. Retry in %ss",
+    def _default_ensure_callback(self, exc, interval):
+        logger.error("Ensure: Operation error: %r. Retry in %ss",
                      exc, interval, exc_info=True)
 
     def ensure(self, obj, fun, errback=None, max_retries=None,
@@ -427,7 +424,7 @@ class Connection(object):
             for retries in count(0):  # for infinity
                 try:
                     return fun(*args, **kwargs)
-                except self.recoverable_connection_errors as exc:
+                except self.recoverable_connection_errors, exc:
                     if got_connection:
                         raise
                     if max_retries is not None and retries > max_retries:
@@ -450,7 +447,7 @@ class Connection(object):
                     if on_revive:
                         on_revive(new_channel)
                     got_connection += 1
-                except self.recoverable_channel_errors as exc:
+                except self.recoverable_channel_errors, exc:
                     if max_retries is not None and retries > max_retries:
                         raise
                     self._debug('ensure channel error: %r', exc, exc_info=1)
@@ -651,14 +648,14 @@ class Connection(object):
         created using that name as the name of the queue and exchange,
         also it will be used as the default routing key.
 
-        :param name: Name of the queue/or a :class:`~kombu.entity.Queue`.
+        :param name: Name of the queue/or a :class:`~kombu.Queue`.
         :keyword no_ack: Disable acknowledgements. Default is false.
         :keyword queue_opts: Additional keyword arguments passed to the
           constructor of the automatically created
-          :class:`~kombu.entity.Queue`.
+          :class:`~kombu.Queue`.
         :keyword exchange_opts: Additional keyword arguments passed to the
           constructor of the automatically created
-          :class:`~kombu.entity.Exchange`.
+          :class:`~kombu.Exchange`.
         :keyword channel: Channel to use. If not specified a new channel
            from the current connection will be used. Remember to call
            :meth:`~kombu.simple.SimpleQueue.close` when done with the
@@ -856,7 +853,11 @@ class Resource(object):
                 except Empty:
                     self._add_when_empty()
                 else:
-                    R = self.prepare(R)
+                    try:
+                        R = self.prepare(R)
+                    except BaseException:
+                        self.release(R)
+                        raise
                     self._dirty.add(R)
                     break
         else:
@@ -932,7 +933,7 @@ class Resource(object):
                 except AttributeError:
                     pass  # Issue #78
         finally:
-            if mutex:
+            if mutex:  # pragma: no cover
                 mutex.release()
 
     if os.environ.get('KOMBU_DEBUG_POOL'):  # pragma: no cover
@@ -974,7 +975,10 @@ class ConnectionPool(Resource):
         return self.connection.clone()
 
     def release_resource(self, resource):
-        resource._debug('released')
+        try:
+            resource._debug('released')
+        except AttributeError:
+            pass
 
     def close_resource(self, resource):
         resource._close()
