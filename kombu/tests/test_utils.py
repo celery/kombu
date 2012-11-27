@@ -300,8 +300,10 @@ class test_symbol_by_name(TestCase):
 class test_ChannelPromise(TestCase):
 
     def test_repr(self):
-        self.assertEqual(repr(utils.ChannelPromise(lambda: 'foo')),
-                "<promise: 'foo'>")
+        self.assertIn(
+            "'foo'",
+            repr(utils.ChannelPromise(lambda: 'foo')),
+        )
 
 
 class test_entrypoints(TestCase):

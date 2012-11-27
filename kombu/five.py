@@ -45,6 +45,7 @@ if PY3:
     text_t = str
     range = range
     int_types = (int, )
+    module_name_t = str
 
     open_fqdn = 'builtins.open'
 
@@ -93,6 +94,7 @@ else:
     long_t = long                   # noqa
     range = xrange
     int_types = (int, long)
+    module_name_t = str
 
     open_fqdn = '__builtin__.open'
 

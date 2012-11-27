@@ -16,7 +16,7 @@ try:
 except AttributeError:
     import unittest2 as unittest  # noqa
 
-from kombu.five import StringIO, builtins, string_t
+from kombu.five import StringIO, builtins, string_t, module_name_t
 
 
 class TestCase(unittest.TestCase):
@@ -77,7 +77,7 @@ def module_exists(*modules):
         def __inner(*args, **kwargs):
             for module in modules:
                 if isinstance(module, string_t):
-                    module = types.ModuleType(module)
+                    module = types.ModuleType(module_name_t(module))
                 sys.modules[module.__name__] = module
                 try:
                     return fun(*args, **kwargs)
