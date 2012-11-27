@@ -195,10 +195,12 @@ class Producer(object):
     def revive(self, channel):
         """Revive the producer after connection loss."""
         if is_connection(channel):
-            promise = ChannelPromise(lambda: channel.default_channel)
-            self.__connection__ = channel
-            self._channel = promise
-            self.exchange = self.exchange(promise)
+            connection = channel
+            self.__connection__ = connection
+            channel = ChannelPromise(lambda: connection.default_channel)
+        if isinstance(channel, ChannelPromise):
+            self._channel = channel
+            self.exchange = self.exchange(channel)
         else:
             # Channel already concrete
             self._channel = channel

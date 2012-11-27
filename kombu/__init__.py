@@ -23,7 +23,7 @@ if sys.version_info < (2, 5):  # pragma: no cover
 
 STATICA_HACK = True
 globals()['kcah_acitats'[::-1].upper()] = False
-if STATICA_HACK:
+if STATICA_HACK:  # pragma: no cover
     # This is never executed, but tricks static analyzers (PyDev, PyCharm,
     # pylint, etc.) into knowing the types of these symbols, and what
     # they contain.
@@ -74,7 +74,7 @@ class module(ModuleType):
 # 2.5 does not define __package__
 try:
     package = __package__
-except NameError:
+except NameError:  # pragma: no cover
     package = 'kombu'
 
 # keep a reference to this module so that it's not garbage collected
@@ -94,7 +94,7 @@ new_module.__dict__.update({
     '__package__': package,
     'VERSION': VERSION})
 
-if os.environ.get('KOMBU_LOG_DEBUG'):
+if os.environ.get('KOMBU_LOG_DEBUG'):  # pragma: no cover
     os.environ.update(KOMBU_LOG_CHANNEL='1', KOMBU_LOG_CONNECTION='1')
     from .utils import debug
     debug.setup_logging()

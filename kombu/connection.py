@@ -377,8 +377,8 @@ class Connection(object):
             self.maybe_close_channel(self._default_channel)
             self._default_channel = None
 
-    def _default_ensure_callback(exc, interval):
-        logger.error("Ensure: Couldn't send message: %r. Retry in %ss",
+    def _default_ensure_callback(self, exc, interval):
+        logger.error("Ensure: Operation error: %r. Retry in %ss",
                      exc, interval, exc_info=True)
 
     def ensure(self, obj, fun, errback=None, max_retries=None,
@@ -927,7 +927,7 @@ class Resource(object):
                 except AttributeError:
                     pass  # Issue #78
         finally:
-            if mutex:
+            if mutex:  # pragma: no cover
                 mutex.release()
 
     if os.environ.get('KOMBU_DEBUG_POOL'):  # pragma: no cover

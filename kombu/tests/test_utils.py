@@ -36,6 +36,13 @@ class OldString(object):
         return self.value.rsplit(*args, **kwargs)
 
 
+class test_kombu_module(TestCase):
+
+    def test_dir(self):
+        import kombu
+        self.assertTrue(dir(kombu))
+
+
 class test_utils(TestCase):
 
     def test_maybe_list(self):

@@ -288,12 +288,13 @@ class binding(object):
         self.exchange = exchange
         self.routing_key = routing_key
         self.arguments = arguments
-        self.unbind_arguments = None
+        self.unbind_arguments = unbind_arguments
 
     def declare(self, channel, nowait=False):
         """Declare destination exchange."""
         if self.exchange and self.exchange.name:
-            self.exchange(channel).declare(nowait=nowait)
+            ex = self.exchange(channel)
+            ex.declare(nowait=nowait)
 
     def bind(self, entity, nowait=False):
         """Bind entity to this binding."""
@@ -304,10 +305,13 @@ class binding(object):
 
     def unbind(self, entity, nowait=False):
         """Unbind entity from this binding."""
-        entity.unbind_from(exchange=self.exchange,
+        entity.unbind_from(self.exchange,
                            routing_key=self.routing_key,
                            arguments=self.unbind_arguments,
                            nowait=nowait)
+
+    def __repr__(self):
+        return '<binding: %r -> %r>' % (self.exchange.name, self.routing_key)
 
 
 class Queue(MaybeChannelBound):
@@ -422,19 +426,22 @@ class Queue(MaybeChannelBound):
              ('exclusive', bool),
              ('auto_delete', bool),
              ('no_ack', None),
-             ('alias', None))
+             ('alias', None),
+             ('bindings', None))
 
     def __init__(self, name='', exchange=None, routing_key='', channel=None,
-            **kwargs):
+            bindings=None, **kwargs):
         super(Queue, self).__init__(**kwargs)
         self.name = name or self.name
         self.exchange = exchange or self.exchange
         self.routing_key = routing_key or self.routing_key
-        self.bindings = set()
+        self.bindings = set(bindings or [])
 
         # allows Queue('name', [binding(...), binding(...), ...])
         if isinstance(exchange, (list, tuple, set)):
-            self.bindings, self.exchange = set(exchange), None
+            self.bindings |= set(exchange)
+        if self.bindings:
+            self.exchange = None
 
         # exclusive implies auto-delete.
         if self.exclusive:
@@ -456,9 +463,7 @@ class Queue(MaybeChannelBound):
             self.exchange.declare(nowait)
         self.queue_declare(nowait, passive=False)
 
-        if self.name:
-            # name should be set by queue_declare in the case
-            # of anonymous queues.
+        if self.exchange is not None:
             self.queue_bind(nowait)
 
         # - declare extra/multi-bindings.

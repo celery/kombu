@@ -1,7 +1,9 @@
 from __future__ import absolute_import
+from __future__ import with_statement
 
 import sys
 
+from mock import patch
 from nose import SkipTest
 
 try:
@@ -160,3 +162,26 @@ class test_pyamqp(TestCase):
 
         c = Connection(port=1337, transport=Transport).connect()
         self.assertEqual(c['host'], '127.0.0.1:1337')
+
+    def test_eventmap(self):
+        t = pyamqp.Transport(Mock())
+        conn = Mock()
+        self.assertDictEqual(t.eventmap(conn),
+                {conn.sock: t.client.drain_nowait})
+
+    def test_event_interface(self):
+        t = pyamqp.Transport(Mock())
+        t.on_poll_init(Mock())
+        t.on_poll_start()
+
+    def test_heartbeat_check(self):
+        t = pyamqp.Transport(Mock())
+        conn = Mock()
+        t.heartbeat_check(conn, rate=4.331)
+        conn.heartbeat_tick.assert_called_with(rate=4.331)
+
+    def test_get_manager(self):
+        with patch('kombu.transport.pyamqp.get_manager') as get_manager:
+            t = pyamqp.Transport(Mock())
+            t.get_manager(1, kw=2)
+            get_manager.assert_called_with(t.client, 1, kw=2)
