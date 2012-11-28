@@ -42,7 +42,8 @@ class Object(object):
             if recurse and isinstance(obj, Object):
                 return obj.as_dict(recurse=True)
             return type(obj) if type else obj
-        return dict((attr, f(getattr(self, attr), type)) for attr, type in self.attrs)
+        return dict((attr, f(getattr(self, attr), type))
+                        for attr, type in self.attrs)
 
     def __reduce__(self):
         return unpickle_dict, (self.__class__, self.as_dict())
