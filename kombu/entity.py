@@ -427,7 +427,7 @@ class Queue(MaybeChannelBound):
              ('auto_delete', bool),
              ('no_ack', None),
              ('alias', None),
-             ('bindings', None))
+             ('bindings', list))
 
     def __init__(self, name='', exchange=None, routing_key='', channel=None,
             bindings=None, **kwargs):

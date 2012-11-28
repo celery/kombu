@@ -38,11 +38,11 @@ class Object(object):
                     setattr(self, name, None)
 
     def as_dict(self, recurse=False):
-        def f(obj):
+        def f(obj, type):
             if recurse and isinstance(obj, Object):
                 return obj.as_dict(recurse=True)
-            return obj
-        return dict((attr, f(getattr(self, attr))) for attr, _ in self.attrs)
+            return type(obj) if type else obj
+        return dict((attr, f(getattr(self, attr), type)) for attr, type in self.attrs)
 
     def __reduce__(self):
         return unpickle_dict, (self.__class__, self.as_dict())
