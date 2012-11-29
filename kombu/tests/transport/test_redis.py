@@ -420,7 +420,7 @@ class test_Channel(TestCase):
         cc = self.channel._create_client = Mock()
         client = cc.return_value = Mock()
 
-        with self.channel.conn_or_acquire() as _client:
+        with self.channel.conn_or_acquire():
             pass
         self.channel.pool.release.assert_called_with(client.connection)
         cc.assert_called_with()
