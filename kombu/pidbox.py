@@ -103,7 +103,7 @@ class Node(object):
         if message:
             self.adjust_clock(message.headers.get('clock') or 0)
         if not destination or self.hostname in destination:
-            return self.dispatch(**body)
+            return self.dispatch(**kwdict(body))
     dispatch_from_message = handle_message
 
     def reply(self, data, exchange, routing_key, ticket, **kwargs):
