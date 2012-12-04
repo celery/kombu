@@ -441,8 +441,12 @@ class Channel(virtual.Channel):
         if response is not None:
             payload = self._handle_message(c, response)
             if payload['type'] == 'message':
-                return (loads(payload['data']),
+                try:
+                    return (loads(payload['data']),
                         self._fanout_to_queue[payload['channel']])
+                except ValueError:
+                    # ValueError: Unterminated string starting at: line 1 column 699 (char 699)
+                    logger.critical("_receive ValueError: %s" % payload)
         raise Empty()
 
     def _brpop_start(self, timeout=1):
