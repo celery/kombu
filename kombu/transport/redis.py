@@ -446,7 +446,7 @@ class Channel(virtual.Channel):
                         self._fanout_to_queue[payload['channel']])
                 except ValueError:
                     # ValueError: Unterminated string starting at: line 1 column 699 (char 699)
-                    logger.critical("_receive ValueError: %s" % payload)
+                    logger.critical("_receive ValueError: client = | %s |; response = | %s |; payload = | %s |;" % (c, response, payload))
         raise Empty()
 
     def _brpop_start(self, timeout=1):
