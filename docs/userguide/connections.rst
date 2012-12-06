@@ -27,7 +27,7 @@ method::
 
 You can also check whether the connection is connected::
 
-    >>> connection.connected()
+    >>> connection.connected
     True
 
 Connections must always be closed after use::
