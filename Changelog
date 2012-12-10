@@ -4,6 +4,36 @@
  Change history
 ================
 
+.. _version-2.5.3:
+
+2.5.3
+=====
+:release-date: 2012-11-29 12:35 PM UTC
+
+- Pidbox: Fixed compatibility with Python 2.6
+
+2.5.2
+=====
+:release-date: 2012-11-29 12:35 PM UTC
+
+.. _version-2.5.2:
+
+2.5.2
+=====
+:release-date: 2012-11-29 12:35 PM UTC
+
+- [Redis] Fixed connection leak and added a new 'max_connections' transport
+  option.
+
+.. _version-2.5.1:
+
+2.5.1
+=====
+:release-date: 2012-11-28 12:45 P.M UTC
+
+- Fixed bug where return value of Queue.as_dict could not be serialized with
+  JSON (Issue #177).
+
 .. _version-2.5.0:
 
 2.5.0

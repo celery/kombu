@@ -17,6 +17,10 @@ DELIVERY_MODES = {'transient': TRANSIENT_DELIVERY_MODE,
 __all__ = ['Exchange', 'Queue']
 
 
+def pretty_bindings(bindings):
+    return '[%s]' % (', '.join(map(str, bindings)))
+
+
 class Exchange(MaybeChannelBound):
     """An Exchange declaration.
 
@@ -266,7 +270,7 @@ class Exchange(MaybeChannelBound):
         return super(Exchange, self).__repr__(str(self))
 
     def __str__(self):
-        return 'Exchange %s(%s)' % (self.name, self.type)
+        return 'Exchange %s(%s)' % (self.name or repr(''), self.type)
 
     @property
     def can_cache_declaration(self):
@@ -311,7 +315,10 @@ class binding(object):
                            nowait=nowait)
 
     def __repr__(self):
-        return '<binding: %r -> %r>' % (self.exchange.name, self.routing_key)
+        return '<binding: %s>' % (self, )
+
+    def __str__(self):
+        return '%s->%s' % (self.exchange.name, self.routing_key)
 
 
 class Queue(MaybeChannelBound):
@@ -427,7 +434,7 @@ class Queue(MaybeChannelBound):
              ('auto_delete', bool),
              ('no_ack', None),
              ('alias', None),
-             ('bindings', None))
+             ('bindings', list))
 
     def __init__(self, name='', exchange=None, routing_key='', channel=None,
             bindings=None, **kwargs):
@@ -611,10 +618,17 @@ class Queue(MaybeChannelBound):
         return False
 
     def __repr__(self):
-        return super(Queue, self).__repr__(
-                 'Queue %s -> %s -> %s' % (self.name,
-                                           self.exchange,
-                                           self.routing_key))
+        s = super(Queue, self).__repr__
+        if self.bindings:
+            return s('Queue %r -> %s' % (
+                self.name,
+                pretty_bindings(self.bindings),
+            ))
+        return s('Queue %r -> %s -> %r' % (
+            self.name,
+            self.exchange,
+            self.routing_key or '',
+        ))
 
     @property
     def can_cache_declaration(self):

@@ -382,7 +382,8 @@ class test_Channel(TestCase):
     def test_invalid_database_raises_ValueError(self):
 
         with self.assertRaises(ValueError):
-            Connection('redis:///dwqwewqe').channel()
+            self.channel.connection.client.virtual_host = 'dwqeq'
+            self.channel._connparams()
 
     @skip_if_not_module('redis')
     def test_get_client(self):
@@ -409,13 +410,18 @@ class test_Channel(TestCase):
         self.channel._in_poll = False
         c = self.channel.client = Mock()
 
-        self.assertIs(self.channel._avail_client, c)
+        with self.channel.conn_or_acquire() as client:
+            self.assertIs(client, c)
 
     def test_avail_client_when_in_poll(self):
         self.channel._in_poll = True
+        self.channel._pool = Mock()
         cc = self.channel._create_client = Mock()
+        client = cc.return_value = Mock()
 
-        self.assertTrue(self.channel._avail_client)
+        with self.channel.conn_or_acquire():
+            pass
+        self.channel.pool.release.assert_called_with(client.connection)
         cc.assert_called_with()
 
     @skip_if_not_module('redis')
