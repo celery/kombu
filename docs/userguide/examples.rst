@@ -4,6 +4,28 @@
  Examples
 ========================
 
+.. _hello-world-example:
+
+Hello World Example
+==================
+
+Below example uses 
+:ref:`guide-simple`
+to send helloworld message through 
+message broker (rabbitmq) and print received message
+
+
+:file:`hello_publisher.py`:
+
+.. literalinclude:: ../../examples/hello_publisher.py
+    :language: python
+    
+:file:`hello_consumer.py`:
+
+.. literalinclude:: ../../examples/hello_consumer.py
+    :language: python
+
+
 .. _task-queue-example:
 
 Task Queue Example
