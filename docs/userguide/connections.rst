@@ -123,6 +123,22 @@ keyword arguments, these are:
   pass to alternate kombu channel implementations.  Consult the transport
   documentation for available options.
 
+AMQP Transports
+===============
+
+There are 3 transports available for AMQP use.
+
+1. ``pyamqp`` uses the pure Python library ``amqp``, automatically
+   installed with Kombu.
+2. ``librabbitmq`` uses the high performance transport written in C.
+   This requires the ``librabbitmq`` Python package to be installed, which
+   automatically compiles the C library.
+3. ``amqp`` tries to use ``librabbitmq`` but falls back to ``pyamqp``.
+
+For the highest performance, you should install the ``librabbitmq`` package.
+To ensure librabbitmq is used, you can explicitly specify it in the
+transport URL, or use ``amqp`` to have the fallback.
+
 Transport Comparison
 ====================
 
