@@ -515,9 +515,14 @@ class Connection(object):
         if resolve:
             transport_cls = RESOLVE_ALIASES.get(transport_cls, transport_cls)
         D = self.transport.default_connection_params
-        hostname = self.hostname or D.get('hostname')
-        if self.uri_prefix:
-            hostname = '%s+%s' % (self.uri_prefix, hostname)
+
+        if self.alt:
+            hostname = ";".join(self.alt)
+        else:
+            hostname = self.hostname or D.get('hostname')
+            if self.uri_prefix:
+                hostname = '%s+%s' % (self.uri_prefix, hostname)
+
         info = (('hostname', hostname),
                 ('userid', self.userid or D.get('userid')),
                 ('password', self.password or D.get('password')),

@@ -91,24 +91,6 @@ def module_exists(*modules):
 # Taken from
 # http://bitbucket.org/runeh/snippets/src/tip/missing_modules.py
 def mask_modules(*modnames):
-    """Ban some modules from being importable inside the context
-
-    For example:
-
-        >>> @missing_modules('sys'):
-        >>> def foo():
-        ...     try:
-        ...         import sys
-        ...     except ImportError:
-        ...         print('sys not found')
-        sys not found
-
-        >>> import sys
-        >>> sys.version
-        (2, 5, 2, 'final', 0)
-
-    """
-
     def _inner(fun):
 
         @wraps(fun)

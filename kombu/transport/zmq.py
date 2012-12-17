@@ -111,7 +111,12 @@ class Client(object):
             self.sink = None
 
         self.vent = self.context.socket(zmq.PUSH)
-        self.vent.setsockopt(zmq.HWM, hwm)
+
+        if hasattr(zmq, 'SNDHWM'):
+            self.vent.setsockopt(zmq.SNDHWM, hwm)
+        else:
+            self.vent.setsockopt(zmq.HWM, hwm)
+
         if swap_size:
             self.vent.setsockopt(zmq.SWAP, swap_size)
 
