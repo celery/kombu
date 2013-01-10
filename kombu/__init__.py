@@ -28,7 +28,7 @@ if STATICA_HACK:  # pragma: no cover
     # pylint, etc.) into knowing the types of these symbols, and what
     # they contain.
     from kombu.connection import Connection, BrokerConnection   # noqa
-    from kombu.entitiy import Exchange, Queue, binding          # noqa
+    from kombu.entity import Exchange, Queue, binding           # noqa
     from kombu.messaging import Consumer, Producer              # noqa
     from kombu.pools import connections, producers              # noqa
     from kombu.utils.url import parse_url                       # noqa
