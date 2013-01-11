@@ -291,7 +291,7 @@ class test_Connection(TestCase):
         c.maybe_switch_next()
         self.assertFalse(c._closed)
         self.assertEqual(c.hostname, 'foo')
-        self.assertIn(c.transport_cls, ('librabbitmq', 'pyamqp'))
+        self.assertIn(c.transport_cls, ('librabbitmq', 'pyamqp', 'amqp'))
 
     def test_heartbeat_check(self):
         c = Connection(transport=Transport)

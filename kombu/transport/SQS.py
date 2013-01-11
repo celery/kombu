@@ -121,6 +121,8 @@ class Channel(virtual.Channel):
 
     default_region = 'us-east-1'
     default_visibility_timeout = 1800  # 30 minutes.
+    # 20 seconds is the max value currently supported by SQS.
+    default_wait_time_seconds = 20
     domain_format = 'kombu%(vhost)s'
     _sdb = None
     _sqs = None
@@ -225,7 +227,7 @@ class Channel(virtual.Channel):
     def _get(self, queue):
         """Try to retrieve a single message off ``queue``."""
         q = self._new_queue(queue)
-        rs = q.get_messages(1)
+        rs = q.get_messages(1, wait_time_seconds=self.wait_time_seconds)
         if rs:
             m = rs[0]
             payload = loads(rs[0].get_body())
@@ -337,11 +339,17 @@ class Channel(virtual.Channel):
     def region(self):
         return self.transport_options.get('region') or self.default_region
 
+    @cached_property
+    def wait_time_seconds(self):
+        return (self.transport_options.get('wait_time_seconds') or
+                self.default_wait_time_seconds)
+
 
 class Transport(virtual.Transport):
     Channel = Channel
 
-    polling_interval = 1
+    polling_interval = 0
+    wait_time_seconds = 20
     default_port = None
     connection_errors = (StdConnectionError, exception.SQSError, socket.error)
     channel_errors = (exception.SQSDecodeError, StdChannelError)
