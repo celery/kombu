@@ -7,7 +7,7 @@ from paver.setuputils import setup  # noqa
 PYCOMPILE_CACHES = ["*.pyc", "*$py.class"]
 
 options(
-        sphinx=Bunch(builddir=".build"),
+    sphinx=Bunch(builddir=".build"),
 )
 
 
@@ -91,7 +91,7 @@ def readme(options):
 ])
 def bump(options):
     s = "-- '%s'" % (options.custom, ) \
-            if getattr(options, "custom", None) else ""
+        if getattr(options, "custom", None) else ""
     sh("extra/release/bump_version.py \
             kombu/__init__.py README.rst %s" % (s, ))
 
@@ -128,6 +128,7 @@ def flake8(options):
         if (! $ignore) { print STDERR; our $FOUND_FLAKE = 1 }
         }{exit $FOUND_FLAKE;
         '""" % (complexity, migrations_path), ignore_error=noerror)
+
 
 @task
 @cmdopts([

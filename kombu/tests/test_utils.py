@@ -65,8 +65,9 @@ class test_utils(TestCase):
         self.assertTrue(utils.reprkwargs({'foo': 'bar', 1: 2, u'k': 'v'}))
 
     def test_reprcall(self):
-        self.assertTrue(utils.reprcall('add',
-            (2, 2), {'copy': True}))
+        self.assertTrue(
+            utils.reprcall('add', (2, 2), {'copy': True}),
+        )
 
 
 class test_UUID(TestCase):
@@ -142,8 +143,10 @@ class test_emergency_dump_state(TestCase):
         def raise_something(*args, **kwargs):
             raise KeyError('foo')
 
-        utils.emergency_dump_state({'foo': 'bar'}, open_file=lambda n, m: fh,
-                                                   dump=raise_something)
+        utils.emergency_dump_state(
+            {'foo': 'bar'},
+            open_file=lambda n, m: fh, dump=raise_something,
+        )
         self.assertIn("'foo': 'bar'", fh.getvalue())
         self.assertTrue(stderr.getvalue())
         self.assertFalse(stdout.getvalue())
@@ -192,12 +195,13 @@ class test_retry_over_time(TestCase):
         try:
             utils.count.return_value = range(1)
             x = utils.retry_over_time(self.myfun, self.Predicate,
-                    errback=None, interval_max=14)
+                                      errback=None, interval_max=14)
             self.assertIsNone(x)
             utils.count.return_value = range(10)
             cb = Mock()
             x = utils.retry_over_time(self.myfun, self.Predicate,
-                    errback=self.errback, callback=cb, interval_max=14)
+                                      errback=self.errback, callback=cb,
+                                      interval_max=14)
             self.assertEqual(x, 42)
             self.assertEqual(self.index, 9)
             cb.assert_called_with()
@@ -206,20 +210,26 @@ class test_retry_over_time(TestCase):
 
     @insomnia
     def test_retry_once(self):
-        self.assertRaises(self.Predicate, utils.retry_over_time,
-                self.myfun, self.Predicate,
-                max_retries=1, errback=self.errback, interval_max=14)
+        self.assertRaises(
+            self.Predicate, utils.retry_over_time,
+            self.myfun, self.Predicate,
+            max_retries=1, errback=self.errback, interval_max=14,
+        )
         self.assertEqual(self.index, 2)
         # no errback
-        self.assertRaises(self.Predicate, utils.retry_over_time,
-                self.myfun, self.Predicate,
-                max_retries=1, errback=None, interval_max=14)
+        self.assertRaises(
+            self.Predicate, utils.retry_over_time,
+            self.myfun, self.Predicate,
+            max_retries=1, errback=None, interval_max=14,
+        )
 
     @insomnia
     def test_retry_never(self):
-        self.assertRaises(self.Predicate, utils.retry_over_time,
-                self.myfun, self.Predicate,
-                max_retries=0, errback=self.errback, interval_max=14)
+        self.assertRaises(
+            self.Predicate, utils.retry_over_time,
+            self.myfun, self.Predicate,
+            max_retries=0, errback=self.errback, interval_max=14,
+        )
         self.assertEqual(self.index, 1)
 
 
@@ -281,8 +291,10 @@ class test_symbol_by_name(TestCase):
 
     def test_returns_default(self):
         default = object()
-        self.assertIs(utils.symbol_by_name('xyz.ryx.qedoa.weq:foz',
-                        default=default), default)
+        self.assertIs(
+            utils.symbol_by_name('xyz.ryx.qedoa.weq:foz', default=default),
+            default,
+        )
 
     def test_no_default(self):
         with self.assertRaises(ImportError):
@@ -296,16 +308,20 @@ class test_symbol_by_name(TestCase):
 
     def test_package(self):
         from kombu.entity import Exchange
-        self.assertIs(utils.symbol_by_name('.entity:Exchange',
-                    package='kombu'), Exchange)
+        self.assertIs(
+            utils.symbol_by_name('.entity:Exchange', package='kombu'),
+            Exchange,
+        )
         self.assertTrue(utils.symbol_by_name(':Consumer', package='kombu'))
 
 
 class test_ChannelPromise(TestCase):
 
     def test_repr(self):
-        self.assertEqual(repr(utils.ChannelPromise(lambda: 'foo')),
-                "<promise: 'foo'>")
+        self.assertEqual(
+            repr(utils.ChannelPromise(lambda: 'foo')),
+            "<promise: 'foo'>",
+        )
 
 
 class test_entrypoints(TestCase):

@@ -286,7 +286,7 @@ class test_Channel(TestCase):
         self.assertIn(n, c.purged)
 
     def test_basic_publish__get__consume__restore(self,
-            n='test_basic_publish'):
+                                                  n='test_basic_publish'):
         c = memory_client().channel()
 
         c.exchange_declare(n)
@@ -306,8 +306,8 @@ class test_Channel(TestCase):
 
         consumer_tag = uuid()
 
-        c.basic_consume(n + '2', False, consumer_tag=consumer_tag,
-                                        callback=lambda *a: None)
+        c.basic_consume(n + '2', False,
+                        consumer_tag=consumer_tag, callback=lambda *a: None)
         self.assertIn(n + '2', c._active_queues)
         r2, _ = c.drain_events()
         r2 = c.message_to_python(r2)
@@ -365,7 +365,7 @@ class test_Channel(TestCase):
     @patch('kombu.transport.virtual.emergency_dump_state')
     @patch('kombu.transport.virtual.say')
     def test_restore_unacked_once_when_unrestored(self, say,
-            emergency_dump_state):
+                                                  emergency_dump_state):
         q = self.channel.qos
         q._flush = Mock()
 
@@ -409,8 +409,10 @@ class test_Channel(TestCase):
     def test_lookup__undeliverable(self, n='test_lookup__undeliverable'):
         warnings.resetwarnings()
         with catch_warnings(record=True) as log:
-            self.assertListEqual(self.channel._lookup(n, n, 'ae.undeliver'),
-                                                      ['ae.undeliver'])
+            self.assertListEqual(
+                self.channel._lookup(n, n, 'ae.undeliver'),
+                ['ae.undeliver'],
+            )
             self.assertTrue(log)
             self.assertIn('could not be delivered', log[0].message.args[0])
 

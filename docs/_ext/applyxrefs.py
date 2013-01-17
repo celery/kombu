@@ -5,9 +5,7 @@ import os
 
 testing = False
 
-DONT_TOUCH = (
-        './index.txt',
-        )
+DONT_TOUCH = ('./index.txt', )
 
 
 def target_name(fn):

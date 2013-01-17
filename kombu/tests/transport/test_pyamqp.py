@@ -50,10 +50,10 @@ class test_Channel(TestCase):
         self.assertFalse(self.channel.no_ack_consumers)
 
     def test_prepare_message(self):
-        x = self.channel.prepare_message('foobar', 10,
-                'application/data', 'utf-8',
-                properties={})
-        self.assertTrue(x)
+        self.assertTrue(self.channel.prepare_message(
+            'foobar', 10, 'application/data', 'utf-8',
+            properties={},
+        ))
 
     def test_message_to_python(self):
         message = Mock()
@@ -166,8 +166,10 @@ class test_pyamqp(TestCase):
     def test_eventmap(self):
         t = pyamqp.Transport(Mock())
         conn = Mock()
-        self.assertDictEqual(t.eventmap(conn),
-                {conn.sock: t.client.drain_nowait})
+        self.assertDictEqual(
+            t.eventmap(conn),
+            {conn.sock: t.client.drain_nowait},
+        )
 
     def test_event_interface(self):
         t = pyamqp.Transport(Mock())

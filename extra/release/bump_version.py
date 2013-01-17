@@ -149,7 +149,7 @@ def bump(*files, **kwargs):
         v.write(next)
 
     print(cmd("git", "commit", "-m", "Bumps version to %s" % (to_str(next), ),
-        *[f.filename for f in files]))
+          *[f.filename for f in files]))
     print(cmd("git", "tag", "v%s" % (to_str(next), )))
 
 

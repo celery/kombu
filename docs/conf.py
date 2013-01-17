@@ -62,8 +62,8 @@ html_use_modindex = True
 html_use_index = True
 
 latex_documents = [
-  ('index', 'Kombu.tex', ur'Kombu Documentation',
-   ur'Ask Solem', 'manual'),
+    ('index', 'Kombu.tex', u'Kombu Documentation',
+     u'Ask Solem', 'manual'),
 ]
 
 html_theme = "celery"

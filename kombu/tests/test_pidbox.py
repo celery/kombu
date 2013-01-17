@@ -29,9 +29,11 @@ class test_Mailbox(TestCase):
         self.handlers = {'mymethod': self._handler}
         self.bound = self.mailbox(self.connection)
         self.default_chan = self.connection.channel()
-        self.node = self.bound.Node('test_pidbox', state=self.state,
-                                                   handlers=self.handlers,
-                                                   channel=self.default_chan)
+        self.node = self.bound.Node(
+            'test_pidbox',
+            state=self.state, handlers=self.handlers,
+            channel=self.default_chan,
+        )
 
     def test_reply__collect(self):
         mailbox = pidbox.Mailbox('test_reply__collect')(self.connection)
@@ -46,8 +48,8 @@ class test_Mailbox(TestCase):
         def callback(body):
             _callback_called[0] = True
 
-        reply = mailbox._collect(ticket, limit=1, callback=callback,
-                                                  channel=channel)
+        reply = mailbox._collect(ticket, limit=1,
+                                 callback=callback, channel=channel)
         self.assertEqual(reply, [{'foo': 'bar'}])
         self.assertTrue(_callback_called[0])
 
@@ -209,8 +211,10 @@ class test_Mailbox(TestCase):
             self.bound.call('some_node', 'mymethod')
 
     def test_call(self):
-        self.assertEqual(self.bound.call(['some_node'], 'mymethod'),
-                          'COLLECTED')
+        self.assertEqual(
+            self.bound.call(['some_node'], 'mymethod'),
+            'COLLECTED',
+        )
         consumer = self.node.Consumer()
         self.assertIsCall(self.get_next(consumer))
 

@@ -262,22 +262,32 @@ class test_Channel(TestCase):
         self.assertFalse(s.subscribed)
 
     def test_handle_pmessage_message(self):
-        self.assertDictEqual(self.channel._handle_message(
-                                self.channel.subclient,
-                                ['pmessage', 'pattern', 'channel', 'data']),
-                            {'type': 'pmessage',
-                             'pattern': 'pattern',
-                             'channel': 'channel',
-                             'data': 'data'})
+        self.assertDictEqual(
+            self.channel._handle_message(
+                self.channel.subclient,
+                ['pmessage', 'pattern', 'channel', 'data'],
+            ),
+            {
+                'type': 'pmessage',
+                'pattern': 'pattern',
+                'channel': 'channel',
+                'data': 'data',
+            },
+        )
 
     def test_handle_message(self):
-        self.assertDictEqual(self.channel._handle_message(
-                                self.channel.subclient,
-                                ['type', 'channel', 'data']),
-                             {'type': 'type',
-                              'pattern': None,
-                              'channel': 'channel',
-                              'data': 'data'})
+        self.assertDictEqual(
+            self.channel._handle_message(
+                self.channel.subclient,
+                ['type', 'channel', 'data'],
+            ),
+            {
+                'type': 'type',
+                'pattern': None,
+                'channel': 'channel',
+                'data': 'data',
+            },
+        )
 
     def test_brpop_start_but_no_queues(self):
         self.assertIsNone(self.channel._brpop_start())
@@ -725,8 +735,7 @@ class test_MultiChannelPoller(TestCase):
         self.assertEqual(p._register.call_count, 1)
         self.assertEqual(channel._subscribe.call_count, 1)
 
-    def create_get(self, events=None, queues=None,
-            fanouts=None):
+    def create_get(self, events=None, queues=None, fanouts=None):
         _pr = [] if events is None else events
         _aq = [] if queues is None else queues
         _af = [] if fanouts is None else fanouts
