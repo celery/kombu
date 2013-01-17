@@ -15,6 +15,7 @@ from Queue import Empty
 import pymongo
 
 from pymongo import errors
+from pymongo.uri_parser import parse_uri
 from anyjson import loads, dumps
 from pymongo.connection import Connection
 
@@ -100,48 +101,17 @@ class Channel(virtual.Channel):
         http://www.mongodb.org/display/DOCS/Connections
         """
         conninfo = self.connection.client
+        parsed_uri = parse_uri('mongodb://' + conninfo.hostname or DEFAULT_HOST)
 
-        dbname = None
-        hostname = None
+        mongoconn = Connection(host=conninfo.hostname.replace(parsed_uri['database'] + '/').replace(parsed_uri['database']))
+        database = getattr(mongoconn, parsed_uri['database'] or 'admin')
 
-        if not conninfo.hostname:
-            conninfo.hostname = DEFAULT_HOST
-
-        for part in conninfo.hostname.split('/'):
-            if not hostname:
-                hostname = 'mongodb://' + part
-                continue
-
-            dbname = part
-            if '?' in part:
-                # In case someone is passing options
-                # to the mongodb connection. Right now
-                # it is not permitted by kombu
-                dbname, options = part.split('?')
-                hostname += '/?' + options
-
-        hostname = "%s/%s" % (hostname, dbname in [None, "/"] and "admin" \
-                                                                    or dbname)
-        if not dbname or dbname == "/":
-            dbname = "kombu_default"
-
-        # At this point we expect the hostname to be something like
-        # (considering replica set form too):
-        #
-        #   mongodb://[username:password@]host1[:port1][,host2[:port2],
-        #   ...[,hostN[:portN]]][/[?options]]
-        mongoconn = Connection(host=hostname)
         version = mongoconn.server_info()['version']
         if tuple(map(int, version.split('.')[:2])) < (1, 3):
             raise NotImplementedError(
                 'Kombu requires MongoDB version 1.3+, but connected to %s' % (
                     version, ))
 
-        database = getattr(mongoconn, dbname)
-
-        # This is done by the connection uri
-        # if conninfo.userid:
-        #     database.authenticate(conninfo.userid, conninfo.password)
         self.db = database
         col = database.messages
         col.ensure_index([('queue', 1), ('_id', 1)], background=True)
