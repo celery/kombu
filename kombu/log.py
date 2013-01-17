@@ -97,11 +97,11 @@ class LogMixin(object):
                 expand = [maybe_promise(arg) for arg in args[1:]]
                 return log(severity,
                            self.annotate(args[0].replace('%r', '%s')),
-                          *list(safeify_format(args[0], *expand)), **kwargs)
+                           *list(safeify_format(args[0], *expand)), **kwargs)
             else:
-                return self.logger.log(severity,
-                            self.annotate(' '.join(map(safe_str, args))),
-                            **kwargs)
+                return self.logger.log(
+                    severity, self.annotate(' '.join(map(safe_str, args))),
+                    **kwargs)
 
     def get_logger(self):
         return get_logger(self.logger_name)

@@ -225,7 +225,8 @@ class test_insured(TestCase):
         ret = common.insured(pool, fun, (2, 2), {'foo': 'bar'})
         self.assertEqual(ret, 'works')
         conn.ensure_connection.assert_called_with(
-                errback=common._ensure_errback)
+            errback=common._ensure_errback,
+        )
 
         self.assertTrue(insured.called)
         i_args, i_kwargs = insured.call_args

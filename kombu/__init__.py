@@ -16,8 +16,8 @@ import sys
 if sys.version_info < (2, 5):  # pragma: no cover
     if sys.version_info >= (2, 4):
         raise Exception(
-                'Python 2.4 is not supported by this version. '
-                'Please use Kombu versions 1.x.')
+            'Python 2.4 is not supported by this version. '
+            'Please use Kombu versions 1.x.')
     else:
         raise Exception('Kombu requires Python versions 2.5 or later.')
 

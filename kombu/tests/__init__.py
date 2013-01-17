@@ -53,12 +53,17 @@ def setup_django_env():
         return
 
     if not settings.configured:
-        settings.configure(DATABASES={'default': {
-                                'ENGINE': 'django.db.backends.sqlite3',
-                                'NAME': ':memory:'}},
-                           DATABASE_ENGINE='sqlite3',
-                           DATABASE_NAME=':memory:',
-                           INSTALLED_APPS=('kombu.transport.django', ))
+        settings.configure(
+            DATABASES={
+                'default': {
+                    'ENGINE': 'django.db.backends.sqlite3',
+                    'NAME': ':memory:',
+                },
+            },
+            DATABASE_ENGINE='sqlite3',
+            DATABASE_NAME=':memory:',
+            INSTALLED_APPS=('kombu.transport.django', ),
+        )
 
 
 def setup():

@@ -92,12 +92,12 @@ class Table(Domain):
             if item:
                 return item
 
-    def select(self, query='', next_token=None, consistent_read=True,
-            max_items=None):
+    def select(self, query='', next_token=None,
+               consistent_read=True, max_items=None):
         """Uses `consistent_read` by default."""
         query = """SELECT * FROM `%s` %s""" % (self.name, query)
         return Domain.select(self, query, next_token,
-                                   consistent_read, max_items)
+                             consistent_read, max_items)
 
     def _try_first(self, query='', **kwargs):
         for c in (False, True):
@@ -165,7 +165,8 @@ class Channel(virtual.Channel):
             return self._queue_cache[queue]
         except KeyError:
             q = self._queue_cache[queue] = self.sqs.create_queue(
-                    queue, self.visibility_timeout)
+                queue, self.visibility_timeout,
+            )
             return q
 
     def _queue_bind(self, *args):
@@ -185,7 +186,7 @@ class Channel(virtual.Channel):
         """
         if self.supports_fanout:
             return [(r['routing_key'], r['pattern'], r['queue'])
-                        for r in self.table.routes_for(exchange)]
+                    for r in self.table.routes_for(exchange)]
         return super(Channel, self).get_table(exchange)
 
     def get_exchanges(self):
@@ -307,10 +308,10 @@ class Channel(virtual.Channel):
 
     @property
     def table(self):
-        name = self.entity_name(self.domain_format % {
-                                    'vhost': self.conninfo.virtual_host})
-        d = self.sdb.get_object('CreateDomain', {'DomainName': name},
-                                self.Table)
+        name = self.entity_name(
+            self.domain_format % {'vhost': self.conninfo.virtual_host})
+        d = self.sdb.get_object(
+            'CreateDomain', {'DomainName': name}, self.Table)
         d.name = name
         return d
 

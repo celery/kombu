@@ -1,6 +1,7 @@
 # encoding: utf-8
 from __future__ import absolute_import
 
+# flake8: noqa
 import datetime
 from south.db import db
 from south.v2 import SchemaMigration

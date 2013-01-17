@@ -32,8 +32,9 @@ class test_StdChannel(TestCase):
             StdChannel().get_bindings()
 
     def test_interface_after_reply_message_received(self):
-        self.assertIsNone(StdChannel().after_reply_message_received(
-                Queue('foo')))
+        self.assertIsNone(
+            StdChannel().after_reply_message_received(Queue('foo')),
+        )
 
 
 class test_Message(TestCase):

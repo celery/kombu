@@ -16,7 +16,7 @@ VERSION = (1, 0, 0)
 __version__ = '.'.join(map(str, VERSION))
 
 POLLING_INTERVAL = getattr(settings, 'KOMBU_POLLING_INTERVAL',
-                       getattr(settings, 'DJKOMBU_POLLING_INTERVAL', 5.0))
+                           getattr(settings, 'DJKOMBU_POLLING_INTERVAL', 5.0))
 
 
 class Channel(virtual.Channel):

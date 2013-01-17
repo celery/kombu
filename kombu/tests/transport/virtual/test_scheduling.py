@@ -42,12 +42,16 @@ class test_FairCycle(TestCase):
             return r
 
         cycle = FairCycle(echo, resources, MyEmpty)
-        self.assertEqual(consume(cycle.get, len(resources)),
-                        [('a', 'a'), ('b', 'b'), ('d', 'd'),
-                         ('e', 'e'), ('a', 'a')])
-        self.assertEqual(consume(cycle.get, len(resources)),
-                        [('b', 'b'), ('d', 'd'), ('e', 'e'),
-                         ('a', 'a'), ('b', 'b')])
+        self.assertEqual(
+            consume(cycle.get, len(resources)),
+            [('a', 'a'), ('b', 'b'), ('d', 'd'),
+             ('e', 'e'), ('a', 'a')],
+        )
+        self.assertEqual(
+            consume(cycle.get, len(resources)),
+            [('b', 'b'), ('d', 'd'), ('e', 'e'),
+             ('a', 'a'), ('b', 'b')],
+        )
         cycle2 = FairCycle(echo, ['c', 'c'], MyEmpty)
         with self.assertRaises(MyEmpty):
             consume(cycle2.get, 3)

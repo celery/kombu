@@ -32,22 +32,23 @@ DEFAULT_PORT = 5672
 class Message(base.Message):
 
     def __init__(self, channel, props, info, body):
-        super(Message, self).__init__(channel,
-                body=body,
-                delivery_info=info,
-                properties=props,
-                delivery_tag=info.get('delivery_tag'),
-                content_type=props.get('content_type'),
-                content_encoding=props.get('content_encoding'),
-                headers=props.get('headers'))
+        super(Message, self).__init__(
+            channel,
+            body=body,
+            delivery_info=info,
+            properties=props,
+            delivery_tag=info.get('delivery_tag'),
+            content_type=props.get('content_type'),
+            content_encoding=props.get('content_encoding'),
+            headers=props.get('headers'))
 
 
 class Channel(amqp.Channel, base.StdChannel):
     Message = Message
 
     def prepare_message(self, body, priority=None,
-                content_type=None, content_encoding=None, headers=None,
-                properties=None):
+                        content_type=None, content_encoding=None,
+                        headers=None, properties=None):
         """Encapsulate data into a AMQP message."""
         properties = properties if properties is not None else {}
         properties.update({'content_type': content_type,

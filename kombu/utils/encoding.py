@@ -92,7 +92,7 @@ def _safe_str(s, errors='replace'):
             return str(s)
         except Exception as exc:
             return '<Unrepresentable {0!r}: {1!r} {2!r}>'.format(
-                    type(s), exc, '\n'.join(traceback.format_stack()))
+                type(s), exc, '\n'.join(traceback.format_stack()))
     encoding = default_encoding()
     try:
         if isinstance(s, unicode):
@@ -100,7 +100,7 @@ def _safe_str(s, errors='replace'):
         return unicode(s, encoding, errors)
     except Exception as exc:
         return '<Unrepresentable {0!r}: {1!r} {2!r}>'.format(
-                type(s), exc, '\n'.join(traceback.format_stack()))
+            type(s), exc, '\n'.join(traceback.format_stack()))
 
 
 def safe_repr(o, errors='replace'):

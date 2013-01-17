@@ -150,8 +150,9 @@ class _kqueue(Poller):
                            filter=KQ_FILTER_WRITE,
                            flags=flags))
         if not kevents or events & READ:
-            kevents.append(kevent(fd,
-                filter=KQ_FILTER_READ, flags=flags))
+            kevents.append(
+                kevent(fd, filter=KQ_FILTER_READ, flags=flags),
+            )
         control = self._kcontrol
         for e in kevents:
             try:

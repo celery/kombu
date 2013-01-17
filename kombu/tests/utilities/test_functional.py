@@ -14,12 +14,16 @@ def double(x):
 class test_promise(TestCase):
 
     def test__str__(self):
-        self.assertEqual(str(promise(lambda: 'the quick brown fox')),
-                'the quick brown fox')
+        self.assertEqual(
+            str(promise(lambda: 'the quick brown fox')),
+            'the quick brown fox',
+        )
 
     def test__repr__(self):
-        self.assertEqual(repr(promise(lambda: 'fi fa fo')),
-                "'fi fa fo'")
+        self.assertEqual(
+            repr(promise(lambda: 'fi fa fo')),
+            "'fi fa fo'",
+        )
 
     def test_evaluate(self):
         self.assertEqual(promise(lambda: 2 + 2)(), 4)

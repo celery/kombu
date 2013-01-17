@@ -142,7 +142,7 @@ class SerializerRegistry(object):
 
         if serializer:
             content_type, content_encoding, encoder = \
-                    self._encoders[serializer]
+                self._encoders[serializer]
         else:
             encoder = self._default_encode
             content_type = self._default_content_type
@@ -343,17 +343,18 @@ def register_msgpack():
         except ImportError:
             # msgpack < 0.2.0 and Python 2.5
             from msgpack import packs as dumps, unpacks as loads  # noqa
-        registry.register('msgpack', dumps, loads,
-                content_type='application/x-msgpack',
-                content_encoding='binary')
+        registry.register(
+            'msgpack', dumps, loads,
+            content_type='application/x-msgpack',
+            content_encoding='binary')
     except ImportError:
 
         def not_available(*args, **kwargs):
             """In case a client receives a msgpack message, but yaml
             isn't installed."""
             raise SerializerNotInstalled(
-                    'No decoder installed for msgpack. '
-                    'Install the msgpack library')
+                'No decoder installed for msgpack. '
+                'Please install the msgpack library')
         registry.register('msgpack', None, not_available,
                           'application/x-msgpack')
 

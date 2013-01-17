@@ -68,77 +68,78 @@ class test_connection_utils(TestCase):
 
         self.assert_info(
             Connection('amqp://user:pass@host:10000/vhost'),
-                userid='user', password='pass', hostname='host',
-                port=10000, virtual_host='vhost')
+            userid='user', password='pass', hostname='host',
+            port=10000, virtual_host='vhost',
+        )
 
         self.assert_info(
             Connection('amqp://user%61:%61pass@ho%61st:10000/v%2fhost'),
-                userid='usera', password='apass',
-                hostname='hoast', port=10000,
-                virtual_host='v/host')
+            userid='usera', password='apass', hostname='hoast',
+            port=10000, virtual_host='v/host',
+        )
 
         self.assert_info(
             Connection('amqp://'),
-                userid='guest', password='guest',
-                hostname='localhost', port=5672,
-                virtual_host='/')
+            userid='guest', password='guest', hostname='localhost',
+            port=5672, virtual_host='/',
+        )
 
         self.assert_info(
             Connection('amqp://:@/'),
-                userid='guest', password='guest',
-                hostname='localhost', port=5672,
-                virtual_host='/')
+            userid='guest', password='guest', hostname='localhost',
+            port=5672, virtual_host='/',
+        )
 
         self.assert_info(
             Connection('amqp://user@/'),
-                userid='user', password='guest',
-                hostname='localhost', port=5672,
-                virtual_host='/')
+            userid='user', password='guest', hostname='localhost',
+            port=5672, virtual_host='/',
+        )
 
         self.assert_info(
             Connection('amqp://user:pass@/'),
-                userid='user', password='pass',
-                hostname='localhost', port=5672,
-                virtual_host='/')
+            userid='user', password='pass', hostname='localhost',
+            port=5672, virtual_host='/',
+        )
 
         self.assert_info(
             Connection('amqp://host'),
-                userid='guest', password='guest',
-                hostname='host', port=5672,
-                virtual_host='/')
+            userid='guest', password='guest', hostname='host',
+            port=5672, virtual_host='/',
+        )
 
         self.assert_info(
             Connection('amqp://:10000'),
-                userid='guest', password='guest',
-                hostname='localhost', port=10000,
-                virtual_host='/')
+            userid='guest', password='guest', hostname='localhost',
+            port=10000, virtual_host='/',
+        )
 
         self.assert_info(
             Connection('amqp:///vhost'),
-                userid='guest', password='guest',
-                hostname='localhost', port=5672,
-                virtual_host='vhost')
+            userid='guest', password='guest', hostname='localhost',
+            port=5672, virtual_host='vhost',
+        )
 
         self.assert_info(
             Connection('amqp://host/'),
-                userid='guest', password='guest',
-                hostname='host', port=5672,
-                virtual_host='/')
+            userid='guest', password='guest', hostname='host',
+            port=5672, virtual_host='/',
+        )
 
         self.assert_info(
             Connection('amqp://host/%2f'),
-                userid='guest', password='guest',
-                hostname='host', port=5672,
-                virtual_host='/')
+            userid='guest', password='guest', hostname='host',
+            port=5672, virtual_host='/',
+        )
 
     def test_url_IPV6(self):
         raise SkipTest("urllib can't parse ipv6 urls")
 
         self.assert_info(
             Connection('amqp://[::1]'),
-                userid='guest', password='guest',
-                hostname='[::1]', port=5672,
-                virtual_host='/')
+            userid='guest', password='guest', hostname='[::1]',
+            port=5672, virtual_host='/',
+        )
 
 
 class test_Connection(TestCase):
@@ -635,7 +636,7 @@ class test_ChannelPool(ResourceCase):
 
     def create_resource(self, limit, preload):
         return Connection(port=5672, transport=Transport) \
-                    .ChannelPool(limit, preload)
+            .ChannelPool(limit, preload)
 
     def test_setup(self):
         P = self.create_resource(10, 2)

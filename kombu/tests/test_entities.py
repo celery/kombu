@@ -19,7 +19,8 @@ def get_conn():
 class test_binding(TestCase):
 
     def test_constructor(self):
-        x = binding(Exchange('foo'), 'rkey',
+        x = binding(
+            Exchange('foo'), 'rkey',
             arguments={'barg': 'bval'},
             unbind_arguments={'uarg': 'uval'},
         )
@@ -234,13 +235,14 @@ class test_Queue(TestCase):
         ])
         q(chan).declare()
         self.assertIn(
-            call(nowait=False,
-                 exchange='mul1',
-                 auto_delete=False,
-                 passive=False,
-                 arguments=None,
-                 type='direct',
-                 durable=True,
+            call(
+                nowait=False,
+                exchange='mul1',
+                auto_delete=False,
+                passive=False,
+                arguments=None,
+                type='direct',
+                durable=True,
             ), chan.exchange_declare.call_args_list,
         )
 
@@ -259,11 +261,13 @@ class test_Queue(TestCase):
 
     def test_exclusive_implies_auto_delete(self):
         self.assertTrue(
-                Queue('foo', self.exchange, exclusive=True).auto_delete)
+            Queue('foo', self.exchange, exclusive=True).auto_delete,
+        )
 
     def test_binds_at_instantiation(self):
-        self.assertTrue(Queue('foo', self.exchange,
-                              channel=get_conn().channel()).is_bound)
+        self.assertTrue(
+            Queue('foo', self.exchange, channel=get_conn().channel()).is_bound,
+        )
 
     def test_also_binds_exchange(self):
         chan = get_conn().channel()

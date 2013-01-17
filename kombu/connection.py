@@ -148,10 +148,10 @@ class Connection(object):
     hostname = userid = password = ssl = login_method = None
 
     def __init__(self, hostname='localhost', userid=None,
-            password=None, virtual_host=None, port=None, insist=False,
-            ssl=False, transport=None, connect_timeout=5,
-            transport_options=None, login_method=None, uri_prefix=None,
-            heartbeat=0, failover_strategy='round-robin', **kwargs):
+                 password=None, virtual_host=None, port=None, insist=False,
+                 ssl=False, transport=None, connect_timeout=5,
+                 transport_options=None, login_method=None, uri_prefix=None,
+                 heartbeat=0, failover_strategy='round-robin', **kwargs):
         alt = []
         # have to spell the args out, just to get nice docstrings :(
         params = self._initial_params = {
@@ -215,7 +215,8 @@ class Connection(object):
             self.switch(next(self.cycle))
 
     def _init_params(self, hostname, userid, password, virtual_host, port,
-            insist, ssl, transport, connect_timeout, login_method, heartbeat):
+                     insist, ssl, transport, connect_timeout,
+                     login_method, heartbeat):
         transport = transport or 'amqp'
         if transport == 'amqp' and supports_librabbitmq():
             transport = 'librabbitmq'
@@ -249,7 +250,7 @@ class Connection(object):
         if _LOG_CHANNEL:  # pragma: no cover
             from .utils.debug import Logwrapped
             return Logwrapped(chan, 'kombu.channel',
-                    '[Kombu channel:{0.channel_id}] ')
+                              '[Kombu channel:{0.channel_id}] ')
         return chan
 
     def heartbeat_check(self, rate=2):
@@ -332,8 +333,8 @@ class Connection(object):
     close = release
 
     def ensure_connection(self, errback=None, max_retries=None,
-            interval_start=2, interval_step=2, interval_max=30,
-            callback=None):
+                          interval_start=2, interval_step=2, interval_max=30,
+                          callback=None):
         """Ensure we have a connection to the server.
 
         If not retry establishing the connection with the settings
@@ -385,7 +386,8 @@ class Connection(object):
                      exc, interval, exc_info=True)
 
     def ensure(self, obj, fun, errback=None, max_retries=None,
-            interval_start=1, interval_step=1, interval_max=1, on_revive=None):
+               interval_start=1, interval_step=1, interval_max=1,
+               on_revive=None):
         """Ensure operation completes, regardless of any channel/connection
         errors occurring.
 
@@ -645,7 +647,7 @@ class Connection(object):
         return Consumer(channel or self, queues, *args, **kwargs)
 
     def SimpleQueue(self, name, no_ack=None, queue_opts=None,
-            exchange_opts=None, channel=None, **kwargs):
+                    exchange_opts=None, channel=None, **kwargs):
         """Create new :class:`~kombu.simple.SimpleQueue`, using a channel
         from this connection.
 
@@ -672,7 +674,7 @@ class Connection(object):
                            exchange_opts, **kwargs)
 
     def SimpleBuffer(self, name, no_ack=None, queue_opts=None,
-            exchange_opts=None, channel=None, **kwargs):
+                     exchange_opts=None, channel=None, **kwargs):
         """Create new :class:`~kombu.simple.SimpleQueue` using a channel
         from this connection.
 

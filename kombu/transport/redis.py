@@ -103,7 +103,7 @@ class QoS(virtual.QoS):
         with self.pipe_or_acquire() as pipe:
             pipe.zadd(self.unacked_index_key, delivery_tag, time()) \
                 .hset(self.unacked_key, delivery_tag,
-                    dumps([message._raw, EX, RK])) \
+                      dumps([message._raw, EX, RK])) \
                 .execute()
             super(QoS, self).append(message, delivery_tag)
 
@@ -140,7 +140,7 @@ class QoS(virtual.QoS):
             ceil = time() - self.visibility_timeout
             try:
                 with Mutex(client, self.unacked_mutex_key,
-                                   self.unacked_mutex_expire):
+                           self.unacked_mutex_expire):
                     visible = client.zrevrangebyscore(
                         self.unacked_index_key, ceil, 0,
                         start=num and start, num=num, withscores=True)
@@ -151,8 +151,8 @@ class QoS(virtual.QoS):
 
     def restore_by_tag(self, tag, client=None):
         with self.channel.conn_or_acquire(client) as client:
-            p, _, _ = self._remove_from_indices(tag,
-                client.pipeline().hget(self.unacked_key, tag)).execute()
+            p, _, _ = self._remove_from_indices(
+                tag, client.pipeline().hget(self.unacked_key, tag)).execute()
             if p:
                 M, EX, RK = loads(p)
                 self.channel._do_restore_message(M, EX, RK, client)
@@ -318,15 +318,17 @@ class Channel(virtual.Channel):
     max_connections = 10
     _pool = None
 
-    from_transport_options = (virtual.Channel.from_transport_options
-                            + ('unacked_key',
-                               'unacked_index_key',
-                               'unacked_mutex_key',
-                               'unacked_mutex_expire',
-                               'visibility_timeout',
-                               'unacked_restore_limit',
-                               'max_connections',
-                               'priority_steps'))
+    from_transport_options = (
+        virtual.Channel.from_transport_options +
+        ('unacked_key',
+         'unacked_index_key',
+         'unacked_mutex_key',
+         'unacked_mutex_expire',
+         'visibility_timeout',
+         'unacked_restore_limit',
+         'max_connections',
+         'priority_steps'),
+    )
 
     def __init__(self, *args, **kwargs):
         super_ = super(Channel, self)
@@ -370,15 +372,15 @@ class Channel(virtual.Channel):
                     client.lpush(queue, dumps(payload))
             except Exception:
                 logger.critical('Could not restore message: %r', payload,
-                        exc_info=True)
+                                exc_info=True)
 
     def _restore(self, message, payload=None):
         tag = message.delivery_tag
         with self.conn_or_acquire() as client:
             P, _ = client.pipeline() \
-                        .hget(self.unacked_key, tag) \
-                        .hdel(self.unacked_key, tag) \
-                    .execute()
+                .hget(self.unacked_key, tag) \
+                .hdel(self.unacked_key, tag) \
+                .execute()
             if P:
                 M, EX, RK = loads(P)
                 self._do_restore_message(M, EX, RK, client)
@@ -411,7 +413,7 @@ class Channel(virtual.Channel):
 
     def _subscribe(self):
         keys = [self._fanout_queues[queue]
-                    for queue in self.active_fanout_queues]
+                for queue in self.active_fanout_queues]
         if not keys:
             return
         c = self.subclient
@@ -449,7 +451,7 @@ class Channel(virtual.Channel):
         if not queues:
             return
         keys = [self._q_for_pri(queue, pri) for pri in PRIORITY_STEPS
-                        for queue in queues] + [timeout or 0]
+                for queue in queues] + [timeout or 0]
         self._in_poll = True
         self.client.connection.send_command('BRPOP', *keys)
 
@@ -710,7 +712,7 @@ class Channel(virtual.Channel):
     def active_queues(self):
         """Set of queues being consumed from (excluding fanout queues)."""
         return set(queue for queue in self._active_queues
-                            if queue not in self.active_fanout_queues)
+                   if queue not in self.active_fanout_queues)
 
 
 class Transport(virtual.Transport):

@@ -29,11 +29,12 @@ latin_string_as_utf8 = latin_string.encode('utf-8')
 
 
 # For serialization tests
-py_data = {'string': 'The quick brown fox jumps over the lazy dog',
-        'int': 10,
-        'float': 3.14159265,
-        'unicode': 'Thé quick brown fox jumps over thé lazy dog',
-        'list': ['george', 'jerry', 'elaine', 'cosmo'],
+py_data = {
+    'string': 'The quick brown fox jumps over the lazy dog',
+    'int': 10,
+    'float': 3.14159265,
+    'unicode': 'Thé quick brown fox jumps over thé lazy dog',
+    'list': ['george', 'jerry', 'elaine', 'cosmo'],
 }
 
 # JSON serialization tests
@@ -54,11 +55,12 @@ yaml_data = ('float: 3.1415926500000002\nint: 10\n'
              'jumps over th\\xE9 lazy dog"\n')
 
 
-msgpack_py_data = {'string': 'The quick brown fox jumps over the lazy dog',
-        'int': 10,
-        'float': 3.14159265,
-        'unicode': 'Thé quick brown fox jumps over thé lazy dog',
-        'list': ['george', 'jerry', 'elaine', 'cosmo'],
+msgpack_py_data = {
+    'string': 'The quick brown fox jumps over the lazy dog',
+    'int': 10,
+    'float': 3.14159265,
+    'unicode': 'Thé quick brown fox jumps over thé lazy dog',
+    'list': ['george', 'jerry', 'elaine', 'cosmo'],
 }
 # msgpack only supports tuples
 msgpack_py_data['list'] = tuple(msgpack_py_data['list'])
@@ -93,7 +95,7 @@ class test_Serialization(TestCase):
                                 force=False)
 
             ret = registry.decode('xxd', 'application/testS', 'utf-8',
-                            force=True)
+                                  force=True)
             self.assertEqual(ret, 'decoded')
         finally:
             disabled.clear()
@@ -102,103 +104,128 @@ class test_Serialization(TestCase):
         registry.decode(None, 'application/testS', 'utf-8')
 
     def test_content_type_decoding(self):
-        self.assertEqual(unicode_string,
-                          registry.decode(
-                              unicode_string_as_utf8,
-                              content_type='plain/text',
-                              content_encoding='utf-8'))
-        self.assertEqual(latin_string,
-                          registry.decode(
-                              latin_string_as_latin1,
-                              content_type='application/data',
-                              content_encoding='latin-1'))
+        self.assertEqual(
+            unicode_string,
+            registry.decode(
+                unicode_string_as_utf8,
+                content_type='plain/text',
+                content_encoding='utf-8'),
+        )
+        self.assertEqual(
+            latin_string,
+            registry.decode(
+                latin_string_as_latin1,
+                content_type='application/data',
+                content_encoding='latin-1'),
+        )
 
     def test_content_type_binary(self):
-        self.assertIsInstance(registry.decode(unicode_string_as_utf8,
-                                              content_type='application/data',
-                                              content_encoding='binary'),
-                              bytes_t)
+        self.assertIsInstance(
+            registry.decode(unicode_string_as_utf8,
+                            content_type='application/data',
+                            content_encoding='binary'),
+            bytes_t,
+        )
 
-        self.assertEqual(unicode_string_as_utf8,
-                          registry.decode(
-                              unicode_string_as_utf8,
-                              content_type='application/data',
-                              content_encoding='binary'))
+        self.assertEqual(
+            unicode_string_as_utf8,
+            registry.decode(unicode_string_as_utf8,
+                            content_type='application/data',
+                            content_encoding='binary'),
+        )
 
     def test_content_type_encoding(self):
         # Using the 'raw' serializer
-        self.assertEqual(unicode_string_as_utf8,
-                          registry.encode(
-                              unicode_string, serializer='raw')[-1])
-        self.assertEqual(latin_string_as_utf8,
-                          registry.encode(
-                              latin_string, serializer='raw')[-1])
+        self.assertEqual(
+            unicode_string_as_utf8,
+            registry.encode(unicode_string, serializer='raw')[-1],
+        )
+        self.assertEqual(
+            latin_string_as_utf8,
+            registry.encode(latin_string, serializer='raw')[-1],
+        )
         # And again w/o a specific serializer to check the
         # code where we force unicode objects into a string.
-        self.assertEqual(unicode_string_as_utf8,
-                            registry.encode(unicode_string)[-1])
-        self.assertEqual(latin_string_as_utf8,
-                            registry.encode(latin_string)[-1])
+        self.assertEqual(
+            unicode_string_as_utf8,
+            registry.encode(unicode_string)[-1],
+        )
+        self.assertEqual(
+            latin_string_as_utf8,
+            registry.encode(latin_string)[-1],
+        )
 
     def test_json_decode(self):
-        self.assertEqual(py_data,
-                          registry.decode(
-                              json_data,
-                              content_type='application/json',
-                              content_encoding='utf-8'))
+        self.assertEqual(
+            py_data,
+            registry.decode(
+                json_data,
+                content_type='application/json',
+                content_encoding='utf-8'),
+        )
 
     def test_json_encode(self):
-        self.assertEqual(registry.decode(
-                              registry.encode(py_data, serializer='json')[-1],
-                              content_type='application/json',
-                              content_encoding='utf-8'),
-                          registry.decode(
-                              json_data,
-                              content_type='application/json',
-                              content_encoding='utf-8'))
+        self.assertEqual(
+            registry.decode(
+                registry.encode(py_data, serializer='json')[-1],
+                content_type='application/json',
+                content_encoding='utf-8',
+            ),
+            registry.decode(
+                json_data,
+                content_type='application/json',
+                content_encoding='utf-8'),
+        )
 
     @skip_if_not_module('msgpack')
     def test_msgpack_decode(self):
         register_msgpack()
         decoded = registry.decode(
-                    registry.encode(msgpack_py_data,
-                        serializer='msgpack')[-1],
-                    content_type='application/x-msgpack',
-                    content_encoding='binary')
+            registry.encode(msgpack_py_data, serializer='msgpack')[-1],
+            content_type='application/x-msgpack',
+            content_encoding='binary',
+        )
         self.assertEqual(msgpack_py_data, decoded)
 
     @skip_if_not_module('yaml')
     def test_yaml_decode(self):
         register_yaml()
-        self.assertEqual(py_data,
-                          registry.decode(
-                              yaml_data,
-                              content_type='application/x-yaml',
-                              content_encoding='utf-8'))
+        self.assertEqual(
+            py_data,
+            registry.decode(yaml_data,
+                            content_type='application/x-yaml',
+                            content_encoding='utf-8'),
+        )
 
     @skip_if_not_module('yaml')
     def test_yaml_encode(self):
         register_yaml()
-        self.assertEqual(registry.decode(
-                              registry.encode(py_data, serializer='yaml')[-1],
-                              content_type='application/x-yaml',
-                              content_encoding='utf-8'),
-                          registry.decode(
-                              yaml_data,
-                              content_type='application/x-yaml',
-                              content_encoding='utf-8'))
+        self.assertEqual(
+            registry.decode(
+                registry.encode(py_data, serializer='yaml')[-1],
+                content_type='application/x-yaml',
+                content_encoding='utf-8',
+            ),
+            registry.decode(
+                yaml_data,
+                content_type='application/x-yaml',
+                content_encoding='utf-8'),
+        )
 
     def test_pickle_decode(self):
-        self.assertEqual(py_data,
-                          registry.decode(
-                              pickle_data,
-                              content_type='application/x-python-serialize',
-                              content_encoding='binary'))
+        self.assertEqual(
+            py_data,
+            registry.decode(
+                pickle_data,
+                content_type='application/x-python-serialize',
+                content_encoding='binary'),
+        )
 
     def test_pickle_encode(self):
-        self.assertEqual(pickle.loads(pickle_data),
-                          pickle.loads(registry.encode(py_data,
-                              serializer='pickle')[-1]))
+        self.assertEqual(
+            pickle.loads(pickle_data),
+            pickle.loads(registry.encode(py_data, serializer='pickle')[-1]),
+        )
 
     def test_register(self):
         register(None, None, None, None)

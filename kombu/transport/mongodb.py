@@ -52,9 +52,11 @@ class Channel(virtual.Channel):
                 self._queue_readcounts[queue] += 1
                 return loads(msg['payload'])
             else:
-                msg = self.client.command('findandmodify', 'messages',
+                msg = self.client.command(
+                    'findandmodify', 'messages',
                     query={'queue': queue},
-                    sort={'_id': pymongo.ASCENDING}, remove=True)
+                    sort={'_id': pymongo.ASCENDING}, remove=True,
+                )
         except errors.OperationFailure, exc:
             if 'No matching object found' in exc.args[0]:
                 raise Empty()
@@ -119,8 +121,9 @@ class Channel(virtual.Channel):
                 dbname, options = part.split('?')
                 hostname += '/?' + options
 
-        hostname = "%s/%s" % (hostname,
-            dbname in [None, "/"] and "admin" or dbname)
+        hostname = "%s/%s" % (
+            hostname, dbname in [None, "/"] and "admin" or dbname,
+        )
         if not dbname or dbname == "/":
             dbname = "kombu_default"
 
@@ -147,9 +150,9 @@ class Channel(virtual.Channel):
 
         if 'messages.broadcast' not in database.collection_names():
             capsize = conninfo.transport_options.get(
-                            'capped_queue_size') or 100000
-            database.create_collection('messages.broadcast', size=capsize,
-                                                             capped=True)
+                'capped_queue_size') or 100000
+            database.create_collection('messages.broadcast',
+                                       size=capsize, capped=True)
 
         self.bcast = getattr(database, 'messages.broadcast')
         self.bcast.ensure_index([('queue', 1)])
@@ -162,8 +165,9 @@ class Channel(virtual.Channel):
     def get_table(self, exchange):
         """Get table of bindings for ``exchange``."""
         localRoutes = frozenset(self.state.exchanges[exchange]['table'])
-        brokerRoutes = self.client.messages.routing.find({
-                            'exchange': exchange})
+        brokerRoutes = self.client.messages.routing.find(
+            {'exchange': exchange}
+        )
 
         return localRoutes | frozenset((r['routing_key'],
                                         r['pattern'],

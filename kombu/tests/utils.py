@@ -60,8 +60,8 @@ def redirect_stdouts(fun):
         sys.stdout = StringIO()
         sys.stderr = StringIO()
         try:
-            return fun(*args, **dict(kwargs, stdout=sys.stdout,
-                                             stderr=sys.stderr))
+            return fun(*args, **dict(kwargs,
+                                     stdout=sys.stdout, stderr=sys.stderr))
         finally:
             sys.stdout = sys.__stdout__
             sys.stderr = sys.__stderr__

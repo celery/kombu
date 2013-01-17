@@ -86,8 +86,10 @@ class test_Producer(TestCase):
         self.assertEqual(cencoding, 'utf-8')
         self.assertEqual(headers['compression'], 'application/x-gzip')
         import zlib
-        self.assertEqual(anyjson.loads(
-                            zlib.decompress(m).decode('utf-8')), message)
+        self.assertEqual(
+            anyjson.loads(zlib.decompress(m).decode('utf-8')),
+            message,
+        )
 
     def test_prepare_custom_content_type(self):
         message = 'the quick brown fox'.encode('utf-8')
@@ -111,8 +113,9 @@ class test_Producer(TestCase):
         self.assertEqual(m, message.encode('utf-8'))
         self.assertEqual(ctype, 'text/plain')
         self.assertEqual(cencoding, 'utf-8')
-        m, ctype, cencoding = p._prepare(message, content_type='text/plain',
-                                        content_encoding='utf-8')
+        m, ctype, cencoding = p._prepare(
+            message, content_type='text/plain', content_encoding='utf-8',
+        )
         self.assertEqual(m, message.encode('utf-8'))
         self.assertEqual(ctype, 'text/plain')
         self.assertEqual(cencoding, 'utf-8')

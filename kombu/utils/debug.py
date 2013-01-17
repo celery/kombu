@@ -52,7 +52,7 @@ class Logwrapped(object):
                 if args:
                     info += ', '
                 info += ', '.join('{k}={v!r}'.format(k=key, v=value)
-                                    for key, value in items(kwargs))
+                                  for key, value in items(kwargs))
             info += ')'
             self.logger.debug(info)
             return meth(*args, **kwargs)

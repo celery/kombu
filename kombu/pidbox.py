@@ -43,8 +43,8 @@ class Node(object):
     #: current channel.
     channel = None
 
-    def __init__(self, hostname, state=None, channel=None, handlers=None,
-            mailbox=None):
+    def __init__(self, hostname, state=None, channel=None,
+                 handlers=None, mailbox=None):
         self.channel = channel
         self.mailbox = mailbox
         self.hostname = hostname
@@ -71,8 +71,8 @@ class Node(object):
         consumer.consume()
         return consumer
 
-    def dispatch(self, method, arguments=None, reply_to=None, ticket=None,
-            **kwargs):
+    def dispatch(self, method, arguments=None,
+                 reply_to=None, ticket=None, **kwargs):
         arguments = arguments or {}
         handle = reply_to and self.handle_call or self.handle_cast
         try:
@@ -150,8 +150,8 @@ class Mailbox(object):
         hostname = hostname or socket.gethostname()
         return self.node_cls(hostname, state, channel, handlers, mailbox=self)
 
-    def call(self, destination, command, kwargs={}, timeout=None,
-            callback=None, channel=None):
+    def call(self, destination, command, kwargs={},
+             timeout=None, callback=None, channel=None):
         return self._broadcast(command, kwargs, destination,
                                reply=True, timeout=timeout,
                                callback=callback,
@@ -164,7 +164,7 @@ class Mailbox(object):
         return self._broadcast(command, kwargs, reply=False)
 
     def multi_call(self, command, kwargs={}, timeout=1,
-            limit=None, callback=None, channel=None):
+                   limit=None, callback=None, channel=None):
         return self._broadcast(command, kwargs, reply=True,
                                timeout=timeout, limit=limit,
                                callback=callback,
@@ -192,18 +192,18 @@ class Mailbox(object):
                      auto_delete=True)
 
     def _publish_reply(self, reply, exchange, routing_key, ticket,
-            channel=None):
+                       channel=None):
         chan = channel or self.connection.default_channel
         exchange = Exchange(exchange, exchange_type='direct',
-                                      delivery_mode='transient',
-                                      durable=False)
+                            delivery_mode='transient',
+                            durable=False)
         producer = Producer(chan, auto_declare=False)
         producer.publish(reply, exchange=exchange, routing_key=routing_key,
                          declare=[exchange], headers={
                              'ticket': ticket, 'clock': self.clock.forward()})
 
-    def _publish(self, type, arguments, destination=None, reply_ticket=None,
-            channel=None, timeout=None):
+    def _publish(self, type, arguments, destination=None,
+                 reply_ticket=None, channel=None, timeout=None):
         message = {'method': type,
                    'arguments': arguments,
                    'destination': destination}
@@ -215,15 +215,19 @@ class Mailbox(object):
                            reply_to={'exchange': self.reply_exchange.name,
                                      'routing_key': self.oid})
         producer = Producer(chan, auto_declare=False)
-        producer.publish(message, exchange=exchange.name, declare=[exchange],
-                headers={'clock': self.clock.forward(),
-                         'expires': time() + timeout if timeout else None})
+        producer.publish(
+            message, exchange=exchange.name, declare=[exchange],
+            headers={'clock': self.clock.forward(),
+                     'expires': time() + timeout if timeout else None},
+        )
 
     def _broadcast(self, command, arguments=None, destination=None,
-            reply=False, timeout=1, limit=None, callback=None, channel=None):
+                   reply=False, timeout=1, limit=None,
+                   callback=None, channel=None):
         if destination is not None and \
                 not isinstance(destination, (list, tuple)):
-            raise ValueError('destination must be a list/tuple not {0}'.format(
+            raise ValueError(
+                'destination must be a list/tuple not {0}'.format(
                     type(destination)))
 
         arguments = arguments or {}
@@ -235,18 +239,18 @@ class Mailbox(object):
             limit = destination and len(destination) or None
 
         self._publish(command, arguments, destination=destination,
-                                          reply_ticket=reply_ticket,
-                                          channel=chan,
-                                          timeout=timeout)
+                      reply_ticket=reply_ticket,
+                      channel=chan,
+                      timeout=timeout)
 
         if reply_ticket:
             return self._collect(reply_ticket, limit=limit,
-                                               timeout=timeout,
-                                               callback=callback,
-                                               channel=chan)
+                                 timeout=timeout,
+                                 callback=callback,
+                                 channel=chan)
 
-    def _collect(self, ticket, limit=None, timeout=1,
-            callback=None, channel=None):
+    def _collect(self, ticket,
+                 limit=None, timeout=1, callback=None, channel=None):
         chan = channel or self.connection.default_channel
         queue = self.reply_queue
         consumer = Consumer(channel, [queue], no_ack=True)

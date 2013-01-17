@@ -71,11 +71,10 @@ class Broadcast(Queue):
 
     def __init__(self, name=None, queue=None, **kwargs):
         return super(Broadcast, self).__init__(
-                    name=queue or 'bcast.%s' % (uuid(), ),
-                    **dict({'alias': name,
-                            'auto_delete': True,
-                            'exchange': Exchange(name, type='fanout'),
-                           }, **kwargs))
+            name=queue or 'bcast.%s' % (uuid(), ),
+            **dict({'alias': name,
+                    'auto_delete': True,
+                    'exchange': Exchange(name, type='fanout')}, **kwargs))
 
 
 def declaration_cached(entity, channel):
@@ -104,8 +103,8 @@ def _maybe_declare(entity):
 
 
 def _imaybe_declare(entity, **retry_policy):
-    return entity.channel.connection.client.ensure(entity, _maybe_declare,
-                             **retry_policy)(entity)
+    return entity.channel.connection.client.ensure(
+        entity, _maybe_declare, **retry_policy)(entity)
 
 
 def drain_consumer(consumer, limit=1, timeout=None, callbacks=None):
@@ -126,7 +125,7 @@ def drain_consumer(consumer, limit=1, timeout=None, callbacks=None):
 
 
 def itermessages(conn, channel, queue, limit=1, timeout=None,
-        Consumer=_Consumer, callbacks=None, **kwargs):
+                 Consumer=_Consumer, callbacks=None, **kwargs):
     return drain_consumer(Consumer(channel, queues=[queue], **kwargs),
                           limit=limit, timeout=timeout, callbacks=callbacks)
 
@@ -176,11 +175,11 @@ def send_reply(exchange, req, msg, producer=None, **props):
     content_type = req.content_type
     serializer = serialization.registry.type_to_name[content_type]
     maybe_declare(exchange, producer.channel)
-    producer.publish(msg, exchange=exchange,
-            **dict({'routing_key': req.properties['reply_to'],
-                    'correlation_id': req.properties.get('correlation_id'),
-                    'serializer': serializer},
-                    **props))
+    producer.publish(
+        msg, exchange=exchange,
+        **dict({'routing_key': req.properties['reply_to'],
+                'correlation_id': req.properties.get('correlation_id'),
+                'serializer': serializer}, **props))
 
 
 def isend_reply(pool, exchange, req, msg, props, **retry_policy):
@@ -206,7 +205,8 @@ def collect_replies(conn, channel, queue, *args, **kwargs):
 def _ensure_errback(exc, interval):
     logger.error(
         'Connection error: %r. Retry in %ss\n', exc, interval,
-            exc_info=True)
+        exc_info=True,
+    )
 
 
 @contextmanager
@@ -274,8 +274,8 @@ def insured(pool, fun, args, kwargs, errback=None, on_revive=None, **opts):
         return retval
 
 
-def ipublish(pool, fun, args=(), kwargs={}, errback=None, on_revive=None,
-        **retry_policy):
+def ipublish(pool, fun, args=(), kwargs={},
+             errback=None, on_revive=None, **retry_policy):
     with pool.acquire(block=True) as producer:
         errback = errback or _ensure_errback
         revive = partial(revive_producer, producer, on_revive=on_revive)
@@ -366,7 +366,7 @@ class QoS(object):
             new_value = pcount
             if pcount > PREFETCH_COUNT_MAX:
                 logger.warn('QoS: Disabled: prefetch_count exceeds %r',
-                             PREFETCH_COUNT_MAX)
+                            PREFETCH_COUNT_MAX)
                 new_value = 0
             logger.debug('basic.qos: prefetch_count->%s', new_value)
             self.callback(prefetch_count=new_value)
