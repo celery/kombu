@@ -1,14 +1,19 @@
-from __future__ import absolute_import, unicode_literals
+from __future__ import absolute_import
+from __future__ import with_statement
 
 import pickle
 import sys
 
 from functools import wraps
-from io import BytesIO, StringIO
 from mock import Mock, patch
 
+if sys.version_info >= (3, 0):
+    from io import StringIO, BytesIO
+else:
+    from StringIO import StringIO, StringIO as BytesIO  # noqa
+
 from kombu import utils
-from kombu.five import string_t
+from kombu.utils.compat import next
 
 from .utils import (
     TestCase,
@@ -57,12 +62,11 @@ class test_utils(TestCase):
                          [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0])
 
     def test_reprkwargs(self):
-        self.assertTrue(utils.reprkwargs({'foo': 'bar', 1: 2, 'k': 'v'}))
+        self.assertTrue(utils.reprkwargs({'foo': 'bar', 1: 2, u'k': 'v'}))
 
     def test_reprcall(self):
-        self.assertTrue(
-            utils.reprcall('add', (2, 2), {'copy': True}),
-        )
+        self.assertTrue(utils.reprcall('add',
+            (2, 2), {'copy': True}))
 
 
 class test_UUID(TestCase):
@@ -88,7 +92,7 @@ class test_UUID(TestCase):
             self.assertIsNone(ctypes)
             tid = uuid()
             self.assertTrue(tid)
-            self.assertIsInstance(tid, string_t)
+            self.assertIsInstance(tid, basestring)
 
         try:
             with_ctypes_masked()
@@ -103,8 +107,8 @@ class test_Misc(TestCase):
         def f(**kwargs):
             return kwargs
 
-        kw = {'foo': 'foo',
-              'bar': 'bar'}
+        kw = {u'foo': 'foo',
+              u'bar': 'bar'}
         self.assertTrue(f(**utils.kwdict(kw)))
 
 
@@ -138,12 +142,9 @@ class test_emergency_dump_state(TestCase):
         def raise_something(*args, **kwargs):
             raise KeyError('foo')
 
-        utils.emergency_dump_state(
-            {'foo': 'bar'},
-            open_file=lambda n, m: fh, dump=raise_something,
-        )
-        # replace at the end removes u' from repr on Py2
-        self.assertIn("'foo': 'bar'", fh.getvalue().replace("u'", "'"))
+        utils.emergency_dump_state({'foo': 'bar'}, open_file=lambda n, m: fh,
+                                                   dump=raise_something)
+        self.assertIn("'foo': 'bar'", fh.getvalue())
         self.assertTrue(stderr.getvalue())
         self.assertFalse(stdout.getvalue())
 
@@ -191,13 +192,12 @@ class test_retry_over_time(TestCase):
         try:
             utils.count.return_value = range(1)
             x = utils.retry_over_time(self.myfun, self.Predicate,
-                                      errback=None, interval_max=14)
+                    errback=None, interval_max=14)
             self.assertIsNone(x)
             utils.count.return_value = range(10)
             cb = Mock()
             x = utils.retry_over_time(self.myfun, self.Predicate,
-                                      errback=self.errback, interval_max=14,
-                                      callback=cb)
+                    errback=self.errback, callback=cb, interval_max=14)
             self.assertEqual(x, 42)
             self.assertEqual(self.index, 9)
             cb.assert_called_with()
@@ -206,26 +206,20 @@ class test_retry_over_time(TestCase):
 
     @insomnia
     def test_retry_once(self):
-        self.assertRaises(
-            self.Predicate, utils.retry_over_time,
-            self.myfun, self.Predicate,
-            max_retries=1, errback=self.errback, interval_max=14,
-        )
+        self.assertRaises(self.Predicate, utils.retry_over_time,
+                self.myfun, self.Predicate,
+                max_retries=1, errback=self.errback, interval_max=14)
         self.assertEqual(self.index, 2)
         # no errback
-        self.assertRaises(
-            self.Predicate, utils.retry_over_time,
-            self.myfun, self.Predicate,
-            max_retries=1, errback=None, interval_max=14,
-        )
+        self.assertRaises(self.Predicate, utils.retry_over_time,
+                self.myfun, self.Predicate,
+                max_retries=1, errback=None, interval_max=14)
 
     @insomnia
     def test_retry_never(self):
-        self.assertRaises(
-            self.Predicate, utils.retry_over_time,
-            self.myfun, self.Predicate,
-            max_retries=0, errback=self.errback, interval_max=14,
-        )
+        self.assertRaises(self.Predicate, utils.retry_over_time,
+                self.myfun, self.Predicate,
+                max_retries=0, errback=self.errback, interval_max=14)
         self.assertEqual(self.index, 1)
 
 
@@ -288,7 +282,7 @@ class test_symbol_by_name(TestCase):
     def test_returns_default(self):
         default = object()
         self.assertIs(utils.symbol_by_name('xyz.ryx.qedoa.weq:foz',
-                      default=default), default)
+                        default=default), default)
 
     def test_no_default(self):
         with self.assertRaises(ImportError):
@@ -303,17 +297,15 @@ class test_symbol_by_name(TestCase):
     def test_package(self):
         from kombu.entity import Exchange
         self.assertIs(utils.symbol_by_name('.entity:Exchange',
-                      package='kombu'), Exchange)
+                    package='kombu'), Exchange)
         self.assertTrue(utils.symbol_by_name(':Consumer', package='kombu'))
 
 
 class test_ChannelPromise(TestCase):
 
     def test_repr(self):
-        self.assertIn(
-            "'foo'",
-            repr(utils.ChannelPromise(lambda: 'foo')),
-        )
+        self.assertEqual(repr(utils.ChannelPromise(lambda: 'foo')),
+                "<promise: 'foo'>")
 
 
 class test_entrypoints(TestCase):

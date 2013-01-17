@@ -80,15 +80,13 @@ class test_LogMixin(TestCase):
 
     def test_error(self):
         self.log.error('error', exc_info='exc')
-        self.logger.log.assert_called_with(
-            logging.ERROR, 'Log - error', exc_info='exc',
-        )
+        self.logger.log.assert_called_with(logging.ERROR, 'Log - error',
+                                      exc_info='exc')
 
     def test_critical(self):
         self.log.critical('crit', exc_info='exc')
-        self.logger.log.assert_called_with(
-            logging.CRITICAL, 'Log - crit', exc_info='exc',
-        )
+        self.logger.log.assert_called_with(logging.CRITICAL, 'Log - crit',
+                                      exc_info='exc')
 
     def test_error_when_DISABLE_TRACEBACKS(self):
         log.DISABLE_TRACEBACKS = True
@@ -123,9 +121,8 @@ class test_LogMixin(TestCase):
 
     def test_log_with_format(self):
         self.log.debug('Host %r removed', 'example.com')
-        self.logger.log.assert_called_with(
-            logging.DEBUG, 'Log - Host %s removed', "'example.com'",
-        )
+        self.logger.log.assert_called_with(logging.DEBUG,
+                'Log - Host %s removed', "'example.com'")
 
 
 class test_setup_logging(TestCase):

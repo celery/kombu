@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+from __future__ import with_statement
 
 from mock import patch
 
@@ -18,9 +19,8 @@ class test_get_manager(TestCase):
         with patch('pyrabbit.Client', create=True) as Client:
             manager = Connection('amqp://').get_manager()
             self.assertIsNotNone(manager)
-            Client.assert_called_with(
-                'localhost:55672', 'guest', 'guest',
-            )
+            Client.assert_called_with('localhost:55672',
+                    'guest', 'guest')
 
     @module_exists('pyrabbit')
     def test_transport_options(self):
@@ -32,6 +32,5 @@ class test_get_manager(TestCase):
                 'manager_password': 'bosco',
             }).get_manager()
             self.assertIsNotNone(manager)
-            Client.assert_called_with(
-                'admin.mq.vandelay.com:808', 'george', 'bosco',
-            )
+            Client.assert_called_with('admin.mq.vandelay.com:808',
+                    'george', 'bosco')

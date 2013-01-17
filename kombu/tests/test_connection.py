@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+from __future__ import with_statement
 
 import errno
 import pickle
@@ -10,7 +11,6 @@ from nose import SkipTest
 
 from kombu import Connection, Consumer, Producer, parse_url
 from kombu.connection import Resource
-from kombu.five import items
 
 from .mocks import Transport
 from .utils import TestCase
@@ -43,7 +43,7 @@ class test_connection_utils(TestCase):
     def test_parse_generated_as_uri(self):
         conn = Connection(self.url)
         info = conn.info()
-        for k, v in items(self.expected):
+        for k, v in self.expected.items():
             self.assertEqual(info[k], v)
         # by default almost the same- no password
         self.assertEqual(conn.as_uri(), self.nopass)
@@ -60,7 +60,7 @@ class test_connection_utils(TestCase):
 
     def assert_info(self, conn, **fields):
         info = conn.info()
-        for field, expected in items(fields):
+        for field, expected in fields.iteritems():
             self.assertEqual(info[field], expected)
 
     def test_rabbitmq_example_urls(self):
@@ -68,78 +68,77 @@ class test_connection_utils(TestCase):
 
         self.assert_info(
             Connection('amqp://user:pass@host:10000/vhost'),
-            userid='user', password='pass', hostname='host',
-            port=10000, virtual_host='vhost',
-        )
+                userid='user', password='pass', hostname='host',
+                port=10000, virtual_host='vhost')
 
         self.assert_info(
             Connection('amqp://user%61:%61pass@ho%61st:10000/v%2fhost'),
-            userid='usera', password='apass', hostname='hoast',
-            port=10000, virtual_host='v/host',
-        )
+                userid='usera', password='apass',
+                hostname='hoast', port=10000,
+                virtual_host='v/host')
 
         self.assert_info(
             Connection('amqp://'),
-            userid='guest', password='guest', hostname='localhost',
-            port=5672, virtual_host='/',
-        )
+                userid='guest', password='guest',
+                hostname='localhost', port=5672,
+                virtual_host='/')
 
         self.assert_info(
             Connection('amqp://:@/'),
-            userid='guest', password='guest', hostname='localhost',
-            port=5672, virtual_host='/',
-        )
+                userid='guest', password='guest',
+                hostname='localhost', port=5672,
+                virtual_host='/')
 
         self.assert_info(
             Connection('amqp://user@/'),
-            userid='user', password='guest', hostname='localhost',
-            port=5672, virtual_host='/',
-        )
+                userid='user', password='guest',
+                hostname='localhost', port=5672,
+                virtual_host='/')
 
         self.assert_info(
             Connection('amqp://user:pass@/'),
-            userid='user', password='pass', hostname='localhost',
-            port=5672, virtual_host='/',
-        )
+                userid='user', password='pass',
+                hostname='localhost', port=5672,
+                virtual_host='/')
 
         self.assert_info(
             Connection('amqp://host'),
-            userid='guest', password='guest', hostname='host',
-            port=5672, virtual_host='/',
-        )
+                userid='guest', password='guest',
+                hostname='host', port=5672,
+                virtual_host='/')
 
         self.assert_info(
             Connection('amqp://:10000'),
-            userid='guest', password='guest', hostname='localhost',
-            port=10000, virtual_host='/',
-        )
+                userid='guest', password='guest',
+                hostname='localhost', port=10000,
+                virtual_host='/')
 
         self.assert_info(
             Connection('amqp:///vhost'),
-            userid='guest', password='guest', hostname='localhost',
-            port=5672, virtual_host='vhost',
-        )
+                userid='guest', password='guest',
+                hostname='localhost', port=5672,
+                virtual_host='vhost')
 
         self.assert_info(
             Connection('amqp://host/'),
-            userid='guest', password='guest', hostname='host',
-            port=5672, virtual_host='/',
-        )
+                userid='guest', password='guest',
+                hostname='host', port=5672,
+                virtual_host='/')
 
         self.assert_info(
             Connection('amqp://host/%2f'),
-            userid='guest', password='guest', hostname='host',
-            port=5672, virtual_host='/',
-        )
+                userid='guest', password='guest',
+                hostname='host', port=5672,
+                virtual_host='/')
 
     def test_url_IPV6(self):
         raise SkipTest("urllib can't parse ipv6 urls")
 
         self.assert_info(
             Connection('amqp://[::1]'),
-            userid='guest', password='guest', hostname='[::1]',
-            port=5672, virtual_host='/',
-        )
+                userid='guest', password='guest',
+                hostname='[::1]', port=5672,
+                virtual_host='/')
 
 
 class test_Connection(TestCase):
@@ -505,7 +504,7 @@ class ResourceCase(TestCase):
             return
         P = self.create_resource(10, 0)
         self.assertState(P, 10, 0)
-        chans = [P.acquire() for _ in range(10)]
+        chans = [P.acquire() for _ in xrange(10)]
         self.assertState(P, 0, 10)
         with self.assertRaises(P.LimitExceeded):
             P.acquire()
@@ -636,7 +635,7 @@ class test_ChannelPool(ResourceCase):
 
     def create_resource(self, limit, preload):
         return Connection(port=5672, transport=Transport) \
-            .ChannelPool(limit, preload)
+                    .ChannelPool(limit, preload)
 
     def test_setup(self):
         P = self.create_resource(10, 2)

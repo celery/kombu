@@ -10,8 +10,8 @@ class WarningMessage(object):
     _WARNING_DETAILS = ('message', 'category', 'filename', 'lineno', 'file',
                         'line')
 
-    def __init__(self, message, category, filename, lineno,
-                 file=None, line=None):
+    def __init__(self, message, category, filename, lineno, file=None,
+                    line=None):
         local_values = locals()
         for attr in self._WARNING_DETAILS:
             setattr(self, attr, local_values[attr])
@@ -20,8 +20,8 @@ class WarningMessage(object):
 
     def __str__(self):
         return ('{message : %r, category : %r, filename : %r, lineno : %s, '
-                'line : %r}' % (self.message, self._category_name,
-                                self.filename, self.lineno, self.line))
+                    'line : %r}' % (self.message, self._category_name,
+                                    self.filename, self.lineno, self.line))
 
 
 class catch_warnings(object):

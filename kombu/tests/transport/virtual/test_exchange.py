@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+from __future__ import with_statement
 
 from kombu import Connection
 from kombu.transport.virtual import exchange
@@ -24,18 +25,15 @@ class test_Direct(ExchangeCase):
              ('rBaz', None, 'qBaz')]
 
     def test_lookup(self):
-        self.assertListEqual(
-            self.e.lookup(self.table, 'eFoo', 'rFoo', None),
-            ['qFoo', 'qFox'],
-        )
-        self.assertListEqual(
-            self.e.lookup(self.table, 'eMoz', 'rMoz', 'DEFAULT'),
-            [],
-        )
-        self.assertListEqual(
-            self.e.lookup(self.table, 'eBar', 'rBar', None),
-            ['qBar'],
-        )
+        self.assertListEqual(self.e.lookup(
+                self.table, 'eFoo', 'rFoo', None),
+                ['qFoo', 'qFox'])
+        self.assertListEqual(self.e.lookup(
+                self.table, 'eMoz', 'rMoz', 'DEFAULT'),
+                [])
+        self.assertListEqual(self.e.lookup(
+                self.table, 'eBar', 'rBar', None),
+                ['qBar'])
 
 
 class test_Fanout(ExchangeCase):
@@ -45,10 +43,9 @@ class test_Fanout(ExchangeCase):
              (None, None, 'qBar')]
 
     def test_lookup(self):
-        self.assertListEqual(
-            self.e.lookup(self.table, 'eFoo', 'rFoo', None),
-            ['qFoo', 'qFox', 'qBar'],
-        )
+        self.assertListEqual(self.e.lookup(
+                self.table, 'eFoo', 'rFoo', None),
+                ['qFoo', 'qFox', 'qBar'])
 
     def test_deliver_when_fanout_supported(self):
         self.e.channel = Mock()
@@ -69,36 +66,31 @@ class test_Fanout(ExchangeCase):
 class test_Topic(ExchangeCase):
     type = exchange.TopicExchange
     table = [('stock.#', None, 'rFoo'),
-             ('stock.us.*', None, 'rBar')]
+              ('stock.us.*', None, 'rBar')]
 
     def setUp(self):
         super(test_Topic, self).setUp()
         self.table = [(rkey, self.e.key_to_pattern(rkey), queue)
-                      for rkey, _, queue in self.table]
+                        for rkey, _, queue in self.table]
 
     def test_prepare_bind(self):
         x = self.e.prepare_bind('qFoo', 'eFoo', 'stock.#', {})
         self.assertTupleEqual(x, ('stock.#', r'^stock\..*?$', 'qFoo'))
 
     def test_lookup(self):
-        self.assertListEqual(
-            self.e.lookup(self.table, 'eFoo', 'stock.us.nasdaq', None),
-            ['rFoo', 'rBar'],
-        )
+        self.assertListEqual(self.e.lookup(
+                self.table, 'eFoo', 'stock.us.nasdaq', None),
+                ['rFoo', 'rBar'])
         self.assertTrue(self.e._compiled)
-        self.assertListEqual(
-            self.e.lookup(self.table, 'eFoo', 'stock.europe.OSE', None),
-            ['rFoo'],
-        )
-        self.assertListEqual(
-            self.e.lookup(self.table, 'eFoo', 'stockxeuropexOSE', None),
-            [],
-        )
-        self.assertListEqual(
-            self.e.lookup(self.table, 'eFoo',
-                          'candy.schleckpulver.snap_crackle', None),
-            [],
-        )
+        self.assertListEqual(self.e.lookup(
+                self.table, 'eFoo', 'stock.europe.OSE', None),
+                ['rFoo'])
+        self.assertListEqual(self.e.lookup(
+                self.table, 'eFoo', 'stockxeuropexOSE', None),
+                [])
+        self.assertListEqual(self.e.lookup(
+                self.table, 'eFoo', 'candy.schleckpulver.snap_crackle', None),
+                [])
 
     def test_deliver(self):
         self.e.channel = Mock()
@@ -119,10 +111,8 @@ class test_ExchangeType(ExchangeCase):
             self.e.lookup([], 'eFoo', 'rFoo', None)
 
     def test_prepare_bind(self):
-        self.assertTupleEqual(
-            self.e.prepare_bind('qFoo', 'eFoo', 'rFoo', {}),
-            ('rFoo', None, 'qFoo'),
-        )
+        self.assertTupleEqual(self.e.prepare_bind('qFoo', 'eFoo', 'rFoo', {}),
+                              ('rFoo', None, 'qFoo'))
 
     def test_equivalent(self):
         e1 = dict(type='direct',
@@ -130,23 +120,20 @@ class test_ExchangeType(ExchangeCase):
                   auto_delete=True,
                   arguments={})
         self.assertTrue(
-            self.e.equivalent(e1, 'eFoo', 'direct', True, True, {}))
+                self.e.equivalent(e1, 'eFoo', 'direct', True, True, {}))
         self.assertFalse(
-            self.e.equivalent(e1, 'eFoo', 'topic', True, True, {}))
+                self.e.equivalent(e1, 'eFoo', 'topic', True, True, {}))
         self.assertFalse(
-            self.e.equivalent(e1, 'eFoo', 'direct', False, True, {}))
+                self.e.equivalent(e1, 'eFoo', 'direct', False, True, {}))
         self.assertFalse(
-            self.e.equivalent(e1, 'eFoo', 'direct', True, False, {}))
+                self.e.equivalent(e1, 'eFoo', 'direct', True, False, {}))
         self.assertFalse(
-            self.e.equivalent(e1, 'eFoo', 'direct', True, True,
-                              {'expires': 3000}),
-        )
+                self.e.equivalent(e1, 'eFoo', 'direct', True, True, {
+                    'expires': 3000}))
         e2 = dict(e1, arguments={'expires': 3000})
         self.assertTrue(
-            self.e.equivalent(e2, 'eFoo', 'direct', True, True,
-                              {'expires': 3000}),
-        )
+                self.e.equivalent(e2, 'eFoo', 'direct', True, True, {
+                    'expires': 3000}))
         self.assertFalse(
-            self.e.equivalent(e2, 'eFoo', 'direct', True, True,
-                              {'expires': 6000}),
-        )
+                self.e.equivalent(e2, 'eFoo', 'direct', True, True, {
+                    'expires': 6000}))
