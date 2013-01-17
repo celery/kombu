@@ -22,7 +22,7 @@ class Finalize(object):
     _registry = {}
 
     def __init__(self, obj, callback, args=(), kwargs=None,
-            exitpriority=None):
+                 exitpriority=None):
 
         if obj is not None:
             self._weakref = weakref.ref(obj, self)
@@ -50,8 +50,8 @@ class Finalize(object):
                 self._reset()
 
     def _reset(self):
-            self._weakref = self._callback = self._args = \
-                            self._kwargs = self._key = None
+        self._weakref = self._callback = self._args = \
+            self._kwargs = self._key = None
 
     def cancel(self):
         """Cancel finalization of the object."""

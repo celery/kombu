@@ -56,9 +56,8 @@ class Channel(virtual.Channel):
         if queue not in self.client.watching():
             self.client.watch(queue)
 
-        [self.client.ignore(active)
-            for active in self.client.watching()
-                if active != queue]
+        [self.client.ignore(active) for active in self.client.watching()
+         if active != queue]
 
         job = self.client.reserve(timeout=1)
         item, dest = self._parse_job(job)
@@ -72,13 +71,11 @@ class Channel(virtual.Channel):
 
         watching = self.client.watching()
 
-        [self.client.watch(active)
-            for active in queues
-                if active not in watching]
+        [self.client.watch(active) for active in queues
+         if active not in watching]
 
-        [self.client.ignore(active)
-            for active in watching
-                if active not in queues]
+        [self.client.ignore(active) for active in watching
+         if active not in queues]
 
         job = self.client.reserve(timeout=timeout)
         return self._parse_job(job)
@@ -88,8 +85,8 @@ class Channel(virtual.Channel):
             self.client.watch(queue)
 
         [self.client.ignore(active)
-                for active in self.client.watching()
-                    if active != queue]
+         for active in self.client.watching()
+         if active != queue]
         count = 0
         while 1:
             job = self.client.reserve(timeout=1)

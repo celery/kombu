@@ -65,8 +65,8 @@ class Producer(object):
     __connection__ = None
 
     def __init__(self, channel, exchange=None, routing_key=None,
-            serializer=None, auto_declare=None, compression=None,
-            on_return=None):
+                 serializer=None, auto_declare=None, compression=None,
+                 on_return=None):
         self._channel = channel
         self.exchange = exchange
         self.routing_key = routing_key or self.routing_key
@@ -107,10 +107,10 @@ class Producer(object):
             return maybe_declare(entity, self.channel, retry, **retry_policy)
 
     def publish(self, body, routing_key=None, delivery_mode=None,
-            mandatory=False, immediate=False, priority=0, content_type=None,
-            content_encoding=None, serializer=None, headers=None,
-            compression=None, exchange=None, retry=False, retry_policy=None,
-            declare=[], **properties):
+                mandatory=False, immediate=False, priority=0,
+                content_type=None, content_encoding=None, serializer=None,
+                headers=None, compression=None, exchange=None, retry=False,
+                retry_policy=None, declare=[], **properties):
         """Publish message to the specified exchange.
 
         :param body: Message body.
@@ -153,19 +153,19 @@ class Producer(object):
         properties['delivery_mode'] = delivery_mode
 
         body, content_type, content_encoding = self._prepare(
-                body, serializer, content_type, content_encoding,
-                compression, headers)
+            body, serializer, content_type, content_encoding,
+            compression, headers)
 
         publish = self._publish
         if retry:
             publish = self.connection.ensure(self, publish, **retry_policy)
         return publish(body, priority, content_type,
                        content_encoding, headers, properties,
-                        routing_key, mandatory, immediate, exchange, declare)
+                       routing_key, mandatory, immediate, exchange, declare)
 
     def _publish(self, body, priority, content_type, content_encoding,
-            headers, properties, routing_key, mandatory,
-            immediate, exchange, declare):
+                 headers, properties, routing_key, mandatory,
+                 immediate, exchange, declare):
         channel = self.channel
         message = channel.prepare_message(
             body, priority, content_type,
@@ -174,7 +174,8 @@ class Producer(object):
         if declare:
             maybe_declare = self.maybe_declare
             [maybe_declare(entity) for entity in declare]
-        return channel.basic_publish(message,
+        return channel.basic_publish(
+            message,
             exchange=exchange, routing_key=routing_key,
             mandatory=mandatory, immediate=immediate,
         )
@@ -222,9 +223,8 @@ class Producer(object):
         pass
     close = release
 
-    def _prepare(self, body, serializer=None,
-            content_type=None, content_encoding=None, compression=None,
-            headers=None):
+    def _prepare(self, body, serializer=None, content_type=None,
+                 content_encoding=None, compression=None, headers=None):
 
         # No content_type? Then we're serializing the data internally.
         if not content_type:
@@ -321,12 +321,12 @@ class Consumer(object):
     _next_tag = count(1).next   # global
 
     def __init__(self, channel, queues=None, no_ack=None, auto_declare=None,
-            callbacks=None, on_decode_error=None, on_message=None):
+                 callbacks=None, on_decode_error=None, on_message=None):
         self.channel = channel
         self.queues = self.queues or [] if queues is None else queues
         self.no_ack = self.no_ack if no_ack is None else no_ack
         self.callbacks = (self.callbacks or [] if callbacks is None
-                                               else callbacks)
+                          else callbacks)
         self.on_message = on_message
         self._active_tags = {}
         if auto_declare is not None:
@@ -342,7 +342,7 @@ class Consumer(object):
         self._active_tags.clear()
         channel = self.channel = maybe_channel(channel)
         self.queues = [queue(self.channel)
-                            for queue in maybe_list(self.queues)]
+                       for queue in maybe_list(self.queues)]
         for queue in self.queues:
             queue.revive(channel)
 
@@ -511,7 +511,7 @@ class Consumer(object):
         [callback(body, message) for callback in callbacks]
 
     def _basic_consume(self, queue, consumer_tag=None,
-            no_ack=no_ack, nowait=True):
+                       no_ack=no_ack, nowait=True):
         tag = self._active_tags.get(queue.name)
         if tag is None:
             tag = self._add_tag(queue, consumer_tag)

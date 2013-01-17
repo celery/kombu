@@ -30,7 +30,7 @@ __all__ = ['EqualityDict', 'say', 'uuid', 'kwdict', 'maybe_list',
 
 
 def symbol_by_name(name, aliases={}, imp=None, package=None,
-        sep='.', default=None, **kwargs):
+                   sep='.', default=None, **kwargs):
     """Get symbol by qualified name.
 
     The name should be the full dot-separated path to the class::
@@ -80,7 +80,7 @@ def symbol_by_name(name, aliases={}, imp=None, package=None,
             module = imp(module_name, package=package, **kwargs)
         except ValueError, exc:
             raise ValueError, ValueError(
-                    "Couldn't import %r: %s" % (name, exc)), sys.exc_info()[2]
+                "Couldn't import %r: %s" % (name, exc)), sys.exc_info()[2]
         return getattr(module, cls_name) if cls_name else module
     except (ImportError, AttributeError):
         if default is None:
@@ -146,7 +146,7 @@ else:
 
         """
         return dict((key.encode('utf-8'), value)
-                        for key, value in kwargs.items())
+                    for key, value in kwargs.items())
 
 
 def maybe_list(v):
@@ -183,8 +183,8 @@ def fxrangemax(start=1.0, stop=None, step=1.0, max=100.0):
 
 
 def retry_over_time(fun, catch, args=[], kwargs={}, errback=None,
-        max_retries=None, interval_start=2, interval_step=2, interval_max=30,
-        callback=None):
+                    max_retries=None, interval_start=2, interval_step=2,
+                    interval_max=30, callback=None):
     """Retry the function over and over until max retries is exceeded.
 
     For each retry we sleep a for a while before we try again, this interval
@@ -330,6 +330,7 @@ def reprcall(name, args=(), kwargs={}, sep=', '):
 
 @contextmanager
 def nested(*managers):  # pragma: no cover
+    # flake8: noqa
     """Combine multiple context managers into a single nested
     context manager."""
     exits = []

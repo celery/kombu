@@ -146,8 +146,8 @@ class ConsumerMixin(object):
 
     def on_decode_error(self, message, exc):
         error("Can't decode message body: %r (type:%r encoding:%r raw:%r')",
-            exc, message.content_type, message.content_encoding,
-            safe_repr(message.body))
+              exc, message.content_type, message.content_encoding,
+              safe_repr(message.body))
         message.ack()
 
     def on_connection_error(self, exc, interval):

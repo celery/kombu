@@ -1,4 +1,6 @@
 """Kombu transport using SQLAlchemy as the message store."""
+# SQLAlchemy overrides != False to have special meaning and pep8 complains
+# flake8: noqa
 
 from Queue import Empty
 
@@ -44,8 +46,8 @@ class Channel(virtual.Channel):
         return self._session
 
     def _get_or_create(self, queue):
-        obj = self.session.query(Queue).filter(Queue.name == queue) \
-                    .first()
+        obj = self.session.query(Queue) \
+            .filter(Queue.name == queue).first()
         if not obj:
             obj = Queue(queue)
             self.session.add(obj)
@@ -73,13 +75,13 @@ class Channel(virtual.Channel):
             self.session.execute('BEGIN IMMEDIATE TRANSACTION')
         try:
             msg = self.session.query(Message) \
-                        .with_lockmode('update') \
-                        .filter(Message.queue_id == obj.id) \
-                        .filter(Message.visible != False) \
-                        .order_by(Message.sent_at) \
-                        .order_by(Message.id) \
-                        .limit(1) \
-                        .first()
+                .with_lockmode('update') \
+                .filter(Message.queue_id == obj.id) \
+                .filter(Message.visible != False) \
+                .order_by(Message.sent_at) \
+                .order_by(Message.id) \
+                .limit(1) \
+                .first()
             if msg:
                 msg.visible = False
                 return loads(msg.payload)
@@ -90,7 +92,7 @@ class Channel(virtual.Channel):
     def _query_all(self, queue):
         obj = self._get_or_create(queue)
         return self.session.query(Message) \
-                .filter(Message.queue_id == obj.id)
+            .filter(Message.queue_id == obj.id)
 
     def _purge(self, queue):
         count = self._query_all(queue).delete(synchronize_session=False)

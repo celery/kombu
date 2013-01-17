@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
 
 import anyjson
 import os
@@ -33,7 +33,8 @@ def find_distribution_modules(name=__name__, file=__file__):
 def import_all_modules(name=__name__, file=__file__, skip=[]):
     for module in find_distribution_modules(name, file):
         if module not in skip:
-            print('preimporting %r for coverage...' % (module, ))
+            print('preimporting {0} for coverage...'.format(module),
+                  file=sys.stderr)
             try:
                 __import__(module)
             except (ImportError, VersionMismatch, AttributeError):
@@ -52,12 +53,17 @@ def setup_django_env():
         return
 
     if not settings.configured:
-        settings.configure(DATABASES={'default': {
-                                'ENGINE': 'django.db.backends.sqlite3',
-                                'NAME': ':memory:'}},
-                           DATABASE_ENGINE='sqlite3',
-                           DATABASE_NAME=':memory:',
-                           INSTALLED_APPS=('kombu.transport.django', ))
+        settings.configure(
+            DATABASES={
+                'default': {
+                    'ENGINE': 'django.db.backends.sqlite3',
+                    'NAME': ':memory:',
+                },
+            },
+            DATABASE_ENGINE='sqlite3',
+            DATABASE_NAME=':memory:',
+            INSTALLED_APPS=('kombu.transport.django', ),
+        )
 
 
 def setup():

@@ -28,23 +28,24 @@ class Message(base.Message):
 
     def __init__(self, channel, msg, **kwargs):
         props = msg.properties
-        super(Message, self).__init__(channel,
-                body=msg.body,
-                delivery_tag=msg.delivery_tag,
-                content_type=props.get('content_type'),
-                content_encoding=props.get('content_encoding'),
-                delivery_info=msg.delivery_info,
-                properties=msg.properties,
-                headers=props.get('application_headers') or {},
-                **kwargs)
+        super(Message, self).__init__(
+            channel,
+            body=msg.body,
+            delivery_tag=msg.delivery_tag,
+            content_type=props.get('content_type'),
+            content_encoding=props.get('content_encoding'),
+            delivery_info=msg.delivery_info,
+            properties=msg.properties,
+            headers=props.get('application_headers') or {},
+            **kwargs)
 
 
 class Channel(amqp.Channel, base.StdChannel):
     Message = Message
 
     def prepare_message(self, body, priority=None,
-                content_type=None, content_encoding=None, headers=None,
-                properties=None):
+                        content_type=None, content_encoding=None,
+                        headers=None, properties=None):
         """Encapsulate data into a AMQP message."""
         return amqp.Message(body, priority=priority,
                             content_type=content_type,
@@ -68,8 +69,9 @@ class Transport(base.Transport):
 
     # it's very annoying that pyamqp sometimes raises AttributeError
     # if the connection is lost, but nothing we can do about that here.
-    connection_errors = (StdConnectionError, ) + \
-                        amqp.Connection.connection_errors
+    connection_errors = (
+        (StdConnectionError, ) + amqp.Connection.connection_errors
+    )
     channel_errors = (StdChannelError, ) + amqp.Connection.channel_errors
 
     nb_keep_draining = True

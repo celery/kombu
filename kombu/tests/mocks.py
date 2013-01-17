@@ -27,7 +27,7 @@ class Channel(base.StdChannel):
     def __init__(self, connection):
         self.connection = connection
         self.called = []
-        self.deliveries = count(1).next
+        self.deliveries = count(1)
         self.to_deliver = []
         self.events = {'basic_return': set()}
         self.channel_id = self._ids()
@@ -42,7 +42,7 @@ class Channel(base.StdChannel):
         self._called('exchange_declare')
 
     def prepare_message(self, body, priority=0, content_type=None,
-            content_encoding=None, headers=None, properties={}):
+                        content_encoding=None, headers=None, properties={}):
         self._called('prepare_message')
         return dict(body=body,
                     headers=headers,
@@ -52,7 +52,7 @@ class Channel(base.StdChannel):
                     content_encoding=content_encoding)
 
     def basic_publish(self, message, exchange='', routing_key='',
-            mandatory=False, immediate=False, **kwargs):
+                      mandatory=False, immediate=False, **kwargs):
         self._called('basic_publish')
         return message, exchange, routing_key
 
@@ -105,9 +105,10 @@ class Channel(base.StdChannel):
     def message_to_python(self, message, *args, **kwargs):
         self._called('message_to_python')
         return Message(self, body=anyjson.dumps(message),
-                delivery_tag=self.deliveries(),
-                throw_decode_error=self.throw_decode_error,
-                content_type='application/json', content_encoding='utf-8')
+                       delivery_tag=next(self.deliveries),
+                       throw_decode_error=self.throw_decode_error,
+                       content_type='application/json',
+                       content_encoding='utf-8')
 
     def flow(self, active):
         self._called('flow')
@@ -118,7 +119,7 @@ class Channel(base.StdChannel):
         return self._called('basic_reject')
 
     def basic_qos(self, prefetch_size=0, prefetch_count=0,
-            apply_global=False):
+                  apply_global=False):
         self._called('basic_qos')
 
 

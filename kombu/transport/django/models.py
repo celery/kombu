@@ -20,7 +20,7 @@ class Queue(models.Model):
 class Message(models.Model):
     visible = models.BooleanField(default=True, db_index=True)
     sent_at = models.DateTimeField(null=True, blank=True, db_index=True,
-                auto_now_add=True)
+                                   auto_now_add=True)
     payload = models.TextField(_('payload'), null=False)
     queue = models.ForeignKey(Queue, related_name='messages')
 

@@ -60,9 +60,9 @@ if sys.version_info[0] == 3:
     from io import BytesIO
 else:
     try:
-        from cStringIO import StringIO as BytesIO # noqa
+        from cStringIO import StringIO as BytesIO  # noqa
     except ImportError:
-        from StringIO import StringIO  as BytesIO # noqa
+        from StringIO import StringIO as BytesIO  # noqa
 
 #: Kombu requires Python 2.5 or later so we use protocol 2 by default.
 #: There's a new protocol (3) but this is only supported by Python 3.
@@ -135,7 +135,7 @@ class SerializerRegistry(object):
             return raw_encode(data)
         if serializer and not self._encoders.get(serializer):
             raise SerializerNotInstalled(
-                        'No encoder installed for %s' % serializer)
+                'No encoder installed for %s' % serializer)
 
         # If a raw string was sent, assume binary encoding
         # (it's likely either ASCII or a raw binary file, and a character
@@ -152,7 +152,7 @@ class SerializerRegistry(object):
 
         if serializer:
             content_type, content_encoding, encoder = \
-                    self._encoders[serializer]
+                self._encoders[serializer]
         else:
             encoder = self._default_encode
             content_type = self._default_content_type
@@ -353,17 +353,18 @@ def register_msgpack():
         except ImportError:
             # msgpack < 0.2.0 and Python 2.5
             from msgpack import packs as dumps, unpacks as loads  # noqa
-        registry.register('msgpack', dumps, loads,
-                content_type='application/x-msgpack',
-                content_encoding='binary')
+        registry.register(
+            'msgpack', dumps, loads,
+            content_type='application/x-msgpack',
+            content_encoding='binary')
     except ImportError:
 
         def not_available(*args, **kwargs):
             """In case a client receives a msgpack message, but yaml
             isn't installed."""
             raise SerializerNotInstalled(
-                    'No decoder installed for msgpack. '
-                    'Install the msgpack library')
+                'No decoder installed for msgpack. '
+                'Please install the msgpack library')
         registry.register('msgpack', None, not_available,
                           'application/x-msgpack')
 

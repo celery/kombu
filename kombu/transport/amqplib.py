@@ -155,20 +155,20 @@ class Connection(amqp.Connection):  # pragma: no cover
         """Wait for an event on a channel."""
         chanmap = self.channels
         chanid, method_sig, args, content = self._wait_multiple(
-                chanmap, None, timeout=timeout)
+            chanmap, None, timeout=timeout)
 
         channel = chanmap[chanid]
 
-        if content \
-        and channel.auto_decode \
-        and hasattr(content, 'content_encoding'):
+        if (content
+                and channel.auto_decode
+                and hasattr(content, 'content_encoding')):
             try:
                 content.body = content.body.decode(content.content_encoding)
             except Exception:
                 pass
 
         amqp_method = self._method_override.get(method_sig) or \
-                        channel._METHOD_MAP.get(method_sig, None)
+            channel._METHOD_MAP.get(method_sig, None)
 
         if amqp_method is None:
             raise Exception('Unknown AMQP method (%d, %d)' % method_sig)
@@ -205,9 +205,9 @@ class Connection(amqp.Connection):  # pragma: no cover
             method_queue = channel.method_queue
             for queued_method in method_queue:
                 method_sig = queued_method[0]
-                if (allowed_methods is None) \
-                or (method_sig in allowed_methods) \
-                or (method_sig == (20, 40)):
+                if (allowed_methods is None
+                        or method_sig in allowed_methods
+                        or method_sig == (20, 40)):
                     method_queue.remove(queued_method)
                     method_sig, args, content = queued_method
                     return channel_id, method_sig, args, content
@@ -218,10 +218,10 @@ class Connection(amqp.Connection):  # pragma: no cover
         while 1:
             channel, method_sig, args, content = read_timeout(timeout)
 
-            if (channel in channels) \
-            and ((allowed_methods is None) \
-                or (method_sig in allowed_methods) \
-                or (method_sig == (20, 40))):
+            if (channel in channels
+                    and allowed_methods is None
+                    or method_sig in allowed_methods
+                    or method_sig == (20, 40)):
                 return channel, method_sig, args, content
 
             # Not the channel and/or method we were looking for. Queue
@@ -247,15 +247,16 @@ class Message(base.Message):
 
     def __init__(self, channel, msg, **kwargs):
         props = msg.properties
-        super(Message, self).__init__(channel,
-                body=msg.body,
-                delivery_tag=msg.delivery_tag,
-                content_type=props.get('content_type'),
-                content_encoding=props.get('content_encoding'),
-                delivery_info=msg.delivery_info,
-                properties=msg.properties,
-                headers=props.get('application_headers') or {},
-                **kwargs)
+        super(Message, self).__init__(
+            channel,
+            body=msg.body,
+            delivery_tag=msg.delivery_tag,
+            content_type=props.get('content_type'),
+            content_encoding=props.get('content_encoding'),
+            delivery_info=msg.delivery_info,
+            properties=msg.properties,
+            headers=props.get('application_headers') or {},
+            **kwargs)
 
 
 class Channel(_Channel, base.StdChannel):
@@ -266,9 +267,8 @@ class Channel(_Channel, base.StdChannel):
         self.no_ack_consumers = set()
         super(Channel, self).__init__(*args, **kwargs)
 
-    def prepare_message(self, body, priority=None,
-                content_type=None, content_encoding=None, headers=None,
-                properties=None):
+    def prepare_message(self, body, priority=None, content_type=None,
+                        content_encoding=None, headers=None, properties=None):
         """Encapsulate data into a AMQP message."""
         return amqp.Message(body, priority=priority,
                             content_type=content_type,

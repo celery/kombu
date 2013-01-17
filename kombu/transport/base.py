@@ -51,9 +51,8 @@ class Message(object):
     MessageStateError = MessageStateError
 
     def __init__(self, channel, body=None, delivery_tag=None,
-            content_type=None, content_encoding=None, delivery_info={},
-            properties=None, headers=None, postencode=None,
-            **kwargs):
+                 content_type=None, content_encoding=None, delivery_info={},
+                 properties=None, headers=None, postencode=None, **kwargs):
         self.channel = channel
         self.delivery_tag = delivery_tag
         self.content_type = content_type
@@ -99,14 +98,14 @@ class Message(object):
             self.ack()
         except errors, exc:
             logger.critical("Couldn't ack %r, reason:%r",
-                    self.delivery_tag, exc, exc_info=True)
+                            self.delivery_tag, exc, exc_info=True)
 
     def reject_log_error(self, logger, errors):
         try:
             self.reject()
         except errors, exc:
             logger.critical("Couldn't ack %r, reason: %r",
-                    self.delivery_tag, exc, exc_info=True)
+                            self.delivery_tag, exc, exc_info=True)
 
     def reject(self):
         """Reject this message.

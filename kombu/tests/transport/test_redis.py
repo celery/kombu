@@ -1,5 +1,4 @@
 from __future__ import absolute_import
-from __future__ import with_statement
 
 import socket
 import types
@@ -7,10 +6,10 @@ import types
 from anyjson import dumps
 from collections import defaultdict
 from itertools import count
-from Queue import Empty, Queue as _Queue
 
 from kombu import Connection, Exchange, Queue, Consumer, Producer
 from kombu.exceptions import InconsistencyError, VersionMismatch
+from kombu.five import Empty, Queue as _Queue
 from kombu.utils import eventio  # patch poll
 
 from kombu.tests.utils import TestCase
@@ -129,10 +128,10 @@ class Client(object):
 
         class _socket(object):
             blocking = True
-            next_fileno = count(30).next
+            filenos = count(30)
 
             def __init__(self, *args):
-                self._fileno = self.next_fileno()
+                self._fileno = next(self.filenos)
                 self.data = []
 
             def fileno(self):
@@ -262,22 +261,28 @@ class test_Channel(TestCase):
         self.assertFalse(s.subscribed)
 
     def test_handle_pmessage_message(self):
-        self.assertDictEqual(self.channel._handle_message(
-                                self.channel.subclient,
-                                ['pmessage', 'pattern', 'channel', 'data']),
-                            {'type': 'pmessage',
-                             'pattern': 'pattern',
-                             'channel': 'channel',
-                             'data': 'data'})
+        self.assertDictEqual(
+            self.channel._handle_message(
+                self.channel.subclient,
+                ['pmessage', 'pattern', 'channel', 'data']
+            ),
+            {'type': 'pmessage',
+             'pattern': 'pattern',
+             'channel': 'channel',
+             'data': 'data'},
+        )
 
     def test_handle_message(self):
-        self.assertDictEqual(self.channel._handle_message(
-                                self.channel.subclient,
-                                ['type', 'channel', 'data']),
-                             {'type': 'type',
-                              'pattern': None,
-                              'channel': 'channel',
-                              'data': 'data'})
+        self.assertDictEqual(
+            self.channel._handle_message(
+                self.channel.subclient,
+                ['type', 'channel', 'data']
+            ),
+            {'type': 'type',
+             'pattern': None,
+             'channel': 'channel',
+             'data': 'data'},
+        )
 
     def test_brpop_start_but_no_queues(self):
         self.assertIsNone(self.channel._brpop_start())
@@ -285,8 +290,9 @@ class test_Channel(TestCase):
     def test_receive(self):
         s = self.channel.subclient = Mock()
         self.channel._fanout_to_queue['a'] = 'b'
-        s.parse_response.return_value = ['message', 'a',
-                                         dumps({'hello': 'world'})]
+        s.parse_response.return_value = [
+            'message', 'a', dumps({'hello': 'world'}),
+        ]
         payload, queue = self.channel._receive()
         self.assertDictEqual(payload, {'hello': 'world'})
         self.assertEqual(queue, 'b')
@@ -725,8 +731,7 @@ class test_MultiChannelPoller(TestCase):
         self.assertEqual(p._register.call_count, 1)
         self.assertEqual(channel._subscribe.call_count, 1)
 
-    def create_get(self, events=None, queues=None,
-            fanouts=None):
+    def create_get(self, events=None, queues=None, fanouts=None):
         _pr = [] if events is None else events
         _aq = [] if queues is None else queues
         _af = [] if fanouts is None else fanouts

@@ -174,8 +174,8 @@ class Exchange(MaybeChannelBound):
                                           nowait=nowait,
                                           arguments=arguments)
 
-    def unbind_from(self, source='', routing_key='', nowait=False,
-            arguments=None):
+    def unbind_from(self, source='', routing_key='',
+                    nowait=False, arguments=None):
         """Delete previously created exchange binding from the server."""
         if isinstance(source, Exchange):
             source = source.name
@@ -186,8 +186,8 @@ class Exchange(MaybeChannelBound):
                                             arguments=arguments)
 
     def Message(self, body, delivery_mode=None, priority=None,
-            content_type=None, content_encoding=None, properties=None,
-            headers=None):
+                content_type=None, content_encoding=None,
+                properties=None, headers=None):
         """Create message instance to be sent with :meth:`publish`.
 
         :param body: Message body.
@@ -226,7 +226,7 @@ class Exchange(MaybeChannelBound):
                                             headers=headers)
 
     def publish(self, message, routing_key=None, mandatory=False,
-            immediate=False, exchange=None):
+                immediate=False, exchange=None):
         """Publish message.
 
         :param message: :meth:`Message` instance to publish.
@@ -287,8 +287,8 @@ class binding(object):
 
     """
 
-    def __init__(self, exchange=None, routing_key='', arguments=None,
-            unbind_arguments=None):
+    def __init__(self, exchange=None, routing_key='',
+                 arguments=None, unbind_arguments=None):
         self.exchange = exchange
         self.routing_key = routing_key
         self.arguments = arguments
@@ -436,8 +436,8 @@ class Queue(MaybeChannelBound):
              ('alias', None),
              ('bindings', list))
 
-    def __init__(self, name='', exchange=None, routing_key='', channel=None,
-            bindings=None, **kwargs):
+    def __init__(self, name='', exchange=None, routing_key='',
+                 channel=None, bindings=None, **kwargs):
         super(Queue, self).__init__(**kwargs)
         self.name = name or self.name
         self.exchange = exchange or self.exchange
@@ -504,8 +504,8 @@ class Queue(MaybeChannelBound):
         return self.bind_to(self.exchange, self.routing_key,
                             self.binding_arguments, nowait=nowait)
 
-    def bind_to(self, exchange='', routing_key='', arguments=None,
-            nowait=False):
+    def bind_to(self, exchange='', routing_key='',
+                arguments=None, nowait=False):
         if isinstance(exchange, Exchange):
             exchange = exchange.name
         return self.channel.queue_bind(queue=self.name,
@@ -542,8 +542,8 @@ class Queue(MaybeChannelBound):
         return self.channel.queue_purge(queue=self.name,
                                         nowait=nowait) or 0
 
-    def consume(self, consumer_tag='', callback=None, no_ack=None,
-            nowait=False):
+    def consume(self, consumer_tag='', callback=None,
+                no_ack=None, nowait=False):
         """Start a queue consumer.
 
         Consumers last as long as the channel they were created on, or
@@ -596,8 +596,8 @@ class Queue(MaybeChannelBound):
         return self.unbind_from(self.exchange, self.routing_key,
                                 arguments, nowait)
 
-    def unbind_from(self, exchange='', routing_key='', arguments=None,
-            nowait=False):
+    def unbind_from(self, exchange='', routing_key='',
+                    arguments=None, nowait=False):
         """Unbind queue by deleting the binding from the server."""
         return self.channel.queue_unbind(queue=self.name,
                                          exchange=exchange.name,

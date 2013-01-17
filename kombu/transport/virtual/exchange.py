@@ -35,8 +35,8 @@ class ExchangeType(object):
         for bindings to this exchange."""
         return routing_key, None, queue
 
-    def equivalent(self, prev, exchange, type, durable, auto_delete,
-            arguments):
+    def equivalent(self, prev, exchange, type,
+                   durable, auto_delete, arguments):
         """Returns true if `prev` and `exchange` is equivalent."""
         return (type == prev['type'] and
                 durable == prev['durable'] and
@@ -50,7 +50,7 @@ class DirectExchange(ExchangeType):
 
     def lookup(self, table, exchange, routing_key, default):
         return [queue for rkey, _, queue in table
-                    if rkey == routing_key]
+                if rkey == routing_key]
 
     def deliver(self, message, exchange, routing_key, **kwargs):
         _lookup = self.channel._lookup
@@ -74,14 +74,14 @@ class TopicExchange(ExchangeType):
 
     def lookup(self, table, exchange, routing_key, default):
         return [queue for rkey, pattern, queue in table
-                        if self._match(pattern, routing_key)]
+                if self._match(pattern, routing_key)]
 
     def deliver(self, message, exchange, routing_key, **kwargs):
         _lookup = self.channel._lookup
         _put = self.channel._put
         deadletter = self.channel.deadletter_queue
         for queue in [q for q in _lookup(exchange, routing_key)
-                            if q and q != deadletter]:
+                      if q and q != deadletter]:
             _put(queue, message, **kwargs)
 
     def prepare_bind(self, queue, exchange, routing_key, arguments):
@@ -90,7 +90,7 @@ class TopicExchange(ExchangeType):
     def key_to_pattern(self, rkey):
         """Get the corresponding regex for any routing key."""
         return '^%s$' % ('\.'.join(self.wildcards.get(word, word)
-                                        for word in rkey.split('.')))
+                                   for word in rkey.split('.')))
 
     def _match(self, pattern, string):
         """Same as :func:`re.match`, except the regex is compiled and cached,

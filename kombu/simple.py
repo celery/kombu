@@ -50,7 +50,7 @@ class SimpleBase(object):
                 return self.buffer.pop()
             try:
                 self.channel.connection.client.drain_events(
-                            timeout=timeout and remaining)
+                    timeout=timeout and remaining)
             except socket.timeout:
                 raise Empty()
             elapsed += time() - time_start
@@ -103,7 +103,8 @@ class SimpleQueue(SimpleBase):
     exchange_opts = {}
 
     def __init__(self, channel, name, no_ack=None, queue_opts=None,
-            exchange_opts=None, serializer=None, compression=None, **kwargs):
+                 exchange_opts=None, serializer=None,
+                 compression=None, **kwargs):
         queue = name
         queue_opts = dict(self.queue_opts, **queue_opts or {})
         exchange_opts = dict(self.exchange_opts, **exchange_opts or {})

@@ -91,7 +91,8 @@ class MultiChannelPoller(object):
 
 class Client(object):
     def __init__(self, uri='tcp://127.0.0.1', port=DEFAULT_PORT,
-            hwm=DEFAULT_HWM, swap_size=None, enable_sink=True, context=None):
+                 hwm=DEFAULT_HWM, swap_size=None, enable_sink=True,
+                 context=None):
         try:
             scheme, parts = uri.split('://')
         except ValueError:
@@ -164,11 +165,10 @@ class Channel(virtual.Channel):
     enable_sink = True
     port_incr = DEFAULT_INCR
 
-    from_transport_options = (virtual.Channel.from_transport_options
-                            + ('hwm',
-                               'swap_size',
-                               'enable_sink',
-                               'port_incr'))
+    from_transport_options = (
+        virtual.Channel.from_transport_options +
+        ('hwm', 'swap_size', 'enable_sink', 'port_incr')
+    )
 
     def __init__(self, *args, **kwargs):
         super_ = super(Channel, self)

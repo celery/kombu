@@ -37,8 +37,8 @@ class Publisher(messaging.Producer):
     _closed = False
 
     def __init__(self, connection, exchange=None, routing_key=None,
-                exchange_type=None, durable=None, auto_delete=None,
-                channel=None, **kwargs):
+                 exchange_type=None, durable=None, auto_delete=None,
+                 channel=None, **kwargs):
         if channel:
             connection = channel
 
@@ -89,8 +89,8 @@ class Consumer(messaging.Consumer):
     _closed = False
 
     def __init__(self, connection, queue=None, exchange=None,
-            routing_key=None, exchange_type=None, durable=None,
-            exclusive=None, auto_delete=None, **kwargs):
+                 routing_key=None, exchange_type=None, durable=None,
+                 exclusive=None, auto_delete=None, **kwargs):
         self.backend = connection.channel()
 
         if durable is not None:
@@ -151,7 +151,7 @@ class Consumer(messaging.Consumer):
     def discard_all(self, filterfunc=None):
         if filterfunc is not None:
             raise NotImplementedError(
-                    'discard_all does not implement filters')
+                'discard_all does not implement filters')
         return self.purge()
 
     def iterconsume(self, limit=None, no_ack=None):
@@ -173,7 +173,7 @@ class Consumer(messaging.Consumer):
 class ConsumerSet(messaging.Consumer):
 
     def __init__(self, connection, from_dict=None, consumers=None,
-            channel=None, **kwargs):
+                 channel=None, **kwargs):
         if channel:
             self._provided_channel = True
             self.backend = channel

@@ -1,12 +1,10 @@
 from __future__ import absolute_import
 
-import __builtin__
 import os
 import sys
 import types
 
 from functools import wraps
-from StringIO import StringIO
 
 import mock
 
@@ -17,6 +15,8 @@ try:
     unittest.skip
 except AttributeError:
     import unittest2 as unittest  # noqa
+
+from kombu.five import StringIO, builtins, string_t, module_name_t
 
 
 class TestCase(unittest.TestCase):
@@ -60,8 +60,8 @@ def redirect_stdouts(fun):
         sys.stdout = StringIO()
         sys.stderr = StringIO()
         try:
-            return fun(*args, **dict(kwargs, stdout=sys.stdout,
-                                             stderr=sys.stderr))
+            return fun(*args, **dict(kwargs,
+                                     stdout=sys.stdout, stderr=sys.stderr))
         finally:
             sys.stdout = sys.__stdout__
             sys.stderr = sys.__stderr__
@@ -76,8 +76,8 @@ def module_exists(*modules):
         @wraps(fun)
         def __inner(*args, **kwargs):
             for module in modules:
-                if isinstance(module, basestring):
-                    module = types.ModuleType(module)
+                if isinstance(module, string_t):
+                    module = types.ModuleType(module_name_t(module))
                 sys.modules[module.__name__] = module
                 try:
                     return fun(*args, **kwargs)
@@ -95,19 +95,19 @@ def mask_modules(*modnames):
 
         @wraps(fun)
         def __inner(*args, **kwargs):
-            realimport = __builtin__.__import__
+            realimport = builtins.__import__
 
             def myimp(name, *args, **kwargs):
                 if name in modnames:
-                    raise ImportError('No module named %s' % name)
+                    raise ImportError('No module named {0}'.format(name))
                 else:
                     return realimport(name, *args, **kwargs)
 
-            __builtin__.__import__ = myimp
+            builtins.__import__ = myimp
             try:
                 return fun(*args, **kwargs)
             finally:
-                __builtin__.__import__ = realimport
+                builtins.__import__ = realimport
 
         return __inner
     return _inner
@@ -120,7 +120,7 @@ def skip_if_environ(env_var_name):
         @wraps(fun)
         def _skips_if_environ(*args, **kwargs):
             if os.environ.get(env_var_name):
-                raise SkipTest('SKIP %s: %s set\n' % (
+                raise SkipTest('SKIP {0}: {1} set'.format(
                     fun.__name__, env_var_name))
             return fun(*args, **kwargs)
 
@@ -135,7 +135,7 @@ def skip_if_module(module):
         def _skip_if_module(*args, **kwargs):
             try:
                 __import__(module)
-                raise SkipTest('SKIP %s: %s available\n' % (
+                raise SkipTest('SKIP {0}: {1} available'.format(
                     fun.__name__, module))
             except ImportError:
                 pass
@@ -151,7 +151,7 @@ def skip_if_not_module(module):
             try:
                 __import__(module)
             except ImportError:
-                raise SkipTest('SKIP %s: %s available\n' % (
+                raise SkipTest('SKIP {0}: {1} available'.format(
                     fun.__name__, module))
             return fun(*args, **kwargs)
         return _skip_if_not_module

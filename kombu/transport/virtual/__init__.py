@@ -63,7 +63,7 @@ class BrokerState(object):
 
     def __init__(self, exchanges=None, bindings=None):
         self.exchanges = {} if exchanges is None else exchanges
-        self.bindings = {}  if bindings  is None else bindings
+        self.bindings = {} if bindings is None else bindings
 
     def clear(self):
         self.exchanges.clear()
@@ -185,13 +185,13 @@ class QoS(object):
         try:
             if state:
                 say('Restoring %r unacknowledged message(s).',
-                        len(self._delivered))
+                    len(self._delivered))
                 unrestored = self.restore_unacked()
 
                 if unrestored:
                     errors, messages = zip(*unrestored)
                     say('UNABLE TO RESTORE %s MESSAGES: %s',
-                            len(errors), errors)
+                        len(errors), errors)
                     emergency_dump_state(messages)
         finally:
             state.restored = True
@@ -336,8 +336,9 @@ class Channel(AbstractChannel, base.StdChannel):
         self.closed = False
 
         # instantiate exchange types
-        self.exchange_types = dict((typ, cls(self))
-                    for typ, cls in self.exchange_types.items())
+        self.exchange_types = dict(
+            (typ, cls(self)) for typ, cls in self.exchange_types.items()
+        )
 
         self.channel_id = self.connection._next_channel_id()
 
@@ -349,13 +350,15 @@ class Channel(AbstractChannel, base.StdChannel):
                 pass
 
     def exchange_declare(self, exchange=None, type='direct', durable=False,
-            auto_delete=False, arguments=None, nowait=False, passive=False):
+                         auto_delete=False, arguments=None,
+                         nowait=False, passive=False):
         """Declare exchange."""
         type = type or 'direct'
         exchange = exchange or 'amq.%s' % (type, )
         if passive:
             if exchange not in self.state.exchanges:
-                raise StdChannelError('404',
+                raise StdChannelError(
+                    '404',
                     u'NOT_FOUND - no exchange %r in vhost %r' % (
                         exchange, self.connection.client.virtual_host or '/'),
                     (50, 10), 'Channel.exchange_declare')
@@ -366,17 +369,16 @@ class Channel(AbstractChannel, base.StdChannel):
                                                     durable, auto_delete,
                                                     arguments):
                 raise NotEquivalentError(
-                        'Cannot redeclare exchange %r in vhost %r with '
-                        'different type, durable or autodelete value' % (
-                            exchange,
-                            self.connection.client.virtual_host or '/'))
+                    'Cannot redeclare exchange %r in vhost %r with '
+                    'different type, durable or autodelete value' % (
+                        exchange, self.connection.client.virtual_host or '/'))
         except KeyError:
             self.state.exchanges[exchange] = {
-                    'type': type,
-                    'durable': durable,
-                    'auto_delete': auto_delete,
-                    'arguments': arguments or {},
-                    'table': [],
+                'type': type,
+                'durable': durable,
+                'auto_delete': auto_delete,
+                'arguments': arguments or {},
+                'table': [],
             }
 
     def exchange_delete(self, exchange, if_unused=False, nowait=False):
@@ -389,10 +391,11 @@ class Channel(AbstractChannel, base.StdChannel):
         """Declare queue."""
         queue = queue or 'amq.gen-%s' % uuid()
         if passive and not self._has_queue(queue, **kwargs):
-            raise StdChannelError('404',
-                    u'NOT_FOUND - no queue %r in vhost %r' % (
-                        queue, self.connection.client.virtual_host or '/'),
-                    (50, 10), 'Channel.queue_declare')
+            raise StdChannelError(
+                '404',
+                u'NOT_FOUND - no queue %r in vhost %r' % (
+                    queue, self.connection.client.virtual_host or '/'),
+                (50, 10), 'Channel.queue_declare')
         else:
             self._new_queue(queue, **kwargs)
         return queue, self._size(queue), 0
@@ -414,15 +417,15 @@ class Channel(AbstractChannel, base.StdChannel):
         self.queue_delete(queue)
 
     def exchange_bind(self, destination, source='', routing_key='',
-            nowait=False, arguments=None):
+                      nowait=False, arguments=None):
         raise NotImplementedError('transport does not support exchange_bind')
 
     def exchange_unbind(self, destination, source='', routing_key='',
-            nowait=False, arguments=None):
+                        nowait=False, arguments=None):
         raise NotImplementedError('transport does not support exchange_unbind')
 
-    def queue_bind(self, queue, exchange=None, routing_key='', arguments=None,
-            **kwargs):
+    def queue_bind(self, queue, exchange=None, routing_key='',
+                   arguments=None, **kwargs):
         """Bind `queue` to `exchange` with `routing key`."""
         if queue in self.state.bindings:
             return
@@ -438,7 +441,7 @@ class Channel(AbstractChannel, base.StdChannel):
             self._queue_bind(exchange, *meta)
 
     def queue_unbind(self, queue, exchange=None, routing_key='',
-            arguments=None, **kwargs):
+                     arguments=None, **kwargs):
         raise NotImplementedError('transport does not support queue_unbind')
 
     def list_bindings(self):
@@ -455,7 +458,7 @@ class Channel(AbstractChannel, base.StdChannel):
         """Publish message."""
         props = message['properties']
         message['body'], props['body_encoding'] = \
-                self.encode_body(message['body'], self.body_encoding)
+            self.encode_body(message['body'], self.body_encoding)
         props['delivery_info']['exchange'] = exchange
         props['delivery_info']['routing_key'] = routing_key
         props['delivery_tag'] = self._next_delivery_tag()
@@ -512,7 +515,7 @@ class Channel(AbstractChannel, base.StdChannel):
         self.qos.reject(delivery_tag, requeue=requeue)
 
     def basic_qos(self, prefetch_size=0, prefetch_count=0,
-            apply_global=False):
+                  apply_global=False):
         """Change QoS settings for this channel.
 
         Only `prefetch_count` is supported.
@@ -578,9 +581,8 @@ class Channel(AbstractChannel, base.StdChannel):
             return self.Message(self, payload=raw_message)
         return raw_message
 
-    def prepare_message(self, body, priority=None,
-            content_type=None, content_encoding=None, headers=None,
-            properties=None):
+    def prepare_message(self, body, priority=None, content_type=None,
+                        content_encoding=None, headers=None, properties=None):
         """Prepare message data."""
         properties = properties or {}
         info = properties.setdefault('delivery_info', {})
@@ -663,7 +665,7 @@ class Management(base.Management):
 
     def get_bindings(self):
         return [dict(destination=q, source=e, routing_key=r)
-                    for q, e, r in self.channel.list_bindings()]
+                for q, e, r in self.channel.list_bindings()]
 
     def close(self):
         self.channel.close()
@@ -715,8 +717,8 @@ class Transport(base.Transport):
             return self._avail_channels.pop()
         except IndexError:
             channel = self.Channel(connection)
-        self.channels.append(channel)
-        return channel
+            self.channels.append(channel)
+            return channel
 
     def close_channel(self, channel):
         try:
