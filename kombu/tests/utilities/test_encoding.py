@@ -16,9 +16,11 @@ from kombu.tests.utils import TestCase
 def clean_encoding():
     old_encoding = sys.modules.pop('kombu.utils.encoding', None)
     import kombu.utils.encoding
-    yield kombu.utils.encoding
-    if old_encoding:
-        sys.modules['kombu.utils.encoding'] = old_encoding
+    try:
+        yield kombu.utils.encoding
+    finally:
+        if old_encoding:
+            sys.modules['kombu.utils.encoding'] = old_encoding
 
 
 class test_default_encoding(TestCase):

@@ -70,24 +70,27 @@ class MutexHeld(Exception):
 @contextmanager
 def Mutex(client, name, expire):
     lock_id = uuid()
-    if client.setnx(name, lock_id):
-        client.expire(name, expire)
-        yield
-    else:
-        if not client.ttl(name):
-            client.expire(name, expire)
-        raise MutexHeld()
-
-    pipe = client.pipeline(True)
+    i_won = client.setnx(name, lock_id)
     try:
-        pipe.watch(name)
-        if pipe.get(name) == lock_id:
-            pipe.multi()
-            pipe.delete(name)
-            pipe.execute()
-        pipe.unwatch()
-    except redis.WatchError:
-        pass
+        if i_won:
+            client.expire(name, expire)
+            yield
+        else:
+            if not client.ttl(name):
+                client.expire(name, expire)
+            raise MutexHeld()
+    finally:
+        if i_won:
+            pipe = client.pipeline(True)
+            try:
+                pipe.watch(name)
+                if pipe.get(name) == lock_id:
+                    pipe.multi()
+                    pipe.delete(name)
+                    pipe.execute()
+                pipe.unwatch()
+            except redis.WatchError:
+                pass
 
 
 class QoS(virtual.QoS):
@@ -652,8 +655,10 @@ class Channel(virtual.Channel):
         else:
             if self._in_poll:
                 client = self._create_client()
-                yield client
-                self.pool.release(client.connection)
+                try:
+                    yield client
+                finally:
+                    self.pool.release(client.connection)
             else:
                 yield self.client
 
