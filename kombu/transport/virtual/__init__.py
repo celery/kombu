@@ -226,7 +226,7 @@ class Message(base.Message):
                 'properties': props,
                 'content-type': self.content_type,
                 'content-encoding': self.content_encoding,
-                'headers': self.headers}
+                'headers': headers}
 
 
 class AbstractChannel(object):
