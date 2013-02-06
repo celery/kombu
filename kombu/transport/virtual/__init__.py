@@ -493,10 +493,13 @@ class Channel(AbstractChannel, base.StdChannel):
                 pass
             self.connection._callbacks.pop(queue, None)
 
-    def basic_get(self, queue, **kwargs):
+    def basic_get(self, queue, no_ack=False, **kwargs):
         """Get message by direct access (synchronous)."""
         try:
-            return self._get(queue)
+            message = self.Message(self, self._get(queue))
+            if not no_ack:
+                self.qos.append(message, message.delivery_tag)
+            return message
         except Empty:
             pass
 
