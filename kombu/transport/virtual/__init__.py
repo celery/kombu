@@ -119,9 +119,9 @@ class QoS(object):
 
     def append(self, message, delivery_tag):
         """Append message to transactional state."""
-        self._delivered[delivery_tag] = message
         if self._dirty:
             self._flush()
+        self._delivered[delivery_tag] = message
 
     def get(self, delivery_tag):
         return self._delivered[delivery_tag]
