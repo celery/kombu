@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+from __future__ import with_statement
 
 import socket
 
@@ -156,13 +157,13 @@ class test_replies(TestCase):
         body, message = Mock(), Mock()
         itermessages.return_value = [(body, message)]
         it = collect_replies(conn, channel, queue, no_ack=False)
-        m = next(it)
+        m = it.next()
         self.assertIs(m, body)
         itermessages.assert_called_with(conn, channel, queue, no_ack=False)
         message.ack.assert_called_with()
 
         with self.assertRaises(StopIteration):
-            next(it)
+            it.next()
 
         channel.after_reply_message_received.assert_called_with(queue.name)
 
@@ -172,7 +173,7 @@ class test_replies(TestCase):
         body, message = Mock(), Mock()
         itermessages.return_value = [(body, message)]
         it = collect_replies(conn, channel, queue)
-        m = next(it)
+        m = it.next()
         self.assertIs(m, body)
         itermessages.assert_called_with(conn, channel, queue, no_ack=True)
         self.assertFalse(message.ack.called)
@@ -183,7 +184,7 @@ class test_replies(TestCase):
         itermessages.return_value = []
         it = collect_replies(conn, channel, queue)
         with self.assertRaises(StopIteration):
-            next(it)
+            it.next()
 
         self.assertFalse(channel.after_reply_message_received.called)
 
@@ -317,11 +318,11 @@ class test_itermessages(TestCase):
         it = common.itermessages(conn, channel, 'q', limit=1,
                                  Consumer=MockConsumer)
 
-        ret = next(it)
+        ret = it.next()
         self.assertTupleEqual(ret, ('body', 'message'))
 
         with self.assertRaises(StopIteration):
-            next(it)
+            it.next()
 
     def test_when_raises_socket_timeout(self):
         conn = self.MockConnection()
@@ -332,7 +333,7 @@ class test_itermessages(TestCase):
                                  Consumer=MockConsumer)
 
         with self.assertRaises(StopIteration):
-            next(it)
+            it.next()
 
     @patch('kombu.common.deque')
     def test_when_raises_IndexError(self, deque):
@@ -344,7 +345,7 @@ class test_itermessages(TestCase):
                                  Consumer=MockConsumer)
 
         with self.assertRaises(StopIteration):
-            next(it)
+            it.next()
 
 
 class test_entry_to_queue(TestCase):

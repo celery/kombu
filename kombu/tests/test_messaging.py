@@ -1,4 +1,5 @@
-from __future__ import absolute_import, unicode_literals
+from __future__ import absolute_import
+from __future__ import with_statement
 
 import anyjson
 import pickle
@@ -67,7 +68,7 @@ class test_Producer(TestCase):
                       'p.declare() declares exchange')
 
     def test_prepare(self):
-        message = {'the quick brown fox': 'jumps over the lazy dog'}
+        message = {u'the quick brown fox': u'jumps over the lazy dog'}
         channel = self.connection.channel()
         p = Producer(channel, self.exchange, serializer='json')
         m, ctype, cencoding = p._prepare(message, headers={})
@@ -76,7 +77,7 @@ class test_Producer(TestCase):
         self.assertEqual(cencoding, 'utf-8')
 
     def test_prepare_compression(self):
-        message = {'the quick brown fox': 'jumps over the lazy dog'}
+        message = {u'the quick brown fox': u'jumps over the lazy dog'}
         channel = self.connection.channel()
         p = Producer(channel, self.exchange, serializer='json')
         headers = {}
@@ -106,16 +107,15 @@ class test_Producer(TestCase):
         self.assertEqual(cencoding, 'alien')
 
     def test_prepare_is_already_unicode(self):
-        message = 'the quick brown fox'
+        message = u'the quick brown fox'
         channel = self.connection.channel()
         p = Producer(channel, self.exchange, serializer='json')
         m, ctype, cencoding = p._prepare(message, content_type='text/plain')
         self.assertEqual(m, message.encode('utf-8'))
         self.assertEqual(ctype, 'text/plain')
         self.assertEqual(cencoding, 'utf-8')
-        m, ctype, cencoding = p._prepare(
-            message, content_type='text/plain', content_encoding='utf-8',
-        )
+        m, ctype, cencoding = p._prepare(message, content_type='text/plain',
+                                         content_encoding='utf-8')
         self.assertEqual(m, message.encode('utf-8'))
         self.assertEqual(ctype, 'text/plain')
         self.assertEqual(cencoding, 'utf-8')
@@ -177,7 +177,7 @@ class test_Producer(TestCase):
     def test_publish(self):
         channel = self.connection.channel()
         p = Producer(channel, self.exchange, serializer='json')
-        message = {'the quick brown fox': 'jumps over the lazy dog'}
+        message = {u'the quick brown fox': u'jumps over the lazy dog'}
         ret = p.publish(message, routing_key='process')
         self.assertIn('prepare_message', channel)
         self.assertIn('basic_publish', channel)
@@ -409,11 +409,11 @@ class test_Consumer(TestCase):
             message.payload     # trigger cache
 
         consumer.register_callback(callback)
-        consumer._receive_callback({'foo': 'bar'})
+        consumer._receive_callback({u'foo': u'bar'})
 
         self.assertIn('basic_ack', channel)
         self.assertIn('message_to_python', channel)
-        self.assertEqual(received[0], {'foo': 'bar'})
+        self.assertEqual(received[0], {u'foo': u'bar'})
 
     def test_basic_ack_twice(self):
         channel = self.connection.channel()

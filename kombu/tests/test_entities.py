@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+from __future__ import with_statement
 
 import pickle
 
@@ -243,7 +244,8 @@ class test_Queue(TestCase):
                 arguments=None,
                 type='direct',
                 durable=True,
-            ), chan.exchange_declare.call_args_list,
+            ),
+            chan.exchange_declare.call_args_list,
         )
 
     def test_can_cache_declaration(self):
@@ -265,9 +267,8 @@ class test_Queue(TestCase):
         )
 
     def test_binds_at_instantiation(self):
-        self.assertTrue(
-            Queue('foo', self.exchange, channel=get_conn().channel()).is_bound,
-        )
+        self.assertTrue(Queue('foo', self.exchange,
+                              channel=get_conn().channel()).is_bound)
 
     def test_also_binds_exchange(self):
         chan = get_conn().channel()

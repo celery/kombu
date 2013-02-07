@@ -1,14 +1,19 @@
-from __future__ import absolute_import, unicode_literals
+from __future__ import absolute_import
+from __future__ import with_statement
 
 import pickle
 import sys
 
 from functools import wraps
-from io import BytesIO, StringIO
 from mock import Mock, patch
 
+if sys.version_info >= (3, 0):
+    from io import StringIO, BytesIO
+else:
+    from StringIO import StringIO, StringIO as BytesIO  # noqa
+
 from kombu import utils
-from kombu.five import string_t
+from kombu.utils.compat import next
 
 from .utils import (
     TestCase,
@@ -57,7 +62,7 @@ class test_utils(TestCase):
                          [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0])
 
     def test_reprkwargs(self):
-        self.assertTrue(utils.reprkwargs({'foo': 'bar', 1: 2, 'k': 'v'}))
+        self.assertTrue(utils.reprkwargs({'foo': 'bar', 1: 2, u'k': 'v'}))
 
     def test_reprcall(self):
         self.assertTrue(
@@ -88,7 +93,7 @@ class test_UUID(TestCase):
             self.assertIsNone(ctypes)
             tid = uuid()
             self.assertTrue(tid)
-            self.assertIsInstance(tid, string_t)
+            self.assertIsInstance(tid, basestring)
 
         try:
             with_ctypes_masked()
@@ -103,8 +108,8 @@ class test_Misc(TestCase):
         def f(**kwargs):
             return kwargs
 
-        kw = {'foo': 'foo',
-              'bar': 'bar'}
+        kw = {u'foo': 'foo',
+              u'bar': 'bar'}
         self.assertTrue(f(**utils.kwdict(kw)))
 
 
@@ -142,8 +147,7 @@ class test_emergency_dump_state(TestCase):
             {'foo': 'bar'},
             open_file=lambda n, m: fh, dump=raise_something
         )
-        # replace at the end removes u' from repr on Py2
-        self.assertIn("'foo': 'bar'", fh.getvalue().replace("u'", "'"))
+        self.assertIn("'foo': 'bar'", fh.getvalue())
         self.assertTrue(stderr.getvalue())
         self.assertFalse(stdout.getvalue())
 
@@ -196,8 +200,8 @@ class test_retry_over_time(TestCase):
             utils.count.return_value = range(10)
             cb = Mock()
             x = utils.retry_over_time(self.myfun, self.Predicate,
-                                      errback=self.errback, interval_max=14,
-                                      callback=cb)
+                                      errback=self.errback, callback=cb,
+                                      interval_max=14)
             self.assertEqual(x, 42)
             self.assertEqual(self.index, 9)
             cb.assert_called_with()
@@ -287,8 +291,10 @@ class test_symbol_by_name(TestCase):
 
     def test_returns_default(self):
         default = object()
-        self.assertIs(utils.symbol_by_name('xyz.ryx.qedoa.weq:foz',
-                      default=default), default)
+        self.assertIs(
+            utils.symbol_by_name('xyz.ryx.qedoa.weq:foz', default=default),
+            default,
+        )
 
     def test_no_default(self):
         with self.assertRaises(ImportError):
@@ -302,17 +308,19 @@ class test_symbol_by_name(TestCase):
 
     def test_package(self):
         from kombu.entity import Exchange
-        self.assertIs(utils.symbol_by_name('.entity:Exchange',
-                      package='kombu'), Exchange)
+        self.assertIs(
+            utils.symbol_by_name('.entity:Exchange', package='kombu'),
+            Exchange,
+        )
         self.assertTrue(utils.symbol_by_name(':Consumer', package='kombu'))
 
 
 class test_ChannelPromise(TestCase):
 
     def test_repr(self):
-        self.assertIn(
-            "'foo'",
+        self.assertEqual(
             repr(utils.ChannelPromise(lambda: 'foo')),
+            "<promise: 'foo'>",
         )
 
 

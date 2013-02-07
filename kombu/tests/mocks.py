@@ -27,7 +27,7 @@ class Channel(base.StdChannel):
     def __init__(self, connection):
         self.connection = connection
         self.called = []
-        self.deliveries = count(1)
+        self.deliveries = count(1).next
         self.to_deliver = []
         self.events = {'basic_return': set()}
         self.channel_id = self._ids()
@@ -105,7 +105,7 @@ class Channel(base.StdChannel):
     def message_to_python(self, message, *args, **kwargs):
         self._called('message_to_python')
         return Message(self, body=anyjson.dumps(message),
-                       delivery_tag=next(self.deliveries),
+                       delivery_tag=self.deliveries(),
                        throw_decode_error=self.throw_decode_error,
                        content_type='application/json',
                        content_encoding='utf-8')

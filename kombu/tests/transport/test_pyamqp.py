@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+from __future__ import with_statement
 
 import sys
 
@@ -49,11 +50,10 @@ class test_Channel(TestCase):
         self.assertFalse(self.channel.no_ack_consumers)
 
     def test_prepare_message(self):
-        x = self.channel.prepare_message(
+        self.assertTrue(self.channel.prepare_message(
             'foobar', 10, 'application/data', 'utf-8',
             properties={},
-        )
-        self.assertTrue(x)
+        ))
 
     def test_message_to_python(self):
         message = Mock()

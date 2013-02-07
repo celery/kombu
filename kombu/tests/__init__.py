@@ -1,4 +1,4 @@
-from __future__ import absolute_import, print_function
+from __future__ import absolute_import
 
 import anyjson
 import os
@@ -33,8 +33,7 @@ def find_distribution_modules(name=__name__, file=__file__):
 def import_all_modules(name=__name__, file=__file__, skip=[]):
     for module in find_distribution_modules(name, file):
         if module not in skip:
-            print('preimporting {0} for coverage...'.format(module),
-                  file=sys.stderr)
+            print('preimporting %r for coverage...' % (module, ))
             try:
                 __import__(module)
             except (ImportError, VersionMismatch, AttributeError):

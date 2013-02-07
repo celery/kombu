@@ -380,7 +380,10 @@ class Consumer(object):
         return self
 
     def __exit__(self, *exc_info):
-        self.cancel()
+        try:
+            self.cancel()
+        except Exception:
+            pass
 
     def add_queue(self, queue):
         queue = queue(self.channel)

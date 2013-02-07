@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+from __future__ import with_statement
 
 import socket
 import types
@@ -6,10 +7,10 @@ import types
 from anyjson import dumps
 from collections import defaultdict
 from itertools import count
+from Queue import Empty, Queue as _Queue
 
 from kombu import Connection, Exchange, Queue, Consumer, Producer
 from kombu.exceptions import InconsistencyError, VersionMismatch
-from kombu.five import Empty, Queue as _Queue
 from kombu.utils import eventio  # patch poll
 
 from kombu.tests.utils import TestCase
@@ -128,10 +129,10 @@ class Client(object):
 
         class _socket(object):
             blocking = True
-            filenos = count(30)
+            next_fileno = count(30).next
 
             def __init__(self, *args):
-                self._fileno = next(self.filenos)
+                self._fileno = self.next_fileno()
                 self.data = []
 
             def fileno(self):
@@ -264,24 +265,28 @@ class test_Channel(TestCase):
         self.assertDictEqual(
             self.channel._handle_message(
                 self.channel.subclient,
-                ['pmessage', 'pattern', 'channel', 'data']
+                ['pmessage', 'pattern', 'channel', 'data'],
             ),
-            {'type': 'pmessage',
-             'pattern': 'pattern',
-             'channel': 'channel',
-             'data': 'data'},
+            {
+                'type': 'pmessage',
+                'pattern': 'pattern',
+                'channel': 'channel',
+                'data': 'data',
+            },
         )
 
     def test_handle_message(self):
         self.assertDictEqual(
             self.channel._handle_message(
                 self.channel.subclient,
-                ['type', 'channel', 'data']
+                ['type', 'channel', 'data'],
             ),
-            {'type': 'type',
-             'pattern': None,
-             'channel': 'channel',
-             'data': 'data'},
+            {
+                'type': 'type',
+                'pattern': None,
+                'channel': 'channel',
+                'data': 'data',
+            },
         )
 
     def test_brpop_start_but_no_queues(self):
@@ -290,9 +295,8 @@ class test_Channel(TestCase):
     def test_receive(self):
         s = self.channel.subclient = Mock()
         self.channel._fanout_to_queue['a'] = 'b'
-        s.parse_response.return_value = [
-            'message', 'a', dumps({'hello': 'world'}),
-        ]
+        s.parse_response.return_value = ['message', 'a',
+                                         dumps({'hello': 'world'})]
         payload, queue = self.channel._receive()
         self.assertDictEqual(payload, {'hello': 'world'})
         self.assertEqual(queue, 'b')

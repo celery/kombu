@@ -8,7 +8,7 @@ def get_manager(client, hostname=None, port=None, userid=None,
 
     def get(name, val, default):
         return (val if val is not None
-                else opt.get('manager_%s' % name)
+                else opt('manager_%s' % name)
                 or getattr(client, name, None) or default)
 
     host = get('hostname', hostname, 'localhost')

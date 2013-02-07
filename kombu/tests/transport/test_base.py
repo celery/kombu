@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+from __future__ import with_statement
 
 from kombu import Connection, Consumer, Producer, Queue
 from kombu.transport.base import Message, StdChannel, Transport
