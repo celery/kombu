@@ -93,7 +93,7 @@ class TopicExchange(ExchangeType):
         """Get the corresponding regex for any routing key."""
         return '^%s$' % ('\.'.join(
             self.wildcards.get(word, word)
-            for word in escape_regex(rkey, '.').split('.')
+            for word in escape_regex(rkey, '.#*').split('.')
         ))
 
     def _match(self, pattern, string):
