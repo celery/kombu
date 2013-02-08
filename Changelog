@@ -10,7 +10,7 @@
 =====
 :release-date: 2013-02-08 01:00 P.M UTC
 
-- Now depends on amqp 1.0.7 which works around a bug found on some
+- Now depends on amqp 1.0.8 which works around a bug found on some
   Python 2.5 installations where 2**32 overflows to 0.
 
 .. _version-2.5.5:
