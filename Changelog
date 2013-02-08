@@ -4,11 +4,20 @@
  Change history
 ================
 
+.. _version-2.5.6:
+
+2.5.6
+=====
+:release-date: 2013-02-08 01:00 P.M UTC
+
+- Now depends on amqp 1.0.7 which works around a bug found on some
+  Python 2.5 installations where 2**32 overflows to 0.
+
 .. _version-2.5.5:
 
 2.5.5
 =====
-:release-date: 2013-02-07 17:00 PM UTC
+:release-date: 2013-02-07 17:00 P.M UTC
 
 SQS: Now supports long polling (Issue #176).
 
@@ -45,7 +54,7 @@ SQS: Now supports long polling (Issue #176).
 
 2.5.4
 =====
-:release-date: 2012-12-10 12:35 PM UTC
+:release-date: 2012-12-10 12:35 P.M UTC
 
 - Fixed problem with connection clone and multiple URLs (Issue #182).
 
@@ -61,19 +70,19 @@ SQS: Now supports long polling (Issue #176).
 
 2.5.3
 =====
-:release-date: 2012-11-29 12:35 PM UTC
+:release-date: 2012-11-29 12:35 P.M UTC
 
 - Pidbox: Fixed compatibility with Python 2.6
 
 2.5.2
 =====
-:release-date: 2012-11-29 12:35 PM UTC
+:release-date: 2012-11-29 12:35 P.M UTC
 
 .. _version-2.5.2:
 
 2.5.2
 =====
-:release-date: 2012-11-29 12:35 PM UTC
+:release-date: 2012-11-29 12:35 P.M UTC
 
 - [Redis] Fixed connection leak and added a new 'max_connections' transport
   option.
