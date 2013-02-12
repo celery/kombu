@@ -56,7 +56,7 @@ class TCPTransport(transport.TCPTransport):
         while len(self._read_buffer) < n:
             try:
                 s = self.sock.recv(65536)
-            except socket.error, exc:
+            except socket.error as exc:
                 if not initial and exc.errno in (errno.EAGAIN, errno.EINTR):
                     continue
                 raise
@@ -105,7 +105,7 @@ class SSLTransport(transport.SSLTransport):
         while len(result) < n:
             try:
                 s = self.sslobj.read(n - len(result))
-            except socket.error, exc:
+            except socket.error as exc:
                 if not initial and exc.errno in (errno.EAGAIN, errno.EINTR):
                     continue
                 raise
@@ -189,7 +189,7 @@ class Connection(amqp.Connection):  # pragma: no cover
         try:
             try:
                 return self.method_reader.read_method()
-            except SSLError, exc:
+            except SSLError as exc:
                 # http://bugs.python.org/issue10272
                 if 'timed out' in str(exc):
                     raise socket.timeout()

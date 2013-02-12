@@ -21,7 +21,7 @@ def cmd(*args):
 def no_enoent():
     try:
         yield
-    except OSError, exc:
+    except OSError as exc:
         if exc.errno != errno.ENOENT:
             raise
 

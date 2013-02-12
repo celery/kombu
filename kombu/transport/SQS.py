@@ -280,7 +280,7 @@ class Channel(virtual.Channel):
             if conn:
                 try:
                     conn.close()
-                except AttributeError, exc:  # FIXME ???
+                except AttributeError as exc:  # FIXME ???
                     if "can't set attribute" not in str(exc):
                         raise
 

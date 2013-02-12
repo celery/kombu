@@ -218,7 +218,7 @@ def retry_over_time(fun, catch, args=[], kwargs={}, errback=None,
     for retries in count():
         try:
             return fun(*args, **kwargs)
-        except catch, exc:
+        except catch as exc:
             if max_retries is not None and retries > max_retries:
                 raise
             if callback:

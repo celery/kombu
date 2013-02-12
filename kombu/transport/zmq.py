@@ -138,8 +138,8 @@ class Client(object):
     def get(self, queue=None, timeout=None):
         try:
             return self.sink.recv(flags=zmq.NOBLOCK)
-        except ZMQError, e:
-            if e.errno == zmq.EAGAIN:
+        except ZMQError as exc:
+            if exc.errno == zmq.EAGAIN:
                 raise socket.error(errno.EAGAIN, e.strerror)
             else:
                 raise
@@ -186,7 +186,7 @@ class Channel(virtual.Channel):
     def _get(self, queue, timeout=None):
         try:
             return loads(self.client.get(queue, timeout))
-        except socket.error, exc:
+        except socket.error as exc:
             if exc.errno == errno.EAGAIN and timeout != 0:
                 raise Empty()
             else:
@@ -268,8 +268,8 @@ class Transport(virtual.Transport):
         for channel in connection.channels:
             try:
                 evt = channel.cycle.get(timeout=timeout)
-            except socket.error, e:
-                if e.errno == errno.EAGAIN:
+            except socket.error as exc:
+                if exc.errno == errno.EAGAIN:
                     continue
                 raise
             else:

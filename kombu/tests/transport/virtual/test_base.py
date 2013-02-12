@@ -380,7 +380,7 @@ class test_Channel(TestCase):
         exc = None
         try:
             raise KeyError()
-        except KeyError, exc_:
+        except KeyError as exc_:
             exc = exc_
         ru.return_value = [(exc, 1)]
 
