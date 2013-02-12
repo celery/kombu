@@ -16,6 +16,7 @@ from .connection import Resource
 from .five import range, values
 from .messaging import Producer
 from .utils import EqualityDict
+from .utils.functional import promise
 
 __all__ = ['ProducerPool', 'PoolGroup', 'register_group',
            'connections', 'producers', 'get_limit', 'set_limit', 'reset']
@@ -46,7 +47,7 @@ class ProducerPool(Resource):
             raise
 
     def new(self):
-        return lambda: self.create_producer()
+        return promise(self.create_producer)
 
     def setup(self):
         if self.limit:
