@@ -1,5 +1,4 @@
 from __future__ import absolute_import
-from __future__ import with_statement
 
 import errno
 import pickle
@@ -11,6 +10,7 @@ from nose import SkipTest
 
 from kombu import Connection, Consumer, Producer, parse_url
 from kombu.connection import Resource
+from kombu.five import items
 
 from .mocks import Transport
 from .utils import TestCase
@@ -60,7 +60,7 @@ class test_connection_utils(TestCase):
 
     def assert_info(self, conn, **fields):
         info = conn.info()
-        for field, expected in fields.iteritems():
+        for field, expected in items(fields):
             self.assertEqual(info[field], expected)
 
     def test_rabbitmq_example_urls(self):

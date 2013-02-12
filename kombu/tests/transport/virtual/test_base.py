@@ -1,5 +1,4 @@
 from __future__ import absolute_import
-from __future__ import with_statement
 
 import warnings
 
@@ -67,7 +66,7 @@ class test_QoS(TestCase):
         self.q.append(i + 1, uuid())
         self.assertFalse(self.q.can_consume())
 
-        tag1 = iter(self.q._delivered).next()
+        tag1 = next(iter(self.q._delivered))
         self.q.ack(tag1)
         self.assertTrue(self.q.can_consume())
 

@@ -48,7 +48,7 @@ class Channel(virtual.Channel):
     def _get(self, queue):
         try:
             if queue in self._fanout_queues:
-                msg = self._queue_cursors[queue].next()
+                msg = next(self._queue_cursors[queue])
                 self._queue_readcounts[queue] += 1
                 return loads(msg['payload'])
             else:

@@ -10,13 +10,12 @@ from __future__ import absolute_import
 import socket
 import string
 
-from Queue import Empty
-
 from anyjson import loads, dumps
 
 import softlayer_messaging
 import os
 
+from kombu.five import Empty, text_t
 from kombu.utils import cached_property  # , uuid
 from kombu.utils.encoding import safe_str
 
@@ -54,7 +53,7 @@ class Channel(virtual.Channel):
 
     def entity_name(self, name, table=CHARS_REPLACE_TABLE):
         """Format AMQP queue name into a valid SLQS queue name."""
-        return unicode(safe_str(name)).translate(table)
+        return text_t(safe_str(name)).translate(table)
 
     def _new_queue(self, queue, **kwargs):
         """Ensures a queue exists in SLQS."""

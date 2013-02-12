@@ -28,6 +28,7 @@ from .log import get_logger
 from .transport import get_transport_cls, supports_librabbitmq
 from .utils import cached_property, retry_over_time, shufflecycle
 from .utils.compat import OrderedDict
+from .utils.functional import promise
 from .utils.url import parse_url
 
 __all__ = ['Connection', 'ConnectionPool', 'ChannelPool']

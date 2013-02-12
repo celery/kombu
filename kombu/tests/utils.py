@@ -1,16 +1,16 @@
 from __future__ import absolute_import
 
-import __builtin__
 import os
 import sys
 import types
 
 from functools import wraps
-from StringIO import StringIO
 
 import mock
 
 from nose import SkipTest
+
+from kombu.five import builtins, string_t, StringIO
 
 try:
     import unittest
@@ -76,7 +76,7 @@ def module_exists(*modules):
         @wraps(fun)
         def __inner(*args, **kwargs):
             for module in modules:
-                if isinstance(module, basestring):
+                if isinstance(module, string_t):
                     module = types.ModuleType(module)
                 sys.modules[module.__name__] = module
                 try:
@@ -95,7 +95,7 @@ def mask_modules(*modnames):
 
         @wraps(fun)
         def __inner(*args, **kwargs):
-            realimport = __builtin__.__import__
+            realimport = builtins.__import__
 
             def myimp(name, *args, **kwargs):
                 if name in modnames:
@@ -103,11 +103,11 @@ def mask_modules(*modnames):
                 else:
                     return realimport(name, *args, **kwargs)
 
-            __builtin__.__import__ = myimp
+            builtins.__import__ = myimp
             try:
                 return fun(*args, **kwargs)
             finally:
-                __builtin__.__import__ = realimport
+                builtins.__import__ = realimport
 
         return __inner
     return _inner

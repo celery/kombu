@@ -201,7 +201,7 @@ class QoS(object):
                 unrestored = self.restore_unacked()
 
                 if unrestored:
-                    errors, messages = zip(*unrestored)
+                    errors, messages = list(zip(*unrestored))
                     say('UNABLE TO RESTORE {0} MESSAGES: {1}',
                         len(errors), errors)
                     emergency_dump_state(messages)

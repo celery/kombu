@@ -7,7 +7,7 @@ In-memory transport.
 """
 from __future__ import absolute_import
 
-from kombu.five import Queue
+from kombu.five import Queue, values
 
 from . import virtual
 
@@ -36,7 +36,7 @@ class Channel(virtual.Channel):
         pass
 
     def _put_fanout(self, exchange, message, **kwargs):
-        for queue in self.queues.values():
+        for queue in values(self.queues):
             queue.put(message)
 
     def _put(self, queue, message, **kwargs):
@@ -56,7 +56,7 @@ class Channel(virtual.Channel):
 
     def close(self):
         super(Channel, self).close()
-        for queue in self.queues.values():
+        for queue in values(self.queues):
             queue.empty()
         self.queues = {}
 

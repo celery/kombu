@@ -140,7 +140,7 @@ class Client(object):
             return self.sink.recv(flags=zmq.NOBLOCK)
         except ZMQError as exc:
             if exc.errno == zmq.EAGAIN:
-                raise socket.error(errno.EAGAIN, e.strerror)
+                raise socket.error(errno.EAGAIN, exc.strerror)
             else:
                 raise
 
