@@ -4,13 +4,148 @@
  Change history
 ================
 
+.. _version-2.5.5:
+
+2.5.5
+=====
+:release-date: 2013-02-07 17:00 PM UTC
+
+SQS: Now supports long polling (Issue #176).
+
+    The polling interval default has been changed to 0 and a new
+    transport option (``wait_time_seconds``) has been added.
+    This parameter specifies how long to wait for a message from
+    SQS, and defaults to 20 seconds, which is the maximum
+    value currently allowed by Amazon SQS.
+
+    Contributed by James Saryerwinnie.
+
+- SQS: Now removes unpickleable fields before restoring messages.
+
+- Consumer.__exit__ now ignores exceptions occurring while
+  cancelling the consumer.
+
+- Virtual:  Routing keys can now consist of characters also used
+  in regular expressions (e.g. parens) (Issue #194).
+
+- Virtual: Fixed compression header when restoring messages.
+
+    Fix contributed by Alex Koshelev.
+
+- Virtual: ack/reject/requeue now works while using ``basic_get``.
+
+- Virtual: Message.reject is now supported by virtual transports
+  (requeue depends on individual transport support).
+
+- Fixed typo in hack used for static analyzers.
+
+    Fix contributed by Basil Mironenko.
+
+.. _version-2.5.4:
+
+2.5.4
+=====
+:release-date: 2012-12-10 12:35 PM UTC
+
+- Fixed problem with connection clone and multiple URLs (Issue #182).
+
+    Fix contributed by Dane Guempel.
+
+- zeromq: Now compatible with libzmq 3.2.x.
+
+    Fix contributed by Andrey Antukh.
+
+- Fixed Python 3 installation problem (Issue #187).
+
+.. _version-2.5.3:
+
+2.5.3
+=====
+:release-date: 2012-11-29 12:35 PM UTC
+
+- Pidbox: Fixed compatibility with Python 2.6
+
+2.5.2
+=====
+:release-date: 2012-11-29 12:35 PM UTC
+
+.. _version-2.5.2:
+
+2.5.2
+=====
+:release-date: 2012-11-29 12:35 PM UTC
+
+- [Redis] Fixed connection leak and added a new 'max_connections' transport
+  option.
+
+.. _version-2.5.1:
+
+2.5.1
+=====
+:release-date: 2012-11-28 12:45 P.M UTC
+
+- Fixed bug where return value of Queue.as_dict could not be serialized with
+  JSON (Issue #177).
+
 .. _version-2.5.0:
 
 2.5.0
 =====
-:release-date: TBA
+:release-date: 2012-11-27 04:00 P.M UTC
 
-- :class:`~kombu.entity.Queue` now supports multiple bindings.
+- `py-amqp`_ is now the new default transport, replacing ``amqplib``.
+
+    The new `py-amqp`_ library is a fork of amqplib started with the
+    following goals:
+
+        - Uses AMQP 0.9.1 instead of 0.8
+        - Support for heartbeats (Issue #79 + Issue #131)
+        - Automatically revives channels on channel errors.
+        - Support for all RabbitMQ extensions
+            - Consumer Cancel Notifications (Issue #131)
+            - Publisher Confirms (Issue #131).
+            - Exchange-to-exchange bindings: ``exchange_bind`` / ``exchange_unbind``.
+        - API compatible with :mod:`librabbitmq` so that it can be used
+          as a pure-python replacement in environments where rabbitmq-c cannot
+          be compiled.  librabbitmq will be updated to support all the same
+          features as py-amqp.
+
+- Support for using multiple connection URL's for failover.
+
+    The first argument to :class:`~kombu.Connection` can now be a list of
+    connection URLs:
+
+    .. code-block:: python
+
+        Connection(['amqp://foo', 'amqp://bar'])
+
+    or it can be a single string argument with several URLs separated by
+    semicolon:
+
+    .. code-block:: python
+
+        Connection('amqp://foo;amqp://bar')
+
+    There is also a new keyword argument ``failover_strategy`` that defines
+    how :meth:`~kombu.Connection.ensure_connection`/
+    :meth:`~kombu.Connection.ensure`/:meth:`kombu.Connection.autoretry` will
+    reconnect in the event of connection failures.
+
+    The default reconnection strategy is ``round-robin``, which will simply
+    cycle through the list forever, and there's also a ``shuffle`` strategy
+    that will select random hosts from the list.  Custom strategies can also
+    be used, in that case the argument must be a generator yielding the URL
+    to connect to.
+
+    Example:
+
+    .. code-block:: python
+
+        Connection('amqp://foo;amqp://bar')
+
+- Now supports PyDev, PyCharm, pylint and other static code analysis tools.
+
+- :class:`~kombu.Queue` now supports multiple bindings.
 
     You can now have multiple bindings in the same queue by having
     the second argument be a list:
@@ -27,14 +162,36 @@
 
     To enable this, helper methods have been added:
 
-        - :meth:`~kombu.entity.Queue.bind_to`
-        - :meth:`~kombu.entity.Queue.unbind_from`
+        - :meth:`~kombu.Queue.bind_to`
+        - :meth:`~kombu.Queue.unbind_from`
 
     Contributed by Rumyana Neykova.
 
+- Custom serializers can now be registered using Setuptools entry-points.
+
+    See :ref:`serialization-entrypoints`.
+
+- New :class:`kombu.common.QoS` class used as a thread-safe way to manage
+  changes to a consumer or channels prefetch_count.
+
+    This was previously an internal class used in Celery now moved to
+    the :mod:`kombu.common` module.
+
+- Consumer now supports a ``on_message`` callback that can be used to process
+  raw messages (not decoded).
+
+    Other callbacks specified using the ``callbacks`` argument, and
+    the ``receive`` method will be not be called when a on message callback
+    is present.
+
+- New utility :func:`kombu.common.ignore_errors` ignores connection and
+  channel errors.
+
+    Must only be used for cleanup actions at shutdown or on connection loss.
+
 - Support for exchange-to-exchange bindings.
 
-    The :class:`~kombu.entity.Exchange` entity gained ``bind_to``
+    The :class:`~kombu.Exchange` entity gained ``bind_to``
     and ``unbind_from`` methods:
 
     .. code-block:: python
@@ -48,6 +205,91 @@
     This is currently only supported by the ``pyamqp`` transport.
 
     Contributed by Rumyana Neykova.
+
+.. _version-2.4.10:
+
+2.4.10
+======
+:release-date: 2012-11-22 06:00 P.M UTC
+
+- The previous versions connection pool changes broke Redis support so that
+  it would always connect to localhost (default setting) no matter what
+  connection parameters were provided (Issue #176).
+
+.. _version-2.4.9:
+
+2.4.9
+=====
+:release-date: 2012-11-21 03:00 P.M UTC
+
+- Redis: Fixed race condition that could occur while trying to restore
+  messages (Issue #171).
+
+    Fix contributed by Ollie Walsh.
+
+- Redis: Each channel is now using a specific connection pool instance,
+  which is disconnected on connection failure.
+
+- ProducerPool: Fixed possible dead-lock in the acquire method.
+
+- ProducerPool: ``force_close_all`` no longer tries to call the non-existent
+  ``Producer._close``.
+
+- librabbitmq: Now implements ``transport.verify_connection`` so that
+  connection pools will not give back connections that are no longer working.
+
+- New and better ``repr()`` for Queue and Exchange objects.
+
+- Python3:  Fixed problem with running the unit test suite.
+
+- Python3: Fixed problem with JSON codec.
+
+.. _version-2.4.8:
+
+2.4.8
+=====
+:release-date: 2012-11-02 05:00 P.M UTC
+
+- Redis:  Improved fair queue cycle implementation (Issue #166).
+
+    Contributed by Kevin McCarthy.
+
+- Redis: Unacked message restore limit is now unlimited by default.
+
+    Also, the limit can now be configured using the ``unacked_restore_limit``
+    transport option:
+
+    .. code-block:: python
+
+        Connection('redis://', transport_options={
+            'unacked_restore_limit': 100,
+        })
+
+        A limit of 100 means that the consumer will restore at most 100
+        messages at each pass.
+
+- Redis: Now uses a mutex to ensure only one consumer restores messages at a
+  time.
+
+    The mutex expires after 5 minutes by default, but can be configured
+    using the ``unacked_mutex_expire`` transport option.
+
+- LamportClock.adjust now returns the new clock value.
+
+- Heartbeats can now be specified in URLs.
+
+    Fix contributed by Mher Movsisyan.
+
+- Kombu can now be used with PyDev, PyCharm and other static analysis tools.
+
+- Fixes problem with msgpack on Python 3 (Issue #162).
+
+    Fix contributed by Jasper Bryant-Greene
+
+- amqplib: Fixed bug with timeouts when SSL is used in non-blocking mode.
+
+    Fix contributed by Mher Movsisyan
+
 
 .. _version-2.4.7:
 
@@ -264,7 +506,7 @@
 =====
 :release-date: 2012-07-10 17:00 P.M BST
 
-- Adds ``messaging.entry_to_queue`` for compat with previous versions.
+- Adds ``kombu.messaging.entry_to_queue`` for compat with previous versions.
 
 .. _version-2.2.5:
 
@@ -497,6 +739,8 @@ News
     :mod:`kombu.transport.zookeeper`.
 
     Contributed by Mahendra M.
+
+.. _`Apache ZooKeeper`: http://zookeeper.apache.org/
 
 - Redis: Priority support.
 
@@ -930,7 +1174,7 @@ News
                          declare=[exchange], retry_policy={
                             'interval_start': 1.0})
 
-    See :meth:`~kombu.connection.Connection.ensure`
+    See :meth:`~kombu.Connection.ensure`
     for a list of supported retry policy options.
 
 * ``Producer.publish`` now supports a ``declare`` keyword argument.
@@ -1090,7 +1334,7 @@ Fixes
     This module contains a :class:`~kombu.mixins.ConsumerMixin` class
     that can be used to easily implement a message consumer
     thread that consumes messages from one or more
-    :class:`kombu.messaging.Consumer` instances.
+    :class:`kombu.Consumer` instances.
 
 * New example: :ref:`task-queue-example`
 

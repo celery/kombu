@@ -4,17 +4,16 @@ kombu.pools
 
 Public resource pools.
 
-:copyright: (c) 2009 - 2012 by Ask Solem.
-:license: BSD, see LICENSE for more details.
-
 """
 from __future__ import absolute_import
 
 import os
 
+from collections import Callable
 from itertools import chain
 
 from .connection import Resource
+from .five import range, values
 from .messaging import Producer
 from .utils import EqualityDict
 
@@ -39,27 +38,39 @@ class ProducerPool(Resource):
         return self.connections.acquire(block=True)
 
     def create_producer(self):
-        return self.Producer(self._acquire_connection())
+        conn = self._acquire_connection()
+        try:
+            return self.Producer(conn)
+        except BaseException:
+            conn.release()
+            raise
 
     def new(self):
         return lambda: self.create_producer()
 
     def setup(self):
         if self.limit:
-            for _ in xrange(self.limit):
+            for _ in range(self.limit):
                 self._resource.put_nowait(self.new())
 
+    def close_resource(self, resource):
+        pass
+
     def prepare(self, p):
-        if callable(p):
+        if isinstance(p, Callable):
             p = p()
-        if not p.channel:
-            connection = self._acquire_connection()
-            p.revive(connection.default_channel)
+        if p._channel is None:
+            conn = self._acquire_connection()
+            try:
+                p.revive(conn)
+            except BaseException:
+                conn.release()
+                raise
         return p
 
     def release(self, resource):
-        if resource.connection:
-            resource.connection.release()
+        if resource.__connection__:
+            resource.__connection__.release()
         resource.channel = None
         super(ProducerPool, self).release(resource)
 
@@ -102,7 +113,7 @@ producers = register_group(Producers(limit=use_global_limit))
 
 
 def _all_pools():
-    return chain(*[(g.itervalues() if g else iter([])) for g in _groups])
+    return chain(*[(values(g) if g else iter([])) for g in _groups])
 
 
 def get_limit():

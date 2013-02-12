@@ -7,8 +7,6 @@ Transport using the file system as the message store.
 """
 from __future__ import absolute_import
 
-from Queue import Empty
-
 from anyjson import loads, dumps
 
 import os
@@ -18,8 +16,10 @@ import uuid
 import tempfile
 
 from . import virtual
-from kombu.exceptions import StdChannelError
+from kombu.exceptions import StdConnectionError, StdChannelError
+from kombu.five import Empty
 from kombu.utils import cached_property
+from kombu.utils.encoding import str_to_bytes, bytes_to_str
 
 VERSION = (1, 0, 0)
 __version__ = ".".join(map(str, VERSION))
@@ -72,10 +72,11 @@ class Channel(virtual.Channel):
         try:
             f = open(filename, 'wb')
             lock(f, LOCK_EX)
-            f.write(dumps(payload))
+            dumps(payload)
+            f.write(str_to_bytes(dumps(payload)))
         except (IOError, OSError):
             raise StdChannelError(
-                'Filename [%s] could not be placed into folder.' % filename)
+                'Cannot add file {0!r} to directory'.format(filename))
         finally:
             unlock(f)
             f.close()
@@ -114,9 +115,9 @@ class Channel(virtual.Channel):
                     os.remove(filename)
             except (IOError, OSError):
                 raise StdChannelError(
-                    'Filename [%s] could not be read from queue.' % filename)
+                    'Cannot read file {0!r} from queue.'.format(filename))
 
-            return loads(payload)
+            return loads(bytes_to_str(payload))
 
         raise Empty()
 
@@ -187,7 +188,7 @@ class Transport(virtual.Transport):
     Channel = Channel
 
     default_port = 0
-    connection_errors = ()
+    connection_errors = (StdConnectionError, )
     channel_errors = (StdChannelError, )
 
     driver_type = 'filesystem'

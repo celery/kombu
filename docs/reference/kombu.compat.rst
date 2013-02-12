@@ -8,7 +8,7 @@
     Publisher
     ---------
 
-    Replace with :class:`kombu.messaging.Producer`.
+    Replace with :class:`kombu.Producer`.
 
     .. autoclass:: Publisher
         :members:
@@ -18,7 +18,7 @@
     Consumer
     --------
 
-    Replace with :class:`kombu.messaging.Consumer`.
+    Replace with :class:`kombu.Consumer`.
 
     .. autoclass:: Consumer
         :members:
@@ -28,7 +28,7 @@
     ConsumerSet
     -----------
 
-    Replace with :class:`kombu.messaging.Consumer`.
+    Replace with :class:`kombu.Consumer`.
 
     .. autoclass:: ConsumerSet
         :members:

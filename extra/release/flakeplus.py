@@ -37,7 +37,7 @@ class FlakePP(object):
     re_with = compile(RE_WITH)
     re_noqa = compile(RE_NOQA)
     map = {"abs": True, "print": False,
-            "with": False, "with-used": False}
+           "with": False, "with-used": False}
 
     def __init__(self, verbose=False):
         self.verbose = verbose

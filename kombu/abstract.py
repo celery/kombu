@@ -4,9 +4,6 @@ kombu.compression
 
 Object utilities.
 
-:copyright: (c) 2009 - 2012 by Ask Solem.
-:license: BSD, see LICENSE for more details.
-
 """
 from __future__ import absolute_import
 
@@ -14,6 +11,7 @@ from copy import copy
 
 from .connection import maybe_channel
 from .exceptions import NotBoundError
+from .utils import ChannelPromise
 
 __all__ = ['Object', 'MaybeChannelBound']
 
@@ -39,17 +37,14 @@ class Object(object):
                 except AttributeError:
                     setattr(self, name, None)
 
-    def setdefault(self, **defaults):
-        for key, value in defaults.iteritems():
-            if getattr(self, key) is None:
-                setattr(self, key, value)
-
     def as_dict(self, recurse=False):
-        def f(obj):
+        def f(obj, type):
             if recurse and isinstance(obj, Object):
                 return obj.as_dict(recurse=True)
-            return obj
-        return dict((attr, f(getattr(self, attr))) for attr, _ in self.attrs)
+            return type(obj) if type else obj
+        return dict(
+            (attr, f(getattr(self, attr), type)) for attr, type in self.attrs
+        )
 
     def __reduce__(self):
         return unpickle_dict, (self.__class__, self.as_dict())
@@ -97,10 +92,11 @@ class MaybeChannelBound(Object):
         pass
 
     def __repr__(self, item=''):
+        item = item or type(self).__name__
         if self.is_bound:
-            return '<bound %s of %s>' % (item or self.__class__.__name__,
-                                         self.channel)
-        return '<unbound %s>' % (item, )
+            return '<{0} bound to chan:{1}>'.format(
+                item or type(self).__name__, self.channel.channel_id)
+        return '<unbound {0}>'.format(item)
 
     @property
     def is_bound(self):
@@ -110,8 +106,11 @@ class MaybeChannelBound(Object):
     @property
     def channel(self):
         """Current channel if the object is bound."""
-        if self._channel is None:
+        channel = self._channel
+        if channel is None:
             raise NotBoundError(
-                "Can't call method on %s not bound to a channel" % (
-                    self.__class__.__name__))
-        return self._channel
+                "Can't call method on {0} not bound to a channel".format(
+                    type(self).__name__))
+        if isinstance(channel, ChannelPromise):
+            channel = self._channel = channel()
+        return channel

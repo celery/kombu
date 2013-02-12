@@ -4,9 +4,6 @@ kombu.simple
 
 Simple interface.
 
-:copyright: (c) 2009 - 2012 by Ask Solem.
-:license: BSD, see LICENSE for more details.
-
 """
 from __future__ import absolute_import
 
@@ -14,11 +11,11 @@ import socket
 
 from collections import deque
 from time import time
-from Queue import Empty
 
 from . import entity
 from . import messaging
 from .connection import maybe_channel
+from .five import Empty
 
 __all__ = ['SimpleQueue', 'SimpleBuffer']
 
@@ -53,7 +50,7 @@ class SimpleBase(object):
                 return self.buffer.pop()
             try:
                 self.channel.connection.client.drain_events(
-                            timeout=timeout and remaining)
+                    timeout=timeout and remaining)
             except socket.timeout:
                 raise Empty()
             elapsed += time() - time_start
@@ -96,8 +93,9 @@ class SimpleBase(object):
         """`len(self) -> self.qsize()`"""
         return self.qsize()
 
-    def __nonzero__(self):
+    def __bool__(self):
         return True
+    __nonzero__ = __bool__
 
 
 class SimpleQueue(SimpleBase):
@@ -106,7 +104,8 @@ class SimpleQueue(SimpleBase):
     exchange_opts = {}
 
     def __init__(self, channel, name, no_ack=None, queue_opts=None,
-            exchange_opts=None, serializer=None, compression=None, **kwargs):
+                 exchange_opts=None, serializer=None,
+                 compression=None, **kwargs):
         queue = name
         queue_opts = dict(self.queue_opts, **queue_opts or {})
         exchange_opts = dict(self.exchange_opts, **exchange_opts or {})

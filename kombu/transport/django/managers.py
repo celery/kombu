@@ -50,8 +50,9 @@ class MessageManager(models.Manager):
     @transaction.commit_manually
     def pop(self):
         try:
-            resultset = select_for_update(self.filter(visible=True)
-                                            .order_by('sent_at', 'id'))
+            resultset = select_for_update(
+                self.filter(visible=True).order_by('sent_at', 'id')
+            )
             result = resultset[0:1].get()
             result.visible = False
             result.save()
@@ -69,8 +70,11 @@ class MessageManager(models.Manager):
     def cleanup(self):
         cursor = self.connection_for_write().cursor()
         try:
-            cursor.execute('DELETE FROM %s WHERE visible=%%s' % (
-                            self.model._meta.db_table, ), (False, ))
+            cursor.execute(
+                'DELETE FROM %s WHERE visible=%%s' % (
+                    self.model._meta.db_table, ),
+                (False, )
+            )
         except:
             transaction.rollback_unless_managed()
         else:

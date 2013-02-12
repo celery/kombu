@@ -2,13 +2,14 @@ from __future__ import absolute_import
 from __future__ import with_statement
 
 import anyjson
+import pickle
 
+from collections import defaultdict
 from mock import patch
 
-from kombu import Connection
+from kombu import Connection, Consumer, Producer, Exchange, Queue
 from kombu.exceptions import MessageStateError
-from kombu.messaging import Consumer, Producer
-from kombu.entity import Exchange, Queue
+from kombu.utils import ChannelPromise
 
 from .mocks import Transport
 from .utils import TestCase
@@ -23,6 +24,16 @@ class test_Producer(TestCase):
         self.connection.connect()
         self.assertTrue(self.connection.connection.connected)
         self.assertFalse(self.exchange.is_bound)
+
+    def test_pickle(self):
+        chan = Mock()
+        producer = Producer(chan, serializer='pickle')
+        p2 = pickle.loads(pickle.dumps(producer))
+        self.assertEqual(p2.serializer, producer.serializer)
+
+    def test_no_channel(self):
+        p = Producer(None)
+        self.assertFalse(p._channel)
 
     @patch('kombu.common.maybe_declare')
     def test_maybe_declare(self, maybe_declare):
@@ -76,8 +87,10 @@ class test_Producer(TestCase):
         self.assertEqual(cencoding, 'utf-8')
         self.assertEqual(headers['compression'], 'application/x-gzip')
         import zlib
-        self.assertEqual(anyjson.loads(
-                            zlib.decompress(m).decode('utf-8')), message)
+        self.assertEqual(
+            anyjson.loads(zlib.decompress(m).decode('utf-8')),
+            message,
+        )
 
     def test_prepare_custom_content_type(self):
         message = 'the quick brown fox'.encode('utf-8')
@@ -102,23 +115,39 @@ class test_Producer(TestCase):
         self.assertEqual(ctype, 'text/plain')
         self.assertEqual(cencoding, 'utf-8')
         m, ctype, cencoding = p._prepare(message, content_type='text/plain',
-                                        content_encoding='utf-8')
+                                         content_encoding='utf-8')
         self.assertEqual(m, message.encode('utf-8'))
         self.assertEqual(ctype, 'text/plain')
         self.assertEqual(cencoding, 'utf-8')
 
     def test_publish_with_Exchange_instance(self):
         p = self.connection.Producer()
-        p.exchange.publish = Mock()
-        p.publish('hello', exchange=Exchange('foo'))
-        self.assertEqual(p.exchange.publish.call_args[0][4], 'foo')
+        p.channel = Mock()
+        p.publish('hello', exchange=Exchange('foo'), delivery_mode='transient')
+        self.assertEqual(
+            p._channel.basic_publish.call_args[1]['exchange'], 'foo',
+        )
+
+    def test_set_on_return(self):
+        chan = Mock()
+        chan.events = defaultdict(Mock)
+        p = Producer(ChannelPromise(lambda: chan), on_return='on_return')
+        p.channel
+        chan.events['basic_return'].add.assert_called_with('on_return')
+
+    def test_publish_retry_calls_ensure(self):
+        p = Producer(Mock())
+        p._connection = Mock()
+        ensure = p.connection.ensure = Mock()
+        p.publish('foo', exchange='foo', retry=True)
+        self.assertTrue(ensure.called)
 
     def test_publish_retry_with_declare(self):
         p = self.connection.Producer()
         p.maybe_declare = Mock()
         p.connection.ensure = Mock()
         ex = Exchange('foo')
-        p._publish('hello', 'rk', 0, 0, ex, declare=[ex])
+        p._publish('hello', 0, '', '', {}, {}, 'rk', 0, 0, ex, declare=[ex])
         p.maybe_declare.assert_called_with(ex)
 
     def test_revive_when_channel_is_connection(self):
@@ -142,6 +171,7 @@ class test_Producer(TestCase):
     def test_connection_property_handles_AttributeError(self):
         p = self.connection.Producer()
         p.channel = object()
+        p.__connection__ = None
         self.assertIsNone(p.connection)
 
     def test_publish(self):
@@ -192,6 +222,12 @@ class test_Consumer(TestCase):
         self.connection.connect()
         self.assertTrue(self.connection.connection.connected)
         self.exchange = Exchange('foo', 'direct')
+
+    def test_set_no_channel(self):
+        c = Consumer(None)
+        self.assertIsNone(c.channel)
+        c.revive(Mock())
+        self.assertTrue(c.channel)
 
     def test_set_no_ack(self):
         channel = self.connection.channel()

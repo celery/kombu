@@ -9,6 +9,7 @@ from kombu import Connection
 from kombu.exceptions import StdChannelError
 from kombu.transport import virtual
 from kombu.utils import uuid
+from kombu.compression import compress
 
 from kombu.tests.compat import catch_warnings
 from kombu.tests.utils import TestCase
@@ -93,6 +94,9 @@ class test_QoS(TestCase):
         self.assertTrue(stderr.getvalue())
         self.assertFalse(stdout.getvalue())
 
+        self.q.restore_at_shutdown = False
+        self.q.restore_unacked_once()
+
     def test_get(self):
         self.q._delivered['foo'] = 1
         self.assertEqual(self.q.get('foo'), 1)
@@ -119,13 +123,15 @@ class test_Message(TestCase):
 
     def test_serializable(self):
         c = client().channel()
-        data = c.prepare_message('the quick brown fox...')
+        body, content_type = compress('the quick brown fox...', 'gzip')
+        data = c.prepare_message(body, headers={'compression': content_type})
         tag = data['properties']['delivery_tag'] = uuid()
         message = c.message_to_python(data)
         dict_ = message.serializable()
         self.assertEqual(dict_['body'],
                          'the quick brown fox...'.encode('utf-8'))
         self.assertEqual(dict_['properties']['delivery_tag'], tag)
+        self.assertFalse('compression' in dict_['headers'])
 
 
 class test_AbstractChannel(TestCase):
@@ -178,10 +184,34 @@ class test_Channel(TestCase):
         if self.channel._qos is not None:
             self.channel._qos._on_collect.cancel()
 
+    def test_exchange_bind_interface(self):
+        with self.assertRaises(NotImplementedError):
+            self.channel.exchange_bind('dest', 'src', 'key')
+
+    def test_exchange_unbind_interface(self):
+        with self.assertRaises(NotImplementedError):
+            self.channel.exchange_unbind('dest', 'src', 'key')
+
+    def test_queue_unbind_interface(self):
+        with self.assertRaises(NotImplementedError):
+            self.channel.queue_unbind('dest', 'ex', 'key')
+
+    def test_management(self):
+        m = self.channel.connection.client.get_manager()
+        self.assertTrue(m)
+        m.get_bindings()
+        m.close()
+
     def test_exchange_declare(self):
         c = self.channel
+
+        with self.assertRaises(StdChannelError):
+            c.exchange_declare('test_exchange_declare', 'direct',
+                               durable=True, auto_delete=True, passive=True)
         c.exchange_declare('test_exchange_declare', 'direct',
                            durable=True, auto_delete=True)
+        c.exchange_declare('test_exchange_declare', 'direct',
+                           durable=True, auto_delete=True, passive=True)
         self.assertIn('test_exchange_declare', c.state.exchanges)
         # can declare again with same values
         c.exchange_declare('test_exchange_declare', 'direct',
@@ -259,7 +289,7 @@ class test_Channel(TestCase):
         self.assertIn(n, c.purged)
 
     def test_basic_publish__get__consume__restore(self,
-            n='test_basic_publish'):
+                                                  n='test_basic_publish'):
         c = memory_client().channel()
 
         c.exchange_declare(n)
@@ -279,8 +309,8 @@ class test_Channel(TestCase):
 
         consumer_tag = uuid()
 
-        c.basic_consume(n + '2', False, consumer_tag=consumer_tag,
-                                        callback=lambda *a: None)
+        c.basic_consume(n + '2', False,
+                        consumer_tag=consumer_tag, callback=lambda *a: None)
         self.assertIn(n + '2', c._active_queues)
         r2, _ = c.drain_events()
         r2 = c.message_to_python(r2)
@@ -338,7 +368,7 @@ class test_Channel(TestCase):
     @patch('kombu.transport.virtual.emergency_dump_state')
     @patch('kombu.transport.virtual.say')
     def test_restore_unacked_once_when_unrestored(self, say,
-            emergency_dump_state):
+                                                  emergency_dump_state):
         q = self.channel.qos
         q._flush = Mock()
 
@@ -382,8 +412,10 @@ class test_Channel(TestCase):
     def test_lookup__undeliverable(self, n='test_lookup__undeliverable'):
         warnings.resetwarnings()
         with catch_warnings(record=True) as log:
-            self.assertListEqual(self.channel._lookup(n, n, 'ae.undeliver'),
-                                                      ['ae.undeliver'])
+            self.assertListEqual(
+                self.channel._lookup(n, n, 'ae.undeliver'),
+                ['ae.undeliver'],
+            )
             self.assertTrue(log)
             self.assertIn('could not be delivered', log[0].message.args[0])
 

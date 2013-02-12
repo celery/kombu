@@ -4,9 +4,6 @@ kombu.utils.eventio
 
 Evented IO support for multiple platforms.
 
-:copyright: (c) 2009 - 2012 by Ask Solem.
-:license: BSD, see LICENSE for more details.
-
 """
 from __future__ import absolute_import
 
@@ -153,8 +150,9 @@ class _kqueue(Poller):
                            filter=KQ_FILTER_WRITE,
                            flags=flags))
         if not kevents or events & READ:
-            kevents.append(kevent(fd,
-                filter=KQ_FILTER_READ, flags=flags))
+            kevents.append(
+                kevent(fd, filter=KQ_FILTER_READ, flags=flags),
+            )
         control = self._kcontrol
         for e in kevents:
             try:
@@ -182,7 +180,7 @@ class _kqueue(Poller):
                 file_changes.append(k)
         if file_changes:
             self.on_file_change(file_changes)
-        return events.items()
+        return list(events.items())
 
     def close(self):
         self._kqueue.close()
@@ -224,7 +222,7 @@ class _select(Poller):
             if not isinstance(fd, int):
                 fd = fd.fileno()
             events[fd] = events.get(fd, 0) | ERR
-        return events.items()
+        return list(events.items())
 
     def close(self):
         pass

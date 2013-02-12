@@ -85,7 +85,7 @@ The producer pool group
 =======================
 
 This is a pool group just like the connections, except
-that it manages :class:`~kombu.messaging.Producer` instances
+that it manages :class:`~kombu.Producer` instances
 used to publish messages.
 
 Here is an example using the producer pool to publish a message

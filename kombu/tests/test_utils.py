@@ -1,9 +1,11 @@
 from __future__ import absolute_import
+from __future__ import with_statement
 
 import pickle
 import sys
 
 from functools import wraps
+from mock import Mock, patch
 
 if sys.version_info >= (3, 0):
     from io import StringIO, BytesIO
@@ -13,8 +15,10 @@ else:
 from kombu import utils
 from kombu.utils.compat import next
 
-from .utils import redirect_stdouts, mask_modules, skip_if_module
-from .utils import TestCase
+from .utils import (
+    TestCase,
+    redirect_stdouts, mask_modules, module_exists, skip_if_module,
+)
 
 
 class OldString(object):
@@ -30,6 +34,13 @@ class OldString(object):
 
     def rsplit(self, *args, **kwargs):
         return self.value.rsplit(*args, **kwargs)
+
+
+class test_kombu_module(TestCase):
+
+    def test_dir(self):
+        import kombu
+        self.assertTrue(dir(kombu))
 
 
 class test_utils(TestCase):
@@ -54,8 +65,9 @@ class test_utils(TestCase):
         self.assertTrue(utils.reprkwargs({'foo': 'bar', 1: 2, u'k': 'v'}))
 
     def test_reprcall(self):
-        self.assertTrue(utils.reprcall('add',
-            (2, 2), {'copy': True}))
+        self.assertTrue(
+            utils.reprcall('add', (2, 2), {'copy': True}),
+        )
 
 
 class test_UUID(TestCase):
@@ -131,8 +143,10 @@ class test_emergency_dump_state(TestCase):
         def raise_something(*args, **kwargs):
             raise KeyError('foo')
 
-        utils.emergency_dump_state({'foo': 'bar'}, open_file=lambda n, m: fh,
-                                                   dump=raise_something)
+        utils.emergency_dump_state(
+            {'foo': 'bar'},
+            open_file=lambda n, m: fh, dump=raise_something
+        )
         self.assertIn("'foo': 'bar'", fh.getvalue())
         self.assertTrue(stderr.getvalue())
         self.assertFalse(stdout.getvalue())
@@ -177,31 +191,69 @@ class test_retry_over_time(TestCase):
 
     @insomnia
     def test_simple(self):
-        x = utils.retry_over_time(self.myfun, self.Predicate,
-                errback=self.errback, interval_max=14)
-        self.assertEqual(x, 42)
-        self.assertEqual(self.index, 9)
+        prev_count, utils.count = utils.count, Mock()
+        try:
+            utils.count.return_value = range(1)
+            x = utils.retry_over_time(self.myfun, self.Predicate,
+                                      errback=None, interval_max=14)
+            self.assertIsNone(x)
+            utils.count.return_value = range(10)
+            cb = Mock()
+            x = utils.retry_over_time(self.myfun, self.Predicate,
+                                      errback=self.errback, callback=cb,
+                                      interval_max=14)
+            self.assertEqual(x, 42)
+            self.assertEqual(self.index, 9)
+            cb.assert_called_with()
+        finally:
+            utils.count = prev_count
 
     @insomnia
     def test_retry_once(self):
-        self.assertRaises(self.Predicate, utils.retry_over_time,
-                self.myfun, self.Predicate,
-                max_retries=1, errback=self.errback, interval_max=14)
+        self.assertRaises(
+            self.Predicate, utils.retry_over_time,
+            self.myfun, self.Predicate,
+            max_retries=1, errback=self.errback, interval_max=14,
+        )
         self.assertEqual(self.index, 2)
         # no errback
-        self.assertRaises(self.Predicate, utils.retry_over_time,
-                self.myfun, self.Predicate,
-                max_retries=1, errback=None, interval_max=14)
+        self.assertRaises(
+            self.Predicate, utils.retry_over_time,
+            self.myfun, self.Predicate,
+            max_retries=1, errback=None, interval_max=14,
+        )
 
     @insomnia
     def test_retry_never(self):
-        self.assertRaises(self.Predicate, utils.retry_over_time,
-                self.myfun, self.Predicate,
-                max_retries=0, errback=self.errback, interval_max=14)
+        self.assertRaises(
+            self.Predicate, utils.retry_over_time,
+            self.myfun, self.Predicate,
+            max_retries=0, errback=self.errback, interval_max=14,
+        )
         self.assertEqual(self.index, 1)
 
 
 class test_cached_property(TestCase):
+
+    def test_deleting(self):
+
+        class X(object):
+            xx = False
+
+            @utils.cached_property
+            def foo(self):
+                return 42
+
+            @foo.deleter  # noqa
+            def foo(self, value):
+                self.xx = value
+
+        x = X()
+        del(x.foo)
+        self.assertFalse(x.xx)
+        x.__dict__['foo'] = 'here'
+        del(x.foo)
+        self.assertEqual(x.xx, 'here')
 
     def test_when_access_from_class(self):
 
@@ -229,3 +281,81 @@ class test_cached_property(TestCase):
         self.assertEqual(x.xx, 10)
 
         del(x.foo)
+
+
+class test_symbol_by_name(TestCase):
+
+    def test_instance_returns_instance(self):
+        instance = object()
+        self.assertIs(utils.symbol_by_name(instance), instance)
+
+    def test_returns_default(self):
+        default = object()
+        self.assertIs(
+            utils.symbol_by_name('xyz.ryx.qedoa.weq:foz', default=default),
+            default,
+        )
+
+    def test_no_default(self):
+        with self.assertRaises(ImportError):
+            utils.symbol_by_name('xyz.ryx.qedoa.weq:foz')
+
+    def test_imp_reraises_ValueError(self):
+        imp = Mock()
+        imp.side_effect = ValueError()
+        with self.assertRaises(ValueError):
+            utils.symbol_by_name('kombu.Connection', imp=imp)
+
+    def test_package(self):
+        from kombu.entity import Exchange
+        self.assertIs(
+            utils.symbol_by_name('.entity:Exchange', package='kombu'),
+            Exchange,
+        )
+        self.assertTrue(utils.symbol_by_name(':Consumer', package='kombu'))
+
+
+class test_ChannelPromise(TestCase):
+
+    def test_repr(self):
+        self.assertEqual(
+            repr(utils.ChannelPromise(lambda: 'foo')),
+            "<promise: 'foo'>",
+        )
+
+
+class test_entrypoints(TestCase):
+
+    @mask_modules('pkg_resources')
+    def test_without_pkg_resources(self):
+        self.assertListEqual(list(utils.entrypoints('kombu.test')), [])
+
+    @module_exists('pkg_resources')
+    def test_with_pkg_resources(self):
+        with patch('pkg_resources.iter_entry_points', create=True) as iterep:
+            eps = iterep.return_value = [Mock(), Mock()]
+
+            self.assertTrue(list(utils.entrypoints('kombu.test')))
+            iterep.assert_called_with('kombu.test')
+            eps[0].load.assert_called_with()
+            eps[1].load.assert_called_with()
+
+
+class test_shufflecycle(TestCase):
+
+    def test_shuffles(self):
+        prev_repeat, utils.repeat = utils.repeat, Mock()
+        try:
+            utils.repeat.return_value = range(10)
+            values = set(['A', 'B', 'C'])
+            cycle = utils.shufflecycle(values)
+            seen = set()
+            for i in xrange(10):
+                cycle.next()
+            utils.repeat.assert_called_with(None)
+            self.assertTrue(seen.issubset(values))
+            with self.assertRaises(StopIteration):
+                cycle.next()
+                cycle.next()
+        finally:
+            utils.repeat = prev_repeat

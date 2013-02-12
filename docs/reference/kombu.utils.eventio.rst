@@ -1,11 +1,11 @@
 ==========================================================
- Finalize - kombu.utils.finalize
+ Evented I/O - kombu.utils.eventio
 ==========================================================
 
 .. contents::
     :local:
-.. currentmodule:: kombu.utils.finalize
+.. currentmodule:: kombu.utils.eventio
 
-.. automodule:: kombu.utils.finalize
+.. automodule:: kombu.utils.eventio
     :members:
     :undoc-members:

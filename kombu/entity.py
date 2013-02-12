@@ -4,9 +4,6 @@ kombu.entity
 
 Exchange and Queue declarations.
 
-:copyright: (c) 2009 - 2012 by Ask Solem.
-:license: BSD, see LICENSE for more details.
-
 """
 from __future__ import absolute_import
 
@@ -18,6 +15,10 @@ DELIVERY_MODES = {'transient': TRANSIENT_DELIVERY_MODE,
                   'persistent': PERSISTENT_DELIVERY_MODE}
 
 __all__ = ['Exchange', 'Queue']
+
+
+def pretty_bindings(bindings):
+    return '[%s]' % (', '.join(map(str, bindings)))
 
 
 class Exchange(MaybeChannelBound):
@@ -173,8 +174,8 @@ class Exchange(MaybeChannelBound):
                                           nowait=nowait,
                                           arguments=arguments)
 
-    def unbind_from(self, source='', routing_key='', nowait=False,
-            arguments=None):
+    def unbind_from(self, source='', routing_key='',
+                    nowait=False, arguments=None):
         """Delete previously created exchange binding from the server."""
         if isinstance(source, Exchange):
             source = source.name
@@ -185,8 +186,8 @@ class Exchange(MaybeChannelBound):
                                             arguments=arguments)
 
     def Message(self, body, delivery_mode=None, priority=None,
-            content_type=None, content_encoding=None, properties=None,
-            headers=None):
+                content_type=None, content_encoding=None,
+                properties=None, headers=None):
         """Create message instance to be sent with :meth:`publish`.
 
         :param body: Message body.
@@ -225,7 +226,7 @@ class Exchange(MaybeChannelBound):
                                             headers=headers)
 
     def publish(self, message, routing_key=None, mandatory=False,
-            immediate=False, exchange=None):
+                immediate=False, exchange=None):
         """Publish message.
 
         :param message: :meth:`Message` instance to publish.
@@ -266,8 +267,10 @@ class Exchange(MaybeChannelBound):
         return False
 
     def __repr__(self):
-        return super(Exchange, self).__repr__('Exchange %s(%s)' % (self.name,
-                                                                   self.type))
+        return super(Exchange, self).__repr__(str(self))
+
+    def __str__(self):
+        return 'Exchange %s(%s)' % (self.name or repr(''), self.type)
 
     @property
     def can_cache_declaration(self):
@@ -284,17 +287,18 @@ class binding(object):
 
     """
 
-    def __init__(self, exchange=None, routing_key='', arguments=None,
-            unbind_arguments=None):
+    def __init__(self, exchange=None, routing_key='',
+                 arguments=None, unbind_arguments=None):
         self.exchange = exchange
         self.routing_key = routing_key
         self.arguments = arguments
-        self.unbind_arguments = None
+        self.unbind_arguments = unbind_arguments
 
     def declare(self, channel, nowait=False):
         """Declare destination exchange."""
         if self.exchange and self.exchange.name:
-            self.exchange(channel).declare(nowait=nowait)
+            ex = self.exchange(channel)
+            ex.declare(nowait=nowait)
 
     def bind(self, entity, nowait=False):
         """Bind entity to this binding."""
@@ -305,10 +309,16 @@ class binding(object):
 
     def unbind(self, entity, nowait=False):
         """Unbind entity from this binding."""
-        entity.unbind_from(exchange=self.exchange,
+        entity.unbind_from(self.exchange,
                            routing_key=self.routing_key,
                            arguments=self.unbind_arguments,
                            nowait=nowait)
+
+    def __repr__(self):
+        return '<binding: %s>' % (self, )
+
+    def __str__(self):
+        return '%s->%s' % (self.exchange.name, self.routing_key)
 
 
 class Queue(MaybeChannelBound):
@@ -423,19 +433,22 @@ class Queue(MaybeChannelBound):
              ('exclusive', bool),
              ('auto_delete', bool),
              ('no_ack', None),
-             ('alias', None))
+             ('alias', None),
+             ('bindings', list))
 
-    def __init__(self, name='', exchange=None, routing_key='', channel=None,
-            **kwargs):
+    def __init__(self, name='', exchange=None, routing_key='',
+                 channel=None, bindings=None, **kwargs):
         super(Queue, self).__init__(**kwargs)
         self.name = name or self.name
         self.exchange = exchange or self.exchange
         self.routing_key = routing_key or self.routing_key
-        self.bindings = set()
+        self.bindings = set(bindings or [])
 
         # allows Queue('name', [binding(...), binding(...), ...])
         if isinstance(exchange, (list, tuple, set)):
-            self.bindings, self.exchange = set(exchange), None
+            self.bindings |= set(exchange)
+        if self.bindings:
+            self.exchange = None
 
         # exclusive implies auto-delete.
         if self.exclusive:
@@ -457,9 +470,7 @@ class Queue(MaybeChannelBound):
             self.exchange.declare(nowait)
         self.queue_declare(nowait, passive=False)
 
-        if self.name:
-            # name should be set by queue_declare in the case
-            # of anonymous queues.
+        if self.exchange is not None:
             self.queue_bind(nowait)
 
         # - declare extra/multi-bindings.
@@ -493,8 +504,8 @@ class Queue(MaybeChannelBound):
         return self.bind_to(self.exchange, self.routing_key,
                             self.binding_arguments, nowait=nowait)
 
-    def bind_to(self, exchange='', routing_key='', arguments=None,
-            nowait=False):
+    def bind_to(self, exchange='', routing_key='',
+                arguments=None, nowait=False):
         if isinstance(exchange, Exchange):
             exchange = exchange.name
         return self.channel.queue_bind(queue=self.name,
@@ -531,8 +542,8 @@ class Queue(MaybeChannelBound):
         return self.channel.queue_purge(queue=self.name,
                                         nowait=nowait) or 0
 
-    def consume(self, consumer_tag='', callback=None, no_ack=None,
-            nowait=False):
+    def consume(self, consumer_tag='', callback=None,
+                no_ack=None, nowait=False):
         """Start a queue consumer.
 
         Consumers last as long as the channel they were created on, or
@@ -585,8 +596,8 @@ class Queue(MaybeChannelBound):
         return self.unbind_from(self.exchange, self.routing_key,
                                 arguments, nowait)
 
-    def unbind_from(self, exchange='', routing_key='', arguments=None,
-            nowait=False):
+    def unbind_from(self, exchange='', routing_key='',
+                    arguments=None, nowait=False):
         """Unbind queue by deleting the binding from the server."""
         return self.channel.queue_unbind(queue=self.name,
                                          exchange=exchange.name,
@@ -607,10 +618,17 @@ class Queue(MaybeChannelBound):
         return False
 
     def __repr__(self):
-        return super(Queue, self).__repr__(
-                 'Queue %s -> %s -> %s' % (self.name,
-                                           self.exchange,
-                                           self.routing_key))
+        s = super(Queue, self).__repr__
+        if self.bindings:
+            return s('Queue %r -> %s' % (
+                self.name,
+                pretty_bindings(self.bindings),
+            ))
+        return s('Queue %r -> %s -> %r' % (
+            self.name,
+            self.exchange,
+            self.routing_key or '',
+        ))
 
     @property
     def can_cache_declaration(self):

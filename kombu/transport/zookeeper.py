@@ -7,8 +7,7 @@ Zookeeper transport.
 :copyright: (c) 2010 - 2012 by Mahendra M.
 :license: BSD, see LICENSE for more details.
 
-Synopsis
-========
+**Synopsis**
 
 - Connects to a zookeeper node as <server>:<port>/<vhost>
   The <vhost> becomes the base for all the other znodes. So we can use
@@ -21,14 +20,12 @@ Synopsis
   are able to delete a particular message. If deletion raises a
   NoNode exception, we try again with the next message
 
-References
-----------
+**References**
 
 - https://zookeeper.apache.org/doc/trunk/recipes.html#sc_recipes_Queues
 - http://bit.ly/cZHf9g
 
-Limitations
------------
+**Limitations**
 
 - A queue cannot handle more than 2^32 messages. This is an internal
   limitation with zookeeper. This has to be handled internally in this
@@ -37,16 +34,49 @@ Limitations
 """
 from __future__ import absolute_import
 
-from Queue import Empty
-
-import kazoo
 import socket
 
 from anyjson import loads, dumps
 
-from kombu.exceptions import StdChannelError
+from kombu.exceptions import StdConnectionError, StdChannelError
+from kombu.five import Empty
 
 from . import virtual
+
+try:
+    import kazoo
+
+    KZ_CONNECTION_ERRORS = (
+        kazoo.zkclient.SystemErrorException,
+        kazoo.zkclient.ConnectionLossException,
+        kazoo.zkclient.MarshallingErrorException,
+        kazoo.zkclient.UnimplementedException,
+        kazoo.zkclient.OperationTimeoutException,
+        kazoo.zkclient.NoAuthException,
+        kazoo.zkclient.InvalidACLException,
+        kazoo.zkclient.AuthFailedException,
+        kazoo.zkclient.SessionExpiredException,
+    )
+
+    KZ_CHANNEL_ERRORS = (
+        kazoo.zkclient.RuntimeInconsistencyException,
+        kazoo.zkclient.DataInconsistencyException,
+        kazoo.zkclient.BadArgumentsException,
+        kazoo.zkclient.MarshallingErrorException,
+        kazoo.zkclient.UnimplementedException,
+        kazoo.zkclient.OperationTimeoutException,
+        kazoo.zkclient.ApiErrorException,
+        kazoo.zkclient.NoNodeException,
+        kazoo.zkclient.NoAuthException,
+        kazoo.zkclient.NodeExistsException,
+        kazoo.zkclient.NoChildrenForEphemeralsException,
+        kazoo.zkclient.NotEmptyException,
+        kazoo.zkclient.SessionExpiredException,
+        kazoo.zkclient.InvalidCallbackException,
+    )
+except ImportError:
+    kazoo = None                                    # noqa
+    KZ_CONNECTION_ERRORS = KZ_CHANNEL_ERRORS = ()   # noqa
 
 DEFAULT_PORT = 2181
 
@@ -58,7 +88,7 @@ class Channel(virtual.Channel):
     _client = None
 
     def _get_queue(self, queue):
-        return '/%s' % (queue, )
+        return '/%s' % queue
 
     def _put(self, queue, message, **kwargs):
         try:
@@ -138,34 +168,16 @@ class Transport(virtual.Transport):
     Channel = Channel
     polling_interval = 1
     default_port = DEFAULT_PORT
-    connection_errors = (socket.error,
-                         kazoo.zkclient.SystemErrorException,
-                         kazoo.zkclient.ConnectionLossException,
-                         kazoo.zkclient.MarshallingErrorException,
-                         kazoo.zkclient.UnimplementedException,
-                         kazoo.zkclient.OperationTimeoutException,
-                         kazoo.zkclient.NoAuthException,
-                         kazoo.zkclient.InvalidACLException,
-                         kazoo.zkclient.AuthFailedException,
-                         kazoo.zkclient.SessionExpiredException)
-
-    channel_errors = (StdChannelError,
-                      kazoo.zkclient.RuntimeInconsistencyException,
-                      kazoo.zkclient.DataInconsistencyException,
-                      kazoo.zkclient.BadArgumentsException,
-                      kazoo.zkclient.MarshallingErrorException,
-                      kazoo.zkclient.UnimplementedException,
-                      kazoo.zkclient.OperationTimeoutException,
-                      kazoo.zkclient.ApiErrorException,
-                      kazoo.zkclient.NoNodeException,
-                      kazoo.zkclient.NoAuthException,
-                      kazoo.zkclient.NodeExistsException,
-                      kazoo.zkclient.NoChildrenForEphemeralsException,
-                      kazoo.zkclient.NotEmptyException,
-                      kazoo.zkclient.SessionExpiredException,
-                      kazoo.zkclient.InvalidCallbackException)
+    connection_errors = (StdConnectionError, ) + KZ_CONNECTION_ERRORS
+    channel_errors = (StdChannelError, socket.error) + KZ_CHANNEL_ERRORS
     driver_type = 'zookeeper'
     driver_name = 'kazoo'
+
+    def __init__(self, *args, **kwargs):
+        if kazoo is None:
+            raise ImportError('The kazoo library is not installed')
+
+        super(Transport, self).__init__(*args, **kwargs)
 
     def driver_version(self):
         return kazoo.__version__

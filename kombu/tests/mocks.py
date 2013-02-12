@@ -22,13 +22,15 @@ class Message(base.Message):
 class Channel(base.StdChannel):
     open = True
     throw_decode_error = False
+    _ids = count(1).next
 
     def __init__(self, connection):
         self.connection = connection
         self.called = []
         self.deliveries = count(1).next
         self.to_deliver = []
-        self.events = {'basic_return': []}
+        self.events = {'basic_return': set()}
+        self.channel_id = self._ids()
 
     def _called(self, name):
         self.called.append(name)
@@ -39,10 +41,10 @@ class Channel(base.StdChannel):
     def exchange_declare(self, *args, **kwargs):
         self._called('exchange_declare')
 
-    def prepare_message(self, message_data, properties={}, priority=0,
-            content_type=None, content_encoding=None, headers=None):
+    def prepare_message(self, body, priority=0, content_type=None,
+                        content_encoding=None, headers=None, properties={}):
         self._called('prepare_message')
-        return dict(body=message_data,
+        return dict(body=body,
                     headers=headers,
                     properties=properties,
                     priority=priority,
@@ -50,7 +52,7 @@ class Channel(base.StdChannel):
                     content_encoding=content_encoding)
 
     def basic_publish(self, message, exchange='', routing_key='',
-            mandatory=False, immediate=False, **kwargs):
+                      mandatory=False, immediate=False, **kwargs):
         self._called('basic_publish')
         return message, exchange, routing_key
 
@@ -103,9 +105,10 @@ class Channel(base.StdChannel):
     def message_to_python(self, message, *args, **kwargs):
         self._called('message_to_python')
         return Message(self, body=anyjson.dumps(message),
-                delivery_tag=self.deliveries(),
-                throw_decode_error=self.throw_decode_error,
-                content_type='application/json', content_encoding='utf-8')
+                       delivery_tag=self.deliveries(),
+                       throw_decode_error=self.throw_decode_error,
+                       content_type='application/json',
+                       content_encoding='utf-8')
 
     def flow(self, active):
         self._called('flow')
@@ -116,7 +119,7 @@ class Channel(base.StdChannel):
         return self._called('basic_reject')
 
     def basic_qos(self, prefetch_size=0, prefetch_count=0,
-            apply_global=False):
+                  apply_global=False):
         self._called('basic_qos')
 
 

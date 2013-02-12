@@ -4,22 +4,23 @@ kombu.transport.pyamqp
 
 pure python amqp transport.
 
-:copyright: (c) 2009 - 2012 by Ask Solem.
-:license: BSD, see LICENSE for more details.
-
 """
 from __future__ import absolute_import
 
 import amqp
 
-from kombu.exceptions import StdChannelError, VersionMismatch
+from kombu.exceptions import (
+    StdConnectionError,
+    StdChannelError,
+    VersionMismatch,
+)
 from kombu.utils.amq_manager import get_manager
 
 from . import base
 
 DEFAULT_PORT = 5672
 
-if amqp.VERSION < (0, 9, 3):
+if amqp.VERSION < (0, 9, 3):  # pragma: no cover
     raise VersionMismatch('Please install amqp version 0.9.3 or higher.')
 
 
@@ -27,25 +28,26 @@ class Message(base.Message):
 
     def __init__(self, channel, msg, **kwargs):
         props = msg.properties
-        super(Message, self).__init__(channel,
-                body=msg.body,
-                delivery_tag=msg.delivery_tag,
-                content_type=props.get('content_type'),
-                content_encoding=props.get('content_encoding'),
-                delivery_info=msg.delivery_info,
-                properties=msg.properties,
-                headers=props.get('application_headers') or {},
-                **kwargs)
+        super(Message, self).__init__(
+            channel,
+            body=msg.body,
+            delivery_tag=msg.delivery_tag,
+            content_type=props.get('content_type'),
+            content_encoding=props.get('content_encoding'),
+            delivery_info=msg.delivery_info,
+            properties=msg.properties,
+            headers=props.get('application_headers') or {},
+            **kwargs)
 
 
 class Channel(amqp.Channel, base.StdChannel):
     Message = Message
 
-    def prepare_message(self, message_data, priority=None,
-                content_type=None, content_encoding=None, headers=None,
-                properties=None):
+    def prepare_message(self, body, priority=None,
+                        content_type=None, content_encoding=None,
+                        headers=None, properties=None):
         """Encapsulate data into a AMQP message."""
-        return amqp.Message(message_data, priority=priority,
+        return amqp.Message(body, priority=priority,
                             content_type=content_type,
                             content_encoding=content_encoding,
                             application_headers=headers,
@@ -67,8 +69,13 @@ class Transport(base.Transport):
 
     # it's very annoying that pyamqp sometimes raises AttributeError
     # if the connection is lost, but nothing we can do about that here.
-    connection_errors = amqp.Connection.connection_errors
+    connection_errors = (
+        (StdConnectionError, ) + amqp.Connection.connection_errors
+    )
     channel_errors = (StdChannelError, ) + amqp.Connection.channel_errors
+    recoverable_connection_errors = \
+        amqp.Connection.recoverable_connection_errors
+    recoverable_channel_errors = amqp.Connection.recoverable_channel_errors
 
     nb_keep_draining = True
     driver_name = "py-amqp"

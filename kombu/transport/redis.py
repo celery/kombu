@@ -4,29 +4,34 @@ kombu.transport.redis
 
 Redis transport.
 
-:copyright: (c) 2009 - 2012 by Ask Solem.
-:license: BSD, see LICENSE for more details.
-
 """
 from __future__ import absolute_import
-from __future__ import with_statement
 
 from bisect import bisect
-from itertools import cycle, islice
+from contextlib import contextmanager
 from time import time
-from Queue import Empty
 
 from anyjson import loads, dumps
 
 from kombu.exceptions import (
     InconsistencyError,
+    StdConnectionError,
     StdChannelError,
     VersionMismatch,
 )
+from kombu.five import Empty, values
 from kombu.log import get_logger
 from kombu.utils import cached_property, uuid
-from kombu.utils.encoding import str_t
 from kombu.utils.eventio import poll, READ, ERR
+
+try:
+    from billiard.util import register_after_fork
+except ImportError:
+    try:
+        from multiprocessing.util import register_after_fork  # noqa
+    except ImportError:
+        def register_after_fork(*args, **kwargs):  # noqa
+            pass
 
 try:
     import redis
@@ -58,6 +63,36 @@ PRIORITY_STEPS = [0, 3, 6, 9]
 # queues manually.
 
 
+class MutexHeld(Exception):
+    pass
+
+
+@contextmanager
+def Mutex(client, name, expire):
+    lock_id = uuid()
+    i_won = client.setnx(name, lock_id)
+    try:
+        if i_won:
+            client.expire(name, expire)
+            yield
+        else:
+            if not client.ttl(name):
+                client.expire(name, expire)
+            raise MutexHeld()
+    finally:
+        if i_won:
+            pipe = client.pipeline(True)
+            try:
+                pipe.watch(name)
+                if pipe.get(name) == lock_id:
+                    pipe.multi()
+                    pipe.delete(name)
+                    pipe.execute()
+                pipe.unwatch()
+            except redis.WatchError:
+                pass
+
+
 class QoS(virtual.QoS):
     restore_at_shutdown = True
 
@@ -68,12 +103,12 @@ class QoS(virtual.QoS):
     def append(self, message, delivery_tag):
         delivery = message.delivery_info
         EX, RK = delivery['exchange'], delivery['routing_key']
-        self.client.pipeline() \
-                .zadd(self.unacked_index_key, delivery_tag, time()) \
+        with self.pipe_or_acquire() as pipe:
+            pipe.zadd(self.unacked_index_key, delivery_tag, time()) \
                 .hset(self.unacked_key, delivery_tag,
-                    dumps([message._raw, EX, RK])) \
+                      dumps([message._raw, EX, RK])) \
                 .execute()
-        super(QoS, self).append(message, delivery_tag)
+            super(QoS, self).append(message, delivery_tag)
 
     def restore_unacked(self):
         for tag in self._delivered:
@@ -87,33 +122,43 @@ class QoS(virtual.QoS):
     def reject(self, delivery_tag, requeue=False):
         self.ack(delivery_tag)
 
+    @contextmanager
+    def pipe_or_acquire(self, pipe=None):
+        if pipe:
+            yield pipe
+        else:
+            with self.channel.conn_or_acquire() as client:
+                yield client.pipeline()
+
     def _remove_from_indices(self, delivery_tag, pipe=None):
-        return (pipe or self.client.pipeline()) \
-                .zrem(self.unacked_index_key, delivery_tag) \
-                .hdel(self.unacked_key, delivery_tag)
+        with self.pipe_or_acquire(pipe) as pipe:
+            return pipe.zrem(self.unacked_index_key, delivery_tag) \
+                       .hdel(self.unacked_key, delivery_tag)
 
     def restore_visible(self, start=0, num=10, interval=10):
         self._vrestore_count += 1
         if (self._vrestore_count - 1) % interval:
             return
-        ceil = time() - self.visibility_timeout
-        visible = self.client.zrevrangebyscore(
-                self.unacked_index_key, ceil, 0,
-                start=start, num=num, withscores=True)
-        for tag, score in visible or []:
-            self.restore_by_tag(tag)
+        with self.channel.conn_or_acquire() as client:
+            ceil = time() - self.visibility_timeout
+            try:
+                with Mutex(client, self.unacked_mutex_key,
+                           self.unacked_mutex_expire):
+                    visible = client.zrevrangebyscore(
+                        self.unacked_index_key, ceil, 0,
+                        start=num and start, num=num, withscores=True)
+                    for tag, score in visible or []:
+                        self.restore_by_tag(tag, client)
+            except MutexHeld:
+                pass
 
-    def restore_by_tag(self, tag):
-        p, _, _ = self._remove_from_indices(tag,
-                        self.client.pipeline().hget(self.unacked_key, tag)) \
-                            .execute()
-        if p:
-            M, EX, RK = loads(p)
-            self.channel._do_restore_message(M, EX, RK)
-
-    @property
-    def client(self):
-        return self.channel._avail_client
+    def restore_by_tag(self, tag, client=None):
+        with self.channel.conn_or_acquire(client) as client:
+            p, _, _ = self._remove_from_indices(
+                tag, client.pipeline().hget(self.unacked_key, tag)).execute()
+            if p:
+                M, EX, RK = loads(p)
+                self.channel._do_restore_message(M, EX, RK, client)
 
     @cached_property
     def unacked_key(self):
@@ -122,6 +167,14 @@ class QoS(virtual.QoS):
     @cached_property
     def unacked_index_key(self):
         return self.channel.unacked_index_key
+
+    @cached_property
+    def unacked_mutex_key(self):
+        return self.channel.unacked_mutex_key
+
+    @cached_property
+    def unacked_mutex_expire(self):
+        return self.channel.unacked_mutex_expire
 
     @cached_property
     def visibility_timeout(self):
@@ -142,7 +195,7 @@ class MultiChannelPoller(object):
         self.poller = poll()
 
     def close(self):
-        for fd in self._chan_to_sock.itervalues():
+        for fd in values(self._chan_to_sock):
             try:
                 self.poller.unregister(fd)
             except KeyError:
@@ -201,13 +254,17 @@ class MultiChannelPoller(object):
     def on_poll_init(self, poller):
         self.poller = poller
         for channel in self._channels:
-            channel.qos.restore_visible()
+            return channel.qos.restore_visible(
+                num=channel.unacked_restore_limit,
+            )
 
     def on_poll_empty(self):
         for channel in self._channels:
             if channel.active_queues:
                 # only need to do this once, as they are not local to channel.
-                return channel.qos.restore_visible()
+                return channel.qos.restore_visible(
+                    num=channel.unacked_restore_limit,
+                )
 
     def handle_event(self, fileno, event):
         if event & READ:
@@ -256,20 +313,31 @@ class Channel(virtual.Channel):
     _fanout_queues = {}
     unacked_key = 'unacked'
     unacked_index_key = 'unacked_index'
-    visibility_timeout = 3600  # 1 hour
+    unacked_mutex_key = 'unacked_mutex'
+    unacked_mutex_expire = 300  # 5 minutes
+    unacked_restore_limit = None
+    visibility_timeout = 3600   # 1 hour
     priority_steps = PRIORITY_STEPS
+    max_connections = 10
+    _pool = None
 
-    from_transport_options = (virtual.Channel.from_transport_options
-                            + ('unacked_key',
-                               'unacked_index_key',
-                               'visibility_timeout',
-                               'priority_steps'))
+    from_transport_options = (
+        virtual.Channel.from_transport_options +
+        ('unacked_key',
+         'unacked_index_key',
+         'unacked_mutex_key',
+         'unacked_mutex_expire',
+         'visibility_timeout',
+         'unacked_restore_limit',
+         'max_connections',
+         'priority_steps'),
+    )
 
     def __init__(self, *args, **kwargs):
         super_ = super(Channel, self)
         super_.__init__(*args, **kwargs)
 
-        self._queue_cycle = cycle([])
+        self._queue_cycle = []
         self.Client = self._get_client()
         self.ResponseError = self._get_response_error()
         self.active_fanout_queues = set()
@@ -278,34 +346,47 @@ class Channel(virtual.Channel):
         self.handlers = {'BRPOP': self._brpop_read, 'LISTEN': self._receive}
 
         # Evaluate connection.
-        self.client.info()
+        try:
+            self.client.info()
+        except Exception:
+            if self._pool:
+                self._pool.disconnect()
+            raise
 
         self.connection.cycle.add(self)  # add to channel poller.
         # copy errors, in case channel closed but threads still
         # are still waiting for data.
         self.connection_errors = self.connection.connection_errors
 
-    def _do_restore_message(self, payload, exchange, routing_key):
-        try:
+        register_after_fork(self, self._after_fork)
+
+    def _after_fork(self):
+        if self._pool is not None:
+            self._pool.disconnect()
+
+    def _do_restore_message(self, payload, exchange, routing_key, client=None):
+        with self.conn_or_acquire(client) as client:
             try:
-                payload['headers']['redelivered'] = True
-            except KeyError:
-                pass
-            for queue in self._lookup(exchange, routing_key):
-                self._avail_client.lpush(queue, dumps(payload))
-        except Exception:
-            logger.critical('Could not restore message: %r', payload,
-                    exc_info=True)
+                try:
+                    payload['headers']['redelivered'] = True
+                except KeyError:
+                    pass
+                for queue in self._lookup(exchange, routing_key):
+                    client.lpush(queue, dumps(payload))
+            except Exception:
+                logger.critical('Could not restore message: %r', payload,
+                                exc_info=True)
 
     def _restore(self, message, payload=None):
         tag = message.delivery_tag
-        P, _ = self._avail_client.pipeline() \
-                            .hget(self.unacked_key, tag) \
-                            .hdel(self.unacked_key, tag) \
-                         .execute()
-        if P:
-            M, EX, RK = loads(P)
-            self._do_restore_message(M, EX, RK)
+        with self.conn_or_acquire() as client:
+            P, _ = client.pipeline() \
+                .hget(self.unacked_key, tag) \
+                .hdel(self.unacked_key, tag) \
+                .execute()
+            if P:
+                M, EX, RK = loads(P)
+                self._do_restore_message(M, EX, RK, client)
 
     def _next_delivery_tag(self):
         return uuid()
@@ -335,14 +416,14 @@ class Channel(virtual.Channel):
 
     def _subscribe(self):
         keys = [self._fanout_queues[queue]
-                    for queue in self.active_fanout_queues]
+                for queue in self.active_fanout_queues]
         if not keys:
             return
         c = self.subclient
         if c.connection._sock is None:
             c.connection.connect()
-        self.subclient.subscribe(keys)
         self._in_listen = True
+        self.subclient.subscribe(keys)
 
     def _handle_message(self, client, r):
         if r[0] == 'unsubscribe' and r[2] == 0:
@@ -373,9 +454,9 @@ class Channel(virtual.Channel):
         if not queues:
             return
         keys = [self._q_for_pri(queue, pri) for pri in PRIORITY_STEPS
-                        for queue in queues] + [timeout or 0]
-        self.client.connection.send_command('BRPOP', *keys)
+                for queue in queues] + [timeout or 0]
         self._in_poll = True
+        self.client.connection.send_command('BRPOP', *keys)
 
     def _brpop_read(self, **options):
         try:
@@ -391,6 +472,7 @@ class Channel(virtual.Channel):
             if dest__item:
                 dest, item = dest__item
                 dest = dest.rsplit(self.sep, 1)[0]
+                self._rotate_cycle(dest)
                 return loads(item), dest
             else:
                 raise Empty()
@@ -404,18 +486,20 @@ class Channel(virtual.Channel):
             pass
 
     def _get(self, queue):
-        for pri in PRIORITY_STEPS:
-            item = self._avail_client.rpop(self._q_for_pri(queue, pri))
-            if item:
-                return loads(item)
-        raise Empty()
+        with self.conn_or_acquire() as client:
+            for pri in PRIORITY_STEPS:
+                item = client.rpop(self._q_for_pri(queue, pri))
+                if item:
+                    return loads(item)
+            raise Empty()
 
     def _size(self, queue):
-        cmds = self._avail_client.pipeline()
-        for pri in PRIORITY_STEPS:
-            cmds = cmds.llen(self._q_for_pri(queue, pri))
-        sizes = cmds.execute()
-        return sum(size for size in sizes if isinstance(size, int))
+        with self.conn_or_acquire() as client:
+            cmds = client.pipeline()
+            for pri in PRIORITY_STEPS:
+                cmds = cmds.llen(self._q_for_pri(queue, pri))
+            sizes = cmds.execute()
+            return sum(size for size in sizes if isinstance(size, int))
 
     def _q_for_pri(self, queue, pri):
         pri = self.priority(pri)
@@ -432,11 +516,13 @@ class Channel(virtual.Channel):
                 message['properties']['delivery_info']['priority']), 9), 0)
         except (TypeError, ValueError, KeyError):
             pri = 0
-        self._avail_client.lpush(self._q_for_pri(queue, pri), dumps(message))
+        with self.conn_or_acquire() as client:
+            client.lpush(self._q_for_pri(queue, pri), dumps(message))
 
     def _put_fanout(self, exchange, message, **kwargs):
         """Deliver fanout message."""
-        self._avail_client.publish(exchange, dumps(message))
+        with self.conn_or_acquire() as client:
+            client.publish(exchange, dumps(message))
 
     def _new_queue(self, queue, auto_delete=False, **kwargs):
         if auto_delete:
@@ -446,46 +532,52 @@ class Channel(virtual.Channel):
         if self.typeof(exchange).type == 'fanout':
             # Mark exchange as fanout.
             self._fanout_queues[queue] = exchange
-        self._avail_client.sadd(self.keyprefix_queue % (exchange, ),
-                            self.sep.join([routing_key or '',
-                                           pattern or '',
-                                           queue or '']))
+        with self.conn_or_acquire() as client:
+            client.sadd(self.keyprefix_queue % (exchange, ),
+                        self.sep.join([routing_key or '',
+                                       pattern or '',
+                                       queue or '']))
 
     def _delete(self, queue, exchange, routing_key, pattern, *args):
         self.auto_delete_queues.discard(queue)
-        self._avail_client.srem(self.keyprefix_queue % (exchange, ),
-                                self.sep.join([routing_key or '',
-                                               pattern or '',
-                                               queue or '']))
-        cmds = self._avail_client.pipeline()
-        for pri in PRIORITY_STEPS:
-            cmds = cmds.delete(self._q_for_pri(queue, pri))
-        cmds.execute()
+        with self.conn_or_acquire() as client:
+            client.srem(self.keyprefix_queue % (exchange, ),
+                        self.sep.join([routing_key or '',
+                                       pattern or '',
+                                       queue or '']))
+            cmds = client.pipeline()
+            for pri in PRIORITY_STEPS:
+                cmds = cmds.delete(self._q_for_pri(queue, pri))
+            cmds.execute()
 
     def _has_queue(self, queue, **kwargs):
-        cmds = self._avail_client.pipeline()
-        for pri in PRIORITY_STEPS:
-            cmds = cmds.exists(self._q_for_pri(queue, pri))
-        return any(cmds.execute())
+        with self.conn_or_acquire() as client:
+            cmds = client.pipeline()
+            for pri in PRIORITY_STEPS:
+                cmds = cmds.exists(self._q_for_pri(queue, pri))
+            return any(cmds.execute())
 
     def get_table(self, exchange):
         key = self.keyprefix_queue % exchange
-        values = self._avail_client.smembers(key)
-        if not values:
-            raise InconsistencyError(
-                    'Queue list empty or key does not exist: %r' % (
-                        self.keyprefix_queue % exchange))
-        return [tuple(val.split(self.sep)) for val in values]
+        with self.conn_or_acquire() as client:
+            values = client.smembers(key)
+            if not values:
+                raise InconsistencyError(
+                    'Queue list empty or does not exist: {0!r}'.format(key))
+            return [tuple(val.split(self.sep)) for val in values]
 
     def _purge(self, queue):
-        cmds = self.pipeline()
-        for pri in PRIORITY_STEPS:
-            priq = self._q_for_pri(queue, pri)
-            cmds = cmds.llen(priq).delete(priq)
-        sizes = cmds.execute()
-        return sum(sizes[::2])
+        with self.conn_or_acquire() as client:
+            cmds = client.pipeline()
+            for pri in PRIORITY_STEPS:
+                priq = self._q_for_pri(queue, pri)
+                cmds = cmds.llen(priq).delete(priq)
+            sizes = cmds.execute()
+            return sum(sizes[::2])
 
     def close(self):
+        if self._pool:
+            self._pool.disconnect()
         if not self.closed:
             # remove from channel poller.
             self.connection.cycle.discard(self)
@@ -503,7 +595,7 @@ class Channel(virtual.Channel):
                     pass
         super(Channel, self).close()
 
-    def _create_client(self):
+    def _connparams(self):
         conninfo = self.connection.client
         database = conninfo.virtual_host
         if not isinstance(database, int):
@@ -516,19 +608,23 @@ class Channel(virtual.Channel):
             except ValueError:
                 raise ValueError(
                     'Database name must be int between 0 and limit - 1')
+        return {'host': conninfo.hostname or '127.0.0.1',
+                'port': conninfo.port or DEFAULT_PORT,
+                'db': database,
+                'password': conninfo.password,
+                'max_connections': self.max_connections}
 
-        return self.Client(host=conninfo.hostname or '127.0.0.1',
-                           port=conninfo.port or DEFAULT_PORT,
-                           db=database,
-                           password=conninfo.password)
+    def _create_client(self):
+        return self.Client(connection_pool=self.pool)
+
+    def _get_pool(self):
+        return redis.ConnectionPool(**self._connparams())
 
     def _get_client(self):
-        version = getattr(redis, '__version__', (0, 0, 0))
-        version = tuple(map(int, version.split('.')))
-        if version < (2, 4, 4):
+        if redis.VERSION < (2, 4, 4):
             raise VersionMismatch(
                 'Redis transport requires redis-py versions 2.4.4 or later. '
-                'You have %r' % ('.'.join(map(str_t, version)), ))
+                'You have {0.__version__}'.format(redis))
 
         # KombuRedis maintains a connection attribute on it's instance and
         # uses that when executing commands
@@ -552,17 +648,25 @@ class Channel(virtual.Channel):
 
         return KombuRedis
 
-    def pipeline(self):
-        """Create a new pipeline using available connection."""
-        return self._avail_client.pipeline()
+    @contextmanager
+    def conn_or_acquire(self, client=None):
+        if client:
+            yield client
+        else:
+            if self._in_poll:
+                client = self._create_client()
+                try:
+                    yield client
+                finally:
+                    self.pool.release(client.connection)
+            else:
+                yield self.client
 
     @property
-    def _avail_client(self):
-        """Returns new connection from the pool if the main client is
-        currently in polling-mode."""
-        if self._in_poll:
-            return self._create_client()
-        return self.client
+    def pool(self):
+        if self._pool is None:
+            self._pool = self._get_pool()
+        return self._pool
 
     @cached_property
     def client(self):
@@ -585,13 +689,25 @@ class Channel(virtual.Channel):
         each queue is equally likely to be consumed from,
         so that a very busy queue will not block others.
 
+        This works by using Redis's `BRPOP` command and
+        by rotating the most recently used queue to the
+        and of the list.  See Kombu github issue #166 for
+        more discussion of this method.
+
         """
-        self._queue_cycle = cycle(self.active_queues)
+        self._queue_cycle = list(self.active_queues)
 
     def _consume_cycle(self):
         """Get a fresh list of queues from the queue cycle."""
         active = len(self.active_queues)
-        return list(islice(self._queue_cycle, 0, active + 1))[:active]
+        return self._queue_cycle[0:active]
+
+    def _rotate_cycle(self, used):
+        """
+        Move most recently used queue to end of list
+        """
+        index = self._queue_cycle.index(used)
+        self._queue_cycle.append(self._queue_cycle.pop(index))
 
     def _get_response_error(self):
         from redis import exceptions
@@ -601,7 +717,7 @@ class Channel(virtual.Channel):
     def active_queues(self):
         """Set of queues being consumed from (excluding fanout queues)."""
         return set(queue for queue in self._active_queues
-                            if queue not in self.active_fanout_queues)
+                   if queue not in self.active_fanout_queues)
 
 
 class Transport(virtual.Transport):
@@ -645,7 +761,7 @@ class Transport(virtual.Transport):
             message, queue = item
             if not queue or queue not in self._callbacks:
                 raise KeyError(
-                    "Received message for queue '%s' without consumers: %s" % (
+                    'Message for queue {0!r} without consumers: {1}'.format(
                         queue, message))
             self._callbacks[queue](message)
 
@@ -657,10 +773,10 @@ class Transport(virtual.Transport):
             DataError = exceptions.InvalidData
         else:
             DataError = exceptions.DataError
-        return ((exceptions.ConnectionError,
+        return ((StdConnectionError,
+                 exceptions.ConnectionError,
                  exceptions.AuthenticationError),
-                (exceptions.ConnectionError,
-                 DataError,
+                (DataError,
                  exceptions.InvalidResponse,
                  exceptions.ResponseError,
                  StdChannelError))

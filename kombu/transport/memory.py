@@ -4,13 +4,10 @@ kombu.transport.memory
 
 In-memory transport.
 
-:copyright: (c) 2009 - 2012 by Ask Solem.
-:license: BSD, see LICENSE for more details.
-
 """
 from __future__ import absolute_import
 
-from Queue import Queue
+from kombu.five import Queue
 
 from . import virtual
 
@@ -18,6 +15,7 @@ from . import virtual
 class Channel(virtual.Channel):
     queues = {}
     do_restore = False
+    supports_fanout = True
 
     def _has_queue(self, queue, **kwargs):
         return queue in self.queues
@@ -34,6 +32,13 @@ class Channel(virtual.Channel):
             self.queues[queue] = Queue()
         return self.queues[queue]
 
+    def _queue_bind(self, *args):
+        pass
+
+    def _put_fanout(self, exchange, message, **kwargs):
+        for queue in self.queues.values():
+            queue.put(message)
+
     def _put(self, queue, message, **kwargs):
         self._queue_for(queue).put(message)
 
@@ -48,6 +53,12 @@ class Channel(virtual.Channel):
         size = q.qsize()
         q.queue.clear()
         return size
+
+    def close(self):
+        super(Channel, self).close()
+        for queue in self.queues.values():
+            queue.empty()
+        self.queues = {}
 
     def after_reply_message_received(self, queue):
         pass

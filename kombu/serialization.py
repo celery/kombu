@@ -1,11 +1,9 @@
 """
+ns
 kombu.serialization
 ===================
 
 Serialization utilities.
-
-:copyright: (c) 2009 - 2012 by Ask Solem
-:license: BSD, see LICENSE for more details.
 
 """
 from __future__ import absolute_import
@@ -21,8 +19,9 @@ except ImportError:  # pragma: no cover
     cpickle = None  # noqa
 
 from .exceptions import SerializerNotInstalled
+from .five import BytesIO, text_t
 from .utils import entrypoints
-from .utils.encoding import bytes_to_str, str_to_bytes, bytes_t
+from .utils.encoding import str_to_bytes, bytes_t
 
 __all__ = ['pickle', 'encode', 'decode',
            'register', 'unregister']
@@ -54,17 +53,6 @@ else:
     pickle = cpickle or pypickle
     pickle_load = pickle.load
     pickle_loads = pickle.loads
-
-
-# cPickle.loads does not support buffer() objects,
-# but we can just create a StringIO and use load.
-if sys.version_info[0] == 3:
-    from io import BytesIO
-else:
-    try:
-        from cStringIO import StringIO as BytesIO # noqa
-    except ImportError:
-        from StringIO import StringIO  as BytesIO # noqa
 
 #: Kombu requires Python 2.5 or later so we use protocol 2 by default.
 #: There's a new protocol (3) but this is only supported by Python 3.
@@ -112,7 +100,7 @@ class SerializerRegistry(object):
             self.type_to_name.pop(content_type, None)
         except KeyError:
             raise SerializerNotInstalled(
-                'No encoder/decoder installed for %s' % name)
+                'No encoder/decoder installed for {0}'.format(name))
 
     def _set_default_serializer(self, name):
         """
@@ -130,14 +118,14 @@ class SerializerRegistry(object):
              self._default_encode) = self._encoders[name]
         except KeyError:
             raise SerializerNotInstalled(
-                'No encoder installed for %s' % name)
+                'No encoder installed for {0}'.format(name))
 
     def encode(self, data, serializer=None):
         if serializer == 'raw':
             return raw_encode(data)
         if serializer and not self._encoders.get(serializer):
             raise SerializerNotInstalled(
-                        'No encoder installed for %s' % serializer)
+                'No encoder installed for {0}'.format(serializer))
 
         # If a raw string was sent, assume binary encoding
         # (it's likely either ASCII or a raw binary file, and a character
@@ -148,13 +136,13 @@ class SerializerRegistry(object):
             return 'application/data', 'binary', data
 
         # For Unicode objects, force it into a string
-        if not serializer and isinstance(data, unicode):
+        if not serializer and isinstance(data, text_t):
             payload = data.encode('utf-8')
             return 'text/plain', 'utf-8', payload
 
         if serializer:
             content_type, content_encoding, encoder = \
-                    self._encoders[serializer]
+                self._encoders[serializer]
         else:
             encoder = self._default_encode
             content_type = self._default_content_type
@@ -166,7 +154,7 @@ class SerializerRegistry(object):
     def decode(self, data, content_type, content_encoding, force=False):
         if content_type in self._disabled_content_types and not force:
             raise SerializerNotInstalled(
-                'Content-type %r has been disabled.' % (content_type, ))
+                'Content-type {0!r} has been disabled.'.format(content_type))
         content_type = content_type or 'application/data'
         content_encoding = (content_encoding or 'utf-8').lower()
 
@@ -175,7 +163,7 @@ class SerializerRegistry(object):
             if decode:
                 return decode(data)
             if content_encoding not in SKIP_DECODE and \
-                    not isinstance(data, unicode):
+                    not isinstance(data, text_t):
                 return _decode(data, content_encoding)
         return data
 
@@ -283,7 +271,7 @@ def raw_encode(data):
     """Special case serializer."""
     content_type = 'application/data'
     payload = data
-    if isinstance(payload, unicode):
+    if isinstance(payload, text_t):
         content_encoding = 'utf-8'
         payload = payload.encode(content_encoding)
     else:
@@ -296,8 +284,8 @@ def register_json():
     from anyjson import loads, dumps
 
     def _loads(obj):
-        if isinstance(obj, str):
-            obj = bytes_to_str(obj)
+        if isinstance(obj, bytes_t):
+            obj = obj.decode()
         return loads(obj)
 
     registry.register('json', dumps, _loads,
@@ -350,21 +338,23 @@ def register_msgpack():
     """See http://msgpack.sourceforge.net/"""
     try:
         try:
-            from msgpack import packb as dumps, unpackb as loads
+            from msgpack import packb as dumps, unpackb
+            loads = lambda s: unpackb(s, encoding='utf-8')
         except ImportError:
             # msgpack < 0.2.0 and Python 2.5
             from msgpack import packs as dumps, unpacks as loads  # noqa
-        registry.register('msgpack', dumps, loads,
-                content_type='application/x-msgpack',
-                content_encoding='binary')
+        registry.register(
+            'msgpack', dumps, loads,
+            content_type='application/x-msgpack',
+            content_encoding='binary')
     except ImportError:
 
         def not_available(*args, **kwargs):
             """In case a client receives a msgpack message, but yaml
             isn't installed."""
             raise SerializerNotInstalled(
-                    'No decoder installed for msgpack. '
-                    'Install the msgpack library')
+                'No decoder installed for msgpack. '
+                'Please install the msgpack library')
         registry.register('msgpack', None, not_available,
                           'application/x-msgpack')
 
@@ -381,5 +371,3 @@ registry._set_default_serializer('json')
 # Load entrypoints from installed extensions
 for ep, args in entrypoints('kombu.serializers'):
     register(ep.name, *args)
-
-

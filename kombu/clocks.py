@@ -4,14 +4,13 @@ kombu.clocks
 
 Logical Clocks and Synchronization.
 
-:copyright: (c) 2009 - 2012 by Ask Solem.
-:license: BSD, see LICENSE for more details.
-
 """
 from __future__ import absolute_import
-from __future__ import with_statement
 
-import threading
+from itertools import islice
+from threading import Lock
+
+from .five import zip
 
 __all__ = ['LamportClock']
 
@@ -57,13 +56,44 @@ class LamportClock(object):
 
     def __init__(self, initial_value=0):
         self.value = initial_value
-        self.mutex = threading.Lock()
+        self.mutex = Lock()
 
     def adjust(self, other):
         with self.mutex:
             self.value = max(self.value, other) + 1
+            return self.value
 
     def forward(self):
         with self.mutex:
             self.value += 1
             return self.value
+
+    def sort_heap(self, h):
+        """List of tuples containing at least two elements, representing
+        an event, where the first element is the event's scalar clock value,
+        and the second element is the id of the process (usually
+        ``"hostname:pid"``): ``sh([(clock, processid, ...?), (...)])``
+
+        The list must already be sorted, which is why we refer to it as a
+        heap.
+
+        The tuple will not be unpacked, so more than two elements can be
+        present.  Returns the latest event.
+
+        """
+        if h[0][0] == h[1][0]:
+            same = []
+            for PN in zip(h, islice(h, 1, None)):
+                if PN[0][0] != PN[1][0]:
+                    break  # Prev and Next's clocks differ
+                same.append(PN[0])
+            # return first item sorted by process id
+            return sorted(same, key=lambda event: event[1])[0]
+        # clock values unique, return first item
+        return h[0]
+
+    def __str__(self):
+        return str(self.value)
+
+    def __repr__(self):
+        return '<LamportClock: {0.value}>'.format(self)

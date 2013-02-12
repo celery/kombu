@@ -4,26 +4,34 @@ kombu.common
 
 Common Utilities.
 
-:copyright: (c) 2009 - 2012 by Ask Solem.
-:license: BSD, see LICENSE for more details.
-
 """
 from __future__ import absolute_import
-from __future__ import with_statement
 
+import os
 import socket
 import threading
+import uuid as _uuid
 
 from collections import deque
+from contextlib import contextmanager
 from functools import partial
 from itertools import count
 
 from . import serialization
 from .entity import Exchange, Queue
 from .exceptions import StdChannelError
-from .log import Log
+from .five import range
+from .log import get_logger
 from .messaging import Consumer as _Consumer
 from .utils import uuid
+
+try:
+    from _thread import get_ident
+except ImportError:                             # pragma: no cover
+    try:                                        # noqa
+        from thread import get_ident            # noqa
+    except ImportError:                         # pragma: no cover
+        from dummy_thread import get_ident      # noqa
 
 __all__ = ['Broadcast', 'maybe_declare', 'uuid',
            'itermessages', 'send_reply', 'isend_reply',
@@ -33,8 +41,17 @@ __all__ = ['Broadcast', 'maybe_declare', 'uuid',
 #: Prefetch count can't exceed short.
 PREFETCH_COUNT_MAX = 0xFFFF
 
-insured_logger = Log('kombu.insurance')
-klogger = Log('kombu')
+logger = get_logger(__name__)
+_nodeid = _uuid.getnode()
+
+
+def generate_oid(node_id, process_id, thread_id, instance):
+    ent = '%x-%x-%x-%x' % (node_id, process_id, thread_id, id(instance))
+    return str(_uuid.uuid3(_uuid.NAMESPACE_OID, ent))
+
+
+def oid_from(instance):
+    return generate_oid(_nodeid, os.getpid(), get_ident(), instance)
 
 
 class Broadcast(Queue):
@@ -47,18 +64,17 @@ class Broadcast(Queue):
     :keyword queue: By default a unique id is used for the queue
        name for every consumer.  You can specify a custom queue
        name here.
-    :keyword \*\*kwargs: See :class:`~kombu.entity.Queue` for a list
+    :keyword \*\*kwargs: See :class:`~kombu.Queue` for a list
         of additional keyword arguments supported.
 
     """
 
     def __init__(self, name=None, queue=None, **kwargs):
         return super(Broadcast, self).__init__(
-                    name=queue or 'bcast.%s' % (uuid(), ),
-                    **dict({'alias': name,
-                            'auto_delete': True,
-                            'exchange': Exchange(name, type='fanout'),
-                           }, **kwargs))
+            name=queue or 'bcast.%s' % (uuid(), ),
+            **dict({'alias': name,
+                    'auto_delete': True,
+                    'exchange': Exchange(name, type='fanout')}, **kwargs))
 
 
 def declaration_cached(entity, channel):
@@ -87,8 +103,8 @@ def _maybe_declare(entity):
 
 
 def _imaybe_declare(entity, **retry_policy):
-    return entity.channel.connection.client.ensure(entity, _maybe_declare,
-                             **retry_policy)(entity)
+    return entity.channel.connection.client.ensure(
+        entity, _maybe_declare, **retry_policy)(entity)
 
 
 def drain_consumer(consumer, limit=1, timeout=None, callbacks=None):
@@ -109,7 +125,7 @@ def drain_consumer(consumer, limit=1, timeout=None, callbacks=None):
 
 
 def itermessages(conn, channel, queue, limit=1, timeout=None,
-        Consumer=_Consumer, callbacks=None, **kwargs):
+                 Consumer=_Consumer, callbacks=None, **kwargs):
     return drain_consumer(Consumer(channel, queues=[queue], **kwargs),
                           limit=limit, timeout=timeout, callbacks=callbacks)
 
@@ -145,13 +161,13 @@ def eventloop(conn, limit=None, timeout=None, ignore_timeouts=False):
         consumers, that yields any messages received.
 
     """
-    for i in limit and xrange(limit) or count():
+    for i in limit and range(limit) or count():
         try:
             yield conn.drain_events(timeout=timeout)
         except socket.timeout:
-            if timeout and not ignore_timeouts:
+            if timeout and not ignore_timeouts:  # pragma: no cover
                 raise
-        except socket.error:
+        except socket.error:  # pragma: no cover
             pass
 
 
@@ -159,11 +175,11 @@ def send_reply(exchange, req, msg, producer=None, **props):
     content_type = req.content_type
     serializer = serialization.registry.type_to_name[content_type]
     maybe_declare(exchange, producer.channel)
-    producer.publish(msg, exchange=exchange,
-            **dict({'routing_key': req.properties['reply_to'],
-                    'correlation_id': req.properties.get('correlation_id'),
-                    'serializer': serializer},
-                    **props))
+    producer.publish(
+        msg, exchange=exchange,
+        **dict({'routing_key': req.properties['reply_to'],
+                'correlation_id': req.properties.get('correlation_id'),
+                'serializer': serializer}, **props))
 
 
 def isend_reply(pool, exchange, req, msg, props, **retry_policy):
@@ -187,9 +203,47 @@ def collect_replies(conn, channel, queue, *args, **kwargs):
 
 
 def _ensure_errback(exc, interval):
-    insured_logger.error(
-        'Connection error: %r. Retry in %ss\n' % (exc, interval),
-            exc_info=True)
+    logger.error(
+        'Connection error: %r. Retry in %ss\n', exc, interval,
+        exc_info=True,
+    )
+
+
+@contextmanager
+def _ignore_errors(conn):
+    try:
+        yield
+    except conn.connection_errors + conn.channel_errors:
+        pass
+
+
+def ignore_errors(conn, fun=None, *args, **kwargs):
+    """Ignore connection and channel errors.
+
+    The first argument must be a connection object, or any other object
+    with ``connection_error`` and ``channel_error`` attributes.
+
+    Can be used as a function::
+
+        >>> ignore_errors(conn, consumer.channel.close)
+
+    or as a context manager::
+
+        >>> with ignore_errors(conn):
+        ...     consumer.channel.close()
+
+
+    .. note::
+
+        Connection and channel errors should be properly handled,
+        and not ignored.  Using this function is only acceptible in a cleanup
+        phase, like when a connection is lost or at shutdown.
+
+    """
+    if fun:
+        with _ignore_errors(conn):
+            return fun(*args, **kwargs)
+    return _ignore_errors(conn)
 
 
 def revive_connection(connection, channel, on_revive=None):
@@ -220,8 +274,8 @@ def insured(pool, fun, args, kwargs, errback=None, on_revive=None, **opts):
         return retval
 
 
-def ipublish(pool, fun, args=(), kwargs={}, errback=None, on_revive=None,
-        **retry_policy):
+def ipublish(pool, fun, args=(), kwargs={},
+             errback=None, on_revive=None, **retry_policy):
     with pool.acquire(block=True) as producer:
         errback = errback or _ensure_errback
         revive = partial(revive_producer, producer, on_revive=on_revive)
@@ -237,14 +291,48 @@ def entry_to_queue(queue, **options):
 class QoS(object):
     """Thread safe increment/decrement of a channels prefetch_count.
 
-    :param consumer: A :class:`kombu.messaging.Consumer` instance.
+    :param callback: Function used to set new prefetch count,
+        e.g. ``consumer.qos`` or ``channel.basic_qos``.  Will be called
+        with a single ``prefetch_count`` keyword argument.
     :param initial_value: Initial prefetch count value.
+
+    **Example usage**
+
+    .. code-block:: python
+
+        >>> consumer = Consumer(connection)
+        >>> qos = QoS(consumer.qos, initial_prefetch_count=2)
+        >>> qos.update()  # set initial
+
+        >>> qos.value
+        2
+
+        >>> def in_some_thread():
+        ...     qos.increment_eventually()
+
+        >>> def in_some_other_thread():
+        ...     qos.decrement_eventually()
+
+        >>> while some_loop:
+        ...    if qos.prev != qos.value:
+        ...        qos.update()  # prefetch changed so update.
+
+    It can be used with any function supporting a ``prefetch_count`` keyword
+    argument::
+
+        >>> channel = connection.channel()
+        >>> QoS(channel.basic_qos, 10)
+
+
+        >>> def set_qos(prefetch_count):
+        ...     some_object.change(prefetch=prefetch_count)
+        >>> QoS(set_qos, 10)
 
     """
     prev = None
 
-    def __init__(self, consumer, initial_value):
-        self.consumer = consumer
+    def __init__(self, callback, initial_value):
+        self.callback = callback
         self._mutex = threading.RLock()
         self.value = initial_value or 0
 
@@ -277,11 +365,11 @@ class QoS(object):
         if pcount != self.prev:
             new_value = pcount
             if pcount > PREFETCH_COUNT_MAX:
-                klogger.warn('QoS: Disabled: prefetch_count exceeds %r',
-                             PREFETCH_COUNT_MAX)
+                logger.warn('QoS: Disabled: prefetch_count exceeds %r',
+                            PREFETCH_COUNT_MAX)
                 new_value = 0
-            klogger.debug('basic.qos: prefetch_count->%s', new_value)
-            self.consumer.qos(prefetch_count=new_value)
+            logger.debug('basic.qos: prefetch_count->%s', new_value)
+            self.callback(prefetch_count=new_value)
             self.prev = pcount
         return pcount
 

@@ -1,5 +1,3 @@
-from __future__ import with_statement
-
 from kombu.common import maybe_declare
 from kombu.pools import producers
 
@@ -16,9 +14,11 @@ def send_as_task(connection, fun, args=(), kwargs={}, priority='mid'):
 
     with producers[connection].acquire(block=True) as producer:
         maybe_declare(task_exchange, producer.channel)
-        producer.publish(payload, serializer='pickle',
-                                  compression='bzip2',
-                                  routing_key=routing_key)
+        producer.publish(payload,
+                         serializer='pickle',
+                         compression='bzip2',
+                         exchange=task_exchange,
+                         routing_key=routing_key)
 
 if __name__ == '__main__':
     from kombu import Connection

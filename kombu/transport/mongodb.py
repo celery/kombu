@@ -10,15 +10,14 @@ MongoDB transport.
 """
 from __future__ import absolute_import
 
-from Queue import Empty
-
 import pymongo
 
 from pymongo import errors
 from anyjson import loads, dumps
 from pymongo.connection import Connection
 
-from kombu.exceptions import StdChannelError
+from kombu.exceptions import StdConnectionError, StdChannelError
+from kombu.five import Empty
 
 from . import virtual
 
@@ -53,9 +52,11 @@ class Channel(virtual.Channel):
                 self._queue_readcounts[queue] += 1
                 return loads(msg['payload'])
             else:
-                msg = self.client.command('findandmodify', 'messages',
+                msg = self.client.command(
+                    'findandmodify', 'messages',
                     query={'queue': queue},
-                    sort={'_id': pymongo.ASCENDING}, remove=True)
+                    sort={'_id': pymongo.ASCENDING}, remove=True,
+                )
         except errors.OperationFailure, exc:
             if 'No matching object found' in exc.args[0]:
                 raise Empty()
@@ -120,8 +121,9 @@ class Channel(virtual.Channel):
                 dbname, options = part.split('?')
                 hostname += '/?' + options
 
-        hostname = "%s/%s" % (hostname, dbname in [None, "/"] and "admin" \
-                                                                    or dbname)
+        hostname = "%s/%s" % (
+            hostname, dbname in [None, "/"] and "admin" or dbname,
+        )
         if not dbname or dbname == "/":
             dbname = "kombu_default"
 
@@ -134,8 +136,8 @@ class Channel(virtual.Channel):
         version = mongoconn.server_info()['version']
         if tuple(map(int, version.split('.')[:2])) < (1, 3):
             raise NotImplementedError(
-                'Kombu requires MongoDB version 1.3+, but connected to %s' % (
-                    version, ))
+                'Kombu requires MongoDB version 1.3+ (server is {0})'.format(
+                    version))
 
         database = getattr(mongoconn, dbname)
 
@@ -148,9 +150,9 @@ class Channel(virtual.Channel):
 
         if 'messages.broadcast' not in database.collection_names():
             capsize = conninfo.transport_options.get(
-                            'capped_queue_size') or 100000
-            database.create_collection('messages.broadcast', size=capsize,
-                                                             capped=True)
+                'capped_queue_size') or 100000
+            database.create_collection('messages.broadcast',
+                                       size=capsize, capped=True)
 
         self.bcast = getattr(database, 'messages.broadcast')
         self.bcast.ensure_index([('queue', 1)])
@@ -163,8 +165,9 @@ class Channel(virtual.Channel):
     def get_table(self, exchange):
         """Get table of bindings for ``exchange``."""
         localRoutes = frozenset(self.state.exchanges[exchange]['table'])
-        brokerRoutes = self.client.messages.routing.find({
-                            'exchange': exchange})
+        brokerRoutes = self.client.messages.routing.find(
+            {'exchange': exchange}
+        )
 
         return localRoutes | frozenset((r['routing_key'],
                                         r['pattern'],
@@ -210,10 +213,10 @@ class Transport(virtual.Transport):
 
     polling_interval = 1
     default_port = DEFAULT_PORT
-    connection_errors = (errors.ConnectionFailure, )
+    connection_errors = (StdConnectionError, errors.ConnectionFailure)
     channel_errors = (StdChannelError,
                       errors.ConnectionFailure,
-                      errors.OperationFailure, )
+                      errors.OperationFailure)
     driver_type = 'mongodb'
     driver_name = 'pymongo'
 

@@ -6,9 +6,6 @@ kombu.transport.librabbitmq
 
 .. _`librabbitmq`: http://pypi.python.org/librabbitmq/
 
-:copyright: (c) 2010 - 2012 by Ask Solem.
-:license: BSD, see LICENSE for more details.
-
 """
 from __future__ import absolute_import
 
@@ -24,7 +21,7 @@ except ImportError:
     except ImportError:
         raise ImportError("No module named librabbitmq")
 
-from kombu.exceptions import StdChannelError
+from kombu.exceptions import StdConnectionError, StdChannelError
 from kombu.utils.amq_manager import get_manager
 
 from . import base
@@ -35,22 +32,23 @@ DEFAULT_PORT = 5672
 class Message(base.Message):
 
     def __init__(self, channel, props, info, body):
-        super(Message, self).__init__(channel,
-                body=body,
-                delivery_info=info,
-                properties=props,
-                delivery_tag=info.get('delivery_tag'),
-                content_type=props.get('content_type'),
-                content_encoding=props.get('content_encoding'),
-                headers=props.get('headers'))
+        super(Message, self).__init__(
+            channel,
+            body=body,
+            delivery_info=info,
+            properties=props,
+            delivery_tag=info.get('delivery_tag'),
+            content_type=props.get('content_type'),
+            content_encoding=props.get('content_encoding'),
+            headers=props.get('headers'))
 
 
 class Channel(amqp.Channel, base.StdChannel):
     Message = Message
 
     def prepare_message(self, body, priority=None,
-                content_type=None, content_encoding=None, headers=None,
-                properties=None):
+                        content_type=None, content_encoding=None,
+                        headers=None, properties=None):
         """Encapsulate data into a AMQP message."""
         properties = properties if properties is not None else {}
         properties.update({'content_type': content_type,
@@ -69,7 +67,8 @@ class Transport(base.Transport):
     Connection = Connection
 
     default_port = DEFAULT_PORT
-    connection_errors = (ConnectionError,
+    connection_errors = (StdConnectionError,
+                         ConnectionError,
                          socket.error,
                          IOError,
                          OSError)
@@ -114,6 +113,9 @@ class Transport(base.Transport):
     def close_connection(self, connection):
         """Close the AMQP broker connection."""
         connection.close()
+
+    def verify_connection(self, connection):
+        return connection.connected
 
     def on_poll_init(self, poller):
         pass

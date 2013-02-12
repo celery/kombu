@@ -7,14 +7,13 @@ Utilities to encode text, and to safely emit text from running
 applications without crashing with the infamous :exc:`UnicodeDecodeError`
 exception.
 
-:copyright: (c) 2009 - 2012 by Ask Solem.
-:license: BSD, see LICENSE for more details.
-
 """
 from __future__ import absolute_import
 
 import sys
 import traceback
+
+from kombu.five import text_t
 
 is_py3k = sys.version_info >= (3, 0)
 
@@ -51,7 +50,6 @@ if is_py3k:  # pragma: no cover
         return obj
 
     str_t = str
-    bytes_t = bytes
 
 else:
 
@@ -70,13 +68,18 @@ else:
         return unicode(obj, default_encoding())
 
     str_t = unicode
-    bytes_t = str
     ensure_bytes = str_to_bytes
+
+
+try:
+    bytes_t = bytes
+except NameError:
+    bytes_t = str  # noqa
 
 
 def safe_str(s, errors='replace'):
     s = bytes_to_str(s)
-    if not isinstance(s, basestring):
+    if not isinstance(s, (text_t, bytes)):
         return safe_repr(s, errors)
     return _safe_str(s, errors)
 
@@ -87,17 +90,17 @@ def _safe_str(s, errors='replace'):
             return s
         try:
             return str(s)
-        except Exception, exc:
-            return '<Unrepresentable %r: %r %r>' % (
-                    type(s), exc, '\n'.join(traceback.format_stack()))
+        except Exception as exc:
+            return '<Unrepresentable {0!r}: {1!r} {2!r}>'.format(
+                type(s), exc, '\n'.join(traceback.format_stack()))
     encoding = default_encoding()
     try:
         if isinstance(s, unicode):
             return s.encode(encoding, errors)
         return unicode(s, encoding, errors)
-    except Exception, exc:
-        return '<Unrepresentable %r: %r %r>' % (
-                type(s), exc, '\n'.join(traceback.format_stack()))
+    except Exception as exc:
+        return '<Unrepresentable {0!r}: {1!r} {2!r}>'.format(
+            type(s), exc, '\n'.join(traceback.format_stack()))
 
 
 def safe_repr(o, errors='replace'):

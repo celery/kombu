@@ -1,4 +1,3 @@
-.. currentmodule:: kombu.messaging
 .. _guide-producers:
 
 ===========
@@ -20,8 +19,6 @@ See :ref:`guide-serialization`.
 Reference
 =========
 
-.. module:: kombu.messaging
-
-.. autoclass:: Producer
+.. autoclass:: kombu.Producer
     :noindex:
     :members:

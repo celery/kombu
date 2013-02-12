@@ -98,6 +98,7 @@ for the raw data::
 The `Message` object returned by the `Consumer` class will have a
 `content_type` and `content_encoding` attribute.
 
+.. _serialization-entrypoints:
 
 Creating extensions using Setuptools entry-points
 =================================================
@@ -137,24 +138,24 @@ supported by Kombu.
 
 .. admonition:: Buffer Objects
 
-The decoder function of custom serializer must support both strings
-and Python's old-style buffer objects.
+    The decoder function of custom serializer must support both strings
+    and Python's old-style buffer objects.
 
-Python pickle and json modules usually don't do this via its ``loads``
-function, but you can easily add support by making a wrapper around the
-``load`` function that takes file objects instead of strings.
+    Python pickle and json modules usually don't do this via its ``loads``
+    function, but you can easily add support by making a wrapper around the
+    ``load`` function that takes file objects instead of strings.
 
-Here's an example wrapping :func:`pickle.loads` in such a way:
+    Here's an example wrapping :func:`pickle.loads` in such a way:
 
-.. code-block:: python
+    .. code-block:: python
 
-    import pickle
-    from kombu.serialization import BytesIO, register
+        import pickle
+        from kombu.serialization import BytesIO, register
 
 
-    def loads(s):
-        return pickle.load(BytesIO(s))
+        def loads(s):
+            return pickle.load(BytesIO(s))
 
-    register('my_pickle', loads, pickle.dumps,
-             content_type='application/x-pickle2',
-             content_encoding='binary')
+        register('my_pickle', loads, pickle.dumps,
+                content_type='application/x-pickle2',
+                content_encoding='binary')

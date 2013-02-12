@@ -6,9 +6,6 @@ Carrot compatible interface for :class:`Publisher` and :class:`Producer`.
 
 See http://packages.python.org/pypi/carrot for documentation.
 
-:copyright: (c) 2009 - 2012 by Ask Solem.
-:license: BSD, see LICENSE for more details.
-
 """
 from __future__ import absolute_import
 
@@ -16,6 +13,7 @@ from itertools import count
 
 from . import messaging
 from .entity import Exchange, Queue
+from .five import items
 
 __all__ = ['Publisher', 'Consumer']
 
@@ -40,8 +38,8 @@ class Publisher(messaging.Producer):
     _closed = False
 
     def __init__(self, connection, exchange=None, routing_key=None,
-                exchange_type=None, durable=None, auto_delete=None,
-                channel=None, **kwargs):
+                 exchange_type=None, durable=None, auto_delete=None,
+                 channel=None, **kwargs):
         if channel:
             connection = channel
 
@@ -92,8 +90,8 @@ class Consumer(messaging.Consumer):
     _closed = False
 
     def __init__(self, connection, queue=None, exchange=None,
-            routing_key=None, exchange_type=None, durable=None,
-            exclusive=None, auto_delete=None, **kwargs):
+                 routing_key=None, exchange_type=None, durable=None,
+                 exclusive=None, auto_delete=None, **kwargs):
         self.backend = connection.channel()
 
         if durable is not None:
@@ -154,7 +152,7 @@ class Consumer(messaging.Consumer):
     def discard_all(self, filterfunc=None):
         if filterfunc is not None:
             raise NotImplementedError(
-                    'discard_all does not implement filters')
+                'discard_all does not implement filters')
         return self.purge()
 
     def iterconsume(self, limit=None, no_ack=None):
@@ -176,7 +174,7 @@ class Consumer(messaging.Consumer):
 class ConsumerSet(messaging.Consumer):
 
     def __init__(self, connection, from_dict=None, consumers=None,
-            channel=None, **kwargs):
+                 channel=None, **kwargs):
         if channel:
             self._provided_channel = True
             self.backend = channel
@@ -189,7 +187,7 @@ class ConsumerSet(messaging.Consumer):
             for consumer in consumers:
                 queues.extend(consumer.queues)
         if from_dict:
-            for queue_name, queue_options in from_dict.items():
+            for queue_name, queue_options in items(from_dict):
                 queues.append(Queue.from_dict(queue_name, **queue_options))
 
         super(ConsumerSet, self).__init__(self.backend, queues, **kwargs)

@@ -4,11 +4,8 @@ kombu.utils
 
 Internal utilities.
 
-:copyright: (c) 2009 - 2012 by Ask Solem.
-:license: BSD, see LICENSE for more details.
-
 """
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
 
 import importlib
 import random
@@ -19,7 +16,9 @@ from itertools import count, repeat
 from time import sleep
 from uuid import UUID, uuid4 as _uuid4, _uuid_generate_random
 
-from .encoding import safe_repr as _safe_repr
+from kombu.five import items, reraise, string_t
+
+from .encoding import default_encode, safe_repr as _safe_repr
 
 try:
     import ctypes
@@ -33,7 +32,7 @@ __all__ = ['EqualityDict', 'say', 'uuid', 'kwdict', 'maybe_list',
 
 
 def symbol_by_name(name, aliases={}, imp=None, package=None,
-        sep='.', default=None, **kwargs):
+                   sep='.', default=None, **kwargs):
     """Get symbol by qualified name.
 
     The name should be the full dot-separated path to the class::
@@ -70,7 +69,7 @@ def symbol_by_name(name, aliases={}, imp=None, package=None,
     if imp is None:
         imp = importlib.import_module
 
-    if not isinstance(name, basestring):
+    if not isinstance(name, string_t):
         return name                                 # already a class
 
     name = aliases.get(name) or name
@@ -81,9 +80,10 @@ def symbol_by_name(name, aliases={}, imp=None, package=None,
     try:
         try:
             module = imp(module_name, package=package, **kwargs)
-        except ValueError, exc:
-            raise ValueError, ValueError(
-                    "Couldn't import %r: %s" % (name, exc)), sys.exc_info()[2]
+        except ValueError as exc:
+            reraise(ValueError,
+                    ValueError("Couldn't import {0!r}: {1}".format(name, exc)),
+                    sys.exc_info()[2])
         return getattr(module, cls_name) if cls_name else module
     except (ImportError, AttributeError):
         if default is None:
@@ -113,8 +113,8 @@ class EqualityDict(dict):
         return dict.__delitem__(self, eqhash(key))
 
 
-def say(m, *s):
-    sys.stderr.write(str(m) % s + '\n')
+def say(m, *fargs, **fkwargs):
+    print(str(m).format(*fargs, **fkwargs), file=sys.stderr)
 
 
 def uuid4():
@@ -149,7 +149,7 @@ else:
 
         """
         return dict((key.encode('utf-8'), value)
-                        for key, value in kwargs.items())
+                    for key, value in items(kwargs))
 
 
 def maybe_list(v):
@@ -186,8 +186,8 @@ def fxrangemax(start=1.0, stop=None, step=1.0, max=100.0):
 
 
 def retry_over_time(fun, catch, args=[], kwargs={}, errback=None,
-        max_retries=None, interval_start=2, interval_step=2, interval_max=30,
-        callback=None):
+                    max_retries=None, interval_start=2, interval_step=2,
+                    interval_max=30, callback=None):
     """Retry the function over and over until max retries is exceeded.
 
     For each retry we sleep a for a while before we try again, this interval
@@ -225,10 +225,10 @@ def retry_over_time(fun, catch, args=[], kwargs={}, errback=None,
                 callback()
             tts = errback(exc, interval_range, retries) if errback else None
             if tts:
-                for i in fxrange(stop=tts):
-                    if i and callback:
+                for i in range(int(tts / interval_step)):
+                    if callback:
                         callback()
-                    sleep(i)
+                    sleep(interval_step)
 
 
 def emergency_dump_state(state, open_file=open, dump=None):
@@ -239,14 +239,14 @@ def emergency_dump_state(state, open_file=open, dump=None):
         import pickle
         dump = pickle.dump
     persist = mktemp()
-    say('EMERGENCY DUMP STATE TO FILE -> %s <-' % persist)
+    say('EMERGENCY DUMP STATE TO FILE -> {0} <-', persist)
     fh = open_file(persist, 'w')
     try:
         try:
             dump(state, fh, protocol=0)
-        except Exception, exc:
-            say('Cannot pickle state: %r. Fallback to pformat.' % (exc, ))
-            fh.write(pformat(state))
+        except Exception as exc:
+            say('Cannot pickle state: {0!r}. Fallback to pformat.', exc)
+            fh.write(default_encode(pformat(state)))
     finally:
         fh.flush()
         fh.close()
@@ -275,7 +275,7 @@ class cached_property(object):
         def connection(self, value):
             # Additional action to do at del(self.attr)
             if value is not None:
-                print('Connection %r deleted' % (value, ))
+                print('Connection {0!r} deleted'.format(value)
 
     """
 
@@ -321,18 +321,21 @@ class cached_property(object):
         return self.__class__(self.__get, self.__set, fdel)
 
 
-def reprkwargs(kwargs, sep=', ', fmt='%s=%s'):
-    return sep.join(fmt % (k, _safe_repr(v)) for k, v in kwargs.iteritems())
+def reprkwargs(kwargs, sep=', ', fmt='{0}={1}'):
+    return sep.join(fmt.format(k, _safe_repr(v)) for k, v in items(kwargs))
 
 
 def reprcall(name, args=(), kwargs={}, sep=', '):
-    return '%s(%s%s%s)' % (name, sep.join(map(_safe_repr, args or ())),
-                           (args and kwargs) and sep or '',
-                           reprkwargs(kwargs, sep))
+    return '{0}({1}{2}{3})'.format(
+        name, sep.join(map(_safe_repr, args or ())),
+        (args and kwargs) and sep or '',
+        reprkwargs(kwargs, sep),
+    )
 
 
 @contextmanager
 def nested(*managers):  # pragma: no cover
+    # flake8: noqa
     """Combine multiple context managers into a single nested
     context manager."""
     exits = []
@@ -360,7 +363,7 @@ def nested(*managers):  # pragma: no cover
                 # Don't rely on sys.exc_info() still containing
                 # the right information. Another exception may
                 # have been raised and caught by an exit method
-                raise exc[0], exc[1], exc[2]
+                reraise(exc[0], exc[1], exc[2])
     finally:
         del(exc)
 
@@ -379,3 +382,26 @@ def entrypoints(namespace):
     except ImportError:
         return iter([])
     return ((ep, ep.load()) for ep in iter_entry_points(namespace))
+
+
+class ChannelPromise(object):
+
+    def __init__(self, contract):
+        self.__contract__ = contract
+
+    def __call__(self):
+        try:
+            return self.__value__
+        except AttributeError:
+            value = self.__value__ = self.__contract__()
+            return value
+
+    def __repr__(self):
+        return '<promise: %r>' % (self(), )
+
+
+def escape_regex(p, white=''):
+    # what's up with re.escape? that code must be neglected or someting
+    return ''.join(c if c.isalnum() or c in white
+                   else ('\\000' if c == '\000' else '\\' + c)
+                   for c in p)

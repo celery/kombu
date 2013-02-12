@@ -2,7 +2,7 @@
  kombu - Messaging Framework for Python
 ========================================
 
-:Version: 2.4.7
+:Version: 2.5.5
 
 `Kombu` is a messaging framework for Python.
 
@@ -20,8 +20,7 @@ Features
 * Allows application authors to support several message server
   solutions by using pluggable transports.
 
-    * AMQP transports for both the `amqplib`_ (sync) and
-      `pika`_ (sync + async) clients.
+    * AMQP transport using the `py-amqp`_ or `librabbitmq`_ client libraries.
 
     * High performance AMQP transport written in C - when using `librabbitmq`_
 
@@ -31,7 +30,8 @@ Features
 
     * Virtual transports makes it really easy to add support for non-AMQP
       transports.  There is already built-in support for `Redis`_,
-      `Beanstalk`_, `Amazon SQS`_, `CouchDB`_, `MongoDB`_ and `ZooKeeper`_.
+      `Beanstalk`_, `Amazon SQS`_, `CouchDB`_, `MongoDB`_ and `ZooKeeper`_,
+      `SoftLayer MQ`_.
 
     * You can also use the SQLAlchemy and Django ORM transports to
       use a database as the broker.
@@ -60,6 +60,7 @@ and the `Wikipedia article about AMQP`_.
 
 .. _`RabbitMQ`: http://www.rabbitmq.com/
 .. _`AMQP`: http://amqp.org
+.. _`py-amqp`: http://pypi.python.org/pypi/amqp/
 .. _`Redis`: http://code.google.com/p/redis/
 .. _`Amazon SQS`: http://aws.amazon.com/sqs/
 .. _`MongoDB`: http://www.mongodb.org/
@@ -68,10 +69,10 @@ and the `Wikipedia article about AMQP`_.
 .. _`Beanstalk`: http://kr.github.com/beanstalkd/
 .. _`Rabbits and warrens`: http://blogs.digitar.com/jjww/2009/01/rabbits-and-warrens/
 .. _`amqplib`: http://barryp.org/software/py-amqplib/
-.. _`pika`: http://github.com/pika/pika
 .. _`Wikipedia article about AMQP`: http://en.wikipedia.org/wiki/AMQP
 .. _`carrot`: http://pypi.python.org/pypi/carrot/
 .. _`librabbitmq`: http://pypi.python.org/pypi/librabbitmq
+.. _`SoftLayer Message Queue`: http://www.softlayer.com/services/additional/message-queue
 
 
 Transport Comparison
@@ -80,9 +81,7 @@ Transport Comparison
 +---------------+----------+------------+------------+---------------+
 | **Client**    | **Type** | **Direct** | **Topic**  | **Fanout**    |
 +---------------+----------+------------+------------+---------------+
-| *amqplib*     | Native   | Yes        | Yes        | Yes           |
-+---------------+----------+------------+------------+---------------+
-| *pika*        | Native   | Yes        | Yes        | Yes           |
+| *amqp*        | Native   | Yes        | Yes        | Yes           |
 +---------------+----------+------------+------------+---------------+
 | *redis*       | Virtual  | Yes        | Yes        | Yes (PUB/SUB) |
 +---------------+----------+------------+------------+---------------+
@@ -101,6 +100,8 @@ Transport Comparison
 | *django*      | Virtual  | Yes        | Yes [#f1]_ | No            |
 +---------------+----------+------------+------------+---------------+
 | *sqlalchemy*  | Virtual  | Yes        | Yes [#f1]_ | No            |
++---------------+----------+------------+------------+---------------+
+| *SLMQ*        | Virtual  | Yes        | Yes [#f1]_ | No            |
 +---------------+----------+------------+------------+---------------+
 
 

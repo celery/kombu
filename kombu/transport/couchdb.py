@@ -10,14 +10,13 @@ CouchDB transport.
 """
 from __future__ import absolute_import
 
-from Queue import Empty
-
 import socket
 import couchdb
 
 from anyjson import loads, dumps
 
-from kombu.exceptions import StdChannelError
+from kombu.exceptions import StdConnectionError, StdChannelError
+from kombu.five import Empty
 from kombu.utils import uuid4
 
 from . import virtual
@@ -108,7 +107,8 @@ class Transport(virtual.Transport):
 
     polling_interval = 1
     default_port = DEFAULT_PORT
-    connection_errors = (socket.error,
+    connection_errors = (StdConnectionError,
+                         socket.error,
                          couchdb.HTTPError,
                          couchdb.ServerError,
                          couchdb.Unauthorized)

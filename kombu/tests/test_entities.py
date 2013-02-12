@@ -1,8 +1,11 @@
 from __future__ import absolute_import
 from __future__ import with_statement
 
-from kombu import Connection
-from kombu.entity import Exchange, Queue
+import pickle
+
+from mock import call
+
+from kombu import Connection, Exchange, Queue, binding
 from kombu.exceptions import NotBoundError
 
 from .mocks import Transport
@@ -12,6 +15,49 @@ from .utils import Mock
 
 def get_conn():
     return Connection(transport=Transport)
+
+
+class test_binding(TestCase):
+
+    def test_constructor(self):
+        x = binding(
+            Exchange('foo'), 'rkey',
+            arguments={'barg': 'bval'},
+            unbind_arguments={'uarg': 'uval'},
+        )
+        self.assertEqual(x.exchange, Exchange('foo'))
+        self.assertEqual(x.routing_key, 'rkey')
+        self.assertDictEqual(x.arguments, {'barg': 'bval'})
+        self.assertDictEqual(x.unbind_arguments, {'uarg': 'uval'})
+
+    def test_declare(self):
+        chan = get_conn().channel()
+        x = binding(Exchange('foo'), 'rkey')
+        x.declare(chan)
+        self.assertIn('exchange_declare', chan)
+
+    def test_declare_no_exchange(self):
+        chan = get_conn().channel()
+        x = binding()
+        x.declare(chan)
+        self.assertNotIn('exchange_declare', chan)
+
+    def test_bind(self):
+        chan = get_conn().channel()
+        x = binding(Exchange('foo'))
+        x.bind(Exchange('bar')(chan))
+        self.assertIn('exchange_bind', chan)
+
+    def test_unbind(self):
+        chan = get_conn().channel()
+        x = binding(Exchange('foo'))
+        x.unbind(Exchange('bar')(chan))
+        self.assertIn('exchange_unbind', chan)
+
+    def test_repr(self):
+        b = binding(Exchange('foo'), 'rkey')
+        self.assertIn('foo', repr(b))
+        self.assertIn('rkey', repr(b))
 
 
 class test_Exchange(TestCase):
@@ -25,7 +71,8 @@ class test_Exchange(TestCase):
         bound = exchange.bind(chan)
         self.assertTrue(bound.is_bound)
         self.assertIs(bound.channel, chan)
-        self.assertIn('<bound', repr(bound))
+        self.assertIn('bound to chan:%r' % (chan.channel_id, ),
+                      repr(bound))
 
     def test_hash(self):
         self.assertEqual(hash(Exchange('a')), hash(Exchange('a')))
@@ -34,6 +81,11 @@ class test_Exchange(TestCase):
     def test_can_cache_declaration(self):
         self.assertTrue(Exchange('a', durable=True).can_cache_declaration)
         self.assertFalse(Exchange('a', durable=False).can_cache_declaration)
+
+    def test_pickle(self):
+        e1 = Exchange('foo', 'direct')
+        e2 = pickle.loads(pickle.dumps(e1))
+        self.assertEqual(e1, e2)
 
     def test_eq(self):
         e1 = Exchange('foo', 'direct')
@@ -112,11 +164,23 @@ class test_Exchange(TestCase):
         foo(chan).bind_to(bar)
         self.assertIn('exchange_bind', chan)
 
+    def test_bind_to_by_name(self):
+        chan = get_conn().channel()
+        foo = Exchange('foo', 'topic')
+        foo(chan).bind_to('bar')
+        self.assertIn('exchange_bind', chan)
+
     def test_unbind_from(self):
         chan = get_conn().channel()
         foo = Exchange('foo', 'topic')
         bar = Exchange('bar', 'topic')
         foo(chan).unbind_from(bar)
+        self.assertIn('exchange_unbind', chan)
+
+    def test_unbind_from_by_name(self):
+        chan = get_conn().channel()
+        foo = Exchange('foo', 'topic')
+        foo(chan).unbind_from('bar')
         self.assertIn('exchange_unbind', chan)
 
 
@@ -128,6 +192,14 @@ class test_Queue(TestCase):
     def test_hash(self):
         self.assertEqual(hash(Queue('a')), hash(Queue('a')))
         self.assertNotEqual(hash(Queue('a')), hash(Queue('b')))
+
+    def test_anonymous(self):
+        chan = Mock()
+        x = Queue(bindings=[binding(Exchange('foo'), 'rkey')])
+        chan.queue_declare.return_value = 'generated', 0, 0
+        xx = x(chan)
+        xx.declare()
+        self.assertEqual(xx.name, 'generated')
 
     def test_when_bound_but_no_exchange(self):
         q = Queue('a')
@@ -142,7 +214,39 @@ class test_Queue(TestCase):
 
         q.declare()
         q.queue_declare.assert_called_with(False, passive=False)
-        q.queue_bind.assert_called_with(False)
+
+    def test_bind_to_when_name(self):
+        chan = Mock()
+        q = Queue('a')
+        q(chan).bind_to('ex')
+        self.assertTrue(chan.queue_bind.called)
+
+    def test_get_when_no_m2p(self):
+        chan = Mock()
+        q = Queue('a')(chan)
+        chan.message_to_python = None
+        self.assertTrue(q.get())
+
+    def test_multiple_bindings(self):
+        chan = Mock()
+        q = Queue('mul', [
+            binding(Exchange('mul1'), 'rkey1'),
+            binding(Exchange('mul2'), 'rkey2'),
+            binding(Exchange('mul3'), 'rkey3'),
+        ])
+        q(chan).declare()
+        self.assertIn(
+            call(
+                nowait=False,
+                exchange='mul1',
+                auto_delete=False,
+                passive=False,
+                arguments=None,
+                type='direct',
+                durable=True,
+            ),
+            chan.exchange_declare.call_args_list,
+        )
 
     def test_can_cache_declaration(self):
         self.assertTrue(Queue('a', durable=True).can_cache_declaration)
@@ -159,7 +263,8 @@ class test_Queue(TestCase):
 
     def test_exclusive_implies_auto_delete(self):
         self.assertTrue(
-                Queue('foo', self.exchange, exclusive=True).auto_delete)
+            Queue('foo', self.exchange, exclusive=True).auto_delete,
+        )
 
     def test_binds_at_instantiation(self):
         self.assertTrue(Queue('foo', self.exchange,

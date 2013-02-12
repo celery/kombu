@@ -1,7 +1,7 @@
 """Messaging Framework for Python"""
 from __future__ import absolute_import
 
-VERSION = (2, 4, 7)
+VERSION = (2, 5, 5)
 __version__ = '.'.join(map(str, VERSION[0:3])) + ''.join(VERSION[3:])
 __author__ = 'Ask Solem'
 __contact__ = 'ask@celeryproject.org'
@@ -16,10 +16,23 @@ import sys
 if sys.version_info < (2, 5):  # pragma: no cover
     if sys.version_info >= (2, 4):
         raise Exception(
-                'Python 2.4 is not supported by this version. '
-                'Please use Kombu versions 1.x.')
+            'Python 2.4 is not supported by this version. '
+            'Please use Kombu versions 1.x.')
     else:
         raise Exception('Kombu requires Python versions 2.5 or later.')
+
+STATICA_HACK = True
+globals()['kcah_acitats'[::-1].upper()] = False
+if STATICA_HACK:  # pragma: no cover
+    # This is never executed, but tricks static analyzers (PyDev, PyCharm,
+    # pylint, etc.) into knowing the types of these symbols, and what
+    # they contain.
+    from kombu.connection import Connection, BrokerConnection   # noqa
+    from kombu.entity import Exchange, Queue, binding           # noqa
+    from kombu.messaging import Consumer, Producer              # noqa
+    from kombu.pools import connections, producers              # noqa
+    from kombu.utils.url import parse_url                       # noqa
+    from kombu.common import eventloop, uuid                    # noqa
 
 # Lazy loading.
 # - See werkzeug/__init__.py for the rationale behind this.
@@ -35,7 +48,7 @@ all_by_module = {
 }
 
 object_origins = {}
-for module, items in all_by_module.iteritems():
+for module, items in all_by_module.items():
     for item in items:
         object_origins[item] = module
 
@@ -61,7 +74,7 @@ class module(ModuleType):
 # 2.5 does not define __package__
 try:
     package = __package__
-except NameError:
+except NameError:  # pragma: no cover
     package = 'kombu'
 
 # keep a reference to this module so that it's not garbage collected
@@ -81,7 +94,7 @@ new_module.__dict__.update({
     '__package__': package,
     'VERSION': VERSION})
 
-if os.environ.get('KOMBU_LOG_DEBUG'):
+if os.environ.get('KOMBU_LOG_DEBUG'):  # pragma: no cover
     os.environ.update(KOMBU_LOG_CHANNEL='1', KOMBU_LOG_CONNECTION='1')
     from .utils import debug
     debug.setup_logging()

@@ -4,18 +4,18 @@ kombu.exceptions
 
 Exceptions.
 
-:copyright: (c) 2009 - 2012 by Ask Solem.
-:license: BSD, see LICENSE for more details.
-
 """
 from __future__ import absolute_import
 
 import socket
 
+from amqp import ResourceError
+
 __all__ = ['NotBoundError', 'MessageStateError', 'TimeoutError',
            'LimitExceeded', 'ConnectionLimitExceeded',
-           'ChannelLimitExceeded', 'StdChannelError', 'VersionMismatch',
-           'SerializerNotInstalled']
+           'ChannelLimitExceeded', 'StdConnectionError',
+           'StdChannelError', 'VersionMismatch', 'SerializerNotInstalled',
+           'ResourceError']
 
 TimeoutError = socket.timeout
 
@@ -49,6 +49,10 @@ class ChannelLimitExceeded(LimitExceeded):
     pass
 
 
+class StdConnectionError(KombuError):
+    pass
+
+
 class StdChannelError(KombuError):
     pass
 
@@ -62,7 +66,7 @@ class SerializerNotInstalled(KombuError):
     pass
 
 
-class InconsistencyError(StdChannelError):
+class InconsistencyError(StdConnectionError):
     """Data or environment has been found to be inconsistent,
     depending on the cause it may be possible to retry the operation."""
     pass

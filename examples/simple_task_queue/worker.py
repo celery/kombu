@@ -1,9 +1,10 @@
-from __future__ import with_statement
-
 from kombu.mixins import ConsumerMixin
+from kombu.log import get_logger
 from kombu.utils import kwdict, reprcall
 
 from queues import task_queues
+
+logger = get_logger(__name__)
 
 
 class Worker(ConsumerMixin):
@@ -19,11 +20,11 @@ class Worker(ConsumerMixin):
         fun = body['fun']
         args = body['args']
         kwargs = body['kwargs']
-        self.info('Got task: %s', reprcall(fun.__name__, args, kwargs))
+        logger.info('Got task: %s', reprcall(fun.__name__, args, kwargs))
         try:
             fun(*args, **kwdict(kwargs))
         except Exception, exc:
-            self.error('task raised exception: %r', exc)
+            logger.error('task raised exception: %r', exc)
         message.ack()
 
 if __name__ == '__main__':

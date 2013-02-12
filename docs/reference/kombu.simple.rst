@@ -16,11 +16,11 @@
 
         .. attribute:: producer
 
-            :class:`~kombu.messaging.Producer` used to publish messages.
+            :class:`~kombu.Producer` used to publish messages.
 
         .. attribute:: consumer
 
-            :class:`~kombu.messaging.Consumer` used to receive messages.
+            :class:`~kombu.Consumer` used to receive messages.
 
         .. attribute:: no_ack
 
@@ -28,7 +28,7 @@
 
         .. attribute:: queue
 
-            :class:`~kombu.entity.Queue` to consume from (if consuming).
+            :class:`~kombu.Queue` to consume from (if consuming).
 
         .. attribute:: queue_opts
 
@@ -57,11 +57,11 @@
 
         .. attribute:: producer
 
-            :class:`~kombu.messaging.Producer` used to publish messages.
+            :class:`~kombu.Producer` used to publish messages.
 
         .. attribute:: consumer
 
-            :class:`~kombu.messaging.Consumer` used to receive messages.
+            :class:`~kombu.Consumer` used to receive messages.
 
         .. attribute:: no_ack
 
@@ -69,7 +69,7 @@
 
         .. attribute:: queue
 
-            :class:`~kombu.entity.Queue` to consume from (if consuming).
+            :class:`~kombu.Queue` to consume from (if consuming).
 
         .. attribute:: queue_opts
 

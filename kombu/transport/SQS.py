@@ -4,16 +4,11 @@ kombu.transport.SQS
 
 Amazon SQS transport.
 
-:copyright: (c) 2010 - 2012 by Ask Solem
-:license: BSD, see LICENSE for more details.
-
 """
 from __future__ import absolute_import
 
 import socket
 import string
-
-from Queue import Empty
 
 from anyjson import loads, dumps
 
@@ -25,7 +20,8 @@ from boto.sdb.connection import SDBConnection
 from boto.sqs.connection import SQSConnection
 from boto.sqs.message import Message
 
-from kombu.exceptions import StdChannelError
+from kombu.exceptions import StdConnectionError, StdChannelError
+from kombu.five import Empty, range, text_t
 from kombu.utils import cached_property, uuid
 from kombu.utils.encoding import safe_str
 
@@ -96,12 +92,12 @@ class Table(Domain):
             if item:
                 return item
 
-    def select(self, query='', next_token=None, consistent_read=True,
-            max_items=None):
+    def select(self, query='', next_token=None,
+               consistent_read=True, max_items=None):
         """Uses `consistent_read` by default."""
         query = """SELECT * FROM `%s` %s""" % (self.name, query)
         return Domain.select(self, query, next_token,
-                                   consistent_read, max_items)
+                             consistent_read, max_items)
 
     def _try_first(self, query='', **kwargs):
         for c in (False, True):
@@ -125,6 +121,8 @@ class Channel(virtual.Channel):
 
     default_region = 'us-east-1'
     default_visibility_timeout = 1800  # 30 minutes.
+    # 20 seconds is the max value currently supported by SQS.
+    default_wait_time_seconds = 20
     domain_format = 'kombu%(vhost)s'
     _sdb = None
     _sqs = None
@@ -156,7 +154,7 @@ class Channel(virtual.Channel):
 
     def entity_name(self, name, table=CHARS_REPLACE_TABLE):
         """Format AMQP queue name into a legal SQS queue name."""
-        return unicode(safe_str(name)).translate(table)
+        return text_t(safe_str(name)).translate(table)
 
     def _new_queue(self, queue, **kwargs):
         """Ensures a queue exists in SQS."""
@@ -167,7 +165,8 @@ class Channel(virtual.Channel):
             return self._queue_cache[queue]
         except KeyError:
             q = self._queue_cache[queue] = self.sqs.create_queue(
-                    queue, self.visibility_timeout)
+                queue, self.visibility_timeout,
+            )
             return q
 
     def _queue_bind(self, *args):
@@ -187,7 +186,7 @@ class Channel(virtual.Channel):
         """
         if self.supports_fanout:
             return [(r['routing_key'], r['pattern'], r['queue'])
-                        for r in self.table.routes_for(exchange)]
+                    for r in self.table.routes_for(exchange)]
         return super(Channel, self).get_table(exchange)
 
     def get_exchanges(self):
@@ -229,7 +228,7 @@ class Channel(virtual.Channel):
     def _get(self, queue):
         """Try to retrieve a single message off ``queue``."""
         q = self._new_queue(queue)
-        rs = q.get_messages(1)
+        rs = q.get_messages(1, wait_time_seconds=self.wait_time_seconds)
         if rs:
             m = rs[0]
             payload = loads(rs[0].get_body())
@@ -240,6 +239,13 @@ class Channel(virtual.Channel):
                     'sqs_message': m, 'sqs_queue': q, })
             return payload
         raise Empty()
+
+    def _restore(self, message,
+                 unwanted_delivery_info=('sqs_message', 'sqs_queue')):
+        for unwanted_key in unwanted_delivery_info:
+            # Remove objects that aren't JSON serializable (Issue #1108).
+            message.delivery_info.pop(unwanted_key, None)
+        return super(Channel, self)._restore(message)
 
     def basic_ack(self, delivery_tag):
         delivery_info = self.qos.get(delivery_tag).delivery_info
@@ -261,7 +267,7 @@ class Channel(virtual.Channel):
         # SQS is slow at registering messages, so run for a few
         # iterations to ensure messages are deleted.
         size = 0
-        for i in xrange(10):
+        for i in range(10):
             size += q.count()
             if not size:
                 break
@@ -309,10 +315,10 @@ class Channel(virtual.Channel):
 
     @property
     def table(self):
-        name = self.entity_name(self.domain_format % {
-                                    'vhost': self.conninfo.virtual_host})
-        d = self.sdb.get_object('CreateDomain', {'DomainName': name},
-                                self.Table)
+        name = self.entity_name(
+            self.domain_format % {'vhost': self.conninfo.virtual_host})
+        d = self.sdb.get_object(
+            'CreateDomain', {'DomainName': name}, self.Table)
         d.name = name
         return d
 
@@ -341,11 +347,17 @@ class Channel(virtual.Channel):
     def region(self):
         return self.transport_options.get('region') or self.default_region
 
+    @cached_property
+    def wait_time_seconds(self):
+        return (self.transport_options.get('wait_time_seconds') or
+                self.default_wait_time_seconds)
+
 
 class Transport(virtual.Transport):
     Channel = Channel
 
-    polling_interval = 1
+    polling_interval = 0
+    wait_time_seconds = 20
     default_port = None
-    connection_errors = (exception.SQSError, socket.error)
+    connection_errors = (StdConnectionError, exception.SQSError, socket.error)
     channel_errors = (exception.SQSDecodeError, StdChannelError)

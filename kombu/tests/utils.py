@@ -21,8 +21,9 @@ except AttributeError:
 
 class TestCase(unittest.TestCase):
 
-    if not hasattr(unittest.TestCase, 'assertItemsEqual'):
-        assertItemsEqual = unittest.TestCase.assertSameElements
+    def assertItemsEqual(self, a, b, *args, **kwargs):
+        return self.assertEqual(sorted(a), sorted(b), *args, **kwargs)
+    assertSameElements = assertItemsEqual
 
 
 class Mock(mock.Mock):
@@ -59,8 +60,8 @@ def redirect_stdouts(fun):
         sys.stdout = StringIO()
         sys.stderr = StringIO()
         try:
-            return fun(*args, **dict(kwargs, stdout=sys.stdout,
-                                             stderr=sys.stderr))
+            return fun(*args, **dict(kwargs,
+                                     stdout=sys.stdout, stderr=sys.stderr))
         finally:
             sys.stdout = sys.__stdout__
             sys.stderr = sys.__stderr__
@@ -90,24 +91,6 @@ def module_exists(*modules):
 # Taken from
 # http://bitbucket.org/runeh/snippets/src/tip/missing_modules.py
 def mask_modules(*modnames):
-    """Ban some modules from being importable inside the context
-
-    For example:
-
-        >>> @missing_modules('sys'):
-        >>> def foo():
-        ...     try:
-        ...         import sys
-        ...     except ImportError:
-        ...         print('sys not found')
-        sys not found
-
-        >>> import sys
-        >>> sys.version
-        (2, 5, 2, 'final', 0)
-
-    """
-
     def _inner(fun):
 
         @wraps(fun)

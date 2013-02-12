@@ -4,8 +4,10 @@ import os
 import logging
 import sys
 
+from logging.handlers import WatchedFileHandler
+
+from .five import string_t
 from .utils import cached_property
-from .utils.compat import WatchedFileHandler
 from .utils.encoding import safe_repr, safe_str
 from .utils.functional import maybe_promise
 
@@ -24,7 +26,7 @@ class NullHandler(logging.Handler):
 
 
 def get_logger(logger):
-    if isinstance(logger, basestring):
+    if isinstance(logger, string_t):
         logger = logging.getLogger(logger)
     if not logger.handlers:
         logger.addHandler(NullHandler())
@@ -38,7 +40,7 @@ def anon_logger(name):
 
 
 def get_loglevel(level):
-    if isinstance(level, basestring):
+    if isinstance(level, string_t):
         return LOG_LEVELS[level]
     return level
 
@@ -91,15 +93,15 @@ class LogMixin(object):
     def log(self, severity, *args, **kwargs):
         if self.logger.isEnabledFor(severity):
             log = self.logger.log
-            if len(args) > 1 and isinstance(args[0], basestring):
+            if len(args) > 1 and isinstance(args[0], string_t):
                 expand = [maybe_promise(arg) for arg in args[1:]]
                 return log(severity,
                            self.annotate(args[0].replace('%r', '%s')),
-                          *list(safeify_format(args[0], *expand)), **kwargs)
+                           *list(safeify_format(args[0], *expand)), **kwargs)
             else:
-                return self.logger.log(severity,
-                            self.annotate(' '.join(map(safe_str, args))),
-                            **kwargs)
+                return self.logger.log(
+                    severity, self.annotate(' '.join(map(safe_str, args))),
+                    **kwargs)
 
     def get_logger(self):
         return get_logger(self.logger_name)

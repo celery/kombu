@@ -11,13 +11,16 @@ import errno
 import os
 import socket
 
-from cPickle import loads, dumps
-from Queue import Empty
+try:
+    import zmq
+    from zmq import ZMQError
+except ImportError:
+    zmq = ZMQError = None  # noqa
 
-import zmq
-
-from kombu.exceptions import StdChannelError
+from kombu.exceptions import StdConnectionError, StdChannelError
+from kombu.five import Empty
 from kombu.log import get_logger
+from kombu.serialization import pickle
 from kombu.utils import cached_property
 from kombu.utils.eventio import poll, READ
 
@@ -28,6 +31,8 @@ logger = get_logger('kombu.transport.zmq')
 DEFAULT_PORT = 5555
 DEFAULT_HWM = 128
 DEFAULT_INCR = 1
+
+dumps, loads = pickle.dumps, pickle.loads
 
 
 class MultiChannelPoller(object):
@@ -86,14 +91,17 @@ class MultiChannelPoller(object):
 
 
 class Client(object):
+
     def __init__(self, uri='tcp://127.0.0.1', port=DEFAULT_PORT,
-            hwm=DEFAULT_HWM, swap_size=None, enable_sink=True, context=None):
+                 hwm=DEFAULT_HWM, swap_size=None, enable_sink=True,
+                 context=None):
         try:
             scheme, parts = uri.split('://')
         except ValueError:
             scheme = 'tcp'
             parts = uri
         endpoints = parts.split(';')
+        self.port = port
 
         if scheme != 'tcp':
             raise NotImplementedError('Currently only TCP can be used')
@@ -102,12 +110,17 @@ class Client(object):
 
         if enable_sink:
             self.sink = self.context.socket(zmq.PULL)
-            self.sink.bind('tcp://*:%s' % port)
+            self.sink.bind('tcp://*:{0.port}'.format(self))
         else:
             self.sink = None
 
         self.vent = self.context.socket(zmq.PUSH)
-        self.vent.setsockopt(zmq.HWM, hwm)
+
+        if hasattr(zmq, 'SNDHWM'):
+            self.vent.setsockopt(zmq.SNDHWM, hwm)
+        else:
+            self.vent.setsockopt(zmq.HWM, hwm)
+
         if swap_size:
             self.vent.setsockopt(zmq.SWAP, swap_size)
 
@@ -125,7 +138,7 @@ class Client(object):
     def get(self, queue=None, timeout=None):
         try:
             return self.sink.recv(flags=zmq.NOBLOCK)
-        except zmq.ZMQError, e:
+        except ZMQError, e:
             if e.errno == zmq.EAGAIN:
                 raise socket.error(errno.EAGAIN, e.strerror)
             else:
@@ -155,11 +168,10 @@ class Channel(virtual.Channel):
     enable_sink = True
     port_incr = DEFAULT_INCR
 
-    from_transport_options = (virtual.Channel.from_transport_options
-                            + ('hwm',
-                               'swap_size',
-                               'enable_sink',
-                               'port_incr'))
+    from_transport_options = (
+        virtual.Channel.from_transport_options +
+        ('hwm', 'swap_size', 'enable_sink', 'port_incr')
+    )
 
     def __init__(self, *args, **kwargs):
         super_ = super(Channel, self)
@@ -223,16 +235,17 @@ class Transport(virtual.Transport):
     driver_type = 'zeromq'
     driver_name = 'zmq'
 
-    connection_errors = (zmq.ZMQError,)
-    channel_errors = (zmq.ZMQError, StdChannelError,)
+    connection_errors = (StdConnectionError, ZMQError,)
+    channel_errors = (StdChannelError, )
 
     supports_ev = True
     polling_interval = None
     nb_keep_draining = True
 
     def __init__(self, *args, **kwargs):
+        if zmq is None:
+            raise ImportError('The zmq library is not installed')
         super(Transport, self).__init__(*args, **kwargs)
-
         self.cycle = MultiChannelPoller()
 
     def driver_version(self):
@@ -270,7 +283,7 @@ class Transport(virtual.Transport):
         message, queue = item
         if not queue or queue not in self._callbacks:
             raise KeyError(
-                "Received message for queue '%s' without consumers: %s" % (
+                'Message for queue {0!r} without consumers: {1}'.format(
                     queue, message))
         self._callbacks[queue](message)
 

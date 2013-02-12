@@ -102,7 +102,7 @@ class test_Publisher(TestCase):
         self.assertFalse(pub2.exchange.durable)
 
         explicit = Exchange('test_Publisher_constructor_explicit',
-                                  type='topic')
+                            type='topic')
         pub3 = compat.Publisher(self.connection,
                                 exchange=explicit)
         self.assertEqual(pub3.exchange, explicit)
@@ -241,8 +241,8 @@ class test_Consumer(TestCase):
                 for i in range(limit):
                     yield i
 
-        c = C(self.connection, queue=n, exchange=n,
-                               routing_key='rkey')
+        c = C(self.connection,
+              queue=n, exchange=n, routing_key='rkey')
         self.assertEqual(c.wait(10), range(10))
         c.close()
 
@@ -256,8 +256,8 @@ class test_Consumer(TestCase):
                 i[0] += 1
                 return z
 
-        c = C(self.connection, queue=n, exchange=n,
-                               routing_key='rkey')
+        c = C(self.connection,
+              queue=n, exchange=n, routing_key='rkey')
         self.assertEqual(list(c.iterqueue(limit=10)), range(10))
         c.close()
 
@@ -289,7 +289,7 @@ class test_ConsumerSet(TestCase):
                                     'routing_key': 'xyz'}}
         consumers = [compat.Consumer(self.connection, queue=prefix + str(i),
                                      exchange=prefix + str(i))
-                        for i in range(3)]
+                     for i in range(3)]
         c = compat.ConsumerSet(self.connection, consumers=consumers)
         c2 = compat.ConsumerSet(self.connection, from_dict=dcon)
 
@@ -303,9 +303,12 @@ class test_ConsumerSet(TestCase):
         for cq in c.queues:
             self.assertIs(cq.channel, c.channel)
 
-        c2.add_consumer_from_dict({'%s.xxx' % prefix: {
+        c2.add_consumer_from_dict({
+            '%s.xxx' % prefix: {
                 'exchange': '%s.xxx' % prefix,
-                'routing_key': 'xxx'}})
+                'routing_key': 'xxx',
+            },
+        })
         self.assertEqual(len(c2.queues), 3)
         for c2q in c2.queues:
             self.assertIs(c2q.channel, c2.channel)

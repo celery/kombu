@@ -9,10 +9,8 @@ from collections import defaultdict
 from itertools import count
 from Queue import Empty, Queue as _Queue
 
-from kombu.connection import Connection
-from kombu.entity import Exchange, Queue
+from kombu import Connection, Exchange, Queue, Consumer, Producer
 from kombu.exceptions import InconsistencyError, VersionMismatch
-from kombu.messaging import Consumer, Producer
 from kombu.utils import eventio  # patch poll
 
 from kombu.tests.utils import TestCase
@@ -43,9 +41,7 @@ class Client(object):
     hashes = defaultdict(dict)
     shard_hint = None
 
-    def __init__(self, db=None, port=None, **kwargs):
-        self.port = port
-        self.db = db
+    def __init__(self, db=None, port=None, connection_pool=None, **kwargs):
         self._called = []
         self._connection = None
         self.bgsave_raises_ResponseError = False
@@ -197,6 +193,9 @@ class Channel(redis.Channel):
     def _get_client(self):
         return Client
 
+    def _get_pool(self):
+        return Mock()
+
     def _get_response_error(self):
         return ResponseError
 
@@ -263,22 +262,32 @@ class test_Channel(TestCase):
         self.assertFalse(s.subscribed)
 
     def test_handle_pmessage_message(self):
-        self.assertDictEqual(self.channel._handle_message(
-                                self.channel.subclient,
-                                ['pmessage', 'pattern', 'channel', 'data']),
-                            {'type': 'pmessage',
-                             'pattern': 'pattern',
-                             'channel': 'channel',
-                             'data': 'data'})
+        self.assertDictEqual(
+            self.channel._handle_message(
+                self.channel.subclient,
+                ['pmessage', 'pattern', 'channel', 'data'],
+            ),
+            {
+                'type': 'pmessage',
+                'pattern': 'pattern',
+                'channel': 'channel',
+                'data': 'data',
+            },
+        )
 
     def test_handle_message(self):
-        self.assertDictEqual(self.channel._handle_message(
-                                self.channel.subclient,
-                                ['type', 'channel', 'data']),
-                             {'type': 'type',
-                              'pattern': None,
-                              'channel': 'channel',
-                              'data': 'data'})
+        self.assertDictEqual(
+            self.channel._handle_message(
+                self.channel.subclient,
+                ['type', 'channel', 'data'],
+            ),
+            {
+                'type': 'type',
+                'pattern': None,
+                'channel': 'channel',
+                'data': 'data',
+            },
+        )
 
     def test_brpop_start_but_no_queues(self):
         self.assertIsNone(self.channel._brpop_start())
@@ -382,10 +391,10 @@ class test_Channel(TestCase):
         c.connection.disconnect.assert_called_with()
 
     def test_invalid_database_raises_ValueError(self):
-        self.channel.connection.client.virtual_host = 'xfeqwewkfk'
 
         with self.assertRaises(ValueError):
-            self.channel._create_client()
+            self.channel.connection.client.virtual_host = 'dwqeq'
+            self.channel._connparams()
 
     @skip_if_not_module('redis')
     def test_get_client(self):
@@ -393,14 +402,14 @@ class test_Channel(TestCase):
         KombuRedis = redis.Channel._get_client(self.channel)
         self.assertTrue(KombuRedis)
 
-        Rv = getattr(R, '__version__')
+        Rv = getattr(R, 'VERSION', None)
         try:
-            R.__version__ = '2.4.0'
+            R.VERSION = (2, 4, 0)
             with self.assertRaises(VersionMismatch):
                 redis.Channel._get_client(self.channel)
         finally:
             if Rv is not None:
-                R.__version__ = Rv
+                R.VERSION = Rv
 
     @skip_if_not_module('redis')
     def test_get_response_error(self):
@@ -412,13 +421,18 @@ class test_Channel(TestCase):
         self.channel._in_poll = False
         c = self.channel.client = Mock()
 
-        self.assertIs(self.channel._avail_client, c)
+        with self.channel.conn_or_acquire() as client:
+            self.assertIs(client, c)
 
     def test_avail_client_when_in_poll(self):
         self.channel._in_poll = True
+        self.channel._pool = Mock()
         cc = self.channel._create_client = Mock()
+        client = cc.return_value = Mock()
 
-        self.assertTrue(self.channel._avail_client)
+        with self.channel.conn_or_acquire():
+            pass
+        self.channel.pool.release.assert_called_with(client.connection)
         cc.assert_called_with()
 
     @skip_if_not_module('redis')
@@ -526,29 +540,23 @@ class test_Redis(TestCase):
         channel.close()
 
     def test_db_values(self):
-        c1 = Connection(virtual_host=1,
-                              transport=Transport).channel()
-        self.assertEqual(c1.client.db, 1)
+        Connection(virtual_host=1,
+                   transport=Transport).channel()
 
-        c2 = Connection(virtual_host='1',
-                              transport=Transport).channel()
-        self.assertEqual(c2.client.db, 1)
+        Connection(virtual_host='1',
+                   transport=Transport).channel()
 
-        c3 = Connection(virtual_host='/1',
-                              transport=Transport).channel()
-        self.assertEqual(c3.client.db, 1)
+        Connection(virtual_host='/1',
+                   transport=Transport).channel()
 
         with self.assertRaises(Exception):
-            Connection(virtual_host='/foo',
-                       transport=Transport).channel()
+            Connection('redis:///foo').channel()
 
     def test_db_port(self):
         c1 = Connection(port=None, transport=Transport).channel()
-        self.assertEqual(c1.client.port, Transport.default_port)
         c1.close()
 
         c2 = Connection(port=9999, transport=Transport).channel()
-        self.assertEqual(c2.client.port, 9999)
         c2.close()
 
     def test_close_poller_not_active(self):
@@ -727,8 +735,7 @@ class test_MultiChannelPoller(TestCase):
         self.assertEqual(p._register.call_count, 1)
         self.assertEqual(channel._subscribe.call_count, 1)
 
-    def create_get(self, events=None, queues=None,
-            fanouts=None):
+    def create_get(self, events=None, queues=None, fanouts=None):
         _pr = [] if events is None else events
         _aq = [] if queues is None else queues
         _af = [] if fanouts is None else fanouts

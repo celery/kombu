@@ -46,7 +46,7 @@ exclude_trees = ['.build']
 add_function_parentheses = True
 
 # The name of the Pygments (syntax highlighting) style to use.
-pygments_style = 'trac'
+pygments_style = 'colorful'
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -62,8 +62,8 @@ html_use_modindex = True
 html_use_index = True
 
 latex_documents = [
-  ('index', 'Kombu.tex', ur'Kombu Documentation',
-   ur'Ask Solem', 'manual'),
+    ('index', 'Kombu.tex', u'Kombu Documentation',
+     u'Ask Solem', 'manual'),
 ]
 
 html_theme = "celery"

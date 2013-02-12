@@ -1,9 +1,9 @@
+from __future__ import absolute_import
 from __future__ import with_statement
 
-from kombu import Connection
+from kombu import Connection, Producer
 from kombu import pools
 from kombu.connection import ConnectionPool
-from kombu.messaging import Producer
 from kombu.utils import eqhash
 
 from .utils import TestCase
@@ -25,6 +25,34 @@ class test_ProducerPool(TestCase):
     def setUp(self):
         self.connections = Mock()
         self.pool = self.Pool(self.connections, limit=10)
+
+    def test_releases_connection_when_Producer_raises(self):
+        self.pool.Producer = Mock()
+        self.pool.Producer.side_effect = IOError()
+        acq = self.pool._acquire_connection = Mock()
+        conn = acq.return_value = Mock()
+        with self.assertRaises(IOError):
+            self.pool.create_producer()
+        conn.release.assert_called_with()
+
+    def test_prepare_release_connection_on_error(self):
+        pp = Mock()
+        p = pp.return_value = Mock()
+        p.revive.side_effect = IOError()
+        acq = self.pool._acquire_connection = Mock()
+        conn = acq.return_value = Mock()
+        p._channel = None
+        with self.assertRaises(IOError):
+            self.pool.prepare(pp)
+        conn.release.assert_called_with()
+
+    def test_release_releases_connection(self):
+        p = Mock()
+        p.__connection__ = Mock()
+        self.pool.release(p)
+        p.__connection__.release.assert_called_with()
+        p.__connection__ = None
+        self.pool.release(p)
 
     def test_init(self):
         self.assertIs(self.pool.connections, self.connections)
@@ -57,16 +85,16 @@ class test_ProducerPool(TestCase):
     def test_prepare(self):
         connection = self.connections.acquire.return_value = Mock()
         pool = self.MyPool(self.connections, limit=10)
-        pool.instance.channel = None
+        pool.instance._channel = None
         first = pool._resource.get_nowait()
         producer = pool.prepare(first)
         self.assertTrue(self.connections.acquire.called)
-        producer.revive.assert_called_with(connection.default_channel)
+        producer.revive.assert_called_with(connection)
 
     def test_prepare_channel_already_created(self):
         self.connections.acquire.return_value = Mock()
         pool = self.MyPool(self.connections, limit=10)
-        pool.instance.channel = Mock()
+        pool.instance._channel = Mock()
         first = pool._resource.get_nowait()
         self.connections.acquire.reset()
         producer = pool.prepare(first)
@@ -79,8 +107,9 @@ class test_ProducerPool(TestCase):
     def test_release(self):
         p = Mock()
         p.channel = Mock()
+        p.__connection__ = Mock()
         self.pool.release(p)
-        p.connection.release.assert_called_with()
+        p.__connection__.release.assert_called_with()
         self.assertIsNone(p.channel)
 
 
