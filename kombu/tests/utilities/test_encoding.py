@@ -55,7 +55,7 @@ class test_encoding_utils(TestCase):
 
     def test_default_encode(self):
         with clean_encoding() as e:
-            self.assertTrue(e.default_encode('foo'))
+            self.assertTrue(e.default_encode(b'foo'))
 
 
 class test_safe_str(TestCase):

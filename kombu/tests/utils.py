@@ -11,12 +11,15 @@ import mock
 from nose import SkipTest
 
 from kombu.five import builtins, string_t, StringIO
+from kombu.utils.encoding import ensure_bytes
 
 try:
     import unittest
     unittest.skip
 except AttributeError:
     import unittest2 as unittest  # noqa
+
+PY3 = sys.version_info[0] == 3
 
 
 class TestCase(unittest.TestCase):
@@ -77,6 +80,8 @@ def module_exists(*modules):
         def __inner(*args, **kwargs):
             for module in modules:
                 if isinstance(module, string_t):
+                    if not PY3:
+                        module = ensure_bytes(module)
                     module = types.ModuleType(module)
                 sys.modules[module.__name__] = module
                 try:
