@@ -29,6 +29,11 @@ try:
 except ImportError:                         # pragma: no cover
     from UserDict import UserDict           # noqa
 
+try:
+    bytes_t = bytes
+except NameError:
+    bytes_t = str  # noqa
+
 
 if PY3:
     import builtins

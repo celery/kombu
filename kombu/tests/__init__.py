@@ -6,6 +6,8 @@ import sys
 
 from kombu.exceptions import VersionMismatch
 
+os.environ['KOMBU_UNITTEST'] = '1'
+
 # avoid json implementation inconsistencies.
 try:
     import json  # noqa

@@ -10,7 +10,7 @@ from nose import SkipTest
 
 from kombu import Connection, Consumer, Producer, parse_url
 from kombu.connection import Resource
-from kombu.five import items
+from kombu.five import items, range
 
 from .mocks import Transport
 from .utils import TestCase
@@ -505,7 +505,7 @@ class ResourceCase(TestCase):
             return
         P = self.create_resource(10, 0)
         self.assertState(P, 10, 0)
-        chans = [P.acquire() for _ in xrange(10)]
+        chans = [P.acquire() for _ in range(10)]
         self.assertState(P, 0, 10)
         with self.assertRaises(P.LimitExceeded):
             P.acquire()

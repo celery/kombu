@@ -131,7 +131,7 @@ class Client(object):
             filenos = count(30)
 
             def __init__(self, *args):
-                self._fileno = next(self.filenos())
+                self._fileno = next(self.filenos)
                 self.data = []
 
             def fileno(self):

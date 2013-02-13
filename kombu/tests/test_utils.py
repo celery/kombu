@@ -14,7 +14,6 @@ else:
 
 from kombu import utils
 from kombu.five import string_t
-from kombu.utils.compat import next
 
 from .utils import (
     TestCase,
