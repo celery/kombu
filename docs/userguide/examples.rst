@@ -55,3 +55,22 @@ for priorities using different queues.
 :file:`client.py`:
 
 .. literalinclude:: ../../examples/simple_task_queue/client.py
+
+Django Celery Example
+=====================
+
+Simple task queue using Django and Celery with a Procfile
+to run a worker process as a consumer of the queue.
+
+:file:`Procfile`:
+
+.. literalinclude:: ../../examples/django_celery_task_queue/Procfile
+
+:file:`models.py`:
+
+.. literalinclude:: ../../examples/django_celery_task_queue/models.py
+
+:file:`tasks.py`:
+
+.. literalinclude:: ../../examples/django_celery_task_queue/tasks.py
+
