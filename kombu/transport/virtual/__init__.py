@@ -119,9 +119,9 @@ class QoS(object):
 
     def append(self, message, delivery_tag):
         """Append message to transactional state."""
-        self._delivered[delivery_tag] = message
         if self._dirty:
             self._flush()
+        self._delivered[delivery_tag] = message
 
     def get(self, delivery_tag):
         return self._delivered[delivery_tag]
@@ -226,7 +226,7 @@ class Message(base.Message):
                 'properties': props,
                 'content-type': self.content_type,
                 'content-encoding': self.content_encoding,
-                'headers': self.headers}
+                'headers': headers}
 
 
 class AbstractChannel(object):
@@ -493,10 +493,13 @@ class Channel(AbstractChannel, base.StdChannel):
                 pass
             self.connection._callbacks.pop(queue, None)
 
-    def basic_get(self, queue, **kwargs):
+    def basic_get(self, queue, no_ack=False, **kwargs):
         """Get message by direct access (synchronous)."""
         try:
-            return self._get(queue)
+            message = self.Message(self, self._get(queue))
+            if not no_ack:
+                self.qos.append(message, message.delivery_tag)
+            return message
         except Empty:
             pass
 

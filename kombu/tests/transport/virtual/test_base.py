@@ -9,6 +9,7 @@ from kombu import Connection
 from kombu.exceptions import StdChannelError
 from kombu.transport import virtual
 from kombu.utils import uuid
+from kombu.compression import compress
 
 from kombu.tests.compat import catch_warnings
 from kombu.tests.utils import TestCase
@@ -122,13 +123,15 @@ class test_Message(TestCase):
 
     def test_serializable(self):
         c = client().channel()
-        data = c.prepare_message('the quick brown fox...')
+        body, content_type = compress('the quick brown fox...', 'gzip')
+        data = c.prepare_message(body, headers={'compression': content_type})
         tag = data['properties']['delivery_tag'] = uuid()
         message = c.message_to_python(data)
         dict_ = message.serializable()
         self.assertEqual(dict_['body'],
                          'the quick brown fox...'.encode('utf-8'))
         self.assertEqual(dict_['properties']['delivery_tag'], tag)
+        self.assertFalse('compression' in dict_['headers'])
 
 
 class test_AbstractChannel(TestCase):

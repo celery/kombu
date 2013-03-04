@@ -8,6 +8,8 @@ by the AMQ protocol  (excluding the `headers` exchange).
 """
 from __future__ import absolute_import
 
+from kombu.utils import escape_regex
+
 import re
 
 
@@ -89,8 +91,10 @@ class TopicExchange(ExchangeType):
 
     def key_to_pattern(self, rkey):
         """Get the corresponding regex for any routing key."""
-        return '^%s$' % ('\.'.join(self.wildcards.get(word, word)
-                                   for word in rkey.split('.')))
+        return '^%s$' % ('\.'.join(
+            self.wildcards.get(word, word)
+            for word in escape_regex(rkey, '.#*').split('.')
+        ))
 
     def _match(self, pattern, string):
         """Same as :func:`re.match`, except the regex is compiled and cached,
