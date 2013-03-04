@@ -1,4 +1,5 @@
-from __future__ import absolute_import, unicode_literals
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 import anyjson
 import pickle
@@ -113,9 +114,8 @@ class test_Producer(TestCase):
         self.assertEqual(m, message.encode('utf-8'))
         self.assertEqual(ctype, 'text/plain')
         self.assertEqual(cencoding, 'utf-8')
-        m, ctype, cencoding = p._prepare(
-            message, content_type='text/plain', content_encoding='utf-8',
-        )
+        m, ctype, cencoding = p._prepare(message, content_type='text/plain',
+                                         content_encoding='utf-8')
         self.assertEqual(m, message.encode('utf-8'))
         self.assertEqual(ctype, 'text/plain')
         self.assertEqual(cencoding, 'utf-8')

@@ -240,6 +240,13 @@ class Channel(virtual.Channel):
             return payload
         raise Empty()
 
+    def _restore(self, message,
+                 unwanted_delivery_info=('sqs_message', 'sqs_queue')):
+        for unwanted_key in unwanted_delivery_info:
+            # Remove objects that aren't JSON serializable (Issue #1108).
+            message.delivery_info.pop(unwanted_key, None)
+        return super(Channel, self)._restore(message)
+
     def basic_ack(self, delivery_tag):
         delivery_info = self.qos.get(delivery_tag).delivery_info
         try:
@@ -273,7 +280,7 @@ class Channel(virtual.Channel):
             if conn:
                 try:
                     conn.close()
-                except AttributeError, exc:  # FIXME ???
+                except AttributeError as exc:  # FIXME ???
                     if "can't set attribute" not in str(exc):
                         raise
 

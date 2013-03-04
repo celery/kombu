@@ -380,7 +380,10 @@ class Consumer(object):
         return self
 
     def __exit__(self, *exc_info):
-        self.cancel()
+        try:
+            self.cancel()
+        except Exception:
+            pass
 
     def add_queue(self, queue):
         queue = queue(self.channel)
@@ -535,7 +538,7 @@ class Consumer(object):
             if m2p:
                 message = m2p(message)
             decoded = None if on_m else message.decode()
-        except Exception, exc:
+        except Exception as exc:
             if not self.on_decode_error:
                 raise
             self.on_decode_error(message, exc)

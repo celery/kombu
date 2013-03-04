@@ -1,7 +1,7 @@
 """Messaging Framework for Python"""
 from __future__ import absolute_import
 
-VERSION = (2, 5, 4)
+VERSION = (3, 0, 0, 'a1')
 __version__ = '.'.join(map(str, VERSION[0:3])) + ''.join(VERSION[3:])
 __author__ = 'Ask Solem'
 __contact__ = 'ask@celeryproject.org'

@@ -40,7 +40,7 @@ def consumeN(conn, consumer, n=1, timeout=30):
         except socket.timeout:
             seconds += 1
             msg = "Received %s/%s messages. %s seconds passed." % (
-                    len(messages), n, seconds)
+                len(messages), n, seconds)
             if seconds >= timeout:
                 raise socket.timeout(msg)
             if seconds > 1:
@@ -79,7 +79,7 @@ class TransportCase(unittest.TestCase):
         if self.transport:
             try:
                 self.before_connect()
-            except SkipTest, exc:
+            except SkipTest as exc:
                 self.skip_test_reason = str(exc)
             else:
                 self.do_connect()
@@ -113,7 +113,7 @@ class TransportCase(unittest.TestCase):
             self.after_connect(self.connection)
         except self.connection.connection_errors:
             self.skip_test_reason = "%s transport can't connect" % (
-                                       self.transport, )
+                self.transport, )
         else:
             self.connected = True
 
@@ -161,14 +161,15 @@ class TransportCase(unittest.TestCase):
         return _digest(data).hexdigest()
 
     @skip_if_quick
-    def test_produce__consume_large_messages(self, bytes=1048576, n=10,
+    def test_produce__consume_large_messages(
+            self, bytes=1048576, n=10,
             charset=string.punctuation + string.letters + string.digits):
         if not self.verify_alive():
             return
         bytes = min(filter(None, [bytes, self.message_size_limit]))
         messages = ["".join(random.choice(charset)
-                        for j in xrange(bytes)) + "--%s" % n
-                            for i in xrange(n)]
+                    for j in xrange(bytes)) + "--%s" % n
+                    for i in xrange(n)]
         digests = []
         chan1 = self.connection.channel()
         consumer = chan1.Consumer(self.queue)
@@ -180,7 +181,7 @@ class TransportCase(unittest.TestCase):
             digests.append(self._digest(message))
 
         received = [(msg["i"], msg["text"])
-                        for msg in consumeN(self.connection, consumer, n)]
+                    for msg in consumeN(self.connection, consumer, n)]
         self.assertEqual(len(received), n)
         ordering = [i for i, _ in received]
         if ordering != range(n) and not self.suppress_disorder_warning:
@@ -229,8 +230,9 @@ class TransportCase(unittest.TestCase):
         chan = self.connection.channel()
         self.purge([self.queue.name])
         consumer = chan.Consumer(self.queue)
-        self.assertRaises(socket.timeout, self.connection.drain_events,
-                timeout=0.3)
+        self.assertRaises(
+            socket.timeout, self.connection.drain_events, timeout=0.3,
+        )
         consumer.cancel()
         chan.close()
 

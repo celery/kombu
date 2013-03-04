@@ -8,6 +8,7 @@ from kombu import Connection
 from kombu.exceptions import StdChannelError
 from kombu.transport import virtual
 from kombu.utils import uuid
+from kombu.compression import compress
 
 from kombu.tests.utils import TestCase
 from kombu.tests.utils import Mock, redirect_stdouts
@@ -120,13 +121,15 @@ class test_Message(TestCase):
 
     def test_serializable(self):
         c = client().channel()
-        data = c.prepare_message('the quick brown fox...')
+        body, content_type = compress('the quick brown fox...', 'gzip')
+        data = c.prepare_message(body, headers={'compression': content_type})
         tag = data['properties']['delivery_tag'] = uuid()
         message = c.message_to_python(data)
         dict_ = message.serializable()
         self.assertEqual(dict_['body'],
                          'the quick brown fox...'.encode('utf-8'))
         self.assertEqual(dict_['properties']['delivery_tag'], tag)
+        self.assertFalse('compression' in dict_['headers'])
 
 
 class test_AbstractChannel(TestCase):
@@ -304,8 +307,8 @@ class test_Channel(TestCase):
 
         consumer_tag = uuid()
 
-        c.basic_consume(n + '2', False, consumer_tag=consumer_tag,
-                        callback=lambda *a: None)
+        c.basic_consume(n + '2', False,
+                        consumer_tag=consumer_tag, callback=lambda *a: None)
         self.assertIn(n + '2', c._active_queues)
         r2, _ = c.drain_events()
         r2 = c.message_to_python(r2)
@@ -375,7 +378,7 @@ class test_Channel(TestCase):
         exc = None
         try:
             raise KeyError()
-        except KeyError, exc_:
+        except KeyError as exc_:
             exc = exc_
         ru.return_value = [(exc, 1)]
 

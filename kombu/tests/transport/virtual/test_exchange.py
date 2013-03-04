@@ -68,8 +68,10 @@ class test_Fanout(ExchangeCase):
 
 class test_Topic(ExchangeCase):
     type = exchange.TopicExchange
-    table = [('stock.#', None, 'rFoo'),
-             ('stock.us.*', None, 'rBar')]
+    table = [
+        ('stock.#', None, 'rFoo'),
+        ('stock.us.*', None, 'rBar'),
+    ]
 
     def setUp(self):
         super(test_Topic, self).setUp()
@@ -125,18 +127,24 @@ class test_ExchangeType(ExchangeCase):
         )
 
     def test_equivalent(self):
-        e1 = dict(type='direct',
-                  durable=True,
-                  auto_delete=True,
-                  arguments={})
+        e1 = dict(
+            type='direct',
+            durable=True,
+            auto_delete=True,
+            arguments={},
+        )
         self.assertTrue(
-            self.e.equivalent(e1, 'eFoo', 'direct', True, True, {}))
+            self.e.equivalent(e1, 'eFoo', 'direct', True, True, {}),
+        )
         self.assertFalse(
-            self.e.equivalent(e1, 'eFoo', 'topic', True, True, {}))
+            self.e.equivalent(e1, 'eFoo', 'topic', True, True, {}),
+        )
         self.assertFalse(
-            self.e.equivalent(e1, 'eFoo', 'direct', False, True, {}))
+            self.e.equivalent(e1, 'eFoo', 'direct', False, True, {}),
+        )
         self.assertFalse(
-            self.e.equivalent(e1, 'eFoo', 'direct', True, False, {}))
+            self.e.equivalent(e1, 'eFoo', 'direct', True, False, {}),
+        )
         self.assertFalse(
             self.e.equivalent(e1, 'eFoo', 'direct', True, True,
                               {'expires': 3000}),

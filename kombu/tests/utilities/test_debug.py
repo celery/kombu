@@ -37,8 +37,6 @@ class test_Logwrapped(TestCase):
 
             W.instance.__repr__ = lambda s: 'foo'
             self.assertEqual(repr(W), 'foo')
-            self.assertListEqual(dir(W), dir(W.instance))
-
             W.instance.some_attr = 303
             self.assertEqual(W.some_attr, 303)
 

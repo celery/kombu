@@ -28,6 +28,7 @@ from .log import get_logger
 from .transport import get_transport_cls, supports_librabbitmq
 from .utils import cached_property, retry_over_time, shufflecycle
 from .utils.compat import OrderedDict
+from .utils.functional import promise
 from .utils.url import parse_url
 
 __all__ = ['Connection', 'ConnectionPool', 'ChannelPool']
@@ -291,7 +292,7 @@ class Connection(object):
         except socket.timeout:
             self.more_to_read = False
             return False
-        except socket.error, exc:
+        except socket.error as exc:
             if exc.errno in (errno.EAGAIN, errno.EINTR):
                 self.more_to_read = False
                 return False
@@ -426,7 +427,7 @@ class Connection(object):
             for retries in count(0):  # for infinity
                 try:
                     return fun(*args, **kwargs)
-                except self.recoverable_connection_errors, exc:
+                except self.recoverable_connection_errors as exc:
                     if got_connection:
                         raise
                     if max_retries is not None and retries > max_retries:
@@ -449,7 +450,7 @@ class Connection(object):
                     if on_revive:
                         on_revive(new_channel)
                     got_connection += 1
-                except self.recoverable_channel_errors, exc:
+                except self.recoverable_channel_errors as exc:
                     if max_retries is not None and retries > max_retries:
                         raise
                     self._debug('ensure channel error: %r', exc, exc_info=1)
@@ -863,7 +864,12 @@ class Resource(object):
                     try:
                         R = self.prepare(R)
                     except BaseException:
-                        self.release(R)
+                        if isinstance(R, promise):
+                            # no evaluated yet, just put it back
+                            self._resource.put_nowait(R)
+                        else:
+                            # evaluted so must try to release/close first.
+                            self.release(R)
                         raise
                     self._dirty.add(R)
                     break
@@ -1002,7 +1008,7 @@ class ConnectionPool(Resource):
                     conn = self.new()
                     conn.connect()
                 else:
-                    conn = self.new
+                    conn = promise(self.new)
                 self._resource.put_nowait(conn)
 
     def prepare(self, resource):
@@ -1021,14 +1027,14 @@ class ChannelPool(Resource):
                                           preload=preload)
 
     def new(self):
-        return self.connection.channel
+        return promise(self.connection.channel)
 
     def setup(self):
         channel = self.new()
         if self.limit:
             for i in range(self.limit):
                 self._resource.put_nowait(
-                    i < self.preload and channel() or channel)
+                    i < self.preload and channel() or promise(channel))
 
     def prepare(self, channel):
         if isinstance(channel, Callable):

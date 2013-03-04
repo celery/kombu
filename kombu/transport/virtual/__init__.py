@@ -11,6 +11,7 @@ from __future__ import absolute_import, unicode_literals
 
 import base64
 import socket
+import os
 import sys
 import warnings
 
@@ -34,6 +35,8 @@ if sys.version_info[0] == 3:
     ARRAY_TYPE_H = 'H'
 else:
     ARRAY_TYPE_H = b'H'
+
+KOMBU_UNITTEST = os.environ.get('KOMBU_UNITTEST')
 
 UNDELIVERABLE_FMT = """\
 Message could not be delivered: No queues bound to exchange {exchange!r} \
@@ -131,9 +134,9 @@ class QoS(object):
 
     def append(self, message, delivery_tag):
         """Append message to transactional state."""
-        self._delivered[delivery_tag] = message
         if self._dirty:
             self._flush()
+        self._delivered[delivery_tag] = message
 
     def get(self, delivery_tag):
         return self._delivered[delivery_tag]
@@ -173,7 +176,7 @@ class QoS(object):
 
             try:
                 self.channel._restore(message)
-            except BaseException, exc:
+            except BaseException as exc:
                 errors.append((exc, message))
         delivered.clear()
         return errors
@@ -191,7 +194,8 @@ class QoS(object):
         if not self.restore_at_shutdown:
             return
         elif not self.channel.do_restore or getattr(state, 'restored', None):
-            assert not state
+            if not KOMBU_UNITTEST:
+                assert not state
             return
 
         try:
@@ -201,7 +205,7 @@ class QoS(object):
                 unrestored = self.restore_unacked()
 
                 if unrestored:
-                    errors, messages = zip(*unrestored)
+                    errors, messages = list(zip(*unrestored))
                     say('UNABLE TO RESTORE {0} MESSAGES: {1}',
                         len(errors), errors)
                     emergency_dump_state(messages)
@@ -238,7 +242,7 @@ class Message(base.Message):
                 'properties': props,
                 'content-type': self.content_type,
                 'content-encoding': self.content_encoding,
-                'headers': self.headers}
+                'headers': headers}
 
 
 class AbstractChannel(object):
@@ -510,10 +514,13 @@ class Channel(AbstractChannel, base.StdChannel):
                 pass
             self.connection._callbacks.pop(queue, None)
 
-    def basic_get(self, queue, **kwargs):
+    def basic_get(self, queue, no_ack=False, **kwargs):
         """Get message by direct access (synchronous)."""
         try:
-            return self._get(queue)
+            message = self.Message(self, self._get(queue))
+            if not no_ack:
+                self.qos.append(message, message.delivery_tag)
+            return message
         except Empty:
             pass
 

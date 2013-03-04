@@ -86,8 +86,9 @@ for dirpath, dirnames, filenames in os.walk(src_dir):
         if filename.endswith('.py'):
             packages.append('.'.join(fullsplit(dirpath)))
         else:
-            data_files.append([dirpath, [os.path.join(dirpath, f) for f in
-                filenames]])
+            data_files.append(
+                [dirpath, [os.path.join(dirpath, f) for f in filenames]],
+            )
 
 if os.path.exists('README.rst'):
     long_description = codecs.open('README.rst', 'r', 'utf-8').read()

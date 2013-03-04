@@ -10,13 +10,16 @@ import mock
 
 from nose import SkipTest
 
+from kombu.five import builtins, string_t, StringIO
+from kombu.utils.encoding import ensure_bytes
+
 try:
     import unittest
     unittest.skip
 except AttributeError:
     import unittest2 as unittest  # noqa
 
-from kombu.five import StringIO, builtins, string_t, module_name_t
+PY3 = sys.version_info[0] == 3
 
 
 class TestCase(unittest.TestCase):
@@ -77,7 +80,9 @@ def module_exists(*modules):
         def __inner(*args, **kwargs):
             for module in modules:
                 if isinstance(module, string_t):
-                    module = types.ModuleType(module_name_t(module))
+                    if not PY3:
+                        module = ensure_bytes(module)
+                    module = types.ModuleType(module)
                 sys.modules[module.__name__] = module
                 try:
                     return fun(*args, **kwargs)
@@ -99,7 +104,7 @@ def mask_modules(*modnames):
 
             def myimp(name, *args, **kwargs):
                 if name in modnames:
-                    raise ImportError('No module named {0}'.format(name))
+                    raise ImportError('No module named %s' % name)
                 else:
                     return realimport(name, *args, **kwargs)
 
@@ -120,7 +125,7 @@ def skip_if_environ(env_var_name):
         @wraps(fun)
         def _skips_if_environ(*args, **kwargs):
             if os.environ.get(env_var_name):
-                raise SkipTest('SKIP {0}: {1} set'.format(
+                raise SkipTest('SKIP %s: %s set\n' % (
                     fun.__name__, env_var_name))
             return fun(*args, **kwargs)
 
@@ -135,7 +140,7 @@ def skip_if_module(module):
         def _skip_if_module(*args, **kwargs):
             try:
                 __import__(module)
-                raise SkipTest('SKIP {0}: {1} available'.format(
+                raise SkipTest('SKIP %s: %s available\n' % (
                     fun.__name__, module))
             except ImportError:
                 pass
@@ -151,7 +156,7 @@ def skip_if_not_module(module):
             try:
                 __import__(module)
             except ImportError:
-                raise SkipTest('SKIP {0}: {1} available'.format(
+                raise SkipTest('SKIP %s: %s available\n' % (
                     fun.__name__, module))
             return fun(*args, **kwargs)
         return _skip_if_not_module

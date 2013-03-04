@@ -264,24 +264,28 @@ class test_Channel(TestCase):
         self.assertDictEqual(
             self.channel._handle_message(
                 self.channel.subclient,
-                ['pmessage', 'pattern', 'channel', 'data']
+                ['pmessage', 'pattern', 'channel', 'data'],
             ),
-            {'type': 'pmessage',
-             'pattern': 'pattern',
-             'channel': 'channel',
-             'data': 'data'},
+            {
+                'type': 'pmessage',
+                'pattern': 'pattern',
+                'channel': 'channel',
+                'data': 'data',
+            },
         )
 
     def test_handle_message(self):
         self.assertDictEqual(
             self.channel._handle_message(
                 self.channel.subclient,
-                ['type', 'channel', 'data']
+                ['type', 'channel', 'data'],
             ),
-            {'type': 'type',
-             'pattern': None,
-             'channel': 'channel',
-             'data': 'data'},
+            {
+                'type': 'type',
+                'pattern': None,
+                'channel': 'channel',
+                'data': 'data',
+            },
         )
 
     def test_brpop_start_but_no_queues(self):
@@ -290,9 +294,8 @@ class test_Channel(TestCase):
     def test_receive(self):
         s = self.channel.subclient = Mock()
         self.channel._fanout_to_queue['a'] = 'b'
-        s.parse_response.return_value = [
-            'message', 'a', dumps({'hello': 'world'}),
-        ]
+        s.parse_response.return_value = ['message', 'a',
+                                         dumps({'hello': 'world'})]
         payload, queue = self.channel._receive()
         self.assertDictEqual(payload, {'hello': 'world'})
         self.assertEqual(queue, 'b')

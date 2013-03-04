@@ -22,7 +22,7 @@ class Message(base.Message):
 class Channel(base.StdChannel):
     open = True
     throw_decode_error = False
-    _ids = count(1).next
+    _ids = count(1)
 
     def __init__(self, connection):
         self.connection = connection
@@ -30,7 +30,7 @@ class Channel(base.StdChannel):
         self.deliveries = count(1)
         self.to_deliver = []
         self.events = {'basic_return': set()}
-        self.channel_id = self._ids()
+        self.channel_id = next(self._ids)
 
     def _called(self, name):
         self.called.append(name)

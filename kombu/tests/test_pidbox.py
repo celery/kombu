@@ -28,9 +28,11 @@ class test_Mailbox(TestCase):
         self.handlers = {'mymethod': self._handler}
         self.bound = self.mailbox(self.connection)
         self.default_chan = self.connection.channel()
-        self.node = self.bound.Node('test_pidbox', state=self.state,
-                                    handlers=self.handlers,
-                                    channel=self.default_chan)
+        self.node = self.bound.Node(
+            'test_pidbox',
+            state=self.state, handlers=self.handlers,
+            channel=self.default_chan,
+        )
 
     def test_reply__collect(self):
         mailbox = pidbox.Mailbox('test_reply__collect')(self.connection)

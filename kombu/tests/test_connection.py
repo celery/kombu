@@ -10,7 +10,7 @@ from nose import SkipTest
 
 from kombu import Connection, Consumer, Producer, parse_url
 from kombu.connection import Resource
-from kombu.five import items
+from kombu.five import items, range
 
 from .mocks import Transport
 from .utils import TestCase
@@ -43,7 +43,7 @@ class test_connection_utils(TestCase):
     def test_parse_generated_as_uri(self):
         conn = Connection(self.url)
         info = conn.info()
-        for k, v in items(self.expected):
+        for k, v in self.expected.items():
             self.assertEqual(info[k], v)
         # by default almost the same- no password
         self.assertEqual(conn.as_uri(), self.nopass)

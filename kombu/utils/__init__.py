@@ -218,7 +218,7 @@ def retry_over_time(fun, catch, args=[], kwargs={}, errback=None,
     for retries in count():
         try:
             return fun(*args, **kwargs)
-        except catch, exc:
+        except catch as exc:
             if max_retries is not None and retries > max_retries:
                 raise
             if callback:
@@ -398,3 +398,10 @@ class ChannelPromise(object):
 
     def __repr__(self):
         return '<promise: %r>' % (self(), )
+
+
+def escape_regex(p, white=''):
+    # what's up with re.escape? that code must be neglected or someting
+    return ''.join(c if c.isalnum() or c in white
+                   else ('\\000' if c == '\000' else '\\' + c)
+                   for c in p)

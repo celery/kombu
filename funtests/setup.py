@@ -8,7 +8,7 @@ except ImportError:
     from ez_setup import use_setuptools
     use_setuptools()
     from setuptools import setup  # noqa
-    from setuptools.command.install import install # noqa
+    from setuptools.command.install import install  # noqa
 
 
 class no_install(install):

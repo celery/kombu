@@ -1,11 +1,16 @@
-from __future__ import absolute_import, unicode_literals
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 import pickle
 import sys
 
 from functools import wraps
-from io import BytesIO, StringIO
 from mock import Mock, patch
+
+if sys.version_info >= (3, 0):
+    from io import StringIO, BytesIO
+else:
+    from StringIO import StringIO, StringIO as BytesIO  # noqa
 
 from kombu import utils
 from kombu.five import string_t
@@ -142,8 +147,8 @@ class test_emergency_dump_state(TestCase):
             {'foo': 'bar'},
             open_file=lambda n, m: fh, dump=raise_something
         )
-        # replace at the end removes u' from repr on Py2
-        self.assertIn("'foo': 'bar'", fh.getvalue().replace("u'", "'"))
+        self.assertIn('foo', fh.getvalue())
+        self.assertIn('bar', fh.getvalue())
         self.assertTrue(stderr.getvalue())
         self.assertFalse(stdout.getvalue())
 
@@ -189,15 +194,15 @@ class test_retry_over_time(TestCase):
     def test_simple(self):
         prev_count, utils.count = utils.count, Mock()
         try:
-            utils.count.return_value = range(1)
+            utils.count.return_value = list(range(1))
             x = utils.retry_over_time(self.myfun, self.Predicate,
                                       errback=None, interval_max=14)
             self.assertIsNone(x)
-            utils.count.return_value = range(10)
+            utils.count.return_value = list(range(10))
             cb = Mock()
             x = utils.retry_over_time(self.myfun, self.Predicate,
-                                      errback=self.errback, interval_max=14,
-                                      callback=cb)
+                                      errback=self.errback, callback=cb,
+                                      interval_max=14)
             self.assertEqual(x, 42)
             self.assertEqual(self.index, 9)
             cb.assert_called_with()
@@ -287,8 +292,10 @@ class test_symbol_by_name(TestCase):
 
     def test_returns_default(self):
         default = object()
-        self.assertIs(utils.symbol_by_name('xyz.ryx.qedoa.weq:foz',
-                      default=default), default)
+        self.assertIs(
+            utils.symbol_by_name('xyz.ryx.qedoa.weq:foz', default=default),
+            default,
+        )
 
     def test_no_default(self):
         with self.assertRaises(ImportError):
@@ -302,8 +309,10 @@ class test_symbol_by_name(TestCase):
 
     def test_package(self):
         from kombu.entity import Exchange
-        self.assertIs(utils.symbol_by_name('.entity:Exchange',
-                      package='kombu'), Exchange)
+        self.assertIs(
+            utils.symbol_by_name('.entity:Exchange', package='kombu'),
+            Exchange,
+        )
         self.assertTrue(utils.symbol_by_name(':Consumer', package='kombu'))
 
 
@@ -311,7 +320,7 @@ class test_ChannelPromise(TestCase):
 
     def test_repr(self):
         self.assertIn(
-            "'foo'",
+            'foo',
             repr(utils.ChannelPromise(lambda: 'foo')),
         )
 
@@ -338,16 +347,16 @@ class test_shufflecycle(TestCase):
     def test_shuffles(self):
         prev_repeat, utils.repeat = utils.repeat, Mock()
         try:
-            utils.repeat.return_value = range(10)
+            utils.repeat.return_value = list(range(10))
             values = set(['A', 'B', 'C'])
             cycle = utils.shufflecycle(values)
             seen = set()
-            for i in xrange(10):
-                cycle.next()
+            for i in range(10):
+                next(cycle)
             utils.repeat.assert_called_with(None)
             self.assertTrue(seen.issubset(values))
             with self.assertRaises(StopIteration):
-                cycle.next()
-                cycle.next()
+                next(cycle)
+                next(cycle)
         finally:
             utils.repeat = prev_repeat

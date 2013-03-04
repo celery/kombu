@@ -79,7 +79,7 @@ class Node(object):
             reply = handle(method, kwdict(arguments))
         except SystemExit:
             raise
-        except Exception, exc:
+        except Exception as exc:
             reply = {'error': repr(exc)}
 
         if reply_to:

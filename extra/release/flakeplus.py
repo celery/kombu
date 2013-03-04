@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 from __future__ import absolute_import
-from __future__ import with_statement
 
 import os
 import re
@@ -37,7 +36,7 @@ class FlakePP(object):
     re_with = compile(RE_WITH)
     re_noqa = compile(RE_NOQA)
     map = {"abs": True, "print": False,
-            "with": False, "with-used": False}
+           "with": False, "with-used": False}
 
     def __init__(self, verbose=False):
         self.verbose = verbose

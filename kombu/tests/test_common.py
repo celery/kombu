@@ -370,7 +370,9 @@ class test_QoS(TestCase):
             callback = Mock()
             qos = QoS(callback, 10)
             qos.prev = 100
-            qos.set(2 ** 32)
+            # cannot use 2 ** 32 because of a bug on OSX Py2.5:
+            # https://jira.mongodb.org/browse/PYTHON-389
+            qos.set(4294967296)
             self.assertTrue(logger.warn.called)
             callback.assert_called_with(prefetch_count=0)
 

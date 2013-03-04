@@ -103,14 +103,14 @@ class Message(object):
     def ack_log_error(self, logger, errors):
         try:
             self.ack()
-        except errors, exc:
+        except errors as exc:
             logger.critical("Couldn't ack %r, reason:%r",
                             self.delivery_tag, exc, exc_info=True)
 
     def reject_log_error(self, logger, errors):
         try:
             self.reject()
-        except errors, exc:
+        except errors as exc:
             logger.critical("Couldn't ack %r, reason: %r",
                             self.delivery_tag, exc, exc_info=True)
 
