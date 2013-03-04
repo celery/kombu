@@ -8,6 +8,8 @@ Redis transport.
 from __future__ import absolute_import
 from __future__ import with_statement
 
+import socket
+
 from bisect import bisect
 from contextlib import contextmanager
 from time import time
@@ -319,6 +321,7 @@ class Channel(virtual.Channel):
     unacked_restore_limit = None
     visibility_timeout = 3600   # 1 hour
     priority_steps = PRIORITY_STEPS
+    socket_timeout = None
     max_connections = 10
     _pool = None
 
@@ -330,6 +333,7 @@ class Channel(virtual.Channel):
          'unacked_mutex_expire',
          'visibility_timeout',
          'unacked_restore_limit',
+         'socket_timeout',
          'max_connections',
          'priority_steps'),
     )
@@ -614,7 +618,8 @@ class Channel(virtual.Channel):
                 'port': conninfo.port or DEFAULT_PORT,
                 'db': database,
                 'password': conninfo.password,
-                'max_connections': self.max_connections}
+                'max_connections': self.max_connections,
+                'socket_timeout': self.socket_timeout}
 
     def _create_client(self):
         return self.Client(connection_pool=self.pool)
@@ -776,7 +781,7 @@ class Transport(virtual.Transport):
         else:
             DataError = exceptions.DataError
         return ((StdConnectionError,
-                 InconsistencyError,
+                 socket.timeout,
                  exceptions.ConnectionError,
                  exceptions.AuthenticationError),
                 (DataError,
