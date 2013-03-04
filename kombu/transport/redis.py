@@ -781,6 +781,7 @@ class Transport(virtual.Transport):
         else:
             DataError = exceptions.DataError
         return ((StdConnectionError,
+                 InconsistencyError,
                  socket.timeout,
                  exceptions.ConnectionError,
                  exceptions.AuthenticationError),
