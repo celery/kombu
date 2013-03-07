@@ -335,7 +335,7 @@ class Channel(virtual.Channel):
          'unacked_restore_limit',
          'socket_timeout',
          'max_connections',
-         'priority_steps'),
+         'priority_steps')  # <-- do not add comma here!
     )
 
     def __init__(self, *args, **kwargs):
