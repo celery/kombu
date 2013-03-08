@@ -4,6 +4,28 @@
  Change history
 ================
 
+.. _version-2.5.7:
+
+2.5.7
+=====
+:release-date: 2013-03-08 01:00 P.M UTC
+
+- Now depends on amqp 1.0.9
+
+- Redis: A regression in 2.5.6 caused the redis transport to
+  ignore options set in ``transport_options``.
+
+- Redis: New ``socket_timeout`` transport option.
+
+- Redis: ``InconsistencyError`` is now regarded as a recoverable error.
+
+- Resource pools: Will no longer attempt to release resource
+  that was never acquired.
+
+- MongoDB: Now supports the ``ssl`` option.
+
+    Contributed by Sebastian Pawlus.
+
 .. _version-2.5.6:
 
 2.5.6
