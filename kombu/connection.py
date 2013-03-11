@@ -293,10 +293,16 @@ class Connection(object):
             self.more_to_read = False
             return False
         except socket.error as exc:
-            if exc.errno in (errno.EAGAIN, errno.EINTR):
-                self.more_to_read = False
-                return False
-            raise
+            try:
+                if exc.errno in (errno.EAGAIN, errno.EINTR):
+                    self.more_to_read = False
+                    return False
+                raise
+            except AttributeError:				
+                if exc.args[0] in (errno.EAGAIN, errno.EINTR):
+                    self.more_to_read = False
+                    return False				
+                raise
         self.more_to_read = True
         return True
 
