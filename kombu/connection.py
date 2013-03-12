@@ -27,7 +27,7 @@ from .five import Empty, range, string_t, text_t, LifoQueue as _LifoQueue
 from .log import get_logger
 from .transport import get_transport_cls, supports_librabbitmq
 from .utils import cached_property, retry_over_time, shufflecycle
-from .utils.compat import OrderedDict
+from .utils.compat import OrderedDict, get_errno
 from .utils.functional import promise
 from .utils.url import parse_url
 
