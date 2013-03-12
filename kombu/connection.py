@@ -293,7 +293,7 @@ class Connection(object):
             self.more_to_read = False
             return False
         except socket.error as exc:
-            if exc.errno in (errno.EAGAIN, errno.EINTR):
+            if get_errno(exc) in (errno.EAGAIN, errno.EINTR):
                 self.more_to_read = False
                 return False
             raise

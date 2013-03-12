@@ -9,6 +9,8 @@ from __future__ import absolute_import
 
 import socket
 
+import socket
+
 from bisect import bisect
 from contextlib import contextmanager
 from time import time
@@ -334,7 +336,7 @@ class Channel(virtual.Channel):
          'unacked_restore_limit',
          'socket_timeout',
          'max_connections',
-         'priority_steps'),
+         'priority_steps')  # <-- do not add comma here!
     )
 
     def __init__(self, *args, **kwargs):
@@ -779,6 +781,7 @@ class Transport(virtual.Transport):
         else:
             DataError = exceptions.DataError
         return ((StdConnectionError,
+                 InconsistencyError,
                  socket.timeout,
                  exceptions.ConnectionError,
                  exceptions.AuthenticationError),
