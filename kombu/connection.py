@@ -24,7 +24,9 @@ from kombu import exceptions
 from .log import get_logger
 from .transport import get_transport_cls, supports_librabbitmq
 from .utils import cached_property, retry_over_time, shufflecycle
-from .utils.compat import OrderedDict, LifoQueue as _LifoQueue, next
+from .utils.compat import (
+    OrderedDict, LifoQueue as _LifoQueue, next, get_errno,
+)
 from .utils.functional import promise
 from .utils.url import parse_url
 

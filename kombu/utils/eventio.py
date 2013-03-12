@@ -45,25 +45,13 @@ except ImportError:
 
 from kombu.syn import detect_environment
 
+from .compat import get_errno
+
 __all__ = ['poll']
 
 READ = POLL_READ = 0x001
 WRITE = POLL_WRITE = 0x004
 ERR = POLL_ERR = 0x008 | 0x010
-
-
-def get_errno(exc):
-    """:exc:`socket.error` first got the ``.errno`` attribute in Py2.7"""
-    try:
-        return exc.errno
-    except AttributeError:
-        try:
-            # e.args = (errno, reason)
-            if isinstance(exc.args, tuple) and len(exc.args) == 2:
-                return exc.args[0]
-        except AttributeError:
-            pass
-    return 0
 
 
 class Poller(object):
