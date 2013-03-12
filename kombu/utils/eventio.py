@@ -53,6 +53,7 @@ ERR = POLL_ERR = 0x008 | 0x010
 
 
 def get_errno(exc):
+    """:exc:`socket.error` first got the ``.errno`` attribute in Py2.7"""
     try:
         return exc.errno
     except AttributeError:
