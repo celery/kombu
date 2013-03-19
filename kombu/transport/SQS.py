@@ -139,6 +139,7 @@ class Channel(virtual.Channel):
         queues = self.sqs.get_all_queues()
         for queue in queues:
             self._queue_cache[queue.name] = queue
+        self._fanout_queues = set()
 
     def basic_consume(self, queue, no_ack, *args, **kwargs):
         if no_ack:
@@ -168,6 +169,13 @@ class Channel(virtual.Channel):
                 queue, self.visibility_timeout,
             )
             return q
+
+    def queue_bind(self, queue, exchange=None, routing_key='',
+                   arguments=None, **kwargs):
+        super(Channel, self).queue_bind(queue, exchange, routing_key,
+                                        arguments, **kwargs)
+        if self.typeof(exchange).type == 'fanout':
+            self._fanout_queues.add(queue)
 
     def _queue_bind(self, *args):
         """Bind ``queue`` to ``exchange`` with routing key.
@@ -228,7 +236,10 @@ class Channel(virtual.Channel):
     def _get(self, queue):
         """Try to retrieve a single message off ``queue``."""
         q = self._new_queue(queue)
-        rs = q.get_messages(1, wait_time_seconds=self.wait_time_seconds)
+        if queue in self._fanout_queues:
+            rs = q.get_messages(1)
+        else:
+            rs = q.get_messages(1, wait_time_seconds=self.wait_time_seconds)
         if rs:
             m = rs[0]
             payload = loads(rs[0].get_body())
