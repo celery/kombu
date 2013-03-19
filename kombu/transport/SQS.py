@@ -369,8 +369,8 @@ class Channel(virtual.Channel):
 
     @cached_property
     def wait_time_seconds(self):
-        return (self.transport_options.get('wait_time_seconds') or
-                self.default_wait_time_seconds)
+        return self.transport_options.get('wait_time_seconds',
+                                          self.default_wait_time_seconds)
 
 
 class Transport(virtual.Transport):
