@@ -14,6 +14,16 @@
 
 - Redis: Fixed a possible race condition (Issue #171).
 
+- Redis: Ack emulation/visibility_timeout can now be disabled
+  using a transport option.
+
+    Ack emulation adds quite a lot of overhead to ensure data is safe
+    even in the event of an unclean shutdown.  If data loss do not worry
+    you there is now an `ack_emulation` transport option you can use
+    to disable it::
+
+        Connection('redis://', transport_options={'ack_emulation': False})
+
 - SQS: Fixed :mod:`boto` v2.7 compatibility (Issue #207).
 
 - Exchange: Should not try to re-declare default exchange (``""``)
