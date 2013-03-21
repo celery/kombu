@@ -642,17 +642,6 @@ class Channel(virtual.Channel):
                 super(KombuRedis, self).__init__(*args, **kwargs)
                 self.connection = self.connection_pool.get_connection('_')
 
-            def execute_command(self, *args, **options):
-                conn = self.connection
-                command_name = args[0]
-                try:
-                    conn.send_command(*args)
-                    return self.parse_response(conn, command_name, **options)
-                except redis.ConnectionError:
-                    conn.disconnect()
-                    conn.send_command(*args)
-                    return self.parse_response(conn, command_name, **options)
-
         return KombuRedis
 
     @contextmanager
