@@ -150,13 +150,12 @@ class Exchange(MaybeChannelBound):
             response will not be waited for. Default is :const:`False`.
 
         """
-        return self.channel.exchange_declare(exchange=self.name,
-                                             type=self.type,
-                                             durable=self.durable,
-                                             auto_delete=self.auto_delete,
-                                             arguments=self.arguments,
-                                             nowait=nowait,
-                                             passive=passive)
+        if self.name:
+            return self.channel.exchange_declare(
+                exchange=self.name, type=self.type, durable=self.durable,
+                auto_delete=self.auto_delete, arguments=self.arguments,
+                nowait=nowait, passive=passive,
+            )
 
     def bind_to(self, exchange='', routing_key='',
                 arguments=None, nowait=False, **kwargs):
