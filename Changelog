@@ -14,7 +14,7 @@
 
 - Redis: Fixed a possible race condition (Issue #171).
 
-- SQS: Fixed boto v2.7 compatibility (Issue #207).
+- SQS: Fixed :mod:`boto` v2.7 compatibility (Issue #207).
 
 - Exchange: Should not try to re-declare default exchange (``""``)
   (Issue #209).
