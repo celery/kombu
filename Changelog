@@ -10,6 +10,8 @@
 =====
 :release-date: 2013-03-21 04:00 P.M UTC
 
+- Now depends on :mod:`amqp` 1.0.10 which fixes a Python 3 compatibility error.
+
 - Redis: Fixed a possible race condition (Issue #171).
 
 - SQS: Fixed boto v2.7 compatibility (Issue #207).
