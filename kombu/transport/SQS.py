@@ -123,7 +123,7 @@ class Channel(virtual.Channel):
     default_region = 'us-east-1'
     default_visibility_timeout = 1800  # 30 minutes.
     # 20 seconds is the max value currently supported by SQS.
-    default_wait_time_seconds = 20
+    default_wait_time_seconds = 1  # disabled: see Issue #198
     domain_format = 'kombu%(vhost)s'
     _sdb = None
     _sqs = None
