@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 from __future__ import with_statement
 
-from kombu import Connection, Consumer, Producer, Queue
+from kombu import Connection, Consumer, Exchange, Producer, Queue
 from kombu.transport.base import Message, StdChannel, Transport
 
 from kombu.tests.utils import TestCase
@@ -17,7 +17,7 @@ class test_StdChannel(TestCase):
         self.conn.connection.state.clear()
 
     def test_Consumer(self):
-        q = Queue('foo')
+        q = Queue('foo', Exchange('foo'))
         print(self.channel.queues)
         cons = self.channel.Consumer(q)
         self.assertIsInstance(cons, Consumer)

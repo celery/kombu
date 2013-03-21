@@ -26,6 +26,8 @@ class SimpleBase(TestCase):
     def setUp(self):
         if not self.abstract:
             self.connection = Connection(transport='memory')
+            with self.connection.channel() as channel:
+                channel.exchange_declare('amq.direct')
             self.q = self.Queue(None, no_ack=True)
 
     def tearDown(self):
