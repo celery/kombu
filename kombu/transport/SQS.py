@@ -122,7 +122,7 @@ class Channel(virtual.Channel):
     default_region = 'us-east-1'
     default_visibility_timeout = 1800  # 30 minutes.
     # 20 seconds is the max value currently supported by SQS.
-    default_wait_time_seconds = 20
+    default_wait_time_seconds = 0
     domain_format = 'kombu%(vhost)s'
     _sdb = None
     _sqs = None
@@ -367,8 +367,8 @@ class Channel(virtual.Channel):
 class Transport(virtual.Transport):
     Channel = Channel
 
-    polling_interval = 0
-    wait_time_seconds = 20
+    polling_interval = 1
+    wait_time_seconds = 0
     default_port = None
     connection_errors = (StdConnectionError, exception.SQSError, socket.error)
     channel_errors = (exception.SQSDecodeError, StdChannelError)
