@@ -4,6 +4,28 @@
  Change history
 ================
 
+.. _version-2.5.8:
+
+2.5.8
+=====
+:release-date: 2013-03-21 04:00 P.M UTC
+
+- Redis: Fixed a possible race condition (Issue #171).
+
+- SQS: Fixed boto v2.7 compatibility (Issue #207).
+
+- Exchange: Should not try to re-declare default exchange (``""``)
+  (Issue #209).
+
+- SQS: Long polling is now disabled by default as it was not
+  implemented correctly, resulting in long delays between receiving
+  messages (Issue #202).
+
+- Fixed Python 2.6 incompatibility depending on ``exc.errno``
+  being available.
+
+    Fix contributed by Ephemera.
+
 .. _version-2.5.7:
 
 2.5.7
