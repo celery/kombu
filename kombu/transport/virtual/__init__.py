@@ -196,6 +196,9 @@ class QoS(object):
         finally:
             state.restored = True
 
+    def restore_visible(self, start=0, num=10, interval=10):
+        pass
+
 
 class Message(base.Message):
 
