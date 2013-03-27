@@ -123,6 +123,7 @@ class Exchange(MaybeChannelBound):
     type = 'direct'
     durable = True
     auto_delete = False
+    passive = False
     delivery_mode = PERSISTENT_DELIVERY_MODE
 
     attrs = (
@@ -134,16 +135,17 @@ class Exchange(MaybeChannelBound):
         ('delivery_mode', lambda m: DELIVERY_MODES.get(m) or m),
     )
 
-    def __init__(self, name='', type='', channel=None, **kwargs):
+    def __init__(self, name='', type='', channel=None, passive=None, **kwargs):
         super(Exchange, self).__init__(**kwargs)
         self.name = name or self.name
         self.type = type or self.type
+        self.passive = passive or self.passive
         self.maybe_bind(channel)
 
     def __hash__(self):
         return hash('E|%s' % (self.name, ))
 
-    def declare(self, nowait=False, passive=False):
+    def declare(self, nowait=False):
         """Declare the exchange.
 
         Creates the exchange on the broker.
@@ -156,7 +158,7 @@ class Exchange(MaybeChannelBound):
             return self.channel.exchange_declare(
                 exchange=self.name, type=self.type, durable=self.durable,
                 auto_delete=self.auto_delete, arguments=self.arguments,
-                nowait=nowait, passive=passive,
+                nowait=nowait, passive=self.passive,
             )
 
     def bind_to(self, exchange='', routing_key='',
