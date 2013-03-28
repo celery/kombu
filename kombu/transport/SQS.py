@@ -147,7 +147,7 @@ class Channel(virtual.Channel):
         # exists with a different visibility_timeout, so this prepopulates
         # the queue_cache to protect us from recreating
         # queues that are known to already exist.
-        queues = self.sqs.get_all_queues()
+        queues = self.sqs.get_all_queues(prefix=self.queue_name_prefix)
         for queue in queues:
             self._queue_cache[queue.name] = queue
 
