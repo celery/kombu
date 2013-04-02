@@ -8,6 +8,7 @@ Generic process mailbox.
 from __future__ import absolute_import
 
 import socket
+import warnings
 
 from collections import defaultdict, deque
 from copy import copy
@@ -22,6 +23,14 @@ from .five import range
 from .utils import cached_property, kwdict, uuid
 
 REPLY_QUEUE_EXPIRES = 10
+
+W_PIDBOX_IN_USE = """\
+A node named %(hostname)r is already using this process mailbox!
+
+Maybe you forgot to shutdown the other node or did not do so properly?
+Or if you meant to start multiple nodes on the same host please make sure
+you give each node a unique node name!
+"""
 
 __all__ = ['Node', 'Mailbox']
 
@@ -56,9 +65,14 @@ class Node(object):
 
     def Consumer(self, channel=None, **options):
         options.setdefault('no_ack', True)
-        return Consumer(channel or self.channel,
-                        [self.mailbox.get_queue(self.hostname)],
-                        **options)
+        queue = self.mailbox.get_queue(self.hostname)
+
+        def verify_exclusive(name, messages, consumers):
+            if consumers:
+                warnings.warn(W_PIDBOX_IN_USE % {'hostname': self.hostname})
+        queue.on_declared = verify_exclusive
+
+        return Consumer(channel or self.channel, [queue], **options)
 
     def handler(self, fun):
         self.handlers[fun.__name__] = fun

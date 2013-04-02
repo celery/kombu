@@ -119,12 +119,6 @@ class Transport(base.Transport):
         connection.client = None
         connection.close()
 
-    def is_alive(self, connection):
-        return connection.is_alive()
-
-    def verify_connection(self, connection):
-        return connection.channels is not None and self.is_alive(connection)
-
     def eventmap(self, connection):
         return {connection.sock: self.client.drain_nowait}
 

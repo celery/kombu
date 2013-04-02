@@ -125,12 +125,14 @@ class Exchange(MaybeChannelBound):
     auto_delete = False
     delivery_mode = PERSISTENT_DELIVERY_MODE
 
-    attrs = (('name', None),
-             ('type', None),
-             ('arguments', None),
-             ('durable', bool),
-             ('auto_delete', bool),
-             ('delivery_mode', lambda m: DELIVERY_MODES.get(m) or m))
+    attrs = (
+        ('name', None),
+        ('type', None),
+        ('arguments', None),
+        ('durable', bool),
+        ('auto_delete', bool),
+        ('delivery_mode', lambda m: DELIVERY_MODES.get(m) or m),
+    )
 
     def __init__(self, name='', type='', channel=None, **kwargs):
         super(Exchange, self).__init__(**kwargs)
@@ -150,13 +152,12 @@ class Exchange(MaybeChannelBound):
             response will not be waited for. Default is :const:`False`.
 
         """
-        return self.channel.exchange_declare(exchange=self.name,
-                                             type=self.type,
-                                             durable=self.durable,
-                                             auto_delete=self.auto_delete,
-                                             arguments=self.arguments,
-                                             nowait=nowait,
-                                             passive=passive)
+        if self.name:
+            return self.channel.exchange_declare(
+                exchange=self.name, type=self.type, durable=self.durable,
+                auto_delete=self.auto_delete, arguments=self.arguments,
+                nowait=nowait, passive=passive,
+            )
 
     def bind_to(self, exchange='', routing_key='',
                 arguments=None, nowait=False, **kwargs):
@@ -333,6 +334,7 @@ class Queue(MaybeChannelBound):
     :keyword auto_delete: See :attr:`auto_delete`.
     :keyword queue_arguments: See :attr:`queue_arguments`.
     :keyword binding_arguments: See :attr:`binding_arguments`.
+    :keyword on_declared: See :attr:`on_declared`
 
     .. attribute:: name
 
@@ -414,6 +416,13 @@ class Queue(MaybeChannelBound):
         For example to give alternate names to queues with automatically
         generated queue names.
 
+    .. attribute:: on_declared
+
+        Optional callback to be applied when the queue has been
+        declared (the ``queue_declare`` method returns).
+        This must be function with a signature that accepts at least 3
+        positional arguments: ``(name, messages, consumers)``.
+
     """
     name = ''
     exchange = Exchange('')
@@ -424,25 +433,29 @@ class Queue(MaybeChannelBound):
     auto_delete = False
     no_ack = False
 
-    attrs = (('name', None),
-             ('exchange', None),
-             ('routing_key', None),
-             ('queue_arguments', None),
-             ('binding_arguments', None),
-             ('durable', bool),
-             ('exclusive', bool),
-             ('auto_delete', bool),
-             ('no_ack', None),
-             ('alias', None),
-             ('bindings', list))
+    attrs = (
+        ('name', None),
+        ('exchange', None),
+        ('routing_key', None),
+        ('queue_arguments', None),
+        ('binding_arguments', None),
+        ('durable', bool),
+        ('exclusive', bool),
+        ('auto_delete', bool),
+        ('no_ack', None),
+        ('alias', None),
+        ('bindings', list),
+    )
 
     def __init__(self, name='', exchange=None, routing_key='',
-                 channel=None, bindings=None, **kwargs):
+                 channel=None, bindings=None, on_declared=None,
+                 **kwargs):
         super(Queue, self).__init__(**kwargs)
         self.name = name or self.name
         self.exchange = exchange or self.exchange
         self.routing_key = routing_key or self.routing_key
         self.bindings = set(bindings or [])
+        self.on_declared = on_declared
 
         # allows Queue('name', [binding(...), binding(...), ...])
         if isinstance(exchange, (list, tuple, set)):
@@ -454,6 +467,12 @@ class Queue(MaybeChannelBound):
         if self.exclusive:
             self.auto_delete = True
         self.maybe_bind(channel)
+
+    def bind(self, channel):
+        on_declared = self.on_declared
+        bound = super(Queue, self).bind(channel)
+        bound.on_declared = on_declared
+        return bound
 
     def __hash__(self):
         return hash('Q|%s' % (self.name, ))
@@ -497,6 +516,8 @@ class Queue(MaybeChannelBound):
                                          nowait=nowait)
         if not self.name:
             self.name = ret[0]
+        if self.on_declared:
+            self.on_declared(*ret)
         return ret
 
     def queue_bind(self, nowait=False):

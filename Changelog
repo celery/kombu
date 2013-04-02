@@ -4,6 +4,40 @@
  Change history
 ================
 
+.. _version-2.5.8:
+
+2.5.8
+=====
+:release-date: 2013-03-21 04:00 P.M UTC
+
+- Now depends on :mod:`amqp` 1.0.10 which fixes a Python 3 compatibility error.
+
+- Redis: Fixed a possible race condition (Issue #171).
+
+- Redis: Ack emulation/visibility_timeout can now be disabled
+  using a transport option.
+
+    Ack emulation adds quite a lot of overhead to ensure data is safe
+    even in the event of an unclean shutdown.  If data loss do not worry
+    you there is now an `ack_emulation` transport option you can use
+    to disable it::
+
+        Connection('redis://', transport_options={'ack_emulation': False})
+
+- SQS: Fixed :mod:`boto` v2.7 compatibility (Issue #207).
+
+- Exchange: Should not try to re-declare default exchange (``""``)
+  (Issue #209).
+
+- SQS: Long polling is now disabled by default as it was not
+  implemented correctly, resulting in long delays between receiving
+  messages (Issue #202).
+
+- Fixed Python 2.6 incompatibility depending on ``exc.errno``
+  being available.
+
+    Fix contributed by Ephemera.
+
 .. _version-2.5.7:
 
 2.5.7
