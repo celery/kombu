@@ -87,7 +87,7 @@ def resolve_transport(transport=None):
                     raise KeyError(
                         'No such transport: {0}.  Did you mean {1}?'.format(
                             transport, alt))
-                raise KeyError('No such transport: {0}'.format(transport)
+                raise KeyError('No such transport: {0}'.format(transport))
         else:
             if isinstance(transport, Callable):
                 transport = transport()
