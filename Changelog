@@ -8,7 +8,7 @@
 
 2.5.9
 =====
-:release-date: 2013-04-08 04:23 P.M BST
+:release-date: 2013-04-08 05:07 P.M BST
 
 - Pidbox: Now warns if there are multiple nodes consuming from
   the same pidbox.
