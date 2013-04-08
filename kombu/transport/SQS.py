@@ -374,3 +374,5 @@ class Transport(virtual.Transport):
     default_port = None
     connection_errors = (StdConnectionError, exception.SQSError, socket.error)
     channel_errors = (exception.SQSDecodeError, StdChannelError)
+    driver_type = 'sqs'
+    driver_name = 'sqs'
