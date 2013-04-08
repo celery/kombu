@@ -58,10 +58,6 @@ else:
 #: There's a new protocol (3) but this is only supported by Python 3.
 pickle_protocol = int(os.environ.get('PICKLE_PROTOCOL', 2))
 
-#: Kombu requires Python 2.5 or later so we use protocol 2 by default.
-#: There's a new protocol (3) but this is only supported by Python 3.
-pickle_protocol = int(os.environ.get('PICKLE_PROTOCOL', 2))
-
 
 def pickle_loads(s, load=pickle_load):
     return load(BytesIO(s))
