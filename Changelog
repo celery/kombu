@@ -4,6 +4,38 @@
  Change history
 ================
 
+.. _version-2.5.9:
+
+2.5.9
+=====
+:release-date: 2013-04-08 05:07 P.M BST
+
+- Pidbox: Now warns if there are multiple nodes consuming from
+  the same pidbox.
+
+- Adds :attr:`Queue.on_declared <kombu.Queue.on_declared>`
+
+    A callback to be called when the queue is declared,
+    with signature ``(name, messages, consumers)``.
+
+- Now uses fuzzy matching to suggest alternatives to typos in transport
+  names.
+
+- SQS: Adds new transport option ``queue_prefix``.
+
+    Contributed by j0hnsmith.
+
+- pyamqp: No longer overrides verify_connection.
+
+- SQS: Now specifies the ``driver_type`` and ``driver_name``
+  attributes.
+
+    Fix contributed by Mher Movsisyan.
+
+- Fixed bug with ``kombu.utils.retry_over_time`` when no errback
+  specified.
+
+
 .. _version-2.5.8:
 
 2.5.8

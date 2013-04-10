@@ -172,7 +172,8 @@ class Connection(object):
                 hostname = alt[0]
             if '+' in hostname[:hostname.index('://')]:
                 # e.g. sqla+mysql://root:masterkey@localhost/
-                params['transport'], params['hostname'] = hostname.split('+')
+                params['transport'], params['hostname'] = \
+                    hostname.split('+', 1)
                 self.uri_prefix = params['transport']
             else:
                 if transport not in URI_PASSTHROUGH:

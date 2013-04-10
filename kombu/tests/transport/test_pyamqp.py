@@ -120,14 +120,6 @@ class test_Transport(TestCase):
         self.assertIsNone(connection.client)
         connection.close.assert_called_with()
 
-    def test_verify_connection(self):
-        connection = Mock()
-        connection.channels = None
-        self.assertFalse(self.transport.verify_connection(connection))
-
-        connection.channels = {1: 1, 2: 2}
-        self.assertTrue(self.transport.verify_connection(connection))
-
     @mask_modules('ssl')
     def test_import_no_ssl(self):
         pm = sys.modules.pop('amqp.connection')

@@ -60,6 +60,7 @@ pickle_protocol = int(os.environ.get('PICKLE_PROTOCOL', 2))
 
 
 def pickle_loads(s, load=pickle_load):
+    # used to support buffer objects
     return load(BytesIO(s))
 
 
@@ -82,6 +83,11 @@ class SerializerRegistry(object):
         if decoder:
             self._decoders[content_type] = decoder
         self.type_to_name[content_type] = name
+
+    def enable(self, name):
+        if '/' not in name:
+            name, _, _ = self._encoders[name]
+        self._disabled_content_types.remove(name)
 
     def disable(self, name):
         if '/' not in name:
@@ -363,6 +369,34 @@ register_msgpack()
 # JSON is assumed to always be available, so is the default.
 # (this matches the historical use of kombu.)
 registry._set_default_serializer('json')
+
+
+_setupfuns = {
+    'json': register_json,
+    'pickle': register_pickle,
+    'yaml': register_yaml,
+    'msgpack': register_msgpack,
+    'application/json': register_json,
+    'application/x-yaml': register_yaml,
+    'application/x-python-serialize': register_pickle,
+    'application/x-msgpack': register_msgpack,
+}
+
+
+def enable_insecure_serializers(choices=['pickle', 'yaml', 'msgpack']):
+    for choice in choices:
+        try:
+            registry.enable(choice)
+        except KeyError:
+            pass
+
+
+def disable_insecure_serializers(allowed=['json']):
+    for name in registry._decoders:
+        registry.disable(name)
+    if allowed is not None:
+        for name in allowed:
+            registry.enable(name)
 
 # Load entrypoints from installed extensions
 for ep, args in entrypoints('kombu.serializers'):

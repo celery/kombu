@@ -33,18 +33,24 @@ if STATICA_HACK:  # pragma: no cover
     from kombu.pools import connections, producers              # noqa
     from kombu.utils.url import parse_url                       # noqa
     from kombu.common import eventloop, uuid                    # noqa
+    from kombu.serialization import (                           # noqa
+        enable_insecure_serializers,
+        disable_insecure_serializers,
+    )
 
 # Lazy loading.
 # - See werkzeug/__init__.py for the rationale behind this.
 from types import ModuleType
 
 all_by_module = {
-    'kombu.connection': ['Connection', 'BrokerConnection'],
-    'kombu.entity':     ['Exchange', 'Queue', 'binding'],
-    'kombu.messaging':  ['Consumer', 'Producer'],
-    'kombu.pools':      ['connections', 'producers'],
-    'kombu.utils.url':  ['parse_url'],
-    'kombu.common':     ['eventloop', 'uuid']
+    'kombu.connection':    ['Connection', 'BrokerConnection'],
+    'kombu.entity':        ['Exchange', 'Queue', 'binding'],
+    'kombu.messaging':     ['Consumer', 'Producer'],
+    'kombu.pools':         ['connections', 'producers'],
+    'kombu.utils.url':     ['parse_url'],
+    'kombu.common':        ['eventloop', 'uuid'],
+    'kombu.serialization': ['enable_insecure_serializers',
+                            'disable_insecure_serializers'],
 }
 
 object_origins = {}
