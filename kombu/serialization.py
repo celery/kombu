@@ -89,6 +89,7 @@ class SerializerRegistry(object):
         self._default_content_encoding = None
         self._disabled_content_types = set()
         self.type_to_name = {}
+        self.name_to_type = {}
 
     def register(self, name, encoder, decoder, content_type,
                  content_encoding='utf-8'):
@@ -97,23 +98,25 @@ class SerializerRegistry(object):
         if decoder:
             self._decoders[content_type] = decoder
         self.type_to_name[content_type] = name
+        self.name_to_type[name] = content_type
 
     def enable(self, name):
         if '/' not in name:
-            name, _, _ = self._encoders[name]
+            name = self.name_to_type[name]
         self._disabled_content_types.remove(name)
 
     def disable(self, name):
         if '/' not in name:
-            name, _, _ = self._encoders[name]
+            name = self.name_to_type[name]
         self._disabled_content_types.add(name)
 
     def unregister(self, name):
         try:
-            content_type = self._encoders[name][0]
+            content_type = self.name_to_type[name]
             self._decoders.pop(content_type, None)
             self._encoders.pop(name, None)
             self.type_to_name.pop(content_type, None)
+            self.name_to_type.pop(name, None)
         except KeyError:
             raise SerializerNotInstalled(
                 'No encoder/decoder installed for %s' % name)

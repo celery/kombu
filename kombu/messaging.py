@@ -12,7 +12,7 @@ from itertools import count
 from .connection import maybe_channel, is_connection
 from .entity import Exchange, Queue, DELIVERY_MODES
 from .compression import compress
-from .serialization import encode
+from .serialization import encode, registry
 from .utils import ChannelPromise, maybe_list
 
 __all__ = ['Exchange', 'Queue', 'Producer', 'Consumer']
@@ -338,12 +338,18 @@ class Consumer(object):
         self.callbacks = (self.callbacks or [] if callbacks is None
                           else callbacks)
         self.on_message = on_message
-        self.accept = accept
         self._active_tags = {}
         if auto_declare is not None:
             self.auto_declare = auto_declare
         if on_decode_error is not None:
             self.on_decode_error = on_decode_error
+        self.accept = accept
+
+        if self.accept is not None:
+            self.accept = set(
+                n if '/' in n else registry.name_to_type[n]
+                for n in self.accept
+            )
 
         if self.channel:
             self.revive(self.channel)

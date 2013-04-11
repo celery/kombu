@@ -26,12 +26,25 @@ Changes
       - :func:`kombu.disable_insecure_serializers`
       - :func:`kombu.enable_insecure_serializers`.
 
+- Consumer: ``accept`` can now be used to specify a whitelist
+  of content types/serializers to accept.
+
+    If the accept whitelist is set and a message is received
+    with a content type that is not in the whitelist then a
+    :exc:`~kombu.exceptions.ContentDisallowed` exception
+    will be raised.
+
+    Examples::
+
+        Consumer(accept=['application/json'])
+        Consumer(accept=['pickle', 'json'])
+
+- pidbox: Mailbox now supports the ``accept`` argument.
+
 - Redis: More friendly error for when keys are missing.
 
 - Connection URLs: The parser did not work well when there were
   multiple '+' tokens.
-
-
 
 .. _version-2.5.9:
 
