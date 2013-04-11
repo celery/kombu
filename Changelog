@@ -39,6 +39,8 @@ Changes
         Consumer(accept=['application/json'])
         Consumer(accept=['pickle', 'json'])
 
+- Now depends on amqp 1.0.11
+
 - pidbox: Mailbox now supports the ``accept`` argument.
 
 - Redis: More friendly error for when keys are missing.
