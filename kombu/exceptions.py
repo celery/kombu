@@ -48,6 +48,8 @@ class ChannelLimitExceeded(LimitExceeded):
     """Maximum number of simultaneous channels exceeded."""
     pass
 
+class SSLNotSupported(KombuError):
+    pass
 
 class StdConnectionError(KombuError):
     pass
