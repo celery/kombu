@@ -110,6 +110,8 @@ class Connection(object):
             >>> conn.release()
 
     """
+    SSLNotSupported = exceptions.SSLNotSupported
+
     port = None
     virtual_host = '/'
     connect_timeout = 5
@@ -234,7 +236,7 @@ class Connection(object):
         self.heartbeat = heartbeat and float(heartbeat)
 
         if ssl and transport == 'librabbitmq':
-            raise Exception('SSL not supported for "librabbitmq" transport')
+            raise self.SSLNotSupported(transport)
 
     def _debug(self, msg, *args, **kwargs):
         fmt = '[Kombu connection:0x%(id)x] %(msg)s'
