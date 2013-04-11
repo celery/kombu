@@ -233,6 +233,9 @@ class Connection(object):
         self.transport_cls = transport
         self.heartbeat = heartbeat and float(heartbeat)
 
+        if ssl and transport == 'librabbitmq':
+            raise Exception('SSL not supported for "librabbitmq" transport')
+
     def _debug(self, msg, *args, **kwargs):
         fmt = '[Kombu connection:0x%(id)x] %(msg)s'
         if self._logger:  # pragma: no cover
