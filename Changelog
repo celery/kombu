@@ -4,6 +4,20 @@
  Change history
 ================
 
+.. _version-3.0.0:
+
+3.0.0
+:release-date: TBA
+
+- No longer supports Python 2.5
+
+- pickle, yaml and msgpack deserialization is now disabled by default.
+
+    To enable insecure serializers you have to call:
+
+        >>> from kombu import enable_insecure_serializers
+        >>> enable_insecure_serializers()
+
 .. _version-2.5.9:
 
 2.5.9

@@ -398,6 +398,10 @@ def disable_insecure_serializers(allowed=['json']):
         for name in allowed:
             registry.enable(name)
 
+
+# Insecure serializers are disabled by default since v3.0
+disable_insecure_serializers('json')
+
 # Load entrypoints from installed extensions
 for ep, args in entrypoints('kombu.serializers'):
     register(ep.name, *args)
