@@ -400,7 +400,7 @@ def disable_insecure_serializers(allowed=['json']):
 
 
 # Insecure serializers are disabled by default since v3.0
-disable_insecure_serializers('json')
+disable_insecure_serializers()
 
 # Load entrypoints from installed extensions
 for ep, args in entrypoints('kombu.serializers'):
