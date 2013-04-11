@@ -47,12 +47,13 @@ class Message(object):
     __slots__ = ('_state', 'channel', 'delivery_tag',
                  'content_type', 'content_encoding',
                  'delivery_info', 'headers', 'properties',
-                 'body', '_decoded_cache', '__dict__')
+                 'body', '_decoded_cache', 'accept', '__dict__')
     MessageStateError = MessageStateError
 
     def __init__(self, channel, body=None, delivery_tag=None,
                  content_type=None, content_encoding=None, delivery_info={},
-                 properties=None, headers=None, postencode=None, **kwargs):
+                 properties=None, headers=None, postencode=None,
+                 accept=None, **kwargs):
         self.channel = channel
         self.delivery_tag = delivery_tag
         self.content_type = content_type
@@ -62,6 +63,7 @@ class Message(object):
         self.properties = properties or {}
         self._decoded_cache = None
         self._state = 'RECEIVED'
+        self.accept = accept
 
         try:
             body = decompress(body, self.headers['compression'])
@@ -142,7 +144,7 @@ class Message(object):
         """Deserialize the message body, returning the original
         python structure sent by the publisher."""
         return decode(self.body, self.content_type,
-                      self.content_encoding)
+                      self.content_encoding, accept=self.accept)
 
     @property
     def acknowledged(self):

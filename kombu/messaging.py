@@ -318,16 +318,27 @@ class Consumer(object):
     #: that occurred while trying to decode it.
     on_decode_error = None
 
+    #: List of accepted content-types.
+    #:
+    #: An exception will be raised if the consumer receives
+    #: a message with an untrusted content type.
+    #: By default all content-types are accepted, but not if
+    #: :func:`kombu.disable_untrusted_serializers` was called,
+    #: in which case only json is allowed.
+    accept = None
+
     _next_tag = count(1).next   # global
 
     def __init__(self, channel, queues=None, no_ack=None, auto_declare=None,
-                 callbacks=None, on_decode_error=None, on_message=None):
+                 callbacks=None, on_decode_error=None, on_message=None,
+                 accept=None):
         self.channel = channel
         self.queues = self.queues or [] if queues is None else queues
         self.no_ack = self.no_ack if no_ack is None else no_ack
         self.callbacks = (self.callbacks or [] if callbacks is None
                           else callbacks)
         self.on_message = on_message
+        self.accept = accept
         self._active_tags = {}
         if auto_declare is not None:
             self.auto_declare = auto_declare
@@ -528,6 +539,9 @@ class Consumer(object):
         return tag
 
     def _receive_callback(self, message):
+        accept = self.accept
+        if accept is not None:
+            message.accept = accept
         on_m, channel, decoded = self.on_message, self.channel, None
         try:
             m2p = getattr(channel, 'message_to_python', None)

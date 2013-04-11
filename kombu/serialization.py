@@ -18,7 +18,7 @@ try:
 except ImportError:  # pragma: no cover
     cpickle = None  # noqa
 
-from .exceptions import SerializerNotInstalled
+from .exceptions import SerializerNotInstalled, ContentDisallowed
 from .utils import entrypoints
 from .utils.encoding import str_to_bytes, bytes_t
 
@@ -72,6 +72,10 @@ pickle_protocol = int(os.environ.get('PICKLE_PROTOCOL', 2))
 def pickle_loads(s, load=pickle_load):
     # used to support buffer objects
     return load(BytesIO(s))
+
+
+def parenthesize_alias(first, second):
+    return '%s (%s)' % (first, second) if first else second
 
 
 class SerializerRegistry(object):
@@ -163,10 +167,14 @@ class SerializerRegistry(object):
         payload = encoder(data)
         return content_type, content_encoding, payload
 
-    def decode(self, data, content_type, content_encoding, force=False):
-        if content_type in self._disabled_content_types and not force:
-            raise SerializerNotInstalled(
-                'Content-type %r has been disabled.' % (content_type, ))
+    def decode(self, data, content_type, content_encoding,
+               accept=None, force=False):
+        if accept is not None:
+            if content_type not in accept:
+                raise self._for_untrusted_content(content_type, 'untrusted')
+        else:
+            if content_type in self._disabled_content_types and not force:
+                raise self._for_untrusted_content(content_type, 'disabled')
         content_type = content_type or 'application/data'
         content_encoding = (content_encoding or 'utf-8').lower()
 
@@ -179,13 +187,16 @@ class SerializerRegistry(object):
                 return _decode(data, content_encoding)
         return data
 
+    def _for_untrusted_content(self, ctype, why):
+        return ContentDisallowed(
+            'Refusing to decode %(why)s content of type %(type)s' % {
+                'why': why,
+                'type': parenthesize_alias(self.type_to_name[ctype], ctype),
+            },
+        )
 
-"""
-.. data:: registry
 
-Global registry of serializers/deserializers.
-
-"""
+#: Global registry of serializers/deserializers.
 registry = SerializerRegistry()
 
 

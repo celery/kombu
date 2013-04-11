@@ -63,6 +63,11 @@ class SerializerNotInstalled(KombuError):
     pass
 
 
+class ContentDisallowed(SerializerNotInstalled):
+    """Consumer does not allow this content-type."""
+    pass
+
+
 class InconsistencyError(StdConnectionError):
     """Data or environment has been found to be inconsistent,
     depending on the cause it may be possible to retry the operation."""
