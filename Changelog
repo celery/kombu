@@ -8,7 +8,7 @@
 
 2.5.10
 ======
-:release-date: 2013-04-11 XX:XX P.M BST
+:release-date: 2013-04-11 18:10 P.M BST
 
 Note about upcoming changes for Kombu 3.0
 -----------------------------------------
@@ -21,18 +21,19 @@ using the ``accept`` argument to :class:`~kombu.Consumer`.
 Changes
 -------
 
-- New utility to disable untrusted serializers.
+- New utility function to disable/enable untrusted serializers.
 
       - :func:`kombu.disable_insecure_serializers`
       - :func:`kombu.enable_insecure_serializers`.
 
 - Consumer: ``accept`` can now be used to specify a whitelist
-  of content types/serializers to accept.
+  of content types to accept.
 
     If the accept whitelist is set and a message is received
     with a content type that is not in the whitelist then a
     :exc:`~kombu.exceptions.ContentDisallowed` exception
-    will be raised.
+    is raised.  Note that this error can be handled by the already
+    existing `on_decode_error` callback
 
     Examples::
 
