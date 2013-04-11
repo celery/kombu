@@ -4,6 +4,35 @@
  Change history
 ================
 
+.. _version-2.5.10:
+
+2.5.10
+======
+:release-date: 2013-04-11 XX:XX P.M BST
+
+Note about upcoming changes for Kombu 3.0
+-----------------------------------------
+
+Kombu 3 consumers will no longer accept pickle/yaml or msgpack
+by default, and you will have to explicitly enable untrusted deserializers
+either globally using :func:`kombu.enable_insecure_serializers`, or
+using the ``accept`` argument to :class:`~kombu.Consumer`.
+
+Changes
+-------
+
+- New utility to disable untrusted serializers.
+
+      - :func:`kombu.disable_insecure_serializers`
+      - :func:`kombu.enable_insecure_serializers`.
+
+- Redis: More friendly error for when keys are missing.
+
+- Connection URLs: The parser did not work well when there were
+  multiple '+' tokens.
+
+
+
 .. _version-2.5.9:
 
 2.5.9

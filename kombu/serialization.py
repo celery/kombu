@@ -394,6 +394,13 @@ _setupfuns = {
 
 
 def enable_insecure_serializers(choices=['pickle', 'yaml', 'msgpack']):
+    """Enable serializers that are considered to be unsafe.
+
+    Will enable ``pickle``, ``yaml`` and ``msgpack`` by default,
+    but you can also specify a list of serializers (by name or content type)
+    to enable.
+
+    """
     for choice in choices:
         try:
             registry.enable(choice)
@@ -402,6 +409,18 @@ def enable_insecure_serializers(choices=['pickle', 'yaml', 'msgpack']):
 
 
 def disable_insecure_serializers(allowed=['json']):
+    """Disable untrusted serializers.
+
+    Will disable all serializers except ``json``
+    or you can specify a list of deserializers to allow.
+
+    .. note::
+
+        Producers will still be able to serialize data
+        in these formats, but consumers will not accept
+        incoming data using the untrusted content types.
+
+    """
     for name in registry._decoders:
         registry.disable(name)
     if allowed is not None:

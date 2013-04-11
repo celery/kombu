@@ -5,6 +5,10 @@
 
 .. automodule:: kombu
 
+    .. autofunction:: enable_insecure_serializers
+
+    .. autofunction:: disable_insecure_serializers
+
     Connection
     ----------
 
