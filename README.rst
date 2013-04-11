@@ -73,6 +73,8 @@ and the `Wikipedia article about AMQP`_.
 .. _`librabbitmq`: http://pypi.python.org/pypi/librabbitmq
 
 
+.. _transport-comparison:
+
 Transport Comparison
 ====================
 
