@@ -5,8 +5,8 @@ from funtests import transport
 
 
 class test_mongodb(transport.TransportCase):
-    transport = "mongodb"
-    prefix = "mongodb"
+    transport = 'mongodb'
+    prefix = 'mongodb'
     event_loop_max = 100
 
     def after_connect(self, connection):
@@ -14,11 +14,11 @@ class test_mongodb(transport.TransportCase):
 
         self.c = self.connection   # shortcut
 
-    def test_fanout(self, name="test_mongodb_fanout"):
+    def test_fanout(self, name='test_mongodb_fanout'):
         c = self.connection
-        self.e = Exchange(name, type="fanout")
+        self.e = Exchange(name, type='fanout')
         self.q = Queue(name, exchange=self.e, routing_key=name)
-        self.q2 = Queue(name + "2", exchange=self.e, routing_key=name + "2")
+        self.q2 = Queue(name + '2', exchange=self.e, routing_key=name + '2')
 
         channel = c.default_channel
         producer = Producer(channel, self.e)
@@ -27,9 +27,9 @@ class test_mongodb(transport.TransportCase):
         self.q2(channel).declare()
 
         for i in xrange(10):
-            producer.publish({"foo": i}, routing_key=name)
+            producer.publish({'foo': i}, routing_key=name)
         for i in xrange(10):
-            producer.publish({"foo": i}, routing_key=name + "2")
+            producer.publish({'foo': i}, routing_key=name + '2')
 
         _received1 = []
         _received2 = []
@@ -55,7 +55,7 @@ class test_mongodb(transport.TransportCase):
 
         # queue.delete
         for i in xrange(10):
-            producer.publish({"foo": i}, routing_key=name)
+            producer.publish({'foo': i}, routing_key=name)
         self.assertTrue(self.q(channel).get())
         self.q(channel).delete()
         self.q(channel).declare()
@@ -63,7 +63,7 @@ class test_mongodb(transport.TransportCase):
 
         # queue.purge
         for i in xrange(10):
-            producer.publish({"foo": i}, routing_key=name + "2")
+            producer.publish({'foo': i}, routing_key=name + '2')
         self.assertTrue(self.q2(channel).get())
         self.q2(channel).purge()
         self.assertIsNone(self.q2(channel).get())
