@@ -7,6 +7,7 @@
 .. _version-3.0.0:
 
 3.0.0
+=====
 :release-date: TBA
 
 - No longer supports Python 2.5
@@ -17,6 +18,51 @@
 
         >>> from kombu import enable_insecure_serializers
         >>> enable_insecure_serializers()
+
+.. _version-2.5.10:
+
+2.5.10
+======
+:release-date: 2013-04-11 18:10 P.M BST
+
+Note about upcoming changes for Kombu 3.0
+-----------------------------------------
+
+Kombu 3 consumers will no longer accept pickle/yaml or msgpack
+by default, and you will have to explicitly enable untrusted deserializers
+either globally using :func:`kombu.enable_insecure_serializers`, or
+using the ``accept`` argument to :class:`~kombu.Consumer`.
+
+Changes
+-------
+
+- New utility function to disable/enable untrusted serializers.
+
+      - :func:`kombu.disable_insecure_serializers`
+      - :func:`kombu.enable_insecure_serializers`.
+
+- Consumer: ``accept`` can now be used to specify a whitelist
+  of content types to accept.
+
+    If the accept whitelist is set and a message is received
+    with a content type that is not in the whitelist then a
+    :exc:`~kombu.exceptions.ContentDisallowed` exception
+    is raised.  Note that this error can be handled by the already
+    existing `on_decode_error` callback
+
+    Examples::
+
+        Consumer(accept=['application/json'])
+        Consumer(accept=['pickle', 'json'])
+
+- Now depends on amqp 1.0.11
+
+- pidbox: Mailbox now supports the ``accept`` argument.
+
+- Redis: More friendly error for when keys are missing.
+
+- Connection URLs: The parser did not work well when there were
+  multiple '+' tokens.
 
 .. _version-2.5.9:
 

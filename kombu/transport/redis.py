@@ -26,6 +26,11 @@ from kombu.log import get_logger
 from kombu.utils import cached_property, uuid
 from kombu.utils.eventio import poll, READ, ERR
 
+NO_ROUTE_ERROR = """
+Cannot route message for exchange {0!r}: Table empty or key no longer exists.
+Probably the key ({1!r}) has been removed from the Redis database.
+"""
+
 try:
     from billiard.util import register_after_fork
 except ImportError:
@@ -571,8 +576,7 @@ class Channel(virtual.Channel):
         with self.conn_or_acquire() as client:
             values = client.smembers(key)
             if not values:
-                raise InconsistencyError(
-                    'Queue list empty or does not exist: {0!r}'.format(key))
+                raise InconsistencyError(NO_ROUTE_ERROR.format(exchange, key))
             return [tuple(val.split(self.sep)) for val in values]
 
     def _purge(self, queue):

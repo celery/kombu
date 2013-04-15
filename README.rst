@@ -1,3 +1,5 @@
+.. _kombu-index:
+
 ========================================
  kombu - Messaging Framework for Python
 ========================================
@@ -74,6 +76,8 @@ and the `Wikipedia article about AMQP`_.
 .. _`librabbitmq`: http://pypi.python.org/pypi/librabbitmq
 .. _`SoftLayer Message Queue`: http://www.softlayer.com/services/additional/message-queue
 
+
+.. _transport-comparison:
 
 Transport Comparison
 ====================

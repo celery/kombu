@@ -65,6 +65,7 @@ class Node(object):
 
     def Consumer(self, channel=None, **options):
         options.setdefault('no_ack', True)
+        options.setdefault('accept', self.mailbox.accept)
         queue = self.mailbox.get_queue(self.hostname)
 
         def verify_exclusive(name, messages, consumers):
@@ -145,7 +146,8 @@ class Mailbox(object):
     #: exchange to send replies to.
     reply_exchange = None
 
-    def __init__(self, namespace, type='direct', connection=None, clock=None):
+    def __init__(self, namespace,
+                 type='direct', connection=None, clock=None, accept=None):
         self.namespace = namespace
         self.connection = connection
         self.type = type
@@ -154,6 +156,7 @@ class Mailbox(object):
         self.reply_exchange = self._get_reply_exchange(self.namespace)
         self._tls = local()
         self.unclaimed = defaultdict(deque)
+        self.accept = accept
 
     def __call__(self, connection):
         bound = copy(self)
@@ -264,10 +267,13 @@ class Mailbox(object):
                                  channel=chan)
 
     def _collect(self, ticket,
-                 limit=None, timeout=1, callback=None, channel=None):
+                 limit=None, timeout=1, callback=None,
+                 channel=None, accept=None):
+        if accept is None:
+            accept = self.accept
         chan = channel or self.connection.default_channel
         queue = self.reply_queue
-        consumer = Consumer(channel, [queue], no_ack=True)
+        consumer = Consumer(channel, [queue], accept=accept, no_ack=True)
         responses = []
         unclaimed = self.unclaimed
         adjust_clock = self.clock.adjust

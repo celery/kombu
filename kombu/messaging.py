@@ -13,7 +13,7 @@ from .compression import compress
 from .connection import maybe_channel, is_connection
 from .entity import Exchange, Queue, DELIVERY_MODES
 from .five import int_types, text_t, values
-from .serialization import encode
+from .serialization import encode, registry
 from .utils import ChannelPromise, maybe_list
 
 __all__ = ['Exchange', 'Queue', 'Producer', 'Consumer']
@@ -322,10 +322,20 @@ class Consumer(object):
     #: that occurred while trying to decode it.
     on_decode_error = None
 
+    #: List of accepted content-types.
+    #:
+    #: An exception will be raised if the consumer receives
+    #: a message with an untrusted content type.
+    #: By default all content-types are accepted, but not if
+    #: :func:`kombu.disable_untrusted_serializers` was called,
+    #: in which case only json is allowed.
+    accept = None
+
     _tags = count(1)   # global
 
     def __init__(self, channel, queues=None, no_ack=None, auto_declare=None,
-                 callbacks=None, on_decode_error=None, on_message=None):
+                 callbacks=None, on_decode_error=None, on_message=None,
+                 accept=None):
         self.channel = channel
         self.queues = self.queues or [] if queues is None else queues
         self.no_ack = self.no_ack if no_ack is None else no_ack
@@ -337,6 +347,13 @@ class Consumer(object):
             self.auto_declare = auto_declare
         if on_decode_error is not None:
             self.on_decode_error = on_decode_error
+        self.accept = accept
+
+        if self.accept is not None:
+            self.accept = set(
+                n if '/' in n else registry.name_to_type[n]
+                for n in self.accept
+            )
 
         if self.channel:
             self.revive(self.channel)
@@ -532,6 +549,9 @@ class Consumer(object):
         return tag
 
     def _receive_callback(self, message):
+        accept = self.accept
+        if accept is not None:
+            message.accept = accept
         on_m, channel, decoded = self.on_message, self.channel, None
         try:
             m2p = getattr(channel, 'message_to_python', None)

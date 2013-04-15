@@ -77,6 +77,33 @@ Note that a `Consumer` do not need the serialization method specified.
 They can auto-detect the serialization method as the
 content-type is sent as a message header.
 
+.. _disable-untrusted-serializers:
+
+Disabling Insecure Serializers
+------------------------------
+
+.. versionadded:: 2.5.10
+
+Deserializing pickle and yaml from untrusted sources is not safe,
+as both pickle and yaml have the ability to execute arbitrary code.
+
+If you are not using these formats you should disable them
+by calling :func:`kombu.disable_insecure_serializers`::
+
+    >>> import kombu
+    >>> kombu.disable_insecure_serializers()
+
+Or you can specify the content types your consumers should
+accept by using the ``accept`` argument::
+
+    >>> Consumer(accept=['json', 'pickle'])
+    >>> Consumer(accept=['application/json'])
+
+.. note::
+
+    Insecure serializers will be disabled by default
+    in the next major version (Kombu 3.0)
+
 .. _sending-raw-data:
 
 Sending raw data without Serialization
