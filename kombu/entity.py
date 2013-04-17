@@ -544,8 +544,8 @@ class Queue(MaybeChannelBound):
         Returns the message instance if a message was available,
         or :const:`None` otherwise.
 
-        :keyword no_ack: If set messages received does not have to
-            be acknowledged.
+        :keyword no_ack: If enabled the broker will automatically
+            ack messages.
 
         This method provides direct access to the messages in a
         queue using a synchronous dialogue, designed for
@@ -578,8 +578,8 @@ class Queue(MaybeChannelBound):
           can use the same consumer tags. If this field is empty
           the server will generate a unique tag.
 
-        :keyword no_ack: If set messages received does not have to
-            be acknowledged.
+        :keyword no_ack: If enabled the broker will automatically ack
+            messages.
 
         :keyword nowait: Do not wait for a reply.
 
