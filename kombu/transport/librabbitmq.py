@@ -28,6 +28,10 @@ from . import base
 
 DEFAULT_PORT = 5672
 
+NO_SSL_ERROR = """\
+ssl not supported by librabbitmq, please use pyamqp:// or stunnel\
+"""
+
 
 class Message(base.Message):
 
@@ -98,6 +102,8 @@ class Transport(base.Transport):
         for name, default_value in self.default_connection_params.items():
             if not getattr(conninfo, name, None):
                 setattr(conninfo, name, default_value)
+        if conninfo.ssl:
+            raise NotImplementedError(NO_SSL_ERROR)
         conn = self.Connection(host=conninfo.host,
                                userid=conninfo.userid,
                                password=conninfo.password,
