@@ -19,6 +19,27 @@
         >>> from kombu import enable_insecure_serializers
         >>> enable_insecure_serializers()
 
+.. _version-2.5.11:
+
+2.5.11
+======
+:release-date: TBA
+
+- Adds ``passive`` option to :class:`~kombu.Exchange`.
+
+    Contributed by Rafal Malinowski
+
+- librabbitmq:  Now raises :exc:`NotImplementedError`
+  if ``ssl`` option enabled.
+
+    The librabbitmq library does not support ssl,
+    but you can use stunnel or change to the ``pyamqp://`` transport
+    instead.
+
+    Fix contributed by Dan LaMotte.
+
+- eventio: select implementation now removes bad file descriptors.
+
 .. _version-2.5.10:
 
 2.5.10

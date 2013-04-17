@@ -15,7 +15,6 @@ from .utils import Mock
 def get_conn():
     return Connection(transport=Transport)
 
-
 class test_binding(TestCase):
 
     def test_constructor(self):
@@ -128,6 +127,10 @@ class test_Exchange(TestCase):
     def test_set_transient_delivery_mode(self):
         exc = Exchange('foo', 'direct', delivery_mode='transient')
         self.assertEqual(exc.delivery_mode, Exchange.TRANSIENT_DELIVERY_MODE)
+
+    def test_set_passive_mode(self):
+        exc = Exchange('foo', 'direct', passive=True)
+        self.assertTrue(exc.passive)
 
     def test_set_persistent_delivery_mode(self):
         exc = Exchange('foo', 'direct', delivery_mode='persistent')
