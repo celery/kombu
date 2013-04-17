@@ -131,21 +131,21 @@ class Exchange(MaybeChannelBound):
         ('type', None),
         ('arguments', None),
         ('durable', bool),
+        ('passive', bool),
         ('auto_delete', bool),
         ('delivery_mode', lambda m: DELIVERY_MODES.get(m) or m),
     )
 
-    def __init__(self, name='', type='', channel=None, passive=None, **kwargs):
+    def __init__(self, name='', type='', channel=None, **kwargs):
         super(Exchange, self).__init__(**kwargs)
         self.name = name or self.name
         self.type = type or self.type
-        self.passive = passive or self.passive
         self.maybe_bind(channel)
 
     def __hash__(self):
         return hash('E|%s' % (self.name, ))
 
-    def declare(self, nowait=False):
+    def declare(self, nowait=False, passive=None):
         """Declare the exchange.
 
         Creates the exchange on the broker.
@@ -154,11 +154,12 @@ class Exchange(MaybeChannelBound):
             response will not be waited for. Default is :const:`False`.
 
         """
+        passive = self.passive if passive is None else passive
         if self.name:
             return self.channel.exchange_declare(
                 exchange=self.name, type=self.type, durable=self.durable,
                 auto_delete=self.auto_delete, arguments=self.arguments,
-                nowait=nowait, passive=self.passive,
+                nowait=nowait, passive=passive,
             )
 
     def bind_to(self, exchange='', routing_key='',
