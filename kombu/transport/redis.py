@@ -206,7 +206,7 @@ class MultiChannelPoller(object):
         for fd in self._chan_to_sock.itervalues():
             try:
                 self.poller.unregister(fd)
-            except KeyError:
+            except (KeyError, ValueError):
                 pass
         self._channels.clear()
         self._fd_to_chan.clear()
