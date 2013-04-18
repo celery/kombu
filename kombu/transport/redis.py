@@ -25,6 +25,7 @@ from kombu.five import Empty, values
 from kombu.log import get_logger
 from kombu.utils import cached_property, uuid
 from kombu.utils.eventio import poll, READ, ERR
+from kombu.utils.encoding import bytes_to_str
 
 NO_ROUTE_ERROR = """
 Cannot route message for exchange {0!r}: Table empty or key no longer exists.
@@ -485,7 +486,8 @@ class Channel(virtual.Channel):
                 raise Empty()
             if dest__item:
                 dest, item = dest__item
-                dest = dest.rsplit(self.sep, 1)[0]
+                dest = bytes_to_str(dest).rsplit(self.sep, 1)[0]
+                item = bytes_to_str(item)
                 self._rotate_cycle(dest)
                 return loads(item), dest
             else:
@@ -577,7 +579,7 @@ class Channel(virtual.Channel):
             values = client.smembers(key)
             if not values:
                 raise InconsistencyError(NO_ROUTE_ERROR.format(exchange, key))
-            return [tuple(val.split(self.sep)) for val in values]
+            return [tuple(bytes_to_str(val).split(self.sep)) for val in values]
 
     def _purge(self, queue):
         with self.conn_or_acquire() as client:
