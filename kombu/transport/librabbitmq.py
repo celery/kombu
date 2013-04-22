@@ -118,6 +118,7 @@ class Transport(base.Transport):
 
     def close_connection(self, connection):
         """Close the AMQP broker connection."""
+        self.client.drain_events = None
         connection.close()
 
     def verify_connection(self, connection):
