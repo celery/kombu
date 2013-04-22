@@ -15,6 +15,10 @@ class test_SQS(transport.TransportCase):
                                       # even in simple cases.
 
     def before_connect(self):
+        try:
+            import boto  # noqa
+        except ImportError:
+            raise SkipTest('boto not installed')
         if 'AWS_ACCESS_KEY_ID' not in os.environ:
             raise SkipTest('Missing envvar AWS_ACCESS_KEY_ID')
         if 'AWS_SECRET_ACCESS_KEY' not in os.environ:
