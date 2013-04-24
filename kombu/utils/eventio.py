@@ -198,7 +198,7 @@ class _select(Poller):
         for fd in self._rfd | self._wfd | self._efd:
             try:
                 _selectf([fd], [], [], 0)
-            except _selecterr, exc:
+            except (_selecterr, socket.error), exc:
                 if get_errno(exc) in SELECT_BAD_FD:
                     self.unregister(fd)
 
@@ -212,11 +212,12 @@ class _select(Poller):
             read, write, error = _selectf(
                 self._rfd, self._wfd, self._efd, timeout,
             )
-        except _selecterr, exc:
+        except (_selecterr, socket.error), exc:
             if get_errno(exc) == errno.EINTR:
                 return
             elif get_errno(exc) in SELECT_BAD_FD:
-                self._remove_bad()
+                return self._remove_bad()
+            raise
 
         events = {}
         for fd in read:
