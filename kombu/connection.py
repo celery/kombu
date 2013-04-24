@@ -919,7 +919,7 @@ class Resource(object):
         """
         dirty = self._dirty
         resource = self._resource
-        while 1:
+        while 1:  # - acquired
             try:
                 dres = dirty.pop()
             except KeyError:
@@ -928,23 +928,18 @@ class Resource(object):
                 self.close_resource(dres)
             except AttributeError:  # Issue #78
                 pass
-
-        mutex = getattr(resource, 'mutex', None)
-        if mutex:
-            mutex.acquire()
-        try:
-            while 1:
-                try:
-                    res = resource.queue.pop()
-                except IndexError:
-                    break
-                try:
-                    self.close_resource(res)
-                except AttributeError:
-                    pass  # Issue #78
-        finally:
-            if mutex:  # pragma: no cover
-                mutex.release()
+        while 1:  # - available
+            # deque supports '.clear', but lists do not, so for that
+            # reason we use pop here, so that the underlying object can
+            # be any object supporting '.pop' and '.append'.
+            try:
+                res = resource.queue.pop()
+            except IndexError:
+                break
+            try:
+                self.close_resource(res)
+            except AttributeError:
+                pass  # Issue #78
 
     if os.environ.get('KOMBU_DEBUG_POOL'):  # pragma: no cover
         _orig_acquire = acquire
