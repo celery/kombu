@@ -13,7 +13,6 @@ from __future__ import absolute_import
 import pymongo
 
 from pymongo import errors
-from pymongo.uri_parser import parse_uri
 from anyjson import loads, dumps
 from pymongo.connection import Connection
 
