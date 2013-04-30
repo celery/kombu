@@ -328,6 +328,29 @@ class Connection(object):
         self._debug('closed')
         self._closed = True
 
+    def collect(self, socket_timeout=None):
+        # amqp requires communication to close, we don't need that just
+        # to clear out references, Transport._collect can also be implemented
+        # by other transports that want fast after fork
+        try:
+            gc_transport = self._transport._collect
+        except AttributeError:
+            _timeo = socket.getdefaulttimeout()
+            socket.setdefaulttimeout(socket_timeout)
+            try:
+                self._close()
+            except socket.timeout:
+                pass
+            finally:
+                socket.setdefaulttimeout(_timeo)
+        else:
+            gc_transport(self._connection)
+            if self._transport:
+                self._transport.client = None
+                self._transport = None
+            self.declared_entities.clear()
+            self._connection = None
+
     def release(self):
         """Close the connection (if open)."""
         self._close()
@@ -910,6 +933,9 @@ class Resource(object):
         else:
             self.close_resource(resource)
 
+    def collect_resource(self, resource):
+        pass
+
     def force_close_all(self):
         """Closes and removes all resources in the pool (also those in use).
 
@@ -925,7 +951,7 @@ class Resource(object):
             except KeyError:
                 break
             try:
-                self.close_resource(dres)
+                self.collect_resource(dres)
             except AttributeError:  # Issue #78
                 pass
         while 1:  # - available
@@ -937,7 +963,7 @@ class Resource(object):
             except IndexError:
                 break
             try:
-                self.close_resource(res)
+                self.collect_resource(res)
             except AttributeError:
                 pass  # Issue #78
 
@@ -987,6 +1013,9 @@ class ConnectionPool(Resource):
 
     def close_resource(self, resource):
         resource._close()
+
+    def collect_resource(self, resource, socket_timeout=0.1):
+        return resource.collect(socket_timeout)
 
     @contextmanager
     def acquire_channel(self, block=False):
