@@ -15,6 +15,7 @@ from .utils import Mock
 def get_conn():
     return Connection(transport=Transport)
 
+
 class test_binding(TestCase):
 
     def test_constructor(self):

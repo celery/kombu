@@ -1,3 +1,5 @@
+from nose import SkipTest
+
 from kombu import Consumer, Producer, Exchange, Queue
 from kombu.utils import nested
 
@@ -9,12 +11,20 @@ class test_mongodb(transport.TransportCase):
     prefix = 'mongodb'
     event_loop_max = 100
 
+    def before_connect(self):
+        try:
+            import pymongo  # noqa
+        except ImportError:
+            raise SkipTest('pymongo not installed')
+
     def after_connect(self, connection):
         connection.channel().client  # evaluate connection.
 
         self.c = self.connection   # shortcut
 
     def test_fanout(self, name='test_mongodb_fanout'):
+        if not self.verify_alive():
+            return
         c = self.connection
         self.e = Exchange(name, type='fanout')
         self.q = Queue(name, exchange=self.e, routing_key=name)

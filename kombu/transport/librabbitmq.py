@@ -9,6 +9,7 @@ kombu.transport.librabbitmq
 """
 from __future__ import absolute_import
 
+import os
 import socket
 
 try:
@@ -119,7 +120,21 @@ class Transport(base.Transport):
 
     def close_connection(self, connection):
         """Close the AMQP broker connection."""
+        self.client.drain_events = None
         connection.close()
+
+    def _collect(self, connection):
+        if connection is not None:
+            for channel in connection.channels.itervalues():
+                channel.connection = None
+            try:
+                os.close(connection.fileno())
+            except OSError:
+                pass
+            connection.channels.clear()
+            connection.callbacks.clear()
+        self.client.drain_events = None
+        self.client = None
 
     def verify_connection(self, connection):
         return connection.connected

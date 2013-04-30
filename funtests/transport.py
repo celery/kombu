@@ -23,6 +23,10 @@ def say(msg):
     sys.stderr.write(unicode(msg) + '\n')
 
 
+def _nobuf(x):
+    return [str(i) if isinstance(i, buffer) else i for i in x]
+
+
 def consumeN(conn, consumer, n=1, timeout=30):
     messages = []
 
@@ -212,15 +216,15 @@ class TransportCase(unittest.TestCase):
         [q.declare() for q in (b1, b2, b3)]
         self.purge([b1.name, b2.name, b3.name])
 
-        producer.publish('b1', routing_key='b1')
-        producer.publish('b2', routing_key='b2')
-        producer.publish('b3', routing_key='b3')
+        producer.publish(u'b1', routing_key='b1')
+        producer.publish(u'b2', routing_key='b2')
+        producer.publish(u'b3', routing_key='b3')
         chan1.close()
 
         chan2 = self.connection.channel()
         consumer = chan2.Consumer([b1, b2, b3])
         messages = consumeN(self.connection, consumer, 3)
-        self.assertItemsEqual(messages, ['b1', 'b2', 'b3'])
+        self.assertItemsEqual(_nobuf(messages), ['b1', 'b2', 'b3'])
         chan2.close()
         self.purge([self.P('b1'), self.P('b2'), self.P('b3')])
 

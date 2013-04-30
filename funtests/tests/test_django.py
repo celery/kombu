@@ -15,17 +15,22 @@ class test_django(transport.TransportCase):
         @redirect_stdouts
         def setup_django(stdout, stderr):
             try:
-                import djkombu  # noqa
+                import django  # noqa
             except ImportError:
-                raise SkipTest('django-kombu not installed')
+                raise SkipTest('django not installed')
             from django.conf import settings
             if not settings.configured:
-                settings.configure(DATABASE_ENGINE='sqlite3',
-                                   DATABASE_NAME=':memory:',
-                                   DATABASES={'default': {
-                                       'ENGINE': 'django.db.backends.sqlite3',
-                                       'NAME': ':memory:'}},
-                                   INSTALLED_APPS=('djkombu', ))
+                settings.configure(
+                    DATABASE_ENGINE='sqlite3',
+                    DATABASE_NAME=':memory:',
+                    DATABASES={
+                        'default': {
+                            'ENGINE': 'django.db.backends.sqlite3',
+                            'NAME': ':memory:',
+                        },
+                    },
+                    INSTALLED_APPS=('kombu.transports.django', ),
+                )
             from django.core.management import call_command
             call_command('syncdb')
 
