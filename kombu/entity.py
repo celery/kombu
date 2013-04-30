@@ -492,7 +492,7 @@ class Queue(MaybeChannelBound):
             self.exchange.declare(nowait)
         self.queue_declare(nowait, passive=False)
 
-        if self.exchange is not None:
+        if self.exchange and self.exchange.name:
             self.queue_bind(nowait)
 
         # - declare extra/multi-bindings.
