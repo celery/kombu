@@ -256,7 +256,7 @@ class Connection(object):
         return chan
 
     def heartbeat_check(self, rate=2):
-        """Verify that hartbeats are sent and received.
+        """Verify that heartbeats are sent and received.
 
         If the current transport does not support heartbeats then
         this is a noop operation.
