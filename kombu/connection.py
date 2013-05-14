@@ -688,10 +688,8 @@ class Connection(object):
         :keyword exchange_opts: Additional keyword arguments passed to the
           constructor of the automatically created
           :class:`~kombu.Exchange`.
-        :keyword channel: Channel to use. If not specified a new channel
-           from the current connection will be used. Remember to call
-           :meth:`~kombu.simple.SimpleQueue.close` when done with the
-           object.
+        :keyword channel: Custom channel to use. If not specified the
+            connection default channel is used.
 
         """
         from .simple import SimpleQueue
