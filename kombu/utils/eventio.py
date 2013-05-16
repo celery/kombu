@@ -247,7 +247,7 @@ def _get_poller():
         return _epoll
     elif kqueue:
         # Py2.6+ on BSD / Darwin
-        return _kqueue
+        return _select #_kqueue
     else:
         return _select
 
