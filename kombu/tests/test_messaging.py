@@ -160,6 +160,11 @@ class test_Producer(TestCase):
         self.assertIs(p.channel, defchan)
         p.exchange.revive.assert_called_with(defchan)
 
+    def test_close_connection(self):
+        p = self.connection.Producer()
+        p.close()
+        self.assertIsNone(self.connection.connection)
+
     def test_enter_exit(self):
         p = self.connection.Producer()
         p.release = Mock()
