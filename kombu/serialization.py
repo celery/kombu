@@ -18,7 +18,7 @@ try:
 except ImportError:  # pragma: no cover
     cpickle = None  # noqa
 
-from .exceptions import SerializerNotInstalled
+from .exceptions import SerializerNotInstalled, ContentDisallowed
 from .five import BytesIO, text_t
 from .utils import entrypoints
 from .utils.encoding import str_to_bytes, bytes_t
@@ -58,13 +58,14 @@ else:
 #: There's a new protocol (3) but this is only supported by Python 3.
 pickle_protocol = int(os.environ.get('PICKLE_PROTOCOL', 2))
 
-#: Kombu requires Python 2.5 or later so we use protocol 2 by default.
-#: There's a new protocol (3) but this is only supported by Python 3.
-pickle_protocol = int(os.environ.get('PICKLE_PROTOCOL', 2))
-
 
 def pickle_loads(s, load=pickle_load):
+    # used to support buffer objects
     return load(BytesIO(s))
+
+
+def parenthesize_alias(first, second):
+    return '%s (%s)' % (first, second) if first else second
 
 
 class SerializerRegistry(object):
@@ -78,6 +79,7 @@ class SerializerRegistry(object):
         self._default_content_encoding = None
         self._disabled_content_types = set()
         self.type_to_name = {}
+        self.name_to_type = {}
 
     def register(self, name, encoder, decoder, content_type,
                  content_encoding='utf-8'):
@@ -86,18 +88,25 @@ class SerializerRegistry(object):
         if decoder:
             self._decoders[content_type] = decoder
         self.type_to_name[content_type] = name
+        self.name_to_type[name] = content_type
+
+    def enable(self, name):
+        if '/' not in name:
+            name = self.name_to_type[name]
+        self._disabled_content_types.remove(name)
 
     def disable(self, name):
         if '/' not in name:
-            name, _, _ = self._encoders[name]
+            name = self.name_to_type[name]
         self._disabled_content_types.add(name)
 
     def unregister(self, name):
         try:
-            content_type = self._encoders[name][0]
+            content_type = self.name_to_type[name]
             self._decoders.pop(content_type, None)
             self._encoders.pop(name, None)
             self.type_to_name.pop(content_type, None)
+            self.name_to_type.pop(name, None)
         except KeyError:
             raise SerializerNotInstalled(
                 'No encoder/decoder installed for {0}'.format(name))
@@ -151,10 +160,14 @@ class SerializerRegistry(object):
         payload = encoder(data)
         return content_type, content_encoding, payload
 
-    def decode(self, data, content_type, content_encoding, force=False):
-        if content_type in self._disabled_content_types and not force:
-            raise SerializerNotInstalled(
-                'Content-type {0!r} has been disabled.'.format(content_type))
+    def decode(self, data, content_type, content_encoding,
+               accept=None, force=False):
+        if accept is not None:
+            if content_type not in accept:
+                raise self._for_untrusted_content(content_type, 'untrusted')
+        else:
+            if content_type in self._disabled_content_types and not force:
+                raise self._for_untrusted_content(content_type, 'disabled')
         content_type = content_type or 'application/data'
         content_encoding = (content_encoding or 'utf-8').lower()
 
@@ -167,13 +180,14 @@ class SerializerRegistry(object):
                 return _decode(data, content_encoding)
         return data
 
+    def _for_untrusted_content(self, ctype, why):
+        return ContentDisallowed(
+            'Refusing to decode {0} content of type {1}'.format(
+                why, parenthesize_alias(self.type_to_name[ctype], ctype)),
+        )
 
-"""
-.. data:: registry
 
-Global registry of serializers/deserializers.
-
-"""
+#: Global registry of serializers/deserializers.
 registry = SerializerRegistry()
 
 
@@ -367,6 +381,57 @@ register_msgpack()
 # JSON is assumed to always be available, so is the default.
 # (this matches the historical use of kombu.)
 registry._set_default_serializer('json')
+
+
+_setupfuns = {
+    'json': register_json,
+    'pickle': register_pickle,
+    'yaml': register_yaml,
+    'msgpack': register_msgpack,
+    'application/json': register_json,
+    'application/x-yaml': register_yaml,
+    'application/x-python-serialize': register_pickle,
+    'application/x-msgpack': register_msgpack,
+}
+
+
+def enable_insecure_serializers(choices=['pickle', 'yaml', 'msgpack']):
+    """Enable serializers that are considered to be unsafe.
+
+    Will enable ``pickle``, ``yaml`` and ``msgpack`` by default,
+    but you can also specify a list of serializers (by name or content type)
+    to enable.
+
+    """
+    for choice in choices:
+        try:
+            registry.enable(choice)
+        except KeyError:
+            pass
+
+
+def disable_insecure_serializers(allowed=['json']):
+    """Disable untrusted serializers.
+
+    Will disable all serializers except ``json``
+    or you can specify a list of deserializers to allow.
+
+    .. note::
+
+        Producers will still be able to serialize data
+        in these formats, but consumers will not accept
+        incoming data using the untrusted content types.
+
+    """
+    for name in registry._decoders:
+        registry.disable(name)
+    if allowed is not None:
+        for name in allowed:
+            registry.enable(name)
+
+
+# Insecure serializers are disabled by default since v3.0
+disable_insecure_serializers()
 
 # Load entrypoints from installed extensions
 for ep, args in entrypoints('kombu.serializers'):

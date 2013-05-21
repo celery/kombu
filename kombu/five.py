@@ -20,14 +20,19 @@ except NameError:                           # pragma: no cover
     from imp import reload                  # noqa
 
 try:
-    from UserList import UserList           # noqa
-except ImportError:                         # pragma: no cover
     from collections import UserList        # noqa
+except ImportError:                         # pragma: no cover
+    from UserList import UserList           # noqa
 
 try:
-    from UserDict import UserDict           # noqa
-except ImportError:                         # pragma: no cover
     from collections import UserDict        # noqa
+except ImportError:                         # pragma: no cover
+    from UserDict import UserDict           # noqa
+
+try:
+    bytes_t = bytes
+except NameError:
+    bytes_t = str  # noqa
 
 
 if PY3:

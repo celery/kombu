@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
-from __future__ import with_statement
+from __future__ import unicode_literals
 
 import sys
 
@@ -14,9 +14,9 @@ from .utils import TestCase
 from .utils import mask_modules, skip_if_not_module
 
 # For content_encoding tests
-unicode_string = u'abcdé\u8463'
+unicode_string = 'abcdé\u8463'
 unicode_string_as_utf8 = unicode_string.encode('utf-8')
-latin_string = u'abcdé'
+latin_string = 'abcdé'
 latin_string_as_latin1 = latin_string.encode('latin-1')
 latin_string_as_utf8 = latin_string.encode('utf-8')
 
@@ -26,7 +26,7 @@ py_data = {
     'string': 'The quick brown fox jumps over the lazy dog',
     'int': 10,
     'float': 3.14159265,
-    'unicode': u'Thé quick brown fox jumps over thé lazy dog',
+    'unicode': 'Thé quick brown fox jumps over thé lazy dog',
     'list': ['george', 'jerry', 'elaine', 'cosmo'],
 }
 

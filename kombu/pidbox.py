@@ -8,6 +8,7 @@ Generic process mailbox.
 from __future__ import absolute_import
 
 import socket
+import warnings
 
 from collections import defaultdict, deque
 from copy import copy
@@ -18,10 +19,19 @@ from time import time
 from . import Exchange, Queue, Consumer, Producer
 from .clocks import LamportClock
 from .common import maybe_declare, oid_from
+from .exceptions import InconsistencyError
 from .five import range
 from .utils import cached_property, kwdict, uuid
 
 REPLY_QUEUE_EXPIRES = 10
+
+W_PIDBOX_IN_USE = """\
+A node named %(hostname)r is already using this process mailbox!
+
+Maybe you forgot to shutdown the other node or did not do so properly?
+Or if you meant to start multiple nodes on the same host please make sure
+you give each node a unique node name!
+"""
 
 __all__ = ['Node', 'Mailbox']
 
@@ -56,9 +66,15 @@ class Node(object):
 
     def Consumer(self, channel=None, **options):
         options.setdefault('no_ack', True)
-        return Consumer(channel or self.channel,
-                        [self.mailbox.get_queue(self.hostname)],
-                        **options)
+        options.setdefault('accept', self.mailbox.accept)
+        queue = self.mailbox.get_queue(self.hostname)
+
+        def verify_exclusive(name, messages, consumers):
+            if consumers:
+                warnings.warn(W_PIDBOX_IN_USE % {'hostname': self.hostname})
+        queue.on_declared = verify_exclusive
+
+        return Consumer(channel or self.channel, [queue], **options)
 
     def handler(self, fun):
         self.handlers[fun.__name__] = fun
@@ -79,7 +95,7 @@ class Node(object):
             reply = handle(method, kwdict(arguments))
         except SystemExit:
             raise
-        except Exception, exc:
+        except Exception as exc:
             reply = {'error': repr(exc)}
 
         if reply_to:
@@ -131,7 +147,8 @@ class Mailbox(object):
     #: exchange to send replies to.
     reply_exchange = None
 
-    def __init__(self, namespace, type='direct', connection=None, clock=None):
+    def __init__(self, namespace,
+                 type='direct', connection=None, clock=None, accept=None):
         self.namespace = namespace
         self.connection = connection
         self.type = type
@@ -140,6 +157,7 @@ class Mailbox(object):
         self.reply_exchange = self._get_reply_exchange(self.namespace)
         self._tls = local()
         self.unclaimed = defaultdict(deque)
+        self.accept = accept
 
     def __call__(self, connection):
         bound = copy(self)
@@ -198,9 +216,15 @@ class Mailbox(object):
                             delivery_mode='transient',
                             durable=False)
         producer = Producer(chan, auto_declare=False)
-        producer.publish(reply, exchange=exchange, routing_key=routing_key,
-                         declare=[exchange], headers={
-                             'ticket': ticket, 'clock': self.clock.forward()})
+        try:
+            producer.publish(
+                reply, exchange=exchange, routing_key=routing_key,
+                declare=[exchange], headers={
+                    'ticket': ticket, 'clock': self.clock.forward(),
+                },
+            )
+        except InconsistencyError:
+            pass   # queue probably deleted and no one is expecting a reply.
 
     def _publish(self, type, arguments, destination=None,
                  reply_ticket=None, channel=None, timeout=None):
@@ -250,10 +274,13 @@ class Mailbox(object):
                                  channel=chan)
 
     def _collect(self, ticket,
-                 limit=None, timeout=1, callback=None, channel=None):
+                 limit=None, timeout=1, callback=None,
+                 channel=None, accept=None):
+        if accept is None:
+            accept = self.accept
         chan = channel or self.connection.default_channel
         queue = self.reply_queue
-        consumer = Consumer(channel, [queue], no_ack=True)
+        consumer = Consumer(channel, [queue], accept=accept, no_ack=True)
         responses = []
         unclaimed = self.unclaimed
         adjust_clock = self.clock.adjust

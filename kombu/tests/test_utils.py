@@ -1,5 +1,5 @@
 from __future__ import absolute_import
-from __future__ import with_statement
+from __future__ import unicode_literals
 
 import pickle
 import sys
@@ -13,7 +13,7 @@ else:
     from StringIO import StringIO, StringIO as BytesIO  # noqa
 
 from kombu import utils
-from kombu.utils.compat import next
+from kombu.five import string_t
 
 from .utils import (
     TestCase,
@@ -62,7 +62,7 @@ class test_utils(TestCase):
                          [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0])
 
     def test_reprkwargs(self):
-        self.assertTrue(utils.reprkwargs({'foo': 'bar', 1: 2, u'k': 'v'}))
+        self.assertTrue(utils.reprkwargs({'foo': 'bar', 1: 2, 'k': 'v'}))
 
     def test_reprcall(self):
         self.assertTrue(
@@ -93,7 +93,7 @@ class test_UUID(TestCase):
             self.assertIsNone(ctypes)
             tid = uuid()
             self.assertTrue(tid)
-            self.assertIsInstance(tid, basestring)
+            self.assertIsInstance(tid, string_t)
 
         try:
             with_ctypes_masked()
@@ -108,8 +108,8 @@ class test_Misc(TestCase):
         def f(**kwargs):
             return kwargs
 
-        kw = {u'foo': 'foo',
-              u'bar': 'bar'}
+        kw = {'foo': 'foo',
+              'bar': 'bar'}
         self.assertTrue(f(**utils.kwdict(kw)))
 
 
@@ -147,7 +147,8 @@ class test_emergency_dump_state(TestCase):
             {'foo': 'bar'},
             open_file=lambda n, m: fh, dump=raise_something
         )
-        self.assertIn("'foo': 'bar'", fh.getvalue())
+        self.assertIn('foo', fh.getvalue())
+        self.assertIn('bar', fh.getvalue())
         self.assertTrue(stderr.getvalue())
         self.assertFalse(stdout.getvalue())
 
@@ -193,11 +194,11 @@ class test_retry_over_time(TestCase):
     def test_simple(self):
         prev_count, utils.count = utils.count, Mock()
         try:
-            utils.count.return_value = range(1)
+            utils.count.return_value = list(range(1))
             x = utils.retry_over_time(self.myfun, self.Predicate,
                                       errback=None, interval_max=14)
             self.assertIsNone(x)
-            utils.count.return_value = range(10)
+            utils.count.return_value = list(range(10))
             cb = Mock()
             x = utils.retry_over_time(self.myfun, self.Predicate,
                                       errback=self.errback, callback=cb,
@@ -215,7 +216,7 @@ class test_retry_over_time(TestCase):
             self.myfun, self.Predicate,
             max_retries=1, errback=self.errback, interval_max=14,
         )
-        self.assertEqual(self.index, 2)
+        self.assertEqual(self.index, 1)
         # no errback
         self.assertRaises(
             self.Predicate, utils.retry_over_time,
@@ -230,7 +231,7 @@ class test_retry_over_time(TestCase):
             self.myfun, self.Predicate,
             max_retries=0, errback=self.errback, interval_max=14,
         )
-        self.assertEqual(self.index, 1)
+        self.assertEqual(self.index, 0)
 
 
 class test_cached_property(TestCase):
@@ -318,9 +319,9 @@ class test_symbol_by_name(TestCase):
 class test_ChannelPromise(TestCase):
 
     def test_repr(self):
-        self.assertEqual(
+        self.assertIn(
+            'foo',
             repr(utils.ChannelPromise(lambda: 'foo')),
-            "<promise: 'foo'>",
         )
 
 
@@ -346,16 +347,16 @@ class test_shufflecycle(TestCase):
     def test_shuffles(self):
         prev_repeat, utils.repeat = utils.repeat, Mock()
         try:
-            utils.repeat.return_value = range(10)
+            utils.repeat.return_value = list(range(10))
             values = set(['A', 'B', 'C'])
             cycle = utils.shufflecycle(values)
             seen = set()
-            for i in xrange(10):
-                cycle.next()
+            for i in range(10):
+                next(cycle)
             utils.repeat.assert_called_with(None)
             self.assertTrue(seen.issubset(values))
             with self.assertRaises(StopIteration):
-                cycle.next()
-                cycle.next()
+                next(cycle)
+                next(cycle)
         finally:
             utils.repeat = prev_repeat

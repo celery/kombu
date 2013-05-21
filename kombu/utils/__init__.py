@@ -218,12 +218,13 @@ def retry_over_time(fun, catch, args=[], kwargs={}, errback=None,
     for retries in count():
         try:
             return fun(*args, **kwargs)
-        except catch, exc:
-            if max_retries is not None and retries > max_retries:
+        except catch as exc:
+            if max_retries is not None and retries >= max_retries:
                 raise
             if callback:
                 callback()
-            tts = errback(exc, interval_range, retries) if errback else None
+            tts = (errback(exc, interval_range, retries) if errback
+                   else next(interval_range))
             if tts:
                 for i in range(int(tts / interval_step)):
                     if callback:

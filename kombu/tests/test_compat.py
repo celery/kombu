@@ -1,5 +1,4 @@
 from __future__ import absolute_import
-from __future__ import with_statement
 
 from mock import patch
 
@@ -31,7 +30,7 @@ class test_misc(TestCase):
         conn = MyConnection()
         consumer = Consumer()
         it = compat._iterconsume(conn, consumer)
-        self.assertEqual(it.next(), 1)
+        self.assertEqual(next(it), 1)
         self.assertTrue(consumer.active)
 
         it2 = compat._iterconsume(conn, consumer, limit=10)
@@ -243,7 +242,7 @@ class test_Consumer(TestCase):
 
         c = C(self.connection,
               queue=n, exchange=n, routing_key='rkey')
-        self.assertEqual(c.wait(10), range(10))
+        self.assertEqual(c.wait(10), list(range(10)))
         c.close()
 
     def test_iterqueue(self, n='test_iterqueue'):
@@ -258,7 +257,7 @@ class test_Consumer(TestCase):
 
         c = C(self.connection,
               queue=n, exchange=n, routing_key='rkey')
-        self.assertEqual(list(c.iterqueue(limit=10)), range(10))
+        self.assertEqual(list(c.iterqueue(limit=10)), list(range(10)))
         c.close()
 
 

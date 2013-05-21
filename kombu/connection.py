@@ -27,7 +27,8 @@ from .five import Empty, range, string_t, text_t, LifoQueue as _LifoQueue
 from .log import get_logger
 from .transport import get_transport_cls, supports_librabbitmq
 from .utils import cached_property, retry_over_time, shufflecycle
-from .utils.compat import OrderedDict
+from .utils.compat import OrderedDict, get_errno
+from .utils.functional import promise
 from .utils.url import parse_url
 
 __all__ = ['Connection', 'ConnectionPool', 'ChannelPool']
@@ -171,7 +172,8 @@ class Connection(object):
                 hostname = alt[0]
             if '+' in hostname[:hostname.index('://')]:
                 # e.g. sqla+mysql://root:masterkey@localhost/
-                params['transport'], params['hostname'] = hostname.split('+')
+                params['transport'], params['hostname'] = \
+                    hostname.split('+', 1)
                 self.uri_prefix = params['transport']
             else:
                 if transport not in URI_PASSTHROUGH:
@@ -254,7 +256,7 @@ class Connection(object):
         return chan
 
     def heartbeat_check(self, rate=2):
-        """Verify that hartbeats are sent and received.
+        """Verify that heartbeats are sent and received.
 
         If the current transport does not support heartbeats then
         this is a noop operation.
@@ -291,8 +293,8 @@ class Connection(object):
         except socket.timeout:
             self.more_to_read = False
             return False
-        except socket.error, exc:
-            if exc.errno in (errno.EAGAIN, errno.EINTR):
+        except socket.error as exc:
+            if get_errno(exc) in (errno.EAGAIN, errno.EINTR):
                 self.more_to_read = False
                 return False
             raise
@@ -326,6 +328,29 @@ class Connection(object):
             self._transport = None
         self._debug('closed')
         self._closed = True
+
+    def collect(self, socket_timeout=None):
+        # amqp requires communication to close, we don't need that just
+        # to clear out references, Transport._collect can also be implemented
+        # by other transports that want fast after fork
+        try:
+            gc_transport = self._transport._collect
+        except AttributeError:
+            _timeo = socket.getdefaulttimeout()
+            socket.setdefaulttimeout(socket_timeout)
+            try:
+                self._close()
+            except socket.timeout:
+                pass
+            finally:
+                socket.setdefaulttimeout(_timeo)
+        else:
+            gc_transport(self._connection)
+            if self._transport:
+                self._transport.client = None
+                self._transport = None
+            self.declared_entities.clear()
+            self._connection = None
 
     def release(self):
         """Close the connection (if open)."""
@@ -426,7 +451,7 @@ class Connection(object):
             for retries in count(0):  # for infinity
                 try:
                     return fun(*args, **kwargs)
-                except self.recoverable_connection_errors, exc:
+                except self.recoverable_connection_errors as exc:
                     if got_connection:
                         raise
                     if max_retries is not None and retries > max_retries:
@@ -449,7 +474,7 @@ class Connection(object):
                     if on_revive:
                         on_revive(new_channel)
                     got_connection += 1
-                except self.recoverable_channel_errors, exc:
+                except self.recoverable_channel_errors as exc:
                     if max_retries is not None and retries > max_retries:
                         raise
                     self._debug('ensure channel error: %r', exc, exc_info=1)
@@ -520,12 +545,9 @@ class Connection(object):
             transport_cls = RESOLVE_ALIASES.get(transport_cls, transport_cls)
         D = self.transport.default_connection_params
 
-        if self.alt:
-            hostname = ";".join(self.alt)
-        else:
-            hostname = self.hostname or D.get('hostname')
-            if self.uri_prefix:
-                hostname = '%s+%s' % (self.uri_prefix, hostname)
+        hostname = self.hostname or D.get('hostname')
+        if self.uri_prefix:
+            hostname = '%s+%s' % (self.uri_prefix, hostname)
 
         info = (('hostname', hostname),
                 ('userid', self.userid or D.get('userid')),
@@ -540,6 +562,10 @@ class Connection(object):
                 ('login_method', self.login_method or D.get('login_method')),
                 ('uri_prefix', self.uri_prefix),
                 ('heartbeat', self.heartbeat))
+
+        if self.alt:
+            info += (('alternates', self.alt),)
+
         return info
 
     def info(self):
@@ -663,10 +689,8 @@ class Connection(object):
         :keyword exchange_opts: Additional keyword arguments passed to the
           constructor of the automatically created
           :class:`~kombu.Exchange`.
-        :keyword channel: Channel to use. If not specified a new channel
-           from the current connection will be used. Remember to call
-           :meth:`~kombu.simple.SimpleQueue.close` when done with the
-           object.
+        :keyword channel: Custom channel to use. If not specified the
+            connection default channel is used.
 
         """
         from .simple import SimpleQueue
@@ -863,7 +887,12 @@ class Resource(object):
                     try:
                         R = self.prepare(R)
                     except BaseException:
-                        self.release(R)
+                        if isinstance(R, promise):
+                            # no evaluated yet, just put it back
+                            self._resource.put_nowait(R)
+                        else:
+                            # evaluted so must try to release/close first.
+                            self.release(R)
                         raise
                     self._dirty.add(R)
                     break
@@ -907,6 +936,9 @@ class Resource(object):
         else:
             self.close_resource(resource)
 
+    def collect_resource(self, resource):
+        pass
+
     def force_close_all(self):
         """Closes and removes all resources in the pool (also those in use).
 
@@ -916,32 +948,27 @@ class Resource(object):
         """
         dirty = self._dirty
         resource = self._resource
-        while 1:
+        while 1:  # - acquired
             try:
                 dres = dirty.pop()
             except KeyError:
                 break
             try:
-                self.close_resource(dres)
+                self.collect_resource(dres)
             except AttributeError:  # Issue #78
                 pass
-
-        mutex = getattr(resource, 'mutex', None)
-        if mutex:
-            mutex.acquire()
-        try:
-            while 1:
-                try:
-                    res = resource.queue.pop()
-                except IndexError:
-                    break
-                try:
-                    self.close_resource(res)
-                except AttributeError:
-                    pass  # Issue #78
-        finally:
-            if mutex:  # pragma: no cover
-                mutex.release()
+        while 1:  # - available
+            # deque supports '.clear', but lists do not, so for that
+            # reason we use pop here, so that the underlying object can
+            # be any object supporting '.pop' and '.append'.
+            try:
+                res = resource.queue.pop()
+            except IndexError:
+                break
+            try:
+                self.collect_resource(res)
+            except AttributeError:
+                pass  # Issue #78
 
     if os.environ.get('KOMBU_DEBUG_POOL'):  # pragma: no cover
         _orig_acquire = acquire
@@ -990,6 +1017,9 @@ class ConnectionPool(Resource):
     def close_resource(self, resource):
         resource._close()
 
+    def collect_resource(self, resource, socket_timeout=0.1):
+        return resource.collect(socket_timeout)
+
     @contextmanager
     def acquire_channel(self, block=False):
         with self.acquire(block=block) as connection:
@@ -1002,7 +1032,7 @@ class ConnectionPool(Resource):
                     conn = self.new()
                     conn.connect()
                 else:
-                    conn = self.new
+                    conn = promise(self.new)
                 self._resource.put_nowait(conn)
 
     def prepare(self, resource):
@@ -1021,14 +1051,14 @@ class ChannelPool(Resource):
                                           preload=preload)
 
     def new(self):
-        return self.connection.channel
+        return promise(self.connection.channel)
 
     def setup(self):
         channel = self.new()
         if self.limit:
             for i in range(self.limit):
                 self._resource.put_nowait(
-                    i < self.preload and channel() or channel)
+                    i < self.preload and channel() or promise(channel))
 
     def prepare(self, channel):
         if isinstance(channel, Callable):

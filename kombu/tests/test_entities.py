@@ -1,5 +1,4 @@
 from __future__ import absolute_import
-from __future__ import with_statement
 
 import pickle
 
@@ -129,6 +128,10 @@ class test_Exchange(TestCase):
     def test_set_transient_delivery_mode(self):
         exc = Exchange('foo', 'direct', delivery_mode='transient')
         self.assertEqual(exc.delivery_mode, Exchange.TRANSIENT_DELIVERY_MODE)
+
+    def test_set_passive_mode(self):
+        exc = Exchange('foo', 'direct', passive=True)
+        self.assertTrue(exc.passive)
 
     def test_set_persistent_delivery_mode(self):
         exc = Exchange('foo', 'direct', delivery_mode='persistent')

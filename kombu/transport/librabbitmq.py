@@ -9,6 +9,7 @@ kombu.transport.librabbitmq
 """
 from __future__ import absolute_import
 
+import os
 import socket
 
 try:
@@ -22,11 +23,16 @@ except ImportError:
         raise ImportError("No module named librabbitmq")
 
 from kombu.exceptions import StdConnectionError, StdChannelError
+from kombu.five import items
 from kombu.utils.amq_manager import get_manager
 
 from . import base
 
 DEFAULT_PORT = 5672
+
+NO_SSL_ERROR = """\
+ssl not supported by librabbitmq, please use pyamqp:// or stunnel\
+"""
 
 
 class Message(base.Message):
@@ -95,9 +101,11 @@ class Transport(base.Transport):
     def establish_connection(self):
         """Establish connection to the AMQP broker."""
         conninfo = self.client
-        for name, default_value in self.default_connection_params.items():
+        for name, default_value in items(self.default_connection_params):
             if not getattr(conninfo, name, None):
                 setattr(conninfo, name, default_value)
+        if conninfo.ssl:
+            raise NotImplementedError(NO_SSL_ERROR)
         conn = self.Connection(host=conninfo.host,
                                userid=conninfo.userid,
                                password=conninfo.password,
@@ -112,7 +120,21 @@ class Transport(base.Transport):
 
     def close_connection(self, connection):
         """Close the AMQP broker connection."""
+        self.client.drain_events = None
         connection.close()
+
+    def _collect(self, connection):
+        if connection is not None:
+            for channel in connection.channels.itervalues():
+                channel.connection = None
+            try:
+                os.close(connection.fileno())
+            except OSError:
+                pass
+            connection.channels.clear()
+            connection.callbacks.clear()
+        self.client.drain_events = None
+        self.client = None
 
     def verify_connection(self, connection):
         return connection.connected

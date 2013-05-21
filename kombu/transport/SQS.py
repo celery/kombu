@@ -12,6 +12,7 @@ import string
 
 from anyjson import loads, dumps
 
+import boto
 from boto import exception
 from boto import sdb as _sdb
 from boto import sqs as _sqs
@@ -32,6 +33,15 @@ from . import virtual
 CHARS_REPLACE_TABLE = dict((ord(c), 0x5f)
                            for c in string.punctuation if c not in '-_.')
 CHARS_REPLACE_TABLE[0x2e] = 0x2d  # '.' -> '-'
+
+
+def maybe_int(x):
+    try:
+        return int(x)
+    except ValueError:
+        return x
+BOTO_VERSION = tuple(maybe_int(part) for part in boto.__version__.split('.'))
+W_LONG_POLLING = BOTO_VERSION >= (2, 8)
 
 
 class Table(Domain):
@@ -122,7 +132,7 @@ class Channel(virtual.Channel):
     default_region = 'us-east-1'
     default_visibility_timeout = 1800  # 30 minutes.
     # 20 seconds is the max value currently supported by SQS.
-    default_wait_time_seconds = 20
+    default_wait_time_seconds = 1  # disabled: see Issue #198
     domain_format = 'kombu%(vhost)s'
     _sdb = None
     _sqs = None
@@ -136,7 +146,7 @@ class Channel(virtual.Channel):
         # exists with a different visibility_timeout, so this prepopulates
         # the queue_cache to protect us from recreating
         # queues that are known to already exist.
-        queues = self.sqs.get_all_queues()
+        queues = self.sqs.get_all_queues(prefix=self.queue_name_prefix)
         for queue in queues:
             self._queue_cache[queue.name] = queue
 
@@ -228,7 +238,10 @@ class Channel(virtual.Channel):
     def _get(self, queue):
         """Try to retrieve a single message off ``queue``."""
         q = self._new_queue(queue)
-        rs = q.get_messages(1, wait_time_seconds=self.wait_time_seconds)
+        if W_LONG_POLLING:
+            rs = q.get_messages(1, wait_time_seconds=self.wait_time_seconds)
+        else:  # boto < 2.8
+            rs = q.get_messages(1)
         if rs:
             m = rs[0]
             payload = loads(rs[0].get_body())
@@ -280,7 +293,7 @@ class Channel(virtual.Channel):
             if conn:
                 try:
                     conn.close()
-                except AttributeError, exc:  # FIXME ???
+                except AttributeError as exc:  # FIXME ???
                     if "can't set attribute" not in str(exc):
                         raise
 
@@ -361,3 +374,5 @@ class Transport(virtual.Transport):
     default_port = None
     connection_errors = (StdConnectionError, exception.SQSError, socket.error)
     channel_errors = (exception.SQSDecodeError, StdChannelError)
+    driver_type = 'sqs'
+    driver_name = 'sqs'

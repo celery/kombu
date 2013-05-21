@@ -54,4 +54,5 @@
     kombu.utils.encoding
     kombu.utils.functional
     kombu.utils.url
+    kombu.utils.text
     kombu.utils.amq_manager

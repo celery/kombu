@@ -14,6 +14,7 @@ from kombu.exceptions import (
     StdChannelError,
     VersionMismatch,
 )
+from kombu.five import items
 from kombu.utils.amq_manager import get_manager
 
 from . import base
@@ -96,7 +97,7 @@ class Transport(base.Transport):
     def establish_connection(self):
         """Establish connection to the AMQP broker."""
         conninfo = self.client
-        for name, default_value in self.default_connection_params.items():
+        for name, default_value in items(self.default_connection_params):
             if not getattr(conninfo, name, None):
                 setattr(conninfo, name, default_value)
         if conninfo.hostname == 'localhost':
@@ -117,12 +118,6 @@ class Transport(base.Transport):
         """Close the AMQP broker connection."""
         connection.client = None
         connection.close()
-
-    def is_alive(self, connection):
-        return connection.is_alive()
-
-    def verify_connection(self, connection):
-        return connection.channels is not None and self.is_alive(connection)
 
     def eventmap(self, connection):
         return {connection.sock: self.client.drain_nowait}

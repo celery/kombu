@@ -123,14 +123,18 @@ class Exchange(MaybeChannelBound):
     type = 'direct'
     durable = True
     auto_delete = False
+    passive = False
     delivery_mode = PERSISTENT_DELIVERY_MODE
 
-    attrs = (('name', None),
-             ('type', None),
-             ('arguments', None),
-             ('durable', bool),
-             ('auto_delete', bool),
-             ('delivery_mode', lambda m: DELIVERY_MODES.get(m) or m))
+    attrs = (
+        ('name', None),
+        ('type', None),
+        ('arguments', None),
+        ('durable', bool),
+        ('passive', bool),
+        ('auto_delete', bool),
+        ('delivery_mode', lambda m: DELIVERY_MODES.get(m) or m),
+    )
 
     def __init__(self, name='', type='', channel=None, **kwargs):
         super(Exchange, self).__init__(**kwargs)
@@ -141,7 +145,7 @@ class Exchange(MaybeChannelBound):
     def __hash__(self):
         return hash('E|%s' % (self.name, ))
 
-    def declare(self, nowait=False, passive=False):
+    def declare(self, nowait=False, passive=None):
         """Declare the exchange.
 
         Creates the exchange on the broker.
@@ -150,13 +154,13 @@ class Exchange(MaybeChannelBound):
             response will not be waited for. Default is :const:`False`.
 
         """
-        return self.channel.exchange_declare(exchange=self.name,
-                                             type=self.type,
-                                             durable=self.durable,
-                                             auto_delete=self.auto_delete,
-                                             arguments=self.arguments,
-                                             nowait=nowait,
-                                             passive=passive)
+        passive = self.passive if passive is None else passive
+        if self.name:
+            return self.channel.exchange_declare(
+                exchange=self.name, type=self.type, durable=self.durable,
+                auto_delete=self.auto_delete, arguments=self.arguments,
+                nowait=nowait, passive=passive,
+            )
 
     def bind_to(self, exchange='', routing_key='',
                 arguments=None, nowait=False, **kwargs):
@@ -333,6 +337,7 @@ class Queue(MaybeChannelBound):
     :keyword auto_delete: See :attr:`auto_delete`.
     :keyword queue_arguments: See :attr:`queue_arguments`.
     :keyword binding_arguments: See :attr:`binding_arguments`.
+    :keyword on_declared: See :attr:`on_declared`
 
     .. attribute:: name
 
@@ -414,6 +419,13 @@ class Queue(MaybeChannelBound):
         For example to give alternate names to queues with automatically
         generated queue names.
 
+    .. attribute:: on_declared
+
+        Optional callback to be applied when the queue has been
+        declared (the ``queue_declare`` method returns).
+        This must be function with a signature that accepts at least 3
+        positional arguments: ``(name, messages, consumers)``.
+
     """
     name = ''
     exchange = Exchange('')
@@ -424,25 +436,29 @@ class Queue(MaybeChannelBound):
     auto_delete = False
     no_ack = False
 
-    attrs = (('name', None),
-             ('exchange', None),
-             ('routing_key', None),
-             ('queue_arguments', None),
-             ('binding_arguments', None),
-             ('durable', bool),
-             ('exclusive', bool),
-             ('auto_delete', bool),
-             ('no_ack', None),
-             ('alias', None),
-             ('bindings', list))
+    attrs = (
+        ('name', None),
+        ('exchange', None),
+        ('routing_key', None),
+        ('queue_arguments', None),
+        ('binding_arguments', None),
+        ('durable', bool),
+        ('exclusive', bool),
+        ('auto_delete', bool),
+        ('no_ack', None),
+        ('alias', None),
+        ('bindings', list),
+    )
 
     def __init__(self, name='', exchange=None, routing_key='',
-                 channel=None, bindings=None, **kwargs):
+                 channel=None, bindings=None, on_declared=None,
+                 **kwargs):
         super(Queue, self).__init__(**kwargs)
         self.name = name or self.name
         self.exchange = exchange or self.exchange
         self.routing_key = routing_key or self.routing_key
         self.bindings = set(bindings or [])
+        self.on_declared = on_declared
 
         # allows Queue('name', [binding(...), binding(...), ...])
         if isinstance(exchange, (list, tuple, set)):
@@ -454,6 +470,12 @@ class Queue(MaybeChannelBound):
         if self.exclusive:
             self.auto_delete = True
         self.maybe_bind(channel)
+
+    def bind(self, channel):
+        on_declared = self.on_declared
+        bound = super(Queue, self).bind(channel)
+        bound.on_declared = on_declared
+        return bound
 
     def __hash__(self):
         return hash('Q|%s' % (self.name, ))
@@ -470,7 +492,7 @@ class Queue(MaybeChannelBound):
             self.exchange.declare(nowait)
         self.queue_declare(nowait, passive=False)
 
-        if self.exchange is not None:
+        if self.exchange and self.exchange.name:
             self.queue_bind(nowait)
 
         # - declare extra/multi-bindings.
@@ -497,6 +519,8 @@ class Queue(MaybeChannelBound):
                                          nowait=nowait)
         if not self.name:
             self.name = ret[0]
+        if self.on_declared:
+            self.on_declared(*ret)
         return ret
 
     def queue_bind(self, nowait=False):
@@ -520,8 +544,8 @@ class Queue(MaybeChannelBound):
         Returns the message instance if a message was available,
         or :const:`None` otherwise.
 
-        :keyword no_ack: If set messages received does not have to
-            be acknowledged.
+        :keyword no_ack: If enabled the broker will automatically
+            ack messages.
 
         This method provides direct access to the messages in a
         queue using a synchronous dialogue, designed for
@@ -554,8 +578,8 @@ class Queue(MaybeChannelBound):
           can use the same consumer tags. If this field is empty
           the server will generate a unique tag.
 
-        :keyword no_ack: If set messages received does not have to
-            be acknowledged.
+        :keyword no_ack: If enabled the broker will automatically ack
+            messages.
 
         :keyword nowait: Do not wait for a reply.
 

@@ -1,4 +1,3 @@
-from __future__ import with_statement
 from kombu import Connection
 
 with Connection('amqp://guest:guest@localhost:5672//') as conn:

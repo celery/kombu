@@ -1,9 +1,17 @@
+from nose import SkipTest
+
 from funtests import transport
 
 
 class test_redis(transport.TransportCase):
-    transport = "redis"
-    prefix = "redis"
+    transport = 'redis'
+    prefix = 'redis'
+
+    def before_connect(self):
+        try:
+            import redis  # noqa
+        except ImportError:
+            raise SkipTest('redis not installed')
 
     def after_connect(self, connection):
         client = connection.channel().client

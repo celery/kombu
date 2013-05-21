@@ -4,13 +4,13 @@ from funtests import transport
 
 
 class test_sqla(transport.TransportCase):
-    transport = "sqlalchemy"
-    prefix = "sqlalchemy"
+    transport = 'sqlalchemy'
+    prefix = 'sqlalchemy'
     event_loop_max = 10
-    connection_options = {"hostname": "sqlite://"}
+    connection_options = {'hostname': 'sqla+sqlite://'}
 
     def before_connect(self):
         try:
-            import sqlakombu  # noqa
+            import sqlalchemy  # noqa
         except ImportError:
-            raise SkipTest("kombu-sqlalchemy not installed")
+            raise SkipTest('sqlalchemy not installed')

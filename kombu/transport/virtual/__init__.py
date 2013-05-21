@@ -11,6 +11,7 @@ from __future__ import absolute_import, unicode_literals
 
 import base64
 import socket
+import os
 import sys
 import warnings
 
@@ -34,6 +35,8 @@ if sys.version_info[0] == 3:
     ARRAY_TYPE_H = 'H'
 else:
     ARRAY_TYPE_H = b'H'
+
+KOMBU_UNITTEST = os.environ.get('KOMBU_UNITTEST')
 
 UNDELIVERABLE_FMT = """\
 Message could not be delivered: No queues bound to exchange {exchange!r} \
@@ -173,7 +176,7 @@ class QoS(object):
 
             try:
                 self.channel._restore(message)
-            except BaseException, exc:
+            except BaseException as exc:
                 errors.append((exc, message))
         delivered.clear()
         return errors
@@ -191,7 +194,8 @@ class QoS(object):
         if not self.restore_at_shutdown:
             return
         elif not self.channel.do_restore or getattr(state, 'restored', None):
-            assert not state
+            if not KOMBU_UNITTEST:
+                assert not state
             return
 
         try:
@@ -201,12 +205,15 @@ class QoS(object):
                 unrestored = self.restore_unacked()
 
                 if unrestored:
-                    errors, messages = zip(*unrestored)
+                    errors, messages = list(zip(*unrestored))
                     say('UNABLE TO RESTORE {0} MESSAGES: {1}',
                         len(errors), errors)
                     emergency_dump_state(messages)
         finally:
             state.restored = True
+
+    def restore_visible(self, start=0, num=10, interval=10):
+        pass
 
 
 class Message(base.Message):

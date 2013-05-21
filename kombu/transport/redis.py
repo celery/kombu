@@ -7,6 +7,8 @@ Redis transport.
 """
 from __future__ import absolute_import
 
+import socket
+
 from bisect import bisect
 from contextlib import contextmanager
 from time import time
@@ -23,6 +25,12 @@ from kombu.five import Empty, values
 from kombu.log import get_logger
 from kombu.utils import cached_property, uuid
 from kombu.utils.eventio import poll, READ, ERR
+from kombu.utils.encoding import bytes_to_str
+
+NO_ROUTE_ERROR = """
+Cannot route message for exchange {0!r}: Table empty or key no longer exists.
+Probably the key ({1!r}) has been removed from the Redis database.
+"""
 
 try:
     from billiard.util import register_after_fork
@@ -198,7 +206,7 @@ class MultiChannelPoller(object):
         for fd in values(self._chan_to_sock):
             try:
                 self.poller.unregister(fd)
-            except KeyError:
+            except (KeyError, ValueError):
                 pass
         self._channels.clear()
         self._fd_to_chan.clear()
@@ -311,6 +319,7 @@ class Channel(virtual.Channel):
     _in_poll = False
     _in_listen = False
     _fanout_queues = {}
+    ack_emulation = True
     unacked_key = 'unacked'
     unacked_index_key = 'unacked_index'
     unacked_mutex_key = 'unacked_mutex'
@@ -318,24 +327,30 @@ class Channel(virtual.Channel):
     unacked_restore_limit = None
     visibility_timeout = 3600   # 1 hour
     priority_steps = PRIORITY_STEPS
+    socket_timeout = None
     max_connections = 10
     _pool = None
 
     from_transport_options = (
         virtual.Channel.from_transport_options +
-        ('unacked_key',
+        ('ack_emulation',
+         'unacked_key',
          'unacked_index_key',
          'unacked_mutex_key',
          'unacked_mutex_expire',
          'visibility_timeout',
          'unacked_restore_limit',
+         'socket_timeout',
          'max_connections',
-         'priority_steps'),
+         'priority_steps')  # <-- do not add comma here!
     )
 
     def __init__(self, *args, **kwargs):
         super_ = super(Channel, self)
         super_.__init__(*args, **kwargs)
+
+        if not self.ack_emulation:  # disable visibility timeout
+            self.QoS = virtual.QoS
 
         self._queue_cycle = []
         self.Client = self._get_client()
@@ -471,7 +486,8 @@ class Channel(virtual.Channel):
                 raise Empty()
             if dest__item:
                 dest, item = dest__item
-                dest = dest.rsplit(self.sep, 1)[0]
+                dest = bytes_to_str(dest).rsplit(self.sep, 1)[0]
+                item = bytes_to_str(item)
                 self._rotate_cycle(dest)
                 return loads(item), dest
             else:
@@ -562,9 +578,8 @@ class Channel(virtual.Channel):
         with self.conn_or_acquire() as client:
             values = client.smembers(key)
             if not values:
-                raise InconsistencyError(
-                    'Queue list empty or does not exist: {0!r}'.format(key))
-            return [tuple(val.split(self.sep)) for val in values]
+                raise InconsistencyError(NO_ROUTE_ERROR.format(exchange, key))
+            return [tuple(bytes_to_str(val).split(self.sep)) for val in values]
 
     def _purge(self, queue):
         with self.conn_or_acquire() as client:
@@ -612,7 +627,8 @@ class Channel(virtual.Channel):
                 'port': conninfo.port or DEFAULT_PORT,
                 'db': database,
                 'password': conninfo.password,
-                'max_connections': self.max_connections}
+                'max_connections': self.max_connections,
+                'socket_timeout': self.socket_timeout}
 
     def _create_client(self):
         return self.Client(connection_pool=self.pool)
@@ -634,17 +650,6 @@ class Channel(virtual.Channel):
             def __init__(self, *args, **kwargs):
                 super(KombuRedis, self).__init__(*args, **kwargs)
                 self.connection = self.connection_pool.get_connection('_')
-
-            def execute_command(self, *args, **options):
-                conn = self.connection
-                command_name = args[0]
-                try:
-                    conn.send_command(*args)
-                    return self.parse_response(conn, command_name, **options)
-                except redis.ConnectionError:
-                    conn.disconnect()
-                    conn.send_command(*args)
-                    return self.parse_response(conn, command_name, **options)
 
         return KombuRedis
 
@@ -774,6 +779,8 @@ class Transport(virtual.Transport):
         else:
             DataError = exceptions.DataError
         return ((StdConnectionError,
+                 InconsistencyError,
+                 socket.timeout,
                  exceptions.ConnectionError,
                  exceptions.AuthenticationError),
                 (DataError,

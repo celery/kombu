@@ -1,7 +1,7 @@
 """Messaging Framework for Python"""
 from __future__ import absolute_import
 
-VERSION = (2, 5, 5)
+VERSION = (3, 0, 0, 'a1')
 __version__ = '.'.join(map(str, VERSION[0:3])) + ''.join(VERSION[3:])
 __author__ = 'Ask Solem'
 __contact__ = 'ask@celeryproject.org'
@@ -33,18 +33,24 @@ if STATICA_HACK:  # pragma: no cover
     from kombu.pools import connections, producers              # noqa
     from kombu.utils.url import parse_url                       # noqa
     from kombu.common import eventloop, uuid                    # noqa
+    from kombu.serialization import (                           # noqa
+        enable_insecure_serializers,
+        disable_insecure_serializers,
+    )
 
 # Lazy loading.
 # - See werkzeug/__init__.py for the rationale behind this.
 from types import ModuleType
 
 all_by_module = {
-    'kombu.connection': ['Connection', 'BrokerConnection'],
-    'kombu.entity':     ['Exchange', 'Queue', 'binding'],
-    'kombu.messaging':  ['Consumer', 'Producer'],
-    'kombu.pools':      ['connections', 'producers'],
-    'kombu.utils.url':  ['parse_url'],
-    'kombu.common':     ['eventloop', 'uuid']
+    'kombu.connection':    ['Connection', 'BrokerConnection'],
+    'kombu.entity':        ['Exchange', 'Queue', 'binding'],
+    'kombu.messaging':     ['Consumer', 'Producer'],
+    'kombu.pools':         ['connections', 'producers'],
+    'kombu.utils.url':     ['parse_url'],
+    'kombu.common':        ['eventloop', 'uuid'],
+    'kombu.serialization': ['enable_insecure_serializers',
+                            'disable_insecure_serializers'],
 }
 
 object_origins = {}

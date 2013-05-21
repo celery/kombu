@@ -10,7 +10,7 @@ from __future__ import absolute_import
 import errno
 import socket
 
-from select import select as _selectf
+from select import select as _selectf, error as _selecterr
 
 try:
     from select import epoll
@@ -45,24 +45,18 @@ except ImportError:
 
 from kombu.syn import detect_environment
 
+from .compat import get_errno
+
 __all__ = ['poll']
 
 READ = POLL_READ = 0x001
 WRITE = POLL_WRITE = 0x004
 ERR = POLL_ERR = 0x008 | 0x010
 
-
-def get_errno(exc):
-    try:
-        return exc.errno
-    except AttributeError:
-        try:
-            # e.args = (errno, reason)
-            if isinstance(exc.args, tuple) and len(exc.args) == 2:
-                return exc.args[0]
-        except AttributeError:
-            pass
-    return 0
+try:
+    SELECT_BAD_FD = set((errno.EBADF, errno.WSAENOTSOCK))
+except AttributeError:
+    SELECT_BAD_FD = set((errno.EBADF,))
 
 
 class Poller(object):
@@ -70,7 +64,7 @@ class Poller(object):
     def poll(self, timeout):
         try:
             return self._poll(timeout)
-        except Exception, exc:
+        except Exception as exc:
             if get_errno(exc) != errno.EINTR:
                 raise
 
@@ -83,18 +77,16 @@ class _epoll(Poller):
     def register(self, fd, events):
         try:
             self._epoll.register(fd, events)
-        except Exception, exc:
+        except Exception as exc:
             if get_errno(exc) != errno.EEXIST:
                 raise
 
     def unregister(self, fd):
         try:
             self._epoll.unregister(fd)
-        except socket.error:
+        except (socket.error, ValueError, KeyError):
             pass
-        except ValueError:
-            pass
-        except IOError, exc:
+        except (IOError, OSError) as exc:
             if get_errno(exc) != errno.ENOENT:
                 raise
 
@@ -202,13 +194,31 @@ class _select(Poller):
         if events & READ:
             self._rfd.add(fd)
 
+    def _remove_bad(self):
+        for fd in self._rfd | self._wfd | self._efd:
+            try:
+                _selectf([fd], [], [], 0)
+            except (_selecterr, socket.error) as exc:
+                if get_errno(exc) in SELECT_BAD_FD:
+                    self.unregister(fd)
+
     def unregister(self, fd):
         self._rfd.discard(fd)
         self._wfd.discard(fd)
         self._efd.discard(fd)
 
     def _poll(self, timeout):
-        read, write, error = _selectf(self._rfd, self._wfd, self._efd, timeout)
+        try:
+            read, write, error = _selectf(
+                self._rfd, self._wfd, self._efd, timeout,
+            )
+        except (_selecterr, socket.error) as exc:
+            if get_errno(exc) == errno.EINTR:
+                return
+            elif get_errno(exc) in SELECT_BAD_FD:
+                return self._remove_bad()
+            raise
+
         events = {}
         for fd in read:
             if not isinstance(fd, int):
@@ -237,7 +247,7 @@ def _get_poller():
         return _epoll
     elif kqueue:
         # Py2.6+ on BSD / Darwin
-        return _kqueue
+        return _select #_kqueue
     else:
         return _select
 

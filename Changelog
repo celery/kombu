@@ -4,11 +4,189 @@
  Change history
 ================
 
+.. _version-3.0.0:
+
+3.0.0
+=====
+:release-date: TBA
+
+- No longer supports Python 2.5
+
+- pickle, yaml and msgpack deserialization is now disabled by default.
+
+    To enable insecure serializers you have to call:
+
+        >>> from kombu import enable_insecure_serializers
+        >>> enable_insecure_serializers()
+
+.. _version-2.5.11:
+
+2.5.11
+======
+:release-date: TBA
+
+- Adds ``passive`` option to :class:`~kombu.Exchange`.
+
+    Contributed by Rafal Malinowski
+
+- librabbitmq:  Now raises :exc:`NotImplementedError`
+  if ``ssl`` option enabled.
+
+    The librabbitmq library does not support ssl,
+    but you can use stunnel or change to the ``pyamqp://`` transport
+    instead.
+
+    Fix contributed by Dan LaMotte.
+
+- eventio: select implementation now removes bad file descriptors.
+
+.. _version-2.5.10:
+
+2.5.10
+======
+:release-date: 2013-04-11 18:10 P.M BST
+
+Note about upcoming changes for Kombu 3.0
+-----------------------------------------
+
+Kombu 3 consumers will no longer accept pickle/yaml or msgpack
+by default, and you will have to explicitly enable untrusted deserializers
+either globally using :func:`kombu.enable_insecure_serializers`, or
+using the ``accept`` argument to :class:`~kombu.Consumer`.
+
+Changes
+-------
+
+- New utility function to disable/enable untrusted serializers.
+
+      - :func:`kombu.disable_insecure_serializers`
+      - :func:`kombu.enable_insecure_serializers`.
+
+- Consumer: ``accept`` can now be used to specify a whitelist
+  of content types to accept.
+
+    If the accept whitelist is set and a message is received
+    with a content type that is not in the whitelist then a
+    :exc:`~kombu.exceptions.ContentDisallowed` exception
+    is raised.  Note that this error can be handled by the already
+    existing `on_decode_error` callback
+
+    Examples::
+
+        Consumer(accept=['application/json'])
+        Consumer(accept=['pickle', 'json'])
+
+- Now depends on amqp 1.0.11
+
+- pidbox: Mailbox now supports the ``accept`` argument.
+
+- Redis: More friendly error for when keys are missing.
+
+- Connection URLs: The parser did not work well when there were
+  multiple '+' tokens.
+
+.. _version-2.5.9:
+
+2.5.9
+=====
+:release-date: 2013-04-08 05:07 P.M BST
+
+- Pidbox: Now warns if there are multiple nodes consuming from
+  the same pidbox.
+
+- Adds :attr:`Queue.on_declared <kombu.Queue.on_declared>`
+
+    A callback to be called when the queue is declared,
+    with signature ``(name, messages, consumers)``.
+
+- Now uses fuzzy matching to suggest alternatives to typos in transport
+  names.
+
+- SQS: Adds new transport option ``queue_prefix``.
+
+    Contributed by j0hnsmith.
+
+- pyamqp: No longer overrides verify_connection.
+
+- SQS: Now specifies the ``driver_type`` and ``driver_name``
+  attributes.
+
+    Fix contributed by Mher Movsisyan.
+
+- Fixed bug with ``kombu.utils.retry_over_time`` when no errback
+  specified.
+
+
+.. _version-2.5.8:
+
+2.5.8
+=====
+:release-date: 2013-03-21 04:00 P.M UTC
+
+- Now depends on :mod:`amqp` 1.0.10 which fixes a Python 3 compatibility error.
+
+- Redis: Fixed a possible race condition (Issue #171).
+
+- Redis: Ack emulation/visibility_timeout can now be disabled
+  using a transport option.
+
+    Ack emulation adds quite a lot of overhead to ensure data is safe
+    even in the event of an unclean shutdown.  If data loss do not worry
+    you there is now an `ack_emulation` transport option you can use
+    to disable it::
+
+        Connection('redis://', transport_options={'ack_emulation': False})
+
+- SQS: Fixed :mod:`boto` v2.7 compatibility (Issue #207).
+
+- Exchange: Should not try to re-declare default exchange (``""``)
+  (Issue #209).
+
+- SQS: Long polling is now disabled by default as it was not
+  implemented correctly, resulting in long delays between receiving
+  messages (Issue #202).
+
+- Fixed Python 2.6 incompatibility depending on ``exc.errno``
+  being available.
+
+    Fix contributed by Ephemera.
+
+.. _version-2.5.7:
+
+2.5.7
+=====
+:release-date: 2013-03-08 01:00 P.M UTC
+
+- Now depends on amqp 1.0.9
+
+- Redis: A regression in 2.5.6 caused the redis transport to
+  ignore options set in ``transport_options``.
+
+- Redis: New ``socket_timeout`` transport option.
+
+- Redis: ``InconsistencyError`` is now regarded as a recoverable error.
+
+- Resource pools: Will no longer attempt to release resource
+  that was never acquired.
+
+- MongoDB: Now supports the ``ssl`` option.
+
+    Contributed by Sebastian Pawlus.
+
+.. _version-2.5.6:
+
+2.5.6
+=====
+:release-date: 2013-02-08 01:00 P.M UTC
+
+- Now depends on amqp 1.0.8 which works around a bug found on some
+  Python 2.5 installations where 2**32 overflows to 0.
+
 .. _version-2.5.5:
 
 2.5.5
 =====
-:release-date: 2013-02-07 17:00 PM UTC
+:release-date: 2013-02-07 17:00 P.M UTC
 
 SQS: Now supports long polling (Issue #176).
 
@@ -45,7 +223,7 @@ SQS: Now supports long polling (Issue #176).
 
 2.5.4
 =====
-:release-date: 2012-12-10 12:35 PM UTC
+:release-date: 2012-12-10 12:35 P.M UTC
 
 - Fixed problem with connection clone and multiple URLs (Issue #182).
 
@@ -61,19 +239,19 @@ SQS: Now supports long polling (Issue #176).
 
 2.5.3
 =====
-:release-date: 2012-11-29 12:35 PM UTC
+:release-date: 2012-11-29 12:35 P.M UTC
 
 - Pidbox: Fixed compatibility with Python 2.6
 
 2.5.2
 =====
-:release-date: 2012-11-29 12:35 PM UTC
+:release-date: 2012-11-29 12:35 P.M UTC
 
 .. _version-2.5.2:
 
 2.5.2
 =====
-:release-date: 2012-11-29 12:35 PM UTC
+:release-date: 2012-11-29 12:35 P.M UTC
 
 - [Redis] Fixed connection leak and added a new 'max_connections' transport
   option.

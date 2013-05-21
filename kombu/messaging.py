@@ -13,7 +13,7 @@ from .compression import compress
 from .connection import maybe_channel, is_connection
 from .entity import Exchange, Queue, DELIVERY_MODES
 from .five import int_types, text_t, values
-from .serialization import encode
+from .serialization import encode, registry
 from .utils import ChannelPromise, maybe_list
 
 __all__ = ['Exchange', 'Queue', 'Producer', 'Consumer']
@@ -280,8 +280,12 @@ class Consumer(object):
     #: consume from.
     queues = None
 
-    #: Flag for message acknowledgment disabled/enabled.
-    #: Enabled by default.
+    #: Flag for automatic message acknowledgment.
+    #: If enabled the messages are automatically acknowledged by the
+    #: broker.  This can increase performance but means that you
+    #: have no control of when the message is removed.
+    #:
+    #: Disabled by default.
     no_ack = None
 
     #: By default all entities will be declared at instantiation, if you
@@ -322,10 +326,20 @@ class Consumer(object):
     #: that occurred while trying to decode it.
     on_decode_error = None
 
+    #: List of accepted content-types.
+    #:
+    #: An exception will be raised if the consumer receives
+    #: a message with an untrusted content type.
+    #: By default all content-types are accepted, but not if
+    #: :func:`kombu.disable_untrusted_serializers` was called,
+    #: in which case only json is allowed.
+    accept = None
+
     _tags = count(1)   # global
 
     def __init__(self, channel, queues=None, no_ack=None, auto_declare=None,
-                 callbacks=None, on_decode_error=None, on_message=None):
+                 callbacks=None, on_decode_error=None, on_message=None,
+                 accept=None):
         self.channel = channel
         self.queues = self.queues or [] if queues is None else queues
         self.no_ack = self.no_ack if no_ack is None else no_ack
@@ -337,6 +351,13 @@ class Consumer(object):
             self.auto_declare = auto_declare
         if on_decode_error is not None:
             self.on_decode_error = on_decode_error
+        self.accept = accept
+
+        if self.accept is not None:
+            self.accept = set(
+                n if '/' in n else registry.name_to_type[n]
+                for n in self.accept
+            )
 
         if self.channel:
             self.revive(self.channel)
@@ -386,6 +407,12 @@ class Consumer(object):
             pass
 
     def add_queue(self, queue):
+        """Add a queue to the list of queues to consume from.
+
+        This will not start consuming from the queue,
+        for that you will have to call :meth:`consume` after.
+
+        """
         queue = queue(self.channel)
         if self.auto_declare:
             queue.declare()
@@ -393,9 +420,26 @@ class Consumer(object):
         return queue
 
     def add_queue_from_dict(self, queue, **options):
+        """This method is deprecated.
+
+        Instead please use::
+
+            consumer.add_queue(Queue.from_dict(d))
+
+        """
         return self.add_queue(Queue.from_dict(queue, **options))
 
     def consume(self, no_ack=None):
+        """Start consuming messages.
+
+        Can be called multiple times, but note that while it
+        will consume from new queues added since the last call,
+        it will not cancel consuming from removed queues (
+        use :meth:`cancel_by_queue`).
+
+        :param no_ack: See :attr:`no_ack`.
+
+        """
         if self.queues:
             no_ack = self.no_ack if no_ack is None else no_ack
 
@@ -428,10 +472,12 @@ class Consumer(object):
             self.channel.basic_cancel(tag)
 
     def consuming_from(self, queue):
+        """Returns :const:`True` if the consumer is currently
+        consuming from queue'."""
         name = queue
         if isinstance(queue, Queue):
             name = queue.name
-        return any(q.name == name for q in self.queues)
+        return name in self._active_tags
 
     def purge(self):
         """Purge messages from all queues.
@@ -532,13 +578,16 @@ class Consumer(object):
         return tag
 
     def _receive_callback(self, message):
+        accept = self.accept
+        if accept is not None:
+            message.accept = accept
         on_m, channel, decoded = self.on_message, self.channel, None
         try:
             m2p = getattr(channel, 'message_to_python', None)
             if m2p:
                 message = m2p(message)
             decoded = None if on_m else message.decode()
-        except Exception, exc:
+        except Exception as exc:
             if not self.on_decode_error:
                 raise
             self.on_decode_error(message, exc)
