@@ -326,6 +326,21 @@ class Consumer(object):
     #: that occurred while trying to decode it.
     on_decode_error = None
 
+    #: Callback called when a callback function throws exception.
+    #:
+    #: When the given function returns True, it will continue calling the
+    #: rest of the :attr:`callbacks` functions. Otherwise, after processing
+    #: the :attr:`on_callback_error` function, it will re-raise the
+    #: thrown exception and not continue calling the rest of
+    #: :attr:`callbacks` functions.
+    #:
+    #: The signature of the callback must take four arguments: `(body,
+    #: message, exc, callback)`, which is the decoded message body, the
+    #: `Message` instance (a subclass of
+    #: :class:`~kombu.transport.base.Message`), thrown exception, and the
+    #: callback function which raised the exception.
+    on_callback_error = None
+
     #: List of accepted content-types.
     #:
     #: An exception will be raised if the consumer receives
@@ -339,7 +354,7 @@ class Consumer(object):
 
     def __init__(self, channel, queues=None, no_ack=None, auto_declare=None,
                  callbacks=None, on_decode_error=None, on_message=None,
-                 accept=None):
+                 accept=None, on_callback_error=None):
         self.channel = channel
         self.queues = self.queues or [] if queues is None else queues
         self.no_ack = self.no_ack if no_ack is None else no_ack
@@ -351,6 +366,8 @@ class Consumer(object):
             self.auto_declare = auto_declare
         if on_decode_error is not None:
             self.on_decode_error = on_decode_error
+        if on_callback_error is not None:
+            self.on_callback_error = on_callback_error
         self.accept = accept
 
         if self.accept is not None:
@@ -561,7 +578,15 @@ class Consumer(object):
         callbacks = self.callbacks
         if not callbacks:
             raise NotImplementedError('Consumer does not have any callbacks')
-        [callback(body, message) for callback in callbacks]
+
+        for callback in callbacks:
+            try:
+                callback(body, message)
+            except Exception as exc:
+                if not self.on_callback_error:
+                    raise
+                if not self.on_callback_error(body, message, exc, callback):
+                    raise
 
     def _basic_consume(self, queue, consumer_tag=None,
                        no_ack=no_ack, nowait=True):
