@@ -224,7 +224,9 @@ class Producer(object):
         self.release()
 
     def release(self):
-        pass
+        if self.connection:
+            self.connection.close()
+
     close = release
 
     def _prepare(self, body, serializer=None, content_type=None,
