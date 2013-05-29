@@ -21,7 +21,8 @@ from .clocks import LamportClock
 from .common import maybe_declare, oid_from
 from .exceptions import InconsistencyError
 from .five import range
-from .utils import cached_property, kwdict, uuid
+from .log import get_logger
+from .utils import cached_property, kwdict, uuid, reprcall
 
 REPLY_QUEUE_EXPIRES = 10
 
@@ -34,6 +35,8 @@ you give each node a unique node name!
 """
 
 __all__ = ['Node', 'Mailbox']
+logger = get_logger(__name__)
+debug, error = logger.debug, logger.error
 
 
 class Node(object):
@@ -90,12 +93,15 @@ class Node(object):
     def dispatch(self, method, arguments=None,
                  reply_to=None, ticket=None, **kwargs):
         arguments = arguments or {}
+        debug('pidbox received method %s [reply_to:%s ticket:%s]',
+                reprcall(method, (), kwargs=arguments), reply_to, ticket)
         handle = reply_to and self.handle_call or self.handle_cast
         try:
             reply = handle(method, kwdict(arguments))
         except SystemExit:
             raise
         except Exception as exc:
+            error('pidbox command error: %r', exc, exc_info=1)
             reply = {'error': repr(exc)}
 
         if reply_to:
