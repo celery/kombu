@@ -477,6 +477,15 @@ class test_Channel(TestCase):
         with self.assertRaises(InconsistencyError):
             self.channel.get_table('celery')
 
+    @skip_if_not_module('redis')
+    def test_socket_connection(self):
+        connection = Connection('redis+socket:///tmp/redis.sock',
+                                transport=Transport)
+        connparams = connection.channel()._connparams()
+        self.assertEqual(connparams['connection_class'],
+                         redis.redis.UnixDomainSocketConnection)
+        self.assertEqual(connparams['path'], '/tmp/redis.sock')
+
 
 class test_Redis(TestCase):
 

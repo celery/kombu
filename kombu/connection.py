@@ -579,7 +579,8 @@ class Connection(object):
 
     def as_uri(self, include_password=False):
         """Convert connection parameters to URL form."""
-        if self.transport_cls in URI_PASSTHROUGH:
+        if (self.transport_cls in URI_PASSTHROUGH or
+                self.hostname.startswith('socket://')):
             return self.transport_cls + '+' + (self.hostname or 'localhost')
         quoteS = partial(quote, safe='')   # strict quote
         fields = self.info()

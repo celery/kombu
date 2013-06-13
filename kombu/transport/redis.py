@@ -623,12 +623,19 @@ class Channel(virtual.Channel):
             except ValueError:
                 raise ValueError(
                     'Database name must be int between 0 and limit - 1')
-        return {'host': conninfo.hostname or '127.0.0.1',
-                'port': conninfo.port or DEFAULT_PORT,
-                'db': database,
-                'password': conninfo.password,
-                'max_connections': self.max_connections,
-                'socket_timeout': self.socket_timeout}
+        connparams = {'host': conninfo.hostname or '127.0.0.1',
+                      'port': conninfo.port or DEFAULT_PORT,
+                      'db': database,
+                      'password': conninfo.password,
+                      'max_connections': self.max_connections,
+                      'socket_timeout': self.socket_timeout}
+        if conninfo.hostname.split('://')[0] == 'socket':
+            connparams.update({
+                'connection_class': redis.UnixDomainSocketConnection,
+                'path': conninfo.hostname.split('://')[1]})
+            connparams.pop('host', None)
+            connparams.pop('port', None)
+        return connparams
 
     def _create_client(self):
         return self.Client(connection_pool=self.pool)
