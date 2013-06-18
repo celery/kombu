@@ -612,7 +612,7 @@ class ResourceCase(TestCase):
         if self.abstract:
             return
         P = self.create_resource(10, 10)
-        cr = P.close_resource = Mock()
+        cr = P.collect_resource = Mock()
         cr.side_effect = AttributeError('x')
 
         P.acquire()
@@ -654,6 +654,19 @@ class test_ConnectionPool(ResourceCase):
         self.assertIsNotNone(q[0]._connection)
         self.assertIsNotNone(q[1]._connection)
         self.assertIsNone(q[2]()._connection)
+
+    def test_acquire_raises_evaluated(self):
+        P = self.create_resource(1, 0)
+        # evaluate the connection first
+        r = P.acquire()
+        r.release()
+        P.prepare = Mock()
+        P.prepare.side_effect = MemoryError()
+        P.release = Mock()
+        with self.assertRaises(MemoryError):
+            with P.acquire() as conn:
+                assert False
+        P.release.assert_called_with(r)
 
     def test_release_no__debug(self):
         P = self.create_resource(10, 2)
