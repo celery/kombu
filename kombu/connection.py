@@ -151,8 +151,9 @@ class Connection(object):
                  password=None, virtual_host=None, port=None, insist=False,
                  ssl=False, transport=None, connect_timeout=5,
                  transport_options=None, login_method=None, uri_prefix=None,
-                 heartbeat=0, failover_strategy='round-robin', **kwargs):
-        alt = []
+                 heartbeat=0, failover_strategy='round-robin',
+                 alternates=None, **kwargs):
+        alt = [] if alternates is None else alternates
         # have to spell the args out, just to get nice docstrings :(
         params = self._initial_params = {
             'hostname': hostname, 'userid': userid,
