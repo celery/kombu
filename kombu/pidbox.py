@@ -94,7 +94,7 @@ class Node(object):
                  reply_to=None, ticket=None, **kwargs):
         arguments = arguments or {}
         debug('pidbox received method %s [reply_to:%s ticket:%s]',
-                reprcall(method, (), kwargs=arguments), reply_to, ticket)
+              reprcall(method, (), kwargs=arguments), reply_to, ticket)
         handle = reply_to and self.handle_call or self.handle_cast
         try:
             reply = handle(method, kwdict(arguments))

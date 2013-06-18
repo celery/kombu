@@ -664,7 +664,7 @@ class test_ConnectionPool(ResourceCase):
         P.prepare.side_effect = MemoryError()
         P.release = Mock()
         with self.assertRaises(MemoryError):
-            with P.acquire() as conn:
+            with P.acquire():
                 assert False
         P.release.assert_called_with(r)
 

@@ -185,7 +185,8 @@ class SerializerRegistry(object):
             'Refusing to decode {0} content of type {1}'.format(
                 why,
                 parenthesize_alias(self.type_to_name.get(ctype, ctype), ctype),
-        ))
+            ),
+        )
 
 
 #: Global registry of serializers/deserializers.
