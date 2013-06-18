@@ -25,6 +25,10 @@ class test_Producer(TestCase):
         self.assertTrue(self.connection.connection.connected)
         self.assertFalse(self.exchange.is_bound)
 
+    def test_repr(self):
+        p = Producer(self.connection)
+        self.assertTrue(repr(p))
+
     def test_pickle(self):
         chan = Mock()
         producer = Producer(chan, serializer='pickle')
@@ -222,6 +226,36 @@ class test_Consumer(TestCase):
         self.connection.connect()
         self.assertTrue(self.connection.connection.connected)
         self.exchange = Exchange('foo', 'direct')
+
+    def test_accept(self):
+        a = Consumer(self.connection)
+        self.assertIsNone(a.accept)
+        b = Consumer(self.connection, accept=['json', 'pickle'])
+        self.assertSetEqual(
+            b.accept,
+            set(['application/json', 'application/x-python-serialize']),
+        )
+        c = Consumer(self.connection, accept=b.accept)
+        self.assertSetEqual(b.accept, c.accept)
+
+    def test_enter_exit_cancel_raises(self):
+        c = Consumer(self.connection)
+        c.cancel = Mock(name='Consumer.cancel')
+        c.cancel.side_effect = KeyError('foo')
+        with c:
+            pass
+        c.cancel.assert_called_with()
+
+    def test_receive_callback_accept(self):
+        message = Mock(name='Message')
+        callback = Mock(name='on_message')
+        c = Consumer(self.connection, accept=['json'], on_message=callback)
+        c.channel = Mock(name='channel')
+        c.channel.message_to_python = None
+
+        c._receive_callback(message)
+        callback.assert_called_with(message)
+        self.assertSetEqual(message.accept, c.accept)
 
     def test_set_no_channel(self):
         c = Consumer(None)
