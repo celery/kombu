@@ -260,6 +260,9 @@ class Exchange(MaybeChannelBound):
                                             if_unused=if_unused,
                                             nowait=nowait)
 
+    def binding(self, routing_key='', arguments=None, unbind_arguments=None):
+        return binding(self, routing_key, arguments, unbind_arguments)
+
     def __eq__(self, other):
         if isinstance(other, Exchange):
             return (self.name == other.name and

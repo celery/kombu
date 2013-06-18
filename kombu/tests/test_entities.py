@@ -196,6 +196,11 @@ class test_Queue(TestCase):
         self.assertEqual(hash(Queue('a')), hash(Queue('a')))
         self.assertNotEqual(hash(Queue('a')), hash(Queue('b')))
 
+    def test_repr_with_bindings(self):
+        ex = Exchange('foo')
+        x = Queue('foo', bindings=[ex.binding('A'), ex.binding('B')])
+        self.assertTrue(repr(x))
+
     def test_anonymous(self):
         chan = Mock()
         x = Queue(bindings=[binding(Exchange('foo'), 'rkey')])
