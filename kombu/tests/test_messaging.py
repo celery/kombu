@@ -12,8 +12,7 @@ from kombu.exceptions import MessageStateError
 from kombu.utils import ChannelPromise
 
 from .mocks import Transport
-from .utils import TestCase
-from .utils import Mock
+from .utils import TestCase, Mock
 
 
 class test_Producer(TestCase):
