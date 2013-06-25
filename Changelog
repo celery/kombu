@@ -8,14 +8,26 @@
 
 2.5.11
 ======
-:release-date: TBA
+:release-date: 2013-06-25 16:00 P.M BST
 
 - Adds ``passive`` option to :class:`~kombu.Exchange`.
 
+    Setting this flag means that the exchange will not be declared by kombu,
+    but that it must exist already (or an exception will be raised).
+
     Contributed by Rafal Malinowski
 
-- librabbitmq:  Now raises :exc:`NotImplementedError`
-  if ``ssl`` option enabled.
+- MongoDB:  Removed cause of a "database name in URI is being ignored"
+  warning.
+
+    Contributed by Flaper Fesp.
+
+- Connection.info() now gives the current hostname and not the list of
+  available hostnames.
+
+    Fix contributed by John Shuping.
+
+- librabbitmq:  Now raises :exc:`NotImplementedError` if SSL is enabled.
 
     The librabbitmq library does not support ssl,
     but you can use stunnel or change to the ``pyamqp://`` transport
@@ -23,7 +35,28 @@
 
     Fix contributed by Dan LaMotte.
 
+- librabbitmq: Fixed a cyclic reference at connection close.
+
 - eventio: select implementation now removes bad file descriptors.
+
+- eventio: Fixed Py3 compatibility problems.
+
+- Functional tests added for py-amqp and librabbitmq transports.
+
+- Resource.force_close_all no longer uses a mutex.
+
+- Pidbox: Now ignores `IconsistencyError` when sending replies,
+  as this error simply means that the client may no longer be alive.
+
+- Adds new :meth:`Connection.collect <~kombu.Connection.collect>` method,
+  that can be used to clean up after connections without I/O.
+
+- ``queue_bind`` is no longer called for queues bound to
+  the "default exchange" (Issue #209).
+
+    Contributed by Jonathan Halcrow.
+
+- The max_retries setting for retries was not respected correctly (off by one).
 
 .. _version-2.5.10:
 
