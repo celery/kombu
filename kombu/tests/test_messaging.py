@@ -550,6 +550,76 @@ class test_Consumer(TestCase):
         self.assertEqual(anyjson.loads(m), {'foo': 'bar'})
         self.assertIsInstance(exc, ValueError)
 
+    def test_on_callback_error_with_continue(self):
+        channel = self.connection.channel()
+        b1 = Queue('qname1', self.exchange, 'rkey')
+        callback_exception = Exception('callback_exception')
+        received, called = [], []
+
+        def first_callback(message_data, message):
+            called.append('first')
+
+        def second_callback(message_data, message):
+            called.append('second')
+            raise callback_exception
+
+        def third_callback(message_data, message):
+            called.append('third')
+
+        def on_callback_error(message_data, message, exc, callback):
+            received.append((message_data, message, exc, callback))
+            return True  # continue callbacks
+
+        callbacks = [first_callback, second_callback, third_callback]
+        consumer = Consumer(channel, [b1], callbacks=callbacks,
+                            on_callback_error=on_callback_error)
+        consumer._receive_callback({'foo': 'bar'})
+
+        self.assertEqual(called, ['first', 'second', 'third'])
+
+        self.assertEqual(len(received), 1)
+        message_data, message, exc, callback = received[0]
+        self.assertEqual(message_data, {'foo': 'bar'})
+        self.assertEqual(exc, callback_exception)
+        self.assertEqual(callback, second_callback)
+
+    def test_on_callback_error_without_continue(self):
+        channel = self.connection.channel()
+        b1 = Queue('qname1', self.exchange, 'rkey')
+        received, called = [], []
+
+        class MyException(Exception):
+            pass
+
+        def first_callback(message_data, message):
+            called.append('first')
+
+        def second_callback(message_data, message):
+            called.append('second')
+            raise MyException
+
+        def third_callback(message_data, message):
+            called.append('third')
+
+        def on_callback_error(message_data, message, exc, callback):
+            received.append((message_data, message, exc, callback))
+            # no return re-raise the exception from callback
+
+        callbacks = [first_callback, second_callback, third_callback]
+        consumer = Consumer(channel, [b1], callbacks=callbacks,
+                            on_callback_error=on_callback_error)
+
+        with self.assertRaises(MyException):
+            consumer._receive_callback({'foo': 'bar'})
+
+        self.assertEqual(called, ['first', 'second'])
+
+        self.assertEqual(len(received), 1)
+        message_data, message, exc, callback = received[0]
+        self.assertEqual(message_data, {'foo': 'bar'})
+        self.assertIsInstance(exc, MyException)
+        self.assertEqual(callback, second_callback)
+
     def test_recover(self):
         channel = self.connection.channel()
         b1 = Queue('qname1', self.exchange, 'rkey')
