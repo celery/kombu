@@ -10,6 +10,11 @@
 ======
 :release-date: 2013-06-25 16:00 P.M BST
 
+- MongoDB:  Removed cause of a "database name in URI is being ignored"
+  warning.
+
+    Contributed by Flaper Fesp.
+
 - Adds ``passive`` option to :class:`~kombu.Exchange`.
 
     Setting this flag means that the exchange will not be declared by kombu,
@@ -17,15 +22,15 @@
 
     Contributed by Rafal Malinowski
 
-- MongoDB:  Removed cause of a "database name in URI is being ignored"
-  warning.
-
-    Contributed by Flaper Fesp.
-
 - Connection.info() now gives the current hostname and not the list of
   available hostnames.
 
     Fix contributed by John Shuping.
+
+- pyamqp: Transport options are now forwarded as kwargs to ``amqp.Connection`.
+
+- librabbitmq: Transport options are now forwarded as kwargs to
+  ``librabbitmq.Connection``.
 
 - librabbitmq:  Now raises :exc:`NotImplementedError` if SSL is enabled.
 
