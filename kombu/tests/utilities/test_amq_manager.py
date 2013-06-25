@@ -19,7 +19,7 @@ class test_get_manager(TestCase):
             manager = Connection('amqp://').get_manager()
             self.assertIsNotNone(manager)
             Client.assert_called_with(
-                'localhost:55672', 'guest', 'guest',
+                'localhost:15672', 'guest', 'guest',
             )
 
     @module_exists('pyrabbit')
