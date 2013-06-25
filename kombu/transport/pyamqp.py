@@ -106,7 +106,8 @@ class Transport(base.Transport):
                                insist=conninfo.insist,
                                ssl=conninfo.ssl,
                                connect_timeout=conninfo.connect_timeout,
-                               heartbeat=conninfo.heartbeat)
+                               heartbeat=conninfo.heartbeat,
+                               **conninfo.transport_options or {})
         conn.client = self.client
         return conn
 

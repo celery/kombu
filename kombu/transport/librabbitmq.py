@@ -112,7 +112,8 @@ class Transport(base.Transport):
                                login_method=conninfo.login_method,
                                insist=conninfo.insist,
                                ssl=conninfo.ssl,
-                               connect_timeout=conninfo.connect_timeout)
+                               connect_timeout=conninfo.connect_timeout,
+                               **conninfo.transport_options or {})
         conn.client = self.client
         self.client.drain_events = conn.drain_events
         return conn
