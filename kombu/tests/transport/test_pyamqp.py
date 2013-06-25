@@ -2,8 +2,10 @@ from __future__ import absolute_import
 
 import sys
 
+from functools import partial
 from mock import patch
 from nose import SkipTest
+from itertools import count
 
 try:
     import amqp    # noqa
@@ -12,6 +14,7 @@ except ImportError:
 else:
     from kombu.transport import pyamqp
 from kombu import Connection
+from kombu.utils.compat import next
 
 from kombu.tests.utils import TestCase
 from kombu.tests.utils import mask_modules, Mock
@@ -42,6 +45,7 @@ class test_Channel(TestCase):
                 pass
 
         self.conn = Mock()
+        self.conn._get_free_channel_id.side_effect = partial(next, count(0))
         self.conn.channels = {}
         self.channel = Channel(self.conn, 0)
 
