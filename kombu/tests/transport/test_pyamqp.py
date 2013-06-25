@@ -15,7 +15,6 @@ except ImportError:
 else:
     from kombu.transport import pyamqp
 from kombu import Connection
-from kombu.utils.compat import next
 
 from kombu.tests.utils import TestCase
 from kombu.tests.utils import mask_modules, Mock
