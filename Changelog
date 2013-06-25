@@ -8,14 +8,14 @@
 
 2.5.11
 ======
-:release-date: 2013-06-25 16:00 P.M BST
+:release-date: 2013-06-25 14:30 P.M BST
 
 - Now depends on amqp 1.0.12 (Py3 compatibility issues).
 
 - MongoDB:  Removed cause of a "database name in URI is being ignored"
   warning.
 
-    Contributed by Flaper Fesp.
+    Fix by Flavio Percoco Premoli
 
 - Adds ``passive`` option to :class:`~kombu.Exchange`.
 
