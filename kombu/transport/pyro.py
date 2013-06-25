@@ -4,25 +4,31 @@ kombu.transport.pyro
 
 Pyro transport.
 
+Requires the :mod:`Pyro4` library to be installed.
+
 """
 from __future__ import absolute_import
 
-import Pyro4
-from Pyro4.errors import NamingError
-from Queue import Queue
+import sys
+
+from kombu.five import reraise
+from kombu.utils import cached_property
 
 from . import virtual
 
+try:
+    import Pyro4 as pyro
+    from Pyro4.errors import NamingError
+except ImportError:          # pragma: no cover
+    pyro = NamingError = None  # noqa
+
 DEFAULT_PORT = 9090
+E_LOOKUP = """\
+Unable to locate pyro nameserver {0.virtual_host} on host {0.hostname}\
+"""
+
 
 class Channel(virtual.Channel):
-
-
-
-    def __init__(self, *args, **kwargs):
-        super(Channel, self).__init__(*args, **kwargs)
-        transport = args[0]
-        self.shared_queues = transport.shared_queues
 
     def queues(self):
         return self.shared_queues.get_queue_names()
@@ -57,6 +63,10 @@ class Channel(virtual.Channel):
     def after_reply_message_received(self, queue):
         pass
 
+    @cached_property
+    def shared_queues(self):
+        return self.connection.shared_queues
+
 
 class Transport(virtual.Transport):
     Channel = Channel
@@ -66,31 +76,24 @@ class Transport(virtual.Transport):
 
     default_port = DEFAULT_PORT
 
-    driver_type = 'pyro'
-    driver_name = 'pyro'
+    driver_type = driver_name = 'pyro'
 
-    def __init__(self, client, **kwargs):
-        super(Transport, self).__init__(client)
-        self.client = client
-        self.default_port = kwargs.get("default_port") or self.default_port
-        self.shared_queues = None 
-
+    def _open(self):
         conninfo = self.client
-        for name, default_value in self.default_connection_params.items():
-            if not getattr(conninfo, name, None):
-                setattr(conninfo, name, default_value)
-
-        if conninfo.hostname == 'localhost':
-            conninfo.hostname = '127.0.0.1'
-
-        Pyro4.config.HMAC_KEY=conninfo.virtual_host
+        pyro.config.HMAC_KEY = conninfo.virtual_host
         try:
-            nameserver = Pyro4.locateNS(host=conninfo.hostname, port=self.default_port)
-            uri = nameserver.lookup(conninfo.virtual_host) # name of registered pyro object
-            self.shared_queues = Pyro4.Proxy(uri)
-        except NamingError as ex:
-            err = "Unable to locate pyro nameserver (%s) on host %s" % (conninfo.virtual_host, conninfo.hostname)
-            raise NamingError(err)
+            nameserver = pyro.locateNS(host=conninfo.hostname,
+                                       port=self.default_port)
+            # name of registered pyro object
+            uri = nameserver.lookup(conninfo.virtual_host)
+            return pyro.Proxy(uri)
+        except NamingError:
+            reraise(NamingError, NamingError(E_LOOKUP.format(conninfo)),
+                    sys.exc_info()[2])
 
     def driver_version(self):
-        return 'N/A'
+        return pyro.__version__
+
+    @cached_property
+    def shared_queues(self):
+        return self._open()
