@@ -79,14 +79,14 @@ class Transport(base.Transport):
     recoverable_channel_errors = amqp.Connection.recoverable_channel_errors
 
     nb_keep_draining = True
-    driver_name = "py-amqp"
-    driver_type = "amqp"
+    driver_name = 'py-amqp'
+    driver_type = 'amqp'
     supports_heartbeats = True
     supports_ev = True
 
     def __init__(self, client, **kwargs):
         self.client = client
-        self.default_port = kwargs.get("default_port") or self.default_port
+        self.default_port = kwargs.get('default_port') or self.default_port
 
     def create_channel(self, connection):
         return connection.channel()
