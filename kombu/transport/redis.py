@@ -487,9 +487,8 @@ class Channel(virtual.Channel):
             if dest__item:
                 dest, item = dest__item
                 dest = bytes_to_str(dest).rsplit(self.sep, 1)[0]
-                item = bytes_to_str(item)
                 self._rotate_cycle(dest)
-                return loads(item), dest
+                return loads(bytes_to_str(item)), dest
             else:
                 raise Empty()
         finally:
@@ -708,11 +707,12 @@ class Channel(virtual.Channel):
         return self._queue_cycle[0:active]
 
     def _rotate_cycle(self, used):
-        """
-        Move most recently used queue to end of list
-        """
-        index = self._queue_cycle.index(used)
-        self._queue_cycle.append(self._queue_cycle.pop(index))
+        """Move most recently used queue to end of list."""
+        cycle = self._queue_cycle
+        try:
+            cycle.append(cycle.pop(cycle.index(used)))
+        except ValueError:
+            pass
 
     def _get_response_error(self):
         from redis import exceptions
