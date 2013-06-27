@@ -94,7 +94,7 @@ class test_Exchange(TestCase):
         e3 = Exchange('foo', 'topic')
         self.assertNotEqual(e1, e3)
 
-        self.assertFalse(e1.__eq__(True))
+        self.assertEqual(e1.__eq__(True), NotImplemented)
 
     def test_revive(self):
         exchange = Exchange('foo', 'direct')
@@ -264,7 +264,7 @@ class test_Queue(TestCase):
         q1 = Queue('xxx', Exchange('xxx', 'direct'), 'xxx')
         q2 = Queue('xxx', Exchange('xxx', 'direct'), 'xxx')
         self.assertEqual(q1, q2)
-        self.assertFalse(q1.__eq__(True))
+        self.assertEqual(q1.__eq__(True), NotImplemented)
 
         q3 = Queue('yyy', Exchange('xxx', 'direct'), 'xxx')
         self.assertNotEqual(q1, q3)
