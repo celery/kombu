@@ -56,7 +56,7 @@ unicode: "Th\\xE9 quick brown fox jumps over th\\xE9 lazy dog"
 
 msgpack_py_data = dict(py_data)
 # msgpack only supports tuples
-#msgpack_py_data['list'] = msgpack_py_data['list']
+msgpack_py_data['list'] = tuple(msgpack_py_data['list'])
 # Unicode chars are lost in transmit :(
 msgpack_py_data['unicode'] = 'Th quick brown fox jumps over th lazy dog'
 msgpack_data = b64decode("""\
