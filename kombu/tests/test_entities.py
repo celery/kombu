@@ -94,7 +94,7 @@ class test_Exchange(TestCase):
         e3 = Exchange('foo', 'topic')
         self.assertNotEqual(e1, e3)
 
-        self.assertFalse(e1.__eq__(True))
+        self.assertEqual(e1.__eq__(True), NotImplemented)
 
     def test_revive(self):
         exchange = Exchange('foo', 'direct')
@@ -196,6 +196,11 @@ class test_Queue(TestCase):
         self.assertEqual(hash(Queue('a')), hash(Queue('a')))
         self.assertNotEqual(hash(Queue('a')), hash(Queue('b')))
 
+    def test_repr_with_bindings(self):
+        ex = Exchange('foo')
+        x = Queue('foo', bindings=[ex.binding('A'), ex.binding('B')])
+        self.assertTrue(repr(x))
+
     def test_anonymous(self):
         chan = Mock()
         x = Queue(bindings=[binding(Exchange('foo'), 'rkey')])
@@ -259,7 +264,7 @@ class test_Queue(TestCase):
         q1 = Queue('xxx', Exchange('xxx', 'direct'), 'xxx')
         q2 = Queue('xxx', Exchange('xxx', 'direct'), 'xxx')
         self.assertEqual(q1, q2)
-        self.assertFalse(q1.__eq__(True))
+        self.assertEqual(q1.__eq__(True), NotImplemented)
 
         q3 = Queue('yyy', Exchange('xxx', 'direct'), 'xxx')
         self.assertNotEqual(q1, q3)

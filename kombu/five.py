@@ -31,11 +31,11 @@ except ImportError:                         # pragma: no cover
 
 try:
     bytes_t = bytes
-except NameError:
+except NameError:  # pragma: no cover
     bytes_t = str  # noqa
 
 
-if PY3:
+if PY3:  # pragma: no cover
     import builtins
 
     from queue import Queue, Empty, Full, LifoQueue
@@ -90,7 +90,7 @@ else:
     )
     try:
         from cStringIO import StringIO  # noqa
-    except ImportError:
+    except ImportError:  # pragma: no cover
         from StringIO import StringIO   # noqa
 
     string = unicode                # noqa
@@ -115,7 +115,7 @@ else:
     def nextfun(it):                # noqa
         return it.next
 
-    def exec_(code, globs=None, locs=None):
+    def exec_(code, globs=None, locs=None):  # pragma: no cover
         """Execute code in a namespace."""
         if globs is None:
             frame = sys._getframe(1)

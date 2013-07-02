@@ -46,22 +46,17 @@ def get_loglevel(level):
 
 
 def naive_format_parts(fmt):
-    l = fmt.split('%')
-    for i, e in enumerate(l[1:]):
-        if not e or not l[i - 1]:
-            yield
-        elif e[0] in ['r', 's']:
-            yield e[0]
+    parts = fmt.split('%')
+    for i, e in enumerate(parts[1:]):
+        yield None if not e or not parts[i - 1] else e[0]
 
 
-def safeify_format(fmt, *args):
+def safeify_format(fmt, args,
+                   filters={'s': safe_str,
+                            'r': safe_repr}):
     for index, type in enumerate(naive_format_parts(fmt)):
-        if not type:
-            yield args[index]
-        elif type == 'r':
-            yield safe_repr(args[index])
-        elif type == 's':
-            yield safe_str(args[index])
+        filt = filters.get(type)
+        yield filt(args[index]) if filt else args[index]
 
 
 class LogMixin(object):
@@ -97,7 +92,7 @@ class LogMixin(object):
                 expand = [maybe_promise(arg) for arg in args[1:]]
                 return log(severity,
                            self.annotate(args[0].replace('%r', '%s')),
-                           *list(safeify_format(args[0], *expand)), **kwargs)
+                           *list(safeify_format(args[0], expand)), **kwargs)
             else:
                 return self.logger.log(
                     severity, self.annotate(' '.join(map(safe_str, args))),

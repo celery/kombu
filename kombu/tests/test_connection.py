@@ -169,6 +169,46 @@ class test_Connection(TestCase):
         self.assertEqual(conn2.hostname, 'foo')
         self.assertListEqual(conn2.alt, ['amqp://foo', 'amqp://bar'])
 
+    def test_collect(self):
+        connection = Connection('memory://')
+        trans = connection._transport = Mock(name='transport')
+        _collect = trans._collect = Mock(name='transport._collect')
+        _close = connection._close = Mock(name='connection._close')
+        connection.declared_entities = Mock(name='decl_entities')
+        uconn = connection._connection = Mock(name='_connection')
+        connection.collect()
+
+        self.assertFalse(_close.called)
+        _collect.assert_called_with(uconn)
+        connection.declared_entities.clear.assert_called_with()
+        self.assertIsNone(trans.client)
+        self.assertIsNone(connection._transport)
+        self.assertIsNone(connection._connection)
+
+    def test_collect_no_transport(self):
+        connection = Connection('memory://')
+        connection._transport = None
+        connection._close = Mock()
+        connection.collect()
+        connection._close.assert_called_with()
+
+        connection._close.side_effect = socket.timeout()
+        connection.collect()
+
+    def test_collect_transport_gone(self):
+        connection = Connection('memory://')
+        uconn = connection._connection = Mock(name='conn._conn')
+        trans = connection._transport = Mock(name='transport')
+        collect = trans._collect = Mock(name='transport._collect')
+
+        def se(conn):
+            connection._transport = None
+        collect.side_effect = se
+
+        connection.collect()
+        collect.assert_called_with(uconn)
+        self.assertIsNone(connection._transport)
+
     def test_uri_passthrough(self):
         from kombu import connection as mod
         prev, mod.URI_PASSTHROUGH = mod.URI_PASSTHROUGH, set(['foo'])
@@ -269,6 +309,12 @@ class test_Connection(TestCase):
     def test_copy(self):
         c = Connection('amqp://example.com')
         self.assertEqual(copy(c).info(), c.info())
+
+    def test_copy_multiples(self):
+        c = Connection('amqp://A.example.com;amqp://B.example.com')
+        self.assertTrue(c.alt)
+        d = copy(c)
+        self.assertEqual(d.alt, c.alt)
 
     def test_switch(self):
         c = Connection('amqp://foo')
@@ -566,7 +612,7 @@ class ResourceCase(TestCase):
         if self.abstract:
             return
         P = self.create_resource(10, 10)
-        cr = P.close_resource = Mock()
+        cr = P.collect_resource = Mock()
         cr.side_effect = AttributeError('x')
 
         P.acquire()
@@ -608,6 +654,19 @@ class test_ConnectionPool(ResourceCase):
         self.assertIsNotNone(q[0]._connection)
         self.assertIsNotNone(q[1]._connection)
         self.assertIsNone(q[2]()._connection)
+
+    def test_acquire_raises_evaluated(self):
+        P = self.create_resource(1, 0)
+        # evaluate the connection first
+        r = P.acquire()
+        r.release()
+        P.prepare = Mock()
+        P.prepare.side_effect = MemoryError()
+        P.release = Mock()
+        with self.assertRaises(MemoryError):
+            with P.acquire():
+                assert False
+        P.release.assert_called_with(r)
 
     def test_release_no__debug(self):
         P = self.create_resource(10, 2)

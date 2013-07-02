@@ -183,7 +183,9 @@ class SerializerRegistry(object):
     def _for_untrusted_content(self, ctype, why):
         return ContentDisallowed(
             'Refusing to decode {0} content of type {1}'.format(
-                why, parenthesize_alias(self.type_to_name[ctype], ctype)),
+                why,
+                parenthesize_alias(self.type_to_name.get(ctype, ctype), ctype),
+            ),
         )
 
 
