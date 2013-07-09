@@ -128,7 +128,7 @@
 
     .. code-block:: python
 
-        >>> bound_sicence_news.declare()
+        >>> bound_science_news.declare()
         >>> bound_science_news.purge()
         >>> bound_science_news.delete()
 
