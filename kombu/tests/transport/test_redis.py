@@ -3,6 +3,7 @@ from __future__ import absolute_import
 import socket
 import types
 
+from mock import patch
 from anyjson import dumps
 from collections import defaultdict
 from itertools import count
@@ -476,6 +477,15 @@ class test_Channel(TestCase):
         # can recover by redeclaring the required entities.
         with self.assertRaises(InconsistencyError):
             self.channel.get_table('celery')
+
+    @skip_if_not_module('redis')
+    def test_socket_connection(self):
+        with patch('kombu.transport.redis.Channel._create_client'):
+            with Connection('redis+socket:///tmp/redis.sock') as conn:
+                connparams = conn.default_channel._connparams()
+                self.assertEqual(connparams['connection_class'],
+                                 redis.redis.UnixDomainSocketConnection)
+                self.assertEqual(connparams['path'], '/tmp/redis.sock')
 
 
 class test_Redis(TestCase):

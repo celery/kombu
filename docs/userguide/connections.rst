@@ -70,6 +70,9 @@ All of these are valid URLs::
     # Using Redis
     redis://localhost:6379/
 
+    # Using Redis over a Unix socket
+    redis+socket:///tmp/redis.sock
+
     # Using virtual host '/foo'
     amqp://localhost//foo
 
