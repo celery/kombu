@@ -106,15 +106,17 @@ class Transport(base.Transport):
                 setattr(conninfo, name, default_value)
         if conninfo.ssl:
             raise NotImplementedError(NO_SSL_ERROR)
-        conn = self.Connection(host=conninfo.host,
-                               userid=conninfo.userid,
-                               password=conninfo.password,
-                               virtual_host=conninfo.virtual_host,
-                               login_method=conninfo.login_method,
-                               insist=conninfo.insist,
-                               ssl=conninfo.ssl,
-                               connect_timeout=conninfo.connect_timeout,
-                               **conninfo.transport_options or {})
+        opts = dict({
+            'host': conninfo.host,
+            'userid': conninfo.userid,
+            'password': conninfo.password,
+            'virtual_host': conninfo.virtual_host,
+            'login_method': conninfo.login_method,
+            'insist': conninfo.insist,
+            'ssl': conninfo.ssl,
+            'connect_timeout': conninfo.connect_timeout,
+        }, **conninfo.transport_options or {})
+        conn = self.Connection(**opts)
         conn.client = self.client
         self.client.drain_events = conn.drain_events
         return conn

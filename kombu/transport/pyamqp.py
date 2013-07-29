@@ -102,16 +102,18 @@ class Transport(base.Transport):
                 setattr(conninfo, name, default_value)
         if conninfo.hostname == 'localhost':
             conninfo.hostname = '127.0.0.1'
-        conn = self.Connection(host=conninfo.host,
-                               userid=conninfo.userid,
-                               password=conninfo.password,
-                               login_method=conninfo.login_method,
-                               virtual_host=conninfo.virtual_host,
-                               insist=conninfo.insist,
-                               ssl=conninfo.ssl,
-                               connect_timeout=conninfo.connect_timeout,
-                               heartbeat=conninfo.heartbeat,
-                               **conninfo.transport_options or {})
+        opts = dict({
+            'host': conninfo.host,
+            'userid': conninfo.userid,
+            'password': conninfo.password,
+            'login_method': conninfo.login_method,
+            'virtual_host': conninfo.virtual_host,
+            'insist': conninfo.insist,
+            'ssl': conninfo.ssl,
+            'connect_timeout': conninfo.connect_timeout,
+            'heartbeat': conninfo.heartbeat,
+        }, **conninfo.transport_options or {})
+        conn = self.Connection(**opts)
         conn.client = self.client
         return conn
 

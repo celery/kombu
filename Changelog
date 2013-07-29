@@ -19,6 +19,19 @@
         >>> from kombu import enable_insecure_serializers
         >>> enable_insecure_serializers()
 
+.. _version-2.5.12:
+
+2.5.12
+======
+:release-date: 2013-06-28 15:30 P.M BST
+
+- Redis: Ignore errors about keys missing in the round-robin cycle.
+
+- Fixed test suite errors on Python 3.
+
+- Fixed msgpack test failures.
+>>>>>>> 2.5
+
 .. _version-2.5.11:
 
 2.5.11
