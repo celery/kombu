@@ -5,12 +5,10 @@ import sys
 import codecs
 
 extra = {}
-is_py3k = sys.version_info[0] == 3
-if is_py3k:
-    extra.update(use_2to3=True)
+PY3 = sys.version_info[0] == 3
 
-if sys.version_info < (2, 4):
-    raise Exception('Kombu requires Python 2.4 or higher.')
+if sys.version_info < (2, 6):
+    raise Exception('Kombu requires Python 2.6 or higher.')
 
 try:
     from setuptools import setup
@@ -119,10 +117,7 @@ elif py_version[0:2] == (2, 5):
 
 # -*- Tests Requires -*-
 
-if is_py3k:
-    tests_require = reqs('test-py3k.txt')
-else:
-    tests_require = reqs('test.txt')
+tests_require = reqs('test3.txt' if PY3 else 'test.txt')
 
 setup(
     name='kombu',
@@ -144,9 +139,10 @@ setup(
         'Operating System :: OS Independent',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.3',
+        'Programming Language :: Python :: 3.2',
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 2.6',
-        'Programming Language :: Python :: 2.5',
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: Implementation :: CPython',
         'Programming Language :: Python :: Implementation :: PyPy',

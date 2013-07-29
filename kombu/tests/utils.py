@@ -1,22 +1,28 @@
 from __future__ import absolute_import
 
-import __builtin__
 import os
 import sys
 import types
 
 from functools import wraps
-from StringIO import StringIO
 
 import mock
 
 from nose import SkipTest
+
+from kombu.five import builtins, string_t, StringIO
+from kombu.utils.encoding import ensure_bytes
 
 try:
     import unittest
     unittest.skip
 except AttributeError:
     import unittest2 as unittest  # noqa
+
+PY3 = sys.version_info[0] == 3
+
+patch = mock.patch
+call = mock.call
 
 
 class TestCase(unittest.TestCase):
@@ -35,13 +41,27 @@ class Mock(mock.Mock):
             setattr(self, attr_name, attr_value)
 
 
-class ContextMock(Mock):
+class _ContextMock(Mock):
+    """Dummy class implementing __enter__ and __exit__
+    as the with statement requires these to be implemented
+    in the class, not just the instance."""
 
     def __enter__(self):
-        return self
+        pass
 
     def __exit__(self, *exc_info):
         pass
+
+
+def ContextMock(*args, **kwargs):
+    obj = _ContextMock(*args, **kwargs)
+    obj.attach_mock(Mock(), '__enter__')
+    obj.attach_mock(Mock(), '__exit__')
+    obj.__enter__.return_value = obj
+    # if __exit__ return a value the exception is ignored,
+    # so it must return None here.
+    obj.__exit__.return_value = None
+    return obj
 
 
 class MockPool(object):
@@ -76,7 +96,9 @@ def module_exists(*modules):
         @wraps(fun)
         def __inner(*args, **kwargs):
             for module in modules:
-                if isinstance(module, basestring):
+                if isinstance(module, string_t):
+                    if not PY3:
+                        module = ensure_bytes(module)
                     module = types.ModuleType(module)
                 sys.modules[module.__name__] = module
                 try:
@@ -95,7 +117,7 @@ def mask_modules(*modnames):
 
         @wraps(fun)
         def __inner(*args, **kwargs):
-            realimport = __builtin__.__import__
+            realimport = builtins.__import__
 
             def myimp(name, *args, **kwargs):
                 if name in modnames:
@@ -103,11 +125,11 @@ def mask_modules(*modnames):
                 else:
                     return realimport(name, *args, **kwargs)
 
-            __builtin__.__import__ = myimp
+            builtins.__import__ = myimp
             try:
                 return fun(*args, **kwargs)
             finally:
-                __builtin__.__import__ = realimport
+                builtins.__import__ = realimport
 
         return __inner
     return _inner

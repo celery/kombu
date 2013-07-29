@@ -6,11 +6,11 @@ Logical Clocks and Synchronization.
 
 """
 from __future__ import absolute_import
-from __future__ import with_statement
 
-import threading
+from itertools import islice
+from threading import Lock
 
-from itertools import islice, izip
+from .five import zip
 
 __all__ = ['LamportClock']
 
@@ -56,7 +56,7 @@ class LamportClock(object):
 
     def __init__(self, initial_value=0):
         self.value = initial_value
-        self.mutex = threading.Lock()
+        self.mutex = Lock()
 
     def adjust(self, other):
         with self.mutex:
@@ -83,7 +83,7 @@ class LamportClock(object):
         """
         if h[0][0] == h[1][0]:
             same = []
-            for PN in izip(h, islice(h, 1, None)):
+            for PN in zip(h, islice(h, 1, None)):
                 if PN[0][0] != PN[1][0]:
                     break  # Prev and Next's clocks differ
                 same.append(PN[0])
@@ -96,4 +96,4 @@ class LamportClock(object):
         return str(self.value)
 
     def __repr__(self):
-        return '<LamportClock: %r>' % (self.value, )
+        return '<LamportClock: {0.value}>'.format(self)

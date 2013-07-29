@@ -9,10 +9,17 @@ from __future__ import absolute_import
 
 from kombu.compression import decompress
 from kombu.exceptions import MessageStateError
+from kombu.five import text_t
 from kombu.serialization import decode
 from kombu.utils import cached_property
 
 ACKNOWLEDGED_STATES = frozenset(['ACK', 'REJECTED', 'REQUEUED'])
+
+
+def _LeftBlank(obj, method):
+    return NotImplementedError(
+        'Transport {0.__module__}.{0.__name__} does not implement {1}'.format(
+            obj.__class__, method))
 
 
 class StdChannel(object):
@@ -27,8 +34,7 @@ class StdChannel(object):
         return Producer(self, *args, **kwargs)
 
     def get_bindings(self):
-        raise NotImplementedError('%r does not implement list_bindings' % (
-            self.__class__, ))
+        raise _LeftBlank(self, 'get_bindings')
 
     def after_reply_message_received(self, queue):
         """reply queue semantics: can be used to delete the queue
@@ -69,7 +75,7 @@ class Message(object):
             body = decompress(body, self.headers['compression'])
         except KeyError:
             pass
-        if postencode and isinstance(body, unicode):
+        if postencode and isinstance(body, text_t):
             body = body.encode(postencode)
         self.body = body
 
@@ -91,21 +97,22 @@ class Message(object):
                     return
         if self.acknowledged:
             raise self.MessageStateError(
-                'Message already acknowledged with state: %s' % self._state)
+                'Message already acknowledged with state: {0._state}'.format(
+                    self))
         self.channel.basic_ack(self.delivery_tag)
         self._state = 'ACK'
 
     def ack_log_error(self, logger, errors):
         try:
             self.ack()
-        except errors, exc:
+        except errors as exc:
             logger.critical("Couldn't ack %r, reason:%r",
                             self.delivery_tag, exc, exc_info=True)
 
     def reject_log_error(self, logger, errors):
         try:
             self.reject()
-        except errors, exc:
+        except errors as exc:
             logger.critical("Couldn't ack %r, reason: %r",
                             self.delivery_tag, exc, exc_info=True)
 
@@ -120,7 +127,8 @@ class Message(object):
         """
         if self.acknowledged:
             raise self.MessageStateError(
-                'Message already acknowledged with state: %s' % self._state)
+                'Message already acknowledged with state: {0._state}'.format(
+                    self))
         self.channel.basic_reject(self.delivery_tag, requeue=False)
         self._state = 'REJECTED'
 
@@ -136,7 +144,8 @@ class Message(object):
         """
         if self.acknowledged:
             raise self.MessageStateError(
-                'Message already acknowledged with state: %s' % self._state)
+                'Message already acknowledged with state: {0._state}'.format(
+                    self))
         self.channel.basic_reject(self.delivery_tag, requeue=True)
         self._state = 'REQUEUED'
 
@@ -165,8 +174,7 @@ class Management(object):
         self.transport = transport
 
     def get_bindings(self):
-        raise NotImplementedError(
-            'Your transport does not implement list_bindings')
+        raise _LeftBlank(self, 'get_bindings')
 
 
 class Transport(object):
@@ -208,19 +216,19 @@ class Transport(object):
         self.client = client
 
     def establish_connection(self):
-        raise NotImplementedError('Subclass responsibility')
+        raise _LeftBlank(self, 'establish_connection')
 
     def close_connection(self, connection):
-        raise NotImplementedError('Subclass responsibility')
+        raise _LeftBlank(self, 'close_connection')
 
     def create_channel(self, connection):
-        raise NotImplementedError('Subclass responsibility')
+        raise _LeftBlank(self, 'create_channel')
 
     def close_channel(self, connection):
-        raise NotImplementedError('Subclass responsibility')
+        raise _LeftBlank(self, 'close_channel')
 
     def drain_events(self, connection, **kwargs):
-        raise NotImplementedError('Subclass responsibility')
+        raise _LeftBlank(self, 'drain_events')
 
     def heartbeat_check(self, connection, rate=2):
         pass
@@ -237,7 +245,7 @@ class Transport(object):
         pass
 
     def on_poll_start(self):
-        raise NotImplementedError('transport: no eventloop support')
+        raise _LeftBlank(self, 'on_poll_start')
 
     def on_poll_empty(self):
         pass

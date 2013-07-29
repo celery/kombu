@@ -2,8 +2,6 @@
 Example receiving a message using the SimpleQueue interface.
 """
 
-from __future__ import with_statement
-
 from kombu import Connection
 
 #: Create connection

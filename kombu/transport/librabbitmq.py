@@ -23,6 +23,7 @@ except ImportError:
         raise ImportError("No module named librabbitmq")
 
 from kombu.exceptions import StdConnectionError, StdChannelError
+from kombu.five import items
 from kombu.utils.amq_manager import get_manager
 
 from . import base
@@ -100,19 +101,22 @@ class Transport(base.Transport):
     def establish_connection(self):
         """Establish connection to the AMQP broker."""
         conninfo = self.client
-        for name, default_value in self.default_connection_params.items():
+        for name, default_value in items(self.default_connection_params):
             if not getattr(conninfo, name, None):
                 setattr(conninfo, name, default_value)
         if conninfo.ssl:
             raise NotImplementedError(NO_SSL_ERROR)
-        conn = self.Connection(host=conninfo.host,
-                               userid=conninfo.userid,
-                               password=conninfo.password,
-                               virtual_host=conninfo.virtual_host,
-                               login_method=conninfo.login_method,
-                               insist=conninfo.insist,
-                               ssl=conninfo.ssl,
-                               connect_timeout=conninfo.connect_timeout)
+        opts = dict({
+            'host': conninfo.host,
+            'userid': conninfo.userid,
+            'password': conninfo.password,
+            'virtual_host': conninfo.virtual_host,
+            'login_method': conninfo.login_method,
+            'insist': conninfo.insist,
+            'ssl': conninfo.ssl,
+            'connect_timeout': conninfo.connect_timeout,
+        }, **conninfo.transport_options or {})
+        conn = self.Connection(**opts)
         conn.client = self.client
         self.client.drain_events = conn.drain_events
         return conn

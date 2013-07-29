@@ -4,7 +4,7 @@
  kombu - Messaging Framework for Python
 ========================================
 
-:Version: 2.5.10
+:Version: 3.0.0a1
 
 `Kombu` is a messaging framework for Python.
 
@@ -32,7 +32,8 @@ Features
 
     * Virtual transports makes it really easy to add support for non-AMQP
       transports.  There is already built-in support for `Redis`_,
-      `Beanstalk`_, `Amazon SQS`_, `CouchDB`_, `MongoDB`_ and `ZooKeeper`_.
+      `Beanstalk`_, `Amazon SQS`_, `CouchDB`_, `MongoDB`_ and `ZooKeeper`_,
+      `SoftLayer MQ`_.
 
     * You can also use the SQLAlchemy and Django ORM transports to
       use a database as the broker.
@@ -73,6 +74,7 @@ and the `Wikipedia article about AMQP`_.
 .. _`Wikipedia article about AMQP`: http://en.wikipedia.org/wiki/AMQP
 .. _`carrot`: http://pypi.python.org/pypi/carrot/
 .. _`librabbitmq`: http://pypi.python.org/pypi/librabbitmq
+.. _`SoftLayer Message Queue`: http://www.softlayer.com/services/additional/message-queue
 
 
 .. _transport-comparison:
@@ -102,6 +104,8 @@ Transport Comparison
 | *django*      | Virtual  | Yes        | Yes [#f1]_ | No            |
 +---------------+----------+------------+------------+---------------+
 | *sqlalchemy*  | Virtual  | Yes        | Yes [#f1]_ | No            |
++---------------+----------+------------+------------+---------------+
+| *SLMQ*        | Virtual  | Yes        | Yes [#f1]_ | No            |
 +---------------+----------+------------+------------+---------------+
 
 

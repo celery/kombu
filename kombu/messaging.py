@@ -9,9 +9,10 @@ from __future__ import absolute_import
 
 from itertools import count
 
+from .compression import compress
 from .connection import maybe_channel, is_connection
 from .entity import Exchange, Queue, DELIVERY_MODES
-from .compression import compress
+from .five import int_types, text_t, values
 from .serialization import encode, registry
 from .utils import ChannelPromise, maybe_list
 
@@ -82,6 +83,9 @@ class Producer(object):
         if self._channel:
             self.revive(self._channel)
 
+    def __repr__(self):
+        return '<Producer: {0.channel}>'.format(self)
+
     def __reduce__(self):
         return self.__class__, self.__reduce_args__()
 
@@ -148,7 +152,7 @@ class Producer(object):
             exchange = exchange.name
         else:
             delivery_mode = delivery_mode or self.exchange.delivery_mode
-        if not isinstance(delivery_mode, (int, long)):
+        if not isinstance(delivery_mode, int_types):
             delivery_mode = DELIVERY_MODES[delivery_mode]
         properties['delivery_mode'] = delivery_mode
 
@@ -234,7 +238,7 @@ class Producer(object):
         else:
             # If the programmer doesn't want us to serialize,
             # make sure content_encoding is set.
-            if isinstance(body, unicode):
+            if isinstance(body, text_t):
                 if not content_encoding:
                     content_encoding = 'utf-8'
                 body = body.encode(content_encoding)
@@ -331,7 +335,7 @@ class Consumer(object):
     #: in which case only json is allowed.
     accept = None
 
-    _next_tag = count(1).next   # global
+    _tags = count(1)   # global
 
     def __init__(self, channel, queues=None, no_ack=None, auto_declare=None,
                  callbacks=None, on_decode_error=None, on_message=None,
@@ -452,7 +456,7 @@ class Consumer(object):
 
         """
         cancel = self.channel.basic_cancel
-        for tag in self._active_tags.itervalues():
+        for tag in values(self._active_tags):
             cancel(tag)
         self._active_tags.clear()
     close = cancel
@@ -569,7 +573,7 @@ class Consumer(object):
         return tag
 
     def _add_tag(self, queue, consumer_tag=None):
-        tag = consumer_tag or str(self._next_tag())
+        tag = consumer_tag or str(next(self._tags))
         self._active_tags[queue.name] = tag
         return tag
 
@@ -583,7 +587,7 @@ class Consumer(object):
             if m2p:
                 message = m2p(message)
             decoded = None if on_m else message.decode()
-        except Exception, exc:
+        except Exception as exc:
             if not self.on_decode_error:
                 raise
             self.on_decode_error(message, exc)
@@ -591,7 +595,7 @@ class Consumer(object):
             return on_m(message) if on_m else self.receive(decoded, message)
 
     def __repr__(self):
-        return '<Consumer: %s>' % (self.queues, )
+        return '<Consumer: {0.queues}>'.format(self)
 
     @property
     def connection(self):

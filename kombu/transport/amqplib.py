@@ -24,6 +24,7 @@ from amqplib.client_0_8.exceptions import AMQPConnectionException
 from amqplib.client_0_8.exceptions import AMQPChannelException
 
 from kombu.exceptions import StdConnectionError, StdChannelError
+from kombu.five import items
 from kombu.utils.encoding import str_to_bytes
 from kombu.utils.amq_manager import get_manager
 
@@ -55,7 +56,7 @@ class TCPTransport(transport.TCPTransport):
         while len(self._read_buffer) < n:
             try:
                 s = self.sock.recv(65536)
-            except socket.error, exc:
+            except socket.error as exc:
                 if not initial and exc.errno in (errno.EAGAIN, errno.EINTR):
                     continue
                 raise
@@ -104,7 +105,7 @@ class SSLTransport(transport.SSLTransport):
         while len(result) < n:
             try:
                 s = self.sslobj.read(n - len(result))
-            except socket.error, exc:
+            except socket.error as exc:
                 if not initial and exc.errno in (errno.EAGAIN, errno.EINTR):
                     continue
                 raise
@@ -188,7 +189,7 @@ class Connection(amqp.Connection):  # pragma: no cover
         try:
             try:
                 return self.method_reader.read_method()
-            except SSLError, exc:
+            except SSLError as exc:
                 # http://bugs.python.org/issue10272
                 if 'timed out' in str(exc):
                     raise socket.timeout()
@@ -201,7 +202,7 @@ class Connection(amqp.Connection):  # pragma: no cover
                 sock.settimeout(prev)
 
     def _wait_multiple(self, channels, allowed_methods, timeout=None):
-        for channel_id, channel in channels.iteritems():
+        for channel_id, channel in items(channels):
             method_queue = channel.method_queue
             for queued_method in method_queue:
                 method_sig = queued_method[0]
@@ -330,7 +331,7 @@ class Transport(base.Transport):
     def establish_connection(self):
         """Establish connection to the AMQP broker."""
         conninfo = self.client
-        for name, default_value in self.default_connection_params.items():
+        for name, default_value in items(self.default_connection_params):
             if not getattr(conninfo, name, None):
                 setattr(conninfo, name, default_value)
         if conninfo.hostname == 'localhost':

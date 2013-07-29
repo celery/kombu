@@ -1,15 +1,14 @@
 """Kombu transport using the Django database as a message store."""
 from __future__ import absolute_import
 
-from Queue import Empty
-
 from anyjson import loads, dumps
 
 from django.conf import settings
 from django.core import exceptions as errors
 
-from kombu.transport import virtual
 from kombu.exceptions import StdConnectionError, StdChannelError
+from kombu.five import Empty
+from kombu.transport import virtual
 
 from .models import Queue
 

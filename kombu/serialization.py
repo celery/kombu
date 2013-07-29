@@ -19,6 +19,7 @@ except ImportError:  # pragma: no cover
     cpickle = None  # noqa
 
 from .exceptions import SerializerNotInstalled, ContentDisallowed
+from .five import BytesIO, text_t
 from .utils import entrypoints
 from .utils.encoding import str_to_bytes, bytes_t
 
@@ -52,17 +53,6 @@ else:
     pickle = cpickle or pypickle
     pickle_load = pickle.load
     pickle_loads = pickle.loads
-
-
-# cPickle.loads does not support buffer() objects,
-# but we can just create a StringIO and use load.
-if sys.version_info[0] == 3:
-    from io import BytesIO
-else:
-    try:
-        from cStringIO import StringIO as BytesIO  # noqa
-    except ImportError:
-        from StringIO import StringIO as BytesIO  # noqa
 
 #: Kombu requires Python 2.5 or later so we use protocol 2 by default.
 #: There's a new protocol (3) but this is only supported by Python 3.
@@ -119,7 +109,7 @@ class SerializerRegistry(object):
             self.name_to_type.pop(name, None)
         except KeyError:
             raise SerializerNotInstalled(
-                'No encoder/decoder installed for %s' % name)
+                'No encoder/decoder installed for {0}'.format(name))
 
     def _set_default_serializer(self, name):
         """
@@ -137,14 +127,14 @@ class SerializerRegistry(object):
              self._default_encode) = self._encoders[name]
         except KeyError:
             raise SerializerNotInstalled(
-                'No encoder installed for %s' % name)
+                'No encoder installed for {0}'.format(name))
 
     def encode(self, data, serializer=None):
         if serializer == 'raw':
             return raw_encode(data)
         if serializer and not self._encoders.get(serializer):
             raise SerializerNotInstalled(
-                'No encoder installed for %s' % serializer)
+                'No encoder installed for {0}'.format(serializer))
 
         # If a raw string was sent, assume binary encoding
         # (it's likely either ASCII or a raw binary file, and a character
@@ -155,7 +145,7 @@ class SerializerRegistry(object):
             return 'application/data', 'binary', data
 
         # For Unicode objects, force it into a string
-        if not serializer and isinstance(data, unicode):
+        if not serializer and isinstance(data, text_t):
             payload = data.encode('utf-8')
             return 'text/plain', 'utf-8', payload
 
@@ -186,16 +176,16 @@ class SerializerRegistry(object):
             if decode:
                 return decode(data)
             if content_encoding not in SKIP_DECODE and \
-                    not isinstance(data, unicode):
+                    not isinstance(data, text_t):
                 return _decode(data, content_encoding)
         return data
 
     def _for_untrusted_content(self, ctype, why):
         return ContentDisallowed(
-            'Refusing to decode %(why)s content of type %(type)s' % {
-                'why': why,
-                'type': parenthesize_alias(self.type_to_name[ctype], ctype),
-            },
+            'Refusing to decode {0} content of type {1}'.format(
+                why,
+                parenthesize_alias(self.type_to_name.get(ctype, ctype), ctype),
+            ),
         )
 
 
@@ -297,7 +287,7 @@ def raw_encode(data):
     """Special case serializer."""
     content_type = 'application/data'
     payload = data
-    if isinstance(payload, unicode):
+    if isinstance(payload, text_t):
         content_encoding = 'utf-8'
         payload = payload.encode(content_encoding)
     else:
@@ -440,6 +430,10 @@ def disable_insecure_serializers(allowed=['json']):
     if allowed is not None:
         for name in allowed:
             registry.enable(name)
+
+
+# Insecure serializers are disabled by default since v3.0
+disable_insecure_serializers()
 
 # Load entrypoints from installed extensions
 for ep, args in entrypoints('kombu.serializers'):

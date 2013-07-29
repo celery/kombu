@@ -6,14 +6,12 @@ Redis transport.
 
 """
 from __future__ import absolute_import
-from __future__ import with_statement
 
 import socket
 
 from bisect import bisect
 from contextlib import contextmanager
 from time import time
-from Queue import Empty
 
 from anyjson import loads, dumps
 
@@ -23,13 +21,15 @@ from kombu.exceptions import (
     StdChannelError,
     VersionMismatch,
 )
+from kombu.five import Empty, values
 from kombu.log import get_logger
 from kombu.utils import cached_property, uuid
 from kombu.utils.eventio import poll, READ, ERR
+from kombu.utils.encoding import bytes_to_str
 
 NO_ROUTE_ERROR = """
-Cannot route message for exchange %r: Table empty or key no longer exists.
-Probably the key (%r) has been removed from the Redis database.
+Cannot route message for exchange {0!r}: Table empty or key no longer exists.
+Probably the key ({1!r}) has been removed from the Redis database.
 """
 
 try:
@@ -203,7 +203,7 @@ class MultiChannelPoller(object):
         self.poller = poll()
 
     def close(self):
-        for fd in self._chan_to_sock.itervalues():
+        for fd in values(self._chan_to_sock):
             try:
                 self.poller.unregister(fd)
             except (KeyError, ValueError):
@@ -486,9 +486,9 @@ class Channel(virtual.Channel):
                 raise Empty()
             if dest__item:
                 dest, item = dest__item
-                dest = dest.rsplit(self.sep, 1)[0]
+                dest = bytes_to_str(dest).rsplit(self.sep, 1)[0]
                 self._rotate_cycle(dest)
-                return loads(item), dest
+                return loads(bytes_to_str(item)), dest
             else:
                 raise Empty()
         finally:
@@ -577,8 +577,8 @@ class Channel(virtual.Channel):
         with self.conn_or_acquire() as client:
             values = client.smembers(key)
             if not values:
-                raise InconsistencyError(NO_ROUTE_ERROR % (exchange, key))
-            return [tuple(val.split(self.sep)) for val in values]
+                raise InconsistencyError(NO_ROUTE_ERROR.format(exchange, key))
+            return [tuple(bytes_to_str(val).split(self.sep)) for val in values]
 
     def _purge(self, queue):
         with self.conn_or_acquire() as client:
@@ -622,12 +622,19 @@ class Channel(virtual.Channel):
             except ValueError:
                 raise ValueError(
                     'Database name must be int between 0 and limit - 1')
-        return {'host': conninfo.hostname or '127.0.0.1',
-                'port': conninfo.port or DEFAULT_PORT,
-                'db': database,
-                'password': conninfo.password,
-                'max_connections': self.max_connections,
-                'socket_timeout': self.socket_timeout}
+        connparams = {'host': conninfo.hostname or '127.0.0.1',
+                      'port': conninfo.port or DEFAULT_PORT,
+                      'db': database,
+                      'password': conninfo.password,
+                      'max_connections': self.max_connections,
+                      'socket_timeout': self.socket_timeout}
+        if conninfo.hostname.split('://')[0] == 'socket':
+            connparams.update({
+                'connection_class': redis.UnixDomainSocketConnection,
+                'path': conninfo.hostname.split('://')[1]})
+            connparams.pop('host', None)
+            connparams.pop('port', None)
+        return connparams
 
     def _create_client(self):
         return self.Client(connection_pool=self.pool)
@@ -639,7 +646,7 @@ class Channel(virtual.Channel):
         if redis.VERSION < (2, 4, 4):
             raise VersionMismatch(
                 'Redis transport requires redis-py versions 2.4.4 or later. '
-                'You have %r' % (redis.__version__, ))
+                'You have {0.__version__}'.format(redis))
 
         # KombuRedis maintains a connection attribute on it's instance and
         # uses that when executing commands
@@ -707,11 +714,12 @@ class Channel(virtual.Channel):
         return self._queue_cycle[0:active]
 
     def _rotate_cycle(self, used):
-        """
-        Move most recently used queue to end of list
-        """
-        index = self._queue_cycle.index(used)
-        self._queue_cycle.append(self._queue_cycle.pop(index))
+        """Move most recently used queue to end of list."""
+        cycle = self._queue_cycle
+        try:
+            cycle.append(cycle.pop(cycle.index(used)))
+        except ValueError:
+            pass
 
     def _get_response_error(self):
         from redis import exceptions
@@ -765,7 +773,7 @@ class Transport(virtual.Transport):
             message, queue = item
             if not queue or queue not in self._callbacks:
                 raise KeyError(
-                    "Received message for queue '%s' without consumers: %s" % (
+                    'Message for queue {0!r} without consumers: {1}'.format(
                         queue, message))
             self._callbacks[queue](message)
 

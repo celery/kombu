@@ -6,7 +6,6 @@ Common Utilities.
 
 """
 from __future__ import absolute_import
-from __future__ import with_statement
 
 import os
 import socket
@@ -21,17 +20,18 @@ from itertools import count
 from . import serialization
 from .entity import Exchange, Queue
 from .exceptions import StdChannelError
+from .five import range
 from .log import get_logger
 from .messaging import Consumer as _Consumer
 from .utils import uuid
 
 try:
-    from thread import get_ident            # noqa
-except ImportError:                         # pragma: no cover
-    try:
-        from dummy_thread import get_ident  # noqa
-    except ImportError:                     # pragma: no cover
-        from _thread import get_ident       # noqa
+    from _thread import get_ident
+except ImportError:                             # pragma: no cover
+    try:                                        # noqa
+        from thread import get_ident            # noqa
+    except ImportError:                         # pragma: no cover
+        from dummy_thread import get_ident      # noqa
 
 __all__ = ['Broadcast', 'maybe_declare', 'uuid',
            'itermessages', 'send_reply', 'isend_reply',
@@ -161,7 +161,7 @@ def eventloop(conn, limit=None, timeout=None, ignore_timeouts=False):
         consumers, that yields any messages received.
 
     """
-    for i in limit and xrange(limit) or count():
+    for i in limit and range(limit) or count():
         try:
             yield conn.drain_events(timeout=timeout)
         except socket.timeout:

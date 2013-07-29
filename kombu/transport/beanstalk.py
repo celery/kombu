@@ -14,9 +14,9 @@ import beanstalkc
 import socket
 
 from anyjson import loads, dumps
-from Queue import Empty
 
 from kombu.exceptions import StdConnectionError, StdChannelError
+from kombu.five import Empty
 
 from . import virtual
 

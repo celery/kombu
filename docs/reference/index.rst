@@ -53,7 +53,6 @@
     kombu.utils.debug
     kombu.utils.encoding
     kombu.utils.functional
-    kombu.utils.finalize
     kombu.utils.url
     kombu.utils.text
     kombu.utils.amq_manager

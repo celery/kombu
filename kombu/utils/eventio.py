@@ -64,7 +64,7 @@ class Poller(object):
     def poll(self, timeout):
         try:
             return self._poll(timeout)
-        except Exception, exc:
+        except Exception as exc:
             if get_errno(exc) != errno.EINTR:
                 raise
 
@@ -77,7 +77,7 @@ class _epoll(Poller):
     def register(self, fd, events):
         try:
             self._epoll.register(fd, events)
-        except Exception, exc:
+        except Exception as exc:
             if get_errno(exc) != errno.EEXIST:
                 raise
 
@@ -86,7 +86,7 @@ class _epoll(Poller):
             self._epoll.unregister(fd)
         except (socket.error, ValueError, KeyError):
             pass
-        except (IOError, OSError), exc:
+        except (IOError, OSError) as exc:
             if get_errno(exc) != errno.ENOENT:
                 raise
 
@@ -172,7 +172,7 @@ class _kqueue(Poller):
                 file_changes.append(k)
         if file_changes:
             self.on_file_change(file_changes)
-        return events.items()
+        return list(events.items())
 
     def close(self):
         self._kqueue.close()
@@ -198,7 +198,7 @@ class _select(Poller):
         for fd in self._rfd | self._wfd | self._efd:
             try:
                 _selectf([fd], [], [], 0)
-            except (_selecterr, socket.error), exc:
+            except (_selecterr, socket.error) as exc:
                 if get_errno(exc) in SELECT_BAD_FD:
                     self.unregister(fd)
 
@@ -212,7 +212,7 @@ class _select(Poller):
             read, write, error = _selectf(
                 self._rfd, self._wfd, self._efd, timeout,
             )
-        except (_selecterr, socket.error), exc:
+        except (_selecterr, socket.error) as exc:
             if get_errno(exc) == errno.EINTR:
                 return
             elif get_errno(exc) in SELECT_BAD_FD:
@@ -232,7 +232,7 @@ class _select(Poller):
             if not isinstance(fd, int):
                 fd = fd.fileno()
             events[fd] = events.get(fd, 0) | ERR
-        return events.items()
+        return list(events.items())
 
     def close(self):
         pass
@@ -247,7 +247,7 @@ def _get_poller():
         return _epoll
     elif kqueue:
         # Py2.6+ on BSD / Darwin
-        return _kqueue
+        return _select  # was: _kqueue
     else:
         return _select
 

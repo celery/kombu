@@ -11,9 +11,6 @@ import errno
 import os
 import socket
 
-from cPickle import loads, dumps
-from Queue import Empty
-
 try:
     import zmq
     from zmq import ZMQError
@@ -21,7 +18,9 @@ except ImportError:
     zmq = ZMQError = None  # noqa
 
 from kombu.exceptions import StdConnectionError, StdChannelError
+from kombu.five import Empty
 from kombu.log import get_logger
+from kombu.serialization import pickle
 from kombu.utils import cached_property
 from kombu.utils.eventio import poll, READ
 
@@ -32,6 +31,8 @@ logger = get_logger('kombu.transport.zmq')
 DEFAULT_PORT = 5555
 DEFAULT_HWM = 128
 DEFAULT_INCR = 1
+
+dumps, loads = pickle.dumps, pickle.loads
 
 
 class MultiChannelPoller(object):
@@ -90,6 +91,7 @@ class MultiChannelPoller(object):
 
 
 class Client(object):
+
     def __init__(self, uri='tcp://127.0.0.1', port=DEFAULT_PORT,
                  hwm=DEFAULT_HWM, swap_size=None, enable_sink=True,
                  context=None):
@@ -99,6 +101,7 @@ class Client(object):
             scheme = 'tcp'
             parts = uri
         endpoints = parts.split(';')
+        self.port = port
 
         if scheme != 'tcp':
             raise NotImplementedError('Currently only TCP can be used')
@@ -107,7 +110,7 @@ class Client(object):
 
         if enable_sink:
             self.sink = self.context.socket(zmq.PULL)
-            self.sink.bind('tcp://*:%s' % port)
+            self.sink.bind('tcp://*:{0.port}'.format(self))
         else:
             self.sink = None
 
@@ -135,9 +138,9 @@ class Client(object):
     def get(self, queue=None, timeout=None):
         try:
             return self.sink.recv(flags=zmq.NOBLOCK)
-        except ZMQError, e:
-            if e.errno == zmq.EAGAIN:
-                raise socket.error(errno.EAGAIN, e.strerror)
+        except ZMQError as exc:
+            if exc.errno == zmq.EAGAIN:
+                raise socket.error(errno.EAGAIN, exc.strerror)
             else:
                 raise
 
@@ -183,7 +186,7 @@ class Channel(virtual.Channel):
     def _get(self, queue, timeout=None):
         try:
             return loads(self.client.get(queue, timeout))
-        except socket.error, exc:
+        except socket.error as exc:
             if exc.errno == errno.EAGAIN and timeout != 0:
                 raise Empty()
             else:
@@ -265,8 +268,8 @@ class Transport(virtual.Transport):
         for channel in connection.channels:
             try:
                 evt = channel.cycle.get(timeout=timeout)
-            except socket.error, e:
-                if e.errno == errno.EAGAIN:
+            except socket.error as exc:
+                if exc.errno == errno.EAGAIN:
                     continue
                 raise
             else:
@@ -280,7 +283,7 @@ class Transport(virtual.Transport):
         message, queue = item
         if not queue or queue not in self._callbacks:
             raise KeyError(
-                "Received message for queue '%s' without consumers: %s" % (
+                'Message for queue {0!r} without consumers: {1}'.format(
                     queue, message))
         self._callbacks[queue](message)
 

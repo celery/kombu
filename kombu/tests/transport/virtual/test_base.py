@@ -1,5 +1,4 @@
 from __future__ import absolute_import
-from __future__ import with_statement
 
 import warnings
 
@@ -11,7 +10,6 @@ from kombu.transport import virtual
 from kombu.utils import uuid
 from kombu.compression import compress
 
-from kombu.tests.compat import catch_warnings
 from kombu.tests.utils import TestCase
 from kombu.tests.utils import Mock, redirect_stdouts
 
@@ -67,7 +65,7 @@ class test_QoS(TestCase):
         self.q.append(i + 1, uuid())
         self.assertFalse(self.q.can_consume())
 
-        tag1 = iter(self.q._delivered).next()
+        tag1 = next(iter(self.q._delivered))
         self.q.ack(tag1)
         self.assertTrue(self.q.can_consume())
 
@@ -380,7 +378,7 @@ class test_Channel(TestCase):
         exc = None
         try:
             raise KeyError()
-        except KeyError, exc_:
+        except KeyError as exc_:
             exc = exc_
         ru.return_value = [(exc, 1)]
 
@@ -411,7 +409,7 @@ class test_Channel(TestCase):
 
     def test_lookup__undeliverable(self, n='test_lookup__undeliverable'):
         warnings.resetwarnings()
-        with catch_warnings(record=True) as log:
+        with warnings.catch_warnings(record=True) as log:
             self.assertListEqual(
                 self.channel._lookup(n, n, 'ae.undeliver'),
                 ['ae.undeliver'],

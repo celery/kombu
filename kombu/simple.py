@@ -11,11 +11,11 @@ import socket
 
 from collections import deque
 from time import time
-from Queue import Empty
 
 from . import entity
 from . import messaging
 from .connection import maybe_channel
+from .five import Empty
 
 __all__ = ['SimpleQueue', 'SimpleBuffer']
 
@@ -93,8 +93,9 @@ class SimpleBase(object):
         """`len(self) -> self.qsize()`"""
         return self.qsize()
 
-    def __nonzero__(self):
+    def __bool__(self):
         return True
+    __nonzero__ = __bool__
 
 
 class SimpleQueue(SimpleBase):

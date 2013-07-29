@@ -10,8 +10,6 @@ MongoDB transport.
 """
 from __future__ import absolute_import
 
-from Queue import Empty
-
 import pymongo
 
 from pymongo import errors
@@ -19,6 +17,7 @@ from anyjson import loads, dumps
 from pymongo.connection import Connection
 
 from kombu.exceptions import StdConnectionError, StdChannelError
+from kombu.five import Empty
 
 from . import virtual
 
@@ -49,7 +48,7 @@ class Channel(virtual.Channel):
     def _get(self, queue):
         try:
             if queue in self._fanout_queues:
-                msg = self._queue_cursors[queue].next()
+                msg = next(self._queue_cursors[queue])
                 self._queue_readcounts[queue] += 1
                 return loads(msg['payload'])
             else:
@@ -58,7 +57,7 @@ class Channel(virtual.Channel):
                     query={'queue': queue},
                     sort={'_id': pymongo.ASCENDING}, remove=True,
                 )
-        except errors.OperationFailure, exc:
+        except errors.OperationFailure as exc:
             if 'No matching object found' in exc.args[0]:
                 raise Empty()
             raise
@@ -127,8 +126,8 @@ class Channel(virtual.Channel):
         version = mongoconn.server_info()['version']
         if tuple(map(int, version.split('.')[:2])) < (1, 3):
             raise NotImplementedError(
-                'Kombu requires MongoDB version 1.3+, but connected to %s' % (
-                    version, ))
+                'Kombu requires MongoDB version 1.3+ (server is {0})'.format(
+                    version))
 
         self.db = database
         col = database.messages

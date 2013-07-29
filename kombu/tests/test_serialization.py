@@ -1,9 +1,11 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
-from __future__ import with_statement
+from __future__ import unicode_literals
 
 import sys
+
+from base64 import b64decode
 
 from kombu.serialization import (registry, register, SerializerNotInstalled,
                                  raw_encode, register_yaml, register_msgpack,
@@ -14,9 +16,9 @@ from .utils import TestCase
 from .utils import mask_modules, skip_if_not_module
 
 # For content_encoding tests
-unicode_string = u'abcdé\u8463'
+unicode_string = 'abcdé\u8463'
 unicode_string_as_utf8 = unicode_string.encode('utf-8')
-latin_string = u'abcdé'
+latin_string = 'abcdé'
 latin_string_as_latin1 = latin_string.encode('latin-1')
 latin_string_as_utf8 = latin_string.encode('utf-8')
 
@@ -26,7 +28,7 @@ py_data = {
     'string': 'The quick brown fox jumps over the lazy dog',
     'int': 10,
     'float': 3.14159265,
-    'unicode': u'Thé quick brown fox jumps over thé lazy dog',
+    'unicode': 'Thé quick brown fox jumps over thé lazy dog',
     'list': ['george', 'jerry', 'elaine', 'cosmo'],
 }
 
@@ -54,15 +56,14 @@ unicode: "Th\\xE9 quick brown fox jumps over th\\xE9 lazy dog"
 
 msgpack_py_data = dict(py_data)
 # msgpack only supports tuples
-msgpack_py_data['list'] = tuple(msgpack_py_data['list'])
+#msgpack_py_data['list'] = msgpack_py_data['list']
 # Unicode chars are lost in transmit :(
 msgpack_py_data['unicode'] = 'Th quick brown fox jumps over th lazy dog'
-msgpack_data = """\
-\x85\xa3int\n\xa5float\xcb@\t!\xfbS\xc8\xd4\xf1\xa4list\
-\x94\xa6george\xa5jerry\xa6elaine\xa5cosmo\xa6string\xda\
-\x00+The quick brown fox jumps over the lazy dog\xa7unicode\
-\xda\x00)Th quick brown fox jumps over th lazy dog\
-"""
+msgpack_data = b64decode("""\
+haNpbnQKpWZsb2F0y0AJIftTyNTxpGxpc3SUpmdlb3JnZaVqZXJyeaZlbGFpbmWlY29zbW+mc3Rya\
+W5n2gArVGhlIHF1aWNrIGJyb3duIGZveCBqdW1wcyBvdmVyIHRoZSBsYXp5IGRvZ6d1bmljb2Rl2g\
+ApVGggcXVpY2sgYnJvd24gZm94IGp1bXBzIG92ZXIgdGggbGF6eSBkb2c=\
+""")
 
 
 def say(m):

@@ -260,6 +260,9 @@ class Exchange(MaybeChannelBound):
                                             if_unused=if_unused,
                                             nowait=nowait)
 
+    def binding(self, routing_key='', arguments=None, unbind_arguments=None):
+        return binding(self, routing_key, arguments, unbind_arguments)
+
     def __eq__(self, other):
         if isinstance(other, Exchange):
             return (self.name == other.name and
@@ -268,7 +271,10 @@ class Exchange(MaybeChannelBound):
                     self.durable == other.durable and
                     self.auto_delete == other.auto_delete and
                     self.delivery_mode == other.delivery_mode)
-        return False
+        return NotImplemented
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
     def __repr__(self):
         return super(Exchange, self).__repr__(str(self))
@@ -639,7 +645,10 @@ class Queue(MaybeChannelBound):
                     self.durable == other.durable and
                     self.exclusive == other.exclusive and
                     self.auto_delete == other.auto_delete)
-        return False
+        return NotImplemented
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
     def __repr__(self):
         s = super(Queue, self).__repr__

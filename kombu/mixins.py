@@ -6,15 +6,16 @@ Useful mixin classes.
 
 """
 from __future__ import absolute_import
-from __future__ import with_statement
 
 import socket
 
 from contextlib import contextmanager
 from functools import partial
 from itertools import count
+from time import sleep
 
 from .common import ignore_errors
+from .five import range
 from .messaging import Consumer
 from .log import get_logger
 from .utils import cached_property, nested
@@ -56,7 +57,7 @@ class ConsumerMixin(object):
                                  callback=[self.on_task])]
 
             def on_task(self, body, message):
-                print('Got task: %r' % (body, ))
+                print('Got task: {0!r}'.format(body))
                 message.ack()
 
     **Additional handler methods**:
@@ -158,12 +159,14 @@ class ConsumerMixin(object):
     def extra_context(self, connection, channel):
         yield
 
-    def run(self):
+    def run(self, _tokens=1):
         while not self.should_stop:
             try:
-                if self.restart_limit.can_consume(1):
+                if self.restart_limit.can_consume(_tokens):
                     for _ in self.consume(limit=None):
                         pass
+                else:
+                    sleep(self.restart_limit.expected_time(_tokens))
             except self.connection.connection_errors:
                 warn('Connection to broker lost. '
                      'Trying to re-establish the connection...')
@@ -173,7 +176,7 @@ class ConsumerMixin(object):
         with self.Consumer() as (connection, channel, consumers):
             with self.extra_context(connection, channel):
                 self.on_consume_ready(connection, channel, consumers, **kwargs)
-                for i in limit and xrange(limit) or count():
+                for i in limit and range(limit) or count():
                     if self.should_stop:
                         break
                     self.on_iteration()

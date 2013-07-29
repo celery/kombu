@@ -7,6 +7,8 @@ import sys
 
 from kombu.exceptions import VersionMismatch
 
+os.environ['KOMBU_UNITTEST'] = '1'
+
 # avoid json implementation inconsistencies.
 try:
     import json  # noqa
@@ -25,9 +27,12 @@ def teardown():
     except (AttributeError, ImportError):
         pass
 
-    atexit._exithandlers[:] = [
-        e for e in atexit._exithandlers if e[0] not in cancelled
-    ]
+    try:
+        atexit._exithandlers[:] = [
+            e for e in atexit._exithandlers if e[0] not in cancelled
+        ]
+    except AttributeError:  # pragma: no cover
+        pass  # Py3 missing _exithandlers
 
 
 def find_distribution_modules(name=__name__, file=__file__):

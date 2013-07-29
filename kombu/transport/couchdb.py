@@ -10,14 +10,13 @@ CouchDB transport.
 """
 from __future__ import absolute_import
 
-from Queue import Empty
-
 import socket
 import couchdb
 
 from anyjson import loads, dumps
 
 from kombu.exceptions import StdConnectionError, StdChannelError
+from kombu.five import Empty
 from kombu.utils import uuid4
 
 from . import virtual

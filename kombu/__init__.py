@@ -1,7 +1,7 @@
 """Messaging Framework for Python"""
 from __future__ import absolute_import
 
-VERSION = (2, 5, 10)
+VERSION = (3, 0, 0, 'a1')
 __version__ = '.'.join(map(str, VERSION[0:3])) + ''.join(VERSION[3:])
 __author__ = 'Ask Solem'
 __contact__ = 'ask@celeryproject.org'
@@ -54,7 +54,7 @@ all_by_module = {
 }
 
 object_origins = {}
-for module, items in all_by_module.iteritems():
+for module, items in all_by_module.items():
     for item in items:
         object_origins[item] = module
 

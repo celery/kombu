@@ -9,9 +9,11 @@ from __future__ import absolute_import
 
 import os
 
+from collections import Callable
 from itertools import chain
 
 from .connection import Resource
+from .five import range, values
 from .messaging import Producer
 from .utils import EqualityDict
 from .utils.functional import promise
@@ -49,14 +51,14 @@ class ProducerPool(Resource):
 
     def setup(self):
         if self.limit:
-            for _ in xrange(self.limit):
+            for _ in range(self.limit):
                 self._resource.put_nowait(self.new())
 
     def close_resource(self, resource):
         pass
 
     def prepare(self, p):
-        if callable(p):
+        if isinstance(p, Callable):
             p = p()
         if p._channel is None:
             conn = self._acquire_connection()
@@ -112,7 +114,7 @@ producers = register_group(Producers(limit=use_global_limit))
 
 
 def _all_pools():
-    return chain(*[(g.itervalues() if g else iter([])) for g in _groups])
+    return chain(*[(values(g) if g else iter([])) for g in _groups])
 
 
 def get_limit():

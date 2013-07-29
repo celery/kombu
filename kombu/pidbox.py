@@ -6,7 +6,6 @@ Generic process mailbox.
 
 """
 from __future__ import absolute_import
-from __future__ import with_statement
 
 import socket
 import warnings
@@ -21,7 +20,9 @@ from . import Exchange, Queue, Consumer, Producer
 from .clocks import LamportClock
 from .common import maybe_declare, oid_from
 from .exceptions import InconsistencyError
-from .utils import cached_property, kwdict, uuid
+from .five import range
+from .log import get_logger
+from .utils import cached_property, kwdict, uuid, reprcall
 
 REPLY_QUEUE_EXPIRES = 10
 
@@ -34,6 +35,8 @@ you give each node a unique node name!
 """
 
 __all__ = ['Node', 'Mailbox']
+logger = get_logger(__name__)
+debug, error = logger.debug, logger.error
 
 
 class Node(object):
@@ -90,12 +93,15 @@ class Node(object):
     def dispatch(self, method, arguments=None,
                  reply_to=None, ticket=None, **kwargs):
         arguments = arguments or {}
+        debug('pidbox received method %s [reply_to:%s ticket:%s]',
+              reprcall(method, (), kwargs=arguments), reply_to, ticket)
         handle = reply_to and self.handle_call or self.handle_cast
         try:
             reply = handle(method, kwdict(arguments))
         except SystemExit:
             raise
-        except Exception, exc:
+        except Exception as exc:
+            error('pidbox command error: %r', exc, exc_info=1)
             reply = {'error': repr(exc)}
 
         if reply_to:
@@ -251,8 +257,8 @@ class Mailbox(object):
         if destination is not None and \
                 not isinstance(destination, (list, tuple)):
             raise ValueError(
-                'destination must be a list/tuple not %s' % (
-                    type(destination), ))
+                'destination must be a list/tuple not {0}'.format(
+                    type(destination)))
 
         arguments = arguments or {}
         reply_ticket = reply and uuid() or None

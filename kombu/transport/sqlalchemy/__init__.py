@@ -2,13 +2,14 @@
 # SQLAlchemy overrides != False to have special meaning and pep8 complains
 # flake8: noqa
 
-from Queue import Empty
+from __future__ import absolute_import
 
 from anyjson import loads, dumps
 from sqlalchemy import create_engine
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
 
+from kombu.five import Empty
 from kombu.transport import virtual
 from kombu.exceptions import StdConnectionError, StdChannelError
 from kombu.utils import cached_property

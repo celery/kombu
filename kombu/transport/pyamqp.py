@@ -14,6 +14,7 @@ from kombu.exceptions import (
     StdChannelError,
     VersionMismatch,
 )
+from kombu.five import items
 from kombu.utils.amq_manager import get_manager
 
 from . import base
@@ -73,16 +74,19 @@ class Transport(base.Transport):
         (StdConnectionError, ) + amqp.Connection.connection_errors
     )
     channel_errors = (StdChannelError, ) + amqp.Connection.channel_errors
+    recoverable_connection_errors = \
+        amqp.Connection.recoverable_connection_errors
+    recoverable_channel_errors = amqp.Connection.recoverable_channel_errors
 
     nb_keep_draining = True
-    driver_name = "py-amqp"
-    driver_type = "amqp"
+    driver_name = 'py-amqp'
+    driver_type = 'amqp'
     supports_heartbeats = True
     supports_ev = True
 
     def __init__(self, client, **kwargs):
         self.client = client
-        self.default_port = kwargs.get("default_port") or self.default_port
+        self.default_port = kwargs.get('default_port') or self.default_port
 
     def create_channel(self, connection):
         return connection.channel()
@@ -93,20 +97,23 @@ class Transport(base.Transport):
     def establish_connection(self):
         """Establish connection to the AMQP broker."""
         conninfo = self.client
-        for name, default_value in self.default_connection_params.items():
+        for name, default_value in items(self.default_connection_params):
             if not getattr(conninfo, name, None):
                 setattr(conninfo, name, default_value)
         if conninfo.hostname == 'localhost':
             conninfo.hostname = '127.0.0.1'
-        conn = self.Connection(host=conninfo.host,
-                               userid=conninfo.userid,
-                               password=conninfo.password,
-                               login_method=conninfo.login_method,
-                               virtual_host=conninfo.virtual_host,
-                               insist=conninfo.insist,
-                               ssl=conninfo.ssl,
-                               connect_timeout=conninfo.connect_timeout,
-                               heartbeat=conninfo.heartbeat)
+        opts = dict({
+            'host': conninfo.host,
+            'userid': conninfo.userid,
+            'password': conninfo.password,
+            'login_method': conninfo.login_method,
+            'virtual_host': conninfo.virtual_host,
+            'insist': conninfo.insist,
+            'ssl': conninfo.ssl,
+            'connect_timeout': conninfo.connect_timeout,
+            'heartbeat': conninfo.heartbeat,
+        }, **conninfo.transport_options or {})
+        conn = self.Connection(**opts)
         conn.client = self.client
         return conn
 

@@ -33,6 +33,23 @@
 
         .. autoattribute:: client
         .. autoattribute:: default_port
+
+        .. attribute:: recoverable_connection_errors
+
+            Optional list of connection related exceptions that can be
+            recovered from, but where the connection must be closed
+            and re-established first.
+
+            If not defined then all :attr:`connection_errors` and
+            :class:`channel_errors` will be regarded as recoverable,
+            but needing to close the connection first.
+
+        .. attribute:: recoverable_channel_errors
+
+            Optional list of channel related exceptions that can be
+            automatically recovered from without re-establishing the
+            connection.
+
         .. autoattribute:: connection_errors
         .. autoattribute:: channel_errors
 

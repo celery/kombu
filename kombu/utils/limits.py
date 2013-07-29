@@ -5,6 +5,8 @@ kombu.utils.limits
 Token bucket implementation for rate limiting.
 
 """
+from __future__ import absolute_import
+
 import time
 
 __all__ = ['TokenBucket']

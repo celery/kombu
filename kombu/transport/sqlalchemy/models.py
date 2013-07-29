@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 import datetime
 
 from sqlalchemy import (Column, Integer, String, Text, DateTime,
@@ -22,7 +24,7 @@ class Queue(object):
         self.name = name
 
     def __str__(self):
-        return '<Queue(%s)>' % (self.name)
+        return '<Queue({self.name})>'.format(self=self)
 
     @declared_attr
     def messages(cls):
@@ -47,10 +49,7 @@ class Message(object):
         self.queue = queue
 
     def __str__(self):
-        return '<Message(%s, %s, %s, %s)>' % (self.visible,
-                                              self.sent_at,
-                                              self.payload,
-                                              self.queue_id)
+        return '<Message: {0.sent_at} {0.payload} {0.queue_id}>'.format(self)
 
     @declared_attr
     def queue_id(self):

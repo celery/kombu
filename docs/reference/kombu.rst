@@ -29,6 +29,8 @@
 
             .. autoattribute:: default_channel
             .. autoattribute:: connected
+            .. autoattribute:: recoverable_connection_errors
+            .. autoattribute:: recoverable_channel_errors
             .. autoattribute:: connection_errors
             .. autoattribute:: channel_errors
             .. autoattribute:: transport
@@ -128,7 +130,7 @@
 
     .. code-block:: python
 
-        >>> bound_sicence_news.declare()
+        >>> bound_science_news.declare()
         >>> bound_science_news.purge()
         >>> bound_science_news.delete()
 
