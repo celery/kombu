@@ -167,7 +167,7 @@ class ConsumerMixin(object):
                         pass
                 else:
                     sleep(self.restart_limit.expected_time(_tokens))
-            except self.connection.connection_errors:
+            except self.connection.connection_errors + self.connection.channel_errors:
                 warn('Connection to broker lost. '
                      'Trying to re-establish the connection...')
 
