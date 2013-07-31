@@ -13,6 +13,7 @@ import socket
 from contextlib import contextmanager
 from functools import partial
 from itertools import count
+from time import sleep
 
 from .common import ignore_errors
 from .messaging import Consumer
@@ -164,7 +165,9 @@ class ConsumerMixin(object):
                 if self.restart_limit.can_consume(1):
                     for _ in self.consume(limit=None):
                         pass
-            except self.connection.connection_errors:
+                else:
+                    sleep(self.restart_limit.expected_time(_tokens))
+            except self.connection.connection_errors + self.connection.channel_errors:
                 warn('Connection to broker lost. '
                      'Trying to re-establish the connection...')
 
