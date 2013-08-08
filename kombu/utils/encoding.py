@@ -94,7 +94,7 @@ def _safe_str(s, errors='replace'):
     encoding = default_encoding()
     try:
         if isinstance(s, unicode):
-            return s.encode(encoding, errors)
+            return s
         return unicode(s, encoding, errors)
     except Exception, exc:
         return '<Unrepresentable %r: %r %r>' % (
