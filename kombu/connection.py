@@ -451,7 +451,9 @@ class Connection(object):
             got_connection = 0
             conn_errors = self.recoverable_connection_errors
             chan_errors = self.recoverable_channel_errors
-            has_modern_errors = self.transport.recoverable_connection_errors
+            has_modern_errors = hasattr(
+                self.transport, 'recoverable_connection_errors',
+            )
             for retries in count(0):  # for infinity
                 try:
                     return fun(*args, **kwargs)
