@@ -159,15 +159,18 @@ class ConsumerMixin(object):
     def extra_context(self, connection, channel):
         yield
 
-    def run(self):
+    def run(self, _tokens=1):
+        restart_limit = self.restart_limit
+        errors = (self.connection.connection_errors +
+                  self.connection.channel_errors)
         while not self.should_stop:
             try:
-                if self.restart_limit.can_consume(1):
+                if restart_limit.can_consume(_tokens):
                     for _ in self.consume(limit=None):
                         pass
                 else:
-                    sleep(self.restart_limit.expected_time(_tokens))
-            except self.connection.connection_errors + self.connection.channel_errors:
+                    sleep(restart_limit.expected_time(_tokens))
+            except errors:
                 warn('Connection to broker lost. '
                      'Trying to re-establish the connection...')
 
