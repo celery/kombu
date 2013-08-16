@@ -8,7 +8,7 @@
 
 2.5.13
 ======
-:release-date: 2013-08-16 15:30 P.M BST
+:release-date: 2013-08-16 16:00 P.M BST
 
 - Now depends on :mod:`amqp` 1.0.13
 
@@ -25,6 +25,10 @@
   and merged back into setuptools.
 
     Fix contributed by Sascha Peilicke.
+
+- ConsumerMixin now also restarts on channel related errors.
+
+    Fix contributed by Corentin Ardeois.
 
 .. _version-2.5.12:
 
