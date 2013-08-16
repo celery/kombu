@@ -12,6 +12,15 @@
 
 - Now depends on :mod:`amqp` 1.0.13
 
+- Fixed typo in Django functional tests.
+
+- safe_str now returns unicode in Python 2.x
+
+    Fix contributed by Germán M. Bravo.
+
+- amqp: Transport options are now merged with arguments
+  supplied to the connection.
+
 .. _version-2.5.12:
 
 2.5.12
