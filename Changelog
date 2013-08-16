@@ -14,12 +14,17 @@
 
 - Fixed typo in Django functional tests.
 
-- safe_str now returns unicode in Python 2.x
+- safe_str now returns Unicode in Python 2.x
 
     Fix contributed by Germán M. Bravo.
 
 - amqp: Transport options are now merged with arguments
   supplied to the connection.
+
+- Tests no longer depends on distribute, which was deprecated
+  and merged back into setuptools.
+
+    Fix contributed by Sascha Peilicke.
 
 .. _version-2.5.12:
 
