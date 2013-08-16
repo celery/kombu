@@ -8,7 +8,7 @@ from contextlib import contextmanager
 from mock import patch
 from nose import SkipTest
 
-from kombu.utils.encoding import safe_str
+from kombu.utils.encoding import safe_str, str_t
 
 from kombu.tests.utils import TestCase
 
@@ -64,12 +64,12 @@ class test_safe_str(TestCase):
         self.assertEqual(safe_str('foo'), 'foo')
 
     def test_when_unicode(self):
-        self.assertIsInstance(safe_str(u'foo'), str)
+        self.assertIsInstance(safe_str(u'foo'), str_t)
 
     def test_when_containing_high_chars(self):
         s = u'The quiæk fåx jømps øver the lazy dåg'
         res = safe_str(s)
-        self.assertIsInstance(res, str)
+        self.assertIsInstance(res, str_t)
 
     def test_when_not_string(self):
         o = object()
