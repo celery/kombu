@@ -4,6 +4,14 @@
  Change history
 ================
 
+.. _version-2.5.13:
+
+2.5.13
+======
+:release-date: 2013-08-16 15:30 P.M BST
+
+- Now depends on :mod:`amqp` 1.0.13
+
 .. _version-2.5.12:
 
 2.5.12
