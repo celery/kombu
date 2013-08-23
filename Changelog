@@ -4,6 +4,15 @@
  Change history
 ================
 
+.. _version-2.5.14:
+
+2.5.14
+======
+:release-date: 2014-08-23 17:00 P.M BST
+
+- safe_str did not work properly resulting in
+  :exc:`UnicodeDecodeError` (Issue #248).
+
 .. _version-2.5.13:
 
 2.5.13
