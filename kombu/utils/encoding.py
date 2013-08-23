@@ -22,7 +22,7 @@ if sys.platform.startswith('java'):  # pragma: no cover
 else:
 
     def default_encoding():       # noqa
-        return sys.getfilesystemencoding()
+        return sys.getdefaultencoding()
 
 if is_py3k:  # pragma: no cover
 
@@ -94,7 +94,7 @@ def _safe_str(s, errors='replace'):
     encoding = default_encoding()
     try:
         if isinstance(s, unicode):
-            return s
+            return s.encode(encoding, errors)
         return unicode(s, encoding, errors)
     except Exception, exc:
         return '<Unrepresentable %r: %r %r>' % (
