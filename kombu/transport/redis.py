@@ -460,8 +460,10 @@ class Channel(virtual.Channel):
         if response is not None:
             payload = self._handle_message(c, response)
             if bytes_to_str(payload['type']) == 'message':
-                return (loads(bytes_to_str(payload['data'])),
-                        self._fanout_to_queue[bytes_to_str(payload['channel'])])
+                return (
+                    loads(bytes_to_str(payload['data'])),
+                    self._fanout_to_queue[bytes_to_str(payload['channel'])],
+                )
         raise Empty()
 
     def _brpop_start(self, timeout=1):
