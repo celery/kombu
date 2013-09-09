@@ -8,6 +8,7 @@ Exchange and Queue declarations.
 from __future__ import absolute_import
 
 from .abstract import MaybeChannelBound
+from .serialization import prepare_accept_encoding
 
 TRANSIENT_DELIVERY_MODE = 1
 PERSISTENT_DELIVERY_MODE = 2
@@ -544,7 +545,7 @@ class Queue(MaybeChannelBound):
                                        arguments=arguments,
                                        nowait=nowait)
 
-    def get(self, no_ack=None):
+    def get(self, no_ack=None, accept=None):
         """Poll the server for a new message.
 
         Returns the message instance if a message was available,
@@ -561,6 +562,7 @@ class Queue(MaybeChannelBound):
         """
         no_ack = self.no_ack if no_ack is None else no_ack
         message = self.channel.basic_get(queue=self.name, no_ack=no_ack)
+        message.accept = prepare_accept_encoding(accept)
         if message is not None:
             m2p = getattr(self.channel, 'message_to_python', None)
             if m2p:
