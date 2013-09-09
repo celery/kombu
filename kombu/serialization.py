@@ -103,7 +103,7 @@ class SerializerRegistry(object):
     def enable(self, name):
         if '/' not in name:
             name = self.name_to_type[name]
-        self._disabled_content_types.remove(name)
+        self._disabled_content_types.discard(name)
 
     def disable(self, name):
         if '/' not in name:
@@ -444,3 +444,9 @@ def disable_insecure_serializers(allowed=['json']):
 # Load entrypoints from installed extensions
 for ep, args in entrypoints('kombu.serializers'):
     register(ep.name, *args)
+
+
+def prepare_accept_content(l, name_to_type=registry.name_to_type):
+    if l is not None:
+        return set(n if '/' in n else name_to_type[n] for n in l)
+    return l

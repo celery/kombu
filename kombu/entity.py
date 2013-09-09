@@ -8,6 +8,7 @@ Exchange and Queue declarations.
 from __future__ import absolute_import
 
 from .abstract import MaybeChannelBound
+from .serialization import prepare_accept_content
 
 TRANSIENT_DELIVERY_MODE = 1
 PERSISTENT_DELIVERY_MODE = 2
@@ -538,7 +539,7 @@ class Queue(MaybeChannelBound):
                                        arguments=arguments,
                                        nowait=nowait)
 
-    def get(self, no_ack=None):
+    def get(self, no_ack=None, accept=None):
         """Poll the server for a new message.
 
         Returns the message instance if a message was available,
@@ -546,6 +547,7 @@ class Queue(MaybeChannelBound):
 
         :keyword no_ack: If enabled the broker will automatically
             ack messages.
+        :keyword accept: Custom list of accepted content types.
 
         This method provides direct access to the messages in a
         queue using a synchronous dialogue, designed for
@@ -559,7 +561,8 @@ class Queue(MaybeChannelBound):
             m2p = getattr(self.channel, 'message_to_python', None)
             if m2p:
                 message = m2p(message)
-            return message
+            message.accept = prepare_accept_content(accept)
+        return message
 
     def purge(self, nowait=False):
         """Remove all ready messages from the queue."""
