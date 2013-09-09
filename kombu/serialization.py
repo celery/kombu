@@ -92,7 +92,7 @@ class SerializerRegistry(object):
     def enable(self, name):
         if '/' not in name:
             name = self.name_to_type[name]
-        self._disabled_content_types.remove(name)
+        self._disabled_content_types.discard(name)
 
     def disable(self, name):
         if '/' not in name:

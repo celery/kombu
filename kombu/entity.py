@@ -562,12 +562,12 @@ class Queue(MaybeChannelBound):
         """
         no_ack = self.no_ack if no_ack is None else no_ack
         message = self.channel.basic_get(queue=self.name, no_ack=no_ack)
-        message.accept = prepare_accept_encoding(accept)
         if message is not None:
+            message.accept = prepare_accept_encoding(accept)
             m2p = getattr(self.channel, 'message_to_python', None)
             if m2p:
                 message = m2p(message)
-            return message
+        return message
 
     def purge(self, nowait=False):
         """Remove all ready messages from the queue."""
