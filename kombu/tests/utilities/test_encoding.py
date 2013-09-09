@@ -27,16 +27,16 @@ def clean_encoding():
 
 class test_default_encoding(TestCase):
 
-    @patch('sys.getfilesystemencoding')
-    def test_default(self, getfilesystemencoding):
-        getfilesystemencoding.return_value = 'ascii'
+    @patch('sys.getdefaultencoding')
+    def test_default(self, getdefaultencoding):
+        getdefaultencoding.return_value = 'ascii'
         with clean_encoding() as encoding:
             enc = encoding.default_encoding()
             if sys.platform.startswith('java'):
                 self.assertEqual(enc, 'utf-8')
             else:
                 self.assertEqual(enc, 'ascii')
-                getfilesystemencoding.assert_called_with()
+                getdefaultencoding.assert_called_with()
 
 
 class test_encoding_utils(TestCase):

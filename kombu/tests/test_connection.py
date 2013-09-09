@@ -226,8 +226,8 @@ class test_Connection(TestCase):
                 self.assertEqual(c.hostname, 'mysql://some_host')
         finally:
             mod.URI_PASSTHROUGH = prev
-        c = Connection('amqp+sqlite://some_host')
-        self.assertTrue(c.as_uri().startswith('amqp+'))
+        c = Connection('pyamqp+sqlite://some_host')
+        self.assertTrue(c.as_uri().startswith('pyamqp+'))
 
     def test_default_ensure_callback(self):
         with patch('kombu.connection.logger') as logger:

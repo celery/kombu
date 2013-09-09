@@ -219,7 +219,8 @@ class test_Consumer(TestCase):
             callback_called[0] = True
 
         c.backend.to_deliver.append('42')
-        self.assertEqual(c.fetch().payload, '42')
+        payload = c.fetch().payload
+        self.assertEqual(payload, '42')
         c.backend.to_deliver.append('46')
         c.register_callback(receive)
         self.assertEqual(c.fetch(enable_callbacks=True).payload, '46')
