@@ -101,7 +101,7 @@ class SimpleBase(object):
 class SimpleQueue(SimpleBase):
     no_ack = False
     queue_opts = {}
-    exchange_opts = {}
+    exchange_opts = { 'type': 'direct' }
 
     def __init__(self, channel, name, no_ack=None, queue_opts=None,
                  exchange_opts=None, serializer=None,
@@ -112,7 +112,7 @@ class SimpleQueue(SimpleBase):
         if no_ack is None:
             no_ack = self.no_ack
         if not isinstance(queue, entity.Queue):
-            exchange = entity.Exchange(name, 'direct', **exchange_opts)
+            exchange = entity.Exchange(name, **exchange_opts)
             queue = entity.Queue(name, exchange, name, **queue_opts)
         else:
             name = queue.name
