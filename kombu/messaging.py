@@ -13,7 +13,7 @@ from .compression import compress
 from .connection import maybe_channel, is_connection
 from .entity import Exchange, Queue, DELIVERY_MODES
 from .five import int_types, text_t, values
-from .serialization import encode, registry, prepare_accept_encoding
+from .serialization import encode, registry, prepare_accept_content
 from .utils import ChannelPromise, maybe_list
 
 __all__ = ['Exchange', 'Queue', 'Producer', 'Consumer']
@@ -351,7 +351,7 @@ class Consumer(object):
             self.auto_declare = auto_declare
         if on_decode_error is not None:
             self.on_decode_error = on_decode_error
-        self.accept = prepare_accept_encoding(accept)
+        self.accept = prepare_accept_content(accept)
 
         if self.channel:
             self.revive(self.channel)

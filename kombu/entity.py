@@ -8,7 +8,7 @@ Exchange and Queue declarations.
 from __future__ import absolute_import
 
 from .abstract import MaybeChannelBound
-from .serialization import prepare_accept_encoding
+from .serialization import prepare_accept_content
 
 TRANSIENT_DELIVERY_MODE = 1
 PERSISTENT_DELIVERY_MODE = 2
@@ -566,7 +566,7 @@ class Queue(MaybeChannelBound):
             m2p = getattr(self.channel, 'message_to_python', None)
             if m2p:
                 message = m2p(message)
-            message.accept = prepare_accept_encoding(accept)
+            message.accept = prepare_accept_content(accept)
         return message
 
     def purge(self, nowait=False):

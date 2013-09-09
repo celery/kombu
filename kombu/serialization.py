@@ -439,7 +439,7 @@ for ep, args in entrypoints('kombu.serializers'):
     register(ep.name, *args)
 
 
-def prepare_accept_encoding(l, name_to_type=registry.name_to_type):
+def prepare_accept_content(l, name_to_type=registry.name_to_type):
     if l is not None:
         return set(n if '/' in n else name_to_type[n] for n in l)
     return l
