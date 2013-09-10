@@ -11,7 +11,7 @@ from kombu.serialization import (registry, register, SerializerNotInstalled,
                                  raw_encode, register_yaml, register_msgpack,
                                  decode, bytes_t, pickle, pickle_protocol,
                                  unregister, register_pickle)
-from kombu.utils.encoding import str_t
+from kombu.utils.encoding import str_t, str_to_bytes
 
 from .utils import TestCase
 from .utils import mask_modules, skip_if_not_module
@@ -58,11 +58,11 @@ unicode: "Th\\xE9 quick brown fox jumps over th\\xE9 lazy dog"
 msgpack_py_data = dict(py_data)
 # Unicode chars are lost in transmit :(
 msgpack_py_data['unicode'] = 'Th quick brown fox jumps over th lazy dog'
-msgpack_data = b64decode("""\
+msgpack_data = b64decode(str_to_bytes("""\
 haNpbnQKpWZsb2F0y0AJIftTyNTxpGxpc3SUpmdlb3JnZaVqZXJyeaZlbGFpbmWlY29zbW+mc3Rya\
 W5n2gArVGhlIHF1aWNrIGJyb3duIGZveCBqdW1wcyBvdmVyIHRoZSBsYXp5IGRvZ6d1bmljb2Rl2g\
 ApVGggcXVpY2sgYnJvd24gZm94IGp1bXBzIG92ZXIgdGggbGF6eSBkb2c=\
-""")
+"""))
 
 
 def say(m):
