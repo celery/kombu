@@ -373,7 +373,7 @@ def register_msgpack():
             'msgpack', dumps, loads,
             content_type='application/x-msgpack',
             content_encoding='binary')
-    except ImportError:
+    except (ImportError, ValueError):
 
         def not_available(*args, **kwargs):
             """In case a client receives a msgpack message, but yaml

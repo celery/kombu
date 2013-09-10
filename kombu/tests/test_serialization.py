@@ -178,7 +178,7 @@ class test_Serialization(TestCase):
             ),
         )
 
-    @skip_if_not_module('msgpack')
+    @skip_if_not_module('msgpack', (ImportError, ValueError))
     def test_msgpack_decode(self):
         register_msgpack()
         self.assertEqual(

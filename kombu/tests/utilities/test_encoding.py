@@ -8,7 +8,7 @@ from contextlib import contextmanager
 from mock import patch
 from nose import SkipTest
 
-from kombu.utils.encoding import bytes_t, safe_str, default_encoding
+from kombu.utils.encoding import safe_str, default_encoding
 
 from kombu.tests.utils import TestCase
 
@@ -72,7 +72,7 @@ class test_safe_str(TestCase):
         self.assertEqual(safe_str('foo'), 'foo')
 
     def test_when_unicode(self):
-        self.assertIsInstance(safe_str(u'foo'), bytes_t)
+        self.assertIsInstance(safe_str(u'foo'), str)
 
     def test_when_encoding_utf8(self):
         with patch('sys.getdefaultencoding') as encoding:
@@ -80,15 +80,14 @@ class test_safe_str(TestCase):
             self.assertEqual(default_encoding(), 'utf-8')
             s = u'The quiæk fåx jømps øver the lazy dåg'
             res = safe_str(s)
-            self.assertIsInstance(res, bytes_t)
-            self.assertGreater(len(res), len(s))
+            self.assertIsInstance(res, str)
 
     def test_when_containing_high_chars(self):
         with patch('sys.getdefaultencoding') as encoding:
             encoding.return_value = 'ascii'
             s = u'The quiæk fåx jømps øver the lazy dåg'
             res = safe_str(s)
-            self.assertIsInstance(res, bytes_t)
+            self.assertIsInstance(res, str)
             self.assertEqual(len(s), len(res))
 
     def test_when_not_string(self):

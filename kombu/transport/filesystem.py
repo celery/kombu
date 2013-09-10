@@ -20,6 +20,7 @@ import tempfile
 from . import virtual
 from kombu.exceptions import StdConnectionError, StdChannelError
 from kombu.utils import cached_property
+from kombu.utils.encoding import bytes_to_str, str_to_bytes
 
 VERSION = (1, 0, 0)
 __version__ = ".".join(map(str, VERSION))
@@ -72,7 +73,7 @@ class Channel(virtual.Channel):
         try:
             f = open(filename, 'wb')
             lock(f, LOCK_EX)
-            f.write(dumps(payload))
+            f.write(str_to_bytes(dumps(payload)))
         except (IOError, OSError):
             raise StdChannelError(
                 'Filename [%s] could not be placed into folder.' % filename)
@@ -116,7 +117,7 @@ class Channel(virtual.Channel):
                 raise StdChannelError(
                     'Filename [%s] could not be read from queue.' % filename)
 
-            return loads(payload)
+            return loads(bytes_to_str(payload))
 
         raise Empty()
 

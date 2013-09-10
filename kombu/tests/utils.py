@@ -144,13 +144,13 @@ def skip_if_module(module):
     return _wrap_test
 
 
-def skip_if_not_module(module):
+def skip_if_not_module(module, import_errors=(ImportError, )):
     def _wrap_test(fun):
         @wraps(fun)
         def _skip_if_not_module(*args, **kwargs):
             try:
                 __import__(module)
-            except ImportError:
+            except import_errors:
                 raise SkipTest('SKIP %s: %s available\n' % (
                     fun.__name__, module))
             return fun(*args, **kwargs)
