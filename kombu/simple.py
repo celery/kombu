@@ -101,7 +101,7 @@ class SimpleBase(object):
 class SimpleQueue(SimpleBase):
     no_ack = False
     queue_opts = {}
-    exchange_opts = { 'type': 'direct' }
+    exchange_opts = {'type': 'direct'}
 
     def __init__(self, channel, name, no_ack=None, queue_opts=None,
                  exchange_opts=None, serializer=None,
