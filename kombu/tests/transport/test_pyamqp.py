@@ -44,7 +44,7 @@ class test_Channel(TestCase):
                 pass
 
         self.conn = Mock()
-        self.conn._get_free_channel_id.side_effect = partial(next, count(0))
+        self.conn._get_free_channel_id.side_effect = count(0).next
         self.conn.channels = {}
         self.channel = Channel(self.conn, 0)
 
