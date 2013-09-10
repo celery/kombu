@@ -194,8 +194,8 @@ class test_Serialization(TestCase):
 
         # On Python 3.2 (or some msgpack versions maybe? lists are magically
         # transformed into tuples...
-        if res != msgpack_py_data:
-            res['list'] = tuple(res['list'])
+        if isinstance(res['list'], tuple):
+            msgpack_py_data['list'] = tuple(msgpack_py_data['list'])
         self.assertEqual(
             msgpack_py_data,
             res,
