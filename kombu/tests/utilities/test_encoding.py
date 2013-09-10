@@ -78,14 +78,14 @@ class test_safe_str(TestCase):
         with patch('sys.getdefaultencoding') as encoding:
             encoding.return_value = 'utf-8'
             self.assertEqual(default_encoding(), 'utf-8')
-            s = u'The quiæk fåx jømps øver the lazy dåg'
+            s = 'The quiæk fåx jømps øver the lazy dåg'
             res = safe_str(s)
             self.assertIsInstance(res, str)
 
     def test_when_containing_high_chars(self):
         with patch('sys.getdefaultencoding') as encoding:
             encoding.return_value = 'ascii'
-            s = u'The quiæk fåx jømps øver the lazy dåg'
+            s = 'The quiæk fåx jømps øver the lazy dåg'
             res = safe_str(s)
             self.assertIsInstance(res, str)
             self.assertEqual(len(s), len(res))
