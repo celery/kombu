@@ -11,6 +11,7 @@ from kombu.serialization import (registry, register, SerializerNotInstalled,
                                  raw_encode, register_yaml, register_msgpack,
                                  decode, bytes_t, pickle, pickle_protocol,
                                  unregister, register_pickle)
+from kombu.utils.encoding import str_t
 
 from .utils import TestCase
 from .utils import mask_modules, skip_if_not_module
@@ -181,11 +182,19 @@ class test_Serialization(TestCase):
     @skip_if_not_module('msgpack', (ImportError, ValueError))
     def test_msgpack_decode(self):
         register_msgpack()
+        res = registry.decode(msgpack_data,
+                              content_type='application/x-msgpack',
+                              content_encoding='binary')
+        if sys.version_info[0] < 3:
+            for k, v in res.items():
+                if isinstance(v, str_t):
+                    res[k] = v.encode()
+                if isinstance(v, (list, tuple)):
+                    res[k] = [i.encode() for i in v]
+        print('RES: %r' % (res, ))
         self.assertEqual(
             msgpack_py_data,
-            registry.decode(msgpack_data,
-                            content_type='application/x-msgpack',
-                            content_encoding='binary'),
+            res,
         )
 
     @skip_if_not_module('msgpack', (ImportError, ValueError))
