@@ -28,8 +28,8 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'Kombu'
-copyright = u'2009-2012, Ask Solem'
+project = 'Kombu'
+copyright = '2009-2012, Ask Solem'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -62,8 +62,8 @@ html_use_modindex = True
 html_use_index = True
 
 latex_documents = [
-    ('index', 'Kombu.tex', u'Kombu Documentation',
-     u'Ask Solem', 'manual'),
+    ('index', 'Kombu.tex', 'Kombu Documentation',
+     'Ask Solem', 'manual'),
 ]
 
 html_theme = "celery"

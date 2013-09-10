@@ -1,6 +1,7 @@
 from nose import SkipTest
 
 from kombu import Consumer, Producer, Exchange, Queue
+from kombu.five import range
 from kombu.utils import nested
 
 from funtests import transport
@@ -36,9 +37,9 @@ class test_mongodb(transport.TransportCase):
         consumer2 = Consumer(channel, self.q2)
         self.q2(channel).declare()
 
-        for i in xrange(10):
+        for i in range(10):
             producer.publish({'foo': i}, routing_key=name)
-        for i in xrange(10):
+        for i in range(10):
             producer.publish({'foo': i}, routing_key=name + '2')
 
         _received1 = []
@@ -64,7 +65,7 @@ class test_mongodb(transport.TransportCase):
         self.assertEqual(len(_received1) + len(_received2), 20)
 
         # queue.delete
-        for i in xrange(10):
+        for i in range(10):
             producer.publish({'foo': i}, routing_key=name)
         self.assertTrue(self.q(channel).get())
         self.q(channel).delete()
@@ -72,7 +73,7 @@ class test_mongodb(transport.TransportCase):
         self.assertIsNone(self.q(channel).get())
 
         # queue.purge
-        for i in xrange(10):
+        for i in range(10):
             producer.publish({'foo': i}, routing_key=name + '2')
         self.assertTrue(self.q2(channel).get())
         self.q2(channel).purge()

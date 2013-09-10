@@ -106,8 +106,11 @@ def strip_comments(l):
 
 
 def reqs(f):
-    return filter(None, [strip_comments(l) for l in open(
-        os.path.join(os.getcwd(), 'requirements', f)).readlines()])
+    return [
+        r for r in (
+            strip_comments(l) for l in open(
+                os.path.join(os.getcwd(), 'requirements', f)).readlines()
+        ) if r]
 
 install_requires = reqs('default.txt')
 if py_version[0:2] == (2, 6):

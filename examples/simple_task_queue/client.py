@@ -1,7 +1,7 @@
 from kombu.common import maybe_declare
 from kombu.pools import producers
 
-from queues import task_exchange
+from .queues import task_exchange
 
 priority_to_routing_key = {'high': 'hipri',
                            'mid': 'midpri',
@@ -22,7 +22,7 @@ def send_as_task(connection, fun, args=(), kwargs={}, priority='mid'):
 
 if __name__ == '__main__':
     from kombu import Connection
-    from tasks import hello_task
+    from .tasks import hello_task
 
     connection = Connection('amqp://guest:guest@localhost:5672//')
     send_as_task(connection, fun=hello_task, args=('Kombu', ), kwargs={},

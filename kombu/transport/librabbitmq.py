@@ -20,7 +20,7 @@ except ImportError:
         import pylibrabbitmq as amqp                             # noqa
         from pylibrabbitmq import ChannelError, ConnectionError  # noqa
     except ImportError:
-        raise ImportError("No module named librabbitmq")
+        raise ImportError('No module named librabbitmq')
 
 from kombu.exceptions import StdConnectionError, StdChannelError
 from kombu.five import items
@@ -128,7 +128,7 @@ class Transport(base.Transport):
 
     def _collect(self, connection):
         if connection is not None:
-            for channel in connection.channels.itervalues():
+            for channel in values(connection.channels):
                 channel.connection = None
             try:
                 os.close(connection.fileno())

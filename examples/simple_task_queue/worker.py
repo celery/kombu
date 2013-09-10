@@ -2,7 +2,7 @@ from kombu.mixins import ConsumerMixin
 from kombu.log import get_logger
 from kombu.utils import kwdict, reprcall
 
-from queues import task_queues
+from .queues import task_queues
 
 logger = get_logger(__name__)
 

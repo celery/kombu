@@ -8,8 +8,6 @@ message sent.
 """
 import eventlet
 
-from Queue import Empty
-
 from kombu import Connection
 
 eventlet.monkey_patch()
@@ -32,7 +30,7 @@ def wait_many(timeout=1):
             while True:
                 try:
                     message = queue.get(block=False, timeout=timeout)
-                except Empty:
+                except queue.Empty:
                     break
                 else:
                     message.ack()

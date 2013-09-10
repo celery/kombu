@@ -21,6 +21,7 @@ __all__ = ['SimpleQueue', 'SimpleBuffer']
 
 
 class SimpleBase(object):
+    Empty = Empty
     _consuming = False
 
     def __enter__(self):
@@ -52,14 +53,14 @@ class SimpleBase(object):
                 self.channel.connection.client.drain_events(
                     timeout=timeout and remaining)
             except socket.timeout:
-                raise Empty()
+                raise self.Empty()
             elapsed += time() - time_start
             remaining = timeout and timeout - elapsed or None
 
     def get_nowait(self):
         m = self.queue.get(no_ack=self.no_ack)
         if not m:
-            raise Empty()
+            raise self.Empty()
         return m
 
     def put(self, message, serializer=None, headers=None, compression=None,

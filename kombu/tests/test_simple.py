@@ -1,7 +1,6 @@
 from __future__ import absolute_import
 
 from kombu import Connection, Exchange, Queue
-from kombu.five import Empty
 
 from .utils import TestCase
 from .utils import Mock
@@ -41,7 +40,7 @@ class SimpleBase(TestCase):
         q.put({'hello': 'Simple'})
 
         self.assertEqual(q.get(timeout=1).payload, {'hello': 'Simple'})
-        with self.assertRaises(Empty):
+        with self.assertRaises(q.Empty):
             q.get(timeout=0.1)
 
     def test_produce__basic_get(self):
@@ -50,12 +49,12 @@ class SimpleBase(TestCase):
         q = self.Queue('test_produce__basic_get', no_ack=True)
         q.put({'hello': 'SimpleSync'})
         self.assertEqual(q.get_nowait().payload, {'hello': 'SimpleSync'})
-        with self.assertRaises(Empty):
+        with self.assertRaises(q.Empty):
             q.get_nowait()
 
         q.put({'hello': 'SimpleSync'})
         self.assertEqual(q.get(block=False).payload, {'hello': 'SimpleSync'})
-        with self.assertRaises(Empty):
+        with self.assertRaises(q.Empty):
             q.get(block=False)
 
     def test_clear(self):

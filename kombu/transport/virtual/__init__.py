@@ -21,7 +21,7 @@ from multiprocessing.util import Finalize
 from time import sleep, time
 
 from kombu.exceptions import ResourceError, StdChannelError
-from kombu.five import Empty
+from kombu.five import Empty, items
 from kombu.utils import emergency_dump_state, say, uuid
 from kombu.utils.compat import OrderedDict
 from kombu.utils.encoding import str_to_bytes, bytes_to_str
@@ -356,7 +356,7 @@ class Channel(AbstractChannel, base.StdChannel):
 
         # instantiate exchange types
         self.exchange_types = dict(
-            (typ, cls(self)) for typ, cls in self.exchange_types.items()
+            (typ, cls(self)) for typ, cls in items(self.exchange_types)
         )
 
         try:

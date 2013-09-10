@@ -31,7 +31,7 @@ def send_many(n):
                 queue.put({'hello': 'world%s' % (i, )})
 
             pool = eventlet.GreenPool(10)
-            for i in xrange(n):
+            for i in range(n):
                 pool.spawn(send_message, i)
             pool.waitall()
 

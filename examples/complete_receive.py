@@ -40,9 +40,9 @@ with Connection('pyamqp://guest:guest@localhost:5672//') as connection:
     #: any number of queues.
     with Consumer(connection, queue, callbacks=[handle_message]):
 
-        #: This waits for a single event.  Note that this event may not
-        #: be a message, or a message that is to be delivered to the consumers
-        #: channel, but any event received on the connection.
-        recv = eventloop(connection)
-        while True:
-            recv.next()
+        #: Each iteration waits for a single event.  Note that this
+        #: event may not be a message, or a message that is to be
+        #: delivered to the consumers channel, but any event received
+        #: on the connection.
+        for _ in eventloop(connection):
+            pass
