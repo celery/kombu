@@ -191,7 +191,11 @@ class test_Serialization(TestCase):
                     res[k] = v.encode()
                 if isinstance(v, (list, tuple)):
                     res[k] = [i.encode() for i in v]
-        print('RES: %r' % (res, ))
+
+        # On Python 3.2 (or some msgpack versions maybe? lists are magically
+        # transformed into tuples...
+        if res != msgpack_py_data:
+            res['list'] = tuple(res['list'])
         self.assertEqual(
             msgpack_py_data,
             res,
