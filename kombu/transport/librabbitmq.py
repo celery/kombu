@@ -23,7 +23,7 @@ except ImportError:
         raise ImportError('No module named librabbitmq')
 
 from kombu.exceptions import StdConnectionError, StdChannelError
-from kombu.five import items
+from kombu.five import items, values
 from kombu.utils.amq_manager import get_manager
 
 from . import base
