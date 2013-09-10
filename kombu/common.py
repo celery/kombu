@@ -144,7 +144,7 @@ def eventloop(conn, limit=None, timeout=None, ignore_timeouts=False):
         >>> from kombu.common import eventloop
 
         >>> it = eventloop(connection, timeout=1, ignore_timeouts=True)
-        >>> it.next()   # one event consumed, or timed out.
+        >>> next(it)   # one event consumed, or timed out.
 
         >>> for _ in eventloop(connection, timeout=1, ignore_timeouts=True):
         ...     pass  # loop forever.

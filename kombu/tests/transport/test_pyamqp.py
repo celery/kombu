@@ -14,6 +14,7 @@ except ImportError:
 else:
     from kombu.transport import pyamqp
 from kombu import Connection
+from kombu.five import nextfun
 
 from kombu.tests.utils import TestCase
 from kombu.tests.utils import mask_modules, Mock
@@ -44,7 +45,7 @@ class test_Channel(TestCase):
                 pass
 
         self.conn = Mock()
-        self.conn._get_free_channel_id.side_effect = count(0).next
+        self.conn._get_free_channel_id.side_effect = nextfun(count(0))
         self.conn.channels = {}
         self.channel = Channel(self.conn, 0)
 

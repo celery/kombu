@@ -195,6 +195,7 @@ class test_ConsumerMixin_interface(TestCase):
         conn = ContextMock(name='connection')
         self.c.connection = conn
         conn.connection_errors = (KeyError, )
+        conn.channel_errors = ()
         consume = self.c.consume = Mock(name='c.consume')
 
         def se(*args, **kwargs):
@@ -208,6 +209,7 @@ class test_ConsumerMixin_interface(TestCase):
         conn = ContextMock(name='connection')
         self.c.connection = conn
         conn.connection_errors = (KeyError, )
+        conn.channel_errors = ()
         consume = self.c.consume = Mock(name='c.consume')
         with patch('kombu.mixins.sleep') as sleep:
             counter = [0]
@@ -226,6 +228,7 @@ class test_ConsumerMixin_interface(TestCase):
         conn = ContextMock(name='connection')
         self.c.connection = conn
         conn.connection_errors = (KeyError, )
+        conn.channel_errors = ()
         consume = self.c.consume = Mock(name='c.consume')
 
         with patch('kombu.mixins.warn') as warn:

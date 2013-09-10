@@ -224,7 +224,7 @@ def retry_over_time(fun, catch, args=[], kwargs={}, errback=None,
             if callback:
                 callback()
             tts = (errback(exc, interval_range, retries) if errback
-                   else interval_range.next())
+                   else next(interval_range))
             if tts:
                 for i in range(int(tts / interval_step)):
                     if callback:

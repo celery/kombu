@@ -7,6 +7,7 @@ import sys
 
 from base64 import b64decode
 
+from kombu.five import text_t
 from kombu.serialization import (
     registry, register, SerializerNotInstalled,
     raw_encode, register_yaml, register_msgpack,
@@ -15,7 +16,6 @@ from kombu.serialization import (
 )
 from kombu.utils.encoding import str_to_bytes
 
-from .five import text_t
 from .utils import TestCase
 from .utils import mask_modules, skip_if_not_module
 

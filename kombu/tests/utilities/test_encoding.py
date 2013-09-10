@@ -9,7 +9,7 @@ from mock import patch
 from nose import SkipTest
 
 from kombu.five import bytes_t, string_t
-from kombu.utils.encoding import safe_str
+from kombu.utils.encoding import safe_str, default_encoding
 
 from kombu.tests.utils import TestCase
 
