@@ -60,16 +60,35 @@ class test_encoding_utils(TestCase):
 
 class test_safe_str(TestCase):
 
-    def test_when_str(self):
+    def setUp(self):
+        self._cencoding = patch('sys.getdefaultencoding')
+        self._encoding = self._cencoding.__enter__()
+        self._encoding.return_value = 'ascii'
+
+    def tearDown(self):
+        self._cencoding.__exit__()
+
+    def test_when_bytes(self):
         self.assertEqual(safe_str('foo'), 'foo')
 
     def test_when_unicode(self):
         self.assertIsInstance(safe_str('foo'), string_t)
 
+    def test_when_encoding_utf8(self):
+        with patch('sys.getdefaultencoding') as encoding:
+            encoding.return_value = 'utf-8'
+            self.assertEqual(default_encoding(), 'utf-8')
+            s = u'The quiæk fåx jømps øver the lazy dåg'
+            res = safe_str(s)
+            self.assertIsInstance(res, str)
+
     def test_when_containing_high_chars(self):
-        s = 'The quiæk fåx jømps øver the lazy dåg'
-        res = safe_str(s)
-        self.assertIsInstance(res, string_t)
+        with patch('sys.getdefaultencoding') as encoding:
+            encoding.return_value = 'ascii'
+            s = u'The quiæk fåx jømps øver the lazy dåg'
+            res = safe_str(s)
+            self.assertIsInstance(res, str)
+            self.assertEqual(len(s), len(res))
 
     def test_when_not_string(self):
         o = object()

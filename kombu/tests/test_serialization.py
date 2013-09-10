@@ -15,6 +15,7 @@ from kombu.serialization import (
 )
 from kombu.utils.encoding import str_to_bytes
 
+from .five import text_t
 from .utils import TestCase
 from .utils import mask_modules, skip_if_not_module
 
@@ -58,8 +59,6 @@ unicode: "Th\\xE9 quick brown fox jumps over th\\xE9 lazy dog"
 
 
 msgpack_py_data = dict(py_data)
-# msgpack only supports tuples
-#msgpack_py_data['list'] = msgpack_py_data['list']
 # Unicode chars are lost in transmit :(
 msgpack_py_data['unicode'] = 'Th quick brown fox jumps over th lazy dog'
 msgpack_data = b64decode(str_to_bytes("""\
@@ -183,17 +182,25 @@ class test_Serialization(TestCase):
             ),
         )
 
-    @skip_if_not_module('msgpack')
+    @skip_if_not_module('msgpack', (ImportError, ValueError))
     def test_msgpack_decode(self):
         register_msgpack()
+        res = registry.decode(msgpack_data,
+                              content_type='application/x-msgpack',
+                              content_encoding='binary')
+        if sys.version_info[0] < 3:
+            for k, v in res.items():
+                if isinstance(v, text_t):
+                    res[k] = v.encode()
+                if isinstance(v, (list, tuple)):
+                    res[k] = [i.encode() for i in v]
+        print('RES: %r' % (res, ))
         self.assertEqual(
             msgpack_py_data,
-            registry.decode(msgpack_data,
-                            content_type='application/x-msgpack',
-                            content_encoding='binary'),
+            res,
         )
 
-    @skip_if_not_module('msgpack')
+    @skip_if_not_module('msgpack', (ImportError, ValueError))
     def test_msgpack_encode(self):
         register_msgpack()
         self.assertEqual(

@@ -13,7 +13,7 @@ from .compression import compress
 from .connection import maybe_channel, is_connection
 from .entity import Exchange, Queue, DELIVERY_MODES
 from .five import int_types, text_t, values
-from .serialization import encode, registry, prepare_accept_content
+from .serialization import encode, prepare_accept_content
 from .utils import ChannelPromise, maybe_list
 
 __all__ = ['Exchange', 'Queue', 'Producer', 'Consumer']

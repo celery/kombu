@@ -553,6 +553,7 @@ class Queue(MaybeChannelBound):
 
         :keyword no_ack: If enabled the broker will automatically
             ack messages.
+        :keyword accept: Custom list of accepted content types.
 
         This method provides direct access to the messages in a
         queue using a synchronous dialogue, designed for

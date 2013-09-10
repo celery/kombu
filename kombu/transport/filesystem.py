@@ -19,7 +19,7 @@ from . import virtual
 from kombu.exceptions import StdConnectionError, StdChannelError
 from kombu.five import Empty
 from kombu.utils import cached_property
-from kombu.utils.encoding import str_to_bytes, bytes_to_str
+from kombu.utils.encoding import bytes_to_str, str_to_bytes
 
 VERSION = (1, 0, 0)
 __version__ = ".".join(map(str, VERSION))
@@ -72,7 +72,6 @@ class Channel(virtual.Channel):
         try:
             f = open(filename, 'wb')
             lock(f, LOCK_EX)
-            dumps(payload)
             f.write(str_to_bytes(dumps(payload)))
         except (IOError, OSError):
             raise StdChannelError(

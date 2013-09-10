@@ -88,6 +88,9 @@ class Transport(base.Transport):
         self.client = client
         self.default_port = kwargs.get('default_port') or self.default_port
 
+    def driver_version(self):
+        return amqp.__version__
+
     def create_channel(self, connection):
         return connection.channel()
 
