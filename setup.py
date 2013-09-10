@@ -120,7 +120,7 @@ elif py_version[0:2] == (2, 5):
 # -*- Tests Requires -*-
 
 if is_py3k:
-    tests_require = reqs('test-py3k.txt')
+    tests_require = reqs('test3.txt')
 else:
     tests_require = reqs('test.txt')
 
