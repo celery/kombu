@@ -3,7 +3,6 @@ from __future__ import with_statement
 
 import sys
 
-from functools import partial
 from mock import patch
 from nose import SkipTest
 from itertools import count
