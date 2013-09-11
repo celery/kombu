@@ -194,7 +194,6 @@ class test_Serialization(TestCase):
                     res[k] = v.encode()
                 if isinstance(v, (list, tuple)):
                     res[k] = [i.encode() for i in v]
-        print('RES: %r' % (res, ))
         self.assertEqual(
             msgpack_py_data,
             res,

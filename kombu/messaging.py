@@ -12,6 +12,7 @@ from itertools import count
 from .compression import compress
 from .connection import maybe_channel, is_connection
 from .entity import Exchange, Queue, DELIVERY_MODES
+from .exceptions import ContentDisallowed
 from .five import int_types, text_t, values
 from .serialization import encode, prepare_accept_content
 from .utils import ChannelPromise, maybe_list
@@ -273,6 +274,8 @@ class Consumer(object):
     :keyword on_decode_error: see :attr:`on_decode_error`.
 
     """
+    ContentDisallowed = ContentDisallowed
+
     #: The connection/channel to use for this consumer.
     channel = None
 

@@ -8,6 +8,7 @@ Exchange and Queue declarations.
 from __future__ import absolute_import
 
 from .abstract import MaybeChannelBound
+from .exceptions import ContentDisallowed
 from .serialization import prepare_accept_content
 
 TRANSIENT_DELIVERY_MODE = 1
@@ -434,6 +435,8 @@ class Queue(MaybeChannelBound):
         positional arguments: ``(name, messages, consumers)``.
 
     """
+    ContentDisallowed = ContentDisallowed
+
     name = ''
     exchange = Exchange('')
     routing_key = ''

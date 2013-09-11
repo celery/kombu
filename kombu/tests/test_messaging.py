@@ -256,6 +256,38 @@ class test_Consumer(TestCase):
         callback.assert_called_with(message)
         self.assertSetEqual(message.accept, c.accept)
 
+    def test_accept__content_disallowed(self):
+        conn = Connection('memory://')
+        q = Queue('foo', exchange=self.exchange)
+        p = conn.Producer()
+        p.publish(
+            {'complex': object()},
+            declare=[q], exchange=self.exchange, serializer='pickle',
+        )
+
+        callback = Mock(name='callback')
+        with conn.Consumer(queues=[q], callbacks=[callback]) as consumer:
+            with self.assertRaises(consumer.ContentDisallowed):
+                conn.drain_events(timeout=1)
+        self.assertFalse(callback.called)
+
+    def test_accept__content_allowed(self):
+        conn = Connection('memory://')
+        q = Queue('foo', exchange=self.exchange)
+        p = conn.Producer()
+        p.publish(
+            {'complex': object()},
+            declare=[q], exchange=self.exchange, serializer='pickle',
+        )
+
+        callback = Mock(name='callback')
+        with conn.Consumer(queues=[q], accept=['pickle'],
+                           callbacks=[callback]) as consumer:
+            conn.drain_events(timeout=1)
+        self.assertTrue(callback.called)
+        body, message = callback.call_args[0]
+        self.assertTrue(body['complex'])
+
     def test_set_no_channel(self):
         c = Consumer(None)
         self.assertIsNone(c.channel)

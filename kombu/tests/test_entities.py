@@ -4,7 +4,7 @@ import pickle
 
 from mock import call
 
-from kombu import Connection, Exchange, Queue, binding
+from kombu import Connection, Exchange, Producer, Queue, binding
 from kombu.exceptions import NotBoundError
 
 from .mocks import Transport
@@ -208,6 +208,36 @@ class test_Queue(TestCase):
         xx = x(chan)
         xx.declare()
         self.assertEqual(xx.name, 'generated')
+
+    def test_basic_get__accept_disallowed(self):
+        conn = Connection('memory://')
+        q = Queue('foo', exchange=self.exchange)
+        p = Producer(conn)
+        p.publish(
+            {'complex': object()},
+            declare=[q], exchange=self.exchange, serializer='pickle',
+        )
+
+        message = q(conn).get(no_ack=True)
+        self.assertIsNotNone(message)
+
+        with self.assertRaises(q.ContentDisallowed):
+            message.decode()
+
+    def test_basic_get__accept_allowed(self):
+        conn = Connection('memory://')
+        q = Queue('foo', exchange=self.exchange)
+        p = Producer(conn)
+        p.publish(
+            {'complex': object()},
+            declare=[q], exchange=self.exchange, serializer='pickle',
+        )
+
+        message = q(conn).get(accept=['pickle'], no_ack=True)
+        self.assertIsNotNone(message)
+
+        payload = message.decode()
+        self.assertTrue(payload['complex'])
 
     def test_when_bound_but_no_exchange(self):
         q = Queue('a')
