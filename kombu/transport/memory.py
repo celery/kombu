@@ -37,7 +37,7 @@ class Channel(virtual.Channel):
 
     def _put_fanout(self, exchange, message, routing_key=None, **kwargs):
         for queue in self._lookup(exchange, routing_key):
-            queue.put(message)
+            self._queue_for(queue).put(message)
 
     def _put(self, queue, message, **kwargs):
         self._queue_for(queue).put(message)
