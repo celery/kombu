@@ -28,7 +28,7 @@ from .log import get_logger
 from .transport import get_transport_cls, supports_librabbitmq
 from .utils import cached_property, retry_over_time, shufflecycle
 from .utils.compat import OrderedDict, get_errno
-from .utils.functional import promise
+from .utils.functional import lazy
 from .utils.url import parse_url
 
 __all__ = ['Connection', 'ConnectionPool', 'ChannelPool']
@@ -898,7 +898,7 @@ class Resource(object):
                     try:
                         R = self.prepare(R)
                     except BaseException:
-                        if isinstance(R, promise):
+                        if isinstance(R, lazy):
                             # no evaluated yet, just put it back
                             self._resource.put_nowait(R)
                         else:
@@ -1043,7 +1043,7 @@ class ConnectionPool(Resource):
                     conn = self.new()
                     conn.connect()
                 else:
-                    conn = promise(self.new)
+                    conn = lazy(self.new)
                 self._resource.put_nowait(conn)
 
     def prepare(self, resource):
@@ -1062,14 +1062,14 @@ class ChannelPool(Resource):
                                           preload=preload)
 
     def new(self):
-        return promise(self.connection.channel)
+        return lazy(self.connection.channel)
 
     def setup(self):
         channel = self.new()
         if self.limit:
             for i in range(self.limit):
                 self._resource.put_nowait(
-                    i < self.preload and channel() or promise(channel))
+                    i < self.preload and channel() or lazy(channel))
 
     def prepare(self, channel):
         if isinstance(channel, Callable):

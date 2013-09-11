@@ -9,7 +9,7 @@ from logging.handlers import WatchedFileHandler
 from .five import string_t
 from .utils import cached_property
 from .utils.encoding import safe_repr, safe_str
-from .utils.functional import maybe_promise
+from .utils.functional import maybe_evaluate
 
 __all__ = ['LogMixin', 'LOG_LEVELS', 'get_loglevel', 'setup_logging']
 
@@ -89,7 +89,7 @@ class LogMixin(object):
         if self.logger.isEnabledFor(severity):
             log = self.logger.log
             if len(args) > 1 and isinstance(args[0], string_t):
-                expand = [maybe_promise(arg) for arg in args[1:]]
+                expand = [maybe_evaluate(arg) for arg in args[1:]]
                 return log(severity,
                            self.annotate(args[0].replace('%r', '%s')),
                            *list(safeify_format(args[0], expand)), **kwargs)

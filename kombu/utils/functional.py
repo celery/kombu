@@ -1,12 +1,13 @@
 from __future__ import absolute_import
 
+__all__ = ['lazy', 'maybe_evaluate']
 
-class promise(object):
-    """A promise.
+
+class lazy(object):
+    """Holds lazy evaluation.
 
     Evaluated when called or if the :meth:`evaluate` method is called.
-    The function is evaluated on every access, so the value is not
-    memoized (see :class:`mpromise`).
+    The function is re-evaluated on every call.
 
     Overloaded operations that will evaluate the promise:
         :meth:`__str__`, :meth:`__repr__`, :meth:`__cmp__`.
@@ -50,8 +51,13 @@ class promise(object):
                                                 '_kwargs': self._kwargs})
 
 
-def maybe_promise(value):
-    """Evaluates if the value is a promise."""
-    if isinstance(value, promise):
+def maybe_evaluate(value):
+    """Evaluates if the value is a :class:`lazy` instance."""
+    if isinstance(value, lazy):
         return value.evaluate()
     return value
+
+
+# Compat names (before kombu 3.0)
+promise = lazy
+maybe_promise = maybe_evaluate
