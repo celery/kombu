@@ -31,10 +31,7 @@ from kombu.transport import base
 from .scheduling import FairCycle
 from .exchange import STANDARD_EXCHANGE_TYPES
 
-if sys.version_info[0] == 3:
-    ARRAY_TYPE_H = 'H'
-else:
-    ARRAY_TYPE_H = b'H'
+ARRAY_TYPE_H = 'H' if sys.version_info[0] == 3 else b'H'
 
 KOMBU_UNITTEST = os.environ.get('KOMBU_UNITTEST')
 
@@ -194,7 +191,7 @@ class QoS(object):
         if not self.restore_at_shutdown:
             return
         elif not self.channel.do_restore or getattr(state, 'restored', None):
-            if not KOMBU_UNITTEST:
+            if not KOMBU_UNITTEST:  # pragma: no cover
                 assert not state
             return
 
@@ -364,7 +361,9 @@ class Channel(AbstractChannel, base.StdChannel):
         except IndexError:
             raise ResourceError(
                 'No free channel ids, current={0}, channel_max={1}'.format(
-                    len(self.channels), self.channel_max), (20, 10))
+                    len(self.connection.channels),
+                    self.connection.channel_max), (20, 10),
+            )
 
         topts = self.connection.client.transport_options
         for opt_name in self.from_transport_options:

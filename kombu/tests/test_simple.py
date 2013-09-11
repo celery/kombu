@@ -2,11 +2,10 @@ from __future__ import absolute_import
 
 from kombu import Connection, Exchange, Queue
 
-from .utils import TestCase
-from .utils import Mock
+from .case import Case, Mock
 
 
-class SimpleBase(TestCase):
+class SimpleBase(Case):
     abstract = True
 
     def Queue(self, name, *args, **kwargs):

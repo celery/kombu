@@ -4,10 +4,10 @@ from heapq import heappush
 
 from kombu.clocks import LamportClock
 
-from .utils import TestCase
+from .case import Case
 
 
-class test_LamportClock(TestCase):
+class test_LamportClock(Case):
 
     def test_clocks(self):
         c1 = LamportClock()

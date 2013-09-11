@@ -15,7 +15,7 @@ import socket
 try:
     import librabbitmq as amqp
     from librabbitmq import ChannelError, ConnectionError
-except ImportError:
+except ImportError:  # pragma: no cover
     try:
         import pylibrabbitmq as amqp                             # noqa
         from pylibrabbitmq import ChannelError, ConnectionError  # noqa

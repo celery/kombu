@@ -25,7 +25,7 @@ patch = mock.patch
 call = mock.call
 
 
-class TestCase(unittest.TestCase):
+class Case(unittest.TestCase):
 
     def assertItemsEqual(self, a, b, *args, **kwargs):
         return self.assertEqual(sorted(a), sorted(b), *args, **kwargs)

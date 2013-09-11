@@ -2,8 +2,6 @@ from __future__ import absolute_import
 
 import socket
 
-from mock import patch
-
 from kombu import common
 from kombu.common import (
     Broadcast, maybe_declare,
@@ -14,11 +12,10 @@ from kombu.common import (
 )
 from kombu.exceptions import StdChannelError
 
-from .utils import TestCase
-from .utils import ContextMock, Mock, MockPool
+from .case import Case, ContextMock, Mock, MockPool, patch
 
 
-class test_ignore_errors(TestCase):
+class test_ignore_errors(Case):
 
     def test_ignored(self):
         connection = Mock()
@@ -41,7 +38,7 @@ class test_ignore_errors(TestCase):
                 raise KeyError()
 
 
-class test_declaration_cached(TestCase):
+class test_declaration_cached(Case):
 
     def test_when_cached(self):
         chan = Mock()
@@ -54,7 +51,7 @@ class test_declaration_cached(TestCase):
         self.assertFalse(declaration_cached('foo', chan))
 
 
-class test_Broadcast(TestCase):
+class test_Broadcast(Case):
 
     def test_arguments(self):
         q = Broadcast(name='test_Broadcast')
@@ -69,7 +66,7 @@ class test_Broadcast(TestCase):
         self.assertEqual(q.exchange.name, 'test_Broadcast')
 
 
-class test_maybe_declare(TestCase):
+class test_maybe_declare(Case):
 
     def test_cacheable(self):
         channel = Mock()
@@ -115,7 +112,7 @@ class test_maybe_declare(TestCase):
         self.assertTrue(channel.connection.client.ensure.call_count)
 
 
-class test_replies(TestCase):
+class test_replies(Case):
 
     def test_send_reply(self):
         req = Mock()
@@ -188,7 +185,7 @@ class test_replies(TestCase):
         self.assertFalse(channel.after_reply_message_received.called)
 
 
-class test_insured(TestCase):
+class test_insured(Case):
 
     @patch('kombu.common.logger')
     def test_ensure_errback(self, logger):
@@ -298,7 +295,7 @@ class MockConsumer(object):
         self.consumers.discard(self)
 
 
-class test_itermessages(TestCase):
+class test_itermessages(Case):
 
     class MockConnection(object):
         should_raise_timeout = False
@@ -347,7 +344,7 @@ class test_itermessages(TestCase):
             next(it)
 
 
-class test_entry_to_queue(TestCase):
+class test_entry_to_queue(Case):
 
     def test_calls_Queue_from_dict(self):
         with patch('kombu.common.Queue') as Queue:
@@ -355,7 +352,7 @@ class test_entry_to_queue(TestCase):
             Queue.from_dict.assert_called_with('name', exchange='bar')
 
 
-class test_QoS(TestCase):
+class test_QoS(Case):
 
     class _QoS(QoS):
         def __init__(self, value):

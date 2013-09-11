@@ -2,21 +2,18 @@ from __future__ import absolute_import
 
 import pickle
 
-from mock import call
-
 from kombu import Connection, Exchange, Producer, Queue, binding
 from kombu.exceptions import NotBoundError
 
+from .case import Case, Mock, call
 from .mocks import Transport
-from .utils import TestCase
-from .utils import Mock
 
 
 def get_conn():
     return Connection(transport=Transport)
 
 
-class test_binding(TestCase):
+class test_binding(Case):
 
     def test_constructor(self):
         x = binding(
@@ -59,7 +56,7 @@ class test_binding(TestCase):
         self.assertIn('rkey', repr(b))
 
 
-class test_Exchange(TestCase):
+class test_Exchange(Case):
 
     def test_bound(self):
         exchange = Exchange('foo', 'direct')
@@ -187,7 +184,7 @@ class test_Exchange(TestCase):
         self.assertIn('exchange_unbind', chan)
 
 
-class test_Queue(TestCase):
+class test_Queue(Case):
 
     def setUp(self):
         self.exchange = Exchange('foo', 'direct')

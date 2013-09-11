@@ -5,13 +5,11 @@ from __future__ import unicode_literals
 import sys
 
 from contextlib import contextmanager
-from mock import patch
-from nose import SkipTest
 
 from kombu.five import bytes_t, string_t
 from kombu.utils.encoding import safe_str, default_encoding
 
-from kombu.tests.utils import TestCase
+from kombu.tests.case import Case, SkipTest, patch
 
 
 @contextmanager
@@ -25,7 +23,7 @@ def clean_encoding():
             sys.modules['kombu.utils.encoding'] = old_encoding
 
 
-class test_default_encoding(TestCase):
+class test_default_encoding(Case):
 
     @patch('sys.getdefaultencoding')
     def test_default(self, getdefaultencoding):
@@ -39,7 +37,7 @@ class test_default_encoding(TestCase):
                 getdefaultencoding.assert_called_with()
 
 
-class test_encoding_utils(TestCase):
+class test_encoding_utils(Case):
 
     def setUp(self):
         if sys.version_info >= (3, 0):
@@ -58,7 +56,7 @@ class test_encoding_utils(TestCase):
             self.assertTrue(e.default_encode(b'foo'))
 
 
-class test_safe_str(TestCase):
+class test_safe_str(Case):
 
     def setUp(self):
         self._cencoding = patch('sys.getdefaultencoding')

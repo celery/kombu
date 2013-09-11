@@ -3,8 +3,6 @@ from __future__ import absolute_import
 import logging
 import sys
 
-from mock import patch
-
 from kombu.log import (
     NullHandler,
     get_logger,
@@ -16,18 +14,17 @@ from kombu.log import (
     setup_logging,
 )
 
-from .utils import TestCase
-from .utils import Mock
+from .case import Case, Mock, patch
 
 
-class test_NullHandler(TestCase):
+class test_NullHandler(Case):
 
     def test_emit(self):
         h = NullHandler()
         h.emit('record')
 
 
-class test_get_logger(TestCase):
+class test_get_logger(Case):
 
     def test_when_string(self):
         l = get_logger('foo')
@@ -59,7 +56,7 @@ class test_get_logger(TestCase):
         self.assertEqual(get_loglevel(logging.INFO), logging.INFO)
 
 
-class test_safe_format(TestCase):
+class test_safe_format(Case):
 
     def test_formatting(self):
         fmt = 'The %r jumped %x over the %s'
@@ -69,7 +66,7 @@ class test_safe_format(TestCase):
         self.assertListEqual(res, ["'frog'", 'foo', 'elephant'])
 
 
-class test_LogMixin(TestCase):
+class test_LogMixin(Case):
 
     def setUp(self):
         self.log = Log('Log', Mock())
@@ -138,7 +135,7 @@ class test_LogMixin(TestCase):
         )
 
 
-class test_setup_logging(TestCase):
+class test_setup_logging(Case):
 
     @patch('logging.getLogger')
     def test_set_up_default_values(self, getLogger):

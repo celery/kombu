@@ -73,7 +73,7 @@ else:
 
 try:
     bytes_t = bytes
-except NameError:
+except NameError:  # pragma: no cover
     bytes_t = str  # noqa
 
 

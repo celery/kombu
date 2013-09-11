@@ -2,16 +2,14 @@ from __future__ import absolute_import
 
 import logging
 
-from mock import Mock, patch
-
 from kombu.utils.debug import (
     setup_logging,
     Logwrapped,
 )
-from kombu.tests.utils import TestCase
+from kombu.tests.case import Case, Mock, patch
 
 
-class test_setup_logging(TestCase):
+class test_setup_logging(Case):
 
     def test_adds_handlers_sets_level(self):
         with patch('kombu.utils.debug.get_logger') as get_logger:
@@ -24,7 +22,7 @@ class test_setup_logging(TestCase):
             logger.setLevel.assert_called_with(logging.DEBUG)
 
 
-class test_Logwrapped(TestCase):
+class test_Logwrapped(Case):
 
     def test_wraps(self):
         with patch('kombu.utils.debug.get_logger') as get_logger:
@@ -54,3 +52,5 @@ class test_Logwrapped(TestCase):
             W.some_method(kw=1)
             self.assertTrue(logger.debug.called)
             self.assertIn('ident', logger.debug.call_args[0][0])
+
+            self.assertEqual(dir(W), dir(W.instance))

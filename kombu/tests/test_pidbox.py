@@ -6,11 +6,10 @@ from kombu import Connection
 from kombu import pidbox
 from kombu.utils import uuid
 
-from .utils import TestCase
-from .utils import Mock
+from .case import Case, Mock
 
 
-class test_Mailbox(TestCase):
+class test_Mailbox(Case):
 
     def _handler(self, state):
         return self.stats['var']

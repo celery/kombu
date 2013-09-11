@@ -5,11 +5,10 @@ from kombu import pools
 from kombu.connection import ConnectionPool
 from kombu.utils import eqhash
 
-from .utils import TestCase
-from .utils import Mock
+from .case import Case, Mock
 
 
-class test_ProducerPool(TestCase):
+class test_ProducerPool(Case):
     Pool = pools.ProducerPool
 
     class MyPool(pools.ProducerPool):
@@ -112,7 +111,7 @@ class test_ProducerPool(TestCase):
         self.assertIsNone(p.channel)
 
 
-class test_PoolGroup(TestCase):
+class test_PoolGroup(Case):
     Group = pools.PoolGroup
 
     class MyGroup(pools.PoolGroup):
@@ -206,7 +205,7 @@ class test_PoolGroup(TestCase):
         pools.set_limit(pools.get_limit())
 
 
-class test_fun_PoolGroup(TestCase):
+class test_fun_PoolGroup(Case):
 
     def test_connections_behavior(self):
         c1u = 'memory://localhost:123'

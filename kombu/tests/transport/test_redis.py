@@ -3,7 +3,6 @@ from __future__ import absolute_import
 import socket
 import types
 
-from mock import patch
 from anyjson import dumps
 from collections import defaultdict
 from itertools import count
@@ -13,8 +12,9 @@ from kombu.exceptions import InconsistencyError, VersionMismatch
 from kombu.five import Empty, Queue as _Queue
 from kombu.utils import eventio  # patch poll
 
-from kombu.tests.utils import TestCase
-from kombu.tests.utils import Mock, module_exists, skip_if_not_module
+from kombu.tests.case import (
+    Case, Mock, module_exists, skip_if_not_module, patch,
+)
 
 
 class _poll(eventio._select):
@@ -213,7 +213,7 @@ class Transport(redis.Transport):
         return ((KeyError, ), (IndexError, ))
 
 
-class test_Channel(TestCase):
+class test_Channel(Case):
 
     def setUp(self):
         self.connection = Connection(transport=Transport)
@@ -488,7 +488,7 @@ class test_Channel(TestCase):
                 self.assertEqual(connparams['path'], '/tmp/redis.sock')
 
 
-class test_Redis(TestCase):
+class test_Redis(Case):
 
     def setUp(self):
         self.connection = Connection(transport=Transport)
@@ -644,7 +644,7 @@ def _redis_modules():
     return myredis, exceptions
 
 
-class test_MultiChannelPoller(TestCase):
+class test_MultiChannelPoller(Case):
     Poller = redis.MultiChannelPoller
 
     def test_close_unregisters_fds(self):

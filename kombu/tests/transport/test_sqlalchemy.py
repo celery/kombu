@@ -1,13 +1,10 @@
 from __future__ import absolute_import
 
-from mock import patch
-from nose import SkipTest
-
 from kombu import Connection
-from kombu.tests.utils import TestCase
+from kombu.tests.case import Case, SkipTest, patch
 
 
-class test_sqlalchemy(TestCase):
+class test_sqlalchemy(Case):
 
     def setUp(self):
         try:

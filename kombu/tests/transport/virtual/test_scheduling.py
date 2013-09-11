@@ -2,7 +2,7 @@ from __future__ import absolute_import
 
 from kombu.transport.virtual.scheduling import FairCycle
 
-from kombu.tests.utils import TestCase
+from kombu.tests.case import Case
 
 
 class MyEmpty(Exception):
@@ -16,7 +16,7 @@ def consume(fun, n):
     return r
 
 
-class test_FairCycle(TestCase):
+class test_FairCycle(Case):
 
     def test_cycle(self):
         resources = ['a', 'b', 'c', 'd', 'e']

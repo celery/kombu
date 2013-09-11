@@ -1,13 +1,11 @@
 from __future__ import absolute_import
 
-from mock import patch
-
 from kombu import transport
 
-from kombu.tests.utils import TestCase
+from kombu.tests.case import Case, patch
 
 
-class test_transport(TestCase):
+class test_transport(Case):
 
     def test_resolve_transport_when_callable(self):
         from kombu.transport.memory import Transport
@@ -16,7 +14,7 @@ class test_transport(TestCase):
             Transport)
 
 
-class test_transport_gettoq(TestCase):
+class test_transport_gettoq(Case):
 
     @patch('warnings.warn')
     def test_compat(self, warn):

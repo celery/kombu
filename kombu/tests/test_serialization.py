@@ -16,8 +16,7 @@ from kombu.serialization import (
 )
 from kombu.utils.encoding import str_to_bytes
 
-from .utils import TestCase
-from .utils import mask_modules, skip_if_not_module
+from .case import Case, mask_modules, skip_if_not_module
 
 # For content_encoding tests
 unicode_string = 'abcdé\u8463'
@@ -76,7 +75,7 @@ registry.register('testS', lambda s: s, lambda s: 'decoded',
                   'application/testS', 'utf-8')
 
 
-class test_Serialization(TestCase):
+class test_Serialization(Case):
 
     def test_disable(self):
         disabled = registry._disabled_content_types

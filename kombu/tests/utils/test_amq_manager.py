@@ -1,12 +1,11 @@
 from __future__ import absolute_import
 
-from mock import patch
-
 from kombu import Connection
-from kombu.tests.utils import TestCase, mask_modules, module_exists
+
+from kombu.tests.case import Case, mask_modules, module_exists, patch
 
 
-class test_get_manager(TestCase):
+class test_get_manager(Case):
 
     @mask_modules('pyrabbit')
     def test_without_pyrabbit(self):

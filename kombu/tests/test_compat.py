@@ -1,16 +1,13 @@
 from __future__ import absolute_import
 
-from mock import patch
-
 from kombu import Connection, Exchange, Queue
 from kombu import compat
 
+from .case import Case, Mock, patch
 from .mocks import Transport, Channel
-from .utils import TestCase
-from .utils import Mock
 
 
-class test_misc(TestCase):
+class test_misc(Case):
 
     def test_iterconsume(self):
 
@@ -77,7 +74,7 @@ class test_misc(TestCase):
                          Queue.from_dict('foo', **dict(defs)))
 
 
-class test_Publisher(TestCase):
+class test_Publisher(Case):
 
     def setUp(self):
         self.connection = Connection(transport=Transport)
@@ -128,7 +125,7 @@ class test_Publisher(TestCase):
         self.assertTrue(pub._closed)
 
 
-class test_Consumer(TestCase):
+class test_Consumer(Case):
 
     def setUp(self):
         self.connection = Connection(transport=Transport)
@@ -262,7 +259,7 @@ class test_Consumer(TestCase):
         c.close()
 
 
-class test_ConsumerSet(TestCase):
+class test_ConsumerSet(Case):
 
     def setUp(self):
         self.connection = Connection(transport=Transport)

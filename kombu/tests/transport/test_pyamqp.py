@@ -2,8 +2,6 @@ from __future__ import absolute_import
 
 import sys
 
-from mock import patch
-from nose import SkipTest
 from itertools import count
 
 try:
@@ -15,8 +13,7 @@ else:
 from kombu import Connection
 from kombu.five import nextfun
 
-from kombu.tests.utils import TestCase
-from kombu.tests.utils import mask_modules, Mock
+from kombu.tests.case import Case, Mock, SkipTest, mask_modules, patch
 
 
 class MockConnection(dict):
@@ -25,7 +22,7 @@ class MockConnection(dict):
         self[key] = value
 
 
-class test_Channel(TestCase):
+class test_Channel(Case):
 
     def setUp(self):
         if pyamqp is None:
@@ -81,7 +78,7 @@ class test_Channel(TestCase):
         self.assertNotIn('my-consumer-tag', self.channel.no_ack_consumers)
 
 
-class test_Transport(TestCase):
+class test_Transport(Case):
 
     def setUp(self):
         if pyamqp is None:
@@ -93,6 +90,9 @@ class test_Transport(TestCase):
         connection = Mock()
         self.transport.create_channel(connection)
         connection.channel.assert_called_with()
+
+    def test_driver_version(self):
+        self.assertTrue(self.transport.driver_version())
 
     def test_drain_events(self):
         connection = Mock()
@@ -134,7 +134,7 @@ class test_Transport(TestCase):
                 sys.modules['amqp.connection'] = pm
 
 
-class test_pyamqp(TestCase):
+class test_pyamqp(Case):
 
     def setUp(self):
         if pyamqp is None:

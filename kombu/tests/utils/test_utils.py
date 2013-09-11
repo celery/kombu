@@ -5,7 +5,6 @@ import pickle
 import sys
 
 from functools import wraps
-from mock import Mock, patch
 
 if sys.version_info >= (3, 0):
     from io import StringIO, BytesIO
@@ -15,8 +14,8 @@ else:
 from kombu import utils
 from kombu.five import string_t
 
-from .utils import (
-    TestCase,
+from kombu.tests.case import (
+    Case, Mock, patch,
     redirect_stdouts, mask_modules, module_exists, skip_if_module,
 )
 
@@ -36,14 +35,14 @@ class OldString(object):
         return self.value.rsplit(*args, **kwargs)
 
 
-class test_kombu_module(TestCase):
+class test_kombu_module(Case):
 
     def test_dir(self):
         import kombu
         self.assertTrue(dir(kombu))
 
 
-class test_utils(TestCase):
+class test_utils(Case):
 
     def test_maybe_list(self):
         self.assertEqual(utils.maybe_list(None), [])
@@ -70,7 +69,7 @@ class test_utils(TestCase):
         )
 
 
-class test_UUID(TestCase):
+class test_UUID(Case):
 
     def test_uuid4(self):
         self.assertNotEqual(utils.uuid4(),
@@ -101,7 +100,7 @@ class test_UUID(TestCase):
             sys.modules['celery.utils'] = old_utils
 
 
-class test_Misc(TestCase):
+class test_Misc(Case):
 
     def test_kwdict(self):
 
@@ -125,7 +124,7 @@ class MyBytesIO(BytesIO):
         pass
 
 
-class test_emergency_dump_state(TestCase):
+class test_emergency_dump_state(Case):
 
     @redirect_stdouts
     def test_dump(self, stdout, stderr):
@@ -170,7 +169,7 @@ def insomnia(fun):
     return _inner
 
 
-class test_retry_over_time(TestCase):
+class test_retry_over_time(Case):
 
     def setUp(self):
         self.index = 0
@@ -234,7 +233,7 @@ class test_retry_over_time(TestCase):
         self.assertEqual(self.index, 0)
 
 
-class test_cached_property(TestCase):
+class test_cached_property(Case):
 
     def test_deleting(self):
 
@@ -284,7 +283,7 @@ class test_cached_property(TestCase):
         del(x.foo)
 
 
-class test_symbol_by_name(TestCase):
+class test_symbol_by_name(Case):
 
     def test_instance_returns_instance(self):
         instance = object()
@@ -316,7 +315,7 @@ class test_symbol_by_name(TestCase):
         self.assertTrue(utils.symbol_by_name(':Consumer', package='kombu'))
 
 
-class test_ChannelPromise(TestCase):
+class test_ChannelPromise(Case):
 
     def test_repr(self):
         self.assertIn(
@@ -325,7 +324,7 @@ class test_ChannelPromise(TestCase):
         )
 
 
-class test_entrypoints(TestCase):
+class test_entrypoints(Case):
 
     @mask_modules('pkg_resources')
     def test_without_pkg_resources(self):
@@ -342,7 +341,7 @@ class test_entrypoints(TestCase):
             eps[1].load.assert_called_with()
 
 
-class test_shufflecycle(TestCase):
+class test_shufflecycle(Case):
 
     def test_shuffles(self):
         prev_repeat, utils.repeat = utils.repeat, Mock()

@@ -3,11 +3,10 @@ from __future__ import absolute_import
 from kombu import Connection, Consumer, Exchange, Producer, Queue
 from kombu.transport.base import Message, StdChannel, Transport
 
-from kombu.tests.utils import TestCase
-from kombu.tests.utils import Mock
+from kombu.tests.case import Case, Mock
 
 
-class test_StdChannel(TestCase):
+class test_StdChannel(Case):
 
     def setUp(self):
         self.conn = Connection('memory://')
@@ -37,7 +36,7 @@ class test_StdChannel(TestCase):
         )
 
 
-class test_Message(TestCase):
+class test_Message(Case):
 
     def setUp(self):
         self.conn = Connection('memory://')
@@ -84,7 +83,7 @@ class test_Message(TestCase):
         self.assertIn("Couldn't ack", logger.critical.call_args[0][0])
 
 
-class test_interface(TestCase):
+class test_interface(Case):
 
     def test_establish_connection(self):
         with self.assertRaises(NotImplementedError):

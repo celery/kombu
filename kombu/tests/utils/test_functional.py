@@ -4,14 +4,14 @@ import pickle
 
 from kombu.utils.functional import lazy, maybe_evaluate
 
-from kombu.tests.utils import TestCase
+from kombu.tests.case import Case
 
 
 def double(x):
     return x * 2
 
 
-class test_lazy(TestCase):
+class test_lazy(Case):
 
     def test__str__(self):
         self.assertEqual(
@@ -24,6 +24,10 @@ class test_lazy(TestCase):
             repr(lazy(lambda: 'fi fa fo')),
             "'fi fa fo'",
         )
+
+    def test__cmp__(self):
+        self.assertEqual(lazy(lambda: 10).__cmp__(lazy(lambda: 20)), -1)
+        self.assertEqual(lazy(lambda: 10).__cmp__(5), 1)
 
     def test_evaluate(self):
         self.assertEqual(lazy(lambda: 2 + 2)(), 4)
@@ -48,7 +52,7 @@ class test_lazy(TestCase):
         self.assertEqual(x(), y())
 
 
-class test_maybe_evaluate(TestCase):
+class test_maybe_evaluate(Case):
 
     def test_evaluates(self):
         self.assertEqual(maybe_evaluate(lazy(lambda: 10)), 10)

@@ -5,20 +5,16 @@ import pickle
 import socket
 
 from copy import copy
-from mock import patch
-from nose import SkipTest
 
 from kombu import Connection, Consumer, Producer, parse_url
 from kombu.connection import Resource
 from kombu.five import items, range
 
+from .case import Case, Mock, SkipTest, patch, skip_if_not_module
 from .mocks import Transport
-from .utils import TestCase
-
-from .utils import Mock, skip_if_not_module
 
 
-class test_connection_utils(TestCase):
+class test_connection_utils(Case):
 
     def setUp(self):
         self.url = 'amqp://user:pass@localhost:5672/my/vhost'
@@ -142,7 +138,7 @@ class test_connection_utils(TestCase):
         )
 
 
-class test_Connection(TestCase):
+class test_Connection(Case):
 
     def setUp(self):
         self.conn = Connection(port=5672, transport=Transport)
@@ -512,7 +508,7 @@ class test_Connection(TestCase):
         self.assertTupleEqual(conn.connection_errors, (KeyError, ValueError))
 
 
-class test_Connection_with_transport_options(TestCase):
+class test_Connection_with_transport_options(Case):
 
     transport_options = {'pool_recycler': 3600, 'echo': True}
 
@@ -531,7 +527,7 @@ class xResource(Resource):
         pass
 
 
-class ResourceCase(TestCase):
+class ResourceCase(Case):
     abstract = True
 
     def create_resource(self, limit, preload):
