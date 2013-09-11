@@ -54,7 +54,7 @@ class LamportClock(object):
     #: The clocks current value.
     value = 0
 
-    def __init__(self, initial_value=0):
+    def __init__(self, initial_value=0, Lock=Lock):
         self.value = initial_value
         self.mutex = Lock()
 
