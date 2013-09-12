@@ -264,6 +264,16 @@ class test_ConsumerSet(Case):
     def setUp(self):
         self.connection = Connection(transport=Transport)
 
+    def test_providing_channel(self):
+        chan = Mock(name='channel')
+        cs = compat.ConsumerSet(self.connection, channel=chan)
+        self.assertTrue(cs._provided_channel)
+        self.assertIs(cs.backend, chan)
+
+        cs.cancel = Mock(name='cancel')
+        cs.close()
+        self.assertFalse(chan.close.called)
+
     @patch('kombu.compat._iterconsume')
     def test_iterconsume(self, _iterconsume, n='test_iterconsume'):
         c = compat.Consumer(self.connection, queue=n, exchange=n)

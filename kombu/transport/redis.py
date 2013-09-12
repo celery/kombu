@@ -34,7 +34,7 @@ Probably the key ({1!r}) has been removed from the Redis database.
 
 try:
     from billiard.util import register_after_fork
-except ImportError:
+except ImportError:  # pragma: no cover
     try:
         from multiprocessing.util import register_after_fork  # noqa
     except ImportError:
@@ -43,8 +43,8 @@ except ImportError:
 
 try:
     import redis
-except ImportError:
-    redis = None  # noqa
+except ImportError:  # pragma: no cover
+    redis = None     # noqa
 
 
 from . import virtual

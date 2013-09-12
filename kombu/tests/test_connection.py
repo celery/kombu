@@ -45,6 +45,11 @@ class test_connection_utils(Case):
         self.assertEqual(conn.as_uri(), self.nopass)
         self.assertEqual(conn.as_uri(include_password=True), self.url)
 
+    def test_as_uri_when_prefix(self):
+        conn = Connection('memory://')
+        conn.uri_prefix = 'foo'
+        self.assertTrue(conn.as_uri().startswith('foo+memory://'))
+
     @skip_if_not_module('pymongo')
     def test_as_uri_when_mongodb(self):
         x = Connection('mongodb://localhost')

@@ -153,6 +153,9 @@ class Mailbox(object):
     #: exchange to send replies to.
     reply_exchange = None
 
+    #: Only accepts json messages by default.
+    accept = ['json']
+
     def __init__(self, namespace,
                  type='direct', connection=None, clock=None, accept=None):
         self.namespace = namespace
@@ -163,7 +166,7 @@ class Mailbox(object):
         self.reply_exchange = self._get_reply_exchange(self.namespace)
         self._tls = local()
         self.unclaimed = defaultdict(deque)
-        self.accept = accept
+        self.accept = self.accept if accept is None else accept
 
     def __call__(self, connection):
         bound = copy(self)
@@ -216,7 +219,7 @@ class Mailbox(object):
                      auto_delete=True)
 
     def _publish_reply(self, reply, exchange, routing_key, ticket,
-                       channel=None):
+                       channel=None, **opts):
         chan = channel or self.connection.default_channel
         exchange = Exchange(exchange, exchange_type='direct',
                             delivery_mode='transient',
@@ -228,6 +231,7 @@ class Mailbox(object):
                 declare=[exchange], headers={
                     'ticket': ticket, 'clock': self.clock.forward(),
                 },
+                **opts
             )
         except InconsistencyError:
             pass   # queue probably deleted and no one is expecting a reply.

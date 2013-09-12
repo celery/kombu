@@ -328,7 +328,7 @@ def register_yaml():
         registry.register('yaml', None, not_available, 'application/x-yaml')
 
 
-if sys.version_info[0] == 3:
+if sys.version_info[0] == 3:  # pragma: no cover
 
     def unpickle(s):
         return pickle_loads(str_to_bytes(s))
@@ -435,7 +435,7 @@ def disable_insecure_serializers(allowed=['json']):
 disable_insecure_serializers()
 
 # Load entrypoints from installed extensions
-for ep, args in entrypoints('kombu.serializers'):
+for ep, args in entrypoints('kombu.serializers'):  # pragma: no cover
     register(ep.name, *args)
 
 

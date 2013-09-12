@@ -16,7 +16,7 @@ PERSISTENT_DELIVERY_MODE = 2
 DELIVERY_MODES = {'transient': TRANSIENT_DELIVERY_MODE,
                   'persistent': PERSISTENT_DELIVERY_MODE}
 
-__all__ = ['Exchange', 'Queue']
+__all__ = ['Exchange', 'Queue', 'binding']
 
 
 def pretty_bindings(bindings):
@@ -40,7 +40,12 @@ class Exchange(MaybeChannelBound):
 
     .. attribute:: type
 
-        AMQP defines four default exchange types (routing algorithms) that
+        *This description of AMQP exchange types was shamelessly stolen
+        from the blog post `AMQP in 10 minutes: Part 4`_ by
+        Rajith Attapattu. Reading this article is recommended if you're
+        new to amqp.*
+
+        "AMQP defines four default exchange types (routing algorithms) that
         covers most of the common messaging use cases. An AMQP broker can
         also define additional exchange types, so see your broker
         manual for more information about available exchange types.
@@ -74,9 +79,6 @@ class Exchange(MaybeChannelBound):
 
                 :attr:`arguments` is used to specify the arguments.
 
-            This description of AMQP exchange types was shamelessly stolen
-            from the blog post `AMQP in 10 minutes: Part 4`_ by
-            Rajith Attapattu. This article is recommended reading.
 
             .. _`AMQP in 10 minutes: Part 4`:
                 http://bit.ly/amqp-exchange-types
@@ -430,8 +432,8 @@ class Queue(MaybeChannelBound):
     .. attribute:: on_declared
 
         Optional callback to be applied when the queue has been
-        declared (the ``queue_declare`` method returns).
-        This must be function with a signature that accepts at least 3
+        declared (the ``queue_declare`` operation is complete).
+        This must be a function with a signature that accepts at least 3
         positional arguments: ``(name, messages, consumers)``.
 
     """
@@ -659,15 +661,12 @@ class Queue(MaybeChannelBound):
     def __repr__(self):
         s = super(Queue, self).__repr__
         if self.bindings:
-            return s('Queue %r -> %s' % (
-                self.name,
-                pretty_bindings(self.bindings),
+            return s('Queue {0.name!r} -> {bindings}'.format(
+                self, bindings=pretty_bindings(self.bindings),
             ))
-        return s('Queue %r -> %s -> %r' % (
-            self.name,
-            self.exchange,
-            self.routing_key or '',
-        ))
+        return s(
+            'Queue {0.name!r} -> {0.exchange!r} -> {0.routing_key}'.format(
+                self))
 
     @property
     def can_cache_declaration(self):

@@ -812,3 +812,51 @@ class test_MultiChannelPoller(Case):
             p.get()
 
         channel._poll_error.assert_called_with('BRPOP')
+
+
+class test_Mutex(Case):
+
+    def test_mutex(self, lock_id='xxx'):
+        client = Mock(name='client')
+        with patch('kombu.transport.redis.uuid') as uuid:
+            # Won
+            uuid.return_value = lock_id
+            client.setnx.return_value = True
+            pipe = client.pipeline.return_value = Mock(name='pipe')
+            pipe.get.return_value = lock_id
+            held = False
+            with redis.Mutex(client, 'foo1', 100):
+                held = True
+            self.assertTrue(held)
+            client.setnx.assert_called_with('foo1', lock_id)
+            pipe.get.return_value = 'yyy'
+            held = False
+            with redis.Mutex(client, 'foo1', 100):
+                held = True
+            self.assertTrue(held)
+
+            # Did not win
+            client.expire.reset_mock()
+            pipe.get.return_value = lock_id
+            client.setnx.return_value = False
+            with self.assertRaises(redis.MutexHeld):
+                held = False
+                with redis.Mutex(client, 'foo1', '100'):
+                    held = True
+                self.assertFalse(held)
+            client.ttl.return_value = 0
+            with self.assertRaises(redis.MutexHeld):
+                held = False
+                with redis.Mutex(client, 'foo1', '100'):
+                    held = True
+                self.assertFalse(held)
+            self.assertTrue(client.expire.called)
+
+            # Wins but raises WatchError (and that is ignored)
+            client.setnx.return_value = True
+            pipe.watch.side_effect = redis.redis.WatchError()
+            held = False
+            with redis.Mutex(client, 'foo1', 100):
+                held = True
+            self.assertTrue(held)
+

@@ -7,16 +7,18 @@ import sys
 
 from base64 import b64decode
 
-from kombu.five import text_t
+from kombu.exceptions import ContentDisallowed
+from kombu.five import text_t, bytes_t
 from kombu.serialization import (
     registry, register, SerializerNotInstalled,
     raw_encode, register_yaml, register_msgpack,
     decode, bytes_t, pickle, pickle_protocol,
-    unregister, register_pickle,
+    unregister, register_pickle, enable_insecure_serializers,
+    disable_insecure_serializers,
 )
 from kombu.utils.encoding import str_to_bytes
 
-from .case import Case, mask_modules, skip_if_not_module
+from .case import Case, call, mask_modules, patch, skip_if_not_module
 
 # For content_encoding tests
 unicode_string = 'abcdé\u8463'
@@ -89,6 +91,14 @@ class test_Serialization(Case):
         finally:
             disabled.clear()
 
+    def test_enable(self):
+        registry._disabled_content_types.add('application/json')
+        registry.enable('json')
+        self.assertNotIn('application/json', registry._disabled_content_types)
+        registry._disabled_content_types.add('application/json')
+        registry.enable('application/json')
+        self.assertNotIn('application/json', registry._disabled_content_types)
+
     def test_decode_when_disabled(self):
         disabled = registry._disabled_content_types
         try:
@@ -158,6 +168,30 @@ class test_Serialization(Case):
             latin_string_as_utf8,
             registry.encode(latin_string)[-1],
         )
+
+    def test_enable_insecure_serializers(self):
+        with patch('kombu.serialization.registry') as registry:
+            enable_insecure_serializers()
+            registry.assert_has_calls([
+                call.enable('pickle'), call.enable('yaml'), call.enable('msgpack'),
+            ])
+            registry.enable.side_effect = KeyError()
+            enable_insecure_serializers()
+
+        with patch('kombu.serialization.registry') as registry:
+            enable_insecure_serializers(['msgpack'])
+            registry.assert_has_calls([call.enable('msgpack')])
+
+    def test_disable_insecure_serializers(self):
+        with patch('kombu.serialization.registry') as registry:
+            registry._decoders = ['pickle', 'yaml', 'doomsday']
+            disable_insecure_serializers(allowed=['doomsday'])
+            registry.disable.assert_has_calls([call('pickle'), call('yaml')])
+            registry.enable.assert_has_calls([call('doomsday')])
+            disable_insecure_serializers(allowed=None)
+            registry.disable.assert_has_calls([
+                call('pickle'), call('yaml'), call('doomsday')
+            ])
 
     def test_json_decode(self):
         self.assertEqual(
@@ -273,6 +307,22 @@ class test_Serialization(Case):
     def test_encode_missing(self):
         with self.assertRaises(SerializerNotInstalled):
             registry.encode('foo', serializer='nonexisting')
+
+    def test_encode__no_serializer(self):
+        ctyp, cenc, data = registry.encode(bytes_t('foo'))
+        self.assertEqual(ctyp, 'application/data')
+        self.assertEqual(cenc, 'binary')
+
+    def test_decode__not_accepted(self):
+        with self.assertRaises(ContentDisallowed):
+            registry.decode('tainted', 'application/x-evil', 'binary', accept=[])
+        with self.assertRaises(ContentDisallowed):
+            registry.decode('tainted', 'application/x-evil', 'binary',
+                            accept=['application/x-json'])
+        self.assertTrue(
+            registry.decode('tainted', 'application/x-doomsday', 'binary',
+                            accept=['application/x-doomsday'])
+        )
 
     def test_raw_encode(self):
         self.assertTupleEqual(

@@ -166,7 +166,7 @@ class ConsumerMixin(object):
         while not self.should_stop:
             try:
                 if restart_limit.can_consume(_tokens):
-                    for _ in self.consume(limit=None):
+                    for _ in self.consume(limit=None):  # pragma: no cover
                         pass
                 else:
                     sleep(restart_limit.expected_time(_tokens))

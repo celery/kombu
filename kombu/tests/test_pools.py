@@ -24,6 +24,9 @@ class test_ProducerPool(Case):
         self.connections = Mock()
         self.pool = self.Pool(self.connections, limit=10)
 
+    def test_close_resource(self):
+        self.pool.close_resource(Mock(name='resource'))
+
     def test_releases_connection_when_Producer_raises(self):
         self.pool.Producer = Mock()
         self.pool.Producer.side_effect = IOError()

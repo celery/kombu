@@ -18,10 +18,10 @@ def supports_librabbitmq():
     if _detect_environment() == 'default':
         try:
             import librabbitmq  # noqa
-            return True
-        except ImportError:
+        except ImportError:  # pragma: no cover
             pass
-    return False
+        else:                # pragma: no cover
+            return True
 
 
 def _ghettoq(name, new, alias=None):

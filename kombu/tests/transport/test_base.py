@@ -1,7 +1,8 @@
 from __future__ import absolute_import
 
 from kombu import Connection, Consumer, Exchange, Producer, Queue
-from kombu.transport.base import Message, StdChannel, Transport
+from kombu.five import text_t
+from kombu.transport.base import Message, StdChannel, Transport, Management
 
 from kombu.tests.case import Case, Mock
 
@@ -43,6 +44,10 @@ class test_Message(Case):
         self.channel = self.conn.channel()
         self.message = Message(self.channel, delivery_tag=313)
 
+    def test_postencode(self):
+        with self.assertRaises(LookupError):
+            m = Message(self.channel, text_t('FOO'), postencode='ccyzz')
+
     def test_ack_respects_no_ack_consumers(self):
         self.channel.no_ack_consumers = set(['abc'])
         self.message.delivery_info['consumer_tag'] = 'abc'
@@ -82,6 +87,19 @@ class test_Message(Case):
         self.assertTrue(logger.critical.called)
         self.assertIn("Couldn't ack", logger.critical.call_args[0][0])
 
+    def test_reject_log_error_when_no_error(self):
+        reject = self.message.reject = Mock()
+        self.message.reject_log_error(Mock(), KeyError)
+        reject.assert_called_with()
+
+    def test_reject_log_error_when_error(self):
+        reject = self.message.reject = Mock()
+        reject.side_effect = KeyError('foo')
+        logger = Mock()
+        self.message.reject_log_error(logger, KeyError)
+        reject.assert_called_with()
+        self.assertTrue(logger.critical.called)
+        self.assertIn("Couldn't ack", logger.critical.call_args[0][0])
 
 class test_interface(Case):
 
@@ -104,3 +122,35 @@ class test_interface(Case):
     def test_drain_events(self):
         with self.assertRaises(NotImplementedError):
             Transport(None).drain_events(None)
+
+    def test_heartbeat_check(self):
+        Transport(None).heartbeat_check(Mock(name='connection'))
+
+    def test_driver_version(self):
+        self.assertTrue(Transport(None).driver_version())
+
+    def test_eventmap(self):
+        self.assertDictEqual(
+            Transport(None).eventmap(Mock(name='connection')), {},
+        )
+
+    def test_on_poll_init(self):
+        Transport(None).on_poll_init(Mock(name='poller'))
+
+    def test_on_poll_start(self):
+        with self.assertRaises(NotImplementedError):
+            Transport(None).on_poll_start()
+
+    def test_on_poll_empty(self):
+        Transport(None).on_poll_empty()
+
+    def test_manager(self):
+        self.assertTrue(Transport(None).manager)
+
+
+class test_Management(Case):
+
+    def test_get_bindings(self):
+        m = Management(Mock(name='transport'))
+        with self.assertRaises(NotImplementedError):
+            m.get_bindings()

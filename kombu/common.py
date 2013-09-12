@@ -93,7 +93,7 @@ def maybe_declare(entity, channel=None, retry=False, **retry_policy):
 def _maybe_declare(entity):
     channel = entity.channel
     if not channel.connection:
-        raise StdChannelError("channel disconnected")
+        raise StdChannelError('channel disconnected')
     declared = channel.connection.client.declared_entities
     if entity not in declared or getattr(entity, 'auto_delete', None):
         entity.declare()
@@ -236,7 +236,7 @@ def ignore_errors(conn, fun=None, *args, **kwargs):
     .. note::
 
         Connection and channel errors should be properly handled,
-        and not ignored.  Using this function is only acceptible in a cleanup
+        and not ignored.  Using this function is only acceptable in a cleanup
         phase, like when a connection is lost or at shutdown.
 
     """
