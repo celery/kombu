@@ -599,8 +599,9 @@ class Connection(object):
         password = fields['password']
         transport = fields['transport']
         url = '%s://' % transport
-        if userid:
-            url += quoteS(userid)
+        if userid or password:
+            if userid:
+                url += quoteS(userid)
             if include_password and password:
                 url += ':' + quoteS(password)
             url += '@'
