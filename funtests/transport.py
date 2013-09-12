@@ -1,4 +1,4 @@
-from __future__ import absolute_import, print_statement
+from __future__ import absolute_import, print_function
 
 import random
 import socket
