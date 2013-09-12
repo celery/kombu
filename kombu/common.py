@@ -94,12 +94,18 @@ def _maybe_declare(entity):
     channel = entity.channel
     if not channel.connection:
         raise StdChannelError("channel disconnected")
-    declared = channel.connection.client.declared_entities
-    if entity not in declared or getattr(entity, 'auto_delete', None):
-        entity.declare()
-        declared.add(entity)
-        return True
-    return False
+
+    if entity.can_cache_declaration:
+        declared = channel.connection.client.declared_entities
+        ident = hash(entity)
+        if ident not in declared:
+            entity.declare()
+            declared.add(ident)
+            return True
+        return False
+
+    entity.declare()
+    return True
 
 
 def _imaybe_declare(entity, **retry_policy):
