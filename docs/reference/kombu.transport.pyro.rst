@@ -1,6 +1,6 @@
-.. currentmodule:: kombu.transport.mongodb
+.. currentmodule:: kombu.transport.pyro
 
-.. automodule:: kombu.transport.mongodb
+.. automodule:: kombu.transport.pyro
 
     .. contents::
         :local:
