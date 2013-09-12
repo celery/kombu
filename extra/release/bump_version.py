@@ -14,7 +14,6 @@ rq = lambda s: s.strip("\"'")
 str_t = str if sys.version_info[0] >= 3 else basestring
 
 
-
 def cmd(*args):
     return subprocess.Popen(args, stdout=subprocess.PIPE).communicate()[0]
 
