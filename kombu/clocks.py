@@ -7,12 +7,59 @@ Logical Clocks and Synchronization.
 """
 from __future__ import absolute_import
 
-from itertools import islice
 from threading import Lock
+from itertools import islice
+from operator import itemgetter
 
 from .five import zip
 
-__all__ = ['LamportClock']
+__all__ = ['LamportClock', 'timetuple']
+
+R_CLOCK = '_lamport(clock={0}, timestamp={1}, id={2} {3!r})'
+
+
+class timetuple(tuple):
+    """Tuple of event clock information.
+
+    Can be used as part of a heap to keep events ordered.
+
+    :param clock:  Event clock value.
+    :param timestamp: Event UNIX timestamp value.
+    :param id: Event host id (e.g. ``hostname:pid``).
+    :param obj: Optional obj to associate with this event.
+
+    """
+    __slots__ = ()
+
+    def __new__(cls, clock, timestamp, id, obj=None):
+        return tuple.__new__(cls, (clock, timestamp, id, obj))
+
+    def __repr__(self):
+        return R_CLOCK.format(*self)
+
+    def __getnewargs__(self):
+        return tuple(self)
+
+    def __lt__(self, other):
+        # 0: clock 1: timestamp 3: process id
+        try:
+            A, B = self[0], other[0]
+            # uses logical clock value first
+            if A and B:  # use logical clock if available
+                if A == B:  # equal clocks use lower process id
+                    return self[2] < other[2]
+                return A < B
+            return self[1] < other[1]  # ... or use timestamp
+        except IndexError:
+            return NotImplemented
+    __gt__ = lambda self, other: other < self
+    __le__ = lambda self, other: not other < self
+    __ge__ = lambda self, other: not self < other
+
+    clock = property(itemgetter(0))
+    timestamp = property(itemgetter(1))
+    id = property(itemgetter(2))
+    obj = property(itemgetter(3))
 
 
 class LamportClock(object):
