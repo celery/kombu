@@ -10,10 +10,11 @@ from itertools import count
 from kombu import Connection, Exchange, Queue, Consumer, Producer
 from kombu.exceptions import InconsistencyError, VersionMismatch
 from kombu.five import Empty, Queue as _Queue
+from kombu.transport import virtual
 from kombu.utils import eventio  # patch poll
 
 from kombu.tests.case import (
-    Case, Mock, module_exists, skip_if_not_module, patch,
+    Case, Mock, call, module_exists, skip_if_not_module, patch,
 )
 
 
@@ -219,6 +220,153 @@ class test_Channel(Case):
         self.connection = Connection(transport=Transport)
         self.channel = self.connection.channel()
 
+    def test_disable_ack_emulation(self):
+        conn = Connection(transport=Transport, transport_options={
+            'ack_emulation': False,
+        })
+
+        chan = conn.channel()
+        self.assertFalse(chan.ack_emulation)
+        self.assertEqual(chan.QoS, virtual.QoS)
+
+    def test_redis_info_raises(self):
+        pool = Mock(name='pool')
+        pool_at_init = [pool]
+        client = _client = Mock(name='client')
+
+        class XChannel(Channel):
+
+            def __init__(self, *args, **kwargs):
+                self._pool = pool_at_init[0]
+                super(XChannel, self).__init__(*args, **kwargs)
+
+            def _get_client(self):
+                return lambda *_, **__: client
+
+        class XTransport(Transport):
+            Channel = XChannel
+
+        conn = Connection(transport=XTransport)
+        client.info.side_effect = RuntimeError()
+        with self.assertRaises(RuntimeError):
+            chan = conn.channel()
+        pool.disconnect.assert_called_with()
+        pool.disconnect.reset_mock()
+
+        pool_at_init = [None]
+        with self.assertRaises(RuntimeError):
+            chan = conn.channel()
+        self.assertFalse(pool.disconnect.called)
+
+    def test_after_fork(self):
+        self.channel._pool = None
+        self.channel._after_fork()
+
+        self.channel._pool = Mock(name='pool')
+        self.channel._after_fork()
+        self.channel._pool.disconnect.assert_called_with()
+
+    def test_next_delivery_tag(self):
+        self.assertNotEqual(
+            self.channel._next_delivery_tag(),
+            self.channel._next_delivery_tag(),
+        )
+
+    def test_do_restore_message(self):
+        client = Mock(name='client')
+        pl1 =  {'body': 'BODY'}
+        spl1 = dumps(pl1)
+        lookup = self.channel._lookup = Mock(name='_lookup')
+        lookup.return_value = ['george', 'elaine']
+        self.channel._do_restore_message(
+            pl1, 'ex', 'rkey', client,
+        )
+        client.lpush.assert_has_calls([
+            call('george', spl1), call('elaine', spl1),
+        ])
+
+        pl2 = {'body': 'BODY2', 'headers': {'x-funny': 1}}
+        headers_after = dict(pl2['headers'], redelivered=True)
+        spl2 = dumps(dict(pl2, headers=headers_after))
+        self.channel._do_restore_message(
+            pl2, 'ex', 'rkey', client,
+        )
+        client.lpush.assert_has_calls([
+            call('george', spl2), call('elaine', spl2),
+        ])
+
+        client.lpush.side_effect = KeyError()
+        with patch('kombu.transport.redis.logger') as logger:
+            self.channel._do_restore_message(
+                pl2, 'ex', 'rkey', client,
+            )
+            self.assertTrue(logger.critical.called)
+
+    def test_restore(self):
+        message = Mock(name='message')
+        with patch('kombu.transport.redis.loads') as loads:
+            loads.return_value = 'M', 'EX', 'RK'
+            client = self.channel.client = Mock(name='client')
+            restore = self.channel._do_restore_message = Mock(
+                name='_do_restore_message',
+            )
+            pipe = Mock(name='pipe')
+            client.pipeline.return_value = pipe
+            pipe_hget = Mock(name='pipe.hget')
+            pipe.hget.return_value = pipe_hget
+            pipe_hget_hdel = Mock(name='pipe.hget.hdel')
+            pipe_hget.hdel.return_value = pipe_hget_hdel
+            ex = pipe_hget_hdel_execute = Mock(name='pipe.hget.hdel.execute')
+            result = Mock(name='result')
+            pipe_hget_hdel.execute.return_value = None, None
+
+            self.channel._restore(message)
+            client.pipeline.assert_called_with()
+            unacked_key = self.channel.unacked_key
+            self.assertFalse(loads.called)
+
+            tag = message.delivery_tag
+            pipe.hget.assert_called_with(unacked_key, tag)
+            pipe_hget.hdel.assert_called_with(unacked_key, tag)
+            pipe_hget_hdel.execute.assert_called_with()
+
+            pipe_hget_hdel.execute.return_value = result, None
+            self.channel._restore(message)
+            loads.assert_called_with(result)
+            restore.assert_called_with('M', 'EX', 'RK', client)
+
+    def test_qos_restore_visible(self):
+        client = self.channel.client = Mock(name='client')
+        client.zrevrangebyscore.return_value = [
+            (1, 10),
+            (2, 20),
+            (3, 30),
+        ]
+        qos = redis.QoS(self.channel)
+        restore = qos.restore_by_tag = Mock(name='restore_by_tag')
+        qos._vrestore_count = 1
+        qos.restore_visible()
+        self.assertFalse(client.zrevrangebyscore.called)
+        self.assertEqual(qos._vrestore_count, 2)
+
+        qos._vrestore_count = 0
+        qos.restore_visible()
+        restore.assert_has_calls([
+            call(1, client), call(2, client), call(3, client),
+        ])
+        self.assertEqual(qos._vrestore_count, 1)
+
+        qos._vrestore_count = 0
+        restore.reset_mock()
+        client.zrevrangebyscore.return_value = []
+        qos.restore_visible()
+        self.assertFalse(restore.called)
+        self.assertEqual(qos._vrestore_count, 1)
+
+        qos._vrestore_count = 0
+        client.setnx.side_effect = redis.MutexHeld()
+        qos.restore_visible()
+
     def test_basic_consume_when_fanout_queue(self):
         self.channel.exchange_declare(exchange='txconfan', type='fanout')
         self.channel.queue_declare(queue='txconfanq')
@@ -358,6 +506,27 @@ class test_Channel(Case):
         self.channel._put_fanout('exchange', body)
         c.publish.assert_called_with('exchange', dumps(body))
 
+    def test_put_priority(self):
+        client = self.channel.client = Mock(name='client')
+        msg1 = {'properties': {'delivery_info': {'priority': 3}}}
+
+        self.channel._put('george', msg1)
+        client.lpush.assert_called_with(
+            self.channel._q_for_pri('george', 3), dumps(msg1),
+        )
+
+        msg2 = {'properties': {'delivery_info': {'priority': 313}}}
+        self.channel._put('george', msg2)
+        client.lpush.assert_called_with(
+            self.channel._q_for_pri('george', 9), dumps(msg2),
+        )
+
+        msg3 = {'properties': {'delivery_info': {}}}
+        self.channel._put('george', msg3)
+        client.lpush.assert_called_with(
+            self.channel._q_for_pri('george', 0), dumps(msg3),
+        )
+
     def test_delete(self):
         x = self.channel
         self.channel._in_poll = False
@@ -383,6 +552,14 @@ class test_Channel(Case):
         self.channel.closed = True
         self.channel.close()
 
+    def test_close_deletes_autodelete_fanout_queues(self):
+        self.channel._fanout_queues = ['foo', 'bar']
+        self.channel.auto_delete_queues = ['foo']
+        self.channel.queue_delete = Mock(name='queue_delete')
+
+        self.channel.close()
+        self.channel.queue_delete.assert_has_calls([call('foo')])
+
     def test_close_client_close_raises(self):
         c = self.channel.client = Mock()
         c.connection.disconnect.side_effect = self.channel.ResponseError()
@@ -395,6 +572,33 @@ class test_Channel(Case):
         with self.assertRaises(ValueError):
             self.channel.connection.client.virtual_host = 'dwqeq'
             self.channel._connparams()
+
+    def test_connparams_allows_slash_in_db(self):
+        self.channel.connection.client.virtual_host = '/123'
+        self.assertEqual(self.channel._connparams()['db'], 123)
+
+    def test_connparams_db_can_be_int(self):
+        self.channel.connection.client.virtual_host = 124
+        self.assertEqual(self.channel._connparams()['db'], 124)
+
+    def test_new_queue_with_auto_delete(self):
+        redis.Channel._new_queue(self.channel, 'george', auto_delete=False)
+        self.assertNotIn('george', self.channel.auto_delete_queues)
+        redis.Channel._new_queue(self.channel, 'elaine', auto_delete=True)
+        self.assertIn('elaine', self.channel.auto_delete_queues)
+
+    def test_connparams_regular_hostname(self):
+        self.channel.connection.client.hostname = 'george.vandelay.com'
+        self.assertEqual(
+            self.channel._connparams()['host'],
+            'george.vandelay.com',
+        )
+
+    def test_rotate_cycle_ValueError(self):
+        cycle = self.channel._queue_cycle = ['kramer', 'jerry']
+        self.channel._rotate_cycle('kramer')
+        self.assertEqual(cycle, ['jerry', 'kramer'])
+        self.channel._rotate_cycle('elaine')
 
     @skip_if_not_module('redis')
     def test_get_client(self):
@@ -435,9 +639,59 @@ class test_Channel(Case):
         self.channel.pool.release.assert_called_with(client.connection)
         cc.assert_called_with()
 
+    def test_transport_on_poll_init(self):
+        transport = self.connection.transport
+        transport.cycle = Mock(name='cyle')
+        poller = Mock(name='poller')
+        redis.Transport.on_poll_init(transport, poller)
+        transport.cycle.on_poll_init.assert_called_with(poller)
+
+    def test_transport_on_poll_start(self):
+        transport = self.connection.transport
+        cycle = transport.cycle = Mock(name='cyle')
+        cycle.fds = {12: 'LISTEN', 13: 'BRPOP'}
+        res = redis.Transport.on_poll_start(transport)
+        cycle.on_poll_start.assert_called_with()
+        self.assertDictEqual(res, {
+            12: transport.handle_event,
+            13: transport.handle_event,
+        })
+
+    def test_transport_on_poll_empty(self):
+        transport = self.connection.transport
+        cycle = transport.cycle = Mock(name='cyle')
+        redis.Transport.on_poll_empty(transport)
+        cycle.on_poll_empty.assert_called_with()
+
+    def test_transport_handle_event(self):
+        transport = self.connection.transport
+        cycle = transport.cycle = Mock(name='cyle')
+        cycle.handle_event.return_value = None
+
+        redis.Transport.handle_event(transport, 13, redis.READ)
+        cycle.handle_event.assert_called_with(13, redis.READ)
+        cycle.handle_event.reset_mock()
+
+        ret = (Mock(name='message'), Mock(name='queue')), Mock(name='channel')
+        cycle.handle_event.return_value = ret
+        with self.assertRaises(KeyError):
+            redis.Transport.handle_event(transport, 14, redis.READ)
+
+        cb = transport._callbacks[ret[0][1]] = Mock(name='callback')
+        redis.Transport.handle_event(transport, 14, redis.READ)
+        cb.assert_called_with(ret[0][0])
+
+
+
+
+
     @skip_if_not_module('redis')
     def test_transport_get_errors(self):
         self.assertTrue(redis.Transport._get_errors(self.connection.transport))
+
+    @skip_if_not_module('redis')
+    def test_transport_driver_version(self):
+        self.assertTrue(redis.Transport.driver_version(self.connection.transport))
 
     @skip_if_not_module('redis')
     def test_transport_get_errors_when_InvalidData_used(self):
@@ -645,7 +899,75 @@ def _redis_modules():
 
 
 class test_MultiChannelPoller(Case):
-    Poller = redis.MultiChannelPoller
+
+    def setUp(self):
+        self.Poller = redis.MultiChannelPoller
+
+    def test_on_poll_start(self):
+        p = self.Poller()
+        p._channels = []
+        p.on_poll_start()
+        p._register_BRPOP = Mock(name='_register_BRPOP')
+        p._register_LISTEN = Mock(name='_register_LISTEN')
+
+        chan1 = Mock(name='chan1')
+        p._channels = [chan1]
+        chan1.active_queues = []
+        chan1.active_fanout_queues = []
+        p.on_poll_start()
+
+        chan1.active_queues = ['q1']
+        chan1.active_fanout_queues = ['q2']
+        chan1.qos.can_consume.return_value = False
+
+        p.on_poll_start()
+        p._register_LISTEN.assert_called_with(chan1)
+        self.assertFalse(p._register_BRPOP.called)
+
+        chan1.qos.can_consume.return_value = True
+        p._register_LISTEN.reset_mock()
+        p.on_poll_start()
+
+        p._register_BRPOP.assert_called_with(chan1)
+        p._register_LISTEN.assert_called_with(chan1)
+
+    def test_on_poll_init(self):
+        p = self.Poller()
+        chan1 = Mock(name='chan1')
+        p._channels = []
+        poller = Mock(name='poller')
+        p.on_poll_init(poller)
+        self.assertIs(p.poller, poller)
+
+        p._channels = [chan1]
+        p.on_poll_init(poller)
+        chan1.qos.restore_visible.assert_called_with(
+            num=chan1.unacked_restore_limit,
+        )
+
+    def test_handle_event(self):
+        p = self.Poller()
+        chan = Mock(name='chan')
+        p._fd_to_chan[13] = chan, 'BRPOP'
+        chan.handlers = {'BRPOP': Mock(name='BRPOP')}
+
+        chan.qos.can_consume.return_value = False
+        p.handle_event(13, redis.READ)
+        self.assertFalse(chan.handlers['BRPOP'].called)
+
+        chan.qos.can_consume.return_value = True
+        p.handle_event(13, redis.READ)
+        chan.handlers['BRPOP'].assert_called_with()
+
+        p.handle_event(13, redis.ERR)
+        chan._poll_error.assert_called_with('BRPOP')
+
+        p.handle_event(13, ~(redis.READ | redis.ERR))
+
+    def test_fds(self):
+        p = self.Poller()
+        p._fd_to_chan = {1: 2}
+        self.assertDictEqual(p.fds, p._fd_to_chan)
 
     def test_close_unregisters_fds(self):
         p = self.Poller()
@@ -767,6 +1089,13 @@ class test_MultiChannelPoller(Case):
 
         with self.assertRaises(redis.Empty):
             p.get()
+
+    def test_qos_reject(self):
+        p, channel = self.create_get()
+        qos = redis.QoS(channel)
+        qos.ack = Mock(name='Qos.ack')
+        qos.reject(1234)
+        qos.ack.assert_called_with(1234)
 
     def test_get_brpop_qos_allow(self):
         p, channel = self.create_get(queues=['a_queue'])
