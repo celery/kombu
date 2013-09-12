@@ -1,5 +1,7 @@
 from __future__ import absolute_import
 
+import sys
+
 __all__ = ['lazy', 'maybe_evaluate']
 
 
@@ -31,11 +33,6 @@ class lazy(object):
     def __repr__(self):
         return repr(self())
 
-    def __cmp__(self, rhs):
-        if isinstance(rhs, self.__class__):
-            return -cmp(rhs, self())
-        return cmp(self(), rhs)
-
     def __eq__(self, rhs):
         return self() == rhs
 
@@ -49,6 +46,13 @@ class lazy(object):
     def __reduce__(self):
         return (self.__class__, (self._fun, ), {'_args': self._args,
                                                 '_kwargs': self._kwargs})
+
+    if sys.version_info[0] < 3:
+
+        def __cmp__(self, rhs):
+            if isinstance(rhs, self.__class__):
+                return -cmp(rhs, self())
+            return cmp(self(), rhs)
 
 
 def maybe_evaluate(value):

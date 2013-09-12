@@ -1,10 +1,11 @@
 from __future__ import absolute_import
 
 import pickle
+import sys
 
 from kombu.utils.functional import lazy, maybe_evaluate
 
-from kombu.tests.case import Case
+from kombu.tests.case import Case, SkipTest
 
 
 def double(x):
@@ -26,6 +27,9 @@ class test_lazy(Case):
         )
 
     def test__cmp__(self):
+        if sys.version_info[0] == 3:
+            raise SkipTest('irrelevant on py3')
+
         self.assertEqual(lazy(lambda: 10).__cmp__(lazy(lambda: 20)), -1)
         self.assertEqual(lazy(lambda: 10).__cmp__(5), 1)
 

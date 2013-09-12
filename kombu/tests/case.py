@@ -95,15 +95,22 @@ def module_exists(*modules):
 
         @wraps(fun)
         def __inner(*args, **kwargs):
+            gen = []
             for module in modules:
                 if isinstance(module, string_t):
                     if not PY3:
                         module = ensure_bytes(module)
                     module = types.ModuleType(module)
+                gen.append(module)
                 sys.modules[module.__name__] = module
-                try:
-                    return fun(*args, **kwargs)
-                finally:
+                name = module.__name__
+                if '.' in name:
+                    parent, _, attr = name.rpartition('.')
+                    setattr(sys.modules[parent], attr, module)
+            try:
+                return fun(*args, **kwargs)
+            finally:
+                for module in gen:
                     sys.modules.pop(module.__name__, None)
 
         return __inner

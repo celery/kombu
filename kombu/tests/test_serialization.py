@@ -310,7 +310,7 @@ class test_Serialization(Case):
             registry.encode('foo', serializer='nonexisting')
 
     def test_encode__no_serializer(self):
-        ctyp, cenc, data = registry.encode(bytes_t('foo'))
+        ctyp, cenc, data = registry.encode(str_to_bytes('foo'))
         self.assertEqual(ctyp, 'application/data')
         self.assertEqual(cenc, 'binary')
 

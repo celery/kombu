@@ -1142,6 +1142,7 @@ class test_MultiChannelPoller(Case):
 
 class test_Mutex(Case):
 
+    @skip_if_not_module('redis')
     def test_mutex(self, lock_id='xxx'):
         client = Mock(name='client')
         with patch('kombu.transport.redis.uuid') as uuid:
