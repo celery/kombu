@@ -40,6 +40,7 @@
     kombu.transport.sqlalchemy
     kombu.transport.sqlalchemy.models
     kombu.transport.SQS
+    kombu.transport.pyro
     kombu.transport.amqplib
     kombu.transport.base
     kombu.transport.virtual
@@ -56,3 +57,4 @@
     kombu.utils.url
     kombu.utils.text
     kombu.utils.amq_manager
+    kombu.five
