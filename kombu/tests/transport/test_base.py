@@ -46,7 +46,7 @@ class test_Message(Case):
 
     def test_postencode(self):
         with self.assertRaises(LookupError):
-            m = Message(self.channel, text_t('FOO'), postencode='ccyzz')
+            Message(self.channel, text_t('FOO'), postencode='ccyzz')
 
     def test_ack_respects_no_ack_consumers(self):
         self.channel.no_ack_consumers = set(['abc'])
@@ -100,6 +100,7 @@ class test_Message(Case):
         reject.assert_called_with()
         self.assertTrue(logger.critical.called)
         self.assertIn("Couldn't ack", logger.critical.call_args[0][0])
+
 
 class test_interface(Case):
 

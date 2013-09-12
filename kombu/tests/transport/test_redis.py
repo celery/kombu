@@ -232,7 +232,7 @@ class test_Channel(Case):
     def test_redis_info_raises(self):
         pool = Mock(name='pool')
         pool_at_init = [pool]
-        client = _client = Mock(name='client')
+        client = Mock(name='client')
 
         class XChannel(Channel):
 
@@ -249,13 +249,13 @@ class test_Channel(Case):
         conn = Connection(transport=XTransport)
         client.info.side_effect = RuntimeError()
         with self.assertRaises(RuntimeError):
-            chan = conn.channel()
+            conn.channel()
         pool.disconnect.assert_called_with()
         pool.disconnect.reset_mock()
 
         pool_at_init = [None]
         with self.assertRaises(RuntimeError):
-            chan = conn.channel()
+            conn.channel()
         self.assertFalse(pool.disconnect.called)
 
     def test_after_fork(self):
@@ -274,7 +274,7 @@ class test_Channel(Case):
 
     def test_do_restore_message(self):
         client = Mock(name='client')
-        pl1 =  {'body': 'BODY'}
+        pl1 = {'body': 'BODY'}
         spl1 = dumps(pl1)
         lookup = self.channel._lookup = Mock(name='_lookup')
         lookup.return_value = ['george', 'elaine']
@@ -316,7 +316,6 @@ class test_Channel(Case):
             pipe.hget.return_value = pipe_hget
             pipe_hget_hdel = Mock(name='pipe.hget.hdel')
             pipe_hget.hdel.return_value = pipe_hget_hdel
-            ex = pipe_hget_hdel_execute = Mock(name='pipe.hget.hdel.execute')
             result = Mock(name='result')
             pipe_hget_hdel.execute.return_value = None, None
 
@@ -681,17 +680,15 @@ class test_Channel(Case):
         redis.Transport.handle_event(transport, 14, redis.READ)
         cb.assert_called_with(ret[0][0])
 
-
-
-
-
     @skip_if_not_module('redis')
     def test_transport_get_errors(self):
         self.assertTrue(redis.Transport._get_errors(self.connection.transport))
 
     @skip_if_not_module('redis')
     def test_transport_driver_version(self):
-        self.assertTrue(redis.Transport.driver_version(self.connection.transport))
+        self.assertTrue(
+            redis.Transport.driver_version(self.connection.transport),
+        )
 
     @skip_if_not_module('redis')
     def test_transport_get_errors_when_InvalidData_used(self):
@@ -1188,4 +1185,3 @@ class test_Mutex(Case):
             with redis.Mutex(client, 'foo1', 100):
                 held = True
             self.assertTrue(held)
-

@@ -12,7 +12,7 @@ from kombu.five import text_t, bytes_t
 from kombu.serialization import (
     registry, register, SerializerNotInstalled,
     raw_encode, register_yaml, register_msgpack,
-    decode, bytes_t, pickle, pickle_protocol,
+    decode, pickle, pickle_protocol,
     unregister, register_pickle, enable_insecure_serializers,
     disable_insecure_serializers,
 )
@@ -173,7 +173,8 @@ class test_Serialization(Case):
         with patch('kombu.serialization.registry') as registry:
             enable_insecure_serializers()
             registry.assert_has_calls([
-                call.enable('pickle'), call.enable('yaml'), call.enable('msgpack'),
+                call.enable('pickle'), call.enable('yaml'),
+                call.enable('msgpack'),
             ])
             registry.enable.side_effect = KeyError()
             enable_insecure_serializers()
@@ -315,7 +316,8 @@ class test_Serialization(Case):
 
     def test_decode__not_accepted(self):
         with self.assertRaises(ContentDisallowed):
-            registry.decode('tainted', 'application/x-evil', 'binary', accept=[])
+            registry.decode('tainted', 'application/x-evil',
+                            'binary', accept=[])
         with self.assertRaises(ContentDisallowed):
             registry.decode('tainted', 'application/x-evil', 'binary',
                             accept=['application/x-json'])

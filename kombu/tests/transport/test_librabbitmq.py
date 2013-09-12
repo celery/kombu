@@ -6,7 +6,6 @@ except ImportError:
     librabbitmq = None  # noqa
 else:
     from kombu.transport import librabbitmq  # noqa
-from kombu import Connection
 
 from kombu.tests.case import Case, Mock, SkipTest, patch
 
@@ -22,8 +21,9 @@ class test_Message(lrmqCase):
 
     def test_init(self):
         chan = Mock(name='channel')
-        message = librabbitmq.Message(chan, {'prop': 42},
-                {'delivery_tag': 337}, 'body')
+        message = librabbitmq.Message(
+            chan, {'prop': 42}, {'delivery_tag': 337}, 'body',
+        )
         self.assertEqual(message.body, 'body')
         self.assertEqual(message.delivery_tag, 337)
         self.assertEqual(message.properties['prop'], 42)
@@ -153,4 +153,3 @@ class test_Transport(lrmqCase):
         self.T.close_connection(conn)
         self.assertIsNone(self.client.drain_events)
         conn.close.assert_called_with()
-

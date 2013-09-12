@@ -34,7 +34,6 @@ class test_transport(Case):
         self.assertTrue(transport.resolve_transport('pyamqp'))
 
 
-
 class test_transport_ghettoq(Case):
 
     @patch('warnings.warn')

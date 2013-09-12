@@ -72,17 +72,17 @@ class test_Mailbox(Case):
                                serializer='pickle')
         with self.assertRaises(ContentDisallowed):
             reply = mailbox._collect('doom', limit=1, channel=channel)
-        mailbox._publish_reply({'foo': 'BAMBAM'}, exchange, mailbox.oid, 'doom',
-                               serializer='pickle')
+        mailbox._publish_reply(
+            {'foo': 'BAMBAM'}, exchange, mailbox.oid, 'doom',
+            serializer='pickle',
+        )
         reply = mailbox._collect('doom', limit=1, channel=channel,
                                  accept=['pickle'])
         self.assertEqual(reply[0]['foo'], 'BAMBAM')
 
-
         de = mailbox.connection.drain_events = Mock()
         de.side_effect = socket.timeout
         mailbox._collect(ticket, limit=1, channel=channel)
-
 
     def test_constructor(self):
         self.assertIsNone(self.mailbox.connection)
