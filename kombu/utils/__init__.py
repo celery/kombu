@@ -16,7 +16,7 @@ from itertools import count, repeat
 from time import sleep
 from uuid import UUID, uuid4 as _uuid4, _uuid_generate_random
 
-from kombu.five import items, reraise, string_t
+from kombu.five import int_types, items, reraise, string_t
 
 from .encoding import default_encode, safe_repr as _safe_repr
 
@@ -25,10 +25,18 @@ try:
 except:
     ctypes = None  # noqa
 
+try:
+    from io import UnsupportedOperation
+    FILENO_ERRORS = (AttributeError, ValueError, UnsupportedOperation)
+except ImportError:  # pragma: no cover
+    # Py2
+    FILENO_ERRORS = (AttributeError, ValueError)  # noqa
+
+
 __all__ = ['EqualityDict', 'say', 'uuid', 'kwdict', 'maybe_list',
            'fxrange', 'fxrangemax', 'retry_over_time',
            'emergency_dump_state', 'cached_property',
-           'reprkwargs', 'reprcall', 'nested']
+           'reprkwargs', 'reprcall', 'nested', 'fileno', 'maybe_fileno']
 
 
 def symbol_by_name(name, aliases={}, imp=None, package=None,
@@ -406,3 +414,17 @@ def escape_regex(p, white=''):
     return ''.join(c if c.isalnum() or c in white
                    else ('\\000' if c == '\000' else '\\' + c)
                    for c in p)
+
+
+def fileno(f):
+    if isinstance(f, int_types):
+        return f
+    return f.fileno()
+
+
+def maybe_fileno(f):
+    """Get object fileno, or :const:`None` if not defined."""
+    try:
+        return fileno(f)
+    except FILENO_ERRORS:
+        pass

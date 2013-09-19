@@ -2,7 +2,9 @@ from __future__ import absolute_import
 
 import sys
 
-__all__ = ['lazy', 'maybe_evaluate']
+__all__ = ['lazy', 'maybe_evaluate', 'is_list', 'maybe_list']
+
+from kombu.five import string_t
 
 
 class lazy(object):
@@ -60,6 +62,16 @@ def maybe_evaluate(value):
     if isinstance(value, lazy):
         return value.evaluate()
     return value
+
+
+def is_list(l, scalars=(dict, string_t)):
+    """Returns true if object is list-like, but not a dict or string."""
+    return hasattr(l, '__iter__') and not isinstance(l, scalars or ())
+
+
+def maybe_list(l, scalars=(dict, string_t)):
+    """Returns list of one element if ``l`` is a scalar."""
+    return l if l is None or is_list(l, scalars) else [l]
 
 
 # Compat names (before kombu 3.0)
