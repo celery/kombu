@@ -13,9 +13,9 @@ from .utils.functional import maybe_evaluate
 
 __all__ = ['LogMixin', 'LOG_LEVELS', 'get_loglevel', 'setup_logging']
 
-FATAL = logging.FATAL
-LOG_LEVELS = dict({'FATAL': logging.fatal, FATAL: 'FATAL'},
-                  **logging._levelNames)
+LOG_LEVELS = dict(logging._levelNames)
+LOG_LEVELS['FATAL'] = logging.FATAL
+LOG_LEVELS[logging.FATAL] = 'FATAL'
 DISABLE_TRACEBACKS = os.environ.get('DISABLE_TRACEBACKS')
 
 
