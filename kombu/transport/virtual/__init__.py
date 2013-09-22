@@ -20,6 +20,8 @@ from itertools import count
 from multiprocessing.util import Finalize
 from time import sleep, time
 
+from amqp.protocol import queue_declare_ok_t
+
 from kombu.exceptions import ResourceError, StdChannelError
 from kombu.five import Empty, items
 from kombu.utils import emergency_dump_state, say, uuid
@@ -421,7 +423,7 @@ class Channel(AbstractChannel, base.StdChannel):
             )
         else:
             self._new_queue(queue, **kwargs)
-        return queue, self._size(queue), 0
+        return queue_declare_ok_t(queue, self._size(queue), 0)
 
     def queue_delete(self, queue, if_unusued=False, if_empty=False, **kwargs):
         """Delete queue."""
