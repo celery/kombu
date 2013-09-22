@@ -13,9 +13,9 @@ from .utils.functional import maybe_evaluate
 
 __all__ = ['LogMixin', 'LOG_LEVELS', 'get_loglevel', 'setup_logging']
 
-LOG_LEVELS = dict(logging._levelNames)
-LOG_LEVELS['FATAL'] = logging.FATAL
-LOG_LEVELS[logging.FATAL] = 'FATAL'
+FATAL = logging.FATAL
+LOG_LEVELS = dict({'FATAL': logging.fatal, FATAL: 'FATAL'},
+                  **logging._levelNames)
 DISABLE_TRACEBACKS = os.environ.get('DISABLE_TRACEBACKS')
 
 
@@ -30,12 +30,6 @@ def get_logger(logger):
         logger = logging.getLogger(logger)
     if not logger.handlers:
         logger.addHandler(NullHandler())
-    return logger
-
-
-def anon_logger(name):
-    logger = logging.getLogger(name)
-    logger.addHandler(NullHandler())
     return logger
 
 
