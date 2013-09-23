@@ -370,14 +370,9 @@ class Transport(base.Transport):
     def verify_connection(self, connection):
         return connection.channels is not None and self.is_alive(connection)
 
-    def eventmap(self, connection):
-        return {connection.method_reader.source.sock: self.client.drain_nowait}
-
-    def on_poll_init(self, poller):
-        pass
-
-    def on_poll_start(self):
-        return {}
+    def register_with_event_loop(self, connection, loop):
+        loop.add_reader(connection.method_reader.source.sock,
+                        self.client.drain_nowait_all)
 
     @property
     def default_connection_params(self):

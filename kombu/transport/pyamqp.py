@@ -125,14 +125,8 @@ class Transport(base.Transport):
         connection.client = None
         connection.close()
 
-    def eventmap(self, connection):
-        return {connection.sock: self.client.drain_nowait}
-
-    def on_poll_init(self, poller):
-        pass
-
-    def on_poll_start(self):
-        return {}
+    def register_with_event_loop(self, connection, loop):
+        loop.add_reader(connection.sock, self.client.drain_nowait_all)
 
     def heartbeat_check(self, connection, rate=2):
         return connection.heartbeat_tick(rate=rate)

@@ -251,13 +251,21 @@ class Transport(virtual.Transport):
     def driver_version(self):
         return zmq.__version__
 
-    def on_poll_init(self, poller):
-        self.cycle.poller = poller
-
-    def on_poll_start(self):
+    def register_with_event_loop(self, connection, loop):
         cycle = self.cycle
-        cycle.on_poll_start()
-        return dict((fd, self.handle_event) for fd in cycle.fds)
+        cycle.poller = loop.poller
+        add_reader = loop.add_reader
+        handle_event = self.handle_event
+
+        cycle_poll_start = cycle.on_poll_start
+
+        def on_poll_start():
+            cycle_poll_start()
+            [add_reader(fd, handle_event) for fd in cycle.fds]
+            for fd in cycle.fds:
+                add_reader(fd, handle_event)
+
+        loop.on_tick.add(on_poll_start)
 
     def handle_event(self, fileno, event):
         evt = self.cycle.handle_event(fileno, event)

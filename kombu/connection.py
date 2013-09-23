@@ -24,6 +24,7 @@ except ImportError:  # Py2
 # jython breaks on relative import for .exceptions for some reason
 # (Issue #112)
 from kombu import exceptions
+from .async import get_event_loop
 from .five import Empty, range, string_t, text_t, LifoQueue as _LifoQueue
 from .log import get_logger
 from .transport import get_transport_cls, supports_librabbitmq
@@ -236,6 +237,9 @@ class Connection(object):
         self.transport_cls = transport
         self.heartbeat = heartbeat and float(heartbeat)
 
+    def register_with_event_loop(self, loop):
+        self.transport.register_with_event_loop(self.connection, loop)
+
     def _debug(self, msg, *args, **kwargs):
         if self._logger:  # pragma: no cover
             fmt = '[Kombu connection:0x{id:x}] {msg}'
@@ -302,6 +306,17 @@ class Connection(object):
             raise
         self.more_to_read = True
         return True
+
+    def drain_nowait_all(self, *args, **kwargs):
+        while 1:
+            try:
+                self.drain_events(timeout=0)
+            except socket.timeout:
+                break
+            except socket.error as exc:
+                if get_errno(exc) in (errno.EGAIN, errno.EINTR):
+                    break
+                raise
 
     def maybe_close_channel(self, channel):
         """Close given channel, but ignore connection and channel errors."""
@@ -726,6 +741,9 @@ class Connection(object):
     def _establish_connection(self):
         self._debug('establishing connection...')
         conn = self.transport.establish_connection()
+        loop = get_event_loop()
+        if loop:
+            self.transport.register_with_event_loop(conn, loop)
         self._debug('connection established: %r', conn)
         return conn
 
@@ -837,12 +855,6 @@ class Connection(object):
     def channel_errors(self):
         """List of exceptions that may be raised by the channel."""
         return self.transport.channel_errors
-
-    @property
-    def eventmap(self):
-        """Map of events to be registered in an eventloop for this connection
-        to be used in non-blocking fashion."""
-        return self.transport.eventmap(self.connection)
 
     @property
     def supports_heartbeats(self):

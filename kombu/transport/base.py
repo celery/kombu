@@ -236,18 +236,7 @@ class Transport(object):
     def driver_version(self):
         return 'N/A'
 
-    def eventmap(self, connection):
-        """Map of fd -> event handler for event based use.
-        Unconvenient to use, and limited transport support."""
-        return {}
-
-    def on_poll_init(self, poller):
-        pass
-
-    def on_poll_start(self):
-        raise _LeftBlank(self, 'on_poll_start')
-
-    def on_poll_empty(self):
+    def register_with_event_loop(self, loop):
         pass
 
     def verify_connection(self, connection):

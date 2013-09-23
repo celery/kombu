@@ -130,20 +130,8 @@ class test_interface(Case):
     def test_driver_version(self):
         self.assertTrue(Transport(None).driver_version())
 
-    def test_eventmap(self):
-        self.assertDictEqual(
-            Transport(None).eventmap(Mock(name='connection')), {},
-        )
-
-    def test_on_poll_init(self):
-        Transport(None).on_poll_init(Mock(name='poller'))
-
-    def test_on_poll_start(self):
-        with self.assertRaises(NotImplementedError):
-            Transport(None).on_poll_start()
-
-    def test_on_poll_empty(self):
-        Transport(None).on_poll_empty()
+    def test_register_with_event_loop(self):
+        Transport(None).register_with_event_loop(Mock(name='loop'))
 
     def test_manager(self):
         self.assertTrue(Transport(None).manager)

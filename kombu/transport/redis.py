@@ -266,7 +266,7 @@ class MultiChannelPoller(object):
                 num=channel.unacked_restore_limit,
             )
 
-    def on_poll_empty(self):
+    def maybe_restore_messages(self):
         for channel in self._channels:
             if channel.active_queues:
                 # only need to do this once, as they are not local to channel.
@@ -299,7 +299,7 @@ class MultiChannelPoller(object):
 
         # - no new data, so try to restore messages.
         # - reset active redis commands.
-        self.on_poll_empty()
+        self.maybe_restore_messages()
 
         raise Empty()
 
@@ -755,18 +755,18 @@ class Transport(virtual.Transport):
     def driver_version(self):
         return redis.__version__
 
-    def on_poll_init(self, poller):
-        """Called when hub starts."""
-        self.cycle.on_poll_init(poller)
-
-    def on_poll_start(self):
-        """Called by hub before each ``poll()``"""
+    def register_with_event_loop(self, connection, loop):
         cycle = self.cycle
-        cycle.on_poll_start()
-        return dict((fd, self.handle_event) for fd in cycle.fds)
+        cycle.on_poll_init(loop.poller)
+        cycle_poll_start = cycle.on_poll_start
+        add_reader = loop.add_reader
+        handle_event = self.handle_event
 
-    def on_poll_empty(self):
-        self.cycle.on_poll_empty()
+        def on_poll_start():
+            cycle_poll_start()
+            [add_reader(fd, handle_event) for fd in cycle.fds]
+        loop.on_tick.add(on_poll_start)
+        loop.call_repeatedly(10, cycle.maybe_restore_messages)
 
     def handle_event(self, fileno, event):
         """Handle AIO event for one of our file descriptors."""

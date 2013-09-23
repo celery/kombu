@@ -656,12 +656,6 @@ class test_Channel(Case):
             13: transport.handle_event,
         })
 
-    def test_transport_on_poll_empty(self):
-        transport = self.connection.transport
-        cycle = transport.cycle = Mock(name='cyle')
-        redis.Transport.on_poll_empty(transport)
-        cycle.on_poll_empty.assert_called_with()
-
     def test_transport_handle_event(self):
         transport = self.connection.transport
         cycle = transport.cycle = Mock(name='cyle')

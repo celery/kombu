@@ -142,14 +142,8 @@ class Transport(base.Transport):
     def verify_connection(self, connection):
         return connection.connected
 
-    def on_poll_init(self, poller):
-        pass
-
-    def on_poll_start(self):
-        return {}
-
-    def eventmap(self, connection):
-        return {connection.fileno(): self.client.drain_nowait}
+    def register_with_event_loop(self, connection, loop):
+        loop.add_reader(connection.fileno(), self.client.drain_nowait_all)
 
     def get_manager(self, *args, **kwargs):
         return get_manager(self.client, *args, **kwargs)
