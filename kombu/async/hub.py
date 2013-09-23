@@ -232,8 +232,11 @@ class Hub(object):
                         elif event & WRITE:
                             cb, cbargs = writers[fileno]
                         elif event & ERR:
-                            cb, cbargs = (readers.get(fileno) or
-                                          writers.get(fileno))
+                            try:
+                                cb, cbargs = (readers.get(fileno) or
+                                              writers.get(fileno))
+                            except TypeError:
+                                pass
                     except (KeyError, Empty):
                         continue
                     if cb is None:
