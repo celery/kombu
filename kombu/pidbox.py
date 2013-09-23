@@ -27,7 +27,7 @@ from .utils import cached_property, kwdict, uuid, reprcall
 REPLY_QUEUE_EXPIRES = 10
 
 W_PIDBOX_IN_USE = """\
-A node named %(hostname)r is already using this process mailbox!
+A node named {node.hostname} is already using this process mailbox!
 
 Maybe you forgot to shutdown the other node or did not do so properly?
 Or if you meant to start multiple nodes on the same host please make sure
@@ -67,24 +67,25 @@ class Node(object):
             handlers = {}
         self.handlers = handlers
 
-    def Consumer(self, channel=None, **options):
-        options.setdefault('no_ack', True)
-        options.setdefault('accept', self.mailbox.accept)
+    def Consumer(self, channel=None, no_ack=True, accept=None, **options):
         queue = self.mailbox.get_queue(self.hostname)
 
         def verify_exclusive(name, messages, consumers):
             if consumers:
-                warnings.warn(W_PIDBOX_IN_USE % {'hostname': self.hostname})
+                warnings.warn(W_PIDBOX_IN_USE.format(node=self))
         queue.on_declared = verify_exclusive
 
-        return Consumer(channel or self.channel, [queue], **options)
+        return Consumer(
+            channel or self.channel, [queue], no_ack=no_ack,
+            accept=self.mailbox.accept if accept is None else accept,
+            **options
+        )
 
     def handler(self, fun):
         self.handlers[fun.__name__] = fun
         return fun
 
     def listen(self, channel=None, callback=None):
-        callback = callback or self.handle_message
         consumer = self.Consumer(channel=channel,
                                  callbacks=[callback or self.handle_message])
         consumer.consume()

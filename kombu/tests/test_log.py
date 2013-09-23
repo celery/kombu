@@ -6,7 +6,6 @@ import sys
 from kombu.log import (
     NullHandler,
     get_logger,
-    anon_logger,
     get_loglevel,
     safeify_format,
     Log,
@@ -45,10 +44,6 @@ class test_get_logger(Case):
 
         l = get_logger('bar')
         self.assertIs(l.handlers[0], handler)
-
-    def test_anon_logger(self):
-        l = anon_logger('test_anon_logger')
-        self.assertIsInstance(l.handlers[0], NullHandler)
 
     def test_get_loglevel(self):
         self.assertEqual(get_loglevel('DEBUG'), logging.DEBUG)
