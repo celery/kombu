@@ -15,6 +15,7 @@ from collections import Callable
 from contextlib import contextmanager
 from functools import partial
 from itertools import count, cycle
+from operator import itemgetter
 try:
     from urllib.parse import quote
 except ImportError:  # Py2
@@ -236,8 +237,8 @@ class Connection(object):
         self.heartbeat = heartbeat and float(heartbeat)
 
     def _debug(self, msg, *args, **kwargs):
-        fmt = '[Kombu connection:0x{id:x}] {msg}'
         if self._logger:  # pragma: no cover
+            fmt = '[Kombu connection:0x{id:x}] {msg}'
             logger.debug(fmt.format(id=id(self), msg=text_t(msg)),
                          *args, **kwargs)
 
@@ -559,23 +560,22 @@ class Connection(object):
         if self.uri_prefix:
             hostname = '%s+%s' % (self.uri_prefix, hostname)
 
-        info = (('hostname', hostname),
-                ('userid', self.userid or D.get('userid')),
-                ('password', self.password or D.get('password')),
-                ('virtual_host', self.virtual_host or D.get('virtual_host')),
-                ('port', self.port or D.get('port')),
-                ('insist', self.insist),
-                ('ssl', self.ssl),
-                ('transport', transport_cls),
-                ('connect_timeout', self.connect_timeout),
-                ('transport_options', self.transport_options),
-                ('login_method', self.login_method or D.get('login_method')),
-                ('uri_prefix', self.uri_prefix),
-                ('heartbeat', self.heartbeat))
-
-        if self.alt:
-            info += (('alternates', self.alt),)
-
+        info = (
+            ('hostname', hostname),
+            ('userid', self.userid or D.get('userid')),
+            ('password', self.password or D.get('password')),
+            ('virtual_host', self.virtual_host or D.get('virtual_host')),
+            ('port', self.port or D.get('port')),
+            ('insist', self.insist),
+            ('ssl', self.ssl),
+            ('transport', transport_cls),
+            ('connect_timeout', self.connect_timeout),
+            ('transport_options', self.transport_options),
+            ('login_method', self.login_method or D.get('login_method')),
+            ('uri_prefix', self.uri_prefix),
+            ('heartbeat', self.heartbeat),
+            ('alternates', self.alt),
+        )
         return info
 
     def info(self):
@@ -594,10 +594,9 @@ class Connection(object):
             return self.transport_cls + '+' + (self.hostname or 'localhost')
         quoteS = partial(quote, safe='')   # strict quote
         fields = self.info()
-        port = fields['port']
-        userid = fields['userid']
-        password = fields['password']
-        transport = fields['transport']
+        port, userid, password, transport = itemgetter(
+            'port', 'userid', 'password', 'transport'
+        )(fields)
         url = '%s://' % transport
         if userid or password:
             if userid:
@@ -739,7 +738,7 @@ class Connection(object):
         return self.clone()
 
     def __reduce__(self):
-        return (self.__class__, tuple(self.info().values()), None)
+        return self.__class__, tuple(self.info().values()), None
 
     def __enter__(self):
         return self

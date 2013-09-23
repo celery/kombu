@@ -17,13 +17,14 @@ try:
 except ImportError:  # pragma: no cover
     cpickle = None  # noqa
 
+from collections import namedtuple
+
 from .exceptions import SerializerNotInstalled, ContentDisallowed
 from .five import BytesIO, text_t
 from .utils import entrypoints
 from .utils.encoding import str_to_bytes, bytes_t
 
-__all__ = ['pickle', 'encode', 'decode',
-           'register', 'unregister']
+__all__ = ['pickle', 'encode', 'decode', 'register', 'unregister']
 SKIP_DECODE = frozenset(['binary', 'ascii-8bit'])
 
 if sys.platform.startswith('java'):  # pragma: no cover
@@ -33,29 +34,14 @@ if sys.platform.startswith('java'):  # pragma: no cover
 else:
     _decode = codecs.decode
 
-if sys.version_info < (2, 6):  # pragma: no cover
-    # cPickle is broken in Python <= 2.5.
-    # It unsafely and incorrectly uses relative instead of absolute
-    # imports,
-    # so e.g.:
-    #       exceptions.KeyError
-    # becomes:
-    #       kombu.exceptions.KeyError
-    #
-    # Your best choice is to upgrade to Python 2.6,
-    # as while the pure pickle version has worse performance,
-    # it is the only safe option for older Python versions.
-    pickle = pypickle
-    pickle_load = pypickle.load
-    pickle_loads = pypickle.loads
-else:
-    pickle = cpickle or pypickle
-    pickle_load = pickle.load
-    pickle_loads = pickle.loads
+pickle = cpickle or pypickle
+pickle_load = pickle.load
 
 #: Kombu requires Python 2.5 or later so we use protocol 2 by default.
 #: There's a new protocol (3) but this is only supported by Python 3.
 pickle_protocol = int(os.environ.get('PICKLE_PROTOCOL', 2))
+
+codec = namedtuple('codec', ('content_type', 'content_encoding', 'encoder'))
 
 
 def pickle_loads(s, load=pickle_load):
@@ -83,7 +69,9 @@ class SerializerRegistry(object):
     def register(self, name, encoder, decoder, content_type,
                  content_encoding='utf-8'):
         if encoder:
-            self._encoders[name] = (content_type, content_encoding, encoder)
+            self._encoders[name] = codec(
+                content_type, content_encoding, encoder,
+            )
         if decoder:
             self._decoders[content_type] = decoder
         self.type_to_name[content_type] = name
@@ -266,7 +254,7 @@ decode = registry.decode
 
     :param content_encoding: The content encoding (character set) that
         the `decoder` method will be returning. Will usually be
-        utf-8`, `us-ascii`, or `binary`.
+        `utf-8`, `us-ascii`, or `binary`.
 
 """
 register = registry.register

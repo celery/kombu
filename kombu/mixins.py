@@ -29,7 +29,7 @@ debug, info, warn, error = logger.debug, logger.info, logger.warn, logger.error
 
 
 class ConsumerMixin(object):
-    """Convenience mixin for implementing consumer threads.
+    """Convenience mixin for implementing consumer programs.
 
     It can be used outside of threads, with threads, or greenthreads
     (eventlet/gevent) too.
@@ -81,7 +81,7 @@ class ConsumerMixin(object):
 
         * :meth:`on_connection_revived`
 
-            Handler called when the connection is re-established
+            Handler called as soon as the connection is re-established
             after connection failure.
 
             Takes no arguments.

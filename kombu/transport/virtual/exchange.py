@@ -108,7 +108,7 @@ class TopicExchange(ExchangeType):
 
 class FanoutExchange(ExchangeType):
     """The `fanout` exchange implements broadcast messaging by delivering
-    copies of all messages to all queues bound the the exchange.
+    copies of all messages to all queues bound to the exchange.
 
     To support fanout the virtual channel needs to store the table
     as shared state.  This requires that the `Channel.supports_fanout`

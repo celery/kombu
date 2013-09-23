@@ -44,11 +44,12 @@ class LaxBoundedSemaphore(object):
         :param \*partial_args: partial arguments to callback.
 
         """
+        value = self.value
         if value <= 0:
             self._add_waiter((callback, partial_args))
             return False
         else:
-            self.value = max(self.value - 1, 0)
+            self.value = max(value - 1, 0)
             callback(*partial_args)
             return True
 
@@ -79,7 +80,7 @@ class LaxBoundedSemaphore(object):
         self.value = max(self.value - n, 0)
 
     def clear(self):
-        """Reset the sempahore, which also wipes out any waiting callbacks."""
+        """Reset the semaphore, which also wipes out any waiting callbacks."""
         self._waiting.clear()
         self.value = self.initial_value
 
