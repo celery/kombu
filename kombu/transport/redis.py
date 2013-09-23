@@ -382,7 +382,7 @@ class Channel(virtual.Channel):
                 except KeyError:
                     pass
                 for queue in self._lookup(exchange, routing_key):
-                    client.lpush(queue, dumps(payload))
+                    client.rpush(queue, dumps(payload))
             except Exception:
                 logger.critical('Could not restore message: %r', payload,
                                 exc_info=True)

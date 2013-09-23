@@ -281,7 +281,7 @@ class test_Channel(Case):
         self.channel._do_restore_message(
             pl1, 'ex', 'rkey', client,
         )
-        client.lpush.assert_has_calls([
+        client.rpush.assert_has_calls([
             call('george', spl1), call('elaine', spl1),
         ])
 
@@ -291,11 +291,11 @@ class test_Channel(Case):
         self.channel._do_restore_message(
             pl2, 'ex', 'rkey', client,
         )
-        client.lpush.assert_has_calls([
+        client.rpush.assert_has_calls([
             call('george', spl2), call('elaine', spl2),
         ])
 
-        client.lpush.side_effect = KeyError()
+        client.rpush.side_effect = KeyError()
         with patch('kombu.transport.redis.logger') as logger:
             self.channel._do_restore_message(
                 pl2, 'ex', 'rkey', client,
