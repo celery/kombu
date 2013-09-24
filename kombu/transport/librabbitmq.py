@@ -22,7 +22,6 @@ except ImportError:  # pragma: no cover
     except ImportError:
         raise ImportError('No module named librabbitmq')
 
-from kombu.exceptions import StdConnectionError, StdChannelError
 from kombu.five import items, values
 from kombu.utils.amq_manager import get_manager
 
@@ -73,12 +72,13 @@ class Transport(base.Transport):
     Connection = Connection
 
     default_port = DEFAULT_PORT
-    connection_errors = (StdConnectionError,
-                         ConnectionError,
-                         socket.error,
-                         IOError,
-                         OSError)
-    channel_errors = (StdChannelError, ChannelError, )
+    connection_errors = (
+        base.Transport.connection_errors + (
+            ConnectionError, socket.error, IOError, OSError)
+    )
+    channel_errors = (
+        base.Transport.channel_errors + (ChannelError, )
+    )
     driver_type = 'amqp'
     driver_name = 'librabbitmq'
 

@@ -1257,7 +1257,7 @@ callback-based API later.
     Fix contributed by Stephan Jaekel.
 
 * All transport 'channel_errors' lists now includes
-  :exc:`~kombu.exception.StdChannelError`.
+  ``kombu.exception.StdChannelError``.
 
 * All kombu exceptions now inherit from a common
   :exc:`~kombu.exceptions.KombuError`.

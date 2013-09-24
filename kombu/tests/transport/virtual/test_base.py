@@ -3,7 +3,7 @@ from __future__ import absolute_import
 import warnings
 
 from kombu import Connection
-from kombu.exceptions import ResourceError, StdChannelError
+from kombu.exceptions import ResourceError, ChannelError
 from kombu.transport import virtual
 from kombu.utils import uuid
 from kombu.compression import compress
@@ -95,9 +95,6 @@ class test_QoS(Case):
     def test_get(self):
         self.q._delivered['foo'] = 1
         self.assertEqual(self.q.get('foo'), 1)
-
-    def test_restore_visible_interface(self):
-        self.q.restore_visible()
 
 
 class test_Message(Case):
@@ -211,7 +208,7 @@ class test_Channel(Case):
     def test_exchange_declare(self):
         c = self.channel
 
-        with self.assertRaises(StdChannelError):
+        with self.assertRaises(ChannelError):
             c.exchange_declare('test_exchange_declare', 'direct',
                                durable=True, auto_delete=True, passive=True)
         c.exchange_declare('test_exchange_declare', 'direct',
@@ -491,7 +488,7 @@ class test_Channel(Case):
     def test_queue_declare_passive(self):
         has_queue = self.channel._has_queue = Mock()
         has_queue.return_value = False
-        with self.assertRaises(StdChannelError):
+        with self.assertRaises(ChannelError):
             self.channel.queue_declare(queue='21wisdjwqe', passive=True)
 
 

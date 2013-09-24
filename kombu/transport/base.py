@@ -7,10 +7,11 @@ Base transport interface.
 """
 from __future__ import absolute_import
 
+from kombu.exceptions import ChannelError, ConnectionError
 from kombu.message import Message
 from kombu.utils import cached_property
 
-ACKNOWLEDGED_STATES = frozenset(['ACK', 'REJECTED', 'REQUEUED'])
+__all__ = ['Message', 'StdChannel', 'Management', 'Transport']
 
 
 def _LeftBlank(obj, method):
@@ -65,10 +66,10 @@ class Transport(object):
     default_port = None
 
     #: Tuple of errors that can happen due to connection failure.
-    connection_errors = ()
+    connection_errors = (ConnectionError, )
 
     #: Tuple of errors that can happen due to channel/method failure.
-    channel_errors = ()
+    channel_errors = (ChannelError, )
 
     #: For non-blocking use, an eventloop should keep
     #: draining events as long as ``connection.more_to_read`` is True.

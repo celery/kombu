@@ -11,7 +11,6 @@ from sqlalchemy.orm import sessionmaker
 
 from kombu.five import Empty
 from kombu.transport import virtual
-from kombu.exceptions import StdConnectionError, StdChannelError
 from kombu.utils import cached_property
 
 from .models import (ModelBase, Queue as QueueBase, Message as MessageBase,
@@ -150,8 +149,6 @@ class Transport(virtual.Transport):
     Channel = Channel
 
     default_port = 0
-    connection_errors = (StdConnectionError, )
-    channel_errors = (StdChannelError, )
     driver_type = 'sql'
     driver_name = 'sqlalchemy'
 

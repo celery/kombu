@@ -19,7 +19,7 @@ from itertools import count
 
 from . import serialization
 from .entity import Exchange, Queue
-from .exceptions import StdChannelError
+from .exceptions import ChannelError
 from .five import range
 from .log import get_logger
 from .messaging import Consumer as _Consumer
@@ -93,7 +93,7 @@ def maybe_declare(entity, channel=None, retry=False, **retry_policy):
 def _maybe_declare(entity):
     channel = entity.channel
     if not channel.connection:
-        raise StdChannelError('channel disconnected')
+        raise ChannelError('channel disconnected')
     declared = channel.connection.client.declared_entities
     if entity not in declared or getattr(entity, 'auto_delete', None):
         entity.declare()

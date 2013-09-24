@@ -15,12 +15,7 @@ from time import time
 
 from anyjson import loads, dumps
 
-from kombu.exceptions import (
-    InconsistencyError,
-    StdConnectionError,
-    StdChannelError,
-    VersionMismatch,
-)
+from kombu.exceptions import InconsistencyError, VersionMismatch
 from kombu.five import Empty, values
 from kombu.log import get_logger
 from kombu.utils import cached_property, uuid
@@ -788,12 +783,14 @@ class Transport(virtual.Transport):
             DataError = exceptions.InvalidData
         else:
             DataError = exceptions.DataError
-        return ((StdConnectionError,
-                 InconsistencyError,
-                 socket.timeout,
-                 exceptions.ConnectionError,
-                 exceptions.AuthenticationError),
-                (DataError,
-                 exceptions.InvalidResponse,
-                 exceptions.ResponseError,
-                 StdChannelError))
+        return (
+            (virtual.Transport.connection_errors + (
+                InconsistencyError,
+                socket.timeout,
+                exceptions.ConnectionError,
+                exceptions.AuthenticationError)),
+            (virtual.Transport.channel_errors + (
+                DataError,
+                exceptions.InvalidResponse,
+                exceptions.ResponseError)),
+        )

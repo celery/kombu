@@ -6,7 +6,6 @@ from anyjson import loads, dumps
 from django.conf import settings
 from django.core import exceptions as errors
 
-from kombu.exceptions import StdConnectionError, StdChannelError
 from kombu.five import Empty
 from kombu.transport import virtual
 
@@ -57,10 +56,10 @@ class Transport(virtual.Transport):
 
     default_port = 0
     polling_interval = POLLING_INTERVAL
-    connection_errors = (StdConnectionError, )
-    channel_errors = (StdChannelError,
-                      errors.ObjectDoesNotExist,
-                      errors.MultipleObjectsReturned)
+    channel_errors = (
+        virtual.Transport.channel_errors + (
+            errors.ObjectDoesNotExist, errors.MultipleObjectsReturned)
+    )
     driver_type = 'sql'
     driver_name = 'django'
 

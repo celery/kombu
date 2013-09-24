@@ -11,7 +11,6 @@ from __future__ import absolute_import, unicode_literals
 
 import base64
 import socket
-import os
 import sys
 import warnings
 
@@ -22,7 +21,7 @@ from time import sleep, time
 
 from amqp.protocol import queue_declare_ok_t
 
-from kombu.exceptions import ResourceError, StdChannelError
+from kombu.exceptions import ResourceError, ChannelError
 from kombu.five import Empty, items
 from kombu.utils import emergency_dump_state, say, uuid
 from kombu.utils.compat import OrderedDict
@@ -34,8 +33,6 @@ from .scheduling import FairCycle
 from .exchange import STANDARD_EXCHANGE_TYPES
 
 ARRAY_TYPE_H = 'H' if sys.version_info[0] == 3 else b'H'
-
-KOMBU_UNITTEST = os.environ.get('KOMBU_UNITTEST')
 
 UNDELIVERABLE_FMT = """\
 Message could not be delivered: No queues bound to exchange {exchange!r} \
@@ -117,6 +114,8 @@ class QoS(object):
         self._delivered = OrderedDict()
         self._delivered.restored = False
         self._dirty = set()
+        self._quick_ack = self._dirty.add
+        self._quick_append = self._delivered.__setitem__
         self._on_collect = Finalize(self,
                                     self.restore_unacked_once,
                                     exitpriority=1)
@@ -135,7 +134,7 @@ class QoS(object):
         """Append message to transactional state."""
         if self._dirty:
             self._flush()
-        self._delivered[delivery_tag] = message
+        self._quick_append(delivery_tag, message)
 
     def get(self, delivery_tag):
         return self._delivered[delivery_tag]
@@ -153,13 +152,13 @@ class QoS(object):
 
     def ack(self, delivery_tag):
         """Acknowledge message and remove from transactional state."""
-        self._dirty.add(delivery_tag)
+        self._quick_ack(delivery_tag)
 
     def reject(self, delivery_tag, requeue=False):
         """Remove from transactional state and requeue message."""
         if requeue:
             self.channel._restore(self._delivered[delivery_tag])
-        self._dirty.add(delivery_tag)
+        self._quick_ack(delivery_tag)
 
     def restore_unacked(self):
         """Restore all unacknowledged messages."""
@@ -181,7 +180,7 @@ class QoS(object):
         return errors
 
     def restore_unacked_once(self):
-        """Restores all unacknowledged message at shutdown/gc collect.
+        """Restores all unacknowledged messages at shutdown/gc collect.
 
         Will only be done once for each instance.
 
@@ -190,13 +189,11 @@ class QoS(object):
         self._flush()
         state = self._delivered
 
-        if not self.restore_at_shutdown:
+        if not self.restore_at_shutdown or not self.channel.do_restore:
             return
-        elif not self.channel.do_restore or getattr(state, 'restored', None):
-            if not KOMBU_UNITTEST:  # pragma: no cover
-                assert not state
+        if getattr(state, 'restored', None):
+            assert not state
             return
-
         try:
             if state:
                 say('Restoring {0!r} unacknowledged message(s).',
@@ -210,9 +207,6 @@ class QoS(object):
                     emergency_dump_state(messages)
         finally:
             state.restored = True
-
-    def restore_visible(self, start=0, num=10, interval=10):
-        pass
 
 
 class Message(base.Message):
@@ -284,9 +278,8 @@ class AbstractChannel(object):
     def _new_queue(self, queue, **kwargs):
         """Create new queue.
 
-        Some implementations needs to do additional actions when
-        the queue is created.  You can do so by overriding this
-        method.
+        Your transport can override this method if it needs
+        to do something whenever a new queue is declared.
 
         """
         pass
@@ -382,11 +375,10 @@ class Channel(AbstractChannel, base.StdChannel):
         exchange = exchange or 'amq.%s' % type
         if passive:
             if exchange not in self.state.exchanges:
-                raise StdChannelError(
-                    '404',
+                raise ChannelError(
                     'NOT_FOUND - no exchange {0!r} in vhost {1!r}'.format(
                         exchange, self.connection.client.virtual_host or '/'),
-                    (50, 10), 'Channel.exchange_declare',
+                    (50, 10), 'Channel.exchange_declare', '404',
                 )
             return
         try:
@@ -415,11 +407,10 @@ class Channel(AbstractChannel, base.StdChannel):
         """Declare queue."""
         queue = queue or 'amq.gen-%s' % uuid()
         if passive and not self._has_queue(queue, **kwargs):
-            raise StdChannelError(
-                '404',
+            raise ChannelError(
                 'NOT_FOUND - no queue {0!r} in vhost {1!r}'.format(
                     queue, self.connection.client.virtual_host or '/'),
-                (50, 10), 'Channel.queue_declare',
+                (50, 10), 'Channel.queue_declare', '404',
             )
         else:
             self._new_queue(queue, **kwargs)

@@ -9,7 +9,7 @@ from __future__ import absolute_import
 
 from .compression import decompress
 from .exceptions import MessageStateError
-from .five import text_t, with_metaclass
+from .five import text_t
 from .serialization import loads
 
 ACK_STATES = frozenset(['ACK', 'REJECTED', 'REQUEUED'])
