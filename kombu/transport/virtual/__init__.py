@@ -116,9 +116,9 @@ class QoS(object):
         self._dirty = set()
         self._quick_ack = self._dirty.add
         self._quick_append = self._delivered.__setitem__
-        self._on_collect = Finalize(self,
-                                    self.restore_unacked_once,
-                                    exitpriority=1)
+        self._on_collect = Finalize(
+            self, self.restore_unacked_once, exitpriority=1,
+        )
 
     def can_consume(self):
         """Returns true if the channel can be consumed from.
@@ -217,14 +217,16 @@ class Message(base.Message):
         body = payload.get('body')
         if body:
             body = channel.decode_body(body, properties.get('body_encoding'))
-        fields = {'body': body,
-                  'delivery_tag': properties['delivery_tag'],
-                  'content_type': payload.get('content-type'),
-                  'content_encoding': payload.get('content-encoding'),
-                  'headers': payload.get('headers'),
-                  'properties': properties,
-                  'delivery_info': properties.get('delivery_info'),
-                  'postencode': 'utf-8'}
+        fields = {
+            'body': body,
+            'delivery_tag': properties['delivery_tag'],
+            'content_type': payload.get('content-type'),
+            'content_encoding': payload.get('content-encoding'),
+            'headers': payload.get('headers'),
+            'properties': properties,
+            'delivery_info': properties.get('delivery_info'),
+            'postencode': 'utf-8',
+        }
         super(Message, self).__init__(channel, **dict(kwargs, **fields))
 
     def serializable(self):
@@ -234,11 +236,13 @@ class Message(base.Message):
         headers = dict(self.headers)
         # remove compression header
         headers.pop('compression', None)
-        return {'body': body,
-                'properties': props,
-                'content-type': self.content_type,
-                'content-encoding': self.content_encoding,
-                'headers': headers}
+        return {
+            'body': body,
+            'properties': props,
+            'content-type': self.content_type,
+            'content-encoding': self.content_encoding,
+            'headers': headers,
+        }
 
 
 class AbstractChannel(object):
@@ -416,7 +420,7 @@ class Channel(AbstractChannel, base.StdChannel):
             self._new_queue(queue, **kwargs)
         return queue_declare_ok_t(queue, self._size(queue), 0)
 
-    def queue_delete(self, queue, if_unusued=False, if_empty=False, **kwargs):
+    def queue_delete(self, queue, if_unused=False, if_empty=False, **kwargs):
         """Delete queue."""
         if if_empty and self._size(queue):
             return
@@ -424,8 +428,9 @@ class Channel(AbstractChannel, base.StdChannel):
             exchange, routing_key, arguments = self.state.bindings[queue]
         except KeyError:
             return
-        meta = self.typeof(exchange).prepare_bind(queue, exchange,
-                                                  routing_key, arguments)
+        meta = self.typeof(exchange).prepare_bind(
+            queue, exchange, routing_key, arguments,
+        )
         self._delete(queue, exchange, *meta)
         self.state.bindings.pop(queue, None)
 
@@ -448,10 +453,9 @@ class Channel(AbstractChannel, base.StdChannel):
         exchange = exchange or 'amq.direct'
         table = self.state.exchanges[exchange].setdefault('table', [])
         self.state.bindings[queue] = exchange, routing_key, arguments
-        meta = self.typeof(exchange).prepare_bind(queue,
-                                                  exchange,
-                                                  routing_key,
-                                                  arguments)
+        meta = self.typeof(exchange).prepare_bind(
+            queue, exchange, routing_key, arguments,
+        )
         table.append(meta)
         if self.supports_fanout:
             self._queue_bind(exchange, *meta)
@@ -461,10 +465,9 @@ class Channel(AbstractChannel, base.StdChannel):
         raise NotImplementedError('transport does not support queue_unbind')
 
     def list_bindings(self):
-        for exchange in self.state.exchanges:
-            table = self.get_table(exchange)
-            for routing_key, pattern, queue in table:
-                yield queue, exchange, routing_key
+        return ((queue, exchange, rkey)
+                for exchange in self.state.exchanges
+                for rkey, pattern, queue in self.get_table(exchange))
 
     def queue_purge(self, queue, **kwargs):
         """Remove all ready messages from queue."""
@@ -472,14 +475,21 @@ class Channel(AbstractChannel, base.StdChannel):
 
     def basic_publish(self, message, exchange, routing_key, **kwargs):
         """Publish message."""
+        message['body'], body_encoding = self.encode_body(
+            message['body'], self.body_encoding,
+        )
         props = message['properties']
-        message['body'], props['body_encoding'] = \
-            self.encode_body(message['body'], self.body_encoding)
-        props['delivery_info']['exchange'] = exchange
-        props['delivery_info']['routing_key'] = routing_key
-        props['delivery_tag'] = next(self._delivery_tags)
-        self.typeof(exchange).deliver(message,
-                                      exchange, routing_key, **kwargs)
+        props.update(
+            body_encoding=body_encoding,
+            delivery_tag=next(self._delivery_tags),
+        )
+        props['delivery_info'].update(
+            exchange=exchange,
+            routing_key=routing_key,
+        )
+        self.typeof(exchange).deliver(
+            message, exchange, routing_key, **kwargs
+        )
 
     def basic_consume(self, queue, no_ack, callback, consumer_tag, **kwargs):
         """Consume from `queue`"""
@@ -566,14 +576,17 @@ class Channel(AbstractChannel, base.StdChannel):
         if default is None:
             default = self.deadletter_queue
         try:
-            R = self.typeof(exchange).lookup(self.get_table(exchange),
-                                             exchange, routing_key, default)
+            R = self.typeof(exchange).lookup(
+                self.get_table(exchange),
+                exchange, routing_key, default,
+            )
         except KeyError:
             R = []
 
         if not R and default is not None:
             warnings.warn(UndeliverableWarning(UNDELIVERABLE_FMT.format(
-                exchange=exchange, routing_key=routing_key)))
+                exchange=exchange, routing_key=routing_key)),
+            )
             self._new_queue(default)
             R = [default]
         return R
@@ -583,8 +596,8 @@ class Channel(AbstractChannel, base.StdChannel):
         delivery_info = message.delivery_info
         message = message.serializable()
         message['redelivered'] = True
-        for queue in self._lookup(delivery_info['exchange'],
-                                  delivery_info['routing_key']):
+        for queue in self._lookup(
+                delivery_info['exchange'], delivery_info['routing_key']):
             self._put(queue, message)
 
     def drain_events(self, timeout=None):
@@ -620,7 +633,7 @@ class Channel(AbstractChannel, base.StdChannel):
             is not implemented by the base virtual implementation.
 
         """
-        raise NotImplementedError('virtual channels does not support flow.')
+        raise NotImplementedError('virtual channels do not support flow.')
 
     def close(self):
         """Close channel, cancel all consumers, and requeue unacked
@@ -732,8 +745,9 @@ class Transport(base.Transport):
         polling_interval = client.transport_options.get('polling_interval')
         if polling_interval is not None:
             self.polling_interval = polling_interval
-        self._avail_channel_ids = array(ARRAY_TYPE_H,
-                                        range(self.channel_max, 0, -1))
+        self._avail_channel_ids = array(
+            ARRAY_TYPE_H, range(self.channel_max, 0, -1),
+        )
 
     def create_channel(self, connection):
         try:
