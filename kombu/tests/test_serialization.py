@@ -12,7 +12,7 @@ from kombu.five import text_t, bytes_t
 from kombu.serialization import (
     registry, register, SerializerNotInstalled,
     raw_encode, register_yaml, register_msgpack,
-    decode, pickle, pickle_protocol,
+    dumps, loads, pickle, pickle_protocol,
     unregister, register_pickle, enable_insecure_serializers,
     disable_insecure_serializers,
 )
@@ -99,74 +99,66 @@ class test_Serialization(Case):
         registry.enable('application/json')
         self.assertNotIn('application/json', registry._disabled_content_types)
 
-    def test_decode_when_disabled(self):
+    def test_loads_when_disabled(self):
         disabled = registry._disabled_content_types
         try:
             registry.disable('testS')
 
             with self.assertRaises(SerializerNotInstalled):
-                registry.decode(
-                    'xxd', 'application/testS', 'utf-8', force=False,
-                )
+                loads('xxd', 'application/testS', 'utf-8', force=False)
 
-            ret = registry.decode(
-                'xxd', 'application/testS', 'utf-8', force=True,
-            )
+            ret = loads('xxd', 'application/testS', 'utf-8', force=True)
             self.assertEqual(ret, 'decoded')
         finally:
             disabled.clear()
 
-    def test_decode_when_data_is_None(self):
-        registry.decode(None, 'application/testS', 'utf-8')
+    def test_loads_when_data_is_None(self):
+        loads(None, 'application/testS', 'utf-8')
 
     def test_content_type_decoding(self):
         self.assertEqual(
             unicode_string,
-            registry.decode(unicode_string_as_utf8,
-                            content_type='plain/text',
-                            content_encoding='utf-8'),
+            loads(unicode_string_as_utf8,
+                  content_type='plain/text', content_encoding='utf-8'),
         )
         self.assertEqual(
             latin_string,
-            registry.decode(latin_string_as_latin1,
-                            content_type='application/data',
-                            content_encoding='latin-1'),
+            loads(latin_string_as_latin1,
+                  content_type='application/data', content_encoding='latin-1'),
         )
 
     def test_content_type_binary(self):
         self.assertIsInstance(
-            registry.decode(unicode_string_as_utf8,
-                            content_type='application/data',
-                            content_encoding='binary'),
+            loads(unicode_string_as_utf8,
+                  content_type='application/data', content_encoding='binary'),
             bytes_t,
         )
 
         self.assertEqual(
             unicode_string_as_utf8,
-            registry.decode(unicode_string_as_utf8,
-                            content_type='application/data',
-                            content_encoding='binary'),
+            loads(unicode_string_as_utf8,
+                  content_type='application/data', content_encoding='binary'),
         )
 
     def test_content_type_encoding(self):
         # Using the 'raw' serializer
         self.assertEqual(
             unicode_string_as_utf8,
-            registry.encode(unicode_string, serializer='raw')[-1],
+            dumps(unicode_string, serializer='raw')[-1],
         )
         self.assertEqual(
             latin_string_as_utf8,
-            registry.encode(latin_string, serializer='raw')[-1],
+            dumps(latin_string, serializer='raw')[-1],
         )
         # And again w/o a specific serializer to check the
         # code where we force unicode objects into a string.
         self.assertEqual(
             unicode_string_as_utf8,
-            registry.encode(unicode_string)[-1],
+            dumps(unicode_string)[-1],
         )
         self.assertEqual(
             latin_string_as_utf8,
-            registry.encode(latin_string)[-1],
+            dumps(latin_string)[-1],
         )
 
     def test_enable_insecure_serializers(self):
@@ -194,22 +186,21 @@ class test_Serialization(Case):
                 call('pickle'), call('yaml'), call('doomsday')
             ])
 
-    def test_json_decode(self):
+    def test_json_loads(self):
         self.assertEqual(
             py_data,
-            registry.decode(json_data,
-                            content_type='application/json',
-                            content_encoding='utf-8'),
+            loads(json_data,
+                  content_type='application/json', content_encoding='utf-8'),
         )
 
-    def test_json_encode(self):
+    def test_json_dumps(self):
         self.assertEqual(
-            registry.decode(
-                registry.encode(py_data, serializer='json')[-1],
+            loads(
+                dumps(py_data, serializer='json')[-1],
                 content_type='application/json',
                 content_encoding='utf-8',
             ),
-            registry.decode(
+            loads(
                 json_data,
                 content_type='application/json',
                 content_encoding='utf-8',
@@ -217,11 +208,11 @@ class test_Serialization(Case):
         )
 
     @skip_if_not_module('msgpack', (ImportError, ValueError))
-    def test_msgpack_decode(self):
+    def test_msgpack_loads(self):
         register_msgpack()
-        res = registry.decode(msgpack_data,
-                              content_type='application/x-msgpack',
-                              content_encoding='binary')
+        res = loads(msgpack_data,
+                    content_type='application/x-msgpack',
+                    content_encoding='binary')
         if sys.version_info[0] < 3:
             for k, v in res.items():
                 if isinstance(v, text_t):
@@ -234,15 +225,15 @@ class test_Serialization(Case):
         )
 
     @skip_if_not_module('msgpack', (ImportError, ValueError))
-    def test_msgpack_encode(self):
+    def test_msgpack_dumps(self):
         register_msgpack()
         self.assertEqual(
-            registry.decode(
-                registry.encode(msgpack_py_data, serializer='msgpack')[-1],
+            loads(
+                dumps(msgpack_py_data, serializer='msgpack')[-1],
                 content_type='application/x-msgpack',
                 content_encoding='binary',
             ),
-            registry.decode(
+            loads(
                 msgpack_data,
                 content_type='application/x-msgpack',
                 content_encoding='binary',
@@ -250,43 +241,43 @@ class test_Serialization(Case):
         )
 
     @skip_if_not_module('yaml')
-    def test_yaml_decode(self):
+    def test_yaml_loads(self):
         register_yaml()
         self.assertEqual(
             py_data,
-            registry.decode(yaml_data,
-                            content_type='application/x-yaml',
-                            content_encoding='utf-8'),
+            loads(yaml_data,
+                  content_type='application/x-yaml',
+                  content_encoding='utf-8'),
         )
 
     @skip_if_not_module('yaml')
-    def test_yaml_encode(self):
+    def test_yaml_dumps(self):
         register_yaml()
         self.assertEqual(
-            registry.decode(
-                registry.encode(py_data, serializer='yaml')[-1],
+            loads(
+                dumps(py_data, serializer='yaml')[-1],
                 content_type='application/x-yaml',
                 content_encoding='utf-8',
             ),
-            registry.decode(
+            loads(
                 yaml_data,
                 content_type='application/x-yaml',
                 content_encoding='utf-8',
             ),
         )
 
-    def test_pickle_decode(self):
+    def test_pickle_loads(self):
         self.assertEqual(
             py_data,
-            registry.decode(pickle_data,
-                            content_type='application/x-python-serialize',
-                            content_encoding='binary'),
+            loads(pickle_data,
+                  content_type='application/x-python-serialize',
+                  content_encoding='binary'),
         )
 
-    def test_pickle_encode(self):
+    def test_pickle_dumps(self):
         self.assertEqual(
             pickle.loads(pickle_data),
-            pickle.loads(registry.encode(py_data, serializer='pickle')[-1]),
+            pickle.loads(dumps(py_data, serializer='pickle')[-1]),
         )
 
     def test_register(self):
@@ -295,35 +286,34 @@ class test_Serialization(Case):
     def test_unregister(self):
         with self.assertRaises(SerializerNotInstalled):
             unregister('nonexisting')
-        registry.encode('foo', serializer='pickle')
+        dumps('foo', serializer='pickle')
         unregister('pickle')
         with self.assertRaises(SerializerNotInstalled):
-            registry.encode('foo', serializer='pickle')
+            dumps('foo', serializer='pickle')
         register_pickle()
 
     def test_set_default_serializer_missing(self):
         with self.assertRaises(SerializerNotInstalled):
             registry._set_default_serializer('nonexisting')
 
-    def test_encode_missing(self):
+    def test_dumps_missing(self):
         with self.assertRaises(SerializerNotInstalled):
-            registry.encode('foo', serializer='nonexisting')
+            dumps('foo', serializer='nonexisting')
 
-    def test_encode__no_serializer(self):
-        ctyp, cenc, data = registry.encode(str_to_bytes('foo'))
+    def test_dumps__no_serializer(self):
+        ctyp, cenc, data = dumps(str_to_bytes('foo'))
         self.assertEqual(ctyp, 'application/data')
         self.assertEqual(cenc, 'binary')
 
-    def test_decode__not_accepted(self):
+    def test_loads__not_accepted(self):
         with self.assertRaises(ContentDisallowed):
-            registry.decode('tainted', 'application/x-evil',
-                            'binary', accept=[])
+            loads('tainted', 'application/x-evil', 'binary', accept=[])
         with self.assertRaises(ContentDisallowed):
-            registry.decode('tainted', 'application/x-evil', 'binary',
-                            accept=['application/x-json'])
+            loads('tainted', 'application/x-evil', 'binary',
+                  accept=['application/x-json'])
         self.assertTrue(
-            registry.decode('tainted', 'application/x-doomsday', 'binary',
-                            accept=['application/x-doomsday'])
+            loads('tainted', 'application/x-doomsday', 'binary',
+                  accept=['application/x-doomsday'])
         )
 
     def test_raw_encode(self):
@@ -336,10 +326,10 @@ class test_Serialization(Case):
     def test_register_yaml__no_yaml(self):
         register_yaml()
         with self.assertRaises(SerializerNotInstalled):
-            decode('foo', 'application/x-yaml', 'utf-8')
+            loads('foo', 'application/x-yaml', 'utf-8')
 
     @mask_modules('msgpack')
     def test_register_msgpack__no_msgpack(self):
         register_msgpack()
         with self.assertRaises(SerializerNotInstalled):
-            decode('foo', 'application/x-msgpack', 'utf-8')
+            loads('foo', 'application/x-msgpack', 'utf-8')
