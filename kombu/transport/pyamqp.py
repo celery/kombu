@@ -21,9 +21,6 @@ from . import base
 
 DEFAULT_PORT = 5672
 
-if amqp.VERSION < (0, 9, 3):  # pragma: no cover
-    raise VersionMismatch('Please install amqp version 0.9.3 or higher.')
-
 
 class Message(base.Message):
 
