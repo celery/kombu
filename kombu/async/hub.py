@@ -1,5 +1,7 @@
 from __future__ import absolute_import
 
+from contextlib import contextmanager
+
 from kombu.five import items, range
 from kombu.log import get_logger
 from kombu.utils import cached_property, fileno
@@ -12,6 +14,11 @@ logger = get_logger(__name__)
 _current_loop = None
 
 
+@contextmanager
+def _dummy_context(*args, **kwargs):
+    yield
+
+
 def get_event_loop():
     return _current_loop
 
@@ -20,6 +27,14 @@ def set_event_loop(loop):
     global _current_loop
     _current_loop = loop
     return loop
+
+
+def maybe_block():
+    try:
+        blocking_context = _current_loop.maybe_block
+    except AttributeError:
+        blocking_context = _dummy_context
+    return blocking_context()
 
 
 def repr_flag(flag):
@@ -72,6 +87,8 @@ class Hub(object):
         self.on_close = []
         self.on_task = []
 
+        self.in_blocking_section = False
+
         # The eventloop (in celery.worker.loops)
         # will merge fds in this set and then instead of calling
         # the callback for each ready fd it will call the
@@ -91,6 +108,14 @@ class Hub(object):
     def init(self):
         for callback in self.on_init:
             callback(self)
+
+    @contextmanager
+    def maybe_block(self):
+        self.in_blocking_section = True
+        try:
+            yield
+        finally:
+            self.in_blocking_section = False
 
     def fire_timers(self, min_delay=1, max_delay=10, max_timers=10,
                     propagate=()):
