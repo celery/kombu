@@ -297,11 +297,13 @@ class test_Connection(Case):
         c.transport.supports_ev = False
         self.assertFalse(c.is_evented)
 
-    def test_eventmap(self):
+    def test_register_with_event_loop(self):
         c = Connection(transport=Mock)
-        c.transport.eventmap.return_value = {1: 1, 2: 2}
-        self.assertDictEqual(c.eventmap, {1: 1, 2: 2})
-        c.transport.eventmap.assert_called_with(c.connection)
+        loop = Mock(name='loop')
+        c.register_with_event_loop(loop)
+        c.transport.register_with_event_loop.assert_called_with(
+            c.connection, loop,
+        )
 
     def test_manager(self):
         c = Connection(transport=Mock)

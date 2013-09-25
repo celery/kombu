@@ -129,18 +129,13 @@ class test_Transport(lrmqCase):
             self.T._collect(conn)
             close.assert_called_with(conn.fileno())
 
-    def test_eventmap(self):
-        conn = Mock()
-        self.assertDictEqual(
-            self.T.eventmap(conn),
-            {conn.fileno(): self.client.drain_nowait},
+    def test_register_with_event_loop(self):
+        conn = Mock(name='conn')
+        loop = Mock(name='loop')
+        self.T.register_with_event_loop(conn, loop)
+        loop.add_reader.assert_called_with(
+            conn.fileno(), self.T.client.drain_nowait_all,
         )
-
-    def test_on_poll_start(self):
-        self.assertDictEqual(self.T.on_poll_start(), {})
-
-    def test_on_poll_init(self):
-        self.T.on_poll_init(poller=Mock(name='poller'))
 
     def test_verify_connection(self):
         conn = Mock(name='connection')

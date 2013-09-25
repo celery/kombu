@@ -157,18 +157,14 @@ class test_pyamqp(Case):
         c = Connection(port=1337, transport=Transport).connect()
         self.assertEqual(c['host'], '127.0.0.1:1337')
 
-    def test_eventmap(self):
+    def test_register_with_event_loop(self):
         t = pyamqp.Transport(Mock())
-        conn = Mock()
-        self.assertDictEqual(
-            t.eventmap(conn),
-            {conn.sock: t.client.drain_nowait},
+        conn = Mock(name='conn')
+        loop = Mock(name='loop')
+        t.register_with_event_loop(conn, loop)
+        loop.add_reader.assert_called_with(
+            conn.sock, t.client.drain_nowait_all,
         )
-
-    def test_event_interface(self):
-        t = pyamqp.Transport(Mock())
-        t.on_poll_init(Mock())
-        t.on_poll_start()
 
     def test_heartbeat_check(self):
         t = pyamqp.Transport(Mock())

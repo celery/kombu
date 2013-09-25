@@ -41,7 +41,6 @@
             .. autoattribute:: cycle
             .. autoattribute:: host
             .. autoattribute:: manager
-            .. autoattribute:: eventmap
             .. autoattribute:: supports_heartbeats
             .. autoattribute:: is_evented
 
@@ -65,6 +64,7 @@
             .. automethod:: maybe_switch_next
             .. automethod:: heartbeat_check
             .. automethod:: maybe_close_channel
+            .. automethod:: register_with_event_loop
             .. automethod:: close
             .. automethod:: _close
             .. automethod:: completes_cycle

@@ -638,23 +638,25 @@ class test_Channel(Case):
         self.channel.pool.release.assert_called_with(client.connection)
         cc.assert_called_with()
 
-    def test_transport_on_poll_init(self):
+    def test_register_with_event_loop(self):
         transport = self.connection.transport
-        transport.cycle = Mock(name='cyle')
-        poller = Mock(name='poller')
-        redis.Transport.on_poll_init(transport, poller)
-        transport.cycle.on_poll_init.assert_called_with(poller)
+        transport.cycle = Mock(name='cycle')
+        transport.cycle.fds = {12: 'LISTEN', 13: 'BRPOP'}
+        conn = Mock(name='conn')
+        loop = Mock(name='loop')
+        redis.Transport.register_with_event_loop(transport, conn, loop)
+        transport.cycle.on_poll_init.assert_called_with(loop.poller)
+        loop.call_repeatedly.assert_called_with(
+            10, transport.cycle.maybe_restore_messages,
+        )
+        self.assertTrue(loop.on_tick.add.called)
+        on_poll_start = loop.on_tick.add.call_args[0][0]
 
-    def test_transport_on_poll_start(self):
-        transport = self.connection.transport
-        cycle = transport.cycle = Mock(name='cyle')
-        cycle.fds = {12: 'LISTEN', 13: 'BRPOP'}
-        res = redis.Transport.on_poll_start(transport)
-        cycle.on_poll_start.assert_called_with()
-        self.assertDictEqual(res, {
-            12: transport.handle_event,
-            13: transport.handle_event,
-        })
+        on_poll_start()
+        transport.cycle.on_poll_start.assert_called_with()
+        loop.add_reader.assert_has_calls([
+            call(12, transport.handle_event), call(13, transport.handle_event),
+        ])
 
     def test_transport_handle_event(self):
         transport = self.connection.transport
