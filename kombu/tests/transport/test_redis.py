@@ -332,7 +332,7 @@ class test_Channel(Case):
             pipe_hget_hdel.execute.return_value = result, None
             self.channel._restore(message)
             loads.assert_called_with(result)
-            restore.assert_called_with('M', 'EX', 'RK', client)
+            restore.assert_called_with('M', 'EX', 'RK', client, False)
 
     def test_qos_restore_visible(self):
         client = self.channel.client = Mock(name='client')

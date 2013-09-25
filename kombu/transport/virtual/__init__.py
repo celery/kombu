@@ -157,7 +157,7 @@ class QoS(object):
     def reject(self, delivery_tag, requeue=False):
         """Remove from transactional state and requeue message."""
         if requeue:
-            self.channel._restore(self._delivered[delivery_tag])
+            self.channel._restore_at_beginning(self._delivered[delivery_tag])
         self._quick_ack(delivery_tag)
 
     def restore_unacked(self):
@@ -165,15 +165,17 @@ class QoS(object):
         self._flush()
         delivered = self._delivered
         errors = []
+        restore = self.channel._restore
+        pop_message = delivered.popitem
 
         while delivered:
             try:
-                _, message = delivered.popitem()
+                _, message = pop_message()
             except KeyError:  # pragma: no cover
                 break
 
             try:
-                self.channel._restore(message)
+                restore(message)
             except BaseException as exc:
                 errors.append((exc, message))
         delivered.clear()
@@ -599,6 +601,9 @@ class Channel(AbstractChannel, base.StdChannel):
         for queue in self._lookup(
                 delivery_info['exchange'], delivery_info['routing_key']):
             self._put(queue, message)
+
+    def _restore_at_beginning(self, message):
+        return self._restore(message)
 
     def drain_events(self, timeout=None):
         if self._consumers and self.qos.can_consume():
