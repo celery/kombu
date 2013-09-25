@@ -1,7 +1,10 @@
 from __future__ import absolute_import
 
 from kombu.async import hub as _hub
-from kombu.async.hub import Hub, get_event_loop, set_event_loop, maybe_block
+from kombu.async.hub import (
+    Hub, get_event_loop, set_event_loop,
+    maybe_block, is_in_blocking_section,
+)
 
 from kombu.tests.case import Case, ContextMock, Mock
 
@@ -34,6 +37,18 @@ class test_Utils(Case):
         with maybe_block():
             pass
         hub.maybe_block.assert_called_with()
+
+    def test_is_in_blocking_section_without_loop(self):
+        set_event_loop(None)
+        self.assertFalse(is_in_blocking_section())
+
+    def test_is_in_blocking_section_with_loop(self):
+        hub = Hub()
+        set_event_loop(hub)
+        self.assertFalse(is_in_blocking_section())
+        with maybe_block():
+            self.assertTrue(is_in_blocking_section())
+        self.assertFalse(is_in_blocking_section())
 
 
 class test_Hub(Case):

@@ -8,7 +8,7 @@ from kombu.utils import cached_property, fileno
 from kombu.utils.eventio import READ, WRITE, ERR, poll
 from kombu.utils.functional import maybe_list
 
-__all__ = ['Hub', 'get_event_loop', 'set_event_loop']
+__all__ = ['Hub', 'get_event_loop', 'set_event_loop', 'maybe_block']
 logger = get_logger(__name__)
 
 _current_loop = None
@@ -35,6 +35,10 @@ def maybe_block():
     except AttributeError:
         blocking_context = _dummy_context
     return blocking_context()
+
+
+def is_in_blocking_section():
+    return getattr(_current_loop, 'in_blocking_section', False)
 
 
 def repr_flag(flag):
