@@ -24,7 +24,7 @@ from .five import BytesIO, text_t
 from .utils import entrypoints
 from .utils.encoding import str_to_bytes, bytes_t
 
-__all__ = ['pickle', 'encode', 'decode', 'register', 'unregister']
+__all__ = ['pickle', 'loads', 'dumps', 'register', 'unregister']
 SKIP_DECODE = frozenset(['binary', 'ascii-8bit'])
 
 if sys.platform.startswith('java'):  # pragma: no cover
@@ -116,7 +116,7 @@ class SerializerRegistry(object):
             raise SerializerNotInstalled(
                 'No encoder installed for {0}'.format(name))
 
-    def encode(self, data, serializer=None):
+    def dumps(self, data, serializer=None):
         if serializer == 'raw':
             return raw_encode(data)
         if serializer and not self._encoders.get(serializer):
@@ -146,9 +146,10 @@ class SerializerRegistry(object):
 
         payload = encoder(data)
         return content_type, content_encoding, payload
+    encode = dumps  # XXX compat
 
-    def decode(self, data, content_type, content_encoding,
-               accept=None, force=False):
+    def loads(self, data, content_type, content_encoding,
+              accept=None, force=False):
         if accept is not None:
             if content_type not in accept:
                 raise self._for_untrusted_content(content_type, 'untrusted')
@@ -166,10 +167,11 @@ class SerializerRegistry(object):
                     not isinstance(data, text_t):
                 return _decode(data, content_encoding)
         return data
+    decode = loads  # XXX compat
 
     def _for_untrusted_content(self, ctype, why):
         return ContentDisallowed(
-            'Refusing to decode {0} content of type {1}'.format(
+            'Refusing to deserialize {0} content of type {1}'.format(
                 why,
                 parenthesize_alias(self.type_to_name.get(ctype, ctype), ctype),
             ),
@@ -181,7 +183,7 @@ registry = SerializerRegistry()
 
 
 """
-.. function:: encode(data, serializer=default_serializer)
+.. function:: dumps(data, serializer=default_serializer)
 
     Serialize a data structure into a string suitable for sending
     as an AMQP message body.
@@ -210,12 +212,12 @@ registry = SerializerRegistry()
     :raises SerializerNotInstalled: If the serialization method
             requested is not available.
 """
-encode = registry.encode
+dumps = encode = registry.encode   # XXX encode is a compat alias
 
 """
-.. function:: decode(data, content_type, content_encoding):
+.. function:: loads(data, content_type, content_encoding):
 
-    Deserialize a data stream as serialized using `encode`
+    Deserialize a data stream as serialized using `dumps`
     based on `content_type`.
 
     :param data: The message data to deserialize.
@@ -229,7 +231,7 @@ encode = registry.encode
     :returns: The unserialized data.
 
 """
-decode = registry.decode
+loads = decode = registry.decode  # XXX decode is a compat alias
 
 
 """
@@ -284,14 +286,14 @@ def raw_encode(data):
 
 def register_json():
     """Register a encoder/decoder for JSON serialization."""
-    from anyjson import loads, dumps
+    from anyjson import loads as json_loads, dumps as json_dumps
 
     def _loads(obj):
         if isinstance(obj, bytes_t):
             obj = obj.decode()
-        return loads(obj)
+        return json_loads(obj)
 
-    registry.register('json', dumps, _loads,
+    registry.register('json', json_dumps, _loads,
                       content_type='application/json',
                       content_encoding='utf-8')
 
@@ -329,10 +331,10 @@ def register_pickle():
     """The fastest serialization method, but restricts
     you to python clients."""
 
-    def dumps(obj, dumper=pickle.dumps):
+    def pickle_dumps(obj, dumper=pickle.dumps):
         return dumper(obj, protocol=pickle_protocol)
 
-    registry.register('pickle', dumps, unpickle,
+    registry.register('pickle', pickle_dumps, unpickle,
                       content_type='application/x-python-serialize',
                       content_encoding='binary')
 
@@ -341,13 +343,13 @@ def register_msgpack():
     """See http://msgpack.sourceforge.net/"""
     try:
         try:
-            from msgpack import packb as dumps, unpackb
-            loads = lambda s: unpackb(s, encoding='utf-8')
+            from msgpack import packb as pack, unpackb
+            unpack = lambda s: unpackb(s, encoding='utf-8')
         except ImportError:
             # msgpack < 0.2.0 and Python 2.5
-            from msgpack import packs as dumps, unpacks as loads  # noqa
+            from msgpack import packs as pack, unpacks as unpack  # noqa
         registry.register(
-            'msgpack', dumps, loads,
+            'msgpack', pack, unpack,
             content_type='application/x-msgpack',
             content_encoding='binary')
     except (ImportError, ValueError):

@@ -281,7 +281,7 @@ class test_Channel(Case):
         self.channel._do_restore_message(
             pl1, 'ex', 'rkey', client,
         )
-        client.lpush.assert_has_calls([
+        client.rpush.assert_has_calls([
             call('george', spl1), call('elaine', spl1),
         ])
 
@@ -291,11 +291,11 @@ class test_Channel(Case):
         self.channel._do_restore_message(
             pl2, 'ex', 'rkey', client,
         )
-        client.lpush.assert_has_calls([
+        client.rpush.assert_has_calls([
             call('george', spl2), call('elaine', spl2),
         ])
 
-        client.lpush.side_effect = KeyError()
+        client.rpush.side_effect = KeyError()
         with patch('kombu.transport.redis.logger') as logger:
             self.channel._do_restore_message(
                 pl2, 'ex', 'rkey', client,
@@ -332,7 +332,7 @@ class test_Channel(Case):
             pipe_hget_hdel.execute.return_value = result, None
             self.channel._restore(message)
             loads.assert_called_with(result)
-            restore.assert_called_with('M', 'EX', 'RK', client)
+            restore.assert_called_with('M', 'EX', 'RK', client, False)
 
     def test_qos_restore_visible(self):
         client = self.channel.client = Mock(name='client')

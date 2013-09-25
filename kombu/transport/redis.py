@@ -15,12 +15,7 @@ from time import time
 
 from anyjson import loads, dumps
 
-from kombu.exceptions import (
-    InconsistencyError,
-    StdConnectionError,
-    StdChannelError,
-    VersionMismatch,
-)
+from kombu.exceptions import InconsistencyError, VersionMismatch
 from kombu.five import Empty, values
 from kombu.log import get_logger
 from kombu.utils import cached_property, uuid
@@ -128,6 +123,8 @@ class QoS(virtual.QoS):
         super(QoS, self).ack(delivery_tag)
 
     def reject(self, delivery_tag, requeue=False):
+        if requeue:
+            self.restore_by_tag(tag, leftmost=True)
         self.ack(delivery_tag)
 
     @contextmanager
@@ -160,13 +157,13 @@ class QoS(virtual.QoS):
             except MutexHeld:
                 pass
 
-    def restore_by_tag(self, tag, client=None):
+    def restore_by_tag(self, tag, client=None, leftmost=False):
         with self.channel.conn_or_acquire(client) as client:
             p, _, _ = self._remove_from_indices(
                 tag, client.pipeline().hget(self.unacked_key, tag)).execute()
             if p:
                 M, EX, RK = loads(p)
-                self.channel._do_restore_message(M, EX, RK, client)
+                self.channel._do_restore_message(M, EX, RK, client, leftmost)
 
     @cached_property
     def unacked_key(self):
@@ -379,7 +376,8 @@ class Channel(virtual.Channel):
         if self._pool is not None:
             self._pool.disconnect()
 
-    def _do_restore_message(self, payload, exchange, routing_key, client=None):
+    def _do_restore_message(self, payload, exchange, routing_key,
+                            client=None, leftmost=False):
         with self.conn_or_acquire(client) as client:
             try:
                 try:
@@ -387,12 +385,14 @@ class Channel(virtual.Channel):
                 except KeyError:
                     pass
                 for queue in self._lookup(exchange, routing_key):
-                    client.lpush(queue, dumps(payload))
+                    (client.lpush if leftmost else client.rpush)(
+                        queue, dumps(payload),
+                    )
             except Exception:
                 logger.critical('Could not restore message: %r', payload,
                                 exc_info=True)
 
-    def _restore(self, message, payload=None):
+    def _restore(self, message, leftmost=False):
         tag = message.delivery_tag
         with self.conn_or_acquire() as client:
             P, _ = client.pipeline() \
@@ -401,7 +401,10 @@ class Channel(virtual.Channel):
                 .execute()
             if P:
                 M, EX, RK = loads(P)
-                self._do_restore_message(M, EX, RK, client)
+                self._do_restore_message(M, EX, RK, client, leftmost)
+
+    def _restore_at_beginning(self, message):
+        return self._restore(message, leftmost=True)
 
     def _next_delivery_tag(self):
         return uuid()
@@ -788,12 +791,14 @@ class Transport(virtual.Transport):
             DataError = exceptions.InvalidData
         else:
             DataError = exceptions.DataError
-        return ((StdConnectionError,
-                 InconsistencyError,
-                 socket.timeout,
-                 exceptions.ConnectionError,
-                 exceptions.AuthenticationError),
-                (DataError,
-                 exceptions.InvalidResponse,
-                 exceptions.ResponseError,
-                 StdChannelError))
+        return (
+            (virtual.Transport.connection_errors + (
+                InconsistencyError,
+                socket.timeout,
+                exceptions.ConnectionError,
+                exceptions.AuthenticationError)),
+            (virtual.Transport.channel_errors + (
+                DataError,
+                exceptions.InvalidResponse,
+                exceptions.ResponseError)),
+        )

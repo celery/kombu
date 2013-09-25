@@ -10,7 +10,7 @@ from kombu.common import (
     QoS, PREFETCH_COUNT_MAX,
     entry_to_queue,
 )
-from kombu.exceptions import StdChannelError
+from kombu.exceptions import ChannelError
 
 from .case import Case, ContextMock, Mock, MockPool, patch
 
@@ -86,7 +86,7 @@ class test_maybe_declare(Case):
         self.assertEqual(entity.declare.call_count, 1)
 
         entity.channel.connection = None
-        with self.assertRaises(StdChannelError):
+        with self.assertRaises(ChannelError):
             maybe_declare(entity)
 
     def test_binds_entities(self):

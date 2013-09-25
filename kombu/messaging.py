@@ -14,7 +14,7 @@ from .connection import maybe_channel, is_connection
 from .entity import Exchange, Queue, DELIVERY_MODES
 from .exceptions import ContentDisallowed
 from .five import int_types, text_t, values
-from .serialization import encode, prepare_accept_content
+from .serialization import dumps, prepare_accept_content
 from .utils import ChannelPromise, maybe_list
 
 __all__ = ['Exchange', 'Queue', 'Producer', 'Consumer']
@@ -235,7 +235,7 @@ class Producer(object):
         if not content_type:
             serializer = serializer or self.serializer
             (content_type, content_encoding,
-             body) = encode(body, serializer=serializer)
+             body) = dumps(body, serializer=serializer)
         else:
             # If the programmer doesn't want us to serialize,
             # make sure content_encoding is set.

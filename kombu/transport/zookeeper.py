@@ -32,7 +32,6 @@ import socket
 
 from anyjson import loads, dumps
 
-from kombu.exceptions import StdConnectionError, StdChannelError
 from kombu.five import Empty
 
 from . import virtual
@@ -71,6 +70,7 @@ try:
         kazoo.exceptions.NotEmptyException,
         kazoo.exceptions.SessionExpiredException,
         kazoo.exceptions.InvalidCallbackException,
+        socket.error,
     )
 except ImportError:
     kazoo = None                                    # noqa
@@ -168,8 +168,12 @@ class Transport(virtual.Transport):
     Channel = Channel
     polling_interval = 1
     default_port = DEFAULT_PORT
-    connection_errors = (StdConnectionError, ) + KZ_CONNECTION_ERRORS
-    channel_errors = (StdChannelError, socket.error) + KZ_CHANNEL_ERRORS
+    connection_errors = (
+        virtual.Transport.connection_errors + KZ_CONNECTION_ERRORS
+    )
+    channel_errors = (
+        virtual.Transport.channel_errors + KZ_CHANNEL_ERRORS
+    )
     driver_type = 'zookeeper'
     driver_name = 'kazoo'
 

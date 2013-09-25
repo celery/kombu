@@ -2,7 +2,8 @@ from __future__ import absolute_import
 
 from kombu import Connection, Consumer, Exchange, Producer, Queue
 from kombu.five import text_t
-from kombu.transport.base import Message, StdChannel, Transport, Management
+from kombu.message import Message
+from kombu.transport.base import StdChannel, Transport, Management
 
 from kombu.tests.case import Case, Mock
 

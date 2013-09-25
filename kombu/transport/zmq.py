@@ -17,7 +17,6 @@ try:
 except ImportError:
     zmq = ZMQError = None  # noqa
 
-from kombu.exceptions import StdConnectionError, StdChannelError
 from kombu.five import Empty
 from kombu.log import get_logger
 from kombu.serialization import pickle
@@ -235,8 +234,7 @@ class Transport(virtual.Transport):
     driver_type = 'zeromq'
     driver_name = 'zmq'
 
-    connection_errors = (StdConnectionError, ZMQError,)
-    channel_errors = (StdChannelError, )
+    connection_errors = virtual.Transport.connection_errors + (ZMQError, )
 
     supports_ev = True
     polling_interval = None

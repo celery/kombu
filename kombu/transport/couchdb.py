@@ -15,7 +15,6 @@ import couchdb
 
 from anyjson import loads, dumps
 
-from kombu.exceptions import StdConnectionError, StdChannelError
 from kombu.five import Empty
 from kombu.utils import uuid4
 
@@ -107,17 +106,21 @@ class Transport(virtual.Transport):
 
     polling_interval = 1
     default_port = DEFAULT_PORT
-    connection_errors = (StdConnectionError,
-                         socket.error,
-                         couchdb.HTTPError,
-                         couchdb.ServerError,
-                         couchdb.Unauthorized)
-    channel_errors = (StdChannelError,
-                      couchdb.HTTPError,
-                      couchdb.ServerError,
-                      couchdb.PreconditionFailed,
-                      couchdb.ResourceConflict,
-                      couchdb.ResourceNotFound)
+    connection_errors = (
+        virtual.Transport.connection_errors + (
+            socket.error,
+            couchdb.HTTPError,
+            couchdb.ServerError,
+            couchdb.Unauthorized)
+    )
+    channel_errors = (
+        virtual.Transport.channel_errors + (
+            couchdb.HTTPError,
+            couchdb.ServerError,
+            couchdb.PreconditionFailed,
+            couchdb.ResourceConflict,
+            couchdb.ResourceNotFound)
+    )
     driver_type = 'couchdb'
     driver_name = 'couchdb'
 

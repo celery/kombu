@@ -11,7 +11,6 @@ from __future__ import absolute_import, unicode_literals
 
 import base64
 import socket
-import os
 import sys
 import warnings
 
@@ -22,7 +21,7 @@ from time import sleep, time
 
 from amqp.protocol import queue_declare_ok_t
 
-from kombu.exceptions import ResourceError, StdChannelError
+from kombu.exceptions import ResourceError, ChannelError
 from kombu.five import Empty, items
 from kombu.utils import emergency_dump_state, say, uuid
 from kombu.utils.compat import OrderedDict
@@ -34,8 +33,6 @@ from .scheduling import FairCycle
 from .exchange import STANDARD_EXCHANGE_TYPES
 
 ARRAY_TYPE_H = 'H' if sys.version_info[0] == 3 else b'H'
-
-KOMBU_UNITTEST = os.environ.get('KOMBU_UNITTEST')
 
 UNDELIVERABLE_FMT = """\
 Message could not be delivered: No queues bound to exchange {exchange!r} \
@@ -117,9 +114,11 @@ class QoS(object):
         self._delivered = OrderedDict()
         self._delivered.restored = False
         self._dirty = set()
-        self._on_collect = Finalize(self,
-                                    self.restore_unacked_once,
-                                    exitpriority=1)
+        self._quick_ack = self._dirty.add
+        self._quick_append = self._delivered.__setitem__
+        self._on_collect = Finalize(
+            self, self.restore_unacked_once, exitpriority=1,
+        )
 
     def can_consume(self):
         """Returns true if the channel can be consumed from.
@@ -135,7 +134,7 @@ class QoS(object):
         """Append message to transactional state."""
         if self._dirty:
             self._flush()
-        self._delivered[delivery_tag] = message
+        self._quick_append(delivery_tag, message)
 
     def get(self, delivery_tag):
         return self._delivered[delivery_tag]
@@ -153,35 +152,37 @@ class QoS(object):
 
     def ack(self, delivery_tag):
         """Acknowledge message and remove from transactional state."""
-        self._dirty.add(delivery_tag)
+        self._quick_ack(delivery_tag)
 
     def reject(self, delivery_tag, requeue=False):
         """Remove from transactional state and requeue message."""
         if requeue:
-            self.channel._restore(self._delivered[delivery_tag])
-        self._dirty.add(delivery_tag)
+            self.channel._restore_at_beginning(self._delivered[delivery_tag])
+        self._quick_ack(delivery_tag)
 
     def restore_unacked(self):
         """Restore all unacknowledged messages."""
         self._flush()
         delivered = self._delivered
         errors = []
+        restore = self.channel._restore
+        pop_message = delivered.popitem
 
         while delivered:
             try:
-                _, message = delivered.popitem()
+                _, message = pop_message()
             except KeyError:  # pragma: no cover
                 break
 
             try:
-                self.channel._restore(message)
+                restore(message)
             except BaseException as exc:
                 errors.append((exc, message))
         delivered.clear()
         return errors
 
     def restore_unacked_once(self):
-        """Restores all unacknowledged message at shutdown/gc collect.
+        """Restores all unacknowledged messages at shutdown/gc collect.
 
         Will only be done once for each instance.
 
@@ -190,13 +191,11 @@ class QoS(object):
         self._flush()
         state = self._delivered
 
-        if not self.restore_at_shutdown:
+        if not self.restore_at_shutdown or not self.channel.do_restore:
             return
-        elif not self.channel.do_restore or getattr(state, 'restored', None):
-            if not KOMBU_UNITTEST:  # pragma: no cover
-                assert not state
+        if getattr(state, 'restored', None):
+            assert not state
             return
-
         try:
             if state:
                 say('Restoring {0!r} unacknowledged message(s).',
@@ -211,9 +210,6 @@ class QoS(object):
         finally:
             state.restored = True
 
-    def restore_visible(self, start=0, num=10, interval=10):
-        pass
-
 
 class Message(base.Message):
 
@@ -223,14 +219,16 @@ class Message(base.Message):
         body = payload.get('body')
         if body:
             body = channel.decode_body(body, properties.get('body_encoding'))
-        fields = {'body': body,
-                  'delivery_tag': properties['delivery_tag'],
-                  'content_type': payload.get('content-type'),
-                  'content_encoding': payload.get('content-encoding'),
-                  'headers': payload.get('headers'),
-                  'properties': properties,
-                  'delivery_info': properties.get('delivery_info'),
-                  'postencode': 'utf-8'}
+        fields = {
+            'body': body,
+            'delivery_tag': properties['delivery_tag'],
+            'content_type': payload.get('content-type'),
+            'content_encoding': payload.get('content-encoding'),
+            'headers': payload.get('headers'),
+            'properties': properties,
+            'delivery_info': properties.get('delivery_info'),
+            'postencode': 'utf-8',
+        }
         super(Message, self).__init__(channel, **dict(kwargs, **fields))
 
     def serializable(self):
@@ -240,11 +238,13 @@ class Message(base.Message):
         headers = dict(self.headers)
         # remove compression header
         headers.pop('compression', None)
-        return {'body': body,
-                'properties': props,
-                'content-type': self.content_type,
-                'content-encoding': self.content_encoding,
-                'headers': headers}
+        return {
+            'body': body,
+            'properties': props,
+            'content-type': self.content_type,
+            'content-encoding': self.content_encoding,
+            'headers': headers,
+        }
 
 
 class AbstractChannel(object):
@@ -284,9 +284,8 @@ class AbstractChannel(object):
     def _new_queue(self, queue, **kwargs):
         """Create new queue.
 
-        Some implementations needs to do additional actions when
-        the queue is created.  You can do so by overriding this
-        method.
+        Your transport can override this method if it needs
+        to do something whenever a new queue is declared.
 
         """
         pass
@@ -382,11 +381,10 @@ class Channel(AbstractChannel, base.StdChannel):
         exchange = exchange or 'amq.%s' % type
         if passive:
             if exchange not in self.state.exchanges:
-                raise StdChannelError(
-                    '404',
+                raise ChannelError(
                     'NOT_FOUND - no exchange {0!r} in vhost {1!r}'.format(
                         exchange, self.connection.client.virtual_host or '/'),
-                    (50, 10), 'Channel.exchange_declare',
+                    (50, 10), 'Channel.exchange_declare', '404',
                 )
             return
         try:
@@ -415,17 +413,16 @@ class Channel(AbstractChannel, base.StdChannel):
         """Declare queue."""
         queue = queue or 'amq.gen-%s' % uuid()
         if passive and not self._has_queue(queue, **kwargs):
-            raise StdChannelError(
-                '404',
+            raise ChannelError(
                 'NOT_FOUND - no queue {0!r} in vhost {1!r}'.format(
                     queue, self.connection.client.virtual_host or '/'),
-                (50, 10), 'Channel.queue_declare',
+                (50, 10), 'Channel.queue_declare', '404',
             )
         else:
             self._new_queue(queue, **kwargs)
         return queue_declare_ok_t(queue, self._size(queue), 0)
 
-    def queue_delete(self, queue, if_unusued=False, if_empty=False, **kwargs):
+    def queue_delete(self, queue, if_unused=False, if_empty=False, **kwargs):
         """Delete queue."""
         if if_empty and self._size(queue):
             return
@@ -433,8 +430,9 @@ class Channel(AbstractChannel, base.StdChannel):
             exchange, routing_key, arguments = self.state.bindings[queue]
         except KeyError:
             return
-        meta = self.typeof(exchange).prepare_bind(queue, exchange,
-                                                  routing_key, arguments)
+        meta = self.typeof(exchange).prepare_bind(
+            queue, exchange, routing_key, arguments,
+        )
         self._delete(queue, exchange, *meta)
         self.state.bindings.pop(queue, None)
 
@@ -457,10 +455,9 @@ class Channel(AbstractChannel, base.StdChannel):
         exchange = exchange or 'amq.direct'
         table = self.state.exchanges[exchange].setdefault('table', [])
         self.state.bindings[queue] = exchange, routing_key, arguments
-        meta = self.typeof(exchange).prepare_bind(queue,
-                                                  exchange,
-                                                  routing_key,
-                                                  arguments)
+        meta = self.typeof(exchange).prepare_bind(
+            queue, exchange, routing_key, arguments,
+        )
         table.append(meta)
         if self.supports_fanout:
             self._queue_bind(exchange, *meta)
@@ -470,10 +467,9 @@ class Channel(AbstractChannel, base.StdChannel):
         raise NotImplementedError('transport does not support queue_unbind')
 
     def list_bindings(self):
-        for exchange in self.state.exchanges:
-            table = self.get_table(exchange)
-            for routing_key, pattern, queue in table:
-                yield queue, exchange, routing_key
+        return ((queue, exchange, rkey)
+                for exchange in self.state.exchanges
+                for rkey, pattern, queue in self.get_table(exchange))
 
     def queue_purge(self, queue, **kwargs):
         """Remove all ready messages from queue."""
@@ -481,14 +477,21 @@ class Channel(AbstractChannel, base.StdChannel):
 
     def basic_publish(self, message, exchange, routing_key, **kwargs):
         """Publish message."""
+        message['body'], body_encoding = self.encode_body(
+            message['body'], self.body_encoding,
+        )
         props = message['properties']
-        message['body'], props['body_encoding'] = \
-            self.encode_body(message['body'], self.body_encoding)
-        props['delivery_info']['exchange'] = exchange
-        props['delivery_info']['routing_key'] = routing_key
-        props['delivery_tag'] = next(self._delivery_tags)
-        self.typeof(exchange).deliver(message,
-                                      exchange, routing_key, **kwargs)
+        props.update(
+            body_encoding=body_encoding,
+            delivery_tag=next(self._delivery_tags),
+        )
+        props['delivery_info'].update(
+            exchange=exchange,
+            routing_key=routing_key,
+        )
+        self.typeof(exchange).deliver(
+            message, exchange, routing_key, **kwargs
+        )
 
     def basic_consume(self, queue, no_ack, callback, consumer_tag, **kwargs):
         """Consume from `queue`"""
@@ -575,14 +578,17 @@ class Channel(AbstractChannel, base.StdChannel):
         if default is None:
             default = self.deadletter_queue
         try:
-            R = self.typeof(exchange).lookup(self.get_table(exchange),
-                                             exchange, routing_key, default)
+            R = self.typeof(exchange).lookup(
+                self.get_table(exchange),
+                exchange, routing_key, default,
+            )
         except KeyError:
             R = []
 
         if not R and default is not None:
             warnings.warn(UndeliverableWarning(UNDELIVERABLE_FMT.format(
-                exchange=exchange, routing_key=routing_key)))
+                exchange=exchange, routing_key=routing_key)),
+            )
             self._new_queue(default)
             R = [default]
         return R
@@ -592,9 +598,12 @@ class Channel(AbstractChannel, base.StdChannel):
         delivery_info = message.delivery_info
         message = message.serializable()
         message['redelivered'] = True
-        for queue in self._lookup(delivery_info['exchange'],
-                                  delivery_info['routing_key']):
+        for queue in self._lookup(
+                delivery_info['exchange'], delivery_info['routing_key']):
             self._put(queue, message)
+
+    def _restore_at_beginning(self, message):
+        return self._restore(message)
 
     def drain_events(self, timeout=None):
         if self._consumers and self.qos.can_consume():
@@ -629,7 +638,7 @@ class Channel(AbstractChannel, base.StdChannel):
             is not implemented by the base virtual implementation.
 
         """
-        raise NotImplementedError('virtual channels does not support flow.')
+        raise NotImplementedError('virtual channels do not support flow.')
 
     def close(self):
         """Close channel, cancel all consumers, and requeue unacked
@@ -741,8 +750,9 @@ class Transport(base.Transport):
         polling_interval = client.transport_options.get('polling_interval')
         if polling_interval is not None:
             self.polling_interval = polling_interval
-        self._avail_channel_ids = array(ARRAY_TYPE_H,
-                                        range(self.channel_max, 0, -1))
+        self._avail_channel_ids = array(
+            ARRAY_TYPE_H, range(self.channel_max, 0, -1),
+        )
 
     def create_channel(self, connection):
         try:
