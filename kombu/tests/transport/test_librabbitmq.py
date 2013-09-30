@@ -134,7 +134,7 @@ class test_Transport(lrmqCase):
         loop = Mock(name='loop')
         self.T.register_with_event_loop(conn, loop)
         loop.add_reader.assert_called_with(
-            conn.fileno(), self.T.client.drain_nowait_all,
+            conn.fileno(), self.T.on_readable, conn, loop,
         )
 
     def test_verify_connection(self):

@@ -655,26 +655,28 @@ class test_Channel(Case):
         on_poll_start()
         transport.cycle.on_poll_start.assert_called_with()
         loop.add_reader.assert_has_calls([
-            call(12, transport.handle_event), call(13, transport.handle_event),
+            call(12, transport.on_readable, 12),
+            call(13, transport.on_readable, 13),
         ])
 
-    def test_transport_handle_event(self):
+    def test_transport_on_readable(self):
         transport = self.connection.transport
         cycle = transport.cycle = Mock(name='cyle')
-        cycle.handle_event.return_value = None
+        cycle.on_readable.return_value = None
 
-        redis.Transport.handle_event(transport, 13, redis.READ)
-        cycle.handle_event.assert_called_with(13, redis.READ)
-        cycle.handle_event.reset_mock()
+        redis.Transport.on_readable(transport, 13)
+        cycle.on_readable.assert_called_with(13)
+        cycle.on_readable.reset_mock()
 
-        ret = (Mock(name='message'), Mock(name='queue')), Mock(name='channel')
-        cycle.handle_event.return_value = ret
+        queue = Mock(name='queue')
+        ret = (Mock(name='message'), queue)
+        cycle.on_readable.return_value = ret
         with self.assertRaises(KeyError):
-            redis.Transport.handle_event(transport, 14, redis.READ)
+            redis.Transport.on_readable(transport, 14)
 
-        cb = transport._callbacks[ret[0][1]] = Mock(name='callback')
-        redis.Transport.handle_event(transport, 14, redis.READ)
-        cb.assert_called_with(ret[0][0])
+        cb = transport._callbacks[queue] = Mock(name='callback')
+        redis.Transport.on_readable(transport, 14)
+        cb.assert_called_with(ret[0])
 
     @skip_if_not_module('redis')
     def test_transport_get_errors(self):
@@ -762,7 +764,7 @@ class test_Redis(Case):
         connection = Connection(transport=Transport)
         channel = connection.channel()
         producer = Producer(channel, self.exchange, routing_key='test_Redis')
-        consumer = Consumer(channel, self.queue)
+        consumer = Consumer(channel, queues=[self.queue])
 
         producer.publish({'hello2': 'world2'})
         _received = []

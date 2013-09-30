@@ -83,11 +83,11 @@ class Transport(base.Transport):
     driver_name = 'librabbitmq'
 
     supports_ev = True
-    nb_keep_draining = True
 
     def __init__(self, client, **kwargs):
         self.client = client
         self.default_port = kwargs.get('default_port') or self.default_port
+        self.__reader = None
 
     def driver_version(self):
         return amqp.__version__
@@ -143,7 +143,9 @@ class Transport(base.Transport):
         return connection.connected
 
     def register_with_event_loop(self, connection, loop):
-        loop.add_reader(connection.fileno(), self.client.drain_nowait_all)
+        loop.add_reader(
+            connection.fileno(), self.on_readable, connection, loop,
+        )
 
     def get_manager(self, *args, **kwargs):
         return get_manager(self.client, *args, **kwargs)

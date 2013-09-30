@@ -1,6 +1,5 @@
 from __future__ import absolute_import
 
-import errno
 import pickle
 import socket
 
@@ -260,32 +259,6 @@ class test_Connection(Case):
             cb = args[4]
             self.assertEqual(cb(KeyError(), intervals, 0), 0)
             self.assertTrue(errback.called)
-
-    def test_drain_nowait(self):
-        c = Connection(transport=Mock)
-        c.drain_events = Mock()
-        c.drain_events.side_effect = socket.timeout()
-
-        c.more_to_read = True
-        self.assertFalse(c.drain_nowait())
-        self.assertFalse(c.more_to_read)
-
-        c.drain_events.side_effect = socket.error()
-        c.drain_events.side_effect.errno = errno.EAGAIN
-        c.more_to_read = True
-        self.assertFalse(c.drain_nowait())
-        self.assertFalse(c.more_to_read)
-
-        c.drain_events.side_effect = socket.error()
-        c.drain_events.side_effect.errno = errno.EPERM
-        with self.assertRaises(socket.error):
-            c.drain_nowait()
-
-        c.more_to_read = False
-        c.drain_events = Mock()
-        self.assertTrue(c.drain_nowait())
-        c.drain_events.assert_called_with(timeout=0)
-        self.assertTrue(c.more_to_read)
 
     def test_supports_heartbeats(self):
         c = Connection(transport=Mock)

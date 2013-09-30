@@ -163,7 +163,7 @@ class test_pyamqp(Case):
         loop = Mock(name='loop')
         t.register_with_event_loop(conn, loop)
         loop.add_reader.assert_called_with(
-            conn.sock, t.client.drain_nowait_all,
+            conn.sock, t.on_readable, conn, loop,
         )
 
     def test_heartbeat_check(self):

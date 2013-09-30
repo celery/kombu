@@ -225,7 +225,8 @@ class Hub(object):
         self.consolidate.discard(fd)
 
     def _loop(self, propagate=None,
-              sleep=sleep, min=min, Empty=Empty,
+              generator=generator, sleep=sleep, min=min, next=next,
+              Empty=Empty, StopIteration=StopIteration, KeyError=KeyError,
               READ=READ, WRITE=WRITE, ERR=ERR):
         readers, writers = self.readers, self.writers
         poll = self.poller.poll
@@ -235,10 +236,20 @@ class Hub(object):
         consolidate = self.consolidate
         consolidate_callback = self.consolidate_callback
         on_tick = self.on_tick
+        remove_ticks = on_tick.difference_update
 
         while 1:
+            outdated_ticks = set()
             for tick_callback in on_tick:
-                tick_callback()
+                try:
+                    if isinstance(tick_callback, generator):
+                        next(tick_callback)
+                    else:
+                        tick_callback()
+                except StopIteration:
+                    outdated_ticks.add(tick_callback)
+            remove_ticks(outdated_ticks)
+
             poll_timeout = fire_timers(propagate=propagate) if scheduled else 1
             #print('[[[HUB]]]: %s' % (self.repr_active(), ))
             if readers or writers:
@@ -279,7 +290,7 @@ class Hub(object):
                             raise
                     else:
                         try:
-                            cb(fileno, event, *cbargs)
+                            cb(*cbargs)
                         except Empty:
                             pass
                 if to_consolidate:

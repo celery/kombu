@@ -6,7 +6,7 @@ from kombu.async.hub import (
     maybe_block, is_in_blocking_section,
 )
 
-from kombu.tests.case import Case, ContextMock, Mock
+from kombu.tests.case import Case, ContextMock
 
 
 class test_Utils(Case):
@@ -63,4 +63,3 @@ class test_Hub(Case):
         with self.hub.maybe_block():
             self.assertTrue(self.hub.in_blocking_section)
         self.assertFalse(self.hub.in_blocking_section)
-

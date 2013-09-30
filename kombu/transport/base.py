@@ -7,9 +7,13 @@ Base transport interface.
 """
 from __future__ import absolute_import
 
+import errno
+import socket
+
 from kombu.exceptions import ChannelError, ConnectionError
 from kombu.message import Message
 from kombu.utils import cached_property
+from kombu.utils.compat import get_errno
 
 __all__ = ['Message', 'StdChannel', 'Management', 'Transport']
 
@@ -71,10 +75,6 @@ class Transport(object):
     #: Tuple of errors that can happen due to channel/method failure.
     channel_errors = (ChannelError, )
 
-    #: For non-blocking use, an eventloop should keep
-    #: draining events as long as ``connection.more_to_read`` is True.
-    nb_keep_draining = False
-
     #: Type of driver, can be used to separate transports
     #: using the AMQP protocol (driver_type: 'amqp'),
     #: Redis (driver_type: 'redis'), etc...
@@ -89,6 +89,8 @@ class Transport(object):
 
     #: Set to true if the transport supports the AIO interface.
     supports_ev = False
+
+    __reader = None
 
     def __init__(self, client, **kwargs):
         self.client = client
@@ -119,6 +121,30 @@ class Transport(object):
 
     def verify_connection(self, connection):
         return True
+
+    def _reader(self, connection, timeout=socket.timeout, error=socket.error,
+                get_errno=get_errno, _unavail=(errno.EAGAIN, errno.EINTR)):
+        drain_events = connection.drain_events
+        while 1:
+            try:
+                yield drain_events(timeout=0)
+            except timeout:
+                break
+            except error as exc:
+                if get_errno(exc) in _unavail:
+                    break
+                raise
+
+    def on_readable(self, connection, loop):
+        reader = self.__reader
+        if reader is None:
+            reader = self.__reader = self._reader(connection)
+        try:
+            next(reader)
+        except StopIteration:
+            reader = self.__reader = self._reader(connection)
+            next(reader, None)
+        loop.on_tick.add(reader)
 
     @property
     def default_connection_params(self):

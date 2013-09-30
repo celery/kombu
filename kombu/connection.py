@@ -7,7 +7,6 @@ Broker connection and pools.
 """
 from __future__ import absolute_import
 
-import errno
 import os
 import socket
 
@@ -29,7 +28,7 @@ from .five import Empty, range, string_t, text_t, LifoQueue as _LifoQueue
 from .log import get_logger
 from .transport import get_transport_cls, supports_librabbitmq
 from .utils import cached_property, retry_over_time, shufflecycle
-from .utils.compat import OrderedDict, get_errno
+from .utils.compat import OrderedDict
 from .utils.functional import lazy
 from .utils.url import parse_url
 
@@ -127,10 +126,6 @@ class Connection(object):
     #: The cache of declared entities is per connection,
     #: in case the server loses data.
     declared_entities = None
-
-    #: This is set to True if there is still more data to read
-    #: after a call to :meth:`drain_nowait`.
-    more_to_read = False
 
     #: Iterator returning the next broker URL to try in the event
     #: of connection failure (initialized by :attr:`failover_strategy`).
@@ -286,38 +281,6 @@ class Connection(object):
 
         """
         return self.transport.drain_events(self.connection, **kwargs)
-
-    def drain_nowait(self, *args, **kwargs):
-        """Non-blocking version of :meth:`drain_events`.
-
-        Sets :attr:`more_to_read` if there is more data to read.
-        The application MUST call this method until this is unset, and before
-        calling select/epoll/kqueue's poll() again.
-
-        """
-        try:
-            self.drain_events(timeout=0)
-        except socket.timeout:
-            self.more_to_read = False
-            return False
-        except socket.error as exc:
-            if get_errno(exc) in (errno.EAGAIN, errno.EINTR):
-                self.more_to_read = False
-                return False
-            raise
-        self.more_to_read = True
-        return True
-
-    def drain_nowait_all(self, *args, **kwargs):
-        while 1:
-            try:
-                self.drain_events(timeout=0)
-            except socket.timeout:
-                break
-            except socket.error as exc:
-                if get_errno(exc) in (errno.EGAIN, errno.EINTR):
-                    break
-                raise
 
     def maybe_close_channel(self, channel):
         """Close given channel, but ignore connection and channel errors."""

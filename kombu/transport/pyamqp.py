@@ -71,7 +71,6 @@ class Transport(base.Transport):
         amqp.Connection.recoverable_connection_errors
     recoverable_channel_errors = amqp.Connection.recoverable_channel_errors
 
-    nb_keep_draining = True
     driver_name = 'py-amqp'
     driver_type = 'amqp'
     supports_heartbeats = True
@@ -119,7 +118,7 @@ class Transport(base.Transport):
         connection.close()
 
     def register_with_event_loop(self, connection, loop):
-        loop.add_reader(connection.sock, self.client.drain_nowait_all)
+        loop.add_reader(connection.sock, self.on_readable, connection, loop)
 
     def heartbeat_check(self, connection, rate=2):
         return connection.heartbeat_tick(rate=rate)

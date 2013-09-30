@@ -71,16 +71,16 @@ class MultiChannelPoller(object):
         for channel in self._channels:
             self._register(channel)
 
-    def handle_event(self, fileno, event):
+    def on_readable(self, fileno):
         chan = self._fd_to_chan[fileno]
-        return (chan.drain_events(), chan)
+        return chan.drain_events(), chan
 
     def get(self, timeout=None):
         self.on_poll_start()
 
         events = self.poller.poll(timeout)
-        for fileno, event in events or []:
-            return self.handle_event(fileno, event)
+        for fileno, _ in events or []:
+            return self.on_readable(fileno)
 
         raise Empty()
 
@@ -238,7 +238,6 @@ class Transport(virtual.Transport):
 
     supports_ev = True
     polling_interval = None
-    nb_keep_draining = True
 
     def __init__(self, *args, **kwargs):
         if zmq is None:
@@ -253,21 +252,18 @@ class Transport(virtual.Transport):
         cycle = self.cycle
         cycle.poller = loop.poller
         add_reader = loop.add_reader
-        handle_event = self.handle_event
+        on_readable = self.on_readable
 
         cycle_poll_start = cycle.on_poll_start
 
         def on_poll_start():
             cycle_poll_start()
-            [add_reader(fd, handle_event) for fd in cycle.fds]
-            for fd in cycle.fds:
-                add_reader(fd, handle_event)
+            [add_reader(fd, on_readable, fd) for fd in cycle.fds]
 
         loop.on_tick.add(on_poll_start)
 
-    def handle_event(self, fileno, event):
-        evt = self.cycle.handle_event(fileno, event)
-        self._handle_event(evt)
+    def on_readable(self, fileno):
+        self._handle_event(self.cycle.on_readable(fileno))
 
     def drain_events(self, connection, timeout=None):
         more_to_read = False

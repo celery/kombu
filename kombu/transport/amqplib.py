@@ -311,14 +311,13 @@ class Transport(base.Transport):
     )
     channel_errors = base.Transport.channel_errors + (AMQPChannelException, )
 
-    nb_keep_draining = True
-    driver_name = "amqplib"
-    driver_type = "amqp"
+    driver_name = 'amqplib'
+    driver_type = 'amqp'
     supports_ev = True
 
     def __init__(self, client, **kwargs):
         self.client = client
-        self.default_port = kwargs.get("default_port") or self.default_port
+        self.default_port = kwargs.get('default_port') or self.default_port
 
     def create_channel(self, connection):
         return connection.channel()
@@ -370,7 +369,7 @@ class Transport(base.Transport):
 
     def register_with_event_loop(self, connection, loop):
         loop.add_reader(connection.method_reader.source.sock,
-                        self.client.drain_nowait_all)
+                        self.on_readable, connection, loop)
 
     @property
     def default_connection_params(self):

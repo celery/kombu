@@ -37,7 +37,6 @@
             .. autoattribute:: connection
             .. autoattribute:: uri_prefix
             .. autoattribute:: declared_entities
-            .. autoattribute:: more_to_read
             .. autoattribute:: cycle
             .. autoattribute:: host
             .. autoattribute:: manager
@@ -50,7 +49,6 @@
             .. automethod:: connect
             .. automethod:: channel
             .. automethod:: drain_events
-            .. automethod:: drain_nowait
             .. automethod:: release
             .. automethod:: autoretry
             .. automethod:: ensure_connection
