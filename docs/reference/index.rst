@@ -18,10 +18,15 @@
     kombu.exceptions
     kombu.log
     kombu.connection
+    kombu.message
     kombu.compression
     kombu.pools
     kombu.abstract
     kombu.syn
+    kombu.async
+    kombu.async.hub
+    kombu.async.semaphore
+    kombu.async.timer
     kombu.transport
     kombu.transport.pyamqp
     kombu.transport.librabbitmq
@@ -40,6 +45,7 @@
     kombu.transport.sqlalchemy
     kombu.transport.sqlalchemy.models
     kombu.transport.SQS
+    kombu.transport.SLMQ
     kombu.transport.pyro
     kombu.transport.amqplib
     kombu.transport.base

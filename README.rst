@@ -74,7 +74,7 @@ and the `Wikipedia article about AMQP`_.
 .. _`Wikipedia article about AMQP`: http://en.wikipedia.org/wiki/AMQP
 .. _`carrot`: http://pypi.python.org/pypi/carrot/
 .. _`librabbitmq`: http://pypi.python.org/pypi/librabbitmq
-.. _`SoftLayer Message Queue`: http://www.softlayer.com/services/additional/message-queue
+.. _`SoftLayer MQ`: http://www.softlayer.com/services/additional/message-queue
 
 
 .. _transport-comparison:

@@ -19,14 +19,18 @@ queue, exchange and routing key. If the need arises, you can specify
 a :class:`~kombu.Queue` as the name argument instead.
 
 In addition, the :class:`~kombu.Connection` comes with
-shortcuts to create simple queues using the current connection::
+shortcuts to create simple queues using the current connection:
+
+.. code-block:: python
 
     >>> queue = connection.SimpleQueue('myqueue')
     >>> # ... do something with queue
     >>> queue.close()
 
 
-This is equivalent to::
+This is equivalent to:
+
+.. code-block:: python
 
     >>> from kombu import SimpleQueue, SimpleBuffer
 
@@ -50,22 +54,21 @@ Here is an example using the :class:`~kombu.simple.SimpleQueue` class
 to produce and consume logging messages:
 
 .. code-block:: python
-    from __future__ import with_statement
-    
+
     import socket
     import datetime
     from time import time
     from kombu import Connection
-    
-    
+
+
     class Logger(object):
-    
+
         def __init__(self, connection, queue_name='log_queue',
                 serializer='json', compression=None):
             self.queue = connection.SimpleQueue(queue_name)
             self.serializer = serializer
             self.compression = compression
-    
+
         def log(self, message, level='INFO', context={}):
             self.queue.put({'message': message,
                             'level': level,
@@ -74,31 +77,31 @@ to produce and consume logging messages:
                             'timestamp': time()},
                             serializer=self.serializer,
                             compression=self.compression)
-    
+
         def process(self, callback, n=1, timeout=1):
             for i in xrange(n):
                 log_message = self.queue.get(block=True, timeout=1)
                 entry = log_message.payload # deserialized data.
                 callback(entry)
                 log_message.ack() # remove message from queue
-    
+
         def close(self):
             self.queue.close()
-    
-    
+
+
     if __name__ == '__main__':
         from contextlib import closing
-    
+
         with Connection('amqp://guest:guest@localhost:5672//') as conn:
             with closing(Logger(conn)) as logger:
-    
+
                 # Send message
                 logger.log('Error happened while encoding video',
                             level='ERROR',
                             context={'filename': 'cutekitten.mpg'})
-    
+
                 # Consume and process message
-    
+
                 # This is the callback called when a log message is
                 # received.
                 def dump_entry(entry):
@@ -108,7 +111,6 @@ to produce and consume logging messages:
                                                 entry['level'],
                                                 entry['message'],
                                                 entry['context']))
-    
+
                 # Process a single message using the callback above.
                 logger.process(dump_entry, n=1)
-    

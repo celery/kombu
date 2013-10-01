@@ -9,9 +9,19 @@
     ------
 
     .. autoclass:: Queue
-        :members:
-        :undoc-members:
+
+        .. autoattribute:: Queue.id
+
+        .. autoattribute:: Queue.name
 
     .. autoclass:: Message
-        :members:
-        :undoc-members:
+
+        .. autoattribute:: Message.id
+
+        .. autoattribute:: Message.visible
+
+        .. autoattribute:: Message.sent_at
+
+        .. autoattribute:: Message.payload
+
+        .. autoattribute:: Message.version

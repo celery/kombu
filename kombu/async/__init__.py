@@ -1,3 +1,11 @@
+# -*- coding: utf-8 -*-
+"""
+kombu.async
+===========
+
+Event loop implementation.
+
+"""
 from __future__ import absolute_import
 
 from .hub import (

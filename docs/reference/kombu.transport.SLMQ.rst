@@ -1,3 +1,7 @@
+======================================
+kombu.transport.SLMQ
+======================================
+
 .. currentmodule:: kombu.transport.SLMQ
 
 .. automodule:: kombu.transport.SLMQ

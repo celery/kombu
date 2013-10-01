@@ -1,3 +1,11 @@
+# -*- coding: utf-8 -*-
+"""
+kombu.async.semaphore
+=====================
+
+Semaphores and concurrency primitives.
+
+"""
 from __future__ import absolute_import
 
 from collections import deque

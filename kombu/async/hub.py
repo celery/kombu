@@ -1,3 +1,11 @@
+# -*- coding: utf-8 -*-
+"""
+kombu.async.hub
+===============
+
+Event loop implementation.
+
+"""
 from __future__ import absolute_import
 
 from contextlib import contextmanager
@@ -8,6 +16,8 @@ from kombu.five import Empty, items, range
 from kombu.log import get_logger
 from kombu.utils import cached_property, fileno, reprcall
 from kombu.utils.eventio import READ, WRITE, ERR, poll
+
+from .timer import Timer
 
 __all__ = ['Hub', 'get_event_loop', 'set_event_loop', 'maybe_block']
 logger = get_logger(__name__)
@@ -79,7 +89,7 @@ class Hub(object):
     on_close = None
 
     def __init__(self, timer=None):
-        self.timer = timer
+        self.timer = timer if timer is not None else Timer()
 
         self.readers = {}
         self.writers = {}

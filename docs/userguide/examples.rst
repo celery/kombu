@@ -7,11 +7,11 @@
 .. _hello-world-example:
 
 Hello World Example
-==================
+===================
 
-Below example uses 
+Below example uses
 :ref:`guide-simple`
-to send helloworld message through 
+to send helloworld message through
 message broker (rabbitmq) and print received message
 
 
@@ -19,7 +19,7 @@ message broker (rabbitmq) and print received message
 
 .. literalinclude:: ../../examples/hello_publisher.py
     :language: python
-    
+
 :file:`hello_consumer.py`:
 
 .. literalinclude:: ../../examples/hello_consumer.py

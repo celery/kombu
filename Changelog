@@ -91,7 +91,7 @@
 
     Fix contributed by John Shuping.
 
-- pyamqp: Transport options are now forwarded as kwargs to ``amqp.Connection`.
+- pyamqp: Transport options are now forwarded as kwargs to ``amqp.Connection``.
 
 - librabbitmq: Transport options are now forwarded as kwargs to
   ``librabbitmq.Connection``.
