@@ -4,6 +4,24 @@
  Change history
 ================
 
+.. _version-2.5.15:
+
+2.5.15
+======
+:release-date: 2014-09-XX XX:XX X.X BST
+
+- Declaration cache: Now only keeps hash of declaration
+  so that it does not keep a reference to the channel.
+
+- Declaration cache: Now respects ``entity.can_cache_declaration``
+  attribute.
+
+- Fixes Python 2.5 compatibility.
+
+- Fixes tests after python-msgpack changes.
+
+- ``Queue.get``: Now supports ``accept`` argument.
+
 .. _version-2.5.14:
 
 2.5.14
