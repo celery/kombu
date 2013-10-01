@@ -469,7 +469,7 @@ class Consumer(object):
             self.channel.basic_cancel(tag)
 
     def consuming_from(self, queue):
-        """Returns :const:`True` if the consumer is currently
+        """Return :const:`True` if the consumer is currently
         consuming from queue'."""
         name = queue
         if isinstance(queue, Queue):

@@ -107,11 +107,11 @@ class Channel(virtual.Channel):
         super(Channel, self).basic_ack(delivery_tag)
 
     def _size(self, queue):
-        """Returns the number of messages in a queue."""
+        """Return the number of messages in a queue."""
         return self._new_queue(queue).detail()['message_count']
 
     def _purge(self, queue):
-        """Deletes all current messages in a queue."""
+        """Delete all current messages in a queue."""
         q = self._new_queue(queue)
         n = 0
         l = q.pop(10)

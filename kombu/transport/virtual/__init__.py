@@ -121,7 +121,7 @@ class QoS(object):
         )
 
     def can_consume(self):
-        """Returns true if the channel can be consumed from.
+        """Return true if the channel can be consumed from.
 
         Used to ensure the client adhers to currently active
         prefetch limits.
@@ -572,7 +572,7 @@ class Channel(AbstractChannel, base.StdChannel):
     def _lookup(self, exchange, routing_key, default=None):
         """Find all queues matching `routing_key` for the given `exchange`.
 
-        Returns `default` if no queues matched.
+        Must return the string `default` if no queues matched.
 
         """
         if default is None:

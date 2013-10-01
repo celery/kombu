@@ -33,13 +33,13 @@ class ExchangeType(object):
         raise NotImplementedError('subclass responsibility')
 
     def prepare_bind(self, queue, exchange, routing_key, arguments):
-        """Returns tuple of `(routing_key, regex, queue)` to be stored
+        """Return tuple of `(routing_key, regex, queue)` to be stored
         for bindings to this exchange."""
         return routing_key, None, queue
 
     def equivalent(self, prev, exchange, type,
                    durable, auto_delete, arguments):
-        """Returns true if `prev` and `exchange` is equivalent."""
+        """Return true if `prev` and `exchange` is equivalent."""
         return (type == prev['type'] and
                 durable == prev['durable'] and
                 auto_delete == prev['auto_delete'] and

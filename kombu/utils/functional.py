@@ -2,9 +2,11 @@ from __future__ import absolute_import
 
 import sys
 
-__all__ = ['lazy', 'maybe_evaluate', 'is_list', 'maybe_list']
+from collections import Iterable, Mapping
 
 from kombu.five import string_t
+
+__all__ = ['lazy', 'maybe_evaluate', 'is_list', 'maybe_list']
 
 
 class lazy(object):
@@ -64,13 +66,14 @@ def maybe_evaluate(value):
     return value
 
 
-def is_list(l, scalars=(dict, string_t)):
-    """Returns true if object is list-like, but not a dict or string."""
-    return hasattr(l, '__iter__') and not isinstance(l, scalars or ())
+def is_list(l, scalars=(Mapping, string_t), iters=(Iterable, )):
+    """Return true if the object is iterable (but not
+    if object is a mapping or string)."""
+    return isinstance(l, iters) and not isinstance(l, scalars or ())
 
 
-def maybe_list(l, scalars=(dict, string_t)):
-    """Returns list of one element if ``l`` is a scalar."""
+def maybe_list(l, scalars=(Mapping, string_t)):
+    """Return list of one element if ``l`` is a scalar."""
     return l if l is None or is_list(l, scalars) else [l]
 
 

@@ -275,9 +275,9 @@ class Connection(object):
         """Wait for a single event from the server.
 
         :keyword timeout: Timeout in seconds before we give up.
-            Raises :exc:`socket.timeout` if the timeout is exceeded.
 
-        Usually used from an event loop.
+
+        :raises :exc:`socket.timeout`: if the timeout is exceeded.
 
         """
         return self.transport.drain_events(self.connection, **kwargs)
@@ -290,7 +290,7 @@ class Connection(object):
             pass
 
     def _do_close_self(self):
-        # Closes only the connection and channel(s) not transport.
+        # Close only connection and channel(s), but not transport.
         self.declared_entities.clear()
         if self._default_channel:
             self.maybe_close_channel(self._default_channel)
@@ -378,7 +378,7 @@ class Connection(object):
         return self
 
     def completes_cycle(self, retries):
-        """Returns true if the cycle is complete after number of `retries`."""
+        """Return true if the cycle is complete after number of `retries`."""
         return not (retries + 1) % len(self.alt) if self.alt else True
 
     def revive(self, new_channel):
@@ -730,7 +730,7 @@ class Connection(object):
 
     @property
     def connected(self):
-        """Returns true if the connection has been established."""
+        """Return true if the connection has been established."""
         return (not self._closed and
                 self._connection is not None and
                 self.transport.verify_connection(self._connection))
@@ -927,7 +927,7 @@ class Resource(object):
         pass
 
     def force_close_all(self):
-        """Closes and removes all resources in the pool (also those in use).
+        """Close and remove all resources in the pool (also those in use).
 
         Can be used to close resources from parent processes
         after fork (e.g. sockets/connections).
@@ -1054,8 +1054,8 @@ class ChannelPool(Resource):
 
 
 def maybe_channel(channel):
-    """Returns channel, or returns the default_channel if it's a
-    connection."""
+    """Return the default channel if argument is a connection instance,
+    otherwise just return the channel given."""
     if isinstance(channel, Connection):
         return channel.default_channel
     return channel

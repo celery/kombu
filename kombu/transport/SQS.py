@@ -217,7 +217,7 @@ class Channel(virtual.Channel):
         super(Channel, self).exchange_delete(exchange, **kwargs)
 
     def _has_queue(self, queue, **kwargs):
-        """Returns True if ``queue`` has been previously declared."""
+        """Return True if ``queue`` was previously declared."""
         if self.supports_fanout:
             return bool(self.table.get_queue(queue))
         return super(Channel, self)._has_queue(queue)
@@ -270,11 +270,11 @@ class Channel(virtual.Channel):
         super(Channel, self).basic_ack(delivery_tag)
 
     def _size(self, queue):
-        """Returns the number of messages in a queue."""
+        """Return the number of messages in a queue."""
         return self._new_queue(queue).count()
 
     def _purge(self, queue):
-        """Deletes all current messages in a queue."""
+        """Delete all current messages in a queue."""
         q = self._new_queue(queue)
         # SQS is slow at registering messages, so run for a few
         # iterations to ensure messages are deleted.

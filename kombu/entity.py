@@ -553,7 +553,7 @@ class Queue(MaybeChannelBound):
     def get(self, no_ack=None, accept=None):
         """Poll the server for a new message.
 
-        Returns the message instance if a message was available,
+        Must return the message if a message was available,
         or :const:`None` otherwise.
 
         :keyword no_ack: If enabled the broker will automatically

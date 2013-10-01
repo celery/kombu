@@ -41,7 +41,7 @@ class TokenBucket(object):
         self.timestamp = time.time()
 
     def can_consume(self, tokens=1):
-        """Returns :const:`True` if `tokens` number of tokens can be consumed
+        """Return :const:`True` if the number of tokens can be consumed
         from the bucket."""
         if tokens <= self._get_tokens():
             self._tokens -= tokens
@@ -49,12 +49,10 @@ class TokenBucket(object):
         return False
 
     def expected_time(self, tokens=1):
-        """Returns the expected time in seconds when a new token should be
-        available.
+        """Return the time (in seconds) when a new token is expected
+        to be available.
 
-        .. admonition:: Warning
-
-            This consumes a token from the bucket.
+        This will also consume a token from the bucket.
 
         """
         _tokens = self._get_tokens()

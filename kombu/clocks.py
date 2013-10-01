@@ -125,7 +125,9 @@ class LamportClock(object):
         heap.
 
         The tuple will not be unpacked, so more than two elements can be
-        present.  Returns the latest event.
+        present.
+
+        Will return the latest event.
 
         """
         if h[0][0] == h[1][0]:
