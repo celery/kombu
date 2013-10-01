@@ -288,7 +288,7 @@ class Exchange(MaybeChannelBound):
 
     @property
     def can_cache_declaration(self):
-        return self.durable
+        return self.durable and not self.auto_delete
 
 
 class binding(object):
@@ -670,7 +670,7 @@ class Queue(MaybeChannelBound):
 
     @property
     def can_cache_declaration(self):
-        return self.durable
+        return self.durable and not self.auto_delete
 
     @classmethod
     def from_dict(self, queue, **options):
