@@ -212,6 +212,9 @@ class Timer(object):
     def __len__(self):
         return len(self._queue)
 
+    def __nonzero__(self):
+        return True
+
     @property
     def queue(self, _pop=heapq.heappop):
         """Snapshot of underlying datastructure."""
