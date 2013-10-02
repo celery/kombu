@@ -99,7 +99,7 @@ def _maybe_declare(entity):
         ident = hash(entity)
         if ident not in declared:
             entity.declare()
-            declared.add(hash(entity))
+            declared.add(ident)
             return True
         return False
     entity.declare()
