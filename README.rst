@@ -32,8 +32,8 @@ Features
 
     * Virtual transports makes it really easy to add support for non-AMQP
       transports.  There is already built-in support for `Redis`_,
-      `Beanstalk`_, `Amazon SQS`_, `CouchDB`_, `MongoDB`_ and `ZooKeeper`_,
-      `SoftLayer MQ`_.
+      `Beanstalk`_, `Amazon SQS`_, `CouchDB`_, `MongoDB`_, ZeroMQ, `ZooKeeper`_,
+      `SoftLayer MQ`_ and `Pyro`_.
 
     * You can also use the SQLAlchemy and Django ORM transports to
       use a database as the broker.
@@ -54,11 +54,8 @@ Features
 * Projects already using `carrot`_ can easily be ported by using
   a compatibility layer.
 
-
 For an introduction to AMQP you should read the article `Rabbits and warrens`_,
 and the `Wikipedia article about AMQP`_.
-
-
 
 .. _`RabbitMQ`: http://www.rabbitmq.com/
 .. _`AMQP`: http://amqp.org
@@ -74,6 +71,7 @@ and the `Wikipedia article about AMQP`_.
 .. _`Wikipedia article about AMQP`: http://en.wikipedia.org/wiki/AMQP
 .. _`carrot`: http://pypi.python.org/pypi/carrot/
 .. _`librabbitmq`: http://pypi.python.org/pypi/librabbitmq
+.. _`Pyro`: http://pythonhosting.org/Pyro
 .. _`SoftLayer MQ`: http://www.softlayer.com/services/additional/message-queue
 
 
@@ -142,12 +140,12 @@ Quick overview
     with Connection('amqp://guest:guest@localhost//') as conn:
 
         # produce
-        with conn.Producer(serializer='json') as producer:
-            producer.publish({'name': '/tmp/lolcat1.avi', 'size': 1301013},
-                             exchange=media_exchange, routing_key='video',
-                             declare=[video_queue])
+        producer = conn.Producer(serializer='json')
+        producer.publish({'name': '/tmp/lolcat1.avi', 'size': 1301013},
+                          exchange=media_exchange, routing_key='video',
+                          declare=[video_queue])
 
-        # the declare above, makes sure the video queue is declared 
+        # the declare above, makes sure the video queue is declared
         # so that the messages can be delivered.
         # It's a best practice in Kombu to have both publishers and
         # consumers declare the queue.  You can also declare the
@@ -184,18 +182,13 @@ just remember to close the objects after use::
 
     connection = Connection()
         # ...
-    connection.close()
+    connection.release()
 
     consumer = Consumer(channel_or_connection, ...)
     consumer.register_callback(my_callback)
     consumer.consume()
         # ....
     consumer.cancel()
-
-
-    producer = Producer(channel_or_connection, ...)
-        # ....
-    producer.close()
 
 
 `Exchange` and `Queue` are simply declarations that can be pickled

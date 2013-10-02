@@ -105,11 +105,11 @@ def strip_comments(l):
     return l.split('#', 1)[0].strip()
 
 
-def reqs(f):
+def reqs(*f):
     return [
         r for r in (
             strip_comments(l) for l in open(
-                os.path.join(os.getcwd(), 'requirements', f)).readlines()
+                os.path.join(os.getcwd(), 'requirements', *f)).readlines()
         ) if r]
 
 install_requires = reqs('default.txt')
@@ -121,6 +121,23 @@ elif py_version[0:2] == (2, 5):
 # -*- Tests Requires -*-
 
 tests_require = reqs('test3.txt' if PY3 else 'test.txt')
+
+extras = lambda *p: reqs('extras', *p)
+extras_require = extra['extras_require'] = {
+    'msgpack': extras('msgpack.txt'),
+    'yaml': extras('yaml.txt'),
+    'redis': extras('redis.txt'),
+    'mongodb': extras('mongodb.txt'),
+    'sqs': extras('sqs.txt'),
+    'couchdb': extras('couchdb.txt'),
+    'beanstalk': extras('beanstalk.txt'),
+    'zookeeper': extras('zookeeper.txt'),
+    'zeromq': extras('zeromq.txt'),
+    'sqlalchemy': extras('sqlalchemy.txt'),
+    'librabbitmq': extras('librabbitmq.txt'),
+    'pyro': extras('pyro.txt'),
+    'slmq': extras('slmq.txt'),
+}
 
 setup(
     name='kombu',
