@@ -177,13 +177,13 @@ class Hub(object):
         self._discard(fd)
 
     def call_later(self, delay, callback, *args):
-        return self.timer.apply_after(delay * 1000.0, callback, args)
+        return self.timer.call_after(delay, callback, args)
 
     def call_at(self, when, callback, *args):
-        return self.timer.apply_at(when, callback, args)
+        return self.timer.call_at(when, callback, args)
 
     def call_repeatedly(self, delay, callback, *args):
-        return self.timer.apply_interval(delay * 1000.0, callback, args)
+        return self.timer.call_repeatedly(delay, callback, args)
 
     def add_reader(self, fds, callback, *args):
         return self.add(fds, callback, READ | ERR, args)

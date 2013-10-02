@@ -110,30 +110,29 @@ class Timer(object):
     def call_at(self, eta, fun, args=(), kwargs={}, priority=0):
         return self.enter_at(self.Entry(fun, args, kwargs), eta, priority)
 
-    def call_after(self, msecs, fun, args=(), kwargs={}, priority=0):
-        return self.enter_after(msecs, self.Entry(fun, args, kwargs), priority)
+    def call_after(self, secs, fun, args=(), kwargs={}, priority=0):
+        return self.enter_after(secs, self.Entry(fun, args, kwargs), priority)
 
-    def call_repeatedly(self, msecs, fun, args=(), kwargs={}, priority=0):
+    def call_repeatedly(self, secs, fun, args=(), kwargs={}, priority=0):
         tref = self.Entry(fun, args, kwargs)
-        secs = msecs * 1000.0
 
         @wraps(fun)
         def _reschedules(*args, **kwargs):
             last, now = tref._last_run, time()
-            lsince = (now - tref._last_run) * 1000.0 if last else msecs
+            lsince = (now - tref._last_run) if last else secs
             try:
-                if lsince and lsince >= msecs:
+                if lsince and lsince >= secs:
                     tref._last_run = now
                     return fun(*args, **kwargs)
             finally:
                 if not tref.cancelled:
                     last = tref._last_run
                     next = secs - (now - last) if last else secs
-                    self.enter_after(next / 1000.0, tref, priority)
+                    self.enter_after(next, tref, priority)
 
         tref.fun = _reschedules
         tref._last_run = None
-        return self.enter_after(msecs, tref, priority)
+        return self.enter_after(secs, tref, priority)
 
     def enter_at(self, entry, eta=None, priority=0):
         """Enter function into the scheduler.
@@ -154,8 +153,8 @@ class Timer(object):
                 return
         return self._enter(eta, priority, entry)
 
-    def enter_after(self, msecs, entry, priority=0, time=time):
-        return self.enter_at(entry, time() + (msecs / 1000.0), priority)
+    def enter_after(self, secs, entry, priority=0, time=time):
+        return self.enter_at(entry, time() + secs, priority)
 
     def _enter(self, eta, priority, entry, push=heapq.heappush):
         push(self._queue, scheduled(eta, priority, entry))
