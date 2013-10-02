@@ -80,7 +80,49 @@
 
     Contributed by Mahendra M.
 
+- pyamqp/librabbitmq: Transport options are now forwarded as keyword arguments
+    to the underlying connection (Issue #214).
 
+- Transports may now distinguish between recoverable and irrecoverable
+  connection and channel errors.
+
+- ``kombu.utils.Finalize`` has been removed: Use
+  :mod:`multiprocessing.util.Finalize` instead.
+
+- Memory transport now supports the fanout exchange type.
+
+    Contributed by Davanum Srinivas.
+
+- Experimental new `Pyro`_ transport (:mod:`kombu.transport.pyro`).
+
+    Contributed by Tommie McAfee.
+
+.. _`Pyro`: http://pythonhosted.org/Pyro
+
+- Experimental new `SoftLayer MQ`_ transport (:mod:`kombu.transport.SLMQ`).
+
+    Contributed by Kevin McDonald
+
+.. _`SoftLayer MQ`_: http://www.softlayer.com/services/additional/message-queue
+
+- Eventio: Kqueue breaks in subtle ways so select is now used instead.
+
+- SQLAlchemy transport: Can now specify table names using the
+  ``queue_tablename`` and ``message_tablename`` transport options.
+
+    Contributed by Ryan Petrello.
+
+Redis transport: Now supports using local UNIX sockets to communicate with the
+  Redis server (Issue #1283)
+
+    To connect using a UNIX socket you have to use the ``redis+socket``
+    URL-prefix: ``redis+socket:///tmp/redis.sock``.
+
+    This functionality was merged from the `celery-redis-unixsocket`_ project.
+    Contributed by Maxime Rouyrre.
+
+.. _`celery-redis-unixsocket`:
+    https://github.com/piquadrat/celery-redis-unixsocket
 
 .. _version-2.5.15:
 
