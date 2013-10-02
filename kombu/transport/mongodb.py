@@ -4,7 +4,7 @@ kombu.transport.mongodb
 
 MongoDB transport.
 
-:copyright: (c) 2010 - 2012 by Flavio Percoco Premoli.
+:copyright: (c) 2010 - 2013 by Flavio Percoco Premoli.
 :license: BSD, see LICENSE for more details.
 
 """

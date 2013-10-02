@@ -4,7 +4,7 @@ kombu.transport.zookeeper
 
 Zookeeper transport.
 
-:copyright: (c) 2010 - 2012 by Mahendra M.
+:copyright: (c) 2010 - 2013 by Mahendra M.
 :license: BSD, see LICENSE for more details.
 
 **Synopsis**

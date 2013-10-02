@@ -29,7 +29,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'Kombu'
-copyright = '2009-2012, Ask Solem'
+copyright = '2009-2013, Ask Solem'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
