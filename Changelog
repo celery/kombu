@@ -110,6 +110,10 @@ Redis transport: Now supports using local UNIX sockets to communicate with the
     This functionality was merged from the `celery-redis-unixsocket`_ project.
     Contributed by Maxime Rouyrre.
 
+ZeroMQ transport: drain_events now supports timeout.
+
+    Contributed by Jesper Thomschütz.
+
 .. _`celery-redis-unixsocket`:
     https://github.com/piquadrat/celery-redis-unixsocket
 
