@@ -190,6 +190,7 @@ class Channel(virtual.Channel):
 class Transport(virtual.Transport):
     Channel = Channel
 
+    can_parse_url = True
     polling_interval = 1
     default_port = DEFAULT_PORT
     connection_errors = (
