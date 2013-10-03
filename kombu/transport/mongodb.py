@@ -14,7 +14,7 @@ import pymongo
 
 from pymongo import errors
 from anyjson import loads, dumps
-from pymongo.connection import Connection
+from pymongo import MongoClient
 
 from kombu.five import Empty
 
@@ -89,11 +89,6 @@ class Channel(virtual.Channel):
             self.client.messages.remove({'queue': queue})
         return size
 
-    def close(self):
-        super(Channel, self).close()
-        if self._client:
-            self._client.connection.end_request()
-
     def _open(self):
         """
         See mongodb uri documentation:
@@ -119,7 +114,7 @@ class Channel(virtual.Channel):
         #
         #   mongodb://[username:password@]host1[:port1][,host2[:port2],
         #   ...[,hostN[:portN]]][/[?options]]
-        mongoconn = Connection(host=mongo_uri, ssl=client.ssl)
+        mongoconn = MongoClient(host=mongo_uri, ssl=client.ssl)
         database = getattr(mongoconn, dbname)
 
         version = mongoconn.server_info()['version']
