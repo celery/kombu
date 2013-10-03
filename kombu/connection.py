@@ -30,7 +30,7 @@ from .transport import get_transport_cls, supports_librabbitmq
 from .utils import cached_property, retry_over_time, shufflecycle
 from .utils.compat import OrderedDict
 from .utils.functional import lazy
-from .utils.url import parse_url
+from .utils.url import parse_url, urlparse
 
 __all__ = ['Connection', 'ConnectionPool', 'ChannelPool']
 
@@ -39,10 +39,6 @@ RESOLVE_ALIASES = {'pyamqp': 'amqp',
 
 _LOG_CONNECTION = os.environ.get('KOMBU_LOG_CONNECTION', False)
 _LOG_CHANNEL = os.environ.get('KOMBU_LOG_CHANNEL', False)
-
-#: List of URI schemes that should not be parsed, but sent
-#: directly to the transport instead.
-URI_PASSTHROUGH = frozenset(['sqla', 'sqlalchemy', 'zeromq', 'zmq'])
 
 logger = get_logger(__name__)
 roundrobin_failover = cycle
@@ -172,9 +168,14 @@ class Connection(object):
                 # e.g. sqla+mysql://root:masterkey@localhost/
                 params['transport'], params['hostname'] = \
                     hostname.split('+', 1)
-                self.uri_prefix = params['transport']
+                transport = self.uri_prefix = params['transport']
             else:
-                if transport not in URI_PASSTHROUGH:
+                transport = transport or urlparse(hostname).scheme
+                if get_transport_cls(transport).can_parse_url:
+                    # set the transport so that the default is not used.
+                    params['transport'] = transport
+                else:
+                    # we must parse the URL
                     params.update(parse_url(hostname))
         self._init_params(**params)
 
@@ -567,9 +568,11 @@ class Connection(object):
 
     def as_uri(self, include_password=False):
         """Convert connection parameters to URL form."""
-        if (self.transport_cls in URI_PASSTHROUGH or
-                self.hostname and '://' in self.hostname):
-            return self.transport_cls + '+' + (self.hostname or 'localhost')
+        hostname = self.hostname or 'localhost'
+        if self.transport.can_parse_url:
+            if self.uri_prefix:
+                return '%s+%s' % (self.uri_prefix, hostname)
+            return self.hostname
         quoteS = partial(quote, safe='')   # strict quote
         fields = self.info()
         port, userid, password, transport = itemgetter(
@@ -583,12 +586,8 @@ class Connection(object):
                 url += ':' + quoteS(password)
             url += '@'
         url += quoteS(fields['hostname'])
-
-        # If the transport equals 'mongodb' the
-        # hostname contains a full mongodb connection
-        # URI. Let pymongo retreive the port from there.
-        if port and transport != 'mongodb':
-            url += ':' + str(port)
+        if port:
+            url += ':%s' % (port, )
 
         url += '/' + quote(fields['virtual_host'])
         if self.uri_prefix:

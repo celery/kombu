@@ -148,6 +148,7 @@ class Channel(virtual.Channel):
 class Transport(virtual.Transport):
     Channel = Channel
 
+    can_parse_url = True
     default_port = 0
     driver_type = 'sql'
     driver_name = 'sqlalchemy'

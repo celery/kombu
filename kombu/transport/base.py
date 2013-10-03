@@ -66,6 +66,10 @@ class Transport(object):
     #: The :class:`~kombu.Connection` owning this instance.
     client = None
 
+    #: Set to True if :class:`~kombu.Connection` should pass the URL
+    #: unmodified.
+    can_parse_url = False
+
     #: Default port used when no port has been specified.
     default_port = None
 

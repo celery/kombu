@@ -210,9 +210,10 @@ class test_Connection(Case):
         self.assertIsNone(connection._transport)
 
     def test_uri_passthrough(self):
-        from kombu import connection as mod
-        prev, mod.URI_PASSTHROUGH = mod.URI_PASSTHROUGH, set(['foo'])
-        try:
+        transport = Mock(name='transport')
+        with patch('kombu.connection.get_transport_cls') as gtc:
+            gtc.return_value = transport
+            transport.can_parse_url = True
             with patch('kombu.connection.parse_url') as parse_url:
                 c = Connection('foo+mysql://some_host')
                 self.assertEqual(c.transport_cls, 'foo')
@@ -224,8 +225,6 @@ class test_Connection(Case):
                 self.assertEqual(c.transport_cls, 'foo')
                 self.assertFalse(parse_url.called)
                 self.assertEqual(c.hostname, 'mysql://some_host')
-        finally:
-            mod.URI_PASSTHROUGH = prev
         c = Connection('pyamqp+sqlite://some_host')
         self.assertTrue(c.as_uri().startswith('pyamqp+'))
 
