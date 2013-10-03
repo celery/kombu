@@ -23,7 +23,7 @@ except ImportError:  # Py2
 # jython breaks on relative import for .exceptions for some reason
 # (Issue #112)
 from kombu import exceptions
-from .async import get_event_loop, is_in_blocking_section
+from .async import get_event_loop
 from .five import Empty, range, string_t, text_t, LifoQueue as _LifoQueue
 from .log import get_logger
 from .transport import get_transport_cls, supports_librabbitmq
@@ -268,8 +268,7 @@ class Connection(object):
             is called every 3 / 2 seconds, then the rate is 2.
 
         """
-        if not is_in_blocking_section():
-            return self.transport.heartbeat_check(self.connection, rate=rate)
+        return self.transport.heartbeat_check(self.connection, rate=rate)
 
     def drain_events(self, **kwargs):
         """Wait for a single event from the server.

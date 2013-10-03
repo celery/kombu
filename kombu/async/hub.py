@@ -19,7 +19,7 @@ from kombu.utils.eventio import READ, WRITE, ERR, poll
 
 from .timer import Timer
 
-__all__ = ['Hub', 'get_event_loop', 'set_event_loop', 'maybe_block']
+__all__ = ['Hub', 'get_event_loop', 'set_event_loop']
 logger = get_logger(__name__)
 
 _current_loop = None
@@ -38,18 +38,6 @@ def set_event_loop(loop):
     global _current_loop
     _current_loop = loop
     return loop
-
-
-def maybe_block():
-    try:
-        blocking_context = _current_loop.maybe_block
-    except AttributeError:
-        blocking_context = _dummy_context
-    return blocking_context()
-
-
-def is_in_blocking_section():
-    return getattr(_current_loop, 'in_blocking_section', False)
 
 
 def repr_flag(flag):
@@ -96,8 +84,6 @@ class Hub(object):
         self.on_tick = set()
         self.on_close = set()
 
-        self.in_blocking_section = False
-
         # The eventloop (in celery.worker.loops)
         # will merge fds in this set and then instead of calling
         # the callback for each ready fd it will call the
@@ -132,14 +118,6 @@ class Hub(object):
         return '<Hub@{0:#x}: R:{1} W:{2}>'.format(
             id(self), len(self.readers), len(self.writers),
         )
-
-    @contextmanager
-    def maybe_block(self):
-        self.in_blocking_section = True
-        try:
-            yield
-        finally:
-            self.in_blocking_section = False
 
     def fire_timers(self, min_delay=1, max_delay=10, max_timers=10,
                     propagate=()):
