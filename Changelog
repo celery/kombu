@@ -33,17 +33,6 @@
     implementation obviously, but the goal is that it will be easy
     to change to it once that is possible.
 
-- Connection: No longer checks for heartbeats while in blocking sections.
-
-    This does not happen automatically, instead the user must wrap
-    potentially blocking sections using the :func:`kombu.async.maybe_block`:
-
-    .. code-block:: python
-
-        from kombu.async import maybe_block
-        with maybe_block():
-            blocking_function()
-
 - Redis: Messages are now restored at the end of the list.
 
     Contributed by Mark Lavin.
