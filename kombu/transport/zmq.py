@@ -136,7 +136,12 @@ class Client(object):
 
     def get(self, queue=None, timeout=None):
         try:
-            return self.sink.recv(flags=zmq.NOBLOCK)
+            original_timeout = self.sink.RCVTIMEO
+            if timeout:
+                 self.sink.RCVTIMEO = timeout
+            result = self.sink.recv()
+            self.sink.RCVTIMEO = original_timeout
+            return result
         except ZMQError as exc:
             if exc.errno == zmq.EAGAIN:
                 raise socket.error(errno.EAGAIN, exc.strerror)
