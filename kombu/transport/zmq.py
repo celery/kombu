@@ -135,13 +135,16 @@ class Client(object):
         self.vent.connect(endpoint)
 
     def get(self, queue=None, timeout=None):
+        sink = self.sink
         try:
-            original_timeout = self.sink.RCVTIMEO
-            if timeout:
-                 self.sink.RCVTIMEO = timeout
-            result = self.sink.recv()
-            self.sink.RCVTIMEO = original_timeout
-            return result
+            if timeout is not None:
+                prev_timeout, sink.RCVTIMEO = sink.RCVTIMEO, timeout
+                try:
+                    return sink.recv()
+                finally:
+                    sink.RCVTIMEO = prev_timeout
+            else:
+                return sink.recv()
         except ZMQError as exc:
             if exc.errno == zmq.EAGAIN:
                 raise socket.error(errno.EAGAIN, exc.strerror)
@@ -235,6 +238,7 @@ class Channel(virtual.Channel):
 class Transport(virtual.Transport):
     Channel = Channel
 
+    can_parse_url = True
     default_port = DEFAULT_PORT
     driver_type = 'zeromq'
     driver_name = 'zmq'
