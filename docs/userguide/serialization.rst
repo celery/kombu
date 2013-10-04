@@ -15,6 +15,17 @@ Python data structures like dictionaries and lists works.
 and if needed you can register any custom serialization scheme you
 want to use.
 
+
+By default Kombu will only load JSON messages, so if you want
+to use other serialization format you must explicitly enable
+them in your consumer by using the ``accept`` argument:
+
+.. code-block:: python
+
+    Consumer(conn, [queue], accept=['json', 'pickle', 'msgpack'])
+
+The accept argument can also include MIME-types.
+
 .. _`JSON`: http://www.json.org/
 .. _`YAML`: http://yaml.org/
 .. _`msgpack`: http://msgpack.sourceforge.net/
@@ -43,6 +54,18 @@ Each option has its advantages and disadvantages.
     the support of all built-in Python data types (except class instances),
     smaller messages when sending binary files, and a slight speedup
     over `JSON` processing.
+
+    .. admonition:: Pickle and Security
+
+        The pickle format is very convenient as it can serialize
+        and deserialize almost any object, but this is also a concern
+        for security.
+
+        Carefully crafted pickle payloads can do almost anything
+        a regular Python program can do, so if you let your consumer
+        automatically decode pickled objects you must make sure
+        to limit access to the broker so that untrusted
+        parties do not have the ability to send messages!
 
     By default Kombu uses pickle protocol 2, but this can be changed
     using the :envvar:`PICKLE_PROTOCOL` environment variable or by changing
@@ -76,33 +99,6 @@ use one of the following options.
 Note that a `Consumer` do not need the serialization method specified.
 They can auto-detect the serialization method as the
 content-type is sent as a message header.
-
-.. _disable-untrusted-serializers:
-
-Disabling Insecure Serializers
-------------------------------
-
-.. versionadded:: 2.5.10
-
-Deserializing pickle and yaml from untrusted sources is not safe,
-as both pickle and yaml have the ability to execute arbitrary code.
-
-If you are not using these formats you should disable them
-by calling :func:`kombu.disable_insecure_serializers`::
-
-    >>> import kombu
-    >>> kombu.disable_insecure_serializers()
-
-Or you can specify the content types your consumers should
-accept by using the ``accept`` argument::
-
-    >>> Consumer(accept=['json', 'pickle'])
-    >>> Consumer(accept=['application/json'])
-
-.. note::
-
-    Insecure serializers will be disabled by default
-    in the next major version (Kombu 3.0)
 
 .. _sending-raw-data:
 

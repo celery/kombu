@@ -18,10 +18,56 @@
 
 - pickle, yaml and msgpack deserialization is now disabled by default.
 
-    To enable insecure serializers you have to call:
+    This means that Kombu will by default refuse to handle any content type other
+    than json.
+
+    Pickle is known to be a security concern as it will happily
+    load any object that is embedded in a pickle payload, and payloads
+    can be crafted to do almost anything you want.  The default
+    serializer in Kombu is json but it also supports a number
+    of other serialization formats that it will evaluate if received:
+    including pickle.
+
+    It was always assumed that users were educated about the security
+    implications of pickle, but in hindsight we don't think users
+    should be expected to secure their services if we have the ability to
+    be secure by default.
+
+    By disabling any content type that the user did not explicitly
+    want enabled we ensure that the user must be conscious when they
+    add pickle as a serialization format to support.
+
+    The other built-in serializers (yaml and msgpack) are also disabled
+    even though they aren't considered insecure [#f1]_ at this point.
+    Instead they're disabled so that if a security flaw is found in one of these
+    libraries in the future, you will only be affected if you have
+    explicitly enabled them.
+
+    To have your consumer accept formats other than json you have to
+    explicitly add the wanted formats to a white-list of accepted
+    content types::
+
+        >>> c = Consumer(conn, accept=['json', 'pickle', 'msgpack'])
+
+    or when using synchronous access::
+
+        >>> msg = queue.get(accept=['json', 'pickle', 'msgpack'])
+
+    The ``accept`` argument was first supported for consumers in version
+    2.5.10, and first supported by ``Queue.get`` in version 2.5.15
+    so to stay compatible with previous versions you can enable
+    the previous behavior:
 
         >>> from kombu import enable_insecure_serializers
         >>> enable_insecure_serializers()
+
+    But note that this has global effect, so be very careful should you use it.
+
+    .. rubric:: Footnotes
+
+    .. [#f1] The PyYAML library has a :func:`yaml.load` function with some of the
+             same security implications as pickle, but Kombu uses the
+             :func:`yaml.safe_load` function which is not known to be affected.
 
 - kombu.async: Experimental event loop implementation.
 
@@ -38,7 +84,7 @@
     Contributed by Mark Lavin.
 
 - ``StdConnectionError`` and ``StdChannelError`` is removed
-    and ``:exc:`amqp.ConnectionError` and :exc:`amqp.ChannelError` is used
+    and :exc:`amqp.ConnectionError` and :exc:`amqp.ChannelError` is used
     instead.
 
 - Message object implementation has moved to :class:`kombu.message.Message`.
@@ -92,7 +138,7 @@
 
     Contributed by Kevin McDonald
 
-.. _`SoftLayer MQ`_: http://www.softlayer.com/services/additional/message-queue
+.. _`SoftLayer MQ`: http://www.softlayer.com/services/additional/message-queue
 
 - Eventio: Kqueue breaks in subtle ways so select is now used instead.
 

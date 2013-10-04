@@ -14,12 +14,20 @@ consume from.  Several consumers can be mixed to consume from different
 channels, as they all bind to the same connection, and ``drain_events`` will
 drain events from all channels on that connection.
 
+.. note::
+
+    Kombu since 3.0 will only accept json/binary or text messages by default,
+    to allow deserialization of other formats you have to specify them
+    in the ``accept`` argument::
+
+        Consumer(conn, accept=['json', 'pickle', 'msgpack', 'yaml'])
+
 
 Draining events from a single consumer:
 
 .. code-block:: python
 
-    with Consumer(connection, queues):
+    with Consumer(connection, queues, accept=['json']):
         connection.drain_events(timeout=1)
 
 
@@ -30,8 +38,8 @@ Draining events from several consumers:
     from kombu.utils import nested
 
     with connection.channel(), connection.channel() as (channel1, channel2):
-        consumers = [Consumer(channel1, queues1),
-                     Consumer(channel2, queues2)]
+        consumers = [Consumer(channel1, queues1, accept=['json']),
+                     Consumer(channel2, queues2, accept=['json'])]
         with nested(\*consumers):
             connection.drain_events(timeout=1)
 
@@ -48,7 +56,9 @@ Or using :class:`~kombu.mixins.ConsumerMixin`:
             self.connection = connection
 
         def get_consumers(self, Consumer, channel):
-            return [Consumer(queues, callbacks=[self.on_message])]
+            return [
+                Consumer(queues, callbacks=[self.on_message], accept=['json']),
+            ]
 
         def on_message(self, body, message):
             print("RECEIVED MESSAGE: %r" % (body, ))
@@ -73,9 +83,11 @@ and with multiple channels again:
         def get_consumers(self, _, default_channel):
             self.channel2 = default_channel.connection.channel()
             return [Consumer(default_channel, queues1,
-                             callbacks=[self.on_message]),
+                             callbacks=[self.on_message],
+                             accept=['json']),
                     Consumer(self.channel2, queues2,
-                             callbacks=[self.on_special_message])]
+                             callbacks=[self.on_special_message],
+                             accept=['json'])]
 
         def on_consumer_end(self, connection, default_channel):
             if self.channel2:
