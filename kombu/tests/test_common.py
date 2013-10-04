@@ -84,7 +84,9 @@ class test_maybe_declare(TestCase):
 
         maybe_declare(entity, channel)
         self.assertEqual(entity.declare.call_count, 1)
-        self.assertIn(entity, channel.connection.client.declared_entities)
+        self.assertIn(
+            hash(entity), channel.connection.client.declared_entities,
+        )
 
         maybe_declare(entity, channel)
         self.assertEqual(entity.declare.call_count, 1)
