@@ -98,23 +98,28 @@ class Channel(virtual.Channel):
         hostname = client.hostname or DEFAULT_HOST
         authdb = dbname = client.virtual_host
 
-        if dbname in ["/", None]:
+        if dbname in ['/', None]:
             dbname = "kombu_default"
             authdb = "admin"
+        if not hostname.startswith('mongodb://'):
+            hostname = 'mongodb://' + hostname
 
-        if not client.userid:
-            hostname = hostname.replace('/' + client.virtual_host, '/')
-        else:
-            hostname = hostname.replace('/' + client.virtual_host,
-                                        '/' + authdb)
+        if not hostname[10:]:
+            hostname = hostname + 'localhost'
 
-        mongo_uri = 'mongodb://' + hostname
+        if '/' in hostname[10:]:
+            if not client.userid:
+                hostname = hostname.replace('/' + client.virtual_host, '/')
+            else:
+                hostname = hostname.replace('/' + client.virtual_host,
+                                            '/' + authdb)
+
         # At this point we expect the hostname to be something like
         # (considering replica set form too):
         #
         #   mongodb://[username:password@]host1[:port1][,host2[:port2],
         #   ...[,hostN[:portN]]][/[?options]]
-        mongoconn = MongoClient(host=mongo_uri, ssl=client.ssl)
+        mongoconn = MongoClient(host=hostname, ssl=client.ssl)
         database = getattr(mongoconn, dbname)
 
         version = mongoconn.server_info()['version']
