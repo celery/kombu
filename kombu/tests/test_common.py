@@ -141,7 +141,6 @@ class test_replies(Case):
                                        'retry_policy': None,
                                        'content_encoding': 'binary'})
 
-
     @patch('kombu.common.itermessages')
     def test_collect_replies_with_ack(self, itermessages):
         conn, channel, queue = Mock(), Mock(), Mock()

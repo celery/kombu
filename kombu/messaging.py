@@ -19,6 +19,7 @@ from .utils import ChannelPromise, maybe_list
 
 __all__ = ['Exchange', 'Queue', 'Producer', 'Consumer']
 
+
 class Producer(object):
     """Message Producer.
 
