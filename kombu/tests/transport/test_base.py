@@ -90,17 +90,17 @@ class test_Message(Case):
 
     def test_reject_log_error_when_no_error(self):
         reject = self.message.reject = Mock()
-        self.message.reject_log_error(Mock(), KeyError)
-        reject.assert_called_with()
+        self.message.reject_log_error(Mock(), KeyError, requeue=True)
+        reject.assert_called_with(requeue=True)
 
     def test_reject_log_error_when_error(self):
         reject = self.message.reject = Mock()
         reject.side_effect = KeyError('foo')
         logger = Mock()
         self.message.reject_log_error(logger, KeyError)
-        reject.assert_called_with()
+        reject.assert_called_with(requeue=False)
         self.assertTrue(logger.critical.called)
-        self.assertIn("Couldn't ack", logger.critical.call_args[0][0])
+        self.assertIn("Couldn't reject", logger.critical.call_args[0][0])
 
 
 class test_interface(Case):
