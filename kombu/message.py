@@ -76,14 +76,14 @@ class Message(object):
             logger.critical("Couldn't ack %r, reason:%r",
                             self.delivery_tag, exc, exc_info=True)
 
-    def reject_log_error(self, logger, errors):
+    def reject_log_error(self, logger, errors, requeue=False):
         try:
-            self.reject()
+            self.reject(requeue=requeue)
         except errors as exc:
-            logger.critical("Couldn't ack %r, reason: %r",
+            logger.critical("Couldn't reject %r, reason: %r",
                             self.delivery_tag, exc, exc_info=True)
 
-    def reject(self):
+    def reject(self, requeue=False):
         """Reject this message.
 
         The message will be discarded by the server.
@@ -96,7 +96,7 @@ class Message(object):
             raise self.MessageStateError(
                 'Message already acknowledged with state: {0._state}'.format(
                     self))
-        self.channel.basic_reject(self.delivery_tag, requeue=False)
+        self.channel.basic_reject(self.delivery_tag, requeue=requeue)
         self._state = 'REJECTED'
 
     def requeue(self):
