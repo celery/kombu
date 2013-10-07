@@ -14,13 +14,12 @@ from collections import defaultdict, deque
 from copy import copy
 from itertools import count
 from threading import local
-from time import time
 
 from . import Exchange, Queue, Consumer, Producer
 from .clocks import LamportClock
 from .common import maybe_declare, oid_from
 from .exceptions import InconsistencyError
-from .five import range
+from .five import range, monotonic
 from .log import get_logger
 from .utils import cached_property, kwdict, uuid, reprcall
 
@@ -253,7 +252,7 @@ class Mailbox(object):
         producer.publish(
             message, exchange=exchange.name, declare=[exchange],
             headers={'clock': self.clock.forward(),
-                     'expires': time() + timeout if timeout else None},
+                     'expires': monotonic() + timeout if timeout else None},
         )
 
     def _broadcast(self, command, arguments=None, destination=None,
@@ -306,7 +305,7 @@ class Mailbox(object):
             header = message.headers.get
             adjust_clock(header('clock') or 0)
             expires = header('expires')
-            if expires and time() > expires:
+            if expires and monotonic() > expires:
                 return
             this_id = header('ticket', ticket)
             if this_id == ticket:

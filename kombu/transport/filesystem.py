@@ -11,13 +11,12 @@ from anyjson import loads, dumps
 
 import os
 import shutil
-import time
 import uuid
 import tempfile
 
 from . import virtual
 from kombu.exceptions import ChannelError
-from kombu.five import Empty
+from kombu.five import Empty, monotonic
 from kombu.utils import cached_property
 from kombu.utils.encoding import bytes_to_str, str_to_bytes
 
@@ -65,7 +64,7 @@ class Channel(virtual.Channel):
     def _put(self, queue, payload, **kwargs):
         """Put `message` onto `queue`."""
 
-        filename = '%s_%s.%s.msg' % (int(round(time.time() * 1000)),
+        filename = '%s_%s.%s.msg' % (int(round(monotonic() * 1000)),
                                      uuid.uuid4(), queue)
         filename = os.path.join(self.data_folder_out, filename)
 

@@ -10,12 +10,11 @@ from __future__ import absolute_import
 import socket
 
 from collections import deque
-from time import time
 
 from . import entity
 from . import messaging
 from .connection import maybe_channel
-from .five import Empty
+from .five import Empty, monotonic
 
 __all__ = ['SimpleQueue', 'SimpleBuffer']
 
@@ -46,7 +45,7 @@ class SimpleBase(object):
         elapsed = 0.0
         remaining = timeout
         while True:
-            time_start = time()
+            time_start = monotonic()
             if self.buffer:
                 return self.buffer.pop()
             try:
@@ -54,7 +53,7 @@ class SimpleBase(object):
                     timeout=timeout and remaining)
             except socket.timeout:
                 raise self.Empty()
-            elapsed += time() - time_start
+            elapsed += monotonic() - time_start
             remaining = timeout and timeout - elapsed or None
 
     def get_nowait(self):

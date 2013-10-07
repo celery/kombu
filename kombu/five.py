@@ -34,6 +34,10 @@ try:
 except NameError:  # pragma: no cover
     bytes_t = str  # noqa
 
+try:
+    from time import monotonic
+except ImportError:
+    from time import time as monotonic  # noqa
 
 if PY3:  # pragma: no cover
     import builtins

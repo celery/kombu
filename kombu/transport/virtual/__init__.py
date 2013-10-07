@@ -17,12 +17,12 @@ import warnings
 from array import array
 from itertools import count
 from multiprocessing.util import Finalize
-from time import sleep, time
+from time import sleep
 
 from amqp.protocol import queue_declare_ok_t
 
 from kombu.exceptions import ResourceError, ChannelError
-from kombu.five import Empty, items
+from kombu.five import Empty, items, monotonic
 from kombu.utils import emergency_dump_state, say, uuid
 from kombu.utils.compat import OrderedDict
 from kombu.utils.encoding import str_to_bytes, bytes_to_str
@@ -792,14 +792,14 @@ class Transport(base.Transport):
 
     def drain_events(self, connection, timeout=None):
         loop = 0
-        time_start = time()
+        time_start = monotonic()
         get = self.cycle.get
         polling_interval = self.polling_interval
         while 1:
             try:
                 item, channel = get(timeout=timeout)
             except Empty:
-                if timeout and time() - time_start >= timeout:
+                if timeout and monotonic() - time_start >= timeout:
                     raise socket.timeout()
                 loop += 1
                 if polling_interval is not None:
