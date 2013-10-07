@@ -79,6 +79,14 @@
     implementation obviously, but the goal is that it will be easy
     to change to it once that is possible.
 
+- Utility function ``kombu.common.ipublish`` has been removed.
+
+    Use ``Producer(..., retry=True)`` instead.
+
+- Utility function ``kombu.common.isend_reply`` has been removed
+
+    Use ``send_reply(..., retry=True)`` instead.
+
 - Redis: Messages are now restored at the end of the list.
 
     Contributed by Mark Lavin.

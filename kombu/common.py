@@ -17,12 +17,12 @@ from contextlib import contextmanager
 from functools import partial
 from itertools import count
 
-from . import serialization
 from .entity import Exchange, Queue
 from .exceptions import ChannelError
 from .five import range
 from .log import get_logger
 from .messaging import Consumer as _Consumer
+from .serialization import registry as serializers
 from .utils import uuid
 
 try:
@@ -34,8 +34,8 @@ except ImportError:                             # pragma: no cover
         from dummy_thread import get_ident      # noqa
 
 __all__ = ['Broadcast', 'maybe_declare', 'uuid',
-           'itermessages', 'send_reply', 'isend_reply',
-           'collect_replies', 'insured', 'ipublish', 'drain_consumer',
+           'itermessages', 'send_reply',
+           'collect_replies', 'insured', 'drain_consumer',
            'eventloop']
 
 #: Prefetch count can't exceed short.
@@ -175,23 +175,31 @@ def eventloop(conn, limit=None, timeout=None, ignore_timeouts=False):
             pass
 
 
-def send_reply(exchange, req, msg, producer=None, **props):
-    content_type = req.content_type
-    serializer = serialization.registry.type_to_name[content_type]
-    maybe_declare(exchange, producer.channel)
+def send_reply(exchange, req, msg,
+               producer=None, retry=False, retry_policy=None, **props):
+    """Send reply for request.
+
+    :param exchange: Reply exchange
+    :param req: Original request, a message with a ``reply_to`` property.
+    :param producer: Producer instance
+    :param retry: If true must retry according to ``reply_policy`` argument.
+    :param retry_policy: Retry settings.
+    :param props: Extra properties
+
+    """
+
     producer.publish(
         msg, exchange=exchange,
+        retry=retry, retry_policy=retry_policy,
         **dict({'routing_key': req.properties['reply_to'],
                 'correlation_id': req.properties.get('correlation_id'),
-                'serializer': serializer}, **props))
-
-
-def isend_reply(pool, exchange, req, msg, props, **retry_policy):
-    return ipublish(pool, send_reply,
-                    (exchange, req, msg), props, **retry_policy)
+                'serializer': serializers.type_to_name[req.content_type],
+                'content_encoding': req.content_encoding}, **props)
+    )
 
 
 def collect_replies(conn, channel, queue, *args, **kwargs):
+    """Generator collecting replies from ``queue``"""
     no_ack = kwargs.setdefault('no_ack', True)
     received = False
     try:
@@ -255,12 +263,6 @@ def revive_connection(connection, channel, on_revive=None):
         on_revive(channel)
 
 
-def revive_producer(producer, channel, on_revive=None):
-    revive_connection(producer.connection, channel)
-    if on_revive:
-        on_revive(channel)
-
-
 def insured(pool, fun, args, kwargs, errback=None, on_revive=None, **opts):
     """Ensures function performing broker commands completes
     despite intermittent connection failures."""
@@ -276,16 +278,6 @@ def insured(pool, fun, args, kwargs, errback=None, on_revive=None, **opts):
                                  on_revive=revive, **opts)
         retval, _ = insured(*args, **dict(kwargs, connection=conn))
         return retval
-
-
-def ipublish(pool, fun, args=(), kwargs={},
-             errback=None, on_revive=None, **retry_policy):
-    with pool.acquire(block=True) as producer:
-        errback = errback or _ensure_errback
-        revive = partial(revive_producer, producer, on_revive=on_revive)
-        f = producer.connection.ensure(producer, fun, on_revive=revive,
-                                       errback=errback, **retry_policy)
-        return f(*args, **dict(kwargs, producer=producer))
 
 
 def entry_to_queue(queue, **options):
