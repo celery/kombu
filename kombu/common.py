@@ -280,10 +280,6 @@ def insured(pool, fun, args, kwargs, errback=None, on_revive=None, **opts):
         return retval
 
 
-def entry_to_queue(queue, **options):
-    return Queue.from_dict(queue, **options)
-
-
 class QoS(object):
     """Thread safe increment/decrement of a channels prefetch_count.
 

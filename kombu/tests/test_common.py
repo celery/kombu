@@ -8,7 +8,6 @@ from kombu.common import (
     send_reply, collect_replies,
     declaration_cached, ignore_errors,
     QoS, PREFETCH_COUNT_MAX,
-    entry_to_queue,
 )
 from kombu.exceptions import ChannelError
 
@@ -297,14 +296,6 @@ class test_itermessages(Case):
 
         with self.assertRaises(StopIteration):
             next(it)
-
-
-class test_entry_to_queue(Case):
-
-    def test_calls_Queue_from_dict(self):
-        with patch('kombu.common.Queue') as Queue:
-            entry_to_queue('name', exchange='bar')
-            Queue.from_dict.assert_called_with('name', exchange='bar')
 
 
 class test_QoS(Case):

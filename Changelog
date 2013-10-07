@@ -87,6 +87,11 @@
 
     Use ``send_reply(..., retry=True)`` instead.
 
+- ``kombu.common.entry_to_queue`` and ``kombu.messaging.entry_to_queue``
+  has been removed.
+
+    Use ``Queue.from_dict(name, **options)`` instead.
+
 - Redis: Messages are now restored at the end of the list.
 
     Contributed by Mark Lavin.

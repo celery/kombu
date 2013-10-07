@@ -187,9 +187,6 @@ class Connection(object):
             self.cycle = self.failover_strategy(self.alt)
             next(self.cycle)  # skip first entry
 
-        # backend_cls argument will be removed shortly.
-        self.transport_cls = self.transport_cls or kwargs.get('backend_cls')
-
         if transport_options is None:
             transport_options = {}
         self.transport_options = transport_options
@@ -515,7 +512,6 @@ class Connection(object):
 
     def create_transport(self):
         return self.get_transport_cls()(client=self)
-    create_backend = create_transport   # FIXME
 
     def get_transport_cls(self):
         """Get the currently used transport class."""
