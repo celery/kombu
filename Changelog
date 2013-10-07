@@ -75,7 +75,7 @@
     to make it easier for async transport implementations.
 
     The API is meant to match the Tulip API which will be included
-    in Python 2.4 as the ``asyncio`` module.  It's not a complete
+    in Python 3.4 as the ``asyncio`` module.  It's not a complete
     implementation obviously, but the goal is that it will be easy
     to change to it once that is possible.
 
