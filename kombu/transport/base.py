@@ -126,29 +126,29 @@ class Transport(object):
     def verify_connection(self, connection):
         return True
 
-    def _reader(self, connection, timeout=socket.timeout, error=socket.error,
-                get_errno=get_errno, _unavail=(errno.EAGAIN, errno.EINTR)):
+    def _make_reader(self, connection, timeout=socket.timeout,
+                     error=socket.error, get_errno=get_errno,
+                     _unavail=(errno.EAGAIN, errno.EINTR)):
         drain_events = connection.drain_events
-        while 1:
+
+        def _read(loop):
             try:
-                yield drain_events(timeout=0)
+                drain_events(timeout=0)
             except timeout:
-                break
+                return
             except error as exc:
                 if get_errno(exc) in _unavail:
-                    break
+                    return
                 raise
+            loop.call_soon(_read, loop)
+
+        return _read
 
     def on_readable(self, connection, loop):
         reader = self.__reader
         if reader is None:
-            reader = self.__reader = self._reader(connection)
-        try:
-            next(reader)
-        except StopIteration:
-            reader = self.__reader = self._reader(connection)
-            next(reader, None)
-        loop.on_tick.add(reader)
+            reader = self.__reader = self._make_reader(connection)
+        reader(loop)
 
     @property
     def default_connection_params(self):

@@ -269,16 +269,8 @@ class Hub(object):
         propagate = self.propagate_errors
 
         while 1:
-            outdated_ticks = set()
             for tick_callback in on_tick:
-                try:
-                    if isinstance(tick_callback, generator):
-                        next(tick_callback)
-                    else:
-                        tick_callback()
-                except StopIteration:
-                    outdated_ticks.add(tick_callback)
-            remove_ticks(outdated_ticks)
+                tick_callback()
 
             while todo:
                 item = todo.popleft()
