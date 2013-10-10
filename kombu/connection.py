@@ -562,7 +562,7 @@ class Connection(object):
             self.transport_cls, self.hostname, self.userid,
             self.password, self.virtual_host, self.port))
 
-    def as_uri(self, include_password=False):
+    def as_uri(self, include_password=False, mask=''):
         """Convert connection parameters to URL form."""
         hostname = self.hostname or 'localhost'
         if self.transport.can_parse_url:
@@ -578,8 +578,11 @@ class Connection(object):
         if userid or password:
             if userid:
                 url += quoteS(userid)
-            if include_password and password:
-                url += ':' + quoteS(password)
+            if password:
+                if include_password:
+                    url += ':' + quoteS(password)
+                else:
+                    url += ':' + mask if mask else ''
             url += '@'
         url += quoteS(fields['hostname'])
         if port:
