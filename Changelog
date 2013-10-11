@@ -26,7 +26,7 @@
 
 2.5.14
 ======
-:release-date: 2014-08-23 17:00 P.M BST
+:release-date: 2013-08-23 17:00 P.M BST
 
 - safe_str did not work properly resulting in
   :exc:`UnicodeDecodeError` (Issue #248).
