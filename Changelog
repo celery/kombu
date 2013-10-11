@@ -8,7 +8,7 @@
 
 2.5.15
 ======
-:release-date: 2013-09-04 03:30 P.M BST
+:release-date: 2013-10-04 03:30 P.M BST
 
 - Declaration cache: Now only keeps hash of declaration
   so that it does not keep a reference to the channel.
