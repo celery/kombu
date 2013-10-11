@@ -390,8 +390,7 @@ register_pickle()
 register_yaml()
 register_msgpack()
 
-# JSON is assumed to always be available, so is the default.
-# (this matches the historical use of kombu.)
+# Default serializer is 'json'
 registry._set_default_serializer('json')
 
 
