@@ -180,7 +180,7 @@ ZeroMQ transport: drain_events now supports timeout.
 
 2.5.15
 ======
-:release-date: 2013-09-XX XX:XX X.X BST
+:release-date: 2013-10-04 03:30 P.M BST
 
 - Declaration cache: Now only keeps hash of declaration
   so that it does not keep a reference to the channel.
@@ -2252,10 +2252,10 @@ Important Notes
 * Channel objects now have a ``channel_id`` attribute.
 
 * MongoDB: Version sniffing broke with development versions of
-	mongod (Issue #29).
+    mongod (Issue #29).
 
 * New environment variable :envvar:`KOMBU_LOG_CONNECTION` will now emit debug
-  log messages for connection related actions.
+    log messages for connection related actions.
 
   :envvar:`KOMBU_LOG_DEBUG` will also enable :envvar:`KOMBU_LOG_CONNECTION`.
 
