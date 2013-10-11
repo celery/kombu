@@ -180,7 +180,7 @@ ZeroMQ transport: drain_events now supports timeout.
 
 2.5.15
 ======
-:release-date: 2014-09-XX XX:XX X.X BST
+:release-date: 2013-09-XX XX:XX X.X BST
 
 - Declaration cache: Now only keeps hash of declaration
   so that it does not keep a reference to the channel.
@@ -198,7 +198,7 @@ ZeroMQ transport: drain_events now supports timeout.
 
 2.5.14
 ======
-:release-date: 2014-08-23 17:00 P.M BST
+:release-date: 2013-08-23 17:00 P.M BST
 
 - safe_str did not work properly resulting in
   :exc:`UnicodeDecodeError` (Issue #248).
