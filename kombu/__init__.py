@@ -14,12 +14,7 @@ import os
 import sys
 
 if sys.version_info < (2, 6):  # pragma: no cover
-    if sys.version_info >= (2, 5):
-        raise Exception(
-            'Python 2.5 is not supported by this version. '
-            'Please use Kombu versions 2.x.')
-    else:
-        raise Exception('Kombu requires Python versions 2.6 or later.')
+    raise Exception('Kombu 3.1 requires Python versions 2.6 or later.')
 
 STATICA_HACK = True
 globals()['kcah_acitats'[::-1].upper()] = False
