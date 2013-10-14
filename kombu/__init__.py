@@ -13,7 +13,7 @@ __docformat__ = 'restructuredtext en'
 import os
 import sys
 
-if sys.version_info < (2, 5):  # pragma: no cover
+if sys.version_info < (2, 6):  # pragma: no cover
     if sys.version_info >= (2, 5):
         raise Exception(
             'Python 2.5 is not supported by this version. '
