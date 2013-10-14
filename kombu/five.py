@@ -90,6 +90,8 @@ try:
 except ImportError:
     monotonic = _monotonic  # noqa
 
+############## Py3 <-> Py2 ###################################################
+
 if PY3:  # pragma: no cover
     import builtins
 
