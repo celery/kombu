@@ -11,11 +11,12 @@ import socket
 
 from bisect import bisect
 from contextlib import contextmanager
+from time import time
 
 from anyjson import loads, dumps
 
 from kombu.exceptions import InconsistencyError, VersionMismatch
-from kombu.five import Empty, values, monotonic
+from kombu.five import Empty, values
 from kombu.log import get_logger
 from kombu.utils import cached_property, uuid
 from kombu.utils.eventio import poll, READ, ERR
@@ -106,7 +107,7 @@ class QoS(virtual.QoS):
         delivery = message.delivery_info
         EX, RK = delivery['exchange'], delivery['routing_key']
         with self.pipe_or_acquire() as pipe:
-            pipe.zadd(self.unacked_index_key, delivery_tag, monotonic()) \
+            pipe.zadd(self.unacked_index_key, delivery_tag, time()) \
                 .hset(self.unacked_key, delivery_tag,
                       dumps([message._raw, EX, RK])) \
                 .execute()
@@ -144,7 +145,7 @@ class QoS(virtual.QoS):
         if (self._vrestore_count - 1) % interval:
             return
         with self.channel.conn_or_acquire() as client:
-            ceil = monotonic() - self.visibility_timeout
+            ceil = time() - self.visibility_timeout
             try:
                 with Mutex(client, self.unacked_mutex_key,
                            self.unacked_mutex_expire):

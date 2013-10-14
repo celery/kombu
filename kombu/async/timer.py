@@ -14,6 +14,7 @@ import sys
 from collections import namedtuple
 from datetime import datetime
 from functools import wraps
+from time import time
 from weakref import proxy as weakrefproxy
 
 from kombu.five import monotonic
@@ -134,7 +135,7 @@ class Timer(object):
         tref._last_run = None
         return self.enter_after(secs, tref, priority)
 
-    def enter_at(self, entry, eta=None, priority=0, time=monotonic):
+    def enter_at(self, entry, eta=None, priority=0, time=time):
         """Enter function into the scheduler.
 
         :param entry: Item to enter.
@@ -153,7 +154,7 @@ class Timer(object):
                 return
         return self._enter(eta, priority, entry)
 
-    def enter_after(self, secs, entry, priority=0, time=monotonic):
+    def enter_after(self, secs, entry, priority=0, time=time):
         return self.enter_at(entry, time() + secs, priority)
 
     def _enter(self, eta, priority, entry, push=heapq.heappush):
@@ -175,7 +176,7 @@ class Timer(object):
     def stop(self):
         pass
 
-    def __iter__(self, min=min, nowfun=monotonic,
+    def __iter__(self, min=min, nowfun=time,
                  pop=heapq.heappop, push=heapq.heappush):
         """This iterator yields a tuple of ``(entry, wait_seconds)``,
         where if entry is :const:`None` the caller should wait

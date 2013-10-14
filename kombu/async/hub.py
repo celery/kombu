@@ -264,7 +264,6 @@ class Hub(object):
         consolidate = self.consolidate
         consolidate_callback = self.consolidate_callback
         on_tick = self.on_tick
-        remove_ticks = on_tick.difference_update
         todo = self._ready
         propagate = self.propagate_errors
 
