@@ -106,4 +106,4 @@ elif SYSTEM == 'Linux':
             raise OSError(errno_, os.strerror(errno_))
         return t.tv_sec + t.tv_nsec * 1e-9
 else:
-    from time import time as monotonic
+    from time import time as monotonic  # noqa
