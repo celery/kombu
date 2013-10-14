@@ -14,7 +14,7 @@ from nose import SkipTest
 from kombu import Connection
 from kombu import Exchange, Queue
 from kombu.five import range
-from kombu.tests.utils import skip_if_quick
+from kombu.tests.case import skip_if_quick
 
 if sys.version_info >= (2, 5):
     from hashlib import sha256 as _digest
@@ -191,7 +191,7 @@ class TransportCase(unittest.TestCase):
                     for msg in consumeN(self.connection, consumer, n)]
         self.assertEqual(len(received), n)
         ordering = [i for i, _ in received]
-        if ordering != range(n) and not self.suppress_disorder_warning:
+        if ordering != list(range(n)) and not self.suppress_disorder_warning:
             warnings.warn(
                 '%s did not deliver messages in FIFO order: %r' % (
                     self.transport, ordering))

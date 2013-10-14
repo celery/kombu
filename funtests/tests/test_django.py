@@ -1,6 +1,6 @@
 from nose import SkipTest
 
-from kombu.tests.utils import redirect_stdouts
+from kombu.tests.case import redirect_stdouts
 
 from funtests import transport
 
