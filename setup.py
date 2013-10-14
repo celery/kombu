@@ -115,8 +115,6 @@ def reqs(*f):
 install_requires = reqs('default.txt')
 if py_version[0:2] == (2, 6):
     install_requires.extend(reqs('py26.txt'))
-elif py_version[0:2] == (2, 5):
-    install_requires.extend(reqs('py25.txt'))
 
 # -*- Tests Requires -*-
 
