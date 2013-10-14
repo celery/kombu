@@ -8,7 +8,7 @@
 
 3.0.0
 =====
-:release-date: 2013-10-14 03:30 P.M BST
+:release-date: 2013-10-14 04:00 P.M BST
 
 - Now depends on :mod:`amqp` version 1.3.
 
