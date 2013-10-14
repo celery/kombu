@@ -37,7 +37,7 @@ except NameError:  # pragma: no cover
 try:
     from time import monotonic
 except ImportError:
-    from time import time as monotonic  # noqa
+    from kombu.utils.compat import monotonic
 
 if PY3:  # pragma: no cover
     import builtins
