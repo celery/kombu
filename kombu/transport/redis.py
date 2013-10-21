@@ -16,7 +16,7 @@ from time import time
 from anyjson import loads, dumps
 
 from kombu.exceptions import InconsistencyError, VersionMismatch
-from kombu.five import Empty, values
+from kombu.five import Empty, values, string_t
 from kombu.log import get_logger
 from kombu.utils import cached_property, uuid
 from kombu.utils.eventio import poll, READ, ERR
@@ -315,6 +315,7 @@ class Channel(virtual.Channel):
     _subclient = None
     supports_fanout = True
     keyprefix_queue = '_kombu.binding.%s'
+    keyprefix_fanout = '/{db}.'
     sep = '\x06\x16'
     _in_poll = False
     _in_listen = False
@@ -329,6 +330,12 @@ class Channel(virtual.Channel):
     priority_steps = PRIORITY_STEPS
     socket_timeout = None
     max_connections = 10
+    #: Transport option to enable disable fanout keyprefix.
+    #: Should be enabled by default, but that is not
+    #: backwards compatible.  Can also be string, in which
+    #: case it changes the default prefix ('/{db}.') into to something
+    #: else.  The prefix must include a leading slash and a trailing dot.
+    fanout_prefix = False
     _pool = None
 
     from_transport_options = (
@@ -340,6 +347,7 @@ class Channel(virtual.Channel):
          'unacked_mutex_expire',
          'visibility_timeout',
          'unacked_restore_limit',
+         'fanout_prefix',
          'socket_timeout',
          'max_connections',
          'priority_steps')  # <-- do not add comma here!
@@ -359,6 +367,14 @@ class Channel(virtual.Channel):
         self.auto_delete_queues = set()
         self._fanout_to_queue = {}
         self.handlers = {'BRPOP': self._brpop_read, 'LISTEN': self._receive}
+
+        if self.fanout_prefix:
+            if isinstance(self.fanout_prefix, string_t):
+                self.keyprefix_fanout = self.fanout_prefix
+        else:
+            # previous versions did not set a fanout, so cannot enable
+            # by default.
+            self.keyprefix_fanout = ''
 
         # Evaluate connection.
         try:
@@ -436,7 +452,8 @@ class Channel(virtual.Channel):
         return ret
 
     def _subscribe(self):
-        keys = [self._fanout_queues[queue]
+        prefix = self.keyprefix_fanout
+        keys = [''.join([prefix, self._fanout_queues[queue]])
                 for queue in self.active_fanout_queues]
         if not keys:
             return
@@ -466,9 +483,12 @@ class Channel(virtual.Channel):
         if response is not None:
             payload = self._handle_message(c, response)
             if bytes_to_str(payload['type']) == 'message':
+                channel = bytes_to_str(payload['channel'])
+                if channel[0] == '/':
+                    _, _, channel = channel.partition('.')
                 return (
                     loads(bytes_to_str(payload['data'])),
-                    self._fanout_to_queue[bytes_to_str(payload['channel'])],
+                    self._fanout_to_queue[channel],
                 )
         raise Empty()
 
@@ -545,7 +565,9 @@ class Channel(virtual.Channel):
     def _put_fanout(self, exchange, message, **kwargs):
         """Deliver fanout message."""
         with self.conn_or_acquire() as client:
-            client.publish(exchange, dumps(message))
+            client.publish(
+                ''.join([self.keyprefix_fanout, exchange]), dumps(message),
+            )
 
     def _new_queue(self, queue, auto_delete=False, **kwargs):
         if auto_delete:
@@ -643,13 +665,16 @@ class Channel(virtual.Channel):
                 'path': host.split('://')[1]})
             connparams.pop('host', None)
             connparams.pop('port', None)
+
         return connparams
 
     def _create_client(self):
         return self.Client(connection_pool=self.pool)
 
     def _get_pool(self):
-        return redis.ConnectionPool(**self._connparams())
+        params = self._connparams()
+        self.keyprefix_fanout = self.keyprefix_fanout.format(db=params['db'])
+        return redis.ConnectionPool(**params)
 
     def _get_client(self):
         if redis.VERSION < (2, 4, 4):
