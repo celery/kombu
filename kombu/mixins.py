@@ -175,36 +175,44 @@ class ConsumerMixin(object):
                 warn('Connection to broker lost. '
                      'Trying to re-establish the connection...')
 
-    def consume(self, limit=None, timeout=None, safety_interval=1, **kwargs):
-        elapsed = 0
+    @contextmanager
+    def consumer_context(self, **kwargs):
         with self.Consumer() as (connection, channel, consumers):
             with self.extra_context(connection, channel):
                 self.on_consume_ready(connection, channel, consumers, **kwargs)
-                for i in limit and range(limit) or count():
-                    if self.should_stop:
-                        break
-                    self.on_iteration()
-                    try:
-                        connection.drain_events(timeout=safety_interval)
-                    except socket.timeout:
-                        elapsed += safety_interval
-                        if timeout and elapsed >= timeout:
-                            raise socket.timeout()
-                    except socket.error:
-                        if not self.should_stop:
-                            raise
-                    else:
-                        yield
-                        elapsed = 0
+                yield connection, channel, consumers
+
+    def consume(self, limit=None, timeout=None, safety_interval=1, **kwargs):
+        elapsed = 0
+        with self.consumer_context(**kwargs) as (conn, channel, consumers):
+            for i in limit and range(limit) or count():
+                if self.should_stop:
+                    break
+                self.on_iteration()
+                try:
+                    conn.drain_events(timeout=safety_interval)
+                except socket.timeout:
+                    elapsed += safety_interval
+                    if timeout and elapsed >= timeout:
+                        raise
+                except socket.error:
+                    if not self.should_stop:
+                        raise
+                else:
+                    yield
+                    elapsed = 0
         debug('consume exiting')
 
     def maybe_conn_error(self, fun):
         """Use :func:`kombu.common.ignore_errors` instead."""
         return ignore_errors(self, fun)
 
+    def create_connection(self):
+        return self.connection.clone()
+
     @contextmanager
     def establish_connection(self):
-        with self.connection.clone() as conn:
+        with self.create_connection() as conn:
             conn.ensure_connection(self.on_connection_error,
                                    self.connect_max_retries)
             yield conn
