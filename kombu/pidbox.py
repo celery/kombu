@@ -253,7 +253,7 @@ class Mailbox(object):
         producer.publish(
             message, exchange=exchange.name, declare=[exchange],
             headers={'clock': self.clock.forward(),
-                     'expires': time() + timeout if timeout else None},
+                     'expires': time() + timeout if timeout else 0},
         )
 
     def _broadcast(self, command, arguments=None, destination=None,
