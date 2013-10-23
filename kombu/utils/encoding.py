@@ -19,15 +19,13 @@ is_py3k = sys.version_info >= (3, 0)
 
 if sys.platform.startswith('java'):     # pragma: no cover
 
-    def default_encoding(isatty=True):
+    def default_encoding(file=None):
         return 'utf-8'
 else:
 
-    def default_encoding(isatty=True):  # noqa
-        if isatty:
-            return sys.getdefaultencoding()
-        else:
-            return sys.getfilesystemencoding()
+    def default_encoding(file=None):  # noqa
+        file = file or sys.stdout
+        return getattr(file, 'encoding', None) or sys.getfilesystemencoding()
 
 if is_py3k:  # pragma: no cover
 
@@ -67,8 +65,8 @@ else:
     def from_utf8(s, *args, **kwargs):  # noqa
         return s.encode('utf-8', *args, **kwargs)
 
-    def default_encode(obj):            # noqa
-        return unicode(obj, default_encoding())
+    def default_encode(obj, file=None):            # noqa
+        return unicode(obj, default_encoding(file))
 
     str_t = unicode
     ensure_bytes = str_to_bytes
@@ -87,8 +85,9 @@ def safe_str(s, errors='replace'):
     return _safe_str(s, errors)
 
 
-def _safe_str(s, errors='replace', isatty=True):
-    if is_py3k:  # pragma: no cover
+if is_py3k:
+
+    def _safe_str(s, errors='replace', file=None):
         if isinstance(s, str):
             return s
         try:
@@ -96,14 +95,16 @@ def _safe_str(s, errors='replace', isatty=True):
         except Exception as exc:
             return '<Unrepresentable {0!r}: {1!r} {2!r}>'.format(
                 type(s), exc, '\n'.join(traceback.format_stack()))
-    encoding = default_encoding(isatty=isatty)
-    try:
-        if isinstance(s, unicode):
-            return s.encode(encoding, errors)
-        return unicode(s, encoding, errors)
-    except Exception as exc:
-        return '<Unrepresentable {0!r}: {1!r} {2!r}>'.format(
-            type(s), exc, '\n'.join(traceback.format_stack()))
+else:
+    def _safe_str(s, errors='replace', file=None):  # noqa
+        encoding = default_encoding(file)
+        try:
+            if isinstance(s, unicode):
+                return s.encode(encoding, errors)
+            return unicode(s, encoding, errors)
+        except Exception as exc:
+            return '<Unrepresentable {0!r}: {1!r} {2!r}>'.format(
+                type(s), exc, '\n'.join(traceback.format_stack()))
 
 
 def safe_repr(o, errors='replace'):
