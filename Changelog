@@ -4,6 +4,14 @@
  Change history
 ================
 
+.. _version-2.5.16:
+
+2.5.16
+======
+:release-date: 2013-10-04 03:30 P.M BST
+
+- Python3: Fixed problem with dependencies not being installed.
+
 .. _version-2.5.15:
 
 2.5.15
