@@ -25,7 +25,7 @@ def clean_encoding():
 
 class test_default_encoding(Case):
 
-    @patch('sys.getdefaultencoding')
+    @patch('sys.getfilesystemencoding')
     def test_default(self, getdefaultencoding):
         getdefaultencoding.return_value = 'ascii'
         with clean_encoding() as encoding:
@@ -59,7 +59,7 @@ class test_encoding_utils(Case):
 class test_safe_str(Case):
 
     def setUp(self):
-        self._cencoding = patch('sys.getdefaultencoding')
+        self._cencoding = patch('sys.getfilesystemencoding')
         self._encoding = self._cencoding.__enter__()
         self._encoding.return_value = 'ascii'
 
@@ -73,7 +73,7 @@ class test_safe_str(Case):
         self.assertIsInstance(safe_str('foo'), string_t)
 
     def test_when_encoding_utf8(self):
-        with patch('sys.getdefaultencoding') as encoding:
+        with patch('sys.getfilesystemencoding') as encoding:
             encoding.return_value = 'utf-8'
             self.assertEqual(default_encoding(), 'utf-8')
             s = 'The quiæk fåx jømps øver the lazy dåg'
@@ -81,7 +81,7 @@ class test_safe_str(Case):
             self.assertIsInstance(res, str)
 
     def test_when_containing_high_chars(self):
-        with patch('sys.getdefaultencoding') as encoding:
+        with patch('sys.getfilesystemencoding') as encoding:
             encoding.return_value = 'ascii'
             s = 'The quiæk fåx jømps øver the lazy dåg'
             res = safe_str(s)
