@@ -17,14 +17,17 @@ from kombu.five import text_t
 
 is_py3k = sys.version_info >= (3, 0)
 
-if sys.platform.startswith('java'):  # pragma: no cover
+if sys.platform.startswith('java'):     # pragma: no cover
 
-    def default_encoding():
+    def default_encoding(isatty=True):
         return 'utf-8'
 else:
 
-    def default_encoding():       # noqa
-        return sys.getdefaultencoding()
+    def default_encoding(isatty=True):  # noqa
+        if isatty:
+            return sys.getdefaultencoding()
+        else:
+            return sys.getfilesystemencoding()
 
 if is_py3k:  # pragma: no cover
 
@@ -84,7 +87,7 @@ def safe_str(s, errors='replace'):
     return _safe_str(s, errors)
 
 
-def _safe_str(s, errors='replace'):
+def _safe_str(s, errors='replace', isatty=True):
     if is_py3k:  # pragma: no cover
         if isinstance(s, str):
             return s
@@ -93,7 +96,7 @@ def _safe_str(s, errors='replace'):
         except Exception as exc:
             return '<Unrepresentable {0!r}: {1!r} {2!r}>'.format(
                 type(s), exc, '\n'.join(traceback.format_stack()))
-    encoding = default_encoding()
+    encoding = default_encoding(isatty=isatty)
     try:
         if isinstance(s, unicode):
             return s.encode(encoding, errors)
