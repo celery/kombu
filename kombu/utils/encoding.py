@@ -17,6 +17,21 @@ from kombu.five import text_t
 
 is_py3k = sys.version_info >= (3, 0)
 
+#: safe_str takes encoding from this file by default.
+#: :func:`set_default_encoding_file` can used to set the
+#: default output file.
+default_encoding_file = None
+
+
+def set_default_encoding_file(file):
+    global default_encoding_file
+    default_encoding_file = file
+
+
+def get_default_encoding_file():
+    return default_encoding_file or sys.stdout
+
+
 if sys.platform.startswith('java'):     # pragma: no cover
 
     def default_encoding(file=None):
@@ -24,7 +39,7 @@ if sys.platform.startswith('java'):     # pragma: no cover
 else:
 
     def default_encoding(file=None):  # noqa
-        file = file or sys.stdout
+        file = file or get_default_encoding_file()
         return getattr(file, 'encoding', None) or sys.getfilesystemencoding()
 
 if is_py3k:  # pragma: no cover
