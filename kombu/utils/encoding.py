@@ -29,7 +29,7 @@ def set_default_encoding_file(file):
 
 
 def get_default_encoding_file():
-    return default_encoding_file or sys.stdout
+    return default_encoding_file
 
 
 if sys.platform.startswith('java'):     # pragma: no cover
