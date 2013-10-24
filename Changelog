@@ -4,6 +4,38 @@
  Change history
 ================
 
+.. _version-3.0.1:
+
+3.0.1
+=====
+:release-date: 2013-10-24 04:30 P.M BST
+
+- Redis: New option ``fanout_keyprefix``
+
+    This transport option is recommended for all users as it ensures
+    that broadcast (fanout) messages sent is only seen by the current
+    virtual host::
+
+        Connection('redis://', transport_options={'fanout_keyprefix': True})
+
+    However, enabling this means that you cannot send or receive messages
+    from older Kombu versions so make sure all of your participants
+    are upgraded and have the transport option enabled.
+
+    This will be the default behavior in Kombu 4.0.
+
+- Distribution: Removed file ``requirements/py25.txt``.
+
+- MongoDB: Now disables ``auto_start_request``.
+
+- MongoDB: Enables ``use_greenlets`` if eventlet/gevent used.
+
+- Pidbox: Fixes problem where expires header was None,
+  which is a value not supported by the amq protocol.
+
+- ConsumerMixin: New ``consumer_context`` method for starting
+  the consumer without draining events.
+
 .. _version-3.0.0:
 
 3.0.0
