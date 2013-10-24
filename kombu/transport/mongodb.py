@@ -17,6 +17,7 @@ from anyjson import loads, dumps
 from pymongo import MongoClient
 
 from kombu.five import Empty
+from kombu.syn import _detect_environment
 
 from . import virtual
 
@@ -95,6 +96,7 @@ class Channel(virtual.Channel):
         http://www.mongodb.org/display/DOCS/Connections
         """
         client = self.connection.client
+        options = client.transport_options
         hostname = client.hostname or DEFAULT_HOST
         authdb = dbname = client.virtual_host
 
@@ -119,7 +121,12 @@ class Channel(virtual.Channel):
         #
         #   mongodb://[username:password@]host1[:port1][,host2[:port2],
         #   ...[,hostN[:portN]]][/[?options]]
-        mongoconn = MongoClient(host=hostname, ssl=client.ssl)
+        options.setdefault('auto_start_request', True)
+        mongoconn = MongoClient(
+            host=hostname, ssl=client.ssl,
+            auto_start_request=options['auto_start_request'],
+            use_greenlets=_detect_environment() != 'default',
+        )
         database = getattr(mongoconn, dbname)
 
         version = mongoconn.server_info()['version']
@@ -133,8 +140,7 @@ class Channel(virtual.Channel):
         col.ensure_index([('queue', 1), ('_id', 1)], background=True)
 
         if 'messages.broadcast' not in database.collection_names():
-            capsize = (client.transport_options.get('capped_queue_size')
-                       or 100000)
+            capsize = options.get('capped_queue_size') or 100000
             database.create_collection('messages.broadcast',
                                        size=capsize, capped=True)
 
