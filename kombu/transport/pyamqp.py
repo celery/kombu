@@ -112,6 +112,9 @@ class Transport(base.Transport):
         conn.client = self.client
         return conn
 
+    def verify_connection(self, connection):
+        return connection.connected
+
     def close_connection(self, connection):
         """Close the AMQP broker connection."""
         connection.client = None
