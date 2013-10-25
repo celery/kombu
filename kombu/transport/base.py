@@ -123,6 +123,9 @@ class Transport(object):
     def register_with_event_loop(self, loop):
         pass
 
+    def unregister_from_event_loop(self, loop):
+        pass
+
     def verify_connection(self, connection):
         return True
 

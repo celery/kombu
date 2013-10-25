@@ -23,7 +23,6 @@ except ImportError:  # Py2
 # jython breaks on relative import for .exceptions for some reason
 # (Issue #112)
 from kombu import exceptions
-from .async import get_event_loop
 from .five import Empty, range, string_t, text_t, LifoQueue as _LifoQueue
 from .log import get_logger
 from .transport import get_transport_cls, supports_librabbitmq
@@ -702,9 +701,6 @@ class Connection(object):
     def _establish_connection(self):
         self._debug('establishing connection...')
         conn = self.transport.establish_connection()
-        loop = get_event_loop()
-        if loop:
-            self.transport.register_with_event_loop(conn, loop)
         self._debug('connection established: %r', conn)
         return conn
 

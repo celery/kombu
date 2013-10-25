@@ -303,6 +303,7 @@ class Hub(object):
                             except TypeError:
                                 pass
                     except (KeyError, Empty):
+                        hub_remove(fileno)
                         continue
                     if cb is None:
                         continue
