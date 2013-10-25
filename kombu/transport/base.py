@@ -132,6 +132,8 @@ class Transport(object):
         drain_events = connection.drain_events
 
         def _read(loop):
+            if not connection.connected:
+                raise ConnectionError('Socket was disconnected')
             try:
                 drain_events(timeout=0)
             except timeout:
