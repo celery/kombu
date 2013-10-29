@@ -20,6 +20,10 @@ from kombu.tests.case import (
 
 class _poll(eventio._select):
 
+    def register(self, fd, flags):
+        if flags & eventio.READ:
+            self._rfd.add(fd)
+
     def poll(self, timeout):
         events = []
         for fd in self._rfd:
