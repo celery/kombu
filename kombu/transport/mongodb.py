@@ -109,12 +109,14 @@ class Channel(virtual.Channel):
         if not hostname[10:]:
             hostname = hostname + 'localhost'
 
-        if '/' in hostname[10:]:
+        uscheme, urest = hostname[:10], hostname[10:]
+        if '/' in urest:
             if not client.userid:
-                hostname = hostname.replace('/' + client.virtual_host, '/')
+                urest = urest.replace('/' + client.virtual_host, '/')
             else:
-                hostname = hostname.replace('/' + client.virtual_host,
-                                            '/' + authdb)
+                urest = hostname.replace('/' + client.virtual_host,
+                                         '/' + authdb)
+            hostname = ''.join([uscheme, urest])
 
         # At this point we expect the hostname to be something like
         # (considering replica set form too):
