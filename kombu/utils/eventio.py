@@ -190,7 +190,6 @@ class _select(Poller):
         fd = fileno(fd)
         if events & ERR:
             self._efd.add(fd)
-            self._rfd.add(fd)
         if events & WRITE:
             self._wfd.add(fd)
         if events & READ:
@@ -238,7 +237,9 @@ class _select(Poller):
         return list(events.items())
 
     def close(self):
-        pass
+        self._rfd.clear()
+        self._wfd.clear()
+        self._efd.clear()
 
 
 def _get_poller():
