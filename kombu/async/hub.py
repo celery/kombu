@@ -8,6 +8,8 @@ Event loop implementation.
 """
 from __future__ import absolute_import
 
+import errno
+
 from collections import deque
 from contextlib import contextmanager
 from time import sleep
@@ -18,6 +20,7 @@ from amqp import promise
 from kombu.five import Empty, items, range
 from kombu.log import get_logger
 from kombu.utils import cached_property, fileno, reprcall
+from kombu.utils.compat import get_errno
 from kombu.utils.eventio import READ, WRITE, ERR, poll
 
 from .timer import Timer
@@ -310,6 +313,9 @@ class Hub(object):
                     if isinstance(cb, generator):
                         try:
                             next(cb)
+                        except OSError as exc:
+                            if get_errno(exc) == errno.EBADF:
+                                hub_remove(fileno)
                         except StopIteration:
                             hub_remove(fileno)
                         except Exception:
@@ -332,8 +338,8 @@ class Hub(object):
 
     def repr_events(self, events):
         return ', '.join(
-            '{0}->{1}'.format(
-                _rcb(self._callback_for(fd, fl, '{0!r}(GONE)'.format(fd))),
+            '{0}({1})->{2}'.format(
+                _rcb(self._callback_for(fd, fl, '(GONE)')), fd,
                 repr_flag(fl),
             )
             for fd, fl in events
