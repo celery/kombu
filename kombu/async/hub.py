@@ -150,8 +150,12 @@ class Hub(object):
                     entry()
                 except propagate:
                     raise
-                except MemoryError:
+                except (MemoryError, AssertionError):
                     raise
+                except OSError as exc:
+                    if get_errno(exc) == errno.ENOMEM:
+                        raise
+                    logger.error('Error in timer: %r', exc, exc_info=1)
                 except Exception as exc:
                     logger.error('Error in timer: %r', exc, exc_info=1)
         return min(max(delay or 0, min_delay), max_delay)
@@ -161,6 +165,7 @@ class Hub(object):
             self.poller.register(fd, flags)
         except ValueError:
             self._discard(fd)
+            raise
         else:
             dest = self.readers if flags & READ else self.writers
             if consolidate:
@@ -285,6 +290,7 @@ class Hub(object):
                 to_consolidate = []
                 try:
                     events = poll(poll_timeout)
+                    #print('[EVENTS]: %s' % (self.repr_events(events or []), ))
                 except ValueError:  # Issue 882
                     raise StopIteration()
 
@@ -356,9 +362,11 @@ class Hub(object):
     def _callback_for(self, fd, flag, *default):
         try:
             if flag & READ:
-                return self.readers[fileno(fd)]
+                return self.readers[fd]
             if flag & WRITE:
-                return self.writers[fileno(fd)]
+                if fd in self.consolidate:
+                    return self.consolidate_callback
+                return self.writers[fd]
         except KeyError:
             if default:
                 return default[0]
