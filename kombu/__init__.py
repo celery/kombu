@@ -1,4 +1,4 @@
-"""Messaging Framework for Python"""
+"""Messaging library for Python"""
 from __future__ import absolute_import
 
 VERSION = (3, 0, 2)

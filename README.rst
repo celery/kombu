@@ -1,12 +1,12 @@
 .. _kombu-index:
 
 ========================================
- kombu - Messaging Framework for Python
+ kombu - Messaging library for Python
 ========================================
 
 :Version: 3.0.2
 
-`Kombu` is a messaging framework for Python.
+`Kombu` is a messaging library for Python.
 
 The aim of `Kombu` is to make messaging in Python as easy as possible by
 providing an idiomatic high-level interface for the AMQ protocol, and also
