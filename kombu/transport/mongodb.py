@@ -90,11 +90,9 @@ class Channel(virtual.Channel):
             self.client.messages.remove({'queue': queue})
         return size
 
-    def _open(self):
-        """
-        See mongodb uri documentation:
-        http://www.mongodb.org/display/DOCS/Connections
-        """
+    def _open(self, scheme='mongodb://'):
+        # See mongodb uri documentation:
+        # http://www.mongodb.org/display/DOCS/Connections
         client = self.connection.client
         options = client.transport_options
         hostname = client.hostname or DEFAULT_HOST
@@ -103,20 +101,22 @@ class Channel(virtual.Channel):
         if dbname in ['/', None]:
             dbname = "kombu_default"
             authdb = "admin"
-        if not hostname.startswith('mongodb://'):
-            hostname = 'mongodb://' + hostname
+        if not hostname.startswith(scheme):
 
-        if not hostname[10:]:
-            hostname = hostname + 'localhost'
+            hostname = scheme + hostname
 
-        uscheme, urest = hostname[:10], hostname[10:]
+        if not hostname[len(scheme):]:
+            hostname += 'localhost'
+
+        # XXX What does this do?  [ask]
+        urest = hostname[len(scheme):]
         if '/' in urest:
             if not client.userid:
                 urest = urest.replace('/' + client.virtual_host, '/')
             else:
                 urest = hostname.replace('/' + client.virtual_host,
                                          '/' + authdb)
-            hostname = ''.join([uscheme, urest])
+            hostname = ''.join([scheme, urest])
 
         # At this point we expect the hostname to be something like
         # (considering replica set form too):
