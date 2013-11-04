@@ -4,6 +4,18 @@
  Change history
 ================
 
+3.0.3
+=====
+:release-date: 2013-11-04 3:00 P.M UTC
+
+- SQS: Properly reverted patch that caused delays between messages.
+
+    Contributed by James Saryerwinnie
+
+- select: Clear all registerd fds on poller.cloe
+
+- Eventloop: unregister if EBADF raised.
+
 .. _version-3.0.2:
 
 3.0.2
