@@ -350,6 +350,8 @@ class QoS(object):
         with self._mutex:
             if self.value:
                 self.value -= n
+                if self.value < 1:
+                    self.value = 1
         return self.value
 
     def set(self, pcount):
