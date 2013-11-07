@@ -320,10 +320,11 @@ class Hub(object):
                         try:
                             next(cb)
                         except OSError as exc:
-                            if get_errno(exc) == errno.EBADF:
-                                hub_remove(fileno)
-                        except StopIteration:
+                            if get_errno(exc) != errno.EBADF:
+                                raise
                             hub_remove(fileno)
+                        except StopIteration:
+                            pass
                         except Exception:
                             hub_remove(fileno)
                             raise
