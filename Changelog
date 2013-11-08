@@ -4,6 +4,13 @@
  Change history
 ================
 
+3.0.4
+=====
+:release-date: 2013-11-08 1:00 P.M UTC
+
+- common.QoS: ``decrement_eventually`` now makes sure the value
+  does not go below 1 if a prefetch count is enabled.
+
 3.0.3
 =====
 :release-date: 2013-11-04 3:00 P.M UTC
