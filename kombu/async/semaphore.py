@@ -94,7 +94,7 @@ class LaxBoundedSemaphore(object):
 
     def __repr__(self):
         return '<{0} at {1:#x} value:{2} waiting:{3}>'.format(
-            self.__class__.__name__, id(self), self.value, len(self.waiting),
+            self.__class__.__name__, id(self), self.value, len(self._waiting),
         )
 
 
