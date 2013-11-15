@@ -3,6 +3,29 @@
 ================
  Change history
 ================
+:release-date: 2013-11-15 10:52 PM UTC
+
+3.0.5
+=====
+
+- Now depends on :mod:`amqp` 3.0.3.
+
+- Redis: Fixed Python 3 compatibility problem (Issue #270).
+
+- MongoDB: Fixed problem with URL parsing when authentication used.
+
+    Fix contributed by dongweiming.
+
+- pyamqp: Fixed small issue when publishing the message and
+  the property dictionary was set to None.
+
+    Fix contributed by Victor Garcia.
+
+- Fixed problem in ``repr(LaxBoundedSemaphore)``.
+
+    Fix contributed by Antoine Legrand.
+
+- Tests now passing on Python 3.3.
 
 3.0.4
 =====
