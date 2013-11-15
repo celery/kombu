@@ -162,7 +162,7 @@ class QoS(virtual.QoS):
             p, _, _ = self._remove_from_indices(
                 tag, client.pipeline().hget(self.unacked_key, tag)).execute()
             if p:
-                M, EX, RK = loads(p)
+                M, EX, RK = loads(bytes_to_str(p))  # json is unicode
                 self.channel._do_restore_message(M, EX, RK, client, leftmost)
 
     @cached_property
@@ -419,7 +419,7 @@ class Channel(virtual.Channel):
                 .hdel(self.unacked_key, tag) \
                 .execute()
             if P:
-                M, EX, RK = loads(P)
+                M, EX, RK = loads(bytes_to_str(P))  # json is unicode
                 self._do_restore_message(M, EX, RK, client, leftmost)
 
     def _restore_at_beginning(self, message):
@@ -533,7 +533,7 @@ class Channel(virtual.Channel):
             for pri in PRIORITY_STEPS:
                 item = client.rpop(self._q_for_pri(queue, pri))
                 if item:
-                    return loads(item)
+                    return loads(bytes_to_str(item))
             raise Empty()
 
     def _size(self, queue):

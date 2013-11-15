@@ -18,6 +18,7 @@ from pymongo import MongoClient
 
 from kombu.five import Empty
 from kombu.syn import _detect_environment
+from kombu.utils.encoding import bytes_to_str
 
 from . import virtual
 
@@ -50,7 +51,7 @@ class Channel(virtual.Channel):
             if queue in self._fanout_queues:
                 msg = next(self._queue_cursors[queue])
                 self._queue_readcounts[queue] += 1
-                return loads(msg['payload'])
+                return loads(bytes_to_str(msg['payload']))
             else:
                 msg = self.client.command(
                     'findandmodify', 'messages',
@@ -67,7 +68,7 @@ class Channel(virtual.Channel):
         # as of mongo 2.0 empty results won't raise an error
         if msg['value'] is None:
             raise Empty()
-        return loads(msg['value']['payload'])
+        return loads(bytes_to_str(msg['value']['payload']))
 
     def _size(self, queue):
         if queue in self._fanout_queues:

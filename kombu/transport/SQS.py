@@ -23,7 +23,7 @@ from boto.sqs.message import Message
 
 from kombu.five import Empty, range, text_t
 from kombu.utils import cached_property, uuid
-from kombu.utils.encoding import safe_str
+from kombu.utils.encoding import bytes_to_str, safe_str
 
 from . import virtual
 
@@ -250,7 +250,7 @@ class Channel(virtual.Channel):
             rs = q.get_messages(1)
         if rs:
             m = rs[0]
-            payload = loads(rs[0].get_body())
+            payload = loads(bytes_to_str(rs[0].get_body()))
             if queue in self._noack_queues:
                 q.delete_message(m)
             else:
