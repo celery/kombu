@@ -320,3 +320,7 @@ License
 
 This software is licensed under the `New BSD License`. See the `LICENSE`
 file in the top distribution directory for the full license text.
+
+.. image:: https://d2weczhvl823v0.cloudfront.net/celery/kombu/trend.png
+    :alt: Bitdeli badge
+    :target: https://bitdeli.com/free
