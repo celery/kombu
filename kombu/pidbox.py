@@ -96,7 +96,6 @@ class Node(object):
         arguments = arguments or {}
         debug('pidbox received method %s [reply_to:%s ticket:%s]',
               reprcall(method, (), kwargs=arguments), reply_to, ticket)
-        handle = reply_to and self.handle_call or self.handle_cast
         try:
             reply = handle(method, kwdict(arguments))
         except SystemExit:
@@ -114,12 +113,6 @@ class Node(object):
 
     def handle(self, method, arguments={}):
         return self.handlers[method](self.state, **arguments)
-
-    def handle_call(self, method, arguments):
-        return self.handle(method, arguments)
-
-    def handle_cast(self, method, arguments):
-        return self.handle(method, arguments)
 
     def handle_message(self, body, message=None):
         destination = body.get('destination')
