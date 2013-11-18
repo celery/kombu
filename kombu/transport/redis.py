@@ -21,6 +21,7 @@ from kombu.log import get_logger
 from kombu.utils import cached_property, uuid
 from kombu.utils.eventio import poll, READ, ERR
 from kombu.utils.encoding import bytes_to_str
+from kombu.utils.url import _parse_url
 
 NO_ROUTE_ERROR = """
 Cannot route message for exchange {0!r}: Table empty or key no longer exists.
@@ -639,33 +640,40 @@ class Channel(virtual.Channel):
                     pass
         super(Channel, self).close()
 
-    def _connparams(self):
-        conninfo = self.connection.client
-        database = conninfo.virtual_host
-        if not isinstance(database, int):
-            if not database or database == '/':
-                database = DEFAULT_DB
-            elif database.startswith('/'):
-                database = database[1:]
+    def _prepare_virtual_host(self, vhost):
+        if not isinstance(vhost, int):
+            if not vhost or vhost == '/':
+                vhost = DEFAULT_DB
+            elif vhost.startswith('/'):
+                vhost = vhost[1:]
             try:
-                database = int(database)
+                vhost = int(vhost)
             except ValueError:
                 raise ValueError(
-                    'Database name must be int between 0 and limit - 1')
-        host = conninfo.hostname or '127.0.0.1'
-        connparams = {'host': host,
+                    'Database is int between 0 and limit - 1, not {0}'.format(
+                        vhost,
+                    ))
+        return vhost
+
+    def _connparams(self):
+        conninfo = self.connection.client
+        connparams = {'host': conninfo.hostname or '127.0.0.1',
                       'port': conninfo.port or DEFAULT_PORT,
-                      'db': database,
+                      'virtual_host': conninfo.virtual_host,
                       'password': conninfo.password,
                       'max_connections': self.max_connections,
                       'socket_timeout': self.socket_timeout}
-        if host.split('://')[0] == 'socket':
-            connparams.update({
-                'connection_class': redis.UnixDomainSocketConnection,
-                'path': host.split('://')[1]})
+        host = connparams['host']
+        if '://' in host:
+            scheme, _, _, _, _, path, query = _parse_url(host)
+            if scheme == 'socket':
+                connparams.update({
+                    'connection_class': redis.UnixDomainSocketConnection,
+                    'path': '/' + path}, **query)
             connparams.pop('host', None)
             connparams.pop('port', None)
-
+        connparams['db'] = self._prepare_virtual_host(
+            connparams.pop('virtual_host', None))
         return connparams
 
     def _create_client(self):
