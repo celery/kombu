@@ -4,6 +4,25 @@
  Change history
 ================
 
+3.0.6
+=====
+:release-date: 2013-11-20 XX:00 P.M UTC
+
+- Timer: No longer attempts to hash keyword arguments (Issue #275).
+
+- Async: Did not account for the long type for file descriptors.
+
+    Fix contributed by Fabrice Rabaute.
+
+- PyPy: kqueue support was broken.
+
+- Redis: Unix socket URLs can now specify a virtual host by including
+  it as a query parameter.
+
+    Example URL specifying a virtual host using database number 3::
+
+        redis+socket:///tmp/redis.sock?virtual_host=3
+
 3.0.5
 =====
 :release-date: 2013-11-15 11:00 P.M UTC
