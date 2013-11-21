@@ -9,7 +9,7 @@
 3.0.6
 =====
 :release-date: 2013-11-21 04:30 P.M UTC
-:by: Ask Solem
+:release-by: Ask Solem
 
 - Timer: No longer attempts to hash keyword arguments (Issue #275).
 
@@ -35,7 +35,7 @@
 3.0.5
 =====
 :release-date: 2013-11-15 11:00 P.M UTC
-:by: Ask Solem
+:release-by: Ask Solem
 
 - Now depends on :mod:`amqp` 3.0.3.
 
@@ -61,7 +61,7 @@
 3.0.4
 =====
 :release-date: 2013-11-08 1:00 P.M UTC
-:by: Ask Solem
+:release-by: Ask Solem
 
 - common.QoS: ``decrement_eventually`` now makes sure the value
   does not go below 1 if a prefetch count is enabled.
@@ -71,7 +71,7 @@
 3.0.3
 =====
 :release-date: 2013-11-04 3:00 P.M UTC
-:by: Ask Solem
+:release-by: Ask Solem
 
 - SQS: Properly reverted patch that caused delays between messages.
 
@@ -86,7 +86,7 @@
 3.0.2
 =====
 :release-date: 2013-10-29 2:00 P.M UTC
-:by: Ask Solem
+:release-by: Ask Solem
 
 - Now depends on :mod:`amqp` version 1.3.2.
 
@@ -98,7 +98,7 @@
 3.0.1
 =====
 :release-date: 2013-10-24 04:00 P.M UTC
-:by: Ask Solem
+:release-by: Ask Solem
 
 - Now depends on :mod:`amqp` version 1.3.1.
 
@@ -133,7 +133,7 @@
 3.0.0
 =====
 :release-date: 2013-10-14 04:00 P.M BST
-:by: Ask Solem
+:release-by: Ask Solem
 
 - Now depends on :mod:`amqp` version 1.3.
 
@@ -312,7 +312,7 @@ ZeroMQ transport: drain_events now supports timeout.
 2.5.16
 ======
 :release-date: 2013-10-04 03:30 P.M BST
-:by: Ask Solem
+:release-by: Ask Solem
 
 - Python3: Fixed problem with dependencies not being installed.
 
@@ -321,7 +321,7 @@ ZeroMQ transport: drain_events now supports timeout.
 2.5.15
 ======
 :release-date: 2013-10-04 03:30 P.M BST
-:by: Ask Solem
+:release-by: Ask Solem
 
 - Declaration cache: Now only keeps hash of declaration
   so that it does not keep a reference to the channel.
@@ -340,7 +340,7 @@ ZeroMQ transport: drain_events now supports timeout.
 2.5.14
 ======
 :release-date: 2013-08-23 17:00 P.M BST
-:by: Ask Solem
+:release-by: Ask Solem
 
 - safe_str did not work properly resulting in
   :exc:`UnicodeDecodeError` (Issue #248).
@@ -350,7 +350,7 @@ ZeroMQ transport: drain_events now supports timeout.
 2.5.13
 ======
 :release-date: 2013-08-16 16:00 P.M BST
-:by: Ask Solem
+:release-by: Ask Solem
 
 - Now depends on :mod:`amqp` 1.0.13
 
@@ -377,7 +377,7 @@ ZeroMQ transport: drain_events now supports timeout.
 2.5.12
 ======
 :release-date: 2013-06-28 15:30 P.M BST
-:by: Ask Solem
+:release-by: Ask Solem
 
 - Redis: Ignore errors about keys missing in the round-robin cycle.
 
@@ -390,7 +390,7 @@ ZeroMQ transport: drain_events now supports timeout.
 2.5.11
 ======
 :release-date: 2013-06-25 14:30 P.M BST
-:by: Ask Solem
+:release-by: Ask Solem
 
 - Now depends on amqp 1.0.12 (Py3 compatibility issues).
 
@@ -452,7 +452,7 @@ ZeroMQ transport: drain_events now supports timeout.
 2.5.10
 ======
 :release-date: 2013-04-11 18:10 P.M BST
-:by: Ask Solem
+:release-by: Ask Solem
 
 Note about upcoming changes for Kombu 3.0
 -----------------------------------------
@@ -498,7 +498,7 @@ Changes
 2.5.9
 =====
 :release-date: 2013-04-08 05:07 P.M BST
-:by: Ask Solem
+:release-by: Ask Solem
 
 - Pidbox: Now warns if there are multiple nodes consuming from
   the same pidbox.
@@ -531,7 +531,7 @@ Changes
 2.5.8
 =====
 :release-date: 2013-03-21 04:00 P.M UTC
-:by: Ask Solem
+:release-by: Ask Solem
 
 - Now depends on :mod:`amqp` 1.0.10 which fixes a Python 3 compatibility error.
 
@@ -566,7 +566,7 @@ Changes
 2.5.7
 =====
 :release-date: 2013-03-08 01:00 P.M UTC
-:by: Ask Solem
+:release-by: Ask Solem
 
 - Now depends on amqp 1.0.9
 
@@ -589,7 +589,7 @@ Changes
 2.5.6
 =====
 :release-date: 2013-02-08 01:00 P.M UTC
-:by: Ask Solem
+:release-by: Ask Solem
 
 - Now depends on amqp 1.0.8 which works around a bug found on some
   Python 2.5 installations where 2**32 overflows to 0.
@@ -599,7 +599,7 @@ Changes
 2.5.5
 =====
 :release-date: 2013-02-07 17:00 P.M UTC
-:by: Ask Solem
+:release-by: Ask Solem
 
 SQS: Now supports long polling (Issue #176).
 
@@ -637,7 +637,7 @@ SQS: Now supports long polling (Issue #176).
 2.5.4
 =====
 :release-date: 2012-12-10 12:35 P.M UTC
-:by: Ask Solem
+:release-by: Ask Solem
 
 - Fixed problem with connection clone and multiple URLs (Issue #182).
 
@@ -654,21 +654,21 @@ SQS: Now supports long polling (Issue #176).
 2.5.3
 =====
 :release-date: 2012-11-29 12:35 P.M UTC
-:by: Ask Solem
+:release-by: Ask Solem
 
 - Pidbox: Fixed compatibility with Python 2.6
 
 2.5.2
 =====
 :release-date: 2012-11-29 12:35 P.M UTC
-:by: Ask Solem
+:release-by: Ask Solem
 
 .. _version-2.5.2:
 
 2.5.2
 =====
 :release-date: 2012-11-29 12:35 P.M UTC
-:by: Ask Solem
+:release-by: Ask Solem
 
 - [Redis] Fixed connection leak and added a new 'max_connections' transport
   option.
@@ -678,7 +678,7 @@ SQS: Now supports long polling (Issue #176).
 2.5.1
 =====
 :release-date: 2012-11-28 12:45 P.M UTC
-:by: Ask Solem
+:release-by: Ask Solem
 
 - Fixed bug where return value of Queue.as_dict could not be serialized with
   JSON (Issue #177).
@@ -688,7 +688,7 @@ SQS: Now supports long polling (Issue #176).
 2.5.0
 =====
 :release-date: 2012-11-27 04:00 P.M UTC
-:by: Ask Solem
+:release-by: Ask Solem
 
 - `py-amqp`_ is now the new default transport, replacing ``amqplib``.
 
@@ -808,7 +808,7 @@ SQS: Now supports long polling (Issue #176).
 2.4.10
 ======
 :release-date: 2012-11-22 06:00 P.M UTC
-:by: Ask Solem
+:release-by: Ask Solem
 
 - The previous versions connection pool changes broke Redis support so that
   it would always connect to localhost (default setting) no matter what
@@ -819,7 +819,7 @@ SQS: Now supports long polling (Issue #176).
 2.4.9
 =====
 :release-date: 2012-11-21 03:00 P.M UTC
-:by: Ask Solem
+:release-by: Ask Solem
 
 - Redis: Fixed race condition that could occur while trying to restore
   messages (Issue #171).
@@ -848,7 +848,7 @@ SQS: Now supports long polling (Issue #176).
 2.4.8
 =====
 :release-date: 2012-11-02 05:00 P.M UTC
-:by: Ask Solem
+:release-by: Ask Solem
 
 - Redis:  Improved fair queue cycle implementation (Issue #166).
 
@@ -896,7 +896,7 @@ SQS: Now supports long polling (Issue #176).
 2.4.7
 =====
 :release-date: 2012-09-18 03:00 P.M BST
-:by: Ask Solem
+:release-by: Ask Solem
 
 - Virtual: Unknown exchanges now default to 'direct' when sending a message.
 
@@ -918,7 +918,7 @@ SQS: Now supports long polling (Issue #176).
 2.4.6
 =====
 :release-date: 2012-09-12 03:00 P.M BST
-:by: Ask Solem
+:release-by: Ask Solem
 
 - Adds additional compatibility dependencies:
 
@@ -936,7 +936,7 @@ SQS: Now supports long polling (Issue #176).
 2.4.5
 =====
 :release-date: 2012-08-30 03:36 P.M BST
-:by: Ask Solem
+:release-by: Ask Solem
 
 - Last version broke installtion on PyPy and Jython due
   to test requirements clean-up.
@@ -946,7 +946,7 @@ SQS: Now supports long polling (Issue #176).
 2.4.4
 =====
 :release-date: 2012-08-29 04:00 P.M BST
-:by: Ask Solem
+:release-by: Ask Solem
 
 - amqplib: Fixed a bug with asynchronously reading large messages.
 
@@ -959,7 +959,7 @@ SQS: Now supports long polling (Issue #176).
 2.4.3
 =====
 :release-date: 2012-08-25 10:30 P.M BST
-:by: Ask Solem
+:release-by: Ask Solem
 
 - Fixed problem with amqp transport alias (Issue #154).
 
@@ -968,7 +968,7 @@ SQS: Now supports long polling (Issue #176).
 2.4.2
 =====
 :release-date: 2012-08-24 05:00 P.M BST
-:by: Ask Solem
+:release-by: Ask Solem
 
 - Having an empty transport name broke in 2.4.1.
 
@@ -978,7 +978,7 @@ SQS: Now supports long polling (Issue #176).
 2.4.1
 =====
 :release-date: 2012-08-24 04:00 P.M BST
-:by: Ask Solem
+:release-by: Ask Solem
 
 - Redis: Fixed race condition that could cause the consumer to crash (Issue #151)
 
@@ -994,7 +994,7 @@ SQS: Now supports long polling (Issue #176).
 2.4.0
 =====
 :release-date: 2012-08-17 08:00 P.M BST
-:by: Ask Solem
+:release-by: Ask Solem
 
 - New experimental :mod:`ZeroMQ <kombu.transport.zmq` transport.
 
@@ -1022,7 +1022,7 @@ SQS: Now supports long polling (Issue #176).
 2.3.2
 =====
 :release-date: 2012-08-01 06:00 P.M BST
-:by: Ask Solem
+:release-by: Ask Solem
 
 - Fixes problem with deserialization in Python 3.
 
@@ -1031,7 +1031,7 @@ SQS: Now supports long polling (Issue #176).
 2.3.1
 =====
 :release-date: 2012-08-01 04:00 P.M BST
-:by: Ask Solem
+:release-by: Ask Solem
 
 - librabbitmq: Can now handle messages that does not have a
   content_encoding/content_type set (Issue #149).
@@ -1045,7 +1045,7 @@ SQS: Now supports long polling (Issue #176).
 2.3.0
 =====
 :release-date: 2012-07-24 03:50 P.M BST
-:by: Ask Solem
+:release-by: Ask Solem
 
 - New ``pyamqp://`` transport!
 
@@ -1116,7 +1116,7 @@ SQS: Now supports long polling (Issue #176).
 2.2.6
 =====
 :release-date: 2012-07-10 17:00 P.M BST
-:by: Ask Solem
+:release-by: Ask Solem
 
 - Adds ``kombu.messaging.entry_to_queue`` for compat with previous versions.
 
@@ -1125,7 +1125,7 @@ SQS: Now supports long polling (Issue #176).
 2.2.5
 =====
 :release-date: 2012-07-10 17:00 P.M BST
-:by: Ask Solem
+:release-by: Ask Solem
 
 - Pidbox: Now sets queue expire at 10 seconds for reply queues.
 
@@ -1140,7 +1140,7 @@ SQS: Now supports long polling (Issue #176).
 2.2.4
 =====
 :release-date: 2012-07-05 16:00 P.M BST
-:by: Ask Solem
+:release-by: Ask Solem
 
 - Support for msgpack-python 0.2.0 (Issue #143)
 
@@ -1163,7 +1163,7 @@ SQS: Now supports long polling (Issue #176).
 2.2.3
 =====
 :release-date: 2012-06-24 17:00 P.M BST
-:by: Ask Solem
+:release-by: Ask Solem
 
 - ``BrokerConnection`` now renamed to ``Connection``.
 
@@ -1195,7 +1195,7 @@ SQS: Now supports long polling (Issue #176).
 2.2.2
 =====
 :release-date: 2012-06-22 02:30 P.M BST
-:by: Ask Solem
+:release-by: Ask Solem
 
 - Now depends on :mod:`anyjson` 0.3.3
 
@@ -1215,7 +1215,7 @@ SQS: Now supports long polling (Issue #176).
 2.2.1
 =====
 :release-date: 2012-06-21 01:00 P.M BST
-:by: Ask Solem
+:release-by: Ask Solem
 
 - SQS: Default visibility timeout is now 30 minutes.
 
@@ -1262,7 +1262,7 @@ SQS: Now supports long polling (Issue #176).
 2.2.0
 =====
 :release-date: 2012-06-07 3:10 P.M BST
-:by: Ask Solem
+:release-by: Ask Solem
 
 .. _v220-important:
 
@@ -1505,7 +1505,7 @@ callback-based API later.
 2.1.8
 =====
 :release-date: 2012-05-06 3:06 P.M BST
-:by: Ask Solem
+:release-by: Ask Solem
 
 * Bound Exchange/Queue's are now pickleable.
 
@@ -1535,7 +1535,7 @@ callback-based API later.
 2.1.7
 =====
 :release-date: 2012-04-27 6:00 P.M BST
-:by: Ask Solem
+:release-by: Ask Solem
 
 * compat consumerset now accepts optional channel argument.
 
@@ -1544,7 +1544,7 @@ callback-based API later.
 2.1.6
 =====
 :release-date: 2012-04-23 1:30 P.M BST
-:by: Ask Solem
+:release-by: Ask Solem
 
 * SQLAlchemy transport was not working correctly after URL parser change.
 
@@ -1561,7 +1561,7 @@ callback-based API later.
 2.1.5
 =====
 :release-date: 2012-04-13 3:30 P.M BST
-:by: Ask Solem
+:release-by: Ask Solem
 
 * The url parser removed more than the first leading slash (Issue #121).
 
@@ -1586,7 +1586,7 @@ callback-based API later.
 2.1.4
 =====
 :release-date: 2012-04-03 4:00 P.M GMT
-:by: Ask Solem
+:release-by: Ask Solem
 
 * MongoDB:  URL parsing are now delegated to the pymongo library
   (Fixes Issue #103 and Issue #87).
@@ -1623,7 +1623,7 @@ callback-based API later.
 2.1.3
 =====
 :release-date: 2012-03-20 3:00 P.M GMT
-:by: Ask Solem
+:release-by: Ask Solem
 
 * Fixes Jython compatibility issues.
 
@@ -1634,7 +1634,7 @@ callback-based API later.
 2.1.2
 =====
 :release-date: 2012-03-01 01:00 P.M GMT
-:by: Ask Solem
+:release-by: Ask Solem
 
 * amqplib: Last version broke SSL support.
 
@@ -1643,7 +1643,7 @@ callback-based API later.
 2.1.1
 =====
 :release-date: 2012-02-24 02:00 P.M GMT
-:by: Ask Solem
+:release-by: Ask Solem
 
 * Connection URLs now supports encoded characters.
 
@@ -1663,7 +1663,7 @@ callback-based API later.
 2.1.0
 =====
 :release-date: 2012-02-04 10:38 P.M GMT
-:by: Ask Solem
+:release-by: Ask Solem
 
 * MongoDB: Now supports fanout (broadcast) (Issue #98).
 
@@ -1702,7 +1702,7 @@ callback-based API later.
 2.0.0
 =====
 :release-date: 2012-01-15 18:34 P.M GMT
-:by: Ask Solem
+:release-by: Ask Solem
 
 .. _v200-important:
 
@@ -1816,7 +1816,7 @@ Fixes
 1.5.1
 =====
 :release-date: 2011-11-30 01:00 P.M GMT
-:by: Ask Solem
+:release-by: Ask Solem
 
 * Fixes issue with ``kombu.compat`` introduced in 1.5.0 (Issue #83).
 
@@ -1836,7 +1836,7 @@ Fixes
 1.5.0
 =====
 :release-date: 2011-11-27 06:00 P.M GMT
-:by: Ask Solem
+:release-by: Ask Solem
 
 * kombu.pools: Fixed a bug resulting in resources not being properly released.
 
@@ -1901,7 +1901,7 @@ Fixes
 1.4.3
 =====
 :release-date: 2011-10-27 10:00 P.M BST
-:by: Ask Solem
+:release-by: Ask Solem
 
 * Fixes bug in ProducerPool where too many resources would be acquired.
 
@@ -1910,7 +1910,7 @@ Fixes
 1.4.2
 =====
 :release-date: 2011-10-26 05:00 P.M BST
-:by: Ask Solem
+:release-by: Ask Solem
 
 * Eventio: Polling should ignore `errno.EINTR`
 
@@ -1938,7 +1938,7 @@ Fixes
 1.4.1
 =====
 :release-date: 2011-09-26 04:00 P.M BST
-:by: Ask Solem
+:release-by: Ask Solem
 
 * 1.4.0 broke the producer pool, resulting in new connections being
   established for every acquire.
@@ -1949,7 +1949,7 @@ Fixes
 1.4.0
 =====
 :release-date: 2011-09-22 05:00 P.M BST
-:by: Ask Solem
+:release-by: Ask Solem
 
 * Adds module :mod:`kombu.mixins`.
 
@@ -2005,7 +2005,7 @@ Fixes
 1.3.5
 =====
 :release-date: 2011-09-16 06:00 P.M BST
-:by: Ask Solem
+:release-by: Ask Solem
 
 * Python 3: AMQP_PROTOCOL_HEADER must be bytes, not str.
 
@@ -2014,7 +2014,7 @@ Fixes
 1.3.4
 =====
 :release-date: 2011-09-16 06:00 P.M BST
-:by: Ask Solem
+:release-by: Ask Solem
 
 * Fixes syntax error in pools.reset
 
@@ -2024,7 +2024,7 @@ Fixes
 1.3.3
 =====
 :release-date: 2011-09-15 02:00 P.M BST
-:by: Ask Solem
+:release-by: Ask Solem
 
 * pools.reset did not support after forker arguments.
 
@@ -2033,7 +2033,7 @@ Fixes
 1.3.2
 =====
 :release-date: 2011-09-10 01:00 P.M BST
-:by: Mher Movsisyan
+:release-by: Mher Movsisyan
 
 * Broke Python 2.5 compatibility by importing ``parse_qsl`` from ``urlparse``
 
@@ -2053,7 +2053,7 @@ Fixes
 1.3.1
 =====
 :release-date: 2011-10-07 03:00 P.M BST
-:by: Ask Solem
+:release-by: Ask Solem
 
 * Last release broke after fork for pool reinitialization.
 
@@ -2078,7 +2078,7 @@ Fixes
 1.3.0
 =====
 :release-date: 2011-10-05 01:00 P.M BST
-:by: Ask Solem
+:release-by: Ask Solem
 
 * Broker connection info can be now be specified using URLs
 
@@ -2189,7 +2189,7 @@ Fixes
 1.2.1
 =====
 :release-date: 2011-07-29 12:52 P.M BST
-:by: Ask Solem
+:release-by: Ask Solem
 
 * Now depends on amqplib >= 1.0.0.
 
@@ -2234,7 +2234,7 @@ Fixes
 1.2.0
 =====
 :release-date: 2011-07-15 12:00 P.M BST
-:by: Ask Solem
+:release-by: Ask Solem
 
 * Virtual: Fixes cyclic reference in Channel.close (Issue #49).
 
@@ -2256,7 +2256,7 @@ Fixes
 1.1.6
 =====
 :release-date: 2011-06-13 04:00 P.M BST
-:by: Ask Solem
+:release-by: Ask Solem
 
 * Redis: Fixes issue introduced in 1.1.4, where a redis connection
   failure could leave consumer hanging forever.
@@ -2282,7 +2282,7 @@ Fixes
 1.1.5
 =====
 :release-date: 2011-06-07 06:00 P.M BST
-:by: Ask Solem
+:release-by: Ask Solem
 
 * Fixes compatibility with redis-py 2.4.4.
 
@@ -2291,7 +2291,7 @@ Fixes
 1.1.4
 =====
 :release-date: 2011-06-07 04:00 P.M BST
-:by: Ask Solem
+:release-by: Ask Solem
 
 * Redis transport: Now requires redis-py version 2.4.4 or later.
 
@@ -2320,7 +2320,7 @@ Fixes
 1.1.3
 =====
 :release-date: 2011-04-21 16:00 P.M CEST
-:by: Ask Solem
+:release-by: Ask Solem
 
 * Redis: Consuming from multiple connections now works with Eventlet.
 
@@ -2347,7 +2347,7 @@ Fixes
 1.1.2
 =====
 :release-date: 2011-04-06 16:00 P.M CEST
-:by: Ask Solem
+:release-by: Ask Solem
 
 * Redis: Fixes serious issue where messages could be lost.
 
@@ -2363,7 +2363,7 @@ Fixes
 1.1.1
 =====
 :release-date: 2011-04-05 15:51 P.M CEST
-:by: Ask Solem
+:release-by: Ask Solem
 
 * 1.1.0 started using ``Queue.LifoQueue`` which is only available
   in Python 2.6+ (Issue #33).  We now ship with our own LifoQueue.
@@ -2374,7 +2374,7 @@ Fixes
 1.1.0
 =====
 :release-date: 2011-04-05 01:05 P.M CEST
-:by: Ask Solem
+:release-by: Ask Solem
 
 .. _v110-important:
 
@@ -2457,7 +2457,7 @@ Important Notes
 1.0.7
 =====
 :release-date: 2011-03-28 05:45 P.M CEST
-:by: Ask Solem
+:release-by: Ask Solem
 
 * Now depends on anyjson 0.3.1
 
@@ -2497,7 +2497,7 @@ Important Notes
 1.0.6
 =====
 :release-date: 2011-03-22 04:00 P.M CET
-:by: Ask Solem
+:release-by: Ask Solem
 
 * The ``delivery_mode`` aliases (persistent/transient) were not automatically
   converted to integer, and would cause a crash if using the amqplib
@@ -2537,7 +2537,7 @@ Important Notes
 1.0.5
 =====
 :release-date: 2011-03-17 04:00 P.M CET
-:by: Ask Solem
+:release-by: Ask Solem
 
 * Fixed memory leak when creating virtual channels.  All virtual transports
   affected (redis, mongodb, memory, django, sqlalchemy, couchdb, beanstalk).
@@ -2560,7 +2560,7 @@ Important Notes
 1.0.4
 =====
 :release-date: 2011-02-28 04:00 P.M CET
-:by: Ask Solem
+:release-by: Ask Solem
 
 * Added Transport.polling_interval
 
@@ -2574,7 +2574,7 @@ Important Notes
 1.0.3
 =====
 :release-date: 2011-02-12 04:00 P.M CET
-:by: Ask Solem
+:release-by: Ask Solem
 
 * ConnectionPool: Re-connect if amqplib connection closed
 
@@ -2587,7 +2587,7 @@ Important Notes
 1.0.2
 =====
 :release-date: 2011-01-31 10:45 P.M CET
-:by: Ask Solem
+:release-by: Ask Solem
 
 * amqplib: Message properties were not set properly.
 * Ghettoq backend names are now automatically translated to the new names.
@@ -2597,7 +2597,7 @@ Important Notes
 1.0.1
 =====
 :release-date: 2011-01-28 12:00 P.M CET
-:by: Ask Solem
+:release-by: Ask Solem
 
 * Redis: Now works with Linux (epoll)
 
@@ -2606,7 +2606,7 @@ Important Notes
 1.0.0
 =====
 :release-date: 2011-01-27 12:00 P.M CET
-:by: Ask Solem
+:release-by: Ask Solem
 
 * Initial release
 
@@ -2615,6 +2615,6 @@ Important Notes
 0.1.0
 =====
 :release-date: 2010-07-22 04:20 P.M CET
-:by: Ask Solem
+:release-by: Ask Solem
 
 * Initial fork of carrot
