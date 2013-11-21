@@ -16,12 +16,16 @@
 
 - PyPy: kqueue support was broken.
 
+- Redis: Bad pub/sub payloads no longer crashes the consumer.
+
 - Redis: Unix socket URLs can now specify a virtual host by including
   it as a query parameter.
 
     Example URL specifying a virtual host using database number 3::
 
         redis+socket:///tmp/redis.sock?virtual_host=3
+
+- ``kombu.VERSION`` is now a named tuple.
 
 3.0.5
 =====
