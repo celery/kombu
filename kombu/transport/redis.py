@@ -832,7 +832,7 @@ class Transport(virtual.Transport):
         return (
             (virtual.Transport.connection_errors + (
                 InconsistencyError,
-                socket.timeout,
+                socket.error,
                 exceptions.ConnectionError,
                 exceptions.AuthenticationError)),
             (virtual.Transport.channel_errors + (
