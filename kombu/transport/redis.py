@@ -46,6 +46,7 @@ except ImportError:  # pragma: no cover
 from . import virtual
 
 logger = get_logger('kombu.transport.redis')
+crit, warn = logger.critical, logger.warn
 
 DEFAULT_PORT = 6379
 DEFAULT_DB = 0
@@ -409,8 +410,7 @@ class Channel(virtual.Channel):
                         queue, dumps(payload),
                     )
             except Exception:
-                logger.critical('Could not restore message: %r', payload,
-                                exc_info=True)
+                crit('Could not restore message: %r', payload, exc_info=True)
 
     def _restore(self, message, leftmost=False):
         tag = message.delivery_tag
@@ -485,12 +485,15 @@ class Channel(virtual.Channel):
             payload = self._handle_message(c, response)
             if bytes_to_str(payload['type']) == 'message':
                 channel = bytes_to_str(payload['channel'])
-                if channel[0] == '/':
-                    _, _, channel = channel.partition('.')
-                return (
-                    loads(bytes_to_str(payload['data'])),
-                    self._fanout_to_queue[channel],
-                )
+                if payload['data']:
+                    if channel[0] == '/':
+                        _, _, channel = channel.partition('.')
+                    try:
+                        message = loads(bytes_to_str(payload['data']))
+                    except (TypeError, ValueError):
+                        warn('Cannot process event on channel %r: %r',
+                             channel, payload, exc_info=1)
+                    return message, self._fanout_to_queue[channel]
         raise Empty()
 
     def _brpop_start(self, timeout=1):
