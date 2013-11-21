@@ -66,7 +66,7 @@ class SQSQueueMock:
             return False
 
         return True
-    def get_messages(self, num_messages=1, visibility_timeout=None, attributes=None):
+    def get_messages(self, num_messages=1, visibility_timeout=None, attributes=None, *args, **kwargs):
         messages = []
         try:
             prev_data = pickle.load(open(self.name + '.sqs', 'r'))
@@ -155,6 +155,16 @@ class SQSConnectionMock:
 
 
 class test_Channel(Case):
+    def removeMockedQueueFile(self, queue):
+        """Simple method to remove SQSQueueMock files"""
+        try:
+            os.remove('%s.sqs' % queue)
+        except OSError:
+            pass
+
+    def handleMessageCallback(self, message):
+        self.callback_message = message
+
     def setUp(self):
         """Mock the back-end SQS classes"""
         # Common variables used in the unit tests
@@ -167,7 +177,9 @@ class test_Channel(Case):
             return self.sqs_conn_mock
         SQS.Channel.sqs = mock_sqs()
 
-        # Mock up a test SQS Queue with the SQSQueueMock class
+        # Mock up a test SQS Queue with the SQSQueueMock class (and always
+        # make sure its a clean empty queue)
+        self.removeMockedQueueFile(self.queue_name)
         self.sqs_queue_mock = SQSQueueMock(self.queue_name, create=True)
 
         # Now, create our Connection object with the SQS Transport and store
@@ -175,16 +187,15 @@ class test_Channel(Case):
         self.connection = Connection(transport=SQS.Transport)
         self.channel = self.connection.channel()
 
+        # Lastly, make sure that we're set up to 'consume' this queue.
+        self.channel.basic_consume(self.queue_name,
+                                   no_ack=True,
+                                   callback=self.handleMessageCallback,
+                                   consumer_tag='unittest')
+
     def tearDown(self):
         """Clean up after ourselves"""
         self.removeMockedQueueFile(self.queue_name)
-
-    def removeMockedQueueFile(self, queue):
-        """Simple method to remove SQSQueueMock files"""
-        try:
-            os.remove('%s.sqs' % queue)
-        except OSError:
-            pass
 
     def test_init(self):
         """kombu.SQS.Channel instantiates correctly with mocked queues"""
@@ -204,3 +215,20 @@ class test_Channel(Case):
         self.channel._delete(queue_name)
         self.removeMockedQueueFile(queue_name)
         self.assertNotIn(queue_name, self.channel._queue_cache)
+
+    def test_put_and_get(self):
+        message = "my test message"
+        self.channel._put(self.queue_name, message)
+        returned_message = self.channel._get(self.queue_name)
+        self.assertEquals(message, returned_message)
+
+    def test_puts_and_gets(self):
+        message1 = "my test message1"
+        message2 = "my test message2"
+        message3 = "my test message3"
+        self.channel._put(self.queue_name, message1)
+        self.channel._put(self.queue_name, message2)
+        self.channel._put(self.queue_name, message3)
+        self.assertEquals(message1, self.channel._get(self.queue_name))
+        self.assertEquals(message2, self.channel._get(self.queue_name))
+        self.assertEquals(message3, self.channel._get(self.queue_name))

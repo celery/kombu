@@ -131,6 +131,7 @@ class Channel(virtual.Channel):
     default_region = 'us-east-1'
     default_visibility_timeout = 1800  # 30 minutes.
     default_wait_time_seconds = 0  # disabled see #198
+    default_messages_to_fetch = 1
     domain_format = 'kombu%(vhost)s'
     _sdb = None
     _sqs = None
@@ -370,6 +371,11 @@ class Channel(virtual.Channel):
     def wait_time_seconds(self):
         return self.transport_options.get('wait_time_seconds',
                                           self.default_wait_time_seconds)
+
+    @cached_property
+    def messages_to_fetch(self):
+        return self.transport_options.get('messages_to_fetch',
+                                          self.default_messages_to_fetch)
 
 
 class Transport(virtual.Transport):
