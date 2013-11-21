@@ -300,11 +300,11 @@ class test_Channel(Case):
         ])
 
         client.rpush.side_effect = KeyError()
-        with patch('kombu.transport.redis.logger') as logger:
+        with patch('kombu.transport.redis.crit') as crit:
             self.channel._do_restore_message(
                 pl2, 'ex', 'rkey', client,
             )
-            self.assertTrue(logger.critical.called)
+            self.assertTrue(crit.called)
 
     def test_restore(self):
         message = Mock(name='message')
