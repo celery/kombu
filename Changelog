@@ -4,9 +4,12 @@
  Change history
 ================
 
+.. _version-3.0.6:
+
 3.0.6
 =====
-:release-date: 2013-11-20 XX:00 P.M UTC
+:release-date: 2013-11-21 04:30 P.M UTC
+:by: Ask Solem
 
 - Timer: No longer attempts to hash keyword arguments (Issue #275).
 
@@ -26,6 +29,8 @@
         redis+socket:///tmp/redis.sock?virtual_host=3
 
 - ``kombu.VERSION`` is now a named tuple.
+
+.. _version-3.0.5:
 
 3.0.5
 =====
@@ -51,12 +56,17 @@
 
 - Tests now passing on Python 3.3.
 
+.. _version-3.0.4:
+
 3.0.4
 =====
 :release-date: 2013-11-08 1:00 P.M UTC
+:by: Ask Solem
 
 - common.QoS: ``decrement_eventually`` now makes sure the value
   does not go below 1 if a prefetch count is enabled.
+
+.. _version-3.0.3:
 
 3.0.3
 =====
