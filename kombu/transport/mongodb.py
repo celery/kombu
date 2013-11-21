@@ -97,13 +97,11 @@ class Channel(virtual.Channel):
         client = self.connection.client
         options = client.transport_options
         hostname = client.hostname or DEFAULT_HOST
-        authdb = dbname = client.virtual_host
+        dbname = client.virtual_host
 
         if dbname in ['/', None]:
             dbname = "kombu_default"
-            authdb = "admin"
         if not hostname.startswith(scheme):
-
             hostname = scheme + hostname
 
         if not hostname[len(scheme):]:

@@ -21,15 +21,18 @@ class LaxBoundedSemaphore(object):
 
     Example:
 
+        >>> from future import print_statement as printf
+        # ^ ignore: just fooling stupid pyflakes
+
         >>> x = LaxBoundedSemaphore(2)
 
-        >>> x.acquire(print, 'HELLO 1')
+        >>> x.acquire(printf, 'HELLO 1')
         HELLO 1
 
-        >>> x.acquire(print, 'HELLO 2')
+        >>> x.acquire(printf, 'HELLO 2')
         HELLO 2
 
-        >>> x.acquire(print, 'HELLO 3')
+        >>> x.acquire(printf, 'HELLO 3')
         >>> x._waiters   # private, do not access directly
         [print, ('HELLO 3', )]
 

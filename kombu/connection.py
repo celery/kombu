@@ -100,6 +100,7 @@ class Connection(object):
         connection to be established, then force it by calling
         :meth:`connect`::
 
+            >>> conn = Connection('amqp://')
             >>> conn.connect()
 
         and always remember to close the connection::
@@ -415,12 +416,17 @@ class Connection(object):
 
         This is an example ensuring a publish operation::
 
+            >>> from kombu import Connection, Producer
+            >>> conn = Connection('amqp://')
+            >>> producer = Producer(conn)
+
             >>> def errback(exc, interval):
-            ...     print('Cannot publish message: {0!r}. '
-                          'Retry in {1}s'.format(exc, interval))
+            ...     logger.error('Error: %r', exc, exc_info=1)
+            ...     logger.info('Retry in %s seconds.', interval)
+
             >>> publish = conn.ensure(producer, producer.publish,
             ...                       errback=errback, max_retries=3)
-            >>> publish(message, routing_key)
+            >>> publish({'hello': 'world'}, routing_key='dest')
 
         """
         def _ensured(*args, **kwargs):
@@ -604,6 +610,7 @@ class Connection(object):
 
         *Example usage*::
 
+            >>> connection = Connection('amqp://')
             >>> pool = connection.Pool(2)
             >>> c1 = pool.acquire()
             >>> c2 = pool.acquire()
@@ -631,6 +638,7 @@ class Connection(object):
 
         *Example usage*::
 
+            >>> connection = Connection('amqp://')
             >>> pool = connection.ChannelPool(2)
             >>> c1 = pool.acquire()
             >>> c2 = pool.acquire()
