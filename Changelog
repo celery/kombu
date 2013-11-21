@@ -8,7 +8,7 @@
 
 3.0.6
 =====
-:release-date: 2013-11-21 04:30 P.M UTC
+:release-date: 2013-11-21 04:50 P.M UTC
 :release-by: Ask Solem
 
 - Timer: No longer attempts to hash keyword arguments (Issue #275).
