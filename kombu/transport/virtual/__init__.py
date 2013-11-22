@@ -23,7 +23,7 @@ from amqp.protocol import queue_declare_ok_t
 
 from kombu.exceptions import ResourceError, ChannelError
 from kombu.five import Empty, items, monotonic
-from kombu.utils import emergency_dump_state, say, uuid
+from kombu.utils import emergency_dump_state, kwdict, say, uuid
 from kombu.utils.compat import OrderedDict
 from kombu.utils.encoding import str_to_bytes, bytes_to_str
 
@@ -219,7 +219,7 @@ class Message(base.Message):
         body = payload.get('body')
         if body:
             body = channel.decode_body(body, properties.get('body_encoding'))
-        fields = {
+        kwargs.update({
             'body': body,
             'delivery_tag': properties['delivery_tag'],
             'content_type': payload.get('content-type'),
@@ -228,8 +228,8 @@ class Message(base.Message):
             'properties': properties,
             'delivery_info': properties.get('delivery_info'),
             'postencode': 'utf-8',
-        }
-        super(Message, self).__init__(channel, **dict(kwargs, **fields))
+        })
+        super(Message, self).__init__(channel, **kwdict(kwargs))
 
     def serializable(self):
         props = self.properties
