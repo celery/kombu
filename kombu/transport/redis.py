@@ -481,7 +481,7 @@ class Channel(virtual.Channel):
             response = c.parse_response()
         except self.connection_errors:
             self._in_listen = False
-            return
+            raise Empty()
         if response is not None:
             payload = self._handle_message(c, response)
             if bytes_to_str(payload['type']) == 'message':
