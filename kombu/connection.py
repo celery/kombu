@@ -10,7 +10,6 @@ from __future__ import absolute_import
 import os
 import socket
 
-from collections import Callable
 from contextlib import contextmanager
 from functools import partial
 from itertools import count, cycle
@@ -1024,7 +1023,7 @@ class ConnectionPool(Resource):
                 self._resource.put_nowait(conn)
 
     def prepare(self, resource):
-        if isinstance(resource, Callable):
+        if callable(resource):
             resource = resource()
         resource._debug('acquired')
         return resource
@@ -1049,7 +1048,7 @@ class ChannelPool(Resource):
                     i < self.preload and channel() or lazy(channel))
 
     def prepare(self, channel):
-        if isinstance(channel, Callable):
+        if callable(channel):
             channel = channel()
         return channel
 
