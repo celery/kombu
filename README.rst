@@ -4,7 +4,7 @@
  kombu - Messaging library for Python
 ========================================
 
-:Version: 3.0.6
+:Version: 3.0.7
 
 `Kombu` is a messaging library for Python.
 
