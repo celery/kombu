@@ -116,7 +116,7 @@ class SQSQueueMock:
 class SQSConnectionMock:
     def get_queue(self, queue):
         try:
-            queue_file = open(queue + ".sqs")
+            open(queue + ".sqs")
         except IOError:
             return None
         try:
@@ -215,7 +215,7 @@ class test_Channel(Case):
 
     def test_new_queue(self):
         queue_name = "new_unittest_queue"
-        result = self.channel._new_queue(queue_name)
+        self.channel._new_queue(queue_name)
         self.assertTrue(os.path.exists('%s.sqs' % queue_name))
         # For cleanup purposes, delete the queue and the queue file
         self.channel._delete(queue_name)
