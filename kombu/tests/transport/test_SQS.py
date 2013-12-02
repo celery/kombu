@@ -222,7 +222,7 @@ class test_Channel(Case):
         self.removeMockedQueueFile(queue_name)
 
     def test_delete(self):
-        queue_name = 'newunittestqueue'
+        queue_name = "new_unittest_queue"
         self.channel._new_queue(queue_name)
         self.channel._delete(queue_name)
         self.removeMockedQueueFile(queue_name)
