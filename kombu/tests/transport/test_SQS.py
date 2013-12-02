@@ -11,6 +11,7 @@ import os
 import pickle
 
 from kombu import Connection
+from kombu import five
 from kombu.tests.case import Case
 from kombu.transport import SQS
 
@@ -226,6 +227,9 @@ class test_Channel(Case):
         self.channel._delete(queue_name)
         self.removeMockedQueueFile(queue_name)
         self.assertNotIn(queue_name, self.channel._queue_cache)
+
+    def test_get_with_empty_list(self):
+        self.assertRaises(five.Empty, self.channel._get, self.queue_name)
 
     def test_put_and_get(self):
         message = "my test message"
