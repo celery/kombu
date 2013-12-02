@@ -17,10 +17,29 @@ SQS Features supported by this transport:
     Long polling is enabled by setting the `wait_time_seconds` transport
     option to a number > 1. Amazon supports up to 20 seconds. This is
     disabled for now, but will be enabled by default in the near future.
+
+  Batch API Actions:
+   http://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/
+     sqs-batch-api.html
+
+    The default behavior of the SQS Channel.drain_events() method is to
+    request up to the 'prefetch_count' messages on every request to SQS.
+    These messages are stored locally in a deque object and passed back
+    to the Transport until the deque is empty, before triggering a new
+    API call to Amazon.
+
+    This behavior dramatically speeds up the rate that you can pull tasks
+    from SQS when you have short-running tasks (or a large number of workers).
+
+    When a Celery worker has multiple queues to monitor, it will pull down
+    up to 'prefetch_count' messages from queueA and work on them all before
+    moving on to queueB. If queueB is empty, it will wait up until
+    'polling_interval' expires before moving back and checking on queueA.
 """
 
 from __future__ import absolute_import
 
+import collections
 import logging
 import socket
 import string
@@ -39,6 +58,7 @@ from boto.sqs.message import Message
 from kombu.five import Empty, range, text_t
 from kombu.utils import cached_property, uuid
 from kombu.utils.encoding import bytes_to_str, safe_str
+from kombu.transport.virtual import scheduling
 
 from . import virtual
 
@@ -166,6 +186,12 @@ class Channel(virtual.Channel):
             self._queue_cache[queue.name] = queue
         self._fanout_queues = set()
 
+        # The drain_events() method stores extra messages in a local
+        # Deque object. This allows multiple messages to be requested from
+        # SQS at once for performance, but maintains the same external API
+        # to the caller of the drain_events() method.
+        self._queue_message_cache = collections.deque()
+
     def basic_consume(self, queue, no_ack, *args, **kwargs):
         if no_ack:
             self._noack_queues.add(queue)
@@ -177,6 +203,49 @@ class Channel(virtual.Channel):
             queue = self._tag_to_queue[consumer_tag]
             self._noack_queues.discard(queue)
         return super(Channel, self).basic_cancel(consumer_tag)
+
+    def drain_events(self, timeout=None):
+        """Returns a single payload message from one of our queues.
+        """
+        # If we're not allowed to consume or have no consumers, raise Empty
+        if not self._consumers or not self.qos.can_consume():
+            log.debug('No consumers available, or qos.can_consume() '
+                      'returned false. Raising Empty.')
+            raise Empty()
+
+        # Check if there are any items in our buffer. If there are any, pop
+        # off that queue first.
+        available_items_in_cache = len(self._queue_message_cache)
+        if available_items_in_cache > 0:
+            log.debug('%s messages were found in local cache. Returning one.'
+                      % available_items_in_cache)
+            return self._queue_message_cache.popleft()
+
+        # At this point, go and get more messages from SQS
+        log.debug('Requesting new messages from SQS')
+        (res, queue) = self._poll(self.cycle, timeout=timeout)
+        for r in res:
+            self._queue_message_cache.append((r, queue))
+        log.debug('Message queue cache now has %s items.' %
+                  len(self._queue_message_cache))
+
+        # Now try to pop off the queue again.
+        try:
+            return self._queue_message_cache.popleft()
+        except IndexError:
+            raise Empty()
+
+    def _reset_cycle(self):
+        """Returns a FairCycle object.
+
+        Returns a FairCycle object that points to our _get_bulk() method
+        rather than the standard _get() method. This allows for multiple
+        messages to be returned at once from SQS (based on the prefetch
+        limit).
+        """
+        self._cycle = scheduling.FairCycle(self._get_bulk,
+                                           self._active_queues,
+                                           Empty)
 
     def entity_name(self, name, table=CHARS_REPLACE_TABLE):
         """Format AMQP queue name into a legal SQS queue name."""
@@ -297,8 +366,35 @@ class Channel(virtual.Channel):
             payloads.append(payload)
         return payloads
 
+    def _get_bulk(self, queue):
+        """Try to retrieve multiple messages off ``queue``.
+
+        Where _get() returns a single Payload object, this method returns a
+        list of Payload objects. The number of objects returned is determined
+        by the total number of messages available in the queue and the
+        number of messages that the QoS object allows (based on the
+        prefetch_count).
+
+        args:
+            queue: The queue name (string) to pull from
+
+        returns:
+            payloads: A list of payload objects returned
+        """
+        messages_to_consume = self.qos.can_consume_max_estimate()
+        log.debug('Retrieving up to %s messages from queue %s' %
+                  (messages_to_consume, queue))
+        messages = self._get_from_sqs(queue, count=messages_to_consume)
+        payloads = self._messages_to_payloads(messages, queue)
+
+        if len(payloads) > 0:
+            return payloads
+
+        raise Empty()
+
     def _get(self, queue):
         """Try to retrieve a single message off ``queue``."""
+        log.debug('Retrieving a single message from queue %s' % queue)
         messages = self._get_from_sqs(queue)
         payloads = self._messages_to_payloads(messages, queue)
 
