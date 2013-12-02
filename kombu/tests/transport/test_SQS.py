@@ -17,6 +17,7 @@ from kombu.transport import SQS
 
 class SQSQueueMock:
     name = None
+
     def __init__(self, filename, create=False):
         try:
             open(filename + ".sqs")
@@ -42,7 +43,7 @@ class SQSQueueMock:
         return len(prev_data)
 
     def count_slow(self, page_size=10, vtimeout=10):
-        return count(page_size=10, vtimeout=10)
+        return self.count(page_size=page_size, vtimeout=vtimeout)
 
     def delete(self):
         try:
@@ -51,6 +52,7 @@ class SQSQueueMock:
             # What happens here?
             return False
         return True
+
     def delete_message(self, message):
         prev_data = pickle.load(open(self.name + '.sqs', 'r'))
         for data in prev_data:
@@ -66,7 +68,9 @@ class SQSQueueMock:
             return False
 
         return True
-    def get_messages(self, num_messages=1, visibility_timeout=None, attributes=None, *args, **kwargs):
+
+    def get_messages(self, num_messages=1, visibility_timeout=None,
+                     attributes=None, *args, **kwargs):
         messages = []
         try:
             prev_data = pickle.load(open(self.name + '.sqs', 'r'))
@@ -80,6 +84,7 @@ class SQSQueueMock:
                 pass
             i += 1
         return messages
+
     def read(self, visibility_timeout=None):
         prev_data = pickle.load(open(self.name + '.sqs', 'r'))
         try:
@@ -87,6 +92,7 @@ class SQSQueueMock:
         except IndexError:
             # Is this the real action?
             return None
+
     def write(self, message):
         # Should do some error checking
 
@@ -104,6 +110,7 @@ class SQSQueueMock:
             return False
 
         return True
+
 
 class SQSConnectionMock:
     def get_queue(self, queue):
@@ -124,20 +131,23 @@ class SQSConnectionMock:
                 if prefix != "":
                     if f[0:len(prefix)] == prefix:
                         try:
-                            # Try to make the queue. If there's something wrong, just move on.
+                            # Try to make the queue. If there's
+                            # something wrong, just move on.
                             q = SQSQueueMock(f)
                         except SyntaxError:
                             continue
                         queue_list.append(q)
                 else:
                     try:
-                        # Try to make the queue. If there's something wrong, just move on.
+                        # Try to make the queue. If there's something
+                        # wrong, just move on.
                         q = SQSQueueMock(f[:-4])
                     except SyntaxError:
                         print 'err', f
                         continue
                     queue_list.append(q)
         return queue_list
+
     def delete_queue(self, queue, force_deletion=False):
         q = self.get_queue(queue)
         #print 'type', type(q)
@@ -173,6 +183,7 @@ class test_Channel(Case):
         # Mock the sqs() method that returns an SQSConnection object and
         # instead return an SQSConnectionMock() object.
         self.sqs_conn_mock = SQSConnectionMock()
+
         def mock_sqs():
             return self.sqs_conn_mock
         SQS.Channel.sqs = mock_sqs()
