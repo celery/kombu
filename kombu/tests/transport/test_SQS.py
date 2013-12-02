@@ -1,4 +1,4 @@
-""" Testing module for the kombu.transport.SQS package.
+"""Testing module for the kombu.transport.SQS package.
 
 NOTE: The SQSQueueMock and SQSConnectionMock classes originally come from
 http://github.com/pcsforeducation/sqs-mock-python. They have been patched
@@ -10,18 +10,13 @@ from __future__ import absolute_import
 import os
 import pickle
 
-import kombu
-from kombu import messaging
 from kombu import Connection
-from kombu import five
 from kombu.tests.case import Case
 from kombu.transport import SQS
 
 
 class SQSQueueMock:
     name = None
-    _get_message_calls = 0
-
     def __init__(self, filename, create=False):
         try:
             open(filename + ".sqs")
@@ -47,7 +42,7 @@ class SQSQueueMock:
         return len(prev_data)
 
     def count_slow(self, page_size=10, vtimeout=10):
-        return self.count(page_size=10, vtimeout=10)
+        return count(page_size=10, vtimeout=10)
 
     def delete(self):
         try:
@@ -56,7 +51,6 @@ class SQSQueueMock:
             # What happens here?
             return False
         return True
-
     def delete_message(self, message):
         prev_data = pickle.load(open(self.name + '.sqs', 'r'))
         for data in prev_data:
@@ -72,10 +66,7 @@ class SQSQueueMock:
             return False
 
         return True
-
-    def get_messages(self, num_messages=1, visibility_timeout=None,
-                     attributes=None, *args, **kwargs):
-        self._get_message_calls += 1
+    def get_messages(self, num_messages=1, visibility_timeout=None, attributes=None, *args, **kwargs):
         messages = []
         try:
             prev_data = pickle.load(open(self.name + '.sqs', 'r'))
@@ -89,7 +80,6 @@ class SQSQueueMock:
                 pass
             i += 1
         return messages
-
     def read(self, visibility_timeout=None):
         prev_data = pickle.load(open(self.name + '.sqs', 'r'))
         try:
@@ -97,7 +87,6 @@ class SQSQueueMock:
         except IndexError:
             # Is this the real action?
             return None
-
     def write(self, message):
         # Should do some error checking
 
@@ -116,11 +105,10 @@ class SQSQueueMock:
 
         return True
 
-
 class SQSConnectionMock:
     def get_queue(self, queue):
         try:
-            open(queue + ".sqs")
+            queue_file = open(queue + ".sqs")
         except IOError:
             return None
         try:
@@ -136,23 +124,20 @@ class SQSConnectionMock:
                 if prefix != "":
                     if f[0:len(prefix)] == prefix:
                         try:
-                            # Try to make the queue. If there's something
-                            # wrong, just move on.
+                            # Try to make the queue. If there's something wrong, just move on.
                             q = SQSQueueMock(f)
                         except SyntaxError:
                             continue
                         queue_list.append(q)
                 else:
                     try:
-                        # Try to make the queue. If there's something wrong,
-                        # just move on.
+                        # Try to make the queue. If there's something wrong, just move on.
                         q = SQSQueueMock(f[:-4])
                     except SyntaxError:
                         print 'err', f
                         continue
                     queue_list.append(q)
         return queue_list
-
     def delete_queue(self, queue, force_deletion=False):
         q = self.get_queue(queue)
         #print 'type', type(q)
@@ -185,19 +170,11 @@ class test_Channel(Case):
         # Common variables used in the unit tests
         self.queue_name = 'unittest'
 
-        # Set up a task exchange for passing tasks through the queue
-        self.exchange = kombu.Exchange('test_SQS', type='direct')
-        self.queue = kombu.Queue(self.queue_name,
-                                 self.exchange,
-                                 self.queue_name)
-
         # Mock the sqs() method that returns an SQSConnection object and
         # instead return an SQSConnectionMock() object.
         self.sqs_conn_mock = SQSConnectionMock()
-
         def mock_sqs():
             return self.sqs_conn_mock
-
         SQS.Channel.sqs = mock_sqs()
 
         # Mock up a test SQS Queue with the SQSQueueMock class (and always
@@ -210,11 +187,6 @@ class test_Channel(Case):
         self.connection = Connection(transport=SQS.Transport)
         self.channel = self.connection.channel()
 
-        self.queue(self.channel).declare()
-        self.producer = messaging.Producer(self.channel,
-                                           self.exchange,
-                                           routing_key=self.queue_name)
-
         # Lastly, make sure that we're set up to 'consume' this queue.
         self.channel.basic_consume(self.queue_name,
                                    no_ack=True,
@@ -223,7 +195,6 @@ class test_Channel(Case):
 
     def tearDown(self):
         """Clean up after ourselves"""
-        self.sqs_queue_mock.delete()
         self.removeMockedQueueFile(self.queue_name)
 
     def test_init(self):
@@ -232,74 +203,32 @@ class test_Channel(Case):
 
     def test_new_queue(self):
         queue_name = "new_unittest_queue"
-        self.channel._new_queue(queue_name)
+        result = self.channel._new_queue(queue_name)
         self.assertTrue(os.path.exists('%s.sqs' % queue_name))
         # For cleanup purposes, delete the queue and the queue file
         self.channel._delete(queue_name)
         self.removeMockedQueueFile(queue_name)
 
     def test_delete(self):
-        queue_name = 'new_unittest_queue'
+        queue_name = 'newunittestqueue'
         self.channel._new_queue(queue_name)
         self.channel._delete(queue_name)
         self.removeMockedQueueFile(queue_name)
         self.assertNotIn(queue_name, self.channel._queue_cache)
 
-    def test_get_with_empty_list(self):
-        self.assertRaises(five.Empty, self.channel._get, self.queue_name)
-
     def test_put_and_get(self):
         message = "my test message"
-        self.channel.messages_to_fetch = 1
-        self.producer.publish(message)
-        results = self.queue(self.channel).get().payload
-        self.assertEquals(message, results)
+        self.channel._put(self.queue_name, message)
+        returned_message = self.channel._get(self.queue_name)
+        self.assertEquals(message, returned_message)
 
     def test_puts_and_gets(self):
-        self.channel.messages_to_fetch = 1
-
-        for i in xrange(3):
-            message = "message: %s" % i
-            self.producer.publish(message)
-
-        for i in xrange(3):
-            self.assertEquals("message: %s" % i,
-                              self.queue(self.channel).get().payload)
-
-        self.assertEquals(
-            3,
-            self.channel._queue_cache[self.queue_name]._get_message_calls)
-
-    def test_messages_to_fetch_3(self):
-        message_count = 10
-        expected_get_message_call_count = 4
-        self.channel.messages_to_fetch = 3
-
-        for i in xrange(message_count):
-            message = "message: %s" % i
-            self.producer.publish(message)
-
-        for i in xrange(message_count):
-            self.assertEquals("message: %s" % i,
-                              self.queue(self.channel).get().payload)
-
-        self.assertEquals(
-            expected_get_message_call_count,
-            self.channel._queue_cache[self.queue_name]._get_message_calls)
-
-    def test_messages_to_fetch_10(self):
-        message_count = 10
-        expected_get_message_call_count = 1
-        self.channel.messages_to_fetch = 10
-
-        for i in xrange(message_count):
-            message = "message: %s" % i
-            self.producer.publish(message)
-
-        for i in xrange(message_count):
-            self.assertEquals("message: %s" % i,
-                              self.queue(self.channel).get().payload)
-
-        self.assertEquals(
-            expected_get_message_call_count,
-            self.channel._queue_cache[self.queue_name]._get_message_calls)
+        message1 = "my test message1"
+        message2 = "my test message2"
+        message3 = "my test message3"
+        self.channel._put(self.queue_name, message1)
+        self.channel._put(self.queue_name, message2)
+        self.channel._put(self.queue_name, message3)
+        self.assertEquals(message1, self.channel._get(self.queue_name))
+        self.assertEquals(message2, self.channel._get(self.queue_name))
+        self.assertEquals(message3, self.channel._get(self.queue_name))

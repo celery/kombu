@@ -2,42 +2,11 @@
 kombu.transport.SQS
 ===================
 
-Amazon SQS transport module for Kombu. This package implements an AMQP-like
-interface on top of Amazons SQS service, with the goal of being optimized for
-high performance and reliability.
+Amazon SQS transport.
 
-The default settings for this module are focused now on high performance in
-task queue situations where tasks are small, idempotent and run very fast.
-
-SQS Features supported by this transport:
-  Long Polling:
-    http://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/
-      sqs-long-polling.html
-
-    Long polling is enabled by setting the `wait_time_seconds` transport
-    option to a number > 1. Amazon supports up to 20 seconds. This is
-    disabled for now, but will be enabled by default in the near future.
-
-  Batch API Actions:
-   http://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/
-     sqs-batch-api.html
-
-    The default behavior of the SQS Channel is to batch-request up to 10
-    messages on every request to SQS. These messages are stored locally in a
-    deque object and passed back to the Transport until the deque is empty,
-    before triggering a new API call to Amazon.
-
-    This behavior dramatically speeds up the rate that you can pull tasks
-    from SQS when you have short-running tasks (or a large number of workers).
-
-    However, if you have long running tasks, and are running in 'solo' mode,
-    you may want to limit the number of messages requested to less than 10.
-    This can be done by changing the `messages_to_fetch` transport option.
 """
 from __future__ import absolute_import
 
-import logging
-import collections
 import socket
 import string
 
@@ -57,8 +26,6 @@ from kombu.utils import cached_property, uuid
 from kombu.utils.encoding import bytes_to_str, safe_str
 
 from . import virtual
-
-log = logging.getLogger(__name__)
 
 # dots are replaced by dash, all other punctuation
 # replaced by underscore.
@@ -164,13 +131,12 @@ class Channel(virtual.Channel):
     default_region = 'us-east-1'
     default_visibility_timeout = 1800  # 30 minutes.
     default_wait_time_seconds = 0  # disabled see #198
-    default_messages_to_fetch = 10
+    default_messages_to_fetch = 1
     domain_format = 'kombu%(vhost)s'
     _sdb = None
     _sqs = None
     _queue_cache = {}
     _noack_queues = set()
-    _queue_message_cache = {}
 
     def __init__(self, *args, **kwargs):
         super(Channel, self).__init__(*args, **kwargs)
@@ -278,49 +244,20 @@ class Channel(virtual.Channel):
 
     def _get(self, queue):
         """Try to retrieve a single message off ``queue``."""
-
-        m = None
         q = self._new_queue(queue)
-
-        if not queue in self._queue_message_cache:
-            self._queue_message_cache[queue] = collections.deque()
-
-        if len(self._queue_message_cache[queue]) > 0:
-            m = self._queue_message_cache[queue].popleft()
-            log.debug('Returning 1 message from local queue cache (%s). '
-                      '%s left in queue.' %
-                      (queue, len(self._queue_message_cache[queue])))
-
-        if not m:
-            log.debug('Local queue cache (%s) empty, requesting up to %s '
-                      'messages from SQS' % (queue, self.messages_to_fetch))
-            if W_LONG_POLLING and queue not in self._fanout_queues:
-                results = q.get_messages(
-                    self.messages_to_fetch,
-                    wait_time_seconds=self.wait_time_seconds)
-            else:  # boto < 2.8
-                results = q.get_messages(self.messages_to_fetch)
-
-            if len(results) > 0:
-                log.debug('Storing %s returned messages in local queue cache '
-                          '(%s).' % (len(results), queue))
-                self._queue_message_cache[queue].extend(results)
-
-            if len(self._queue_message_cache[queue]) > 0:
-                log.debug('Returning 1 message from local queue cache (%s). '
-                          '%s left in queue.' %
-                          (queue, len(self._queue_message_cache[queue])))
-                m = self._queue_message_cache[queue].popleft()
-
-        if m:
-            payload = loads(bytes_to_str(m.get_body()))
+        if W_LONG_POLLING and queue not in self._fanout_queues:
+            rs = q.get_messages(1, wait_time_seconds=self.wait_time_seconds)
+        else:  # boto < 2.8
+            rs = q.get_messages(1)
+        if rs:
+            m = rs[0]
+            payload = loads(bytes_to_str(rs[0].get_body()))
             if queue in self._noack_queues:
                 q.delete_message(m)
             else:
                 payload['properties']['delivery_info'].update({
                     'sqs_message': m, 'sqs_queue': q, })
             return payload
-
         raise Empty()
 
     def _restore(self, message,
