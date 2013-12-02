@@ -11,9 +11,11 @@ import os
 import pickle
 
 from kombu import Connection
+from kombu import messaging
 from kombu import five
 from kombu.tests.case import Case
 from kombu.transport import SQS
+import kombu
 
 
 class SQSQueueMock:
@@ -189,6 +191,12 @@ class test_Channel(Case):
             return self.sqs_conn_mock
         SQS.Channel.sqs = mock_sqs()
 
+        # Set up a task exchange for passing tasks through the queue
+        self.exchange = kombu.Exchange('test_SQS', type='direct')
+        self.queue = kombu.Queue(self.queue_name,
+                                 self.exchange,
+                                 self.queue_name)
+
         # Mock up a test SQS Queue with the SQSQueueMock class (and always
         # make sure its a clean empty queue)
         self.removeMockedQueueFile(self.queue_name)
@@ -198,6 +206,11 @@ class test_Channel(Case):
         # the connection/channel objects as references for use in these tests.
         self.connection = Connection(transport=SQS.Transport)
         self.channel = self.connection.channel()
+
+        self.queue(self.channel).declare()
+        self.producer = messaging.Producer(self.channel,
+                                           self.exchange,
+                                           routing_key=self.queue_name)
 
         # Lastly, make sure that we're set up to 'consume' this queue.
         self.channel.basic_consume(self.queue_name,
@@ -233,17 +246,16 @@ class test_Channel(Case):
 
     def test_put_and_get(self):
         message = "my test message"
-        self.channel._put(self.queue_name, message)
-        returned_message = self.channel._get(self.queue_name)
-        self.assertEquals(message, returned_message)
+        self.producer.publish(message)
+        results = self.queue(self.channel).get().payload
+        self.assertEquals(message, results)
+
 
     def test_puts_and_gets(self):
-        message1 = "my test message1"
-        message2 = "my test message2"
-        message3 = "my test message3"
-        self.channel._put(self.queue_name, message1)
-        self.channel._put(self.queue_name, message2)
-        self.channel._put(self.queue_name, message3)
-        self.assertEquals(message1, self.channel._get(self.queue_name))
-        self.assertEquals(message2, self.channel._get(self.queue_name))
-        self.assertEquals(message3, self.channel._get(self.queue_name))
+        for i in xrange(3):
+            message = "message: %s" % i
+            self.producer.publish(message)
+
+        for i in xrange(3):
+            self.assertEquals("message: %s" % i,
+                              self.queue(self.channel).get().payload)
