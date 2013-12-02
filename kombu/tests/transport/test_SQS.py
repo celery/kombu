@@ -241,15 +241,51 @@ class test_Channel(Case):
         self.removeMockedQueueFile(queue_name)
         self.assertNotIn(queue_name, self.channel._queue_cache)
 
+    def test_get_from_sqs(self):
+        # Test getting a single message
+        message = "my test message"
+        self.producer.publish(message)
+        results = self.channel._get_from_sqs(self.queue_name)
+        self.assertEquals(len(results), 1)
+
+        # Now test getting many messages
+        for i in xrange(3):
+            message = "message: %s" % i
+            self.producer.publish(message)
+
+        results = self.channel._get_from_sqs(self.queue_name, count=3)
+        self.assertEquals(len(results), 3)
+
     def test_get_with_empty_list(self):
         self.assertRaises(five.Empty, self.channel._get, self.queue_name)
+
+    def test_messages_to_payloads(self):
+        message_count = 3
+        # Create several test messages and publish them
+        for i in xrange(message_count):
+            message = "message: %s" % i
+            self.producer.publish(message)
+
+        # Get the messages now
+        messages = self.channel._get_from_sqs(self.queue_name,
+                                              count=message_count)
+
+        # Now convert them to payloads
+        payloads = self.channel._messages_to_payloads(messages,
+                                                      self.queue_name)
+
+        # We got the same number of payloads back, right?
+        self.assertEquals(len(payloads), message_count)
+
+        # Make sure they're payload-style objects
+        for p in payloads:
+            self.assertTrue('properties' in p)
 
     def test_put_and_get(self):
         message = "my test message"
         self.producer.publish(message)
         results = self.queue(self.channel).get().payload
         self.assertEquals(message, results)
-
 
     def test_puts_and_gets(self):
         for i in xrange(3):

@@ -2,11 +2,26 @@
 kombu.transport.SQS
 ===================
 
-Amazon SQS transport.
+Amazon SQS transport module for Kombu. This package implements an AMQP-like
+interface on top of Amazons SQS service, with the goal of being optimized for
+high performance and reliability.
 
+The default settings for this module are focused now on high performance in
+task queue situations where tasks are small, idempotent and run very fast.
+
+SQS Features supported by this transport:
+  Long Polling:
+    http://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/
+      sqs-long-polling.html
+
+    Long polling is enabled by setting the `wait_time_seconds` transport
+    option to a number > 1. Amazon supports up to 20 seconds. This is
+    disabled for now, but will be enabled by default in the near future.
 """
+
 from __future__ import absolute_import
 
+import logging
 import socket
 import string
 
@@ -26,6 +41,8 @@ from kombu.utils import cached_property, uuid
 from kombu.utils.encoding import bytes_to_str, safe_str
 
 from . import virtual
+
+log = logging.getLogger(__name__)
 
 # dots are replaced by dash, all other punctuation
 # replaced by underscore.
@@ -131,7 +148,6 @@ class Channel(virtual.Channel):
     default_region = 'us-east-1'
     default_visibility_timeout = 1800  # 30 minutes.
     default_wait_time_seconds = 0  # disabled see #198
-    default_messages_to_fetch = 1
     domain_format = 'kombu%(vhost)s'
     _sdb = None
     _sqs = None
@@ -242,22 +258,53 @@ class Channel(virtual.Channel):
         for route in self.table.routes_for(exchange):
             self._put(route['queue'], message, **kwargs)
 
-    def _get(self, queue):
-        """Try to retrieve a single message off ``queue``."""
+    def _get_from_sqs(self, queue, count=1):
+        """Retrieves messages from SQS and returns the raw SQS message objects.
+
+        returns:
+            List of SQS message objects
+        """
         q = self._new_queue(queue)
         if W_LONG_POLLING and queue not in self._fanout_queues:
-            rs = q.get_messages(1, wait_time_seconds=self.wait_time_seconds)
+            return q.get_messages(count,
+                                  wait_time_seconds=self.wait_time_seconds)
         else:  # boto < 2.8
-            rs = q.get_messages(1)
-        if rs:
-            m = rs[0]
-            payload = loads(bytes_to_str(rs[0].get_body()))
+            return q.get_messages(count)
+
+    def _messages_to_payloads(self, messages, queue):
+        """Converts a list of SQS Message objects into Payloads.
+
+        This method handles converting SQS Message objects into
+        Payloads, and appropriately updating the queue depending on
+        the 'ack' settings for that queue.
+
+        args:
+            messages: A list of SQS Message Objects
+            queue: String name representing the queue they came from
+
+        returns:
+            payloads: A list of Payload objects
+        """
+        q = self._new_queue(queue)
+        payloads = []
+        for m in messages:
+            payload = loads(bytes_to_str(m.get_body()))
             if queue in self._noack_queues:
                 q.delete_message(m)
             else:
                 payload['properties']['delivery_info'].update({
                     'sqs_message': m, 'sqs_queue': q, })
-            return payload
+            payloads.append(payload)
+        return payloads
+
+    def _get(self, queue):
+        """Try to retrieve a single message off ``queue``."""
+        messages = self._get_from_sqs(queue)
+        payloads = self._messages_to_payloads(messages, queue)
+
+        if len(payloads) > 0:
+            return payloads[0]
+
         raise Empty()
 
     def _restore(self, message,
@@ -371,11 +418,6 @@ class Channel(virtual.Channel):
     def wait_time_seconds(self):
         return self.transport_options.get('wait_time_seconds',
                                           self.default_wait_time_seconds)
-
-    @cached_property
-    def messages_to_fetch(self):
-        return self.transport_options.get('messages_to_fetch',
-                                          self.default_messages_to_fetch)
 
 
 class Transport(virtual.Transport):
