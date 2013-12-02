@@ -4,6 +4,17 @@
  Change history
 ================
 
+.. _version-3.0.7:
+
+3.0.7
+=====
+:release-date: 2013-12-02 04:00 P.M UTC
+:release-by: Ask Solem
+
+- Fixes Python 2.6 compatibility.
+
+- Redis: Fixes 'bad file descriptor' issue.
+
 .. _version-3.0.6:
 
 3.0.6
