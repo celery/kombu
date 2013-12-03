@@ -13,9 +13,16 @@ import pickle
 from kombu import Connection
 from kombu import messaging
 from kombu import five
-from kombu.tests.case import Case
-from kombu.transport import SQS
+from kombu.tests.case import Case, SkipTest
 import kombu
+
+try:
+    from kombu.transport import SQS
+except ImportError:
+    # Boto must not be installed if the SQS transport fails to import,
+    # so we skip all unit tests. Set SQS to None here, and it will be
+    # checked during the setUp() phase later.
+    SQS = None
 
 
 class SQSQueueMock:
@@ -182,6 +189,11 @@ class test_Channel(Case):
 
     def setUp(self):
         """Mock the back-end SQS classes"""
+        # Sanity check... if SQS is None, then it did not import and we
+        # cannot execute our tests.
+        if SQS is None:
+            raise SkipTest('Boto is not installed')
+
         # Common variables used in the unit tests
         self.queue_name = 'unittest'
 
