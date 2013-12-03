@@ -9,7 +9,6 @@ from __future__ import absolute_import
 
 import os
 import pickle
-import sys
 
 from kombu import Connection
 from kombu import messaging
@@ -192,11 +191,6 @@ class test_Channel(Case):
         # cannot execute our tests.
         if SQS is None:
             raise SkipTest('Boto is not installed')
-
-        # Boto imports in Python 3.3, but then does not execute. Cannot
-        # run tests in Python 3.3
-        if sys.version_info[0:2] >= (3,0):
-            raise SkipTest('Boto does not support Python 3.3')
 
         # Common variables used in the unit tests
         self.queue_name = 'unittest'
