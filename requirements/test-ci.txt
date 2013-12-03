@@ -1,3 +1,4 @@
+boto
 coverage>=3.0
 redis
 PyYAML
