@@ -155,14 +155,12 @@ class SQSConnectionMock:
                         # wrong, just move on.
                         q = SQSQueueMock(f[:-4])
                     except SyntaxError:
-                        print 'err', f
                         continue
                     queue_list.append(q)
         return queue_list
 
     def delete_queue(self, queue, force_deletion=False):
         q = self.get_queue(queue)
-        #print 'type', type(q)
         if q.count() != 0:
             # Can only delete empty queues
             return False
