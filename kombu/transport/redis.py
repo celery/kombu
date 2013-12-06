@@ -834,6 +834,8 @@ class Transport(virtual.Transport):
             (virtual.Transport.connection_errors + (
                 InconsistencyError,
                 socket.error,
+                IOError,
+                OSError,
                 exceptions.ConnectionError,
                 exceptions.AuthenticationError)),
             (virtual.Transport.channel_errors + (
