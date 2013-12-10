@@ -529,9 +529,10 @@ class Channel(virtual.Channel):
 
     def _poll_error(self, type, **options):
         try:
-            self.client.parse_response(type)
+            self.client.parse_response(self.client.connection, type)
         except self.connection_errors:
-            pass
+            warn("Connection poll error on command type {}".format(type), exc_info=True)
+            
 
     def _get(self, queue):
         with self.conn_or_acquire() as client:

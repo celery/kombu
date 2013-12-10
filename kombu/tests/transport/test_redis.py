@@ -496,7 +496,7 @@ class test_Channel(Case):
         c.parse_response = Mock()
         self.channel._poll_error('BRPOP')
 
-        c.parse_response.assert_called_with('BRPOP')
+        c.parse_response.assert_called_with(c.connection, 'BRPOP')
 
         c.parse_response.side_effect = KeyError('foo')
         self.assertIsNone(self.channel._poll_error('BRPOP'))
