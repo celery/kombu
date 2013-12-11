@@ -528,14 +528,30 @@ class Channel(virtual.Channel):
             self._in_poll = False
 
     def _poll_error(self, type, **options):
-        client = self.subclient if type == 'LISTEN' else self.client
         try:
-            _sock = client.connection._sock
-        except AttributeError:
-            pass
-        else:
-            if _sock is not None:
-                client.parse_response(client.connection, type)
+            if type == 'LISTEN':
+                self.subclient.parse_response()
+            else:
+                self.client.parse_response(self.client.connection, type)
+        except self.connection_errors as ex:
+            #Again, upstream may want this to be removed for performance reasons, but proved useful in identifying
+            # a problem with our redis server configuration.
+            #
+            # e.g. :
+            # """Connection error: Error while reading from socket: (104, 'Connection reset by peer')
+            #    Traceback (most recent call last):
+            #      File "/opt/python2.7.1/lib/python2.7/site-packages/kombu/transport/redis.py", line 500, in _poll_error
+            #        self.subclient.parse_response()
+            #      File "/opt/python2.7.1/lib/python2.7/site-packages/redis/client.py", line 1498, in parse_response
+            #        response = self.connection.read_response()
+            #      File "/opt/python2.7.1/lib/python2.7/site-packages/redis/connection.py", line 304, in read_response
+            #        response = self._parser.read_response()
+            #      File "/opt/python2.7.1/lib/python2.7/site-packages/redis/connection.py", line 102, in read_response
+            #        response = self.read()
+            #      File "/opt/python2.7.1/lib/python2.7/site-packages/redis/connection.py", line 91, in read
+            #        (e.args,))
+            #    ConnectionError: Error while reading from socket: (104, 'Connection reset by peer')"""
+            logger.warning("Connection error: {}".format(ex), exc_info=True)
 
     def _get(self, queue):
         with self.conn_or_acquire() as client:
