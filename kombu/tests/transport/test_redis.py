@@ -499,7 +499,8 @@ class test_Channel(Case):
         c.parse_response.assert_called_with(c.connection, 'BRPOP')
 
         c.parse_response.side_effect = KeyError('foo')
-        self.assertIsNone(self.channel._poll_error('BRPOP'))
+        with self.assertRaises(KeyError):
+            self.channel._poll_error('BRPOP')
 
     def test_put_fanout(self):
         self.channel._in_poll = False
