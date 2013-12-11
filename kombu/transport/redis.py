@@ -642,13 +642,15 @@ class Channel(virtual.Channel):
 
             self._close_clients()
 
-            # Close connections
-            for attr in 'client', 'subclient':
-                try:
-                    self.__dict__[attr].connection.disconnect()
-                except (KeyError, AttributeError, self.ResponseError):
-                    pass
         super(Channel, self).close()
+
+    def _close_clients(self):
+        # Close connections
+        for attr in 'client', 'subclient':
+            try:
+                self.__dict__[attr].connection.disconnect()
+            except (KeyError, AttributeError, self.ResponseError):
+                pass
 
     def _prepare_virtual_host(self, vhost):
         if not isinstance(vhost, int):
