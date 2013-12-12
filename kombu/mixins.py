@@ -131,7 +131,7 @@ class ConsumerMixin(object):
     #: of a thread.
     should_stop = False
 
-    def get_consumers(self, Consumer, channel):
+    def get_consumers(self, consumer_cls, channel):
         raise NotImplementedError('Subclass responsibility')
 
     def on_connection_revived(self):

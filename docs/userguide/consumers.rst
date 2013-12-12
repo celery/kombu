@@ -55,9 +55,9 @@ Or using :class:`~kombu.mixins.ConsumerMixin`:
         def __init__(self, connection):
             self.connection = connection
 
-        def get_consumers(self, Consumer, channel):
+        def get_consumers(self, consumer_cls, channel):
             return [
-                Consumer(queues, callbacks=[self.on_message], accept=['json']),
+                consumer_cls(queues, callbacks=[self.on_message], accept=['json']),
             ]
 
         def on_message(self, body, message):
