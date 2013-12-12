@@ -210,10 +210,14 @@ class QoS(object):
         finally:
             state.restored = True
 
-    def restore_visible(self, **kwargs):
-        """ No-op for use by implementations with optional QoS support (e.g. ack_emulation in redis) """
-        pass
+    def restore_visible(self, *args, **kwargs):
+        """Restore any pending unackwnowledged messages for visibility_timeout
+        style implementations.
 
+        Optional: Currently only used by the Redis transport.
+
+        """
+        pass
 
 
 class Message(base.Message):
