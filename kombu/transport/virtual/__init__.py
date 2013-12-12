@@ -210,6 +210,11 @@ class QoS(object):
         finally:
             state.restored = True
 
+    def restore_visible(self, **kwargs):
+        """ No-op for use by implementations with optional QoS support (e.g. ack_emulation in redis) """
+        pass
+
+
 
 class Message(base.Message):
 
