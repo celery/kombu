@@ -130,6 +130,27 @@ class QoS(object):
         pcount = self.prefetch_count
         return not pcount or len(self._delivered) - len(self._dirty) < pcount
 
+    def can_consume_max_estimate(self):
+        """Returns the maximum number of messages allowed to be returned.
+
+        Returns an estimated number of messages that a consumer may be allowed
+        to consume at once from the broker. This is used for services where
+        bulk 'get message' calls are preferred to many individual 'get message'
+        calls - like SQS.
+
+        returns:
+            An integer > 0
+        """
+        pcount = self.prefetch_count
+        count = None
+        if pcount:
+            count = pcount - (len(self._delivered) - len(self._dirty))
+
+        if count < 1:
+            return 1
+
+        return count
+
     def append(self, message, delivery_tag):
         """Append message to transactional state."""
         if self._dirty:
