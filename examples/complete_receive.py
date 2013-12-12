@@ -26,7 +26,7 @@ def handle_message(body, message):
 #: If hostname, userid, password and virtual_host is not specified
 #: the values below are the default, but listed here so it can
 #: be easily changed.
-with Connection('amqp://guest:guest@localhost:5672//') as connection:
+with Connection('pyamqp://guest:guest@localhost:5672//') as connection:
 
     #: Create consumer using our callback and queue.
     #: Second argument can also be a list to consume from
