@@ -13,7 +13,7 @@ exchange = Exchange('kombu_demo', type='direct')
 queue = Queue('kombu_demo', exchange, routing_key='kombu_demo')
 
 
-with Connection('amqp://guest:guest@localhost:5672//') as connection:
+with Connection('pyamqp://guest:guest@localhost:5672//') as connection:
 
     #: Producers are used to publish messages.
     #: a default exchange and routing key can also be specifed
