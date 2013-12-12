@@ -836,6 +836,7 @@ class Resource(object):
     def __init__(self, limit=None, preload=None):
         self.limit = limit
         self.preload = preload or 0
+        self._closed = False
 
         self._resource = _LifoQueue()
         self._dirty = set()
@@ -864,6 +865,8 @@ class Resource(object):
           and the limit has been exceeded.
 
         """
+        if self._closed:
+            raise RuntimeError('Acquire on closed pool')
         if self.limit:
             while 1:
                 try:
@@ -933,6 +936,7 @@ class Resource(object):
         after fork (e.g. sockets/connections).
 
         """
+        self._closed = True
         dirty = self._dirty
         resource = self._resource
         while 1:  # - acquired

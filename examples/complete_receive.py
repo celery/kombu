@@ -7,6 +7,8 @@ from pprint import pformat
 
 #: By default messages sent to exchanges are persistent (delivery_mode=2),
 #: and queues and exchanges are durable.
+exchange = Exchange('kombu_demo', type='direct')
+queue = Queue('kombu_demo', exchange, routing_key='kombu_demo')
 
 
 def pretty(obj):
@@ -24,16 +26,7 @@ def handle_message(body, message):
 #: If hostname, userid, password and virtual_host is not specified
 #: the values below are the default, but listed here so it can
 #: be easily changed.
-with Connection('pyamqp://guest:guest@localhost:5672//') as connection:
-    # The configuration of the message flow is as follows:
-    #   gateway_kombu_exchange -> internal_kombu_exchange -> kombu_demo queue
-    gateway_exchange = Exchange('gateway_kombu_demo')(connection)
-    exchange = Exchange('internal_kombu_demo')(connection)
-    gateway_exchange.declare()
-    exchange.declare()
-    exchange.bind_to(gateway_exchange, routing_key='kombu_demo')
-
-    queue = Queue('kombu_demo', exchange, routing_key='kombu_demo')
+with Connection('amqp://guest:guest@localhost:5672//') as connection:
 
     #: Create consumer using our callback and queue.
     #: Second argument can also be a list to consume from

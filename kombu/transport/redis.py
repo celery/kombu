@@ -528,10 +528,10 @@ class Channel(virtual.Channel):
             self._in_poll = False
 
     def _poll_error(self, type, **options):
-        try:
-            self.client.parse_response(type)
-        except self.connection_errors:
-            pass
+        if type == 'LISTEN':
+            self.subclient.parse_response()
+        else:
+            self.client.parse_response(self.client.connection, type)
 
     def _get(self, queue):
         with self.conn_or_acquire() as client:
@@ -636,13 +636,17 @@ class Channel(virtual.Channel):
                 if queue in self.auto_delete_queues:
                     self.queue_delete(queue)
 
-            # Close connections
-            for attr in 'client', 'subclient':
-                try:
-                    self.__dict__[attr].connection.disconnect()
-                except (KeyError, AttributeError, self.ResponseError):
-                    pass
+            self._close_clients()
+
         super(Channel, self).close()
+
+    def _close_clients(self):
+        # Close connections
+        for attr in 'client', 'subclient':
+            try:
+                self.__dict__[attr].connection.disconnect()
+            except (KeyError, AttributeError, self.ResponseError):
+                pass
 
     def _prepare_virtual_host(self, vhost):
         if not isinstance(vhost, int):
