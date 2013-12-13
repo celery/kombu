@@ -4,6 +4,32 @@
  Change history
 ================
 
+.. _version-3.0.8:
+
+3.0.8
+=====
+:release-date: 2013-12-13 05:00 P.M UTC
+:release-by: Ask Solem
+
+- Redis: Would attempt to read from the wrong connection if a select/epoll/kqueue
+  exception event happened.
+
+    Fix contributed by Michael Nelson.
+
+- Redis: Disabling ack emulation now works properly.
+
+    Fix contributed by Michael Nelson.
+
+- Redis: :exc:`IOError` and :exc:`OSError` are now treated as recoverable
+  connection errors.
+
+- SQS: Improved performance by reading messages in bulk.
+
+    Contributed by Matt Wise.
+
+- Connection Pool: Attempting to acquire from a closed pool will now
+  raise :class:`RuntimeError`.
+
 .. _version-3.0.7:
 
 3.0.7
