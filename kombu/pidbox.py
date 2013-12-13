@@ -113,6 +113,7 @@ class Node(object):
 
     def handle(self, method, arguments={}):
         return self.handlers[method](self.state, **arguments)
+    handle_call = handle_cast = handle
 
     def handle_message(self, body, message=None):
         destination = body.get('destination')
