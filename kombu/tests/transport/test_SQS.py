@@ -7,8 +7,6 @@ slightly.
 
 from __future__ import absolute_import
 
-import os
-
 from kombu import Connection
 from kombu import messaging
 from kombu import five
@@ -179,20 +177,22 @@ class test_Channel(Case):
     def test_get_bulk_raises_empty(self):
         self.assertRaises(five.Empty, self.channel._get_bulk, self.queue_name)
 
-    def test_messages_to_payloads(self):
+    def test_messages_to_python(self):
         message_count = 3
         # Create several test messages and publish them
-        for i in xrange(message_count):
-            message = "message: %s" % i
+        for i in range(message_count):
+            message = 'message: %s' % i
             self.producer.publish(message)
 
         # Get the messages now
-        messages = self.channel._get_from_sqs(self.queue_name,
-                                              count=message_count)
+        messages = self.channel._get_from_sqs(
+            self.queue_name, count=message_count,
+        )
 
         # Now convert them to payloads
-        payloads = self.channel._messages_to_payloads(messages,
-                                                      self.queue_name)
+        payloads = self.channel._messages_to_python(
+            messages, self.queue_name,
+        )
 
         # We got the same number of payloads back, right?
         self.assertEquals(len(payloads), message_count)
@@ -202,23 +202,23 @@ class test_Channel(Case):
             self.assertTrue('properties' in p)
 
     def test_put_and_get(self):
-        message = "my test message"
+        message = 'my test message'
         self.producer.publish(message)
         results = self.queue(self.channel).get().payload
         self.assertEquals(message, results)
 
     def test_puts_and_gets(self):
         for i in xrange(3):
-            message = "message: %s" % i
+            message = 'message: %s' % i
             self.producer.publish(message)
 
         for i in xrange(3):
-            self.assertEquals("message: %s" % i,
+            self.assertEquals('message: %s' % i,
                               self.queue(self.channel).get().payload)
 
     def test_put_and_get_bulk(self):
         # With QoS.prefetch_count = 0
-        message = "my test message"
+        message = 'my test message'
         self.producer.publish(message)
         results = self.channel._get_bulk(self.queue_name)
         self.assertEquals(1, len(results))
@@ -232,7 +232,7 @@ class test_Channel(Case):
 
         # Now, generate all the messages
         for i in xrange(message_count):
-            message = "message: %s" % i
+            message = 'message: %s' % i
             self.producer.publish(message)
 
         # Count how many messages are retrieved the first time. Should
@@ -260,7 +260,7 @@ class test_Channel(Case):
 
         # Now, generate all the messages
         for i in xrange(message_count):
-            self.producer.publish("message: %s" % i)
+            self.producer.publish('message: %s' % i)
 
         # Now drain all the events
         for i in xrange(message_count):
@@ -281,7 +281,7 @@ class test_Channel(Case):
 
         # Now, generate all the messages
         for i in xrange(message_count):
-            self.producer.publish("message: %s" % i)
+            self.producer.publish('message: %s' % i)
 
         # Now drain all the events
         for i in xrange(message_count):
