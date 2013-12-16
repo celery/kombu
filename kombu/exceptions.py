@@ -22,7 +22,15 @@ TimeoutError = socket.timeout
 
 class KombuError(Exception):
     """Common subclass for all Kombu exceptions."""
+    pass
 
+class SerializationError(KombuError):
+    """Failed to encode a message."""
+    pass
+
+class DeserializationError(KombuError):
+    """Failed to decode a message."""
+    pass
 
 class NotBoundError(KombuError):
     """Trying to call channel dependent method on unbound entity."""

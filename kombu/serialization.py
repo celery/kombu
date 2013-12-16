@@ -19,9 +19,9 @@ except ImportError:  # pragma: no cover
 
 from collections import namedtuple
 
-from .exceptions import SerializerNotInstalled, ContentDisallowed
+from .exceptions import SerializerNotInstalled, ContentDisallowed, SerializationError, DeserializationError
 from .five import BytesIO, text_t
-from .utils import entrypoints
+from .utils import entrypoints, wrap_exceptions
 from .utils.encoding import str_to_bytes, bytes_t
 
 __all__ = ['pickle', 'loads', 'dumps', 'register', 'unregister']
@@ -116,6 +116,7 @@ class SerializerRegistry(object):
             raise SerializerNotInstalled(
                 'No encoder installed for {0}'.format(name))
 
+    @wrap_exceptions(SerializationError)
     def dumps(self, data, serializer=None):
         if serializer == 'raw':
             return raw_encode(data)
@@ -148,6 +149,7 @@ class SerializerRegistry(object):
         return content_type, content_encoding, payload
     encode = dumps  # XXX compat
 
+    @wrap_exceptions(DeserializationError)
     def loads(self, data, content_type, content_encoding,
               accept=None, force=False):
         if accept is not None:
