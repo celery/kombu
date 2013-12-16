@@ -429,20 +429,3 @@ def maybe_fileno(f):
         return fileno(f)
     except FILENO_ERRORS:
         pass
-
-def wrap_exceptions(exception, catch=Exception):
-    """
-    Catch the exception specified by ``catch`` and raise ``exception`` instead with
-    the old exception as the value.
-    """
-
-    def decorator(func):
-        @wraps(func)
-        def wrap_exceptions_wrapper(*args, **kwargs):
-            try:
-                return func(*args, **kwargs)
-            except catch as exc:
-                raise exception(exc)
-        return wrap_exceptions_wrapper
-
-    return decorator

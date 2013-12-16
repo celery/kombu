@@ -24,13 +24,19 @@ class KombuError(Exception):
     """Common subclass for all Kombu exceptions."""
     pass
 
+
 class SerializationError(KombuError):
-    """Failed to encode a message."""
+    """Failed to serialize/deserialize content."""
+
+
+class EncodeError(SerializationError):
+    """Cannot encode object."""
     pass
 
-class DeserializationError(KombuError):
-    """Failed to decode a message."""
-    pass
+
+class DecodeError(SerializationError):
+    """Cannot decode object."""
+
 
 class NotBoundError(KombuError):
     """Trying to call channel dependent method on unbound entity."""

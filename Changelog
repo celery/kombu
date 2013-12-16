@@ -8,8 +8,14 @@
 
 3.0.8
 =====
-:release-date: 2013-12-16 16:00 P.M UTC
+:release-date: 2013-12-16 17:00 P.M UTC
 :release-by: Ask Solem
+
+- Serializer: loads and dumps now wraps exceptions raised into
+  :exc:`~kombu.exceptions.DecodeError` and
+  :exc:`kombu.exceptions.EncodeError` respectively.
+
+    Contributed by Ionel Cristian Maries
 
 - Redis: Would attempt to read from the wrong connection if a select/epoll/kqueue
   exception event happened.
