@@ -8,7 +8,7 @@
 
 3.0.8
 =====
-:release-date: 2013-12-16 03:40 P.M UTC
+:release-date: 2013-12-16 16:00 P.M UTC
 :release-by: Ask Solem
 
 - Redis: Would attempt to read from the wrong connection if a select/epoll/kqueue

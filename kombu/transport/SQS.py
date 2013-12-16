@@ -40,7 +40,6 @@ SQS Features supported by this transport:
 from __future__ import absolute_import
 
 import collections
-import logging
 import socket
 import string
 
