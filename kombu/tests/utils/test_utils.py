@@ -318,10 +318,12 @@ class test_symbol_by_name(Case):
 class test_ChannelPromise(Case):
 
     def test_repr(self):
+        obj = Mock(name='cb')
         self.assertIn(
-            'foo',
-            repr(utils.ChannelPromise(lambda: 'foo')),
+            'promise',
+            repr(utils.ChannelPromise(obj)),
         )
+        self.assertFalse(obj.called)
 
 
 class test_entrypoints(Case):
