@@ -82,7 +82,7 @@ class Producer(object):
             self.revive(self._channel)
 
     def __repr__(self):
-        return '<Producer: {0.channel}>'.format(self)
+        return '<Producer: {0._channel}>'.format(self)
 
     def __reduce__(self):
         return self.__class__, self.__reduce_args__()

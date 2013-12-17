@@ -407,7 +407,10 @@ class ChannelPromise(object):
             return value
 
     def __repr__(self):
-        return '<promise: %r>' % (self(), )
+        try:
+            return repr(self.__value__)
+        except AttributeError:
+            return '<promise: 0x{0:x}>'.format(id(self.__contract__))
 
 
 def escape_regex(p, white=''):
