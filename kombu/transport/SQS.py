@@ -392,6 +392,9 @@ class Channel(virtual.Channel):
         # one message.
         maxcount = self.qos.can_consume_max_estimate()
         maxcount = max_if_unlimited if maxcount is None else max(maxcount, 1)
+
+        # SQS only supports pulling a maximum of 10 messages at a time
+        maxcount = min(maxcount, 10)
         messages = self._get_from_sqs(queue, count=maxcount)
 
         if not messages:
