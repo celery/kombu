@@ -168,6 +168,8 @@ Transport Comparison
 +---------------+----------+------------+------------+---------------+
 | *sqlalchemy*  | Virtual  | Yes        | Yes [#f1]_ | No            |
 +---------------+----------+------------+------------+---------------+
+| *marconi*     | Virtual  | Yes        | Yes        | No            |
++---------------+----------+------------+------------+---------------+
 
 
 .. [#f1] Declarations only kept in memory, so exchanges/queues
