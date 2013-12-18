@@ -79,6 +79,9 @@ def maybe_int(x):
 BOTO_VERSION = tuple(maybe_int(part) for part in boto.__version__.split('.'))
 W_LONG_POLLING = BOTO_VERSION >= (2, 8)
 
+#: SQS bulk get supports a maximum of 10 messages at a time.
+SQS_MAX_MESSAGES = 10
+
 
 class Table(Domain):
     """Amazon SimpleDB domain describing the message routing table."""
@@ -366,7 +369,7 @@ class Channel(virtual.Channel):
         q = self._new_queue(queue)
         return [self._message_to_python(m, queue, q) for m in messages]
 
-    def _get_bulk(self, queue, max_if_unlimited=10):
+    def _get_bulk(self, queue, max_if_unlimited=SQS_MAX_MESSAGES):
         """Try to retrieve multiple messages off ``queue``.
 
         Where _get() returns a single Payload object, this method returns a
@@ -392,23 +395,21 @@ class Channel(virtual.Channel):
         # one message.
         maxcount = self.qos.can_consume_max_estimate()
         maxcount = max_if_unlimited if maxcount is None else max(maxcount, 1)
+        messages = self._get_from_sqs(
+            queue, count=min(maxcount, SQS_MAX_MESSAGES),
+        )
 
-        # SQS only supports pulling a maximum of 10 messages at a time
-        maxcount = min(maxcount, 10)
-        messages = self._get_from_sqs(queue, count=maxcount)
-
-        if not messages:
-            raise Empty()
-        return self._messages_to_python(messages, queue)
+        if messages:
+            return self._messages_to_python(messages, queue)
+        raise Empty()
 
     def _get(self, queue):
         """Try to retrieve a single message off ``queue``."""
         messages = self._get_from_sqs(queue, count=1)
 
-        if not messages:
-            raise Empty()
-
-        return self._messages_to_python(messages, queue)[0]
+        if messages:
+            return self._messages_to_python(messages, queue)[0]
+        raise Empty()
 
     def _restore(self, message,
                  unwanted_delivery_info=('sqs_message', 'sqs_queue')):
