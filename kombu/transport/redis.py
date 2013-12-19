@@ -10,6 +10,7 @@ from __future__ import absolute_import
 import socket
 
 from bisect import bisect
+from collections import namedtuple
 from contextlib import contextmanager
 from time import time
 
@@ -42,7 +43,6 @@ try:
 except ImportError:  # pragma: no cover
     redis = None     # noqa
 
-
 from . import virtual
 
 logger = get_logger('kombu.transport.redis')
@@ -52,6 +52,10 @@ DEFAULT_PORT = 6379
 DEFAULT_DB = 0
 
 PRIORITY_STEPS = [0, 3, 6, 9]
+
+error_classes_t = namedtuple('error_classes_t', (
+    'connection_errors', 'channel_errors',
+))
 
 # This implementation may seem overly complex, but I assure you there is
 # a good reason for doing it this way.
@@ -67,6 +71,27 @@ PRIORITY_STEPS = [0, 3, 6, 9]
 # exchanges (broadcast), as an alternative to pushing messages to fanout-bound
 # queues manually.
 
+
+def get_redis_error_classes():
+    from redis import exceptions
+    # This exception suddenly changed name between redis-py versions
+    if hasattr(exceptions, 'InvalidData'):
+        DataError = exceptions.InvalidData
+    else:
+        DataError = exceptions.DataError
+    return error_classes_t(
+        (virtual.Transport.connection_errors + (
+            InconsistencyError,
+            socket.error,
+            IOError,
+            OSError,
+            exceptions.ConnectionError,
+            exceptions.AuthenticationError)),
+        (virtual.Transport.channel_errors + (
+            DataError,
+            exceptions.InvalidResponse,
+            exceptions.ResponseError)),
+    )
 
 class MutexHeld(Exception):
     pass
@@ -828,22 +853,4 @@ class Transport(virtual.Transport):
 
     def _get_errors(self):
         """Utility to import redis-py's exceptions at runtime."""
-        from redis import exceptions
-        # This exception suddenly changed name between redis-py versions
-        if hasattr(exceptions, 'InvalidData'):
-            DataError = exceptions.InvalidData
-        else:
-            DataError = exceptions.DataError
-        return (
-            (virtual.Transport.connection_errors + (
-                InconsistencyError,
-                socket.error,
-                IOError,
-                OSError,
-                exceptions.ConnectionError,
-                exceptions.AuthenticationError)),
-            (virtual.Transport.channel_errors + (
-                DataError,
-                exceptions.InvalidResponse,
-                exceptions.ResponseError)),
-        )
+        return get_redis_error_classes()
