@@ -13,13 +13,13 @@ class MockConnection(dict):
 
 class test_mongodb(Case):
 
-    def _get_connection(self, url):
+    def _get_connection(self, url, **kwargs):
         from kombu.transport import mongodb
 
         class Transport(mongodb.Transport):
             Connection = MockConnection
 
-        return Connection(url, transport=Transport).connect()
+        return Connection(url, transport=Transport, **kwargs).connect()
 
     @skip_if_not_module('pymongo')
     def test_defaults(self):
@@ -45,6 +45,15 @@ class test_mongodb(Case):
         c = self._get_connection(url)
         hostname, dbname, options = c.channels[0]._parse_uri()
 
+        self.assertEquals(dbname, 'dbname')
+
+    @skip_if_not_module('pymongo')
+    def test_custom_credentions(self):
+        url = 'mongodb://localhost/dbname'
+        c = self._get_connection(url, userid='foo', password='bar')
+        hostname, dbname, options = c.channels[0]._parse_uri()
+
+        self.assertEquals(hostname, 'mongodb://foo:bar@localhost/dbname')
         self.assertEquals(dbname, 'dbname')
 
     @skip_if_not_module('pymongo')
