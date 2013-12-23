@@ -91,7 +91,7 @@ class Channel(virtual.Channel):
             self.client.messages.remove({'queue': queue})
         return size
 
-    def _open(self, scheme='mongodb://'):
+    def _parse_uri(self, scheme='mongodb://'):
         # See mongodb uri documentation:
         # http://www.mongodb.org/display/DOCS/Connections
         client = self.connection.client
@@ -101,11 +101,12 @@ class Channel(virtual.Channel):
 
         if dbname in ['/', None]:
             dbname = "kombu_default"
+
         if not hostname.startswith(scheme):
             hostname = scheme + hostname
 
         if not hostname[len(scheme):]:
-            hostname += 'localhost'
+            hostname += DEFAULT_HOST
 
         # XXX What does this do?  [ask]
         urest = hostname[len(scheme):]
@@ -120,8 +121,15 @@ class Channel(virtual.Channel):
         #   mongodb://[username:password@]host1[:port1][,host2[:port2],
         #   ...[,hostN[:portN]]][/[?options]]
         options.setdefault('auto_start_request', True)
+        options.setdefault('ssl', client.ssl)
+
+        return hostname, dbname, options
+
+    def _open(self, scheme='mongodb://'):
+        hostname, dbname, options = self._parse_uri(scheme=scheme)
+
         mongoconn = MongoClient(
-            host=hostname, ssl=client.ssl,
+            host=hostname, ssl=options['ssl'],
             auto_start_request=options['auto_start_request'],
             use_greenlets=_detect_environment() != 'default',
         )
