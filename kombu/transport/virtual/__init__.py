@@ -519,9 +519,12 @@ class Channel(AbstractChannel, base.StdChannel):
             exchange=exchange,
             routing_key=routing_key,
         )
-        self.typeof(exchange).deliver(
-            message, exchange, routing_key, **kwargs
-        )
+        if exchange:
+            return self.typeof(exchange).deliver(
+                message, exchange, routing_key, **kwargs
+            )
+        # anon exchange: routing_key is the destintaion queue
+        return self._put(routing_key, message, **kwargs)
 
     def basic_consume(self, queue, no_ack, callback, consumer_tag, **kwargs):
         """Consume from `queue`"""

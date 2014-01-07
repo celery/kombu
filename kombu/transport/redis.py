@@ -93,9 +93,9 @@ def get_redis_error_classes():
             exceptions.ResponseError)),
     )
 
+
 class MutexHeld(Exception):
     pass
-
 
 @contextmanager
 def Mutex(client, name, expire):
@@ -469,7 +469,12 @@ class Channel(virtual.Channel):
         except KeyError:
             return
         try:
-            self.active_fanout_queues.discard(queue)
+            self.active_fanout_queues.remove(queue)
+        except KeyError:
+            pass
+        else:
+            self._unsubscribe_from(queue)
+        try:
             self._fanout_to_queue.pop(self._fanout_queues[queue])
         except KeyError:
             pass
@@ -477,9 +482,12 @@ class Channel(virtual.Channel):
         self._update_cycle()
         return ret
 
+    def _get_subscribe_topic(self, queue):
+        return ''.join([self.keyprefix_fanout,
+                        self._fanout_queues[queue]])
+
     def _subscribe(self):
-        prefix = self.keyprefix_fanout
-        keys = [''.join([prefix, self._fanout_queues[queue]])
+        keys = [self._get_subscribe_topic(queue)
                 for queue in self.active_fanout_queues]
         if not keys:
             return
@@ -487,7 +495,20 @@ class Channel(virtual.Channel):
         if c.connection._sock is None:
             c.connection.connect()
         self._in_listen = True
-        self.subclient.subscribe(keys)
+        c.subscribe(keys)
+
+    def _unsubscribe_from(self, queue):
+        topic = self._get_subscribe_topic(queue)
+        c = self.subclient
+        should_disconnect = False
+        if c.connection._sock is None:
+            c.connection.connect()
+            should_disconnect = True
+        try:
+            c.unsubscribe([topic])
+        finally:
+            if should_disconnect:
+                c.connection.disconnect()
 
     def _handle_message(self, client, r):
         if r[0] == 'unsubscribe' and r[2] == 0:
