@@ -128,6 +128,7 @@ class Hub(object):
     def _close_poller(self):
         if self.poller is not None:
             self.poller.close()
+            self.poller = None
 
     def stop(self):
         self.call_soon(_raise_stop_error)
@@ -245,12 +246,12 @@ class Hub(object):
             pass
 
     def close(self, *args):
-        self._close_poller()
         [self._unregister(fd) for fd in self.readers]
         self.readers.clear()
         [self._unregister(fd) for fd in self.writers]
         self.writers.clear()
         self.consolidate.clear()
+        self._close_poller()
         for callback in self.on_close:
             callback(self)
 
