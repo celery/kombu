@@ -11,6 +11,48 @@
 :release-date: 2014-01-13 05:30 P.M UTC
 :release-by: Ask Solem
 
+- Now depends on :mod:`amqp` 1.4.0.
+
+- Redis: Basic cancel for fanout based queues now sends a corresponding
+  ``UNSUBSCRIBE`` command to the server.
+
+    This fixes an issue with pidbox where reply messages could be received
+    after the consumer was cancelled, giving the ``"message to queue without
+    consumers"`` error.
+
+- MongoDB: Improved connection string and options handling
+  (Issue #266 + Issue #120).
+
+    Contributed by Alex Koshelev.
+
+- SQS: Limit the number of messages when receiving in batch to 10.
+
+    This is a hard limit enforced by Amazon so the sqs transport
+    must not exceeed this value.
+
+    Fix contributed by Eric Reynolds.
+
+- ConsumerMixin: ``consume`` now checks heartbeat every time the
+  socket times out.
+
+    Contributed by Dustin J. Mitchell.
+
+- Retry Policy: A max retries of 0 did not retry forever.
+
+    Fix contributed by Antoine Legrand.
+
+- Simple: If passing a Queue object the simple utils will now take
+  default routing key from that queue.
+
+    Contributed by Fernando Jorge Mota.
+
+- ``repr(producer)`` no longer evaluates the underlying channnel.
+
+- Redis: The map of Redis error classes are now exposed at the module level
+  using the :func:`kombu.transport.redis.get_redis_error_classes` function.
+
+- Async: ``Hub.close`` now sets ``.poller`` to None.
+
 .. _version-3.0.8:
 
 3.0.8
