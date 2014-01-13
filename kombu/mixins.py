@@ -188,11 +188,11 @@ class ConsumerMixin(object):
             for i in limit and range(limit) or count():
                 if self.should_stop:
                     break
-                conn.heartbeat_check()
                 self.on_iteration()
                 try:
                     conn.drain_events(timeout=safety_interval)
                 except socket.timeout:
+                    conn.heartbeat_check()
                     elapsed += safety_interval
                     if timeout and elapsed >= timeout:
                         raise
