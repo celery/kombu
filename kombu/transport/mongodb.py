@@ -14,7 +14,7 @@ import pymongo
 
 from pymongo import errors
 from anyjson import loads, dumps
-from pymongo import MongoClient
+from pymongo import MongoClient, uri_parser
 
 from kombu.five import Empty
 from kombu.syn import _detect_environment
@@ -91,38 +91,52 @@ class Channel(virtual.Channel):
             self.client.messages.remove({'queue': queue})
         return size
 
-    def _open(self, scheme='mongodb://'):
+    def _parse_uri(self, scheme='mongodb://'):
         # See mongodb uri documentation:
-        # http://www.mongodb.org/display/DOCS/Connections
+        # http://docs.mongodb.org/manual/reference/connection-string/
         client = self.connection.client
-        options = client.transport_options
-        hostname = client.hostname or DEFAULT_HOST
-        dbname = client.virtual_host
+        hostname = client.hostname
 
-        if dbname in ['/', None]:
-            dbname = "kombu_default"
         if not hostname.startswith(scheme):
             hostname = scheme + hostname
 
         if not hostname[len(scheme):]:
-            hostname += 'localhost'
+            hostname += DEFAULT_HOST
 
-        # XXX What does this do?  [ask]
-        urest = hostname[len(scheme):]
-        if '/' in urest:
-            if not client.userid:
-                urest = urest.replace('/' + client.virtual_host, '/')
-                hostname = ''.join([scheme, urest])
+        if client.userid and '@' not in hostname:
+            head, tail = hostname.split('://')
 
-        # At this point we expect the hostname to be something like
-        # (considering replica set form too):
-        #
-        #   mongodb://[username:password@]host1[:port1][,host2[:port2],
-        #   ...[,hostN[:portN]]][/[?options]]
-        options.setdefault('auto_start_request', True)
+            credentials = client.userid
+            if client.password:
+                credentials += ':' + client.password
+
+            hostname = head + '://' + credentials + '@' + tail
+
+        port = client.port if client.port is not None else DEFAULT_PORT
+
+        parsed = uri_parser.parse_uri(hostname, port)
+
+        dbname = parsed['database'] or client.virtual_host
+
+        if dbname in ('/', None):
+            dbname = 'kombu_default'
+
+        options = {'auto_start_request': True,
+                   'ssl': client.ssl,
+                   'connectTimeoutMS': int(client.connect_timeout * 1000)
+                                            if client.connect_timeout else None}
+        options.update(client.transport_options)
+        options.update(parsed['options'])
+
+        return hostname, dbname, options
+
+    def _open(self, scheme='mongodb://'):
+        hostname, dbname, options = self._parse_uri(scheme=scheme)
+
         mongoconn = MongoClient(
-            host=hostname, ssl=client.ssl,
+            host=hostname, ssl=options['ssl'],
             auto_start_request=options['auto_start_request'],
+            connectTimeoutMS=options['connectTimeoutMS'],
             use_greenlets=_detect_environment() != 'default',
         )
         database = getattr(mongoconn, dbname)
