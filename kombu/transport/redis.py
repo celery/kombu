@@ -97,6 +97,7 @@ def get_redis_error_classes():
 class MutexHeld(Exception):
     pass
 
+
 @contextmanager
 def Mutex(client, name, expire):
     lock_id = uuid()

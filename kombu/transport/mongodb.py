@@ -121,10 +121,12 @@ class Channel(virtual.Channel):
         if dbname in ('/', None):
             dbname = 'kombu_default'
 
-        options = {'auto_start_request': True,
-                   'ssl': client.ssl,
-                   'connectTimeoutMS': int(client.connect_timeout * 1000)
-                                            if client.connect_timeout else None}
+        options = {
+            'auto_start_request': True,
+            'ssl': client.ssl,
+            'connectTimeoutMS': (int(client.connect_timeout * 1000)
+                                 if client.connect_timeout else None),
+        }
         options.update(client.transport_options)
         options.update(parsed['options'])
 
