@@ -110,8 +110,5 @@ class test_mongodb(Case):
         url = "mongodb://nousername:nopassword@localhost/dbname"
         c = self._get_connection(url)
 
-        # Needed, otherwise the error would be rose before
-        # the assertRaises is called
-        def get_client():
+        with self.assertRaises(ConfigurationError):
             c.channels[0].client
-        self.assertRaises(ConfigurationError, get_client)

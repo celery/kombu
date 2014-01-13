@@ -172,10 +172,12 @@ class test_Channel(Case):
         self.assertEquals(len(results), 3)
 
     def test_get_with_empty_list(self):
-        self.assertRaises(five.Empty, self.channel._get, self.queue_name)
+        with self.assertRaises(five.Empty):
+            self.channel._get(self.queue_name)
 
     def test_get_bulk_raises_empty(self):
-        self.assertRaises(five.Empty, self.channel._get_bulk, self.queue_name)
+        with self.assertRaises(five.Empty):
+            self.channel._get_bulk(self.queue_name)
 
     def test_messages_to_python(self):
         message_count = 3
@@ -248,7 +250,8 @@ class test_Channel(Case):
         def mock_can_consume():
             return False
         self.channel.qos.can_consume = mock_can_consume
-        self.assertRaises(five.Empty, self.channel.drain_events)
+        with self.assertRaises(five.Empty):
+            self.channel.drain_events()
 
     def test_drain_events_with_prefetch_5(self):
         # Generate 20 messages
