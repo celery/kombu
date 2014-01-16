@@ -14,6 +14,7 @@ from collections import namedtuple
 from contextlib import contextmanager
 from time import time
 
+from amqp import promise
 from anyjson import loads, dumps
 
 from kombu.exceptions import InconsistencyError, VersionMismatch
@@ -490,8 +491,11 @@ class Channel(virtual.Channel):
         # is complete (Issue celery/celery#1773).
         if self.connection.cycle._in_protected_read:
             return self.connection.cycle.after_read.add(
-                promise(self.basic_cancel, (consumer_tag, )),
+                promise(self._basic_cancel, (consumer_tag, )),
             )
+        return self._basic_cancel(consumer_tag)
+
+    def _basic_cancel(self, consumer_tag):
         try:
             queue = self._tag_to_queue[consumer_tag]
         except KeyError:
