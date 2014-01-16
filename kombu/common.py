@@ -17,8 +17,9 @@ from contextlib import contextmanager
 from functools import partial
 from itertools import count
 
+from amqp import RecoverableConnectionError
+
 from .entity import Exchange, Queue
-from .exceptions import ChannelError
 from .five import range
 from .log import get_logger
 from .messaging import Consumer as _Consumer
@@ -93,7 +94,7 @@ def maybe_declare(entity, channel=None, retry=False, **retry_policy):
 def _maybe_declare(entity):
     channel = entity.channel
     if not channel.connection:
-        raise ChannelError('channel disconnected')
+        raise RecoverableConnectionError('channel disconnected')
     if entity.can_cache_declaration:
         declared = channel.connection.client.declared_entities
         ident = hash(entity)
