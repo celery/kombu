@@ -125,6 +125,7 @@ transport.SSLTransport = SSLTransport
 
 
 class Connection(amqp.Connection):  # pragma: no cover
+    connected = True
 
     def _do_close(self, *args, **kwargs):
         # amqplib does not ignore socket errors when connection
