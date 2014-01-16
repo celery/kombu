@@ -129,6 +129,8 @@ class Hub(object):
         if self.poller is not None:
             self.poller.close()
             self.poller = None
+            self._register_fd = None
+            self._unregister_fd = None
 
     def stop(self):
         self.call_soon(_raise_stop_error)
@@ -242,7 +244,7 @@ class Hub(object):
     def _unregister(self, fd):
         try:
             self.poller.unregister(fd)
-        except (KeyError, OSError):
+        except (AttributeError, KeyError, OSError):
             pass
 
     def close(self, *args):
