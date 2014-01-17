@@ -8,13 +8,13 @@
 
 3.0.10
 ======
-:release-date: 2014-01-17 04:00 P.M UTC
+:release-date: 2014-01-17 05:40 P.M UTC
 :release-by: Ask Solem
 
 - Now depends on :mod:`amqp` 1.4.1.
 
 - ``maybe_declare`` now raises a "recoverable connection error" if
-  the connection is disconnected instead of a :exc:`ChannelError` so that
+  the channel is disconnected instead of a :exc:`ChannelError` so that
   the operation can be retried.
 
 - Redis: ``Consumer.cancel()`` is now thread safe.

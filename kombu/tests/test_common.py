@@ -11,7 +11,6 @@ from kombu.common import (
     declaration_cached, ignore_errors,
     QoS, PREFETCH_COUNT_MAX,
 )
-from kombu.exceptions import ChannelError
 
 from .case import Case, ContextMock, Mock, MockPool, patch
 
