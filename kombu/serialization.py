@@ -449,5 +449,5 @@ for ep, args in entrypoints('kombu.serializers'):  # pragma: no cover
 
 def prepare_accept_content(l, name_to_type=registry.name_to_type):
     if l is not None:
-        return set(n if '/' in n else name_to_type[n] for n in l)
+        return set(n if n is None or '/' in n else name_to_type[n] for n in l)
     return l
