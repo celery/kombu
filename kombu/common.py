@@ -10,12 +10,12 @@ from __future__ import absolute_import
 import os
 import socket
 import threading
-import uuid as _uuid
 
 from collections import deque
 from contextlib import contextmanager
 from functools import partial
 from itertools import count
+from uuid import getnode as _getnode, uuid3 as _uuid3, NAMESPACE_OID
 
 from amqp import RecoverableConnectionError
 
@@ -43,16 +43,15 @@ __all__ = ['Broadcast', 'maybe_declare', 'uuid',
 PREFETCH_COUNT_MAX = 0xFFFF
 
 logger = get_logger(__name__)
-_nodeid = _uuid.getnode()
 
 
 def generate_oid(node_id, process_id, thread_id, instance):
     ent = '%x-%x-%x-%x' % (node_id, process_id, thread_id, id(instance))
-    return str(_uuid.uuid3(_uuid.NAMESPACE_OID, ent))
+    return str(_uuid3(NAMESPACE_OID, ent))
 
 
 def oid_from(instance):
-    return generate_oid(_nodeid, os.getpid(), get_ident(), instance)
+    return generate_oid(_getnode(), os.getpid(), get_ident(), instance)
 
 
 class Broadcast(Queue):
