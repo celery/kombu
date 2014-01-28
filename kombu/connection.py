@@ -529,6 +529,9 @@ class Connection(object):
         settings."""
         return self.__class__(**dict(self._info(resolve=False), **kwargs))
 
+    def get_heartbeat_interval(self):
+        return self.transport.get_heartbeat_interval(self.connection)
+
     def _info(self, resolve=True):
         transport_cls = self.transport_cls
         if resolve:

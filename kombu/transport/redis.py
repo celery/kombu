@@ -570,6 +570,7 @@ class Channel(virtual.Channel):
                     try:
                         message = loads(bytes_to_str(payload['data']))
                     except (TypeError, ValueError):
+                        message = None
                         warn('Cannot process event on channel %r: %r',
                              channel, payload, exc_info=1)
                     return message, self._fanout_to_queue[channel]
