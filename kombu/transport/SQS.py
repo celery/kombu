@@ -395,12 +395,13 @@ class Channel(virtual.Channel):
         # one message.
         maxcount = self.qos.can_consume_max_estimate()
         maxcount = max_if_unlimited if maxcount is None else max(maxcount, 1)
-        messages = self._get_from_sqs(
-            queue, count=min(maxcount, SQS_MAX_MESSAGES),
-        )
+        if maxcount:
+            messages = self._get_from_sqs(
+                queue, count=min(maxcount, SQS_MAX_MESSAGES),
+            )
 
-        if messages:
-            return self._messages_to_python(messages, queue)
+            if messages:
+                return self._messages_to_python(messages, queue)
         raise Empty()
 
     def _get(self, queue):
