@@ -580,6 +580,8 @@ class Consumer(object):
                 message = m2p(message)
             if accept is not None:
                 message.accept = accept
+            if message.errors:
+                return message._reraise_error(self.on_decode_error)
             decoded = None if on_m else message.decode()
         except Exception as exc:
             if not self.on_decode_error:
