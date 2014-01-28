@@ -106,6 +106,8 @@ class test_Message(Case):
         message = c.message_to_python(data)
         self.assertIsInstance(message, virtual.Message)
         self.assertIs(message, c.message_to_python(message))
+        if message.errors:
+            message._reraise_error()
 
         self.assertEqual(message.body,
                          'the quick brown fox...'.encode('utf-8'))

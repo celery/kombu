@@ -42,12 +42,11 @@ class Message(object):
         self._decoded_cache = None
         self._state = 'RECEIVED'
         self.accept = accept
-        self.body = body
 
         compression = self.headers.get('compression')
         if not self.errors and compression:
             try:
-                self.body = decompress(body, compression)
+                body = decompress(body, compression)
             except Exception:
                 self.errors.append(sys.exc_info())
 
@@ -56,6 +55,7 @@ class Message(object):
                 body = body.encode(postencode)
             except Exception:
                 self.errors.append(sys.exc_info())
+        self.body = body
 
     def _reraise_error(self, callback=None):
         try:
