@@ -164,6 +164,7 @@ class Hub(object):
         return min(max(delay or 0, min_delay), max_delay)
 
     def add(self, fd, callback, flags, args=(), consolidate=False):
+        fd = fileno(fd)
         try:
             self.poller.register(fd, flags)
         except ValueError:
@@ -173,9 +174,9 @@ class Hub(object):
             dest = self.readers if flags & READ else self.writers
             if consolidate:
                 self.consolidate.add(fd)
-                dest[fileno(fd)] = None
+                dest[fd] = None
             else:
-                dest[fileno(fd)] = callback, args
+                dest[fd] = callback, args
 
     def remove(self, fd):
         fd = fileno(fd)
