@@ -33,8 +33,6 @@
 
 - SQS: Fixed bug where the prefetch count limit was not respected.
 
-
-
 .. _version-3.0.10:
 
 3.0.10
