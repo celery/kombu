@@ -4,6 +4,37 @@
  Change history
 ================
 
+.. _version-3.0.11:
+
+3.0.11
+======
+:release-date: 2014-02-03 XX:XX X.X UTC
+:release-by: Ask Solem
+
+- Now depends on :mod:`amqp` 1.4.2.
+
+- Now always trusts messages of type `application/data` and `application/text`
+  or which have an unspecified content type (Issue #306).
+
+- Compression errors are now handled as decode errors and will trigger
+  the ``Consumer.on_decode_error`` callback if specified.
+
+- New ``kombu.Connection.get_heartbeat_interval()`` method that can be
+  used to access the negotiated heartbeat value.
+
+- `kombu.common.oid_for` no longer uses the MAC address of the host, but
+   instead uses a process-wide UUID4 as a node id.
+
+    This avoids a call to `uuid.getnode()` at module scope.
+
+- Hub.add: Now normalized registered fileno.
+
+    Contributed by Ionel Cristian Mărieș.
+
+- SQS: Fixed bug where the prefetch count limit was not respected.
+
+
+
 .. _version-3.0.10:
 
 3.0.10
