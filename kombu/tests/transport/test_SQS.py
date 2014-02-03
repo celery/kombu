@@ -277,7 +277,7 @@ class test_Channel(Case):
     def test_drain_events_with_prefetch_none(self):
         # Generate 20 messages
         message_count = 20
-        expected_get_message_count = 20
+        expected_get_message_count = 2
 
         # Set the prefetch_count to None
         self.channel.qos.prefetch_count = None
