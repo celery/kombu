@@ -27,7 +27,7 @@
 
     This avoids a call to `uuid.getnode()` at module scope.
 
-- Hub.add: Now normalized registered fileno.
+- Hub.add: Now normalizes registered fileno.
 
     Contributed by Ionel Cristian Mărieș.
 
