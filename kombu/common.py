@@ -15,7 +15,7 @@ from collections import deque
 from contextlib import contextmanager
 from functools import partial
 from itertools import count
-from uuid import getnode as _getnode, uuid3 as _uuid3, NAMESPACE_OID
+from uuid import getnode as _getnode, uuid4, uuid3, NAMESPACE_OID
 
 from amqp import RecoverableConnectionError
 
@@ -44,10 +44,19 @@ PREFETCH_COUNT_MAX = 0xFFFF
 
 logger = get_logger(__name__)
 
+_node_id = None
+
+
+def get_node_id():
+    global _node_id
+    if _node_id is None:
+        _node_id = uuid4().int
+    return _node_id
+
 
 def generate_oid(node_id, process_id, thread_id, instance):
-    ent = '%x-%x-%x-%x' % (node_id, process_id, thread_id, id(instance))
-    return str(_uuid3(NAMESPACE_OID, ent))
+    ent = '%x-%x-%x-%x' % (get_node_id(), process_id, thread_id, id(instance))
+    return str(uuid3(NAMESPACE_OID, ent))
 
 
 def oid_from(instance):
