@@ -32,8 +32,8 @@ Features
 
     * Virtual transports makes it really easy to add support for non-AMQP
       transports.  There is already built-in support for `Redis`_,
-      `Beanstalk`_, `Amazon SQS`_, `CouchDB`_, `MongoDB`_, ZeroMQ, `ZooKeeper`_,
-      `SoftLayer MQ`_ and `Pyro`_.
+      `Beanstalk`_, `Amazon SQS`_, `CouchDB`_, `MongoDB`_, `ZeroMQ`_,
+      `ZooKeeper`_, `SoftLayer MQ`_ and `Pyro`_.
 
     * You can also use the SQLAlchemy and Django ORM transports to
       use a database as the broker.
@@ -64,6 +64,7 @@ and the `Wikipedia article about AMQP`_.
 .. _`Amazon SQS`: http://aws.amazon.com/sqs/
 .. _`MongoDB`: http://www.mongodb.org/
 .. _`CouchDB`: http://couchdb.apache.org/
+.. _`ZeroMQ`: http://zeromq.org/
 .. _`Zookeeper`: https://zookeeper.apache.org/
 .. _`Beanstalk`: http://kr.github.com/beanstalkd/
 .. _`Rabbits and warrens`: http://blogs.digitar.com/jjww/2009/01/rabbits-and-warrens/
