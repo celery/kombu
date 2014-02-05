@@ -29,6 +29,39 @@ class test_sqlalchemy(TestCase):
             with self.assertRaises(KeyError):
                 Connection(url).connect()
 
+    def test_simple_queueing(self):
+        conn = Connection('sqlalchemy+sqlite:///:memory:')
+        conn.connect()
+        channel = conn.channel()
+        self.assertEqual(
+            channel.queue_cls.__table__.name,
+            'kombu_queue'
+        )
+        self.assertEqual(
+            channel.message_cls.__table__.name,
+            'kombu_message'
+        )
+        channel._put('celery', 'DATA')
+        assert channel._get('celery') == 'DATA'
+
+    def test_custom_table_names(self):
+        conn = Connection('sqlalchemy+sqlite:///:memory:', transport_options={
+            'queue_tablename': 'my_custom_queue',
+            'message_tablename': 'my_custom_message'
+        })
+        conn.connect()
+        channel = conn.channel()
+        self.assertEqual(
+            channel.queue_cls.__table__.name,
+            'my_custom_queue'
+        )
+        self.assertEqual(
+            channel.message_cls.__table__.name,
+            'my_custom_message'
+        )
+        channel._put('celery', 'DATA')
+        assert channel._get('celery') == 'DATA'
+
     def test_clone(self):
         hostname = 'sqlite:///celerydb.sqlite'
         x = Connection('+'.join(['sqla', hostname]))
