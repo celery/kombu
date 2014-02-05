@@ -185,7 +185,8 @@ class Channel(virtual.Channel):
     def _queue_bind(self, exchange, routing_key, pattern, queue):
         if self.typeof(exchange).type == 'fanout':
             cursor = self.bcast.find(query={'queue': exchange},
-                                     sort=[('$natural', 1)], tailable=True)
+                                     sort=[('$natural', 1)], tailable=True,
+                                     await_data=True)
             # Fast forward the cursor past old events
             self._queue_cursors[queue] = cursor.skip(cursor.count())
             self._queue_readcounts[queue] = cursor.count()
