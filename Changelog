@@ -8,7 +8,7 @@
 
 3.0.12
 ======
-:release-date: 2014-02-09 03:30 P.M UTC
+:release-date: 2014-02-09 03:50 P.M UTC
 :release-by: Ask Solem
 
 - Now depends on :mod:`amqp` 1.4.3.
