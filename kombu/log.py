@@ -13,9 +13,12 @@ from .utils.functional import maybe_evaluate
 
 __all__ = ['LogMixin', 'LOG_LEVELS', 'get_loglevel', 'setup_logging']
 
-LOG_LEVELS = dict(logging._levelNames)
-LOG_LEVELS['FATAL'] = logging.FATAL
-LOG_LEVELS[logging.FATAL] = 'FATAL'
+try:
+    LOG_LEVELS = dict(logging._nameToLevel, **logging._levelToName)
+except AttributeError:
+    LOG_LEVELS = dict(logging._levelNames)
+LOG_LEVELS.setdefault('FATAL', logging.FATAL)
+LOG_LEVELS.setdefault(logging.FATAL, 'FATAL')
 DISABLE_TRACEBACKS = os.environ.get('DISABLE_TRACEBACKS')
 
 
