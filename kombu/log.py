@@ -14,7 +14,8 @@ from .utils.functional import maybe_evaluate
 __all__ = ['LogMixin', 'LOG_LEVELS', 'get_loglevel', 'setup_logging']
 
 try:
-    LOG_LEVELS = dict(logging._nameToLevel, **logging._levelToName)
+    LOG_LEVELS = dict(logging._nameToLevel)
+    LOG_LEVELS.update(logging._levelToName)
 except AttributeError:
     LOG_LEVELS = dict(logging._levelNames)
 LOG_LEVELS.setdefault('FATAL', logging.FATAL)
