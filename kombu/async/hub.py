@@ -17,9 +17,9 @@ from types import GeneratorType as generator
 
 from amqp import promise
 
-from kombu.five import Empty, items, range
+from kombu.five import Empty, range
 from kombu.log import get_logger
-from kombu.utils import cached_property, fileno, reprcall
+from kombu.utils import cached_property, fileno
 from kombu.utils.compat import get_errno
 from kombu.utils.eventio import READ, WRITE, ERR, poll
 
@@ -52,23 +52,6 @@ def set_event_loop(loop):
     global _current_loop
     _current_loop = loop
     return loop
-
-
-def repr_flag(flag):
-    return '{0}{1}{2}'.format('R' if flag & READ else '',
-                              'W' if flag & WRITE else '',
-                              '!' if flag & ERR else '')
-
-
-def _rcb(obj):
-    if obj is None:
-        return '<missing>'
-    if isinstance(obj, str):
-        return obj
-    if isinstance(obj, tuple):
-        cb, args = obj
-        return reprcall(cb.__name__, args=args)
-    return obj.__name__
 
 
 class Hub(object):
@@ -294,7 +277,7 @@ class Hub(object):
                 to_consolidate = []
                 try:
                     events = poll(poll_timeout)
-                    #print('[EVENTS]: %s' % (self.repr_events(events or []), ))
+                    #print('[EVENTS]: %s' % (self.nepr_events(events or []), ))
                 except ValueError:  # Issue 882
                     raise StopIteration()
 
@@ -345,37 +328,12 @@ class Hub(object):
             yield
 
     def repr_active(self):
-        return ', '.join(self._repr_readers() + self._repr_writers())
+        from .debug import repr_active
+        return repr_active(self)
 
     def repr_events(self, events):
-        return ', '.join(
-            '{0}({1})->{2}'.format(
-                _rcb(self._callback_for(fd, fl, '(GONE)')), fd,
-                repr_flag(fl),
-            )
-            for fd, fl in events
-        )
-
-    def _repr_readers(self):
-        return ['({0}){1}->{2}'.format(fd, _rcb(cb), repr_flag(READ | ERR))
-                for fd, cb in items(self.readers)]
-
-    def _repr_writers(self):
-        return ['({0}){1}->{2}'.format(fd, _rcb(cb), repr_flag(WRITE))
-                for fd, cb in items(self.writers)]
-
-    def _callback_for(self, fd, flag, *default):
-        try:
-            if flag & READ:
-                return self.readers[fd]
-            if flag & WRITE:
-                if fd in self.consolidate:
-                    return self.consolidate_callback
-                return self.writers[fd]
-        except KeyError:
-            if default:
-                return default[0]
-            raise
+        from .debug import repr_events
+        return repr_events(self, events)
 
     @cached_property
     def scheduler(self):

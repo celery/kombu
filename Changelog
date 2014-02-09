@@ -4,6 +4,26 @@
  Change history
 ================
 
+.. _version-3.0.12:
+
+3.0.12
+======
+:release-date: 2014-02-09 03:50 P.M UTC
+:release-by: Ask Solem
+
+- Now depends on :mod:`amqp` 1.4.3.
+
+- Fixes Python 3.4 logging incompatibility (Issue #311).
+
+- Redis: Now properly handles unknown pub/sub messages.
+
+    Fix contributed by Sam Stavinoha.
+
+- amqplib: Fixed bug where more bytes were requested from the socket
+  than necessary.
+
+    Fix contributed by Ionel Cristian Mărieș.
+
 .. _version-3.0.11:
 
 3.0.11

@@ -1,4 +1,3 @@
 setuptools>=0.7
 nose
-nose-cover3
 mock>=0.7.0
