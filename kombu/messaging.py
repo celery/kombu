@@ -153,7 +153,7 @@ class Producer(object):
         else:
             delivery_mode = delivery_mode or self.exchange.delivery_mode
         if not isinstance(delivery_mode, numbers.Integral):
-            delivery_mode = DELIVERY_MODES[int(delivery_mode)]
+            delivery_mode = DELIVERY_MODES[delivery_mode]
         properties['delivery_mode'] = delivery_mode
 
         body, content_type, content_encoding = self._prepare(
