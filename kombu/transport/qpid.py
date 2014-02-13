@@ -215,8 +215,10 @@ class Channel(base.StdChannel):
         sender.send(qpid_message)
 
     def _purge(self, queue):
-        raise NotImplementedError('_purge is Not Implemented')
-        # TODO: This should return either None or the number of messages removed from the queue
+        queue_to_purge = self._broker.getQueue(queue)
+        message_count = queue_to_purge.values['msgDepth']
+        queue_to_purge.purge(message_count)
+        return message_count
 
     def _size(self, queue):
         queue_to_check = self._broker.getQueue(queue)
@@ -277,6 +279,10 @@ class Channel(base.StdChannel):
         exchange = kwargs['exchange']
         key = kwargs['routing_key']
         self._broker.unbind(exchange, queue, key)
+
+    def queue_purge(self, queue, **kwargs):
+        """Remove all ready messages from queue."""
+        return self._purge(queue)
 
     def basic_get(self, queue, *args, **kwargs):
         raise NotImplementedError('basic_get Not Implemented')
