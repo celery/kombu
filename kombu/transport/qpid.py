@@ -204,7 +204,8 @@ class Channel(base.StdChannel):
         self.closed = False
 
     def _get(self, queue):
-        raise NotImplementedError('_get Not Implemented')
+        rx = self._qpid_session.receiver(queue)
+        return rx.fetch(timeout=0)
 
     def _put(self, queue, message, exchange=None, **kwargs):
         if not exchange:
@@ -217,7 +218,8 @@ class Channel(base.StdChannel):
     def _purge(self, queue):
         queue_to_purge = self._broker.getQueue(queue)
         message_count = queue_to_purge.values['msgDepth']
-        queue_to_purge.purge(message_count)
+        if message_count > 0:
+            queue_to_purge.purge(message_count)
         return message_count
 
     def _size(self, queue):
@@ -284,8 +286,17 @@ class Channel(base.StdChannel):
         """Remove all ready messages from queue."""
         return self._purge(queue)
 
-    def basic_get(self, queue, *args, **kwargs):
-        raise NotImplementedError('basic_get Not Implemented')
+    def basic_get(self, queue, no_ack=False, **kwargs):
+        """Get message by direct access (synchronous)."""
+        try:
+            qpid_message = self._get(queue)
+            raw_message = qpid_message.content
+            message = self.Message(self, raw_message)
+            if not no_ack:
+                self._qpid_session.acknowledge(message=qpid_message)
+            return message
+        except Empty:
+            pass
 
     def basic_ack(self, delivery_tag):
         """Acknowledge message."""
