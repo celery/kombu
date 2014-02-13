@@ -15,9 +15,9 @@ import uuid
 import base64
 import threading
 import Queue
+import socket
 from time import clock
 from itertools import count
-from multiprocessing.util import Finalize
 
 
 from kombu.transport import virtual
@@ -523,12 +523,12 @@ class Transport(base.Transport):
             try:
                 message = self.queue_from_fdshim.get(block=True, timeout=timeout)
             except Queue.Empty:
-                pass
+                raise socket.timeout()
             else:
                 queue = message.subject
                 self._callbacks[queue](message)
             elapsed_time = clock() - start_time
-        raise Empty()
+        raise socket.timeout()
 
     def create_channel(self, connection):
         try:
