@@ -8,6 +8,7 @@ Internal utilities.
 from __future__ import absolute_import, print_function
 
 import importlib
+import numbers
 import random
 import sys
 
@@ -17,7 +18,7 @@ from functools import wraps
 from time import sleep
 from uuid import UUID, uuid4 as _uuid4, _uuid_generate_random
 
-from kombu.five import int_types, items, reraise, string_t
+from kombu.five import items, reraise, string_t
 
 from .encoding import default_encode, safe_repr as _safe_repr
 
@@ -423,7 +424,7 @@ def escape_regex(p, white=''):
 
 
 def fileno(f):
-    if isinstance(f, int_types):
+    if isinstance(f, numbers.Integral):
         return f
     return f.fileno()
 

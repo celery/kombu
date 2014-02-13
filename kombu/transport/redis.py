@@ -7,6 +7,7 @@ Redis transport.
 """
 from __future__ import absolute_import
 
+import numbers
 import socket
 
 from bisect import bisect
@@ -626,7 +627,8 @@ class Channel(virtual.Channel):
             for pri in PRIORITY_STEPS:
                 cmds = cmds.llen(self._q_for_pri(queue, pri))
             sizes = cmds.execute()
-            return sum(size for size in sizes if isinstance(size, int))
+            return sum(size for size in sizes
+                       if isinstance(size, numbers.Integral))
 
     def _q_for_pri(self, queue, pri):
         pri = self.priority(pri)
@@ -728,7 +730,7 @@ class Channel(virtual.Channel):
                 pass
 
     def _prepare_virtual_host(self, vhost):
-        if not isinstance(vhost, int):
+        if not isinstance(vhost, numbers.Integral):
             if not vhost or vhost == '/':
                 vhost = DEFAULT_DB
             elif vhost.startswith('/'):

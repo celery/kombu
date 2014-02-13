@@ -1,7 +1,8 @@
 from __future__ import absolute_import
 
-import os
 import logging
+import numbers
+import os
 import sys
 
 from logging.handlers import WatchedFileHandler
@@ -103,7 +104,7 @@ class LogMixin(object):
         return self.logger.isEnabledFor(self.get_loglevel(level))
 
     def get_loglevel(self, level):
-        if not isinstance(level, int):
+        if not isinstance(level, numbers.Integral):
             return LOG_LEVELS[level]
         return level
 
