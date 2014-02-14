@@ -490,11 +490,13 @@ class Channel(virtual.Channel):
         # a race condition where a message is consumed after
         # cancelling, so we must delay this operation until reading
         # is complete (Issue celery/celery#1773).
-        if self.connection.cycle._in_protected_read:
-            return self.connection.cycle.after_read.add(
-                promise(self._basic_cancel, (consumer_tag, )),
-            )
-        return self._basic_cancel(consumer_tag)
+        connection = self.connection
+        if connection:
+            if connection.cycle._in_protected_read:
+                return connection.cycle.after_read.add(
+                    promise(self._basic_cancel, (consumer_tag, )),
+                )
+            return self._basic_cancel(consumer_tag)
 
     def _basic_cancel(self, consumer_tag):
         try:
