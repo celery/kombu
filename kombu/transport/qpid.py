@@ -413,7 +413,7 @@ class FDShimThread(threading.Thread):
     def run(self):
         while not self.is_killed:
             try:
-                response = self._receiver.fetch(30)
+                response = self._receiver.fetch(timeout=10)
             except QpidEmpty:
                 pass
             else:
@@ -436,6 +436,7 @@ class FDShim(object):
         self.signaling_queue = Queue.Queue()
         self.message_queue = Queue.Queue()
         self._threads = {}
+        self._is_killed = False
 
     def recv(self):
         while True:
@@ -462,12 +463,15 @@ class FDShim(object):
                 #message from child ready
                 return child_message
 
+    def kill(self):
+        self.is_killed = True
+
     def listen(self):
         """
-        Do a blocking read call similar to what proton does, and when something
-        is finally received, shove it into the pipe.
+        Do a blocking read call similar to what qpid.messaging does, and when
+        something is finally received, shove it into the pipe.
         """
-        while True:
+        while not self._is_killed:
             message = self.recv()
             self.queue_from_fdshim.put(message)
             os.write(self._w, 'ready')
@@ -520,6 +524,7 @@ class Transport(base.Transport):
                     pass
                 else:
                     channel.close()
+        self.fd_shim.kill()
 
     def drain_events(self, connection, timeout=0, **kwargs):
         start_time = clock()
