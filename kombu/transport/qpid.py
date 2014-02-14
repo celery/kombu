@@ -213,7 +213,7 @@ class Channel(base.StdChannel):
         address = "%s/%s" % (exchange, queue)
         sender = self._qpid_session.sender(address)
         qpid_message = QpidMessage(message)
-        sender.send(qpid_message)
+        sender.send(qpid_message, sync=True)
 
     def _purge(self, queue):
         queue_to_purge = self._broker.getQueue(queue)
@@ -229,7 +229,7 @@ class Channel(base.StdChannel):
 
     def _delete(self, queue, *args, **kwargs):
         self._purge(queue)
-        #TODO delete the queue here
+        self._broker.delQueue(queue)
 
     @ProtonExceptionHandler('object already exists')
     def _new_queue(self, queue, **kwargs):
@@ -322,6 +322,7 @@ class Channel(base.StdChannel):
         if consumer_tag in self._consumers:
             self._consumers.remove(consumer_tag)
             queue = self._tag_to_queue.pop(consumer_tag, None)
+            self.connection.fd_shim.signaling_queue.put(['kill', queue])
             self.connection._callbacks.pop(queue, None)
 
     def close(self):
@@ -368,6 +369,7 @@ class Channel(base.StdChannel):
         message['body'], body_encoding = self.encode_body(
             message['body'], self.body_encoding,
         )
+        message['body'] = buffer(message['body'])
         props = message['properties']
         props.update(
             body_encoding=body_encoding,
@@ -449,6 +451,9 @@ class FDShim(object):
                         my_thread = FDShimThread(receiver, self.message_queue)
                         self._threads[address] = my_thread
                         my_thread.start()
+                elif action is 'kill':
+                    self._threads[address].kill()
+                    del self._threads[address]
             try:
                 child_message = self.message_queue.get(False)
             except Queue.Empty:
