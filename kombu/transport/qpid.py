@@ -603,7 +603,7 @@ class Transport(base.Transport):
 
     def drain_events(self, connection, timeout=0, **kwargs):
         start_time = clock()
-        elapsed_time = 0
+        elapsed_time = -1
         while elapsed_time < timeout:
             try:
                 queue, message = self.queue_from_fdshim.get(block=True, timeout=timeout)
@@ -631,4 +631,7 @@ class Transport(base.Transport):
             channel.connection = None
 
     def on_readable(self, connection, loop):
-        self.drain_events(connection)
+        try:
+            self.drain_events(connection)
+        except socket.timeout:
+            pass
