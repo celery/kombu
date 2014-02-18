@@ -35,6 +35,73 @@ from qpidtoollibs import BrokerAgent
 
 from . import base
 
+##### Start Monkey Patching #####
+
+from qpid.ops import ExchangeQuery, QueueQuery
+
+def resolve_declare_monkey(self, sst, lnk, dir, action):
+    declare = lnk.options.get("create") in ("always", dir)
+    assrt = lnk.options.get("assert") in ("always", dir)
+    requested_type = lnk.options.get("node", {}).get("type")
+    def do_resolved(type, subtype):
+        err = None
+        if type is None:
+            if declare:
+                err = self.declare(sst, lnk, action)
+            else:
+                err = NotFound(text="no such queue: %s" % lnk.name)
+        else:
+            if assrt:
+                expected = lnk.options.get("node", {}).get("type")
+                if expected and type != expected:
+                    err = AssertionFailed(text="expected %s, got %s" % (expected, type))
+            if err is None:
+                action(type, subtype)
+        if err:
+            tgt = lnk.target
+            tgt.error = err
+            del self._attachments[tgt]
+            tgt.closed = True
+            return
+    self.resolve(sst, lnk.name, do_resolved, node_type=requested_type, force=declare)
+
+def resolve_monkey(self, sst, name, action, force=False, node_type=None):
+    if not force and not node_type:
+        try:
+            type, subtype = self.address_cache[name]
+            action(type, subtype)
+            return
+        except KeyError:
+            pass
+    args = []
+    def do_result(r):
+        args.append(r)
+    def do_action(r):
+        do_result(r)
+        er, qr = args
+        if node_type == "topic" and not er.not_found:
+            type, subtype = "topic", er.type
+        elif node_type == "queue" and qr.queue:
+            type, subtype = "queue", None
+        elif er.not_found and not qr.queue:
+            type, subtype = None, None
+        elif qr.queue:
+            type, subtype = "queue", None
+        else:
+            type, subtype = "topic", er.type
+        if type is not None:
+            self.address_cache[name] = (type, subtype)
+        action(type, subtype)
+    sst.write_query(ExchangeQuery(name), do_result)
+    sst.write_query(QueueQuery(name), do_action)
+
+import qpid.messaging.driver
+qpid.messaging.driver.Engine.resolve_declare = resolve_declare_monkey
+qpid.messaging.driver.Engine.resolve = resolve_monkey
+
+##### End Monkey Patching #####
+
+
 DEFAULT_PORT = 5672
 
 
@@ -205,15 +272,21 @@ class Channel(base.StdChannel):
 
     def _get(self, queue):
         rx = self._qpid_session.receiver(queue)
-        return rx.fetch(timeout=0)
+        message = rx.fetch(timeout=0)
+        rx.close()
+        return message
 
     def _put(self, queue, message, exchange=None, **kwargs):
         if not exchange:
-            exchange = ''
-        address = "%s/%s" % (exchange, queue)
+            address = '%s; {assert: always, node: {type: queue}}' % queue
+            msg_subject = None
+        else:
+            address = '%s/%s; {assert: always, node: {type: topic}}' % (exchange, queue)
+            msg_subject = str(queue)
         sender = self._qpid_session.sender(address)
-        qpid_message = QpidMessage(message)
+        qpid_message = QpidMessage(content=message, subject=msg_subject)
         sender.send(qpid_message, sync=True)
+        sender.close()
 
     def _purge(self, queue):
         queue_to_purge = self._broker.getQueue(queue)
@@ -417,8 +490,10 @@ class FDShimThread(threading.Thread):
             except QpidEmpty:
                 pass
             else:
-                self._message_queue.put(response)
-        #TODO: handle _message_queue and _receiver cleanup here
+                queue = self._receiver.source
+                response_bundle = (queue, response)
+                self._message_queue.put(response_bundle)
+        self._receiver.close()
 
     def kill(self):
         self.is_killed = True
@@ -456,12 +531,12 @@ class FDShim(object):
                     self._threads[address].kill()
                     del self._threads[address]
             try:
-                child_message = self.message_queue.get(False)
+                response_bundle = self.message_queue.get(False)
             except Queue.Empty:
                 pass
             else:
                 #message from child ready
-                return child_message
+                return response_bundle
 
     def kill(self):
         self.is_killed = True
@@ -472,8 +547,8 @@ class FDShim(object):
         something is finally received, shove it into the pipe.
         """
         while not self._is_killed:
-            message = self.recv()
-            self.queue_from_fdshim.put(message)
+            response_bundle = self.recv()
+            self.queue_from_fdshim.put(response_bundle)
             os.write(self._w, 'ready')
 
 
@@ -531,11 +606,10 @@ class Transport(base.Transport):
         elapsed_time = 0
         while elapsed_time < timeout:
             try:
-                message = self.queue_from_fdshim.get(block=True, timeout=timeout)
+                queue, message = self.queue_from_fdshim.get(block=True, timeout=timeout)
             except Queue.Empty:
                 raise socket.timeout()
             else:
-                queue = message.subject
                 self._callbacks[queue](message)
             elapsed_time = clock() - start_time
         raise socket.timeout()
