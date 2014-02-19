@@ -448,3 +448,13 @@ def maybe_fileno(f):
         return fileno(f)
     except FILENO_ERRORS:
         pass
+
+
+def coro(gen):
+
+    @wraps(gen)
+    def wind_up(*args, **kwargs):
+        it = gen(*args, **kwargs)
+        next(it)
+        return it
+    return wind_up

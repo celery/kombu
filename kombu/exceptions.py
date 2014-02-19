@@ -15,7 +15,7 @@ __all__ = ['NotBoundError', 'MessageStateError', 'TimeoutError',
            'LimitExceeded', 'ConnectionLimitExceeded',
            'ChannelLimitExceeded', 'ConnectionError', 'ChannelError',
            'VersionMismatch', 'SerializerNotInstalled', 'ResourceError',
-           'SerializationError', 'EncodeError', 'DecodeError']
+           'SerializationError', 'EncodeError', 'DecodeError', 'HttpError']
 
 TimeoutError = socket.timeout
 
@@ -81,3 +81,15 @@ class InconsistencyError(ConnectionError):
     """Data or environment has been found to be inconsistent,
     depending on the cause it may be possible to retry the operation."""
     pass
+
+
+class HttpError(Exception):
+
+    def __init__(self, code, message=None, response=None):
+        self.code = code
+        self.message = message
+        self.response = response
+        super(HttpError, self).__init__(code, message, response)
+
+    def __str__(self):
+        return 'HTTP {0.code}: {0.message}'.format(self)
