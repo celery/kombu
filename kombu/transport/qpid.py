@@ -549,7 +549,7 @@ class FDShim(object):
         while not self._is_killed:
             response_bundle = self.recv()
             self.queue_from_fdshim.put(response_bundle)
-            os.write(self._w, 'ready')
+            os.write(self._w, '0')
 
 
 class Transport(base.Transport):
@@ -631,7 +631,9 @@ class Transport(base.Transport):
             channel.connection = None
 
     def on_readable(self, connection, loop):
-        try:
-            self.drain_events(connection)
-        except socket.timeout:
-            pass
+        result = os.read(self.fd_shim.r, 1)
+        if result == '0':
+            try:
+                self.drain_events(connection)
+            except socket.timeout:
+                pass
