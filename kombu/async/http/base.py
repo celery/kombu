@@ -2,13 +2,13 @@ from __future__ import absolute_import
 
 import sys
 
-from amqp import promise
+from amqp.promise import Thenable, promise, maybe_promise
 
 from kombu.exceptions import HttpError
 from kombu.five import items
 from kombu.utils import cached_property, coro
 from kombu.utils.encoding import bytes_to_str
-from kombu.utils.functional import memoize
+from kombu.utils.functional import maybe_list, memoize
 
 try:  # pragma: no cover
     from http.client import responses
@@ -84,7 +84,6 @@ class Request(object):
     """
 
     body = user_agent = network_interface = \
-        on_stream = on_timeout = on_header = on_prepare = \
         proxy_host = proxy_port = proxy_username = proxy_password = \
         ca_certs = client_key = client_cert = None
 
@@ -96,13 +95,20 @@ class Request(object):
     validate_cert = True
 
     if not PYPY:  # pragma: no cover
-        __slots__ = ('url', 'method', 'on_ready', 'headers',
+        __slots__ = ('url', 'method', 'on_ready', 'on_timeout', 'on_stream',
+                     'on_prepare', 'on_header', 'headers',
                      '__weakref__', '__dict__')
 
-    def __init__(self, url, method='GET', on_ready=None, headers=None, **kwargs):
+    def __init__(self, url, method='GET', on_ready=None, on_timeout=None,
+                 on_stream=None, on_prepare=None, on_header=None,
+                 headers=None, **kwargs):
         self.url = url
         self.method = method or self.method
-        self.on_ready = on_ready or promise()
+        self.on_ready = maybe_promise(on_ready) or promise()
+        self.on_timeout = maybe_promise(on_timeout)
+        self.on_stream = maybe_promise(on_stream)
+        self.on_prepare = maybe_promise(on_prepare)
+        self.on_header = maybe_promise(on_header)
         if kwargs:
             for k, v in items(kwargs):
                 setattr(self, k, v)
@@ -112,6 +118,7 @@ class Request(object):
 
     def then(self, callback, errback=None):
         self.on_ready.then(callback, errback)
+Thenable.register(Request)
 
 
 class Response(object):
@@ -221,9 +228,10 @@ class BaseClient(object):
         self._header_parser = header_parser()
 
     def perform(self, request, **kwargs):
-        if not isinstance(request, self.Request):
-            request = self.Request(request, **kwargs)
-        self.add_request(request)
+        for req in maybe_list(request):
+            if not isinstance(req, self.Request):
+                req = self.Request(req, **kwargs)
+            self.add_request(req)
 
     def add_request(self, request):
         raise NotImplementedError('must implement add_request')

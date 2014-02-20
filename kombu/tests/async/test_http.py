@@ -140,35 +140,43 @@ class test_BaseClient(Case):
 
 class test_Client(Case):
 
-    def xxx_get_request(self):
+    def test_get_request(self):
         hub = Hub()
         callback = Mock(name='callback')
 
         def on_ready(response):
-            print('{0.effective_url} -> {0.code}'.format(response))
-        requests = [
-            http.Request(
-                'http://localhost:8000/README.rst',
-                on_ready=promise(on_ready, callback=callback),
-            ),
-            http.Request(
-                'http://localhost:8000/AUTHORS',
-                on_ready=promise(on_ready, callback=callback),
-            ),
-            http.Request(
-                'http://localhost:8000/pavement.py',
-                on_ready=promise(on_ready, callback=callback),
-            ),
-            http.Request(
-                'http://localhost:8000/setup.py',
-                on_ready=promise(on_ready, callback=callback),
-            ),
-        ]
+            pass #print('{0.effective_url} -> {0.code}'.format(response))
+        requests = []
+        for i in range(1000):
+            requests.extend([
+                http.Request(
+                    'http://localhost:8000/README.rst',
+                    on_ready=promise(on_ready, callback=callback),
+                ),
+                http.Request(
+                    'http://localhost:8000/AUTHORS',
+                    on_ready=promise(on_ready, callback=callback),
+                ),
+                http.Request(
+                    'http://localhost:8000/pavement.py',
+                    on_ready=promise(on_ready, callback=callback),
+                ),
+                http.Request(
+                    'http://localhost:8000/setup.py',
+                    on_ready=promise(on_ready, callback=callback),
+                ),
+                http.Request(
+                    'http://localhost:8000/setup.py%s' % (i, ),
+                    on_ready=promise(on_ready, callback=callback),
+                ),
+            ])
         client = http.Client(hub)
         for request in requests:
             client.perform(request)
 
+        from kombu.five import monotonic
+        start_time = monotonic()
         print('START PERFORM')
         while callback.call_count < len(requests):
             hub.run_once()
-        print('-END PERFORM')
+        print('-END PERFORM: %r' % (monotonic() - start_time))
