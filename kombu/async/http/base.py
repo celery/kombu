@@ -83,12 +83,11 @@ class Request(object):
 
     """
 
-    url = headers = body = user_agent = network_interface = \
-        on_stream = on_timeout = on_ready = on_header = on_prepare = \
+    body = user_agent = network_interface = \
+        on_stream = on_timeout = on_header = on_prepare = \
         proxy_host = proxy_port = proxy_username = proxy_password = \
         ca_certs = client_key = client_cert = None
 
-    method = 'GET'
     connect_timeout = 30.0
     request_timeout = 30.0
     follow_redirects = True
@@ -96,18 +95,20 @@ class Request(object):
     use_gzip = True
     validate_cert = True
 
-    if PYPY:
-        __slots__ = ('__weakref__', )
+    if not PYPY:  # pragma: no cover
+        __slots__ = ('url', 'method', 'on_ready', 'headers',
+                     '__weakref__', '__dict__')
 
-    def __init__(self, url, method='GET', on_ready=None, **kwargs):
+    def __init__(self, url, method='GET', on_ready=None, headers=None, **kwargs):
         self.url = url
         self.method = method or self.method
         self.on_ready = on_ready or promise()
         if kwargs:
             for k, v in items(kwargs):
                 setattr(self, k, v)
-        if not isinstance(self.headers, Headers):
-            self.headers = Headers(self.headers or {})
+        if not isinstance(headers, Headers):
+            headers = Headers(headers or {})
+        self.headers = headers
 
     def then(self, callback, errback=None):
         self.on_ready.then(callback, errback)
@@ -123,31 +124,40 @@ class Response(object):
     :keyword effective_url: See :attr:`effective_url`.
     :keyword status: See :attr:`status`.
 
+    .. attribute:: request
+
+        :class:`Request` object used to get this response.
+
+    .. attribute:: code
+
+        HTTP response code (e.g. 200, 404, or 500).
+
+    .. attribute:: headers
+
+        HTTP headers for this response (:class:`Headers`).
+
+    .. attribute:: buffer
+
+        Socket read buffer.
+
+    .. attribute:: effective_url
+
+        The destination url for this request after following redirects.
+
+    .. attribute:: error
+
+        Error instance if the request resulted in a HTTP error code.
+
+    .. attribute:: status
+
+        Human equivalent of :attr:`code`, e.g. ``OK``, `Not found`, or
+        'Internal Server Error'.
+
     """
 
-    # :class:`Request` object used to get this response.
-    request = None
-
-    #: HTTP response code (e.g. 200, 404, or 500).
-    code = None
-
-    #: HTTP headers for this response (:class:`Headers`).
-    headers = None
-
-    #: Socket read buffer.
-    buffer = None
-
-    #: The destination url for this request after following redirects.
-    effective_url = None
-
-    #: Error instance if the request resulted in a HTTP error code.
-
-    #: Human equivalent of :attr:`code`, e.g. ``OK``, `Not found`, or
-    #: 'Internal Server Error'.
-    status = None
-
-    if PYPY:
-        __slots__ = ('__weakref__', )
+    if not PYPY:  # pragma: no cover
+        __slots__ = ('request', 'code', 'headers', 'buffer', 'effective_url',
+                     'error', 'status', '_body', '__weakref__')
 
     def __init__(self, request, code, headers=None, buffer=None,
                  effective_url=None, error=None, status=None):
@@ -156,6 +166,7 @@ class Response(object):
         self.headers = headers if headers is not None else Headers()
         self.buffer = buffer
         self.effective_url = effective_url or request.url
+        self._body = None
 
         self.status = status or responses.get(self.code, 'Unknown')
         self.error = error
@@ -168,7 +179,7 @@ class Response(object):
         if self.error:
             raise self.error
 
-    @cached_property
+    @property
     def body(self):
         """The full contents of the response body.
 
@@ -176,8 +187,10 @@ class Response(object):
         and subsequent accesses will be cached.
 
         """
-        if self.buffer is not None:
-            return self.buffer.getvalue()
+        if self._body is None:
+            if self.buffer is not None:
+                self._body = self.buffer.getvalue()
+        return self._body
 
 
 @coro
@@ -190,7 +203,8 @@ def header_parser(keyt=normalize_header):
             headers.complete = True
             continue
         elif line[0].isspace():
-            headers[headers._prev_key] = ' '.join(['', line.lstrip()])
+            pkey = headers._prev_key
+            headers[pkey] = ' '.join([headers.get(pkey) or '', line.lstrip()])
         else:
             key, value = line.split(':', 1)
             key = headers._prev_key = keyt(key)
@@ -211,6 +225,9 @@ class BaseClient(object):
             request = self.Request(request, **kwargs)
         self.add_request(request)
 
+    def add_request(self, request):
+        raise NotImplementedError('must implement add_request')
+
     def close(self):
         pass
 
@@ -219,3 +236,9 @@ class BaseClient(object):
             self._header_parser.send((bytes_to_str(line), headers))
         except StopIteration:
             self._header_parser = header_parser()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc_info):
+        self.close()
