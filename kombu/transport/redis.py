@@ -478,7 +478,7 @@ class Channel(virtual.Channel):
 
     def basic_consume(self, queue, *args, **kwargs):
         if queue in self._fanout_queues:
-            exchange = self._fanout_queues[queue]
+            exchange, _ = self._fanout_queues[queue]
             self.active_fanout_queues.add(queue)
             self._fanout_to_queue[exchange] = queue
         ret = super(Channel, self).basic_consume(queue, *args, **kwargs)
@@ -510,7 +510,8 @@ class Channel(virtual.Channel):
         else:
             self._unsubscribe_from(queue)
         try:
-            self._fanout_to_queue.pop(self._fanout_queues[queue])
+            exchange, _ = self._fanout_queues[queue]
+            self._fanout_to_queue.pop(exchange)
         except KeyError:
             pass
         ret = super(Channel, self).basic_cancel(consumer_tag)
@@ -518,8 +519,8 @@ class Channel(virtual.Channel):
         return ret
 
     def _get_subscribe_topic(self, queue):
-        return ''.join([self.keyprefix_fanout,
-                        self._fanout_queues[queue]])
+        exchange, routing_key = self._fanout_queues[queue]
+        return ''.join([self.keyprefix_fanout, exchange, '/', routing_key])
 
     def _subscribe(self):
         keys = [self._get_subscribe_topic(queue)
@@ -530,7 +531,7 @@ class Channel(virtual.Channel):
         if c.connection._sock is None:
             c.connection.connect()
         self._in_listen = True
-        c.subscribe(keys)
+        c.psubscribe(keys)
 
     def _unsubscribe_from(self, queue):
         topic = self._get_subscribe_topic(queue)
@@ -565,7 +566,7 @@ class Channel(virtual.Channel):
             raise Empty()
         if response is not None:
             payload = self._handle_message(c, response)
-            if bytes_to_str(payload['type']) == 'message':
+            if bytes_to_str(payload['type']).endswith('message'):
                 channel = bytes_to_str(payload['channel'])
                 if payload['data']:
                     if channel[0] == '/':
@@ -576,7 +577,8 @@ class Channel(virtual.Channel):
                         warn('Cannot process event on channel %r: %r',
                              channel, payload, exc_info=1)
                         raise Empty()
-                    return message, self._fanout_to_queue[channel]
+                    exchange = channel.split('/', 1)[0]
+                    return message, self._fanout_to_queue[exchange]
         raise Empty()
 
     def _brpop_start(self, timeout=1):
@@ -650,11 +652,12 @@ class Channel(virtual.Channel):
         with self.conn_or_acquire() as client:
             client.lpush(self._q_for_pri(queue, pri), dumps(message))
 
-    def _put_fanout(self, exchange, message, **kwargs):
+    def _put_fanout(self, exchange, message, routing_key, **kwargs):
         """Deliver fanout message."""
         with self.conn_or_acquire() as client:
             client.publish(
-                ''.join([self.keyprefix_fanout, exchange]), dumps(message),
+                ''.join([self.keyprefix_fanout, exchange, '/', routing_key]),
+                dumps(message),
             )
 
     def _new_queue(self, queue, auto_delete=False, **kwargs):
@@ -664,7 +667,9 @@ class Channel(virtual.Channel):
     def _queue_bind(self, exchange, routing_key, pattern, queue):
         if self.typeof(exchange).type == 'fanout':
             # Mark exchange as fanout.
-            self._fanout_queues[queue] = exchange
+            self._fanout_queues[queue] = (
+                exchange, routing_key.replace('#', '*'),
+            )
         with self.conn_or_acquire() as client:
             client.sadd(self.keyprefix_queue % (exchange, ),
                         self.sep.join([routing_key or '',

@@ -324,7 +324,7 @@ class Channel(virtual.Channel):
         m.set_body(dumps(message))
         q.write(m)
 
-    def _put_fanout(self, exchange, message, **kwargs):
+    def _put_fanout(self, exchange, message, routing_key, **kwargs):
         """Deliver fanout message to all queues in ``exchange``."""
         for route in self.table.routes_for(exchange):
             self._put(route['queue'], message, **kwargs)
