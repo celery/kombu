@@ -3,7 +3,7 @@ from __future__ import absolute_import
 import socket
 import types
 
-from anyjson import dumps
+from anyjson import dumps, loads
 from collections import defaultdict
 from itertools import count
 
@@ -221,8 +221,35 @@ class Transport(redis.Transport):
 class test_Channel(Case):
 
     def setUp(self):
-        self.connection = Connection(transport=Transport)
-        self.channel = self.connection.channel()
+        self.connection = self.create_connection()
+        self.channel = self.connection.default_channel
+
+    def create_connection(self, **kwargs):
+        return Connection(transport=Transport, **kwargs)
+
+    def _get_one_delivery_tag(self, n='test_uniq_tag'):
+        with self.create_connection() as conn1:
+            chan = conn1.default_channel
+            chan.exchange_declare(n)
+            chan.queue_declare(n)
+            chan.queue_bind(n, n, n)
+            msg = chan.prepare_message('quick brown fox')
+            chan.basic_publish(msg, n, n)
+            q, payload = chan.client.brpop([n])
+            self.assertEqual(q, n)
+            self.assertTrue(payload)
+            pymsg = chan.message_to_python(loads(payload))
+            return pymsg.delivery_tag
+
+    def test_delivery_tag_is_uuid(self):
+        seen = set()
+        for i in range(100):
+            tag = self._get_one_delivery_tag()
+            self.assertNotIn(tag, seen)
+            seen.add(tag)
+            with self.assertRaises(ValueError):
+                int(tag)
+            self.assertEqual(len(tag), 36)
 
     def test_disable_ack_emulation(self):
         conn = Connection(transport=Transport, transport_options={

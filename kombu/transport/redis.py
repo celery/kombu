@@ -473,9 +473,6 @@ class Channel(virtual.Channel):
     def _restore_at_beginning(self, message):
         return self._restore(message, leftmost=True)
 
-    def _next_delivery_tag(self):
-        return uuid()
-
     def basic_consume(self, queue, *args, **kwargs):
         if queue in self._fanout_queues:
             exchange, _ = self._fanout_queues[queue]
