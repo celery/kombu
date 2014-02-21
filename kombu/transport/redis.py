@@ -385,6 +385,11 @@ class Channel(virtual.Channel):
     #: case it changes the default prefix ('/{db}.') into to something
     #: else.  The prefix must include a leading slash and a trailing dot.
     fanout_prefix = False
+
+    #: If enabled the fanout exchange will support patterns in routing
+    #: and binding keys (like a topic exchange but using PUB/SUB).
+    #: This will be enabled by default in a future version.
+    fanout_patterns = False
     _pool = None
 
     from_transport_options = (
@@ -397,6 +402,7 @@ class Channel(virtual.Channel):
          'visibility_timeout',
          'unacked_restore_limit',
          'fanout_prefix',
+         'fanout_patterns',
          'socket_timeout',
          'max_connections',
          'priority_steps')  # <-- do not add comma here!
@@ -516,7 +522,7 @@ class Channel(virtual.Channel):
         return ret
 
     def _get_publish_topic(self, exchange, routing_key):
-        if routing_key:
+        if routing_key and self.fanout_patterns:
             return ''.join([self.keyprefix_fanout, exchange, '/', routing_key])
         return ''.join([self.keyprefix_fanout, exchange])
 
