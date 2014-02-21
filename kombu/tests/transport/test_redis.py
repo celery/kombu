@@ -422,11 +422,11 @@ class test_Channel(Case):
         self.channel.subclient = Mock()
         self.channel.active_fanout_queues.add('a')
         self.channel.active_fanout_queues.add('b')
-        self.channel._fanout_queues.update(a='a', b='b')
+        self.channel._fanout_queues.update(a=('a', ''), b=('b', ''))
 
         self.channel._subscribe()
-        self.assertTrue(self.channel.subclient.subscribe.called)
-        s_args, _ = self.channel.subclient.subscribe.call_args
+        self.assertTrue(self.channel.subclient.psubscribe.called)
+        s_args, _ = self.channel.subclient.psubscribe.call_args
         self.assertItemsEqual(s_args[0], ['a', 'b'])
 
         self.channel.subclient.connection._sock = None
@@ -497,7 +497,7 @@ class test_Channel(Case):
 
     def test_receive_different_message_Type(self):
         s = self.channel.subclient = Mock()
-        s.parse_response.return_value = ['pmessage', '/foo/', 0, 'data']
+        s.parse_response.return_value = ['message', '/foo/', 0, 'data']
 
         with self.assertRaises(redis.Empty):
             self.channel._receive()
@@ -545,7 +545,7 @@ class test_Channel(Case):
         c = self.channel.client = Mock()
 
         body = {'hello': 'world'}
-        self.channel._put_fanout('exchange', body)
+        self.channel._put_fanout('exchange', body, '')
         c.publish.assert_called_with('exchange', dumps(body))
 
     def test_put_priority(self):
@@ -595,7 +595,7 @@ class test_Channel(Case):
         self.channel.close()
 
     def test_close_deletes_autodelete_fanout_queues(self):
-        self.channel._fanout_queues = ['foo', 'bar']
+        self.channel._fanout_queues = {'foo': ('foo', ''), 'bar': ('bar', '')}
         self.channel.auto_delete_queues = ['foo']
         self.channel.queue_delete = Mock(name='queue_delete')
 

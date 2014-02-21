@@ -515,9 +515,14 @@ class Channel(virtual.Channel):
         self._update_cycle()
         return ret
 
+    def _get_publish_topic(self, exchange, routing_key):
+        if routing_key:
+            return ''.join([self.keyprefix_fanout, exchange, '/', routing_key])
+        return ''.join([self.keyprefix_fanout, exchange])
+
     def _get_subscribe_topic(self, queue):
         exchange, routing_key = self._fanout_queues[queue]
-        return ''.join([self.keyprefix_fanout, exchange, '/', routing_key])
+        return self._get_publish_topic(exchange, routing_key)
 
     def _subscribe(self):
         keys = [self._get_subscribe_topic(queue)
@@ -653,7 +658,7 @@ class Channel(virtual.Channel):
         """Deliver fanout message."""
         with self.conn_or_acquire() as client:
             client.publish(
-                ''.join([self.keyprefix_fanout, exchange, '/', routing_key]),
+                self._get_publish_topic(exchange, routing_key),
                 dumps(message),
             )
 
