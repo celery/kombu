@@ -225,6 +225,7 @@ class test_Channel(Case):
         self.channel = self.connection.default_channel
 
     def create_connection(self, **kwargs):
+        kwargs.setdefault('transport_options', {'fanout_patterns': True})
         return Connection(transport=Transport, **kwargs)
 
     def _get_one_delivery_tag(self, n='test_uniq_tag'):
