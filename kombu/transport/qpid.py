@@ -19,9 +19,8 @@ import socket
 from time import clock
 from itertools import count
 
-
 from kombu.transport import virtual
-from kombu.five import Empty
+from kombu.five import Empty, items
 from kombu.utils import kwdict
 from kombu.utils.compat import OrderedDict
 from kombu.utils.encoding import str_to_bytes, bytes_to_str
@@ -39,10 +38,12 @@ from . import base
 
 from qpid.ops import ExchangeQuery, QueueQuery
 
+
 def resolve_declare_monkey(self, sst, lnk, dir, action):
     declare = lnk.options.get("create") in ("always", dir)
     assrt = lnk.options.get("assert") in ("always", dir)
     requested_type = lnk.options.get("node", {}).get("type")
+
     def do_resolved(type, subtype):
         err = None
         if type is None:
@@ -63,7 +64,9 @@ def resolve_declare_monkey(self, sst, lnk, dir, action):
             del self._attachments[tgt]
             tgt.closed = True
             return
+
     self.resolve(sst, lnk.name, do_resolved, node_type=requested_type, force=declare)
+
 
 def resolve_monkey(self, sst, name, action, force=False, node_type=None):
     if not force and not node_type:
@@ -74,8 +77,10 @@ def resolve_monkey(self, sst, name, action, force=False, node_type=None):
         except KeyError:
             pass
     args = []
+
     def do_result(r):
         args.append(r)
+
     def do_action(r):
         do_result(r)
         er, qr = args
@@ -92,10 +97,13 @@ def resolve_monkey(self, sst, name, action, force=False, node_type=None):
         if type is not None:
             self.address_cache[name] = (type, subtype)
         action(type, subtype)
+
     sst.write_query(ExchangeQuery(name), do_result)
     sst.write_query(QueueQuery(name), do_action)
 
+
 import qpid.messaging.driver
+
 qpid.messaging.driver.Engine.resolve_declare = resolve_declare_monkey
 qpid.messaging.driver.Engine.resolve = resolve_monkey
 
@@ -104,43 +112,88 @@ qpid.messaging.driver.Engine.resolve = resolve_monkey
 
 DEFAULT_PORT = 5672
 
-
 VERSION = (1, 0, 0)
 __version__ = '.'.join(map(str, VERSION))
 
 
 class ProtonExceptionHandler(object):
+    """
+    An exception handling class designed to silence specific exceptions that Proton raises as part of normal operation.
+    Proton exceptions require string parsing, and are not machine consumable, This is designed to be used as a
+    decorator, and accepts a whitelist string as an argument.
+
+    Usage:
+    @ProtonExceptionHandler('whitelist string goes here')
+
+    :param allowed_exception_string: a string that will if present will cause an exception from the decorated
+    method to be silenced
+    :type allowed_exception_string: str
+    """
 
     def __init__(self, allowed_exception_string):
         self.allowed_exception_string = allowed_exception_string
 
     def __call__(self, original_func):
+        """
+        Method that wraps the actual function with exception silencing functionality.
+        Any exception that contains self.allowed_exception_string in the message will be silenced.
+
+        :param original_func: function that is automatically passed in when this object is used as a decorator.
+        :type original_func: function
+        """
         decorator_self = self
 
         def decorator(*args, **kwargs):
+            """
+            A runtime-built that will be returned which contains a reference to the original function, and wraps a
+            call to it in a try/except block that can silence errors.
+            """
             try:
                 original_func(*args, **kwargs)
             except Exception as error:
                 if decorator_self.allowed_exception_string not in error.message:
                     raise
+
         return decorator
 
 
 class Base64(object):
+    """
+    An encoding and decoding helper object.
+    Used by the Channel object below as a "supported codec".  Supports encoding and decoding of the message payload.
+    """
 
     def encode(self, s):
+        """
+        Encode a string using Base64.
+
+        :param s
+        :type s: str
+        """
         return bytes_to_str(base64.b64encode(str_to_bytes(s)))
 
     def decode(self, s):
+        """
+        Decode a string using Base64
+
+        :param s
+        :type s: str
+        """
         return base64.b64decode(str_to_bytes(s))
 
 
 class QoS(object):
-    """Quality of Service guarantees.
+    """
+    A helper object for message prefetch and acking purposes.
+    Allows prefetch_count to be set to the number of messages this channel should be allowed to prefetch.  Also holds
+    qpid.messaging.Message objects that have been received until they are acked asynchronously through calls to ack.
+    Messages that are received, but not acked will not be delivered by the broker to another consumer until an ack is
+    received, or the session is closed. This object is instantiated 1 for 1 with a Channel.  Uses delivery_tag
+    integers to organize messages, which are unique per Channel.
 
     Only supports `prefetch_count` at this point.
 
-    :param channel: AMQ Channel.
+    :param channel: Channel.
     :keyword prefetch_count: Initial prefetch count (defaults to 0).
 
     """
@@ -159,23 +212,22 @@ class QoS(object):
         self._qpid_session = self.channel.connection.fd_shim._qpid_session
 
     def can_consume(self):
-        """Return true if the channel can be consumed from.
+        """
+        Return true if the channel can be consumed from.
 
         Used to ensure the client adhers to currently active
         prefetch limits.
 
         """
         pcount = self.prefetch_count
-        return True
-        return not pcount or len(self._not_yet_acked) - len(self._dirty) < pcount
+        return not pcount or len(self._not_yet_acked) < pcount
 
     def can_consume_max_estimate(self):
-        """Returns the maximum number of messages allowed to be returned.
+        """
+        Returns the maximum number of messages allowed to be returned.
 
         Returns an estimated number of messages that a consumer may be allowed
-        to consume at once from the broker. This is used for services where
-        bulk 'get message' calls are preferred to many individual 'get message'
-        calls - like SQS.
+        to consume at once from the broker.
 
         returns:
             An integer > 0
@@ -183,7 +235,7 @@ class QoS(object):
         pcount = self.prefetch_count
         count = None
         if pcount:
-            count = pcount - (len(self._not_yet_acked) - len(self._dirty))
+            count = pcount - len(self._not_yet_acked)
 
         if count < 1:
             return 1
@@ -191,23 +243,69 @@ class QoS(object):
         return count
 
     def append(self, message, delivery_tag):
-        """Append message to transactional state."""
+        """
+        Append message to the list of unacked messages.
+        Saves a reference to message for acking, rejecting, or getting later. Messages are saved into an OrderedDict
+        by delivery_tag.
+
+        :param message: A received message that has not yet been acked
+        :type message: qpid.messaging.Message
+        :param delivery_tag: An integer number to refer to this message by upon receipt. Assigned in the
+        basic_publish method.
+        :type delivery_tag: int
+        """
         self._not_yet_acked[delivery_tag] = message
 
     def get(self, delivery_tag):
+        #TODO test behavior if delivery_tag is not valid
+        """
+        Get an unacked message by delivery_tag
+        :param delivery_tag: The delivery tag associated with the message to be returned.
+        :type delivery_tag: int
+        """
         return self._not_yet_acked[delivery_tag]
 
     def ack(self, delivery_tag):
-        """Acknowledge message and remove from transactional state."""
+        """
+        Acknowledge a message by delivery_tag.
+        Called asynchronously once the message has been handled and can be forgotten by the broker.
+
+        :param delivery_tag: the delivery tag associated with the message to be acknowledged.
+        :type delivery_tag: int
+        """
         message = self._not_yet_acked[delivery_tag]
         self._qpid_session.acknowledge(message=message)
+        #TODO delete the message altogether from self_not_yet_acked
 
     def reject(self, delivery_tag, requeue=False):
-        """Remove from transactional state and requeue message."""
+        """
+        Reject a message by delivery_tag
+        Explicitly notify the broker that this consumer is rejecting the message.
+
+        :param delivery_tag: the delivery tag associated with the message to be rejected.
+        :type delivery_tag: int
+        :param requeue: If true, the broker will be notified to requeue the message in addition to removing the
+        message from this object.
+        :type requeue: bool
+        """
+        #TODO this should forcibly reject the message by setting the message state to invalid
+        #TODO proper support for requeue should be implemented
         self._not_yet_acked.pop(delivery_tag)
 
 
 class Message(base.Message):
+    """
+    A Kombu Message object that encodes Kombu data in an organized way and serializes.
+    Currently identical to the Message object used by Virtual Transports, and supports basic encoding/decoding and
+    serialization.
+
+
+    :param channel: the Channel associated with the message. Reference is used to ensure
+    serialization/encoding/decoding is supported by the Channel.
+    :type channel: Channel
+    :param payload: the payload of the message
+    :type payload: ???
+    """
 
     def __init__(self, channel, payload, **kwargs):
         self._raw = payload
@@ -228,6 +326,9 @@ class Message(base.Message):
         super(Message, self).__init__(channel, **kwdict(kwargs))
 
     def serializable(self):
+        """
+        Serialize a message using encodings supported by the Channel that will send the message.
+        """
         props = self.properties
         body, _ = self.channel.encode_body(self.body,
                                            props.get('body_encoding'))
@@ -244,9 +345,66 @@ class Message(base.Message):
 
 
 class Channel(base.StdChannel):
+    """
+    A Channel is a connection with the broker that supports all configuration and interaction with the broker along
+    with message sending and receiving.
 
+    A Channel object is designed to have method-parity with a Channel as defined in AMQP 0-10 and earlier,
+    which allows for the following broker action:
+
+        - exchange declare and delete
+        - queue declare and delete
+        - queue bind and unbind operations
+        - queue length and purge operations
+        - sending/receiving messages
+        - structuring, encoding, and decoding messages
+        - supports synchronous and asynchronous reads
+        - reading state about the exchange, queues, and bindings
+
+    Channels are designed to all share a single TCP connection with a broker, but provide a level of isolation while
+    benefiting from a shared TCP connection.  In typical AMQP implementations there is a formal Connection object, but
+    this the Transport as the connection object.  The Transport instantiates a Channel so it is in a position to
+    choose itself as the Connection.
+
+    This Channel inherits directly from base.StdChannel, which makes this a
+    'native' Channel versus a 'virtual' Channel which would inherit from kombu.transports.virtual.
+
+    Messages sent using this Channel are given a delivery_tag as they are prepared for sending by basic_publish.
+    delivery_tag is unique per Channel instance using itertools.count
+
+    Each Channel object instantiates exactly one QoS object for message storage, prefetch limiting, and
+    asynchronous acking. The QoS object is lazily instantiated through an @property method qos.
+
+    Synchronous reads on a queue are done using a call to basic_get which uses _get to perform the actual read. These
+    methods read immediately and do not accept some form of timeout. Messages read synchronously are acked
+    immediately, or acking can be disable by a flag on basic_get.
+
+    Asynchronous reads on a queue are done by starting a consumer using the basic_consume method.  Each call to
+    basic_consume will cause a thread to be started where a qpid.messaging.receiver will perform a blocking read on
+    the requested queue. Typically a more efficient external I/O event notification system such as epoll or kqueue
+    would allow the kernel to monitor many file descriptors for inbound data, but the qpid.messaging.receiver library
+    does not allow an external epoll or kqueue loop to be used. Consumers are given a consumer tag, and can be
+    referenced by the consumer tag. Already started consumers can be cancelled using the basic_cancel method by their
+    consumer tag.
+
+    Threads creation and deletion of consumers is handled by a FDShim object, which itself runs in a separate thread
+    and monitors all of the consumers.  Each Transport has exactly one FDShim object.  Each consumer is a FDShimThread
+    object that is started or signalled to stop.  All signalling and message passing between threads is done using
+    thread safe Queue.Queue objects.
+
+    Asynchronous message acking is supported through the basic_ack function, and is referenced by delivery_tag.
+    The Channel object uses its QoS object to actually perform the message acking.
+
+    :param connection: A Connection object that this Channel should use. By sharing a connection all instantiated
+    Channels with the same connection can share a single TCP connection.
+    :type connection: Transport
+    """
+    #TODO better document the broker/connection/session objects after Connection refactoring
+
+    #: A class reference that will be instantiated using the qos property.
     QoS = QoS
 
+    #: A class reference that identifies the usage of Message as the message type for this Channel
     Message = Message
 
     #: Default body encoding.
@@ -271,12 +429,38 @@ class Channel(base.StdChannel):
         self.closed = False
 
     def _get(self, queue):
+        """
+        An internal method to perform an immediate and single message receive from the queue.
+        This method attempts to fetch a single message, but specifies a timeout of 0, causing an immediate return if
+        no message is available.  The receiver is closed before the method exits. The message type returned is
+        qpid.messaging.Message
+
+        :param queue: The queue name to get the message from
+        :type queue: str
+        """
         rx = self._qpid_session.receiver(queue)
         message = rx.fetch(timeout=0)
         rx.close()
         return message
 
     def _put(self, queue, message, exchange=None, **kwargs):
+        """
+        An internal method to perform a synchronous put of a single message onto a given queue and exchange.
+        If exchange is not specified, the message is sent directly to a queue.  If no queue is found an exception is
+        raised.  If an exchange is specified, then the message is delivered onto the requested exchange and the queue
+        name is used as the routing key. Message sending is synchronous using sync=True because large messages were
+        not being fully sent before the receiver closed.
+
+        This is an internal method. External calls for put functionality should be done using basic_publish
+
+        :param queue: The queue name to get the message from
+        :type queue: str
+        :param message: The message to be sent
+        :type message: ???
+        :param exchange: keyword parameter of the exchange this message should be sent on. If not exchange is specified
+        the message is sent directly to the queue name.
+        :type exchange: str
+        """
         if not exchange:
             address = '%s; {assert: always, node: {type: queue}}' % queue
             msg_subject = None
@@ -289,6 +473,17 @@ class Channel(base.StdChannel):
         sender.close()
 
     def _purge(self, queue):
+        """
+        An internal method to purge all messages from a queue.
+        Purge the queue specified by name.  The queue message depth is first checked, and then the broker is asked to
+        purge that number of messages.  The integer number of messages requested to be purged is returned.  In some
+        cases messages are asked to be purged, but are not.  These cases fail silently, which is the expected
+        behavior; a message that has been delivered to a different consumer, who has not acked the message, and still
+        has an active session with the broker, is not safe for purging and will be retained by the broker.
+
+        :param queue: the name of the queue to be purged
+        :type queue: str
+        """
         queue_to_purge = self._broker.getQueue(queue)
         message_count = queue_to_purge.values['msgDepth']
         if message_count > 0:
@@ -296,28 +491,55 @@ class Channel(base.StdChannel):
         return message_count
 
     def _size(self, queue):
+        """
+        An internal method to return the number of messages in a queue
+        return the integer number of messages currently in the queue.
+
+        :param queue: The name of the queue to be inspected for the number of messages
+        :type queue: str
+        """
         queue_to_check = self._broker.getQueue(queue)
         msgDepth = queue_to_check.values['msgDepth']
         return msgDepth
 
     def _delete(self, queue, *args, **kwargs):
+        """
+        An internal method to delete a queue and all the messages in it.
+        First, all messages are purged from a queue using a call to _purge.  Second, the broker is asked to delete the
+        queue.
+
+        :param queue: The name of the queue to be deleted, along with its messages.
+        :type queue: str
+        """
         self._purge(queue)
         self._broker.delQueue(queue)
 
     @ProtonExceptionHandler('object already exists')
     def _new_queue(self, queue, **kwargs):
+        """
+        An internal method to create a new queue by name.
+        Requests the broker create a new queue with by name.  If the queue already exists, the exception fails
+        silently due to the @ProtonExceptionHandler decorator.  External calls should be .................
+
+        :param queue: the name of the queue to be created
+        :type queue: str
+        """
         self._broker.addQueue(queue)
 
     def _has_queue(self, queue, **kwargs):
         #TODO: implement me
+        #TODO: write docstring
         raise NotImplementedError
 
     def _poll(self, cycle, timeout=None):
         #TODO: implement me
+        #TODO: write docstring
         raise NotImplementedError('_poll Not Implemented')
 
     def queue_declare(self, queue=None, passive=False, **kwargs):
-        """Declare queue."""
+        """
+        De
+        """
         queue = queue or 'amq.gen-%s' % uuid()
         if passive and not self._has_queue(queue, **kwargs):
             raise ChannelError(
@@ -328,6 +550,8 @@ class Channel(base.StdChannel):
         else:
             self._new_queue(queue, **kwargs)
         return queue_declare_ok_t(queue, self._size(queue), 0)
+
+    #TODO add queue_delete(self, queue, if_unused=False, if_empty=False, **kwargs) method
 
     @ProtonExceptionHandler('object already exists')
     def exchange_declare(self, *args, **kwargs):
@@ -340,8 +564,9 @@ class Channel(base.StdChannel):
     def exchange_delete(self, exchange_name, **kwargs):
         self._broker.delExchange(exchange_name)
 
-    def after_reply_message_received(self, *args, **kwargs):
-        raise NotImplementedError('after_reply_message_received Not Implemented')
+    def after_reply_message_received(self, queue):
+        return
+        self._delete(queue)
 
     def queue_bind(self, *args, **kwargs):
         queue = kwargs['queue']
@@ -407,6 +632,9 @@ class Channel(base.StdChannel):
                 self.basic_cancel(consumer)
             if self.connection is not None:
                 self.connection.close_channel(self)
+
+    def acquire(self, *arg, **kwargs):
+        pass
 
     @property
     def qos(self):
@@ -476,7 +704,6 @@ class Channel(base.StdChannel):
 
 
 class FDShimThread(threading.Thread):
-
     def __init__(self, receiver, message_queue, *args, **kwargs):
         self.is_killed = False
         self._receiver = receiver
@@ -503,6 +730,7 @@ class FDShim(object):
     """
     This is where the magic happens.
     """
+
     def __init__(self, connection, queue_from_fdshim):
         self.queue_from_fdshim = queue_from_fdshim
         self.connection = connection
@@ -552,18 +780,37 @@ class FDShim(object):
             os.write(self._w, '0')
 
 
-class Transport(base.Transport):
-
+class Connection(object):
     Channel = Channel
+
+    def __init__(self, fd_shim):
+        self.fd_shim = fd_shim
+
+
+class Transport(base.Transport):
+    """
+    Synchronous reads are done using a call to drain_events() which accepts a timeout is read for polling based
+    usage.  Kombu uses drain_events() regularly.
+
+    Asynchronous reads are done using a call to ..................................
+    """
+    Channel = Channel
+    Connection = Connection
 
     default_port = DEFAULT_PORT
     polling_interval = None
     supports_ev = True
     __reader = None
 
-    channel_errors = (
-        virtual.Transport.channel_errors
-    )
+    #channel_errors = (
+    #    virtual.Transport.channel_errors
+    #)
+    #import amqp
+    #connection_errors = amqp.Connection.connection_errors
+    #channel_errors = amqp.Connection.channel_errors
+    #recoverable_connection_errors = \
+    #    amqp.Connection.recoverable_connection_errors
+    #recoverable_channel_errors = amqp.Connection.recoverable_channel_errors
 
     driver_type = 'qpid'
     driver_name = 'qpid'
@@ -584,11 +831,36 @@ class Transport(base.Transport):
         loop.add_reader(self.fd_shim.r, self.on_readable, connection, loop)
 
     def establish_connection(self):
+        import pydevd
+        pydevd.settrace('localhost', port=50940, stdoutToServer=True, stderrToServer=True)
         # creates channel to verify connection.
         # this channel is then used as the next requested channel.
         # (returned by ``create_channel``).
-        self._avail_channels.append(self.create_channel(self))
-        return self     # for drain events
+        #conninfo = self.client
+        #for name, default_value in items(self.default_connection_params):
+        #    if not getattr(conninfo, name, None):
+        #        setattr(conninfo, name, default_value)
+        #if conninfo.hostname == 'localhost':
+        #    conninfo.hostname = '127.0.0.1'
+        #opts = dict({
+        #                'host': conninfo.host,
+        #                'userid': conninfo.userid,
+        #                'password': conninfo.password,
+        #                'login_method': conninfo.login_method,
+        #                'virtual_host': conninfo.virtual_host,
+        #                'insist': conninfo.insist,
+        #                'ssl': conninfo.ssl,
+        #                'connect_timeout': conninfo.connect_timeout,
+        #                'heartbeat': conninfo.heartbeat,
+        #            }, **conninfo.transport_options or {})
+        #conn = self.Connection(**opts)
+        #conn.client = self.client
+        #return conn
+        #self._avail_channels.append(self.create_channel(self))
+        conn = self.Connection(self.fd_shim)
+        conn.client = self.client
+        return conn
+        #return self     # for drain events
 
     def close_connection(self, connection):
         for l in self._avail_channels, self.channels:
@@ -637,3 +909,9 @@ class Transport(base.Transport):
                 self.drain_events(connection)
             except socket.timeout:
                 pass
+
+    @property
+    def default_connection_params(self):
+        return {'userid': 'guest', 'password': 'guest',
+                'port': self.default_port, 'virtual_host': '',
+                'hostname': 'localhost', 'login_method': 'AMQPLAIN'}
