@@ -634,7 +634,7 @@ class Channel(base.StdChannel):
                 self.connection.close_channel(self)
 
     def acquire(self, *arg, **kwargs):
-        pass
+        raise NotImplementedError('acquire Not Implemented')
 
     @property
     def qos(self):
@@ -754,6 +754,7 @@ class FDShim(object):
                         receiver = self._qpid_session.receiver(address)
                         my_thread = FDShimThread(receiver, self.message_queue)
                         self._threads[address] = my_thread
+                        my_thread.daemon = True
                         my_thread.start()
                 elif action is 'kill':
                     self._threads[address].kill()
@@ -785,6 +786,16 @@ class Connection(object):
 
     def __init__(self, fd_shim):
         self.fd_shim = fd_shim
+        self.channels = []
+        self._callbacks = {}
+
+    def close_channel(self, channel):
+        try:
+            self.channels.remove(channel)
+        except ValueError:
+            pass
+        finally:
+            channel.connection = None
 
 
 class Transport(base.Transport):
@@ -794,7 +805,6 @@ class Transport(base.Transport):
 
     Asynchronous reads are done using a call to ..................................
     """
-    Channel = Channel
     Connection = Connection
 
     default_port = DEFAULT_PORT
@@ -817,10 +827,6 @@ class Transport(base.Transport):
 
     def __init__(self, client, **kwargs):
         self.client = client
-        self.channels = []
-        self._avail_channels = []
-        self._callbacks = {}
-        self.fd_shim = None
         self.queue_from_fdshim = Queue.Queue()
         self.fd_shim = FDShim(self, self.queue_from_fdshim)
         fdshim_thread = threading.Thread(target=self.fd_shim.listen)
@@ -831,8 +837,6 @@ class Transport(base.Transport):
         loop.add_reader(self.fd_shim.r, self.on_readable, connection, loop)
 
     def establish_connection(self):
-        import pydevd
-        pydevd.settrace('localhost', port=50940, stdoutToServer=True, stderrToServer=True)
         # creates channel to verify connection.
         # this channel is then used as the next requested channel.
         # (returned by ``create_channel``).
@@ -856,14 +860,13 @@ class Transport(base.Transport):
         #conn = self.Connection(**opts)
         #conn.client = self.client
         #return conn
-        #self._avail_channels.append(self.create_channel(self))
         conn = self.Connection(self.fd_shim)
         conn.client = self.client
         return conn
         #return self     # for drain events
 
     def close_connection(self, connection):
-        for l in self._avail_channels, self.channels:
+        for l in connection.channels:
             while l:
                 try:
                     channel = l.pop()
@@ -882,25 +885,14 @@ class Transport(base.Transport):
             except Queue.Empty:
                 raise socket.timeout()
             else:
-                self._callbacks[queue](message)
+                connection._callbacks[queue](message)
             elapsed_time = clock() - start_time
         raise socket.timeout()
 
     def create_channel(self, connection):
-        try:
-            return self._avail_channels.pop()
-        except IndexError:
-            channel = self.Channel(connection)
-            self.channels.append(channel)
-            return channel
-
-    def close_channel(self, channel):
-        try:
-            self.channels.remove(channel)
-        except ValueError:
-            pass
-        finally:
-            channel.connection = None
+        channel = connection.Channel(connection)
+        connection.channels.append(channel)
+        return channel
 
     def on_readable(self, connection, loop):
         result = os.read(self.fd_shim.r, 1)
