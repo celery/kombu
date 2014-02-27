@@ -36,8 +36,32 @@ from . import base
 
 ##### Start Monkey Patching #####
 
-from qpid.ops import ExchangeQuery, QueueQuery
+from qpid.selector import Selector
+import atexit
 
+def default_monkey():
+    Selector.lock.acquire()
+    try:
+        if Selector.DEFAULT is None:
+            sel = Selector()
+            atexit.register(sel.stop)
+            sel.start()
+            Selector.DEFAULT = sel
+            Selector._current_pid = os.getpid()
+        elif Selector._current_pid != os.getpid():
+            sel = Selector()
+            atexit.register(sel.stop)
+            sel.start()
+            Selector.DEFAULT = sel
+            Selector._current_pid = os.getpid()
+        return Selector.DEFAULT
+    finally:
+        Selector.lock.release()
+
+import qpid.selector
+qpid.selector.Selector.default = staticmethod(default_monkey)
+
+from qpid.ops import ExchangeQuery, QueueQuery
 
 def resolve_declare_monkey(self, sst, lnk, dir, action):
     declare = lnk.options.get("create") in ("always", dir)
