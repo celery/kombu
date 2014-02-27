@@ -25,10 +25,9 @@ from . import virtual
 DEFAULT_HOST = '127.0.0.1'
 DEFAULT_PORT = 27017
 
-__author__ = """\
-Flavio [FlaPer87] Percoco Premoli <flaper87@flaper87.org>;\
-Scott Lyons <scottalyons@gmail.com>;\
-"""
+DEFAULT_MESSAGES_COLLECTION = 'messages'
+DEFAULT_ROUTING_COLLECTION = 'messages.routing'
+DEFAULT_BROADCAST_COLLECTION = 'messages.broadcast'
 
 
 class Channel(virtual.Channel):
@@ -37,8 +36,7 @@ class Channel(virtual.Channel):
     _fanout_queues = {}
 
     def __init__(self, *vargs, **kwargs):
-        super_ = super(Channel, self)
-        super_.__init__(*vargs, **kwargs)
+        super(Channel, self).__init__(*vargs, **kwargs)
 
         self._queue_cursors = {}
         self._queue_readcounts = {}
@@ -47,48 +45,44 @@ class Channel(virtual.Channel):
         pass
 
     def _get(self, queue):
-        try:
-            if queue in self._fanout_queues:
+        if queue in self._fanout_queues:
+            try:
                 msg = next(self._queue_cursors[queue])
-                self._queue_readcounts[queue] += 1
-                return loads(bytes_to_str(msg['payload']))
+            except StopIteration:
+                msg = None
             else:
-                msg = self.client.command(
-                    'findandmodify', 'messages',
-                    query={'queue': queue},
-                    sort={'_id': pymongo.ASCENDING}, remove=True,
-                )
-        except errors.OperationFailure as exc:
-            if 'No matching object found' in exc.args[0]:
-                raise Empty()
-            raise
-        except StopIteration:
+                self._queue_readcounts[queue] += 1
+        else:
+            msg = self.get_messages().find_and_modify(query={'queue': queue},
+                                                      sort={'_id': pymongo.ASCENDING},
+                                                      remove=True)
+
+        if msg is None:
             raise Empty()
 
-        # as of mongo 2.0 empty results won't raise an error
-        if msg['value'] is None:
-            raise Empty()
-        return loads(bytes_to_str(msg['value']['payload']))
+        return loads(bytes_to_str(msg['payload']))
 
     def _size(self, queue):
         if queue in self._fanout_queues:
             return (self._queue_cursors[queue].count() -
                     self._queue_readcounts[queue])
 
-        return self.client.messages.find({'queue': queue}).count()
+        return self.get_messages().find({'queue': queue}).count()
 
     def _put(self, queue, message, **kwargs):
-        self.client.messages.insert({'payload': dumps(message),
-                                     'queue': queue})
+        self.get_messages().insert({'payload': dumps(message),
+                                    'queue': queue})
 
     def _purge(self, queue):
         size = self._size(queue)
+
         if queue in self._fanout_queues:
             cursor = self._queue_cursors[queue]
             cursor.rewind()
             self._queue_cursors[queue] = cursor.skip(cursor.count())
         else:
-            self.client.messages.remove({'queue': queue})
+            self.get_messages().remove({'queue': queue})
+
         return size
 
     def _parse_uri(self, scheme='mongodb://'):
@@ -141,7 +135,7 @@ class Channel(virtual.Channel):
             connectTimeoutMS=options['connectTimeoutMS'],
             use_greenlets=_detect_environment() != 'default',
         )
-        database = getattr(mongoconn, dbname)
+        database = mongoconn[dbname]
 
         version = mongoconn.server_info()['version']
         if tuple(map(int, version.split('.')[:2])) < (1, 3):
@@ -149,27 +143,30 @@ class Channel(virtual.Channel):
                 'Kombu requires MongoDB version 1.3+ (server is {0})'.format(
                     version))
 
-        self.db = database
-        col = database.messages
-        col.ensure_index([('queue', 1), ('_id', 1)], background=True)
+        self._create_broadcast(database, options)
 
-        if 'messages.broadcast' not in database.collection_names():
-            capsize = options.get('capped_queue_size') or 100000
-            database.create_collection('messages.broadcast',
-                                       size=capsize, capped=True)
+        self._client = database
 
-        self.bcast = getattr(database, 'messages.broadcast')
-        self.bcast.ensure_index([('queue', 1)])
+    def _create_broadcast(self, database, options):
+        '''Create capped collection for broadcast messages.'''
+        if DEFAULT_BROADCAST_COLLECTION in database.collection_names():
+            return
 
-        self.routing = getattr(database, 'messages.routing')
-        self.routing.ensure_index([('queue', 1), ('exchange', 1)])
-        return database
+        capsize = options.get('capped_queue_size') or 100000
+        database.create_collection(DEFAULT_BROADCAST_COLLECTION,
+                                   size=capsize, capped=True)
+
+    def _ensure_indexes(self):
+        '''Ensure indexes on collections.'''
+        self.get_messages().ensure_index([('queue', 1), ('_id', 1)], background=True)
+        self.get_broadcast().ensure_index([('queue', 1)])
+        self.get_routing().ensure_index([('queue', 1), ('exchange', 1)])
 
     #TODO: Store a more complete exchange metatable in the routing collection
     def get_table(self, exchange):
         """Get table of bindings for ``exchange``."""
         localRoutes = frozenset(self.state.exchanges[exchange]['table'])
-        brokerRoutes = self.client.messages.routing.find(
+        brokerRoutes = self.get_messages().routing.find(
             {'exchange': exchange}
         )
 
@@ -179,13 +176,13 @@ class Channel(virtual.Channel):
 
     def _put_fanout(self, exchange, message, routing_key, **kwargs):
         """Deliver fanout message."""
-        self.client.messages.broadcast.insert({'payload': dumps(message),
-                                               'queue': exchange})
+        self.get_broadcast().insert({'payload': dumps(message),
+                                     'queue': exchange})
 
     def _queue_bind(self, exchange, routing_key, pattern, queue):
         if self.typeof(exchange).type == 'fanout':
-            cursor = self.bcast.find(query={'queue': exchange},
-                                     sort=[('$natural', 1)], tailable=True)
+            cursor = self.get_broadcast().find(query={'queue': exchange},
+                                               sort=[('$natural', 1)], tailable=True)
             # Fast forward the cursor past old events
             self._queue_cursors[queue] = cursor.skip(cursor.count())
             self._queue_readcounts[queue] = cursor.count()
@@ -195,11 +192,13 @@ class Channel(virtual.Channel):
                 'queue': queue,
                 'routing_key': routing_key,
                 'pattern': pattern}
-        self.client.messages.routing.update(meta, meta, upsert=True)
+        self.get_routing().update(meta, meta, upsert=True)
 
     def queue_delete(self, queue, **kwargs):
-        self.routing.remove({'queue': queue})
+        self.get_routing().remove({'queue': queue})
+
         super(Channel, self).queue_delete(queue, **kwargs)
+
         if queue in self._fanout_queues:
             self._queue_cursors[queue].close()
             self._queue_cursors.pop(queue, None)
@@ -208,8 +207,19 @@ class Channel(virtual.Channel):
     @property
     def client(self):
         if self._client is None:
-            self._client = self._open()
+            self._open()
+            self._ensure_indexes()
+
         return self._client
+
+    def get_messages(self):
+        return self.client[DEFAULT_MESSAGES_COLLECTION]
+
+    def get_routing(self):
+        return self.client[DEFAULT_ROUTING_COLLECTION]
+
+    def get_broadcast(self):
+        return self.client[DEFAULT_BROADCAST_COLLECTION]
 
 
 class Transport(virtual.Transport):
