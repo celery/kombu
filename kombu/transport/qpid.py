@@ -816,13 +816,15 @@ class FDShim(object):
 class Connection(object):
     Channel = Channel
 
-    def __init__(self, fd_shim, **opts):
+    def __init__(self, fd_shim, **connection_options):
+        #TODO remove fd_shim from Connection, I don't think it belongs here.  Channel should go through Transport to get fd_shim
         self.fd_shim = fd_shim
+        self.connection_options = connection_options
         self.channels = []
         self._callbacks = {}
 
     def create_qpid_connection(self):
-        return QpidConnection.establish('localhost')
+        return QpidConnection.establish(**self.connection_options)
 
     def close_channel(self, channel):
         try:
