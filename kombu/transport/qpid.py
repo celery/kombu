@@ -625,6 +625,11 @@ class Channel(base.StdChannel):
         """Acknowledge message."""
         self.qos.ack(delivery_tag)
 
+    def basic_reject(self, delivery_tag, requeue=True):
+        #TODO: verify that requeue=True is the right signature
+        #TODO: implement me
+        raise NotImplementedError('basic_reject is not implemented')
+
     def basic_consume(self, queue, no_ack, callback, consumer_tag, **kwargs):
         self._tag_to_queue[consumer_tag] = queue
 
