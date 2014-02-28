@@ -440,7 +440,7 @@ class Queue(MaybeChannelBound):
     ContentDisallowed = ContentDisallowed
 
     name = ''
-    exchange = Exchange('')
+    exchange = None
     routing_key = ''
 
     durable = True
@@ -467,10 +467,13 @@ class Queue(MaybeChannelBound):
                  **kwargs):
         super(Queue, self).__init__(**kwargs)
         self.name = name or self.name
-        self.exchange = exchange or self.exchange
+        self.exchange = exchange
         self.routing_key = routing_key or self.routing_key
         self.bindings = set(bindings or [])
         self.on_declared = on_declared
+
+        if self.exchange is None:
+            self.exchange = Exchange('')
 
         # allows Queue('name', [binding(...), binding(...), ...])
         if isinstance(exchange, (list, tuple, set)):
