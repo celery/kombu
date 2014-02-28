@@ -114,7 +114,7 @@ class Producer(object):
                 mandatory=False, immediate=False, priority=0,
                 content_type=None, content_encoding=None, serializer=None,
                 headers=None, compression=None, exchange=None, retry=False,
-                retry_policy=None, declare=[], **properties):
+                retry_policy=None, declare=None, **properties):
         """Publish message to the specified exchange.
 
         :param body: Message body.
@@ -176,8 +176,8 @@ class Producer(object):
             content_encoding, headers, properties,
         )
         if declare:
-            maybe_declare = self.maybe_declare
-            [maybe_declare(entity) for entity in declare]
+            for entity in declare:
+                self.maybe_declare(entity)
         return channel.basic_publish(
             message,
             exchange=exchange, routing_key=routing_key,
