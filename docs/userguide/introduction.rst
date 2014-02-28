@@ -24,8 +24,8 @@ be news to anyone, but why would applications?
 
 One example is banks.
 When you transfer money from one bank to another, your bank sends
-a message to the banks messaging central.  The messaging central
-then record and coordinate the transaction.  Banks
+a message to a central clearinghouse.  The clearinghouse
+then records and coordinates the transaction.  Banks
 need to send and receive millions and millions of
 messages every day, and losing a single message would mean either losing
 your money (bad) or the banks money (very bad)

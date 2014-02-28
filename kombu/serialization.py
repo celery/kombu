@@ -18,14 +18,18 @@ except ImportError:  # pragma: no cover
     cpickle = None  # noqa
 
 from collections import namedtuple
+from contextlib import contextmanager
 
-from .exceptions import SerializerNotInstalled, ContentDisallowed
-from .five import BytesIO, text_t
+from .exceptions import (
+    ContentDisallowed, DecodeError, EncodeError, SerializerNotInstalled
+)
+from .five import BytesIO, reraise, text_t
 from .utils import entrypoints
 from .utils.encoding import str_to_bytes, bytes_t
 
 __all__ = ['pickle', 'loads', 'dumps', 'register', 'unregister']
 SKIP_DECODE = frozenset(['binary', 'ascii-8bit'])
+TRUSTED_CONTENT = frozenset(['application/data', 'application/text'])
 
 if sys.platform.startswith('java'):  # pragma: no cover
 
@@ -42,6 +46,17 @@ pickle_load = pickle.load
 pickle_protocol = int(os.environ.get('PICKLE_PROTOCOL', 2))
 
 codec = namedtuple('codec', ('content_type', 'content_encoding', 'encoder'))
+
+
+@contextmanager
+def _reraise_errors(wrapper,
+                    include=(Exception, ), exclude=(SerializerNotInstalled, )):
+    try:
+        yield
+    except exclude:
+        raise
+    except include as exc:
+        reraise(wrapper, wrapper(exc), sys.exc_info()[2])
 
 
 def pickle_loads(s, load=pickle_load):
@@ -133,7 +148,8 @@ class SerializerRegistry(object):
 
         # For Unicode objects, force it into a string
         if not serializer and isinstance(data, text_t):
-            payload = data.encode('utf-8')
+            with _reraise_errors(EncodeError, exclude=()):
+                payload = data.encode('utf-8')
             return 'text/plain', 'utf-8', payload
 
         if serializer:
@@ -144,28 +160,32 @@ class SerializerRegistry(object):
             content_type = self._default_content_type
             content_encoding = self._default_content_encoding
 
-        payload = encoder(data)
+        with _reraise_errors(EncodeError):
+            payload = encoder(data)
         return content_type, content_encoding, payload
     encode = dumps  # XXX compat
 
     def loads(self, data, content_type, content_encoding,
-              accept=None, force=False):
+              accept=None, force=False, _trusted_content=TRUSTED_CONTENT):
+        content_type = content_type or 'application/data'
         if accept is not None:
-            if content_type not in accept:
+            if content_type not in _trusted_content \
+                    and content_type not in accept:
                 raise self._for_untrusted_content(content_type, 'untrusted')
         else:
             if content_type in self._disabled_content_types and not force:
                 raise self._for_untrusted_content(content_type, 'disabled')
-        content_type = content_type or 'application/data'
         content_encoding = (content_encoding or 'utf-8').lower()
 
         if data:
             decode = self._decoders.get(content_type)
             if decode:
-                return decode(data)
+                with _reraise_errors(DecodeError):
+                    return decode(data)
             if content_encoding not in SKIP_DECODE and \
                     not isinstance(data, text_t):
-                return _decode(data, content_encoding)
+                with _reraise_errors(DecodeError):
+                    return _decode(data, content_encoding)
         return data
     decode = loads  # XXX compat
 
@@ -278,7 +298,8 @@ def raw_encode(data):
     payload = data
     if isinstance(payload, text_t):
         content_encoding = 'utf-8'
-        payload = payload.encode(content_encoding)
+        with _reraise_errors(EncodeError, exclude=()):
+            payload = payload.encode(content_encoding)
     else:
         content_encoding = 'binary'
     return content_type, content_encoding, payload

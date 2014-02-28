@@ -38,9 +38,8 @@ Draining events from several consumers:
     from kombu.utils import nested
 
     with connection.channel(), connection.channel() as (channel1, channel2):
-        consumers = [Consumer(channel1, queues1, accept=['json']),
-                     Consumer(channel2, queues2, accept=['json'])]
-        with nested(\*consumers):
+        with nested(Consumer(channel1, queues1, accept=['json']),
+                    Consumer(channel2, queues2, accept=['json'])):
             connection.drain_events(timeout=1)
 
 
