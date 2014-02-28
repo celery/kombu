@@ -441,11 +441,12 @@ class Channel(base.StdChannel):
     #: counter used to generate delivery tags for this channel.
     _delivery_tags = count(1)
 
-    def __init__(self, connection):
+    def __init__(self, connection, transport):
         self.connection = connection
+        self.transport = transport
         self._tag_to_queue = {}
-        qpid_qmf_connection = QpidConnection.establish('localhost')
-        qpid_publish_connection = QpidConnection.establish('localhost')
+        qpid_qmf_connection = connection.get_qpid_connection()
+        qpid_publish_connection = connection.get_qpid_connection()
         self._qpid_session = qpid_publish_connection.session()
         self._broker = BrokerAgent(qpid_qmf_connection)
         self._qos = None
@@ -637,14 +638,14 @@ class Channel(base.StdChannel):
 
         self.connection._callbacks[queue] = _callback
         self._consumers.add(consumer_tag)
-        self.connection.fd_shim.signaling_queue.put(['sub', queue])
+        self.transport.fd_shim.signaling_queue.put(['sub', queue])
 
     def basic_cancel(self, consumer_tag):
         """Cancel consumer by consumer tag."""
         if consumer_tag in self._consumers:
             self._consumers.remove(consumer_tag)
             queue = self._tag_to_queue.pop(consumer_tag, None)
-            self.connection.fd_shim.signaling_queue.put(['kill', queue])
+            self.transport.fd_shim.signaling_queue.put(['kill', queue])
             self.connection._callbacks.pop(queue, None)
 
     def close(self):
@@ -808,10 +809,18 @@ class FDShim(object):
 class Connection(object):
     Channel = Channel
 
-    def __init__(self, fd_shim):
+    def __init__(self, fd_shim, **opts):
         self.fd_shim = fd_shim
+        self._conn = self.make_qpid_connection(**opts)
         self.channels = []
         self._callbacks = {}
+
+    def make_qpid_connection(self, **opts):
+        return QpidConnection.establish('localhost')
+
+    def get_qpid_connection(self):
+        return self.make_qpid_connection()
+
 
     def close_channel(self, channel):
         try:
@@ -861,33 +870,27 @@ class Transport(base.Transport):
         loop.add_reader(self.fd_shim.r, self.on_readable, connection, loop)
 
     def establish_connection(self):
-        # creates channel to verify connection.
-        # this channel is then used as the next requested channel.
-        # (returned by ``create_channel``).
-        #conninfo = self.client
-        #for name, default_value in items(self.default_connection_params):
-        #    if not getattr(conninfo, name, None):
-        #        setattr(conninfo, name, default_value)
-        #if conninfo.hostname == 'localhost':
-        #    conninfo.hostname = '127.0.0.1'
-        #opts = dict({
-        #                'host': conninfo.host,
-        #                'userid': conninfo.userid,
-        #                'password': conninfo.password,
-        #                'login_method': conninfo.login_method,
-        #                'virtual_host': conninfo.virtual_host,
-        #                'insist': conninfo.insist,
-        #                'ssl': conninfo.ssl,
-        #                'connect_timeout': conninfo.connect_timeout,
-        #                'heartbeat': conninfo.heartbeat,
-        #            }, **conninfo.transport_options or {})
-        #conn = self.Connection(**opts)
-        #conn.client = self.client
-        #return conn
-        conn = self.Connection(self.fd_shim)
+        conninfo = self.client
+        for name, default_value in items(self.default_connection_params):
+            if not getattr(conninfo, name, None):
+                setattr(conninfo, name, default_value)
+        if conninfo.hostname == 'localhost':
+            conninfo.hostname = '127.0.0.1'
+        if conninfo.ssl:
+            conninfo.qpid_transport = 'ssl'
+        else:
+            conninfo.qpid_transport = 'tcp'
+        opts = dict({
+                        'host': conninfo.hostname,
+                        'port': conninfo.port,
+                        'username': conninfo.userid,
+                        'password': conninfo.password,
+                        'transport': conninfo.qpid_transport,
+                        'timeout': conninfo.connect_timeout,
+                    }, **conninfo.transport_options or {})
+        conn = self.Connection(self.fd_shim, **opts)
         conn.client = self.client
         return conn
-        #return self     # for drain events
 
     def close_connection(self, connection):
         for l in connection.channels:
@@ -914,7 +917,7 @@ class Transport(base.Transport):
         raise socket.timeout()
 
     def create_channel(self, connection):
-        channel = connection.Channel(connection)
+        channel = connection.Channel(connection, self)
         connection.channels.append(channel)
         return channel
 
