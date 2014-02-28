@@ -638,14 +638,14 @@ class Channel(base.StdChannel):
 
         self.connection._callbacks[queue] = _callback
         self._consumers.add(consumer_tag)
-        self.transport.fd_shim.signaling_queue.put(['sub', queue])
+        self.transport.fd_shim.signaling_queue.put(['sub', queue, self.connection.get_qpid_connection])
 
     def basic_cancel(self, consumer_tag):
         """Cancel consumer by consumer tag."""
         if consumer_tag in self._consumers:
             self._consumers.remove(consumer_tag)
             queue = self._tag_to_queue.pop(consumer_tag, None)
-            self.transport.fd_shim.signaling_queue.put(['kill', queue])
+            self.transport.fd_shim.signaling_queue.put(['kill', queue, None])
             self.connection._callbacks.pop(queue, None)
 
     def close(self):
@@ -760,7 +760,7 @@ class FDShim(object):
         self.queue_from_fdshim = queue_from_fdshim
         self.connection = connection
         self.r, self._w = os.pipe()
-        self._qpid_session = QpidConnection.establish('localhost').session()
+        self._qpid_session = None
         self.signaling_queue = Queue.Queue()
         self.message_queue = Queue.Queue()
         self._threads = {}
@@ -769,13 +769,15 @@ class FDShim(object):
     def recv(self):
         while True:
             try:
-                action, address = self.signaling_queue.get(False)
+                action, address, get_qpid_connection = self.signaling_queue.get(False)
             except Queue.Empty:
                 pass
             else:
                 #signaling_queue event ready
                 if action is 'sub':
                     if address not in self._threads:
+                        if self._qpid_session is None:
+                            self._qpid_session = get_qpid_connection().session()
                         receiver = self._qpid_session.receiver(address)
                         my_thread = FDShimThread(receiver, self.message_queue)
                         self._threads[address] = my_thread
