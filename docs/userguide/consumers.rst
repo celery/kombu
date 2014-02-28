@@ -20,7 +20,7 @@ drain events from all channels on that connection.
     to allow deserialization of other formats you have to specify them
     in the ``accept`` argument::
 
-        Consumer(conn, accept=['json', 'pickle', 'msgpack', 'yaml'])
+        Consumer(conn, queues, accept=['json', 'pickle', 'msgpack', 'yaml'])
 
 
 Draining events from a single consumer:
