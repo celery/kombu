@@ -445,8 +445,8 @@ class Channel(base.StdChannel):
         self.connection = connection
         self.transport = transport
         self._tag_to_queue = {}
-        qpid_qmf_connection = connection.get_qpid_connection()
-        qpid_publish_connection = connection.get_qpid_connection()
+        qpid_qmf_connection = connection.create_qpid_connection()
+        qpid_publish_connection = connection.create_qpid_connection()
         self._qpid_session = qpid_publish_connection.session()
         self._broker = BrokerAgent(qpid_qmf_connection)
         self._qos = None
@@ -638,7 +638,7 @@ class Channel(base.StdChannel):
 
         self.connection._callbacks[queue] = _callback
         self._consumers.add(consumer_tag)
-        self.transport.fd_shim.signaling_queue.put(['sub', queue, self.connection.get_qpid_connection])
+        self.transport.fd_shim.signaling_queue.put(['sub', queue, self.connection.create_qpid_connection])
 
     def basic_cancel(self, consumer_tag):
         """Cancel consumer by consumer tag."""
@@ -769,7 +769,7 @@ class FDShim(object):
     def recv(self):
         while True:
             try:
-                action, address, get_qpid_connection = self.signaling_queue.get(False)
+                action, address, create_qpid_connection = self.signaling_queue.get(False)
             except Queue.Empty:
                 pass
             else:
@@ -777,7 +777,7 @@ class FDShim(object):
                 if action is 'sub':
                     if address not in self._threads:
                         if self._qpid_session is None:
-                            self._qpid_session = get_qpid_connection().session()
+                            self._qpid_session = create_qpid_connection().session()
                         receiver = self._qpid_session.receiver(address)
                         my_thread = FDShimThread(receiver, self.message_queue)
                         self._threads[address] = my_thread
@@ -813,16 +813,11 @@ class Connection(object):
 
     def __init__(self, fd_shim, **opts):
         self.fd_shim = fd_shim
-        self._conn = self.make_qpid_connection(**opts)
         self.channels = []
         self._callbacks = {}
 
-    def make_qpid_connection(self, **opts):
+    def create_qpid_connection(self):
         return QpidConnection.establish('localhost')
-
-    def get_qpid_connection(self):
-        return self.make_qpid_connection()
-
 
     def close_channel(self, channel):
         try:
