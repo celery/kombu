@@ -31,6 +31,8 @@ DEFAULT_BROADCAST_COLLECTION = 'messages.broadcast'
 
 
 class BroadcastCursor(object):
+    '''Cursor for broadcast queues.'''
+
     def __init__(self, cursor):
         # Fast forward the cursor past old events
         self._cursor = cursor.skip(cursor.count())
@@ -246,6 +248,9 @@ class Channel(virtual.Channel):
         try:
             return self._broadcast_cursors[queue]
         except KeyError:
+            # Cursor may be absent when Channel created more than one time.
+            # _fanout_queues is the class-level mutable attrbite so it is shared over all
+            # Channel instances.
             return self.create_broadcast_cursor(self._fanout_queues[queue], None, None, queue)
 
     def create_broadcast_cursor(self, exchange, routing_key, pattern, queue):
