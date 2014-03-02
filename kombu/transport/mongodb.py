@@ -30,6 +30,32 @@ DEFAULT_ROUTING_COLLECTION = 'messages.routing'
 DEFAULT_BROADCAST_COLLECTION = 'messages.broadcast'
 
 
+class BroadcastCursor(object):
+    def __init__(self, cursor):
+        # Fast forward the cursor past old events
+        self._cursor = cursor.skip(cursor.count())
+        self._offset = cursor.count()
+
+    def get_size(self):
+        return self._cursor.count() - self._offset
+
+    def close(self):
+        self._cursor.close()
+
+    def purge(self):
+        self._cursor.rewind()
+        self._cursor = self._cursor.skip(self._cursor.count())
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        msg = next(self._cursor)
+        self._offset += 1
+
+        return msg
+
+
 class Channel(virtual.Channel):
     _client = None
     supports_fanout = True
@@ -38,8 +64,7 @@ class Channel(virtual.Channel):
     def __init__(self, *vargs, **kwargs):
         super(Channel, self).__init__(*vargs, **kwargs)
 
-        self._queue_cursors = {}
-        self._queue_readcounts = {}
+        self._broadcast_cursors = {}
 
     def _new_queue(self, queue, **kwargs):
         pass
@@ -47,11 +72,9 @@ class Channel(virtual.Channel):
     def _get(self, queue):
         if queue in self._fanout_queues:
             try:
-                msg = next(self._queue_cursors[queue])
+                msg = next(self.get_broadcast_cursor(queue))
             except StopIteration:
                 msg = None
-            else:
-                self._queue_readcounts[queue] += 1
         else:
             msg = self.get_messages().find_and_modify(query={'queue': queue},
                                                       sort={'_id': pymongo.ASCENDING},
@@ -64,8 +87,7 @@ class Channel(virtual.Channel):
 
     def _size(self, queue):
         if queue in self._fanout_queues:
-            return (self._queue_cursors[queue].count() -
-                    self._queue_readcounts[queue])
+            return self.get_broadcast_cursor(queue).get_size()
 
         return self.get_messages().find({'queue': queue}).count()
 
@@ -77,9 +99,7 @@ class Channel(virtual.Channel):
         size = self._size(queue)
 
         if queue in self._fanout_queues:
-            cursor = self._queue_cursors[queue]
-            cursor.rewind()
-            self._queue_cursors[queue] = cursor.skip(cursor.count())
+            self.get_broadcaset_cursor(queue).purge()
         else:
             self.get_messages().remove({'queue': queue})
 
@@ -181,11 +201,7 @@ class Channel(virtual.Channel):
 
     def _queue_bind(self, exchange, routing_key, pattern, queue):
         if self.typeof(exchange).type == 'fanout':
-            cursor = self.get_broadcast().find(query={'queue': exchange},
-                                               sort=[('$natural', 1)], tailable=True)
-            # Fast forward the cursor past old events
-            self._queue_cursors[queue] = cursor.skip(cursor.count())
-            self._queue_readcounts[queue] = cursor.count()
+            self.create_broadcast_cursor(exchange, routing_key, pattern, queue)
             self._fanout_queues[queue] = exchange
 
         meta = {'exchange': exchange,
@@ -200,9 +216,14 @@ class Channel(virtual.Channel):
         super(Channel, self).queue_delete(queue, **kwargs)
 
         if queue in self._fanout_queues:
-            self._queue_cursors[queue].close()
-            self._queue_cursors.pop(queue, None)
-            self._fanout_queues.pop(queue, None)
+            try:
+                cursor = self._broadcast_cursors.pop(queue)
+            except KeyError:
+                pass
+            else:
+                cursor.close()
+
+                self._fanout_queues.pop(queue)
 
     @property
     def client(self):
@@ -220,6 +241,22 @@ class Channel(virtual.Channel):
 
     def get_broadcast(self):
         return self.client[DEFAULT_BROADCAST_COLLECTION]
+
+    def get_broadcast_cursor(self, queue):
+        try:
+            return self._broadcast_cursors[queue]
+        except KeyError:
+            return self.create_broadcast_cursor(self._fanout_queues[queue], None, None, queue)
+
+    def create_broadcast_cursor(self, exchange, routing_key, pattern, queue):
+        cursor = self.get_broadcast().find(query={'queue': exchange},
+                                           sort=[('$natural', 1)], tailable=True)
+
+        broadcast_cursor = BroadcastCursor(cursor)
+
+        self._broadcast_cursors[queue] = broadcast_cursor
+
+        return broadcast_cursor
 
 
 class Transport(virtual.Transport):
