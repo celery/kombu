@@ -324,7 +324,7 @@ class Channel(virtual.Channel):
         m.set_body(dumps(message))
         q.write(m)
 
-    def _put_fanout(self, exchange, message, **kwargs):
+    def _put_fanout(self, exchange, message, routing_key, **kwargs):
         """Deliver fanout message to all queues in ``exchange``."""
         for route in self.table.routes_for(exchange):
             self._put(route['queue'], message, **kwargs)
@@ -469,9 +469,6 @@ class Channel(virtual.Channel):
                    aws_access_key_id=conninfo.userid,
                    aws_secret_access_key=conninfo.password,
                    port=conninfo.port)
-
-    def _next_delivery_tag(self):
-        return uuid()  # See #73
 
     @property
     def sqs(self):

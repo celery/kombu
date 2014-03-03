@@ -7,6 +7,7 @@ Redis transport.
 """
 from __future__ import absolute_import
 
+import numbers
 import socket
 
 from bisect import bisect
@@ -384,6 +385,11 @@ class Channel(virtual.Channel):
     #: case it changes the default prefix ('/{db}.') into to something
     #: else.  The prefix must include a leading slash and a trailing dot.
     fanout_prefix = False
+
+    #: If enabled the fanout exchange will support patterns in routing
+    #: and binding keys (like a topic exchange but using PUB/SUB).
+    #: This will be enabled by default in a future version.
+    fanout_patterns = False
     _pool = None
 
     from_transport_options = (
@@ -396,6 +402,7 @@ class Channel(virtual.Channel):
          'visibility_timeout',
          'unacked_restore_limit',
          'fanout_prefix',
+         'fanout_patterns',
          'socket_timeout',
          'max_connections',
          'priority_steps')  # <-- do not add comma here!
@@ -472,12 +479,9 @@ class Channel(virtual.Channel):
     def _restore_at_beginning(self, message):
         return self._restore(message, leftmost=True)
 
-    def _next_delivery_tag(self):
-        return uuid()
-
     def basic_consume(self, queue, *args, **kwargs):
         if queue in self._fanout_queues:
-            exchange = self._fanout_queues[queue]
+            exchange, _ = self._fanout_queues[queue]
             self.active_fanout_queues.add(queue)
             self._fanout_to_queue[exchange] = queue
         ret = super(Channel, self).basic_consume(queue, *args, **kwargs)
@@ -489,11 +493,13 @@ class Channel(virtual.Channel):
         # a race condition where a message is consumed after
         # cancelling, so we must delay this operation until reading
         # is complete (Issue celery/celery#1773).
-        if self.connection.cycle._in_protected_read:
-            return self.connection.cycle.after_read.add(
-                promise(self._basic_cancel, (consumer_tag, )),
-            )
-        return self._basic_cancel(consumer_tag)
+        connection = self.connection
+        if connection:
+            if connection.cycle._in_protected_read:
+                return connection.cycle.after_read.add(
+                    promise(self._basic_cancel, (consumer_tag, )),
+                )
+            return self._basic_cancel(consumer_tag)
 
     def _basic_cancel(self, consumer_tag):
         try:
@@ -507,16 +513,22 @@ class Channel(virtual.Channel):
         else:
             self._unsubscribe_from(queue)
         try:
-            self._fanout_to_queue.pop(self._fanout_queues[queue])
+            exchange, _ = self._fanout_queues[queue]
+            self._fanout_to_queue.pop(exchange)
         except KeyError:
             pass
         ret = super(Channel, self).basic_cancel(consumer_tag)
         self._update_cycle()
         return ret
 
+    def _get_publish_topic(self, exchange, routing_key):
+        if routing_key and self.fanout_patterns:
+            return ''.join([self.keyprefix_fanout, exchange, '/', routing_key])
+        return ''.join([self.keyprefix_fanout, exchange])
+
     def _get_subscribe_topic(self, queue):
-        return ''.join([self.keyprefix_fanout,
-                        self._fanout_queues[queue]])
+        exchange, routing_key = self._fanout_queues[queue]
+        return self._get_publish_topic(exchange, routing_key)
 
     def _subscribe(self):
         keys = [self._get_subscribe_topic(queue)
@@ -527,7 +539,7 @@ class Channel(virtual.Channel):
         if c.connection._sock is None:
             c.connection.connect()
         self._in_listen = True
-        c.subscribe(keys)
+        c.psubscribe(keys)
 
     def _unsubscribe_from(self, queue):
         topic = self._get_subscribe_topic(queue)
@@ -562,7 +574,7 @@ class Channel(virtual.Channel):
             raise Empty()
         if response is not None:
             payload = self._handle_message(c, response)
-            if bytes_to_str(payload['type']) == 'message':
+            if bytes_to_str(payload['type']).endswith('message'):
                 channel = bytes_to_str(payload['channel'])
                 if payload['data']:
                     if channel[0] == '/':
@@ -573,7 +585,8 @@ class Channel(virtual.Channel):
                         warn('Cannot process event on channel %r: %r',
                              channel, payload, exc_info=1)
                         raise Empty()
-                    return message, self._fanout_to_queue[channel]
+                    exchange = channel.split('/', 1)[0]
+                    return message, self._fanout_to_queue[exchange]
         raise Empty()
 
     def _brpop_start(self, timeout=1):
@@ -626,7 +639,8 @@ class Channel(virtual.Channel):
             for pri in PRIORITY_STEPS:
                 cmds = cmds.llen(self._q_for_pri(queue, pri))
             sizes = cmds.execute()
-            return sum(size for size in sizes if isinstance(size, int))
+            return sum(size for size in sizes
+                       if isinstance(size, numbers.Integral))
 
     def _q_for_pri(self, queue, pri):
         pri = self.priority(pri)
@@ -646,11 +660,12 @@ class Channel(virtual.Channel):
         with self.conn_or_acquire() as client:
             client.lpush(self._q_for_pri(queue, pri), dumps(message))
 
-    def _put_fanout(self, exchange, message, **kwargs):
+    def _put_fanout(self, exchange, message, routing_key, **kwargs):
         """Deliver fanout message."""
         with self.conn_or_acquire() as client:
             client.publish(
-                ''.join([self.keyprefix_fanout, exchange]), dumps(message),
+                self._get_publish_topic(exchange, routing_key),
+                dumps(message),
             )
 
     def _new_queue(self, queue, auto_delete=False, **kwargs):
@@ -660,7 +675,9 @@ class Channel(virtual.Channel):
     def _queue_bind(self, exchange, routing_key, pattern, queue):
         if self.typeof(exchange).type == 'fanout':
             # Mark exchange as fanout.
-            self._fanout_queues[queue] = exchange
+            self._fanout_queues[queue] = (
+                exchange, routing_key.replace('#', '*'),
+            )
         with self.conn_or_acquire() as client:
             client.sadd(self.keyprefix_queue % (exchange, ),
                         self.sep.join([routing_key or '',
@@ -728,7 +745,7 @@ class Channel(virtual.Channel):
                 pass
 
     def _prepare_virtual_host(self, vhost):
-        if not isinstance(vhost, int):
+        if not isinstance(vhost, numbers.Integral):
             if not vhost or vhost == '/':
                 vhost = DEFAULT_DB
             elif vhost.startswith('/'):

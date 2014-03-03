@@ -4,6 +4,45 @@
  Change history
 ================
 
+.. _version-3.0.13:
+
+3.0.13
+======
+:release-date: 2014-03-03 04:00 P.M UTC
+:release-by: Ask Solem
+
+- Redis: Fixed serious race condition that could lead to data loss.
+
+    The delivery tags were accidentally set to be an incremental number
+    local to the channel, but the delivery tags need to be globally
+    unique so that a message can not overwrite an older message
+    in the backup store.
+
+    This change is not backwards incompatible and you are encouraged
+    to update all your system using a previous version as soon as possible.
+
+- Now depends on :mod:`amqp` 1.4.4.
+
+- Pidbox: Now makes sure message encoding errors are handled by default,
+  so that a custom error handler does not need to be specified.
+
+- Redis: The fanout exchange can now use AMQP patterns to route and filter
+  messages.
+
+    This change is backwards incompatible and must be enabled with
+    the ``fanout_patterns`` transport option::
+
+        >>> conn = kombu.Connection('redis://', transport_options={
+        ...     'fanout_patterns': True,
+        ... })
+
+    When enabled the exchange will work like an amqp topic exchange
+    if the binding key is a pattern.
+
+    This is planned to be default behavior in the future.
+
+- Redis: Fixed ``cycle`` no such attribute error.
+
 .. _version-3.0.12:
 
 3.0.12

@@ -144,28 +144,28 @@ class test_Channel(Case):
         self.assertIn(self.queue_name, self.channel._queue_cache)
 
     def test_new_queue(self):
-        queue_name = "new_unittest_queue"
+        queue_name = 'new_unittest_queue'
         self.channel._new_queue(queue_name)
         self.assertIn(queue_name, self.sqs_conn_mock.queues)
         # For cleanup purposes, delete the queue and the queue file
         self.channel._delete(queue_name)
 
     def test_delete(self):
-        queue_name = "new_unittest_queue"
+        queue_name = 'new_unittest_queue'
         self.channel._new_queue(queue_name)
         self.channel._delete(queue_name)
         self.assertNotIn(queue_name, self.channel._queue_cache)
 
     def test_get_from_sqs(self):
         # Test getting a single message
-        message = "my test message"
+        message = 'my test message'
         self.producer.publish(message)
         results = self.channel._get_from_sqs(self.queue_name)
         self.assertEquals(len(results), 1)
 
         # Now test getting many messages
         for i in xrange(3):
-            message = "message: %s" % i
+            message = 'message: {0}'.format(i)
             self.producer.publish(message)
 
         results = self.channel._get_from_sqs(self.queue_name, count=3)

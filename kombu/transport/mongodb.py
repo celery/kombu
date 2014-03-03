@@ -177,7 +177,7 @@ class Channel(virtual.Channel):
                                         r['pattern'],
                                         r['queue']) for r in brokerRoutes)
 
-    def _put_fanout(self, exchange, message, **kwargs):
+    def _put_fanout(self, exchange, message, routing_key, **kwargs):
         """Deliver fanout message."""
         self.client.messages.broadcast.insert({'payload': dumps(message),
                                                'queue': exchange})
