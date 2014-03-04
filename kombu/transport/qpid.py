@@ -16,6 +16,7 @@ import base64
 import threading
 import Queue
 import socket
+import ssl
 from time import clock
 from itertools import count
 
@@ -882,6 +883,13 @@ class Transport(base.Transport):
             conninfo.hostname = '127.0.0.1'
         if conninfo.ssl:
             conninfo.qpid_transport = 'ssl'
+            conninfo.transport_options['ssl_keyfile'] = conninfo.ssl['keyfile']
+            conninfo.transport_options['ssl_certfile'] = conninfo.ssl['certfile']
+            conninfo.transport_options['ssl_trustfile'] = conninfo.ssl['ca_certs']
+            if conninfo.ssl['cert_reqs'] == ssl.CERT_REQUIRED:
+                conninfo.transport_options['ssl_skip_hostname_check'] = False
+            else:
+                conninfo.transport_options['ssl_skip_hostname_check'] = True
         else:
             conninfo.qpid_transport = 'tcp'
         opts = dict({
@@ -937,4 +945,4 @@ class Transport(base.Transport):
     def default_connection_params(self):
         return {'userid': 'guest', 'password': 'guest',
                 'port': self.default_port, 'virtual_host': '',
-                'hostname': 'localhost', 'login_method': 'AMQPLAIN'}
+                'hostname': 'localhost', 'login_method': 'PLAIN'}
