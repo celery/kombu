@@ -775,7 +775,7 @@ class FDShim(object):
     def recv(self):
         while True:
             try:
-                action, address, create_qpid_connection = self.signaling_queue.get(False)
+                action, address, create_qpid_connection = self.signaling_queue.get(block=False)
             except Queue.Empty:
                 pass
             else:
@@ -793,7 +793,7 @@ class FDShim(object):
                     self._threads[address].kill()
                     del self._threads[address]
             try:
-                response_bundle = self.message_queue.get(False)
+                response_bundle = self.message_queue.get(block=True, timeout=3)
             except Queue.Empty:
                 pass
             else:
@@ -899,6 +899,7 @@ class Transport(base.Transport):
                         'password': conninfo.password,
                         'transport': conninfo.qpid_transport,
                         'timeout': conninfo.connect_timeout,
+                        'sasl_mechanisms': conninfo.sasl_mechanisms
                     }, **conninfo.transport_options or {})
         conn = self.Connection(self.fd_shim, **opts)
         conn.client = self.client
@@ -945,4 +946,4 @@ class Transport(base.Transport):
     def default_connection_params(self):
         return {'userid': 'guest', 'password': 'guest',
                 'port': self.default_port, 'virtual_host': '',
-                'hostname': 'localhost', 'login_method': 'PLAIN'}
+                'hostname': 'localhost', 'sasl_mechanisms': 'PLAIN'}
