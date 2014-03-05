@@ -31,7 +31,7 @@ DEFAULT_BROADCAST_COLLECTION = 'messages.broadcast'
 
 
 class BroadcastCursor(object):
-    '''Cursor for broadcast queues.'''
+    """Cursor for broadcast queues."""
 
     def __init__(self, cursor):
         # Fast forward the cursor past old events
@@ -78,9 +78,11 @@ class Channel(virtual.Channel):
             except StopIteration:
                 msg = None
         else:
-            msg = self.get_messages().find_and_modify(query={'queue': queue},
-                                                      sort={'_id': pymongo.ASCENDING},
-                                                      remove=True)
+            msg = self.get_messages().find_and_modify(
+                query={'queue': queue},
+                sort={'_id': pymongo.ASCENDING},
+                remove=True,
+            )
 
         if msg is None:
             raise Empty()
@@ -180,11 +182,13 @@ class Channel(virtual.Channel):
 
     def _ensure_indexes(self):
         '''Ensure indexes on collections.'''
-        self.get_messages().ensure_index([('queue', 1), ('_id', 1)], background=True)
+        self.get_messages().ensure_index(
+            [('queue', 1), ('_id', 1)], background=True,
+        )
         self.get_broadcast().ensure_index([('queue', 1)])
         self.get_routing().ensure_index([('queue', 1), ('exchange', 1)])
 
-    #TODO: Store a more complete exchange metatable in the routing collection
+    #TODO Store a more complete exchange metatable in the routing collection
     def get_table(self, exchange):
         """Get table of bindings for ``exchange``."""
         localRoutes = frozenset(self.state.exchanges[exchange]['table'])
@@ -248,20 +252,21 @@ class Channel(virtual.Channel):
         try:
             return self._broadcast_cursors[queue]
         except KeyError:
-            # Cursor may be absent when Channel created more than one time.
-            # _fanout_queues is the class-level mutable attrbite so it is shared over all
-            # Channel instances.
-            return self.create_broadcast_cursor(self._fanout_queues[queue], None, None, queue)
+            # Cursor may be absent when Channel created more than once.
+            # _fanout_queues is a class-level mutable attribute so it's
+            # shared over all Channel instances.
+            return self.create_broadcast_cursor(
+                self._fanout_queues[queue], None, None, queue,
+            )
 
     def create_broadcast_cursor(self, exchange, routing_key, pattern, queue):
-        cursor = self.get_broadcast().find(query={'queue': exchange},
-                                           sort=[('$natural', 1)], tailable=True)
-
-        broadcast_cursor = BroadcastCursor(cursor)
-
-        self._broadcast_cursors[queue] = broadcast_cursor
-
-        return broadcast_cursor
+        cursor = self.get_broadcast().find(
+            query={'queue': exchange},
+            sort=[('$natural', 1)],
+            tailable=True,
+        )
+        ret = self._broadcast_cursors[queue] = BroadcastCursor(cursor)
+        return ret
 
 
 class Transport(virtual.Transport):
