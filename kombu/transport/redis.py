@@ -551,7 +551,7 @@ class Channel(virtual.Channel):
         try:
             c.unsubscribe([topic])
         finally:
-            if should_disconnect:
+            if should_disconnect and c.connection:
                 c.connection.disconnect()
 
     def _handle_message(self, client, r):
