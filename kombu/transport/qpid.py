@@ -234,7 +234,7 @@ class QoS(object):
         self.channel = channel
         self.prefetch_count = prefetch_count or 0
         self._not_yet_acked = OrderedDict()
-        self._qpid_session = self.channel.connection.fd_shim._qpid_session
+        self._qpid_session = self.channel._qpid_session
 
     def can_consume(self):
         """
@@ -446,6 +446,8 @@ class Channel(base.StdChannel):
         self.connection = connection
         self.transport = transport
         self._tag_to_queue = {}
+        self._consumer_threads = {}
+        #TODO: consolidate these connections so the objects that need them instantiate them inline
         qpid_qmf_connection = connection.create_qpid_connection()
         qpid_publish_connection = connection.create_qpid_connection()
         self._qpid_session = qpid_publish_connection.session()
@@ -644,14 +646,21 @@ class Channel(base.StdChannel):
 
         self.connection._callbacks[queue] = _callback
         self._consumers.add(consumer_tag)
-        self.transport.fd_shim.signaling_queue.put(['sub', queue, self.connection.create_qpid_connection])
+        receiver = self._qpid_session.receiver(queue)
+        my_thread = FDShimThread(receiver, self.transport.fd_shim.message_queue)
+        self._consumer_threads[queue] = my_thread
+        #TODO non-daemonize this so that child threads are waited to exit
+        my_thread.daemon = True
+        my_thread.start()
 
     def basic_cancel(self, consumer_tag):
         """Cancel consumer by consumer tag."""
         if consumer_tag in self._consumers:
             self._consumers.remove(consumer_tag)
             queue = self._tag_to_queue.pop(consumer_tag, None)
-            self.transport.fd_shim.signaling_queue.put(['kill', queue, None])
+            consumer_thread = self._consumer_threads.pop(queue, None)
+            if consumer_thread:
+                consumer_thread.kill()
             self.connection._callbacks.pop(queue, None)
 
     def close(self):
@@ -766,52 +775,25 @@ class FDShim(object):
         self.queue_from_fdshim = queue_from_fdshim
         self.connection = connection
         self.r, self._w = os.pipe()
-        self._qpid_session = None
-        self.signaling_queue = Queue.Queue()
         self.message_queue = Queue.Queue()
-        self._threads = {}
         self._is_killed = False
-
-    def recv(self):
-        while True:
-            try:
-                action, address, create_qpid_connection = self.signaling_queue.get(block=False)
-            except Queue.Empty:
-                pass
-            else:
-                #signaling_queue event ready
-                if action is 'sub':
-                    if address not in self._threads:
-                        if self._qpid_session is None:
-                            self._qpid_session = create_qpid_connection().session()
-                        receiver = self._qpid_session.receiver(address)
-                        my_thread = FDShimThread(receiver, self.message_queue)
-                        self._threads[address] = my_thread
-                        my_thread.daemon = True
-                        my_thread.start()
-                elif action is 'kill':
-                    self._threads[address].kill()
-                    del self._threads[address]
-            try:
-                response_bundle = self.message_queue.get(block=True, timeout=3)
-            except Queue.Empty:
-                pass
-            else:
-                #message from child ready
-                return response_bundle
 
     def kill(self):
         self.is_killed = True
 
-    def listen(self):
+    def monitor_consumers(self):
         """
         Do a blocking read call similar to what qpid.messaging does, and when
         something is finally received, shove it into the pipe.
         """
         while not self._is_killed:
-            response_bundle = self.recv()
-            self.queue_from_fdshim.put(response_bundle)
-            os.write(self._w, '0')
+            try:
+                response_bundle = self.message_queue.get(block=True)
+            except Queue.Empty:
+                pass
+            else:
+                self.queue_from_fdshim.put(response_bundle)
+                os.write(self._w, '0')
 
 
 class Connection(object):
@@ -867,7 +849,7 @@ class Transport(base.Transport):
         self.client = client
         self.queue_from_fdshim = Queue.Queue()
         self.fd_shim = FDShim(self, self.queue_from_fdshim)
-        fdshim_thread = threading.Thread(target=self.fd_shim.listen)
+        fdshim_thread = threading.Thread(target=self.fd_shim.monitor_consumers)
         fdshim_thread.daemon = True
         fdshim_thread.start()
 
