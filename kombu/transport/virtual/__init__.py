@@ -499,6 +499,9 @@ class Channel(AbstractChannel, base.StdChannel):
         """Remove all ready messages from queue."""
         return self._purge(queue)
 
+    def _next_delivery_tag(self):
+        return uuid()
+
     def basic_publish(self, message, exchange, routing_key, **kwargs):
         """Publish message."""
         message['body'], body_encoding = self.encode_body(
@@ -507,7 +510,7 @@ class Channel(AbstractChannel, base.StdChannel):
         props = message['properties']
         props.update(
             body_encoding=body_encoding,
-            delivery_tag=next(self._delivery_tags),
+            delivery_tag=self._next_delivery_tag(),
         )
         props['delivery_info'].update(
             exchange=exchange,

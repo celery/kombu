@@ -7,13 +7,15 @@ Sending and receiving messages.
 """
 from __future__ import absolute_import
 
+import numbers
+
 from itertools import count
 
 from .compression import compress
 from .connection import maybe_channel, is_connection
 from .entity import Exchange, Queue, DELIVERY_MODES
 from .exceptions import ContentDisallowed
-from .five import int_types, text_t, values
+from .five import text_t, values
 from .serialization import dumps, prepare_accept_content
 from .utils import ChannelPromise, maybe_list
 
@@ -150,7 +152,7 @@ class Producer(object):
             exchange = exchange.name
         else:
             delivery_mode = delivery_mode or self.exchange.delivery_mode
-        if not isinstance(delivery_mode, int_types):
+        if not isinstance(delivery_mode, numbers.Integral):
             delivery_mode = DELIVERY_MODES[delivery_mode]
         properties['delivery_mode'] = delivery_mode
 

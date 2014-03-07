@@ -88,26 +88,26 @@ class test_mongodb(Case):
         client = c.channels[0].client
 
         # Login to admin db since there's no db specified
-        url = "mongodb://adminusername:adminpassword@localhost"
+        url = 'mongodb://adminusername:adminpassword@localhost'
         c = self._get_connection()
         client = c.channels[0].client
-        self.assertEquals(client.name, "kombu_default")
+        self.assertEquals(client.name, 'kombu_default')
 
         # Lets make sure that using admin db doesn't break anything
         # when no user is specified
-        url = "mongodb://localhost"
+        url = 'mongodb://localhost'
         c = self._get_connection(url)
         client = c.channels[0].client
 
         # Assuming there's user 'username' with password 'password'
         # configured in mongodb
-        url = "mongodb://username:password@localhost/dbname"
+        url = 'mongodb://username:password@localhost/dbname'
         c = self._get_connection(url)
         client = c.channels[0].client
 
         # Assuming there's no user 'nousername' with password 'nopassword'
         # configured in mongodb
-        url = "mongodb://nousername:nopassword@localhost/dbname"
+        url = 'mongodb://nousername:nopassword@localhost/dbname'
         c = self._get_connection(url)
 
         with self.assertRaises(ConfigurationError):
