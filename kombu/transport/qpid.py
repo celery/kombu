@@ -234,7 +234,6 @@ class QoS(object):
         self.channel = channel
         self.prefetch_count = prefetch_count or 0
         self._not_yet_acked = OrderedDict()
-        self._qpid_session = self.channel._qpid_session
 
     def can_consume(self):
         """
@@ -298,9 +297,8 @@ class QoS(object):
         :param delivery_tag: the delivery tag associated with the message to be acknowledged.
         :type delivery_tag: int
         """
-        message = self._not_yet_acked[delivery_tag]
-        self._qpid_session.acknowledge(message=message)
-        #TODO delete the message altogether from self_not_yet_acked
+        message = self._not_yet_acked.pop(delivery_tag)
+        message._receiver.session.acknowledge(message=message)
 
     def reject(self, delivery_tag, requeue=False):
         """
@@ -442,9 +440,10 @@ class Channel(base.StdChannel):
     #: counter used to generate delivery tags for this channel.
     _delivery_tags = count(1)
 
-    def __init__(self, connection, transport):
+    def __init__(self, connection, transport, delivery_queue):
         self.connection = connection
         self.transport = transport
+        self.delivery_queue = delivery_queue
         self._tag_to_queue = {}
         self._consumer_threads = {}
         #TODO: consolidate these connections so the objects that need them instantiate them inline
@@ -646,10 +645,8 @@ class Channel(base.StdChannel):
 
         self.connection._callbacks[queue] = _callback
         self._consumers.add(consumer_tag)
-        receiver = self._qpid_session.receiver(queue)
-        my_thread = FDShimThread(receiver, self.transport.fd_shim.message_queue)
+        my_thread = FDShimThread(self.connection.create_qpid_connection, queue, self.delivery_queue)
         self._consumer_threads[queue] = my_thread
-        #TODO non-daemonize this so that child threads are waited to exit
         my_thread.daemon = True
         my_thread.start()
 
@@ -672,6 +669,8 @@ class Channel(base.StdChannel):
                 self.basic_cancel(consumer)
             if self.connection is not None:
                 self.connection.close_channel(self)
+            self._qpid_session.close()
+            self._broker.close()
 
     def acquire(self, *arg, **kwargs):
         raise NotImplementedError('acquire Not Implemented')
@@ -744,11 +743,13 @@ class Channel(base.StdChannel):
 
 
 class FDShimThread(threading.Thread):
-    def __init__(self, receiver, message_queue, *args, **kwargs):
+    def __init__(self, create_qpid_connection, queue, delivery_queue):
+        self._session = create_qpid_connection().session()
+        self._receiver = self._session.receiver(queue)
+        self._queue = queue
+        self._delivery_queue = delivery_queue
         self.is_killed = False
-        self._receiver = receiver
-        self._message_queue = message_queue
-        super(FDShimThread, self).__init__(*args, **kwargs)
+        super(FDShimThread, self).__init__()
 
     def run(self):
         while not self.is_killed:
@@ -758,9 +759,12 @@ class FDShimThread(threading.Thread):
                 pass
             else:
                 queue = self._receiver.source
+                if queue != self._queue:
+                    raise Exception('fdslkjfdsoafoijfdsfdsfdslkjfdslfdslkj')
                 response_bundle = (queue, response)
-                self._message_queue.put(response_bundle)
+                self._delivery_queue.put(response_bundle)
         self._receiver.close()
+        self._session.close()
 
     def kill(self):
         self.is_killed = True
@@ -771,11 +775,11 @@ class FDShim(object):
     This is where the magic happens.
     """
 
-    def __init__(self, connection, queue_from_fdshim):
+    def __init__(self, connection, queue_from_fdshim, delivery_queue):
         self.queue_from_fdshim = queue_from_fdshim
+        self.delivery_queue = delivery_queue
         self.connection = connection
         self.r, self._w = os.pipe()
-        self.message_queue = Queue.Queue()
         self._is_killed = False
 
     def kill(self):
@@ -788,7 +792,7 @@ class FDShim(object):
         """
         while not self._is_killed:
             try:
-                response_bundle = self.message_queue.get(block=True)
+                response_bundle = self.delivery_queue.get(block=True)
             except Queue.Empty:
                 pass
             else:
@@ -799,9 +803,7 @@ class FDShim(object):
 class Connection(object):
     Channel = Channel
 
-    def __init__(self, fd_shim, **connection_options):
-        #TODO remove fd_shim from Connection, I don't think it belongs here.  Channel should go through Transport to get fd_shim
-        self.fd_shim = fd_shim
+    def __init__(self, **connection_options):
         self.connection_options = connection_options
         self.channels = []
         self._callbacks = {}
@@ -848,7 +850,8 @@ class Transport(base.Transport):
     def __init__(self, client, **kwargs):
         self.client = client
         self.queue_from_fdshim = Queue.Queue()
-        self.fd_shim = FDShim(self, self.queue_from_fdshim)
+        self.delivery_queue = Queue.Queue()
+        self.fd_shim = FDShim(self, self.queue_from_fdshim, self.delivery_queue)
         fdshim_thread = threading.Thread(target=self.fd_shim.monitor_consumers)
         fdshim_thread.daemon = True
         fdshim_thread.start()
@@ -883,7 +886,7 @@ class Transport(base.Transport):
                         'timeout': conninfo.connect_timeout,
                         'sasl_mechanisms': conninfo.sasl_mechanisms
                     }, **conninfo.transport_options or {})
-        conn = self.Connection(self.fd_shim, **opts)
+        conn = self.Connection(**opts)
         conn.client = self.client
         return conn
 
@@ -896,7 +899,6 @@ class Transport(base.Transport):
                     pass
                 else:
                     channel.close()
-        self.fd_shim.kill()
 
     def drain_events(self, connection, timeout=0, **kwargs):
         start_time = clock()
@@ -912,7 +914,7 @@ class Transport(base.Transport):
         raise socket.timeout()
 
     def create_channel(self, connection):
-        channel = connection.Channel(connection, self)
+        channel = connection.Channel(connection, self, self.delivery_queue)
         connection.channels.append(channel)
         return channel
 
