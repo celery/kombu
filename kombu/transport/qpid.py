@@ -183,7 +183,8 @@ class ProtonExceptionHandler(object):
             try:
                 original_func(*args, **kwargs)
             except Exception as error:
-                if decorator_self.allowed_exception_string not in error.message:
+                if decorator_self.allowed_exception_string not in error\
+                        .message:
                     raise
 
         return decorator
@@ -200,7 +201,7 @@ class Base64(object):
         """
         Encode a string using Base64.
 
-        :param s
+        :param The string to be encoded
         :type s: str
         """
         return bytes_to_str(base64.b64encode(str_to_bytes(s)))
@@ -208,7 +209,7 @@ class Base64(object):
     def decode(self, s):
         """Decode a string using Base64
 
-        :param s
+        :param The string to be decoded
         :type s: str
         """
         return base64.b64decode(str_to_bytes(s))
@@ -247,7 +248,7 @@ class QoS(object):
         self._not_yet_acked = OrderedDict()
 
     def can_consume(self):
-        """Return True if the Channel can consume more messages, false otherwise.
+        """Return True if the Channel can consume more messages, else False.
 
         Used to ensure the client adheres to currently active prefetch
         limits.
@@ -257,7 +258,7 @@ class QoS(object):
         return not pcount or len(self._not_yet_acked) < pcount
 
     def can_consume_max_estimate(self):
-        """Return the remaining message capacity for a Channel using this object.
+        """Return the remaining message capacity for the associated Channel.
 
         Returns an estimated number of outstanding messages that a Channel
         can accept without exceeding prefetch_count.
@@ -521,17 +522,18 @@ class Channel(base.StdChannel):
         rx.close()
         return message
 
-    def _put(self, queue, message, exchange=None, **kwargs):
+    def _put(self, routing_key, message, exchange=None, **kwargs):
         """Synchronous send of a single message onto a queue or exchange.
 
         An internal method which synchronously sends a single message onto
         a given queue or exchange.  If exchange is not specified,
-        the message is sent directly to a queue specified by name.  If no
-        queue is found an exception is raised.  If an exchange is
-        specified, then the message is delivered onto the requested
-        exchange and the queue name is used as the routing key. Message
-        sending is synchronous using sync=True because large messages in
-        kombu funtests were not being fully sent before the receiver closed.
+        the message is sent directly to a queue specified by routing_key.
+        If no queue is found by the name of routing_key while exchange is
+        not specified an exception is raised.  If an exchange is specified,
+        then the message is delivered onto the requested
+        exchange using routing_key. Message sending is synchronous using
+        sync=True because large messages in kombu funtests were not being
+        fully sent before the receiver closed.
 
         This method creates a sender to send the message to the queue using
         the session referenced by _qpid_session.  The sender is closed
@@ -540,21 +542,26 @@ class Channel(base.StdChannel):
         This is an internal method. External calls for put functionality
         should be done using basic_publish().
 
-        :param queue: The queue name to get the message from
-        :type queue: str
+        :param routing_key: If exchange is None, treated as the queue
+        name to send the message to. If exchange is not None, treated as
+        the routing_key to use as the message is submitted onto the exchange.
+        :type routing_key: str
         :param message: The message to be sent
         :type message: ???
-        :param exchange: keyword parameter of the exchange this message should be sent on. If not exchange is specified
-        the message is sent directly to the queue name.
+        :param exchange: keyword parameter of the exchange this message
+        should be sent on. If no exchange is specified, the message is sent
+        directly to a queue specified by routing_key.
         :type exchange: str
         """
         #TODO determine type of message parameter
         if not exchange:
-            address = '%s; {assert: always, node: {type: queue}}' % queue
+            address = '%s; {assert: always, node: {type: queue}}' % \
+                      routing_key
             msg_subject = None
         else:
-            address = '%s/%s; {assert: always, node: {type: topic}}' % (exchange, queue)
-            msg_subject = str(queue)
+            address = '%s/%s; {assert: always, node: {type: topic}}' % (
+                exchange, routing_key)
+            msg_subject = str(routing_key)
         sender = self._qpid_session.sender(address)
         qpid_message = QpidMessage(content=message, subject=msg_subject)
         sender.send(qpid_message, sync=True)
@@ -681,12 +688,13 @@ class Channel(base.StdChannel):
         Create an exchange of a specific type, and optionally have the
         exchange be durable.  If an exchange of the requested name already
         exists, no action is taken and no exceptions are raised.  Durable
-        exchanges will survive a broker restart, non-durable exchanges will not.
+        exchanges will survive a broker restart, non-durable exchanges will
+        not.
 
         Exchanges provide behaviors based on their type.  The expected
         behaviors are those defined in the AMQP 0-10 and prior
         specifications including 'direct', 'topic', and 'fanout'
-        funcitonality.
+        functionality.
 
         :param type: The exchange type. Valid values include 'direct',
         'topic', and 'fanout'.
@@ -796,7 +804,7 @@ class Channel(base.StdChannel):
     def basic_get(self, queue, no_ack=False, **kwargs):
         """Non-blocking single message get and ack from a queue by name.
 
-        Internally this method uses _get() to fetch the messsage.  If and
+        Internally this method uses _get() to fetch the message.  If and
         Empty exception is raised by _get(), this method silences it and
         returns None.  If _get() does return a message, that message is
         acked according to the value of no_ack and returned.  If no_ack is
@@ -827,6 +835,16 @@ class Channel(base.StdChannel):
             pass
 
     def basic_ack(self, delivery_tag):
+        """Acknowledge a message by delivery_tag.
+
+        Acknowledges a message referenced by delivery_tag.  Messages can
+        only be ack'ed using basic_ack() if they were acquired using
+        basic_consume().  This is the acking portion of the asynchronous
+        read behavior.
+
+        Internally, this method uses the QoS object, which stores messages
+        and is responsible for the ACKing.
+        """
         self.qos.ack(delivery_tag)
 
     def basic_reject(self, delivery_tag, requeue=True):
@@ -835,6 +853,62 @@ class Channel(base.StdChannel):
         raise NotImplementedError('basic_reject is not implemented')
 
     def basic_consume(self, queue, no_ack, callback, consumer_tag, **kwargs):
+        """Start an asynchronous consumer that reads from a queue.
+
+        This method starts a consumer the reads messages from a queue
+        specified by name until stopped by a call to basic_cancel(). Once a
+        message is read, a call to the callback will occur with the message
+        as the single argument.  The message passed to the callback is of
+        type self.Message.  Each consumer is referenced by a consumer_tag,
+        which is provided by the caller of this method.
+
+        Consuming is done using a thread of type FDShimThread that is
+        spawned when this method is called.  The child thread is marked as
+        a daemon, indicating that if all non-daemon threads exit, the child
+        consumer thread will also exit.  The child consumer thread performs
+        an efficient blocking read, which wakes up regularly to see if it
+        should exit.
+
+        The child consumer thread does not call the callback directly.
+        Instead, the child thread is given a threadsafe Queue.Queue object
+        which it should deliver messages into.  This single queue
+        aggregates all consumer messages, can be read through a call to
+        drain_events() on the Transport object associated with this Channel
+        object.  This method sets up the callback onto the self.connection
+        object in a dict keyed by queue name.  drain_events() is
+        responsible for calling that callback upon message receipt.
+
+        Depending on the value of the no_ack parameter, the message that is
+        received can be saved for asynchronous acking later after the
+        message has been handled by the caller of drain_events(). Messages
+        can be acked after being received through a call to basic_ack().
+        If no_ack is True, then messages are not saved for acking later.
+        If no_ack is False, then messages are saved for acking later.
+        Internally the QoS object is used to store messages for acking later.
+
+        basic_consume() transforms the message object type prior to calling
+        the callback.  Initially the message comes in as a qpid.messaging
+        Message.  This method unpacks the payload of the qpid.messaging
+        Message and creates a new object of type self.Message.
+
+        This method wraps the user delivered callback in a runtime-built
+        function which provides the type transformation from qpid.messaging
+        to self.Message, and adds the message to the qos object for
+        asynchronous acking if necessary.
+
+        :param queue: The name of the queue to consume messages from
+        :type queue: str
+        :param no_ack: If True, then messages will not be saved for
+        acking later.  If False, then messages will be saved for acking
+        later.
+        :type no_ack: bool
+        :param callback: a callable that will be called when messages
+        arrive on the queue.
+        :type callback: a callable object
+        :param consumer_tag: a tag to reference the created consumer by.
+        This consumer_tag is needed to cancel the consumer.
+        :type consumer_tag: an immutable object
+        """
         self._tag_to_queue[consumer_tag] = queue
 
         def _callback(qpid_message):
@@ -853,7 +927,24 @@ class Channel(base.StdChannel):
         my_thread.start()
 
     def basic_cancel(self, consumer_tag):
-        """Cancel consumer by consumer tag."""
+        """Cancel consumer by consumer tag.
+
+        Request the consumer stops reading messages from its queue. The
+        consumer is a child thread, and it is told to stop by a call to
+        the kill() method on the thread object.  Killing does not occur
+        immediately, but will occur once the child completes its blocking
+        read() and checks if it should die or not.  The thread is not
+        waited on to die() because in practice there can be many consumers,
+        and they are killed through a series of serial calls to
+        basic_cancel() which takes a long time.
+
+        This method also cleans up all lingering references of the consumer.
+
+        :param consumer_tag: The tag which refers to the consumer to be
+        cancelled.  Originally specified when the consumer was created as
+        a parameter to basic_consume().
+        :type consumer_tag: an immutable object
+        """
         if consumer_tag in self._consumers:
             self._consumers.remove(consumer_tag)
             queue = self._tag_to_queue.pop(consumer_tag, None)
@@ -863,8 +954,16 @@ class Channel(base.StdChannel):
             self.connection._callbacks.pop(queue, None)
 
     def close(self):
-        """Close channel, cancel all consumers, and requeue unacked
-        messages."""
+        """Close Channel and all associated messages.
+
+        This cancels all consumers by calling basic_cancel() for each known
+        consumer_tag.  It also closes the self._qpid_session and
+        self .broker_close() sessions.  Closing the sessions implicitly
+        causes all outstanding, unacked messages to be considered
+        undelivered by the broker.
+        """
+        #TODO explicitly reject messages through a call to basic_reject
+        #TODO investigate the call to connection.close_channel
         if not self.closed:
             self.closed = True
             for consumer in list(self._consumers):
@@ -875,11 +974,17 @@ class Channel(base.StdChannel):
             self._broker.close()
 
     def acquire(self, *arg, **kwargs):
+        #TODO implement me
+        #TODO add docstring
         raise NotImplementedError('acquire Not Implemented')
 
     @property
     def qos(self):
-        """:class:`QoS` manager for this channel."""
+        """:class:`QoS` manager for this channel.
+
+        Lazily instantiates an object of type :class:`QoS` upon access to
+        the self.qos attribute.
+        """
         if self._qos is None:
             self._qos = self.QoS(self)
         return self._qos
@@ -890,12 +995,46 @@ class Channel(base.StdChannel):
 
         Only `prefetch_count` is supported.
 
+        :param prefetch_size: not used or implemented.
+        :type prefetch_size: int
+        :param prefetch_count: The number of outstanding, unacked messages
+        this Channel is allowed to have.
+        :type prefetch_count: int
+        :param apply_global: not used or implemented.
+        :type apply_global: bool
         """
+        #TODO implement prefetch_size and doc it
+        #TODO implement apply_global and doc it
         self.qos.prefetch_count = prefetch_count
 
     def prepare_message(self, body, priority=None, content_type=None,
                         content_encoding=None, headers=None, properties=None):
-        """Prepare message data."""
+        """Prepare message data for sending.
+
+        Returns a dict object that encapsulates message attributes.  See
+        parameters for more details on attributes that can be set.
+
+        :param body: The body of the message
+        :type body: str
+        :param priority: not used or implemented
+        :type priority: ???
+        :param content_type: The content_type the message body should be
+        treated as.  If this is unset, the qpid.messaging client tries to
+        autodetect the content_type from the body.
+        :type content_type: str
+        :param content_encoding: The content_encoding the message body is
+        encoded as.
+        :type content_encoding: str
+        :param headers: Additional Message headers that should be set.
+        Passed in as a key-value pair.
+        :type headers: dict
+        :param properties: Message properties to be set on the message.
+        :type properties: dict
+        """
+        #TODO better document when this is called
+        #TODO determine if info is even needed
+        #TODO priority is never even used...
+        #TODO better document intent of properties
         properties = properties or {}
         info = properties.setdefault('delivery_info', {})
         info['priority'] = priority or 0
@@ -907,7 +1046,32 @@ class Channel(base.StdChannel):
                 'properties': properties or {}}
 
     def basic_publish(self, message, exchange, routing_key, **kwargs):
-        """Publish message."""
+        """Publish message onto an exchange using a routing key.
+
+        Publish a message onto an exchange specified by name using a
+        routing key specified by routing_key.  Prepares the message in the
+        following ways before sending:
+
+        - encodes the body using self.encode_body()
+        - wraps the body as a buffer object, so that the qpid.messaging
+        uses a content type that can support arbitrarily large messages.
+        - assigns a delivery_tag generated through self._delivery_tags
+        - sets the exchange and routing_key info as delivery_info
+
+        Internally uses _put() to send the message synchronously.
+
+        :param message: A dict containing key value pairs with the message
+        data.  A valid message dict can be generated using the
+        prepare_message() method.
+        :type message: dict
+        :param exchange: The name of the exchange to submit this message
+        onto.
+        :type exchange: str
+        :param routing_key: The routing key to be used as the message is
+        submitted onto the exchange.
+        :type routing_key: str
+        """
+        #TODO determine when this is called
         message['body'], body_encoding = self.encode_body(
             message['body'], self.body_encoding,
         )
@@ -924,18 +1088,67 @@ class Channel(base.StdChannel):
         return self._put(routing_key, message, exchange, **kwargs)
 
     def encode_body(self, body, encoding=None):
+        """Encode a body using an optionally specified encoding.
+
+        The encoding can be specified by name, and is looked up in
+        self.codecs.  self.codecs uses strings as its keys which specify
+        the name of the encoding, and then the value is an instantiated
+        object that can provide encoding/decoding of that type through
+        calls to encode() and decode().
+
+        Returns a tuple with the first position being the encoded body,
+        and the second position the encoding used.
+
+        If encoding is not specified, the body is passed through unchanged.
+
+        :param body: The body to be encoded.
+        :type body: str
+        :param encoding: The encoding type to be used.  Must be a supported
+        codec listed in self.codecs, which
+        :type encoding: str
+        """
         if encoding:
             return self.codecs.get(encoding).encode(body), encoding
         return body, encoding
 
     def decode_body(self, body, encoding=None):
+        """Decode a body using an optionally specified encoding.
+
+        The encoding can be specified by name, and is looked up in
+        self.codecs.  self.codecs uses strings as its keys which specify
+        the name of the encoding, and then the value is an instantiated
+        object that can provide encoding/decoding of that type through
+        calls to encode() and decode().
+
+        Returns the decoded body.
+
+        If encoding is not specified, the body is returned unchanged.
+
+        :param body: The body to be encoded.
+        :type body: str
+        :param encoding: The encoding type to be used.  Must be a supported
+        codec listed in self.codecs, which
+        :type encoding: str
+        """
         if encoding:
             return self.codecs.get(encoding).decode(body)
         return body
 
-
     def typeof(self, exchange, default='direct'):
-        """Get the exchange type instance for `exchange`."""
+        """Get the exchange type instance for `exchange`.
+
+        Lookup and return the exchange type for an exchange specified by
+        name.  Exchange types are expected to be 'direct', 'topic',
+        and 'fanout', which correspond with exchange functionality as
+        specified in AMQP 0-10 and earlier.  If the exchange cannot be
+        found, the default exchange type is returned.
+
+        :param exchange: The exchange to have its type lookup up.
+        :type exchange: str
+        :param default: The type of exchange to assume if the exchange does
+        not exist.
+        :type default: str
+        """
         qpid_exchange = self._broker.getExchange(exchange)
         if qpid_exchange:
             qpid_exchange_attributes = qpid_exchange.getAttributes()
@@ -945,6 +1158,55 @@ class Channel(base.StdChannel):
 
 
 class FDShimThread(threading.Thread):
+    """A consumer thread that reads and handles messages from a single queue.
+
+    An instance of FDShimThread will asynchronously read messages from a
+    single queue, and deliver each message read into a threadsafe
+    Queue.Queue object delivery_queue.  The broker queue to read from is
+    specified by name.  A separate thread of type FDShim is designed to
+    receive and handle messages that FDShimThread object put into the
+    delivery_queue.
+
+    FDShimThread objects are designed to be efficient through a blocking
+    read from the broker's queue.  Periodically the FDShimThread wakes up
+    from the blocking read, and checks to see if it has been killed.  If it
+    has not been killed it begins a new blocking read.  The blocking
+    timeout is set through the class attribute block_timeout that contains
+    the timeout in seconds.
+
+    FDShimThread requires a function to be passed in that will allow the
+    FDShimThread to generate a connection to the broker.  FDShimThread uses
+    the passed in function to get the connection, start a session with the
+    broker, and then create a _receiver to consuming messages from the
+    named queue.
+
+    An FDShimThread instance can be notified that they should die by a call
+    to self.kill().  The thread may not exit immediately because it may
+    be in a blocking read, but it will exit before entering the next
+    blocking read.  When the thread exits properly, it gracefully closes the
+    _receiver and _session objects that were created.
+
+    FDShimThread objects are not designed to be used directly by objects
+    other than Channel.  An FDShimThread is created by a call to
+    Channel.basic_consume(), and destroyed through a call to Channel
+    .basic_cancel().  The thread entry point is the run() method.
+    Channel.basic_consume() daemonizes the thread before calling start()
+    ensuring an FDShimThread will never keep the Python process alive if all
+    other non-daemon threads have exited.  The Channel maintains references
+    to the FDShimThread instances it creates for killing later.
+
+    :param create_qpid_connection: A function that will return a valid
+    qpid.messaging Connection when called with no arguments.
+    :type create_qpid_connection: function
+    :param queue: The name of the queue to consume messages from.
+    :type queue: str
+    :param delivery_queue: The threadsafe Queue.Queue object to deliver
+    qpid.messaging Messages into once read from the broker.
+    :type delivery_queue: Queue.Queue
+    """
+    # The timeout that blocking reads should occur for before waking up.
+    block_timeout = 10
+
     def __init__(self, create_qpid_connection, queue, delivery_queue):
         self._session = create_qpid_connection().session()
         self._receiver = self._session.receiver(queue)
@@ -954,9 +1216,11 @@ class FDShimThread(threading.Thread):
         super(FDShimThread, self).__init__()
 
     def run(self):
+        """Thread entry point for FDShimThread instances"""
         while not self.is_killed:
             try:
-                response = self._receiver.fetch(timeout=10)
+                response = self._receiver.fetch(
+                    timeout=FDShimThread.block_timeout)
             except QpidEmpty:
                 pass
             else:
@@ -967,21 +1231,55 @@ class FDShimThread(threading.Thread):
         self._session.close()
 
     def kill(self):
+        """Notify the thread that it should die at the earliest opportunity.
+
+        The thread may not exit immediately because it may be in a blocking
+        read.  It will exit gracefully before entering the next blocking read.
+        """
         self.is_killed = True
 
 
 class FDShim(object):
-    """
-    The FDShim object is monitoring the Queue.Queue for incoming messages
-    from all consumers.  Once a message is ready FDShim indicates a message is ready for reading on the file descriptor it makes available to anyone who wants to monitor the Transport for inbound messages.
-    of
-    consumers is handled by
-    the and deletion of consumers is handled by a FDShim object, which itself runs in a separate thread
-    and monitors all of the consumers.  Each Transport has exactly one FDShim object.  Each consumer is a FDShimThread
-    object that is started or signalled to stop.  All signalling and message passing between threads is done using
-    thread safe Queue.Queue objects.
-    """
+    """Monitor and handle messages from all consumer threads.
 
+    The FDShim object monitors incoming messages from all consumers
+    through a blocking read on the threadsafe queue that consumers
+    deliver messages into, delivery_queue.  Once a message is received
+    by FDShim, an externally monitorable file descriptor is set that data
+    is ready for the transport, and the message is put into a separate
+    threadsafe queue self.queue_from_fdshim.
+
+    The FDShim object provides a read file descriptor named self.r which
+    can be monitored by an external epoll-like event I/O notification
+    system.  An external epoll loop would monitor self.r when it wants to
+    be notified efficiently that the Transport associated with this FDShim
+    has data available for reading.  The client library qpid.messaging does
+    not make available read file descriptors for external monitoring,
+    and so FDShim provides this functionality by creating os.pipe() based
+    file descriptors that it writes into causing external epoll loops
+    to efficiently "wake up" at the correct time.
+
+    FDShim objects are designed to be used by a Transport, and should
+    not be used by external objects directly.  Each Transport creates
+    exactly one FDShim object to monitor and handle messages from all
+    consumers associated with all Channels associated with the Transport.
+    The thread entry point is monitor_consumers().  The transport daemonizes
+    the thread before calling start() ensuring an FDShim will never keep the
+    Python process alive if all other non-daemon threads have exited.
+
+    :param connection: The connection object that corresponds with the
+    Transport.
+    :type connection: Connection
+    :param queue_from_fdshim: The queue that that messages which are ready
+    for reading are put into so that the Transport can drain them in
+    Transport drain_events()
+    :type queue_from_fdshim: Queue.Queue
+    :param delivery_queue: The queue that FDShim performs a blocking
+    read on to receive messages form all consumers associated with all
+    Channels associated with the Transport that created FDShim.
+    :type delivery_queue: Queue.Queue
+    """
+    #TODO is connection really needed?
     def __init__(self, connection, queue_from_fdshim, delivery_queue):
         self.queue_from_fdshim = queue_from_fdshim
         self.delivery_queue = delivery_queue
@@ -990,12 +1288,23 @@ class FDShim(object):
         self._is_killed = False
 
     def kill(self):
+        """Notify the thread that it should die at the earliest opportunity.
+
+        The thread may not exit immediately because it may be in a blocking
+        read.  It will exit gracefully before entering the next blocking read.
+        """
         self.is_killed = True
 
     def monitor_consumers(self):
-        """
+        """The thread entry point.
+
         Do a blocking read call similar to what qpid.messaging does, and when
-        something is finally received, shove it into the pipe.
+        something is finally received, set the pipe as being readable,
+        and then put the message into the queue_from_fdshim object.
+
+        Setting the pipe as being readable is done by writing a single '0'
+        character into the pipe so that anything monitoring it will receive
+        the ready for reading signal.
         """
         while not self._is_killed:
             try:
@@ -1008,7 +1317,50 @@ class FDShim(object):
 
 
 class Connection(object):
+    """Encapsulate a connection object for the Transport.
+
+    A Connection object is created by a Transport during a call to
+    Transport.establish_connection().  The Transport passes in Connection
+    options that should be used for any Connections created by the broker.
+    Each Transport creates exactly one Connection.
+
+    Objects that use connections to the broker such as
+    Channel, QoS, and FDShimThread objects need to have independent
+    Connections generated.  Any part of this codebase can get a valid
+    connection to the broker with parameters saved in this object by
+    calling the bound create_qpid_connection() method.
+
+    The Connection object is also responsible for maintaining the
+    dictionary of reference to callbacks that should be called when
+    messages are received.  These callbacks are saved in _callbacks,
+    and keyed on the queue name associated with the received message.  The
+    _callbacks are setup in Channel.basic_consume(), removed in
+    Channel.basic_cancel(), and called in Transport.drain_events().
+
+    The following keys are expected to be in the connection_options dict at
+    a minimum:
+
+      host: The host that connections should connect to.
+      port: The port that connection should connect to.
+      username: The username that connections should connect with.
+      password: The password that connections should connect with.
+      transport: The transport type that connections should use.  Either
+                'tcp', or 'ssl' are expected as values.
+      timeout: the timeout to use when a Connection connects to the broker.
+      sasl_mechanisms: The sasl authentication mechanism type to use.
+                       refer to SASL documentation for an explanation of
+                       valid values.
+
+    :param connection_options: A dict containing the connection options.
+    This object expects a minimum number of keys in the dict which are
+    explained in the documentation on the object itself.
+    :type connection_options: dict
+    """
+
+    # A class reference to the Channel object class associated with this
+    # object type.
     Channel = Channel
+    #TODO investigate and potentially remove Channel from here, it shouldn't be needed.
 
     def __init__(self, **connection_options):
         self.connection_options = connection_options
@@ -1016,9 +1368,17 @@ class Connection(object):
         self._callbacks = {}
 
     def create_qpid_connection(self):
+        """Create a qpid.messaging Connection with saved connection parameters
+
+        Creates a qpid.messaging Connection object with the saved
+        parameters that were passed into the Connection at instantiation
+        time.
+        """
         return QpidConnection.establish(**self.connection_options)
 
     def close_channel(self, channel):
+        #TODO investigate if close_channel is needed and functioning correctly.
+        #TODO add docstring to this method after investigating when it is called
         try:
             self.channels.remove(channel)
         except ValueError:
@@ -1028,29 +1388,61 @@ class Connection(object):
 
 
 class Transport(base.Transport):
-    """
-    Synchronous reads are done using a call to drain_events() which accepts a timeout is read for polling based
-    usage.  Kombu uses drain_events() regularly.
+    """Kombu native transport for a Qpid broker.
 
-    Asynchronous reads are done using a call to ..................................
+    Provide a native transport for Kombu that allows consumers and
+    producers to read and write messages to/from a broker.  This Transport
+    is capable of supporting both synchronous and asynchronous reading.
+    All writes are synchronous through the Channel objects that support
+    this Transport.
+
+    Synchronous reads are done using a call to drain_events(),
+    which synchronously reads events, and then handles them through
+    calls to the callback handlers maintained on the Connection object.
+
+    Asynchronous reads are done by monitoring the file descriptor
+    self.fd_shim.r which will be sent the signal indicating it is ready for
+    reading when messages are ready to be read.  Monitoring of this file
+    descriptor should pair with on_readable() as the callback to call when
+    the external loop is ready to read and handle messages that are
+    associated with this Transport.
+
+    The Transport also provides methods to establish and close a connection
+    to the broker.  This Transport establishes a factory-like pattern that
+    allows for lazy creation of Connections as needed.
+
+    The Transport can create Channels to communicate with the broker with
+    using the create_channel() method.
+
+    :param client: ????
+    :type client: ????
     """
+    #TODO what is client exactly?  Better document its type and purpose.
+    # Reference to the class that should be used as the Connection object
     Connection = Connection
 
+    # The default port
     default_port = DEFAULT_PORT
+
+    # This Transport does not support polling as its primary fetching model.
     polling_interval = None
+
+    # This Transport does support an asynchronous event model.
     supports_ev = True
+
+    # This transport does not make use of __reader
     __reader = None
+    #TODO determine if __reader is still needed
 
-    #channel_errors = (
-    #    virtual.Transport.channel_errors
-    #)
-    #import amqp
-    #connection_errors = amqp.Connection.connection_errors
-    #channel_errors = amqp.Connection.channel_errors
-    #recoverable_connection_errors = \
-    #    amqp.Connection.recoverable_connection_errors
-    #recoverable_channel_errors = amqp.Connection.recoverable_channel_errors
+    # Unused error classification to identify recoverable vs
+    # non-recoverable errors on Channels and Connections.  These should be
+    # set to a tuple instead of None if they are to be used.
+    # channel_errors = None
+    # recoverable_channel_errors = None
+    # connection_errors = None
+    # recoverable_connection_errors = None
 
+    # The driver type and name for identification purposes.
     driver_type = 'qpid'
     driver_name = 'qpid'
 
@@ -1064,9 +1456,45 @@ class Transport(base.Transport):
         fdshim_thread.start()
 
     def register_with_event_loop(self, connection, loop):
+        """Register a file descriptor and callback with the loop
+
+        Register the callback self.on_readable to be called when an
+        external epoll loop sees that the file descriptor registered is
+        ready for reading.  The file descriptor is created and updated by
+        FDShim, which is created by the Transport at instantiation time.
+
+        When supports_ev = True, Celery expects to call this method to give
+        the Transport an opportunity to register a read file descriptor for
+        external monitoring by celery using an Event I/O notification
+        mechanism such as epoll.  A callback is also registered that is to
+        be called once the external epoll loop is ready to handle the epoll
+        event associated with messages that are ready to be handled for
+        this Transport.
+
+        The registration call is made exactly once per Transport after the
+        Transport is finished instantiating.
+
+        :param connection: ???
+        :type connection: ???
+        """
+        #TODO better document the types and intent of connection
         loop.add_reader(self.fd_shim.r, self.on_readable, connection, loop)
 
     def establish_connection(self):
+        """Establish a Connection object.
+
+        Determines the correct options to use when creating any Connections
+        needed by this Transport, and create a Connection object which
+        saves those values for Connections generated as they are needed.
+        The options are a mixture of what is passed in through the creator
+        of the Transport, and the defaults provided by
+        self.default_connection_params.  Options cover broker network
+        settings, timeout behaviors, authentication, and identity
+        verification settings.
+
+        The Connection object that is created is returned back to the
+        caller of this function.
+        """
         conninfo = self.client
         for name, default_value in items(self.default_connection_params):
             if not getattr(conninfo, name, None):
@@ -1098,6 +1526,15 @@ class Transport(base.Transport):
         return conn
 
     def close_connection(self, connection):
+        """Close the Connection object, and all associated Channels.
+
+        Iterates through all Channels associated with the Connection,
+        pops them from the list of channels, and call close() on each
+        Channel.
+
+        :param connection: The Connection that should be closed
+        :type connection: Connection
+        """
         for l in connection.channels:
             while l:
                 try:
@@ -1108,11 +1545,33 @@ class Transport(base.Transport):
                     channel.close()
 
     def drain_events(self, connection, timeout=0, **kwargs):
+        """Handle and call callbacks for all ready Transport messages.
+
+        Drains all events that are ready for consuming from FDShim.
+        Messages must pass through FDShim so that an external read file
+        descriptor can be marked as readable, to allow asynchronous I/O to
+        properly occur.
+
+        For each drained event, the message is called to the appropriate
+        callback.  Callbacks are organized by queue name.  The object that
+        is returned from queue_from_fdshim is a tuple containing the queue
+        name, and the message, in that order.
+
+        :param connection: The Connection that contains the callbacks,
+        indexed by queue name, which will be called by this method.
+        :type connection: Connection
+        :param timeout: The timeout that limits how long drain_events() will
+        run for.  The timeout could interrupt a blocking read that is
+        waiting for a new message, or cause drain_events() to return before
+        all messages are drained.
+        :type timeout: int
+        """
         start_time = clock()
         elapsed_time = -1
         while elapsed_time < timeout:
             try:
-                queue, message = self.queue_from_fdshim.get(block=True, timeout=timeout)
+                queue, message = self.queue_from_fdshim.get(block=True,
+                                                            timeout=timeout)
             except Queue.Empty:
                 raise socket.timeout()
             else:
@@ -1121,11 +1580,58 @@ class Transport(base.Transport):
         raise socket.timeout()
 
     def create_channel(self, connection):
+        """Create and return a channel.
+
+        Creates a new Channel, and append the Channel to the list of
+        channels known by the Connection.  Once the new Channel is created,
+        it is returned.
+
+        :param connection: The connection that should back the new Channel.
+        :type connection: Connection
+        """
         channel = connection.Channel(connection, self, self.delivery_queue)
         connection.channels.append(channel)
         return channel
 
     def on_readable(self, connection, loop):
+        """Handle any read events associated with this Transport.
+
+        This method clears a single message from the externally monitored
+        file descriptor by issuing a read call to the self.fd_shim pipe,
+        which removes a single '0' character that was placed into the pipe
+        by FDShim. Once a '0' is read, all available events are drained
+        through a call to self.drain_events().
+
+        Nothing is expected to be returned from drain_events() because
+        drain_events() handles messages by calling callbacks that are
+        maintained on the Connection object.  When drain_events() returns,
+        all associated messages have been handled.
+
+        This method reads as many messages that are available for this
+        Transport, and then returns.  It blocks in the sense that reading
+        and handling a large number of messages may take time, but it does
+        not block waiting for a new message to arrive.  When drain_events()
+        is called a timeout is not specified, which causes this behavior.
+
+        One interesting behavior of note is where multiple messages are
+        ready, and this method removes a single '0' character from
+        fd_shim.r, but drain_events() may handle an arbitrary amount of
+        messages.  In that case, extra '0' characters may be left on fd_shim
+        to be read, where messages corresponding with those '0' characters
+        have already been handled.  The external epoll loop will incorrectly
+        think additional data is ready for reading, and will call
+        on_readable unnecessarily, once for each '0' to be read. Additional
+        calls to on_readable() produce no negative side effects, and will
+        eventually clear out the fd_shim pipe of all symbols correctly.
+
+        :param connection: The connection associated with the readable
+        events, which contains the callbacks that need to be called for the
+        readables.
+        :type connection: Connection
+        :param loop: The asynchronous loop object that contains epoll like
+        functionality.
+        :type loop: kombu.async.Hub
+        """
         result = os.read(self.fd_shim.r, 1)
         if result == '0':
             try:
@@ -1135,6 +1641,11 @@ class Transport(base.Transport):
 
     @property
     def default_connection_params(self):
+        """Return a dict with default connection parameters.
+
+        These Connection parameters will be used whenever the creator of
+        Transport does not specify a required parameter.
+        """
         return {'userid': 'guest', 'password': 'guest',
                 'port': self.default_port, 'virtual_host': '',
                 'hostname': 'localhost', 'sasl_mechanisms': 'PLAIN'}
