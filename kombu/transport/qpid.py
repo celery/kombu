@@ -30,6 +30,8 @@ from amqp.protocol import queue_declare_ok_t
 
 from qpid.messaging import Connection as QpidConnection
 from qpid.messaging import Message as QpidMessage
+from qpid.messaging import Disposition as QpidDisposition
+from qpid.messaging import REJECTED, RELEASED
 from qpid.messaging.exceptions import Empty as QpidEmpty
 from qpidtoollibs import BrokerAgent
 
@@ -318,8 +320,12 @@ class QoS(object):
     def reject(self, delivery_tag, requeue=False):
         """Reject a message by delivery_tag.
 
-        Explicitly notify the broker that this Channel is rejecting the
-        Message.
+        Explicitly notify the broker that the Channel associated with this
+        QoS object is rejecting the Message that was previously delivered.
+
+        If requeue is False, then the message is not requeued for delivery
+        to another consumer.  If requeue is True, then the message is
+        requeued for delivery to another consumer.
 
         :param delivery_tag: The delivery tag associated with the message
         to be rejected.
@@ -330,10 +336,13 @@ class QoS(object):
         object.
         :type requeue: bool
         """
-        #TODO this should forcibly reject the message by setting the message state to invalid
-        #TODO proper support for requeue should be implemented
-        #TODO add requeue to docstring
-        self._not_yet_acked.pop(delivery_tag)
+        message = self._not_yet_acked.pop(delivery_tag)
+        if requeue:
+            disposition = QpidDisposition(RELEASED)
+        else:
+            disposition = QpidDisposition(REJECTED)
+        message._receiver.session.acknowledge(message=message,
+                                              disposition=disposition)
 
 
 class Message(base.Message):
@@ -844,13 +853,37 @@ class Channel(base.StdChannel):
 
         Internally, this method uses the QoS object, which stores messages
         and is responsible for the ACKing.
+
+        :param delivery_tag: The delivery tag associated with the message
+        to be acknowledged.
+        :type delivery_tag: int
         """
         self.qos.ack(delivery_tag)
 
-    def basic_reject(self, delivery_tag, requeue=True):
-        #TODO: verify that requeue=True is the right signature
-        #TODO: implement me
-        raise NotImplementedError('basic_reject is not implemented')
+    def basic_reject(self, delivery_tag, requeue=False):
+        """Reject a message by delivery_tag.
+
+        Rejects a message that has been received by the Channel, but not
+        yet acknowledged.  Messages are referenced by their delivery_tag.
+
+        If requeue is False, the rejected message will be dropped by the
+        broker and not delivered to any other consumers.  If requeue is
+        True, then the rejected message will be requeued for delivery to
+        another consumer, potentially to the same consumer who rejected the
+        message previously.
+
+        :param delivery_tag: The delivery tag associated with the message
+        to be rejected.
+        :type delivery_tag: int
+        :param requeue: If False, the rejected message will be dropped by
+        the broker and not delivered to any other consumers.  If True,
+        then the rejected message will be requeued for delivery to another
+        consumer, potentially to the same consumer who rejected the message
+        previously.
+        :type requeue: bool
+
+        """
+        self.qos.reject(delivery_tag, requeue=requeue)
 
     def basic_consume(self, queue, no_ack, callback, consumer_tag, **kwargs):
         """Start an asynchronous consumer that reads from a queue.
