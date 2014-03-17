@@ -145,17 +145,17 @@ VERSION = (1, 0, 0)
 __version__ = '.'.join(map(str, VERSION))
 
 
-class ProtonExceptionHandler(object):
+class QpidMessagingExceptionHandler(object):
     """An exception handling decorator that silences some exceptions.
 
     An exception handling class designed to silence specific exceptions
-    that Proton raises as part of normal operation. Proton exceptions
-    require string parsing, and are not machine consumable, This is
-    designed to be used as a decorator, and accepts a whitelist string as
-    an argument.
+    that qpid.messaging raises as part of normal operation. qpid.messaging
+    exceptions require string parsing, and are not machine consumable,
+    This is designed to be used as a decorator, and accepts a whitelist
+    string as an argument.
 
     Usage:
-    @ProtonExceptionHandler('whitelist string goes here')
+    @QpidMessagingExceptionHandler('whitelist string goes here')
 
     :param allowed_exception_string: a string that, if present in the
     exception message, will be silenced.
@@ -169,8 +169,8 @@ class ProtonExceptionHandler(object):
         """The decorator method.
 
         Method that wraps the actual function with exception silencing
-        functionality. Any exception that contains the string self
-        .allowed_exception_string in the message will be silenced.
+        functionality. Any exception that contains the string
+        self.allowed_exception_string in the message will be silenced.
 
         :param original_func: function that is automatically passed in
         when this object is used as a decorator.
@@ -634,13 +634,13 @@ class Channel(base.StdChannel):
         self._purge(queue)
         self._broker.delQueue(queue)
 
-    @ProtonExceptionHandler('object already exists')
+    @QpidMessagingExceptionHandler('object already exists')
     def _new_queue(self, queue, **kwargs):
         """Create a new queue specified by name.
 
         An internal method to create a new queue specified by name. If the
         queue already exists, an exception is raise, which is caught and
-        silenced by the @ProtonExceptionHandler decorator.
+        silenced by the @QpidMessagingExceptionHandler decorator.
 
         This is an internal method.  External calls for queue creation
         functionality should be done using queue_declare().
@@ -713,7 +713,7 @@ class Channel(base.StdChannel):
                 return
             self._delete(queue)
 
-    @ProtonExceptionHandler('object already exists')
+    @QpidMessagingExceptionHandler('object already exists')
     def exchange_declare(self, exchange='', type='direct', durable=False,
                          **kwargs):
         """Create a new exchange.
@@ -750,7 +750,7 @@ class Channel(base.StdChannel):
         """
         self._broker.delExchange(exchange_name)
 
-    @ProtonExceptionHandler('queue in use')
+    @QpidMessagingExceptionHandler('queue in use')
     def after_reply_message_received(self, queue):
         self._delete(queue)
 
