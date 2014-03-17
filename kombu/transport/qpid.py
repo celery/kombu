@@ -11,7 +11,6 @@ qpid transport.
 """Kombu transport using the Django database as a message store."""
 
 import os
-import uuid
 import base64
 import threading
 import Queue
@@ -20,7 +19,6 @@ import ssl
 from time import clock
 from itertools import count
 
-from kombu.transport import virtual
 from kombu.five import Empty, items
 from kombu.utils import kwdict
 from kombu.utils.compat import OrderedDict
