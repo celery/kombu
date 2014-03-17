@@ -40,6 +40,7 @@ from . import base
 from qpid.selector import Selector
 import atexit
 
+
 def default_monkey():
     Selector.lock.acquire()
     try:
@@ -64,6 +65,7 @@ qpid.selector.Selector.default = staticmethod(default_monkey)
 
 from qpid.ops import ExchangeQuery, QueueQuery
 
+
 def resolve_declare_monkey(self, sst, lnk, dir, action):
     declare = lnk.options.get("create") in ("always", dir)
     assrt = lnk.options.get("assert") in ("always", dir)
@@ -80,7 +82,8 @@ def resolve_declare_monkey(self, sst, lnk, dir, action):
             if assrt:
                 expected = lnk.options.get("node", {}).get("type")
                 if expected and type != expected:
-                    err = AssertionFailed(text="expected %s, got %s" % (expected, type))
+                    err = AssertionFailed(
+                        text="expected %s, got %s" % (expected, type))
             if err is None:
                 action(type, subtype)
         if err:
@@ -201,7 +204,7 @@ class Base64(object):
         """
         Encode a string using Base64.
 
-        :param The string to be encoded
+        :param s: The string to be encoded
         :type s: str
         """
         return bytes_to_str(base64.b64encode(str_to_bytes(s)))
@@ -209,7 +212,7 @@ class Base64(object):
     def decode(self, s):
         """Decode a string using Base64
 
-        :param The string to be decoded
+        :param s: The string to be decoded
         :type s: str
         """
         return base64.b64decode(str_to_bytes(s))
@@ -614,8 +617,8 @@ class Channel(base.StdChannel):
         :type queue: str
         """
         queue_to_check = self._broker.getQueue(queue)
-        msgDepth = queue_to_check.values['msgDepth']
-        return msgDepth
+        message_depth = queue_to_check.values['msgDepth']
+        return message_depth
 
     def _delete(self, queue, *args, **kwargs):
         """Delete a queue and all messages on that queue.
@@ -966,7 +969,8 @@ class Channel(base.StdChannel):
 
         self.connection._callbacks[queue] = _callback
         self._consumers.add(consumer_tag)
-        my_thread = FDShimThread(self.connection.create_qpid_connection, queue, self.delivery_queue)
+        my_thread = FDShimThread(self.connection.create_qpid_connection,
+                                 queue, self.delivery_queue)
         self._consumer_threads[queue] = my_thread
         my_thread.daemon = True
         my_thread.start()
@@ -1322,7 +1326,7 @@ class FDShim(object):
         The thread may not exit immediately because it may be in a blocking
         read.  It will exit gracefully before entering the next blocking read.
         """
-        self.is_killed = True
+        self._is_killed = True
 
     def monitor_consumers(self):
         """The thread entry point.
@@ -1386,10 +1390,8 @@ class Connection(object):
     :type connection_options: dict
     """
 
-    # A class reference to the Channel object class associated with this
-    # object type.
+    # A class reference to the Channel object
     Channel = Channel
-    #TODO investigate and potentially remove Channel from here, it shouldn't be needed.
 
     def __init__(self, **connection_options):
         self.connection_options = connection_options
