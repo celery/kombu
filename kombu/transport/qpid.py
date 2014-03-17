@@ -789,7 +789,7 @@ class Channel(base.StdChannel):
         """
         self._broker.bind(exchange, queue, routing_key)
 
-    def queue_unbind(self, *args, **kwargs):
+    def queue_unbind(self, queue, exchange, routing_key, **kwargs):
         """Unbind a queue from an exchange with a given bind key.
 
         Unbind a queue specified by name, from an exchange specified by
@@ -808,10 +808,7 @@ class Channel(base.StdChannel):
         queue and a specified exchange that should be unbound.
         :type routing_key: str
         """
-        queue = kwargs['queue']
-        exchange = kwargs['exchange']
-        key = kwargs['routing_key']
-        self._broker.unbind(exchange, queue, key)
+        self._broker.unbind(exchange, queue, routing_key)
 
     def queue_purge(self, queue, **kwargs):
         """Remove all undelivered messages from queue.
