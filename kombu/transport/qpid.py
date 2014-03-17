@@ -1450,10 +1450,9 @@ class Transport(base.Transport):
     The Transport can create Channels to communicate with the broker with
     using the create_channel() method.
 
-    :param client: ????
-    :type client: ????
+    :param client: A reference to the creator of the Transport.
+    :type client: kombu.connection.Connection
     """
-    #TODO what is client exactly?  Better document its type and purpose.
     # Reference to the class that should be used as the Connection object
     Connection = Connection
 
