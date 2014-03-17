@@ -770,7 +770,7 @@ class Channel(base.StdChannel):
         return
         self._delete(queue)
 
-    def queue_bind(self, *args, **kwargs):
+    def queue_bind(self, queue, exchange, routing_key, **kwargs):
         """Bind a queue to an exchange with a bind key.
 
         Bind a queue specified by name, to an exchange specified by name,
@@ -787,11 +787,7 @@ class Channel(base.StdChannel):
         bind to the specified exchange with.
         :type routing_key: str
         """
-        #TODO: update signature to not dynamically unpack kwargs
-        queue = kwargs['queue']
-        exchange = kwargs['exchange']
-        key = kwargs['routing_key']
-        self._broker.bind(exchange, queue, key)
+        self._broker.bind(exchange, queue, routing_key)
 
     def queue_unbind(self, *args, **kwargs):
         """Unbind a queue from an exchange with a given bind key.
