@@ -498,11 +498,9 @@ class Channel(base.StdChannel):
         self.delivery_queue = delivery_queue
         self._tag_to_queue = {}
         self._consumer_threads = {}
-        #TODO: consolidate these connections so the objects that need them instantiate them inline
-        qpid_qmf_connection = connection.create_qpid_connection()
-        qpid_publish_connection = connection.create_qpid_connection()
-        self._qpid_session = qpid_publish_connection.session()
-        self._broker = BrokerAgent(qpid_qmf_connection)
+        qpid_connection = connection.create_qpid_connection()
+        self._qpid_session = qpid_connection.session()
+        self._broker = BrokerAgent(qpid_connection)
         self._qos = None
         self._consumers = set()
         self.closed = False
