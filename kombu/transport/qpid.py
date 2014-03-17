@@ -1049,10 +1049,14 @@ class Channel(base.StdChannel):
         Returns a dict object that encapsulates message attributes.  See
         parameters for more details on attributes that can be set.
 
+        This message is typically called by kombu.messaging._publish() as a
+        preparation step in message publication.
+
         :param body: The body of the message
         :type body: str
-        :param priority: not used or implemented
-        :type priority: ???
+        :param priority: A number between 0 and 9 that sets the priority of
+        the message.
+        :type priority: int
         :param content_type: The content_type the message body should be
         treated as.  If this is unset, the qpid.messaging client tries to
         autodetect the content_type from the body.
@@ -1066,10 +1070,6 @@ class Channel(base.StdChannel):
         :param properties: Message properties to be set on the message.
         :type properties: dict
         """
-        #TODO better document when this is called
-        #TODO determine if info is even needed
-        #TODO priority is never even used...
-        #TODO better document intent of properties
         properties = properties or {}
         info = properties.setdefault('delivery_info', {})
         info['priority'] = priority or 0
