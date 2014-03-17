@@ -294,9 +294,9 @@ class QoS(object):
         self._not_yet_acked[delivery_tag] = message
 
     def get(self, delivery_tag):
-        #TODO test behavior if delivery_tag is not valid
         """
-        Get an un-ACKed message by delivery_tag.
+        Get an un-ACKed message by delivery_tag.  If called with an invalid
+        delivery_tag a KeyError is raised.
 
         :param delivery_tag: The delivery tag associated with the message
         to be returned.
