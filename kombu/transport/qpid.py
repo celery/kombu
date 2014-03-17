@@ -1093,7 +1093,9 @@ class Channel(base.StdChannel):
         - assigns a delivery_tag generated through self._delivery_tags
         - sets the exchange and routing_key info as delivery_info
 
-        Internally uses _put() to send the message synchronously.
+        Internally uses _put() to send the message synchronously.  This
+        message is typically called by kombu.messaging._publish() as the
+        final step in message publication.
 
         :param message: A dict containing key value pairs with the message
         data.  A valid message dict can be generated using the
@@ -1106,7 +1108,6 @@ class Channel(base.StdChannel):
         submitted onto the exchange.
         :type routing_key: str
         """
-        #TODO determine when this is called
         message['body'], body_encoding = self.encode_body(
             message['body'], self.body_encoding,
         )
