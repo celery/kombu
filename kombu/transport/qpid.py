@@ -1039,7 +1039,7 @@ class Channel(base.StdChannel):
             self._qos = self.QoS(self)
         return self._qos
 
-    def basic_qos(self, prefetch_count=0, **kwargs):
+    def basic_qos(self, prefetch_count, *args):
         """Change QoS settings for this channel.
 
         Set the number of messages this Channel can fetch and hold without
