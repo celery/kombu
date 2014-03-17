@@ -697,7 +697,33 @@ class Channel(base.StdChannel):
             self._new_queue(queue, **kwargs)
         return queue_declare_ok_t(queue, self._size(queue), 0)
 
-    #TODO add queue_delete(self, queue, if_unused=False, if_empty=False, **kwargs) method
+    def queue_delete(self, queue, if_unused=False, if_empty=False, **kwargs):
+        """Delete a queue by name.
+
+        Delete a queue specified by name.  Using the if_unused keyword
+        argument, the delete can only occur if there are 0 consumers bound
+        to it.  Using the if_empty keyword argument, the delete can only
+        occur if there are 0 messages in the queue.
+
+        This method returns None in all cases.
+
+        :param queue: The name of the queue to be deleted.
+        :type queue: str
+        :param if_unused: If True, delete only if the queue has 0
+        consumers.  If False, delete a queue even with consumers bound to it.
+        :type if_unused: bool
+        :param if_empty: If True, only delete the queue if it is empty.  If
+        False, delete the queue if it is empty or not.
+        :type if_empty: bool
+        """
+        if self._has_queue(queue):
+            if if_empty and self._size(queue):
+                return
+            queue_obj = self._broker.getQueue(queue)
+            consumer_count = queue_obj.getAttributes()['consumerCount']
+            if if_unused and consumer_count > 0:
+                return
+            self._delete(queue)
 
     @ProtonExceptionHandler('object already exists')
     def exchange_declare(self, *args, **kwargs):
