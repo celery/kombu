@@ -1021,7 +1021,6 @@ class Channel(base.StdChannel):
         undelivered by the broker.
         """
         #TODO explicitly reject messages through a call to basic_reject
-        #TODO investigate the call to connection.close_channel
         if not self.closed:
             self.closed = True
             for consumer in list(self._consumers):
@@ -1430,8 +1429,13 @@ class Connection(object):
         return QpidConnection.establish(**self.connection_options)
 
     def close_channel(self, channel):
-        #TODO investigate if close_channel is needed and functioning correctly.
-        #TODO add docstring to this method after investigating when it is called
+        """Close a Channel.
+
+        Close a channel specified by a reference to the Channel object.
+
+        :param channel: Channel that should be closed.
+        :type channel: Channel
+        """
         try:
             self.channels.remove(channel)
         except ValueError:
@@ -1588,6 +1592,7 @@ class Transport(base.Transport):
         :param connection: The Connection that should be closed
         :type connection: Connection
         """
+        #TODO explicitly close connection at end of this method
         for l in connection.channels:
             while l:
                 try:
