@@ -64,6 +64,7 @@ import qpid.selector
 qpid.selector.Selector.default = staticmethod(default_monkey)
 
 from qpid.ops import ExchangeQuery, QueueQuery
+from qpid.messaging.exceptions import NotFound, AssertionFailed
 
 
 def resolve_declare_monkey(self, sst, lnk, dir, action):
