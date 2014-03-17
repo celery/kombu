@@ -1041,22 +1041,17 @@ class Channel(base.StdChannel):
             self._qos = self.QoS(self)
         return self._qos
 
-    def basic_qos(self, prefetch_size=0, prefetch_count=0,
-                  apply_global=False):
+    def basic_qos(self, prefetch_count=0, **kwargs):
         """Change QoS settings for this channel.
 
-        Only `prefetch_count` is supported.
+        Set the number of messages this Channel can fetch and hold without
+        acknowledging them.  For instance prefetch_count=3 will allow a
+        maximum of 3 unacked messages to be received from the broker.
 
-        :param prefetch_size: not used or implemented.
-        :type prefetch_size: int
         :param prefetch_count: The number of outstanding, unacked messages
         this Channel is allowed to have.
         :type prefetch_count: int
-        :param apply_global: not used or implemented.
-        :type apply_global: bool
         """
-        #TODO implement prefetch_size and doc it
-        #TODO implement apply_global and doc it
         self.qos.prefetch_count = prefetch_count
 
     def prepare_message(self, body, priority=None, content_type=None,
@@ -1583,7 +1578,6 @@ class Transport(base.Transport):
         :param connection: The Connection that should be closed
         :type connection: Connection
         """
-        #TODO explicitly close connection at end of this method
         for l in connection.channels:
             while l:
                 try:
