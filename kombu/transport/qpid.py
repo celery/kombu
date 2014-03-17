@@ -726,7 +726,8 @@ class Channel(base.StdChannel):
             self._delete(queue)
 
     @ProtonExceptionHandler('object already exists')
-    def exchange_declare(self, *args, **kwargs):
+    def exchange_declare(self, exchange='', type='direct', durable=False,
+                         **kwargs):
         """Create a new exchange.
 
         Create an exchange of a specific type, and optionally have the
@@ -743,19 +744,15 @@ class Channel(base.StdChannel):
         :param type: The exchange type. Valid values include 'direct',
         'topic', and 'fanout'.
         :type type: str
-        :param exchange: The name of the exchange to be created.
+        :param exchange: The name of the exchange to be created.  If no
+        exchange is specified, then a blank string will be used as the name.
         :type exchange: str
         :param durable: True if the exchange should be durable, or False
         otherwise.
         :type durable: bool
         """
-        #TODO: update signature to not dynamically unpack kwargs
-        #TODO: allow exchange name to be blank and update docstring
-        e_type = kwargs['type']
-        e_name = kwargs['exchange']
-        e_durable = kwargs.get('durable', False)
-        options = {'durable': e_durable}
-        self._broker.addExchange(e_type, e_name, options)
+        options = {'durable': durable}
+        self._broker.addExchange(type, exchange, options)
 
     def exchange_delete(self, exchange_name, **kwargs):
         """Delete an exchange specified by name
