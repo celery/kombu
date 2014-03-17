@@ -1031,11 +1031,6 @@ class Channel(base.StdChannel):
             self._qpid_session.close()
             self._broker.close()
 
-    def acquire(self, *arg, **kwargs):
-        #TODO implement me
-        #TODO add docstring
-        raise NotImplementedError('acquire Not Implemented')
-
     @property
     def qos(self):
         """:class:`QoS` manager for this channel.
