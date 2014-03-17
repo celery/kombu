@@ -524,11 +524,11 @@ class Channel(base.StdChannel):
         :param queue: The queue name to get the message from
         :type queue: str
         """
-        #TODO properly close the receiver in the event that the Empty
-        # exception is raised.
         rx = self._qpid_session.receiver(queue)
-        message = rx.fetch(timeout=0)
-        rx.close()
+        try:
+            message = rx.fetch(timeout=0)
+        finally:
+            rx.close()
         return message
 
     def _put(self, routing_key, message, exchange=None, **kwargs):
