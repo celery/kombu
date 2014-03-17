@@ -750,12 +750,8 @@ class Channel(base.StdChannel):
         """
         self._broker.delExchange(exchange_name)
 
+    @ProtonExceptionHandler('queue in use')
     def after_reply_message_received(self, queue):
-        #TODO investigate the correct behavior of this message.  It should
-        # not just return.  This is related to the event broadcast behavior
-        # of celery control().
-        #TODO write docstring
-        return
         self._delete(queue)
 
     def queue_bind(self, queue, exchange, routing_key, **kwargs):
