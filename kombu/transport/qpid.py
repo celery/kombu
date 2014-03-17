@@ -1526,10 +1526,10 @@ class Transport(base.Transport):
         The registration call is made exactly once per Transport after the
         Transport is finished instantiating.
 
-        :param connection: ???
-        :type connection: ???
+        :param connection: A reference to the connection associated with
+        this Transport.
+        :type connection: Connection
         """
-        #TODO better document the types and intent of connection
         loop.add_reader(self.fd_shim.r, self.on_readable, connection, loop)
 
     def establish_connection(self):
