@@ -1319,9 +1319,6 @@ class FDShim(object):
     the thread before calling start() ensuring an FDShim will never keep the
     Python process alive if all other non-daemon threads have exited.
 
-    :param connection: The connection object that corresponds with the
-    Transport.
-    :type connection: Connection
     :param queue_from_fdshim: The queue that that messages which are ready
     for reading are put into so that the Transport can drain them in
     Transport drain_events()
@@ -1331,11 +1328,9 @@ class FDShim(object):
     Channels associated with the Transport that created FDShim.
     :type delivery_queue: Queue.Queue
     """
-    #TODO is connection really needed?
-    def __init__(self, connection, queue_from_fdshim, delivery_queue):
+    def __init__(self, queue_from_fdshim, delivery_queue):
         self.queue_from_fdshim = queue_from_fdshim
         self.delivery_queue = delivery_queue
-        self.connection = connection
         self.r, self._w = os.pipe()
         self._is_killed = False
 
@@ -1507,7 +1502,7 @@ class Transport(base.Transport):
         self.client = client
         self.queue_from_fdshim = Queue.Queue()
         self.delivery_queue = Queue.Queue()
-        self.fd_shim = FDShim(self, self.queue_from_fdshim, self.delivery_queue)
+        self.fd_shim = FDShim(self.queue_from_fdshim, self.delivery_queue)
         fdshim_thread = threading.Thread(target=self.fd_shim.monitor_consumers)
         fdshim_thread.daemon = True
         fdshim_thread.start()
