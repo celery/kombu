@@ -1482,7 +1482,8 @@ class Transport(base.Transport):
         self.queue_from_fdshim = Queue.Queue()
         self.delivery_queue = Queue.Queue()
         self.fd_shim = FDShim(self.queue_from_fdshim, self.delivery_queue)
-        fdshim_thread = threading.Thread(target=self.fd_shim.monitor_consumers)
+        fdshim_thread = threading.Thread(
+            target=self.fd_shim.monitor_consumers)
         fdshim_thread.daemon = True
         fdshim_thread.start()
 
@@ -1508,6 +1509,8 @@ class Transport(base.Transport):
         :param connection: A reference to the connection associated with
         this Transport.
         :type connection: Connection
+        :param loop: A reference to the external loop.
+        :type loop: kombu.async.hub.Hub
         """
         loop.add_reader(self.fd_shim.r, self.on_readable, connection, loop)
 
@@ -1534,24 +1537,25 @@ class Transport(base.Transport):
             conninfo.hostname = '127.0.0.1'
         if conninfo.ssl:
             conninfo.qpid_transport = 'ssl'
-            conninfo.transport_options['ssl_keyfile'] = conninfo.ssl['keyfile']
-            conninfo.transport_options['ssl_certfile'] = conninfo.ssl['certfile']
-            conninfo.transport_options['ssl_trustfile'] = conninfo.ssl['ca_certs']
+            conninfo.transport_options['ssl_keyfile'] = conninfo.ssl[
+                'keyfile']
+            conninfo.transport_options['ssl_certfile'] = conninfo.ssl[
+                'certfile']
+            conninfo.transport_options['ssl_trustfile'] = conninfo.ssl[
+                'ca_certs']
             if conninfo.ssl['cert_reqs'] == ssl.CERT_REQUIRED:
                 conninfo.transport_options['ssl_skip_hostname_check'] = False
             else:
                 conninfo.transport_options['ssl_skip_hostname_check'] = True
         else:
             conninfo.qpid_transport = 'tcp'
-        opts = dict({
-                        'host': conninfo.hostname,
-                        'port': conninfo.port,
-                        'username': conninfo.userid,
-                        'password': conninfo.password,
-                        'transport': conninfo.qpid_transport,
-                        'timeout': conninfo.connect_timeout,
-                        'sasl_mechanisms': conninfo.sasl_mechanisms
-                    }, **conninfo.transport_options or {})
+        opts = dict({'host': conninfo.hostname, 'port': conninfo.port,
+                     'username': conninfo.userid,
+                     'password': conninfo.password,
+                     'transport': conninfo.qpid_transport,
+                     'timeout': conninfo.connect_timeout,
+                     'sasl_mechanisms': conninfo.sasl_mechanisms},
+                    **conninfo.transport_options or {})
         conn = self.Connection(**opts)
         conn.client = self.client
         return conn
