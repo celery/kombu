@@ -666,29 +666,24 @@ class Channel(base.StdChannel):
         else:
             return False
 
-    def queue_declare(self, queue=None, passive=False, **kwargs):
+    def queue_declare(self, queue, **kwargs):
         """Create a new queue specified by name.
 
         If a queue already exists, no action is taken and no exceptions are
         raised.  If the queue name is not specified, a queue name is
         generated using uuid(). This method uses _new_queue() internally.
 
+        This method returns a named tuple with the name
+        'queue_declare_ok_t' and the queue name as 'queue', message count
+        on the queue as 'message_count', and the number of active consumers
+        as 'consumer_count'.  The consumer count is assumed to be 0 since
+        the queue was just created.  The named tuple values are ordered as
+        queue, message_count, and consumer_count respectively.
+
         :param queue: the name of the queue to be created.
         :type queue: str
-        :param passive: ???
-        :type passive: ???
         """
-        #TODO: implement passive correctly and update docstring
-        #TODO document return behavior
-        queue = queue or 'amq.gen-%s' % uuid()
-        if passive and not self._has_queue(queue, **kwargs):
-            raise ChannelError(
-                'NOT_FOUND - no queue {0!r} in vhost {1!r}'.format(
-                    queue, self.connection.client.virtual_host or '/'),
-                (50, 10), 'Channel.queue_declare', '404',
-            )
-        else:
-            self._new_queue(queue, **kwargs)
+        self._new_queue(queue, **kwargs)
         return queue_declare_ok_t(queue, self._size(queue), 0)
 
     def queue_delete(self, queue, if_unused=False, if_empty=False, **kwargs):
