@@ -555,14 +555,14 @@ class Channel(base.StdChannel):
         name to send the message to. If exchange is not None, treated as
         the routing_key to use as the message is submitted onto the exchange.
         :type routing_key: str
-        :param message: The message to be sent
-        :type message: ???
+        :param message: The message to be sent as prepared by
+        basic_publish().
+        :type message: dict
         :param exchange: keyword parameter of the exchange this message
         should be sent on. If no exchange is specified, the message is sent
         directly to a queue specified by routing_key.
         :type exchange: str
         """
-        #TODO determine type of message parameter
         if not exchange:
             address = '%s; {assert: always, node: {type: queue}}' % \
                       routing_key
