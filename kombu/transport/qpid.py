@@ -357,9 +357,8 @@ class Message(base.Message):
     supported by the Channel.
     :type channel: Channel
     :param payload: the payload of the message
-    :type payload: ???
+    :type payload: dict
     """
-    #TODO determine the type of payload and add to docstring
 
     def __init__(self, channel, payload, **kwargs):
         self._raw = payload
@@ -1020,7 +1019,6 @@ class Channel(base.StdChannel):
         causes all outstanding, unacked messages to be considered
         undelivered by the broker.
         """
-        #TODO explicitly reject messages through a call to basic_reject
         if not self.closed:
             self.closed = True
             for consumer in list(self._consumers):
