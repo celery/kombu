@@ -1482,10 +1482,6 @@ class Transport(base.Transport):
     # This Transport does support an asynchronous event model.
     supports_ev = True
 
-    # This transport does not make use of __reader
-    __reader = None
-    #TODO determine if __reader is still needed
-
     # Unused error classification to identify recoverable vs
     # non-recoverable errors on Channels and Connections.  These should be
     # set to a tuple instead of None if they are to be used.
