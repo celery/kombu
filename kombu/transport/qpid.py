@@ -654,9 +654,18 @@ class Channel(base.StdChannel):
         self._broker.addQueue(queue)
 
     def _has_queue(self, queue, **kwargs):
-        #TODO: implement me
-        #TODO: write docstring
-        raise NotImplementedError
+        """Determine if the broker has a queue specified by name.
+
+        Returns True if the broker has a queue specified by name.  Returns
+        False if the broker does not have a queue specified by name.
+
+        :param queue: The queue name to check if the queue exists.
+        :type queue: str
+        """
+        if self._broker.getQueue(queue):
+            return True
+        else:
+            return False
 
     def _poll(self, cycle, timeout=None):
         #TODO: implement me
