@@ -666,11 +666,6 @@ class Channel(base.StdChannel):
         else:
             return False
 
-    def _poll(self, cycle, timeout=None):
-        #TODO: implement me
-        #TODO: write docstring
-        raise NotImplementedError('_poll Not Implemented')
-
     def queue_declare(self, queue=None, passive=False, **kwargs):
         """Create a new queue specified by name.
 
