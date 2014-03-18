@@ -1,0 +1,2 @@
+qpid-python
+qpid-tools
