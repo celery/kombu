@@ -22,3 +22,7 @@ django-kombu
 
 # SQS transport
 boto
+
+# Qpid transport
+qpid-python
+qpid-tools
