@@ -290,7 +290,7 @@ class QoS(object):
         :param message: A received message that has not yet been acked
         :type message: qpid.messaging.Message
         :param delivery_tag: An integer number to refer to this message by
-        upon receipt.
+            upon receipt.
         :type delivery_tag: int
         """
         self._not_yet_acked[delivery_tag] = message
@@ -301,7 +301,7 @@ class QoS(object):
         delivery_tag a KeyError is raised.
 
         :param delivery_tag: The delivery tag associated with the message
-        to be returned.
+            to be returned.
         :type delivery_tag: int
         """
         return self._not_yet_acked[delivery_tag]
@@ -313,7 +313,7 @@ class QoS(object):
         forgotten by the broker.
 
         :param delivery_tag: the delivery tag associated with the message
-        to be acknowledged.
+            to be acknowledged.
         :type delivery_tag: int
         """
         message = self._not_yet_acked.pop(delivery_tag)
@@ -330,12 +330,12 @@ class QoS(object):
         requeued for delivery to another consumer.
 
         :param delivery_tag: The delivery tag associated with the message
-        to be rejected.
+            to be rejected.
         :type delivery_tag: int
         :param requeue: If True, the broker will be notified to requeue
-        the message.  If False, the broker will be told to drop the message
-        entirely.  In both cases, the message will be removed from this
-        object.
+            the message.  If False, the broker will be told to drop the
+            message entirely.  In both cases, the message will be removed
+            from this object.
         :type requeue: bool
         """
         message = self._not_yet_acked.pop(delivery_tag)
@@ -355,8 +355,8 @@ class Message(base.Message):
 
 
     :param channel: The Channel associated with the message. A reference
-    to Channel is needed to ensure serialization/encoding/decoding is
-    supported by the Channel.
+        to Channel is needed to ensure serialization/encoding/decoding is
+        supported by the Channel.
     :type channel: Channel
     :param payload: the payload of the message
     :type payload: dict
@@ -467,12 +467,12 @@ class Channel(base.StdChannel):
     its QoS object to perform the message acking.
 
     :param connection: A Connection object that this Channel can reference.
-    Currently only used to access callbacks.
+        Currently only used to access callbacks.
     :type connection: Connection
     :param transport: The Transport this Channel is associated with.
     :type transport: Transport
     :param delivery_queue: A threadsafe queue that asynchronous
-    FDShimThread consumers should put arriving messages into.
+        FDShimThread consumers should put arriving messages into.
     :type delivery_queue: Queue.Queue
     """
 
@@ -699,10 +699,11 @@ class Channel(base.StdChannel):
         :param queue: The name of the queue to be deleted.
         :type queue: str
         :param if_unused: If True, delete only if the queue has 0
-        consumers.  If False, delete a queue even with consumers bound to it.
+            consumers.  If False, delete a queue even with consumers bound
+            to it.
         :type if_unused: bool
         :param if_empty: If True, only delete the queue if it is empty.  If
-        False, delete the queue if it is empty or not.
+            False, delete the queue if it is empty or not.
         :type if_empty: bool
         """
         if self._has_queue(queue):
@@ -766,10 +767,10 @@ class Channel(base.StdChannel):
         :param queue: The name of the queue to be bound.
         :type queue: str
         :param exchange: The name of the exchange that the queue should be
-        bound to.
+            bound to.
         :type exchange: str
         :param routing_key: The bind key that the specified queue should
-        bind to the specified exchange with.
+            bind to the specified exchange with.
         :type routing_key: str
         """
         self._broker.bind(exchange, queue, routing_key)
@@ -787,10 +788,10 @@ class Channel(base.StdChannel):
         :param queue: The name of the queue to be unbound.
         :type queue: str
         :param exchange: The name of the exchange that the queue should be
-        unbound from.
+            unbound from.
         :type exchange: str
         :param routing_key: The existing bind key between the specified
-        queue and a specified exchange that should be unbound.
+            queue and a specified exchange that should be unbound.
         :type routing_key: str
         """
         self._broker.unbind(exchange, queue, routing_key)
@@ -815,7 +816,7 @@ class Channel(base.StdChannel):
         Internally, this method relies on _purge().
 
         :param queue: The name of the queue which should have all messages
-        removed.
+            removed.
         :type queue: str
         """
         return self._purge(queue)
@@ -840,7 +841,7 @@ class Channel(base.StdChannel):
         :param queue: The queue name to fetch a message from.
         :type queue: str
         :param no_ack: If True, a message fetched will not be acked. If
-        False, a message fetched will be acked.
+            False, a message fetched will be acked.
         :type noack: bool
         """
         try:
@@ -865,7 +866,7 @@ class Channel(base.StdChannel):
         and is responsible for the ACKing.
 
         :param delivery_tag: The delivery tag associated with the message
-        to be acknowledged.
+            to be acknowledged.
         :type delivery_tag: int
         """
         self.qos.ack(delivery_tag)
@@ -883,13 +884,13 @@ class Channel(base.StdChannel):
         message previously.
 
         :param delivery_tag: The delivery tag associated with the message
-        to be rejected.
+            to be rejected.
         :type delivery_tag: int
         :param requeue: If False, the rejected message will be dropped by
-        the broker and not delivered to any other consumers.  If True,
-        then the rejected message will be requeued for delivery to another
-        consumer, potentially to the same consumer who rejected the message
-        previously.
+            the broker and not delivered to any other consumers.  If True,
+            then the rejected message will be requeued for delivery to
+            another consumer, potentially to the same consumer who rejected
+            the message previously.
         :type requeue: bool
 
         """
@@ -942,14 +943,14 @@ class Channel(base.StdChannel):
         :param queue: The name of the queue to consume messages from
         :type queue: str
         :param no_ack: If True, then messages will not be saved for
-        acking later.  If False, then messages will be saved for acking
-        later.
+            acking later.  If False, then messages will be saved for acking
+            later.
         :type no_ack: bool
         :param callback: a callable that will be called when messages
-        arrive on the queue.
+            arrive on the queue.
         :type callback: a callable object
         :param consumer_tag: a tag to reference the created consumer by.
-        This consumer_tag is needed to cancel the consumer.
+            This consumer_tag is needed to cancel the consumer.
         :type consumer_tag: an immutable object
         """
         self._tag_to_queue[consumer_tag] = queue
@@ -985,8 +986,8 @@ class Channel(base.StdChannel):
         This method also cleans up all lingering references of the consumer.
 
         :param consumer_tag: The tag which refers to the consumer to be
-        cancelled.  Originally specified when the consumer was created as
-        a parameter to basic_consume().
+            cancelled.  Originally specified when the consumer was created
+            as a parameter to basic_consume().
         :type consumer_tag: an immutable object
         """
         if consumer_tag in self._consumers:
@@ -1034,7 +1035,7 @@ class Channel(base.StdChannel):
         maximum of 3 unacked messages to be received from the broker.
 
         :param prefetch_count: The number of outstanding, unacked messages
-        this Channel is allowed to have.
+            this Channel is allowed to have.
         :type prefetch_count: int
         """
         self.qos.prefetch_count = prefetch_count
@@ -1052,17 +1053,17 @@ class Channel(base.StdChannel):
         :param body: The body of the message
         :type body: str
         :param priority: A number between 0 and 9 that sets the priority of
-        the message.
+            the message.
         :type priority: int
         :param content_type: The content_type the message body should be
-        treated as.  If this is unset, the qpid.messaging client tries to
-        autodetect the content_type from the body.
+            treated as.  If this is unset, the qpid.messaging client tries
+            to autodetect the content_type from the body.
         :type content_type: str
         :param content_encoding: The content_encoding the message body is
-        encoded as.
+            encoded as.
         :type content_encoding: str
         :param headers: Additional Message headers that should be set.
-        Passed in as a key-value pair.
+            Passed in as a key-value pair.
         :type headers: dict
         :param properties: Message properties to be set on the message.
         :type properties: dict
@@ -1086,7 +1087,7 @@ class Channel(base.StdChannel):
 
         - encodes the body using self.encode_body()
         - wraps the body as a buffer object, so that the qpid.messaging
-        uses a content type that can support arbitrarily large messages.
+            uses a content type that can support arbitrarily large messages.
         - assigns a delivery_tag generated through self._delivery_tags
         - sets the exchange and routing_key info as delivery_info
 
@@ -1095,14 +1096,14 @@ class Channel(base.StdChannel):
         final step in message publication.
 
         :param message: A dict containing key value pairs with the message
-        data.  A valid message dict can be generated using the
-        prepare_message() method.
+            data.  A valid message dict can be generated using the
+            prepare_message() method.
         :type message: dict
         :param exchange: The name of the exchange to submit this message
-        onto.
+            onto.
         :type exchange: str
         :param routing_key: The routing key to be used as the message is
-        submitted onto the exchange.
+            submitted onto the exchange.
         :type routing_key: str
         """
         message['body'], body_encoding = self.encode_body(
@@ -1137,7 +1138,7 @@ class Channel(base.StdChannel):
         :param body: The body to be encoded.
         :type body: str
         :param encoding: The encoding type to be used.  Must be a supported
-        codec listed in self.codecs, which
+            codec listed in self.codecs, which
         :type encoding: str
         """
         if encoding:
@@ -1160,7 +1161,7 @@ class Channel(base.StdChannel):
         :param body: The body to be encoded.
         :type body: str
         :param encoding: The encoding type to be used.  Must be a supported
-        codec listed in self.codecs, which
+            codec listed in self.codecs, which
         :type encoding: str
         """
         if encoding:
@@ -1179,7 +1180,7 @@ class Channel(base.StdChannel):
         :param exchange: The exchange to have its type lookup up.
         :type exchange: str
         :param default: The type of exchange to assume if the exchange does
-        not exist.
+            not exist.
         :type default: str
         """
         qpid_exchange = self._broker.getExchange(exchange)
@@ -1368,23 +1369,21 @@ class Connection(object):
     The following keys are expected to be in the connection_options dict at
     a minimum:
 
-      host: The host that connections should connect to.
-      port: The port that connection should connect to.
-      username: The username that connections should connect with.
-      password: The password that connections should connect with.
-      transport: The transport type that connections should use.  Either
-                'tcp', or 'ssl' are expected as values.
-      timeout: the timeout to use when a Connection connects to the broker.
-      sasl_mechanisms: The sasl authentication mechanism type to use.
-                       refer to SASL documentation for an explanation of
-                       valid values.
+    * host: The host that connections should connect to.
+    * port: The port that connection should connect to.
+    * username: The username that connections should connect with.
+    * password: The password that connections should connect with.
+    * transport: The transport type that connections should use.  Either
+          'tcp', or 'ssl' are expected as values.
+    * timeout: the timeout to use when a Connection connects to the broker.
+    * sasl_mechanisms: The sasl authentication mechanism type to use. refer
+          to SASL documentation for an explanation of valid values.
 
     :param connection_options: A dict containing the connection options.
-    This object expects a minimum number of keys in the dict which are
-    explained in the documentation on the object itself.
+        This object expects a minimum number of keys in the dict which are
+        explained in the documentation on the object itself.
     :type connection_options: dict
     """
-
     # A class reference to the Channel object
     Channel = Channel
 
@@ -1502,7 +1501,7 @@ class Transport(base.Transport):
         Transport is finished instantiating.
 
         :param connection: A reference to the connection associated with
-        this Transport.
+            this Transport.
         :type connection: Connection
         :param loop: A reference to the external loop.
         :type loop: kombu.async.hub.Hub
@@ -1588,12 +1587,12 @@ class Transport(base.Transport):
         name, and the message, in that order.
 
         :param connection: The Connection that contains the callbacks,
-        indexed by queue name, which will be called by this method.
+            indexed by queue name, which will be called by this method.
         :type connection: Connection
         :param timeout: The timeout that limits how long drain_events() will
-        run for.  The timeout could interrupt a blocking read that is
-        waiting for a new message, or cause drain_events() to return before
-        all messages are drained.
+            run for.  The timeout could interrupt a blocking read that is
+            waiting for a new message, or cause drain_events() to return
+            before all messages are drained.
         :type timeout: int
         """
         start_time = clock()
@@ -1655,11 +1654,11 @@ class Transport(base.Transport):
         eventually clear out the fd_shim pipe of all symbols correctly.
 
         :param connection: The connection associated with the readable
-        events, which contains the callbacks that need to be called for the
-        readables.
+            events, which contains the callbacks that need to be called for
+            the readables.
         :type connection: Connection
         :param loop: The asynchronous loop object that contains epoll like
-        functionality.
+            functionality.
         :type loop: kombu.async.Hub
         """
         result = os.read(self.fd_shim.r, 1)
