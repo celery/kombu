@@ -18,7 +18,6 @@
     .. autoclass:: Connection
         :members:
         :undoc-members:
-        :inherited-members:
 
     Channel
     -------

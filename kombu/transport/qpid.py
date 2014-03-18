@@ -7,6 +7,12 @@ kombu.transport.qpid
 .. _`Qpid`: http://qpid.apache.org/
 .. _`py-amqp`: http://pypi.python.org/pypi/amqp/
 
+    .. admonition:: Install Dependencies
+
+        Run the command:
+
+        `pip install qpid-tools qpid-python`
+
 """
 from __future__ import absolute_import
 
