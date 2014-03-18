@@ -24,5 +24,5 @@ django-kombu
 boto
 
 # Qpid transport
-qpid-python
-qpid-tools
+qpid-python>=0.26
+qpid-tools>=0.26
