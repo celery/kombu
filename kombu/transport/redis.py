@@ -551,13 +551,13 @@ class Channel(virtual.Channel):
         try:
             c.unsubscribe([topic])
         finally:
-            if should_disconnect:
+            if should_disconnect and c.connection:
                 c.connection.disconnect()
 
     def _handle_message(self, client, r):
-        if r[0] == 'unsubscribe' and r[2] == 0:
+        if bytes_to_str(r[0]) == 'unsubscribe' and r[2] == 0:
             client.subscribed = False
-        elif r[0] == 'pmessage':
+        elif bytes_to_str(r[0]) == 'pmessage':
             return {'type':    r[0], 'pattern': r[1],
                     'channel': r[2], 'data':    r[3]}
         else:
@@ -582,8 +582,8 @@ class Channel(virtual.Channel):
                     try:
                         message = loads(bytes_to_str(payload['data']))
                     except (TypeError, ValueError):
-                        warn('Cannot process event on channel %r: %r',
-                             channel, payload, exc_info=1)
+                        warn('Cannot process event on channel %r: %s',
+                             channel, repr(payload)[:4096], exc_info=1)
                         raise Empty()
                     exchange = channel.split('/', 1)[0]
                     return message, self._fanout_to_queue[exchange]
