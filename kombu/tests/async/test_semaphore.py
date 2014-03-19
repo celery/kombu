@@ -1,7 +1,6 @@
 from __future__ import absolute_import
 
 from kombu.async.semaphore import LaxBoundedSemaphore
-from threading import Semaphore
 
 from kombu.tests.case import Case
 
@@ -22,7 +21,7 @@ class test_LaxBoundedSemaphore(Case):
 
         for i in range(30):
             x.release()
-        self.assertEqual(calls, list(range(1, 21) + ['x', 'y']))
+        self.assertEqual(calls, list(range(1, 21)) + ['x', 'y'])
         self.assertEqual(x.value, x.initial_value)
 
         calls[:] = []
