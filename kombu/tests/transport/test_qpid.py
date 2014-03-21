@@ -11,10 +11,14 @@ except ImportError:
 else:
     from kombu.transport import pyamqp
 
-from kombu.transport.qpid import QpidMessagingExceptionHandler, Base64
+from kombu.transport.qpid import QpidMessagingExceptionHandler, Base64, \
+    QoS, Message, Channel, FDShimThread, FDShim, Connection, Transport
+
+import kombu.transport.qpid
 
 from kombu import Connection
 from kombu.five import nextfun
+from kombu.utils.compat import OrderedDict
 
 from kombu.tests.case import Case, Mock, SkipTest, mask_modules, patch
 
@@ -34,10 +38,13 @@ class test_QpidMessagingExceptionHandler(Case):
         self.handler = QpidMessagingExceptionHandler(self.allowed_string)
 
     def test_string_stored(self):
+        """Assert that the allowed_exception_string is stored correctly"""
         handler_string = self.handler.allowed_exception_string
         self.assertEqual(self.allowed_string, handler_string)
 
     def test_exception_positive(self):
+        """Assert that an exception is silenced if it contains the
+        allowed_string text"""
         exception_to_raise = Exception(self.allowed_string)
         def exception_raise_func():
             raise exception_to_raise
@@ -49,6 +56,8 @@ class test_QpidMessagingExceptionHandler(Case):
                       "to be raised that should have been silenced!")
 
     def test_exception_negative(self):
+        """Assert that an exception that does not contain the
+        allowed_string text is properly raised"""
         exception_to_raise = Exception(self.not_allowed_string)
         def exception_raise_func():
             raise exception_to_raise
@@ -65,12 +74,144 @@ class test_Base64(Case):
         self.base_64 = Base64()
 
     def test_encode(self):
+        """Test Base64 encoding produces correct result"""
         encoded = self.base_64.encode(self.utf8)
         self.assertEqual(encoded, self.base64)
 
     def test_decode(self):
+        """Test Base64 decoding produces correct result"""
         decoded = self.base_64.decode(self.base64)
         self.assertEqual(decoded, self.utf8)
+
+
+class test_QoS(Case):
+
+    def mock_message_factory(self):
+        m_delivery_tag = self.delivery_tag_generator.next()
+        m = 'message %s' % m_delivery_tag
+        return (m, m_delivery_tag)
+
+    def add_n_messages_to_qos(self, n, qos):
+        for i in range(n):
+            self.add_message_to_qos(qos)
+
+    def add_message_to_qos(self, qos):
+        m, m_delivery_tag = self.mock_message_factory()
+        qos.append(m, m_delivery_tag)
+
+    def setUp(self):
+        self.qos_no_limit = QoS()
+        self.qos_limit_2 = QoS(prefetch_count=2)
+        self.delivery_tag_generator = count(1)
+
+    def test_init_no_params(self):
+        """Check that internal state is correct after initialization"""
+        self.assertEqual(self.qos_no_limit.prefetch_count, 0)
+        self.assertIsInstance(self.qos_no_limit._not_yet_acked, OrderedDict)
+
+    def test_init_with_params(self):
+        """Check that internal state is correct after initialization with
+        prefetch_count"""
+        self.assertEqual(self.qos_limit_2.prefetch_count, 2)
+
+    def test_can_consume_no_limit(self):
+        """can_consume shall always return True with no prefetch limits"""
+        self.assertTrue(self.qos_no_limit.can_consume())
+        self.add_n_messages_to_qos(3, self.qos_no_limit)
+        self.assertTrue(self.qos_no_limit.can_consume())
+
+    def test_can_consume_with_limit(self):
+        """can_consume shall return False only when the QoS holds
+        prefetch_count number of messages"""
+        self.assertTrue(self.qos_limit_2.can_consume())
+        self.add_n_messages_to_qos(2, self.qos_limit_2)
+        self.assertFalse(self.qos_limit_2.can_consume())
+
+    def test_can_consume_max_estimate_no_limit(self):
+        """can_consume shall always return 1 with no prefetch limits"""
+        self.assertEqual(self.qos_no_limit.can_consume_max_estimate(), 1)
+        self.add_n_messages_to_qos(3, self.qos_no_limit)
+        self.assertEqual(self.qos_no_limit.can_consume_max_estimate(), 1)
+
+    def test_can_consume_max_estimate_with_limit(self):
+        """while prefetch limits are enabled, can_consume shall return (
+        prefetch_limit - #messages) as the number of messages is
+        incremented from 0 to prefetch_limit"""
+        self.assertEqual(self.qos_limit_2.can_consume_max_estimate(), 2)
+        self.add_message_to_qos(self.qos_limit_2)
+        self.assertEqual(self.qos_limit_2.can_consume_max_estimate(), 1)
+        self.add_message_to_qos(self.qos_limit_2)
+        self.assertEqual(self.qos_limit_2.can_consume_max_estimate(), 0)
+
+    def test_append(self):
+        """Append two messages and check inside the QoS object that they
+        were put into the internal data structures correctly"""
+        qos = self.qos_no_limit
+        m1, m1_tag = self.mock_message_factory()
+        m2, m2_tag = self.mock_message_factory()
+        qos.append(m1, m1_tag)
+        length_not_yet_acked = len(qos._not_yet_acked)
+        self.assertEqual(length_not_yet_acked, 1)
+        checked_message1 = qos._not_yet_acked[m1_tag]
+        self.assertIs(m1, checked_message1)
+        qos.append(m2, m2_tag)
+        length_not_yet_acked = len(qos._not_yet_acked)
+        self.assertEqual(length_not_yet_acked, 2)
+        checked_message2 = qos._not_yet_acked[m2_tag]
+        self.assertIs(m2, checked_message2)
+
+    def test_get(self):
+        """Append two messages, and use get to receive them"""
+        qos = self.qos_no_limit
+        m1, m1_tag = self.mock_message_factory()
+        m2, m2_tag = self.mock_message_factory()
+        qos.append(m1, m1_tag)
+        qos.append(m2, m2_tag)
+        message1 = qos.get(m1_tag)
+        message2 = qos.get(m2_tag)
+        self.assertEquals(m1, message1)
+        self.assertEquals(m2, message2)
+
+    def test_ack(self):
+        """Load a mock message, ack the message, and ensure the right
+        call is made to the acknowledge method in the qpid.messaging client
+        library"""
+        message = Mock()
+        qos = self.qos_no_limit
+        qos.append(message, 1)
+        qos.ack(1)
+        message._receiver.session.acknowledge.assert_called_with(
+            message=message)
+
+    def test_ack_requeue_true(self):
+        """Load a mock message, reject the message with requeue=True,
+        and ensure the right call to acknowledge is made"""
+        message = Mock()
+        mock_QpidDisposition = Mock(return_value='disposition')
+        mock_RELEASED = Mock()
+        kombu.transport.qpid.QpidDisposition = mock_QpidDisposition
+        kombu.transport.qpid.RELEASED = mock_RELEASED
+        qos = self.qos_no_limit
+        qos.append(message, 1)
+        qos.reject(1, requeue=True)
+        mock_QpidDisposition.assert_called_with(mock_RELEASED)
+        message._receiver.session.acknowledge.assert_called_with(
+            message=message, disposition='disposition')
+
+    def test_ack_requeue_false(self):
+        """Load a mock message, reject the message with requeue=False,
+        and ensure the right call to acknowledge is made"""
+        message = Mock()
+        mock_QpidDisposition = Mock(return_value='disposition')
+        mock_REJECTED = Mock()
+        kombu.transport.qpid.QpidDisposition = mock_QpidDisposition
+        kombu.transport.qpid.REJECTED = mock_REJECTED
+        qos = self.qos_no_limit
+        qos.append(message, 1)
+        qos.reject(1, requeue=False)
+        mock_QpidDisposition.assert_called_with(mock_REJECTED)
+        message._receiver.session.acknowledge.assert_called_with(
+            message=message, disposition='disposition')
 
 
 class test_Channel(Case):
