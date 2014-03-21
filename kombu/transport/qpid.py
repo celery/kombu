@@ -227,6 +227,9 @@ class QoS(object):
     This object is instantiated 1-for-1 with a :class:`Channel`.  QoS
     allows prefetch_count to be set to the number of outstanding messages
     the corresponding :class:`Channel` should be allowed to prefetch.
+    Setting prefetch_count to 0 disables prefetch limits, and the object
+    can hold an arbitrary number of messages.
+
     Messages are added using :meth:`append`, which are held until they are
     ACKed asynchronously through a call to :meth:`ack`.  Messages that are
     received, but not ACKed will not be delivered by the broker to another
@@ -237,20 +240,21 @@ class QoS(object):
     be looked up from QoS using :meth:`get` and can be rejected and
     forgotten using :meth:`reject`.
 
-    :keyword prefetch_count: Initial prefetch count (defaults to 0).
+    :keyword prefetch_count: Initial prefetch count (defaults to 0,
+        which disables prefetch limits).
     :type prefetch_count: int
 
     """
 
     #: current prefetch count value
-    prefetch_count = 0
+    prefetch_count = None
 
     #: :class:`~kombu.utils.compat.OrderedDict` of active messages.
     #: *NOTE*: Can only be modified by the consuming thread.
     _not_yet_acked = None
 
     def __init__(self, prefetch_count=0):
-        self.prefetch_count = prefetch_count or 0
+        self.prefetch_count = prefetch_count
         self._not_yet_acked = OrderedDict()
 
     def can_consume(self):
@@ -258,7 +262,7 @@ class QoS(object):
         else False.
 
         Used to ensure the client adheres to currently active prefetch
-        limits.
+        limits.  If prefetch_count is 0, can_consume will always return True.
 
         """
         pcount = self.prefetch_count
@@ -269,20 +273,17 @@ class QoS(object):
         :class:`Channel`.
 
         Returns an estimated number of outstanding messages that a
-        :class:`Channel` can accept without exceeding prefetch_count.
+        :class:`Channel` can accept without exceeding prefetch_count.  If
+        prefetch_count is 0, then this method returns 1.
 
         returns:
             An integer >= 0
         """
         pcount = self.prefetch_count
-        count = None
         if pcount:
-            count = pcount - len(self._not_yet_acked)
-
-        if count < 1:
+            return pcount - len(self._not_yet_acked)
+        else:
             return 1
-
-        return count
 
     def append(self, message, delivery_tag):
         """Append message to the list of unacked messages.
