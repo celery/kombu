@@ -59,10 +59,10 @@ class BroadcastCursor(object):
         while True:
             try:
                 msg = next(self._cursor)
-            except pymongo.errors.OperationFailure, e:
+            except pymongo.errors.OperationFailure as exc:
                 # In some cases tailed cursor can become invalid
                 # and have to be reinitalized
-                if 'not valid at server' in e.message:
+                if 'not valid at server' in exc.message:
                     self.purge()
 
                     continue
