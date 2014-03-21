@@ -237,8 +237,6 @@ class QoS(object):
     be looked up from QoS using :meth:`get` and can be rejected and
     forgotten using :meth:`reject`.
 
-    :param channel: A reference to the Channel this QoS object serves
-    :type channel: Channel
     :keyword prefetch_count: Initial prefetch count (defaults to 0).
     :type prefetch_count: int
 
@@ -251,8 +249,7 @@ class QoS(object):
     #: *NOTE*: Can only be modified by the consuming thread.
     _not_yet_acked = None
 
-    def __init__(self, channel, prefetch_count=0):
-        self.channel = channel
+    def __init__(self, prefetch_count=0):
         self.prefetch_count = prefetch_count or 0
         self._not_yet_acked = OrderedDict()
 
@@ -1051,7 +1048,7 @@ class Channel(base.StdChannel):
         the self.qos attribute.
         """
         if self._qos is None:
-            self._qos = self.QoS(self)
+            self._qos = self.QoS()
         return self._qos
 
     def basic_qos(self, prefetch_count, *args):
