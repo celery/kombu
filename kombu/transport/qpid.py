@@ -245,7 +245,7 @@ class QoS(object):
     #: current prefetch count value
     prefetch_count = 0
 
-    #: :class:`~collections.OrderedDict` of active messages.
+    #: :class:`~kombu.utils.compat.OrderedDict` of active messages.
     #: *NOTE*: Can only be modified by the consuming thread.
     _not_yet_acked = None
 
@@ -289,7 +289,7 @@ class QoS(object):
 
         Add a message, referenced by the integer delivery_tag, for ACKing,
         rejecting, or getting later. Messages are saved into an
-        :class:`~collections.OrderedDict` by delivery_tag.
+        :class:`~kombu.utils.compat.OrderedDict` by delivery_tag.
 
         :param message: A received message that has not yet been acked
         :type message: qpid.messaging.Message
