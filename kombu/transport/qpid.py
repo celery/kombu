@@ -13,7 +13,6 @@ from __future__ import absolute_import
 """Kombu transport using a Qpid broker as a message store."""
 
 import os
-import base64
 import threading
 import Queue
 import socket
@@ -25,6 +24,8 @@ from kombu.five import Empty, items
 from kombu.utils import kwdict
 from kombu.utils.compat import OrderedDict
 from kombu.utils.encoding import str_to_bytes, bytes_to_str
+
+from kombu.transport.virtual import Base64, Message
 
 from amqp.protocol import queue_declare_ok_t
 
@@ -196,31 +197,6 @@ class QpidMessagingExceptionHandler(object):
         return decorator
 
 
-class Base64(object):
-    """A Base64 encoding and decoding helper object.
-
-    Used by the :class: `Channel` object as a "supported codec". Supports
-    encoding and decoding of the message payload.
-    """
-
-    def encode(self, s):
-        """
-        Encode a string using Base 64.
-
-        :param s: The string to be encoded
-        :type s: str
-        """
-        return bytes_to_str(base64.b64encode(str_to_bytes(s)))
-
-    def decode(self, s):
-        """Decode a string using Base 64
-
-        :param s: The string to be decoded
-        :type s: str
-        """
-        return base64.b64decode(str_to_bytes(s))
-
-
 class QoS(object):
     """A helper object for message prefetch and ACKing purposes.
 
@@ -353,62 +329,6 @@ class QoS(object):
                                               disposition=disposition)
 
 
-class Message(base.Message):
-    """Encodes message data in an organized way and serializes.
-
-    Identical to the :class:`~kombu.transport.virtual.Message` object used
-    by virtual transports, and supports basic encoding/decoding and
-    serialization.  This object inherits from :class:`kombu.transport.base
-    .Message`, which contains most of the functionality and data.
-
-
-    :param channel: The :class:`Channel` associated with the message. A
-        reference to :class:`Channel` is needed to ensure
-        serialization/encoding/decoding is supported by the :class:`Channel`.
-    :type channel: Channel
-    :param payload: The payload of the message.
-    :type payload: dict
-    """
-
-    def __init__(self, channel, payload, **kwargs):
-        self._raw = payload
-        properties = payload['properties']
-        body = payload.get('body')
-        if body:
-            body = channel.decode_body(body, properties.get('body_encoding'))
-        kwargs.update({
-            'body': body,
-            'delivery_tag': properties['delivery_tag'],
-            'content_type': payload.get('content-type'),
-            'content_encoding': payload.get('content-encoding'),
-            'headers': payload.get('headers'),
-            'properties': properties,
-            'delivery_info': properties.get('delivery_info'),
-            'postencode': 'utf-8',
-        })
-        super(Message, self).__init__(channel, **kwdict(kwargs))
-
-    def serializable(self):
-        """Serialize the message.
-
-        Serialize the message using encodings supported by the
-        :class:`Channel` that will send the message.
-        """
-        props = self.properties
-        body, _ = self.channel.encode_body(self.body,
-                                           props.get('body_encoding'))
-        headers = dict(self.headers)
-        # remove compression header
-        headers.pop('compression', None)
-        return {
-            'body': body,
-            'properties': props,
-            'content-type': self.content_type,
-            'content-encoding': self.content_encoding,
-            'headers': headers,
-        }
-
-
 class Channel(base.StdChannel):
     """Supports broker configuration and messaging send and receive.
 
@@ -491,8 +411,8 @@ class Channel(base.StdChannel):
     #: A class reference that will be instantiated using the qos property.
     QoS = QoS
 
-    #: A class reference that identifies :class:`Message` as the message
-    # type for this Channel
+    #: A class reference that identifies 
+    # :class:`~kombu.transport.virtual.Message` as the message class type
     Message = Message
 
     #: Default body encoding.
@@ -856,8 +776,8 @@ class Channel(base.StdChannel):
         through.  Fetching from the broker, :meth:`_get` returns a
         :class:`qpid.messaging.Message`, but this method takes the payload
         of the :class:`qpid.messaging.Message` and instantiates a
-        :meth:`Message` object with the payload based on the class setting
-        of self.Message.
+        :class:`~kombu.transport.virtual.Message` object with the payload
+        based on the class setting of self.Message.
 
         :param queue: The queue name to fetch a message from.
         :type queue: str
@@ -961,8 +881,9 @@ class Channel(base.StdChannel):
 
         This method wraps the user delivered callback in a runtime-built
         function which provides the type transformation from
-        :class:`qpid.messaging.Message` to :class:`Message`, and adds the
-        message to the associated :class:`QoS` object for asynchronous acking
+        :class:`qpid.messaging.Message` to
+        :class:`~kombu.transport.virtual.Message`, and adds the message to
+        the associated :class:`QoS` object for asynchronous acking
         if necessary.
 
         :param queue: The name of the queue to consume messages from
