@@ -65,25 +65,6 @@ class test_QpidMessagingExceptionHandler(Case):
         self.assertRaises(Exception, decorated_func)
 
 
-class test_Base64(Case):
-
-    base64 = 'VGhpcyBpcyB0aGUgYmFzZTY0IHN0cmluZyB0byBiZSBlbmNvZGVkLg=='
-    utf8 = 'This is the base64 string to be encoded.'
-
-    def setUp(self):
-        self.base_64 = Base64()
-
-    def test_encode(self):
-        """Test Base64 encoding produces correct result"""
-        encoded = self.base_64.encode(self.utf8)
-        self.assertEqual(encoded, self.base64)
-
-    def test_decode(self):
-        """Test Base64 decoding produces correct result"""
-        decoded = self.base_64.decode(self.base64)
-        self.assertEqual(decoded, self.utf8)
-
-
 class test_QoS(Case):
 
     def mock_message_factory(self):
