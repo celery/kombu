@@ -29,11 +29,7 @@ from kombu.transport.virtual import Base64, Message
 
 from amqp.protocol import queue_declare_ok_t
 
-from qpid.messaging import Connection as QpidConnection
-from qpid.messaging import Message as QpidMessage
-from qpid.messaging import Disposition as QpidDisposition
 from qpid.messaging import REJECTED, RELEASED
-from qpid.messaging.exceptions import Empty as QpidEmpty
 from qpidtoollibs import BrokerAgent
 
 from . import base
@@ -321,6 +317,7 @@ class QoS(object):
         :type requeue: bool
         """
         message = self._not_yet_acked.pop(delivery_tag)
+        QpidDisposition = qpid.messaging.Disposition
         if requeue:
             disposition = QpidDisposition(RELEASED)
         else:
@@ -505,7 +502,8 @@ class Channel(base.StdChannel):
                 exchange, routing_key)
             msg_subject = str(routing_key)
         sender = self._qpid_session.sender(address)
-        qpid_message = QpidMessage(content=message, subject=msg_subject)
+        qpid_message = qpid.messaging.Message(content=message,
+                                         subject=msg_subject)
         sender.send(qpid_message, sync=True)
         sender.close()
 
@@ -1208,7 +1206,7 @@ class FDShimThread(threading.Thread):
             try:
                 response = self._receiver.fetch(
                     timeout=FDShimThread.block_timeout)
-            except QpidEmpty:
+            except qpid.messaging.exceptions.Empty:
                 pass
             else:
                 queue = self._receiver.source
@@ -1354,7 +1352,7 @@ class Connection(object):
         the saved parameters that were passed into the Connection at
         instantiation time.
         """
-        return QpidConnection.establish(**self.connection_options)
+        return qpid.messaging.Connection.establish(**self.connection_options)
 
     def close_channel(self, channel):
         """Close a Channel.
