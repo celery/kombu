@@ -29,7 +29,6 @@ from kombu.transport.virtual import Base64, Message
 
 from amqp.protocol import queue_declare_ok_t
 
-from qpid.messaging import REJECTED, RELEASED
 from qpidtoollibs import BrokerAgent
 
 from . import base
@@ -319,9 +318,9 @@ class QoS(object):
         message = self._not_yet_acked.pop(delivery_tag)
         QpidDisposition = qpid.messaging.Disposition
         if requeue:
-            disposition = QpidDisposition(RELEASED)
+            disposition = QpidDisposition(qpid.messaging.RELEASED)
         else:
-            disposition = QpidDisposition(REJECTED)
+            disposition = QpidDisposition(qpid.messaging.REJECTED)
         message._receiver.session.acknowledge(message=message,
                                               disposition=disposition)
 
