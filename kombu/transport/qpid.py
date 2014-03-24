@@ -445,7 +445,7 @@ class Channel(base.StdChannel):
         _qpid_session.  The receiver is closed before the method exits. If
         a message is available, a :class:`qpid.messaging.Message`
         object is returned.  If no message is available, a
-        :class:`qpid.messaging.exception.Empty` exception is raised.
+        :class:`qpid.messaging.exceptions.Empty` exception is raised.
 
         This is an internal method.  External calls for get functionality
         should be done using :meth:`basic_get`.
@@ -762,7 +762,7 @@ class Channel(base.StdChannel):
         """Non-blocking single message get and ack from a queue by name.
 
         Internally this method uses :meth:`_get` to fetch the message.  If
-        an :class:`~qpid.messaging.exception.Empty` exception is raised by
+        an :class:`~qpid.messaging.exceptions.Empty` exception is raised by
         :meth:`_get`, this method silences it and returns None.  If
         :meth:`_get` does return a message, that message is acked according
         to the value of no_ack and returned.  If no_ack is True,
