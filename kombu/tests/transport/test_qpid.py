@@ -2,6 +2,8 @@ from __future__ import absolute_import
 
 import threading
 import Queue
+import socket
+import time
 
 from itertools import count
 
@@ -342,7 +344,7 @@ class test_Connection(Case):
         self.assertIsInstance(self.my_connection.channels, list)
         self.assertIsInstance(self.my_connection._callbacks, dict)
 
-    def test_verify_class_attributes(self):
+    def test_verify_connection_class_attributes(self):
         """Verify that Channel class attribute is set correctly"""
         self.assertEqual(Channel, Connection.Channel)
 
@@ -377,3 +379,157 @@ class test_Connection(Case):
         mock_channel.connection = True
         self.my_connection.close_channel(mock_channel)
         self.assertIsNone(mock_channel.connection)
+
+
+class test_Transport(Case):
+
+    def setUp(self):
+        self.mock_client = Mock()
+
+    @patch('kombu.transport.qpid.FDShim')
+    @patch('threading.Thread')
+    def test_init_variables(self, mock_thread, mock_FDShim):
+        """Test that all simple init params are internally stored
+        correctly"""
+        new_fdshim = Mock()
+        mock_FDShim.return_value = new_fdshim
+        new_thread = Mock()
+        mock_thread.return_value = new_thread
+        my_transport = Transport(self.mock_client)
+        self.assertIs(my_transport.client, self.mock_client)
+        self.assertIsInstance(my_transport.queue_from_fdshim, Queue.Queue)
+        self.assertIsInstance(my_transport.delivery_queue, Queue.Queue)
+        mock_FDShim.assert_called_with(my_transport.queue_from_fdshim,
+                                       my_transport.delivery_queue)
+        self.assertIs(new_fdshim, my_transport.fd_shim)
+        mock_thread.assert_called_with(
+            target=my_transport.fd_shim.monitor_consumers)
+        self.assertTrue(new_thread.daemon)
+        new_thread.start.assert_called_with()
+
+
+    def test_verify_connection_attribute(self):
+        """Verify that static class attribute Connection refers to the
+        connection object"""
+        self.assertIs(Connection, Transport.Connection)
+
+    def test_verify_default_port(self):
+        """Verify that the static class attribute default_port refers to
+        the 5672 properly"""
+        self.assertEqual(5672, Transport.default_port)
+
+    def test_verify_polling_disabled(self):
+        """Verify that polling is disabled"""
+        self.assertIsNone(Transport.polling_interval)
+
+    def test_verify_supports_asynchronous_events(self):
+        """Verify that the Transport advertises that it supports
+        an asynchronous event model"""
+        self.assertTrue(Transport.supports_ev)
+
+    def test_verify_driver_type_and_name(self):
+        """Verify that the driver and type are correctly labeled on the
+        class"""
+        self.assertEqual('qpid', Transport.driver_type)
+        self.assertEqual('qpid', Transport.driver_name)
+
+    def test_register_with_event_loop(self):
+        """Test that the file descriptor to monitor, and the on_readable
+        callbacks properly register with the event loop"""
+        my_transport = Transport(self.mock_client)
+        mock_connection = Mock()
+        mock_loop = Mock()
+        my_transport.register_with_event_loop(mock_connection, mock_loop)
+        mock_loop.add_reader.assert_called_with(my_transport.fd_shim.r,
+                                                my_transport.on_readable,
+                                                mock_connection, mock_loop)
+
+    def test_establish_connection_no_ssl(self):
+        """Test that a call to establish connection creates a connection
+        object with sane parameters and returns it"""
+        self.mock_client.ssl = False
+        self.mock_client.transport_options = []
+        my_transport = Transport(self.mock_client)
+        new_connection = Mock()
+        my_transport.Connection = Mock(return_value = new_connection)
+        my_transport.establish_connection()
+        my_transport.Connection.assert_called_once()
+        self.assertIs(new_connection.client, self.mock_client)
+
+    def test_close_connection(self):
+        """Test that close_connection calls close on each channel in the
+        list of channels on the connection object"""
+        my_transport = Transport(self.mock_client)
+        mock_connection = Mock()
+        mock_channel_1 = Mock()
+        mock_channel_2 = Mock()
+        mock_connection.channels = [mock_channel_1, mock_channel_2]
+        my_transport.close_connection(mock_connection)
+        mock_channel_1.close.assert_called_with()
+        mock_channel_2.close.assert_called_with()
+
+    def test_drain_events_get_raises_empty_no_timeout(self):
+        """Test drain_events() to ensure that a socket.timeout is raised
+        once the get() method on queue_from_fdshim raises a Queue.Empty"""
+        my_transport = Transport(self.mock_client)
+        my_transport.queue_from_fdshim = Mock()
+        my_transport.queue_from_fdshim.get = Mock(side_effect=Queue.Empty())
+        mock_connection = Mock()
+        self.assertRaises(socket.timeout, my_transport.drain_events,
+                          mock_connection)
+
+    def test_drain_events_and_raise_timeout(self):
+        """Test drain_events() drains properly and also exits after the
+        timeout is reached even if the queue isn't empty"""
+        my_transport = Transport(self.mock_client)
+        my_transport.queue_from_fdshim = Mock()
+        mock_queue = Mock()
+        mock_message = Mock()
+        def sleep_and_return_message(block, timeout):
+            time.sleep(0.5)
+            return (mock_queue, mock_message)
+        my_transport.queue_from_fdshim.get = sleep_and_return_message
+        mock_connection = Mock()
+        mock_callback = Mock()
+        mock_connection._callbacks = {mock_queue: mock_callback}
+        self.assertRaises(socket.timeout, my_transport.drain_events,
+                          mock_connection, timeout=2)
+        mock_callback.assert_called_with(mock_message)
+
+    def test_create_channel(self):
+        """Test that a Channel is created, and appended to the list of
+        channels the connection maintains"""
+        my_transport = Transport(self.mock_client)
+        mock_connection = Mock()
+        mock_new_channel = Mock()
+        mock_connection.Channel.return_value = mock_new_channel
+        returned_channel = my_transport.create_channel(mock_connection)
+        self.assertIs(mock_new_channel, returned_channel)
+        mock_connection.Channel.assert_called_with(
+            mock_connection,
+            my_transport,
+            my_transport.delivery_queue)
+        mock_connection.channels.append.assert_called_with(mock_new_channel)
+
+    @patch('os.read')
+    def test_on_readable(self, mock_os_read):
+        my_transport = Transport(self.mock_client)
+        mock_drain_events = Mock(side_effect=socket.timeout())
+        my_transport.drain_events = mock_drain_events
+        mock_connection = Mock()
+        mock_loop = Mock()
+        mock_os_read.return_value = '0'
+        result = my_transport.on_readable(mock_connection, mock_loop)
+        mock_os_read.assert_called_with(my_transport.fd_shim.r, 1)
+        mock_drain_events.assert_called_with(mock_connection)
+        self.assertIsNone(result)
+
+    def test_default_conneciton_parapms(self):
+        """Test that the default_connection_params are correct"""
+        correct_params =  {'userid': 'guest', 'password': 'guest',
+                           'port': 5672, 'virtual_host': '',
+                           'hostname': 'localhost',
+                           'sasl_mechanisms': 'PLAIN'}
+        my_transport = Transport(self.mock_client)
+        result_params = my_transport.default_connection_params
+        self.assertDictEqual(correct_params, result_params)
