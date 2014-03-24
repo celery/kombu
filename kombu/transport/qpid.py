@@ -17,7 +17,8 @@ import threading
 import Queue
 import socket
 import ssl
-from time import clock
+import time
+
 from itertools import count
 
 from kombu.five import Empty, items
@@ -1518,14 +1519,8 @@ class Transport(base.Transport):
         :param connection: The Connection that should be closed
         :type connection: Connection
         """
-        for l in connection.channels:
-            while l:
-                try:
-                    channel = l.pop()
-                except (IndexError, KeyError):  # pragma: no cover
-                    pass
-                else:
-                    channel.close()
+        for channel in connection.channels:
+                channel.close()
 
     def drain_events(self, connection, timeout=0, **kwargs):
         """Handle and call callbacks for all ready Transport messages.
@@ -1550,7 +1545,7 @@ class Transport(base.Transport):
             all messages are drained.  Defaults to 0.
         :type timeout: int
         """
-        start_time = clock()
+        start_time = time.time()
         elapsed_time = -1
         while elapsed_time < timeout:
             try:
@@ -1560,7 +1555,7 @@ class Transport(base.Transport):
                 raise socket.timeout()
             else:
                 connection._callbacks[queue](message)
-            elapsed_time = clock() - start_time
+            elapsed_time = time.time() - start_time
         raise socket.timeout()
 
     def create_channel(self, connection):
