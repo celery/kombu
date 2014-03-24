@@ -1,32 +1,19 @@
 from __future__ import absolute_import
 
-import sys
+import threading
+import Queue
 
 from itertools import count
 
-try:
-    import amqp    # noqa
-except ImportError:
-    pyamqp = None  # noqa
-else:
-    from kombu.transport import pyamqp
 
 from kombu.transport.qpid import QpidMessagingExceptionHandler, Base64, \
     QoS, Message, Channel, FDShimThread, FDShim, Connection, Transport
 
-import kombu.transport.qpid
+import qpid.messaging.exceptions
 
-from kombu import Connection
-from kombu.five import nextfun
 from kombu.utils.compat import OrderedDict
 
 from kombu.tests.case import Case, Mock, SkipTest, mask_modules, patch
-
-
-class MockConnection(dict):
-
-    def __setattr__(self, key, value):
-        self[key] = value
 
 
 class test_QpidMessagingExceptionHandler(Case):
@@ -150,8 +137,8 @@ class test_QoS(Case):
         qos.append(m2, m2_tag)
         message1 = qos.get(m1_tag)
         message2 = qos.get(m2_tag)
-        self.assertEquals(m1, message1)
-        self.assertEquals(m2, message2)
+        self.assertIs(m1, message1)
+        self.assertIs(m2, message2)
 
     def test_ack(self):
         """Load a mock message, ack the message, and ensure the right
@@ -164,14 +151,13 @@ class test_QoS(Case):
         message._receiver.session.acknowledge.assert_called_with(
             message=message)
 
-    def test_ack_requeue_true(self):
+    @patch('qpid.messaging.Disposition')
+    @patch('qpid.messaging.RELEASED')
+    def test_ack_requeue_true(self, mock_RELEASED, mock_QpidDisposition):
         """Load a mock message, reject the message with requeue=True,
         and ensure the right call to acknowledge is made"""
         message = Mock()
-        mock_QpidDisposition = Mock(return_value='disposition')
-        mock_RELEASED = Mock()
-        kombu.transport.qpid.QpidDisposition = mock_QpidDisposition
-        kombu.transport.qpid.RELEASED = mock_RELEASED
+        mock_QpidDisposition.return_value='disposition'
         qos = self.qos_no_limit
         qos.append(message, 1)
         qos.reject(1, requeue=True)
@@ -179,14 +165,13 @@ class test_QoS(Case):
         message._receiver.session.acknowledge.assert_called_with(
             message=message, disposition='disposition')
 
-    def test_ack_requeue_false(self):
+    @patch('qpid.messaging.Disposition')
+    @patch('qpid.messaging.REJECTED')
+    def test_ack_requeue_false(self, mock_REJECTED, mock_QpidDisposition):
         """Load a mock message, reject the message with requeue=False,
         and ensure the right call to acknowledge is made"""
         message = Mock()
-        mock_QpidDisposition = Mock(return_value='disposition')
-        mock_REJECTED = Mock()
-        kombu.transport.qpid.QpidDisposition = mock_QpidDisposition
-        kombu.transport.qpid.REJECTED = mock_REJECTED
+        mock_QpidDisposition.return_value='disposition'
         qos = self.qos_no_limit
         qos.append(message, 1)
         qos.reject(1, requeue=False)
@@ -195,158 +180,200 @@ class test_QoS(Case):
             message=message, disposition='disposition')
 
 
-class test_Channel(Case):
+class test_FDShimThread(Case):
 
     def setUp(self):
-        if pyamqp is None:
-            raise SkipTest('py-amqp not installed')
+        self.mock_create_qpid_connection = Mock()
+        self.mock_session = Mock()
+        self.mock_create_qpid_connection().session = Mock(
+            return_value=self.mock_session)
+        self.mock_receiver = Mock()
+        self.mock_session.receiver = Mock(return_value=self.mock_receiver)
+        self.mock_queue = Mock()
+        self.mock_delivery_queue = Mock()
+        self.my_thread = FDShimThread(self.mock_create_qpid_connection,
+                                      self.mock_queue,
+                                      self.mock_delivery_queue)
+        self.my_thread.daemon = True
 
-        class Channel(pyamqp.Channel):
-            wait_returns = []
+    def test_init_variables(self):
+        """Test that all simple init params are internally stored
+        correctly"""
+        self.assertIs(self.my_thread._queue, self.mock_queue)
+        self.assertIs(self.my_thread._delivery_queue,
+                      self.mock_delivery_queue)
+        self.assertFalse(self.my_thread._is_killed)
 
-            def _x_open(self, *args, **kwargs):
-                pass
+    def test_session_gets_made(self):
+        """Test that a session is created"""
+        self.mock_create_qpid_connection().session.assert_called_with()
 
-            def wait(self, *args, **kwargs):
-                return self.wait_returns
+    def test_session_gets_stored(self):
+        """Test that a session is saved properly after being created"""
+        self.assertIs(self.mock_session, self.my_thread._session)
 
-            def _send_method(self, *args, **kwargs):
-                pass
+    def test_receiver_gets_made(self):
+        """Test that a receiver is created listening on the queue"""
+        self.mock_session.receiver.assert_called_with(self.mock_queue)
 
-        self.conn = Mock()
-        self.conn._get_free_channel_id.side_effect = nextfun(count(0))
-        self.conn.channels = {}
-        self.channel = Channel(self.conn, 0)
+    def test_receiver_gets_stored(self):
+        """Test that a receiver is saved properly after being created"""
+        self.assertIs(self.mock_receiver, self.my_thread._receiver)
 
-    def test_init(self):
-        self.assertFalse(self.channel.no_ack_consumers)
+    def test_kill(self):
+        """Start a thread, and then kill it using the kill() method. Ensure
+        that it exits properly within the expected amount of time."""
+        self.my_thread.start()
+        self.my_thread.kill()
+        self.my_thread.join(timeout=FDShimThread.block_timeout)
+        self.assertFalse(self.my_thread.is_alive())
 
-    def test_prepare_message(self):
-        self.assertTrue(self.channel.prepare_message(
-            'foobar', 10, 'application/data', 'utf-8',
-            properties={},
-        ))
+    def test_receiver_cleanup(self):
+        """Ensure that when a thread exits normally after a call to kill()
+        that close() is called on the receiver.
+        """
+        self.my_thread.start()
+        self.my_thread.kill()
+        self.my_thread.join(timeout=FDShimThread.block_timeout)
+        self.mock_receiver.close.assert_called_with()
 
-    def test_message_to_python(self):
-        message = Mock()
-        message.headers = {}
-        message.properties = {}
-        self.assertTrue(self.channel.message_to_python(message))
+    def test_session_cleanup(self):
+        """Ensure that when a thread exits normally after a call to kill()
+        that close() is called on the session.
+        """
+        self.my_thread.start()
+        self.my_thread.kill()
+        self.my_thread.join(timeout=FDShimThread.block_timeout)
+        self.mock_session.close.assert_called_with()
 
-    def test_close_resolves_connection_cycle(self):
-        self.assertIsNotNone(self.channel.connection)
-        self.channel.close()
-        self.assertIsNone(self.channel.connection)
+    def test_call_to_fetch_raise_empty(self):
+        """Ensure the call to fetch() occurs, and with the proper timeout.
+        Raises an Empty exception."""
+        QpidEmpty = qpid.messaging.exceptions.Empty
+        self.mock_receiver.fetch = Mock(side_effect=QpidEmpty())
+        self.my_thread.start()
+        self.mock_receiver.fetch.assert_called_with(
+            timeout=FDShimThread.block_timeout)
 
-    def test_basic_consume_registers_ack_status(self):
-        self.channel.wait_returns = 'my-consumer-tag'
-        self.channel.basic_consume('foo', no_ack=True)
-        self.assertIn('my-consumer-tag', self.channel.no_ack_consumers)
+    def test_call_to_fetch_return_message(self):
+        """Ensure the call to fetch() occurs, that the response bundle is
+        built correctly is called as the only argument to receiver.put()"""
+        mock_response = Mock()
+        mock_source = Mock()
+        mock_put = Mock()
+        response_bundle = (mock_source, mock_response)
+        self.mock_receiver.fetch = Mock(return_value=mock_response)
+        self.mock_receiver.source = mock_source
+        self.mock_delivery_queue.put = mock_put
+        self.my_thread.start()
+        self.mock_receiver.fetch.assert_called_with(
+            timeout=FDShimThread.block_timeout)
+        mock_put.assert_called_with(response_bundle)
 
-        self.channel.wait_returns = 'other-consumer-tag'
-        self.channel.basic_consume('bar', no_ack=False)
-        self.assertNotIn('other-consumer-tag', self.channel.no_ack_consumers)
 
-        self.channel.basic_cancel('my-consumer-tag')
-        self.assertNotIn('my-consumer-tag', self.channel.no_ack_consumers)
+class test_FDShim(Case):
+    def setUp(self):
+        self.mock_queue_from_fdshim = Mock()
+        self.mock_delivery_queue = Mock()
+        self.my_fdshim = FDShim(self.mock_queue_from_fdshim,
+                               self.mock_delivery_queue)
+        self.my_thread = threading.Thread(
+            target=self.my_fdshim.monitor_consumers)
+        self.my_thread.daemon = True
+
+    def test_init_variables(self):
+        """Test that all simple init params are internally stored
+        correctly"""
+        self.assertIs(self.my_fdshim.queue_from_fdshim,
+                      self.mock_queue_from_fdshim)
+        self.assertIs(self.my_fdshim.delivery_queue,
+                      self.mock_delivery_queue)
+        self.assertFalse(self.my_fdshim._is_killed)
+
+    def test_kill(self):
+        """Start a thread, and then kill it using the kill() method. Ensure
+        that it exits properly within the expected amount of time."""
+        self.my_thread.start()
+        self.my_fdshim.kill()
+        self.my_thread.join(timeout=3)
+        self.assertFalse(self.my_thread.is_alive())
+
+    def test_call_to_get_raise_empty(self):
+        """Ensure the call to delivery_queue.get() occurs, and with
+        block=True.  Raises an Queue.Empty exception."""
+        self.mock_delivery_queue.get = Mock(side_effect=Queue.Empty())
+        self.my_thread.start()
+        self.mock_delivery_queue.get.assert_called_with(block=True)
+
+    @patch('os.write')
+    def test_call_to_get_return_response_bundle(self, write_method):
+        """Ensure the call to get() occurs, and when the response bundle
+        is received from delivery_queue, that the response bundle is put
+        into queue_from_fdshim using put().
+
+        This method patches os.write to ensure that a '0' is written to the
+        _w file descriptor attribute of FDShim."""
+        response_bundle = Mock()
+        self.mock_delivery_queue.get = Mock(return_value=response_bundle)
+        self.my_thread.start()
+        self.mock_delivery_queue.get.assert_called_with(block=True)
+        self.mock_queue_from_fdshim.put.assert_called_with(
+            response_bundle)
+        write_method.assert_called_with(self.my_fdshim._w, '0')
 
 
-class test_Transport(Case):
+class test_Connection(Case):
 
     def setUp(self):
-        if pyamqp is None:
-            raise SkipTest('py-amqp not installed')
-        self.connection = Connection('pyamqp://')
-        self.transport = self.connection.transport
+        self.connection_options = {'host': 'localhost',
+                                   'port': 5672,
+                                   'username': 'guest',
+                                   'password': 'guest',
+                                   'transport': 'tcp',
+                                   'timeout': 10,
+                                   'sasl_mechanisms': 'PLAIN'}
+        self.my_connection = Connection(**self.connection_options)
 
-    def test_create_channel(self):
-        connection = Mock()
-        self.transport.create_channel(connection)
-        connection.channel.assert_called_with()
+    def test_init_variables(self):
+        """Test that all simple init params are internally stored
+        correctly"""
+        self.assertDictEqual(self.connection_options,
+                             self.my_connection.connection_options)
+        self.assertIsInstance(self.my_connection.channels, list)
+        self.assertIsInstance(self.my_connection._callbacks, dict)
 
-    def test_driver_version(self):
-        self.assertTrue(self.transport.driver_version())
+    def test_verify_class_attributes(self):
+        """Verify that Channel class attribute is set correctly"""
+        self.assertEqual(Channel, Connection.Channel)
 
-    def test_drain_events(self):
-        connection = Mock()
-        self.transport.drain_events(connection, timeout=10.0)
-        connection.drain_events.assert_called_with(timeout=10.0)
+    @patch('qpid.messaging.Connection')
+    def test_create_qpid_connection(self, QpidConnection):
+        """Test that create_qpid_connection calls establish with the
+        connection_options, and then returns the result."""
+        new_connection = 'connection'
+        QpidConnection.establish = Mock(return_value=new_connection)
+        conn_from_func = self.my_connection.create_qpid_connection()
+        QpidConnection.establish.assert_called_with(
+            **self.connection_options)
+        self.assertEqual(new_connection, conn_from_func)
 
-    def test_dnspython_localhost_resolve_bug(self):
-
-        class Conn(object):
-
-            def __init__(self, **kwargs):
-                vars(self).update(kwargs)
-
-        self.transport.Connection = Conn
-        self.transport.client.hostname = 'localhost'
-        conn1 = self.transport.establish_connection()
-        self.assertEqual(conn1.host, '127.0.0.1:5672')
-
-        self.transport.client.hostname = 'example.com'
-        conn2 = self.transport.establish_connection()
-        self.assertEqual(conn2.host, 'example.com:5672')
-
-    def test_close_connection(self):
-        connection = Mock()
-        connection.client = Mock()
-        self.transport.close_connection(connection)
-
-        self.assertIsNone(connection.client)
-        connection.close.assert_called_with()
-
-    @mask_modules('ssl')
-    def test_import_no_ssl(self):
-        pm = sys.modules.pop('amqp.connection')
-        try:
-            from amqp.connection import SSLError
-            self.assertEqual(SSLError.__module__, 'amqp.connection')
-        finally:
-            if pm is not None:
-                sys.modules['amqp.connection'] = pm
+    def test_close_channel_exists(self):
+        """Test that calling close_channel() with a valid channel removes
+        the channel from self.channels and sets channel.connection to None"""
+        mock_channel = Mock()
+        self.my_connection.channels = [mock_channel]
+        mock_channel.connection = True
+        self.my_connection.close_channel(mock_channel)
+        self.assertEqual(self.my_connection.channels, [])
+        self.assertIsNone(mock_channel.connection)
 
 
-class test_pyamqp(Case):
-
-    def setUp(self):
-        if pyamqp is None:
-            raise SkipTest('py-amqp not installed')
-
-    def test_default_port(self):
-
-        class Transport(pyamqp.Transport):
-            Connection = MockConnection
-
-        c = Connection(port=None, transport=Transport).connect()
-        self.assertEqual(c['host'],
-                         '127.0.0.1:%s' % (Transport.default_port, ))
-
-    def test_custom_port(self):
-
-        class Transport(pyamqp.Transport):
-            Connection = MockConnection
-
-        c = Connection(port=1337, transport=Transport).connect()
-        self.assertEqual(c['host'], '127.0.0.1:1337')
-
-    def test_register_with_event_loop(self):
-        t = pyamqp.Transport(Mock())
-        conn = Mock(name='conn')
-        loop = Mock(name='loop')
-        t.register_with_event_loop(conn, loop)
-        loop.add_reader.assert_called_with(
-            conn.sock, t.on_readable, conn, loop,
-        )
-
-    def test_heartbeat_check(self):
-        t = pyamqp.Transport(Mock())
-        conn = Mock()
-        t.heartbeat_check(conn, rate=4.331)
-        conn.heartbeat_tick.assert_called_with(rate=4.331)
-
-    def test_get_manager(self):
-        with patch('kombu.transport.pyamqp.get_manager') as get_manager:
-            t = pyamqp.Transport(Mock())
-            t.get_manager(1, kw=2)
-            get_manager.assert_called_with(t.client, 1, kw=2)
+    def test_close_channel_does_not_exist(self):
+        """Test that calling close_channel() with an invalid channel does
+        not raise a ValueError and sets channel.connection to None."""
+        self.my_connection.channels = Mock()
+        self.my_connection.channels.remove = Mock(side_effect=ValueError())
+        mock_channel = Mock()
+        mock_channel.connection = True
+        self.my_connection.close_channel(mock_channel)
+        self.assertIsNone(mock_channel.connection)
