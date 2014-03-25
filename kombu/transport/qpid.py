@@ -2,10 +2,18 @@
 kombu.transport.qpid
 =======================
 
-`Qpid`_ transport using `py-amqp`_ as the client.
+`Qpid`_ transport using `qpid-python`_ as the client and `qpid-tools`_ for
+broker management.
 
 .. _`Qpid`: http://qpid.apache.org/
-.. _`py-amqp`: http://pypi.python.org/pypi/amqp/
+.. _`qpid-python`: http://pypi.python.org/pypi/qpid-python/
+.. _`qpid-tools`: http://pypi.python.org/pypi/qpid-tools/
+
+    .. admonition:: Install Dependencies
+
+        Run the command:
+
+        `pip install qpid-tools qpid-python`
 
 """
 from __future__ import absolute_import
