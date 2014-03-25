@@ -28,9 +28,9 @@ from kombu.utils.encoding import str_to_bytes, bytes_to_str
 
 from kombu.transport.virtual import Base64, Message
 
-from amqp.protocol import queue_declare_ok_t
+import amqp.protocol
 
-from qpidtoollibs import BrokerAgent
+import qpidtoollibs
 
 from . import base
 
@@ -430,7 +430,7 @@ class Channel(base.StdChannel):
         self._consumer_threads = {}
         qpid_connection = connection.create_qpid_connection()
         self._qpid_session = qpid_connection.session()
-        self._broker = BrokerAgent(qpid_connection)
+        self._broker = qpidtoollibs.BrokerAgent(qpid_connection)
         self._qos = None
         self._consumers = set()
         self.closed = False
@@ -618,7 +618,7 @@ class Channel(base.StdChannel):
         :type queue: str
         """
         self._new_queue(queue, **kwargs)
-        return queue_declare_ok_t(queue, self._size(queue), 0)
+        return amqp.protocol.queue_declare_ok_t(queue, self._size(queue), 0)
 
     def queue_delete(self, queue, if_unused=False, if_empty=False, **kwargs):
         """Delete a queue by name.
