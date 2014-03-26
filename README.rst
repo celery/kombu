@@ -22,7 +22,7 @@ Features
 * Allows application authors to support several message server
   solutions by using pluggable transports.
 
-    * AMQP transport using the `py-amqp`_,  `librabbitmq`_, or `qpid-python`_ libraries.
+    * AMQP transport using the `py-amqp`_, `librabbitmq`_, or `qpid-python`_ libraries.
 
     * High performance AMQP transport written in C - when using `librabbitmq`_
 
