@@ -7,6 +7,8 @@ import time
 
 from itertools import count
 
+import qpid.messaging.exceptions
+
 import kombu.five
 from kombu.transport.qpid import QpidMessagingExceptionHandler, QoS, Message
 from kombu.transport.qpid import Channel, FDShimThread, FDShim
@@ -14,8 +16,6 @@ from kombu.transport.qpid import Connection, Transport
 from kombu.transport.virtual import Base64
 from kombu.utils.compat import OrderedDict
 from kombu.tests.case import Case, Mock, SkipTest, mask_modules, patch
-
-import qpid.messaging.exceptions
 
 
 class test_QpidMessagingExceptionHandler(Case):
