@@ -29,18 +29,16 @@ import time
 
 from itertools import count
 
+import amqp.protocol
+import qpidtoollibs
+
 from kombu.five import Empty, items
 from kombu.utils import kwdict
 from kombu.utils.compat import OrderedDict
 from kombu.utils.encoding import str_to_bytes, bytes_to_str
-
 from kombu.transport.virtual import Base64, Message
-
-import amqp.protocol
-
-import qpidtoollibs
-
 from . import base
+
 
 ##### Start Monkey Patching #####
 
