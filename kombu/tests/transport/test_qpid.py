@@ -255,6 +255,7 @@ class TestFDShimThread(Case):
         QpidEmpty = qpid.messaging.exceptions.Empty
         self.mock_receiver.fetch = Mock(side_effect=QpidEmpty())
         self.my_thread.start()
+        time.sleep(1)
         self.mock_receiver.fetch.assert_called_with(
             timeout=FDShimThread.block_timeout)
 
@@ -269,6 +270,7 @@ class TestFDShimThread(Case):
         self.mock_receiver.source = mock_source
         self.mock_delivery_queue.put = mock_put
         self.my_thread.start()
+        time.sleep(1)
         self.mock_receiver.fetch.assert_called_with(
             timeout=FDShimThread.block_timeout)
         mock_put.assert_called_with(response_bundle)
@@ -306,6 +308,7 @@ class TestFDShim(Case):
         block=True.  Raises an Queue.Empty exception."""
         self.mock_delivery_queue.get = Mock(side_effect=Queue.Empty())
         self.my_thread.start()
+        time.sleep(1)
         self.mock_delivery_queue.get.assert_called_with(block=True)
 
     @patch('os.write')
@@ -319,6 +322,7 @@ class TestFDShim(Case):
         response_bundle = Mock()
         self.mock_delivery_queue.get = Mock(return_value=response_bundle)
         self.my_thread.start()
+        time.sleep(1)
         self.mock_delivery_queue.get.assert_called_with(block=True)
         self.mock_queue_from_fdshim.put.assert_called_with(
             response_bundle)
