@@ -1,21 +1,18 @@
 from __future__ import absolute_import
 
-import threading
 import Queue
 import socket
+import threading
 import time
 
 from itertools import count
 
-
+import kombu.five
 from kombu.transport.qpid import QpidMessagingExceptionHandler, QoS, Message
 from kombu.transport.qpid import Channel, FDShimThread, FDShim
 from kombu.transport.qpid import Connection, Transport
-
 from kombu.transport.virtual import Base64
-
 from kombu.utils.compat import OrderedDict
-import kombu.five
 from kombu.tests.case import Case, Mock, SkipTest, mask_modules, patch
 
 import qpid.messaging.exceptions
