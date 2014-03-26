@@ -18,7 +18,7 @@ from kombu.utils.compat import OrderedDict
 from kombu.tests.case import Case, Mock, SkipTest, mask_modules, patch
 
 
-class test_QpidMessagingExceptionHandler(Case):
+class TestQpidMessagingExceptionHandler(Case):
 
     allowed_string = 'object in use'
     not_allowed_string = 'a different string'
@@ -54,7 +54,7 @@ class test_QpidMessagingExceptionHandler(Case):
         self.assertRaises(Exception, decorated_func)
 
 
-class test_QoS(Case):
+class TestQoS(Case):
 
     def mock_message_factory(self):
         m_delivery_tag = self.delivery_tag_generator.next()
@@ -98,14 +98,15 @@ class test_QoS(Case):
         self.assertFalse(self.qos_limit_2.can_consume())
 
     def test_can_consume_max_estimate_no_limit(self):
-        """can_consume shall always return 1 with no prefetch limits"""
+        """can_consume_max_estimate shall always return 1 with no prefetch
+        limits"""
         self.assertEqual(self.qos_no_limit.can_consume_max_estimate(), 1)
         self.add_n_messages_to_qos(3, self.qos_no_limit)
         self.assertEqual(self.qos_no_limit.can_consume_max_estimate(), 1)
 
     def test_can_consume_max_estimate_with_limit(self):
-        """while prefetch limits are enabled, can_consume shall return (
-        prefetch_limit - #messages) as the number of messages is
+        """while prefetch limits are enabled, can_consume_max_estimate shall
+        return (prefetch_limit - #messages) as the number of messages is
         incremented from 0 to prefetch_limit"""
         self.assertEqual(self.qos_limit_2.can_consume_max_estimate(), 2)
         self.add_message_to_qos(self.qos_limit_2)
@@ -182,7 +183,7 @@ class test_QoS(Case):
             message=message, disposition='disposition')
 
 
-class test_FDShimThread(Case):
+class TestFDShimThread(Case):
 
     def setUp(self):
         self.mock_create_qpid_connection = Mock()
@@ -273,7 +274,7 @@ class test_FDShimThread(Case):
         mock_put.assert_called_with(response_bundle)
 
 
-class test_FDShim(Case):
+class TestFDShim(Case):
     def setUp(self):
         self.mock_queue_from_fdshim = Mock()
         self.mock_delivery_queue = Mock()
@@ -324,7 +325,7 @@ class test_FDShim(Case):
         write_method.assert_called_with(self.my_fdshim._w, '0')
 
 
-class test_Connection(Case):
+class TestConnection(Case):
 
     def setUp(self):
         self.connection_options = {'host': 'localhost',
@@ -381,7 +382,7 @@ class test_Connection(Case):
         self.assertIsNone(mock_channel.connection)
 
 
-class test_Channel(Case):
+class TestChannel(Case):
 
     @patch('qpidtoollibs.BrokerAgent')
     def setUp(self, mock_BrokerAgent):
@@ -1002,7 +1003,7 @@ class test_Channel(Case):
         self.assertIs(mock_default, result)
 
 
-class test_Transport(Case):
+class TestTransport(Case):
 
     def setUp(self):
         self.mock_client = Mock()
