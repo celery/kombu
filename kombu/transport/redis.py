@@ -254,6 +254,12 @@ class MultiChannelPoller(object):
     def discard(self, channel):
         self._channels.discard(channel)
 
+    def _on_connection_disconnect(self, connection):
+        try:
+            self.poller.unregister(connection._sock)
+        except AttributeError:
+            pass
+
     def _register(self, channel, client, type):
         if (channel, client, type) in self._chan_to_sock:
             self._unregister(channel, client, type)
@@ -449,6 +455,10 @@ class Channel(virtual.Channel):
     def _after_fork(self):
         if self._pool is not None:
             self._pool.disconnect()
+
+    def _on_connection_disconnect(self, connection):
+        if self.connection and self.connection.cycle:
+            self.connection.cycle._on_connection_disconnect(connection)
 
     def _do_restore_message(self, payload, exchange, routing_key,
                             client=None, leftmost=False):
@@ -778,6 +788,18 @@ class Channel(virtual.Channel):
             connparams.pop('port', None)
         connparams['db'] = self._prepare_virtual_host(
             connparams.pop('virtual_host', None))
+
+        channel = self
+        connection_cls = (
+            connparams.get('connection_class') or
+            redis.Connection
+            )
+        class Connection(connection_cls):
+            def disconnect(self):
+                channel._on_connection_disconnect(self)
+                super(Connection, self).disconnect()
+        connparams['connection_class'] = Connection
+
         return connparams
 
     def _create_client(self):
@@ -904,6 +926,11 @@ class Transport(virtual.Transport):
         cycle_poll_start = cycle.on_poll_start
         add_reader = loop.add_reader
         on_readable = self.on_readable
+
+        def _on_disconnect(connection):
+            if connection._sock:
+                loop.remove(connection._sock)
+        cycle._on_connection_disconnect = _on_disconnect
 
         def on_poll_start():
             cycle_poll_start()
