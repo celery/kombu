@@ -193,7 +193,7 @@ class QpidMessagingExceptionHandler(object):
 
     An exception handling class designed to silence specific exceptions
     that qpid.messaging raises as part of normal operation. qpid.messaging
-    exceptions require string parsing, and are not machine consumable,
+    exceptions require string parsing, and are not machine consumable.
     This is designed to be used as a decorator, and accepts a whitelist
     string as an argument.
 
@@ -219,18 +219,16 @@ class QpidMessagingExceptionHandler(object):
         when this object is used as a decorator.
         :type original_func: function
         """
-        decorator_self = self
 
         def decorator(*args, **kwargs):
-            """A runtime-built that will be returned which contains a
-            reference to the original function, and wraps a call to it in
+            """A runtime-built function that will be returned which contains
+            a reference to the original function, and wraps a call to it in
             a try/except block that can silence errors.
             """
             try:
-                original_func(*args, **kwargs)
+                return original_func(*args, **kwargs)
             except Exception as error:
-                if decorator_self.allowed_exception_string not in error\
-                        .message:
+                if self.allowed_exception_string not in error.message:
                     raise
 
         return decorator
