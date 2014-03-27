@@ -24,6 +24,7 @@ class TestQpidMessagingExceptionHandler(Case):
     not_allowed_string = 'a different string'
 
     def setUp(self):
+        """Create a mock ExceptionHandler for testing by this object."""
         self.handler = QpidMessagingExceptionHandler(self.allowed_string)
 
     def test_string_stored(self):
@@ -33,7 +34,8 @@ class TestQpidMessagingExceptionHandler(Case):
 
     def test_exception_positive(self):
         """Assert that an exception is silenced if it contains the
-        allowed_string text"""
+        allowed_string text
+        """
         exception_to_raise = Exception(self.allowed_string)
         def exception_raise_func():
             raise exception_to_raise
@@ -46,7 +48,8 @@ class TestQpidMessagingExceptionHandler(Case):
 
     def test_exception_negative(self):
         """Assert that an exception that does not contain the
-        allowed_string text is properly raised"""
+        allowed_string text is properly raised
+        """
         exception_to_raise = Exception(self.not_allowed_string)
         def exception_raise_func():
             raise exception_to_raise
@@ -57,19 +60,31 @@ class TestQpidMessagingExceptionHandler(Case):
 class TestQoS(Case):
 
     def mock_message_factory(self):
+        """Create and return a mock message tag and delivery_tag."""
         m_delivery_tag = self.delivery_tag_generator.next()
         m = 'message %s' % m_delivery_tag
         return (m, m_delivery_tag)
 
     def add_n_messages_to_qos(self, n, qos):
+        """Add N mock messages into the passed in qos object"""
         for i in range(n):
             self.add_message_to_qos(qos)
 
     def add_message_to_qos(self, qos):
+        """Add a single mock message into the passed in qos object.
+
+        Uses the mock_message_factory() to create the message and
+        delivery_tag.
+        """
         m, m_delivery_tag = self.mock_message_factory()
         qos.append(m, m_delivery_tag)
 
     def setUp(self):
+        """Create two QoS objects for use by this test class.
+
+        One with no prefetch_limit, and the other with a prefetch limit of
+        2.
+        """
         self.qos_no_limit = QoS()
         self.qos_limit_2 = QoS(prefetch_count=2)
         self.delivery_tag_generator = count(1)
@@ -81,7 +96,8 @@ class TestQoS(Case):
 
     def test_init_with_params(self):
         """Check that internal state is correct after initialization with
-        prefetch_count"""
+        prefetch_count.
+        """
         self.assertEqual(self.qos_limit_2.prefetch_count, 2)
 
     def test_can_consume_no_limit(self):
@@ -92,14 +108,16 @@ class TestQoS(Case):
 
     def test_can_consume_with_limit(self):
         """can_consume shall return False only when the QoS holds
-        prefetch_count number of messages"""
+        prefetch_count number of messages
+        """
         self.assertTrue(self.qos_limit_2.can_consume())
         self.add_n_messages_to_qos(2, self.qos_limit_2)
         self.assertFalse(self.qos_limit_2.can_consume())
 
     def test_can_consume_max_estimate_no_limit(self):
         """can_consume_max_estimate shall always return 1 with no prefetch
-        limits"""
+        limits
+        """
         self.assertEqual(self.qos_no_limit.can_consume_max_estimate(), 1)
         self.add_n_messages_to_qos(3, self.qos_no_limit)
         self.assertEqual(self.qos_no_limit.can_consume_max_estimate(), 1)
@@ -107,7 +125,8 @@ class TestQoS(Case):
     def test_can_consume_max_estimate_with_limit(self):
         """while prefetch limits are enabled, can_consume_max_estimate shall
         return (prefetch_limit - #messages) as the number of messages is
-        incremented from 0 to prefetch_limit"""
+        incremented from 0 to prefetch_limit
+        """
         self.assertEqual(self.qos_limit_2.can_consume_max_estimate(), 2)
         self.add_message_to_qos(self.qos_limit_2)
         self.assertEqual(self.qos_limit_2.can_consume_max_estimate(), 1)
@@ -116,7 +135,8 @@ class TestQoS(Case):
 
     def test_append(self):
         """Append two messages and check inside the QoS object that they
-        were put into the internal data structures correctly"""
+        were put into the internal data structures correctly
+        """
         qos = self.qos_no_limit
         m1, m1_tag = self.mock_message_factory()
         m2, m2_tag = self.mock_message_factory()
@@ -146,7 +166,8 @@ class TestQoS(Case):
     def test_ack(self):
         """Load a mock message, ack the message, and ensure the right
         call is made to the acknowledge method in the qpid.messaging client
-        library"""
+        library
+        """
         message = Mock()
         qos = self.qos_no_limit
         qos.append(message, 1)
@@ -158,7 +179,8 @@ class TestQoS(Case):
     @patch('qpid.messaging.RELEASED')
     def test_ack_requeue_true(self, mock_RELEASED, mock_QpidDisposition):
         """Load a mock message, reject the message with requeue=True,
-        and ensure the right call to acknowledge is made"""
+        and ensure the right call to acknowledge is made.
+        """
         message = Mock()
         mock_QpidDisposition.return_value = 'disposition'
         qos = self.qos_no_limit
@@ -172,7 +194,8 @@ class TestQoS(Case):
     @patch('qpid.messaging.REJECTED')
     def test_ack_requeue_false(self, mock_REJECTED, mock_QpidDisposition):
         """Load a mock message, reject the message with requeue=False,
-        and ensure the right call to acknowledge is made"""
+        and ensure the right call to acknowledge is made.
+        """
         message = Mock()
         mock_QpidDisposition.return_value = 'disposition'
         qos = self.qos_no_limit
@@ -186,6 +209,7 @@ class TestQoS(Case):
 class TestFDShimThread(Case):
 
     def setUp(self):
+        """Create a mock FDShimThread object and associated objects."""
         self.mock_create_qpid_connection = Mock()
         self.mock_session = Mock()
         self.mock_create_qpid_connection().session = Mock(
@@ -201,7 +225,8 @@ class TestFDShimThread(Case):
 
     def test_init_variables(self):
         """Test that all simple init params are internally stored
-        correctly"""
+        correctly
+        """
         self.assertIs(self.my_thread._queue, self.mock_queue)
         self.assertIs(self.my_thread._delivery_queue,
                       self.mock_delivery_queue)
@@ -225,7 +250,8 @@ class TestFDShimThread(Case):
 
     def test_kill(self):
         """Start a thread, and then kill it using the kill() method. Ensure
-        that it exits properly within the expected amount of time."""
+        that it exits properly within the expected amount of time.
+        """
         self.my_thread.start()
         self.my_thread.kill()
         self.my_thread.join(timeout=FDShimThread.block_timeout)
@@ -251,7 +277,8 @@ class TestFDShimThread(Case):
 
     def test_call_to_fetch_raise_empty(self):
         """Ensure the call to fetch() occurs, and with the proper timeout.
-        Raises an Empty exception."""
+        Raises an Empty exception.
+        """
         QpidEmpty = qpid.messaging.exceptions.Empty
         self.mock_receiver.fetch = Mock(side_effect=QpidEmpty())
         self.my_thread.start()
@@ -261,7 +288,8 @@ class TestFDShimThread(Case):
 
     def test_call_to_fetch_return_message(self):
         """Ensure the call to fetch() occurs, that the response bundle is
-        built correctly is called as the only argument to receiver.put()"""
+        built correctly is called as the only argument to receiver.put()
+        """
         mock_response = Mock()
         mock_source = Mock()
         mock_put = Mock()
@@ -278,6 +306,7 @@ class TestFDShimThread(Case):
 
 class TestFDShim(Case):
     def setUp(self):
+        """Create a test shim to use """
         self.mock_queue_from_fdshim = Mock()
         self.mock_delivery_queue = Mock()
         self.my_fdshim = FDShim(self.mock_queue_from_fdshim,
@@ -288,7 +317,8 @@ class TestFDShim(Case):
 
     def test_init_variables(self):
         """Test that all simple init params are internally stored
-        correctly"""
+        correctly
+        """
         self.assertIs(self.my_fdshim.queue_from_fdshim,
                       self.mock_queue_from_fdshim)
         self.assertIs(self.my_fdshim.delivery_queue,
@@ -297,7 +327,8 @@ class TestFDShim(Case):
 
     def test_kill(self):
         """Start a thread, and then kill it using the kill() method. Ensure
-        that it exits properly within the expected amount of time."""
+        that it exits properly within the expected amount of time.
+        """
         self.my_thread.start()
         self.my_fdshim.kill()
         self.my_thread.join(timeout=3)
@@ -305,7 +336,8 @@ class TestFDShim(Case):
 
     def test_call_to_get_raise_empty(self):
         """Ensure the call to delivery_queue.get() occurs, and with
-        block=True.  Raises a Queue.Empty exception."""
+        block=True.  Raises a Queue.Empty exception.
+        """
         self.mock_delivery_queue.get = Mock(side_effect=Queue.Empty())
         self.my_thread.start()
         time.sleep(1)
@@ -318,7 +350,8 @@ class TestFDShim(Case):
         into queue_from_fdshim using put().
 
         This method patches os.write to ensure that a '0' is written to the
-        _w file descriptor attribute of FDShim."""
+        _w file descriptor attribute of FDShim.
+        """
         response_bundle = Mock()
         self.mock_delivery_queue.get = Mock(return_value=response_bundle)
         self.my_thread.start()
@@ -332,6 +365,7 @@ class TestFDShim(Case):
 class TestConnection(Case):
 
     def setUp(self):
+        """Setup a Connection with sane connection parameters."""
         self.connection_options = {'host': 'localhost',
                                    'port': 5672,
                                    'username': 'guest',
@@ -343,7 +377,8 @@ class TestConnection(Case):
 
     def test_init_variables(self):
         """Test that all simple init params are internally stored
-        correctly"""
+        correctly
+        """
         self.assertDictEqual(self.connection_options,
                              self.my_connection.connection_options)
         self.assertIsInstance(self.my_connection.channels, list)
@@ -356,7 +391,8 @@ class TestConnection(Case):
     @patch('qpid.messaging.Connection')
     def test_create_qpid_connection(self, QpidConnection):
         """Test that create_qpid_connection calls establish with the
-        connection_options, and then returns the result."""
+        connection_options, and then returns the result.
+        """
         new_connection = 'connection'
         QpidConnection.establish = Mock(return_value=new_connection)
         conn_from_func = self.my_connection.create_qpid_connection()
@@ -366,7 +402,8 @@ class TestConnection(Case):
 
     def test_close_channel_exists(self):
         """Test that calling close_channel() with a valid channel removes
-        the channel from self.channels and sets channel.connection to None"""
+        the channel from self.channels and sets channel.connection to None.
+        """
         mock_channel = Mock()
         self.my_connection.channels = [mock_channel]
         mock_channel.connection = True
@@ -377,7 +414,8 @@ class TestConnection(Case):
 
     def test_close_channel_does_not_exist(self):
         """Test that calling close_channel() with an invalid channel does
-        not raise a ValueError and sets channel.connection to None."""
+        not raise a ValueError and sets channel.connection to None.
+        """
         self.my_connection.channels = Mock()
         self.my_connection.channels.remove = Mock(side_effect=ValueError())
         mock_channel = Mock()
@@ -390,6 +428,9 @@ class TestChannel(Case):
 
     @patch('qpidtoollibs.BrokerAgent')
     def setUp(self, mock_BrokerAgent):
+        """Set up objects for use in testing a Channel.
+
+        Create a mock Channel, and all associated mock objects."""
         self.mock_connection = Mock()
         self.mock_qpid_connection = Mock()
         self.mock_qpid_session = Mock()
@@ -414,7 +455,8 @@ class TestChannel(Case):
 
     def test_verify_Message_class_attribute(self):
         """Verify that the class attribute Message refers to the Message
-        object"""
+        object
+        """
         self.assertIs(Message, Channel.Message)
 
     def test_body_encoding_class_attribute(self):
@@ -423,7 +465,8 @@ class TestChannel(Case):
 
     def test_codecs_class_attribute(self):
         """Verify that the codecs class attribute has a correct key and
-        value"""
+        value
+        """
         self.assertIsInstance(Channel.codecs, dict)
         self.assertIn('base64', Channel.codecs)
         self.assertIsInstance(Channel.codecs['base64'], Base64)
@@ -451,7 +494,8 @@ class TestChannel(Case):
 
     def test_get(self):
         """Test _get() for return value from call to receiver, and check
-        that receiver has closed() called on it."""
+        that receiver has closed() called on it.
+        """
         mock_queue = Mock()
         mock_rx = Mock()
         mock_message = Mock()
@@ -504,7 +548,8 @@ class TestChannel(Case):
 
     def test_purge(self):
         """Test purging a queue that has messages, and verify the return
-        value"""
+        value.
+        """
         message_count = 5
         mock_queue = Mock()
         mock_queue_to_purge = Mock()
@@ -517,7 +562,8 @@ class TestChannel(Case):
 
     def test_size(self):
         """Test getting the number of messages in a queue specified by
-        name and returning them."""
+        name and returning them.
+        """
         message_count = 5
         mock_queue = Mock()
         mock_queue_to_check = Mock()
@@ -770,6 +816,7 @@ class TestChannel(Case):
 
     @patch('kombu.transport.qpid.FDShimThread')
     def test_basic_consume(self, mock_FDShimThread):
+        """Test a basic_consume() to fetch a message."""
         mock_queue = Mock()
         mock_no_ack = False
         mock_callback = Mock()
@@ -1010,13 +1057,15 @@ class TestChannel(Case):
 class TestTransport(Case):
 
     def setUp(self):
+        """Creates a mock_client to be used in testing."""
         self.mock_client = Mock()
 
     @patch('kombu.transport.qpid.FDShim')
     @patch('threading.Thread')
     def test_init_variables(self, mock_thread, mock_FDShim):
         """Test that all simple init params are internally stored
-        correctly"""
+        correctly
+        """
         new_fdshim = Mock()
         mock_FDShim.return_value = new_fdshim
         new_thread = Mock()
@@ -1035,12 +1084,14 @@ class TestTransport(Case):
 
     def test_verify_Connection_attribute(self):
         """Verify that class attribute Connection refers to the connection
-        object"""
+        object
+        """
         self.assertIs(Connection, Transport.Connection)
 
     def test_verify_default_port(self):
         """Verify that the class attribute default_port refers to the 5672
-        properly"""
+        properly
+        """
         self.assertEqual(5672, Transport.default_port)
 
     def test_verify_polling_disabled(self):
@@ -1049,18 +1100,21 @@ class TestTransport(Case):
 
     def test_verify_supports_asynchronous_events(self):
         """Verify that the Transport advertises that it supports
-        an asynchronous event model"""
+        an asynchronous event model
+        """
         self.assertTrue(Transport.supports_ev)
 
     def test_verify_driver_type_and_name(self):
         """Verify that the driver and type are correctly labeled on the
-        class"""
+        class
+        """
         self.assertEqual('qpid', Transport.driver_type)
         self.assertEqual('qpid', Transport.driver_name)
 
     def test_register_with_event_loop(self):
         """Test that the file descriptor to monitor, and the on_readable
-        callbacks properly register with the event loop"""
+        callbacks properly register with the event loop
+        """
         my_transport = Transport(self.mock_client)
         mock_connection = Mock()
         mock_loop = Mock()
@@ -1071,7 +1125,8 @@ class TestTransport(Case):
 
     def test_establish_connection_no_ssl(self):
         """Test that a call to establish connection creates a connection
-        object with sane parameters and returns it"""
+        object with sane parameters and returns it.
+        """
         self.mock_client.ssl = False
         self.mock_client.transport_options = []
         my_transport = Transport(self.mock_client)
@@ -1083,7 +1138,8 @@ class TestTransport(Case):
 
     def test_close_connection(self):
         """Test that close_connection calls close on each channel in the
-        list of channels on the connection object"""
+        list of channels on the connection object.
+        """
         my_transport = Transport(self.mock_client)
         mock_connection = Mock()
         mock_channel_1 = Mock()
@@ -1095,7 +1151,8 @@ class TestTransport(Case):
 
     def test_drain_events_get_raises_empty_no_timeout(self):
         """Test drain_events() to ensure that a socket.timeout is raised
-        once the get() method on queue_from_fdshim raises a Queue.Empty"""
+        once the get() method on queue_from_fdshim raises a Queue.Empty.
+        """
         my_transport = Transport(self.mock_client)
         my_transport.queue_from_fdshim = Mock()
         my_transport.queue_from_fdshim.get = Mock(side_effect=Queue.Empty())
@@ -1105,7 +1162,8 @@ class TestTransport(Case):
 
     def test_drain_events_and_raise_timeout(self):
         """Test drain_events() drains properly and also exits after the
-        timeout is reached even if the queue isn't empty"""
+        timeout is reached even if the queue isn't empty.
+        """
         my_transport = Transport(self.mock_client)
         my_transport.queue_from_fdshim = Mock()
         mock_queue = Mock()
@@ -1123,7 +1181,8 @@ class TestTransport(Case):
 
     def test_create_channel(self):
         """Test that a Channel is created, and appended to the list of
-        channels the connection maintains"""
+        channels the connection maintains.
+        """
         my_transport = Transport(self.mock_client)
         mock_connection = Mock()
         mock_new_channel = Mock()
@@ -1138,6 +1197,7 @@ class TestTransport(Case):
 
     @patch('os.read')
     def test_on_readable(self, mock_os_read):
+        """Test on_readable() reads an available message."""
         my_transport = Transport(self.mock_client)
         mock_drain_events = Mock(side_effect=socket.timeout())
         my_transport.drain_events = mock_drain_events
