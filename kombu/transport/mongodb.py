@@ -55,7 +55,7 @@ class BroadcastCursor(object):
     def __iter__(self):
         return self
 
-    def next(self):
+    def __next__(self):
         while True:
             try:
                 msg = next(self._cursor)
@@ -74,6 +74,7 @@ class BroadcastCursor(object):
         self._offset += 1
 
         return msg
+    next = __next__
 
 
 class Channel(virtual.Channel):
