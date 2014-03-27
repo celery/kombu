@@ -160,7 +160,7 @@ class TestQoS(Case):
         """Load a mock message, reject the message with requeue=True,
         and ensure the right call to acknowledge is made"""
         message = Mock()
-        mock_QpidDisposition.return_value='disposition'
+        mock_QpidDisposition.return_value = 'disposition'
         qos = self.qos_no_limit
         qos.append(message, 1)
         qos.reject(1, requeue=True)
@@ -174,7 +174,7 @@ class TestQoS(Case):
         """Load a mock message, reject the message with requeue=False,
         and ensure the right call to acknowledge is made"""
         message = Mock()
-        mock_QpidDisposition.return_value='disposition'
+        mock_QpidDisposition.return_value = 'disposition'
         qos = self.qos_no_limit
         qos.append(message, 1)
         qos.reject(1, requeue=False)
@@ -305,7 +305,7 @@ class TestFDShim(Case):
 
     def test_call_to_get_raise_empty(self):
         """Ensure the call to delivery_queue.get() occurs, and with
-        block=True.  Raises an Queue.Empty exception."""
+        block=True.  Raises a Queue.Empty exception."""
         self.mock_delivery_queue.get = Mock(side_effect=Queue.Empty())
         self.my_thread.start()
         time.sleep(1)
@@ -483,7 +483,7 @@ class TestChannel(Case):
 
     @patch('qpid.messaging.Message')
     def test_put_exchange(self, mock_qpid_Message_obj):
-        """Test putting a messages directly into an exchange."""
+        """Test putting a message directly into an exchange."""
         mock_routing_key = 'routingkey'
         mock_exchange_name = 'myexchange'
         mock_message = Mock()
@@ -1033,7 +1033,6 @@ class TestTransport(Case):
         self.assertTrue(new_thread.daemon)
         new_thread.start.assert_called_with()
 
-
     def test_verify_Connection_attribute(self):
         """Verify that class attribute Connection refers to the connection
         object"""
@@ -1077,7 +1076,7 @@ class TestTransport(Case):
         self.mock_client.transport_options = []
         my_transport = Transport(self.mock_client)
         new_connection = Mock()
-        my_transport.Connection = Mock(return_value = new_connection)
+        my_transport.Connection = Mock(return_value=new_connection)
         my_transport.establish_connection()
         my_transport.Connection.assert_called_once()
         self.assertIs(new_connection.client, self.mock_client)
@@ -1150,7 +1149,7 @@ class TestTransport(Case):
         mock_drain_events.assert_called_with(mock_connection)
         self.assertIsNone(result)
 
-    def test_default_conneciton_parapms(self):
+    def test_default_connection_params(self):
         """Test that the default_connection_params are correct"""
         correct_params =  {'userid': 'guest', 'password': 'guest',
                            'port': 5672, 'virtual_host': '',
