@@ -42,10 +42,38 @@ from . import base
 
 ##### Start Monkey Patching #####
 
+# This section applies two patches to qpid.messaging that are required for
+# correct operation.  Each patch fixes a bug.  See links to the bugs below:
+# https://issues.apache.org/jira/browse/QPID-5637
+# https://issues.apache.org/jira/browse/QPID-5557
+
+### Begin Monkey Patch 1 ###
+# https://issues.apache.org/jira/browse/QPID-5637
+
+#############################################################################
+#  _   _  ___ _____ _____
+# | \ | |/ _ \_   _| ____|
+# |  \| | | | || | |  _|
+# | |\  | |_| || | | |___
+# |_| \_|\___/ |_| |_____|
+#
+#If you have code that also uses qpid.messaging and imports kombu,
+# or causes this file to be imported, then you need to make sure that this
+# import occurs first.
+#
+# Failure to do this will cause the following exception:
+# AttributeError: 'Selector' object has no attribute '_current_pid'
+#
+# Fix this by importing this module prior to using qpid.messaging in other
+# code that also uses this module.
+#############################################################################
+
+
+# Imports for Monkey Patch 1
 from qpid.selector import Selector
 import atexit
 
-
+# Prepare for Monkey Patch 1
 def default_monkey():
     Selector.lock.acquire()
     try:
@@ -65,13 +93,20 @@ def default_monkey():
     finally:
         Selector.lock.release()
 
+# Apply Monkey Patch 1
 import qpid.selector
 qpid.selector.Selector.default = staticmethod(default_monkey)
 
+### End Monkey Patch 1 ###
+
+### Begin Monkey Patch 2 ###
+# https://issues.apache.org/jira/browse/QPID-5557
+
+# Imports for Monkey Patch 2
 from qpid.ops import ExchangeQuery, QueueQuery
 from qpid.messaging.exceptions import NotFound, AssertionFailed
 
-
+# Prepare for Monkey Patch 2
 def resolve_declare_monkey(self, sst, lnk, dir, action):
     declare = lnk.options.get("create") in ("always", dir)
     assrt = lnk.options.get("assert") in ("always", dir)
@@ -101,7 +136,6 @@ def resolve_declare_monkey(self, sst, lnk, dir, action):
 
     self.resolve(sst, lnk.name, do_resolved, node_type=requested_type,
                  force=declare)
-
 
 def resolve_monkey(self, sst, name, action, force=False, node_type=None):
     if not force and not node_type:
@@ -137,10 +171,13 @@ def resolve_monkey(self, sst, name, action, force=False, node_type=None):
     sst.write_query(QueueQuery(name), do_action)
 
 
+# Apply monkey patch 2
 import qpid.messaging.driver
 
 qpid.messaging.driver.Engine.resolve_declare = resolve_declare_monkey
 qpid.messaging.driver.Engine.resolve = resolve_monkey
+
+### End Monkey Patch 2 ###
 
 ##### End Monkey Patching #####
 
