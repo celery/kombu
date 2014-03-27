@@ -585,8 +585,8 @@ class TestChannel(Case):
     def test_new_queue_raises_exception_and_silenced(self):
         """Test new queue, where an exception is raised and then silenced"""
         mock_queue = Mock()
-        self.mock_broker.addQueue.side_effect = \
-            Exception('The foo object already exists.')
+        exception_to_raise = Exception('The foo object already exists.')
+        self.mock_broker.addQueue.side_effect = exception_to_raise
         result = self.my_channel._new_queue(mock_queue)
         self.mock_broker.addQueue.assert_called_with(mock_queue)
         self.assertIsNone(result)
@@ -784,18 +784,16 @@ class TestChannel(Case):
         new_message = Mock()
         self.my_channel._get = Mock(return_value=mock_qpid_message)
         self.mock_Message.return_value = new_message
-        self.mock_qpid_session.acknowledge.side_effect = \
-            Exception('Acknowledge should not be called')
         result = self.my_channel.basic_get(mock_queue, no_ack=True)
+        self.assertEqual(self.mock_qpid_session.acknowledge.call_count, 0)
         self.assertIs(new_message, result)
 
     def test_basic_get_raises_Empty(self):
         """Test a basic_get where _get() raises an Empty exception"""
         mock_queue = Mock()
         self.my_channel._get = Mock(side_effect=kombu.five.Empty)
-        self.my_channel.Message.side_effect = \
-            Exception('Message should not be called')
         result = self.my_channel.basic_get(mock_queue)
+        self.assertEqual(self.my_channel.Message.call_count, 0)
         self.assertIsNone(result)
 
     @patch('kombu.transport.qpid.Channel.qos')
