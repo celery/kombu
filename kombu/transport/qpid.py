@@ -200,12 +200,16 @@ class QpidMessagingExceptionHandler(object):
     Usage:
     @QpidMessagingExceptionHandler('whitelist string goes here')
 
-    :param allowed_exception_string: a string that, if present in the
-    exception message, will be silenced.
-    :type allowed_exception_string: str
     """
 
     def __init__(self, allowed_exception_string):
+        """Instantiate a QpidMessagingExceptionHandler object.
+
+        :param allowed_exception_string: a string that, if present in the
+            exception message, will be silenced.
+        :type allowed_exception_string: str
+
+        """
         self.allowed_exception_string = allowed_exception_string
 
     def __call__(self, original_func):
@@ -253,10 +257,6 @@ class QoS(object):
     be looked up from QoS using :meth:`get` and can be rejected and
     forgotten using :meth:`reject`.
 
-    :keyword prefetch_count: Initial prefetch count (defaults to 0,
-        which disables prefetch limits).
-    :type prefetch_count: int
-
     """
 
     #: current prefetch count value
@@ -267,6 +267,13 @@ class QoS(object):
     _not_yet_acked = None
 
     def __init__(self, prefetch_count=0):
+        """Instantiate a QoS object.
+
+        :keyword prefetch_count: Initial prefetch count (defaults to 0,
+            which disables prefetch limits).
+        :type prefetch_count: int
+
+        """
         self.prefetch_count = prefetch_count
         self._not_yet_acked = OrderedDict()
 
@@ -436,14 +443,6 @@ class Channel(base.StdChannel):
     and is referenced by delivery_tag. The Channel object uses its
     :class:`QoS` object to perform the message acking.
 
-    :param connection: A Connection object that this Channel can reference.
-        Currently only used to access callbacks.
-    :type connection: Connection
-    :param transport: The Transport this Channel is associated with.
-    :type transport: Transport
-    :param delivery_queue: A threadsafe queue that asynchronous
-        FDShimThread consumers should put arriving messages into.
-    :type delivery_queue: Queue.Queue
     """
 
     #: A class reference that will be instantiated using the qos property.
@@ -464,6 +463,17 @@ class Channel(base.StdChannel):
     _delivery_tags = count(1)
 
     def __init__(self, connection, transport, delivery_queue):
+        """Instantiate a Channel object.
+
+        :param connection: A Connection object that this Channel can reference.
+            Currently only used to access callbacks.
+        :type connection: Connection
+        :param transport: The Transport this Channel is associated with.
+        :type transport: Transport
+        :param delivery_queue: A threadsafe queue that asynchronous
+            FDShimThread consumers should put arriving messages into.
+        :type delivery_queue: Queue.Queue
+        """
         self.connection = connection
         self.transport = transport
         self.delivery_queue = delivery_queue
@@ -1219,21 +1229,25 @@ class FDShimThread(threading.Thread):
     :class:`Channel` maintains references to the FDShimThread instances it
     creates for killing later.
 
-    :param create_qpid_connection: A function that will return a valid
-        :class:`qpid.messaging Connection` object when called with no
-        arguments.
-    :type create_qpid_connection: function
-    :param queue: The name of the queue to consume messages from.
-    :type queue: str
-    :param delivery_queue: The threadsafe :class:`Queue.Queue` object to
-        deliver :class:`qpid.messaging.Message` object into once read from
-        the broker.
-    :type delivery_queue: Queue.Queue
     """
     # The timeout that blocking reads should occur for before waking up.
     block_timeout = 10
 
     def __init__(self, create_qpid_connection, queue, delivery_queue):
+        """Instantiate a FDShimThread object.
+
+        :param create_qpid_connection: A function that will return a valid
+            :class:`qpid.messaging Connection` object when called with no
+            arguments.
+        :type create_qpid_connection: function
+        :param queue: The name of the queue to consume messages from.
+        :type queue: str
+        :param delivery_queue: The threadsafe :class:`Queue.Queue` object to
+            deliver :class:`qpid.messaging.Message` object into once read from
+            the broker.
+        :type delivery_queue: Queue.Queue
+
+        """
         self._session = create_qpid_connection().session()
         self._receiver = self._session.receiver(queue)
         self._queue = queue
@@ -1294,17 +1308,22 @@ class FDShim(object):
     ensuring an FDShim will never keep the Python process alive if all
     non-daemon threads have exited.
 
-    :param queue_from_fdshim: The queue that that messages which are ready
-        for reading are put into so that the :class:`Transport` can drain
-        them with a call to :meth:`Transport.drain_events`
-    :type queue_from_fdshim: Queue.Queue
-    :param delivery_queue: The queue that FDShim performs a blocking
-        read on to receive messages form all consumers associated with all
-        :class:`Channel` objects associated with the :class:`Transport` that
-        created FDShim.
-    :type delivery_queue: Queue.Queue
     """
+
     def __init__(self, queue_from_fdshim, delivery_queue):
+        """Instantiate a FDShim object.
+
+        :param queue_from_fdshim: The queue that that messages which are ready
+            for reading are put into so that the :class:`Transport` can drain
+            them with a call to :meth:`Transport.drain_events`
+        :type queue_from_fdshim: Queue.Queue
+        :param delivery_queue: The queue that FDShim performs a blocking
+            read on to receive messages form all consumers associated with all
+            :class:`Channel` objects associated with the :class:`Transport` that
+            created FDShim.
+        :type delivery_queue: Queue.Queue
+
+        """
         self.queue_from_fdshim = queue_from_fdshim
         self.delivery_queue = delivery_queue
         self.r, self._w = os.pipe()
@@ -1364,23 +1383,29 @@ class Connection(object):
     The following keys are expected to be passed in as keyword arguments
     at a minimum:
 
-    * host: The host that connections should connect to.
-    * port: The port that connection should connect to.
-    * username: The username that connections should connect with.
-    * password: The password that connections should connect with.
-    * transport: The transport type that connections should use.  Either
-          'tcp', or 'ssl' are expected as values.
-    * timeout: the timeout to use when a Connection connects to the broker.
-    * sasl_mechanisms: The sasl authentication mechanism type to use. refer
-          to SASL documentation for an explanation of valid values.
-
-    All keyword arguments are collected into the connection_options dict.
+    All keyword arguments are collected into the connection_options dict
+    and passed directly through to qpid.messaging.
     """
 
     # A class reference to the :class:`Channel` object
     Channel = Channel
 
     def __init__(self, **connection_options):
+        """Instantiate a Connection object.
+
+        The following parameters are expected:
+
+        * host: The host that connections should connect to.
+        * port: The port that connection should connect to.
+        * username: The username that connections should connect with.
+        * password: The password that connections should connect with.
+        * transport: The transport type that connections should use.  Either
+              'tcp', or 'ssl' are expected as values.
+        * timeout: the timeout to use when a Connection connects to the broker.
+        * sasl_mechanisms: The sasl authentication mechanism type to use. refer
+              to SASL documentation for an explanation of valid values.
+
+        """
         self.connection_options = connection_options
         self.channels = []
         self._callbacks = {}
@@ -1441,9 +1466,8 @@ class Transport(base.Transport):
     The Transport can create :class:`Channel` objects to communicate with the
     broker with using the :meth:`create_channel` method.
 
-    :param client: A reference to the creator of the Transport.
-    :type client: kombu.connection.Connection
     """
+
     # Reference to the class that should be used as the Connection object
     Connection = Connection
 
@@ -1467,6 +1491,12 @@ class Transport(base.Transport):
     driver_name = 'qpid'
 
     def __init__(self, client, **kwargs):
+        """Instantiate a Transport object.
+
+        :param client: A reference to the creator of the Transport.
+        :type client: kombu.connection.Connection
+
+        """
         self.client = client
         self.queue_from_fdshim = Queue.Queue()
         self.delivery_queue = Queue.Queue()
