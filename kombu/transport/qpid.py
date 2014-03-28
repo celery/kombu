@@ -285,8 +285,8 @@ class QoS(object):
         limits.  If prefetch_count is 0, can_consume will always return True.
 
         """
-        pcount = self.prefetch_count
-        return not pcount or len(self._not_yet_acked) < pcount
+        return not self.prefetch_count or len(self._not_yet_acked) < self\
+            .prefetch_count
 
     def can_consume_max_estimate(self):
         """Return the remaining message capacity for the associated
@@ -299,9 +299,8 @@ class QoS(object):
         returns:
             An integer >= 0
         """
-        pcount = self.prefetch_count
-        if pcount:
-            return pcount - len(self._not_yet_acked)
+        if self.prefetch_count:
+            return self.prefetch_count - len(self._not_yet_acked)
         else:
             return 1
 
