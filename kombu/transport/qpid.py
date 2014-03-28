@@ -737,8 +737,24 @@ class Channel(base.StdChannel):
 
     @QpidMessagingExceptionHandler('queue in use')
     def after_reply_message_received(self, queue):
-        #TODO investigate when this is called
-        #TODO docstring this
+        """Delete a queue used to receive message replies by.
+
+        A message sender may want to send a message to a destination,
+        and then receive replies from where those messages were delivered
+        to. For instance celery uses broadcast to discover other workers,
+        and has those workers announce themselves through reply messages.
+
+        A designated queue must be setup for messages to be sent back via,
+        and a consumer can be started to drain reply messages from that
+        queue.  Once all messages have been drained, this method is called
+        to handle any associated cleanup with this delivery model.  In the
+        case of this transport cleanup consists of deleting the queue.
+
+        :param queue: The name of the queue associated with the reply
+            messages.
+        :type queue: str
+
+        """
         self._delete(queue)
 
     def queue_bind(self, queue, exchange, routing_key, **kwargs):
