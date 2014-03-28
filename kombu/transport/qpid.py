@@ -415,7 +415,7 @@ class Channel(base.StdChannel):
 
     Synchronous reads on a queue are done using a call to :meth:`basic_get`
     which uses :meth:`_get` to perform the reading. These methods read
-    immediately and do not accept some form of timeout. :meth:`basic_get`
+    immediately and do not accept any form of timeout. :meth:`basic_get`
     reads synchronously and ACKs messages before returning them, or acking
     can be disable by the no_ack argument to :meth:`basic_get`.
 
@@ -432,11 +432,10 @@ class Channel(base.StdChannel):
 
     The Channel object handles thread creation of :class:`FDShimThread`
     objects which provide asynchronous blocking reads.  FDShimThreads are
-    given a :class:`Queue.Queue` object to put messages into called
-    delivery_queue. delivery_queue is provided by the creator of the
-    Channel (typically a :class:`Transport` object).  Cancellation of a
-    consumer causes the consuming class:`FDShimThread` to be notified it is
-    no longer needed.
+    given a :class:`Queue.Queue` named delivery_queue to put messages into.
+    delivery_queue is provided by the creator of the Channel (typically a
+    :class:`Transport` object).  Cancellation of a consumer causes the
+    consuming class:`FDShimThread` to be notified it is no longer needed.
 
     Asynchronous message acking is supported through :meth:`basic_ack`,
     and is referenced by delivery_tag. The Channel object uses its
@@ -553,9 +552,11 @@ class Channel(base.StdChannel):
             msg_subject = str(routing_key)
         sender = self._qpid_session.sender(address)
         qpid_message = qpid.messaging.Message(content=message,
-                                         subject=msg_subject)
-        sender.send(qpid_message, sync=True)
-        sender.close()
+                                              subject=msg_subject)
+        try:
+            sender.send(qpid_message, sync=True)
+        finally:
+            sender.close()
 
     def _purge(self, queue):
         """Purge all undelivered messages from a queue specified by name.
@@ -591,11 +592,11 @@ class Channel(base.StdChannel):
         """Get the number of messages in a queue specified by name.
 
         An internal method to return the number of messages in a queue
-        specified by name.  It returns an integer could of the number
+        specified by name.  It returns an integer count of the number
         of messages currently in the queue.
 
         :param queue: The name of the queue to be inspected for the number
-        of messages
+            of messages
         :type queue: str
         """
         queue_to_check = self._broker.getQueue(queue)
@@ -624,13 +625,11 @@ class Channel(base.StdChannel):
         """Create a new queue specified by name.
 
         An internal method to create a new queue specified by name. If the
-        queue already exists, an exception is raise, which is caught and
+        queue already exists, an exception is raised, which is caught and
         silenced by the :class:`QpidMessagingExceptionHandler` decorator.
 
         This is an internal method.  External calls for queue creation
         functionality should be done using :meth:`queue_declare`.
-
-        This is an internal method,
 
         :param queue: the name of the queue to be created.
         :type queue: str
@@ -792,7 +791,7 @@ class Channel(base.StdChannel):
         purged may be different than the requested number of messages to
         purge.
 
-        Sometimes, delivered messages are asked to be purged, but are not.
+        Sometimes delivered messages are asked to be purged, but are not.
         This case fails silently, which is the correct behavior when a
         message that has been delivered to a different consumer, who has
         not acked the message, and still has an active session with the
@@ -888,7 +887,7 @@ class Channel(base.StdChannel):
     def basic_consume(self, queue, no_ack, callback, consumer_tag, **kwargs):
         """Start an asynchronous consumer that reads from a queue.
 
-        This method starts a consumer the reads messages from a queue
+        This method starts a consumer that reads messages from a queue
         specified by name until stopped by a call to :meth:`basic_cancel`.
         Once a message is read, a call to the callback will occur with the
         message as the single argument.  The message passed to the callback
@@ -905,7 +904,7 @@ class Channel(base.StdChannel):
         The child consumer thread does not call the callback directly.
         Instead, the child thread is given a threadsafe :class:`Queue.Queue`
         object which it should deliver messages into.  This single queue
-        aggregates all consumer messages, can be read through a call to
+        aggregates all consumer messages, and can be read through a call to
         :meth:`~Transport.drain_events` on the Transport object associated
         with this Channel object.  This method sets up the callback onto the
         self.connection object in a dict keyed by queue name.
@@ -1372,7 +1371,7 @@ class Connection(object):
     by calling the bound :meth:`create_qpid_connection` method.
 
     The Connection object is also responsible for maintaining the
-    dictionary of reference to callbacks that should be called when
+    dictionary of references to callbacks that should be called when
     messages are received.  These callbacks are saved in _callbacks,
     and keyed on the queue name associated with the received message.  The
     _callbacks are setup in :meth:`Channel.basic_consume`, removed in
@@ -1479,12 +1478,6 @@ class Transport(base.Transport):
     # This Transport does support an asynchronous event model.
     supports_ev = True
 
-    # documenting Celery error strings here
-    # channel_errors = None
-    # recoverable_channel_errors = None
-    # connection_errors = None
-    # recoverable_connection_errors = None
-
     # The driver type and name for identification purposes.
     driver_type = 'qpid'
     driver_name = 'qpid'
@@ -1506,7 +1499,7 @@ class Transport(base.Transport):
         fdshim_thread.start()
 
     def register_with_event_loop(self, connection, loop):
-        """Register a file descriptor and callback with the loop
+        """Register a file descriptor and callback with the loop.
 
         Register the callback self.on_readable to be called when an
         external epoll loop sees that the file descriptor registered is
