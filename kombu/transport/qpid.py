@@ -222,6 +222,9 @@ class QpidMessagingExceptionHandler(object):
         :param original_func: function that is automatically passed in
         when this object is used as a decorator.
         :type original_func: function
+
+        :return: A function that decorates (wraps) the original function.
+        :rtype: func
         """
 
         def decorator(*args, **kwargs):
@@ -275,8 +278,12 @@ class QoS(object):
         else False.
 
         Used to ensure the client adheres to currently active prefetch
-        limits.  If prefetch_count is 0, can_consume will always return True.
+        limits.
 
+        :returns: True, if this QoS object can accept more messages
+            without violating the prefetch_count.  If prefetch_count is 0,
+            can_consume will always return True.
+        :rtype: bool
         """
         return not self.prefetch_count or len(self._not_yet_acked) < self\
             .prefetch_count
@@ -289,8 +296,9 @@ class QoS(object):
         :class:`Channel` can accept without exceeding prefetch_count.  If
         prefetch_count is 0, then this method returns 1.
 
-        returns:
-            An integer >= 0
+        :returns: The number of estimated messages that can be fetched
+            without violating the prefetch_count.
+        :rtype: int
         """
         if self.prefetch_count:
             return self.prefetch_count - len(self._not_yet_acked)
@@ -320,6 +328,9 @@ class QoS(object):
         :param delivery_tag: The delivery tag associated with the message
             to be returned.
         :type delivery_tag: int
+
+        :return: An un-ACKed message that is looked up by delivery_tag.
+        :rtype: qpid.messaging.Message
         """
         return self._not_yet_acked[delivery_tag]
 
@@ -494,6 +505,9 @@ class Channel(base.StdChannel):
 
         :param queue: The queue name to get the message from
         :type queue: str
+
+        :return: The received message.
+        :rtype: :class:`qpid.messaging.Message`
         """
         rx = self._qpid_session.receiver(queue)
         try:
@@ -574,6 +588,9 @@ class Channel(base.StdChannel):
 
         :param queue: the name of the queue to be purged
         :type queue: str
+
+        :return: The number of messages requested to be purged.
+        :rtype: int
         """
         queue_to_purge = self._broker.getQueue(queue)
         message_count = queue_to_purge.values['msgDepth']
@@ -591,6 +608,9 @@ class Channel(base.StdChannel):
         :param queue: The name of the queue to be inspected for the number
             of messages
         :type queue: str
+
+        :return the number of messages in the queue specified by name.
+        :rtype: int
         """
         queue_to_check = self._broker.getQueue(queue)
         message_depth = queue_to_check.values['msgDepth']
@@ -632,11 +652,12 @@ class Channel(base.StdChannel):
     def _has_queue(self, queue, **kwargs):
         """Determine if the broker has a queue specified by name.
 
-        Returns True if the broker has a queue specified by name.  Returns
-        False if the broker does not have a queue specified by name.
-
         :param queue: The queue name to check if the queue exists.
         :type queue: str
+
+        :return: True if a queue exists on the broker, and false
+            otherwise.
+        :rtype: bool
         """
         if self._broker.getQueue(queue):
             return True
@@ -658,6 +679,9 @@ class Channel(base.StdChannel):
 
         :param queue: the name of the queue to be created.
         :type queue: str
+
+        :return: A named tuple representing the declared queue.
+        :rtype: :class:`~collections.namedtuple`
         """
         self._new_queue(queue, **kwargs)
         return amqp.protocol.queue_declare_ok_t(queue, self._size(queue), 0)
@@ -669,8 +693,6 @@ class Channel(base.StdChannel):
         argument, the delete can only occur if there are 0 consumers bound
         to it.  Using the if_empty keyword argument, the delete can only
         occur if there are 0 messages in the queue.
-
-        This method returns None in all cases.
 
         :param queue: The name of the queue to be deleted.
         :type queue: str
@@ -813,6 +835,9 @@ class Channel(base.StdChannel):
         :param queue: The name of the queue which should have all messages
             removed.
         :type queue: str
+
+        :return: The number of messages requested to be purged.
+        :rtype: int
         """
         return self._purge(queue)
 
@@ -840,6 +865,9 @@ class Channel(base.StdChannel):
         :keyword no_ack: If True, a message fetched will not be acked. If
             False, a message fetched will be acked.
         :type noack: bool
+
+        :return: The received message.
+        :rtype: :class:`~kombu.transport.virtual.Message`
         """
         try:
             qpid_message = self._get(queue)
@@ -1024,6 +1052,9 @@ class Channel(base.StdChannel):
 
         Lazily instantiates an object of type :class:`QoS` upon access to
         the self.qos attribute.
+
+        :return: An already existing, or newly created QoS object
+        :rtype: :class:`QoS`
         """
         if self._qos is None:
             self._qos = self.QoS()
@@ -1045,9 +1076,6 @@ class Channel(base.StdChannel):
     def prepare_message(self, body, priority=None, content_type=None,
                         content_encoding=None, headers=None, properties=None):
         """Prepare message data for sending.
-
-        Returns a dict object that encapsulates message attributes.  See
-        parameters for more details on attributes that can be set.
 
         This message is typically called by
         :meth:`kombu.messaging.Producer._publish` as a preparation step in
@@ -1071,6 +1099,11 @@ class Channel(base.StdChannel):
         :type headers: dict
         :keyword properties: Message properties to be set on the message.
         :type properties: dict
+
+        :return: Returns a dict object that encapsulates message
+            attributes.  See parameters for more details on attributes that
+            can be set.
+        :rtype: dict
         """
         properties = properties or {}
         info = properties.setdefault('delivery_info', {})
@@ -1125,7 +1158,7 @@ class Channel(base.StdChannel):
             exchange=exchange,
             routing_key=routing_key,
         )
-        return self._put(routing_key, message, exchange, **kwargs)
+        self._put(routing_key, message, exchange, **kwargs)
 
     def encode_body(self, body, encoding=None):
         """Encode a body using an optionally specified encoding.
@@ -1136,16 +1169,17 @@ class Channel(base.StdChannel):
         object that can provide encoding/decoding of that type through
         encode and decode methods.
 
-        Returns a tuple with the first position being the encoded body,
-        and the second position the encoding used.
-
-        If encoding is not specified, the body is passed through unchanged.
-
         :param body: The body to be encoded.
         :type body: str
         :keyword encoding: The encoding type to be used.  Must be a supported
             codec listed in self.codecs.
         :type encoding: str
+
+        :return: If encoding is specified, return a tuple with the first
+            position being the encoded body, and the second position the
+            encoding used.  If encoding is not specified, the body is passed
+            through unchanged.
+        :rtype: tuple
         """
         if encoding:
             return self.codecs.get(encoding).encode(body), encoding
@@ -1160,15 +1194,15 @@ class Channel(base.StdChannel):
         object that can provide encoding/decoding of that type through
         encode and decode methods.
 
-        Returns the decoded body.
-
-        If encoding is not specified, the body is returned unchanged.
-
         :param body: The body to be encoded.
         :type body: str
         :keyword encoding: The encoding type to be used.  Must be a supported
             codec listed in self.codecs.
         :type encoding: str
+
+        :return: If encoding is specified, the decoded body is returned.
+            If encoding is not specified, the body is returned unchanged.
+        :rtype: str
         """
         if encoding:
             return self.codecs.get(encoding).decode(body)
@@ -1188,6 +1222,9 @@ class Channel(base.StdChannel):
         :keyword default: The type of exchange to assume if the exchange does
             not exist.
         :type default: str
+
+        :return: The exchange type either 'direct', 'topic', or 'fanout'.
+        :rtype: str
         """
         qpid_exchange = self._broker.getExchange(exchange)
         if qpid_exchange:
@@ -1424,6 +1461,9 @@ class Connection(object):
         Creates a :class:`qpid.messaging.endpoints.Connection` object with
         the saved parameters that were passed into the Connection at
         instantiation time.
+
+        :return: The new qpid.messaging connection
+        :rtype: :class:`qpid.messaging.endpoints.Connection`
         """
         return qpid.messaging.Connection.establish(**self.connection_options)
 
@@ -1547,7 +1587,8 @@ class Transport(base.Transport):
         settings, timeout behaviors, authentication, and identity
         verification settings.
 
-        The created :class:`Connection` object is returned.
+        :return: The created :class:`Connection` object is returned.
+        :rtype: :class:`Connection`
         """
         conninfo = self.client
         for name, default_value in items(self.default_connection_params):
@@ -1640,6 +1681,9 @@ class Transport(base.Transport):
         :param connection: The connection that should support the new
             :class:`Channel`.
         :type connection: Connection
+
+        :return: The new Channel that is made.
+        :rtype: :class:`Channel`.
         """
         channel = connection.Channel(connection, self, self.delivery_queue)
         connection.channels.append(channel)
@@ -1701,6 +1745,9 @@ class Transport(base.Transport):
 
         These connection parameters will be used whenever the creator of
         Transport does not specify a required parameter.
+
+        :return: A dict containing the default parameters.
+        :rtype: dict
         """
         return {'userid': 'guest', 'password': 'guest',
                 'port': self.default_port, 'virtual_host': '',
