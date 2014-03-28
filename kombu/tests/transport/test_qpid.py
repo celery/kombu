@@ -221,7 +221,6 @@ class TestFDShimThread(Case):
         self.my_thread = FDShimThread(self.mock_create_qpid_connection,
                                       self.mock_queue,
                                       self.mock_delivery_queue)
-        self.my_thread.daemon = True
 
     def test_init_variables(self):
         """Test that all simple init params are internally stored
@@ -249,30 +248,26 @@ class TestFDShimThread(Case):
         self.assertIs(self.mock_receiver, self.my_thread._receiver)
 
     def test_kill(self):
-        """Start a thread, and then kill it using the kill() method. Ensure
-        that it exits properly within the expected amount of time.
+        """Ensure that a call to the thread main method run() will exit
+        properly when kill() has been called.
         """
-        self.my_thread.start()
         self.my_thread.kill()
-        self.my_thread.join(timeout=FDShimThread.block_timeout)
-        self.assertFalse(self.my_thread.is_alive())
+        self.my_thread.run()
 
     def test_receiver_cleanup(self):
-        """Ensure that when a thread exits normally after a call to kill()
-        that close() is called on the receiver.
+        """Ensure that when a thread main method exits, that close() is
+        called on the receiver.
         """
-        self.my_thread.start()
         self.my_thread.kill()
-        self.my_thread.join(timeout=FDShimThread.block_timeout)
+        self.my_thread.run()
         self.mock_receiver.close.assert_called_with()
 
     def test_session_cleanup(self):
-        """Ensure that when a thread exits normally after a call to kill()
-        that close() is called on the session.
+        """Ensure that when a thread main method exits, that close() is
+        called on the session.
         """
-        self.my_thread.start()
         self.my_thread.kill()
-        self.my_thread.join(timeout=FDShimThread.block_timeout)
+        self.my_thread.run()
         self.mock_session.close.assert_called_with()
 
     def test_call_to_fetch_raise_empty(self):
@@ -280,9 +275,13 @@ class TestFDShimThread(Case):
         Raises an Empty exception.
         """
         QpidEmpty = qpid.messaging.exceptions.Empty
-        self.mock_receiver.fetch = Mock(side_effect=QpidEmpty())
-        self.my_thread.start()
-        time.sleep(1)
+        exception_causing_exit = Exception('Exit run() method')
+        self.mock_receiver.fetch = Mock(side_effect=[QpidEmpty(),
+                                                     exception_causing_exit])
+        try:
+            self.my_thread.run()
+        except Exception as err:
+            self.assertEqual(exception_causing_exit, err)
         self.mock_receiver.fetch.assert_called_with(
             timeout=FDShimThread.block_timeout)
 
@@ -293,27 +292,28 @@ class TestFDShimThread(Case):
         mock_response = Mock()
         mock_source = Mock()
         mock_put = Mock()
+        exception_causing_exit = Exception('Exit run() method')
         response_bundle = (mock_source, mock_response)
         self.mock_receiver.fetch = Mock(return_value=mock_response)
         self.mock_receiver.source = mock_source
-        self.mock_delivery_queue.put = mock_put
-        self.my_thread.start()
-        time.sleep(1)
+        self.mock_delivery_queue.put.side_effect = exception_causing_exit
+        try:
+            self.my_thread.run()
+        except Exception as err:
+            self.assertEqual(exception_causing_exit, err)
         self.mock_receiver.fetch.assert_called_with(
             timeout=FDShimThread.block_timeout)
-        mock_put.assert_called_with(response_bundle)
+        self.mock_delivery_queue.put.assert_called_with(response_bundle)
 
 
 class TestFDShim(Case):
+
     def setUp(self):
         """Create a test shim to use """
         self.mock_queue_from_fdshim = Mock()
         self.mock_delivery_queue = Mock()
         self.my_fdshim = FDShim(self.mock_queue_from_fdshim,
                                self.mock_delivery_queue)
-        self.my_thread = threading.Thread(
-            target=self.my_fdshim.monitor_consumers)
-        self.my_thread.daemon = True
 
     def test_init_variables(self):
         """Test that all simple init params are internally stored
@@ -326,21 +326,23 @@ class TestFDShim(Case):
         self.assertFalse(self.my_fdshim._is_killed)
 
     def test_kill(self):
-        """Start a thread, and then kill it using the kill() method. Ensure
-        that it exits properly within the expected amount of time.
+        """Ensure that a call to the thread main method run() will exit
+        properly when kill() has been called.
         """
-        self.my_thread.start()
         self.my_fdshim.kill()
-        self.my_thread.join(timeout=3)
-        self.assertFalse(self.my_thread.is_alive())
+        self.my_fdshim.monitor_consumers()
 
     def test_call_to_get_raise_empty(self):
         """Ensure the call to delivery_queue.get() occurs, and with
         block=True.  Raises a Queue.Empty exception.
         """
-        self.mock_delivery_queue.get = Mock(side_effect=Queue.Empty())
-        self.my_thread.start()
-        time.sleep(1)
+        exception_causing_exit = Exception('Exit monitor_consumers() method')
+        self.mock_delivery_queue.get = Mock(
+            side_effect=[Queue.Empty(), exception_causing_exit])
+        try:
+            self.my_fdshim.monitor_consumers()
+        except Exception as err:
+            self.assertEqual(exception_causing_exit, err)
         self.mock_delivery_queue.get.assert_called_with(block=True)
 
     @patch('os.write')
@@ -353,9 +355,13 @@ class TestFDShim(Case):
         _w file descriptor attribute of FDShim.
         """
         response_bundle = Mock()
+        exception_causing_exit = Exception('Exit monitor_consumers() method')
         self.mock_delivery_queue.get = Mock(return_value=response_bundle)
-        self.my_thread.start()
-        time.sleep(1)
+        write_method.side_effect = exception_causing_exit
+        try:
+            self.my_fdshim.monitor_consumers()
+        except Exception as err:
+            self.assertEqual(exception_causing_exit, err)
         self.mock_delivery_queue.get.assert_called_with(block=True)
         self.mock_queue_from_fdshim.put.assert_called_with(
             response_bundle)

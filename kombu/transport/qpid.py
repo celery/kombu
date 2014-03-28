@@ -259,13 +259,6 @@ class QoS(object):
 
     """
 
-    #: current prefetch count value
-    prefetch_count = None
-
-    #: :class:`~kombu.utils.compat.OrderedDict` of active messages.
-    #: *NOTE*: Can only be modified by the consuming thread.
-    _not_yet_acked = None
-
     def __init__(self, prefetch_count=0):
         """Instantiate a QoS object.
 
@@ -527,8 +520,8 @@ class Channel(base.StdChannel):
         :class:`qpid.messaging.endpoints.Session` referenced by
         _qpid_session.  The sender is closed before the method exits.
 
-        This is an internal method. External calls for put functionality
-        should be done using :meth:`basic_publish`.
+        External calls for put functionality should be done using
+        :meth:`basic_publish`.
 
         :param routing_key: If exchange is None, treated as the queue name
             to send the message to. If exchange is not None, treated as the
