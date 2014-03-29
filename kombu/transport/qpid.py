@@ -30,7 +30,11 @@ import time
 from itertools import count
 
 import amqp.protocol
-import qpidtoollibs
+
+try:
+    import qpidtoollibs
+except ImportError:  # pragma: no cover
+    qpidtoollibs = None     # noqa
 
 from kombu.five import Empty, items
 from kombu.utils import kwdict
@@ -70,7 +74,10 @@ from . import base
 
 
 # Imports for Monkey Patch 1
-from qpid.selector import Selector
+try:
+    from qpid.selector import Selector
+except ImportError:  # pragma: no cover
+    Selector = None     # noqa
 import atexit
 
 # Prepare for Monkey Patch 1
@@ -94,8 +101,12 @@ def default_monkey():
         Selector.lock.release()
 
 # Apply Monkey Patch 1
-import qpid.selector
-qpid.selector.Selector.default = staticmethod(default_monkey)
+
+try:
+    import qpid.selector
+    qpid.selector.Selector.default = staticmethod(default_monkey)
+except ImportError:  # pragma: no cover
+    pass
 
 ### End Monkey Patch 1 ###
 
@@ -103,8 +114,17 @@ qpid.selector.Selector.default = staticmethod(default_monkey)
 # https://issues.apache.org/jira/browse/QPID-5557
 
 # Imports for Monkey Patch 2
-from qpid.ops import ExchangeQuery, QueueQuery
-from qpid.messaging.exceptions import NotFound, AssertionFailed
+try:
+    from qpid.ops import ExchangeQuery, QueueQuery
+except ImportError:  # pragma: no cover
+    ExchangeQuery = None
+    QueueQuery = None
+
+try:
+    from qpid.messaging.exceptions import NotFound, AssertionFailed
+except ImportError:
+    NotFound = None
+    AssertionFailed = None
 
 # Prepare for Monkey Patch 2
 def resolve_declare_monkey(self, sst, lnk, dir, action):
@@ -172,10 +192,12 @@ def resolve_monkey(self, sst, name, action, force=False, node_type=None):
 
 
 # Apply monkey patch 2
-import qpid.messaging.driver
-
-qpid.messaging.driver.Engine.resolve_declare = resolve_declare_monkey
-qpid.messaging.driver.Engine.resolve = resolve_monkey
+try:
+    import qpid.messaging.driver
+    qpid.messaging.driver.Engine.resolve_declare = resolve_declare_monkey
+    qpid.messaging.driver.Engine.resolve = resolve_monkey
+except ImportError:
+    pass
 
 ### End Monkey Patch 2 ###
 

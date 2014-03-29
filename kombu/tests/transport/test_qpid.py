@@ -7,7 +7,12 @@ import time
 
 from itertools import count
 
-import qpid.messaging.exceptions
+QPID_NOT_AVAILABLE = False
+try:
+    import qpid.messaging.exceptions
+    import qpidtoollibs
+except ImportError:
+    QPID_NOT_AVAILABLE = True
 
 import kombu.five
 from kombu.transport.qpid import QpidMessagingExceptionHandler, QoS, Message
@@ -15,7 +20,8 @@ from kombu.transport.qpid import Channel, FDShimThread, FDShim
 from kombu.transport.qpid import Connection, Transport
 from kombu.transport.virtual import Base64
 from kombu.utils.compat import OrderedDict
-from kombu.tests.case import Case, Mock, SkipTest, mask_modules, patch
+from kombu.tests.case import Case, Mock, SkipTest
+from kombu.tests.case import mask_modules, patch, skip_if_not_module
 
 
 class TestQpidMessagingExceptionHandler(Case):
@@ -25,6 +31,8 @@ class TestQpidMessagingExceptionHandler(Case):
 
     def setUp(self):
         """Create a mock ExceptionHandler for testing by this object."""
+        if QPID_NOT_AVAILABLE:
+            raise SkipTest('qpid.messaging not installed')
         self.handler = QpidMessagingExceptionHandler(self.allowed_string)
 
     def test_string_stored(self):
@@ -85,6 +93,8 @@ class TestQoS(Case):
         One with no prefetch_limit, and the other with a prefetch limit of
         2.
         """
+        if QPID_NOT_AVAILABLE:
+            raise SkipTest('qpid.messaging not installed')
         self.qos_no_limit = QoS()
         self.qos_limit_2 = QoS(prefetch_count=2)
         self.delivery_tag_generator = count(1)
@@ -210,6 +220,8 @@ class TestFDShimThread(Case):
 
     def setUp(self):
         """Create a mock FDShimThread object and associated objects."""
+        if QPID_NOT_AVAILABLE:
+            raise SkipTest('qpid.messaging not installed')
         self.mock_create_qpid_connection = Mock()
         self.mock_session = Mock()
         self.mock_create_qpid_connection().session = Mock(
@@ -310,6 +322,8 @@ class TestFDShim(Case):
 
     def setUp(self):
         """Create a test shim to use """
+        if QPID_NOT_AVAILABLE:
+            raise SkipTest('qpid.messaging not installed')
         self.mock_queue_from_fdshim = Mock()
         self.mock_delivery_queue = Mock()
         self.my_fdshim = FDShim(self.mock_queue_from_fdshim,
@@ -372,6 +386,8 @@ class TestConnection(Case):
 
     def setUp(self):
         """Setup a Connection with sane connection parameters."""
+        if QPID_NOT_AVAILABLE:
+            raise SkipTest('qpid.messaging not installed')
         self.connection_options = {'host': 'localhost',
                                    'port': 5672,
                                    'username': 'guest',
@@ -432,11 +448,14 @@ class TestConnection(Case):
 
 class TestChannel(Case):
 
+    @skip_if_not_module('qpidtoollibs')
     @patch('qpidtoollibs.BrokerAgent')
     def setUp(self, mock_BrokerAgent):
         """Set up objects for use in testing a Channel.
 
         Create a mock Channel, and all associated mock objects."""
+        if QPID_NOT_AVAILABLE:
+            raise SkipTest('qpid.messaging not installed')
         self.mock_connection = Mock()
         self.mock_qpid_connection = Mock()
         self.mock_qpid_session = Mock()
@@ -1062,6 +1081,8 @@ class TestTransport(Case):
 
     def setUp(self):
         """Creates a mock_client to be used in testing."""
+        if QPID_NOT_AVAILABLE:
+            raise SkipTest('qpid.messaging not installed')
         self.mock_client = Mock()
 
     @patch('kombu.transport.qpid.FDShim')
