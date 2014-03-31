@@ -2,7 +2,6 @@ from __future__ import absolute_import
 
 import Queue
 import socket
-import threading
 import time
 
 from itertools import count
@@ -10,7 +9,7 @@ from itertools import count
 QPID_NOT_AVAILABLE = False
 try:
     import qpid.messaging.exceptions
-    import qpidtoollibs
+    import qpidtoollibs     # noqa
 except ImportError:
     QPID_NOT_AVAILABLE = True
 
@@ -21,7 +20,7 @@ from kombu.transport.qpid import Connection, Transport
 from kombu.transport.virtual import Base64
 from kombu.utils.compat import OrderedDict
 from kombu.tests.case import Case, Mock, SkipTest
-from kombu.tests.case import mask_modules, patch, skip_if_not_module
+from kombu.tests.case import patch, skip_if_not_module
 
 
 class TestQpidMessagingExceptionHandler(Case):
@@ -45,6 +44,7 @@ class TestQpidMessagingExceptionHandler(Case):
         allowed_string text
         """
         exception_to_raise = Exception(self.allowed_string)
+
         def exception_raise_func():
             raise exception_to_raise
         decorated_func = self.handler(exception_raise_func)
@@ -59,6 +59,7 @@ class TestQpidMessagingExceptionHandler(Case):
         allowed_string text is properly raised
         """
         exception_to_raise = Exception(self.not_allowed_string)
+
         def exception_raise_func():
             raise exception_to_raise
         decorated_func = self.handler(exception_raise_func)
@@ -303,7 +304,6 @@ class TestFDShimThread(Case):
         """
         mock_response = Mock()
         mock_source = Mock()
-        mock_put = Mock()
         exception_causing_exit = Exception('Exit run() method')
         response_bundle = (mock_source, mock_response)
         self.mock_receiver.fetch = Mock(return_value=mock_response)
@@ -327,7 +327,7 @@ class TestFDShim(Case):
         self.mock_queue_from_fdshim = Mock()
         self.mock_delivery_queue = Mock()
         self.my_fdshim = FDShim(self.mock_queue_from_fdshim,
-                               self.mock_delivery_queue)
+                                self.mock_delivery_queue)
 
     def test_init_variables(self):
         """Test that all simple init params are internally stored
@@ -432,7 +432,6 @@ class TestConnection(Case):
         self.my_connection.close_channel(mock_channel)
         self.assertEqual(self.my_connection.channels, [])
         self.assertIsNone(mock_channel.connection)
-
 
     def test_close_channel_does_not_exist(self):
         """Test that calling close_channel() with an invalid channel does
@@ -700,14 +699,12 @@ class TestChannel(Case):
 
     def test_exchange_declare_raises_exception_and_silenced(self):
         """Create exchange where an exception is raised and then silenced"""
-        mock_exchange = Mock()
         self.mock_broker.addExchange.side_effect = \
             Exception('The foo object already exists.')
         self.my_channel.exchange_declare()
 
     def test_exchange_declare_raises_exception_not_silenced(self):
         """Create Exchange where an exception is raised and not silenced"""
-        mock_exchange = Mock()
         unique_exception = Exception('This exception should not be silenced')
         self.mock_broker.addExchange.side_effect = unique_exception
         self.assertRaises(unique_exception.__class__,
@@ -989,17 +986,16 @@ class TestChannel(Case):
         mock_original_body = Mock()
         mock_encoded_body = 'this is my encoded body'
         mock_message = {'body': mock_original_body,
-                        'properties': {'delivery_info': {}}
-                       }
+                        'properties': {'delivery_info': {}}}
         mock_encode_body.return_value = (mock_encoded_body,
                                          mock_body_encoding)
         mock_exchange = Mock()
         mock_routing_key = Mock()
         mock_encoded_buffered_body = Mock()
         mock_buffer.return_value = mock_encoded_buffered_body
-        result = self.my_channel.basic_publish(mock_message,
-                                               mock_exchange,
-                                               mock_routing_key)
+        self.my_channel.basic_publish(mock_message,
+                                      mock_exchange,
+                                      mock_routing_key)
         mock_encode_body.assert_called_once(mock_original_body,
                                             mock_body_encoding)
         mock_buffer.assert_called_once(mock_encode_body)
@@ -1009,7 +1005,7 @@ class TestChannel(Case):
         self.assertIsInstance(mock_message['properties']['delivery_tag'],
                               int)
         self.assertIs(mock_message['properties']['delivery_info'][
-                          'exchange'], mock_exchange)
+                      'exchange'], mock_exchange)
         self.assertIs(
             mock_message['properties']['delivery_info']['routing_key'],
             mock_routing_key)
@@ -1062,7 +1058,7 @@ class TestChannel(Case):
         mock_qpid_exchange = Mock()
         mock_attributes = {}
         mock_type = Mock()
-        mock_attributes['type'] =  mock_type
+        mock_attributes['type'] = mock_type
         mock_qpid_exchange.getAttributes.return_value = mock_attributes
         self.mock_broker.getExchange.return_value = mock_qpid_exchange
         result = self.my_channel.typeof(mock_exchange)
@@ -1193,6 +1189,7 @@ class TestTransport(Case):
         my_transport.queue_from_fdshim = Mock()
         mock_queue = Mock()
         mock_message = Mock()
+
         def sleep_and_return_message(block, timeout):
             time.sleep(0.5)
             return (mock_queue, mock_message)
@@ -1236,10 +1233,10 @@ class TestTransport(Case):
 
     def test_default_connection_params(self):
         """Test that the default_connection_params are correct"""
-        correct_params =  {'userid': 'guest', 'password': 'guest',
-                           'port': 5672, 'virtual_host': '',
-                           'hostname': 'localhost',
-                           'sasl_mechanisms': 'PLAIN'}
+        correct_params = {'userid': 'guest', 'password': 'guest',
+                          'port': 5672, 'virtual_host': '',
+                          'hostname': 'localhost',
+                          'sasl_mechanisms': 'PLAIN'}
         my_transport = Transport(self.mock_client)
         result_params = my_transport.default_connection_params
         self.assertDictEqual(correct_params, result_params)

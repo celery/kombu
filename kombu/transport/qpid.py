@@ -37,9 +37,7 @@ except ImportError:  # pragma: no cover
     qpidtoollibs = None     # noqa
 
 from kombu.five import Empty, items
-from kombu.utils import kwdict
 from kombu.utils.compat import OrderedDict
-from kombu.utils.encoding import str_to_bytes, bytes_to_str
 from kombu.transport.virtual import Base64, Message
 from . import base
 
@@ -80,8 +78,9 @@ except ImportError:  # pragma: no cover
     Selector = None     # noqa
 import atexit
 
+
 # Prepare for Monkey Patch 1
-def default_monkey():
+def default_monkey():  # pragma: no cover
     Selector.lock.acquire()
     try:
         if Selector.DEFAULT is None:
@@ -122,12 +121,13 @@ except ImportError:  # pragma: no cover
 
 try:
     from qpid.messaging.exceptions import NotFound, AssertionFailed
-except ImportError:
+except ImportError:  # pragma: no cover
     NotFound = None
     AssertionFailed = None
 
+
 # Prepare for Monkey Patch 2
-def resolve_declare_monkey(self, sst, lnk, dir, action):
+def resolve_declare_monkey(self, sst, lnk, dir, action):  # pragma: no cover
     declare = lnk.options.get("create") in ("always", dir)
     assrt = lnk.options.get("assert") in ("always", dir)
     requested_type = lnk.options.get("node", {}).get("type")
@@ -157,7 +157,9 @@ def resolve_declare_monkey(self, sst, lnk, dir, action):
     self.resolve(sst, lnk.name, do_resolved, node_type=requested_type,
                  force=declare)
 
-def resolve_monkey(self, sst, name, action, force=False, node_type=None):
+
+def resolve_monkey(self, sst, name, action, force=False,
+                   node_type=None):  # pragma: no cover
     if not force and not node_type:
         try:
             type, subtype = self.address_cache[name]
@@ -196,7 +198,7 @@ try:
     import qpid.messaging.driver
     qpid.messaging.driver.Engine.resolve_declare = resolve_declare_monkey
     qpid.messaging.driver.Engine.resolve = resolve_monkey
-except ImportError:
+except ImportError:  # pragma: no cover
     pass
 
 ### End Monkey Patch 2 ###
@@ -472,7 +474,7 @@ class Channel(base.StdChannel):
     #: A class reference that will be instantiated using the qos property.
     QoS = QoS
 
-    #: A class reference that identifies 
+    #: A class reference that identifies
     # :class:`~kombu.transport.virtual.Message` as the message class type
     Message = Message
 
@@ -1385,8 +1387,8 @@ class FDShim(object):
         :type queue_from_fdshim: Queue.Queue
         :param delivery_queue: The queue that FDShim performs a blocking
             read on to receive messages form all consumers associated with all
-            :class:`Channel` objects associated with the :class:`Transport` that
-            created FDShim.
+            :class:`Channel` objects associated with the :class:`Transport`
+            that created FDShim.
         :type delivery_queue: Queue.Queue
 
         """
