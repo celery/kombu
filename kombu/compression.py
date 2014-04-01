@@ -67,7 +67,7 @@ def decompress(body, content_type):
     :param content_type: mime-type of compression method used.
 
     """
-    return bytes_to_str(get_decoder(content_type)(body))
+    return get_decoder(content_type)(body)
 
 
 register(zlib.compress,
