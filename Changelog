@@ -4,6 +4,37 @@
  Change history
 ================
 
+.. _version-3.0.14:
+
+3.0.14
+======
+:release-date: 2014-03-19 07:00 P.M UTC
+:release-by: Ask Solem
+
+- **MongoDB**: Now endures a connection failover (Issue #123).
+
+    Fix contributed by Alex Koshelev.
+
+- **MongoDB**: Fixed ``KeyError`` when a replica set member is removed.
+
+    Also fixes celery#971 and celery/#898.
+
+    Fix contributed by Alex Koshelev.
+
+- **MongoDB**: Fixed MongoDB broadcast cursor re-initialization bug.
+
+    Fix contributed by Alex Koshelev.
+
+- **Async**: Fixed bug in lax semaphore implementation where in
+  some usage patterns the limit was not honored correctly.
+
+    Fix contributed by Ionel Cristian Mărieș.
+
+- **Redis**: Fixed problem with fanout when using Python 3 (Issue #324).
+
+- **Redis**: Fixed ``AttributeError`` from attempting to close a non-existing
+  connection (Issue #320).
+
 .. _version-3.0.13:
 
 3.0.13
