@@ -58,14 +58,12 @@ class Node(object):
 
     def __init__(self, hostname, state=None, channel=None,
                  handlers=None, mailbox=None):
-        self.channel = channel
-        self.mailbox = mailbox
-        self.hostname = hostname
-        self.state = state
+        self.channel = channel or self.channel
+        self.mailbox = mailbox or self.mailbox
+        self.hostname = hostname or self.hostname
+        self.state = state or self.state
         self.adjust_clock = self.mailbox.clock.adjust
-        if handlers is None:
-            handlers = {}
-        self.handlers = handlers
+        self.handlers = handlers or self.handlers or {}
 
     def Consumer(self, channel=None, no_ack=True, accept=None, **options):
         queue = self.mailbox.get_queue(self.hostname)
@@ -89,7 +87,7 @@ class Node(object):
         error('Cannot decode message: %r', exc, exc_info=1)
 
     def listen(self, channel=None, callback=None):
-        consumer = self.Consumer(channel=channel,
+        consumer = self.Consumer(channel=channel or self.channel,
                                  callbacks=[callback or self.handle_message],
                                  on_decode_error=self.on_decode_error)
         consumer.consume()
@@ -168,16 +166,16 @@ class Mailbox(object):
     def __init__(self, namespace,
                  type='direct', connection=None, clock=None,
                  accept=None, serializer=None):
-        self.namespace = namespace
-        self.connection = connection
-        self.type = type
-        self.clock = LamportClock() if clock is None else clock
+        self.namespace = namespace or self.namespace
+        self.connection = connection or self.connection
+        self.type = type or self.type
+        self.clock = clock or LamportClock()
         self.exchange = self._get_exchange(self.namespace, self.type)
         self.reply_exchange = self._get_reply_exchange(self.namespace)
         self._tls = local()
         self.unclaimed = defaultdict(deque)
-        self.accept = self.accept if accept is None else accept
-        self.serializer = self.serializer if serializer is None else serializer
+        self.accept = accept or self.accept
+        self.serializer = serializer or self.serializer
 
     def __call__(self, connection):
         bound = copy(self)
