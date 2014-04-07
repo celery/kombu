@@ -776,8 +776,10 @@ class test_Channel(Case):
         with patch('kombu.transport.redis.Channel._create_client'):
             with Connection('redis+socket:///tmp/redis.sock') as conn:
                 connparams = conn.default_channel._connparams()
-                self.assertEqual(connparams['connection_class'],
-                                 redis.redis.UnixDomainSocketConnection)
+                self.assertTrue(issubclass(
+                    connparams['connection_class'],
+                    redis.redis.UnixDomainSocketConnection,
+                ))
                 self.assertEqual(connparams['path'], '/tmp/redis.sock')
 
 
