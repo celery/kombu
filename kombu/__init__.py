@@ -99,6 +99,7 @@ new_module.__dict__.update({
     '__homepage__': __homepage__,
     '__docformat__': __docformat__,
     '__package__': package,
+    'version_info_t': version_info_t,
     'VERSION': VERSION})
 
 if os.environ.get('KOMBU_LOG_DEBUG'):  # pragma: no cover
