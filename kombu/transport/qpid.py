@@ -657,22 +657,6 @@ class Channel(base.StdChannel):
         self._purge(queue)
         self._broker.delQueue(queue)
 
-    @QpidMessagingExceptionHandler('object already exists')
-    def _new_queue(self, queue, **kwargs):
-        """Create a new queue specified by name.
-
-        An internal method to create a new queue specified by name. If the
-        queue already exists, an exception is raised, which is caught and
-        silenced by the :class:`QpidMessagingExceptionHandler` decorator.
-
-        This is an internal method.  External calls for queue creation
-        functionality should be done using :meth:`queue_declare`.
-
-        :param queue: the name of the queue to be created.
-        :type queue: str
-        """
-        self._broker.addQueue(queue)
-
     def _has_queue(self, queue, **kwargs):
         """Determine if the broker has a queue specified by name.
 
@@ -688,27 +672,89 @@ class Channel(base.StdChannel):
         else:
             return False
 
-    def queue_declare(self, queue, **kwargs):
+    def queue_declare(self, queue, passive=False, durable=False,
+                      exclusive=False, auto_delete=True, nowait=False,
+                      arguments=None):
         """Create a new queue specified by name.
 
-        If a queue already exists, no action is taken and no exceptions are
-        raised.  This method uses :class:`_new_queue` internally.
+        If the queue already exists, no change is made to the queue,
+        but and the return value returns information about the existing
+        queue.
+
+        The queue name is required and specified as the first argument.
+
+        If passive is True, the server will not create the queue.  The
+        client can use this to check whether a queue exists without
+        modifying the server state.  Default is False.
+
+        If durable is True, the queue will be durable.  Durable queues
+        remain active when a server restarts. Non-durable queues (
+        transient queues) are purged if/when a server restarts.  Note that
+        durable queues do not necessarily hold persistent messages,
+        although it does not make sense to send persistent messages to a
+        transient queue.  Default is False.
+
+        If exclusive is True, the queue will be exclusive. Exclusive queues
+        may only be consumed from by the current connection. Setting the
+        'exclusive' flag always implies 'auto-delete'.  Default is False.
+
+        If auto_delete is True,  the queue is deleted when all consumers
+        have finished using it. The last consumer can be cancelled either
+        explicitly or because its channel is closed. If there was no
+        consumer ever on the queue, it won't be deleted.  Default is True.
+
+        The nowait parameter is unused.  It was part of the 0-9-1 protocol,
+        but this AMQP client implements 0-10 which removed the nowait option.
+
+        The arguments parameter is a set of arguments for the declaration of
+        the queue.  Arguments are passed as a dict or None. This field is
+        ignored if passive is True.  Default is None.
 
         This method returns a :class:`~collections.namedtuple` with the name
         'queue_declare_ok_t' and the queue name as 'queue', message count
         on the queue as 'message_count', and the number of active consumers
-        as 'consumer_count'.  The consumer count is assumed to be 0 since
-        the queue was just created.  The named tuple values are ordered as
-        queue, message_count, and consumer_count respectively.
+        as 'consumer_count'.  The named tuple values are ordered as queue,
+        message_count, and consumer_count respectively.
 
-        :param queue: the name of the queue to be created.
+        :param queue: The name of the queue to be created.
         :type queue: str
+        :param passive: If True, the sever will not create the queue.
+        :type passive: bool
+        :param durable: If True, the queue will be durable.
+        :type durable: bool
+        :param exclusive: If True, the queue will be exclusive.
+        :type exclusive: bool
+        :param auto_delete: If True, the queue is deleted when all
+            consumers have finished using it.
+        :type auto_delete: bool
+        :param nowait: This parameter is unused since the 0-10
+            specification does not include it.
+        :type nowait: bool
+        :param arguments: A set of arguments for the declaration of the
+            queue.
+        :type arguments: dict or None
 
-        :return: A named tuple representing the declared queue.
+        :return: A named tuple representing the declared queue as a named
+            tuple.  The tuple values are ordered as queue, message count,
+            and the active consumer count.
         :rtype: :class:`~collections.namedtuple`
+
         """
-        self._new_queue(queue, **kwargs)
-        return amqp.protocol.queue_declare_ok_t(queue, self._size(queue), 0)
+        options = {'passive': passive,
+                   'durable': durable,
+                   'exclusive': exclusive,
+                   'auto-delete': auto_delete,
+                   'arguments': arguments}
+        try:
+            self._broker.addQueue(queue, options=options)
+        except Exception as err:
+            if 'object already exists' not in err.message:
+                raise err
+        queue_to_check = self._broker.getQueue(queue)
+        message_count = queue_to_check.values['msgDepth']
+        consumer_count = queue_to_check.values['consumerCount']
+        return amqp.protocol.queue_declare_ok_t(queue, message_count,
+                                                consumer_count)
 
     def queue_delete(self, queue, if_unused=False, if_empty=False, **kwargs):
         """Delete a queue by name.
@@ -773,28 +819,6 @@ class Channel(base.StdChannel):
         :type exchange_name: str
         """
         self._broker.delExchange(exchange_name)
-
-    @QpidMessagingExceptionHandler('queue in use')
-    def after_reply_message_received(self, queue):
-        """Delete a queue used to receive message replies by.
-
-        A message sender may want to send a message to a destination,
-        and then receive replies from where those messages were delivered
-        to. For instance celery uses broadcast to discover other workers,
-        and has those workers announce themselves through reply messages.
-
-        A designated queue must be setup for messages to be sent back via,
-        and a consumer can be started to drain reply messages from that
-        queue.  Once all messages have been drained, this method is called
-        to handle any associated cleanup with this delivery model.  In the
-        case of this transport cleanup consists of deleting the queue.
-
-        :param queue: The name of the queue associated with the reply
-            messages.
-        :type queue: str
-
-        """
-        self._delete(queue)
 
     def queue_bind(self, queue, exchange, routing_key, **kwargs):
         """Bind a queue to an exchange with a bind key.

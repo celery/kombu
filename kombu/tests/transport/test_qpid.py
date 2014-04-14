@@ -606,32 +606,6 @@ class TestChannel(Case):
         self.mock_broker.delQueue.assert_called_with(mock_queue)
         self.assertIsNone(result)
 
-    def test_new_queue_raises_exception_and_silenced(self):
-        """Test new queue, where an exception is raised and then silenced"""
-        mock_queue = Mock()
-        exception_to_raise = Exception('The foo object already exists.')
-        self.mock_broker.addQueue.side_effect = exception_to_raise
-        result = self.my_channel._new_queue(mock_queue)
-        self.mock_broker.addQueue.assert_called_with(mock_queue)
-        self.assertIsNone(result)
-
-    def test_new_queue_raises_exception_not_silenced(self):
-        """Test new queue, where an exception is raised and not silenced"""
-        unique_exception = Exception('This exception should not be silenced')
-        mock_queue = Mock()
-        self.mock_broker.addQueue.side_effect = unique_exception
-        self.assertRaises(unique_exception.__class__,
-                          self.my_channel._new_queue,
-                          mock_queue)
-        self.mock_broker.addQueue.assert_called_with(mock_queue)
-
-    def test_new_queue_no_exception(self):
-        """Test creation of a new queue, where an exception is NOT raised"""
-        mock_queue = Mock()
-        result = self.my_channel._new_queue(mock_queue)
-        self.mock_broker.addQueue.assert_called_with(mock_queue)
-        self.assertIsNone(result)
-
     def test_has_queue_true(self):
         """Test checking if a queue exists, and it does"""
         mock_queue = Mock()
@@ -647,19 +621,76 @@ class TestChannel(Case):
         self.assertFalse(result)
 
     @patch('amqp.protocol.queue_declare_ok_t')
-    def test_queue_declare(self, mock_queue_declare_ok_t):
-        """Test the declaration of a queue, and the return value"""
+    def test_queue_declare_with_exception_raised(self,
+                                                 mock_queue_declare_ok_t):
+        """Test declare_queue, where an exception is raised and silenced"""
         mock_queue = Mock()
-        message_count = 5
-        self.my_channel._new_queue = Mock()
-        self.my_channel._size = Mock(return_value=message_count)
-        mock_queue_declare_ok_t.return_value = Mock()
-        result = self.my_channel.queue_declare(mock_queue)
-        self.my_channel._new_queue.assert_called_with(mock_queue)
-        self.my_channel._size.assert_called_with(mock_queue)
+        mock_passive = Mock()
+        mock_durable = Mock()
+        mock_exclusive = Mock()
+        mock_auto_delete = Mock()
+        mock_nowait = Mock()
+        mock_arguments = Mock()
+        mock_msg_count = Mock()
+        options = {'passive': mock_passive,
+                   'durable': mock_durable,
+                   'exclusive': mock_exclusive,
+                   'auto-delete': mock_auto_delete,
+                   'arguments': mock_arguments}
+        mock_consumer_count = Mock()
+        mock_return_value = Mock()
+        values_dict = {'msgDepth': mock_msg_count,
+                       'consumerCount': mock_consumer_count}
+        mock_queue_data = Mock()
+        mock_queue_data.values = values_dict
+        exception_to_raise = Exception('The foo object already exists.')
+        self.mock_broker.addQueue.side_effect = exception_to_raise
+        self.mock_broker.getQueue.return_value = mock_queue_data
+        mock_queue_declare_ok_t.return_value = mock_return_value
+        result = self.my_channel.queue_declare(mock_queue,
+                                               passive=mock_passive,
+                                               durable=mock_durable,
+                                               exclusive=mock_exclusive,
+                                               auto_delete=mock_auto_delete,
+                                               nowait=mock_nowait,
+                                               arguments=mock_arguments,
+                                               )
+        self.mock_broker.addQueue.assert_called_with(mock_queue,
+                                                     options=options)
         mock_queue_declare_ok_t.assert_called_with(mock_queue,
-                                                   message_count, 0)
-        self.assertIs(mock_queue_declare_ok_t.return_value, result)
+                                                   mock_msg_count,
+                                                   mock_consumer_count)
+        self.assertIs(mock_return_value, result)
+
+    def test_queue_declare_test_defaults(self):
+        """Test declare_queue defaults"""
+        mock_queue = Mock()
+        options = {'passive': False,
+                   'durable': False,
+                   'exclusive': False,
+                   'auto-delete': True,
+                   'arguments': None}
+        mock_msg_count = Mock()
+        mock_consumer_count = Mock()
+        values_dict = {'msgDepth': mock_msg_count,
+                       'consumerCount': mock_consumer_count}
+        mock_queue_data = Mock()
+        mock_queue_data.values = values_dict
+        self.mock_broker.addQueue.return_value = None
+        self.mock_broker.getQueue.return_value = mock_queue_data
+        self.my_channel.queue_declare(mock_queue)
+        self.mock_broker.addQueue.assert_called_with(mock_queue,
+                                                     options=options)
+
+    def test_queue_declare_raises_exception_not_silenced(self):
+        """Test declare_queue, raise an exception that is and not silenced"""
+        unique_exception = Exception('This exception should not be silenced')
+        mock_queue = Mock()
+        self.mock_broker.addQueue.side_effect = unique_exception
+        self.assertRaises(unique_exception.__class__,
+                          self.my_channel.queue_declare,
+                          mock_queue)
+        self.mock_broker.addQueue.assert_called_once()
 
     def test_queue_delete_if_empty_param(self):
         """Test the deletion of a queue with if_empty=True"""
@@ -730,29 +761,6 @@ class TestChannel(Case):
         result = self.my_channel.exchange_delete(mock_exchange)
         self.mock_broker.delExchange.assert_called_with(mock_exchange)
         self.assertIsNone(result)
-
-    def test_after_reply_message_received_exception_and_silenced(self):
-        """Call after_reply_message_received exception raised and silenced"""
-        mock_queue = Mock()
-        normal_exception = Exception('The queue in use is foo')
-        self.my_channel._delete = Mock(side_effect=normal_exception)
-        self.my_channel.after_reply_message_received(mock_queue)
-
-    def test_after_reply_message_received_exception_not_silenced(self):
-        """Call after_reply_message_received exception raised not silenced"""
-        mock_queue = Mock()
-        abnormal_exception = Exception('This exception should pass through')
-        self.my_channel._delete = Mock(side_effect=abnormal_exception)
-        self.assertRaises(abnormal_exception.__class__,
-                          self.my_channel.after_reply_message_received,
-                          mock_queue)
-
-    def test_after_reply_message_received(self):
-        """Call after_reply_message_received"""
-        mock_queue = Mock()
-        self.my_channel._delete = Mock()
-        self.my_channel.after_reply_message_received(mock_queue)
-        self.my_channel._delete.assert_called_with(mock_queue)
 
     def test_queue_bind(self):
         """Test binding a queue to an exchange using a routing key"""
