@@ -103,7 +103,8 @@ class TestQoS(Case):
     def test_init_no_params(self):
         """Check that internal state is correct after initialization"""
         self.assertEqual(self.qos_no_limit.prefetch_count, 0)
-        self.assertIsInstance(self.qos_no_limit._not_yet_acked, OrderedDict)
+        self.assertTrue(isinstance(self.qos_no_limit._not_yet_acked,
+                                   OrderedDict))
 
     def test_init_with_params(self):
         """Check that internal state is correct after initialization with
@@ -403,8 +404,8 @@ class TestConnection(Case):
         """
         self.assertDictEqual(self.connection_options,
                              self.my_connection.connection_options)
-        self.assertIsInstance(self.my_connection.channels, list)
-        self.assertIsInstance(self.my_connection._callbacks, dict)
+        self.assertTrue(isinstance(self.my_connection.channels, list))
+        self.assertTrue(isinstance(self.my_connection._callbacks, dict))
 
     def test_verify_connection_class_attributes(self):
         """Verify that Channel class attribute is set correctly"""
@@ -491,13 +492,13 @@ class TestChannel(Case):
         """Verify that the codecs class attribute has a correct key and
         value
         """
-        self.assertIsInstance(Channel.codecs, dict)
+        self.assertTrue(isinstance(Channel.codecs, dict))
         self.assertIn('base64', Channel.codecs)
-        self.assertIsInstance(Channel.codecs['base64'], Base64)
+        self.assertTrue(isinstance(Channel.codecs['base64'], Base64))
 
     def test_delivery_tags(self):
         """Test that _delivery_tags is using itertools"""
-        self.assertIsInstance(Channel._delivery_tags, count)
+        self.assertTrue(isinstance(Channel._delivery_tags, count))
 
     def test_init_variables(self):
         """Test init variables"""
@@ -505,12 +506,12 @@ class TestChannel(Case):
         self.assertIs(self.mock_transport, self.my_channel.transport)
         self.assertIs(self.mock_delivery_queue,
                       self.my_channel.delivery_queue)
-        self.assertIsInstance(self.my_channel._tag_to_queue, dict)
-        self.assertIsInstance(self.my_channel._consumer_threads, dict)
+        self.assertTrue(isinstance(self.my_channel._tag_to_queue, dict))
+        self.assertTrue(isinstance(self.my_channel._consumer_threads, dict))
         self.assertIs(self.mock_qpid_session, self.my_channel._qpid_session)
         self.assertIs(self.mock_broker, self.my_channel._broker)
         self.assertIsNone(self.my_channel._qos)
-        self.assertIsInstance(self.my_channel._consumers, set)
+        self.assertTrue(isinstance(self.my_channel._consumers, set))
         self.assertFalse(self.my_channel.closed)
         self.mock_connection.create_qpid_connection.assert_called_with()
         self.mock_qpid_connection.session.assert_called_with()
@@ -938,7 +939,7 @@ class TestChannel(Case):
         """Test the qos property if the QoS object did not already exist"""
         self.my_channel._qos = None
         result = self.my_channel.qos
-        self.assertIsInstance(result, QoS)
+        self.assertTrue(isinstance(result, QoS))
         self.assertEqual(result, self.my_channel._qos)
 
     def test_qos_manager_already_exists(self):
@@ -1011,8 +1012,8 @@ class TestChannel(Case):
         self.assertIs(mock_message['body'], mock_encoded_buffered_body)
         self.assertIs(mock_message['properties']['body_encoding'],
                       mock_body_encoding)
-        self.assertIsInstance(mock_message['properties']['delivery_tag'],
-                              int)
+        self.assertTrue(
+            isinstance(mock_message['properties']['delivery_tag'], int))
         self.assertIs(mock_message['properties']['delivery_info'][
                       'exchange'], mock_exchange)
         self.assertIs(
@@ -1102,8 +1103,10 @@ class TestTransport(Case):
         mock_thread.return_value = new_thread
         my_transport = Transport(self.mock_client)
         self.assertIs(my_transport.client, self.mock_client)
-        self.assertIsInstance(my_transport.queue_from_fdshim, Queue.Queue)
-        self.assertIsInstance(my_transport.delivery_queue, Queue.Queue)
+        self.assertTrue(
+            isinstance(my_transport.queue_from_fdshim,  Queue.Queue))
+        self.assertTrue(
+            isinstance(my_transport.delivery_queue, Queue.Queue))
         mock_FDShim.assert_called_with(my_transport.queue_from_fdshim,
                                        my_transport.delivery_queue)
         self.assertIs(new_fdshim, my_transport.fd_shim)
