@@ -493,7 +493,7 @@ class TestChannel(Case):
         value
         """
         self.assertTrue(isinstance(Channel.codecs, dict))
-        self.assertIn('base64', Channel.codecs)
+        self.assertTrue('base64' in Channel.codecs)
         self.assertTrue(isinstance(Channel.codecs['base64'], Base64))
 
     def test_delivery_tags(self):
@@ -856,21 +856,21 @@ class TestChannel(Case):
         mock_FDShimThread.return_value = mock_my_thread
         self.my_channel.basic_consume(mock_queue, mock_no_ack,
                                       mock_callback, mock_consumer_tag)
-        self.assertIn(mock_consumer_tag, self.my_channel._tag_to_queue)
+        self.assertTrue(mock_consumer_tag in self.my_channel._tag_to_queue)
         queue_reference = self.my_channel._tag_to_queue[mock_consumer_tag]
         self.assertIs(queue_reference, mock_queue)
-        self.assertIn(mock_queue, self.mock_connection._callbacks)
+        self.assertTrue(mock_queue in self.mock_connection._callbacks)
         _callback_reference = self.mock_connection._callbacks[mock_queue]
         if not hasattr(_callback_reference, '__call__'):
             self.fail('Callback stored must be callable')
         self.basic_consume_callback_helper(_callback_reference,
                                            mock_callback)
-        self.assertIn(mock_consumer_tag, self.my_channel._consumers)
+        self.assertTrue(mock_consumer_tag in self.my_channel._consumers)
         mock_FDShimThread.assert_called_with(
             self.mock_connection.create_qpid_connection,
             mock_queue,
             self.mock_delivery_queue)
-        self.assertIn(mock_queue, self.my_channel._consumer_threads)
+        self.assertTrue(mock_queue in self.my_channel._consumer_threads)
         my_thread_reference = self.my_channel._consumer_threads[mock_queue]
         self.assertIs(mock_my_thread, my_thread_reference)
         self.assertTrue(mock_my_thread.daemon)
