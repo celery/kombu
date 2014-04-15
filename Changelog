@@ -8,8 +8,10 @@
 
 3.0.15
 ======
-:release-date: 2014-04-15 8:00 P.M UTC
+:release-date: 2014-04-15 7:00 P.M UTC
 :release-by: Ask Solem
+
+- Now depends on :mod:`amqp` 1.4.5.
 
 - RabbitMQ 3.3 changes QoS semantics (Issue #339).
 
