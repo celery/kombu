@@ -4,6 +4,57 @@
  Change history
 ================
 
+.. _version-3.0.15:
+
+3.0.15
+======
+:release-date: 2014-04-15 09:00 P.M UTC
+:release-by: Ask Solem
+
+- Now depends on :mod:`amqp` 1.4.5.
+
+- RabbitMQ 3.3 changes QoS semantics (Issue #339).
+
+    See the RabbitMQ release notes here:
+    http://www.rabbitmq.com/blog/2014/04/02/breaking-things-with-rabbitmq-3-3/
+
+    A new connection property has been added that can be used to detect
+    whether the remote server is using this new QoS behavior::
+
+        >>> Connection('amqp://').qos_behavior_matches_spec
+        False
+
+    so if your application depends on the old semantics you can
+    use this to set the ``apply_global`` flag appropriately::
+
+        def update_prefetch_count(channel, new_value):
+            channel.basic_qos(
+                0, new_value,
+                not channel.connection.client.qos_behavior_matches_spec,
+            )
+
+- Users of :mod:`librabbitmq` is encouraged to upgrade to librabbitmq 1.5.0.
+
+    The ``kombu[librabbitmq]`` extra has been updated to depend on this
+    version.
+
+- Pools: Now takes transport options into account when comparing connections
+  (Issue #333).
+
+- MongoDB: Fixes Python 3 compatibility.
+
+- Async: select: Ignore socket errors when attempting to unregister handles
+  from the loop.
+
+- Pidbox: Can now be configured to use a serializer other than json,
+  but specifying a serializer argument to :class:`~kombu.pidbox.Mailbox`.
+
+    Contributed by Dmitry Malinovsky.
+
+- Message decompression now works with Python 3.
+
+    Fix contributed by Adam Gaca.
+
 .. _version-3.0.14:
 
 3.0.14

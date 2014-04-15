@@ -25,7 +25,7 @@ from kombu import exceptions
 from .five import Empty, range, string_t, text_t, LifoQueue as _LifoQueue
 from .log import get_logger
 from .transport import get_transport_cls, supports_librabbitmq
-from .utils import cached_property, retry_over_time, shufflecycle
+from .utils import cached_property, retry_over_time, shufflecycle, HashedSeq
 from .utils.compat import OrderedDict
 from .utils.functional import lazy
 from .utils.url import parse_url, urlparse
@@ -565,9 +565,9 @@ class Connection(object):
         return OrderedDict(self._info())
 
     def __eqhash__(self):
-        return hash('%s|%s|%s|%s|%s|%s' % (
-            self.transport_cls, self.hostname, self.userid,
-            self.password, self.virtual_host, self.port))
+        return HashedSeq(self.transport_cls, self.hostname, self.userid,
+                         self.password, self.virtual_host, self.port,
+                         repr(self.transport_options))
 
     def as_uri(self, include_password=False, mask=''):
         """Convert connection parameters to URL form."""
@@ -730,6 +730,10 @@ class Connection(object):
 
     def __exit__(self, *args):
         self.release()
+
+    @property
+    def qos_semantics_matches_spec(self):
+        return self.transport.qos_semantics_matches_spec(self.connection)
 
     @property
     def connected(self):
