@@ -7,7 +7,7 @@ Compression utilities.
 """
 from __future__ import absolute_import
 
-from kombu.utils.encoding import ensure_bytes, bytes_to_str
+from kombu.utils.encoding import ensure_bytes
 
 import zlib
 
