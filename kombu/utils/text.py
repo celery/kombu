@@ -34,7 +34,7 @@ def version_string_as_tuple(s):
 
 
 def _unpack_version(major, minor=0, micro=0, releaselevel='', serial=''):
-    return version_info_t(major, minor, micro, releaselevel, serial)
+    return version_info_t(int(major), int(minor), micro, releaselevel, serial)
 
 
 def _splitmicro(s):
