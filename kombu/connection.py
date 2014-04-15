@@ -732,6 +732,10 @@ class Connection(object):
         self.release()
 
     @property
+    def qos_semantics_matches_spec(self):
+        return self.transport.qos_semantics_matches_spec(self.connection)
+
+    @property
     def connected(self):
         """Return true if the connection has been established."""
         return (not self._closed and
