@@ -432,7 +432,7 @@ class TestConnection(Case):
         mock_channel.connection = True
         self.my_connection.close_channel(mock_channel)
         self.assertEqual(self.my_connection.channels, [])
-        self.assertIsNone(mock_channel.connection)
+        self.assertTrue(mock_channel.connection is None)
 
     def test_close_channel_does_not_exist(self):
         """Test that calling close_channel() with an invalid channel does
@@ -443,7 +443,7 @@ class TestConnection(Case):
         mock_channel = Mock()
         mock_channel.connection = True
         self.my_connection.close_channel(mock_channel)
-        self.assertIsNone(mock_channel.connection)
+        self.assertTrue(mock_channel.connection is None)
 
 
 class TestChannel(Case):
@@ -510,7 +510,7 @@ class TestChannel(Case):
         self.assertTrue(isinstance(self.my_channel._consumer_threads, dict))
         self.assertIs(self.mock_qpid_session, self.my_channel._qpid_session)
         self.assertIs(self.mock_broker, self.my_channel._broker)
-        self.assertIsNone(self.my_channel._qos)
+        self.assertTrue(self.my_channel._qos is None)
         self.assertTrue(isinstance(self.my_channel._consumers, set))
         self.assertFalse(self.my_channel.closed)
         self.mock_connection.create_qpid_connection.assert_called_with()
@@ -605,7 +605,7 @@ class TestChannel(Case):
         result = self.my_channel._delete(mock_queue)
         self.my_channel._purge.assert_called_with(mock_queue)
         self.mock_broker.delQueue.assert_called_with(mock_queue)
-        self.assertIsNone(result)
+        self.assertTrue(result is None)
 
     def test_has_queue_true(self):
         """Test checking if a queue exists, and it does"""
@@ -702,7 +702,7 @@ class TestChannel(Case):
         result = self.my_channel.queue_delete(mock_queue, if_empty=True)
         self.my_channel._has_queue.assert_called_with(mock_queue)
         self.my_channel._size.assert_called_with(mock_queue)
-        self.assertIsNone(result)
+        self.assertTrue(result is None)
 
     def test_queue_delete_if_unused_param(self):
         """Test the deletion of a queue with if_unused=True"""
@@ -714,7 +714,7 @@ class TestChannel(Case):
         self.my_channel._size = Mock(return_value=5)
         self.mock_broker.getQueue.return_value = mock_queue_obj
         result = self.my_channel.queue_delete(mock_queue, if_unused=True)
-        self.assertIsNone(result)
+        self.assertTrue(result is None)
 
     def test_queue_delete(self):
         """Test the deletion of a queue"""
@@ -728,7 +728,7 @@ class TestChannel(Case):
         self.mock_broker.getQueue.return_value = mock_queue_obj
         result = self.my_channel.queue_delete(mock_queue)
         self.my_channel._delete.assert_called_with(mock_queue)
-        self.assertIsNone(result)
+        self.assertTrue(result is None)
 
     def test_exchange_declare_raises_exception_and_silenced(self):
         """Create exchange where an exception is raised and then silenced"""
@@ -755,14 +755,14 @@ class TestChannel(Case):
         self.mock_broker.addExchange.assert_called_with(mock_type,
                                                         mock_exchange,
                                                         options)
-        self.assertIsNone(result)
+        self.assertTrue(result is None)
 
     def test_exchange_delete(self):
         """Test the deletion of an exchange by name"""
         mock_exchange = Mock()
         result = self.my_channel.exchange_delete(mock_exchange)
         self.mock_broker.delExchange.assert_called_with(mock_exchange)
-        self.assertIsNone(result)
+        self.assertTrue(result is None)
 
     def test_queue_bind(self):
         """Test binding a queue to an exchange using a routing key"""
@@ -826,7 +826,7 @@ class TestChannel(Case):
         self.my_channel._get = Mock(side_effect=kombu.five.Empty)
         result = self.my_channel.basic_get(mock_queue)
         self.assertEqual(self.my_channel.Message.call_count, 0)
-        self.assertIsNone(result)
+        self.assertTrue(result is None)
 
     @patch('kombu.transport.qpid.Channel.qos')
     def test_basic_ack(self, mock_qos):
@@ -1129,7 +1129,7 @@ class TestTransport(Case):
 
     def test_verify_polling_disabled(self):
         """Verify that polling is disabled"""
-        self.assertIsNone(Transport.polling_interval)
+        self.assertTrue(Transport.polling_interval is None)
 
     def test_verify_supports_asynchronous_events(self):
         """Verify that the Transport advertises that it supports
@@ -1241,7 +1241,7 @@ class TestTransport(Case):
         result = my_transport.on_readable(mock_connection, mock_loop)
         mock_os_read.assert_called_with(my_transport.fd_shim.r, 1)
         mock_drain_events.assert_called_with(mock_connection)
-        self.assertIsNone(result)
+        self.assertTrue(result is None)
 
     def test_default_connection_params(self):
         """Test that the default_connection_params are correct"""
