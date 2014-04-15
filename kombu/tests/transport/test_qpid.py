@@ -910,7 +910,7 @@ class TestChannel(Case):
         self.my_channel._consumer_threads.pop.return_value = \
             mock_consumer_thread
         self.my_channel.basic_cancel(mock_consumer_tag)
-        self.assertNotIn(mock_consumer_tag, self.my_channel._consumers)
+        self.assertTrue(mock_consumer_tag not in self.my_channel._consumers)
         self.my_channel._tag_to_queue.pop.assert_called_with(
             mock_consumer_tag, None)
         self.my_channel._consumer_threads.pop.assert_called_with(
