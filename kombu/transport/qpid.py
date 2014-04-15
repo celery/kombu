@@ -208,6 +208,8 @@ except ImportError:  # pragma: no cover
 
 DEFAULT_PORT = 5672
 
+OBJECT_ALREADY_EXISTS_STRING = 'object already exists'
+
 VERSION = (1, 0, 0)
 __version__ = '.'.join(map(str, VERSION))
 
@@ -678,8 +680,7 @@ class Channel(base.StdChannel):
         """Create a new queue specified by name.
 
         If the queue already exists, no change is made to the queue,
-        but and the return value returns information about the existing
-        queue.
+        and the return value returns information about the existing queue.
 
         The queue name is required and specified as the first argument.
 
@@ -695,7 +696,7 @@ class Channel(base.StdChannel):
         transient queue.  Default is False.
 
         If exclusive is True, the queue will be exclusive. Exclusive queues
-        may only be consumed from by the current connection. Setting the
+        may only be consumed by the current connection. Setting the
         'exclusive' flag always implies 'auto-delete'.  Default is False.
 
         If auto_delete is True,  the queue is deleted when all consumers
@@ -748,7 +749,7 @@ class Channel(base.StdChannel):
         try:
             self._broker.addQueue(queue, options=options)
         except Exception as err:
-            if 'object already exists' not in err.message:
+            if OBJECT_ALREADY_EXISTS_STRING not in err.message:
                 raise err
         queue_to_check = self._broker.getQueue(queue)
         message_count = queue_to_check.values['msgDepth']
@@ -783,7 +784,7 @@ class Channel(base.StdChannel):
                 return
             self._delete(queue)
 
-    @QpidMessagingExceptionHandler('object already exists')
+    @QpidMessagingExceptionHandler(OBJECT_ALREADY_EXISTS_STRING)
     def exchange_declare(self, exchange='', type='direct', durable=False,
                          **kwargs):
         """Create a new exchange.

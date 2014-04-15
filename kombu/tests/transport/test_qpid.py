@@ -665,11 +665,11 @@ class TestChannel(Case):
     def test_queue_declare_test_defaults(self):
         """Test declare_queue defaults"""
         mock_queue = Mock()
-        options = {'passive': False,
-                   'durable': False,
-                   'exclusive': False,
-                   'auto-delete': True,
-                   'arguments': None}
+        expected_default_options = {'passive': False,
+                                    'durable': False,
+                                    'exclusive': False,
+                                    'auto-delete': True,
+                                    'arguments': None}
         mock_msg_count = Mock()
         mock_consumer_count = Mock()
         values_dict = {'msgDepth': mock_msg_count,
@@ -679,8 +679,9 @@ class TestChannel(Case):
         self.mock_broker.addQueue.return_value = None
         self.mock_broker.getQueue.return_value = mock_queue_data
         self.my_channel.queue_declare(mock_queue)
-        self.mock_broker.addQueue.assert_called_with(mock_queue,
-                                                     options=options)
+        self.mock_broker.addQueue.assert_called_with(
+            mock_queue,
+            options=expected_default_options)
 
     def test_queue_declare_raises_exception_not_silenced(self):
         """Test declare_queue, raise an exception that is and not silenced"""
