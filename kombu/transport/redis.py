@@ -794,6 +794,7 @@ class Channel(virtual.Channel):
             connparams.get('connection_class') or
             redis.Connection
             )
+
         class Connection(connection_cls):
             def disconnect(self):
                 channel._on_connection_disconnect(self)
