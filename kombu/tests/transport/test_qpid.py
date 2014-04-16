@@ -23,6 +23,31 @@ from kombu.tests.case import Case, Mock, SkipTest
 from kombu.tests.case import patch, skip_if_not_module
 
 
+class ExtraAssertionsMixin(object):
+    """A mixin class adding assertDictEqual and assertDictContainsSubset"""
+
+    def assertDictEqual(self, a, b):
+        """
+        Test that two dictionaries are equal.
+
+        Implemented here because this method was not available until Python
+        2.6.  This asserts that the unique set of keys are the same in a and b.
+        Also asserts that the value of each key is the same in a and b using
+        the is operator.
+        """
+        self.assertEqual(set(a.keys()), set(b.keys()))
+        for key in a.keys():
+            self.assertEqual(a[key], b[key])
+
+    def assertDictContainsSubset(self, a, b):
+        """
+        Assert that all the key/value pairs in a exist in b.
+        """
+        for key in a.keys():
+            self.assertTrue(key in b)
+            self.assertTrue(a[key] == b[key])
+
+
 class TestQpidMessagingExceptionHandler(Case):
 
     allowed_string = 'object in use'
@@ -103,7 +128,8 @@ class TestQoS(Case):
     def test_init_no_params(self):
         """Check that internal state is correct after initialization"""
         self.assertEqual(self.qos_no_limit.prefetch_count, 0)
-        self.assertIsInstance(self.qos_no_limit._not_yet_acked, OrderedDict)
+        self.assertTrue(isinstance(self.qos_no_limit._not_yet_acked,
+                                   OrderedDict))
 
     def test_init_with_params(self):
         """Check that internal state is correct after initialization with
@@ -155,12 +181,12 @@ class TestQoS(Case):
         length_not_yet_acked = len(qos._not_yet_acked)
         self.assertEqual(length_not_yet_acked, 1)
         checked_message1 = qos._not_yet_acked[m1_tag]
-        self.assertIs(m1, checked_message1)
+        self.assertTrue(m1 is checked_message1)
         qos.append(m2, m2_tag)
         length_not_yet_acked = len(qos._not_yet_acked)
         self.assertEqual(length_not_yet_acked, 2)
         checked_message2 = qos._not_yet_acked[m2_tag]
-        self.assertIs(m2, checked_message2)
+        self.assertTrue(m2 is checked_message2)
 
     def test_get(self):
         """Append two messages, and use get to receive them"""
@@ -171,8 +197,8 @@ class TestQoS(Case):
         qos.append(m2, m2_tag)
         message1 = qos.get(m1_tag)
         message2 = qos.get(m2_tag)
-        self.assertIs(m1, message1)
-        self.assertIs(m2, message2)
+        self.assertTrue(m1 is message1)
+        self.assertTrue(m2 is message2)
 
     def test_ack(self):
         """Load a mock message, ack the message, and ensure the right
@@ -239,9 +265,9 @@ class TestFDShimThread(Case):
         """Test that all simple init params are internally stored
         correctly
         """
-        self.assertIs(self.my_thread._queue, self.mock_queue)
-        self.assertIs(self.my_thread._delivery_queue,
-                      self.mock_delivery_queue)
+        self.assertTrue(self.my_thread._queue is self.mock_queue)
+        self.assertTrue(self.my_thread._delivery_queue is
+                        self.mock_delivery_queue)
         self.assertFalse(self.my_thread._is_killed)
 
     def test_session_gets_made(self):
@@ -250,7 +276,7 @@ class TestFDShimThread(Case):
 
     def test_session_gets_stored(self):
         """Test that a session is saved properly after being created"""
-        self.assertIs(self.mock_session, self.my_thread._session)
+        self.assertTrue(self.mock_session is self.my_thread._session)
 
     def test_receiver_gets_made(self):
         """Test that a receiver is created listening on the queue"""
@@ -258,7 +284,7 @@ class TestFDShimThread(Case):
 
     def test_receiver_gets_stored(self):
         """Test that a receiver is saved properly after being created"""
-        self.assertIs(self.mock_receiver, self.my_thread._receiver)
+        self.assertTrue(self.mock_receiver is self.my_thread._receiver)
 
     def test_kill(self):
         """Ensure that a call to the thread main method run() will exit
@@ -333,10 +359,10 @@ class TestFDShim(Case):
         """Test that all simple init params are internally stored
         correctly
         """
-        self.assertIs(self.my_fdshim.queue_from_fdshim,
-                      self.mock_queue_from_fdshim)
-        self.assertIs(self.my_fdshim.delivery_queue,
-                      self.mock_delivery_queue)
+        self.assertTrue(self.my_fdshim.queue_from_fdshim is
+                        self.mock_queue_from_fdshim)
+        self.assertTrue(self.my_fdshim.delivery_queue is
+                        self.mock_delivery_queue)
         self.assertFalse(self.my_fdshim._is_killed)
 
     def test_kill(self):
@@ -382,7 +408,7 @@ class TestFDShim(Case):
         write_method.assert_called_with(self.my_fdshim._w, '0')
 
 
-class TestConnection(Case):
+class TestConnection(ExtraAssertionsMixin, Case):
 
     def setUp(self):
         """Setup a Connection with sane connection parameters."""
@@ -403,8 +429,8 @@ class TestConnection(Case):
         """
         self.assertDictEqual(self.connection_options,
                              self.my_connection.connection_options)
-        self.assertIsInstance(self.my_connection.channels, list)
-        self.assertIsInstance(self.my_connection._callbacks, dict)
+        self.assertTrue(isinstance(self.my_connection.channels, list))
+        self.assertTrue(isinstance(self.my_connection._callbacks, dict))
 
     def test_verify_connection_class_attributes(self):
         """Verify that Channel class attribute is set correctly"""
@@ -431,7 +457,7 @@ class TestConnection(Case):
         mock_channel.connection = True
         self.my_connection.close_channel(mock_channel)
         self.assertEqual(self.my_connection.channels, [])
-        self.assertIsNone(mock_channel.connection)
+        self.assertTrue(mock_channel.connection is None)
 
     def test_close_channel_does_not_exist(self):
         """Test that calling close_channel() with an invalid channel does
@@ -442,10 +468,10 @@ class TestConnection(Case):
         mock_channel = Mock()
         mock_channel.connection = True
         self.my_connection.close_channel(mock_channel)
-        self.assertIsNone(mock_channel.connection)
+        self.assertTrue(mock_channel.connection is None)
 
 
-class TestChannel(Case):
+class TestChannel(ExtraAssertionsMixin, Case):
 
     @skip_if_not_module('qpidtoollibs')
     @patch('qpidtoollibs.BrokerAgent')
@@ -475,13 +501,13 @@ class TestChannel(Case):
 
     def test_verify_QoS_class_attribute(self):
         """Verify that the class attribute QoS refers to the QoS object"""
-        self.assertIs(QoS, Channel.QoS)
+        self.assertTrue(QoS is Channel.QoS)
 
     def test_verify_Message_class_attribute(self):
         """Verify that the class attribute Message refers to the Message
         object
         """
-        self.assertIs(Message, Channel.Message)
+        self.assertTrue(Message is Channel.Message)
 
     def test_body_encoding_class_attribute(self):
         """Verify that the class attribute body_encoding is set to base64"""
@@ -491,26 +517,27 @@ class TestChannel(Case):
         """Verify that the codecs class attribute has a correct key and
         value
         """
-        self.assertIsInstance(Channel.codecs, dict)
-        self.assertIn('base64', Channel.codecs)
-        self.assertIsInstance(Channel.codecs['base64'], Base64)
+        self.assertTrue(isinstance(Channel.codecs, dict))
+        self.assertTrue('base64' in Channel.codecs)
+        self.assertTrue(isinstance(Channel.codecs['base64'], Base64))
 
     def test_delivery_tags(self):
         """Test that _delivery_tags is using itertools"""
-        self.assertIsInstance(Channel._delivery_tags, count)
+        self.assertTrue(isinstance(Channel._delivery_tags, count))
 
     def test_init_variables(self):
         """Test init variables"""
-        self.assertIs(self.mock_connection, self.my_channel.connection)
-        self.assertIs(self.mock_transport, self.my_channel.transport)
-        self.assertIs(self.mock_delivery_queue,
-                      self.my_channel.delivery_queue)
-        self.assertIsInstance(self.my_channel._tag_to_queue, dict)
-        self.assertIsInstance(self.my_channel._consumer_threads, dict)
-        self.assertIs(self.mock_qpid_session, self.my_channel._qpid_session)
-        self.assertIs(self.mock_broker, self.my_channel._broker)
-        self.assertIsNone(self.my_channel._qos)
-        self.assertIsInstance(self.my_channel._consumers, set)
+        self.assertTrue(self.mock_connection is self.my_channel.connection)
+        self.assertTrue(self.mock_transport is self.my_channel.transport)
+        self.assertTrue(self.mock_delivery_queue is
+                        self.my_channel.delivery_queue)
+        self.assertTrue(isinstance(self.my_channel._tag_to_queue, dict))
+        self.assertTrue(isinstance(self.my_channel._consumer_threads, dict))
+        self.assertTrue(self.mock_qpid_session is
+                        self.my_channel._qpid_session)
+        self.assertTrue(self.mock_broker is self.my_channel._broker)
+        self.assertTrue(self.my_channel._qos is None)
+        self.assertTrue(isinstance(self.my_channel._consumers, set))
         self.assertFalse(self.my_channel.closed)
         self.mock_connection.create_qpid_connection.assert_called_with()
         self.mock_qpid_connection.session.assert_called_with()
@@ -528,7 +555,7 @@ class TestChannel(Case):
         result = self.my_channel._get(mock_queue)
         self.mock_qpid_session.receiver.assert_called_with(mock_queue)
         mock_rx.close.assert_called_with()
-        self.assertIs(mock_message, result)
+        self.assertTrue(mock_message is result)
 
     @patch('qpid.messaging.Message')
     def test_put_queue(self, mock_qpid_Message_obj):
@@ -604,33 +631,7 @@ class TestChannel(Case):
         result = self.my_channel._delete(mock_queue)
         self.my_channel._purge.assert_called_with(mock_queue)
         self.mock_broker.delQueue.assert_called_with(mock_queue)
-        self.assertIsNone(result)
-
-    def test_new_queue_raises_exception_and_silenced(self):
-        """Test new queue, where an exception is raised and then silenced"""
-        mock_queue = Mock()
-        exception_to_raise = Exception('The foo object already exists.')
-        self.mock_broker.addQueue.side_effect = exception_to_raise
-        result = self.my_channel._new_queue(mock_queue)
-        self.mock_broker.addQueue.assert_called_with(mock_queue)
-        self.assertIsNone(result)
-
-    def test_new_queue_raises_exception_not_silenced(self):
-        """Test new queue, where an exception is raised and not silenced"""
-        unique_exception = Exception('This exception should not be silenced')
-        mock_queue = Mock()
-        self.mock_broker.addQueue.side_effect = unique_exception
-        self.assertRaises(unique_exception.__class__,
-                          self.my_channel._new_queue,
-                          mock_queue)
-        self.mock_broker.addQueue.assert_called_with(mock_queue)
-
-    def test_new_queue_no_exception(self):
-        """Test creation of a new queue, where an exception is NOT raised"""
-        mock_queue = Mock()
-        result = self.my_channel._new_queue(mock_queue)
-        self.mock_broker.addQueue.assert_called_with(mock_queue)
-        self.assertIsNone(result)
+        self.assertTrue(result is None)
 
     def test_has_queue_true(self):
         """Test checking if a queue exists, and it does"""
@@ -647,19 +648,77 @@ class TestChannel(Case):
         self.assertFalse(result)
 
     @patch('amqp.protocol.queue_declare_ok_t')
-    def test_queue_declare(self, mock_queue_declare_ok_t):
-        """Test the declaration of a queue, and the return value"""
+    def test_queue_declare_with_exception_raised(self,
+                                                 mock_queue_declare_ok_t):
+        """Test declare_queue, where an exception is raised and silenced"""
         mock_queue = Mock()
-        message_count = 5
-        self.my_channel._new_queue = Mock()
-        self.my_channel._size = Mock(return_value=message_count)
-        mock_queue_declare_ok_t.return_value = Mock()
-        result = self.my_channel.queue_declare(mock_queue)
-        self.my_channel._new_queue.assert_called_with(mock_queue)
-        self.my_channel._size.assert_called_with(mock_queue)
+        mock_passive = Mock()
+        mock_durable = Mock()
+        mock_exclusive = Mock()
+        mock_auto_delete = Mock()
+        mock_nowait = Mock()
+        mock_arguments = Mock()
+        mock_msg_count = Mock()
+        options = {'passive': mock_passive,
+                   'durable': mock_durable,
+                   'exclusive': mock_exclusive,
+                   'auto-delete': mock_auto_delete,
+                   'arguments': mock_arguments}
+        mock_consumer_count = Mock()
+        mock_return_value = Mock()
+        values_dict = {'msgDepth': mock_msg_count,
+                       'consumerCount': mock_consumer_count}
+        mock_queue_data = Mock()
+        mock_queue_data.values = values_dict
+        exception_to_raise = Exception('The foo object already exists.')
+        self.mock_broker.addQueue.side_effect = exception_to_raise
+        self.mock_broker.getQueue.return_value = mock_queue_data
+        mock_queue_declare_ok_t.return_value = mock_return_value
+        result = self.my_channel.queue_declare(mock_queue,
+                                               passive=mock_passive,
+                                               durable=mock_durable,
+                                               exclusive=mock_exclusive,
+                                               auto_delete=mock_auto_delete,
+                                               nowait=mock_nowait,
+                                               arguments=mock_arguments,
+                                               )
+        self.mock_broker.addQueue.assert_called_with(mock_queue,
+                                                     options=options)
         mock_queue_declare_ok_t.assert_called_with(mock_queue,
-                                                   message_count, 0)
-        self.assertIs(mock_queue_declare_ok_t.return_value, result)
+                                                   mock_msg_count,
+                                                   mock_consumer_count)
+        self.assertTrue(mock_return_value is result)
+
+    def test_queue_declare_test_defaults(self):
+        """Test declare_queue defaults"""
+        mock_queue = Mock()
+        expected_default_options = {'passive': False,
+                                    'durable': False,
+                                    'exclusive': False,
+                                    'auto-delete': True,
+                                    'arguments': None}
+        mock_msg_count = Mock()
+        mock_consumer_count = Mock()
+        values_dict = {'msgDepth': mock_msg_count,
+                       'consumerCount': mock_consumer_count}
+        mock_queue_data = Mock()
+        mock_queue_data.values = values_dict
+        self.mock_broker.addQueue.return_value = None
+        self.mock_broker.getQueue.return_value = mock_queue_data
+        self.my_channel.queue_declare(mock_queue)
+        self.mock_broker.addQueue.assert_called_with(
+            mock_queue,
+            options=expected_default_options)
+
+    def test_queue_declare_raises_exception_not_silenced(self):
+        """Test declare_queue, raise an exception that is and not silenced"""
+        unique_exception = Exception('This exception should not be silenced')
+        mock_queue = Mock()
+        self.mock_broker.addQueue.side_effect = unique_exception
+        self.assertRaises(unique_exception.__class__,
+                          self.my_channel.queue_declare,
+                          mock_queue)
+        self.mock_broker.addQueue.assert_called_once()
 
     def test_queue_delete_if_empty_param(self):
         """Test the deletion of a queue with if_empty=True"""
@@ -669,7 +728,7 @@ class TestChannel(Case):
         result = self.my_channel.queue_delete(mock_queue, if_empty=True)
         self.my_channel._has_queue.assert_called_with(mock_queue)
         self.my_channel._size.assert_called_with(mock_queue)
-        self.assertIsNone(result)
+        self.assertTrue(result is None)
 
     def test_queue_delete_if_unused_param(self):
         """Test the deletion of a queue with if_unused=True"""
@@ -681,7 +740,7 @@ class TestChannel(Case):
         self.my_channel._size = Mock(return_value=5)
         self.mock_broker.getQueue.return_value = mock_queue_obj
         result = self.my_channel.queue_delete(mock_queue, if_unused=True)
-        self.assertIsNone(result)
+        self.assertTrue(result is None)
 
     def test_queue_delete(self):
         """Test the deletion of a queue"""
@@ -695,7 +754,7 @@ class TestChannel(Case):
         self.mock_broker.getQueue.return_value = mock_queue_obj
         result = self.my_channel.queue_delete(mock_queue)
         self.my_channel._delete.assert_called_with(mock_queue)
-        self.assertIsNone(result)
+        self.assertTrue(result is None)
 
     def test_exchange_declare_raises_exception_and_silenced(self):
         """Create exchange where an exception is raised and then silenced"""
@@ -722,37 +781,14 @@ class TestChannel(Case):
         self.mock_broker.addExchange.assert_called_with(mock_type,
                                                         mock_exchange,
                                                         options)
-        self.assertIsNone(result)
+        self.assertTrue(result is None)
 
     def test_exchange_delete(self):
         """Test the deletion of an exchange by name"""
         mock_exchange = Mock()
         result = self.my_channel.exchange_delete(mock_exchange)
         self.mock_broker.delExchange.assert_called_with(mock_exchange)
-        self.assertIsNone(result)
-
-    def test_after_reply_message_received_exception_and_silenced(self):
-        """Call after_reply_message_received exception raised and silenced"""
-        mock_queue = Mock()
-        normal_exception = Exception('The queue in use is foo')
-        self.my_channel._delete = Mock(side_effect=normal_exception)
-        self.my_channel.after_reply_message_received(mock_queue)
-
-    def test_after_reply_message_received_exception_not_silenced(self):
-        """Call after_reply_message_received exception raised not silenced"""
-        mock_queue = Mock()
-        abnormal_exception = Exception('This exception should pass through')
-        self.my_channel._delete = Mock(side_effect=abnormal_exception)
-        self.assertRaises(abnormal_exception.__class__,
-                          self.my_channel.after_reply_message_received,
-                          mock_queue)
-
-    def test_after_reply_message_received(self):
-        """Call after_reply_message_received"""
-        mock_queue = Mock()
-        self.my_channel._delete = Mock()
-        self.my_channel.after_reply_message_received(mock_queue)
-        self.my_channel._delete.assert_called_with(mock_queue)
+        self.assertTrue(result is None)
 
     def test_queue_bind(self):
         """Test binding a queue to an exchange using a routing key"""
@@ -785,7 +821,7 @@ class TestChannel(Case):
         self.my_channel._purge = Mock(return_value=purge_result)
         result = self.my_channel.queue_purge(mock_queue)
         self.my_channel._purge.assert_called_with(mock_queue)
-        self.assertIs(purge_result, result)
+        self.assertTrue(purge_result is result)
 
     def test_basic_get_happy_path(self):
         """Test a basic_get with the most common case"""
@@ -797,7 +833,7 @@ class TestChannel(Case):
         result = self.my_channel.basic_get(mock_queue)
         self.mock_qpid_session.acknowledge.assert_called_with(
             message=mock_qpid_message)
-        self.assertIs(new_message, result)
+        self.assertTrue(new_message is result)
 
     def test_basic_get_no_ack_equals_True(self):
         """Test a basic_get where no_ack equals True"""
@@ -808,7 +844,7 @@ class TestChannel(Case):
         self.mock_Message.return_value = new_message
         result = self.my_channel.basic_get(mock_queue, no_ack=True)
         self.assertEqual(self.mock_qpid_session.acknowledge.call_count, 0)
-        self.assertIs(new_message, result)
+        self.assertTrue(new_message is result)
 
     def test_basic_get_raises_Empty(self):
         """Test a basic_get where _get() raises an Empty exception"""
@@ -816,7 +852,7 @@ class TestChannel(Case):
         self.my_channel._get = Mock(side_effect=kombu.five.Empty)
         result = self.my_channel.basic_get(mock_queue)
         self.assertEqual(self.my_channel.Message.call_count, 0)
-        self.assertIsNone(result)
+        self.assertTrue(result is None)
 
     @patch('kombu.transport.qpid.Channel.qos')
     def test_basic_ack(self, mock_qos):
@@ -846,23 +882,23 @@ class TestChannel(Case):
         mock_FDShimThread.return_value = mock_my_thread
         self.my_channel.basic_consume(mock_queue, mock_no_ack,
                                       mock_callback, mock_consumer_tag)
-        self.assertIn(mock_consumer_tag, self.my_channel._tag_to_queue)
+        self.assertTrue(mock_consumer_tag in self.my_channel._tag_to_queue)
         queue_reference = self.my_channel._tag_to_queue[mock_consumer_tag]
-        self.assertIs(queue_reference, mock_queue)
-        self.assertIn(mock_queue, self.mock_connection._callbacks)
+        self.assertTrue(queue_reference is mock_queue)
+        self.assertTrue(mock_queue in self.mock_connection._callbacks)
         _callback_reference = self.mock_connection._callbacks[mock_queue]
         if not hasattr(_callback_reference, '__call__'):
             self.fail('Callback stored must be callable')
         self.basic_consume_callback_helper(_callback_reference,
                                            mock_callback)
-        self.assertIn(mock_consumer_tag, self.my_channel._consumers)
+        self.assertTrue(mock_consumer_tag in self.my_channel._consumers)
         mock_FDShimThread.assert_called_with(
             self.mock_connection.create_qpid_connection,
             mock_queue,
             self.mock_delivery_queue)
-        self.assertIn(mock_queue, self.my_channel._consumer_threads)
+        self.assertTrue(mock_queue in self.my_channel._consumer_threads)
         my_thread_reference = self.my_channel._consumer_threads[mock_queue]
-        self.assertIs(mock_my_thread, my_thread_reference)
+        self.assertTrue(mock_my_thread is my_thread_reference)
         self.assertTrue(mock_my_thread.daemon)
         mock_my_thread.start.assert_called_with()
 
@@ -886,7 +922,7 @@ class TestChannel(Case):
         mock_qos.append.assert_called_with(mock_qpid_message,
                                            new_mock_delivery_tag)
         original_callback.assert_called_with(new_mock_message)
-        self.assertIs(original_callback_result, result)
+        self.assertTrue(original_callback_result is result)
 
     def test_basic_cancel(self):
         """Test basic_cancel() by consumer tag"""
@@ -900,7 +936,7 @@ class TestChannel(Case):
         self.my_channel._consumer_threads.pop.return_value = \
             mock_consumer_thread
         self.my_channel.basic_cancel(mock_consumer_tag)
-        self.assertNotIn(mock_consumer_tag, self.my_channel._consumers)
+        self.assertTrue(mock_consumer_tag not in self.my_channel._consumers)
         self.my_channel._tag_to_queue.pop.assert_called_with(
             mock_consumer_tag, None)
         self.my_channel._consumer_threads.pop.assert_called_with(
@@ -929,7 +965,7 @@ class TestChannel(Case):
         """Test the qos property if the QoS object did not already exist"""
         self.my_channel._qos = None
         result = self.my_channel.qos
-        self.assertIsInstance(result, QoS)
+        self.assertTrue(isinstance(result, QoS))
         self.assertEqual(result, self.my_channel._qos)
 
     def test_qos_manager_already_exists(self):
@@ -937,14 +973,14 @@ class TestChannel(Case):
         mock_existing_qos = Mock()
         self.my_channel._qos = mock_existing_qos
         result = self.my_channel.qos
-        self.assertIs(mock_existing_qos, result)
+        self.assertTrue(mock_existing_qos is result)
 
     @patch('kombu.transport.qpid.Channel.qos')
     def test_basic_qos(self, mock_qos):
         """Verify the basic_qos() sets prefetch_count on the QoS object"""
         mock_prefetch_count = Mock()
         self.my_channel.basic_qos(mock_prefetch_count)
-        self.assertIs(mock_prefetch_count, mock_qos.prefetch_count)
+        self.assertTrue(mock_prefetch_count is mock_qos.prefetch_count)
 
     def test_prepare_message(self):
         """Test that prepare_message() returns the correct result"""
@@ -966,13 +1002,13 @@ class TestChannel(Case):
             content_encoding=mock_content_encoding,
             headers=headers,
             properties=properties)
-        self.assertIs(mock_body, result['body'])
-        self.assertIs(mock_content_encoding, result['content-encoding'])
-        self.assertIs(mock_content_type, result['content-type'])
+        self.assertTrue(mock_body is result['body'])
+        self.assertTrue(mock_content_encoding is result['content-encoding'])
+        self.assertTrue(mock_content_type is result['content-type'])
         self.assertDictEqual(headers, result['headers'])
         self.assertDictContainsSubset(properties, result['properties'])
-        self.assertIs(mock_priority,
-                      result['properties']['delivery_info']['priority'])
+        self.assertTrue(mock_priority is
+                        result['properties']['delivery_info']['priority'])
 
     @patch('__builtin__.buffer')
     @patch('kombu.transport.qpid.Channel.body_encoding')
@@ -999,15 +1035,15 @@ class TestChannel(Case):
         mock_encode_body.assert_called_once(mock_original_body,
                                             mock_body_encoding)
         mock_buffer.assert_called_once(mock_encode_body)
-        self.assertIs(mock_message['body'], mock_encoded_buffered_body)
-        self.assertIs(mock_message['properties']['body_encoding'],
-                      mock_body_encoding)
-        self.assertIsInstance(mock_message['properties']['delivery_tag'],
-                              int)
-        self.assertIs(mock_message['properties']['delivery_info'][
-                      'exchange'], mock_exchange)
-        self.assertIs(
-            mock_message['properties']['delivery_info']['routing_key'],
+        self.assertTrue(mock_message['body'] is mock_encoded_buffered_body)
+        self.assertTrue(mock_message['properties']['body_encoding'] is
+                        mock_body_encoding)
+        self.assertTrue(
+            isinstance(mock_message['properties']['delivery_tag'], int))
+        self.assertTrue(mock_message['properties']['delivery_info']
+                        ['exchange'] is mock_exchange)
+        self.assertTrue(
+            mock_message['properties']['delivery_info']['routing_key'] is
             mock_routing_key)
         mock_put.assert_called_with(mock_routing_key,
                                     mock_message,
@@ -1062,7 +1098,7 @@ class TestChannel(Case):
         mock_qpid_exchange.getAttributes.return_value = mock_attributes
         self.mock_broker.getExchange.return_value = mock_qpid_exchange
         result = self.my_channel.typeof(mock_exchange)
-        self.assertIs(mock_type, result)
+        self.assertTrue(mock_type is result)
 
     def test_typeof_exchange_does_not_exist(self):
         """Test that typeof() finds an exchange that does not exists"""
@@ -1070,10 +1106,10 @@ class TestChannel(Case):
         mock_default = Mock()
         self.mock_broker.getExchange.return_value = None
         result = self.my_channel.typeof(mock_exchange, default=mock_default)
-        self.assertIs(mock_default, result)
+        self.assertTrue(mock_default is result)
 
 
-class TestTransport(Case):
+class TestTransport(ExtraAssertionsMixin, Case):
 
     def setUp(self):
         """Creates a mock_client to be used in testing."""
@@ -1092,12 +1128,14 @@ class TestTransport(Case):
         new_thread = Mock()
         mock_thread.return_value = new_thread
         my_transport = Transport(self.mock_client)
-        self.assertIs(my_transport.client, self.mock_client)
-        self.assertIsInstance(my_transport.queue_from_fdshim, Queue.Queue)
-        self.assertIsInstance(my_transport.delivery_queue, Queue.Queue)
+        self.assertTrue(my_transport.client is self.mock_client)
+        self.assertTrue(
+            isinstance(my_transport.queue_from_fdshim,  Queue.Queue))
+        self.assertTrue(
+            isinstance(my_transport.delivery_queue, Queue.Queue))
         mock_FDShim.assert_called_with(my_transport.queue_from_fdshim,
                                        my_transport.delivery_queue)
-        self.assertIs(new_fdshim, my_transport.fd_shim)
+        self.assertTrue(new_fdshim is my_transport.fd_shim)
         mock_thread.assert_called_with(
             target=my_transport.fd_shim.monitor_consumers)
         self.assertTrue(new_thread.daemon)
@@ -1107,7 +1145,7 @@ class TestTransport(Case):
         """Verify that class attribute Connection refers to the connection
         object
         """
-        self.assertIs(Connection, Transport.Connection)
+        self.assertTrue(Connection is Transport.Connection)
 
     def test_verify_default_port(self):
         """Verify that the class attribute default_port refers to the 5672
@@ -1117,7 +1155,7 @@ class TestTransport(Case):
 
     def test_verify_polling_disabled(self):
         """Verify that polling is disabled"""
-        self.assertIsNone(Transport.polling_interval)
+        self.assertTrue(Transport.polling_interval is None)
 
     def test_verify_supports_asynchronous_events(self):
         """Verify that the Transport advertises that it supports
@@ -1155,7 +1193,7 @@ class TestTransport(Case):
         my_transport.Connection = Mock(return_value=new_connection)
         my_transport.establish_connection()
         my_transport.Connection.assert_called_once()
-        self.assertIs(new_connection.client, self.mock_client)
+        self.assertTrue(new_connection.client is self.mock_client)
 
     def test_close_connection(self):
         """Test that close_connection calls close on each channel in the
@@ -1210,7 +1248,7 @@ class TestTransport(Case):
         mock_new_channel = Mock()
         mock_connection.Channel.return_value = mock_new_channel
         returned_channel = my_transport.create_channel(mock_connection)
-        self.assertIs(mock_new_channel, returned_channel)
+        self.assertTrue(mock_new_channel is returned_channel)
         mock_connection.Channel.assert_called_with(
             mock_connection,
             my_transport,
@@ -1229,7 +1267,7 @@ class TestTransport(Case):
         result = my_transport.on_readable(mock_connection, mock_loop)
         mock_os_read.assert_called_with(my_transport.fd_shim.r, 1)
         mock_drain_events.assert_called_with(mock_connection)
-        self.assertIsNone(result)
+        self.assertTrue(result is None)
 
     def test_default_connection_params(self):
         """Test that the default_connection_params are correct"""
