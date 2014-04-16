@@ -23,6 +23,31 @@ from kombu.tests.case import Case, Mock, SkipTest
 from kombu.tests.case import patch, skip_if_not_module
 
 
+class ExtraAssertionsMixin(object):
+    """A mixin class adding assertDictEqual and assertDictContainsSubset"""
+
+    def assertDictEqual(self, a, b):
+        """
+        Test that two dictionaries are equal.
+
+        Implemented here because this method was not available until Python
+        2.6.  This asserts that the unique set of keys are the same in a and b.
+        Also asserts that the value of each key is the same in a and b using
+        the is operator.
+        """
+        self.assertEqual(set(a.keys()), set(b.keys()))
+        for key in a.keys():
+            self.assertEqual(a[key], b[key])
+
+    def assertDictContainsSubset(self, a, b):
+        """
+        Assert that all the key/value pairs in a exist in b.
+        """
+        for key in a.keys():
+            self.assertTrue(key in b)
+            self.assertTrue(a[key] == b[key])
+
+
 class TestQpidMessagingExceptionHandler(Case):
 
     allowed_string = 'object in use'
@@ -383,7 +408,7 @@ class TestFDShim(Case):
         write_method.assert_called_with(self.my_fdshim._w, '0')
 
 
-class TestConnection(Case):
+class TestConnection(ExtraAssertionsMixin, Case):
 
     def setUp(self):
         """Setup a Connection with sane connection parameters."""
@@ -446,7 +471,7 @@ class TestConnection(Case):
         self.assertTrue(mock_channel.connection is None)
 
 
-class TestChannel(Case):
+class TestChannel(ExtraAssertionsMixin, Case):
 
     @skip_if_not_module('qpidtoollibs')
     @patch('qpidtoollibs.BrokerAgent')
@@ -1084,7 +1109,7 @@ class TestChannel(Case):
         self.assertTrue(mock_default is result)
 
 
-class TestTransport(Case):
+class TestTransport(ExtraAssertionsMixin, Case):
 
     def setUp(self):
         """Creates a mock_client to be used in testing."""
