@@ -83,7 +83,7 @@ class _epoll(Poller):
     def unregister(self, fd):
         try:
             self._epoll.unregister(fd)
-        except (socket.error, ValueError, KeyError):
+        except (socket.error, ValueError, KeyError, TypeError):
             pass
         except (IOError, OSError) as exc:
             if get_errno(exc) != errno.ENOENT:
