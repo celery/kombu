@@ -203,7 +203,7 @@ class Hub(object):
     def add_writer(self, fds, callback, *args):
         return self.add(fds, callback, WRITE, args)
 
-    def remove_reader(self, fd):
+    def remove_writer(self, fd):
         writable = fd in self.writers
         on_write = self.writers.get(fd)
         try:
@@ -214,7 +214,7 @@ class Hub(object):
                 cb, args = on_write
                 self.add(fd, cb, WRITE, args)
 
-    def remove_writer(self, fd):
+    def remove_reader(self, fd):
         readable = fd in self.readers
         on_read = self.readers.get(fd)
         try:
