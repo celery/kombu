@@ -1502,6 +1502,7 @@ class Connection(object):
         self.connection_options = connection_options
         self.channels = []
         self._callbacks = {}
+        self._qpid_conn = qpid.messaging.Connection.establish(**self.connection_options)
 
     def create_qpid_connection(self):
         """Create a :class:`qpid.messaging.endpoints.Connection` with saved
@@ -1514,7 +1515,7 @@ class Connection(object):
         :return: The new qpid.messaging connection
         :rtype: :class:`qpid.messaging.endpoints.Connection`
         """
-        return qpid.messaging.Connection.establish(**self.connection_options)
+        return self._qpid_conn
 
     def close_channel(self, channel):
         """Close a Channel.
