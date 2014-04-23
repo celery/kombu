@@ -10,7 +10,7 @@ from kombu.tests.case import Case, SkipTest
 
 class test_FilesystemTransport(Case):
 
-    def setUp(self):
+    def setup(self):
         if sys.platform == 'win32':
             raise SkipTest('Needs win32con module')
         try:

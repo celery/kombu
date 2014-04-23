@@ -37,10 +37,7 @@ class amqplibCase(Case):
     def setUp(self):
         if amqplib is None:
             raise SkipTest('amqplib not installed')
-        self.setup()
-
-    def setup(self):
-        pass
+        super(amqplibCase, self).setUp()
 
 
 class test_Channel(amqplibCase):

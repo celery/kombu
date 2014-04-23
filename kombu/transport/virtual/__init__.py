@@ -771,6 +771,12 @@ class Transport(base.Transport):
     #: Max number of channels
     channel_max = 65535
 
+    implements = base.Transport.implements.extend(
+        async=False,
+        exchange_type=frozenset(['direct', 'topic']),
+        heartbeats=False,
+    )
+
     def __init__(self, client, **kwargs):
         self.client = client
         self.channels = []
@@ -844,6 +850,13 @@ class Transport(base.Transport):
                 'Message for queue {0!r} without consumers: {1}'.format(
                     queue, message))
 
+        self._callbacks[queue](message)
+
+    def on_message_ready(self, channel, message, queue):
+        if not queue or queue not in self._callbacks:
+            raise KeyError(
+                'Message for queue {0!r} without consumers: {1}'.format(
+                    queue, message))
         self._callbacks[queue](message)
 
     def _drain_channel(self, channel, timeout=None):

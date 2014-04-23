@@ -905,9 +905,13 @@ class Transport(virtual.Transport):
 
     polling_interval = None  # disable sleep between unsuccessful polls.
     default_port = DEFAULT_PORT
-    supports_ev = True
     driver_type = 'redis'
     driver_name = 'redis'
+
+    implements = virtual.Transport.implements.extend(
+        async=True,
+        exchange_types=frozenset(['direct', 'topic', 'fanout'])
+    )
 
     def __init__(self, *args, **kwargs):
         super(Transport, self).__init__(*args, **kwargs)

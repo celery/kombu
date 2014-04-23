@@ -15,7 +15,7 @@ from .mocks import Transport
 
 class test_connection_utils(Case):
 
-    def setUp(self):
+    def setup(self):
         self.url = 'amqp://user:pass@localhost:5672/my/vhost'
         self.nopass = 'amqp://user@localhost:5672/my/vhost'
         self.expected = {
@@ -144,7 +144,7 @@ class test_connection_utils(Case):
 
 class test_Connection(Case):
 
-    def setUp(self):
+    def setup(self):
         self.conn = Connection(port=5672, transport=Transport)
 
     def test_establish_connection(self):
@@ -261,12 +261,12 @@ class test_Connection(Case):
 
     def test_supports_heartbeats(self):
         c = Connection(transport=Mock)
-        c.transport.supports_heartbeats = False
+        c.transport.implements.heartbeats = False
         self.assertFalse(c.supports_heartbeats)
 
     def test_is_evented(self):
         c = Connection(transport=Mock)
-        c.transport.supports_ev = False
+        c.transport.implements.async = False
         self.assertFalse(c.is_evented)
 
     def test_register_with_event_loop(self):
@@ -491,7 +491,7 @@ class test_Connection_with_transport_options(Case):
 
     transport_options = {'pool_recycler': 3600, 'echo': True}
 
-    def setUp(self):
+    def setup(self):
         self.conn = Connection(port=5672, transport=Transport,
                                transport_options=self.transport_options)
 

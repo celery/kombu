@@ -39,7 +39,7 @@ class test_default_encoding(Case):
 
 class test_encoding_utils(Case):
 
-    def setUp(self):
+    def setup(self):
         if sys.version_info >= (3, 0):
             raise SkipTest('not relevant on py3k')
 
@@ -58,12 +58,12 @@ class test_encoding_utils(Case):
 
 class test_safe_str(Case):
 
-    def setUp(self):
+    def setup(self):
         self._cencoding = patch('sys.getfilesystemencoding')
         self._encoding = self._cencoding.__enter__()
         self._encoding.return_value = 'ascii'
 
-    def tearDown(self):
+    def teardown(self):
         self._cencoding.__exit__()
 
     def test_when_bytes(self):

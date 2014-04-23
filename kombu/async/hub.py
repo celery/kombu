@@ -15,7 +15,7 @@ from contextlib import contextmanager
 from time import sleep
 from types import GeneratorType as generator
 
-from amqp import promise
+from amqp.promise import promise, Thenable
 
 from kombu.five import Empty, range
 from kombu.log import get_logger
@@ -184,9 +184,10 @@ class Hub(object):
             self._loop = None
 
     def call_soon(self, callback, *args):
-        handle = promise(callback, args)
-        self._ready.append(handle)
-        return handle
+        if not isinstance(callback, Thenable):
+            callback = promise(callback, args)
+        self._ready.append(callback)
+        return callback
 
     def call_later(self, delay, callback, *args):
         return self.timer.call_after(delay, callback, args)

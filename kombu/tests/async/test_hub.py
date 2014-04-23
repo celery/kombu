@@ -8,10 +8,10 @@ from kombu.tests.case import Case
 
 class test_Utils(Case):
 
-    def setUp(self):
+    def setup(self):
         self._prev_loop = get_event_loop()
 
-    def tearDown(self):
+    def teardown(self):
         set_event_loop(self._prev_loop)
 
     def test_get_set_event_loop(self):
@@ -26,8 +26,8 @@ class test_Utils(Case):
 
 class test_Hub(Case):
 
-    def setUp(self):
+    def setup(self):
         self.hub = Hub()
 
-    def tearDown(self):
+    def teardown(self):
         self.hub.close()

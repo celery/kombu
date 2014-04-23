@@ -220,7 +220,7 @@ class Transport(redis.Transport):
 
 class test_Channel(Case):
 
-    def setUp(self):
+    def setup(self):
         self.connection = self.create_connection()
         self.channel = self.connection.default_channel
 
@@ -785,12 +785,12 @@ class test_Channel(Case):
 
 class test_Redis(Case):
 
-    def setUp(self):
+    def setup(self):
         self.connection = Connection(transport=Transport)
         self.exchange = Exchange('test_Redis', type='direct')
         self.queue = Queue('test_Redis', self.exchange, 'test_Redis')
 
-    def tearDown(self):
+    def teardown(self):
         self.connection.close()
 
     def test_publish__get(self):
@@ -941,7 +941,7 @@ def _redis_modules():
 
 class test_MultiChannelPoller(Case):
 
-    def setUp(self):
+    def setup(self):
         self.Poller = redis.MultiChannelPoller
 
     def test_on_poll_start(self):

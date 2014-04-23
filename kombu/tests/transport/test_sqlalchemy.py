@@ -6,7 +6,7 @@ from kombu.tests.case import Case, SkipTest, patch
 
 class test_sqlalchemy(Case):
 
-    def setUp(self):
+    def setup(self):
         try:
             import sqlalchemy  # noqa
         except ImportError:

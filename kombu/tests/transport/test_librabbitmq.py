@@ -12,7 +12,7 @@ from kombu.tests.case import Case, Mock, SkipTest, patch
 
 class lrmqCase(Case):
 
-    def setUp(self):
+    def setup(self):
         if librabbitmq is None:
             raise SkipTest('librabbitmq is not installed')
 
@@ -61,8 +61,8 @@ class test_Channel(lrmqCase):
 
 class test_Transport(lrmqCase):
 
-    def setUp(self):
-        super(test_Transport, self).setUp()
+    def setup(self):
+        super(test_Transport, self).setup()
         self.client = Mock(name='client')
         self.T = librabbitmq.Transport(self.client)
 

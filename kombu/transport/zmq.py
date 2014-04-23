@@ -245,7 +245,9 @@ class Transport(virtual.Transport):
 
     connection_errors = virtual.Transport.connection_errors + (ZMQError, )
 
-    supports_ev = True
+    implements = virtual.Transport.implements.extend(
+        async=True,
+    )
     polling_interval = None
 
     def __init__(self, *args, **kwargs):

@@ -173,7 +173,7 @@ def insomnia(fun):
 
 class test_retry_over_time(Case):
 
-    def setUp(self):
+    def setup(self):
         self.index = 0
 
     class Predicate(Exception):

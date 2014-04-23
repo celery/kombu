@@ -20,7 +20,7 @@ class test_ProducerPool(Case):
         def Producer(self, connection):
             return self.instance
 
-    def setUp(self):
+    def setup(self):
         self.connections = Mock()
         self.pool = self.Pool(self.connections, limit=10)
 

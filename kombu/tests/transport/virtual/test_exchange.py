@@ -10,7 +10,7 @@ from kombu.tests.mocks import Transport
 class ExchangeCase(Case):
     type = None
 
-    def setUp(self):
+    def setup(self):
         if self.type:
             self.e = self.type(Connection(transport=Transport).channel())
 
@@ -74,8 +74,8 @@ class test_Topic(ExchangeCase):
         ('stock.us.*', None, 'rBar'),
     ]
 
-    def setUp(self):
-        super(test_Topic, self).setUp()
+    def setup(self):
+        super(test_Topic, self).setup()
         self.table = [(rkey, self.e.key_to_pattern(rkey), queue)
                       for rkey, _, queue in self.table]
 

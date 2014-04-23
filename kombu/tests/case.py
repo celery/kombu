@@ -27,9 +27,52 @@ call = mock.call
 
 class Case(unittest.TestCase):
 
+    def setUp(self):
+        self.setup()
+
+    def tearDown(self):
+        self.teardown()
+
     def assertItemsEqual(self, a, b, *args, **kwargs):
         return self.assertEqual(sorted(a), sorted(b), *args, **kwargs)
     assertSameElements = assertItemsEqual
+
+    def setup(self):
+        pass
+
+    def teardown(self):
+        pass
+
+
+def PromiseMock(*args, **kwargs):
+    m = Mock(*args, **kwargs)
+
+    def on_throw(exc=None, *args, **kwargs):
+        if exc:
+            raise exc
+        raise
+    m.throw.side_effect = on_throw
+    m.set_error_state.side_effect = on_throw
+    m.throw1.side_effect = on_throw
+    return m
+
+
+class HubCase(Case):
+
+    def setUp(self):
+        from kombu.async import Hub, get_event_loop, set_event_loop
+        self._prev_hub = get_event_loop()
+        self.hub = Hub()
+        set_event_loop(self.hub)
+        super(HubCase, self).setUp()
+
+    def tearDown(self):
+        try:
+            super(HubCase, self).tearDown()
+        finally:
+            from kombu.async import set_event_loop
+            if self._prev_hub is not None:
+                set_event_loop(self._prev_hub)
 
 
 class Mock(mock.Mock):

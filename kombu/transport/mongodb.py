@@ -305,5 +305,9 @@ class Transport(virtual.Transport):
     driver_type = 'mongodb'
     driver_name = 'pymongo'
 
+    implements = virtual.Transport.implements.extend(
+        exchange_types=frozenset(['direct', 'topic', 'fanout']),
+    )
+
     def driver_version(self):
         return pymongo.version

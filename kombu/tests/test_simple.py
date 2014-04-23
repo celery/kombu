@@ -19,14 +19,14 @@ class SimpleBase(Case):
     def _Queue(self, *args, **kwargs):
         raise NotImplementedError()
 
-    def setUp(self):
+    def setup(self):
         if not self.abstract:
             self.connection = Connection(transport='memory')
             with self.connection.channel() as channel:
                 channel.exchange_declare('amq.direct')
             self.q = self.Queue(None, no_ack=True)
 
-    def tearDown(self):
+    def teardown(self):
         if not self.abstract:
             self.q.close()
             self.connection.close()

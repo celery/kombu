@@ -6,7 +6,7 @@ from amqp.promise import Thenable, promise, maybe_promise
 
 from kombu.exceptions import HttpError
 from kombu.five import items
-from kombu.utils import cached_property, coro
+from kombu.utils import coro
 from kombu.utils.encoding import bytes_to_str
 from kombu.utils.functional import maybe_list, memoize
 
@@ -55,6 +55,9 @@ class Request(object):
        default).
     :keyword validate_cert: Set to true if the server certificate should be
         verified when performing ``https://`` requests (enabled by default).
+    :keyword auth_username: Username for HTTP authentication.
+    :keyword auth_password: Password for HTTP authentication.
+    :keyword auth_mode: Type of HTTP authentication (``basic`` or ``digest``).
     :keyword user_agent: Custom user agent for this request.
     :keyword network_interace: Network interface to use for this request.
     :keyword on_ready: Callback to be called when the response has been
@@ -84,6 +87,7 @@ class Request(object):
     """
 
     body = user_agent = network_interface = \
+        auth_username = auth_password = auth_mode = \
         proxy_host = proxy_port = proxy_username = proxy_password = \
         ca_certs = client_key = client_cert = None
 
@@ -118,6 +122,9 @@ class Request(object):
 
     def then(self, callback, errback=None):
         self.on_ready.then(callback, errback)
+
+    def __repr__(self):
+        return '<Request: {0.method} {0.url} {0.body}>'.format(self)
 Thenable.register(Request)
 
 

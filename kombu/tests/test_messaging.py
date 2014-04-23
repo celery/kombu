@@ -15,7 +15,7 @@ from .mocks import Transport
 
 class test_Producer(Case):
 
-    def setUp(self):
+    def setup(self):
         self.exchange = Exchange('foo', 'direct')
         self.connection = Connection(transport=Transport)
         self.connection.connect()
@@ -218,7 +218,7 @@ class test_Producer(Case):
 
 class test_Consumer(Case):
 
-    def setUp(self):
+    def setup(self):
         self.connection = Connection(transport=Transport)
         self.connection.connect()
         self.assertTrue(self.connection.connection.connected)

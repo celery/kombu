@@ -59,6 +59,28 @@ class Management(object):
         raise _LeftBlank(self, 'get_bindings')
 
 
+class Implements(dict):
+
+    def __getattr__(self, key):
+        try:
+            return self[key]
+        except KeyError:
+            raise AttributeError(key)
+
+    def __setattr__(self, key, value):
+        self[key] = value
+
+    def extend(self, **kwargs):
+        return self.__class__(self, **kwargs)
+
+
+default_transport_capabilities = Implements(
+    async=False,
+    exchange_type=frozenset(['direct', 'topic', 'fanout', 'headers']),
+    heartbeats=False,
+)
+
+
 class Transport(object):
     """Base class for transports."""
     Management = Management
@@ -87,14 +109,9 @@ class Transport(object):
     #: Name of driver library (e.g. 'py-amqp', 'redis', 'beanstalkc').
     driver_name = 'N/A'
 
-    #: Whether this transports support heartbeats,
-    #: and that the :meth:`heartbeat_check` method has any effect.
-    supports_heartbeats = False
-
-    #: Set to true if the transport supports the AIO interface.
-    supports_ev = False
-
     __reader = None
+
+    implements = default_transport_capabilities.extend()
 
     def __init__(self, client, **kwargs):
         self.client = client
@@ -123,10 +140,10 @@ class Transport(object):
     def get_heartbeat_interval(self, connection):
         return 0
 
-    def register_with_event_loop(self, loop):
+    def register_with_event_loop(self, connection, loop):
         pass
 
-    def unregister_from_event_loop(self, loop):
+    def unregister_from_event_loop(self, connection, loop):
         pass
 
     def verify_connection(self, connection):
@@ -171,3 +188,11 @@ class Transport(object):
     @cached_property
     def manager(self):
         return self.get_manager()
+
+    @property
+    def supports_heartbeats(self):
+        return self.implements.heartbeats
+
+    @property
+    def supports_ev(self):
+        return self.implements.async

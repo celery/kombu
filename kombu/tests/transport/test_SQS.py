@@ -18,7 +18,7 @@ try:
 except ImportError:
     # Boto must not be installed if the SQS transport fails to import,
     # so we skip all unit tests. Set SQS to None here, and it will be
-    # checked during the setUp() phase later.
+    # checked during the setup() phase later.
     SQS = None
 
 
@@ -93,7 +93,7 @@ class test_Channel(Case):
     def handleMessageCallback(self, message):
         self.callback_message = message
 
-    def setUp(self):
+    def setup(self):
         """Mock the back-end SQS classes"""
         # Sanity check... if SQS is None, then it did not import and we
         # cannot execute our tests.
@@ -135,7 +135,7 @@ class test_Channel(Case):
 
         # Lastly, make sure that we're set up to 'consume' this queue.
         self.channel.basic_consume(self.queue_name,
-                                   no_ack=True,
+                                   no_ack=False,
                                    callback=self.handleMessageCallback,
                                    consumer_tag='unittest')
 
@@ -160,15 +160,16 @@ class test_Channel(Case):
         # Test getting a single message
         message = 'my test message'
         self.producer.publish(message)
-        results = self.channel._get_from_sqs(self.queue_name)
+        q = self.channel._new_queue(self.queue_name)
+        results = q.get_messages()
         self.assertEquals(len(results), 1)
 
         # Now test getting many messages
-        for i in xrange(3):
+        for i in range(3):
             message = 'message: {0}'.format(i)
             self.producer.publish(message)
 
-        results = self.channel._get_from_sqs(self.queue_name, count=3)
+        results = q.get_messages(num_messages=3)
         self.assertEquals(len(results), 3)
 
     def test_get_with_empty_list(self):
@@ -186,10 +187,9 @@ class test_Channel(Case):
             message = 'message: %s' % i
             self.producer.publish(message)
 
+        q = self.channel._new_queue(self.queue_name)
         # Get the messages now
-        messages = self.channel._get_from_sqs(
-            self.queue_name, count=message_count,
-        )
+        messages = q.get_messages(num_messages=message_count)
 
         # Now convert them to payloads
         payloads = self.channel._messages_to_python(
@@ -209,15 +209,6 @@ class test_Channel(Case):
         results = self.queue(self.channel).get().payload
         self.assertEquals(message, results)
 
-    def test_puts_and_gets(self):
-        for i in xrange(3):
-            message = 'message: %s' % i
-            self.producer.publish(message)
-
-        for i in xrange(3):
-            self.assertEquals('message: %s' % i,
-                              self.queue(self.channel).get().payload)
-
     def test_put_and_get_bulk(self):
         # With QoS.prefetch_count = 0
         message = 'my test message'
@@ -233,7 +224,7 @@ class test_Channel(Case):
         self.channel.qos.prefetch_count = 5
 
         # Now, generate all the messages
-        for i in xrange(message_count):
+        for i in range(message_count):
             message = 'message: %s' % i
             self.producer.publish(message)
 
@@ -241,10 +232,12 @@ class test_Channel(Case):
         # be 5 (message_count).
         results = self.channel._get_bulk(self.queue_name)
         self.assertEquals(5, len(results))
+        for i, r in enumerate(results):
+            self.channel.qos.append(r, i)
 
-        # Now, do the get again, the number of messages returned should be 3.
+        # Now, do the get again, the number of messages returned should be 1.
         results = self.channel._get_bulk(self.queue_name)
-        self.assertEquals(3, len(results))
+        self.assertEquals(len(results), 1)
 
     def test_drain_events_with_empty_list(self):
         def mock_can_consume():
@@ -262,11 +255,11 @@ class test_Channel(Case):
         self.channel.qos.prefetch_count = 5
 
         # Now, generate all the messages
-        for i in xrange(message_count):
+        for i in range(message_count):
             self.producer.publish('message: %s' % i)
 
         # Now drain all the events
-        for i in xrange(message_count):
+        for i in range(message_count):
             self.channel.drain_events()
 
         # How many times was the SQSConnectionMock get_message method called?
@@ -283,11 +276,11 @@ class test_Channel(Case):
         self.channel.qos.prefetch_count = None
 
         # Now, generate all the messages
-        for i in xrange(message_count):
+        for i in range(message_count):
             self.producer.publish('message: %s' % i)
 
         # Now drain all the events
-        for i in xrange(message_count):
+        for i in range(message_count):
             self.channel.drain_events()
 
         # How many times was the SQSConnectionMock get_message method called?

@@ -24,7 +24,7 @@ class MockConnection(dict):
 
 class test_Channel(Case):
 
-    def setUp(self):
+    def setup(self):
         if pyamqp is None:
             raise SkipTest('py-amqp not installed')
 
@@ -80,7 +80,7 @@ class test_Channel(Case):
 
 class test_Transport(Case):
 
-    def setUp(self):
+    def setup(self):
         if pyamqp is None:
             raise SkipTest('py-amqp not installed')
         self.connection = Connection('pyamqp://')
@@ -136,7 +136,7 @@ class test_Transport(Case):
 
 class test_pyamqp(Case):
 
-    def setUp(self):
+    def setup(self):
         if pyamqp is None:
             raise SkipTest('py-amqp not installed')
 

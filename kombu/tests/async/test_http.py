@@ -3,22 +3,21 @@ from __future__ import absolute_import
 from io import BytesIO
 
 from amqp import promise
-from kombu.async import Hub
 from kombu.async import http
-from kombu.async.http.base import BaseClient, normalize_header, header_parser
+from kombu.async.http.base import BaseClient, normalize_header
 from kombu.exceptions import HttpError
 
-from kombu.tests.case import Case, Mock
+from kombu.tests.case import HubCase, Mock, PromiseMock
 
 
-class test_Headers(Case):
+class test_Headers(HubCase):
 
     def test_normalize(self):
         self.assertEqual(normalize_header('accept-encoding'),
                          'Accept-Encoding')
 
 
-class test_Request(Case):
+class test_Request(HubCase):
 
     def test_init(self):
         x = http.Request('http://foo', method='POST')
@@ -35,7 +34,7 @@ class test_Request(Case):
         self.assertIsInstance(x.on_ready, promise)
 
     def test_then(self):
-        callback = Mock()
+        callback = PromiseMock(name='callback')
         x = http.Request('http://foo')
         x.then(callback)
 
@@ -43,7 +42,7 @@ class test_Request(Case):
         callback.assert_called_with(1)
 
 
-class test_Response(Case):
+class test_Response(HubCase):
 
     def test_init(self):
         req = http.Request('http://foo')
@@ -77,7 +76,7 @@ class test_Response(Case):
         self.assertEqual(r.body, b'hello')
 
 
-class test_BaseClient(Case):
+class test_BaseClient(HubCase):
 
     def test_init(self):
         c = BaseClient(Mock(name='hub'))
@@ -138,45 +137,11 @@ class test_BaseClient(Case):
         c.close.assert_called_with()
 
 
-class test_Client(Case):
+class test_Client(HubCase):
 
-    def test_get_request(self):
-        hub = Hub()
-        callback = Mock(name='callback')
-
-        def on_ready(response):
-            pass #print('{0.effective_url} -> {0.code}'.format(response))
-        requests = []
-        for i in range(1000):
-            requests.extend([
-                http.Request(
-                    'http://localhost:8000/README.rst',
-                    on_ready=promise(on_ready, callback=callback),
-                ),
-                http.Request(
-                    'http://localhost:8000/AUTHORS',
-                    on_ready=promise(on_ready, callback=callback),
-                ),
-                http.Request(
-                    'http://localhost:8000/pavement.py',
-                    on_ready=promise(on_ready, callback=callback),
-                ),
-                http.Request(
-                    'http://localhost:8000/setup.py',
-                    on_ready=promise(on_ready, callback=callback),
-                ),
-                http.Request(
-                    'http://localhost:8000/setup.py%s' % (i, ),
-                    on_ready=promise(on_ready, callback=callback),
-                ),
-            ])
-        client = http.Client(hub)
-        for request in requests:
-            client.perform(request)
-
-        from kombu.five import monotonic
-        start_time = monotonic()
-        print('START PERFORM')
-        while callback.call_count < len(requests):
-            hub.run_once()
-        print('-END PERFORM: %r' % (monotonic() - start_time))
+    def test_get_client(self):
+        client = http.get_client()
+        self.assertIs(client.hub, self.hub)
+        client2 = http.get_client(self.hub)
+        self.assertIs(client2, client)
+        self.assertIs(client2.hub, self.hub)

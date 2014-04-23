@@ -7,7 +7,7 @@ from functools import partial
 from io import BytesIO
 from time import time
 
-from kombu.async.hub import READ, WRITE
+from kombu.async.hub import READ, WRITE, get_event_loop
 from kombu.exceptions import HttpError
 from kombu.five import items
 from kombu.utils.encoding import bytes_to_str
@@ -37,9 +37,10 @@ EXTRA_METHODS = frozenset(['DELETE', 'OPTIONS', 'PATCH'])
 class CurlClient(BaseClient):
     Curl = Curl
 
-    def __init__(self, hub, max_clients=10):
+    def __init__(self, hub=None, max_clients=10):
         if pycurl is None:
             raise ImportError('The curl client requires the pycurl library.')
+        hub = hub or get_event_loop()
         super(CurlClient, self).__init__(hub)
         self.max_clients = max_clients
 
@@ -71,6 +72,7 @@ class CurlClient(BaseClient):
         self._pending.append(request)
         self._process_queue()
         self._set_timeout(0)
+        return request
 
     def _handle_socket(self, event, fd, multi, data, _pycurl=pycurl):
         if event == _pycurl.POLL_REMOVE:
@@ -186,9 +188,9 @@ class CurlClient(BaseClient):
         request.headers.setdefault('Expect', '')
         request.headers.setdefault('Pragma', '')
 
-        curl.setopt(
+        setopt(
             _pycurl.HTTPHEADER,
-            ['%s %s'.format(h) for h in items(request.headers)],
+            ['{0}: {1}'.format(*h) for h in items(request.headers)],
         )
 
         setopt(
@@ -240,8 +242,8 @@ class CurlClient(BaseClient):
             setopt(meth, True)
 
         if request.method in ('POST', 'PUT'):
-            assert request.body is not None
-            reqbuffer = BytesIO(request.body)
+            body = request.body or ''
+            reqbuffer = BytesIO(body)
             setopt(_pycurl.READFUNCTION, reqbuffer.read)
             if request.method == 'POST':
 
@@ -249,14 +251,24 @@ class CurlClient(BaseClient):
                     if cmd == _pycurl.IOCMD_RESTARTREAD:
                         reqbuffer.seek(0)
                 setopt(_pycurl.IOCTLFUNCTION, ioctl)
-                setopt(_pycurl.POSTFIELDSIZE, len(request.body))
+                setopt(_pycurl.POSTFIELDSIZE, len(body))
             else:
-                setopt(_pycurl.INFILESIZE, len(request.body))
+                setopt(_pycurl.INFILESIZE, len(body))
         elif request.method == 'GET':
-            assert request.body is None
+            assert not request.body
 
-        # TODO Does not support Basic AUTH
-        curl.unsetopt(_pycurl.USERPWD)
+        if request.auth_username is not None:
+            auth_mode = {
+                'basic': _pycurl.HTTPAUTH_BASIC,
+                'digest': _pycurl.HTTPAUTH_DIGEST
+            }[request.auth_mode or 'basic']
+            setopt(_pycurl.HTTPAUTH, auth_mode)
+            userpwd = '{0}:{1}'.format(
+                request.auth_username, request.auth_password or '',
+            )
+            setopt(_pycurl.USERPWD, userpwd)
+        else:
+            curl.unsetopt(_pycurl.USERPWD)
 
         if request.client_cert is not None:
             setopt(_pycurl.SSLCERT, request.client_cert)

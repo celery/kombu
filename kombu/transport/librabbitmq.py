@@ -88,7 +88,10 @@ class Transport(base.Transport):
     driver_type = 'amqp'
     driver_name = 'librabbitmq'
 
-    supports_ev = True
+    implements = base.Transport.implements.extend(
+        async=True,
+        heartbeats=False,
+    )
 
     def __init__(self, client, **kwargs):
         self.client = client

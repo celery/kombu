@@ -33,10 +33,10 @@ class test_BrokerState(Case):
 
 class test_QoS(Case):
 
-    def setUp(self):
+    def setup(self):
         self.q = virtual.QoS(client().channel(), prefetch_count=10)
 
-    def tearDown(self):
+    def teardown(self):
         self.q._on_collect.cancel()
 
     def test_constructor(self):
@@ -174,10 +174,10 @@ class test_AbstractChannel(Case):
 
 class test_Channel(Case):
 
-    def setUp(self):
+    def setup(self):
         self.channel = client().channel()
 
-    def tearDown(self):
+    def teardown(self):
         if self.channel._qos is not None:
             self.channel._qos._on_collect.cancel()
 
@@ -518,7 +518,7 @@ class test_Channel(Case):
 
 class test_Transport(Case):
 
-    def setUp(self):
+    def setup(self):
         self.transport = client().transport
 
     def test_custom_polling_interval(self):

@@ -186,7 +186,7 @@ class test_Exchange(Case):
 
 class test_Queue(Case):
 
-    def setUp(self):
+    def setup(self):
         self.exchange = Exchange('foo', 'direct')
 
     def test_hash(self):

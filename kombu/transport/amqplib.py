@@ -315,7 +315,11 @@ class Transport(base.Transport):
 
     driver_name = 'amqplib'
     driver_type = 'amqp'
-    supports_ev = True
+
+    implements = base.Transport.implements.extend(
+        async=True,
+        heartbeats=False,
+    )
 
     def __init__(self, client, **kwargs):
         self.client = client
