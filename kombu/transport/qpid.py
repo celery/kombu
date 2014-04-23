@@ -507,7 +507,7 @@ class Channel(base.StdChannel):
         self.delivery_queue = delivery_queue
         self._tag_to_queue = {}
         self._consumer_threads = {}
-        qpid_connection = connection.create_qpid_connection()
+        qpid_connection = connection.get_qpid_connection()
         self._qpid_session = qpid_connection.session()
         self._broker = qpidtoollibs.BrokerAgent(qpid_connection)
         self._qos = None
@@ -1044,7 +1044,7 @@ class Channel(base.StdChannel):
 
         self.connection._callbacks[queue] = _callback
         self._consumers.add(consumer_tag)
-        my_thread = FDShimThread(self.connection.create_qpid_connection,
+        my_thread = FDShimThread(self.connection.get_qpid_connection,
                                  queue, self.delivery_queue)
         self._consumer_threads[queue] = my_thread
         my_thread.daemon = True
@@ -1326,13 +1326,13 @@ class FDShimThread(threading.Thread):
     # The timeout that blocking reads should occur for before waking up.
     block_timeout = 10
 
-    def __init__(self, create_qpid_connection, queue, delivery_queue):
+    def __init__(self, get_qpid_connection, queue, delivery_queue):
         """Instantiate a FDShimThread object.
 
-        :param create_qpid_connection: A function that will return a valid
+        :param get_qpid_connection: A function that will return a valid
             :class:`qpid.messaging Connection` object when called with no
             arguments.
-        :type create_qpid_connection: function
+        :type get_qpid_connection: function
         :param queue: The name of the queue to consume messages from.
         :type queue: str
         :param delivery_queue: The threadsafe :class:`Queue.Queue` object to
@@ -1341,7 +1341,7 @@ class FDShimThread(threading.Thread):
         :type delivery_queue: Queue.Queue
 
         """
-        self._session = create_qpid_connection().session()
+        self._session = get_qpid_connection().session()
         self._receiver = self._session.receiver(queue)
         self._queue = queue
         self._delivery_queue = delivery_queue
@@ -1463,7 +1463,7 @@ class Connection(object):
     :class:`Channel`, :class:`QoS`, and :class:`FDShimThread` objects need to
     have independent connections generated.  Any part of this codebase can
     get a valid connection to the broker with parameters saved in this object
-    by calling the bound :meth:`create_qpid_connection` method.
+    by calling the bound :meth:`get_qpid_connection` method.
 
     The Connection object is also responsible for maintaining the
     dictionary of references to callbacks that should be called when
@@ -1498,21 +1498,19 @@ class Connection(object):
         * sasl_mechanisms: The sasl authentication mechanism type to use. refer
               to SASL documentation for an explanation of valid values.
 
+        Creates a :class:`qpid.messaging.endpoints.Connection` object with
+        the saved parameters, and stores it as _qpid_conn.
+
         """
         self.connection_options = connection_options
         self.channels = []
         self._callbacks = {}
         self._qpid_conn = qpid.messaging.Connection.establish(**self.connection_options)
 
-    def create_qpid_connection(self):
-        """Create a :class:`qpid.messaging.endpoints.Connection` with saved
-        connection parameters.
+    def get_qpid_connection(self):
+        """Return the existing connection (singleton).
 
-        Creates a :class:`qpid.messaging.endpoints.Connection` object with
-        the saved parameters that were passed into the Connection at
-        instantiation time.
-
-        :return: The new qpid.messaging connection
+        :return: The existing qpid.messaging connection
         :rtype: :class:`qpid.messaging.endpoints.Connection`
         """
         return self._qpid_conn
