@@ -135,6 +135,7 @@ extras_require = extra['extras_require'] = {
     'librabbitmq': extras('librabbitmq.txt'),
     'pyro': extras('pyro.txt'),
     'slmq': extras('slmq.txt'),
+    'qpid': extras('qpid.txt'),
 }
 
 setup(
