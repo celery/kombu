@@ -249,15 +249,15 @@ class TestFDShimThread(Case):
         """Create a mock FDShimThread object and associated objects."""
         if QPID_NOT_AVAILABLE:
             raise SkipTest('qpid.messaging not installed')
-        self.mock_create_qpid_connection = Mock()
+        self.mock_get_qpid_connection = Mock()
         self.mock_session = Mock()
-        self.mock_create_qpid_connection().session = Mock(
+        self.mock_get_qpid_connection().session = Mock(
             return_value=self.mock_session)
         self.mock_receiver = Mock()
         self.mock_session.receiver = Mock(return_value=self.mock_receiver)
         self.mock_queue = Mock()
         self.mock_delivery_queue = Mock()
-        self.my_thread = FDShimThread(self.mock_create_qpid_connection,
+        self.my_thread = FDShimThread(self.mock_get_qpid_connection,
                                       self.mock_queue,
                                       self.mock_delivery_queue)
 
@@ -272,7 +272,7 @@ class TestFDShimThread(Case):
 
     def test_session_gets_made(self):
         """Test that a session is created"""
-        self.mock_create_qpid_connection().session.assert_called_with()
+        self.mock_get_qpid_connection().session.assert_called_with()
 
     def test_session_gets_stored(self):
         """Test that a session is saved properly after being created"""
@@ -410,7 +410,8 @@ class TestFDShim(Case):
 
 class TestConnection(ExtraAssertionsMixin, Case):
 
-    def setUp(self):
+    @patch('qpid.messaging.Connection')
+    def setUp(self, QpidConnection):
         """Setup a Connection with sane connection parameters."""
         if QPID_NOT_AVAILABLE:
             raise SkipTest('qpid.messaging not installed')
@@ -421,32 +422,33 @@ class TestConnection(ExtraAssertionsMixin, Case):
                                    'transport': 'tcp',
                                    'timeout': 10,
                                    'sasl_mechanisms': 'PLAIN'}
+        self.created_connection = Mock()
+        QpidConnection.establish = Mock(return_value=self.created_connection)
+        self.mock_qpid_connection = QpidConnection
         self.my_connection = Connection(**self.connection_options)
 
     def test_init_variables(self):
-        """Test that all simple init params are internally stored
-        correctly
+        """Test that all init params are internally stored correctly
         """
         self.assertDictEqual(self.connection_options,
                              self.my_connection.connection_options)
         self.assertTrue(isinstance(self.my_connection.channels, list))
         self.assertTrue(isinstance(self.my_connection._callbacks, dict))
+        self.mock_qpid_connection.establish.assert_called_with(
+            **self.connection_options)
+        internal_conn = self.my_connection._qpid_conn
+        self.assertTrue(self.created_connection is internal_conn)
 
     def test_verify_connection_class_attributes(self):
         """Verify that Channel class attribute is set correctly"""
         self.assertEqual(Channel, Connection.Channel)
 
-    @patch('qpid.messaging.Connection')
-    def test_create_qpid_connection(self, QpidConnection):
-        """Test that create_qpid_connection calls establish with the
-        connection_options, and then returns the result.
-        """
-        new_connection = 'connection'
-        QpidConnection.establish = Mock(return_value=new_connection)
-        conn_from_func = self.my_connection.create_qpid_connection()
-        QpidConnection.establish.assert_called_with(
-            **self.connection_options)
-        self.assertEqual(new_connection, conn_from_func)
+    def test_get_qpid_connection(self):
+        """Test that get_qpid_connection returns the connection."""
+        mock_connection = Mock()
+        self.my_connection._qpid_conn = mock_connection
+        returned_connection = self.my_connection.get_qpid_connection()
+        self.assertTrue(mock_connection is returned_connection)
 
     def test_close_channel_exists(self):
         """Test that calling close_channel() with a valid channel removes
@@ -486,7 +488,7 @@ class TestChannel(ExtraAssertionsMixin, Case):
         self.mock_qpid_session = Mock()
         self.mock_qpid_connection.session = \
             Mock(return_value=self.mock_qpid_session)
-        self.mock_connection.create_qpid_connection = \
+        self.mock_connection.get_qpid_connection = \
             Mock(return_value=self.mock_qpid_connection)
         self.mock_transport = Mock()
         self.mock_delivery_queue = Mock()
@@ -539,7 +541,7 @@ class TestChannel(ExtraAssertionsMixin, Case):
         self.assertTrue(self.my_channel._qos is None)
         self.assertTrue(isinstance(self.my_channel._consumers, set))
         self.assertFalse(self.my_channel.closed)
-        self.mock_connection.create_qpid_connection.assert_called_with()
+        self.mock_connection.get_qpid_connection.assert_called_with()
         self.mock_qpid_connection.session.assert_called_with()
         self.mock_BrokerAgent.assert_called_with(self.mock_qpid_connection)
 
@@ -893,7 +895,7 @@ class TestChannel(ExtraAssertionsMixin, Case):
                                            mock_callback)
         self.assertTrue(mock_consumer_tag in self.my_channel._consumers)
         mock_FDShimThread.assert_called_with(
-            self.mock_connection.create_qpid_connection,
+            self.mock_connection.get_qpid_connection,
             mock_queue,
             self.mock_delivery_queue)
         self.assertTrue(mock_queue in self.my_channel._consumer_threads)
