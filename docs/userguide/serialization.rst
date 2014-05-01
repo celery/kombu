@@ -179,6 +179,6 @@ supported by Kombu.
         def loads(s):
             return pickle.load(BytesIO(s))
 
-        register('my_pickle', loads, pickle.dumps,
+        register('my_pickle', pickle.dumps, loads,
                 content_type='application/x-pickle2',
                 content_encoding='binary')
