@@ -5,6 +5,7 @@ import os
 import sys
 import types
 
+from contextlib import contextmanager
 from functools import wraps
 
 import mock
@@ -252,3 +253,14 @@ def skip_if_not_module(module, import_errors=(ImportError, )):
 
 def skip_if_quick(fun):
     return skip_if_environ('QUICKTEST')(fun)
+
+
+@contextmanager
+def set_module_symbol(module, key, value):
+    module = importlib.import_module(module)
+    prev = getattr(module, key)
+    setattr(module, key, value)
+    try:
+        yield
+    finally:
+        setattr(module, key, prev)

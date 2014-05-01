@@ -18,7 +18,7 @@ from kombu.async.aws.connection import (
     AsyncAWSQueryConnection,
 )
 
-from kombu.tests.case import PromiseMock, Mock, patch
+from kombu.tests.case import PromiseMock, Mock, patch, set_module_symbol
 
 from .case import AWSCase
 
@@ -200,6 +200,11 @@ class test_AsyncHTTPResponse(AWSCase):
 
 
 class test_AsyncConnection(AWSCase):
+
+    def test_when_boto_missing(self):
+        with set_module_symbol('kombu.async.aws.connection', 'boto', None):
+            with self.assertRaises(ImportError):
+                AsyncConnection(Mock(name='client'))
 
     def test_client(self):
         x = AsyncConnection()

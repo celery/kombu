@@ -5,10 +5,15 @@ from kombu.async.aws.sqs import regions, connect_to_region
 from kombu.async.aws.sqs.connection import AsyncSQSConnection
 
 from kombu.tests.async.aws.case import AWSCase
-from kombu.tests.case import Mock, patch
+from kombu.tests.case import Mock, patch, set_module_symbol
 
 
 class test_connect_to_region(AWSCase):
+
+    def test_when_no_boto_installed(self):
+        with set_module_symbol('kombu.async.aws.sqs', 'boto', None):
+            with self.assertRaises(ImportError):
+                regions()
 
     def test_using_async_connection(self):
         for region in regions():
