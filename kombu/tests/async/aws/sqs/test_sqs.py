@@ -4,10 +4,11 @@ from __future__ import absolute_import
 from kombu.async.aws.sqs import regions, connect_to_region
 from kombu.async.aws.sqs.connection import AsyncSQSConnection
 
-from kombu.tests.case import HubCase, Mock, patch
+from kombu.tests.async.aws.case import AWSCase
+from kombu.tests.case import Mock, patch
 
 
-class test_connect_to_region(HubCase):
+class test_connect_to_region(AWSCase):
 
     def test_using_async_connection(self):
         for region in regions():

@@ -3,11 +3,12 @@ from __future__ import absolute_import
 
 from kombu.async.aws.sqs.message import AsyncMessage
 
-from kombu.tests.case import HubCase, PromiseMock, Mock
+from kombu.tests.async.aws.case import AWSCase
+from kombu.tests.case import PromiseMock, Mock
 from kombu.utils import uuid
 
 
-class test_AsyncMessage(HubCase):
+class test_AsyncMessage(AWSCase):
 
     def setup(self):
         self.queue = Mock(name='queue')

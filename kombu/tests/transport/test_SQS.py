@@ -7,19 +7,17 @@ slightly.
 
 from __future__ import absolute_import
 
-from kombu import Connection
-from kombu import messaging
-from kombu import five
-from kombu.tests.case import Case, SkipTest
-import kombu
-
 try:
-    from kombu.transport import SQS
-except ImportError:
-    # Boto must not be installed if the SQS transport fails to import,
-    # so we skip all unit tests. Set SQS to None here, and it will be
-    # checked during the setup() phase later.
-    SQS = None
+    import boto
+except ImportError:  # pragma: no cover
+    boto = None  # noqa
+
+from kombu import five
+from kombu import messaging
+from kombu import Connection, Exchange, Queue
+from kombu.tests.case import Case, SkipTest
+
+from kombu.transport import SQS
 
 
 class SQSQueueMock(object):
@@ -97,8 +95,8 @@ class test_Channel(Case):
         """Mock the back-end SQS classes"""
         # Sanity check... if SQS is None, then it did not import and we
         # cannot execute our tests.
-        if SQS is None:
-            raise SkipTest('Boto is not installed')
+        if boto is None:
+            raise SkipTest('boto is not installed')
 
         SQS.Channel._queue_cache.clear()
 
@@ -114,10 +112,8 @@ class test_Channel(Case):
         SQS.Channel.sqs = mock_sqs()
 
         # Set up a task exchange for passing tasks through the queue
-        self.exchange = kombu.Exchange('test_SQS', type='direct')
-        self.queue = kombu.Queue(self.queue_name,
-                                 self.exchange,
-                                 self.queue_name)
+        self.exchange = Exchange('test_SQS', type='direct')
+        self.queue = Queue(self.queue_name, self.exchange, self.queue_name)
 
         # Mock up a test SQS Queue with the SQSQueueMock class (and always
         # make sure its a clean empty queue)

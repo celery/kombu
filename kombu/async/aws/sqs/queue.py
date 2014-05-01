@@ -3,9 +3,7 @@ from __future__ import absolute_import
 
 from amqp.promise import transform
 
-from boto.exception import BotoClientError
-from boto.sqs import queue as _queue
-
+from .ext import Queue as _Queue
 from .message import AsyncMessage
 
 _all__ = ['AsyncQueue']
@@ -15,7 +13,7 @@ def list_first(rs):
     return rs[0] if len(rs) == 1 else None
 
 
-class AsyncQueue(_queue.Queue):
+class AsyncQueue(_Queue):
 
     def __init__(self, connection=None, url=None, message_class=AsyncMessage):
         self.connection = connection
@@ -24,7 +22,7 @@ class AsyncQueue(_queue.Queue):
         self.visibility_timeout = None
 
     def _NA(self, *args, **kwargs):
-        raise BotoClientError('Not implemented')
+        raise NotImplementedError()
     count_slow = dump = save_to_file = save_to_filename = save = \
         save_to_s3 = load_from_s3 = load_from_file = load_from_filename = \
         load = clear = _NA

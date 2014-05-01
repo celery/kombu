@@ -18,7 +18,9 @@ from kombu.async.aws.connection import (
     AsyncAWSQueryConnection,
 )
 
-from kombu.tests.case import HubCase, PromiseMock, Mock, patch
+from kombu.tests.case import PromiseMock, Mock, patch
+
+from .case import AWSCase
 
 # Not currently working
 VALIDATES_CERT = False
@@ -33,7 +35,7 @@ def passthrough(*args, **kwargs):
     return m
 
 
-class test_AsyncHTTPConnection(HubCase):
+class test_AsyncHTTPConnection(AWSCase):
 
     def test_AsyncHTTPSConnection(self):
         x = AsyncHTTPSConnection('aws.vandelay.com')
@@ -185,7 +187,7 @@ class test_AsyncHTTPConnection(HubCase):
         self.assertIsNone(x.endheaders())
 
 
-class test_AsyncHTTPResponse(HubCase):
+class test_AsyncHTTPResponse(AWSCase):
 
     def test_with_error(self):
         r = Mock(name='response')
@@ -197,7 +199,7 @@ class test_AsyncHTTPResponse(HubCase):
         self.assertFalse(x.reason)
 
 
-class test_AsyncConnection(HubCase):
+class test_AsyncConnection(AWSCase):
 
     def test_client(self):
         x = AsyncConnection()
@@ -223,7 +225,7 @@ class test_AsyncConnection(HubCase):
         self.assertEqual(conn.port, 80)
 
 
-class test_AsyncAWSAuthConnection(HubCase):
+class test_AsyncAWSAuthConnection(AWSCase):
 
     @patch('boto.log', create=True)
     def test_make_request(self, _):
@@ -273,7 +275,7 @@ class test_AsyncAWSAuthConnection(HubCase):
         )
 
 
-class test_AsyncAWSQueryConnection(HubCase):
+class test_AsyncAWSQueryConnection(AWSCase):
 
     def setup(self):
         self.x = AsyncAWSQueryConnection('aws.vandelay.com',

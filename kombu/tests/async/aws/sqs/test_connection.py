@@ -8,10 +8,11 @@ from kombu.async.aws.sqs.message import AsyncMessage
 from kombu.async.aws.sqs.queue import AsyncQueue
 from kombu.utils import uuid
 
-from kombu.tests.case import HubCase, PromiseMock, Mock
+from kombu.tests.async.aws.case import AWSCase
+from kombu.tests.case import PromiseMock, Mock
 
 
-class test_AsyncSQSConnection(HubCase):
+class test_AsyncSQSConnection(AWSCase):
 
     def setup(self):
         self.x = AsyncSQSConnection('ak', 'sk')

@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 
-from boto.sqs import message as _message
+from .ext import (
+    RawMessage, Message, MHMessage, EncodedMHMessage, JSONMessage,
+)
 
 __all__ = ['BaseAsyncMessage', 'AsyncRawMessage', 'AsyncMessage',
-           'AsyncMHMessage', 'AsyncEncodedMHMessage']
+           'AsyncMHMessage', 'AsyncEncodedMHMessage', 'AsyncJSONMessage']
 
 
 class BaseAsyncMessage(object):
@@ -20,17 +22,21 @@ class BaseAsyncMessage(object):
             )
 
 
-class AsyncRawMessage(BaseAsyncMessage, _message.RawMessage):
+class AsyncRawMessage(BaseAsyncMessage, RawMessage):
     pass
 
 
-class AsyncMessage(BaseAsyncMessage, _message.Message):
+class AsyncMessage(BaseAsyncMessage, Message):
     pass
 
 
-class AsyncMHMessage(BaseAsyncMessage, _message.MHMessage):
+class AsyncMHMessage(BaseAsyncMessage, MHMessage):
     pass
 
 
-class AsyncEncodedMHMessage(BaseAsyncMessage, _message.EncodedMHMessage):
+class AsyncEncodedMHMessage(BaseAsyncMessage, EncodedMHMessage):
+    pass
+
+
+class AsyncJSONMessage(BaseAsyncMessage, JSONMessage):
     pass

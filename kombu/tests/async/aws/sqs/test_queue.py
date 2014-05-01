@@ -2,12 +2,13 @@
 from __future__ import absolute_import
 
 from kombu.async.aws.sqs.message import AsyncMessage
-from kombu.async.aws.sqs.queue import AsyncQueue, BotoClientError
+from kombu.async.aws.sqs.queue import AsyncQueue
 
-from kombu.tests.case import HubCase, PromiseMock, Mock
+from kombu.tests.async.aws.case import AWSCase
+from kombu.tests.case import PromiseMock, Mock
 
 
-class test_AsyncQueue(HubCase):
+class test_AsyncQueue(AWSCase):
 
     def setup(self):
         self.conn = Mock(name='connection')
@@ -157,45 +158,45 @@ class test_AsyncQueue(HubCase):
         self.callback.assert_called_with(909)
 
     def test_interface__count_slow(self):
-        with self.assertRaises(BotoClientError):
+        with self.assertRaises(NotImplementedError):
             self.x.count_slow()
 
     def test_interface__dump(self):
-        with self.assertRaises(BotoClientError):
+        with self.assertRaises(NotImplementedError):
             self.x.dump()
 
     def test_interface__save_to_file(self):
-        with self.assertRaises(BotoClientError):
+        with self.assertRaises(NotImplementedError):
             self.x.save_to_file()
 
     def test_interface__save_to_filename(self):
-        with self.assertRaises(BotoClientError):
+        with self.assertRaises(NotImplementedError):
             self.x.save_to_filename()
 
     def test_interface__save(self):
-        with self.assertRaises(BotoClientError):
+        with self.assertRaises(NotImplementedError):
             self.x.save()
 
     def test_interface__save_to_s3(self):
-        with self.assertRaises(BotoClientError):
+        with self.assertRaises(NotImplementedError):
             self.x.save_to_s3()
 
     def test_interface__load_from_s3(self):
-        with self.assertRaises(BotoClientError):
+        with self.assertRaises(NotImplementedError):
             self.x.load_from_s3()
 
     def test_interface__load_from_file(self):
-        with self.assertRaises(BotoClientError):
+        with self.assertRaises(NotImplementedError):
             self.x.load_from_file()
 
     def test_interface__load_from_filename(self):
-        with self.assertRaises(BotoClientError):
+        with self.assertRaises(NotImplementedError):
             self.x.load_from_filename()
 
     def test_interface__load(self):
-        with self.assertRaises(BotoClientError):
+        with self.assertRaises(NotImplementedError):
             self.x.load()
 
     def test_interface__clear(self):
-        with self.assertRaises(BotoClientError):
+        with self.assertRaises(NotImplementedError):
             self.x.clear()

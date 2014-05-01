@@ -3,25 +3,25 @@ from __future__ import absolute_import
 
 from amqp.promise import transform
 
-from boto.regioninfo import RegionInfo
-from boto.sqs import connection as _connection
-from boto.sqs.attributes import Attributes
-from boto.sqs.batchresults import BatchResults
-
 from kombu.async.aws.connection import AsyncAWSQueryConnection
+from kombu.async.aws.ext import RegionInfo
 
+from .ext import boto, Attributes, BatchResults, SQSConnection
 from .message import AsyncMessage
 from .queue import AsyncQueue
+
 
 __all__ = ['AsyncSQSConnection']
 
 
-class AsyncSQSConnection(AsyncAWSQueryConnection, _connection.SQSConnection):
+class AsyncSQSConnection(AsyncAWSQueryConnection, SQSConnection):
 
     def __init__(self, aws_access_key_id=None, aws_secret_access_key=None,
                  is_secure=True, port=None, proxy=None, proxy_port=None,
                  proxy_user=None, proxy_pass=None, debug=0,
                  https_connection_factory=None, region=None, *args, **kwargs):
+        if boto is None:
+            raise ImportError('boto is not installed')
         self.region = region or RegionInfo(
             self, self.DefaultRegionName, self.DefaultRegionEndpoint,
             connection_cls=type(self),

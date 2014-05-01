@@ -46,14 +46,12 @@ import string
 from amqp.promise import transform, ensure_promise, promise
 from anyjson import loads, dumps
 
-from boto import exception
-from boto import sqs as _sqs
-from boto.sqs.connection import SQSConnection
-from boto.sqs.message import Message
-
 from kombu.async import get_event_loop
 from kombu.async.aws import sqs as _asynsqs
-from kombu.async.aws.sqs import AsyncSQSConnection
+from kombu.async.aws.ext import boto, exception
+from kombu.async.aws.sqs.connection import AsyncSQSConnection, SQSConnection
+from kombu.async.aws.sqs.ext import regions
+from kombu.async.aws.sqs.message import Message
 from kombu.five import Empty, range, string_t, text_t
 from kombu.log import get_logger
 from kombu.utils import cached_property
@@ -92,6 +90,8 @@ class Channel(virtual.Channel):
     _noack_queues = set()
 
     def __init__(self, *args, **kwargs):
+        if boto is None:
+            raise ImportError('boto is not installed')
         super(Channel, self).__init__(*args, **kwargs)
 
         # SQS blows up when you try to create a new queue if one already
@@ -381,7 +381,7 @@ class Channel(virtual.Channel):
     @property
     def sqs(self):
         if self._sqs is None:
-            self._sqs = self._aws_connect_to(SQSConnection, _sqs.regions())
+            self._sqs = self._aws_connect_to(SQSConnection, regions())
         return self._sqs
 
     @property
@@ -438,4 +438,8 @@ class Transport(virtual.Transport):
     )
     driver_type = 'sqs'
     driver_name = 'sqs'
-    supports_ev = True
+
+    implements = virtual.Transport.implements.extend(
+        async=True,
+        exchange_type=frozenset(['direct']),
+    )

@@ -11,17 +11,9 @@ from amqp.promise import promise, transform
 from kombu.async.http import Headers, Request, get_client
 from kombu.five import StringIO, items
 
-try:
-    import boto
-    from boto.connection import AWSAuthConnection, AWSQueryConnection
-    from boto.handler import XmlHandler
-    from boto.resultset import ResultSet
-except ImportError:  # pragma: no cover
-    boto = ResultSet = XmlHandler = None  # noqa
-
-    class _void(object):
-        pass
-    AWSAuthConnection, AWSQueryConnection = _void  # noqa
+from .ext import (
+    boto, AWSAuthConnection, AWSQueryConnection, XmlHandler, ResultSet,
+)
 
 __all__ = ['AsyncHTTPConnection', 'AsyncHTTPSConnection',
            'AsyncHTTPResponse', 'AsyncConnection',
@@ -152,6 +144,8 @@ class AsyncHTTPSConnection(AsyncHTTPConnection):
 class AsyncConnection(object):
 
     def __init__(self, http_client=None, **kwargs):
+        if boto is None:
+            raise ImportError('boto is not installed')
         self._httpclient = http_client or get_client()
 
     def get_http_connection(self, host, port, is_secure):

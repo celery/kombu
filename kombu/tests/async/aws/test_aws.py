@@ -3,10 +3,10 @@ from __future__ import absolute_import
 
 from kombu.async.aws import connect_sqs
 
-from kombu.tests.case import HubCase
+from .case import AWSCase
 
 
-class test_connect_sqs(HubCase):
+class test_connect_sqs(AWSCase):
 
     def test_connection(self):
         x = connect_sqs('AAKI', 'ASAK')
