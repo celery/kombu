@@ -7,7 +7,7 @@ from kombu.async import http
 from kombu.async.http.base import BaseClient, normalize_header
 from kombu.exceptions import HttpError
 
-from kombu.tests.case import HubCase, Mock, PromiseMock
+from kombu.tests.case import HubCase, Mock, PromiseMock, case_requires
 
 
 class test_Headers(HubCase):
@@ -137,6 +137,7 @@ class test_BaseClient(HubCase):
         c.close.assert_called_with()
 
 
+@case_requires('pycurl')
 class test_Client(HubCase):
 
     def test_get_client(self):

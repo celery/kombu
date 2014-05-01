@@ -4,7 +4,7 @@ import sys
 
 from kombu import Connection
 
-from kombu.tests.case import Case, SkipTest, Mock, mask_modules
+from kombu.tests.case import Case, Mock, mask_modules, case_requires
 
 
 class MockConnection(dict):
@@ -32,12 +32,9 @@ else:
             pass
 
 
+@case_requires('amqplib')
 class amqplibCase(Case):
-
-    def setUp(self):
-        if amqplib is None:
-            raise SkipTest('amqplib not installed')
-        super(amqplibCase, self).setUp()
+    pass
 
 
 class test_Channel(amqplibCase):

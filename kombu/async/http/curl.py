@@ -1,7 +1,5 @@
 from __future__ import absolute_import
 
-import pycurl
-
 from collections import deque
 from functools import partial
 from io import BytesIO

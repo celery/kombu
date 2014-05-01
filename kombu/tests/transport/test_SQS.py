@@ -7,15 +7,10 @@ slightly.
 
 from __future__ import absolute_import
 
-try:
-    import boto
-except ImportError:  # pragma: no cover
-    boto = None  # noqa
-
 from kombu import five
 from kombu import messaging
 from kombu import Connection, Exchange, Queue
-from kombu.tests.case import Case, SkipTest
+from kombu.tests.case import Case, case_requires
 
 from kombu.transport import SQS
 
@@ -86,6 +81,7 @@ class SQSConnectionMock(object):
         return q
 
 
+@case_requires('boto')
 class test_Channel(Case):
 
     def handleMessageCallback(self, message):
@@ -95,9 +91,6 @@ class test_Channel(Case):
         """Mock the back-end SQS classes"""
         # Sanity check... if SQS is None, then it did not import and we
         # cannot execute our tests.
-        if boto is None:
-            raise SkipTest('boto is not installed')
-
         SQS.Channel._queue_cache.clear()
 
         # Common variables used in the unit tests

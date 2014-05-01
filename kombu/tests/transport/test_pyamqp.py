@@ -13,7 +13,7 @@ else:
 from kombu import Connection
 from kombu.five import nextfun
 
-from kombu.tests.case import Case, Mock, SkipTest, mask_modules, patch
+from kombu.tests.case import Case, Mock, mask_modules, patch
 
 
 class MockConnection(dict):
@@ -25,8 +25,6 @@ class MockConnection(dict):
 class test_Channel(Case):
 
     def setup(self):
-        if pyamqp is None:
-            raise SkipTest('py-amqp not installed')
 
         class Channel(pyamqp.Channel):
             wait_returns = []
@@ -81,8 +79,6 @@ class test_Channel(Case):
 class test_Transport(Case):
 
     def setup(self):
-        if pyamqp is None:
-            raise SkipTest('py-amqp not installed')
         self.connection = Connection('pyamqp://')
         self.transport = self.connection.transport
 
@@ -135,10 +131,6 @@ class test_Transport(Case):
 
 
 class test_pyamqp(Case):
-
-    def setup(self):
-        if pyamqp is None:
-            raise SkipTest('py-amqp not installed')
 
     def test_default_port(self):
 

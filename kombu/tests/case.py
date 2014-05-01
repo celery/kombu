@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 
+import importlib
 import os
 import sys
 import types
@@ -55,6 +56,25 @@ def PromiseMock(*args, **kwargs):
     m.set_error_state.side_effect = on_throw
     m.throw1.side_effect = on_throw
     return m
+
+
+def case_requires(package, *more_packages):
+    packages = [package] + list(more_packages)
+
+    def attach(cls):
+        setup = cls.setUp
+
+        @wraps(setup)
+        def around_setup(self):
+            for package in packages:
+                try:
+                    importlib.import_module(package)
+                except ImportError:
+                    raise SkipTest('{0} is not installed'.format(package))
+            setup(self)
+        cls.setUp = around_setup
+        return cls
+    return attach
 
 
 class HubCase(Case):
