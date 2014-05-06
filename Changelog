@@ -4,6 +4,26 @@
  Change history
 ================
 
+.. _version-3.0.16:
+
+3.0.16
+======
+:release-date: 2014-05-06 01:00 P.M UTC
+:release-by: Ask Solem
+
+- ``kombu[librabbitmq]`` now depends on librabbitmq 1.5.1.
+
+- Redis: Fixes ``TypeError`` problem in ``unregister`` (Issue #342).
+
+    Fix contributed by Tobias Schottdorf.
+
+- Tests: Some unit tests accidentally required the `redis-py` library.
+
+    Fix contributed by Randy Barlow.
+
+- librabbitmq: Would crash when using an older version of :mod:`librabbitmq`,
+  now emits warning instead.
+
 .. _version-3.0.15:
 
 3.0.15
