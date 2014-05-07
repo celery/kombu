@@ -94,6 +94,17 @@ class Channel(virtual.Channel):
             params=[tuple(task_id)])\
             .delete()
 
+        # inform Celery we've revoked the task in case anyone is waiting-
+        # use store_result so that it creates the task entry if required
+        from djcelery.models import TaskMeta
+        from celery import states
+        from celery.exceptions import TaskRevokedError
+
+        for task in task_id:
+            # FIXME: shouldn't overwrite finished tasks
+            TaskMeta.objects.store_result(task, TaskRevokedError,
+                                          states.REVOKED)
+
 
 class Transport(virtual.Transport):
     Channel = Channel
