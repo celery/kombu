@@ -661,11 +661,14 @@ class TestChannel(ExtraAssertionsMixin, Case):
         mock_nowait = Mock()
         mock_arguments = Mock()
         mock_msg_count = Mock()
+        mock_queue.startswith.return_value = False
+        mock_queue.endswith.return_value = False
         options = {'passive': mock_passive,
                    'durable': mock_durable,
                    'exclusive': mock_exclusive,
                    'auto-delete': mock_auto_delete,
-                   'arguments': mock_arguments}
+                   'arguments': mock_arguments,
+                   'qpid.auto_delete_timeout': 3}
         mock_consumer_count = Mock()
         mock_return_value = Mock()
         values_dict = {'msgDepth': mock_msg_count,
@@ -691,14 +694,86 @@ class TestChannel(ExtraAssertionsMixin, Case):
                                                    mock_consumer_count)
         self.assertTrue(mock_return_value is result)
 
-    def test_queue_declare_test_defaults(self):
-        """Test declare_queue defaults"""
+    def test_queue_declare_set_ring_policy_for_celeryev(self):
+        """Test declare_queue sets ring_policy for celeryev"""
         mock_queue = Mock()
+        mock_queue.startswith.return_value = True
+        mock_queue.endswith.return_value = False
         expected_default_options = {'passive': False,
                                     'durable': False,
                                     'exclusive': False,
                                     'auto-delete': True,
-                                    'arguments': None}
+                                    'arguments': None,
+                                    'qpid.auto_delete_timeout': 3,
+                                    'qpid.policy_type': 'ring'}
+        mock_msg_count = Mock()
+        mock_consumer_count = Mock()
+        values_dict = {'msgDepth': mock_msg_count,
+                       'consumerCount': mock_consumer_count}
+        mock_queue_data = Mock()
+        mock_queue_data.values = values_dict
+        self.mock_broker.addQueue.return_value = None
+        self.mock_broker.getQueue.return_value = mock_queue_data
+        self.my_channel.queue_declare(mock_queue)
+        mock_queue.startswith.assert_called_with('celeryev')
+
+    def test_queue_declare_set_ring_policy_for_pidbox(self):
+        """Test declare_queue sets ring_policy for pidbox"""
+        mock_queue = Mock()
+        mock_queue.startswith.return_value = False
+        mock_queue.endswith.return_value = True
+        expected_default_options = {'passive': False,
+                                    'durable': False,
+                                    'exclusive': False,
+                                    'auto-delete': True,
+                                    'arguments': None,
+                                    'qpid.auto_delete_timeout': 3,
+                                    'qpid.policy_type': 'ring'}
+        mock_msg_count = Mock()
+        mock_consumer_count = Mock()
+        values_dict = {'msgDepth': mock_msg_count,
+                       'consumerCount': mock_consumer_count}
+        mock_queue_data = Mock()
+        mock_queue_data.values = values_dict
+        self.mock_broker.addQueue.return_value = None
+        self.mock_broker.getQueue.return_value = mock_queue_data
+        self.my_channel.queue_declare(mock_queue)
+        mock_queue.endswith.assert_called_with('pidbox')
+
+    def test_queue_declare_ring_policy_not_set_as_expected(self):
+        """Test declare_queue does not set ring_policy as expected"""
+        mock_queue = Mock()
+        mock_queue.startswith.return_value = False
+        mock_queue.endswith.return_value = False
+        expected_default_options = {'passive': False,
+                                    'durable': False,
+                                    'exclusive': False,
+                                    'auto-delete': True,
+                                    'arguments': None,
+                                    'qpid.auto_delete_timeout': 3}
+        mock_msg_count = Mock()
+        mock_consumer_count = Mock()
+        values_dict = {'msgDepth': mock_msg_count,
+                       'consumerCount': mock_consumer_count}
+        mock_queue_data = Mock()
+        mock_queue_data.values = values_dict
+        self.mock_broker.addQueue.return_value = None
+        self.mock_broker.getQueue.return_value = mock_queue_data
+        self.my_channel.queue_declare(mock_queue)
+        mock_queue.startswith.assert_called_with('celeryev')
+        mock_queue.endswith.assert_called_with('pidbox')
+
+    def test_queue_declare_test_defaults(self):
+        """Test declare_queue defaults"""
+        mock_queue = Mock()
+        mock_queue.startswith.return_value = False
+        mock_queue.endswith.return_value = False
+        expected_default_options = {'passive': False,
+                                    'durable': False,
+                                    'exclusive': False,
+                                    'auto-delete': True,
+                                    'arguments': None,
+                                    'qpid.auto_delete_timeout': 3}
         mock_msg_count = Mock()
         mock_consumer_count = Mock()
         values_dict = {'msgDepth': mock_msg_count,
@@ -713,7 +788,7 @@ class TestChannel(ExtraAssertionsMixin, Case):
             options=expected_default_options)
 
     def test_queue_declare_raises_exception_not_silenced(self):
-        """Test declare_queue, raise an exception that is and not silenced"""
+        """Test declare_queue, raise an exception that is raised and not silenced"""
         unique_exception = Exception('This exception should not be silenced')
         mock_queue = Mock()
         self.mock_broker.addQueue.side_effect = unique_exception
