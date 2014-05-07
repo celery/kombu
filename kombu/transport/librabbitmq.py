@@ -160,7 +160,7 @@ class Transport(base.Transport):
         try:
             props = connection.server_properties
         except AttributeError:
-            warnings.warn(UserWarning, W_VERSION)
+            warnings.warn(UserWarning(W_VERSION))
         else:
             if props.get('product') == 'RabbitMQ':
                 return version_string_as_tuple(props['version']) < (3, 3)
