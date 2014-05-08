@@ -287,20 +287,26 @@ class Hub(object):
                         to_consolidate.append(fileno)
                         continue
                     cb = cbargs = None
-                    try:
-                        if event & READ:
+
+                    if event & READ:
+                        try:
                             cb, cbargs = readers[fileno]
-                        elif event & WRITE:
+                        except KeyError:
+                            self.remove_reader(fileno)
+                            continue
+                    elif event & WRITE:
+                        try:
                             cb, cbargs = writers[fileno]
-                        elif event & ERR:
-                            try:
-                                cb, cbargs = (readers.get(fileno) or
-                                              writers.get(fileno))
-                            except TypeError:
-                                pass
-                    except (KeyError, Empty):
-                        hub_remove(fileno)
-                        continue
+                        except KeyError:
+                            self.remove_writer(fileno)
+                            continue
+                    elif event & ERR:
+                        try:
+                            cb, cbargs = (readers.get(fileno) or
+                                          writers.get(fileno))
+                        except TypeError:
+                            pass
+
                     if cb is None:
                         continue
                     if isinstance(cb, generator):
