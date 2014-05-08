@@ -662,11 +662,8 @@ class Channel(virtual.Channel):
 
     def _put(self, queue, message, **kwargs):
         """Deliver message."""
-        try:
-            pri = max(min(int(
-                message['properties']['delivery_info']['priority']), 9), 0)
-        except (TypeError, ValueError, KeyError):
-            pri = 0
+        pri = self._get_message_priority(message)
+
         with self.conn_or_acquire() as client:
             client.lpush(self._q_for_pri(queue, pri), dumps(message))
 
