@@ -15,6 +15,7 @@ import sys
 import warnings
 
 from array import array
+from collections import OrderedDict
 from itertools import count
 from multiprocessing.util import Finalize
 from time import sleep
@@ -23,8 +24,7 @@ from amqp.protocol import queue_declare_ok_t
 
 from kombu.exceptions import ResourceError, ChannelError
 from kombu.five import Empty, items, monotonic
-from kombu.utils import emergency_dump_state, kwdict, say, uuid
-from kombu.utils.compat import OrderedDict
+from kombu.utils import emergency_dump_state, say, uuid
 from kombu.utils.encoding import str_to_bytes, bytes_to_str
 
 from kombu.transport import base
@@ -253,7 +253,7 @@ class Message(base.Message):
             'delivery_info': properties.get('delivery_info'),
             'postencode': 'utf-8',
         })
-        super(Message, self).__init__(channel, **kwdict(kwargs))
+        super(Message, self).__init__(channel, **kwargs)
 
     def serializable(self):
         props = self.properties

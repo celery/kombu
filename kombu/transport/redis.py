@@ -896,8 +896,8 @@ class Channel(virtual.Channel):
     @property
     def active_queues(self):
         """Set of queues being consumed from (excluding fanout queues)."""
-        return set(queue for queue in self._active_queues
-                   if queue not in self.active_fanout_queues)
+        return {queue for queue in self._active_queues
+                if queue not in self.active_fanout_queues}
 
 
 class Transport(virtual.Transport):

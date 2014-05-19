@@ -230,7 +230,7 @@ class test_Consumer(Case):
         b = Consumer(self.connection, accept=['json', 'pickle'])
         self.assertSetEqual(
             b.accept,
-            set(['application/json', 'application/x-python-serialize']),
+            {'application/json', 'application/x-python-serialize'},
         )
         c = Consumer(self.connection, accept=b.accept)
         self.assertSetEqual(b.accept, c.accept)

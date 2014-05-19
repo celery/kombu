@@ -66,8 +66,9 @@ logger = get_logger(__name__)
 
 # dots are replaced by dash, all other punctuation
 # replaced by underscore.
-CHARS_REPLACE_TABLE = dict((ord(c), 0x5f)
-                           for c in string.punctuation if c not in '-_.')
+CHARS_REPLACE_TABLE = {
+    ord(c): 0x5f for c in string.punctuation if c not in '-_.'
+}
 CHARS_REPLACE_TABLE[0x2e] = 0x2d  # '.' -> '-'
 
 
@@ -154,7 +155,7 @@ class Table(Domain):
                 return item
 
     def get_exchanges(self):
-        return list(set(i['exchange'] for i in self.select()))
+        return list({i['exchange'] for i in self.select()})
 
     def _get_queue_item(self, queue):
         return self._try_first("""WHERE queue = '%s' limit 1""" % queue)

@@ -173,12 +173,15 @@ supported by Kombu.
     .. code-block:: python
 
         import pickle
-        from kombu.serialization import BytesIO, register
+        from io import BytesIO
+        from kombu import serialization
 
 
         def loads(s):
             return pickle.load(BytesIO(s))
 
-        register('my_pickle', pickle.dumps, loads,
-                content_type='application/x-pickle2',
-                content_encoding='binary')
+        serialization.register(
+            'my_pickle', pickle.dumps, loads,
+            content_type='application/x-pickle2',
+            content_encoding='binary',
+        )

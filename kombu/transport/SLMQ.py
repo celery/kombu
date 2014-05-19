@@ -27,8 +27,9 @@ except ImportError:  # pragma: no cover
     get_client = ResponseError = None  # noqa
 
 # dots are replaced by dash, all other punctuation replaced by underscore.
-CHARS_REPLACE_TABLE = dict(
-    (ord(c), 0x5f) for c in string.punctuation if c not in '_')
+CHARS_REPLACE_TABLE = {
+    ord(c): 0x5f for c in string.punctuation if c not in '_'
+}
 
 
 class Channel(virtual.Channel):

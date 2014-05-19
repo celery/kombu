@@ -35,7 +35,7 @@ except ImportError:  # pragma: no cover
     FILENO_ERRORS = (AttributeError, ValueError)  # noqa
 
 
-__all__ = ['EqualityDict', 'say', 'uuid', 'kwdict', 'maybe_list',
+__all__ = ['EqualityDict', 'say', 'uuid', 'maybe_list',
            'fxrange', 'fxrangemax', 'retry_over_time',
            'emergency_dump_state', 'cached_property',
            'reprkwargs', 'reprcall', 'nested', 'fileno', 'maybe_fileno']
@@ -157,22 +157,6 @@ def uuid():
     """
     return str(uuid4())
 gen_unique_id = uuid
-
-
-if sys.version_info >= (2, 6, 5):
-
-    def kwdict(kwargs):
-        return kwargs
-else:
-    def kwdict(kwargs):  # pragma: no cover  # noqa
-        """Make sure keyword arguments are not in Unicode.
-
-        This should be fixed in newer Python versions,
-        see: http://bugs.python.org/issue4978.
-
-        """
-        return dict((key.encode('utf-8'), value)
-                    for key, value in items(kwargs))
 
 
 def maybe_list(v):

@@ -53,9 +53,9 @@ WRITE = POLL_WRITE = 0x004
 ERR = POLL_ERR = 0x008 | 0x010
 
 try:
-    SELECT_BAD_FD = set((errno.EBADF, errno.WSAENOTSOCK))
+    SELECT_BAD_FD = {errno.EBADF, errno.WSAENOTSOCK}
 except AttributeError:
-    SELECT_BAD_FD = set((errno.EBADF,))
+    SELECT_BAD_FD = {errno.EBADF}
 
 
 class Poller(object):

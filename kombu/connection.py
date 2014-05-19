@@ -10,6 +10,7 @@ from __future__ import absolute_import
 import os
 import socket
 
+from collections import OrderedDict
 from contextlib import contextmanager
 from functools import partial
 from itertools import count, cycle
@@ -26,7 +27,6 @@ from .five import Empty, range, string_t, text_t, LifoQueue as _LifoQueue
 from .log import get_logger
 from .transport import get_transport_cls, supports_librabbitmq
 from .utils import cached_property, retry_over_time, shufflecycle, HashedSeq
-from .utils.compat import OrderedDict
 from .utils.functional import lazy
 from .utils.url import parse_url, urlparse
 

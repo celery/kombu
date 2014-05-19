@@ -6,8 +6,6 @@ except ImportError:
     from urllib import unquote                  # noqa
     from urlparse import urlparse, parse_qsl    # noqa
 
-from . import kwdict
-
 
 def _parse_url(url):
     scheme = urlparse(url).scheme
@@ -28,7 +26,7 @@ def _parse_url(url):
             unquote(parts.username or '') or None,
             unquote(parts.password or '') or None,
             unquote(path or '') or None,
-            kwdict(dict(parse_qsl(parts.query))))
+            dict(parse_qsl(parts.query)))
 
 
 def parse_url(url):

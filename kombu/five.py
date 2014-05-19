@@ -96,7 +96,7 @@ if PY3:  # pragma: no cover
 
     from queue import Queue, Empty, Full, LifoQueue
     from itertools import zip_longest
-    from io import StringIO, BytesIO
+    from io import StringIO
 
     map = map
     zip = zip
@@ -143,10 +143,7 @@ else:
         izip as zip,
         izip_longest as zip_longest,
     )
-    try:
-        from cStringIO import StringIO  # noqa
-    except ImportError:  # pragma: no cover
-        from StringIO import StringIO   # noqa
+    from io import StringIO as WhateverIO
 
     string = unicode                # noqa
     string_t = basestring           # noqa
@@ -183,10 +180,8 @@ else:
 
     exec_("""def reraise(tp, value, tb=None): raise tp, value, tb""")
 
-    BytesIO = WhateverIO = StringIO         # noqa
 
-
-def with_metaclass(Type, skip_attrs=set(['__dict__', '__weakref__'])):
+def with_metaclass(Type, skip_attrs={'__dict__', '__weakref__'}):
     """Class decorator to set metaclass.
 
     Works with both Python 3 and Python 3 and it does not add
@@ -196,8 +191,8 @@ def with_metaclass(Type, skip_attrs=set(['__dict__', '__weakref__'])):
     """
 
     def _clone_with_metaclass(Class):
-        attrs = dict((key, value) for key, value in items(vars(Class))
-                     if key not in skip_attrs)
+        attrs = {key: value for key, value in items(vars(Class))
+                 if key not in skip_attrs}
         return Type(Class.__name__, Class.__bases__, attrs)
 
     return _clone_with_metaclass

@@ -19,11 +19,12 @@ except ImportError:  # pragma: no cover
 
 from collections import namedtuple
 from contextlib import contextmanager
+from io import BytesIO
 
 from .exceptions import (
     ContentDisallowed, DecodeError, EncodeError, SerializerNotInstalled
 )
-from .five import BytesIO, reraise, text_t
+from .five import reraise, text_t
 from .utils import entrypoints
 from .utils.encoding import str_to_bytes, bytes_t
 
@@ -451,5 +452,5 @@ for ep, args in entrypoints('kombu.serializers'):  # pragma: no cover
 
 def prepare_accept_content(l, name_to_type=registry.name_to_type):
     if l is not None:
-        return set(n if '/' in n else name_to_type[n] for n in l)
+        return {n if '/' in n else name_to_type[n] for n in l}
     return l
