@@ -7,7 +7,7 @@ Virtual transport implementation.
 Emulates the AMQ API for non-AMQ transports.
 
 """
-from __future__ import absolute_import, unicode_literals
+from __future__ import absolute_import, print_function, unicode_literals
 
 import base64
 import socket
@@ -24,7 +24,7 @@ from amqp.protocol import queue_declare_ok_t
 
 from kombu.exceptions import ResourceError, ChannelError
 from kombu.five import Empty, items, monotonic
-from kombu.utils import emergency_dump_state, say, uuid
+from kombu.utils import emergency_dump_state, uuid
 from kombu.utils.encoding import str_to_bytes, bytes_to_str
 
 from kombu.transport import base
@@ -43,6 +43,9 @@ NOT_EQUIVALENT_FMT = """\
 Cannot redeclare exchange {0!r} in vhost {1!r} with \
 different type, durable, autodelete or arguments value.\
 """
+
+RESTORING_FMT = 'Restoring {0!r} unacknowledged message(s)'
+RESTORE_PANIC_FMT = 'UNABLE TO RESTORE {0} MESSAGES: {1}'
 
 
 class Base64(object):
@@ -196,7 +199,7 @@ class QoS(object):
         delivered.clear()
         return errors
 
-    def restore_unacked_once(self):
+    def restore_unacked_once(self, stderr=None):
         """Restores all unacknowledged messages at shutdown/gc collect.
 
         Will only be done once for each instance.
@@ -204,6 +207,7 @@ class QoS(object):
         """
         self._on_collect.cancel()
         self._flush()
+        stderr = sys.stderr if stderr is None else stderr
         state = self._delivered
 
         if not self.restore_at_shutdown or not self.channel.do_restore:
@@ -213,15 +217,15 @@ class QoS(object):
             return
         try:
             if state:
-                say('Restoring {0!r} unacknowledged message(s).',
-                    len(self._delivered))
+                print(RESTORING_FMT.format(len(self._delivered)),
+                      file=stderr)
                 unrestored = self.restore_unacked()
 
                 if unrestored:
                     errors, messages = list(zip(*unrestored))
-                    say('UNABLE TO RESTORE {0} MESSAGES: {1}',
-                        len(errors), errors)
-                    emergency_dump_state(messages)
+                    print(RESTORE_PANIC_FMT.format(len(errors), errors),
+                          file=stderr)
+                    emergency_dump_state(messages, stderr=stderr)
         finally:
             state.restored = True
 

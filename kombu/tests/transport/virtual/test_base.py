@@ -393,8 +393,8 @@ class test_Channel(Case):
         self.assertFalse(q._delivered)
 
     @patch('kombu.transport.virtual.emergency_dump_state')
-    @patch('kombu.transport.virtual.say')
-    def test_restore_unacked_once_when_unrestored(self, say,
+    @patch('__builtin__.print')
+    def test_restore_unacked_once_when_unrestored(self, print_,
                                                   emergency_dump_state):
         q = self.channel.qos
         q._flush = Mock()
@@ -413,7 +413,7 @@ class test_Channel(Case):
 
         self.channel.do_restore = True
         q.restore_unacked_once()
-        self.assertTrue(say.called)
+        self.assertTrue(print_.called)
         self.assertTrue(emergency_dump_state.called)
 
     def test_basic_recover(self):

@@ -22,10 +22,6 @@ else:
     from sha import new as _digest  # noqa
 
 
-def say(msg):
-    print(msg, file=sys.stderr)
-
-
 def _nobuf(x):
     return [str(i) if isinstance(i, buffer) else i for i in x]
 
@@ -51,7 +47,7 @@ def consumeN(conn, consumer, n=1, timeout=30):
             if seconds >= timeout:
                 raise socket.timeout(msg)
             if seconds > 1:
-                say(msg)
+                print(msg)
         if len(messages) >= n:
             break
 
