@@ -31,10 +31,6 @@ class test_connection_utils(Case):
         result = parse_url(self.url)
         self.assertDictEqual(result, self.expected)
 
-    def test_parse_url_mongodb(self):
-        result = parse_url('mongodb://example.com/')
-        self.assertEqual(result['hostname'], 'example.com/')
-
     def test_parse_generated_as_uri(self):
         conn = Connection(self.url)
         info = conn.info()
