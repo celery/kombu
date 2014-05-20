@@ -9,6 +9,7 @@ except ImportError:
     from urlparse import urlparse, parse_qsl    # noqa
 
 from . import kwdict
+from kombu.five import string_t
 
 safequote = partial(quote, safe='')
 
@@ -55,3 +56,9 @@ def as_url(scheme, host=None, port=None, user=None, password=None,
 
 def sanitize_url(url, mask='**'):
     return as_url(*_parse_url(url), sanitize=True, mask=mask)
+
+
+def maybe_sanitize_url(url, mask='**'):
+    if isinstance(url, string_t) and '://' in url:
+        return sanitize_url(url, mask)
+    return url
