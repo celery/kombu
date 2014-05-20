@@ -13,10 +13,9 @@ from __future__ import absolute_import
 import beanstalkc
 import socket
 
-from anyjson import loads, dumps
-
 from kombu.five import Empty
 from kombu.utils.encoding import bytes_to_str
+from kombu.utils.json import loads, dumps
 
 from . import virtual
 

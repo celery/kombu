@@ -308,14 +308,9 @@ def raw_encode(data):
 
 def register_json():
     """Register a encoder/decoder for JSON serialization."""
-    from anyjson import loads as json_loads, dumps as json_dumps
+    from kombu.utils import json as _json
 
-    def _loads(obj):
-        if isinstance(obj, bytes_t):
-            obj = obj.decode()
-        return json_loads(obj)
-
-    registry.register('json', json_dumps, _loads,
+    registry.register('json', _json.dumps, _json.loads,
                       content_type='application/json',
                       content_encoding='utf-8')
 

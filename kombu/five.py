@@ -10,6 +10,15 @@
 """
 from __future__ import absolute_import
 
+try:
+    buffer_t = buffer
+except NameError:  # pragma: no cover
+    # Py3 does not have buffer, only use this for isa checks.
+
+    class buffer_t(object):  # noqa
+        pass
+
+
 ############## py3k #########################################################
 import sys
 PY3 = sys.version_info[0] == 3

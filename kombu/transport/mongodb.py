@@ -13,12 +13,12 @@ from __future__ import absolute_import
 import pymongo
 
 from pymongo import errors
-from anyjson import loads, dumps
 from pymongo import MongoClient, uri_parser
 
 from kombu.five import Empty
 from kombu.syn import _detect_environment
 from kombu.utils.encoding import bytes_to_str
+from kombu.utils.json import loads, dumps
 
 from . import virtual
 

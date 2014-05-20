@@ -10,13 +10,12 @@ from __future__ import absolute_import
 import socket
 import string
 
-from anyjson import loads, dumps
-
 import os
 
 from kombu.five import Empty, text_t
 from kombu.utils import cached_property  # , uuid
 from kombu.utils.encoding import bytes_to_str, safe_str
+from kombu.utils.json import loads, dumps
 
 from . import virtual
 

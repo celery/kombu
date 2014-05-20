@@ -3,7 +3,6 @@ from __future__ import absolute_import
 import socket
 import types
 
-from anyjson import dumps, loads
 from collections import defaultdict
 from itertools import count
 
@@ -12,6 +11,7 @@ from kombu.exceptions import InconsistencyError, VersionMismatch
 from kombu.five import Empty, Queue as _Queue
 from kombu.transport import virtual
 from kombu.utils import eventio  # patch poll
+from kombu.utils.json import dumps, loads
 
 from kombu.tests.case import (
     Case, Mock, call, module_exists, skip_if_not_module, patch,

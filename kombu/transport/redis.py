@@ -16,7 +16,6 @@ from contextlib import contextmanager
 from time import time
 
 from amqp import promise
-from anyjson import loads, dumps
 
 from kombu.exceptions import InconsistencyError, VersionMismatch
 from kombu.five import Empty, values, string_t
@@ -24,6 +23,7 @@ from kombu.log import get_logger
 from kombu.utils import cached_property, uuid
 from kombu.utils.eventio import poll, READ, ERR
 from kombu.utils.encoding import bytes_to_str
+from kombu.utils.json import loads, dumps
 from kombu.utils.url import _parse_url
 
 NO_ROUTE_ERROR = """
