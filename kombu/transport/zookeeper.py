@@ -37,7 +37,6 @@ from kombu.utils.encoding import bytes_to_str
 
 from . import virtual
 
-MAX_PRIORITY = 9
 
 try:
     import kazoo
@@ -103,13 +102,8 @@ class Channel(virtual.Channel):
         return queue
 
     def _put(self, queue, message, **kwargs):
-        try:
-            priority = message['properties']['delivery_info']['priority']
-        except KeyError:
-            priority = 0
-
         queue = self._get_queue(queue)
-        queue.put(dumps(message), priority=(MAX_PRIORITY - priority))
+        queue.put(dumps(message), priority=self._get_message_priority(message, reverse=True))
 
     def _get(self, queue):
         queue = self._get_queue(queue)

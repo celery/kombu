@@ -371,6 +371,11 @@ class Channel(AbstractChannel, base.StdChannel):
     # List of options to transfer from :attr:`transport_options`.
     from_transport_options = ('body_encoding', 'deadletter_queue')
 
+    # Priority defaults
+    default_priority = 0
+    min_priority = 0
+    max_priority = 9
+
     def __init__(self, connection, **kwargs):
         self.connection = connection
         self._consumers = set()
@@ -657,7 +662,7 @@ class Channel(AbstractChannel, base.StdChannel):
         """Prepare message data."""
         properties = properties or {}
         info = properties.setdefault('delivery_info', {})
-        info['priority'] = priority or 0
+        info['priority'] = priority or self.default_priority
 
         return {'body': body,
                 'content-encoding': content_encoding,
@@ -726,6 +731,19 @@ class Channel(AbstractChannel, base.StdChannel):
         if self._cycle is None:
             self._reset_cycle()
         return self._cycle
+
+    def _get_message_priority(self, message, reverse=False):
+        """Gets priority from message and converts it to the bounds: [0, 9].
+        Higher value has more priority.
+        """
+        try:
+            priority = max(min(int(message['properties']['delivery_info']['priority']),
+                               self.max_priority),
+                           self.min_priority)
+        except (TypeError, ValueError, KeyError):
+            priority = self.default_priority
+
+        return (self.max_priority - priority) if reverse else priority
 
 
 class Management(base.Management):
