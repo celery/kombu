@@ -143,7 +143,7 @@ else:
         izip as zip,
         izip_longest as zip_longest,
     )
-    from io import StringIO as WhateverIO
+    from io import StringIO as WhateverIO  # noqa
 
     string = unicode                # noqa
     string_t = basestring           # noqa

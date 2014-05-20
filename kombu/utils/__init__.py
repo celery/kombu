@@ -246,14 +246,14 @@ def emergency_dump_state(state, open_file=open, dump=None, stderr=None):
         import pickle
         dump = pickle.dump
     persist = mktemp()
-    print('EMERGENCY DUMP STATE TO FILE -> {0} <-'.format(persist),
+    print('EMERGENCY DUMP STATE TO FILE -> {0} <-'.format(persist), ## noqa
           file=stderr)
     fh = open_file(persist, 'w')
     try:
         try:
             dump(state, fh, protocol=0)
         except Exception as exc:
-            print(
+            print(  # noqa
                 'Cannot pickle state: {0!r}. Fallback to pformat.'.format(exc),
                 file=stderr,
             )
