@@ -11,13 +11,8 @@ import os
 import socket
 
 from contextlib import contextmanager
-from functools import partial
 from itertools import count, cycle
 from operator import itemgetter
-try:
-    from urllib.parse import quote
-except ImportError:  # Py2
-    from urllib import quote  # noqa
 
 # jython breaks on relative import for .exceptions for some reason
 # (Issue #112)
@@ -28,7 +23,7 @@ from .transport import get_transport_cls, supports_librabbitmq
 from .utils import cached_property, retry_over_time, shufflecycle, HashedSeq
 from .utils.compat import OrderedDict
 from .utils.functional import lazy
-from .utils.url import parse_url, urlparse
+from .utils.url import as_url, parse_url, quote, urlparse
 
 __all__ = ['Connection', 'ConnectionPool', 'ChannelPool']
 
@@ -569,36 +564,23 @@ class Connection(object):
                          self.password, self.virtual_host, self.port,
                          repr(self.transport_options))
 
-    def as_uri(self, include_password=False, mask=''):
+    def as_uri(self, include_password=False, mask='**',
+               getfields=itemgetter('port', 'userid', 'password',
+                                    'virtual_host', 'transport')):
         """Convert connection parameters to URL form."""
         hostname = self.hostname or 'localhost'
         if self.transport.can_parse_url:
             if self.uri_prefix:
                 return '%s+%s' % (self.uri_prefix, hostname)
             return self.hostname
-        quoteS = partial(quote, safe='')   # strict quote
         fields = self.info()
-        port, userid, password, transport = itemgetter(
-            'port', 'userid', 'password', 'transport'
-        )(fields)
-        url = '%s://' % transport
-        if userid or password:
-            if userid:
-                url += quoteS(userid)
-            if password:
-                if include_password:
-                    url += ':' + quoteS(password)
-                else:
-                    url += ':' + mask if mask else ''
-            url += '@'
-        url += quoteS(fields['hostname'])
-        if port:
-            url += ':%s' % (port, )
-
-        url += '/' + quote(fields['virtual_host'])
-        if self.uri_prefix:
-            return '%s+%s' % (self.uri_prefix, url)
-        return url
+        port, userid, password, vhost, transport = getfields(fields)
+        scheme = ('{0}+{1}'.format(self.uri_prefix, transport)
+                  if self.uri_prefix else transport)
+        return as_url(
+            scheme, hostname, port, userid, password, quote(vhost),
+            sanitize=not include_password, mask=mask,
+        )
 
     def Pool(self, limit=None, preload=None):
         """Pool of connections.

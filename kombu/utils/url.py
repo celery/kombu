@@ -1,12 +1,16 @@
 from __future__ import absolute_import
 
+from functools import partial
+
 try:
-    from urllib.parse import unquote, urlparse, parse_qsl
+    from urllib.parse import parse_qsl, quote, unquote, urlparse
 except ImportError:
-    from urllib import unquote                  # noqa
+    from urllib import quote, unquote                  # noqa
     from urlparse import urlparse, parse_qsl    # noqa
 
 from . import kwdict
+
+safequote = partial(quote, safe='')
 
 
 def _parse_url(url):
@@ -28,3 +32,26 @@ def parse_url(url):
     return dict(transport=scheme, hostname=host,
                 port=port, userid=user,
                 password=password, virtual_host=path, **query)
+
+
+def as_url(scheme, host=None, port=None, user=None, password=None,
+           path=None, query=None, sanitize=False, mask='**'):
+        parts = ['{0}://'.format(scheme)]
+        if user or password:
+            if user:
+                parts.append(safequote(user))
+            if password:
+                if sanitize:
+                    parts.extend([':', mask] if mask else [':'])
+                else:
+                    parts.extend([':', safequote(password)])
+            parts.append('@')
+        parts.append(safequote(host))
+        if port:
+            parts.extend([':', port])
+        parts.extend(['/', path])
+        return ''.join(str(part) for part in parts if part)
+
+
+def sanitize_url(url, mask='**'):
+    return as_url(*_parse_url(url), sanitize=True, mask=mask)
