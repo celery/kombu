@@ -17,7 +17,7 @@ class test_connection_utils(Case):
 
     def setUp(self):
         self.url = 'amqp://user:pass@localhost:5672/my/vhost'
-        self.nopass = 'amqp://user@localhost:5672/my/vhost'
+        self.nopass = 'amqp://user:**@localhost:5672/my/vhost'
         self.expected = {
             'transport': 'amqp',
             'userid': 'user',
