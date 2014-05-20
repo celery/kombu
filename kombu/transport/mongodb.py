@@ -116,10 +116,11 @@ class Channel(virtual.Channel):
         return self.get_messages().find({'queue': queue}).count()
 
     def _put(self, queue, message, **kwargs):
-        self.get_messages().insert({'payload': dumps(message),
-                                    'queue': queue,
-                                    'priority': self._get_message_priority(message,
-                                                                           reverse=True)})
+        self.get_messages().insert({
+            'payload': dumps(message),
+            'queue': queue,
+            'priority': self._get_message_priority(message, reverse=True),
+        })
 
     def _purge(self, queue):
         size = self._size(queue)

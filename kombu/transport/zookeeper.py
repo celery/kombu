@@ -100,8 +100,10 @@ class Channel(virtual.Channel):
         return queue
 
     def _put(self, queue, message, **kwargs):
-        queue = self._get_queue(queue)
-        queue.put(dumps(message), priority=self._get_message_priority(message, reverse=True))
+        return self._get_queue(queue).put(
+            dumps(message),
+            priority=self._get_message_priority(message, reverse=True),
+        )
 
     def _get(self, queue):
         queue = self._get_queue(queue)

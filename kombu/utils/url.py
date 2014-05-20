@@ -61,4 +61,3 @@ def maybe_sanitize_url(url, mask='**'):
     if isinstance(url, string_t) and '://' in url:
         return sanitize_url(url, mask)
     return url
-

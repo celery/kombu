@@ -516,20 +516,35 @@ class test_Channel(Case):
             self.channel.queue_declare(queue='21wisdjwqe', passive=True)
 
     def test_get_message_priority(self):
-        def _message(priority):
-            return self.channel.prepare_message('the message with priority',
-                                                priority=priority)
 
-        self.assertEqual(self.channel._get_message_priority(_message(5)),
-                         5)
-        self.assertEqual(self.channel._get_message_priority(_message(self.channel.min_priority - 10)),
-                         self.channel.min_priority)
-        self.assertEqual(self.channel._get_message_priority(_message(self.channel.max_priority + 10)),
-                         self.channel.max_priority)
-        self.assertEqual(self.channel._get_message_priority(_message('foobar')),
-                         self.channel.default_priority)
-        self.assertEqual(self.channel._get_message_priority(_message(2), reverse=True),
-                         self.channel.max_priority - 2)
+        def _message(priority):
+            return self.channel.prepare_message(
+                'the message with priority', priority=priority,
+            )
+
+        self.assertEqual(
+            self.channel._get_message_priority(_message(5)), 5,
+        )
+        self.assertEqual(
+            self.channel._get_message_priority(
+                _message(self.channel.min_priority - 10),
+            ),
+            self.channel.min_priority,
+        )
+        self.assertEqual(
+            self.channel._get_message_priority(
+                _message(self.channel.max_priority + 10),
+            ),
+            self.channel.max_priority,
+        )
+        self.assertEqual(
+            self.channel._get_message_priority(_message('foobar')),
+            self.channel.default_priority,
+        )
+        self.assertEqual(
+            self.channel._get_message_priority(_message(2), reverse=True),
+            self.channel.max_priority - 2,
+        )
 
 
 class test_Transport(Case):

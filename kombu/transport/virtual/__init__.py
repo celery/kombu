@@ -733,13 +733,18 @@ class Channel(AbstractChannel, base.StdChannel):
         return self._cycle
 
     def _get_message_priority(self, message, reverse=False):
-        """Gets priority from message and converts it to the bounds: [0, 9].
+        """Get priority from message and limit the value within a
+        boundary of 0 to 9.
+
         Higher value has more priority.
+
         """
         try:
-            priority = max(min(int(message['properties']['delivery_info']['priority']),
-                               self.max_priority),
-                           self.min_priority)
+            priority = max(
+                min(int(message['properties']['delivery_info']['priority']),
+                    self.max_priority),
+                self.min_priority,
+            )
         except (TypeError, ValueError, KeyError):
             priority = self.default_priority
 
