@@ -47,7 +47,7 @@ def as_url(scheme, host=None, port=None, user=None, password=None,
                 else:
                     parts.extend([':', safequote(password)])
             parts.append('@')
-        parts.append(safequote(host))
+        parts.append(safequote(host) if host else '')
         if port:
             parts.extend([':', port])
         parts.extend(['/', path])
