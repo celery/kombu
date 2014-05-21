@@ -57,7 +57,6 @@
     kombu.utils
     kombu.utils.eventio
     kombu.utils.limits
-    kombu.utils.compat
     kombu.utils.debug
     kombu.utils.encoding
     kombu.utils.functional

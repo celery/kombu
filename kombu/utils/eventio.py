@@ -44,7 +44,6 @@ KQ_NOTE_REVOKE = getattr(__select__, 'kQ_NOTE_REVOKE', 64)
 from kombu.syn import detect_environment
 
 from . import fileno
-from .compat import get_errno
 
 __all__ = ['poll']
 
@@ -64,7 +63,7 @@ class Poller(object):
         try:
             return self._poll(timeout)
         except Exception as exc:
-            if get_errno(exc) != errno.EINTR:
+            if exc.errno != errno.EINTR:
                 raise
 
 
@@ -77,7 +76,7 @@ class _epoll(Poller):
         try:
             self._epoll.register(fd, events)
         except Exception as exc:
-            if get_errno(exc) != errno.EEXIST:
+            if exc.errno != errno.EEXIST:
                 raise
 
     def unregister(self, fd):
@@ -86,7 +85,7 @@ class _epoll(Poller):
         except (socket.error, ValueError, KeyError, TypeError):
             pass
         except (IOError, OSError) as exc:
-            if get_errno(exc) != errno.ENOENT:
+            if exc.errno != errno.ENOENT:
                 raise
 
     def _poll(self, timeout):
@@ -198,7 +197,7 @@ class _select(Poller):
             try:
                 _selectf([fd], [], [], 0)
             except (_selecterr, socket.error) as exc:
-                if get_errno(exc) in SELECT_BAD_FD:
+                if exc.errno in SELECT_BAD_FD:
                     self.unregister(fd)
 
     def unregister(self, fd):
@@ -207,7 +206,7 @@ class _select(Poller):
         except socket.error as exc:
             # we don't know the previous fd of this object
             # but it will be removed by the next poll iteration.
-            if get_errno(exc) in SELECT_BAD_FD:
+            if exc.errno in SELECT_BAD_FD:
                 return
             raise
         self._rfd.discard(fd)
@@ -220,9 +219,9 @@ class _select(Poller):
                 self._rfd, self._wfd, self._efd, timeout,
             )
         except (_selecterr, socket.error) as exc:
-            if get_errno(exc) == errno.EINTR:
+            if exc.errno == errno.EINTR:
                 return
-            elif get_errno(exc) in SELECT_BAD_FD:
+            elif exc.errno in SELECT_BAD_FD:
                 return self._remove_bad()
             raise
 

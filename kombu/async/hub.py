@@ -20,7 +20,6 @@ from amqp import promise
 from kombu.five import Empty, range
 from kombu.log import get_logger
 from kombu.utils import cached_property, fileno
-from kombu.utils.compat import get_errno
 from kombu.utils.eventio import READ, WRITE, ERR, poll
 
 from .timer import Timer
@@ -139,7 +138,7 @@ class Hub(object):
                 except (MemoryError, AssertionError):
                     raise
                 except OSError as exc:
-                    if get_errno(exc) == errno.ENOMEM:
+                    if exc.errno == errno.ENOMEM:
                         raise
                     logger.error('Error in timer: %r', exc, exc_info=1)
                 except Exception as exc:
@@ -313,7 +312,7 @@ class Hub(object):
                         try:
                             next(cb)
                         except OSError as exc:
-                            if get_errno(exc) != errno.EBADF:
+                            if exc.errno != errno.EBADF:
                                 raise
                             hub_remove(fileno)
                         except StopIteration:
