@@ -37,9 +37,13 @@ except ImportError:  # pragma: no cover
     qpidtoollibs = None     # noqa
 
 from kombu.five import Empty, items
-from kombu.utils.compat import OrderedDict
+from kombu.log import get_logger
 from kombu.transport.virtual import Base64, Message
-from . import base
+from kombu.utils.compat import OrderedDict
+from kombu.transport import base
+
+
+logger = get_logger(__name__)
 
 
 ##### Start Monkey Patching #####
@@ -291,7 +295,7 @@ class QoS(object):
 
     """
 
-    def __init__(self, prefetch_count=0):
+    def __init__(self, session, prefetch_count=1):
         """Instantiate a QoS object.
 
         :keyword prefetch_count: Initial prefetch count (defaults to 0,
@@ -299,6 +303,10 @@ class QoS(object):
         :type prefetch_count: int
 
         """
+        if prefetch_count < 1:
+            raise Exception('prefetch_count must be >= 1')
+
+        self.session = session
         self.prefetch_count = prefetch_count
         self._not_yet_acked = OrderedDict()
 
@@ -374,7 +382,7 @@ class QoS(object):
         :type delivery_tag: int
         """
         message = self._not_yet_acked.pop(delivery_tag)
-        message._receiver.session.acknowledge(message=message)
+        self.session.acknowledge(message=message)
 
     def reject(self, delivery_tag, requeue=False):
         """Reject a message by delivery_tag.
@@ -402,8 +410,7 @@ class QoS(object):
             disposition = QpidDisposition(qpid.messaging.RELEASED)
         else:
             disposition = QpidDisposition(qpid.messaging.REJECTED)
-        message._receiver.session.acknowledge(message=message,
-                                              disposition=disposition)
+        self.session.acknowledge(message=message, disposition=disposition)
 
 
 class Channel(base.StdChannel):
@@ -493,7 +500,7 @@ class Channel(base.StdChannel):
     #: counter used to generate delivery tags for this channel.
     _delivery_tags = count(1)
 
-    def __init__(self, connection, transport, delivery_queue):
+    def __init__(self, connection, transport):
         """Instantiate a Channel object.
 
         :param connection: A Connection object that this Channel can reference.
@@ -507,15 +514,12 @@ class Channel(base.StdChannel):
         """
         self.connection = connection
         self.transport = transport
-        self.delivery_queue = delivery_queue
-        self._tag_to_queue = {}
-        self._consumer_threads = {}
         qpid_connection = connection.get_qpid_connection()
-        self._qpid_session = qpid_connection.session()
         self._broker = qpidtoollibs.BrokerAgent(qpid_connection)
-        self._qos = None
-        self._consumers = set()
         self.closed = False
+        self._tag_to_queue = {}
+        self._receivers = {}
+        self._qos = None
 
     def _get(self, queue):
         """Non-blocking, single-message read from a queue.
@@ -538,7 +542,7 @@ class Channel(base.StdChannel):
         :return: The received message.
         :rtype: :class:`qpid.messaging.Message`
         """
-        rx = self._qpid_session.receiver(queue)
+        rx = self.transport.session.receiver(queue)
         try:
             message = rx.fetch(timeout=0)
         finally:
@@ -586,7 +590,7 @@ class Channel(base.StdChannel):
             address = '%s/%s; {assert: always, node: {type: topic}}' % (
                 exchange, routing_key)
             msg_subject = str(routing_key)
-        sender = self._qpid_session.sender(address)
+        sender = self.transport.session.sender(address)
         qpid_message = qpid.messaging.Message(content=message,
                                               subject=msg_subject)
         try:
@@ -929,7 +933,7 @@ class Channel(base.StdChannel):
             raw_message = qpid_message.content
             message = self.Message(self, raw_message)
             if not no_ack:
-                self._qpid_session.acknowledge(message=qpid_message)
+                self.transport.session.acknowledge(message=qpid_message)
             return message
         except Empty:
             pass
@@ -1049,12 +1053,9 @@ class Channel(base.StdChannel):
             return callback(message)
 
         self.connection._callbacks[queue] = _callback
-        self._consumers.add(consumer_tag)
-        my_thread = FDShimThread(self.connection.get_qpid_connection,
-                                 queue, self.delivery_queue)
-        self._consumer_threads[queue] = my_thread
-        my_thread.daemon = True
-        my_thread.start()
+        new_receiver = self.transport.session.receiver(queue)
+        new_receiver.capacity = self.qos.prefetch_count
+        self._receivers[consumer_tag] = new_receiver
 
     def basic_cancel(self, consumer_tag):
         """Cancel consumer by consumer tag.
@@ -1075,12 +1076,9 @@ class Channel(base.StdChannel):
             as a parameter to :meth:`basic_consume`.
         :type consumer_tag: an immutable object
         """
-        if consumer_tag in self._consumers:
-            self._consumers.remove(consumer_tag)
+        if consumer_tag in self._receivers:
+            self._receivers.pop(consumer_tag)
             queue = self._tag_to_queue.pop(consumer_tag, None)
-            consumer_thread = self._consumer_threads.pop(queue, None)
-            if consumer_thread:
-                consumer_thread.kill()
             self.connection._callbacks.pop(queue, None)
 
     def close(self):
@@ -1094,11 +1092,10 @@ class Channel(base.StdChannel):
         """
         if not self.closed:
             self.closed = True
-            for consumer in list(self._consumers):
-                self.basic_cancel(consumer)
+            for consumer_tag in self._receivers.keys():
+                self.basic_cancel(consumer_tag)
             if self.connection is not None:
                 self.connection.close_channel(self)
-            self._qpid_session.close()
             self._broker.close()
 
     @property
@@ -1112,7 +1109,7 @@ class Channel(base.StdChannel):
         :rtype: :class:`QoS`
         """
         if self._qos is None:
-            self._qos = self.QoS()
+            self._qos = self.QoS(self.transport.session)
         return self._qos
 
     def basic_qos(self, prefetch_count, *args):
@@ -1126,7 +1123,7 @@ class Channel(base.StdChannel):
             this Channel is allowed to have.
         :type prefetch_count: int
         """
-        self.qos.prefetch_count = prefetch_count
+        self.qos.prefetch_count = 1
 
     def prepare_message(self, body, priority=None, content_type=None,
                         content_encoding=None, headers=None, properties=None):
@@ -1289,96 +1286,7 @@ class Channel(base.StdChannel):
             return default
 
 
-class FDShimThread(threading.Thread):
-    """A consumer thread that reads and handles messages from a single queue.
-
-    An instance of FDShimThread will asynchronously read messages from a
-    single queue, and deliver each message read into a threadsafe
-    :class:`Queue.Queue` object delivery_queue.  The broker queue to read
-    from is specified by name.  A separate thread of type :class:`FDShim` is
-    designed to receive and handle messages that FDShimThread object put
-    into the delivery_queue.
-
-    FDShimThread objects are designed to be efficient through a blocking
-    read from the broker's queue.  Periodically the FDShimThread wakes up
-    from the blocking read, and checks to see if it has been killed.  If it
-    has not been killed it begins a new blocking read.  The blocking
-    timeout is set through the class attribute block_timeout that contains
-    the timeout in seconds.
-
-    FDShimThread requires a function to be passed in that will allow the
-    FDShimThread to generate a connection to the broker.  FDShimThread uses
-    the passed in function to get the connection, start a session with the
-    broker, and create a :class:`~qpid.messaging.endpoints.Receiver` to
-    consume messages from the named queue.
-
-    An FDShimThread instance can be notified that it should die with a call
-    to :meth:`kill`.  The thread may not exit immediately because it may
-    be in a blocking read, but it will exit before entering the next
-    blocking read.  When the thread exits properly, it gracefully closes the
-    _receiver and _session objects that were created.
-
-    FDShimThread objects are not designed to be used directly by objects
-    other than :class:`Channel`.  An FDShimThread is created by a call to
-    :meth:`Channel.basic_consume`, and destroyed through a call to
-    :meth:`Channel.basic_cancel`.  The thread entry point is the :meth:`run`
-    method. :meth:`Channel.basic_consume` daemonizes the thread before
-    calling :meth:`start` ensuring an FDShimThread will never keep the
-    Python process alive if all other non-daemon threads have exited.  The
-    :class:`Channel` maintains references to the FDShimThread instances it
-    creates for killing later.
-
-    """
-    # The timeout that blocking reads should occur for before waking up.
-    block_timeout = 10
-
-    def __init__(self, get_qpid_connection, queue, delivery_queue):
-        """Instantiate a FDShimThread object.
-
-        :param get_qpid_connection: A function that will return a valid
-            :class:`qpid.messaging Connection` object when called with no
-            arguments.
-        :type get_qpid_connection: function
-        :param queue: The name of the queue to consume messages from.
-        :type queue: str
-        :param delivery_queue: The threadsafe :class:`Queue.Queue` object to
-            deliver :class:`qpid.messaging.Message` object into once read from
-            the broker.
-        :type delivery_queue: Queue.Queue
-
-        """
-        self._session = get_qpid_connection().session()
-        self._receiver = self._session.receiver(queue)
-        self._queue = queue
-        self._delivery_queue = delivery_queue
-        self._is_killed = False
-        super(FDShimThread, self).__init__()
-
-    def run(self):
-        """Thread entry point for FDShimThread instances"""
-        while not self._is_killed:
-            try:
-                response = self._receiver.fetch(
-                    timeout=FDShimThread.block_timeout)
-            except qpid.messaging.exceptions.Empty:
-                pass
-            else:
-                queue = self._receiver.source
-                response_bundle = (queue, response)
-                self._delivery_queue.put(response_bundle)
-        self._receiver.close()
-        self._session.close()
-
-    def kill(self):
-        """Notify the thread that it should die at the earliest opportunity.
-
-        The thread may not exit immediately because it may be in a blocking
-        read.  It will exit gracefully before entering the next blocking read.
-        """
-        self._is_killed = True
-
-
-class FDShim(object):
+class TransportReceiver(threading.Thread):
     """Monitor and handle messages from all consumer threads.
 
     The FDShim object monitors incoming messages from all consumers
@@ -1409,7 +1317,7 @@ class FDShim(object):
 
     """
 
-    def __init__(self, queue_from_fdshim, delivery_queue):
+    def __init__(self, session, delivery_queue, w_fd):
         """Instantiate a FDShim object.
 
         :param queue_from_fdshim: The queue that that messages which are ready
@@ -1423,20 +1331,20 @@ class FDShim(object):
         :type delivery_queue: Queue.Queue
 
         """
-        self.queue_from_fdshim = queue_from_fdshim
-        self.delivery_queue = delivery_queue
-        self.r, self._w = os.pipe()
-        self._is_killed = False
+        self._session = session
+        self._delivery_queue = delivery_queue
+        self._w_fd = w_fd
+        super(TransportReceiver, self).__init__()
 
-    def kill(self):
-        """Notify the thread that it should die at the earliest opportunity.
+    def run(self):
+        while True:
+            try:
+                self.monitor_receivers()
+            except Exception as e:
+                logger.error(e)
+            time.sleep(10)
 
-        The thread may not exit immediately because it may be in a blocking
-        read.  It will exit gracefully before entering the next blocking read.
-        """
-        self._is_killed = True
-
-    def monitor_consumers(self):
+    def monitor_receivers(self):
         """The thread entry point.
 
         Do a blocking read call similar to what qpid.messaging does, and when
@@ -1447,14 +1355,13 @@ class FDShim(object):
         character into the pipe so that anything monitoring it will receive
         the ready for reading signal.
         """
-        while not self._is_killed:
-            try:
-                response_bundle = self.delivery_queue.get(block=True)
-            except Queue.Empty:
-                pass
-            else:
-                self.queue_from_fdshim.put(response_bundle)
-                os.write(self._w, '0')
+        while True:
+            receiver = self._session.next_receiver()
+            message = receiver.fetch()
+            queue = receiver.source
+            response_bundle = (queue, message)
+            self._delivery_queue.put(response_bundle)
+            os.write(self._w_fd, '0')
 
 
 class Connection(object):
@@ -1592,14 +1499,9 @@ class Transport(base.Transport):
         :type client: kombu.connection.Connection
 
         """
-        self.client = client
-        self.queue_from_fdshim = Queue.Queue()
         self.delivery_queue = Queue.Queue()
-        self.fd_shim = FDShim(self.queue_from_fdshim, self.delivery_queue)
-        fdshim_thread = threading.Thread(
-            target=self.fd_shim.monitor_consumers)
-        fdshim_thread.daemon = True
-        fdshim_thread.start()
+        self.r_fd, self.w_fd = os.pipe()
+        super(Transport, self).__init__(client, **kwargs)
 
     def register_with_event_loop(self, connection, loop):
         """Register a file descriptor and callback with the loop.
@@ -1627,7 +1529,7 @@ class Transport(base.Transport):
         :param loop: A reference to the external loop.
         :type loop: kombu.async.hub.Hub
         """
-        loop.add_reader(self.fd_shim.r, self.on_readable, connection, loop)
+        loop.add_reader(self.r_fd, self.on_readable, connection, loop)
 
     def establish_connection(self):
         """Establish a Connection object.
@@ -1673,6 +1575,12 @@ class Transport(base.Transport):
                     **conninfo.transport_options or {})
         conn = self.Connection(**opts)
         conn.client = self.client
+        self.session = conn.get_qpid_connection().session()
+        self.transport_receiver = TransportReceiver(self.session,
+                                                    self.delivery_queue,
+                                                    self.w_fd)
+        self.transport_receiver.daemon = True
+        self.transport_receiver.start()
         return conn
 
     def close_connection(self, connection):
@@ -1716,8 +1624,8 @@ class Transport(base.Transport):
         elapsed_time = -1
         while elapsed_time < timeout:
             try:
-                queue, message = self.queue_from_fdshim.get(block=True,
-                                                            timeout=timeout)
+                queue, message = self.delivery_queue.get(block=True,
+                                                         timeout=timeout)
             except Queue.Empty:
                 raise socket.timeout()
             else:
@@ -1739,7 +1647,7 @@ class Transport(base.Transport):
         :return: The new Channel that is made.
         :rtype: :class:`Channel`.
         """
-        channel = connection.Channel(connection, self, self.delivery_queue)
+        channel = connection.Channel(connection, self)
         connection.channels.append(channel)
         return channel
 
@@ -1786,7 +1694,7 @@ class Transport(base.Transport):
             functionality.
         :type loop: kombu.async.Hub
         """
-        result = os.read(self.fd_shim.r, 1)
+        result = os.read(self.r_fd, 1)
         if result == '0':
             try:
                 self.drain_events(connection)
