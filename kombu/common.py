@@ -181,8 +181,6 @@ def eventloop(conn, limit=None, timeout=None, ignore_timeouts=False):
         except socket.timeout:
             if timeout and not ignore_timeouts:  # pragma: no cover
                 raise
-        except socket.error:  # pragma: no cover
-            pass
 
 
 def send_reply(exchange, req, msg,
