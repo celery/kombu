@@ -21,8 +21,7 @@ from __future__ import absolute_import
 """Kombu transport using a Qpid broker as a message store."""
 
 import os
-import threading
-import Queue
+import select
 import socket
 import ssl
 import time
@@ -1286,84 +1285,6 @@ class Channel(base.StdChannel):
             return default
 
 
-class TransportReceiver(threading.Thread):
-    """Monitor and handle messages from all consumer threads.
-
-    The FDShim object monitors incoming messages from all consumers
-    through a blocking read on the threadsafe queue that consumers
-    deliver messages into, delivery_queue.  Once a message is received
-    by FDShim, an externally monitorable file descriptor is set that data
-    is ready for the transport, and the message is put into a separate
-    threadsafe queue referenced at self.queue_from_fdshim.
-
-    The FDShim object provides a read file descriptor named self.r which
-    can be monitored by an external epoll-like event I/O notification
-    system.  An external epoll loop would monitor self.r when it wants to
-    be notified efficiently that the Transport associated with this FDShim
-    has data available for reading.  The client library qpid.messaging does
-    not make available read file descriptors for external monitoring,
-    and so FDShim provides this functionality by creating os.pipe() based
-    file descriptors that it writes into causing external epoll loops
-    to efficiently "wake up" at the correct time.
-
-    FDShim objects are designed to be used by a :class:`Transport`, and
-    should not be used by external objects directly.  Each :class:`Transport`
-    creates exactly one FDShim object to monitor and handle messages from all
-    consumers associated with all :class:`Channels` associated with the
-    :class:`Transport`.  The thread entry point is :meth:`monitor_consumers`.
-    The :class:`Transport` daemonizes the thread before calling :meth:`start`
-    ensuring an FDShim will never keep the Python process alive if all
-    non-daemon threads have exited.
-
-    """
-
-    def __init__(self, session, delivery_queue, w_fd):
-        """Instantiate a FDShim object.
-
-        :param queue_from_fdshim: The queue that that messages which are ready
-            for reading are put into so that the :class:`Transport` can drain
-            them with a call to :meth:`Transport.drain_events`
-        :type queue_from_fdshim: Queue.Queue
-        :param delivery_queue: The queue that FDShim performs a blocking
-            read on to receive messages form all consumers associated with all
-            :class:`Channel` objects associated with the :class:`Transport`
-            that created FDShim.
-        :type delivery_queue: Queue.Queue
-
-        """
-        self._session = session
-        self._delivery_queue = delivery_queue
-        self._w_fd = w_fd
-        super(TransportReceiver, self).__init__()
-
-    def run(self):
-        while True:
-            try:
-                self.monitor_receivers()
-            except Exception as e:
-                logger.error(e)
-            time.sleep(10)
-
-    def monitor_receivers(self):
-        """The thread entry point.
-
-        Do a blocking read call similar to what qpid.messaging does, and when
-        something is received, set the pipe as being readable, and then put
-        the message into the queue_from_fdshim object.
-
-        Setting the pipe as being readable is done by writing a single '0'
-        character into the pipe so that anything monitoring it will receive
-        the ready for reading signal.
-        """
-        while True:
-            receiver = self._session.next_receiver()
-            message = receiver.fetch()
-            queue = receiver.source
-            response_bundle = (queue, message)
-            self._delivery_queue.put(response_bundle)
-            os.write(self._w_fd, '0')
-
-
 class Connection(object):
     """Encapsulate a connection object for the :class:`Transport`.
 
@@ -1486,50 +1407,11 @@ class Transport(base.Transport):
     polling_interval = None
 
     # This Transport does support an asynchronous event model.
-    supports_ev = True
+    supports_ev = False
 
     # The driver type and name for identification purposes.
     driver_type = 'qpid'
     driver_name = 'qpid'
-
-    def __init__(self, client, **kwargs):
-        """Instantiate a Transport object.
-
-        :param client: A reference to the creator of the Transport.
-        :type client: kombu.connection.Connection
-
-        """
-        self.delivery_queue = Queue.Queue()
-        self.r_fd, self.w_fd = os.pipe()
-        super(Transport, self).__init__(client, **kwargs)
-
-    def register_with_event_loop(self, connection, loop):
-        """Register a file descriptor and callback with the loop.
-
-        Register the callback self.on_readable to be called when an
-        external epoll loop sees that the file descriptor registered is
-        ready for reading.  The file descriptor is created and updated by
-        :class:`FDShim`, which is created by the Transport at instantiation
-        time.
-
-        When supports_ev = True, Celery expects to call this method to give
-        the Transport an opportunity to register a read file descriptor for
-        external monitoring by celery using an Event I/O notification
-        mechanism such as epoll.  A callback is also registered that is to
-        be called once the external epoll loop is ready to handle the epoll
-        event associated with messages that are ready to be handled for
-        this Transport.
-
-        The registration call is made exactly once per Transport after the
-        Transport is finished instantiating.
-
-        :param connection: A reference to the connection associated with
-            this Transport.
-        :type connection: Connection
-        :param loop: A reference to the external loop.
-        :type loop: kombu.async.hub.Hub
-        """
-        loop.add_reader(self.r_fd, self.on_readable, connection, loop)
 
     def establish_connection(self):
         """Establish a Connection object.
@@ -1576,11 +1458,6 @@ class Transport(base.Transport):
         conn = self.Connection(**opts)
         conn.client = self.client
         self.session = conn.get_qpid_connection().session()
-        self.transport_receiver = TransportReceiver(self.session,
-                                                    self.delivery_queue,
-                                                    self.w_fd)
-        self.transport_receiver.daemon = True
-        self.transport_receiver.start()
         return conn
 
     def close_connection(self, connection):
@@ -1624,10 +1501,13 @@ class Transport(base.Transport):
         elapsed_time = -1
         while elapsed_time < timeout:
             try:
-                queue, message = self.delivery_queue.get(block=True,
-                                                         timeout=timeout)
-            except Queue.Empty:
+                receiver = self.session.next_receiver(timeout=timeout)
+                message = receiver.fetch()
+                queue = receiver.source
+            except qpid.messaging.exceptions.Empty:
                 raise socket.timeout()
+            except select.error:
+                return
             else:
                 connection._callbacks[queue](message)
             elapsed_time = time.time() - start_time
@@ -1650,56 +1530,6 @@ class Transport(base.Transport):
         channel = connection.Channel(connection, self)
         connection.channels.append(channel)
         return channel
-
-    def on_readable(self, connection, loop):
-        """Handle any read events associated with this Transport.
-
-        This method clears a single message from the externally monitored
-        file descriptor by issuing a read call to the self.fd_shim pipe,
-        which removes a single '0' character that was placed into the pipe
-        by :class:`FDShim`. Once a '0' is read, all available events are
-        drained through a call to :meth:`drain_events`.
-
-        Nothing is expected to be returned from :meth:`drain_events` because
-        :meth:`drain_events` handles messages by calling callbacks that are
-        maintained on the :class:`Connection` object.  When
-        :meth:`drain_events` returns, all associated messages have been
-        handled.
-
-        This method reads as many messages that are available for this
-        Transport, and then returns.  It blocks in the sense that reading
-        and handling a large number of messages may take time, but it does
-        not block waiting for a new message to arrive.  When
-        :meth:`drain_events` is called a timeout is not specified, which
-        causes this behavior.
-
-        One interesting behavior of note is where multiple messages are
-        ready, and this method removes a single '0' character from
-        fd_shim.r, but :meth:`drain_events` may handle an arbitrary amount of
-        messages.  In that case, extra '0' characters may be left on fd_shim
-        to be read, where messages corresponding with those '0' characters
-        have already been handled.  The external epoll loop will incorrectly
-        think additional data is ready for reading, and will call
-        on_readable unnecessarily, once for each '0' to be read. Additional
-        calls to :meth:`on_readable` produce no negative side effects,
-        and will eventually clear out the fd_shim pipe of all symbols
-        correctly.  If new messages show up during this draining period,
-        they will also be properly handled.
-
-        :param connection: The connection associated with the readable
-            events, which contains the callbacks that need to be called for
-            the readables.
-        :type connection: Connection
-        :param loop: The asynchronous loop object that contains epoll like
-            functionality.
-        :type loop: kombu.async.Hub
-        """
-        result = os.read(self.r_fd, 1)
-        if result == '0':
-            try:
-                self.drain_events(connection)
-            except socket.timeout:
-                pass
 
     @property
     def default_connection_params(self):
