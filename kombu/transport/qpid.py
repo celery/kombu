@@ -302,11 +302,8 @@ class QoS(object):
         :type prefetch_count: int
 
         """
-        if prefetch_count < 1:
-            raise Exception('prefetch_count must be >= 1')
-
         self.session = session
-        self.prefetch_count = prefetch_count
+        self.prefetch_count = 1
         self._not_yet_acked = OrderedDict()
 
     def can_consume(self):
