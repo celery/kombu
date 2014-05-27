@@ -14,7 +14,6 @@ from nose import SkipTest
 from kombu import Connection
 from kombu import Exchange, Queue
 from kombu.five import range
-from kombu.tests.case import skip_if_quick
 
 if sys.version_info >= (2, 5):
     from hashlib import sha256 as _digest
@@ -163,7 +162,6 @@ class TransportCase(unittest.TestCase):
     def _digest(self, data):
         return _digest(data).hexdigest()
 
-    @skip_if_quick
     def test_produce__consume_large_messages(
             self, bytes=1048576, n=10,
             charset=string.punctuation + string.letters + string.digits):

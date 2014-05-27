@@ -186,7 +186,3 @@ def skip_if_not_module(module, import_errors=(ImportError, )):
             return fun(*args, **kwargs)
         return _skip_if_not_module
     return _wrap_test
-
-
-def skip_if_quick(fun):
-    return skip_if_environ('QUICKTEST')(fun)
