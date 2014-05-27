@@ -80,7 +80,9 @@ class Channel(virtual.Channel):
                                                  port))
         # Use username and password if avaliable
         try:
-            server.resource.credentials = (conninfo.userid, conninfo.password)
+            if conninfo.userid:
+                server.resource.credentials = (conninfo.userid,
+                                               conninfo.password)
         except AttributeError:
             pass
         try:
