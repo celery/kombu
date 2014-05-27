@@ -10,5 +10,5 @@
 """
 from __future__ import absolute_import
 
-from amqp.five import *  # noqa
-from amqp.five import __all__
+from amqp.five import *        # noqa
+from amqp.five import __all__  # noqa
