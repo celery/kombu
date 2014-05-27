@@ -928,8 +928,7 @@ class Channel(base.StdChannel):
             qpid_message = self._get(queue)
             raw_message = qpid_message.content
             message = self.Message(self, raw_message)
-            if not no_ack:
-                self.transport.session.acknowledge(message=qpid_message)
+            self.transport.session.acknowledge(message=qpid_message)
             return message
         except Empty:
             pass
@@ -1043,9 +1042,11 @@ class Channel(base.StdChannel):
         def _callback(qpid_message):
             raw_message = qpid_message.content
             message = self.Message(self, raw_message)
-            if not no_ack:
-                delivery_tag = message.delivery_tag
-                self.qos.append(qpid_message, delivery_tag)
+            delivery_tag = message.delivery_tag
+            self.qos.append(qpid_message, delivery_tag)
+            if no_ack:
+                # Celery will not ack this message later, so we should
+                self.basic_ack(delivery_tag)
             return callback(message)
 
         self.connection._callbacks[queue] = _callback
