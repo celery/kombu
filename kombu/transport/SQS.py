@@ -43,8 +43,6 @@ import collections
 import socket
 import string
 
-from anyjson import loads, dumps
-
 import boto
 from boto import exception
 from boto import sdb as _sdb
@@ -58,6 +56,7 @@ from kombu.five import Empty, range, text_t
 from kombu.log import get_logger
 from kombu.utils import cached_property, uuid
 from kombu.utils.encoding import bytes_to_str, safe_str
+from kombu.utils.json import loads, dumps
 from kombu.transport.virtual import scheduling
 
 from . import virtual
@@ -66,8 +65,9 @@ logger = get_logger(__name__)
 
 # dots are replaced by dash, all other punctuation
 # replaced by underscore.
-CHARS_REPLACE_TABLE = dict((ord(c), 0x5f)
-                           for c in string.punctuation if c not in '-_.')
+CHARS_REPLACE_TABLE = {
+    ord(c): 0x5f for c in string.punctuation if c not in '-_.'
+}
 CHARS_REPLACE_TABLE[0x2e] = 0x2d  # '.' -> '-'
 
 
@@ -154,7 +154,7 @@ class Table(Domain):
                 return item
 
     def get_exchanges(self):
-        return list(set(i['exchange'] for i in self.select()))
+        return list({i['exchange'] for i in self.select()})
 
     def _get_queue_item(self, queue):
         return self._try_first("""WHERE queue = '%s' limit 1""" % queue)

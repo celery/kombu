@@ -5,11 +5,7 @@ import pickle
 import sys
 
 from functools import wraps
-
-if sys.version_info >= (3, 0):
-    from io import StringIO, BytesIO
-else:
-    from StringIO import StringIO, StringIO as BytesIO  # noqa
+from io import StringIO, BytesIO
 
 from kombu import version_info_t
 from kombu import utils
@@ -100,18 +96,6 @@ class test_UUID(Case):
             with_ctypes_masked()
         finally:
             sys.modules['celery.utils'] = old_utils
-
-
-class test_Misc(Case):
-
-    def test_kwdict(self):
-
-        def f(**kwargs):
-            return kwargs
-
-        kw = {'foo': 'foo',
-              'bar': 'bar'}
-        self.assertTrue(f(**utils.kwdict(kw)))
 
 
 class MyStringIO(StringIO):
@@ -369,7 +353,7 @@ class test_shufflecycle(Case):
         prev_repeat, utils.repeat = utils.repeat, Mock()
         try:
             utils.repeat.return_value = list(range(10))
-            values = set(['A', 'B', 'C'])
+            values = {'A', 'B', 'C'}
             cycle = utils.shufflecycle(values)
             seen = set()
             for i in range(10):

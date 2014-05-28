@@ -7,8 +7,8 @@ import codecs
 extra = {}
 PY3 = sys.version_info[0] == 3
 
-if sys.version_info < (2, 6):
-    raise Exception('Kombu requires Python 2.6 or higher.')
+if sys.version_info < (2, 7):
+    raise Exception('Kombu requires Python 2.7 or higher.')
 
 try:
     from setuptools import setup
@@ -113,8 +113,6 @@ def reqs(*f):
         ) if r]
 
 install_requires = reqs('default.txt')
-if py_version[0:2] == (2, 6):
-    install_requires.extend(reqs('py26.txt'))
 
 # -*- Tests Requires -*-
 
@@ -161,7 +159,6 @@ setup(
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.3',
         'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 2.6',
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: Implementation :: CPython',
         'Programming Language :: Python :: Implementation :: PyPy',

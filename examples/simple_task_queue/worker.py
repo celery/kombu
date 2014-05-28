@@ -1,6 +1,6 @@
 from kombu.mixins import ConsumerMixin
 from kombu.log import get_logger
-from kombu.utils import kwdict, reprcall
+from kombu.utils import reprcall
 
 from .queues import task_queues
 
@@ -23,7 +23,7 @@ class Worker(ConsumerMixin):
         kwargs = body['kwargs']
         logger.info('Got task: %s', reprcall(fun.__name__, args, kwargs))
         try:
-            fun(*args, **kwdict(kwargs))
+            fun(*args, **kwargs)
         except Exception as exc:
             logger.error('task raised exception: %r', exc)
         message.ack()

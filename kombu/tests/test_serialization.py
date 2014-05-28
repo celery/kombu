@@ -69,10 +69,6 @@ ApVGggcXVpY2sgYnJvd24gZm94IGp1bXBzIG92ZXIgdGggbGF6eSBkb2c=\
 """))
 
 
-def say(m):
-    sys.stderr.write('%s\n' % (m, ))
-
-
 registry.register('testS', lambda s: s, lambda s: 'decoded',
                   'application/testS', 'utf-8')
 
