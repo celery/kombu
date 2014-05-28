@@ -1451,6 +1451,8 @@ class Transport(base.Transport):
                      'password': conninfo.password,
                      'transport': conninfo.qpid_transport,
                      'timeout': conninfo.connect_timeout,
+                     'reconnect': True,
+                     'reconnect_timeout': conninfo.connect_timeout,
                      'sasl_mechanisms': conninfo.sasl_mechanisms},
                     **conninfo.transport_options or {})
         conn = self.Connection(**opts)
