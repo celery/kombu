@@ -502,6 +502,11 @@ class TestChannelBasicCancel(ChannelTestBase):
         self.channel.basic_cancel(1)
         self.assertTrue(1 not in self.channel._receivers)
 
+    def test_channel_basic_cancel_closes_receiver(self):
+        mock_receiver = self.channel._receivers[1]
+        self.channel.basic_cancel(1)
+        mock_receiver.close.assert_called_once_with()
+
     def test_channel_basic_cancel_pops__tag_to_queue(self):
         self.channel._tag_to_queue = Mock()
         self.channel.basic_cancel(1)

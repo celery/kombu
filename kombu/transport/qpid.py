@@ -48,7 +48,7 @@ logger = get_logger(__name__)
 ##### Start Monkey Patching #####
 
 # This section applies two patches to qpid.messaging that are required for
-# correct operation.  Each patch fixes a bug.  See links to the bugs below:
+# correct operation. Each patch fixes a bug. See links to the bugs below:
 # https://issues.apache.org/jira/browse/QPID-5637
 # https://issues.apache.org/jira/browse/QPID-5557
 
@@ -62,7 +62,7 @@ logger = get_logger(__name__)
 # | |\  | |_| || | | |___
 # |_| \_|\___/ |_| |_____|
 #
-#If you have code that also uses qpid.messaging and imports kombu,
+# If you have code that also uses qpid.messaging and imports kombu,
 # or causes this file to be imported, then you need to make sure that this
 # import occurs first.
 #
@@ -276,19 +276,21 @@ class QpidMessagingExceptionHandler(object):
 class QoS(object):
     """A helper object for message prefetch and ACKing purposes.
 
-    This object is instantiated 1-for-1 with a :class:`Channel`.  QoS
+    NOTE: prefetch_count is currently hard set to 1, and needs to be improved
+
+    This object is instantiated 1-for-1 with a :class:`Channel`. QoS
     allows prefetch_count to be set to the number of outstanding messages
     the corresponding :class:`Channel` should be allowed to prefetch.
     Setting prefetch_count to 0 disables prefetch limits, and the object
     can hold an arbitrary number of messages.
 
     Messages are added using :meth:`append`, which are held until they are
-    ACKed asynchronously through a call to :meth:`ack`.  Messages that are
+    ACKed asynchronously through a call to :meth:`ack`. Messages that are
     received, but not ACKed will not be delivered by the broker to another
     consumer until an ACK is received, or the session is closed. Messages
     are referred to using delivery_tag integers, which are unique per
-    :class:`Channel`.  Delivery tags are managed outside of this object and
-    are passed in with a message to :meth:`append`.  Un-ACKed messages can
+    :class:`Channel`. Delivery tags are managed outside of this object and
+    are passed in with a message to :meth:`append`. Un-ACKed messages can
     be looked up from QoS using :meth:`get` and can be rejected and
     forgotten using :meth:`reject`.
 
@@ -297,8 +299,7 @@ class QoS(object):
     def __init__(self, session, prefetch_count=1):
         """Instantiate a QoS object.
 
-        :keyword prefetch_count: Initial prefetch count (defaults to 0,
-            which disables prefetch limits).
+        :keyword prefetch_count: Initial prefetch count, hard set to 1.
         :type prefetch_count: int
 
         """
@@ -314,7 +315,7 @@ class QoS(object):
         limits.
 
         :returns: True, if this QoS object can accept more messages
-            without violating the prefetch_count.  If prefetch_count is 0,
+            without violating the prefetch_count. If prefetch_count is 0,
             can_consume will always return True.
         :rtype: bool
         """
@@ -326,7 +327,7 @@ class QoS(object):
         :class:`Channel`.
 
         Returns an estimated number of outstanding messages that a
-        :class:`Channel` can accept without exceeding prefetch_count.  If
+        :class:`Channel` can accept without exceeding prefetch_count. If
         prefetch_count is 0, then this method returns 1.
 
         :returns: The number of estimated messages that can be fetched
@@ -355,7 +356,7 @@ class QoS(object):
 
     def get(self, delivery_tag):
         """
-        Get an un-ACKed message by delivery_tag.  If called with an invalid
+        Get an un-ACKed message by delivery_tag. If called with an invalid
         delivery_tag a KeyError is raised.
 
         :param delivery_tag: The delivery tag associated with the message
@@ -388,15 +389,15 @@ class QoS(object):
         delivered.
 
         If requeue is False, then the message is not requeued for delivery
-        to another consumer.  If requeue is True, then the message is
+        to another consumer. If requeue is True, then the message is
         requeued for delivery to another consumer.
 
         :param delivery_tag: The delivery tag associated with the message
             to be rejected.
         :type delivery_tag: int
         :keyword requeue: If True, the broker will be notified to requeue
-            the message.  If False, the broker will be told to drop the
-            message entirely.  In both cases, the message will be removed
+            the message. If False, the broker will be told to drop the
+            message entirely. In both cases, the message will be removed
             from this object.
         :type requeue: bool
         """
@@ -427,7 +428,7 @@ class Channel(base.StdChannel):
 
     Channels are designed to all share a single TCP connection with a
     broker, but provide a level of isolated communication with the broker
-    while benefiting from a shared TCP connection.  The Channel is given
+    while benefiting from a shared TCP connection. The Channel is given
     its :class:`Connection` object by the :class:`Transport` that
     instantiates the Channel.
 
@@ -437,41 +438,44 @@ class Channel(base.StdChannel):
 
     Messages sent using this Channel are assigned a delivery_tag. The
     delivery_tag is generated for a message as they are prepared for
-    sending by :meth:`basic_publish`.  The delivery_tag is unique per
-    Channel instance using :meth:`~itertools.count`.  The delivery_tag has
+    sending by :meth:`basic_publish`. The delivery_tag is unique per
+    Channel instance using :meth:`~itertools.count`. The delivery_tag has
     no meaningful context in other objects, and is only maintained in the
-    memory of this object, and the underlying objects that provide support
-    (ie: :class:`QoS`).
+    memory of this object, and the underlying :class:`QoS` object that
+    provides support.
 
     Each Channel object instantiates exactly one :class:`QoS` object for
     prefetch limiting, and asynchronous acking. The :class:`QoS` object is
-    lazily instantiated through a property method :meth:`qos`.  The
+    lazily instantiated through a property method :meth:`qos`. The
     :class:`QoS` object is a supporting object that should not be accessed
     directly except by the Channel itself.
 
     Synchronous reads on a queue are done using a call to :meth:`basic_get`
     which uses :meth:`_get` to perform the reading. These methods read
     immediately and do not accept any form of timeout. :meth:`basic_get`
-    reads synchronously and ACKs messages before returning them, or acking
-    can be disable by the no_ack argument to :meth:`basic_get`.
+    reads synchronously and ACKs messages before returning them. ACKing is
+    done in all cases, because an application that reads messages using
+    qpid.messaging, but does not ACK them will experience a memory leak.
+    The no_ack argument to :meth:`basic_get` does not affect ACKing
+    functionality.
 
     Asynchronous reads on a queue are done by starting a consumer using
-    :meth:`basic_consume`.  Each call to :meth:`basic_consume` will cause a
-    thread to be started where a :class:`~qpid.messaging.endpoints.Receiver`
-    will perform a blocking read on the requested queue. Typically a more
-    efficient external I/O event notification system such as epoll or
-    kqueue would allow the kernel to monitor many file descriptors for
-    inbound data, but the :mod:`qpid.messaging` module does not allow an
-    external epoll or kqueue loop to be used. Consumers are given a
-    consumer tag by the caller of consumer_tag. Already started consumers
-    can be cancelled using by their consumer_tag using :meth:`basic_cancel`.
+    :meth:`basic_consume`. Each call to :meth:`basic_consume` will cause a
+    :class:`~qpid.messaging.endpoints.Receiver` to be created on the
+    :class:`~qpid.messaging.endpoints.Session` started by the :class:
+    `Transport`. The receiver will asynchronously read using
+    qpid .messaging, and prefetch messages before the call to
+    :meth:`Transport.basic_drain` occurs. The prefetch_count value of the
+    :class:`QoS` object is the capacity value of the new receiver. The new
+    receiver capacity must always be at least 1, otherwise none of the
+    receivers will appear to be ready for reading, and will never be read
+    from.
 
-    The Channel object handles thread creation of :class:`FDShimThread`
-    objects which provide asynchronous blocking reads.  FDShimThreads are
-    given a :class:`Queue.Queue` named delivery_queue to put messages into.
-    delivery_queue is provided by the creator of the Channel (typically a
-    :class:`Transport` object).  Cancellation of a consumer causes the
-    consuming class:`FDShimThread` to be notified it is no longer needed.
+    Each call to :meth:`basic_consume` creates a consumer, which is given a
+    consumer tag that is identified by the caller of :meth:`basic_consume`.
+    Already started consumers can be cancelled using by their consumer_tag
+    using :meth:`basic_cancel`. Cancellation of a consumer causes the
+    :class:`~qpid.messaging.endpoints.Receiver` object to be closed.
 
     Asynchronous message acking is supported through :meth:`basic_ack`,
     and is referenced by delivery_tag. The Channel object uses its
@@ -499,14 +503,11 @@ class Channel(base.StdChannel):
     def __init__(self, connection, transport):
         """Instantiate a Channel object.
 
-        :param connection: A Connection object that this Channel can reference.
-            Currently only used to access callbacks.
+        :param connection: A Connection object that this Channel can
+            reference. Currently only used to access callbacks.
         :type connection: Connection
         :param transport: The Transport this Channel is associated with.
         :type transport: Transport
-        :param delivery_queue: A threadsafe queue that asynchronous
-            FDShimThread consumers should put arriving messages into.
-        :type delivery_queue: Queue.Queue
         """
         self.connection = connection
         self.transport = transport
@@ -523,13 +524,14 @@ class Channel(base.StdChannel):
         An internal method to perform a non-blocking, single-message read
         from a queue by name. This method creates a
         :class:`~qpid.messaging.endpoints.Receiver` to read from the queue
-        using the :class:`~qpid.messaging.endpoints.Session` referenced by
-        _qpid_session.  The receiver is closed before the method exits. If
-        a message is available, a :class:`qpid.messaging.Message`
-        object is returned.  If no message is available, a
-        :class:`qpid.messaging.exceptions.Empty` exception is raised.
+        using the :class:`~qpid.messaging.endpoints.Session` saved on the
+        associated :class:`Transport`. The receiver is closed before the
+        method exits. If a message is available, a
+        :class:`qpid.messaging.Message` object is returned. If no message is
+        available, a :class:`qpid.messaging.exceptions.Empty` exception is
+        raised.
 
-        This is an internal method.  External calls for get functionality
+        This is an internal method. External calls for get functionality
         should be done using :meth:`basic_get`.
 
         :param queue: The queue name to get the message from
@@ -549,10 +551,10 @@ class Channel(base.StdChannel):
         """Synchronous send of a single message onto a queue or exchange.
 
         An internal method which synchronously sends a single message onto
-        a given queue or exchange.  If exchange is not specified,
+        a given queue or exchange. If exchange is not specified,
         the message is sent directly to a queue specified by routing_key.
         If no queue is found by the name of routing_key while exchange is
-        not specified an exception is raised.  If an exchange is specified,
+        not specified an exception is raised. If an exchange is specified,
         then the message is delivered onto the requested
         exchange using routing_key. Message sending is synchronous using
         sync=True because large messages in kombu funtests were not being
@@ -560,8 +562,9 @@ class Channel(base.StdChannel):
 
         This method creates a :class:`qpid.messaging.endpoints.Sender` to
         send the message to the queue using the
-        :class:`qpid.messaging.endpoints.Session` referenced by
-        _qpid_session.  The sender is closed before the method exits.
+        :class:`qpid.messaging.endpoints.Session` created and referenced by
+        the associated :class:`Transport`. The sender is closed before the
+        method exits.
 
         External calls for put functionality should be done using
         :meth:`basic_publish`.
@@ -598,8 +601,8 @@ class Channel(base.StdChannel):
         """Purge all undelivered messages from a queue specified by name.
 
         An internal method to purge all undelivered messages from a queue
-        specified by name.  The queue message depth is first checked,
-        and then the broker is asked to purge that number of messages.  The
+        specified by name. The queue message depth is first checked,
+        and then the broker is asked to purge that number of messages. The
         integer number of messages requested to be purged is returned. The
         actual number of messages purged may be different than the
         requested number of messages to purge (see below).
@@ -609,10 +612,10 @@ class Channel(base.StdChannel):
         message that has been delivered to a different consumer, who has
         not acked the message, and still has an active session with the
         broker. Messages in that case are not safe for purging and will be
-        retained by the broker.  The client is unable to change this
+        retained by the broker. The client is unable to change this
         delivery behavior.
 
-        This is an internal method.  External calls for purge functionality
+        This is an internal method. External calls for purge functionality
         should be done using :meth:`queue_purge`.
 
         :param queue: the name of the queue to be purged
@@ -631,7 +634,7 @@ class Channel(base.StdChannel):
         """Get the number of messages in a queue specified by name.
 
         An internal method to return the number of messages in a queue
-        specified by name.  It returns an integer count of the number
+        specified by name. It returns an integer count of the number
         of messages currently in the queue.
 
         :param queue: The name of the queue to be inspected for the number
@@ -650,10 +653,10 @@ class Channel(base.StdChannel):
 
         An internal method to delete a queue specified by name and all the
         messages on it. First, all messages are purged from a queue using a
-        call to :meth:`_purge`.  Second, the broker is asked to delete the
+        call to :meth:`_purge`. Second, the broker is asked to delete the
         queue.
 
-        This is an internal method.  External calls for queue delete
+        This is an internal method. External calls for queue delete
         functionality should be done using :meth:`queue_delete`.
 
         :param queue: The name of the queue to be deleted.
@@ -687,38 +690,47 @@ class Channel(base.StdChannel):
 
         The queue name is required and specified as the first argument.
 
-        If passive is True, the server will not create the queue.  The
+        If passive is True, the server will not create the queue. The
         client can use this to check whether a queue exists without
-        modifying the server state.  Default is False.
+        modifying the server state. Default is False.
 
-        If durable is True, the queue will be durable.  Durable queues
+        If durable is True, the queue will be durable. Durable queues
         remain active when a server restarts. Non-durable queues (
-        transient queues) are purged if/when a server restarts.  Note that
+        transient queues) are purged if/when a server restarts. Note that
         durable queues do not necessarily hold persistent messages,
         although it does not make sense to send persistent messages to a
-        transient queue.  Default is False.
+        transient queue. Default is False.
 
         If exclusive is True, the queue will be exclusive. Exclusive queues
         may only be consumed by the current connection. Setting the
-        'exclusive' flag always implies 'auto-delete'.  Default is False.
+        'exclusive' flag always implies 'auto-delete'. Default is False.
 
         If auto_delete is True,  the queue is deleted when all consumers
         have finished using it. The last consumer can be cancelled either
         explicitly or because its channel is closed. If there was no
-        consumer ever on the queue, it won't be deleted.  Default is True.
+        consumer ever on the queue, it won't be deleted. Default is True.
+        Each queue has an auto_delete timeout, which is set to 3, meaning
+        that queues deletion due to auto_delete will be delayed by 3 seconds.
 
-        The nowait parameter is unused.  It was part of the 0-9-1 protocol,
+        The nowait parameter is unused. It was part of the 0-9-1 protocol,
         but this AMQP client implements 0-10 which removed the nowait option.
 
         The arguments parameter is a set of arguments for the declaration of
-        the queue.  Arguments are passed as a dict or None. This field is
-        ignored if passive is True.  Default is None.
+        the queue. Arguments are passed as a dict or None. This field is
+        ignored if passive is True. Default is None.
 
         This method returns a :class:`~collections.namedtuple` with the name
         'queue_declare_ok_t' and the queue name as 'queue', message count
         on the queue as 'message_count', and the number of active consumers
-        as 'consumer_count'.  The named tuple values are ordered as queue,
+        as 'consumer_count'. The named tuple values are ordered as queue,
         message_count, and consumer_count respectively.
+
+        Due to Celery's non-ACKing of events, a ring policy is set on any
+        queue that starts with the string 'celeryev' or ends with the string
+        'pidbox'. These are celery event queues, and Celery does not ack
+        them, causing the messages to build-up. Eventually Qpid stops serving
+        messages unless the 'ring' policy is set, at which point the buffer
+        backing the queue becomes circular.
 
         :param queue: The name of the queue to be created.
         :type queue: str
@@ -739,7 +751,7 @@ class Channel(base.StdChannel):
         :type arguments: dict or None
 
         :return: A named tuple representing the declared queue as a named
-            tuple.  The tuple values are ordered as queue, message count,
+            tuple. The tuple values are ordered as queue, message count,
             and the active consumer count.
         :rtype: :class:`~collections.namedtuple`
 
@@ -766,18 +778,18 @@ class Channel(base.StdChannel):
     def queue_delete(self, queue, if_unused=False, if_empty=False, **kwargs):
         """Delete a queue by name.
 
-        Delete a queue specified by name.  Using the if_unused keyword
+        Delete a queue specified by name. Using the if_unused keyword
         argument, the delete can only occur if there are 0 consumers bound
-        to it.  Using the if_empty keyword argument, the delete can only
+        to it. Using the if_empty keyword argument, the delete can only
         occur if there are 0 messages in the queue.
 
         :param queue: The name of the queue to be deleted.
         :type queue: str
         :keyword if_unused: If True, delete only if the queue has 0
-            consumers.  If False, delete a queue even with consumers bound
+            consumers. If False, delete a queue even with consumers bound
             to it.
         :type if_unused: bool
-        :keyword if_empty: If True, only delete the queue if it is empty.  If
+        :keyword if_empty: If True, only delete the queue if it is empty. If
             False, delete the queue if it is empty or not.
         :type if_empty: bool
         """
@@ -796,12 +808,12 @@ class Channel(base.StdChannel):
         """Create a new exchange.
 
         Create an exchange of a specific type, and optionally have the
-        exchange be durable.  If an exchange of the requested name already
-        exists, no action is taken and no exceptions are raised.  Durable
+        exchange be durable. If an exchange of the requested name already
+        exists, no action is taken and no exceptions are raised. Durable
         exchanges will survive a broker restart, non-durable exchanges will
         not.
 
-        Exchanges provide behaviors based on their type.  The expected
+        Exchanges provide behaviors based on their type. The expected
         behaviors are those defined in the AMQP 0-10 and prior
         specifications including 'direct', 'topic', and 'fanout'
         functionality.
@@ -809,7 +821,7 @@ class Channel(base.StdChannel):
         :keyword type: The exchange type. Valid values include 'direct',
         'topic', and 'fanout'.
         :type type: str
-        :keyword exchange: The name of the exchange to be created.  If no
+        :keyword exchange: The name of the exchange to be created. If no
         exchange is specified, then a blank string will be used as the name.
         :type exchange: str
         :keyword durable: True if the exchange should be durable, or False
@@ -831,7 +843,7 @@ class Channel(base.StdChannel):
         """Bind a queue to an exchange with a bind key.
 
         Bind a queue specified by name, to an exchange specified by name,
-        with a specific bind key.  The queue and exchange must already
+        with a specific bind key. The queue and exchange must already
         exist on the broker for the bind to complete successfully. Queues
         may be bound to exchanges multiple times with different keys.
 
@@ -850,9 +862,9 @@ class Channel(base.StdChannel):
         """Unbind a queue from an exchange with a given bind key.
 
         Unbind a queue specified by name, from an exchange specified by
-        name, that is already bound with a bind key.  The queue and
+        name, that is already bound with a bind key. The queue and
         exchange must already exist on the broker, and bound with the bind
-        key for the operation to complete successfully.  Queues may be
+        key for the operation to complete successfully. Queues may be
         bound to exchanges multiple times with different keys, thus the
         bind key is a required field to unbind in an explicit way.
 
@@ -870,9 +882,9 @@ class Channel(base.StdChannel):
     def queue_purge(self, queue, **kwargs):
         """Remove all undelivered messages from queue.
 
-        Purge all undelivered messages from a queue specified by name.  The
+        Purge all undelivered messages from a queue specified by name. The
         queue message depth is first checked, and then the broker is asked
-        to purge that number of messages.  The integer number of messages
+        to purge that number of messages. The integer number of messages
         requested to be purged is returned. The actual number of messages
         purged may be different than the requested number of messages to
         purge.
@@ -882,7 +894,7 @@ class Channel(base.StdChannel):
         message that has been delivered to a different consumer, who has
         not acked the message, and still has an active session with the
         broker. Messages in that case are not safe for purging and will be
-        retained by the broker.  The client is unable to change this
+        retained by the broker. The client is unable to change this
         delivery behavior.
 
         Internally, this method relies on :meth:`_purge`.
@@ -899,17 +911,16 @@ class Channel(base.StdChannel):
     def basic_get(self, queue, no_ack=False, **kwargs):
         """Non-blocking single message get and ack from a queue by name.
 
-        Internally this method uses :meth:`_get` to fetch the message.  If
+        Internally this method uses :meth:`_get` to fetch the message. If
         an :class:`~qpid.messaging.exceptions.Empty` exception is raised by
-        :meth:`_get`, this method silences it and returns None.  If
-        :meth:`_get` does return a message, that message is acked according
-        to the value of no_ack and returned.  If no_ack is True,
-        the message is not acked, and if no_ack is False, By default,
-        the message is acked.  This method never adds fetched Messages to
-        the internal QoS object for asynchronous acking.
+        :meth:`_get`, this method silences it and returns None. If
+        :meth:`_get` does return a message, that message is ACKed. The no_ack
+        parameter has no effect on ACKing behavior, and all messages are
+        ACKed in all cases. This method never adds fetched Messages to the
+        internal QoS object for asynchronous ACKing.
 
         This method converts the object type of the method as it passes
-        through.  Fetching from the broker, :meth:`_get` returns a
+        through. Fetching from the broker, :meth:`_get` returns a
         :class:`qpid.messaging.Message`, but this method takes the payload
         of the :class:`qpid.messaging.Message` and instantiates a
         :class:`~kombu.transport.virtual.Message` object with the payload
@@ -917,8 +928,9 @@ class Channel(base.StdChannel):
 
         :param queue: The queue name to fetch a message from.
         :type queue: str
-        :keyword no_ack: If True, a message fetched will not be acked. If
-            False, a message fetched will be acked.
+        :keyword no_ack: The no_ack parameter has no effect on the ACK
+            behavior of this method. Unacked messages create a memory leak in
+            qpid.messaging, and need to be ACKed in all cases.
         :type noack: bool
 
         :return: The received message.
@@ -936,9 +948,9 @@ class Channel(base.StdChannel):
     def basic_ack(self, delivery_tag):
         """Acknowledge a message by delivery_tag.
 
-        Acknowledges a message referenced by delivery_tag.  Messages can
+        Acknowledges a message referenced by delivery_tag. Messages can
         only be ack'ed using :meth:`basic_ack` if they were acquired using
-        :meth:`basic_consume`.  This is the acking portion of the
+        :meth:`basic_consume`. This is the acking portion of the
         asynchronous read behavior.
 
         Internally, this method uses the :class:`QoS` object, which stores
@@ -954,10 +966,10 @@ class Channel(base.StdChannel):
         """Reject a message by delivery_tag.
 
         Rejects a message that has been received by the Channel, but not
-        yet acknowledged.  Messages are referenced by their delivery_tag.
+        yet acknowledged. Messages are referenced by their delivery_tag.
 
         If requeue is False, the rejected message will be dropped by the
-        broker and not delivered to any other consumers.  If requeue is
+        broker and not delivered to any other consumers. If requeue is
         True, then the rejected message will be requeued for delivery to
         another consumer, potentially to the same consumer who rejected the
         message previously.
@@ -966,7 +978,7 @@ class Channel(base.StdChannel):
             to be rejected.
         :type delivery_tag: int
         :keyword requeue: If False, the rejected message will be dropped by
-            the broker and not delivered to any other consumers.  If True,
+            the broker and not delivered to any other consumers. If True,
             then the rejected message will be requeued for delivery to
             another consumer, potentially to the same consumer who rejected
             the message previously.
@@ -978,42 +990,41 @@ class Channel(base.StdChannel):
     def basic_consume(self, queue, no_ack, callback, consumer_tag, **kwargs):
         """Start an asynchronous consumer that reads from a queue.
 
-        This method starts a consumer that reads messages from a queue
+        This method starts a consumer of type
+        :class:`~qpid.messaging.endpoints.Receiver` using the
+        :class:`~qpid.messaging.endpoints.Session` created and referenced by
+        the :class:`Transport` that reads messages from a queue
         specified by name until stopped by a call to :meth:`basic_cancel`.
-        Once a message is read, a call to the callback will occur with the
-        message as the single argument.  The message passed to the callback
-        is of type self.Message.  Each consumer is referenced by a
-        consumer_tag, which is provided by the caller of this method.
 
-        Consuming is done using a thread of type :class:`FDShimThread` that
-        is spawned when this method is called.  The child thread is marked as
-        a daemon, indicating that if all non-daemon threads exit, the child
-        consumer thread will also exit.  The child consumer thread performs
-        an efficient blocking read, which wakes up regularly to see if it
-        should exit.
 
-        The child consumer thread does not call the callback directly.
-        Instead, the child thread is given a threadsafe :class:`Queue.Queue`
-        object which it should deliver messages into.  This single queue
-        aggregates all consumer messages, and can be read through a call to
-        :meth:`~Transport.drain_events` on the Transport object associated
-        with this Channel object.  This method sets up the callback onto the
-        self.connection object in a dict keyed by queue name.
-        :meth:`~Transport.drain_events` is responsible for calling that
-        callback upon message receipt.
+        Messages are available later through a synchronous call to
+        :meth:`Transport.drain_events`, which will drain from the consumer
+        started by this method. :meth:`Transport.drain_events` is
+        synchronous, but the receiving of messages over the network occurs
+        asynchronously, so it should still perform well.
+        :meth:`Transport.drain_events` calls the callback provided here with
+        the Message of type self.Message.
 
-        Depending on the value of the no_ack parameter, the message that is
-        received can be saved for asynchronous acking later after the
-        message has been handled by the caller of
-        :meth:`~Transport.drain_events`. Messages can be acked after being
-        received through a call to :meth:`basic_ack`. If no_ack is True,
-        then messages are not saved for acking later. If no_ack is False,
-        then messages are saved for acking later. Internally the :class:`QoS`
-        object is used to store messages for acking later.
+        Each consumer is referenced by a consumer_tag, which is provided by
+        the caller of this method.
+
+        This method sets up the callback onto the self.connection object in a
+        dict keyed by queue name. :meth:`~Transport.drain_events` is
+        responsible for calling that callback upon message receipt.
+
+        All messages that are received are added to the QoS object to be
+        saved for asynchronous ACKing later after the message has been
+        handled by the caller of :meth:`~Transport.drain_events`. Messages
+        can be acked after being received through a call to :meth:`basic_ack`.
+
+        If no_ack is True, the messages are immediately ACKed to avoid a
+        memory leak in qpid.messaging when messages go un-ACKed. The no_ack
+        flag indicates that the receiver of the message does not intent to
+        call :meth:`basic_ack`.
 
         :meth:`basic_consume` transforms the message object type prior to
-        calling the callback.  Initially the message comes in as a
-        :class:`qpid.messaging.Message`.  This method unpacks the payload
+        calling the callback. Initially the message comes in as a
+        :class:`qpid.messaging.Message`. This method unpacks the payload
         of the :class:`qpid.messaging.Message` and creates a new object of
         type self.Message.
 
@@ -1026,9 +1037,9 @@ class Channel(base.StdChannel):
 
         :param queue: The name of the queue to consume messages from
         :type queue: str
-        :param no_ack: If True, then messages will not be saved for
-            acking later.  If False, then messages will be saved for acking
-            later.
+        :param no_ack: If True, then messages will not be saved for ACKing
+            later, but will be ACKed immediately. If False, then messages
+            will be saved for acking later with a call to :meth:`basic_ack`.
         :type no_ack: bool
         :param callback: a callable that will be called when messages
             arrive on the queue.
@@ -1045,7 +1056,9 @@ class Channel(base.StdChannel):
             delivery_tag = message.delivery_tag
             self.qos.append(qpid_message, delivery_tag)
             if no_ack:
-                # Celery will not ack this message later, so we should
+                # Celery will not ack this message later, so we should to
+                # avoid a memory leak in qpid.messaging due to un-ACKed
+                # messages.
                 self.basic_ack(delivery_tag)
             return callback(message)
 
@@ -1058,23 +1071,19 @@ class Channel(base.StdChannel):
         """Cancel consumer by consumer tag.
 
         Request the consumer stops reading messages from its queue. The
-        consumer is a child thread, and it is told to stop by a call to
-        the :meth:`kill` method on the thread object.  Killing does not
-        occur immediately, but will occur once the child completes its
-        blocking read and checks if it should die or not.  The thread is
-        not waited on to die because in practice there can be many
-        consumers, and they are killed through a series of serial calls to
-        this method, which would take a long time.
+        consumer is a :class:`~qpid.messaging.endpoints.Receiver`, and it is
+        closed using :meth:`~qpid.messaging.endpoints.Receiver.close`.
 
         This method also cleans up all lingering references of the consumer.
 
         :param consumer_tag: The tag which refers to the consumer to be
-            cancelled.  Originally specified when the consumer was created
+            cancelled. Originally specified when the consumer was created
             as a parameter to :meth:`basic_consume`.
         :type consumer_tag: an immutable object
         """
         if consumer_tag in self._receivers:
-            self._receivers.pop(consumer_tag)
+            receiver = self._receivers.pop(consumer_tag)
+            receiver.close()
             queue = self._tag_to_queue.pop(consumer_tag, None)
             self.connection._callbacks.pop(queue, None)
 
@@ -1082,10 +1091,9 @@ class Channel(base.StdChannel):
         """Close Channel and all associated messages.
 
         This cancels all consumers by calling :meth:`basic_cancel` for each
-        known consumer_tag.  It also closes the self._qpid_session and
-        self._broker sessions.  Closing the sessions implicitly causes all
-        outstanding, unacked messages to be considered undelivered by the
-        broker.
+        known consumer_tag. It also closes the self._broker sessions. Closing
+        the sessions implicitly causes all outstanding, un-ACKed messages to
+        be considered undelivered by the broker.
         """
         if not self.closed:
             self.closed = True
@@ -1113,11 +1121,12 @@ class Channel(base.StdChannel):
         """Change :class:`QoS` settings for this Channel.
 
         Set the number of unacknowledged messages this Channel can fetch and
-        hold.  For instance prefetch_count=3 will allow a maximum of 3
-        unacked messages to be received from the broker.
+        hold. The prefetch_value is also used as the capacity for any new
+        :class:`~qpid.messaging.endpoints.Receiver` objects.
 
-        :param prefetch_count: The number of outstanding, unacked messages
-            this Channel is allowed to have.
+        Currently, this value is hard coded to 1.
+
+        :param prefetch_count: Not used. This method is hard-coded to 1.
         :type prefetch_count: int
         """
         self.qos.prefetch_count = 1
@@ -1136,7 +1145,7 @@ class Channel(base.StdChannel):
             the message.
         :type priority: int
         :keyword content_type: The content_type the message body should be
-            treated as.  If this is unset, the
+            treated as. If this is unset, the
             :class:`qpid.messaging.endpoints.Sender` object tries to
             autodetect the content_type from the body.
         :type content_type: str
@@ -1150,7 +1159,7 @@ class Channel(base.StdChannel):
         :type properties: dict
 
         :return: Returns a dict object that encapsulates message
-            attributes.  See parameters for more details on attributes that
+            attributes. See parameters for more details on attributes that
             can be set.
         :rtype: dict
         """
@@ -1168,7 +1177,7 @@ class Channel(base.StdChannel):
         """Publish message onto an exchange using a routing key.
 
         Publish a message onto an exchange specified by name using a
-        routing key specified by routing_key.  Prepares the message in the
+        routing key specified by routing_key. Prepares the message in the
         following ways before sending:
 
         - encodes the body using :meth:`encode_body`
@@ -1178,13 +1187,13 @@ class Channel(base.StdChannel):
         - assigns a delivery_tag generated through self._delivery_tags
         - sets the exchange and routing_key info as delivery_info
 
-        Internally uses :meth:`_put` to send the message synchronously.  This
+        Internally uses :meth:`_put` to send the message synchronously. This
         message is typically called by
         :class:`kombu.messaging.Producer._publish` as the final step in
         message publication.
 
         :param message: A dict containing key value pairs with the message
-            data.  A valid message dict can be generated using the
+            data. A valid message dict can be generated using the
             :meth:`prepare_message` method.
         :type message: dict
         :param exchange: The name of the exchange to submit this message
@@ -1213,20 +1222,20 @@ class Channel(base.StdChannel):
         """Encode a body using an optionally specified encoding.
 
         The encoding can be specified by name, and is looked up in
-        self.codecs.  self.codecs uses strings as its keys which specify
+        self.codecs. self.codecs uses strings as its keys which specify
         the name of the encoding, and then the value is an instantiated
         object that can provide encoding/decoding of that type through
         encode and decode methods.
 
         :param body: The body to be encoded.
         :type body: str
-        :keyword encoding: The encoding type to be used.  Must be a supported
+        :keyword encoding: The encoding type to be used. Must be a supported
             codec listed in self.codecs.
         :type encoding: str
 
         :return: If encoding is specified, return a tuple with the first
             position being the encoded body, and the second position the
-            encoding used.  If encoding is not specified, the body is passed
+            encoding used. If encoding is not specified, the body is passed
             through unchanged.
         :rtype: tuple
         """
@@ -1238,14 +1247,14 @@ class Channel(base.StdChannel):
         """Decode a body using an optionally specified encoding.
 
         The encoding can be specified by name, and is looked up in
-        self.codecs.  self.codecs uses strings as its keys which specify
+        self.codecs. self.codecs uses strings as its keys which specify
         the name of the encoding, and then the value is an instantiated
         object that can provide encoding/decoding of that type through
         encode and decode methods.
 
         :param body: The body to be encoded.
         :type body: str
-        :keyword encoding: The encoding type to be used.  Must be a supported
+        :keyword encoding: The encoding type to be used. Must be a supported
             codec listed in self.codecs.
         :type encoding: str
 
@@ -1261,9 +1270,9 @@ class Channel(base.StdChannel):
         """Get the exchange type.
 
         Lookup and return the exchange type for an exchange specified by
-        name.  Exchange types are expected to be 'direct', 'topic',
+        name. Exchange types are expected to be 'direct', 'topic',
         and 'fanout', which correspond with exchange functionality as
-        specified in AMQP 0-10 and earlier.  If the exchange cannot be
+        specified in AMQP 0-10 and earlier. If the exchange cannot be
         found, the default exchange type is returned.
 
         :param exchange: The exchange to have its type lookup up.
@@ -1287,20 +1296,21 @@ class Connection(object):
     """Encapsulate a connection object for the :class:`Transport`.
 
     A Connection object is created by a :class:`Transport` during a call to
-    :meth:`Transport.establish_connection`.  The :class:`Transport` passes in
+    :meth:`Transport.establish_connection`. The :class:`Transport` passes in
     connection options as keywords that should be used for any connections
     created. Each :class:`Transport` creates exactly one Connection.
 
-    Objects that use connections to the broker such as
-    :class:`Channel`, :class:`QoS`, and :class:`FDShimThread` objects need to
-    have independent connections generated.  Any part of this codebase can
-    get a valid connection to the broker with parameters saved in this object
-    by calling the bound :meth:`get_qpid_connection` method.
+    A Connection object maintains a reference to a
+    :class:`~qpid.messaging.endpoints.Connection` which can be accessed
+    through a bound getter method named :meth:`get_qpid_connection` method.
+    Each Channel uses a the Connection for each
+    :class:`~qpidtoollibs.BrokerAgent`, and the Transport maintains a session
+    for all senders and receivers.
 
     The Connection object is also responsible for maintaining the
     dictionary of references to callbacks that should be called when
-    messages are received.  These callbacks are saved in _callbacks,
-    and keyed on the queue name associated with the received message.  The
+    messages are received. These callbacks are saved in _callbacks,
+    and keyed on the queue name associated with the received message. The
     _callbacks are setup in :meth:`Channel.basic_consume`, removed in
     :meth:`Channel.basic_cancel`, and called in
     :meth:`Transport.drain_events`.
@@ -1309,7 +1319,8 @@ class Connection(object):
     at a minimum:
 
     All keyword arguments are collected into the connection_options dict
-    and passed directly through to qpid.messaging.
+    and passed directly through to
+    :meth:`qpid.messaging.endpoints.Connection.establish`.
     """
 
     # A class reference to the :class:`Channel` object
@@ -1324,7 +1335,7 @@ class Connection(object):
         * port: The port that connection should connect to.
         * username: The username that connections should connect with.
         * password: The password that connections should connect with.
-        * transport: The transport type that connections should use.  Either
+        * transport: The transport type that connections should use. Either
               'tcp', or 'ssl' are expected as values.
         * timeout: the timeout to use when a Connection connects to the broker.
         * sasl_mechanisms: The sasl authentication mechanism type to use. refer
@@ -1337,12 +1348,13 @@ class Connection(object):
         self.connection_options = connection_options
         self.channels = []
         self._callbacks = {}
-        self._qpid_conn = qpid.messaging.Connection.establish(**self.connection_options)
+        establish = qpid.messaging.Connection.establish
+        self._qpid_conn = establish(**self.connection_options)
 
     def get_qpid_connection(self):
         """Return the existing connection (singleton).
 
-        :return: The existing qpid.messaging connection
+        :return: The existing qpid.messaging.Connection
         :rtype: :class:`qpid.messaging.endpoints.Connection`
         """
         return self._qpid_conn
@@ -1368,27 +1380,20 @@ class Transport(base.Transport):
     """Kombu native transport for a Qpid broker.
 
     Provide a native transport for Kombu that allows consumers and
-    producers to read and write messages to/from a broker.  This Transport
+    producers to read and write messages to/from a broker. This Transport
     is capable of supporting both synchronous and asynchronous reading.
     All writes are synchronous through the :class:`Channel` objects that
     support this Transport.
 
-    Synchronous reads are done using a call to :meth:`drain_events`,
-    which synchronously reads events, and then handles them through
-    calls to the callback handlers maintained on the :class:`Connection`
-    object.
-
-    Asynchronous reads are done by monitoring the file descriptor
-    self.fd_shim.r which will be sent the signal indicating it is ready for
-    reading when messages are ready to be read.  When this file
-    descriptor is ready for reading, the monitor should call
-    :meth:`on_readable` as the callback, with the message as the
-    parameter, when the external loop is ready to read and handle
-    messages that are associated with this Transport.
+    Asynchronous reads are done using a call to :meth:`drain_events`,
+    which synchronously reads messages that were fetched asynchronously, and
+    then handles them through calls to the callback handlers maintained on
+    the :class:`Connection` object.
 
     The Transport also provides methods to establish and close a connection
-    to the broker.  This Transport establishes a factory-like pattern that
-    allows for lazy creation of Connections as needed.
+    to the broker. This Transport establishes a factory-like pattern that
+    allows for singleton pattern to consolidate all Connections into a single
+    one.
 
     The Transport can create :class:`Channel` objects to communicate with the
     broker with using the :meth:`create_channel` method.
@@ -1401,10 +1406,10 @@ class Transport(base.Transport):
     # The default port
     default_port = DEFAULT_PORT
 
-    # This Transport does not support polling as its primary fetching model.
+    # This Transport does not specify a polling interval.
     polling_interval = None
 
-    # This Transport does support an asynchronous event model.
+    # This Transport does support the Celery asynchronous event model.
     supports_ev = False
 
     # The driver type and name for identification purposes.
@@ -1417,11 +1422,16 @@ class Transport(base.Transport):
         Determines the correct options to use when creating any connections
         needed by this Transport, and create a :class:`Connection` object
         which saves those values for connections generated as they are
-        needed.  The options are a mixture of what is passed in through the
+        needed. The options are a mixture of what is passed in through the
         creator of the Transport, and the defaults provided by
-        :meth:`default_connection_params`.  Options cover broker network
+        :meth:`default_connection_params`. Options cover broker network
         settings, timeout behaviors, authentication, and identity
         verification settings.
+
+        This method also creates and stores a
+        :class:`~qpid.messaging.endpoints.Session` using the
+        :class:`~qpid.messaging.endpoints.Connection` created by this method.
+        The Session is stored on self.
 
         :return: The created :class:`Connection` object is returned.
         :rtype: :class:`Connection`
@@ -1477,24 +1487,21 @@ class Transport(base.Transport):
     def drain_events(self, connection, timeout=0, **kwargs):
         """Handle and call callbacks for all ready Transport messages.
 
-        Drains all events that are ready for consuming from :class:`FDShim`.
-        Messages must pass through :class:`FDShim` so that an external read
-        file descriptor can be marked as readable, to allow asynchronous I/O
-        to properly occur.
+        Drains all events that are ready from all
+        :class:`~qpid.messaging.endpoints.Receiver` that are asynchronously
+        fetching messages.
 
-        For each drained event, the message is called to the appropriate
-        callback.  Callbacks are organized by queue name.  The object that
-        is returned from queue_from_fdshim is a tuple containing the queue
-        name, and the message, in that order.
+        For each drained message, the message is called to the appropriate
+        callback. Callbacks are organized by queue name.
 
         :param connection: The :class:`Connection` that contains the
             callbacks, indexed by queue name, which will be called by this
             method.
         :type connection: Connection
         :keyword timeout: The timeout that limits how long this method will
-            run for.  The timeout could interrupt a blocking read that is
+            run for. The timeout could interrupt a blocking read that is
             waiting for a new message, or cause this method to return before
-            all messages are drained.  Defaults to 0.
+            all messages are drained. Defaults to 0.
         :type timeout: int
         """
         start_time = time.time()
@@ -1517,7 +1524,7 @@ class Transport(base.Transport):
         """Create and return a :class:`Channel`.
 
         Creates a new :class:`Channel`, and append the :class:`Channel` to the
-        list of channels known by the :class:`Connection`.  Once the new
+        list of channels known by the :class:`Connection`. Once the new
         :class:`Channel` is created, it is returned.
 
         :param connection: The connection that should support the new
