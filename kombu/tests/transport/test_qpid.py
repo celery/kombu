@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 
 import datetime
+import ssl
 import socket
 import time
 
@@ -21,6 +22,7 @@ from kombu.transport.virtual import Base64
 from kombu.utils.compat import OrderedDict
 from kombu.tests.case import Case, Mock, SkipTest
 from kombu.tests.case import patch, skip_if_not_module
+from mock import PropertyMock
 
 
 class ExtraAssertionsMixin(object):
@@ -499,6 +501,11 @@ class TestChannelBasicCancel(ChannelTestBase):
     def test_channel_basic_cancel_pops_receiver(self):
         self.channel.basic_cancel(1)
         self.assertTrue(1 not in self.channel._receivers)
+
+    def test_channel_basic_cancel_closes_receiver(self):
+        mock_receiver = self.channel._receivers[1]
+        self.channel.basic_cancel(1)
+        mock_receiver.close.assert_called_once_with()
 
     def test_channel_basic_cancel_pops__tag_to_queue(self):
         self.channel._tag_to_queue = Mock()
@@ -1155,8 +1162,9 @@ class TestTransportDrainEvents(Case):
         except socket.timeout:
             pass
         end_time = datetime.datetime.now()
-        elapsed_time = end_time - start_time
-        self.assertTrue(elapsed_time.total_seconds() >= 1)
+        td = end_time - start_time
+        elapsed_time_in_s = (td.microseconds + td.seconds * 10**6) / 10**6
+        self.assertTrue(elapsed_time_in_s >= 1)
 
     def test_callback_is_called(self):
         self.transport.session.next_receiver = self.mock_next_receiver
@@ -1184,6 +1192,176 @@ class TestTransportCreateChannel(Case):
     def test_new_channel_added_to_connection_channel_list(self):
         append_method = self.mock_conn.channels.append
         append_method.assert_called_with(self.mock_new_channel)
+
+
+class TestTransportEstablishConnection(Case):
+
+    def setUp(self):
+
+        class MockClient(object):
+            pass
+
+        self.client = MockClient()
+        self.client.connect_timeout = 4
+        self.client.ssl = False
+        self.client.transport_options = {}
+        self.transport = Transport(self.client)
+        self.mock_conn = Mock()
+        self.transport.Connection = self.mock_conn
+        self.default_connection_params = {'userid': 'guest',
+                                          'password': 'guest',
+                                          'port': 1234, 'virtual_host': '',
+                                          'hostname': 'localhost',
+                                          'sasl_mechanisms': 'PLAIN'}
+
+    def test_transport_establish_conn_new_option_overwrites_default(self):
+        with patch.object(Transport, 'default_connection_params',
+                          new_callable=PropertyMock) as mock_params:
+            mock_params.return_value = self.default_connection_params
+            new_userid_string = 'new-userid'
+            self.client.userid = new_userid_string
+            self.transport.establish_connection()
+            self.mock_conn.assert_called_once_with(username=new_userid_string,
+                                                   reconnect=True,
+                                                   reconnect_timeout=4,
+                                                   sasl_mechanisms='PLAIN',
+                                                   host='127.0.0.1',
+                                                   timeout=4,
+                                                   password='guest',
+                                                   port=1234,
+                                                   transport='tcp')
+
+    def test_transport_establish_conn_empty_client_is_default(self):
+        with patch.object(Transport, 'default_connection_params',
+                          new_callable=PropertyMock) as mock_params:
+            mock_params.return_value = self.default_connection_params
+            self.transport.establish_connection()
+            self.mock_conn.assert_called_once_with(username='guest',
+                                                   reconnect=True,
+                                                   reconnect_timeout=4,
+                                                   sasl_mechanisms='PLAIN',
+                                                   host='127.0.0.1',
+                                                   timeout=4,
+                                                   password='guest',
+                                                   port=1234,
+                                                   transport='tcp')
+
+    def test_transport_establish_conn_additional_transport_option(self):
+        with patch.object(Transport, 'default_connection_params',
+                          new_callable=PropertyMock) as mock_params:
+            mock_params.return_value = self.default_connection_params
+            new_param_value = 'mynewparam'
+            self.client.transport_options['new_param'] = new_param_value
+            self.transport.establish_connection()
+            self.mock_conn.assert_called_once_with(username='guest',
+                                                   reconnect=True,
+                                                   reconnect_timeout=4,
+                                                   sasl_mechanisms='PLAIN',
+                                                   host='127.0.0.1',
+                                                   timeout=4,
+                                                   new_param=new_param_value,
+                                                   password='guest',
+                                                   port=1234,
+                                                   transport='tcp')
+
+    def test_transport_establish_conn_transform_localhost_to_127_0_0_1(self):
+        with patch.object(Transport, 'default_connection_params',
+                          new_callable=PropertyMock) as mock_params:
+            mock_params.return_value = self.default_connection_params
+            self.client.hostname = 'localhost'
+            self.transport.establish_connection()
+            self.mock_conn.assert_called_once_with(username='guest',
+                                                   reconnect=True,
+                                                   reconnect_timeout=4,
+                                                   sasl_mechanisms='PLAIN',
+                                                   host='127.0.0.1',
+                                                   timeout=4,
+                                                   password='guest',
+                                                   port=1234,
+                                                   transport='tcp')
+
+    def test_transport_establish_conn_no_ssl_sets_transport_tcp(self):
+        with patch.object(Transport, 'default_connection_params',
+                          new_callable=PropertyMock) as mock_params:
+            mock_params.return_value = self.default_connection_params
+            self.client.ssl = False
+            self.transport.establish_connection()
+            self.mock_conn.assert_called_once_with(username='guest',
+                                                   reconnect=True,
+                                                   reconnect_timeout=4,
+                                                   sasl_mechanisms='PLAIN',
+                                                   host='127.0.0.1',
+                                                   timeout=4,
+                                                   password='guest',
+                                                   port=1234,
+                                                   transport='tcp')
+
+    def test_transport_establish_conn_with_ssl_with_hostname_check(self):
+        with patch.object(Transport, 'default_connection_params',
+                          new_callable=PropertyMock) as mock_params:
+            mock_params.return_value = self.default_connection_params
+            self.client.ssl = {'keyfile': 'my_keyfile',
+                               'certfile': 'my_certfile',
+                               'ca_certs': 'my_cacerts',
+                               'cert_reqs': ssl.CERT_REQUIRED}
+            self.transport.establish_connection()
+            self.mock_conn.assert_called_once_with(username='guest',
+                                                   ssl_certfile='my_certfile',
+                                                   ssl_trustfile='my_cacerts',
+                                                   reconnect_timeout=4,
+                                                   timeout=4,
+                                                   ssl_skip_hostname_check=False,
+                                                   sasl_mechanisms='PLAIN',
+                                                   host='127.0.0.1',
+                                                   reconnect=True,
+                                                   ssl_keyfile='my_keyfile',
+                                                   password='guest',
+                                                   port=1234, transport='ssl')
+
+    def test_transport_establish_conn_with_ssl_skip_hostname_check(self):
+        with patch.object(Transport, 'default_connection_params',
+                          new_callable=PropertyMock) as mock_params:
+            mock_params.return_value = self.default_connection_params
+            self.client.ssl = {'keyfile': 'my_keyfile',
+                               'certfile': 'my_certfile',
+                               'ca_certs': 'my_cacerts',
+                               'cert_reqs': ssl.CERT_OPTIONAL}
+            self.transport.establish_connection()
+            self.mock_conn.assert_called_once_with(username='guest',
+                                                   ssl_certfile='my_certfile',
+                                                   ssl_trustfile='my_cacerts',
+                                                   reconnect_timeout=4,
+                                                   timeout=4,
+                                                   ssl_skip_hostname_check=True,
+                                                   sasl_mechanisms='PLAIN',
+                                                   host='127.0.0.1',
+                                                   reconnect=True,
+                                                   ssl_keyfile='my_keyfile',
+                                                   password='guest',
+                                                   port=1234, transport='ssl')
+
+    def test_transport_establish_conn_sets_client_on_connection_object(self):
+        with patch.object(Transport, 'default_connection_params',
+                          new_callable=PropertyMock) as mock_params:
+            mock_params.return_value = self.default_connection_params
+            self.transport.establish_connection()
+            self.assertTrue(self.mock_conn.return_value.client is self.client)
+
+    def test_transport_establish_conn_creates_session_on_transport(self):
+        with patch.object(Transport, 'default_connection_params',
+                          new_callable=PropertyMock) as mock_params:
+            mock_params.return_value = self.default_connection_params
+            self.transport.establish_connection()
+            qpid_conn = self.mock_conn.return_value.get_qpid_connection
+            new_mock_session = qpid_conn.return_value.session.return_value
+            self.assertTrue(self.transport.session is new_mock_session)
+
+    def test_transport_establish_conn_returns_new_connection_object(self):
+        with patch.object(Transport, 'default_connection_params',
+                          new_callable=PropertyMock) as mock_params:
+            mock_params.return_value = self.default_connection_params
+            new_conn = self.transport.establish_connection()
+            self.assertTrue(new_conn is self.mock_conn.return_value)
 
 
 class TestTransport(ExtraAssertionsMixin, Case):
@@ -1222,19 +1400,6 @@ class TestTransport(ExtraAssertionsMixin, Case):
         """
         self.assertEqual('qpid', Transport.driver_type)
         self.assertEqual('qpid', Transport.driver_name)
-
-    def test_establish_connection_no_ssl(self):
-        """Test that a call to establish connection creates a connection
-        object with sane parameters and returns it.
-        """
-        self.mock_client.ssl = False
-        self.mock_client.transport_options = []
-        my_transport = Transport(self.mock_client)
-        new_connection = Mock()
-        my_transport.Connection = Mock(return_value=new_connection)
-        my_transport.establish_connection()
-        my_transport.Connection.assert_called_once()
-        self.assertTrue(new_connection.client is self.mock_client)
 
     def test_close_connection(self):
         """Test that close_connection calls close on each channel in the
