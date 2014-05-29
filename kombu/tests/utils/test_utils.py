@@ -5,13 +5,11 @@ import pickle
 import sys
 
 from functools import wraps
+from io import StringIO, BytesIO
 
-if sys.version_info >= (3, 0):
-    from io import StringIO, BytesIO
-else:
-    from StringIO import StringIO, StringIO as BytesIO  # noqa
-
+from kombu import version_info_t
 from kombu import utils
+from kombu.utils.text import version_string_as_tuple
 from kombu.five import string_t
 
 from kombu.tests.case import (
@@ -98,18 +96,6 @@ class test_UUID(Case):
             with_ctypes_masked()
         finally:
             sys.modules['celery.utils'] = old_utils
-
-
-class test_Misc(Case):
-
-    def test_kwdict(self):
-
-        def f(**kwargs):
-            return kwargs
-
-        kw = {'foo': 'foo',
-              'bar': 'bar'}
-        self.assertTrue(f(**utils.kwdict(kw)))
 
 
 class MyStringIO(StringIO):
@@ -367,7 +353,7 @@ class test_shufflecycle(Case):
         prev_repeat, utils.repeat = utils.repeat, Mock()
         try:
             utils.repeat.return_value = list(range(10))
-            values = set(['A', 'B', 'C'])
+            values = {'A', 'B', 'C'}
             cycle = utils.shufflecycle(values)
             seen = set()
             for i in range(10):
@@ -379,3 +365,32 @@ class test_shufflecycle(Case):
                 next(cycle)
         finally:
             utils.repeat = prev_repeat
+
+
+class test_version_string_as_tuple(Case):
+
+    def test_versions(self):
+        self.assertTupleEqual(
+            version_string_as_tuple('3'),
+            version_info_t(3, 0, 0, '', ''),
+        )
+        self.assertTupleEqual(
+            version_string_as_tuple('3.3'),
+            version_info_t(3, 3, 0, '', ''),
+        )
+        self.assertTupleEqual(
+            version_string_as_tuple('3.3.1'),
+            version_info_t(3, 3, 1, '', ''),
+        )
+        self.assertTupleEqual(
+            version_string_as_tuple('3.3.1a3'),
+            version_info_t(3, 3, 1, 'a3', ''),
+        )
+        self.assertTupleEqual(
+            version_string_as_tuple('3.3.1a3-40c32'),
+            version_info_t(3, 3, 1, 'a3', '40c32'),
+        )
+        self.assertEqual(
+            version_string_as_tuple('3.3.1.a3.40c32'),
+            version_info_t(3, 3, 1, 'a3', '40c32'),
+        )

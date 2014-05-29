@@ -7,8 +7,6 @@ Transport using the file system as the message store.
 """
 from __future__ import absolute_import
 
-from anyjson import loads, dumps
-
 import os
 import shutil
 import uuid
@@ -19,6 +17,8 @@ from kombu.exceptions import ChannelError
 from kombu.five import Empty, monotonic
 from kombu.utils import cached_property
 from kombu.utils.encoding import bytes_to_str, str_to_bytes
+from kombu.utils.json import loads, dumps
+
 
 VERSION = (1, 0, 0)
 __version__ = '.'.join(map(str, VERSION))

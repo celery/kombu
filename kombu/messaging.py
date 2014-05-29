@@ -521,7 +521,6 @@ class Consumer(object):
           whole messages.
 
         :param apply_global: Apply new settings globally on all channels.
-          Currently not supported by RabbitMQ.
 
         """
         return self.channel.basic_qos(prefetch_size,

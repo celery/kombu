@@ -13,7 +13,6 @@ import socket
 from kombu.exceptions import ChannelError, ConnectionError
 from kombu.message import Message
 from kombu.utils import cached_property
-from kombu.utils.compat import get_errno
 
 __all__ = ['Message', 'StdChannel', 'Management', 'Transport']
 
@@ -133,8 +132,7 @@ class Transport(object):
         return True
 
     def _make_reader(self, connection, timeout=socket.timeout,
-                     error=socket.error, get_errno=get_errno,
-                     _unavail=(errno.EAGAIN, errno.EINTR)):
+                     error=socket.error, _unavail=(errno.EAGAIN, errno.EINTR)):
         drain_events = connection.drain_events
 
         def _read(loop):
@@ -145,12 +143,15 @@ class Transport(object):
             except timeout:
                 return
             except error as exc:
-                if get_errno(exc) in _unavail:
+                if exc.errno in _unavail:
                     return
                 raise
             loop.call_soon(_read, loop)
 
         return _read
+
+    def qos_semantics_matches_spec(self, connection):
+        return True
 
     def on_readable(self, connection, loop):
         reader = self.__reader

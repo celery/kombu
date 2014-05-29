@@ -13,11 +13,10 @@ from __future__ import absolute_import
 import socket
 import couchdb
 
-from anyjson import loads, dumps
-
 from kombu.five import Empty
 from kombu.utils import uuid4
 from kombu.utils.encoding import bytes_to_str
+from kombu.utils.json import loads, dumps
 
 from . import virtual
 

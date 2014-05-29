@@ -19,11 +19,12 @@ except ImportError:  # pragma: no cover
 
 from collections import namedtuple
 from contextlib import contextmanager
+from io import BytesIO
 
 from .exceptions import (
     ContentDisallowed, DecodeError, EncodeError, SerializerNotInstalled
 )
-from .five import BytesIO, reraise, text_t
+from .five import reraise, text_t
 from .utils import entrypoints
 from .utils.encoding import str_to_bytes, bytes_t
 
@@ -307,14 +308,9 @@ def raw_encode(data):
 
 def register_json():
     """Register a encoder/decoder for JSON serialization."""
-    from anyjson import loads as json_loads, dumps as json_dumps
+    from kombu.utils import json as _json
 
-    def _loads(obj):
-        if isinstance(obj, bytes_t):
-            obj = obj.decode()
-        return json_loads(obj)
-
-    registry.register('json', json_dumps, _loads,
+    registry.register('json', _json.dumps, _json.loads,
                       content_type='application/json',
                       content_encoding='utf-8')
 
@@ -451,5 +447,5 @@ for ep, args in entrypoints('kombu.serializers'):  # pragma: no cover
 
 def prepare_accept_content(l, name_to_type=registry.name_to_type):
     if l is not None:
-        return set(n if '/' in n else name_to_type[n] for n in l)
+        return {n if '/' in n else name_to_type[n] for n in l}
     return l

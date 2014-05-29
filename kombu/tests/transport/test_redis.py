@@ -3,7 +3,6 @@ from __future__ import absolute_import
 import socket
 import types
 
-from anyjson import dumps, loads
 from collections import defaultdict
 from itertools import count
 
@@ -12,6 +11,7 @@ from kombu.exceptions import InconsistencyError, VersionMismatch
 from kombu.five import Empty, Queue as _Queue
 from kombu.transport import virtual
 from kombu.utils import eventio  # patch poll
+from kombu.utils.json import dumps, loads
 
 from kombu.tests.case import (
     Case, Mock, call, module_exists, skip_if_not_module, patch,
@@ -616,10 +616,12 @@ class test_Channel(Case):
             self.channel.connection.client.virtual_host = 'dwqeq'
             self.channel._connparams()
 
+    @skip_if_not_module('redis')
     def test_connparams_allows_slash_in_db(self):
         self.channel.connection.client.virtual_host = '/123'
         self.assertEqual(self.channel._connparams()['db'], 123)
 
+    @skip_if_not_module('redis')
     def test_connparams_db_can_be_int(self):
         self.channel.connection.client.virtual_host = 124
         self.assertEqual(self.channel._connparams()['db'], 124)
@@ -630,6 +632,7 @@ class test_Channel(Case):
         redis.Channel._new_queue(self.channel, 'elaine', auto_delete=True)
         self.assertIn('elaine', self.channel.auto_delete_queues)
 
+    @skip_if_not_module('redis')
     def test_connparams_regular_hostname(self):
         self.channel.connection.client.hostname = 'george.vandelay.com'
         self.assertEqual(

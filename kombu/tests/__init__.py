@@ -1,18 +1,10 @@
 from __future__ import absolute_import
 
-import anyjson
 import atexit
 import os
 import sys
 
 from kombu.exceptions import VersionMismatch
-
-# avoid json implementation inconsistencies.
-try:
-    import json  # noqa
-    anyjson.force_implementation('json')
-except ImportError:
-    anyjson.force_implementation('simplejson')
 
 
 def teardown():

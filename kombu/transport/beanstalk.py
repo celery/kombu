@@ -13,10 +13,9 @@ from __future__ import absolute_import
 import beanstalkc
 import socket
 
-from anyjson import loads, dumps
-
 from kombu.five import Empty
 from kombu.utils.encoding import bytes_to_str
+from kombu.utils.json import loads, dumps
 
 from . import virtual
 
@@ -44,7 +43,7 @@ class Channel(virtual.Channel):
 
     def _put(self, queue, message, **kwargs):
         extra = {}
-        priority = message['properties']['delivery_info']['priority']
+        priority = self._get_message_priority(message)
         ttr = message['properties'].get('ttr')
         if ttr is not None:
             extra['ttr'] = ttr

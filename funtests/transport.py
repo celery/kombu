@@ -14,16 +14,11 @@ from nose import SkipTest
 from kombu import Connection
 from kombu import Exchange, Queue
 from kombu.five import range
-from kombu.tests.case import skip_if_quick
 
 if sys.version_info >= (2, 5):
     from hashlib import sha256 as _digest
 else:
     from sha import new as _digest  # noqa
-
-
-def say(msg):
-    print(msg, file=sys.stderr)
 
 
 def _nobuf(x):
@@ -51,7 +46,7 @@ def consumeN(conn, consumer, n=1, timeout=30):
             if seconds >= timeout:
                 raise socket.timeout(msg)
             if seconds > 1:
-                say(msg)
+                print(msg)
         if len(messages) >= n:
             break
 
@@ -167,7 +162,6 @@ class TransportCase(unittest.TestCase):
     def _digest(self, data):
         return _digest(data).hexdigest()
 
-    @skip_if_quick
     def test_produce__consume_large_messages(
             self, bytes=1048576, n=10,
             charset=string.punctuation + string.letters + string.digits):

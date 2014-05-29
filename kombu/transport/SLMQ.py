@@ -10,13 +10,12 @@ from __future__ import absolute_import
 import socket
 import string
 
-from anyjson import loads, dumps
-
 import os
 
 from kombu.five import Empty, text_t
 from kombu.utils import cached_property  # , uuid
 from kombu.utils.encoding import bytes_to_str, safe_str
+from kombu.utils.json import loads, dumps
 
 from . import virtual
 
@@ -27,8 +26,9 @@ except ImportError:  # pragma: no cover
     get_client = ResponseError = None  # noqa
 
 # dots are replaced by dash, all other punctuation replaced by underscore.
-CHARS_REPLACE_TABLE = dict(
-    (ord(c), 0x5f) for c in string.punctuation if c not in '_')
+CHARS_REPLACE_TABLE = {
+    ord(c): 0x5f for c in string.punctuation if c not in '_'
+}
 
 
 class Channel(virtual.Channel):

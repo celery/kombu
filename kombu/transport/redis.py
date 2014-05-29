@@ -16,7 +16,6 @@ from contextlib import contextmanager
 from time import time
 
 from amqp import promise
-from anyjson import loads, dumps
 
 from kombu.exceptions import InconsistencyError, VersionMismatch
 from kombu.five import Empty, values, string_t
@@ -24,6 +23,7 @@ from kombu.log import get_logger
 from kombu.utils import cached_property, uuid
 from kombu.utils.eventio import poll, READ, ERR
 from kombu.utils.encoding import bytes_to_str
+from kombu.utils.json import loads, dumps
 from kombu.utils.url import _parse_url
 
 NO_ROUTE_ERROR = """
@@ -255,10 +255,9 @@ class MultiChannelPoller(object):
         self._channels.discard(channel)
 
     def _on_connection_disconnect(self, connection):
-        try:
-            self.poller.unregister(connection._sock)
-        except AttributeError:
-            pass
+        sock = getattr(connection, '_sock', None)
+        if sock is not None:
+            self.poller.unregister(sock)
 
     def _register(self, channel, client, type):
         if (channel, client, type) in self._chan_to_sock:
@@ -662,11 +661,8 @@ class Channel(virtual.Channel):
 
     def _put(self, queue, message, **kwargs):
         """Deliver message."""
-        try:
-            pri = max(min(int(
-                message['properties']['delivery_info']['priority']), 9), 0)
-        except (TypeError, ValueError, KeyError):
-            pri = 0
+        pri = self._get_message_priority(message)
+
         with self.conn_or_acquire() as client:
             client.lpush(self._q_for_pri(queue, pri), dumps(message))
 
@@ -794,6 +790,7 @@ class Channel(virtual.Channel):
             connparams.get('connection_class') or
             redis.Connection
             )
+
         class Connection(connection_cls):
             def disconnect(self):
                 channel._on_connection_disconnect(self)
@@ -896,8 +893,8 @@ class Channel(virtual.Channel):
     @property
     def active_queues(self):
         """Set of queues being consumed from (excluding fanout queues)."""
-        return set(queue for queue in self._active_queues
-                   if queue not in self.active_fanout_queues)
+        return {queue for queue in self._active_queues
+                if queue not in self.active_fanout_queues}
 
 
 class Transport(virtual.Transport):

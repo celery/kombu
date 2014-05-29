@@ -44,7 +44,6 @@ KQ_NOTE_REVOKE = getattr(__select__, 'kQ_NOTE_REVOKE', 64)
 from kombu.syn import detect_environment
 
 from . import fileno
-from .compat import get_errno
 
 __all__ = ['poll']
 
@@ -53,9 +52,9 @@ WRITE = POLL_WRITE = 0x004
 ERR = POLL_ERR = 0x008 | 0x010
 
 try:
-    SELECT_BAD_FD = set((errno.EBADF, errno.WSAENOTSOCK))
+    SELECT_BAD_FD = {errno.EBADF, errno.WSAENOTSOCK}
 except AttributeError:
-    SELECT_BAD_FD = set((errno.EBADF,))
+    SELECT_BAD_FD = {errno.EBADF}
 
 
 class Poller(object):
@@ -64,7 +63,7 @@ class Poller(object):
         try:
             return self._poll(timeout)
         except Exception as exc:
-            if get_errno(exc) != errno.EINTR:
+            if exc.errno != errno.EINTR:
                 raise
 
 
@@ -77,16 +76,16 @@ class _epoll(Poller):
         try:
             self._epoll.register(fd, events)
         except Exception as exc:
-            if get_errno(exc) != errno.EEXIST:
+            if exc.errno != errno.EEXIST:
                 raise
 
     def unregister(self, fd):
         try:
             self._epoll.unregister(fd)
-        except (socket.error, ValueError, KeyError):
+        except (socket.error, ValueError, KeyError, TypeError):
             pass
         except (IOError, OSError) as exc:
-            if get_errno(exc) != errno.ENOENT:
+            if exc.errno != errno.ENOENT:
                 raise
 
     def _poll(self, timeout):
@@ -198,11 +197,18 @@ class _select(Poller):
             try:
                 _selectf([fd], [], [], 0)
             except (_selecterr, socket.error) as exc:
-                if get_errno(exc) in SELECT_BAD_FD:
+                if exc.errno in SELECT_BAD_FD:
                     self.unregister(fd)
 
     def unregister(self, fd):
-        fd = fileno(fd)
+        try:
+            fd = fileno(fd)
+        except socket.error as exc:
+            # we don't know the previous fd of this object
+            # but it will be removed by the next poll iteration.
+            if exc.errno in SELECT_BAD_FD:
+                return
+            raise
         self._rfd.discard(fd)
         self._wfd.discard(fd)
         self._efd.discard(fd)
@@ -213,9 +219,9 @@ class _select(Poller):
                 self._rfd, self._wfd, self._efd, timeout,
             )
         except (_selecterr, socket.error) as exc:
-            if get_errno(exc) == errno.EINTR:
+            if exc.errno == errno.EINTR:
                 return
-            elif get_errno(exc) in SELECT_BAD_FD:
+            elif exc.errno in SELECT_BAD_FD:
                 return self._remove_bad()
             raise
 
