@@ -146,8 +146,8 @@ class Connection(object):
                  ssl=False, transport=None, connect_timeout=5,
                  transport_options=None, login_method=None, uri_prefix=None,
                  heartbeat=0, failover_strategy='round-robin',
-                 **kwargs):
-        alt = []
+                 alternates=None, **kwargs):
+        alt = [] if alternates is None else alternates
         # have to spell the args out, just to get nice docstrings :(
         params = self._initial_params = {
             'hostname': hostname, 'userid': userid,
@@ -160,7 +160,6 @@ class Connection(object):
         if hostname and not isinstance(hostname, string_t):
             alt.extend(hostname)
             hostname = alt[0]
-
         if hostname and '://' in hostname:
             if ';' in hostname:
                 alt.extend(hostname.split(';'))
