@@ -69,6 +69,13 @@ class Connection(object):
         For other transports you can use stunnel.
 
     :keyword hostname: Default host name/address if not provided in the URL.
+        Can be a list of hostnames or URLs, e.g.
+
+    .. code-block:: python
+
+        Connection(['amqp://foo', 'amqp://bar'], failover_strategy='round-robin')
+        Connection(['foo', 'bar'], failover_strategy='round-robin')
+
     :keyword userid: Default user name if not provided in the URL.
     :keyword password: Default password if not provided in the URL.
     :keyword virtual_host: Default virtual host if not provided in the URL.
@@ -84,9 +91,6 @@ class Connection(object):
     :keyword heartbeat: Heartbeat interval in int/float seconds.
         Note that if heartbeats are enabled then the :meth:`heartbeat_check`
         method must be called regularly, around once per second.
-    :keyword alternates: Alternate URLs or hostnames to connect to use in the
-        event a connection cannot be made. The failover_strategy dictates how
-        next alternate URL/hostname is picked.
     :keyword failover_strategy: failover strategy to use in the underlying
         transport class. Can be `round-robin` or `shuffle`.
 
@@ -142,8 +146,7 @@ class Connection(object):
                  ssl=False, transport=None, connect_timeout=5,
                  transport_options=None, login_method=None, uri_prefix=None,
                  heartbeat=0, failover_strategy='round-robin',
-                 alternates=None, **kwargs):
-        alt = [] if alternates is None else alternates
+                 **kwargs):
         # have to spell the args out, just to get nice docstrings :(
         params = self._initial_params = {
             'hostname': hostname, 'userid': userid,
@@ -154,8 +157,10 @@ class Connection(object):
         }
 
         if hostname and not isinstance(hostname, string_t):
-            alt.extend(hostname)
+            alt = hostname
             hostname = alt[0]
+        else:
+            alt = []
         if hostname and '://' in hostname:
             if ';' in hostname:
                 alt.extend(hostname.split(';'))

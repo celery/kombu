@@ -156,11 +156,6 @@ class test_Connection(Case):
         self.assertFalse(_connection.connected)
         self.assertIsInstance(conn.transport, Transport)
 
-    def test_alternates(self):
-        conn1 = Connection('amqp://foo', alternates=['bar'])
-        self.assertEqual(conn1.hostname, 'foo')
-        self.assertListEqual(conn1.alt, ['amqp://foo', 'bar'])
-
     def test_multiple_urls(self):
         conn1 = Connection('amqp://foo;amqp://bar')
         self.assertEqual(conn1.hostname, 'foo')
