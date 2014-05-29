@@ -84,6 +84,11 @@ class Connection(object):
     :keyword heartbeat: Heartbeat interval in int/float seconds.
         Note that if heartbeats are enabled then the :meth:`heartbeat_check`
         method must be called regularly, around once per second.
+    :keyword alternates: Alternate URLs or hostnames to connect to use in the
+        event a connection cannot be made. The failover_strategy dictates how
+        next alternate URL/hostname is picked.
+    :keyword failover_strategy: failover strategy to use in the underlying
+        transport class. Can be `round-robin` or `shuffle`.
 
     .. note::
 
@@ -190,12 +195,22 @@ class Connection(object):
 
         self.declared_entities = set()
 
-    def switch(self, url):
-        """Switch connection parameters to use a new URL (does not
-        reconnect)"""
+    def switch(self, conn_str):
+        """Switch connection parameters to use a new URL or hostname (does not
+        reconnect) and close any existing connections
+
+        :param conn_str: either a hostname or URL
+        :type conn_str: str
+        """
+
         self.close()
-        self._closed = False
-        self._init_params(**dict(self._initial_params, **parse_url(url)))
+
+        if '://' in conn_str:
+            new_params = parse_url(conn_str)
+        else:
+            new_params = {'hostname': conn_str}
+
+        self._init_params(**dict(self._initial_params, **new_params))
 
     def maybe_switch_next(self):
         """Switch to next URL given by the current failover strategy (if
