@@ -464,7 +464,7 @@ class Channel(base.StdChannel):
     :class:`~qpid.messaging.endpoints.Receiver` to be created on the
     :class:`~qpid.messaging.endpoints.Session` started by the :class:
     `Transport`. The receiver will asynchronously read using
-    qpid .messaging, and prefetch messages before the call to
+    qpid.messaging, and prefetch messages before the call to
     :meth:`Transport.basic_drain` occurs. The prefetch_count value of the
     :class:`QoS` object is the capacity value of the new receiver. The new
     receiver capacity must always be at least 1, otherwise none of the
