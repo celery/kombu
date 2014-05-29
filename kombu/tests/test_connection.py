@@ -156,6 +156,11 @@ class test_Connection(Case):
         self.assertFalse(_connection.connected)
         self.assertIsInstance(conn.transport, Transport)
 
+    def test_alternates(self):
+        conn1 = Connection('amqp://foo', alternates=['bar'])
+        self.assertEqual(conn1.hostname, 'foo')
+        self.assertListEqual(conn1.alt, ['amqp://foo', 'bar'])
+
     def test_multiple_urls(self):
         conn1 = Connection('amqp://foo;amqp://bar')
         self.assertEqual(conn1.hostname, 'foo')
@@ -295,6 +300,14 @@ class test_Connection(Case):
         self.assertEqual(c.hostname, 'example.com')
         self.assertEqual(c.transport_cls, 'redis')
         self.assertEqual(c.virtual_host, '/3')
+
+    def test_switch_with_host(self):
+        c = Connection('amqp://foo')
+        c._closed = True
+        c.switch('example.com')
+        self.assertFalse(c._closed)
+        self.assertEqual(c.hostname, 'example.com')
+        self.assertEqual(c.transport_cls, 'amqp')
 
     def test_maybe_switch_next(self):
         c = Connection('amqp://foo;redis://example.com//3')
