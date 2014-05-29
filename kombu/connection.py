@@ -204,6 +204,7 @@ class Connection(object):
         """
 
         self.close()
+        self._closed = False
 
         if '://' in conn_str:
             new_params = parse_url(conn_str)
