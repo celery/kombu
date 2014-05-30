@@ -1,8 +1,10 @@
 from __future__ import absolute_import
 
 import datetime
+import select
 import ssl
 import socket
+import sys
 import time
 
 from itertools import count
@@ -15,9 +17,9 @@ except ImportError:
     QPID_NOT_AVAILABLE = True
 
 import kombu.five
+from kombu.transport.qpid import AuthenticationFailure
 from kombu.transport.qpid import QpidMessagingExceptionHandler, QoS, Message
-from kombu.transport.qpid import Channel
-from kombu.transport.qpid import Connection, Transport
+from kombu.transport.qpid import Channel, Connection, Transport
 from kombu.transport.virtual import Base64
 from kombu.utils.compat import OrderedDict
 from kombu.tests.case import Case, Mock, SkipTest
@@ -271,11 +273,10 @@ class TestQoS(Case):
         self.assertTrue(m2 is message2)
 
 
-class TestConnection(ExtraAssertionsMixin, Case):
+class ConnectionTestBase(Case):
 
     @patch('qpid.messaging.Connection')
     def setUp(self, QpidConnection):
-        """Setup a Connection with sane connection parameters."""
         if QPID_NOT_AVAILABLE:
             raise SkipTest('qpid.messaging not installed')
         self.connection_options = {'host': 'localhost',
@@ -285,59 +286,105 @@ class TestConnection(ExtraAssertionsMixin, Case):
                                    'transport': 'tcp',
                                    'timeout': 10,
                                    'sasl_mechanisms': 'PLAIN'}
-        self.created_connection = Mock()
-        QpidConnection.establish = Mock(return_value=self.created_connection)
         self.mock_qpid_connection = QpidConnection
-        self.my_connection = Connection(**self.connection_options)
+        self.conn = Connection(**self.connection_options)
 
-    def test_init_variables(self):
-        """Test that all init params are internally stored correctly
-        """
+
+class TestConnectionInit(ExtraAssertionsMixin, ConnectionTestBase):
+
+    def test_connection__init__stores_connection_options(self):
         self.assertDictEqual(self.connection_options,
-                             self.my_connection.connection_options)
-        self.assertTrue(isinstance(self.my_connection.channels, list))
-        self.assertTrue(isinstance(self.my_connection._callbacks, dict))
+                             self.conn.connection_options)
+
+    def test_connection__init__variables(self):
+        self.assertTrue(isinstance(self.conn.channels, list))
+        self.assertTrue(isinstance(self.conn._callbacks, dict))
+
+    def test_connection__init__establishes_connection(self):
         self.mock_qpid_connection.establish.assert_called_with(
             **self.connection_options)
-        internal_conn = self.my_connection._qpid_conn
-        self.assertTrue(self.created_connection is internal_conn)
 
-    def test_verify_connection_class_attributes(self):
-        """Verify that Channel class attribute is set correctly"""
+    def test_connection__init__saves_established_connection(self):
+        created_conn = self.mock_qpid_connection.establish.return_value
+        self.assertTrue(self.conn._qpid_conn is created_conn)
+
+    @patch('kombu.transport.qpid.sys.exc_info')
+    @patch('qpid.messaging.Connection')
+    def test_connection__init__mutates_ConnectionError(self, qpid_conn, mock_exc_info):
+        ConnectionError = qpid.messaging.exceptions.ConnectionError
+        my_conn_error = ConnectionError()
+        my_conn_error.text = 'connection-forced: Authentication failed(320)'
+        qpid_conn.establish.side_effect = my_conn_error
+        mock_exc_info.return_value = ('a', 'b', None)
+        try:
+            self.conn = Connection(**self.connection_options)
+        except AuthenticationFailure as error:
+            exc_info = sys.exc_info()
+            self.assertTrue(not isinstance(error, ConnectionError))
+            self.assertTrue(exc_info[1] is 'b')
+            self.assertTrue(exc_info[2] is None)
+        else:
+            self.fail('ConnectionError type was not mutated correctly')
+
+    @patch('qpid.messaging.Connection')
+    def test_connection__init__non_auth_Conn_Error_raises(self, qpid_conn):
+        ConnectionError = qpid.messaging.exceptions.ConnectionError
+        my_conn_error = ConnectionError()
+        my_conn_error.text = 'some non auth related error message'
+        qpid_conn.establish.side_effect = my_conn_error
+        self.assertRaises(ConnectionError, Connection,
+                          **self.connection_options)
+
+    @patch('qpid.messaging.Connection')
+    def test_connection__init__non_qpid_exception_raises(self, qpid_conn):
+        ConnectionError = qpid.messaging.exceptions.ConnectionError
+        my_conn_error = ConnectionError()
+        my_conn_error.text = 'some non auth related error message'
+        qpid_conn.establish.side_effect = IOError()
+        self.assertRaises(IOError, Connection, **self.connection_options)
+
+
+class TestConnectionClassAttributes(ConnectionTestBase):
+
+    def test_connection_verify_class_attributes(self):
         self.assertEqual(Channel, Connection.Channel)
 
-    def test_get_qpid_connection(self):
-        """Test that get_qpid_connection returns the connection."""
-        mock_connection = Mock()
-        self.my_connection._qpid_conn = mock_connection
-        returned_connection = self.my_connection.get_qpid_connection()
-        self.assertTrue(mock_connection is returned_connection)
 
-    def test_close_channel_exists(self):
-        """Test that calling close_channel() with a valid channel removes
-        the channel from self.channels and sets channel.connection to None.
-        """
-        mock_channel = Mock()
-        self.my_connection.channels = [mock_channel]
-        mock_channel.connection = True
-        self.my_connection.close_channel(mock_channel)
-        self.assertEqual(self.my_connection.channels, [])
-        self.assertTrue(mock_channel.connection is None)
+class TestConnectionGetQpidConnection(ConnectionTestBase):
 
-    def test_close_channel_does_not_exist(self):
-        """Test that calling close_channel() with an invalid channel does
-        not raise a ValueError and sets channel.connection to None.
-        """
-        self.my_connection.channels = Mock()
-        self.my_connection.channels.remove = Mock(side_effect=ValueError())
+    def test_connection_get_qpid_connection(self):
+        self.conn._qpid_conn = Mock()
+        returned_connection = self.conn.get_qpid_connection()
+        self.assertTrue(self.conn._qpid_conn is returned_connection)
+
+
+class TestConnectionCloseChannel(ConnectionTestBase):
+
+    def setUp(self):
+        super(TestConnectionCloseChannel, self).setUp()
+        self.conn.channels = Mock()
+
+    def test_connection_close_channel_removes_channel_from_channel_list(self):
         mock_channel = Mock()
-        mock_channel.connection = True
-        self.my_connection.close_channel(mock_channel)
+        self.conn.close_channel(mock_channel)
+        self.conn.channels.remove.assert_called_once_with(mock_channel)
+
+    def test_connection_close_channel_handles_ValueError_being_raised(self):
+        self.conn.channels.remove = Mock(side_effect=ValueError())
+        try:
+            self.conn.close_channel(Mock())
+        except ValueError:
+            self.fail('ValueError should not have been raised')
+
+    def test_connection_close_channel_set_channel_connection_to_None(self):
+        mock_channel = Mock()
+        mock_channel.connection = False
+        self.conn.channels.remove = Mock(side_effect=ValueError())
+        self.conn.close_channel(mock_channel)
         self.assertTrue(mock_channel.connection is None)
 
 
 class ChannelTestBase(Case):
-    """Provides a basic setup for testing a Channel"""
 
     @skip_if_not_module('qpidtoollibs')
     @patch('kombu.transport.qpid.qpidtoollibs.BrokerAgent')
@@ -1222,8 +1269,6 @@ class TestTransportEstablishConnection(Case):
             self.client.userid = new_userid_string
             self.transport.establish_connection()
             self.mock_conn.assert_called_once_with(username=new_userid_string,
-                                                   reconnect=True,
-                                                   reconnect_timeout=4,
                                                    sasl_mechanisms='PLAIN',
                                                    host='127.0.0.1',
                                                    timeout=4,
@@ -1237,8 +1282,6 @@ class TestTransportEstablishConnection(Case):
             mock_params.return_value = self.default_connection_params
             self.transport.establish_connection()
             self.mock_conn.assert_called_once_with(username='guest',
-                                                   reconnect=True,
-                                                   reconnect_timeout=4,
                                                    sasl_mechanisms='PLAIN',
                                                    host='127.0.0.1',
                                                    timeout=4,
@@ -1254,8 +1297,6 @@ class TestTransportEstablishConnection(Case):
             self.client.transport_options['new_param'] = new_param_value
             self.transport.establish_connection()
             self.mock_conn.assert_called_once_with(username='guest',
-                                                   reconnect=True,
-                                                   reconnect_timeout=4,
                                                    sasl_mechanisms='PLAIN',
                                                    host='127.0.0.1',
                                                    timeout=4,
@@ -1271,8 +1312,6 @@ class TestTransportEstablishConnection(Case):
             self.client.hostname = 'localhost'
             self.transport.establish_connection()
             self.mock_conn.assert_called_once_with(username='guest',
-                                                   reconnect=True,
-                                                   reconnect_timeout=4,
                                                    sasl_mechanisms='PLAIN',
                                                    host='127.0.0.1',
                                                    timeout=4,
@@ -1287,8 +1326,6 @@ class TestTransportEstablishConnection(Case):
             self.client.ssl = False
             self.transport.establish_connection()
             self.mock_conn.assert_called_once_with(username='guest',
-                                                   reconnect=True,
-                                                   reconnect_timeout=4,
                                                    sasl_mechanisms='PLAIN',
                                                    host='127.0.0.1',
                                                    timeout=4,
@@ -1308,12 +1345,10 @@ class TestTransportEstablishConnection(Case):
             self.mock_conn.assert_called_once_with(username='guest',
                                                    ssl_certfile='my_certfile',
                                                    ssl_trustfile='my_cacerts',
-                                                   reconnect_timeout=4,
                                                    timeout=4,
                                                    ssl_skip_hostname_check=False,
                                                    sasl_mechanisms='PLAIN',
                                                    host='127.0.0.1',
-                                                   reconnect=True,
                                                    ssl_keyfile='my_keyfile',
                                                    password='guest',
                                                    port=1234, transport='ssl')
@@ -1330,12 +1365,10 @@ class TestTransportEstablishConnection(Case):
             self.mock_conn.assert_called_once_with(username='guest',
                                                    ssl_certfile='my_certfile',
                                                    ssl_trustfile='my_cacerts',
-                                                   reconnect_timeout=4,
                                                    timeout=4,
                                                    ssl_skip_hostname_check=True,
                                                    sasl_mechanisms='PLAIN',
                                                    host='127.0.0.1',
-                                                   reconnect=True,
                                                    ssl_keyfile='my_keyfile',
                                                    password='guest',
                                                    port=1234, transport='ssl')
@@ -1362,6 +1395,16 @@ class TestTransportEstablishConnection(Case):
             mock_params.return_value = self.default_connection_params
             new_conn = self.transport.establish_connection()
             self.assertTrue(new_conn is self.mock_conn.return_value)
+
+
+class TestTransportChannelErrorTuple(Case):
+
+    def test_transport_channel_error_contains_qpid_ConnectionError(self):
+        self.assertTrue(qpid.messaging.exceptions.ConnectionError in
+                        Transport.connection_errors)
+
+    def test_transport_channel_error_contains_socket_error(self):
+        self.assertTrue(select.error in Transport.connection_errors)
 
 
 class TestTransport(ExtraAssertionsMixin, Case):

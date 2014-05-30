@@ -24,6 +24,7 @@ import os
 import select
 import socket
 import ssl
+import sys
 import time
 
 from itertools import count
@@ -218,6 +219,10 @@ AUTO_DELETE_TIMEOUT = 3
 
 VERSION = (1, 0, 0)
 __version__ = '.'.join(map(str, VERSION))
+
+
+class AuthenticationFailure(Exception):
+    pass
 
 
 class QpidMessagingExceptionHandler(object):
@@ -1344,12 +1349,29 @@ class Connection(object):
         Creates a :class:`qpid.messaging.endpoints.Connection` object with
         the saved parameters, and stores it as _qpid_conn.
 
+        qpid.messaging has an AuthenticationFailure exception type, but
+        instead raises a ConnectionError with a message that indicates an
+        authentication failure occurred in those situations. ConnectionError
+        is listed as a recoverable error type, so kombu will attempt to retry
+        if a ConnectionError is raised. Retrying the operation without
+        adjusting the credentials is not correct, so this method specifically
+        checks for a ConnecitonError that indicates an Authentication Failure
+        occured. In those situations, the error type is mutated while
+        preserving the original message and raised so kombu will allow the
+        exception to not be considered recoverable.
+
         """
         self.connection_options = connection_options
         self.channels = []
         self._callbacks = {}
         establish = qpid.messaging.Connection.establish
-        self._qpid_conn = establish(**self.connection_options)
+        try:
+            self._qpid_conn = establish(**self.connection_options)
+        except qpid.messaging.exceptions.ConnectionError as conn_exc:
+            if 'Authentication failed' in conn_exc.text:
+                exc_info = sys.exc_info()
+                raise AuthenticationFailure, exc_info[1], exc_info[2]
+            raise conn_exc
 
     def get_qpid_connection(self):
         """Return the existing connection (singleton).
@@ -1398,6 +1420,12 @@ class Transport(base.Transport):
     The Transport can create :class:`Channel` objects to communicate with the
     broker with using the :meth:`create_channel` method.
 
+    The Transport identifies recoverable errors, allowing for error recovery
+    when certain exceptions occur. These exception types are stored in the
+    Transport class attribute connection_errors. This adds support for Kombu
+    to retry an operation if a ConnectionError occurs. ConnectionErrors occur
+    when the Transport cannot communicate with the Qpid broker.
+
     """
 
     # Reference to the class that should be used as the Connection object
@@ -1415,6 +1443,11 @@ class Transport(base.Transport):
     # The driver type and name for identification purposes.
     driver_type = 'qpid'
     driver_name = 'qpid'
+
+    connection_errors = (
+        qpid.messaging.exceptions.ConnectionError,
+        select.error
+    )
 
     def establish_connection(self):
         """Establish a Connection object.
@@ -1461,8 +1494,6 @@ class Transport(base.Transport):
                      'password': conninfo.password,
                      'transport': conninfo.qpid_transport,
                      'timeout': conninfo.connect_timeout,
-                     'reconnect': True,
-                     'reconnect_timeout': conninfo.connect_timeout,
                      'sasl_mechanisms': conninfo.sasl_mechanisms},
                     **conninfo.transport_options or {})
         conn = self.Connection(**opts)
@@ -1513,8 +1544,6 @@ class Transport(base.Transport):
                 queue = receiver.source
             except qpid.messaging.exceptions.Empty:
                 raise socket.timeout()
-            except select.error:
-                return
             else:
                 connection._callbacks[queue](message)
             elapsed_time = time.time() - start_time
