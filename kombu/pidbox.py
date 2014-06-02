@@ -210,14 +210,14 @@ class Mailbox(object):
 
     def get_reply_queue(self):
         oid = self.oid
-        return Queue('%s.%s' % (oid, self.reply_exchange.name),
-                     exchange=self.reply_exchange,
-                     routing_key=oid,
-                     durable=False,
-                     auto_delete=True,
-                     queue_arguments={
-                         'x-expires': int(REPLY_QUEUE_EXPIRES * 1000),
-                     })
+        return Queue(
+            '%s.%s' % (oid, self.reply_exchange.name),
+            exchange=self.reply_exchange,
+            routing_key=oid,
+            durable=False,
+            auto_delete=True,
+            queue_arguments={'x-expires': int(REPLY_QUEUE_EXPIRES * 1000)},
+        )
 
     @cached_property
     def reply_queue(self):

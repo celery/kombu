@@ -207,7 +207,7 @@ class Channel(virtual.Channel):
         self.get_broadcast().ensure_index([('queue', 1)])
         self.get_routing().ensure_index([('queue', 1), ('exchange', 1)])
 
-    #TODO Store a more complete exchange metatable in the routing collection
+    # TODO Store a more complete exchange metatable in the routing collection
     def get_table(self, exchange):
         """Get table of bindings for ``exchange``."""
         localRoutes = frozenset(self.state.exchanges[exchange]['table'])
