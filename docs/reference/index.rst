@@ -27,7 +27,7 @@
     kombu.async.hub
     kombu.async.semaphore
     kombu.async.timer
-    kombu.async..debug
+    kombu.async.debug
     kombu.transport
     kombu.transport.pyamqp
     kombu.transport.librabbitmq
