@@ -4,6 +4,30 @@
  Change history
 ================
 
+.. _version-3.0.17:
+
+3.0.17
+======
+:release-date: 2014-06-02 06:00 P.M UTC
+:release-by: Ask Solem
+
+- ``kombu[librabbitmq]`` now depends on librabbitmq 1.5.2.
+
+- CouchDB: Now works without userid set.
+
+    Fix contributed by Latitia M. Haskins.
+
+- Redis: Restore at shutdown now works when ack emulation is disabled.
+
+- :func:`kombu.common.eventloop` accidentally swallowed socket errors.
+
+- Adds :func:`kombu.utils.url.sanitize_url`
+
+- Async: Event loop now selectively removes file descriptors for the mode
+  it failed in, and keeps others (e.g read vs write).
+
+    Fix contributed by Roger Hu.
+
 .. _version-3.0.16:
 
 3.0.16
