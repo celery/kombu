@@ -912,6 +912,8 @@ class Transport(virtual.Transport):
     driver_name = 'redis'
 
     def __init__(self, *args, **kwargs):
+        if redis is None:
+            raise ImportError('Missing redis library (pip install redis)')
         super(Transport, self).__init__(*args, **kwargs)
 
         # Get redis-py exceptions.
