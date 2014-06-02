@@ -280,8 +280,8 @@ class Hub(object):
                     raise StopIteration()
 
                 for fd, event in events or ():
-                    if fileno in consolidate and \
-                            writers.get(fileno) is None:
+                    if fd in consolidate and \
+                            writers.get(fd) is None:
                         to_consolidate.append(fd)
                         continue
                     cb = cbargs = None
