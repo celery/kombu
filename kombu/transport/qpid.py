@@ -1373,7 +1373,7 @@ class Connection(object):
             if coded_as_auth_failure or contains_auth_fail_text:
                 exc_info = sys.exc_info()
                 raise AuthenticationFailure, exc_info[1], exc_info[2]
-            raise conn_exc
+            raise
 
     def get_qpid_connection(self):
         """Return the existing connection (singleton).
