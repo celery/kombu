@@ -4,11 +4,20 @@
  Change history
 ================
 
+.. _version-3.0.18:
+
+3.0.18
+======
+:release-date: 2014-06-02 06:00 P.M UTC
+:release-by: Ask Solem
+
+- A typo introduced in 3.0.17 caused kombu.async.hub to crash (Issue #360).
+
 .. _version-3.0.17:
 
 3.0.17
 ======
-:release-date: 2014-06-02 06:00 P.M UTC
+:release-date: 2014-06-02 05:00 P.M UTC
 :release-by: Ask Solem
 
 - ``kombu[librabbitmq]`` now depends on librabbitmq 1.5.2.
