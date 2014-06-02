@@ -310,10 +310,31 @@ class TestConnectionInit(ExtraAssertionsMixin, ConnectionTestBase):
 
     @patch('kombu.transport.qpid.sys.exc_info')
     @patch('qpid.messaging.Connection')
-    def test_connection__init__mutates_ConnectionError(self, qpid_conn, mock_exc_info):
+    def test_connection__init__mutates_ConnError_by_message(self, qpid_conn,
+                                                            mock_exc_info):
         ConnectionError = qpid.messaging.exceptions.ConnectionError
         my_conn_error = ConnectionError()
         my_conn_error.text = 'connection-forced: Authentication failed(320)'
+        qpid_conn.establish.side_effect = my_conn_error
+        mock_exc_info.return_value = ('a', 'b', None)
+        try:
+            self.conn = Connection(**self.connection_options)
+        except AuthenticationFailure as error:
+            exc_info = sys.exc_info()
+            self.assertTrue(not isinstance(error, ConnectionError))
+            self.assertTrue(exc_info[1] is 'b')
+            self.assertTrue(exc_info[2] is None)
+        else:
+            self.fail('ConnectionError type was not mutated correctly')
+
+    @patch('kombu.transport.qpid.sys.exc_info')
+    @patch('qpid.messaging.Connection')
+    def test_connection__init__mutates_ConnError_by_code(self, qpid_conn,
+                                                         mock_exc_info):
+        ConnectionError = qpid.messaging.exceptions.ConnectionError
+        my_conn_error = ConnectionError()
+        my_conn_error.code = 320
+        my_conn_error.text = 'someothertext'
         qpid_conn.establish.side_effect = my_conn_error
         mock_exc_info.return_value = ('a', 'b', None)
         try:

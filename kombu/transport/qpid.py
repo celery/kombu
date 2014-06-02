@@ -1368,7 +1368,9 @@ class Connection(object):
         try:
             self._qpid_conn = establish(**self.connection_options)
         except qpid.messaging.exceptions.ConnectionError as conn_exc:
-            if 'Authentication failed' in conn_exc.text:
+            coded_as_auth_failure = getattr(conn_exc, 'code', None) == 320
+            contains_auth_fail_text = 'Authentication failed' in conn_exc.text
+            if coded_as_auth_failure or contains_auth_fail_text:
                 exc_info = sys.exc_info()
                 raise AuthenticationFailure, exc_info[1], exc_info[2]
             raise conn_exc
