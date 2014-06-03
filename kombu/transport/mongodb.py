@@ -87,6 +87,9 @@ class Channel(virtual.Channel):
 
         self._broadcast_cursors = {}
 
+        # Evaluate connection
+        self.client
+
     def _new_queue(self, queue, **kwargs):
         pass
 
