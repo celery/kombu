@@ -194,6 +194,7 @@ class Connection(object):
         """Switch connection parameters to use a new URL (does not
         reconnect)"""
         self.close()
+        self.declared_entities.clear()
         self._closed = False
         self._init_params(**dict(self._initial_params, **parse_url(url)))
 
