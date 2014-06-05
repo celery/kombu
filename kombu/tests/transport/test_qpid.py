@@ -5,6 +5,7 @@ import select
 import ssl
 import socket
 import sys
+import threading
 import time
 
 from itertools import count
@@ -17,14 +18,14 @@ except ImportError:
     QPID_NOT_AVAILABLE = True
 
 import kombu.five
-from kombu.transport.qpid import AuthenticationFailure
-from kombu.transport.qpid import QpidMessagingExceptionHandler, QoS, Message
-from kombu.transport.qpid import Channel, Connection, Transport
+from kombu.transport.qpid import (AuthenticationFailure,
+    QpidMessagingExceptionHandler, QoS, Message, Channel, Connection,
+    ReceiversMonitor, Transport)
 from kombu.transport.virtual import Base64
 from kombu.utils.compat import OrderedDict
 from kombu.tests.case import Case, Mock, SkipTest
 from kombu.tests.case import patch, skip_if_not_module
-from mock import PropertyMock
+from mock import PropertyMock, call
 
 
 class ExtraAssertionsMixin(object):
@@ -35,7 +36,7 @@ class ExtraAssertionsMixin(object):
         Test that two dictionaries are equal.
 
         Implemented here because this method was not available until Python
-        2.6.  This asserts that the unique set of keys are the same in a and b.
+        2.6. This asserts that the unique set of keys are the same in a and b.
         Also asserts that the value of each key is the same in a and b using
         the is operator.
         """
@@ -430,7 +431,8 @@ class TestChannelPut(ChannelTestBase):
         address_string = '%s; {assert: always, node: {type: queue}}' % \
                          routing_key
         self.transport.session.sender.assert_called_with(address_string)
-        mock_Message_cls.assert_called_with(content=mock_message, subject=None)
+        mock_Message_cls.assert_called_with(content=mock_message,
+                                            subject=None)
         mock_sender = self.transport.session.sender.return_value
         mock_sender.send.assert_called_with(mock_Message_cls.return_value,
                                             sync=True)
@@ -611,7 +613,8 @@ class TestChannelBasicConsume(ChannelTestBase, ExtraAssertionsMixin):
         mock_tag = Mock()
         mock_queue = Mock()
         self.channel.basic_consume(mock_queue, Mock(), Mock(), mock_tag)
-        self.assertDictEqual({mock_tag: mock_queue}, self.channel._tag_to_queue)
+        expected_dict = {mock_tag: mock_queue}
+        self.assertDictEqual(expected_dict, self.channel._tag_to_queue)
 
     def test_channel_basic_consume_adds_entry_to_connection__callbacks(self):
         mock_queue = Mock()
@@ -925,7 +928,6 @@ class TestChannel(ExtraAssertionsMixin, Case):
             options=expected_default_options)
 
     def test_queue_declare_raises_exception_not_silenced(self):
-        """Test declare_queue, raise an exception that is raised and not silenced"""
         unique_exception = Exception('This exception should not be silenced')
         mock_queue = Mock()
         self.mock_broker.addQueue.side_effect = unique_exception
@@ -1194,6 +1196,135 @@ class TestChannel(ExtraAssertionsMixin, Case):
         self.assertTrue(mock_default is result)
 
 
+class ReceiversMonitorTestBase(Case):
+
+    def setUp(self):
+        self.mock_session = Mock()
+        self.mock_w = Mock()
+        self.monitor = ReceiversMonitor(self.mock_session,
+                                                     self.mock_w)
+        class BreakOutException(Exception):
+            pass
+        self.BreakOutException = BreakOutException
+
+
+class TestReceiversMonitorType(ReceiversMonitorTestBase):
+
+    def test_qpid_messaging_receivers_monitor_subclass_of_threading(self):
+        self.assertTrue(isinstance(self.monitor, threading.Thread))
+
+
+class TestReceiversMonitorInit(ReceiversMonitorTestBase):
+
+    def setUp(self):
+        thread___init___str = 'kombu.transport.qpid.threading.Thread.__init__'
+        self.patch_parent___init__ = patch(thread___init___str)
+        self.mock_Thread___init__ = self.patch_parent___init__.start()
+        super(TestReceiversMonitorInit, self).setUp()
+
+    def tearDown(self):
+        self.patch_parent___init__.stop()
+
+    def test_qpid_messaging_receivers_monitor_init_saves_session(self):
+        self.assertTrue(self.monitor._session is self.mock_session)
+
+    def test_qpid_messaging_receivers_monitor_init_saves_fd(self):
+        self.assertTrue(self.monitor._w_fd is self.mock_w)
+
+    def test_qpid_messaging_Receivers_monitor_init_calls_parent__init__(self):
+        self.mock_Thread___init__.assert_called_once_with()
+
+
+class TestReceiversMonitorRun(ReceiversMonitorTestBase):
+
+    @patch.object(ReceiversMonitor, 'monitor_receivers')
+    @patch('kombu.transport.qpid.time.sleep')
+    def test_qmrm_run_calls_monitor_receivers(self, mock_sleep,
+                                              mock_monitor_receivers):
+        mock_sleep.side_effect = self.BreakOutException()
+        self.assertRaises(self.BreakOutException, self.monitor.run)
+        mock_monitor_receivers.assert_called_once_with()
+
+    @patch.object(ReceiversMonitor, 'monitor_receivers')
+    @patch('kombu.transport.qpid.time.sleep')
+    @patch('kombu.transport.qpid.logger')
+    def test_qmrm_run_calls_logs_exception_and_sleeps(self, mock_logger,
+                                                      mock_sleep,
+                                                      mock_monitor_receivers):
+        exc_to_raise = IOError()
+        mock_monitor_receivers.side_effect = exc_to_raise
+        mock_sleep.side_effect = self.BreakOutException()
+        self.assertRaises(self.BreakOutException, self.monitor.run)
+        mock_logger.error.assert_called_once_with(exc_to_raise)
+        mock_sleep.assert_called_once_with(10)
+
+    @patch.object(ReceiversMonitor, 'monitor_receivers')
+    @patch('kombu.transport.qpid.time.sleep')
+    def test_qmrm_run_loops_when_unexpected_exception_is_raised(self,
+            mock_sleep, mock_monitor_receivers):
+        def return_once_raise_on_second_call(*args):
+            mock_sleep.side_effect = self.BreakOutException()
+            return None
+        mock_sleep.side_effect = return_once_raise_on_second_call
+        self.assertRaises(self.BreakOutException, self.monitor.run)
+        mock_monitor_receivers.has_calls([call(), call()])
+
+
+class TestReceiversMonitorMonitorReceivers(ReceiversMonitorTestBase):
+
+    def test_qmrm_monitor_receivers_calls_next_receivers(self):
+        self.mock_session.next_receiver.side_effect = self.BreakOutException()
+        self.assertRaises(self.BreakOutException,
+                          self.monitor.monitor_receivers)
+        self.mock_session.next_receiver.assert_called_once_with()
+
+    def test_qmrm_monitor_receivers_writes_to_fd(self):
+        with patch('kombu.transport.qpid.os.write') as mock_os_write:
+            mock_os_write.side_effect = self.BreakOutException()
+            self.assertRaises(self.BreakOutException,
+                              self.monitor.monitor_receivers)
+            mock_os_write.assert_called_once_with(self.mock_w, '0')
+
+
+class TestTransportInit(Case):
+
+    def setUp(self):
+        self.patch_a = patch('kombu.transport.qpid.base.Transport.__init__')
+        self.mock_base_Transport__init__ = self.patch_a.start()
+
+        self.patch_b = patch('kombu.transport.qpid.os')
+        self.mock_os = self.patch_b.start()
+        self.mock_r = Mock()
+        self.mock_w = Mock()
+        self.mock_os.pipe.return_value = (self.mock_r, self.mock_w)
+
+        self.patch_c = patch('kombu.transport.qpid.fcntl')
+        self.mock_fcntl = self.patch_c.start()
+
+    def tearDown(self):
+        self.patch_a.stop()
+        self.patch_b.stop()
+        self.patch_c.stop()
+
+    def test_transport__init___calls_parent_class___init__(self):
+        Transport(Mock())
+        self.mock_base_Transport__init__.assert_caled_once_with()
+
+    def test_transport___init___calls_os_pipe(self):
+        Transport(Mock())
+        self.mock_os.pipe.assert_called_once_with()
+
+    def test_transport___init___saves_os_pipe_file_descriptors(self):
+        transport = Transport(Mock())
+        self.assertTrue(transport.r is self.mock_r)
+        self.assertTrue(transport._w is self.mock_w)
+
+    def test_transport___init___sets_non_blocking_behavior_on_r_fd(self):
+        Transport(Mock())
+        self.mock_fcntl.fcntl.assert_called_once_with(
+            self.mock_r,  self.mock_fcntl.F_SETFL,  self.mock_os.O_NONBLOCK)
+
+
 class TestTransportDrainEvents(Case):
 
     def setUp(self):
@@ -1281,144 +1412,155 @@ class TestTransportEstablishConnection(Case):
                                           'port': 1234, 'virtual_host': '',
                                           'hostname': 'localhost',
                                           'sasl_mechanisms': 'PLAIN'}
+        path_to_mock = 'kombu.transport.qpid.ReceiversMonitor'
+        self.patch_a = patch(path_to_mock)
+        self.mock_ReceiverMonitor = self.patch_a.start()
+        self.patch_b = patch.object(Transport, 'default_connection_params',
+                                    new_callable=PropertyMock)
+        self.mock_params = self.patch_b.start()
+        self.mock_params.return_value = self.default_connection_params
+
+    def tearDown(self):
+        self.patch_a.stop()
+        self.patch_b.stop()
 
     def test_transport_establish_conn_new_option_overwrites_default(self):
-        with patch.object(Transport, 'default_connection_params',
-                          new_callable=PropertyMock) as mock_params:
-            mock_params.return_value = self.default_connection_params
-            new_userid_string = 'new-userid'
-            self.client.userid = new_userid_string
-            self.transport.establish_connection()
-            self.mock_conn.assert_called_once_with(username=new_userid_string,
-                                                   sasl_mechanisms='PLAIN',
-                                                   host='127.0.0.1',
-                                                   timeout=4,
-                                                   password='guest',
-                                                   port=1234,
-                                                   transport='tcp')
+        new_userid_string = 'new-userid'
+        self.client.userid = new_userid_string
+        self.transport.establish_connection()
+        self.mock_conn.assert_called_once_with(username=new_userid_string,
+                                               sasl_mechanisms='PLAIN',
+                                               host='127.0.0.1',
+                                               timeout=4,
+                                               password='guest',
+                                               port=1234,
+                                               transport='tcp')
 
     def test_transport_establish_conn_empty_client_is_default(self):
-        with patch.object(Transport, 'default_connection_params',
-                          new_callable=PropertyMock) as mock_params:
-            mock_params.return_value = self.default_connection_params
-            self.transport.establish_connection()
-            self.mock_conn.assert_called_once_with(username='guest',
-                                                   sasl_mechanisms='PLAIN',
-                                                   host='127.0.0.1',
-                                                   timeout=4,
-                                                   password='guest',
-                                                   port=1234,
-                                                   transport='tcp')
+        self.transport.establish_connection()
+        self.mock_conn.assert_called_once_with(username='guest',
+                                               sasl_mechanisms='PLAIN',
+                                               host='127.0.0.1',
+                                               timeout=4,
+                                               password='guest',
+                                               port=1234,
+                                               transport='tcp')
 
     def test_transport_establish_conn_additional_transport_option(self):
-        with patch.object(Transport, 'default_connection_params',
-                          new_callable=PropertyMock) as mock_params:
-            mock_params.return_value = self.default_connection_params
-            new_param_value = 'mynewparam'
-            self.client.transport_options['new_param'] = new_param_value
-            self.transport.establish_connection()
-            self.mock_conn.assert_called_once_with(username='guest',
-                                                   sasl_mechanisms='PLAIN',
-                                                   host='127.0.0.1',
-                                                   timeout=4,
-                                                   new_param=new_param_value,
-                                                   password='guest',
-                                                   port=1234,
-                                                   transport='tcp')
+        new_param_value = 'mynewparam'
+        self.client.transport_options['new_param'] = new_param_value
+        self.transport.establish_connection()
+        self.mock_conn.assert_called_once_with(username='guest',
+                                               sasl_mechanisms='PLAIN',
+                                               host='127.0.0.1',
+                                               timeout=4,
+                                               new_param=new_param_value,
+                                               password='guest',
+                                               port=1234,
+                                               transport='tcp')
 
     def test_transport_establish_conn_transform_localhost_to_127_0_0_1(self):
-        with patch.object(Transport, 'default_connection_params',
-                          new_callable=PropertyMock) as mock_params:
-            mock_params.return_value = self.default_connection_params
-            self.client.hostname = 'localhost'
-            self.transport.establish_connection()
-            self.mock_conn.assert_called_once_with(username='guest',
-                                                   sasl_mechanisms='PLAIN',
-                                                   host='127.0.0.1',
-                                                   timeout=4,
-                                                   password='guest',
-                                                   port=1234,
-                                                   transport='tcp')
+        self.client.hostname = 'localhost'
+        self.transport.establish_connection()
+        self.mock_conn.assert_called_once_with(username='guest',
+                                               sasl_mechanisms='PLAIN',
+                                               host='127.0.0.1',
+                                               timeout=4,
+                                               password='guest',
+                                               port=1234,
+                                               transport='tcp')
 
     def test_transport_establish_conn_no_ssl_sets_transport_tcp(self):
-        with patch.object(Transport, 'default_connection_params',
-                          new_callable=PropertyMock) as mock_params:
-            mock_params.return_value = self.default_connection_params
-            self.client.ssl = False
-            self.transport.establish_connection()
-            self.mock_conn.assert_called_once_with(username='guest',
-                                                   sasl_mechanisms='PLAIN',
-                                                   host='127.0.0.1',
-                                                   timeout=4,
-                                                   password='guest',
-                                                   port=1234,
-                                                   transport='tcp')
+        self.client.ssl = False
+        self.transport.establish_connection()
+        self.mock_conn.assert_called_once_with(username='guest',
+                                               sasl_mechanisms='PLAIN',
+                                               host='127.0.0.1',
+                                               timeout=4,
+                                               password='guest',
+                                               port=1234,
+                                               transport='tcp')
 
     def test_transport_establish_conn_with_ssl_with_hostname_check(self):
-        with patch.object(Transport, 'default_connection_params',
-                          new_callable=PropertyMock) as mock_params:
-            mock_params.return_value = self.default_connection_params
-            self.client.ssl = {'keyfile': 'my_keyfile',
-                               'certfile': 'my_certfile',
-                               'ca_certs': 'my_cacerts',
-                               'cert_reqs': ssl.CERT_REQUIRED}
-            self.transport.establish_connection()
-            self.mock_conn.assert_called_once_with(username='guest',
-                                                   ssl_certfile='my_certfile',
-                                                   ssl_trustfile='my_cacerts',
-                                                   timeout=4,
-                                                   ssl_skip_hostname_check=False,
-                                                   sasl_mechanisms='PLAIN',
-                                                   host='127.0.0.1',
-                                                   ssl_keyfile='my_keyfile',
-                                                   password='guest',
-                                                   port=1234, transport='ssl')
+        self.client.ssl = {'keyfile': 'my_keyfile',
+                           'certfile': 'my_certfile',
+                           'ca_certs': 'my_cacerts',
+                           'cert_reqs': ssl.CERT_REQUIRED}
+        self.transport.establish_connection()
+        self.mock_conn.assert_called_once_with(username='guest',
+                                               ssl_certfile='my_certfile',
+                                               ssl_trustfile='my_cacerts',
+                                               timeout=4,
+                                               ssl_skip_hostname_check=False,
+                                               sasl_mechanisms='PLAIN',
+                                               host='127.0.0.1',
+                                               ssl_keyfile='my_keyfile',
+                                               password='guest',
+                                               port=1234, transport='ssl')
 
     def test_transport_establish_conn_with_ssl_skip_hostname_check(self):
-        with patch.object(Transport, 'default_connection_params',
-                          new_callable=PropertyMock) as mock_params:
-            mock_params.return_value = self.default_connection_params
-            self.client.ssl = {'keyfile': 'my_keyfile',
-                               'certfile': 'my_certfile',
-                               'ca_certs': 'my_cacerts',
-                               'cert_reqs': ssl.CERT_OPTIONAL}
-            self.transport.establish_connection()
-            self.mock_conn.assert_called_once_with(username='guest',
-                                                   ssl_certfile='my_certfile',
-                                                   ssl_trustfile='my_cacerts',
-                                                   timeout=4,
-                                                   ssl_skip_hostname_check=True,
-                                                   sasl_mechanisms='PLAIN',
-                                                   host='127.0.0.1',
-                                                   ssl_keyfile='my_keyfile',
-                                                   password='guest',
-                                                   port=1234, transport='ssl')
+        self.client.ssl = {'keyfile': 'my_keyfile',
+                           'certfile': 'my_certfile',
+                           'ca_certs': 'my_cacerts',
+                           'cert_reqs': ssl.CERT_OPTIONAL}
+        self.transport.establish_connection()
+        self.mock_conn.assert_called_once_with(username='guest',
+                                               ssl_certfile='my_certfile',
+                                               ssl_trustfile='my_cacerts',
+                                               timeout=4,
+                                               ssl_skip_hostname_check=True,
+                                               sasl_mechanisms='PLAIN',
+                                               host='127.0.0.1',
+                                               ssl_keyfile='my_keyfile',
+                                               password='guest',
+                                               port=1234, transport='ssl')
 
     def test_transport_establish_conn_sets_client_on_connection_object(self):
-        with patch.object(Transport, 'default_connection_params',
-                          new_callable=PropertyMock) as mock_params:
-            mock_params.return_value = self.default_connection_params
-            self.transport.establish_connection()
-            self.assertTrue(self.mock_conn.return_value.client is self.client)
+        self.transport.establish_connection()
+        self.assertTrue(self.mock_conn.return_value.client is self.client)
 
     def test_transport_establish_conn_creates_session_on_transport(self):
-        with patch.object(Transport, 'default_connection_params',
-                          new_callable=PropertyMock) as mock_params:
-            mock_params.return_value = self.default_connection_params
-            self.transport.establish_connection()
-            qpid_conn = self.mock_conn.return_value.get_qpid_connection
-            new_mock_session = qpid_conn.return_value.session.return_value
-            self.assertTrue(self.transport.session is new_mock_session)
+        self.transport.establish_connection()
+        qpid_conn = self.mock_conn.return_value.get_qpid_connection
+        new_mock_session = qpid_conn.return_value.session.return_value
+        self.assertTrue(self.transport.session is new_mock_session)
 
     def test_transport_establish_conn_returns_new_connection_object(self):
-        with patch.object(Transport, 'default_connection_params',
-                          new_callable=PropertyMock) as mock_params:
-            mock_params.return_value = self.default_connection_params
-            new_conn = self.transport.establish_connection()
-            self.assertTrue(new_conn is self.mock_conn.return_value)
+        new_conn = self.transport.establish_connection()
+        self.assertTrue(new_conn is self.mock_conn.return_value)
+
+    def test_transport_establish_conn_creates_ReceiversMonitor(self):
+        self.transport.establish_connection()
+        self.mock_ReceiverMonitor.assert_called_once_with(
+            self.transport.session, self.transport._w)
+
+    def test_transport_establish_conn_daemonizes_thread(self):
+        self.transport.establish_connection()
+        self.assertTrue(self.mock_ReceiverMonitor.return_value.daemon)
+
+    def test_transport_establish_conn_starts_thread(self):
+        self.transport.establish_connection()
+        new_receiver_monitor = self.mock_ReceiverMonitor.return_value
+        new_receiver_monitor.start.assert_called_once_with()
 
 
-class TestTransportChannelErrorTuple(Case):
+class TestTransportClassAttributes(Case):
+
+    def test_verify_Connection_attribute(self):
+        self.assertTrue(Connection is Transport.Connection)
+
+    def test_verify_default_port(self):
+        self.assertEqual(5672, Transport.default_port)
+
+    def test_verify_polling_disabled(self):
+        self.assertTrue(Transport.polling_interval is None)
+
+    def test_transport_verify_supports_asynchronous_events(self):
+        self.assertTrue(Transport.supports_ev)
+
+    def test_verify_driver_type_and_name(self):
+        self.assertEqual('qpid', Transport.driver_type)
+        self.assertEqual('qpid', Transport.driver_name)
 
     def test_transport_channel_error_contains_qpid_ConnectionError(self):
         self.assertTrue(qpid.messaging.exceptions.ConnectionError in
@@ -1428,6 +1570,51 @@ class TestTransportChannelErrorTuple(Case):
         self.assertTrue(select.error in Transport.connection_errors)
 
 
+class TestTransportRegisterWithEventLoop(Case):
+
+    def test_transport_register_with_event_loop_calls_add_reader(self):
+        transport = Transport(Mock())
+        mock_connection = Mock()
+        mock_loop = Mock()
+        transport.register_with_event_loop(mock_connection, mock_loop)
+        mock_loop.add_reader.assert_called_with(transport.r,
+                                                transport.on_readable,
+                                                mock_connection, mock_loop)
+
+
+class TestTransportOnReadable(Case):
+
+    def setUp(self):
+        self.patch_a = patch('kombu.transport.qpid.os.read')
+        self.mock_os_read = self.patch_a.start()
+        self.patch_b = patch.object(Transport, 'drain_events')
+        self.mock_drain_events = self.patch_b.start()
+        self.transport = Transport(Mock())
+
+    def tearDown(self):
+        self.patch_a.stop()
+
+    def test_transport_on_readable_reads_symbol_from_fd(self):
+        self.transport.on_readable(Mock(), Mock())
+        self.mock_os_read.assert_called_once_with(self.transport.r, 1)
+
+    def test_transport_on_readable_calls_drain_events(self):
+        mock_connection = Mock()
+        self.transport.on_readable(mock_connection, Mock())
+        self.mock_drain_events.assert_called_with(mock_connection)
+
+    def test_transport_on_readable_catches_socket_timeout(self):
+        self.mock_drain_events.side_effect = socket.timeout()
+        try:
+            self.transport.on_readable(Mock(), Mock())
+        except Exception:
+            self.fail('Transport.on_readable did not catch socket.timeout()')
+
+    def test_transport_on_readable_ignores_non_socket_timeout_exception(self):
+        self.mock_drain_events.side_effect = IOError()
+        self.assertRaises(IOError, self.transport.on_readable, Mock(), Mock())
+
+
 class TestTransport(ExtraAssertionsMixin, Case):
 
     def setUp(self):
@@ -1435,35 +1622,6 @@ class TestTransport(ExtraAssertionsMixin, Case):
         if QPID_NOT_AVAILABLE:
             raise SkipTest('qpid.messaging not installed')
         self.mock_client = Mock()
-
-    def test_verify_Connection_attribute(self):
-        """Verify that class attribute Connection refers to the connection
-        object
-        """
-        self.assertTrue(Connection is Transport.Connection)
-
-    def test_verify_default_port(self):
-        """Verify that the class attribute default_port refers to the 5672
-        properly
-        """
-        self.assertEqual(5672, Transport.default_port)
-
-    def test_verify_polling_disabled(self):
-        """Verify that polling is disabled"""
-        self.assertTrue(Transport.polling_interval is None)
-
-    def test_verify_does_not_support_asynchronous_events(self):
-        """Verify that the Transport advertises that it does not support
-        an asynchronous event model
-        """
-        self.assertFalse(Transport.supports_ev)
-
-    def test_verify_driver_type_and_name(self):
-        """Verify that the driver and type are correctly labeled on the
-        class
-        """
-        self.assertEqual('qpid', Transport.driver_type)
-        self.assertEqual('qpid', Transport.driver_name)
 
     def test_close_connection(self):
         """Test that close_connection calls close on each channel in the

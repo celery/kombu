@@ -20,11 +20,13 @@ from __future__ import absolute_import
 
 """Kombu transport using a Qpid broker as a message store."""
 
+import fcntl
 import os
 import select
 import socket
 import ssl
 import sys
+import threading
 import time
 
 from itertools import count
@@ -1342,9 +1344,9 @@ class Connection(object):
         * password: The password that connections should connect with.
         * transport: The transport type that connections should use. Either
               'tcp', or 'ssl' are expected as values.
-        * timeout: the timeout to use when a Connection connects to the broker.
-        * sasl_mechanisms: The sasl authentication mechanism type to use. refer
-              to SASL documentation for an explanation of valid values.
+        * timeout: the timeout used when a Connection connects to the broker.
+        * sasl_mechanisms: The sasl authentication mechanism type to use.
+              refer to SASL documentation for an explanation of valid values.
 
         Creates a :class:`qpid.messaging.endpoints.Connection` object with
         the saved parameters, and stores it as _qpid_conn.
@@ -1400,6 +1402,67 @@ class Connection(object):
             channel.connection = None
 
 
+class ReceiversMonitor(threading.Thread):
+    """A monitoring thread that reads and handles messages from all receivers.
+
+    A single instance of ReceiversMonitor is expected to be created by
+    :class:`Transport`.
+
+    In :meth:`monitor_receivers`, the thread monitors all receivers
+    associated with the session created by the Transport using the blocking
+    call to session.next_receiver(). When any receiver has messages
+    available, a symbol '0' is written to the self._w_fd file descriptor. The
+    :meth:`monitor_receivers` is designed not to exit, and loops over
+    session.next_receiver() forever.
+
+    The entry point of the thread is :meth:`run` which calls
+    :meth:`monitor_receivers` and catches and logs all exceptions raised.
+    After an exception is logged, the method sleeps for 10 seconds, and
+    re-enters :meth:`monitor_receivers`
+
+    The thread is designed to be daemonized, and will be forefully killed
+    when all non-daemon threads have already exited.
+    """
+
+    def __init__(self, session, w):
+        """Instantiate a ReceiversMonitor object
+
+        :param session: The session which needs all of its receivers
+            monitored.
+        :type session: :class:`qpid.messaging.endpoints.Session`
+        :param w: The file descriptor to write the '0' into when
+            next_receiver unblocks.
+        :type w: int
+        """
+        super(ReceiversMonitor, self).__init__()
+        self._session = session
+        self._w_fd = w
+
+    def run(self):
+        """Thread entry point for ReceiversMonitor
+
+        Calls :meth:`monitor_receivers` with a log-and-reenter behavior. This
+        guards against unexpected exceptions which could cause this thread to
+        exit unexpectedly.
+        """
+        while True:
+            try:
+                self.monitor_receivers()
+            except Exception as e:
+                logger.error(e)
+            time.sleep(10)
+
+    def monitor_receivers(self):
+        """Monitor all receivers, and write to _w_fd when a message is ready.
+
+        The call to next_receiver() blocks until a message is ready. Once a
+        message is ready, write a '0' to _w_fd.
+        """
+        while True:
+            self._session.next_receiver()
+            os.write(self._w_fd, '0')
+
+
 class Transport(base.Transport):
     """Kombu native transport for a Qpid broker.
 
@@ -1440,7 +1503,7 @@ class Transport(base.Transport):
     polling_interval = None
 
     # This Transport does support the Celery asynchronous event model.
-    supports_ev = False
+    supports_ev = True
 
     # The driver type and name for identification purposes.
     driver_type = 'qpid'
@@ -1450,6 +1513,97 @@ class Transport(base.Transport):
         qpid.messaging.exceptions.ConnectionError,
         select.error
     )
+
+    def __init__(self, *args, **kwargs):
+        """Instantiate a Transport object.
+
+        This method creates a pipe, and saves the read and write file
+        descriptors as attributes. The behavior of the read file descriptor
+        is modified to be non-blocking using fcntl.fcntl.
+        """
+        super(Transport, self).__init__(*args, **kwargs)
+        self.r, self._w = os.pipe()
+        fcntl.fcntl(self.r, fcntl.F_SETFL, os.O_NONBLOCK)
+
+    def on_readable(self, connection, loop):
+        """Handle any messages associated with this Transport.
+
+        This method clears a single message from the externally monitored
+        file descriptor by issuing a read call to the self.r file descriptor
+        which removes a single '0' character that was placed into the pipe
+        by :class:`ReceiversMonitor`. Once a '0' is read, all available
+        events are drained through a call to :meth:`drain_events`.
+
+        The behavior of self.r is adjusted in __init__ to be non-blocking,
+        ensuring that an accidental call to this method when no more messages
+        will arrive will not cause indefinite blocking.
+
+        Nothing is expected to be returned from :meth:`drain_events` because
+        :meth:`drain_events` handles messages by calling callbacks that are
+        maintained on the :class:`Connection` object. When
+        :meth:`drain_events` returns, all associated messages have been
+        handled.
+
+        This method reads as many messages that are available for this
+        Transport, and then returns. It blocks in the sense that reading
+        and handling a large number of messages may take time, but it does
+        not block waiting for a new message to arrive. When
+        :meth:`drain_events` is called a timeout is not specified, which
+        causes this behavior.
+
+        One interesting behavior of note is where multiple messages are
+        ready, and this method removes a single '0' character from
+        self.r, but :meth:`drain_events` may handle an arbitrary amount of
+        messages. In that case, extra '0' characters may be left on self.r
+        to be read, where messages corresponding with those '0' characters
+        have already been handled. The external epoll loop will incorrectly
+        think additional data is ready for reading, and will call
+        on_readable unnecessarily, once for each '0' to be read. Additional
+        calls to :meth:`on_readable` produce no negative side effects,
+        and will eventually clear out the symbols from  the self.r file
+        descriptor. If new messages show up during this draining period,
+        they will also be properly handled.
+
+        :param connection: The connection associated with the readable
+            events, which contains the callbacks that need to be called for
+            the readables.
+        :type connection: Connection
+        :param loop: The asynchronous loop object that contains epoll like
+            functionality.
+        :type loop: kombu.async.Hub
+        """
+        os.read(self.r, 1)
+        try:
+            self.drain_events(connection)
+        except socket.timeout:
+            pass
+
+    def register_with_event_loop(self, connection, loop):
+        """Register a file descriptor and callback with the loop.
+
+        Register the callback self.on_readable to be called when an
+        external epoll loop sees that the file descriptor registered is
+        ready for reading. The file descriptor is created by this Transport,
+        and is updated by the ReceiversMonitor thread.
+
+        When supports_ev = True, Celery expects to call this method to give
+        the Transport an opportunity to register a read file descriptor for
+        external monitoring by celery using an Event I/O notification
+        mechanism such as epoll. A callback is also registered that is to
+        be called once the external epoll loop is ready to handle the epoll
+        event associated with messages that are ready to be handled for
+        this Transport.
+
+        The registration call is made exactly once per Transport after the
+        Transport is instantiated.
+
+        :param connection: A reference to the connection associated with
+            this Transport.
+        :type connection: Connection
+        :param loop: A reference to the external loop.
+        :type loop: kombu.async.hub.Hub
+        """
+        loop.add_reader(self.r, self.on_readable, connection, loop)
 
     def establish_connection(self):
         """Establish a Connection object.
@@ -1501,6 +1655,9 @@ class Transport(base.Transport):
         conn = self.Connection(**opts)
         conn.client = self.client
         self.session = conn.get_qpid_connection().session()
+        monitor_thread = ReceiversMonitor(self.session, self._w)
+        monitor_thread.daemon = True
+        monitor_thread.start()
         return conn
 
     def close_connection(self, connection):
