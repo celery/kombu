@@ -672,7 +672,7 @@ class Queue(MaybeChannelBound):
 
     @property
     def can_cache_declaration(self):
-        return self.durable and not self.auto_delete
+        return True
 
     @classmethod
     def from_dict(self, queue, **options):
