@@ -347,13 +347,13 @@ class QoS(object):
             return 1
 
     def append(self, message, delivery_tag):
-        """Append message to the list of unacked messages.
+        """Append message to the list of un-ACKed messages.
 
         Add a message, referenced by the integer delivery_tag, for ACKing,
         rejecting, or getting later. Messages are saved into an
         :class:`~kombu.utils.compat.OrderedDict` by delivery_tag.
 
-        :param message: A received message that has not yet been acked
+        :param message: A received message that has not yet been ACKed.
         :type message: qpid.messaging.Message
         :param delivery_tag: An integer number to refer to this message by
             upon receipt.
@@ -452,7 +452,7 @@ class Channel(base.StdChannel):
     provides support.
 
     Each Channel object instantiates exactly one :class:`QoS` object for
-    prefetch limiting, and asynchronous acking. The :class:`QoS` object is
+    prefetch limiting, and asynchronous ACKing. The :class:`QoS` object is
     lazily instantiated through a property method :meth:`qos`. The
     :class:`QoS` object is a supporting object that should not be accessed
     directly except by the Channel itself.
@@ -484,9 +484,9 @@ class Channel(base.StdChannel):
     using :meth:`basic_cancel`. Cancellation of a consumer causes the
     :class:`~qpid.messaging.endpoints.Receiver` object to be closed.
 
-    Asynchronous message acking is supported through :meth:`basic_ack`,
+    Asynchronous message ACKing is supported through :meth:`basic_ack`,
     and is referenced by delivery_tag. The Channel object uses its
-    :class:`QoS` object to perform the message acking.
+    :class:`QoS` object to perform the message ACKing.
 
     """
 
@@ -617,7 +617,7 @@ class Channel(base.StdChannel):
         Sometimes delivered messages are asked to be purged, but are not.
         This case fails silently, which is the correct behavior when a
         message that has been delivered to a different consumer, who has
-        not acked the message, and still has an active session with the
+        not ACKed the message, and still has an active session with the
         broker. Messages in that case are not safe for purging and will be
         retained by the broker. The client is unable to change this
         delivery behavior.
@@ -899,7 +899,7 @@ class Channel(base.StdChannel):
         Sometimes delivered messages are asked to be purged, but are not.
         This case fails silently, which is the correct behavior when a
         message that has been delivered to a different consumer, who has
-        not acked the message, and still has an active session with the
+        not ACKed the message, and still has an active session with the
         broker. Messages in that case are not safe for purging and will be
         retained by the broker. The client is unable to change this
         delivery behavior.
@@ -916,7 +916,7 @@ class Channel(base.StdChannel):
         return self._purge(queue)
 
     def basic_get(self, queue, no_ack=False, **kwargs):
-        """Non-blocking single message get and ack from a queue by name.
+        """Non-blocking single message get and ACK from a queue by name.
 
         Internally this method uses :meth:`_get` to fetch the message. If
         an :class:`~qpid.messaging.exceptions.Empty` exception is raised by
@@ -936,7 +936,7 @@ class Channel(base.StdChannel):
         :param queue: The queue name to fetch a message from.
         :type queue: str
         :keyword no_ack: The no_ack parameter has no effect on the ACK
-            behavior of this method. Unacked messages create a memory leak in
+            behavior of this method. Un-ACKed messages create a memory leak in
             qpid.messaging, and need to be ACKed in all cases.
         :type noack: bool
 
@@ -956,8 +956,8 @@ class Channel(base.StdChannel):
         """Acknowledge a message by delivery_tag.
 
         Acknowledges a message referenced by delivery_tag. Messages can
-        only be ack'ed using :meth:`basic_ack` if they were acquired using
-        :meth:`basic_consume`. This is the acking portion of the
+        only be ACKed using :meth:`basic_ack` if they were acquired using
+        :meth:`basic_consume`. This is the ACKing portion of the
         asynchronous read behavior.
 
         Internally, this method uses the :class:`QoS` object, which stores
@@ -1022,7 +1022,7 @@ class Channel(base.StdChannel):
         All messages that are received are added to the QoS object to be
         saved for asynchronous ACKing later after the message has been
         handled by the caller of :meth:`~Transport.drain_events`. Messages
-        can be acked after being received through a call to :meth:`basic_ack`.
+        can be ACKed after being received through a call to :meth:`basic_ack`.
 
         If no_ack is True, the messages are immediately ACKed to avoid a
         memory leak in qpid.messaging when messages go un-ACKed. The no_ack
@@ -1039,14 +1039,14 @@ class Channel(base.StdChannel):
         function which provides the type transformation from
         :class:`qpid.messaging.Message` to
         :class:`~kombu.transport.virtual.Message`, and adds the message to
-        the associated :class:`QoS` object for asynchronous acking
+        the associated :class:`QoS` object for asynchronous ACKing
         if necessary.
 
         :param queue: The name of the queue to consume messages from
         :type queue: str
         :param no_ack: If True, then messages will not be saved for ACKing
             later, but will be ACKed immediately. If False, then messages
-            will be saved for acking later with a call to :meth:`basic_ack`.
+            will be saved for ACKing later with a call to :meth:`basic_ack`.
         :type no_ack: bool
         :param callback: a callable that will be called when messages
             arrive on the queue.
@@ -1127,7 +1127,7 @@ class Channel(base.StdChannel):
     def basic_qos(self, prefetch_count, *args):
         """Change :class:`QoS` settings for this Channel.
 
-        Set the number of unacknowledged messages this Channel can fetch and
+        Set the number of un-acknowledged messages this Channel can fetch and
         hold. The prefetch_value is also used as the capacity for any new
         :class:`~qpid.messaging.endpoints.Receiver` objects.
 
@@ -1357,8 +1357,8 @@ class Connection(object):
         is listed as a recoverable error type, so kombu will attempt to retry
         if a ConnectionError is raised. Retrying the operation without
         adjusting the credentials is not correct, so this method specifically
-        checks for a ConnecitonError that indicates an Authentication Failure
-        occured. In those situations, the error type is mutated while
+        checks for a ConnectionError that indicates an Authentication Failure
+        occurred. In those situations, the error type is mutated while
         preserving the original message and raised so kombu will allow the
         exception to not be considered recoverable.
 
@@ -1566,7 +1566,7 @@ class Transport(base.Transport):
 
         :param connection: The connection associated with the readable
             events, which contains the callbacks that need to be called for
-            the readables.
+            the readable objects.
         :type connection: Connection
         :param loop: The asynchronous loop object that contains epoll like
             functionality.
