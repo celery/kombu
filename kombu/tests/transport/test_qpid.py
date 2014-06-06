@@ -25,7 +25,7 @@ from kombu.transport.virtual import Base64
 from kombu.utils.compat import OrderedDict
 from kombu.tests.case import Case, Mock, SkipTest
 from kombu.tests.case import patch, skip_if_not_module
-from mock import PropertyMock, call
+from mock import call
 
 
 class ExtraAssertionsMixin(object):
@@ -1412,22 +1412,12 @@ class TestTransportEstablishConnection(Case):
         self.transport = Transport(self.client)
         self.mock_conn = Mock()
         self.transport.Connection = self.mock_conn
-        self.default_connection_params = {'userid': 'guest',
-                                          'password': 'guest',
-                                          'port': 1234, 'virtual_host': '',
-                                          'hostname': 'localhost',
-                                          'sasl_mechanisms': 'PLAIN'}
         path_to_mock = 'kombu.transport.qpid.ReceiversMonitor'
-        self.patch_a = patch(path_to_mock)
-        self.mock_ReceiverMonitor = self.patch_a.start()
-        self.patch_b = patch.object(Transport, 'default_connection_params',
-                                    new_callable=PropertyMock)
-        self.mock_params = self.patch_b.start()
-        self.mock_params.return_value = self.default_connection_params
+        self.patcher = patch(path_to_mock)
+        self.mock_ReceiverMonitor = self.patcher.start()
 
     def tearDown(self):
-        self.patch_a.stop()
-        self.patch_b.stop()
+        self.patcher.stop()
 
     def test_transport_establish_conn_new_option_overwrites_default(self):
         new_userid_string = 'new-userid'
@@ -1438,7 +1428,7 @@ class TestTransportEstablishConnection(Case):
                                                host='127.0.0.1',
                                                timeout=4,
                                                password='guest',
-                                               port=1234,
+                                               port=5672,
                                                transport='tcp')
 
     def test_transport_establish_conn_empty_client_is_default(self):
@@ -1448,7 +1438,7 @@ class TestTransportEstablishConnection(Case):
                                                host='127.0.0.1',
                                                timeout=4,
                                                password='guest',
-                                               port=1234,
+                                               port=5672,
                                                transport='tcp')
 
     def test_transport_establish_conn_additional_transport_option(self):
@@ -1461,7 +1451,7 @@ class TestTransportEstablishConnection(Case):
                                                timeout=4,
                                                new_param=new_param_value,
                                                password='guest',
-                                               port=1234,
+                                               port=5672,
                                                transport='tcp')
 
     def test_transport_establish_conn_transform_localhost_to_127_0_0_1(self):
@@ -1472,7 +1462,7 @@ class TestTransportEstablishConnection(Case):
                                                host='127.0.0.1',
                                                timeout=4,
                                                password='guest',
-                                               port=1234,
+                                               port=5672,
                                                transport='tcp')
 
     def test_transport_establish_conn_no_ssl_sets_transport_tcp(self):
@@ -1483,7 +1473,7 @@ class TestTransportEstablishConnection(Case):
                                                host='127.0.0.1',
                                                timeout=4,
                                                password='guest',
-                                               port=1234,
+                                               port=5672,
                                                transport='tcp')
 
     def test_transport_establish_conn_with_ssl_with_hostname_check(self):
@@ -1501,7 +1491,7 @@ class TestTransportEstablishConnection(Case):
                                                host='127.0.0.1',
                                                ssl_keyfile='my_keyfile',
                                                password='guest',
-                                               port=1234, transport='ssl')
+                                               port=5672, transport='ssl')
 
     def test_transport_establish_conn_with_ssl_skip_hostname_check(self):
         self.client.ssl = {'keyfile': 'my_keyfile',
@@ -1518,7 +1508,7 @@ class TestTransportEstablishConnection(Case):
                                                host='127.0.0.1',
                                                ssl_keyfile='my_keyfile',
                                                password='guest',
-                                               port=1234, transport='ssl')
+                                               port=5672, transport='ssl')
 
     def test_transport_establish_conn_sets_client_on_connection_object(self):
         self.transport.establish_connection()
