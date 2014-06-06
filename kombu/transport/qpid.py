@@ -1373,8 +1373,8 @@ class Connection(object):
             coded_as_auth_failure = getattr(conn_exc, 'code', None) == 320
             contains_auth_fail_text = 'Authentication failed' in conn_exc.text
             if coded_as_auth_failure or contains_auth_fail_text:
-                exc_info = sys.exc_info()
-                raise AuthenticationFailure, exc_info[1], exc_info[2]
+                exc = sys.exc_info()
+                raise AuthenticationFailure, exc[1], exc[2]  # flake8: noqa
             raise
 
     def get_qpid_connection(self):
@@ -1420,7 +1420,7 @@ class ReceiversMonitor(threading.Thread):
     After an exception is logged, the method sleeps for 10 seconds, and
     re-enters :meth:`monitor_receivers`
 
-    The thread is designed to be daemonized, and will be forefully killed
+    The thread is designed to be daemonized, and will be forcefully killed
     when all non-daemon threads have already exited.
     """
 
@@ -1560,7 +1560,7 @@ class Transport(base.Transport):
         think additional data is ready for reading, and will call
         on_readable unnecessarily, once for each '0' to be read. Additional
         calls to :meth:`on_readable` produce no negative side effects,
-        and will eventually clear out the symbols from  the self.r file
+        and will eventually clear out the symbols from the self.r file
         descriptor. If new messages show up during this draining period,
         they will also be properly handled.
 
@@ -1586,9 +1586,9 @@ class Transport(base.Transport):
         ready for reading. The file descriptor is created by this Transport,
         and is updated by the ReceiversMonitor thread.
 
-        When supports_ev = True, Celery expects to call this method to give
-        the Transport an opportunity to register a read file descriptor for
-        external monitoring by celery using an Event I/O notification
+        Because supports_ev == True, Celery expects to call this method to
+        give the Transport an opportunity to register a read file descriptor
+        for external monitoring by celery using an Event I/O notification
         mechanism such as epoll. A callback is also registered that is to
         be called once the external epoll loop is ready to handle the epoll
         event associated with messages that are ready to be handled for

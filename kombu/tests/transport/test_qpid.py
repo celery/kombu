@@ -18,9 +18,9 @@ except ImportError:
     QPID_NOT_AVAILABLE = True
 
 import kombu.five
-from kombu.transport.qpid import (AuthenticationFailure,
-    QpidMessagingExceptionHandler, QoS, Message, Channel, Connection,
-    ReceiversMonitor, Transport)
+from kombu.transport.qpid import AuthenticationFailure, QoS, Message
+from kombu.transport.qpid import QpidMessagingExceptionHandler, Channel
+from kombu.transport.qpid import Connection, ReceiversMonitor, Transport
 from kombu.transport.virtual import Base64
 from kombu.utils.compat import OrderedDict
 from kombu.tests.case import Case, Mock, SkipTest
@@ -480,7 +480,7 @@ class TestChannelClose(ChannelTestBase):
         self.mock_receiver1 = Mock()
         self.mock_receiver2 = Mock()
         self.channel._receivers = {1: self.mock_receiver1,
-                                   2:self.mock_receiver2}
+                                   2: self.mock_receiver2}
         self.channel.closed = False
         self.channel.close()
 
@@ -856,6 +856,8 @@ class TestChannel(ExtraAssertionsMixin, Case):
         self.mock_broker.getQueue.return_value = mock_queue_data
         self.my_channel.queue_declare(mock_queue)
         mock_queue.startswith.assert_called_with('celeryev')
+        self.mock_broker.addQueue.assert_called_with(
+            mock_queue, options=expected_default_options)
 
     def test_queue_declare_set_ring_policy_for_pidbox(self):
         """Test declare_queue sets ring_policy for pidbox"""
@@ -879,6 +881,8 @@ class TestChannel(ExtraAssertionsMixin, Case):
         self.mock_broker.getQueue.return_value = mock_queue_data
         self.my_channel.queue_declare(mock_queue)
         mock_queue.endswith.assert_called_with('pidbox')
+        self.mock_broker.addQueue.assert_called_with(
+            mock_queue, options=expected_default_options)
 
     def test_queue_declare_ring_policy_not_set_as_expected(self):
         """Test declare_queue does not set ring_policy as expected"""
@@ -902,6 +906,8 @@ class TestChannel(ExtraAssertionsMixin, Case):
         self.my_channel.queue_declare(mock_queue)
         mock_queue.startswith.assert_called_with('celeryev')
         mock_queue.endswith.assert_called_with('pidbox')
+        self.mock_broker.addQueue.assert_called_with(
+            mock_queue, options=expected_default_options)
 
     def test_queue_declare_test_defaults(self):
         """Test declare_queue defaults"""
@@ -1201,8 +1207,8 @@ class ReceiversMonitorTestBase(Case):
     def setUp(self):
         self.mock_session = Mock()
         self.mock_w = Mock()
-        self.monitor = ReceiversMonitor(self.mock_session,
-                                                     self.mock_w)
+        self.monitor = ReceiversMonitor(self.mock_session, self.mock_w)
+
         class BreakOutException(Exception):
             pass
         self.BreakOutException = BreakOutException
@@ -1239,8 +1245,8 @@ class TestReceiversMonitorRun(ReceiversMonitorTestBase):
 
     @patch.object(ReceiversMonitor, 'monitor_receivers')
     @patch('kombu.transport.qpid.time.sleep')
-    def test_qmrm_run_calls_monitor_receivers(self, mock_sleep,
-                                              mock_monitor_receivers):
+    def test_receivers_monitor_run_calls_monitor_receivers(
+            self, mock_sleep, mock_monitor_receivers):
         mock_sleep.side_effect = self.BreakOutException()
         self.assertRaises(self.BreakOutException, self.monitor.run)
         mock_monitor_receivers.assert_called_once_with()
@@ -1248,9 +1254,8 @@ class TestReceiversMonitorRun(ReceiversMonitorTestBase):
     @patch.object(ReceiversMonitor, 'monitor_receivers')
     @patch('kombu.transport.qpid.time.sleep')
     @patch('kombu.transport.qpid.logger')
-    def test_qmrm_run_calls_logs_exception_and_sleeps(self, mock_logger,
-                                                      mock_sleep,
-                                                      mock_monitor_receivers):
+    def test_receivers_monitors_run_calls_logs_exception_and_sleeps(
+            self, mock_logger, mock_sleep, mock_monitor_receivers):
         exc_to_raise = IOError()
         mock_monitor_receivers.side_effect = exc_to_raise
         mock_sleep.side_effect = self.BreakOutException()
@@ -1260,8 +1265,8 @@ class TestReceiversMonitorRun(ReceiversMonitorTestBase):
 
     @patch.object(ReceiversMonitor, 'monitor_receivers')
     @patch('kombu.transport.qpid.time.sleep')
-    def test_qmrm_run_loops_when_unexpected_exception_is_raised(self,
-            mock_sleep, mock_monitor_receivers):
+    def test_receivers_monitor_run_loops_when_exception_is_raised(
+            self, mock_sleep, mock_monitor_receivers):
         def return_once_raise_on_second_call(*args):
             mock_sleep.side_effect = self.BreakOutException()
             return None
@@ -1272,13 +1277,13 @@ class TestReceiversMonitorRun(ReceiversMonitorTestBase):
 
 class TestReceiversMonitorMonitorReceivers(ReceiversMonitorTestBase):
 
-    def test_qmrm_monitor_receivers_calls_next_receivers(self):
+    def test_receivers_monitor_monitor_receivers_calls_next_receivers(self):
         self.mock_session.next_receiver.side_effect = self.BreakOutException()
         self.assertRaises(self.BreakOutException,
                           self.monitor.monitor_receivers)
         self.mock_session.next_receiver.assert_called_once_with()
 
-    def test_qmrm_monitor_receivers_writes_to_fd(self):
+    def test_receivers_monitor_monitor_receivers_writes_to_fd(self):
         with patch('kombu.transport.qpid.os.write') as mock_os_write:
             mock_os_write.side_effect = self.BreakOutException()
             self.assertRaises(self.BreakOutException,
