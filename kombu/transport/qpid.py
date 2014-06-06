@@ -20,11 +20,13 @@ from __future__ import absolute_import
 
 """Kombu transport using a Qpid broker as a message store."""
 
+import fcntl
 import os
 import select
 import socket
 import ssl
 import sys
+import threading
 import time
 
 from itertools import count
@@ -345,13 +347,13 @@ class QoS(object):
             return 1
 
     def append(self, message, delivery_tag):
-        """Append message to the list of unacked messages.
+        """Append message to the list of un-ACKed messages.
 
         Add a message, referenced by the integer delivery_tag, for ACKing,
         rejecting, or getting later. Messages are saved into an
         :class:`~kombu.utils.compat.OrderedDict` by delivery_tag.
 
-        :param message: A received message that has not yet been acked
+        :param message: A received message that has not yet been ACKed.
         :type message: qpid.messaging.Message
         :param delivery_tag: An integer number to refer to this message by
             upon receipt.
@@ -450,7 +452,7 @@ class Channel(base.StdChannel):
     provides support.
 
     Each Channel object instantiates exactly one :class:`QoS` object for
-    prefetch limiting, and asynchronous acking. The :class:`QoS` object is
+    prefetch limiting, and asynchronous ACKing. The :class:`QoS` object is
     lazily instantiated through a property method :meth:`qos`. The
     :class:`QoS` object is a supporting object that should not be accessed
     directly except by the Channel itself.
@@ -482,9 +484,9 @@ class Channel(base.StdChannel):
     using :meth:`basic_cancel`. Cancellation of a consumer causes the
     :class:`~qpid.messaging.endpoints.Receiver` object to be closed.
 
-    Asynchronous message acking is supported through :meth:`basic_ack`,
+    Asynchronous message ACKing is supported through :meth:`basic_ack`,
     and is referenced by delivery_tag. The Channel object uses its
-    :class:`QoS` object to perform the message acking.
+    :class:`QoS` object to perform the message ACKing.
 
     """
 
@@ -615,7 +617,7 @@ class Channel(base.StdChannel):
         Sometimes delivered messages are asked to be purged, but are not.
         This case fails silently, which is the correct behavior when a
         message that has been delivered to a different consumer, who has
-        not acked the message, and still has an active session with the
+        not ACKed the message, and still has an active session with the
         broker. Messages in that case are not safe for purging and will be
         retained by the broker. The client is unable to change this
         delivery behavior.
@@ -897,7 +899,7 @@ class Channel(base.StdChannel):
         Sometimes delivered messages are asked to be purged, but are not.
         This case fails silently, which is the correct behavior when a
         message that has been delivered to a different consumer, who has
-        not acked the message, and still has an active session with the
+        not ACKed the message, and still has an active session with the
         broker. Messages in that case are not safe for purging and will be
         retained by the broker. The client is unable to change this
         delivery behavior.
@@ -914,7 +916,7 @@ class Channel(base.StdChannel):
         return self._purge(queue)
 
     def basic_get(self, queue, no_ack=False, **kwargs):
-        """Non-blocking single message get and ack from a queue by name.
+        """Non-blocking single message get and ACK from a queue by name.
 
         Internally this method uses :meth:`_get` to fetch the message. If
         an :class:`~qpid.messaging.exceptions.Empty` exception is raised by
@@ -934,7 +936,7 @@ class Channel(base.StdChannel):
         :param queue: The queue name to fetch a message from.
         :type queue: str
         :keyword no_ack: The no_ack parameter has no effect on the ACK
-            behavior of this method. Unacked messages create a memory leak in
+            behavior of this method. Un-ACKed messages create a memory leak in
             qpid.messaging, and need to be ACKed in all cases.
         :type noack: bool
 
@@ -954,8 +956,8 @@ class Channel(base.StdChannel):
         """Acknowledge a message by delivery_tag.
 
         Acknowledges a message referenced by delivery_tag. Messages can
-        only be ack'ed using :meth:`basic_ack` if they were acquired using
-        :meth:`basic_consume`. This is the acking portion of the
+        only be ACKed using :meth:`basic_ack` if they were acquired using
+        :meth:`basic_consume`. This is the ACKing portion of the
         asynchronous read behavior.
 
         Internally, this method uses the :class:`QoS` object, which stores
@@ -1020,7 +1022,7 @@ class Channel(base.StdChannel):
         All messages that are received are added to the QoS object to be
         saved for asynchronous ACKing later after the message has been
         handled by the caller of :meth:`~Transport.drain_events`. Messages
-        can be acked after being received through a call to :meth:`basic_ack`.
+        can be ACKed after being received through a call to :meth:`basic_ack`.
 
         If no_ack is True, the messages are immediately ACKed to avoid a
         memory leak in qpid.messaging when messages go un-ACKed. The no_ack
@@ -1037,14 +1039,14 @@ class Channel(base.StdChannel):
         function which provides the type transformation from
         :class:`qpid.messaging.Message` to
         :class:`~kombu.transport.virtual.Message`, and adds the message to
-        the associated :class:`QoS` object for asynchronous acking
+        the associated :class:`QoS` object for asynchronous ACKing
         if necessary.
 
         :param queue: The name of the queue to consume messages from
         :type queue: str
         :param no_ack: If True, then messages will not be saved for ACKing
             later, but will be ACKed immediately. If False, then messages
-            will be saved for acking later with a call to :meth:`basic_ack`.
+            will be saved for ACKing later with a call to :meth:`basic_ack`.
         :type no_ack: bool
         :param callback: a callable that will be called when messages
             arrive on the queue.
@@ -1125,7 +1127,7 @@ class Channel(base.StdChannel):
     def basic_qos(self, prefetch_count, *args):
         """Change :class:`QoS` settings for this Channel.
 
-        Set the number of unacknowledged messages this Channel can fetch and
+        Set the number of un-acknowledged messages this Channel can fetch and
         hold. The prefetch_value is also used as the capacity for any new
         :class:`~qpid.messaging.endpoints.Receiver` objects.
 
@@ -1342,9 +1344,9 @@ class Connection(object):
         * password: The password that connections should connect with.
         * transport: The transport type that connections should use. Either
               'tcp', or 'ssl' are expected as values.
-        * timeout: the timeout to use when a Connection connects to the broker.
-        * sasl_mechanisms: The sasl authentication mechanism type to use. refer
-              to SASL documentation for an explanation of valid values.
+        * timeout: the timeout used when a Connection connects to the broker.
+        * sasl_mechanisms: The sasl authentication mechanism type to use.
+              refer to SASL documentation for an explanation of valid values.
 
         Creates a :class:`qpid.messaging.endpoints.Connection` object with
         the saved parameters, and stores it as _qpid_conn.
@@ -1355,8 +1357,8 @@ class Connection(object):
         is listed as a recoverable error type, so kombu will attempt to retry
         if a ConnectionError is raised. Retrying the operation without
         adjusting the credentials is not correct, so this method specifically
-        checks for a ConnecitonError that indicates an Authentication Failure
-        occured. In those situations, the error type is mutated while
+        checks for a ConnectionError that indicates an Authentication Failure
+        occurred. In those situations, the error type is mutated while
         preserving the original message and raised so kombu will allow the
         exception to not be considered recoverable.
 
@@ -1371,8 +1373,8 @@ class Connection(object):
             coded_as_auth_failure = getattr(conn_exc, 'code', None) == 320
             contains_auth_fail_text = 'Authentication failed' in conn_exc.text
             if coded_as_auth_failure or contains_auth_fail_text:
-                exc_info = sys.exc_info()
-                raise AuthenticationFailure, exc_info[1], exc_info[2]
+                exc = sys.exc_info()
+                raise AuthenticationFailure, exc[1], exc[2]  # flake8: noqa
             raise
 
     def get_qpid_connection(self):
@@ -1398,6 +1400,67 @@ class Connection(object):
             pass
         finally:
             channel.connection = None
+
+
+class ReceiversMonitor(threading.Thread):
+    """A monitoring thread that reads and handles messages from all receivers.
+
+    A single instance of ReceiversMonitor is expected to be created by
+    :class:`Transport`.
+
+    In :meth:`monitor_receivers`, the thread monitors all receivers
+    associated with the session created by the Transport using the blocking
+    call to session.next_receiver(). When any receiver has messages
+    available, a symbol '0' is written to the self._w_fd file descriptor. The
+    :meth:`monitor_receivers` is designed not to exit, and loops over
+    session.next_receiver() forever.
+
+    The entry point of the thread is :meth:`run` which calls
+    :meth:`monitor_receivers` and catches and logs all exceptions raised.
+    After an exception is logged, the method sleeps for 10 seconds, and
+    re-enters :meth:`monitor_receivers`
+
+    The thread is designed to be daemonized, and will be forcefully killed
+    when all non-daemon threads have already exited.
+    """
+
+    def __init__(self, session, w):
+        """Instantiate a ReceiversMonitor object
+
+        :param session: The session which needs all of its receivers
+            monitored.
+        :type session: :class:`qpid.messaging.endpoints.Session`
+        :param w: The file descriptor to write the '0' into when
+            next_receiver unblocks.
+        :type w: int
+        """
+        super(ReceiversMonitor, self).__init__()
+        self._session = session
+        self._w_fd = w
+
+    def run(self):
+        """Thread entry point for ReceiversMonitor
+
+        Calls :meth:`monitor_receivers` with a log-and-reenter behavior. This
+        guards against unexpected exceptions which could cause this thread to
+        exit unexpectedly.
+        """
+        while True:
+            try:
+                self.monitor_receivers()
+            except Exception as e:
+                logger.error(e)
+            time.sleep(10)
+
+    def monitor_receivers(self):
+        """Monitor all receivers, and write to _w_fd when a message is ready.
+
+        The call to next_receiver() blocks until a message is ready. Once a
+        message is ready, write a '0' to _w_fd.
+        """
+        while True:
+            self._session.next_receiver()
+            os.write(self._w_fd, '0')
 
 
 class Transport(base.Transport):
@@ -1440,7 +1503,7 @@ class Transport(base.Transport):
     polling_interval = None
 
     # This Transport does support the Celery asynchronous event model.
-    supports_ev = False
+    supports_ev = True
 
     # The driver type and name for identification purposes.
     driver_type = 'qpid'
@@ -1450,6 +1513,97 @@ class Transport(base.Transport):
         qpid.messaging.exceptions.ConnectionError,
         select.error
     )
+
+    def __init__(self, *args, **kwargs):
+        """Instantiate a Transport object.
+
+        This method creates a pipe, and saves the read and write file
+        descriptors as attributes. The behavior of the read file descriptor
+        is modified to be non-blocking using fcntl.fcntl.
+        """
+        super(Transport, self).__init__(*args, **kwargs)
+        self.r, self._w = os.pipe()
+        fcntl.fcntl(self.r, fcntl.F_SETFL, os.O_NONBLOCK)
+
+    def on_readable(self, connection, loop):
+        """Handle any messages associated with this Transport.
+
+        This method clears a single message from the externally monitored
+        file descriptor by issuing a read call to the self.r file descriptor
+        which removes a single '0' character that was placed into the pipe
+        by :class:`ReceiversMonitor`. Once a '0' is read, all available
+        events are drained through a call to :meth:`drain_events`.
+
+        The behavior of self.r is adjusted in __init__ to be non-blocking,
+        ensuring that an accidental call to this method when no more messages
+        will arrive will not cause indefinite blocking.
+
+        Nothing is expected to be returned from :meth:`drain_events` because
+        :meth:`drain_events` handles messages by calling callbacks that are
+        maintained on the :class:`Connection` object. When
+        :meth:`drain_events` returns, all associated messages have been
+        handled.
+
+        This method reads as many messages that are available for this
+        Transport, and then returns. It blocks in the sense that reading
+        and handling a large number of messages may take time, but it does
+        not block waiting for a new message to arrive. When
+        :meth:`drain_events` is called a timeout is not specified, which
+        causes this behavior.
+
+        One interesting behavior of note is where multiple messages are
+        ready, and this method removes a single '0' character from
+        self.r, but :meth:`drain_events` may handle an arbitrary amount of
+        messages. In that case, extra '0' characters may be left on self.r
+        to be read, where messages corresponding with those '0' characters
+        have already been handled. The external epoll loop will incorrectly
+        think additional data is ready for reading, and will call
+        on_readable unnecessarily, once for each '0' to be read. Additional
+        calls to :meth:`on_readable` produce no negative side effects,
+        and will eventually clear out the symbols from the self.r file
+        descriptor. If new messages show up during this draining period,
+        they will also be properly handled.
+
+        :param connection: The connection associated with the readable
+            events, which contains the callbacks that need to be called for
+            the readable objects.
+        :type connection: Connection
+        :param loop: The asynchronous loop object that contains epoll like
+            functionality.
+        :type loop: kombu.async.Hub
+        """
+        os.read(self.r, 1)
+        try:
+            self.drain_events(connection)
+        except socket.timeout:
+            pass
+
+    def register_with_event_loop(self, connection, loop):
+        """Register a file descriptor and callback with the loop.
+
+        Register the callback self.on_readable to be called when an
+        external epoll loop sees that the file descriptor registered is
+        ready for reading. The file descriptor is created by this Transport,
+        and is updated by the ReceiversMonitor thread.
+
+        Because supports_ev == True, Celery expects to call this method to
+        give the Transport an opportunity to register a read file descriptor
+        for external monitoring by celery using an Event I/O notification
+        mechanism such as epoll. A callback is also registered that is to
+        be called once the external epoll loop is ready to handle the epoll
+        event associated with messages that are ready to be handled for
+        this Transport.
+
+        The registration call is made exactly once per Transport after the
+        Transport is instantiated.
+
+        :param connection: A reference to the connection associated with
+            this Transport.
+        :type connection: Connection
+        :param loop: A reference to the external loop.
+        :type loop: kombu.async.hub.Hub
+        """
+        loop.add_reader(self.r, self.on_readable, connection, loop)
 
     def establish_connection(self):
         """Establish a Connection object.
@@ -1501,6 +1655,9 @@ class Transport(base.Transport):
         conn = self.Connection(**opts)
         conn.client = self.client
         self.session = conn.get_qpid_connection().session()
+        monitor_thread = ReceiversMonitor(self.session, self._w)
+        monitor_thread.daemon = True
+        monitor_thread.start()
         return conn
 
     def close_connection(self, connection):
