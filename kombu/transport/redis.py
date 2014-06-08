@@ -246,7 +246,6 @@ class MultiChannelPoller(object):
         self._channels.clear()
         self._fd_to_chan.clear()
         self._chan_to_sock.clear()
-        self.poller = None
 
     def add(self, channel):
         self._channels.add(channel)
