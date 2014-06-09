@@ -236,6 +236,7 @@ class MultiChannelPoller(object):
         self.poller = poll()
         # one-shot callbacks called after reading from socket.
         self.after_read = set()
+        self.closed = False
 
     def close(self):
         for fd in values(self._chan_to_sock):
@@ -246,6 +247,7 @@ class MultiChannelPoller(object):
         self._channels.clear()
         self._fd_to_chan.clear()
         self._chan_to_sock.clear()
+        self.closed = True
 
     def add(self, channel):
         self._channels.add(channel)
