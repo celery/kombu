@@ -4,6 +4,19 @@
  Change history
 ================
 
+.. _version-3.0.19:
+
+3.0.19
+======
+:release-date: 2014-06-09 03:10 P.M UTC
+:release-by: Ask Solem
+
+- The wheel distribution did not support Python 2.6 by failing to list
+  the extra dependencies required.
+
+- Durable and auto_delete queues/exchanges can be be cached using
+  ``maybe_declare``.
+
 .. _version-3.0.18:
 
 3.0.18
