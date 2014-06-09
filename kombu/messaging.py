@@ -11,6 +11,8 @@ import numbers
 
 from itertools import count
 
+from amqp.promise import Thenable, barrier, promise
+
 from .common import maybe_declare
 from .compression import compress
 from .connection import maybe_channel, is_connection
@@ -94,7 +96,7 @@ class Producer(object):
         return (None, self.exchange, self.routing_key, self.serializer,
                 self.auto_declare, self.compression)
 
-    def declare(self):
+    def declare(self, callback=None):
         """Declare the exchange.
 
         This happens automatically at instantiation if
@@ -102,7 +104,7 @@ class Producer(object):
 
         """
         if self.exchange.name:
-            self.exchange.declare()
+            return self.exchange.declare(callback=callback)
 
     def maybe_declare(self, entity, retry=False, **retry_policy):
         """Declare the exchange if it hasn't already been declared
@@ -114,7 +116,7 @@ class Producer(object):
                 mandatory=False, immediate=False, priority=0,
                 content_type=None, content_encoding=None, serializer=None,
                 headers=None, compression=None, exchange=None, retry=False,
-                retry_policy=None, declare=[], **properties):
+                retry_policy=None, declare=[], callback=None, **properties):
         """Publish message to the specified exchange.
 
         :param body: Message body.
@@ -165,23 +167,26 @@ class Producer(object):
             publish = self.connection.ensure(self, publish, **retry_policy)
         return publish(body, priority, content_type,
                        content_encoding, headers, properties,
-                       routing_key, mandatory, immediate, exchange, declare)
+                       routing_key, mandatory, immediate, exchange, declare,
+                       callback=None)
 
     def _publish(self, body, priority, content_type, content_encoding,
                  headers, properties, routing_key, mandatory,
-                 immediate, exchange, declare):
+                 immediate, exchange, declare, callback):
         channel = self.channel
         message = channel.prepare_message(
             body, priority, content_type,
             content_encoding, headers, properties,
         )
         if declare:
+            # XXX maybe_declare not async, use barrier?
             maybe_declare = self.maybe_declare
             [maybe_declare(entity) for entity in declare]
         return channel.basic_publish(
             message,
             exchange=exchange, routing_key=routing_key,
             mandatory=mandatory, immediate=immediate,
+            callback=callback,
         )
 
     def _get_channel(self):
@@ -370,15 +375,23 @@ class Consumer(object):
         if self.auto_declare:
             self.declare()
 
-    def declare(self):
+    def declare(self, callback=None):
         """Declare queues, exchanges and bindings.
 
         This is done automatically at instantiation if :attr:`auto_declare`
         is set.
 
         """
+        pending = []
         for queue in self.queues:
-            queue.declare()
+            p = queue.declare()
+            if isinstance(p, Thenable):
+                pending.append(p)
+        if pending:
+            return barrier(pending, callback)
+        else:
+            if callback:
+                callback()
 
     def register_callback(self, callback):
         """Register a new callback to be called when a message
@@ -411,8 +424,9 @@ class Consumer(object):
         """
         queue = queue(self.channel)
         if self.auto_declare:
-            queue.declare()
-        self.queues.append(queue)
+            queue.declare(callback=promise(self.queues.append, (queue, )))
+        else:
+            self.queues.append(queue)
         return queue
 
     def add_queue_from_dict(self, queue, **options):
@@ -425,7 +439,7 @@ class Consumer(object):
         """
         return self.add_queue(Queue.from_dict(queue, **options))
 
-    def consume(self, no_ack=None):
+    def consume(self, no_ack=None, on_sent=None):
         """Start consuming messages.
 
         Can be called multiple times, but note that while it
@@ -439,12 +453,16 @@ class Consumer(object):
         if self.queues:
             no_ack = self.no_ack if no_ack is None else no_ack
 
-            H, T = self.queues[:-1], self.queues[-1]
-            for queue in H:
-                self._basic_consume(queue, no_ack=no_ack, nowait=True)
-            self._basic_consume(T, no_ack=no_ack, nowait=False)
+            size = len(self.queues)
+            for i, queue in enumerate(self.queues):
+                if i == size - 1:
+                    self._basic_consume(
+                        queue, no_ack=no_ack, nowait=False, on_sent=on_sent,
+                    )
+                else:
+                    self._basic_consume(queue, no_ack=no_ack, nowait=True)
 
-    def cancel(self):
+    def cancel(self, callback=None, nowait=True):
         """End all active queue consumers.
 
         This does not affect already delivered messages, but it does
@@ -452,12 +470,16 @@ class Consumer(object):
 
         """
         cancel = self.channel.basic_cancel
+        promises = []
         for tag in values(self._active_tags):
-            cancel(tag)
+            p = promise()
+            cancel(tag, nowait=nowait, callback=p)
+            promises.append(p)
         self._active_tags.clear()
+        return barrier(promises, callback)
     close = cancel
 
-    def cancel_by_queue(self, queue):
+    def cancel_by_queue(self, queue, nowait=True, callback=None):
         """Cancel consumer by queue name."""
         try:
             tag = self._active_tags.pop(queue)
@@ -465,7 +487,7 @@ class Consumer(object):
             pass
         else:
             self.queues[:] = [q for q in self.queues if q.name != queue]
-            self.channel.basic_cancel(tag)
+            self.channel.basic_cancel(tag, nowait=nowait, callback=callback)
 
     def consuming_from(self, queue):
         """Return :const:`True` if the consumer is currently
@@ -475,7 +497,7 @@ class Consumer(object):
             name = queue.name
         return name in self._active_tags
 
-    def purge(self):
+    def purge(self, nowait=False, callback=None):
         """Purge messages from all queues.
 
         .. warning::
@@ -483,9 +505,15 @@ class Consumer(object):
             undo operation.
 
         """
-        return sum(queue.purge() for queue in self.queues)
+        replies = [queue.purge(nowait=nowait) for queue in self.queues]
+        if nowait:
+            return
+        elif isinstance(replies[0], Thenable):  # async channel
+            return barrier(replies, callback)
+        else:
+            return sum(replies)
 
-    def flow(self, active):
+    def flow(self, active, callback=None, on_sent=None):
         """Enable/disable flow from peer.
 
         This is a simple flow-control mechanism that a peer can use
@@ -497,9 +525,10 @@ class Consumer(object):
         until flow is reactivated.
 
         """
-        self.channel.flow(active)
+        self.channel.flow(active, on_sent=on_sent, callback=callback)
 
-    def qos(self, prefetch_size=0, prefetch_count=0, apply_global=False):
+    def qos(self, prefetch_size=0, prefetch_count=0, apply_global=False,
+            callback=None, on_sent=None):
         """Specify quality of service.
 
         The client can request that messages should be sent in
@@ -523,11 +552,12 @@ class Consumer(object):
         :param apply_global: Apply new settings globally on all channels.
 
         """
-        return self.channel.basic_qos(prefetch_size,
-                                      prefetch_count,
-                                      apply_global)
+        return self.channel.basic_qos(
+            prefetch_size, prefetch_count, apply_global,
+            on_sent=on_sent, callback=callback,
+        )
 
-    def recover(self, requeue=False):
+    def recover(self, requeue=False, on_sent=None):
         """Redeliver unacknowledged messages.
 
         Asks the broker to redeliver all unacknowledged messages
@@ -539,7 +569,7 @@ class Consumer(object):
           delivering it to an alternative subscriber.
 
         """
-        return self.channel.basic_recover(requeue=requeue)
+        return self.channel.basic_recover(requeue=requeue, on_sent=on_sent)
 
     def receive(self, body, message):
         """Method called when a message is received.
@@ -558,13 +588,15 @@ class Consumer(object):
             raise NotImplementedError('Consumer does not have any callbacks')
         [callback(body, message) for callback in callbacks]
 
-    def _basic_consume(self, queue, consumer_tag=None,
-                       no_ack=no_ack, nowait=True):
+    def _basic_consume(self, queue, consumer_tag=None, no_ack=no_ack,
+                       nowait=True, on_sent=None, on_message=None):
         tag = self._active_tags.get(queue.name)
         if tag is None:
             tag = self._add_tag(queue, consumer_tag)
-            queue.consume(tag, self._receive_callback,
-                          no_ack=no_ack, nowait=nowait)
+            queue.consume(
+                tag, self._receive_callback, no_ack=no_ack, nowait=nowait,
+                on_sent=on_sent, on_message=on_message,
+            )
         return tag
 
     def _add_tag(self, queue, consumer_tag=None):
