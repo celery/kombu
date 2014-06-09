@@ -76,7 +76,7 @@ class test_Exchange(Case):
 
     def test_can_cache_declaration(self):
         self.assertTrue(Exchange('a', durable=True).can_cache_declaration)
-        self.assertFalse(Exchange('a', durable=False).can_cache_declaration)
+        self.assertTrue(Exchange('a', durable=False).can_cache_declaration)
 
     def test_pickle(self):
         e1 = Exchange('foo', 'direct')
