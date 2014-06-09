@@ -1051,7 +1051,6 @@ class test_MultiChannelPoller(Case):
         p._channels.clear.assert_called_with()
         p._fd_to_chan.clear.assert_called_with()
         p._chan_to_sock.clear.assert_called_with()
-        self.assertIsNone(p.poller)
 
     def test_register_when_registered_reregisters(self):
         p = self.Poller()
