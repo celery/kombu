@@ -8,7 +8,7 @@ Exchange and Queue declarations.
 from __future__ import absolute_import
 
 from amqp.promise import (
-    Thenable, promise, ppartial, ready_promise,
+    Thenable, ensure_promise, promise, ppartial, ready_promise,
 )
 
 from .abstract import MaybeChannelBound
@@ -545,7 +545,7 @@ class Queue(MaybeChannelBound):
     def declare(self, callback=None, nowait=False):
         """Declares the queue, the exchange and binds the queue to
         the exchange."""
-        callback = ppartial(callback, self)
+        callback = ensure_promise(callback)
         p = self._declare_exchange(callback, nowait)
         return callback if isinstance(p, Thenable) else p
 
