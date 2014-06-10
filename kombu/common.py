@@ -105,7 +105,8 @@ def maybe_declare(entity, channel=None, retry=False, **retry_policy):
 
     entity = entity if is_bound else entity.bind(channel)
     if retry:
-        return _imaybe_declare(entity, declared, ident, channel, **retry_policy)
+        return _imaybe_declare(entity, declared, ident,
+                               channel, **retry_policy)
     return _maybe_declare(entity, declared, ident, channel)
 
 

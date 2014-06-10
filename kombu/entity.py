@@ -7,7 +7,9 @@ Exchange and Queue declarations.
 """
 from __future__ import absolute_import
 
-from amqp.promise import Thenable, ensure_promise, promise
+from amqp.promise import (
+    Thenable, promise, ppartial, ready_promise,
+)
 
 from .abstract import MaybeChannelBound
 from .exceptions import ContentDisallowed
@@ -160,6 +162,7 @@ class Exchange(MaybeChannelBound):
             response will not be waited for. Default is :const:`False`.
 
         """
+        callback = ppartial(callback, self)
         passive = self.passive if passive is None else passive
         if self.name:
             return self.channel.exchange_declare(
@@ -167,6 +170,7 @@ class Exchange(MaybeChannelBound):
                 auto_delete=self.auto_delete, arguments=self.arguments,
                 nowait=nowait, passive=passive, callback=callback,
             )
+        return ready_promise(callback)
 
     def bind_to(self, exchange='', routing_key='',
                 arguments=None, nowait=False, callback=None, **kwargs):
@@ -316,9 +320,11 @@ class binding(object):
 
     def declare(self, channel, nowait=False, callback=None):
         """Declare destination exchange."""
+        callback = ppartial(callback, self)
         if self.exchange and self.exchange.name:
             ex = self.exchange(channel)
-            ex.declare(nowait=nowait, callback=callback)
+            return ex.declare(nowait=nowait, callback=callback)
+        return ready_promise(callback)
 
     def bind(self, entity, nowait=False, callback=None):
         """Bind entity to this binding."""
@@ -506,18 +512,19 @@ class Queue(MaybeChannelBound):
 
     def _declare_exchange(self, callback=None, nowait=False):
         if self.exchange:
-            return self.exchange.declare(nowait=nowait, callback=promise(
+            P = self.exchange.declare(nowait=nowait, callback=promise(
                 self._declare_queue, (callback, nowait)),
             )
+            return P
         else:
             return self._declare_queue(callback, nowait)
 
-    def _declare_queue(self, callback=None, nowait=False):
+    def _declare_queue(self, callback, nowait, exchange_declared=None):
         return self.queue_declare(nowait, passive=False, callback=promise(
             self._bind_queue, (callback, nowait)),
         )
 
-    def _bind_queue(self, callback=None, nowait=False):
+    def _bind_queue(self, callback=None, nowait=False, *args, **kwargs):
         if self.exchange and self.exchange.name:
             return self.queue_bind(nowait, callback=promise(
                 self._declare_bindings, (callback, nowait)),
@@ -532,17 +539,17 @@ class Queue(MaybeChannelBound):
         #for B in self.bindings:
         #    B.declare(self.channel)
         #    B.bind(self, nowait=nowait)
-        callback()
+        callback(self)
         return self.name
 
     def declare(self, callback=None, nowait=False):
         """Declares the queue, the exchange and binds the queue to
         the exchange."""
-        callback = ensure_promise(callback)
+        callback = ppartial(callback, self)
         p = self._declare_exchange(callback, nowait)
         return callback if isinstance(p, Thenable) else p
 
-    def queue_declare(self, nowait=False, passive=False):
+    def queue_declare(self, nowait=False, passive=False, callback=None):
         """Declare queue on the server.
 
         :keyword nowait: Do not wait for a reply.
@@ -551,6 +558,7 @@ class Queue(MaybeChannelBound):
             without modifying the server state.
 
         """
+        on_reply = promise(self._dispatch_on_declared, (callback, ))
         p = self.channel.queue_declare(queue=self.name,
                                        passive=passive,
                                        durable=self.durable,
@@ -558,21 +566,24 @@ class Queue(MaybeChannelBound):
                                        auto_delete=self.auto_delete,
                                        arguments=self.queue_arguments,
                                        nowait=nowait,
-                                       callback=self._dispatch_on_declared)
+                                       callback=on_reply)
         if isinstance(p, Thenable):
             return p
         return self.name
 
-    def _dispatch_on_declared(self, name, messages, consumers):
+    def _dispatch_on_declared(self, callback, name, messages, consumers):
         if not self.name:
             self.name = name
         if self.on_declared:
             self.on_declared(name, messages, consumers)
+        if callback:
+            callback(self, messages=messages, consumers=consumers)
 
-    def queue_bind(self, nowait=False):
+    def queue_bind(self, nowait=False, callback=None):
         """Create the queue binding on the server."""
         return self.bind_to(self.exchange, self.routing_key,
-                            self.binding_arguments, nowait=nowait)
+                            self.binding_arguments, nowait=nowait,
+                            callback=callback)
 
     def bind_to(self, exchange='', routing_key='',
                 arguments=None, nowait=False, callback=None):
@@ -621,7 +632,7 @@ class Queue(MaybeChannelBound):
         ) or 0
 
     def consume(self, consumer_tag='', callback=None,
-                no_ack=None, on_sent=None, on_message=None, nowait=False):
+                no_ack=None, on_sent=None, on_reply=None, nowait=False):
         """Start a queue consumer.
 
         Consumers last as long as the channel they were created on, or
@@ -649,7 +660,7 @@ class Queue(MaybeChannelBound):
             callback=callback,
             nowait=nowait,
             on_sent=on_sent,
-            on_message=on_message,
+            on_reply=on_reply,
         )
 
     def cancel(self, consumer_tag):

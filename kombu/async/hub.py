@@ -10,7 +10,6 @@ from __future__ import absolute_import
 
 import errno
 
-from collections import deque
 from contextlib import contextmanager
 from time import sleep
 from types import GeneratorType as generator

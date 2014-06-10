@@ -125,7 +125,6 @@ class Transport(base.Transport):
         return connection.heartbeat
 
     def register_with_event_loop(self, connection, loop):
-        #loop.add_reader(connection.sock, self.on_readable, connection, loop)
         connection.loop = loop
         connection.sock.setblocking(0)
         loop.add_reader(connection.sock, connection.on_readable)

@@ -186,7 +186,7 @@ class Producer(object):
             message,
             exchange=exchange, routing_key=routing_key,
             mandatory=mandatory, immediate=immediate,
-            callback=callback,
+            on_sent=callback,
         )
 
     def _get_channel(self):
@@ -589,13 +589,13 @@ class Consumer(object):
         [callback(body, message) for callback in callbacks]
 
     def _basic_consume(self, queue, consumer_tag=None, no_ack=no_ack,
-                       nowait=True, on_sent=None, on_message=None):
+                       nowait=True, on_sent=None, on_reply=None):
         tag = self._active_tags.get(queue.name)
         if tag is None:
             tag = self._add_tag(queue, consumer_tag)
             queue.consume(
                 tag, self._receive_callback, no_ack=no_ack, nowait=nowait,
-                on_sent=on_sent, on_message=on_message,
+                on_sent=on_sent, on_reply=on_reply,
             )
         return tag
 
