@@ -15,6 +15,8 @@ from contextlib import contextmanager
 from itertools import count, cycle
 from operator import itemgetter
 
+from amqp.promise import Thenable
+
 # jython breaks on relative import for .exceptions for some reason
 # (Issue #112)
 from kombu import exceptions
@@ -189,6 +191,9 @@ class Connection(object):
             self.uri_prefix = uri_prefix
 
         self.declared_entities = set()
+
+    def then(self, on_success, on_error=None):
+        return self.connection.then(on_success, on_error)
 
     def switch(self, url):
         """Switch connection parameters to use a new URL (does not
@@ -817,6 +822,7 @@ class Connection(object):
     @property
     def is_evented(self):
         return self.transport.supports_ev
+Thenable.register(Connection)
 BrokerConnection = Connection
 
 
