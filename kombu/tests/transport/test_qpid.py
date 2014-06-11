@@ -807,8 +807,7 @@ class TestChannel(ExtraAssertionsMixin, Case):
                    'durable': mock_durable,
                    'exclusive': mock_exclusive,
                    'auto-delete': mock_auto_delete,
-                   'arguments': mock_arguments,
-                   'qpid.auto_delete_timeout': 3}
+                   'arguments': mock_arguments}
         mock_consumer_count = Mock()
         mock_return_value = Mock()
         values_dict = {'msgDepth': mock_msg_count,
@@ -844,7 +843,6 @@ class TestChannel(ExtraAssertionsMixin, Case):
                                     'exclusive': False,
                                     'auto-delete': True,
                                     'arguments': None,
-                                    'qpid.auto_delete_timeout': 3,
                                     'qpid.policy_type': 'ring'}
         mock_msg_count = Mock()
         mock_consumer_count = Mock()
@@ -869,7 +867,6 @@ class TestChannel(ExtraAssertionsMixin, Case):
                                     'exclusive': False,
                                     'auto-delete': True,
                                     'arguments': None,
-                                    'qpid.auto_delete_timeout': 3,
                                     'qpid.policy_type': 'ring'}
         mock_msg_count = Mock()
         mock_consumer_count = Mock()
@@ -893,8 +890,7 @@ class TestChannel(ExtraAssertionsMixin, Case):
                                     'durable': False,
                                     'exclusive': False,
                                     'auto-delete': True,
-                                    'arguments': None,
-                                    'qpid.auto_delete_timeout': 3}
+                                    'arguments': None}
         mock_msg_count = Mock()
         mock_consumer_count = Mock()
         values_dict = {'msgDepth': mock_msg_count,
@@ -918,8 +914,7 @@ class TestChannel(ExtraAssertionsMixin, Case):
                                     'durable': False,
                                     'exclusive': False,
                                     'auto-delete': True,
-                                    'arguments': None,
-                                    'qpid.auto_delete_timeout': 3}
+                                    'arguments': None}
         mock_msg_count = Mock()
         mock_consumer_count = Mock()
         values_dict = {'msgDepth': mock_msg_count,

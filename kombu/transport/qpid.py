@@ -216,9 +216,6 @@ DEFAULT_PORT = 5672
 
 OBJECT_ALREADY_EXISTS_STRING = 'object already exists'
 
-# number of seconds to keep a queue around before deleting it.
-AUTO_DELETE_TIMEOUT = 3
-
 VERSION = (1, 0, 0)
 __version__ = '.'.join(map(str, VERSION))
 
@@ -716,8 +713,6 @@ class Channel(base.StdChannel):
         have finished using it. The last consumer can be cancelled either
         explicitly or because its channel is closed. If there was no
         consumer ever on the queue, it won't be deleted. Default is True.
-        Each queue has an auto_delete timeout, which is set to 3, meaning
-        that queues deletion due to auto_delete will be delayed by 3 seconds.
 
         The nowait parameter is unused. It was part of the 0-9-1 protocol,
         but this AMQP client implements 0-10 which removed the nowait option.
@@ -768,7 +763,6 @@ class Channel(base.StdChannel):
                    'exclusive': exclusive,
                    'auto-delete': auto_delete,
                    'arguments': arguments}
-        options['qpid.auto_delete_timeout'] = AUTO_DELETE_TIMEOUT
         if queue.startswith('celeryev') or queue.endswith('pidbox'):
             options['qpid.policy_type'] = 'ring'
         try:
