@@ -13,12 +13,12 @@ from __future__ import absolute_import
 import pymongo
 
 from pymongo import errors
-from anyjson import loads, dumps
 from pymongo import MongoClient, uri_parser
 
 from kombu.five import Empty
 from kombu.syn import _detect_environment
 from kombu.utils.encoding import bytes_to_str
+from kombu.utils.json import loads, dumps
 
 from . import virtual
 
@@ -99,7 +99,8 @@ class Channel(virtual.Channel):
         else:
             msg = self.get_messages().find_and_modify(
                 query={'queue': queue},
-                sort={'_id': pymongo.ASCENDING},
+                sort=[('priority', pymongo.ASCENDING),
+                      ('_id', pymongo.ASCENDING)],
                 remove=True,
             )
 
@@ -115,8 +116,11 @@ class Channel(virtual.Channel):
         return self.get_messages().find({'queue': queue}).count()
 
     def _put(self, queue, message, **kwargs):
-        self.get_messages().insert({'payload': dumps(message),
-                                    'queue': queue})
+        self.get_messages().insert({
+            'payload': dumps(message),
+            'queue': queue,
+            'priority': self._get_message_priority(message, reverse=True),
+        })
 
     def _purge(self, queue):
         size = self._size(queue)
@@ -202,14 +206,15 @@ class Channel(virtual.Channel):
     def _ensure_indexes(self):
         '''Ensure indexes on collections.'''
         self.get_messages().ensure_index(
-            [('queue', 1), ('_id', 1)], background=True,
+            [('queue', 1), ('priority', 1), ('_id', 1)], background=True,
         )
         self.get_broadcast().ensure_index([('queue', 1)])
         self.get_routing().ensure_index([('queue', 1), ('exchange', 1)])
 
-    #TODO Store a more complete exchange metatable in the routing collection
     def get_table(self, exchange):
         """Get table of bindings for ``exchange``."""
+        # TODO Store a more complete exchange metatable in the
+        #      routing collection
         localRoutes = frozenset(self.state.exchanges[exchange]['table'])
         brokerRoutes = self.get_messages().routing.find(
             {'exchange': exchange}

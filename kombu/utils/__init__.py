@@ -5,7 +5,7 @@ kombu.utils
 Internal utilities.
 
 """
-from __future__ import absolute_import, print_function
+from __future__ import absolute_import, print_function, unicode_literals
 
 import importlib
 import numbers
@@ -35,7 +35,7 @@ except ImportError:  # pragma: no cover
     FILENO_ERRORS = (AttributeError, ValueError)  # noqa
 
 
-__all__ = ['EqualityDict', 'say', 'uuid', 'kwdict', 'maybe_list',
+__all__ = ['EqualityDict', 'uuid', 'maybe_list',
            'fxrange', 'fxrangemax', 'retry_over_time',
            'emergency_dump_state', 'cached_property',
            'reprkwargs', 'reprcall', 'nested', 'fileno', 'maybe_fileno']
@@ -136,10 +136,6 @@ class EqualityDict(dict):
         return dict.__delitem__(self, eqhash(key))
 
 
-def say(m, *fargs, **fkwargs):
-    print(str(m).format(*fargs, **fkwargs), file=sys.stderr)
-
-
 def uuid4():
     # Workaround for http://bugs.python.org/issue4607
     if ctypes and _uuid_generate_random:  # pragma: no cover
@@ -157,22 +153,6 @@ def uuid():
     """
     return str(uuid4())
 gen_unique_id = uuid
-
-
-if sys.version_info >= (2, 6, 5):
-
-    def kwdict(kwargs):
-        return kwargs
-else:
-    def kwdict(kwargs):  # pragma: no cover  # noqa
-        """Make sure keyword arguments are not in Unicode.
-
-        This should be fixed in newer Python versions,
-        see: http://bugs.python.org/issue4978.
-
-        """
-        return dict((key.encode('utf-8'), value)
-                    for key, value in items(kwargs))
 
 
 def maybe_list(v):
@@ -257,21 +237,26 @@ def retry_over_time(fun, catch, args=[], kwargs={}, errback=None,
                 sleep(abs(int(tts) - tts))
 
 
-def emergency_dump_state(state, open_file=open, dump=None):
+def emergency_dump_state(state, open_file=open, dump=None, stderr=None):
     from pprint import pformat
     from tempfile import mktemp
+    stderr = sys.stderr if stderr is None else stderr
 
     if dump is None:
         import pickle
         dump = pickle.dump
     persist = mktemp()
-    say('EMERGENCY DUMP STATE TO FILE -> {0} <-', persist)
+    print('EMERGENCY DUMP STATE TO FILE -> {0} <-'.format(persist), ## noqa
+          file=stderr)
     fh = open_file(persist, 'w')
     try:
         try:
             dump(state, fh, protocol=0)
         except Exception as exc:
-            say('Cannot pickle state: {0!r}. Fallback to pformat.', exc)
+            print(  # noqa
+                'Cannot pickle state: {0!r}. Fallback to pformat.'.format(exc),
+                file=stderr,
+            )
             fh.write(default_encode(pformat(state)))
     finally:
         fh.flush()

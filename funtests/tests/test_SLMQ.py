@@ -10,8 +10,8 @@ class test_SLMQ(transport.TransportCase):
     event_loop_max = 100
     message_size_limit = 4192
     reliable_purge = False
-    suppress_disorder_warning = True  # does not guarantee FIFO order,
-                                      # even in simple cases.
+    #: does not guarantee FIFO order, even in simple cases.
+    suppress_disorder_warning = True
 
     def before_connect(self):
         if "SLMQ_ACCOUNT" not in os.environ:

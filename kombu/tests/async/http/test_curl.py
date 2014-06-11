@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 
-from kombu.async.http.curl import READ, WRITE, CurlClient, pycurl
+from kombu.async.http.curl import READ, WRITE, CurlClient
 
 from kombu.tests.case import (
     HubCase, Mock, call, patch, case_requires, set_module_symbol,
@@ -42,7 +42,7 @@ class test_CurlClient(HubCase):
             ])
 
     def test_close(self):
-        with patch('kombu.async.http.curl.pycurl') as _pycurl:
+        with patch('kombu.async.http.curl.pycurl'):
             x = self.Client()
             x._timeout_check_tref = Mock(name='timeout_check_tref')
             x.close()
@@ -52,7 +52,7 @@ class test_CurlClient(HubCase):
             x._multi.close.assert_called_with()
 
     def test_add_request(self):
-        with patch('kombu.async.http.curl.pycurl') as _pycurl:
+        with patch('kombu.async.http.curl.pycurl'):
             x = self.Client()
             x._process_queue = Mock(name='_process_queue')
             x._set_timeout = Mock(name='_set_timeout')
@@ -132,13 +132,3 @@ class test_CurlClient(HubCase):
             x._on_event.assert_called_with(fd, _pycurl.CSELECT_IN)
             x.on_writable(fd, _pycurl=_pycurl)
             x._on_event.assert_called_with(fd, _pycurl.CSELECT_OUT)
-
-
-
-
-
-
-
-
-
-

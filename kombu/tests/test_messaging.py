@@ -1,6 +1,5 @@
 from __future__ import absolute_import, unicode_literals
 
-import anyjson
 import pickle
 
 from collections import defaultdict
@@ -8,6 +7,7 @@ from collections import defaultdict
 from kombu import Connection, Consumer, Producer, Exchange, Queue
 from kombu.exceptions import MessageStateError
 from kombu.utils import ChannelPromise
+from kombu.utils import json
 
 from .case import Case, Mock, patch
 from .mocks import Transport
@@ -36,7 +36,7 @@ class test_Producer(Case):
         p = Producer(None)
         self.assertFalse(p._channel)
 
-    @patch('kombu.common.maybe_declare')
+    @patch('kombu.messaging.maybe_declare')
     def test_maybe_declare(self, maybe_declare):
         p = self.connection.Producer()
         q = Queue('foo')
@@ -73,7 +73,7 @@ class test_Producer(Case):
         channel = self.connection.channel()
         p = Producer(channel, self.exchange, serializer='json')
         m, ctype, cencoding = p._prepare(message, headers={})
-        self.assertDictEqual(message, anyjson.loads(m))
+        self.assertDictEqual(message, json.loads(m))
         self.assertEqual(ctype, 'application/json')
         self.assertEqual(cencoding, 'utf-8')
 
@@ -89,7 +89,7 @@ class test_Producer(Case):
         self.assertEqual(headers['compression'], 'application/x-gzip')
         import zlib
         self.assertEqual(
-            anyjson.loads(zlib.decompress(m).decode('utf-8')),
+            json.loads(zlib.decompress(m).decode('utf-8')),
             message,
         )
 
@@ -184,7 +184,7 @@ class test_Producer(Case):
         self.assertIn('basic_publish', channel)
 
         m, exc, rkey = ret
-        self.assertDictEqual(message, anyjson.loads(m['body']))
+        self.assertDictEqual(message, json.loads(m['body']))
         self.assertDictContainsSubset({'content_type': 'application/json',
                                        'content_encoding': 'utf-8',
                                        'priority': 0}, m)
@@ -230,7 +230,7 @@ class test_Consumer(Case):
         b = Consumer(self.connection, accept=['json', 'pickle'])
         self.assertSetEqual(
             b.accept,
-            set(['application/json', 'application/x-python-serialize']),
+            {'application/json', 'application/x-python-serialize'},
         )
         c = Consumer(self.connection, accept=b.accept)
         self.assertSetEqual(b.accept, c.accept)
@@ -580,7 +580,7 @@ class test_Consumer(Case):
 
         self.assertTrue(thrown)
         m, exc = thrown[0]
-        self.assertEqual(anyjson.loads(m), {'foo': 'bar'})
+        self.assertEqual(json.loads(m), {'foo': 'bar'})
         self.assertIsInstance(exc, ValueError)
 
     def test_recover(self):

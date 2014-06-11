@@ -52,7 +52,7 @@ class test_Message(Case):
         m.ack()
 
     def test_ack_respects_no_ack_consumers(self):
-        self.channel.no_ack_consumers = set(['abc'])
+        self.channel.no_ack_consumers = {'abc'}
         self.message.delivery_info['consumer_tag'] = 'abc'
         ack = self.channel.basic_ack = Mock()
 
@@ -61,7 +61,7 @@ class test_Message(Case):
         self.assertFalse(ack.called)
 
     def test_ack_missing_consumer_tag(self):
-        self.channel.no_ack_consumers = set(['abc'])
+        self.channel.no_ack_consumers = {'abc'}
         self.message.delivery_info = {}
         ack = self.channel.basic_ack = Mock()
 

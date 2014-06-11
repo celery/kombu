@@ -1,3 +1,2 @@
-paver
 flake8
 Sphinx

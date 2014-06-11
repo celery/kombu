@@ -19,7 +19,6 @@ from weakref import proxy as weakrefproxy
 
 from kombu.five import monotonic
 from kombu.log import get_logger
-from kombu.utils.compat import timedelta_seconds
 
 try:
     from pytz import utc
@@ -41,7 +40,7 @@ def to_timestamp(d, default_timezone=utc):
     if isinstance(d, datetime):
         if d.tzinfo is None:
             d = d.replace(tzinfo=default_timezone)
-        return timedelta_seconds(d - EPOCH)
+        return max((d - EPOCH).total_seconds(), 0)
     return d
 
 

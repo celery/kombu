@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 
+import sys
 import warnings
 
 from kombu import Connection
@@ -9,6 +10,9 @@ from kombu.utils import uuid
 from kombu.compression import compress
 
 from kombu.tests.case import Case, Mock, patch, redirect_stdouts
+
+PY3 = sys.version_info[0] == 3
+PRINT_FQDN = 'builtins.print' if PY3 else '__builtin__.print'
 
 
 def client(**kwargs):
@@ -267,8 +271,8 @@ class test_Channel(Case):
         c.exchange_declare(n)
         c.queue_declare(n)
         c.queue_bind(n, n, n)
-        c.queue_bind(n, n, n)   # tests code path that returns
-                                # if queue already bound.
+        # tests code path that returns if queue already bound.
+        c.queue_bind(n, n, n)
 
         c.queue_delete(n, if_empty=True)
         self.assertIn(n, c.state.bindings)
@@ -393,8 +397,8 @@ class test_Channel(Case):
         self.assertFalse(q._delivered)
 
     @patch('kombu.transport.virtual.emergency_dump_state')
-    @patch('kombu.transport.virtual.say')
-    def test_restore_unacked_once_when_unrestored(self, say,
+    @patch(PRINT_FQDN)
+    def test_restore_unacked_once_when_unrestored(self, print_,
                                                   emergency_dump_state):
         q = self.channel.qos
         q._flush = Mock()
@@ -413,7 +417,7 @@ class test_Channel(Case):
 
         self.channel.do_restore = True
         q.restore_unacked_once()
-        self.assertTrue(say.called)
+        self.assertTrue(print_.called)
         self.assertTrue(emergency_dump_state.called)
 
     def test_basic_recover(self):
@@ -514,6 +518,37 @@ class test_Channel(Case):
         has_queue.return_value = False
         with self.assertRaises(ChannelError):
             self.channel.queue_declare(queue='21wisdjwqe', passive=True)
+
+    def test_get_message_priority(self):
+
+        def _message(priority):
+            return self.channel.prepare_message(
+                'the message with priority', priority=priority,
+            )
+
+        self.assertEqual(
+            self.channel._get_message_priority(_message(5)), 5,
+        )
+        self.assertEqual(
+            self.channel._get_message_priority(
+                _message(self.channel.min_priority - 10),
+            ),
+            self.channel.min_priority,
+        )
+        self.assertEqual(
+            self.channel._get_message_priority(
+                _message(self.channel.max_priority + 10),
+            ),
+            self.channel.max_priority,
+        )
+        self.assertEqual(
+            self.channel._get_message_priority(_message('foobar')),
+            self.channel.default_priority,
+        )
+        self.assertEqual(
+            self.channel._get_message_priority(_message(2), reverse=True),
+            self.channel.max_priority - 2,
+        )
 
 
 class test_Transport(Case):

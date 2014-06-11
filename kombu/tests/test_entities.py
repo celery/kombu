@@ -285,7 +285,7 @@ class test_Queue(Case):
 
     def test_can_cache_declaration(self):
         self.assertTrue(Queue('a', durable=True).can_cache_declaration)
-        self.assertFalse(Queue('a', durable=False).can_cache_declaration)
+        self.assertTrue(Queue('a', durable=False).can_cache_declaration)
 
     def test_eq(self):
         q1 = Queue('xxx', Exchange('xxx', 'direct'), 'xxx')

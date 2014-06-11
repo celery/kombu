@@ -16,7 +16,6 @@ from contextlib import contextmanager
 from time import time
 
 from amqp import promise
-from anyjson import loads, dumps
 
 from kombu.exceptions import InconsistencyError, VersionMismatch
 from kombu.five import Empty, values, string_t
@@ -24,6 +23,7 @@ from kombu.log import get_logger
 from kombu.utils import cached_property, uuid
 from kombu.utils.eventio import poll, READ, ERR
 from kombu.utils.encoding import bytes_to_str
+from kombu.utils.json import loads, dumps
 from kombu.utils.url import _parse_url
 
 NO_ROUTE_ERROR = """
@@ -475,6 +475,8 @@ class Channel(virtual.Channel):
                 crit('Could not restore message: %r', payload, exc_info=True)
 
     def _restore(self, message, leftmost=False):
+        if not self.ack_emulation:
+            return super(Channel, self)._restore(message)
         tag = message.delivery_tag
         with self.conn_or_acquire() as client:
             P, _ = client.pipeline() \
@@ -661,11 +663,8 @@ class Channel(virtual.Channel):
 
     def _put(self, queue, message, **kwargs):
         """Deliver message."""
-        try:
-            pri = max(min(int(
-                message['properties']['delivery_info']['priority']), 9), 0)
-        except (TypeError, ValueError, KeyError):
-            pri = 0
+        pri = self._get_message_priority(message)
+
         with self.conn_or_acquire() as client:
             client.lpush(self._q_for_pri(queue, pri), dumps(message))
 
@@ -896,8 +895,8 @@ class Channel(virtual.Channel):
     @property
     def active_queues(self):
         """Set of queues being consumed from (excluding fanout queues)."""
-        return set(queue for queue in self._active_queues
-                   if queue not in self.active_fanout_queues)
+        return {queue for queue in self._active_queues
+                if queue not in self.active_fanout_queues}
 
 
 class Transport(virtual.Transport):
@@ -914,6 +913,8 @@ class Transport(virtual.Transport):
     )
 
     def __init__(self, *args, **kwargs):
+        if redis is None:
+            raise ImportError('Missing redis library (pip install redis)')
         super(Transport, self).__init__(*args, **kwargs)
 
         # Get redis-py exceptions.

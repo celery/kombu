@@ -7,7 +7,7 @@ Virtual transport implementation.
 Emulates the AMQ API for non-AMQ transports.
 
 """
-from __future__ import absolute_import, unicode_literals
+from __future__ import absolute_import, print_function, unicode_literals
 
 import base64
 import socket
@@ -15,6 +15,7 @@ import sys
 import warnings
 
 from array import array
+from collections import OrderedDict
 from itertools import count
 from multiprocessing.util import Finalize
 from time import sleep
@@ -23,8 +24,7 @@ from amqp.protocol import queue_declare_ok_t
 
 from kombu.exceptions import ResourceError, ChannelError
 from kombu.five import Empty, items, monotonic
-from kombu.utils import emergency_dump_state, kwdict, say, uuid
-from kombu.utils.compat import OrderedDict
+from kombu.utils import emergency_dump_state, uuid
 from kombu.utils.encoding import str_to_bytes, bytes_to_str
 
 from kombu.transport import base
@@ -43,6 +43,9 @@ NOT_EQUIVALENT_FMT = """\
 Cannot redeclare exchange {0!r} in vhost {1!r} with \
 different type, durable, autodelete or arguments value.\
 """
+
+RESTORING_FMT = 'Restoring {0!r} unacknowledged message(s)'
+RESTORE_PANIC_FMT = 'UNABLE TO RESTORE {0} MESSAGES: {1}'
 
 
 class Base64(object):
@@ -196,7 +199,7 @@ class QoS(object):
         delivered.clear()
         return errors
 
-    def restore_unacked_once(self):
+    def restore_unacked_once(self, stderr=None):
         """Restores all unacknowledged messages at shutdown/gc collect.
 
         Will only be done once for each instance.
@@ -204,6 +207,7 @@ class QoS(object):
         """
         self._on_collect.cancel()
         self._flush()
+        stderr = sys.stderr if stderr is None else stderr
         state = self._delivered
 
         if not self.restore_at_shutdown or not self.channel.do_restore:
@@ -213,15 +217,15 @@ class QoS(object):
             return
         try:
             if state:
-                say('Restoring {0!r} unacknowledged message(s).',
-                    len(self._delivered))
+                print(RESTORING_FMT.format(len(self._delivered)),
+                      file=stderr)
                 unrestored = self.restore_unacked()
 
                 if unrestored:
                     errors, messages = list(zip(*unrestored))
-                    say('UNABLE TO RESTORE {0} MESSAGES: {1}',
-                        len(errors), errors)
-                    emergency_dump_state(messages)
+                    print(RESTORE_PANIC_FMT.format(len(errors), errors),
+                          file=stderr)
+                    emergency_dump_state(messages, stderr=stderr)
         finally:
             state.restored = True
 
@@ -253,7 +257,7 @@ class Message(base.Message):
             'delivery_info': properties.get('delivery_info'),
             'postencode': 'utf-8',
         })
-        super(Message, self).__init__(channel, **kwdict(kwargs))
+        super(Message, self).__init__(channel, **kwargs)
 
     def serializable(self):
         props = self.properties
@@ -366,6 +370,11 @@ class Channel(AbstractChannel, base.StdChannel):
 
     # List of options to transfer from :attr:`transport_options`.
     from_transport_options = ('body_encoding', 'deadletter_queue')
+
+    # Priority defaults
+    default_priority = 0
+    min_priority = 0
+    max_priority = 9
 
     def __init__(self, connection, **kwargs):
         self.connection = connection
@@ -520,7 +529,7 @@ class Channel(AbstractChannel, base.StdChannel):
             return self.typeof(exchange).deliver(
                 message, exchange, routing_key, **kwargs
             )
-        # anon exchange: routing_key is the destintaion queue
+        # anon exchange: routing_key is the destination queue
         return self._put(routing_key, message, **kwargs)
 
     def basic_consume(self, queue, no_ack, callback, consumer_tag, **kwargs):
@@ -653,7 +662,7 @@ class Channel(AbstractChannel, base.StdChannel):
         """Prepare message data."""
         properties = properties or {}
         info = properties.setdefault('delivery_info', {})
-        info['priority'] = priority or 0
+        info['priority'] = priority or self.default_priority
 
         return {'body': body,
                 'content-encoding': content_encoding,
@@ -722,6 +731,24 @@ class Channel(AbstractChannel, base.StdChannel):
         if self._cycle is None:
             self._reset_cycle()
         return self._cycle
+
+    def _get_message_priority(self, message, reverse=False):
+        """Get priority from message and limit the value within a
+        boundary of 0 to 9.
+
+        Higher value has more priority.
+
+        """
+        try:
+            priority = max(
+                min(int(message['properties']['delivery_info']['priority']),
+                    self.max_priority),
+                self.min_priority,
+            )
+        except (TypeError, ValueError, KeyError):
+            priority = self.default_priority
+
+        return (self.max_priority - priority) if reverse else priority
 
 
 class Management(base.Management):

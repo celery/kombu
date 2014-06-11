@@ -22,7 +22,7 @@ from .common import maybe_declare, oid_from
 from .exceptions import InconsistencyError
 from .five import range
 from .log import get_logger
-from .utils import cached_property, kwdict, uuid, reprcall
+from .utils import cached_property, uuid, reprcall
 
 REPLY_QUEUE_EXPIRES = 10
 
@@ -102,7 +102,7 @@ class Node(object):
               reprcall(method, (), kwargs=arguments), reply_to, ticket)
         handle = reply_to and self.handle_call or self.handle_cast
         try:
-            reply = handle(method, kwdict(arguments))
+            reply = handle(method, arguments)
         except SystemExit:
             raise
         except Exception as exc:
@@ -130,7 +130,7 @@ class Node(object):
         if message:
             self.adjust_clock(message.headers.get('clock') or 0)
         if not destination or self.hostname in destination:
-            return self.dispatch(**kwdict(body))
+            return self.dispatch(**body)
     dispatch_from_message = handle_message
 
     def reply(self, data, exchange, routing_key, ticket, **kwargs):
@@ -210,14 +210,16 @@ class Mailbox(object):
 
     def get_reply_queue(self):
         oid = self.oid
-        return Queue('%s.%s' % (oid, self.reply_exchange.name),
-                     exchange=self.reply_exchange,
-                     routing_key=oid,
-                     durable=False,
-                     auto_delete=True,
-                     queue_arguments={
-                         'x-expires': int(REPLY_QUEUE_EXPIRES * 1000),
-                     })
+        return Queue(
+            '%s.%s' % (oid, self.reply_exchange.name),
+            exchange=self.reply_exchange,
+            routing_key=oid,
+            durable=False,
+            auto_delete=True,
+            queue_arguments={
+                'x-expires': int(REPLY_QUEUE_EXPIRES * 1000),
+            },
+        )
 
     @cached_property
     def reply_queue(self):

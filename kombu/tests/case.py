@@ -7,12 +7,13 @@ import types
 
 from contextlib import contextmanager
 from functools import wraps
+from io import StringIO
 
 import mock
 
 from nose import SkipTest
 
-from kombu.five import builtins, string_t, StringIO
+from kombu.five import builtins, string_t
 from kombu.utils.encoding import ensure_bytes
 
 try:
@@ -249,10 +250,6 @@ def skip_if_not_module(module, import_errors=(ImportError, )):
             return fun(*args, **kwargs)
         return _skip_if_not_module
     return _wrap_test
-
-
-def skip_if_quick(fun):
-    return skip_if_environ('QUICKTEST')(fun)
 
 
 @contextmanager

@@ -27,7 +27,7 @@
     kombu.async.hub
     kombu.async.semaphore
     kombu.async.timer
-    kombu.async..debug
+    kombu.async.debug
     kombu.transport
     kombu.transport.pyamqp
     kombu.transport.librabbitmq
@@ -57,7 +57,6 @@
     kombu.utils
     kombu.utils.eventio
     kombu.utils.limits
-    kombu.utils.compat
     kombu.utils.debug
     kombu.utils.encoding
     kombu.utils.functional

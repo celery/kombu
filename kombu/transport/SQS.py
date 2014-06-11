@@ -44,7 +44,6 @@ import socket
 import string
 
 from amqp.promise import transform, ensure_promise, promise
-from anyjson import loads, dumps
 
 from kombu.async import get_event_loop
 from kombu.async.aws import sqs as _asynsqs
@@ -56,6 +55,7 @@ from kombu.five import Empty, range, string_t, text_t
 from kombu.log import get_logger
 from kombu.utils import cached_property
 from kombu.utils.encoding import bytes_to_str, safe_str
+from kombu.utils.json import loads, dumps
 from kombu.transport.virtual import scheduling
 
 from . import virtual
@@ -64,9 +64,13 @@ logger = get_logger(__name__)
 
 # dots are replaced by dash, all other punctuation
 # replaced by underscore.
-CHARS_REPLACE_TABLE = dict((ord(c), 0x5f)
-                           for c in string.punctuation if c not in '-_.')
+CHARS_REPLACE_TABLE = {
+    ord(c): 0x5f for c in string.punctuation if c not in '-_.'
+}
 CHARS_REPLACE_TABLE[0x2e] = 0x2d  # '.' -> '-'
+
+#: SQS bulk get supports a maximum of 10 messages at a time.
+SQS_MAX_MESSAGES = 10
 
 
 def maybe_int(x):
@@ -74,9 +78,6 @@ def maybe_int(x):
         return int(x)
     except ValueError:
         return x
-
-#: SQS bulk get supports a maximum of 10 messages at a time.
-SQS_MAX_MESSAGES = 10
 
 
 class Channel(virtual.Channel):
