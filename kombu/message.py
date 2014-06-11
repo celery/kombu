@@ -65,7 +65,7 @@ class Message(object):
                 raise
             callback(self, exc)
 
-    def ack(self):
+    def ack(self, callback=None):
         """Acknowledge this message as being processed.,
         This will remove the message from the queue.
 
@@ -85,24 +85,24 @@ class Message(object):
             raise self.MessageStateError(
                 'Message already acknowledged with state: {0._state}'.format(
                     self))
-        self.channel.basic_ack(self.delivery_tag)
         self._state = 'ACK'
+        return self.channel.basic_ack(self.delivery_tag, on_sent=callback)
 
-    def ack_log_error(self, logger, errors):
+    def ack_log_error(self, logger, errors, callback=None):
         try:
-            self.ack()
+            self.ack(callback=callback)
         except errors as exc:
             logger.critical("Couldn't ack %r, reason:%r",
                             self.delivery_tag, exc, exc_info=True)
 
-    def reject_log_error(self, logger, errors, requeue=False):
+    def reject_log_error(self, logger, errors, requeue=False, callback=None):
         try:
-            self.reject(requeue=requeue)
+            self.reject(requeue=requeue, callback=callback)
         except errors as exc:
             logger.critical("Couldn't reject %r, reason: %r",
                             self.delivery_tag, exc, exc_info=True)
 
-    def reject(self, requeue=False):
+    def reject(self, requeue=False, callback=None):
         """Reject this message.
 
         The message will be discarded by the server.
@@ -115,10 +115,12 @@ class Message(object):
             raise self.MessageStateError(
                 'Message already acknowledged with state: {0._state}'.format(
                     self))
-        self.channel.basic_reject(self.delivery_tag, requeue=requeue)
         self._state = 'REJECTED'
+        return self.channel.basic_reject(
+            self.delivery_tag, requeue=requeue, callback=callback,
+        )
 
-    def requeue(self):
+    def requeue(self, callback=None):
         """Reject this message and put it back on the queue.
 
         You must not use this method as a means of selecting messages
@@ -132,8 +134,9 @@ class Message(object):
             raise self.MessageStateError(
                 'Message already acknowledged with state: {0._state}'.format(
                     self))
-        self.channel.basic_reject(self.delivery_tag, requeue=True)
         self._state = 'REQUEUED'
+        return self.channel.basic_reject(
+            self.delivery_tag, requeue=True, callback=callback,)
 
     def decode(self):
         """Deserialize the message body, returning the original

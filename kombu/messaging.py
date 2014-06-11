@@ -11,7 +11,7 @@ import numbers
 
 from itertools import count
 
-from amqp.promise import Thenable, barrier, promise
+from amqp.promise import Thenable, barrier, ppartial, promise
 
 from .common import maybe_declare
 from .compression import compress
@@ -168,11 +168,11 @@ class Producer(object):
         return publish(body, priority, content_type,
                        content_encoding, headers, properties,
                        routing_key, mandatory, immediate, exchange, declare,
-                       callback=None)
+                       callback=callback)
 
     def _publish(self, body, priority, content_type, content_encoding,
                  headers, properties, routing_key, mandatory,
-                 immediate, exchange, declare, callback):
+                 immediate, exchange, declare, callback=None):
         channel = self.channel
         message = channel.prepare_message(
             body, priority, content_type,
@@ -439,7 +439,7 @@ class Consumer(object):
         """
         return self.add_queue(Queue.from_dict(queue, **options))
 
-    def consume(self, no_ack=None, on_sent=None):
+    def consume(self, no_ack=None, on_sent=None, callback=None):
         """Start consuming messages.
 
         Can be called multiple times, but note that while it
@@ -452,15 +452,16 @@ class Consumer(object):
         """
         if self.queues:
             no_ack = self.no_ack if no_ack is None else no_ack
-
             size = len(self.queues)
             for i, queue in enumerate(self.queues):
                 if i == size - 1:
-                    self._basic_consume(
-                        queue, no_ack=no_ack, nowait=False, on_sent=on_sent,
+                    return self._basic_consume(
+                        queue, no_ack=no_ack, nowait=False,
+                        on_sent=on_sent, on_reply=callback,
                     )
                 else:
                     self._basic_consume(queue, no_ack=no_ack, nowait=True)
+        return ensure_promise(callback)
 
     def cancel(self, callback=None, nowait=True):
         """End all active queue consumers.
@@ -470,13 +471,11 @@ class Consumer(object):
 
         """
         cancel = self.channel.basic_cancel
-        promises = []
-        for tag in values(self._active_tags):
-            p = promise()
-            cancel(tag, nowait=nowait, callback=p)
-            promises.append(p)
-        self._active_tags.clear()
-        return barrier(promises, callback)
+        p = [cancel(tag, nowait=nowait) for tag in self._active_tags]
+        if p and isinstance(p[0], Thenable):
+            return barrier(p, ppartial(callback, self))
+        p = ready_promise(callback, self)
+        return p
     close = cancel
 
     def cancel_by_queue(self, queue, nowait=True, callback=None):
@@ -552,6 +551,7 @@ class Consumer(object):
         :param apply_global: Apply new settings globally on all channels.
 
         """
+        callback = ppartial(callback, self) if callback else None
         return self.channel.basic_qos(
             prefetch_size, prefetch_count, apply_global,
             on_sent=on_sent, callback=callback,
