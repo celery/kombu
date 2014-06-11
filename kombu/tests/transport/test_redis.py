@@ -220,6 +220,7 @@ class Transport(redis.Transport):
 
 class test_Channel(Case):
 
+    @skip_if_not_module('redis')
     def setUp(self):
         self.connection = self.create_connection()
         self.channel = self.connection.default_channel
@@ -788,6 +789,7 @@ class test_Channel(Case):
 
 class test_Redis(Case):
 
+    @skip_if_not_module('redis')
     def setUp(self):
         self.connection = Connection(transport=Transport)
         self.exchange = Exchange('test_Redis', type='direct')
@@ -944,6 +946,7 @@ def _redis_modules():
 
 class test_MultiChannelPoller(Case):
 
+    @skip_if_not_module('redis')
     def setUp(self):
         self.Poller = redis.MultiChannelPoller
 

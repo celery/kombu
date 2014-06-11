@@ -17,14 +17,11 @@ class JSONEncoder(json.JSONEncoder):
 
     def default(self, obj, _super=json.JSONEncoder.default):
         try:
-            _super(self, obj)
-        except TypeError:
-            try:
-                reducer = obj.__json__
-            except AttributeError:
-                raise
-            else:
-                return reducer()
+            reducer = obj.__json__
+        except AttributeError:
+            return _super(self, obj)
+        else:
+            return reducer()
 
 
 def dumps(s, _dumps=json.dumps, cls=JSONEncoder):

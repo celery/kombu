@@ -475,6 +475,8 @@ class Channel(virtual.Channel):
                 crit('Could not restore message: %r', payload, exc_info=True)
 
     def _restore(self, message, leftmost=False):
+        if not self.ack_emulation:
+            return super(Channel, self)._restore(message)
         tag = message.delivery_tag
         with self.conn_or_acquire() as client:
             P, _ = client.pipeline() \
@@ -907,6 +909,8 @@ class Transport(virtual.Transport):
     driver_name = 'redis'
 
     def __init__(self, *args, **kwargs):
+        if redis is None:
+            raise ImportError('Missing redis library (pip install redis)')
         super(Transport, self).__init__(*args, **kwargs)
 
         # Get redis-py exceptions.
