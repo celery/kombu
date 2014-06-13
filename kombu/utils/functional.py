@@ -3,13 +3,11 @@ from __future__ import absolute_import
 import sys
 import threading
 
-from collections import Iterable, Mapping
+from collections import Iterable, Mapping, OrderedDict
 from functools import wraps
 from itertools import islice
 
 from kombu.five import UserDict, string_t, keys
-
-from .compat import OrderedDict
 
 __all__ = ['LRUCache', 'memoize', 'lazy', 'maybe_evaluate',
            'is_list', 'maybe_list']
