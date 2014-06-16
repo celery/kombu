@@ -28,6 +28,9 @@ from kombu.tests.case import patch, skip_if_not_module
 from mock import call
 
 
+QPID_MODULE = 'kombu.transport.qpid'
+
+
 class ExtraAssertionsMixin(object):
     """A mixin class adding assertDictEqual and assertDictContainsSubset"""
 
@@ -309,7 +312,7 @@ class TestConnectionInit(ExtraAssertionsMixin, ConnectionTestBase):
         created_conn = self.mock_qpid_connection.establish.return_value
         self.assertTrue(self.conn._qpid_conn is created_conn)
 
-    @patch('kombu.transport.qpid.sys.exc_info')
+    @patch(QPID_MODULE + '.sys.exc_info')
     @patch('qpid.messaging.Connection')
     def test_connection__init__mutates_ConnError_by_message(self, qpid_conn,
                                                             mock_exc_info):
@@ -328,7 +331,7 @@ class TestConnectionInit(ExtraAssertionsMixin, ConnectionTestBase):
         else:
             self.fail('ConnectionError type was not mutated correctly')
 
-    @patch('kombu.transport.qpid.sys.exc_info')
+    @patch(QPID_MODULE + '.sys.exc_info')
     @patch('qpid.messaging.Connection')
     def test_connection__init__mutates_ConnError_by_code(self, qpid_conn,
                                                          mock_exc_info):
@@ -408,15 +411,48 @@ class TestConnectionCloseChannel(ConnectionTestBase):
 
 class ChannelTestBase(Case):
 
-    @skip_if_not_module('qpidtoollibs')
-    @patch('kombu.transport.qpid.qpidtoollibs.BrokerAgent')
-    def setUp(self, mock_broker_agent):
-        if QPID_NOT_AVAILABLE:
-            raise SkipTest('qpid.messaging not installed')
-        self.mock_broker_agent = mock_broker_agent
+    def setUp(self):
+        self.patch_qpidtoollibs = patch(QPID_MODULE + '.qpidtoollibs.BrokerAgent')
+        self.mock_broker_agent = self.patch_qpidtoollibs.start()
         self.conn = Mock()
         self.transport = Mock()
         self.channel = Channel(self.conn, self.transport)
+
+    def tearDown(self):
+        self.patch_qpidtoollibs.stop()
+
+
+class TestChannelPurge(ChannelTestBase):
+
+    def setUp(self):
+        super(TestChannelPurge, self).setUp()
+        self.mock_queue = Mock()
+
+    def test_channel__purge_gets_queue(self):
+        self.channel._purge(self.mock_queue)
+        getQueue = self.mock_broker_agent.return_value.getQueue
+        getQueue.assert_called_once_with(self.mock_queue)
+
+    def test_channel__purge_does_not_call_purge_if_message_count_is_zero(self):
+        values = {'msgDepth': 0}
+        queue_obj = self.mock_broker_agent.return_value.getQueue.return_value
+        queue_obj.values = values
+        self.channel._purge(self.mock_queue)
+        self.assertTrue(not queue_obj.purge.called)
+
+    def test_channel__purge_purges_all_messages_from_queue(self):
+        values = {'msgDepth': 5}
+        queue_obj = self.mock_broker_agent.return_value.getQueue.return_value
+        queue_obj.values = values
+        self.channel._purge(self.mock_queue)
+        queue_obj.purge.assert_called_with(5)
+
+    def test_channel__purge_returns_message_count(self):
+        values = {'msgDepth': 5}
+        queue_obj = self.mock_broker_agent.return_value.getQueue.return_value
+        queue_obj.values = values
+        result = self.channel._purge(self.mock_queue)
+        self.assertTrue(result is 5)
 
 
 class TestChannelPut(ChannelTestBase):
@@ -473,29 +509,45 @@ class TestChannelGet(ChannelTestBase):
 
 class TestChannelClose(ChannelTestBase):
 
-    @patch.object(Channel, 'basic_cancel')
-    def setUp(self, mock_basic_cancel):
+    def setUp(self):
         super(TestChannelClose, self).setUp()
-        self.mock_basic_cancel = mock_basic_cancel
+        self.patch_basic_cancel = patch.object(self.channel, 'basic_cancel')
+        self.mock_basic_cancel = self.patch_basic_cancel.start()
         self.mock_receiver1 = Mock()
         self.mock_receiver2 = Mock()
         self.channel._receivers = {1: self.mock_receiver1,
                                    2: self.mock_receiver2}
         self.channel.closed = False
-        self.channel.close()
+
+    def tearDown(self):
+        self.patch_basic_cancel.stop()
+        super(TestChannelClose, self).tearDown()
 
     def test_channel_close_sets_close_attribute(self):
+        self.channel.close()
         self.assertTrue(self.channel.closed)
 
     def test_channel_close_calls_basic_cancel_on_all_receivers(self):
-        self.mock_basic_cancel.assert_any_call(1)
-        self.mock_basic_cancel.assert_any_call(2)
+        self.channel.close()
+        self.mock_basic_cancel.assert_has_calls([call(1), call(2)])
 
     def test_channel_close_calls_close_channel_on_connection(self):
+        self.channel.close()
         self.conn.close_channel.assert_called_once_with(self.channel)
 
-    def test_channel_calls_close_on_broker_agent(self):
+    def test_channel_close_calls_close_on_broker_agent(self):
+        self.channel.close()
         self.channel._broker.close.assert_called_once_with()
+
+    def test_channel_close_does_nothing_if_already_closed(self):
+        self.channel.closed = True
+        self.channel.close()
+        self.assertTrue(not self.mock_basic_cancel.called)
+
+    def test_channel_close_does_not_call_close_channel_if_conn_is_None(self):
+        self.channel.connection = None
+        self.channel.close()
+        self.assertTrue(not self.conn.close_channel.called)
 
 
 class TestChannelBasicQoS(ChannelTestBase):
@@ -690,6 +742,60 @@ class TestChannelBasicConsume(ChannelTestBase, ExtraAssertionsMixin):
         mock_original_callback.assert_called_once_with(expected_message)
 
 
+class TestChannelQueueDelete(ChannelTestBase):
+
+    def setUp(self):
+        super(TestChannelQueueDelete, self).setUp()
+        self.patch__has_queue = patch.object(self.channel, '_has_queue')
+        self.mock__has_queue = self.patch__has_queue.start()
+        self.patch__size = patch.object(self.channel, '_size')
+        self.mock__size = self.patch__size.start()
+        self.patch__delete = patch.object(self.channel, '_delete')
+        self.mock__delete = self.patch__delete.start()
+        self.mock_queue = Mock()
+
+    def tearDown(self):
+        self.mock__has_queue.stop()
+        self.mock__size.stop()
+        self.mock__delete.stop()
+        super(TestChannelQueueDelete, self).tearDown()
+
+    def test_channel_queue_delete_checks_if_queue_exists(self):
+        self.channel.queue_delete(self.mock_queue)
+        self.mock__has_queue.assert_called_once_with(self.mock_queue)
+
+    def test_channel_queue_delete_does_nothing_if_queue_does_not_exist(self):
+        self.mock__has_queue.return_value = False
+        self.channel.queue_delete(self.mock_queue)
+        self.assertTrue(not self.mock__delete.called)
+
+    def test_channel_queue_delete__not_empty_and_if_empty_True_no_delete(self):
+        self.mock__size.return_value = 1
+        self.channel.queue_delete(self.mock_queue, if_empty=True)
+        mock_broker = self.mock_broker_agent.return_value
+        self.assertTrue(not mock_broker.getQueue.called)
+
+    def test_channel_queue_delete_calls_get_queue(self):
+        self.channel.queue_delete(self.mock_queue)
+        getQueue = self.mock_broker_agent.return_value.getQueue
+        getQueue.assert_called_once_with(self.mock_queue)
+
+    def test_channel_queue_delete_gets_queue_attribute(self):
+        self.channel.queue_delete(self.mock_queue)
+        queue_obj = self.mock_broker_agent.return_value.getQueue.return_value
+        queue_obj.getAttributes.assert_called_once_with()
+
+    def test_channel_queue_delete__queue_in_use_and_if_unused_no_delete(self):
+        queue_obj = self.mock_broker_agent.return_value.getQueue.return_value
+        queue_obj.getAttributes.return_value = {'consumerCount': 1}
+        self.channel.queue_delete(self.mock_queue, if_unused=True)
+        self.assertTrue(not self.mock__delete.called)
+
+    def test_channel_queue_delete_calls__delete_with_queue(self):
+        self.channel.queue_delete(self.mock_queue)
+        self.mock__delete.assert_called_once_with(self.mock_queue)
+
+
 class TestChannel(ExtraAssertionsMixin, Case):
 
     @skip_if_not_module('qpidtoollibs')
@@ -738,20 +844,6 @@ class TestChannel(ExtraAssertionsMixin, Case):
     def test_delivery_tags(self):
         """Test that _delivery_tags is using itertools"""
         self.assertTrue(isinstance(Channel._delivery_tags, count))
-
-    def test_purge(self):
-        """Test purging a queue that has messages, and verify the return
-        value.
-        """
-        message_count = 5
-        mock_queue = Mock()
-        mock_queue_to_purge = Mock()
-        mock_queue_to_purge.values = {'msgDepth': message_count}
-        self.mock_broker.getQueue.return_value = mock_queue_to_purge
-        result = self.my_channel._purge(mock_queue)
-        self.mock_broker.getQueue.assert_called_with(mock_queue)
-        mock_queue_to_purge.purge.assert_called_with(message_count)
-        self.assertEqual(message_count, result)
 
     def test_size(self):
         """Test getting the number of messages in a queue specified by
@@ -937,42 +1029,6 @@ class TestChannel(ExtraAssertionsMixin, Case):
                           mock_queue)
         self.mock_broker.addQueue.assert_called_once()
 
-    def test_queue_delete_if_empty_param(self):
-        """Test the deletion of a queue with if_empty=True"""
-        mock_queue = Mock()
-        self.my_channel._has_queue = Mock(return_value=True)
-        self.my_channel._size = Mock(return_value=5)
-        result = self.my_channel.queue_delete(mock_queue, if_empty=True)
-        self.my_channel._has_queue.assert_called_with(mock_queue)
-        self.my_channel._size.assert_called_with(mock_queue)
-        self.assertTrue(result is None)
-
-    def test_queue_delete_if_unused_param(self):
-        """Test the deletion of a queue with if_unused=True"""
-        mock_queue = Mock()
-        mock_queue_obj = Mock()
-        mock_queue_attributes = {'consumerCount': 5}
-        mock_queue_obj.getAttributes.return_value = mock_queue_attributes
-        self.my_channel._has_queue = Mock(return_value=True)
-        self.my_channel._size = Mock(return_value=5)
-        self.mock_broker.getQueue.return_value = mock_queue_obj
-        result = self.my_channel.queue_delete(mock_queue, if_unused=True)
-        self.assertTrue(result is None)
-
-    def test_queue_delete(self):
-        """Test the deletion of a queue"""
-        mock_queue = Mock()
-        mock_queue_obj = Mock()
-        mock_queue_attributes = {'consumerCount': 5}
-        mock_queue_obj.getAttributes.return_value = mock_queue_attributes
-        self.my_channel._has_queue = Mock(return_value=True)
-        self.my_channel._size = Mock(return_value=5)
-        self.my_channel._delete = Mock()
-        self.mock_broker.getQueue.return_value = mock_queue_obj
-        result = self.my_channel.queue_delete(mock_queue)
-        self.my_channel._delete.assert_called_with(mock_queue)
-        self.assertTrue(result is None)
-
     def test_exchange_declare_raises_exception_and_silenced(self):
         """Create exchange where an exception is raised and then silenced"""
         self.mock_broker.addExchange.side_effect = \
@@ -1040,14 +1096,14 @@ class TestChannel(ExtraAssertionsMixin, Case):
         self.my_channel._purge.assert_called_with(mock_queue)
         self.assertTrue(purge_result is result)
 
-    @patch('kombu.transport.qpid.Channel.qos')
+    @patch(QPID_MODULE + '.Channel.qos')
     def test_basic_ack(self, mock_qos):
         """Test that basic_ack calls the QoS object properly"""
         mock_delivery_tag = Mock()
         self.my_channel.basic_ack(mock_delivery_tag)
         mock_qos.ack.assert_called_with(mock_delivery_tag)
 
-    @patch('kombu.transport.qpid.Channel.qos')
+    @patch(QPID_MODULE + '.Channel.qos')
     def test_basic_reject(self, mock_qos):
         """Test that basic_reject calls the QoS object properly"""
         mock_delivery_tag = Mock()
@@ -1099,9 +1155,9 @@ class TestChannel(ExtraAssertionsMixin, Case):
                         result['properties']['delivery_info']['priority'])
 
     @patch('__builtin__.buffer')
-    @patch('kombu.transport.qpid.Channel.body_encoding')
-    @patch('kombu.transport.qpid.Channel.encode_body')
-    @patch('kombu.transport.qpid.Channel._put')
+    @patch(QPID_MODULE + '.Channel.body_encoding')
+    @patch(QPID_MODULE + '.Channel.encode_body')
+    @patch(QPID_MODULE + '.Channel._put')
     def test_basic_publish(self, mock_put,
                            mock_encode_body,
                            mock_body_encoding,
@@ -1137,7 +1193,7 @@ class TestChannel(ExtraAssertionsMixin, Case):
                                     mock_message,
                                     mock_exchange)
 
-    @patch('kombu.transport.qpid.Channel.codecs')
+    @patch(QPID_MODULE + '.Channel.codecs')
     def test_encode_body_expected_encoding(self, mock_codecs):
         """Test if encode_body() works when encoding is set correctly"""
         mock_body = Mock()
@@ -1149,7 +1205,7 @@ class TestChannel(ExtraAssertionsMixin, Case):
         expected_result = (mock_encoded_result, 'base64')
         self.assertEqual(expected_result, result)
 
-    @patch('kombu.transport.qpid.Channel.codecs')
+    @patch(QPID_MODULE + '.Channel.codecs')
     def test_encode_body_not_expected_encoding(self, mock_codecs):
         """Test if encode_body() works when encoding is not set correctly"""
         mock_body = Mock()
@@ -1158,7 +1214,7 @@ class TestChannel(ExtraAssertionsMixin, Case):
         expected_result = (mock_body, None)
         self.assertEqual(expected_result, result)
 
-    @patch('kombu.transport.qpid.Channel.codecs')
+    @patch(QPID_MODULE + '.Channel.codecs')
     def test_decode_body_expected_encoding(self, mock_codecs):
         """Test if decode_body() works when encoding is set correctly"""
         mock_body = Mock()
@@ -1169,7 +1225,7 @@ class TestChannel(ExtraAssertionsMixin, Case):
         result = self.my_channel.decode_body(mock_body, encoding='base64')
         self.assertEqual(mock_decoded_result, result)
 
-    @patch('kombu.transport.qpid.Channel.codecs')
+    @patch(QPID_MODULE + '.Channel.codecs')
     def test_decode_body_not_expected_encoding(self, mock_codecs):
         """Test if decode_body() works when encoding is not set correctly"""
         mock_body = Mock()
@@ -1218,7 +1274,7 @@ class TestReceiversMonitorType(ReceiversMonitorTestBase):
 class TestReceiversMonitorInit(ReceiversMonitorTestBase):
 
     def setUp(self):
-        thread___init___str = 'kombu.transport.qpid.threading.Thread.__init__'
+        thread___init___str = QPID_MODULE + '.threading.Thread.__init__'
         self.patch_parent___init__ = patch(thread___init___str)
         self.mock_Thread___init__ = self.patch_parent___init__.start()
         super(TestReceiversMonitorInit, self).setUp()
@@ -1239,7 +1295,7 @@ class TestReceiversMonitorInit(ReceiversMonitorTestBase):
 class TestReceiversMonitorRun(ReceiversMonitorTestBase):
 
     @patch.object(ReceiversMonitor, 'monitor_receivers')
-    @patch('kombu.transport.qpid.time.sleep')
+    @patch(QPID_MODULE + '.time.sleep')
     def test_receivers_monitor_run_calls_monitor_receivers(
             self, mock_sleep, mock_monitor_receivers):
         mock_sleep.side_effect = self.BreakOutException()
@@ -1247,8 +1303,8 @@ class TestReceiversMonitorRun(ReceiversMonitorTestBase):
         mock_monitor_receivers.assert_called_once_with()
 
     @patch.object(ReceiversMonitor, 'monitor_receivers')
-    @patch('kombu.transport.qpid.time.sleep')
-    @patch('kombu.transport.qpid.logger')
+    @patch(QPID_MODULE + '.time.sleep')
+    @patch(QPID_MODULE + '.logger')
     def test_receivers_monitors_run_calls_logs_exception_and_sleeps(
             self, mock_logger, mock_sleep, mock_monitor_receivers):
         exc_to_raise = IOError()
@@ -1259,7 +1315,7 @@ class TestReceiversMonitorRun(ReceiversMonitorTestBase):
         mock_sleep.assert_called_once_with(10)
 
     @patch.object(ReceiversMonitor, 'monitor_receivers')
-    @patch('kombu.transport.qpid.time.sleep')
+    @patch(QPID_MODULE + '.time.sleep')
     def test_receivers_monitor_run_loops_when_exception_is_raised(
             self, mock_sleep, mock_monitor_receivers):
         def return_once_raise_on_second_call(*args):
@@ -1279,7 +1335,7 @@ class TestReceiversMonitorMonitorReceivers(ReceiversMonitorTestBase):
         self.mock_session.next_receiver.assert_called_once_with()
 
     def test_receivers_monitor_monitor_receivers_writes_to_fd(self):
-        with patch('kombu.transport.qpid.os.write') as mock_os_write:
+        with patch(QPID_MODULE + '.os.write') as mock_os_write:
             mock_os_write.side_effect = self.BreakOutException()
             self.assertRaises(self.BreakOutException,
                               self.monitor.monitor_receivers)
@@ -1289,16 +1345,16 @@ class TestReceiversMonitorMonitorReceivers(ReceiversMonitorTestBase):
 class TestTransportInit(Case):
 
     def setUp(self):
-        self.patch_a = patch('kombu.transport.qpid.base.Transport.__init__')
+        self.patch_a = patch(QPID_MODULE + '.base.Transport.__init__')
         self.mock_base_Transport__init__ = self.patch_a.start()
 
-        self.patch_b = patch('kombu.transport.qpid.os')
+        self.patch_b = patch(QPID_MODULE + '.os')
         self.mock_os = self.patch_b.start()
         self.mock_r = Mock()
         self.mock_w = Mock()
         self.mock_os.pipe.return_value = (self.mock_r, self.mock_w)
 
-        self.patch_c = patch('kombu.transport.qpid.fcntl')
+        self.patch_c = patch(QPID_MODULE + '.fcntl')
         self.mock_fcntl = self.patch_c.start()
 
     def tearDown(self):
@@ -1407,7 +1463,7 @@ class TestTransportEstablishConnection(Case):
         self.transport = Transport(self.client)
         self.mock_conn = Mock()
         self.transport.Connection = self.mock_conn
-        path_to_mock = 'kombu.transport.qpid.ReceiversMonitor'
+        path_to_mock = QPID_MODULE + '.ReceiversMonitor'
         self.patcher = patch(path_to_mock)
         self.mock_ReceiverMonitor = self.patcher.start()
 
@@ -1533,6 +1589,15 @@ class TestTransportEstablishConnection(Case):
         new_receiver_monitor = self.mock_ReceiverMonitor.return_value
         new_receiver_monitor.start.assert_called_once_with()
 
+    def test_transport_establish_conn_ignores_hostname_if_not_localhost(self):
+        self.client.hostname = 'some_other_hostname'
+        self.transport.establish_connection()
+        self.mock_conn.assert_called_once_with(username='guest',
+                                               sasl_mechanisms='PLAIN',
+                                               host='some_other_hostname',
+                                               timeout=4, password='guest',
+                                               port=5672, transport='tcp')
+
 
 class TestTransportClassAttributes(Case):
 
@@ -1575,7 +1640,7 @@ class TestTransportRegisterWithEventLoop(Case):
 class TestTransportOnReadable(Case):
 
     def setUp(self):
-        self.patch_a = patch('kombu.transport.qpid.os.read')
+        self.patch_a = patch(QPID_MODULE + '.os.read')
         self.mock_os_read = self.patch_a.start()
         self.patch_b = patch.object(Transport, 'drain_events')
         self.mock_drain_events = self.patch_b.start()
