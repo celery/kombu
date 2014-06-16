@@ -11,14 +11,16 @@ import numbers
 
 from itertools import count
 
-from amqp.promise import Thenable, barrier, ppartial, promise
+from amqp.promise import (
+    Thenable, barrier, ensure_promise, ppartial, promise, ready_promise,
+)
 
 from .common import maybe_declare
 from .compression import compress
 from .connection import maybe_channel, is_connection
 from .entity import Exchange, Queue, DELIVERY_MODES
 from .exceptions import ContentDisallowed
-from .five import text_t, values
+from .five import text_t
 from .serialization import dumps, prepare_accept_content
 from .utils import ChannelPromise, maybe_list
 
@@ -342,11 +344,17 @@ class Consumer(object):
     #: in which case only json is allowed.
     accept = None
 
+    #: Set by :meth:`stop` to make sure multiple invocations will not
+    #: start the stopping sequence over and over.
+    _stopping = False
+
     _tags = count(1)   # global
 
-    def __init__(self, channel, queues=None, no_ack=None, auto_declare=None,
-                 callbacks=None, on_decode_error=None, on_message=None,
-                 accept=None):
+    def __init__(self, channel=None, queues=None, no_ack=None,
+                 auto_declare=None, callbacks=None, on_decode_error=None,
+                 on_message=None, accept=None, on_ready=None,
+                 prefetch_size=None, prefetch_count=None,
+                 prefetch_global=False):
         self.channel = channel
         self.queues = self.queues or [] if queues is None else queues
         self.no_ack = self.no_ack if no_ack is None else no_ack
@@ -359,21 +367,75 @@ class Consumer(object):
         if on_decode_error is not None:
             self.on_decode_error = on_decode_error
         self.accept = prepare_accept_content(accept)
+        self.prefetch_size = prefetch_size
+        self.prefetch_count = prefetch_count
+        self.prefetch_global = prefetch_global
+        self.on_ready = ensure_promise(on_ready)
 
         if self.channel:
-            self.revive(self.channel)
+            self._start()
+
+    def then(self, on_success, on_failure=None):
+        self.on_ready.then(on_success, on_failure)
 
     def revive(self, channel):
         """Revive consumer after connection loss."""
+        self._on_channel_open(None, maybe_channel(channel))
+
+    def _start(self, prefetch_size=None,
+               prefetch_count=None, prefetch_global=False):
+        self._stopping = False
+        self.channel.then(self._on_connected)
+
+    def _on_connected(self, channel):
+        print('>> ON CONNECTED: %r' % (channel, ))
+        if getattr(channel, 'channel_id', None):
+            return self._on_channel_open(channel)
+        return channel.client.default_channel.then(
+            self._on_channel_open,
+        )
+
+    def _on_channel_open(self, channel):
+        print('>>> ON CHANNEL OPEN: %r' % (channel, ))
         self._active_tags.clear()
-        channel = self.channel = maybe_channel(channel)
+        self.channel = channel
         self.queues = [queue(self.channel)
                        for queue in maybe_list(self.queues)]
         for queue in self.queues:
             queue.revive(channel)
 
         if self.auto_declare:
-            self.declare()
+            return self.declare(callback=self._on_queues_declared)
+        return self._on_queues_declared()
+
+    def _on_queues_declared(self):
+        print('ON QUEUES DECLARED')
+        if not self.no_ack and (self.prefetch_size or self.prefetch_count):
+            return self.qos(
+                self.prefetch_size, self.prefetch_count, self.prefetch_global,
+                callback=promise(self._on_qos_applied),
+            )
+        return self._on_qos_applied()
+
+    def _on_qos_applied(self, consumer_):
+        print('_ON QOS APPLIED!')
+        self.consume(callback=self.on_ready)
+
+    def stop(self, callback=None, close_channel=False):
+        if not self._stopping:
+            self._stopping = True
+            self.cancel(callback=promise(
+                self._on_consumer_cancelled, (callback, close_channel),
+            ))
+
+    def _on_consumer_cancelled(self, callback, close_channel, consumer):
+        print('_ON CONSUMER CANCELLED!!!')
+        if close_channel and self.channel is not None and \
+                getattr(self.channel, 'channel_id', None):
+            print('CLOSING CHANNEL FIRST')
+            return self.channel.close(callback=callback)
+        if callback:
+            callback()
 
     def declare(self, callback=None):
         """Declare queues, exchanges and bindings.
@@ -461,7 +523,7 @@ class Consumer(object):
                     )
                 else:
                     self._basic_consume(queue, no_ack=no_ack, nowait=True)
-        return ensure_promise(callback)
+        return ready_promise(callback, self)
 
     def cancel(self, callback=None, nowait=True):
         """End all active queue consumers.
@@ -474,8 +536,7 @@ class Consumer(object):
         p = [cancel(tag, nowait=nowait) for tag in self._active_tags]
         if p and isinstance(p[0], Thenable):
             return barrier(p, ppartial(callback, self))
-        p = ready_promise(callback, self)
-        return p
+        return ready_promise(callback, self)
     close = cancel
 
     def cancel_by_queue(self, queue, nowait=True, callback=None):
@@ -632,3 +693,4 @@ class Consumer(object):
             return self.channel.connection.client
         except AttributeError:
             pass
+Thenable.register(Consumer)

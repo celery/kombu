@@ -9,6 +9,8 @@ from __future__ import absolute_import
 
 import sys
 
+from amqp.promise import ppartial
+
 from .compression import decompress
 from .exceptions import MessageStateError
 from .five import reraise, text_t
@@ -86,6 +88,7 @@ class Message(object):
                 'Message already acknowledged with state: {0._state}'.format(
                     self))
         self._state = 'ACK'
+        callback = ppartial(callback, self) if callback is not None else None
         return self.channel.basic_ack(self.delivery_tag, on_sent=callback)
 
     def ack_log_error(self, logger, errors, callback=None):
@@ -116,6 +119,7 @@ class Message(object):
                 'Message already acknowledged with state: {0._state}'.format(
                     self))
         self._state = 'REJECTED'
+        callback = ppartial(callback, self) if callback is not None else None
         return self.channel.basic_reject(
             self.delivery_tag, requeue=requeue, callback=callback,
         )
@@ -135,6 +139,7 @@ class Message(object):
                 'Message already acknowledged with state: {0._state}'.format(
                     self))
         self._state = 'REQUEUED'
+        callback = ppartial(callback, self) if callback is not None else None
         return self.channel.basic_reject(
             self.delivery_tag, requeue=True, callback=callback,)
 
