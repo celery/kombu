@@ -20,7 +20,7 @@ from .compression import compress
 from .connection import maybe_channel, is_connection
 from .entity import Exchange, Queue, DELIVERY_MODES
 from .exceptions import ContentDisallowed
-from .five import text_t
+from .five import keys, text_t
 from .serialization import dumps, prepare_accept_content
 from .utils import ChannelPromise, maybe_list
 
@@ -72,21 +72,57 @@ class Producer(object):
 
     def __init__(self, channel, exchange=None, routing_key=None,
                  serializer=None, auto_declare=None, compression=None,
-                 on_return=None):
+                 on_return=None, on_ready=None):
         self._channel = channel
         self.exchange = exchange
         self.routing_key = routing_key or self.routing_key
         self.serializer = serializer or self.serializer
         self.compression = compression or self.compression
         self.on_return = on_return or self.on_return
+        self.on_ready = ensure_promise(on_ready)
         self._channel_promise = None
         if self.exchange is None:
             self.exchange = Exchange('')
         if auto_declare is not None:
             self.auto_declare = auto_declare
+        # if hash(entity) is in here
+        # we have to connect to that promise to make sure the
+        # message is published *after* the entity is declared.
+        self._declaring = {}
 
         if self._channel:
             self.revive(self._channel)
+        self.delivery_tag = 0
+
+    def revive(self, channel):
+        """Revive the producer after connection loss."""
+        if is_connection(channel):
+            connection = channel
+            self.__connection__ = connection
+            channel = self._channel = ChannelPromise(
+                lambda: connection.default_channel
+            )
+        if isinstance(channel, ChannelPromise):
+            self._channel = channel
+            self.exchange = self.exchange(channel)
+        else:
+            # Channel already concrete
+            channel.then(self._on_channel_open)
+
+    def _on_channel_open(self, channel):
+        self._channel = channel
+        self._declaring.clear()
+        if self.on_return:
+            self._channel.events['basic_return'].add(self.on_return)
+        if self.exchange:
+            self.exchange = self.exchange(channel)
+
+        if self.auto_declare and self.exchange and self.exchange_name:
+            return self.declare(callback=self.on_ready)
+        self.on_ready()
+
+    def then(self, on_success, on_failure=None):
+        return self.on_ready.then(on_success, on_failure)
 
     def __repr__(self):
         return '<Producer: {0._channel}>'.format(self)
@@ -107,12 +143,17 @@ class Producer(object):
         """
         if self.exchange.name:
             return self.exchange.declare(callback=callback)
+        return ready_promise(callback, self)
 
-    def maybe_declare(self, entity, retry=False, **retry_policy):
+    def maybe_declare(self, entity,
+                      retry=False, callback=None, **retry_policy):
         """Declare the exchange if it hasn't already been declared
         during this session."""
         if entity:
-            return maybe_declare(entity, self.channel, retry, **retry_policy)
+            return maybe_declare(entity, self.channel, retry,
+                                 ensure_promise(callback),
+                                 **retry_policy)
+        return ready_promise(callback, entity)
 
     def publish(self, body, routing_key=None, delivery_mode=None,
                 mandatory=False, immediate=False, priority=0,
@@ -164,26 +205,75 @@ class Producer(object):
             body, serializer, content_type, content_encoding,
             compression, headers)
 
+        self.delivery_tag += 1
+        callback = ppartial(callback, self.delivery_tag)
+
         publish = self._publish
         if retry:
             publish = self.connection.ensure(self, publish, **retry_policy)
-        return publish(body, priority, content_type,
-                       content_encoding, headers, properties,
-                       routing_key, mandatory, immediate, exchange, declare,
-                       callback=callback)
+        publish((body, priority, content_type, content_encoding, headers,
+                 properties, routing_key, mandatory, immediate, exchange,
+                 declare, callback))
+        return callback
 
-    def _publish(self, body, priority, content_type, content_encoding,
-                 headers, properties, routing_key, mandatory,
-                 immediate, exchange, declare, callback=None):
-        channel = self.channel
+    def _publish(self, mtup):
+        channel = self._channel
+        if isinstance(channel, ChannelPromise):
+            return self.__connection__.then(promise(
+                self._publish_using_conn, (mtup, ),
+            ))
+        return self.channel.then(promise(
+            self._publish_using_channel, mtup,
+        ))
+
+    def _publish_using_conn(self, mtup, conn, *args):
+        return conn.default_channel.then(promise(
+            self._publish_channel_open, (mtup, ),
+        ))
+
+    def _publish_channel_open(self, mtup, channel):
+        self._publish_using_channel(*mtup, channel=channel)
+
+    def _declare_or_pending(self, declare, channel):
+        declaring = self._declaring
+        on_entity_declared = self._on_entity_declared
+        for entity in declare:
+            ident = hash(entity)
+            try:
+                yield declaring[ident]
+            except KeyError:
+                p = maybe_declare(entity, channel, callback=on_entity_declared)
+                if p:
+                    declaring[ident] = p
+                    yield p
+
+    def _publish_using_channel(self, body, priority, content_type,
+                               content_encoding, headers, properties,
+                               routing_key, mandatory, immediate, exchange,
+                               declare, callback, channel):
         message = channel.prepare_message(
             body, priority, content_type,
             content_encoding, headers, properties,
         )
         if declare:
-            # XXX maybe_declare not async, use barrier?
-            maybe_declare = self.maybe_declare
-            [maybe_declare(entity) for entity in declare]
+            pending = list(self._declare_or_pending(declare, channel))
+            if pending:
+                return barrier(pending, promise(
+                    self._on_publish_declared,
+                    (channel, message, exchange, routing_key, mandatory,
+                        immediate, callback)
+                ))
+        else:
+            return self._on_publish_declared(
+                channel, message, exchange, routing_key,
+                mandatory, immediate, callback,
+            )
+
+    def _on_entity_declared(self, entity):
+        self._declaring.pop(hash(entity), None)
+
+    def _on_publish_declared(self, channel, message, exchange, routing_key,
+                             mandatory, immediate, callback):
         return channel.basic_publish(
             message,
             exchange=exchange, routing_key=routing_key,
@@ -194,35 +284,13 @@ class Producer(object):
     def _get_channel(self):
         channel = self._channel
         if isinstance(channel, ChannelPromise):
-            channel = self._channel = channel()
-            self.exchange.revive(channel)
-            if self.on_return:
-                channel.events['basic_return'].add(self.on_return)
+            channel = channel()
+            channel.then(self._on_channel_ready)
         return channel
 
     def _set_channel(self, channel):
         self._channel = channel
     channel = property(_get_channel, _set_channel)
-
-    def revive(self, channel):
-        """Revive the producer after connection loss."""
-        if is_connection(channel):
-            connection = channel
-            self.__connection__ = connection
-            channel = ChannelPromise(lambda: connection.default_channel)
-        if isinstance(channel, ChannelPromise):
-            self._channel = channel
-            self.exchange = self.exchange(channel)
-        else:
-            # Channel already concrete
-            self._channel = channel
-            if self.on_return:
-                self._channel.events['basic_return'].add(self.on_return)
-            self.exchange = self.exchange(channel)
-        if self.auto_declare:
-            # auto_decare is not recommended as this will force
-            # evaluation of the channel.
-            self.declare()
 
     def __enter__(self):
         return self
@@ -266,6 +334,7 @@ class Producer(object):
             return self.__connection__ or self.channel.connection.client
         except AttributeError:
             pass
+Thenable.register(Producer)
 
 
 class Consumer(object):
@@ -376,7 +445,7 @@ class Consumer(object):
             self._start()
 
     def then(self, on_success, on_failure=None):
-        self.on_ready.then(on_success, on_failure)
+        return self.on_ready.then(on_success, on_failure)
 
     def revive(self, channel):
         """Revive consumer after connection loss."""
@@ -388,15 +457,13 @@ class Consumer(object):
         self.channel.then(self._on_connected)
 
     def _on_connected(self, channel):
-        print('>> ON CONNECTED: %r' % (channel, ))
         if getattr(channel, 'channel_id', None):
             return self._on_channel_open(channel)
-        return channel.client.default_channel.then(
+        return channel.default_channel.then(
             self._on_channel_open,
         )
 
     def _on_channel_open(self, channel):
-        print('>>> ON CHANNEL OPEN: %r' % (channel, ))
         self._active_tags.clear()
         self.channel = channel
         self.queues = [queue(self.channel)
@@ -409,7 +476,6 @@ class Consumer(object):
         return self._on_queues_declared()
 
     def _on_queues_declared(self):
-        print('ON QUEUES DECLARED')
         if not self.no_ack and (self.prefetch_size or self.prefetch_count):
             return self.qos(
                 self.prefetch_size, self.prefetch_count, self.prefetch_global,
@@ -418,7 +484,6 @@ class Consumer(object):
         return self._on_qos_applied()
 
     def _on_qos_applied(self, consumer_):
-        print('_ON QOS APPLIED!')
         self.consume(callback=self.on_ready)
 
     def stop(self, callback=None, close_channel=False):
@@ -428,11 +493,9 @@ class Consumer(object):
                 self._on_consumer_cancelled, (callback, close_channel),
             ))
 
-    def _on_consumer_cancelled(self, callback, close_channel, consumer):
-        print('_ON CONSUMER CANCELLED!!!')
+    def _on_consumer_cancelled(self, consumer, callback, close_channel, *_):
         if close_channel and self.channel is not None and \
                 getattr(self.channel, 'channel_id', None):
-            print('CLOSING CHANNEL FIRST')
             return self.channel.close(callback=callback)
         if callback:
             callback()
@@ -525,7 +588,7 @@ class Consumer(object):
                     self._basic_consume(queue, no_ack=no_ack, nowait=True)
         return ready_promise(callback, self)
 
-    def cancel(self, callback=None, nowait=True):
+    def cancel(self, callback=None, nowait=False):
         """End all active queue consumers.
 
         This does not affect already delivered messages, but it does
@@ -533,9 +596,12 @@ class Consumer(object):
 
         """
         cancel = self.channel.basic_cancel
-        p = [cancel(tag, nowait=nowait) for tag in self._active_tags]
-        if p and isinstance(p[0], Thenable):
-            return barrier(p, ppartial(callback, self))
+        tags = list(keys(self._active_tags))
+        if tags:
+            p = [cancel(tag, nowait=True) for tag in tags[:-1]]
+            p.append(cancel(tags[-1], nowait=nowait, callback=callback))
+            if p and isinstance(p[0], Thenable):
+                return barrier(p, ppartial(callback, self))
         return ready_promise(callback, self)
     close = cancel
 

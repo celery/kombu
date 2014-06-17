@@ -18,6 +18,7 @@ from itertools import count
 from uuid import getnode as _getnode, uuid4, uuid3, NAMESPACE_OID
 
 from amqp import RecoverableConnectionError
+from amqp.promise import ready_promise
 
 from .entity import Exchange, Queue
 from .five import range
@@ -89,7 +90,8 @@ def declaration_cached(entity, channel):
     return entity in channel.connection.client.declared_entities
 
 
-def maybe_declare(entity, channel=None, retry=False, **retry_policy):
+def maybe_declare(entity, channel=None, retry=False, callback=None,
+                  **retry_policy):
     is_bound = entity.is_bound
 
     if channel is None:
@@ -102,28 +104,27 @@ def maybe_declare(entity, channel=None, retry=False, **retry_policy):
         ident = hash(entity)
         if ident in declared:
             return False
+        declared.add(ident)
 
     entity = entity if is_bound else entity.bind(channel)
     if retry:
-        return _imaybe_declare(entity, declared, ident,
-                               channel, **retry_policy)
-    return _maybe_declare(entity, declared, ident, channel)
+        return _imaybe_declare(entity, channel,
+                               callback, **retry_policy)
+    return _maybe_declare(entity, channel, callback)
 
 
-def _maybe_declare(entity, declared, ident, channel):
+def _maybe_declare(entity, channel, callback):
     channel = channel or entity.channel
     if not channel.connection:
         raise RecoverableConnectionError('channel disconnected')
-    entity.declare()
-    if declared is not None and ident:
-        declared.add(ident)
-    return True
+    return entity.declare(callback=callback)
 
 
-def _imaybe_declare(entity, declared, ident, channel, **retry_policy):
+def _imaybe_declare(entity, channel, callback,
+                    **retry_policy):
     return entity.channel.connection.client.ensure(
         entity, _maybe_declare, **retry_policy)(
-            entity, declared, ident, channel)
+            entity, channel, callback)
 
 
 def drain_consumer(consumer, limit=1, timeout=None, callbacks=None):

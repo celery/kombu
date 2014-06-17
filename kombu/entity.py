@@ -519,7 +519,7 @@ class Queue(MaybeChannelBound):
         else:
             return self._declare_queue(callback, nowait)
 
-    def _declare_queue(self, callback, nowait, exchange_declared=None):
+    def _declare_queue(self, ex_, callback, nowait):
         return self.queue_declare(nowait, passive=False, callback=promise(
             self._bind_queue, (callback, nowait)),
         )

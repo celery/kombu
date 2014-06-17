@@ -15,7 +15,7 @@ from contextlib import contextmanager
 from itertools import count, cycle
 from operator import itemgetter
 
-from amqp.promise import Thenable
+from amqp.promise import Thenable, preplace
 
 # jython breaks on relative import for .exceptions for some reason
 # (Issue #112)
@@ -193,7 +193,10 @@ class Connection(object):
         self.declared_entities = set()
 
     def then(self, on_success, on_error=None):
-        return self.connection.then(on_success, on_error)
+        return self.connection.then(
+            preplace(on_success, self),
+            preplace(on_error, self) if on_error is not None else on_error,
+        )
 
     def switch(self, url):
         """Switch connection parameters to use a new URL (does not

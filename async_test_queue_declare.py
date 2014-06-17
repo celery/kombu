@@ -1,44 +1,41 @@
-from amqp import barrier, promise
+from __future__ import with_statement, print_function
+
+import math
+
+from amqp import barrier
 from kombu import Connection, Exchange, Queue, Producer
 from kombu.async import Hub
+from kombu.five import monotonic
 
+N = 1000
 TEST_QUEUE = Queue('test3', Exchange('test3'))
+FREQ = int(math.ceil(math.sqrt(N)))
 
-program_finished = promise()
+
+def on_message_written(delivery_tag):
+    if not delivery_tag % FREQ:
+        print('message sent: {0:4d}/{1}'.format(delivery_tag, N))
 
 
-def publish_messages(channel, messages, **options):
-    print('sending messages')
-    producer = Producer(channel)
-    return barrier([producer.publish(m, callback=promise(), **options) for m in messages],
-                    program_finished)
+def send_messages(connection):
+    producer = Producer(connection, auto_declare=False)
+    return barrier([
+        producer.publish({'hello': i},
+                         exchange=TEST_QUEUE.exchange,
+                         routing_key=TEST_QUEUE.routing_key,
+                         declare=[TEST_QUEUE],
+                         callback=on_message_written)
+        for i in range(N)
+    ])
 
-def on_queue_declared(queue):
-    print('queue and exchange declared: {0}'.format(queue))
-    return publish_messages(
-        queue.channel, [{'hello': i} for i in range(10)],
-        exchange=queue.exchange,
-        routing_key=queue.routing_key,
-    )
+if __name__ == '__main__':
+    loop = Hub()
+    connection = Connection('pyamqp://')
+    connection.register_with_event_loop(loop)
 
-def on_channel_open(channel):
-    print('channel open: {0}'.format(channel))
-    return TEST_QUEUE(channel).declare().then(on_queue_declared)
-
-def on_connected(connection):
-    print('connected: {0}'.format(connection))
-    return connection.channel().then(on_channel_open)
-
-loop = Hub()
-connection = Connection('pyamqp://')
-connection.then(on_connected)
-
-#def declare_and_publish():
-#    connection = yield Connection('pyamqp://')
-#    channel = yield connection.channel()
-#    queue = yield TEST_QUEUE(channel).declare()
-
-connection.register_with_event_loop(loop)
-while not program_finished.ready:
-    loop.run_once()
-
+    time_start = monotonic()
+    sending = send_messages(connection)
+    while not sending.ready:
+        loop.run_once()
+    print('-' * 76)
+    print('total time: {0}'.format(monotonic() - time_start))
