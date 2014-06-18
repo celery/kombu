@@ -324,6 +324,7 @@ class Mailbox(object):
             if expires and time() > expires:
                 return
             this_id = header('ticket', ticket)
+
             if this_id == ticket:
                 if callback:
                     callback(body)
