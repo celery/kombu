@@ -288,7 +288,7 @@ class Exchange(MaybeChannelBound):
 
     @property
     def can_cache_declaration(self):
-        return self.durable and not self.auto_delete
+        return not self.auto_delete
 
 
 class binding(object):
