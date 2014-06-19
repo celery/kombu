@@ -92,6 +92,10 @@ def declaration_cached(entity, channel):
 def maybe_declare(entity, channel=None, retry=False, **retry_policy):
     is_bound = entity.is_bound
 
+    if not is_bound:
+        assert channel
+        entity = entity.bind(channel)
+
     if channel is None:
         assert is_bound
         channel = entity.channel
@@ -103,7 +107,6 @@ def maybe_declare(entity, channel=None, retry=False, **retry_policy):
         if ident in declared:
             return False
 
-    entity = entity if is_bound else entity.bind(channel)
     if retry:
         return _imaybe_declare(entity, declared, ident,
                                channel, **retry_policy)
