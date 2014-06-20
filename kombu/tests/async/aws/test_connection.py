@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from amqp.promise import Thenable
 
 from kombu.exceptions import HttpError
-from kombu.five import StringIO
+from kombu.five import WhateverIO
 
 from kombu.async import http
 from kombu.async.aws.connection import (
@@ -135,7 +135,7 @@ class test_AsyncHTTPConnection(AWSCase):
         request = x.getresponse(callback)
         x.http_client.add_request.assert_called_with(request)
 
-        buf = StringIO()
+        buf = WhateverIO()
         buf.write('The quick brown fox jumps')
 
         headers = http.Headers({'X-Foo': 'Hello', 'X-Bar': 'World'})

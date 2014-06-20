@@ -3,13 +3,15 @@ from __future__ import absolute_import
 
 import mimetools
 
+from io import BytesIO
+
 from urlparse import urlunsplit
 from xml.sax import parseString as sax_parse
 
 from amqp.promise import promise, transform
 
 from kombu.async.http import Headers, Request, get_client
-from kombu.five import StringIO, items
+from kombu.five import items
 
 from .ext import (
     boto, AWSAuthConnection, AWSQueryConnection, XmlHandler, ResultSet,
@@ -40,7 +42,7 @@ class AsyncHTTPResponse(object):
     def msg(self):
         if self._msg is None:
             self._msg = mimetools.Message(
-                StringIO('\r\n'.join(
+                BytesIO('\r\n'.join(
                     '{0}: {1}'.format(*h) for h in self.getheaders())
                 )
             )
