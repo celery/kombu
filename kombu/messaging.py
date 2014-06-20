@@ -483,7 +483,7 @@ class Consumer(object):
             )
         return self._on_qos_applied()
 
-    def _on_qos_applied(self, consumer_):
+    def _on_qos_applied(self, consumer_=None):
         self.consume(callback=self.on_ready)
 
     def stop(self, callback=None, close_channel=False):

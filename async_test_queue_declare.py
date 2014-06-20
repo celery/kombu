@@ -7,7 +7,7 @@ from kombu import Connection, Exchange, Queue, Producer
 from kombu.async import Hub
 from kombu.five import monotonic
 
-N = 1000
+N = 10000
 TEST_QUEUE = Queue('test3', Exchange('test3'))
 FREQ = int(math.ceil(math.sqrt(N)))
 
@@ -20,7 +20,7 @@ def on_message_written(delivery_tag):
 def send_messages(connection):
     producer = Producer(connection, auto_declare=False)
     return barrier([
-        producer.publish({'hello': i},
+        producer.publish({'hello': 'x'},
                          exchange=TEST_QUEUE.exchange,
                          routing_key=TEST_QUEUE.routing_key,
                          declare=[TEST_QUEUE],
