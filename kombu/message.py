@@ -102,6 +102,13 @@ class Message(object):
             logger.critical("Couldn't reject %r, reason: %r",
                             self.delivery_tag, exc, exc_info=True)
 
+    def requeue_log_error(self, logger, errors):
+        try:
+            self.requeue()
+        except errors as exc:
+            logger.critical("Couldn't requeue %r, reason: %r",
+                            self.delivery_tag, exc, exc_info=True)
+
     def reject(self, requeue=False):
         """Reject this message.
 
