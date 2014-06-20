@@ -17,6 +17,9 @@ except ImportError:
         pass
 from struct import unpack
 
+class NA(object):
+    pass
+
 try:
     from amqplib import client_0_8 as amqp
     from amqplib.client_0_8 import transport
