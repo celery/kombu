@@ -137,7 +137,7 @@ class Connection(object):
                  ssl=False, transport=None, connect_timeout=5,
                  transport_options=None, login_method=None, uri_prefix=None,
                  heartbeat=0, failover_strategy='round-robin',
-                 alternates=None, **kwargs):
+                 alternates=None, client_properties=None, **kwargs):
         alt = [] if alternates is None else alternates
         # have to spell the args out, just to get nice docstrings :(
         params = self._initial_params = {
@@ -145,7 +145,8 @@ class Connection(object):
             'password': password, 'virtual_host': virtual_host,
             'port': port, 'insist': insist, 'ssl': ssl,
             'transport': transport, 'connect_timeout': connect_timeout,
-            'login_method': login_method, 'heartbeat': heartbeat
+            'login_method': login_method, 'heartbeat': heartbeat,
+            'client_properties': client_properties
         }
 
         if hostname and not isinstance(hostname, string_t):
@@ -206,7 +207,7 @@ class Connection(object):
 
     def _init_params(self, hostname, userid, password, virtual_host, port,
                      insist, ssl, transport, connect_timeout,
-                     login_method, heartbeat):
+                     login_method, heartbeat, client_properties):
         transport = transport or 'amqp'
         if transport == 'amqp' and supports_librabbitmq():
             transport = 'librabbitmq'
@@ -221,6 +222,7 @@ class Connection(object):
         self.ssl = ssl
         self.transport_cls = transport
         self.heartbeat = heartbeat and float(heartbeat)
+        self.client_properties = client_properties
 
     def register_with_event_loop(self, loop):
         self.transport.register_with_event_loop(self.connection, loop)
@@ -553,6 +555,7 @@ class Connection(object):
             ('uri_prefix', self.uri_prefix),
             ('heartbeat', self.heartbeat),
             ('alternates', self.alt),
+            ('client_properties', self.client_properties)
         )
         return info
 

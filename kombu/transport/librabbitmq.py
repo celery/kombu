@@ -121,6 +121,7 @@ class Transport(base.Transport):
             'insist': conninfo.insist,
             'ssl': conninfo.ssl,
             'connect_timeout': conninfo.connect_timeout,
+            'client_properties': conninfo.client_properties
         }, **conninfo.transport_options or {})
         conn = self.Connection(**opts)
         conn.client = self.client
