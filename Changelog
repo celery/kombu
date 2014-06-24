@@ -4,6 +4,22 @@
  Change history
 ================
 
+.. _version-3.0.20:
+
+3.0.20
+======
+:release-date: 2014-06-24 02:30 P.M UTC
+:release-by: Ask Solem
+
+- Reverts change in 3.0.17 where ``maybe_declare`` caches the declaration
+  of auto_delete queues and exchanges.
+
+    Fix contributed by Roger Hu.
+
+- Redis: Fixed race condition when using gevent and the channel is closed.
+
+    Fix contributed by Andrew Rodionoff.
+
 .. _version-3.0.19:
 
 3.0.19
