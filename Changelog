@@ -4,11 +4,49 @@
  Change history
 ================
 
+.. _version-3.0.20:
+
+3.0.20
+======
+:release-date: 2014-06-24 02:30 P.M UTC
+:release-by: Ask Solem
+
+- Reverts change in 3.0.17 where ``maybe_declare`` caches the declaration
+  of auto_delete queues and exchanges.
+
+    Fix contributed by Roger Hu.
+
+- Redis: Fixed race condition when using gevent and the channel is closed.
+
+    Fix contributed by Andrew Rodionoff.
+
+.. _version-3.0.19:
+
+3.0.19
+======
+:release-date: 2014-06-09 03:10 P.M UTC
+:release-by: Ask Solem
+
+- The wheel distribution did not support Python 2.6 by failing to list
+  the extra dependencies required.
+
+- Durable and auto_delete queues/exchanges can be be cached using
+  ``maybe_declare``.
+
+.. _version-3.0.18:
+
+3.0.18
+======
+:release-date: 2014-06-02 06:00 P.M UTC
+:release-by: Ask Solem
+
+- A typo introduced in 3.0.17 caused kombu.async.hub to crash (Issue #360).
+
 .. _version-3.0.17:
 
 3.0.17
 ======
-:release-date: 2014-06-02 06:00 P.M UTC
+:release-date: 2014-06-02 05:00 P.M UTC
 :release-by: Ask Solem
 
 - ``kombu[librabbitmq]`` now depends on librabbitmq 1.5.2.
