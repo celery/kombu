@@ -20,9 +20,10 @@ from . import Exchange, Queue, Consumer, Producer
 from .clocks import LamportClock
 from .common import maybe_declare, oid_from
 from .exceptions import InconsistencyError
-from .five import range
+from .five import range, string_t
 from .log import get_logger
 from .utils import cached_property, uuid, reprcall
+from .matcher import match
 
 REPLY_QUEUE_EXPIRES = 10
 
@@ -127,9 +128,13 @@ class Node(object):
 
     def handle_message(self, body, message=None):
         destination = body.get('destination')
+        pattern = body.get('pattern')
+        matcher = body.get('matcher')
         if message:
             self.adjust_clock(message.headers.get('clock') or 0)
-        if not destination or self.hostname in destination:
+        hostname = self.hostname
+        if ((not destination or hostname in destination) or
+                (not pattern or match(hostname, pattern, matcher))):
             return self.dispatch(**body)
     dispatch_from_message = handle_message
 
@@ -251,10 +256,12 @@ class Mailbox(object):
 
     def _publish(self, type, arguments, destination=None,
                  reply_ticket=None, channel=None, timeout=None,
-                 serializer=None):
+                 serializer=None, pattern=None, matcher=None):
         message = {'method': type,
                    'arguments': arguments,
-                   'destination': destination}
+                   'destination': destination,
+                   'pattern': pattern,
+                   'matcher': matcher}
         chan = channel or self.connection.default_channel
         exchange = self.exchange
         if reply_ticket:
@@ -273,12 +280,19 @@ class Mailbox(object):
 
     def _broadcast(self, command, arguments=None, destination=None,
                    reply=False, timeout=1, limit=None,
-                   callback=None, channel=None, serializer=None):
+                   callback=None, channel=None, serializer=None,
+                   pattern=None, matcher=None):
         if destination is not None and \
                 not isinstance(destination, (list, tuple)):
             raise ValueError(
                 'destination must be a list/tuple not {0}'.format(
                     type(destination)))
+        if (pattern is not None and not isinstance(pattern, string_t) and
+                matcher is not None and not isinstance(matcher, string_t)):
+            raise ValueError(
+                'pattern and matcher must be strings not {}, {}'.format(
+                type(pattern), type(matcher))
+            )
 
         arguments = arguments or {}
         reply_ticket = reply and uuid() or None
@@ -293,7 +307,9 @@ class Mailbox(object):
                       reply_ticket=reply_ticket,
                       channel=chan,
                       timeout=timeout,
-                      serializer=serializer)
+                      serializer=serializer,
+                      pattern=pattern,
+                      matcher=matcher)
 
         if reply_ticket:
             return self._collect(reply_ticket, limit=limit,
