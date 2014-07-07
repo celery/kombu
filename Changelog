@@ -4,6 +4,21 @@
  Change history
 ================
 
+.. _version-3.0.21:
+
+3.0.21
+======
+:release-date: 2014-07-07 02:00 P.M UTC
+:release-by: Ask Solem
+
+- Fixed remaining bug in ``maybe_declare`` for ``auto_delete`` exchanges.
+
+    Fix contributed by Roger Hu.
+
+- MongoDB: Creating a channel now properly evaluates a connection (Issue #363).
+
+    Fix contributed by Len Buckens.
+
 .. _version-3.0.20:
 
 3.0.20
