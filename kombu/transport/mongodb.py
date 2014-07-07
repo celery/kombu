@@ -88,7 +88,7 @@ class Channel(virtual.Channel):
         self._broadcast_cursors = {}
 
         # Evaluate connection
-        self.client
+        self._create_client()
 
     def _new_queue(self, queue, **kwargs):
         pass
@@ -253,12 +253,14 @@ class Channel(virtual.Channel):
 
                 self._fanout_queues.pop(queue)
 
+    def _create_client(self):
+        self._open()
+        self._ensure_indexes()
+
     @property
     def client(self):
         if self._client is None:
-            self._open()
-            self._ensure_indexes()
-
+            self._create_client()
         return self._client
 
     def get_messages(self):
