@@ -15,7 +15,9 @@
 
     Fix contributed by Roger Hu.
 
-- MongoDB: Creating a channel now properly evaluates a connection.
+- MongoDB: Creating a channel now properly evaluates a connection (Issue #363).
+
+    Fix contributed by Len Buckens.
 
 .. _version-3.0.20:
 
