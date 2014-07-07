@@ -1438,12 +1438,29 @@ class ReceiversMonitor(threading.Thread):
         Calls :meth:`monitor_receivers` with a log-and-reenter behavior. This
         guards against unexpected exceptions which could cause this thread to
         exit unexpectedly.
+
+        If a recoverable error occurs, then the exception needs to be
+        propagated to the Main Thread where an exception handler can properly
+        handle it. An Exception is checked if it is recoverable, and if so,
+        its info is saved as exc_info on the self._session object. The
+        character 'e' is then written to the self.w_fd file descriptor
+        causing Main Thread to raise the saved exception. Once the Exception
+        info is saved and the file descriptor is written, this Thread
+        gracefully exits.
+
+        Typically recoverable errors are connection errors, and can be
+        recovered through a call to Transport.establish_connection which will
+        spawn a new ReceiversMonitor Thread.
         """
         while True:
             try:
                 self.monitor_receivers()
-            except Exception as e:
-                logger.error(e)
+            except Exception as error:
+                if isinstance(error, Transport.connection_errors):
+                    self._session.exc_info = sys.exc_info()
+                    os.write(self._w_fd, 'e')
+                    return
+                logger.error(error)
             time.sleep(10)
 
     def monitor_receivers(self):
@@ -1532,16 +1549,21 @@ class Transport(base.Transport):
         ensuring that an accidental call to this method when no more messages
         will arrive will not cause indefinite blocking.
 
+        If the self.r file descriptor returns the character 'e', a
+        recoverable error occurred in the background thread, and this thread
+        should raise the saved exception. The exception information is saved
+        as exc_info on the session object.
+
         Nothing is expected to be returned from :meth:`drain_events` because
         :meth:`drain_events` handles messages by calling callbacks that are
         maintained on the :class:`Connection` object. When
         :meth:`drain_events` returns, all associated messages have been
         handled.
 
-        This method reads as many messages that are available for this
-        Transport, and then returns. It blocks in the sense that reading
-        and handling a large number of messages may take time, but it does
-        not block waiting for a new message to arrive. When
+        This method calls drain_events() which reads as many messages as are
+        available for this Transport, and then returns. It blocks in the
+        sense that reading and handling a large number of messages may take
+        time, but it does not block waiting for a new message to arrive. When
         :meth:`drain_events` is called a timeout is not specified, which
         causes this behavior.
 
@@ -1566,7 +1588,9 @@ class Transport(base.Transport):
             functionality.
         :type loop: kombu.async.Hub
         """
-        os.read(self.r, 1)
+        symbol = os.read(self.r, 1)
+        if symbol == 'e':
+            raise self.session.exc_info[1], None, self.session.exc_info[2]
         try:
             self.drain_events(connection)
         except socket.timeout:

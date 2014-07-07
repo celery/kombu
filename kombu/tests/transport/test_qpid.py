@@ -1325,6 +1325,61 @@ class TestReceiversMonitorRun(ReceiversMonitorTestBase):
         self.assertRaises(self.BreakOutException, self.monitor.run)
         mock_monitor_receivers.has_calls([call(), call()])
 
+    @patch.object(ReceiversMonitor, 'monitor_receivers')
+    @patch(QPID_MODULE + '.time.sleep')
+    @patch(QPID_MODULE + '.logger')
+    @patch(QPID_MODULE + '.os.write')
+    @patch(QPID_MODULE + '.sys.exc_info')
+    def test_receivers_monitor_exits_when_recoverable_exception_raised(
+            self, mock_sys_exc_info, mock_os_write, mock_logger, mock_sleep,
+            mock_monitor_receivers):
+        recoverable_error = Transport.connection_errors[0]
+        mock_monitor_receivers.side_effect = recoverable_error()
+        mock_sleep.side_effect = self.BreakOutException()
+        try:
+            self.monitor.run()
+        except Exception:
+            self.fail('ReceiversMonitor.run() should exit normally when '
+                      'recoverable error is caught')
+        self.assertTrue(not mock_logger.error.called)
+
+    @patch.object(ReceiversMonitor, 'monitor_receivers')
+    @patch(QPID_MODULE + '.time.sleep')
+    @patch(QPID_MODULE + '.logger')
+    @patch(QPID_MODULE + '.os.write')
+    @patch(QPID_MODULE + '.sys.exc_info')
+    def test_receivers_monitor_saves_traceback_when_recoverable_exc_raised(
+            self, mock_sys_exc_info, mock_os_write, mock_logger, mock_sleep,
+            mock_monitor_receivers):
+        recoverable_error = Transport.connection_errors[0]
+        mock_monitor_receivers.side_effect = recoverable_error()
+        mock_sleep.side_effect = self.BreakOutException()
+        try:
+            self.monitor.run()
+        except Exception:
+            self.fail('ReceiversMonitor.run() should exit normally when '
+                      'recoverable error is caught')
+        self.assertTrue(
+            self.mock_session.exc_info is mock_sys_exc_info.return_value)
+
+    @patch.object(ReceiversMonitor, 'monitor_receivers')
+    @patch(QPID_MODULE + '.time.sleep')
+    @patch(QPID_MODULE + '.logger')
+    @patch(QPID_MODULE + '.os.write')
+    @patch(QPID_MODULE + '.sys.exc_info')
+    def test_receivers_monitor_writes_e_to_pipe_when_recoverable_exc_raised(
+            self, mock_sys_exc_info, mock_os_write, mock_logger, mock_sleep,
+            mock_monitor_receivers):
+        recoverable_error = Transport.connection_errors[0]
+        mock_monitor_receivers.side_effect = recoverable_error()
+        mock_sleep.side_effect = self.BreakOutException()
+        try:
+            self.monitor.run()
+        except Exception:
+            self.fail('ReceiversMonitor.run() should exit normally when '
+                      'recoverable error is caught')
+        mock_os_write.assert_called_once_with(self.mock_w, 'e')
+
 
 class TestReceiversMonitorMonitorReceivers(ReceiversMonitorTestBase):
 
@@ -1667,6 +1722,16 @@ class TestTransportOnReadable(Case):
 
     def test_transport_on_readable_ignores_non_socket_timeout_exception(self):
         self.mock_drain_events.side_effect = IOError()
+        self.assertRaises(IOError, self.transport.on_readable, Mock(), Mock())
+
+    def test_transport_on_readable_reads_e_off_of_pipe_raises_exc_info(self):
+        self.transport.session = Mock()
+        try:
+            raise IOError()
+        except Exception as error:
+            original_exc_info = sys.exc_info()
+            self.transport.session.exc_info = original_exc_info
+        self.mock_os_read.return_value = 'e'
         self.assertRaises(IOError, self.transport.on_readable, Mock(), Mock())
 
 
