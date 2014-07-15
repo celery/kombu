@@ -8,6 +8,7 @@ Evented IO support for multiple platforms.
 from __future__ import absolute_import
 
 import errno
+import math
 import select as __select__
 import socket
 
@@ -15,6 +16,7 @@ from numbers import Integral
 
 _selectf = __select__.select
 _selecterr = __select__.error
+xpoll = getattr(__select__, 'poll', None)
 epoll = getattr(__select__, 'epoll', None)
 kqueue = getattr(__select__, 'kqueue', None)
 kevent = getattr(__select__, 'kevent', None)
@@ -38,8 +40,10 @@ KQ_NOTE_EXTEND = getattr(__select__, 'KQ_NOTE_EXTEND', 4)
 KQ_NOTE_ATTRIB = getattr(__select__, 'KQ_NOTE_ATTRIB', 8)
 KQ_NOTE_LINK = getattr(__select__, 'KQ_NOTE_LINK', 16)
 KQ_NOTE_RENAME = getattr(__select__, 'KQ_NOTE_RENAME', 32)
-KQ_NOTE_REVOKE = getattr(__select__, 'kQ_NOTE_REVOKE', 64)
-
+KQ_NOTE_REVOKE = getattr(__select__, 'KQ_NOTE_REVOKE', 64)
+POLLIN = getattr(__select__, 'POLLIN', 1)
+POLLOUT = getattr(__select__, 'POLLOUT', 4)
+POLLERR = getattr(__select__, 'POLLERR', 8)
 
 from kombu.syn import detect_environment
 
@@ -78,6 +82,7 @@ class _epoll(Poller):
         except Exception as exc:
             if exc.errno != errno.EEXIST:
                 raise
+        return fd
 
     def unregister(self, fd):
         try:
@@ -108,6 +113,7 @@ class _kqueue(Poller):
     def register(self, fd, events):
         self._control(fd, events, KQ_EV_ADD)
         self._active[fd] = events
+        return fd
 
     def unregister(self, fd):
         events = self._active.pop(fd, None)
@@ -176,6 +182,67 @@ class _kqueue(Poller):
         self._kqueue.close()
 
 
+class _poll(Poller):
+
+    def __init__(self):
+        self._poller = xpoll()
+        self._quick_poll = self._poller.poll
+        self._quick_register = self._poller.register
+        self._quick_unregister = self._poller.unregister
+
+    def register(self, fd, events):
+        fd = fileno(fd)
+        poll_flags = 0
+        if events & ERR:
+            poll_flags |= POLLERR
+        if events & WRITE:
+            poll_flags |= POLLOUT
+        if events & READ:
+            poll_flags |= POLLIN
+        self._quick_register(fd, poll_flags)
+        return fd
+
+    def unregister(self, fd):
+        try:
+            fd = fileno(fd)
+        except socket.error as exc:
+            # we don't know the previous fd of this object
+            # but it will be removed by the next poll iteration.
+            if exc.errno in SELECT_BAD_FD:
+                return fd
+            raise
+        self._quick_unregister(fd)
+        return fd
+
+    def _poll(self, timeout, round=math.ceil,
+              POLLIN=POLLIN, POLLOUT=POLLOUT, POLLERR=POLLERR,
+              READ=READ, WRITE=WRITE, ERR=ERR, Integral=Integral):
+        timeout = 0 if timeout and timeout < 0 else round(timeout * 1e3)
+        try:
+            event_list = self._quick_poll(timeout)
+        except (_selecterr, socket.error) as exc:
+            if exc.errno == errno.EINTR:
+                return
+            raise
+
+        ready = []
+        for fd, event in event_list:
+            events = 0
+            if event & POLLIN:
+                events |= READ
+            if event & POLLOUT:
+                events |= WRITE
+            if event & POLLERR:
+                events |= ERR
+            if not isinstance(fd, Integral):
+                fd = fd.fileno()
+            ready.append(fd, events)
+        return ready
+
+    def close(self):
+        self._poller = None
+
+
 class _select(Poller):
 
     def __init__(self):
@@ -191,6 +258,7 @@ class _select(Poller):
             self._wfd.add(fd)
         if events & READ:
             self._rfd.add(fd)
+        return fd
 
     def _remove_bad(self):
         for fd in self._rfd | self._wfd | self._efd:
@@ -253,9 +321,12 @@ def _get_poller():
     elif epoll:
         # Py2.6+ Linux
         return _epoll
+    elif xpoll:
+        return _poll
     elif kqueue:
         # Py2.6+ on BSD / Darwin
-        return _select  # was: _kqueue
+        # but kqueue has too many bugs
+        return _poll if xpoll else _select
     else:
         return _select
 
