@@ -61,17 +61,7 @@ except AttributeError:
     SELECT_BAD_FD = {errno.EBADF}
 
 
-class Poller(object):
-
-    def poll(self, timeout):
-        try:
-            return self._poll(timeout)
-        except Exception as exc:
-            if exc.errno != errno.EINTR:
-                raise
-
-
-class _epoll(Poller):
+class _epoll(object):
 
     def __init__(self):
         self._epoll = epoll()
@@ -93,14 +83,18 @@ class _epoll(Poller):
             if exc.errno != errno.ENOENT:
                 raise
 
-    def _poll(self, timeout):
-        return self._epoll.poll(timeout if timeout is not None else -1)
+    def poll(self, timeout):
+        try:
+            return self._epoll.poll(timeout if timeout is not None else -1)
+        except Exception as exc:
+            if getattr(exc, 'errno', None) != errno.EINTR:
+                raise
 
     def close(self):
         self._epoll.close()
 
 
-class _kqueue(Poller):
+class _kqueue(object):
     w_fflags = (KQ_NOTE_WRITE | KQ_NOTE_EXTEND |
                 KQ_NOTE_ATTRIB | KQ_NOTE_DELETE)
 
@@ -156,8 +150,13 @@ class _kqueue(Poller):
             except ValueError:
                 pass
 
-    def _poll(self, timeout):
-        kevents = self._kcontrol(None, 1000, timeout)
+    def poll(self, timeout):
+        try:
+            kevents = self._kcontrol(None, 1000, timeout)
+        except Exception as exc:
+            if getattr(exc, 'errno', None) == errno.EINTR:
+                return
+            raise
         events, file_changes = {}, []
         for k in kevents:
             fd = k.ident
@@ -182,7 +181,7 @@ class _kqueue(Poller):
         self._kqueue.close()
 
 
-class _poll(Poller):
+class _poll(object):
 
     def __init__(self):
         self._poller = xpoll()
@@ -214,14 +213,14 @@ class _poll(Poller):
         self._quick_unregister(fd)
         return fd
 
-    def _poll(self, timeout, round=math.ceil,
-              POLLIN=POLLIN, POLLOUT=POLLOUT, POLLERR=POLLERR,
-              READ=READ, WRITE=WRITE, ERR=ERR, Integral=Integral):
+    def poll(self, timeout, round=math.ceil,
+             POLLIN=POLLIN, POLLOUT=POLLOUT, POLLERR=POLLERR,
+             READ=READ, WRITE=WRITE, ERR=ERR, Integral=Integral):
         timeout = 0 if timeout and timeout < 0 else round(timeout * 1e3)
         try:
             event_list = self._quick_poll(timeout)
         except (_selecterr, socket.error) as exc:
-            if exc.errno == errno.EINTR:
+            if getattr(exc, 'errno', None) == errno.EINTR:
                 return
             raise
 
@@ -243,7 +242,7 @@ class _poll(Poller):
         self._poller = None
 
 
-class _select(Poller):
+class _select(object):
 
     def __init__(self):
         self._all = (self._rfd,
@@ -281,15 +280,16 @@ class _select(Poller):
         self._wfd.discard(fd)
         self._efd.discard(fd)
 
-    def _poll(self, timeout):
+    def poll(self, timeout):
         try:
             read, write, error = _selectf(
                 self._rfd, self._wfd, self._efd, timeout,
             )
         except (_selecterr, socket.error) as exc:
-            if exc.errno == errno.EINTR:
+            err = getattr(exc, 'errno', None)
+            if err == errno.EINTR:
                 return
-            elif exc.errno in SELECT_BAD_FD:
+            elif err in SELECT_BAD_FD:
                 return self._remove_bad()
             raise
 
