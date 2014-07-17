@@ -89,11 +89,9 @@ class Node(object):
         error('Cannot decode message: %r', exc, exc_info=1)
 
     def listen(self, channel=None, callback=None):
-        consumer = self.Consumer(channel=channel,
-                                 callbacks=[callback or self.handle_message],
-                                 on_decode_error=self.on_decode_error)
-        consumer.consume()
-        return consumer
+        return self.Consumer(channel=channel,
+                             callbacks=[callback or self.handle_message],
+                             on_decode_error=self.on_decode_error)
 
     def dispatch(self, method, arguments=None,
                  reply_to=None, ticket=None, **kwargs):
