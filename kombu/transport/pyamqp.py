@@ -108,6 +108,7 @@ class Transport(base.Transport):
             'ssl': conninfo.ssl,
             'connect_timeout': conninfo.connect_timeout,
             'heartbeat': conninfo.heartbeat,
+            'loop': conninfo.loop,
         }, **conninfo.transport_options or {})
         conn = self.Connection(**opts)
         conn.client = self.client
@@ -125,9 +126,7 @@ class Transport(base.Transport):
         return connection.heartbeat
 
     def register_with_event_loop(self, connection, loop):
-        connection.loop = loop
-        connection.sock.setblocking(0)
-        loop.add_reader(connection.sock, connection.on_readable)
+        connection.register_with_event_loop(loop)
 
     def heartbeat_check(self, connection, rate=2):
         return connection.heartbeat_tick(rate=rate)

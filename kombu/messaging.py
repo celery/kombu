@@ -217,6 +217,7 @@ class Producer(object):
         return callback
 
     def _publish(self, mtup):
+        print('PUBLISH1: %r' % (mtup, ))
         channel = self._channel
         if isinstance(channel, ChannelPromise):
             return self.__connection__.then(promise(
@@ -251,29 +252,32 @@ class Producer(object):
                                content_encoding, headers, properties,
                                routing_key, mandatory, immediate, exchange,
                                declare, callback, channel):
+        print('>>>>>>>>>>>>>>>> PUBLISH USING CHANNEL')
         message = channel.prepare_message(
             body, priority, content_type,
             content_encoding, headers, properties,
         )
         if declare:
             pending = list(self._declare_or_pending(declare, channel))
+            print('>>>>>>>>>>>> HAVE TO DECLARE: %r' % (pending, ))
             if pending:
                 return barrier(pending, promise(
                     self._on_publish_declared,
                     (channel, message, exchange, routing_key, mandatory,
                         immediate, callback)
                 ))
-        else:
-            return self._on_publish_declared(
-                channel, message, exchange, routing_key,
-                mandatory, immediate, callback,
-            )
+        return self._on_publish_declared(
+            channel, message, exchange, routing_key,
+            mandatory, immediate, callback,
+        )
 
     def _on_entity_declared(self, entity):
+        print('DECLARED: %r' % (entity, ))
         self._declaring.pop(hash(entity), None)
 
     def _on_publish_declared(self, channel, message, exchange, routing_key,
                              mandatory, immediate, callback):
+        print('ACTUAL PUBLISH')
         return channel.basic_publish(
             message,
             exchange=exchange, routing_key=routing_key,
@@ -441,9 +445,6 @@ class Consumer(object):
         self.prefetch_global = prefetch_global
         self.on_ready = ensure_promise(on_ready)
 
-        if self.channel:
-            self._start()
-
     def then(self, on_success, on_failure=None):
         return self.on_ready.then(on_success, on_failure)
 
@@ -451,12 +452,14 @@ class Consumer(object):
         """Revive consumer after connection loss."""
         self._on_channel_open(None, maybe_channel(channel))
 
-    def _start(self, prefetch_size=None,
-               prefetch_count=None, prefetch_global=False):
+    def consume(self, no_ack=None):
+        if no_ack is not None:
+            self.no_ack = no_ack
         self._stopping = False
         self.channel.then(self._on_connected)
 
     def _on_connected(self, channel):
+        print('ON CONNECTED: %r' % (channel, ))
         if getattr(channel, 'channel_id', None):
             return self._on_channel_open(channel)
         return channel.default_channel.then(
@@ -464,6 +467,7 @@ class Consumer(object):
         )
 
     def _on_channel_open(self, channel):
+        print('ON CHANNEL OPEN: %r' % (channel, ))
         self._active_tags.clear()
         self.channel = channel
         self.queues = [queue(self.channel)
@@ -476,6 +480,7 @@ class Consumer(object):
         return self._on_queues_declared()
 
     def _on_queues_declared(self):
+        print('QUEUES NOW DECLARED')
         if not self.no_ack and (self.prefetch_size or self.prefetch_count):
             return self.qos(
                 self.prefetch_size, self.prefetch_count, self.prefetch_global,
@@ -484,7 +489,8 @@ class Consumer(object):
         return self._on_qos_applied()
 
     def _on_qos_applied(self, consumer_=None):
-        self.consume(callback=self.on_ready)
+        print('QOS NOW APPLIED')
+        self._do_consume(callback=self.on_ready)
 
     def stop(self, callback=None, close_channel=False):
         if not self._stopping:
@@ -564,7 +570,7 @@ class Consumer(object):
         """
         return self.add_queue(Queue.from_dict(queue, **options))
 
-    def consume(self, no_ack=None, on_sent=None, callback=None):
+    def _do_consume(self, no_ack=None, on_sent=None, callback=None):
         """Start consuming messages.
 
         Can be called multiple times, but note that while it
@@ -717,6 +723,7 @@ class Consumer(object):
 
     def _basic_consume(self, queue, consumer_tag=None, no_ack=no_ack,
                        nowait=True, on_sent=None, on_reply=None):
+        print('CONSUME FROM: %r' % (queue, ))
         tag = self._active_tags.get(queue.name)
         if tag is None:
             tag = self._add_tag(queue, consumer_tag)

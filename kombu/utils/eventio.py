@@ -63,7 +63,7 @@ class Poller(object):
         try:
             return self._poll(timeout)
         except Exception as exc:
-            if exc.errno != errno.EINTR:
+            if getattr(exc, 'errno', None) != errno.EINTR:
                 raise
 
 

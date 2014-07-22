@@ -16,7 +16,7 @@ from itertools import count
 from threading import local
 from time import time
 
-from . import Exchange, Queue, Consumer, Producer
+from . import Exchange, Queue, Connection, Consumer, Producer
 from .clocks import LamportClock
 from .common import maybe_declare, oid_from
 from .exceptions import InconsistencyError
@@ -231,7 +231,7 @@ class Mailbox(object):
 
     def _publish_reply(self, reply, exchange, routing_key, ticket,
                        channel=None, **opts):
-        chan = channel or self.connection.default_channel
+        chan = channel or self.connection
         exchange = Exchange(exchange, exchange_type='direct',
                             delivery_mode='transient',
                             durable=False)
@@ -253,10 +253,11 @@ class Mailbox(object):
         message = {'method': type,
                    'arguments': arguments,
                    'destination': destination}
-        chan = channel or self.connection.default_channel
+        chan = channel or self.connection
         exchange = self.exchange
+        declare = [exchange]
         if reply_ticket:
-            maybe_declare(self.reply_queue(channel))
+            declare.append(self.reply_queue)
             message.update(ticket=reply_ticket,
                            reply_to={'exchange': self.reply_exchange.name,
                                      'routing_key': self.oid})
@@ -280,7 +281,7 @@ class Mailbox(object):
 
         arguments = arguments or {}
         reply_ticket = reply and uuid() or None
-        chan = channel or self.connection.default_channel
+        chan = channel or self.connection
 
         # Set reply limit to number of destinations (if specified)
         if limit is None and destination:
@@ -304,7 +305,7 @@ class Mailbox(object):
                  channel=None, accept=None):
         if accept is None:
             accept = self.accept
-        chan = channel or self.connection.default_channel
+        chan = channel or self.connection
         queue = self.reply_queue
         consumer = Consumer(channel, [queue], accept=accept, no_ack=True)
         responses = []
@@ -341,7 +342,10 @@ class Mailbox(object):
                         break
                 return responses
         finally:
-            chan.after_reply_message_received(queue.name)
+            if isinstance(chan, Connection):
+                chan = chan._default_channel
+            if chan:
+                chan.after_reply_message_received(queue.name)
 
     def _get_exchange(self, namespace, type):
         return Exchange(self.exchange_fmt % namespace,
