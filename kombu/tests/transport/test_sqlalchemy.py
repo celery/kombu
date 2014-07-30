@@ -1,16 +1,11 @@
 from __future__ import absolute_import
 
 from kombu import Connection
-from kombu.tests.case import Case, SkipTest, patch
+from kombu.tests.case import Case, SkipTest, patch, case_requires
 
 
+@case_requires('sqlalchemy')
 class test_sqlalchemy(Case):
-
-    def setUp(self):
-        try:
-            import sqlalchemy  # noqa
-        except ImportError:
-            raise SkipTest('sqlalchemy not installed')
 
     def test_url_parser(self):
         with patch('kombu.transport.sqlalchemy.Channel._open'):

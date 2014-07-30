@@ -7,14 +7,12 @@ except ImportError:
 else:
     from kombu.transport import librabbitmq  # noqa
 
-from kombu.tests.case import Case, Mock, SkipTest, patch
+from kombu.tests.case import Case, Mock, patch, case_requires
 
 
+@case_requires('librabbitmq')
 class lrmqCase(Case):
-
-    def setUp(self):
-        if librabbitmq is None:
-            raise SkipTest('librabbitmq is not installed')
+    pass
 
 
 class test_Message(lrmqCase):
@@ -61,8 +59,8 @@ class test_Channel(lrmqCase):
 
 class test_Transport(lrmqCase):
 
-    def setUp(self):
-        super(test_Transport, self).setUp()
+    def setup(self):
+        super(test_Transport, self).setup()
         self.client = Mock(name='client')
         self.T = librabbitmq.Transport(self.client)
 

@@ -74,8 +74,11 @@ class Transport(base.Transport):
 
     driver_name = 'py-amqp'
     driver_type = 'amqp'
-    supports_heartbeats = True
-    supports_ev = True
+
+    implements = base.Transport.implements.extend(
+        async=True,
+        heartbeats=True,
+    )
 
     def __init__(self, client, default_port=None, **kwargs):
         self.client = client

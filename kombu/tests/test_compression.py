@@ -9,7 +9,7 @@ from .case import Case, SkipTest, mask_modules
 
 class test_compression(Case):
 
-    def setUp(self):
+    def setup(self):
         try:
             import bz2  # noqa
         except ImportError:

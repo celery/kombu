@@ -221,7 +221,7 @@ class Transport(redis.Transport):
 class test_Channel(Case):
 
     @skip_if_not_module('redis')
-    def setUp(self):
+    def setup(self):
         self.connection = self.create_connection()
         self.channel = self.connection.default_channel
 
@@ -790,12 +790,12 @@ class test_Channel(Case):
 class test_Redis(Case):
 
     @skip_if_not_module('redis')
-    def setUp(self):
+    def setup(self):
         self.connection = Connection(transport=Transport)
         self.exchange = Exchange('test_Redis', type='direct')
         self.queue = Queue('test_Redis', self.exchange, 'test_Redis')
 
-    def tearDown(self):
+    def teardown(self):
         self.connection.close()
 
     def test_publish__get(self):
@@ -947,7 +947,7 @@ def _redis_modules():
 class test_MultiChannelPoller(Case):
 
     @skip_if_not_module('redis')
-    def setUp(self):
+    def setup(self):
         self.Poller = redis.MultiChannelPoller
 
     def test_on_poll_start(self):
@@ -1051,7 +1051,6 @@ class test_MultiChannelPoller(Case):
         p._channels.clear.assert_called_with()
         p._fd_to_chan.clear.assert_called_with()
         p._chan_to_sock.clear.assert_called_with()
-        self.assertIsNone(p.poller)
 
     def test_register_when_registered_reregisters(self):
         p = self.Poller()

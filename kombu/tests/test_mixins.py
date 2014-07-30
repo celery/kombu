@@ -108,7 +108,7 @@ class test_ConsumerMixin(Case):
 
 class test_ConsumerMixin_interface(Case):
 
-    def setUp(self):
+    def setup(self):
         self.c = ConsumerMixin()
 
     def test_get_consumers(self):

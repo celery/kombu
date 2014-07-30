@@ -16,7 +16,7 @@ class test_Mailbox(Case):
     def _handler(self, state):
         return self.stats['var']
 
-    def setUp(self):
+    def setup(self):
 
         class Mailbox(pidbox.Mailbox):
 

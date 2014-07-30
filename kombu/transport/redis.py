@@ -246,7 +246,6 @@ class MultiChannelPoller(object):
         self._channels.clear()
         self._fd_to_chan.clear()
         self._chan_to_sock.clear()
-        self.poller = None
 
     def add(self, channel):
         self._channels.add(channel)
@@ -904,9 +903,13 @@ class Transport(virtual.Transport):
 
     polling_interval = None  # disable sleep between unsuccessful polls.
     default_port = DEFAULT_PORT
-    supports_ev = True
     driver_type = 'redis'
     driver_name = 'redis'
+
+    implements = virtual.Transport.implements.extend(
+        async=True,
+        exchange_types=frozenset(['direct', 'topic', 'fanout'])
+    )
 
     def __init__(self, *args, **kwargs):
         if redis is None:

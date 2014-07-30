@@ -63,7 +63,7 @@ class test_safe_format(Case):
 
 class test_LogMixin(Case):
 
-    def setUp(self):
+    def setup(self):
         self.log = Log('Log', Mock())
         self.logger = self.log.logger
 

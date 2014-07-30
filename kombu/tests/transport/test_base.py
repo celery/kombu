@@ -10,7 +10,7 @@ from kombu.tests.case import Case, Mock
 
 class test_StdChannel(Case):
 
-    def setUp(self):
+    def setup(self):
         self.conn = Connection('memory://')
         self.channel = self.conn.channel()
         self.channel.queues.clear()
@@ -40,7 +40,7 @@ class test_StdChannel(Case):
 
 class test_Message(Case):
 
-    def setUp(self):
+    def setup(self):
         self.conn = Connection('memory://')
         self.channel = self.conn.channel()
         self.message = Message(self.channel, delivery_tag=313)
@@ -134,7 +134,14 @@ class test_interface(Case):
         self.assertTrue(Transport(None).driver_version())
 
     def test_register_with_event_loop(self):
-        Transport(None).register_with_event_loop(Mock(name='loop'))
+        Transport(None).register_with_event_loop(
+            Mock(name='connection'), Mock(name='loop'),
+        )
+
+    def test_unregister_from_event_loop(self):
+        Transport(None).unregister_from_event_loop(
+            Mock(name='connection'), Mock(name='loop'),
+        )
 
     def test_manager(self):
         self.assertTrue(Transport(None).manager)

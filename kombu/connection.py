@@ -812,11 +812,11 @@ class Connection(object):
 
     @property
     def supports_heartbeats(self):
-        return self.transport.supports_heartbeats
+        return self.transport.implements.heartbeats
 
     @property
     def is_evented(self):
-        return self.transport.supports_ev
+        return self.transport.implements.async
 BrokerConnection = Connection
 
 

@@ -9,7 +9,7 @@ from kombu.tests.case import Case
 
 class test_MemoryTransport(Case):
 
-    def setUp(self):
+    def setup(self):
         self.c = Connection(transport='memory')
         self.e = Exchange('test_transport_memory')
         self.q = Queue('test_transport_memory',

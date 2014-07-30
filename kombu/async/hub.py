@@ -10,7 +10,6 @@ from __future__ import absolute_import
 
 import errno
 
-from collections import deque
 from contextlib import contextmanager
 from time import sleep
 from types import GeneratorType as generator
@@ -246,6 +245,11 @@ class Hub(object):
         self.readers.pop(fd, None)
         self.writers.pop(fd, None)
         self.consolidate.discard(fd)
+
+    def on_callback_error(self, callback, exc):
+        logger.error(
+            'Callback %r raised exception: %r', callback, exc, exc_info=1,
+        )
 
     def create_loop(self,
                     generator=generator, sleep=sleep, min=min, next=next,
