@@ -8,6 +8,7 @@ import sys
 import threading
 import time
 
+from collections import OrderedDict
 from itertools import count
 
 import kombu.five
@@ -16,7 +17,6 @@ from kombu.transport.qpid import QpidMessagingExceptionHandler, Channel
 from kombu.transport.qpid import Connection, ReceiversMonitor, Transport
 from kombu.transport.qpid import ConnectionError
 from kombu.transport.virtual import Base64
-from kombu.utils.compat import OrderedDict
 from kombu.tests.case import Case, Mock
 from kombu.tests.case import patch
 from mock import call
