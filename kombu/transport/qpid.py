@@ -29,6 +29,7 @@ import sys
 import threading
 import time
 
+from collections import OrderedDict
 from itertools import count
 
 import amqp.protocol
@@ -54,7 +55,6 @@ except ImportError:  # pragma: no cover
 from kombu.five import Empty, items
 from kombu.log import get_logger
 from kombu.transport.virtual import Base64, Message
-from kombu.utils.compat import OrderedDict
 from kombu.transport import base
 
 
