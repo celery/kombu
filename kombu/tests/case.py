@@ -82,6 +82,18 @@ def case_requires(package, *more_packages):
     return attach
 
 
+def case_no_pypy(cls):
+    setup = cls.setUp
+
+    @wraps(setup)
+    def around_setup(self):
+        if getattr(sys, 'pypy_version_info', None):
+            raise SkipTest('pypy incompatible')
+        setup(self)
+    cls.setUp = around_setup
+    return cls
+
+
 class HubCase(Case):
 
     def setUp(self):

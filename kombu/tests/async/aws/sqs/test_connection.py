@@ -15,7 +15,7 @@ from kombu.tests.case import PromiseMock, Mock
 class test_AsyncSQSConnection(AWSCase):
 
     def setup(self):
-        self.x = AsyncSQSConnection('ak', 'sk')
+        self.x = AsyncSQSConnection('ak', 'sk', http_client=Mock())
         self.x.get_object = Mock(name='X.get_object')
         self.x.get_status = Mock(name='X.get_status')
         self.x.get_list = Mock(nanme='X.get_list')
