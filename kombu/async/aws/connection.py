@@ -2,15 +2,18 @@
 from __future__ import absolute_import
 
 try:  # pragma: no cover
-    from email import message_from_fp
+    from email import message_from_file
     from email.mime.message import MIMEMessage
 except ImportError:  # Py2
     from mimetools import Message as MIMEMessage   # noqa
-    message_from_fp = lambda m: m  # noqa
+    message_from_file = lambda m: m  # noqa
 
 from io import BytesIO
 
-from urlparse import urlunsplit
+try:
+    from urllib.parse import urlunsplit
+except ImportError:
+    from urlparse import urlunsplit  # noqa
 from xml.sax import parseString as sax_parse
 
 from amqp.promise import promise, transform
@@ -46,7 +49,7 @@ class AsyncHTTPResponse(object):
     @property
     def msg(self):
         if self._msg is None:
-            self._msg = MIMEMessage(message_from_fp(
+            self._msg = MIMEMessage(message_from_file(
                 BytesIO('\r\n'.join(
                     '{0}: {1}'.format(*h) for h in self.getheaders())
                 )
