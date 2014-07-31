@@ -6,7 +6,10 @@ import types
 
 from functools import wraps
 
-import mock
+try:
+    from unittest import mock
+except ImportError:
+    import mock  # noqa
 
 from nose import SkipTest
 
