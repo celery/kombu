@@ -9,7 +9,10 @@ from contextlib import contextmanager
 from functools import wraps
 from io import StringIO
 
-import mock
+try:
+    from unittest import mock
+except ImportError:
+    import mock  # noqa
 
 from nose import SkipTest
 
