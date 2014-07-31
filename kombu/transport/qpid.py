@@ -69,6 +69,8 @@ DEFAULT_PORT = 5672
 
 OBJECT_ALREADY_EXISTS_STRING = 'object already exists'
 
+PY3 = sys.version_info[0] == 3
+
 VERSION = (1, 0, 0)
 __version__ = '.'.join(map(str, VERSION))
 
@@ -1221,7 +1223,10 @@ class Connection(object):
             contains_auth_fail_text = 'Authentication failed' in conn_exc.text
             if coded_as_auth_failure or contains_auth_fail_text:
                 exc = sys.exc_info()
-                raise AuthenticationFailure, exc[1], exc[2]  # flake8: noqa
+                if PY3:
+                    raise AuthenticationFailure(exc[1]).with_traceback(exc[2])
+                else:
+                    raise AuthenticationFailure, exc[1], exc[2]  # flake8: noqa
             raise
 
     def get_qpid_connection(self):
