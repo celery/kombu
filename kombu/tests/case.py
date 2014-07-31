@@ -9,7 +9,10 @@ from contextlib import contextmanager
 from functools import wraps
 from io import StringIO
 
-import mock
+try:
+    from unittest import mock
+except ImportError:
+    import mock  # noqa
 
 from nose import SkipTest
 
@@ -77,6 +80,18 @@ def case_requires(package, *more_packages):
         cls.setUp = around_setup
         return cls
     return attach
+
+
+def case_no_pypy(cls):
+    setup = cls.setUp
+
+    @wraps(setup)
+    def around_setup(self):
+        if getattr(sys, 'pypy_version_info', None):
+            raise SkipTest('pypy incompatible')
+        setup(self)
+    cls.setUp = around_setup
+    return cls
 
 
 class HubCase(Case):

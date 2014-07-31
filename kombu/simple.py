@@ -47,7 +47,7 @@ class SimpleBase(object):
         while True:
             time_start = monotonic()
             if self.buffer:
-                return self.buffer.pop()
+                return self.buffer.popleft()
             try:
                 self.channel.connection.client.drain_events(
                     timeout=timeout and remaining)
