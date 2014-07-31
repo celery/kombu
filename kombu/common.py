@@ -148,7 +148,8 @@ def drain_consumer(consumer, limit=1, timeout=None, callbacks=None):
 
 def itermessages(conn, channel, queue, limit=1, timeout=None,
                  callbacks=None, **kwargs):
-    return drain_consumer(conn.Consumer(channel, queues=[queue], **kwargs),
+
+    return drain_consumer(conn.Consumer(queues=[queue], channel=channel, **kwargs),
                           limit=limit, timeout=timeout, callbacks=callbacks)
 
 
