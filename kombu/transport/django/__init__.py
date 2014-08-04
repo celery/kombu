@@ -12,6 +12,17 @@ from kombu.utils.encoding import bytes_to_str
 
 from .models import Queue
 
+try:
+    from django.apps import AppConfig
+except ImportError:  # pragma: no cover
+    pass
+else:
+    class KombuAppConfig(AppConfig):
+        name = 'kombu.transport.django'
+        label = 'message_queue'
+        verbose_name = 'Message queue'
+    default_app_config = 'kombu.transport.django.KombuAppConfig'
+
 VERSION = (1, 0, 0)
 __version__ = '.'.join(map(str, VERSION))
 
