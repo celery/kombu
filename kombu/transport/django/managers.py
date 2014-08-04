@@ -47,39 +47,41 @@ class MessageManager(models.Manager):
     _messages_received = [0]
     cleanup_every = 10
 
-    @transaction.commit_manually
     def pop(self):
         try:
-            resultset = select_for_update(
-                self.filter(visible=True).order_by('sent_at', 'id')
-            )
-            result = resultset[0:1].get()
-            result.visible = False
-            result.save()
-            recv = self.__class__._messages_received
-            recv[0] += 1
-            if not recv[0] % self.cleanup_every:
-                self.cleanup()
-            transaction.commit()
-            return result.payload
-        except self.model.DoesNotExist:
-            transaction.commit()
+            with transaction.atomic():
+                try:
+                    resultset = select_for_update(
+                        self.filter(visible=True).order_by('sent_at', 'id')
+                    )
+                    result = resultset[0:1].get()
+                    result.visible = False
+                    result.save()
+                    recv = self.__class__._messages_received
+                    recv[0] += 1
+                    if not recv[0] % self.cleanup_every:
+                        self.cleanup()
+                    return result.payload
+                except self.model.DoesNotExist:
+                    pass # catching exception here ensures transaction block
+                         # exits without an exception and commits
         except:
-            transaction.rollback()
+            pass # No need to explicitly rollback, transaction.atomic will
+                 # automatically rollback if there is an uncaught exception
 
     def cleanup(self):
         cursor = self.connection_for_write().cursor()
         try:
-            cursor.execute(
-                'DELETE FROM %s WHERE visible=%%s' % (
-                    self.model._meta.db_table, ),
-                (False, )
-            )
+            with transaction.atomic():
+                cursor.execute(
+                    'DELETE FROM %s WHERE visible=%%s' % (
+                        self.model._meta.db_table, ),
+                    (False, )
+                )
         except:
-            transaction.rollback_unless_managed()
-        else:
-            transaction.commit_unless_managed()
-
+            pass # No need to explicitly rollback or commit -- handled by
+                 # transaction.atomic
+            
     def connection_for_write(self):
         if connections:
             return connections[router.db_for_write(self.model)]
