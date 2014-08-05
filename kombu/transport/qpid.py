@@ -69,8 +69,6 @@ DEFAULT_PORT = 5672
 
 OBJECT_ALREADY_EXISTS_STRING = 'object already exists'
 
-PY3 = sys.version_info[0] == 3
-
 VERSION = (1, 0, 0)
 __version__ = '.'.join(map(str, VERSION))
 
@@ -1222,11 +1220,7 @@ class Connection(object):
             coded_as_auth_failure = getattr(conn_exc, 'code', None) == 320
             contains_auth_fail_text = 'Authentication failed' in conn_exc.text
             if coded_as_auth_failure or contains_auth_fail_text:
-                exc = sys.exc_info()
-                if PY3:
-                    raise AuthenticationFailure(exc[1]).with_traceback(exc[2])
-                else:
-                    raise AuthenticationFailure, exc[1], exc[2]  # flake8: noqa
+                raise AuthenticationFailure(sys.exc_info()[1])
             raise
 
     def get_qpid_connection(self):
@@ -1300,7 +1294,7 @@ class ReceiversMonitor(threading.Thread):
         If a recoverable error occurs, then the exception needs to be
         propagated to the Main Thread where an exception handler can properly
         handle it. An Exception is checked if it is recoverable, and if so,
-        its info is saved as exc_info on the self._session object. The
+        it is stored as saved_exception on the self._session object. The
         character 'e' is then written to the self.w_fd file descriptor
         causing Main Thread to raise the saved exception. Once the Exception
         info is saved and the file descriptor is written, this Thread
@@ -1315,7 +1309,7 @@ class ReceiversMonitor(threading.Thread):
                 self.monitor_receivers()
             except Exception as error:
                 if isinstance(error, Transport.connection_errors):
-                    self._session.exc_info = sys.exc_info()
+                    self._session.saved_exception = error
                     os.write(self._w_fd, 'e')
                     return
                 logger.error(error)
@@ -1409,8 +1403,8 @@ class Transport(base.Transport):
 
         If the self.r file descriptor returns the character 'e', a
         recoverable error occurred in the background thread, and this thread
-        should raise the saved exception. The exception information is saved
-        as exc_info on the session object.
+        should raise the saved exception. The exception is stored as
+        saved_exception on the session object.
 
         Nothing is expected to be returned from :meth:`drain_events` because
         :meth:`drain_events` handles messages by calling callbacks that are
@@ -1448,7 +1442,7 @@ class Transport(base.Transport):
         """
         symbol = os.read(self.r, 1)
         if symbol == 'e':
-            raise self.session.exc_info[1], None, self.session.exc_info[2]
+            raise self.session.saved_exception
         try:
             self.drain_events(connection)
         except socket.timeout:

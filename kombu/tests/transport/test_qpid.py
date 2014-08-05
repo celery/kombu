@@ -1339,9 +1339,8 @@ class TestReceiversMonitorRun(ReceiversMonitorTestBase):
     @patch(QPID_MODULE + '.time.sleep')
     @patch(QPID_MODULE + '.logger')
     @patch(QPID_MODULE + '.os.write')
-    @patch(QPID_MODULE + '.sys.exc_info')
-    def test_receivers_monitor_saves_traceback_when_recoverable_exc_raised(
-            self, mock_sys_exc_info, mock_os_write, mock_logger, mock_sleep,
+    def test_receivers_monitor_saves_exception_when_recoverable_exc_raised(
+            self, mock_os_write, mock_logger, mock_sleep,
             mock_monitor_receivers):
         mock_monitor_receivers.side_effect = MockException()
         mock_sleep.side_effect = BreakOutException()
@@ -1351,7 +1350,7 @@ class TestReceiversMonitorRun(ReceiversMonitorTestBase):
             self.fail('ReceiversMonitor.run() should exit normally when '
                       'recoverable error is caught')
         self.assertTrue(
-            self.mock_session.exc_info is mock_sys_exc_info.return_value)
+            self.mock_session.saved_exception is mock_monitor_receivers.side_effect)
 
     @patch.object(Transport, 'connection_errors', new=(MockException, ))
     @patch.object(ReceiversMonitor, 'monitor_receivers')
@@ -1446,7 +1445,7 @@ class TestTransportDrainEvents(Case):
         return mock_receiver
 
     def test_socket_timeout_raised_when_all_receivers_empty(self):
-        with patch(QPID_MODULE + '.QpidEmpty', new=MockException) as mock_qpid_empty:
+        with patch(QPID_MODULE + '.QpidEmpty', new=MockException):
             self.transport.session.next_receiver.side_effect = MockException()
             self.assertRaises(socket.timeout, self.transport.drain_events,
                               Mock())
@@ -1720,8 +1719,7 @@ class TestTransportOnReadable(Case):
         try:
             raise IOError()
         except Exception as error:
-            original_exc_info = sys.exc_info()
-            self.transport.session.exc_info = original_exc_info
+            self.transport.session.saved_exception = error
         self.mock_os_read.return_value = 'e'
         self.assertRaises(IOError, self.transport.on_readable, Mock(), Mock())
 
