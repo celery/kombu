@@ -343,23 +343,22 @@ class TestConnectionInit(ExtraAssertionsMixin, ConnectionTestBase):
         else:
             self.fail('ConnectionError type was not mutated correctly')
 
-    @patch.object(Transport, 'channel_errors', new=(MockException, ))
     @patch(QPID_MODULE + '.qpid')
-    def test_connection__init__non_auth_Conn_Error_raises(self, mock_qpid):
+    @patch(QPID_MODULE + '.ConnectionError', new=IOError)
+    def test_connection__init__non_qpid_error_raises(self, mock_qpid):
         mock_Qpid_Connection = mock_qpid.messaging.Connection
-        my_conn_error = MockException()
+        my_conn_error = SyntaxError()
         my_conn_error.text = 'some non auth related error message'
         mock_Qpid_Connection.establish.side_effect = my_conn_error
-        self.assertRaises(MockException, Connection,
-                          **self.connection_options)
+        self.assertRaises(SyntaxError, Connection, **self.connection_options)
 
     @patch(QPID_MODULE + '.qpid')
-    def test_connection__init__non_qpid_exception_raises(self, mock_qpid):
+    @patch(QPID_MODULE + '.ConnectionError', new=IOError)
+    def test_connection__init__non_auth_conn_error_raises(self, mock_qpid):
         mock_Qpid_Connection = mock_qpid.messaging.Connection
-        mock_ConnectionError = mock_qpid.messaging.exceptions.ConnectionError
-        my_conn_error = mock_ConnectionError()
+        my_conn_error = IOError()
         my_conn_error.text = 'some non auth related error message'
-        mock_Qpid_Connection.establish.side_effect = IOError()
+        mock_Qpid_Connection.establish.side_effect = my_conn_error
         self.assertRaises(IOError, Connection, **self.connection_options)
 
 
