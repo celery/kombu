@@ -58,6 +58,7 @@ class MockException(Exception):
 class BreakOutException(Exception):
     pass
 
+
 @case_no_python3
 @case_no_pypy
 class TestQpidMessagingExceptionHandler(Case):
@@ -302,6 +303,8 @@ class ConnectionTestBase(Case):
         self.conn = Connection(**self.connection_options)
 
 
+@case_no_python3
+@case_no_pypy
 class TestConnectionInit(ExtraAssertionsMixin, ConnectionTestBase):
 
     def test_connection__init__stores_connection_options(self):
@@ -378,12 +381,16 @@ class TestConnectionInit(ExtraAssertionsMixin, ConnectionTestBase):
         self.assertRaises(IOError, Connection, **self.connection_options)
 
 
+@case_no_python3
+@case_no_pypy
 class TestConnectionClassAttributes(ConnectionTestBase):
 
     def test_connection_verify_class_attributes(self):
         self.assertEqual(Channel, Connection.Channel)
 
 
+@case_no_python3
+@case_no_pypy
 class TestConnectionGetQpidConnection(ConnectionTestBase):
 
     def test_connection_get_qpid_connection(self):
@@ -392,6 +399,8 @@ class TestConnectionGetQpidConnection(ConnectionTestBase):
         self.assertTrue(self.conn._qpid_conn is returned_connection)
 
 
+@case_no_python3
+@case_no_pypy
 class TestConnectionCloseChannel(ConnectionTestBase):
 
     def setUp(self):
@@ -434,6 +443,8 @@ class ChannelTestBase(Case):
         self.patch_qpidtoollibs.stop()
 
 
+@case_no_python3
+@case_no_pypy
 class TestChannelPurge(ChannelTestBase):
 
     def setUp(self):
@@ -467,6 +478,8 @@ class TestChannelPurge(ChannelTestBase):
         self.assertTrue(result is 5)
 
 
+@case_no_python3
+@case_no_pypy
 class TestChannelPut(ChannelTestBase):
 
     @patch(QPID_MODULE + '.qpid')
@@ -507,6 +520,8 @@ class TestChannelPut(ChannelTestBase):
         mock_sender.close.assert_called_with()
 
 
+@case_no_python3
+@case_no_pypy
 class TestChannelGet(ChannelTestBase):
 
     def test_channel__get(self):
@@ -521,6 +536,8 @@ class TestChannelGet(ChannelTestBase):
         self.assertTrue(mock_rx.fetch.return_value is result)
 
 
+@case_no_python3
+@case_no_pypy
 class TestChannelClose(ChannelTestBase):
 
     def setUp(self):
@@ -564,6 +581,8 @@ class TestChannelClose(ChannelTestBase):
         self.assertTrue(not self.conn.close_channel.called)
 
 
+@case_no_python3
+@case_no_pypy
 class TestChannelBasicQoS(ChannelTestBase):
 
     def test_channel_basic_qos_always_returns_one(self):
@@ -571,6 +590,8 @@ class TestChannelBasicQoS(ChannelTestBase):
         self.assertTrue(self.channel.qos.prefetch_count is 1)
 
 
+@case_no_python3
+@case_no_pypy
 class TestChannelBasicGet(ChannelTestBase):
 
     def setUp(self):
@@ -625,6 +646,8 @@ class TestChannelBasicGet(ChannelTestBase):
         self.assertTrue(basic_get_result is None)
 
 
+@case_no_python3
+@case_no_pypy
 class TestChannelBasicCancel(ChannelTestBase):
 
     def setUp(self):
@@ -655,6 +678,8 @@ class TestChannelBasicCancel(ChannelTestBase):
         self.conn._callbacks.pop.assert_called_once_with(mock_queue, None)
 
 
+@case_no_python3
+@case_no_pypy
 class TestChannelInit(ChannelTestBase, ExtraAssertionsMixin):
 
     def test_channel___init__sets_variables_as_expected(self):
@@ -669,6 +694,8 @@ class TestChannelInit(ChannelTestBase, ExtraAssertionsMixin):
         self.assertTrue(self.channel._qos is None)
 
 
+@case_no_python3
+@case_no_pypy
 class TestChannelBasicConsume(ChannelTestBase, ExtraAssertionsMixin):
 
     def setUp(self):
@@ -756,6 +783,8 @@ class TestChannelBasicConsume(ChannelTestBase, ExtraAssertionsMixin):
         mock_original_callback.assert_called_once_with(expected_message)
 
 
+@case_no_python3
+@case_no_pypy
 class TestChannelQueueDelete(ChannelTestBase):
 
     def setUp(self):
@@ -1276,12 +1305,16 @@ class ReceiversMonitorTestBase(Case):
         self.monitor = ReceiversMonitor(self.mock_session, self.mock_w)
 
 
+@case_no_python3
+@case_no_pypy
 class TestReceiversMonitorType(ReceiversMonitorTestBase):
 
     def test_qpid_messaging_receivers_monitor_subclass_of_threading(self):
         self.assertTrue(isinstance(self.monitor, threading.Thread))
 
 
+@case_no_python3
+@case_no_pypy
 class TestReceiversMonitorInit(ReceiversMonitorTestBase):
 
     def setUp(self):
@@ -1303,6 +1336,8 @@ class TestReceiversMonitorInit(ReceiversMonitorTestBase):
         self.mock_Thread___init__.assert_called_once_with()
 
 
+@case_no_python3
+@case_no_pypy
 class TestReceiversMonitorRun(ReceiversMonitorTestBase):
 
     @patch.object(ReceiversMonitor, 'monitor_receivers')
@@ -1392,6 +1427,8 @@ class TestReceiversMonitorRun(ReceiversMonitorTestBase):
         mock_os_write.assert_called_once_with(self.mock_w, 'e')
 
 
+@case_no_python3
+@case_no_pypy
 class TestReceiversMonitorMonitorReceivers(ReceiversMonitorTestBase):
 
     def test_receivers_monitor_monitor_receivers_calls_next_receivers(self):
@@ -1786,8 +1823,8 @@ class TestTransportVerifyRuntimeEnvironment(Case):
                           self.transport)
 
     @patch('__builtin__.getattr')
-    def test_transport_verify_runtime_env_raises_exception_for_PyPy(self,
-            mock_getattr):
+    def test_transport_verify_runtime_env_raises_exc_for_PyPy(self,
+                                                              mock_getattr):
         mock_getattr.return_value = True
         self.assertRaises(RuntimeError, self.verify_runtime_environment,
                           self.transport)
@@ -1798,7 +1835,6 @@ class TestTransportVerifyRuntimeEnvironment(Case):
         except Exception:
             self.fail(
                 "verify_runtime_environment raised an unexpected Exception")
-
 
 
 @case_no_python3
