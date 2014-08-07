@@ -877,7 +877,7 @@ class Transport(base.Transport):
                 'Message for queue {0!r} without consumers: {1}'.format(
                     queue, message))
 
-        self._callbacks[queue](message)
+        return self._callbacks[queue](message)
 
     def on_message_ready(self, channel, message, queue):
         if not queue or queue not in self._callbacks:

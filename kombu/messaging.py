@@ -556,7 +556,7 @@ class Consumer(object):
         callbacks = self.callbacks
         if not callbacks:
             raise NotImplementedError('Consumer does not have any callbacks')
-        [callback(body, message) for callback in callbacks]
+        return [callback(body, message) for callback in callbacks]
 
     def _basic_consume(self, queue, consumer_tag=None,
                        no_ack=no_ack, nowait=True):
