@@ -884,7 +884,7 @@ class Transport(base.Transport):
             raise KeyError(
                 'Message for queue {0!r} without consumers: {1}'.format(
                     queue, message))
-        self._callbacks[queue](message)
+        return self._callbacks[queue](message)
 
     def _drain_channel(self, channel, timeout=None):
         return channel.drain_events(timeout=timeout)
