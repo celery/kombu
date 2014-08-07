@@ -13,15 +13,8 @@ import os
 import socket
 import warnings
 
-try:
-    import librabbitmq as amqp
-    from librabbitmq import ChannelError, ConnectionError
-except ImportError:  # pragma: no cover
-    try:
-        import pylibrabbitmq as amqp                             # noqa
-        from pylibrabbitmq import ChannelError, ConnectionError  # noqa
-    except ImportError:
-        raise ImportError('No module named librabbitmq')
+import librabbitmq as amqp
+from librabbitmq import ChannelError, ConnectionError
 
 from kombu.five import items, values
 from kombu.utils.amq_manager import get_manager
