@@ -9,11 +9,17 @@ broker management.
 .. _`qpid-python`: http://pypi.python.org/pypi/qpid-python/
 .. _`qpid-tools`: http://pypi.python.org/pypi/qpid-tools/
 
-    .. admonition:: Install Dependencies
+The use this transport you must install the necessary dependencies. These
+dependencies are available via PyPI and can be installed using the pip
+command:
 
-        Run the command:
+`pip install qpid-tools qpid-python`
 
-        `pip install qpid-tools qpid-python`
+    .. admonition:: Python3 and PyPy Limitations
+
+        The Qpid transport does not support Python3 or PyPy environments due
+        to underlying dependencies not being compatible. This version is
+        tested and works with with Python 2.7.
 
 """
 from __future__ import absolute_import
