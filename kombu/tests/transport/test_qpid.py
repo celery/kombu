@@ -11,15 +11,16 @@ import time
 from collections import OrderedDict
 from itertools import count
 
+from mock import call
+
 import kombu.five
 from kombu.transport.qpid import AuthenticationFailure, QoS, Message
 from kombu.transport.qpid import QpidMessagingExceptionHandler, Channel
 from kombu.transport.qpid import Connection, ReceiversMonitor, Transport
 from kombu.transport.qpid import ConnectionError
 from kombu.transport.virtual import Base64
-from kombu.tests.case import Case, Mock
+from kombu.tests.case import Case, Mock, case_no_pypy, case_no_python3
 from kombu.tests.case import patch
-from mock import call
 
 
 QPID_MODULE = 'kombu.transport.qpid'
@@ -57,7 +58,8 @@ class MockException(Exception):
 class BreakOutException(Exception):
     pass
 
-
+@case_no_python3
+@case_no_pypy
 class TestQpidMessagingExceptionHandler(Case):
 
     allowed_string = 'object in use'
@@ -99,6 +101,8 @@ class TestQpidMessagingExceptionHandler(Case):
         self.assertRaises(Exception, decorated_func)
 
 
+@case_no_python3
+@case_no_pypy
 class TestQoS__init__(Case):
 
     def setUp(self):
@@ -116,6 +120,8 @@ class TestQoS__init__(Case):
         self.assertTrue(isinstance(self.qos._not_yet_acked, OrderedDict))
 
 
+@case_no_python3
+@case_no_pypy
 class TestQoSCanConsume(Case):
 
     def setUp(self):
@@ -138,6 +144,8 @@ class TestQoSCanConsume(Case):
         self.assertFalse(self.qos.can_consume())
 
 
+@case_no_python3
+@case_no_pypy
 class TestQoSCanConsumeMaxEstimate(Case):
 
     def setUp(self):
@@ -154,6 +162,8 @@ class TestQoSCanConsumeMaxEstimate(Case):
         self.assertEqual(self.qos.can_consume_max_estimate(), 2)
 
 
+@case_no_python3
+@case_no_pypy
 class TestQoSAck(Case):
 
     def setUp(self):
@@ -174,6 +184,8 @@ class TestQoSAck(Case):
         self.qos.session.acknowledge.assert_called_with(message=message)
 
 
+@case_no_python3
+@case_no_pypy
 class TestQoSReject(Case):
 
     def setUp(self):
@@ -212,6 +224,8 @@ class TestQoSReject(Case):
             message=message, disposition=self.mock_Disposition.return_value)
 
 
+@case_no_python3
+@case_no_pypy
 class TestQoS(Case):
 
     def mock_message_factory(self):
@@ -271,6 +285,8 @@ class TestQoS(Case):
         self.assertTrue(m2 is message2)
 
 
+@case_no_python3
+@case_no_pypy
 class ConnectionTestBase(Case):
 
     @patch(QPID_MODULE + '.qpid')
@@ -402,6 +418,8 @@ class TestConnectionCloseChannel(ConnectionTestBase):
         self.assertTrue(mock_channel.connection is None)
 
 
+@case_no_python3
+@case_no_pypy
 class ChannelTestBase(Case):
 
     def setUp(self):
@@ -792,6 +810,8 @@ class TestChannelQueueDelete(ChannelTestBase):
         self.mock__delete.assert_called_once_with(self.mock_queue)
 
 
+@case_no_python3
+@case_no_pypy
 class TestChannel(ExtraAssertionsMixin, Case):
 
     @patch(QPID_MODULE + '.qpidtoollibs')
@@ -1246,6 +1266,8 @@ class TestChannel(ExtraAssertionsMixin, Case):
         self.assertTrue(mock_default is result)
 
 
+@case_no_python3
+@case_no_pypy
 class ReceiversMonitorTestBase(Case):
 
     def setUp(self):
@@ -1386,27 +1408,37 @@ class TestReceiversMonitorMonitorReceivers(ReceiversMonitorTestBase):
             mock_os_write.assert_called_once_with(self.mock_w, '0')
 
 
+@case_no_python3
+@case_no_pypy
 class TestTransportInit(Case):
 
     def setUp(self):
-        self.patch_a = patch(QPID_MODULE + '.base.Transport.__init__')
-        self.mock_base_Transport__init__ = self.patch_a.start()
+        self.patch_a = patch.object(Transport, 'verify_runtime_environment')
+        self.mock_verify_runtime_environment = self.patch_a.start()
 
-        self.patch_b = patch(QPID_MODULE + '.os')
-        self.mock_os = self.patch_b.start()
+        self.patch_b = patch(QPID_MODULE + '.base.Transport.__init__')
+        self.mock_base_Transport__init__ = self.patch_b.start()
+
+        self.patch_c = patch(QPID_MODULE + '.os')
+        self.mock_os = self.patch_c.start()
         self.mock_r = Mock()
         self.mock_w = Mock()
         self.mock_os.pipe.return_value = (self.mock_r, self.mock_w)
 
-        self.patch_c = patch(QPID_MODULE + '.fcntl')
-        self.mock_fcntl = self.patch_c.start()
+        self.patch_d = patch(QPID_MODULE + '.fcntl')
+        self.mock_fcntl = self.patch_d.start()
 
     def tearDown(self):
         self.patch_a.stop()
         self.patch_b.stop()
         self.patch_c.stop()
+        self.patch_d.stop()
 
-    def test_transport__init___calls_parent_class___init__(self):
+    def test_Transport___init___calls_verify_runtime_environment(self):
+        Transport(Mock())
+        self.mock_verify_runtime_environment.assert_called_once_with()
+
+    def test_transport___init___calls_parent_class___init__(self):
         Transport(Mock())
         self.mock_base_Transport__init__.assert_caled_once_with()
 
@@ -1425,6 +1457,8 @@ class TestTransportInit(Case):
             self.mock_r,  self.mock_fcntl.F_SETFL,  self.mock_os.O_NONBLOCK)
 
 
+@case_no_python3
+@case_no_pypy
 class TestTransportDrainEvents(Case):
 
     def setUp(self):
@@ -1475,6 +1509,8 @@ class TestTransportDrainEvents(Case):
         self.mock_callback.assert_called_with(self.mock_message)
 
 
+@case_no_python3
+@case_no_pypy
 class TestTransportCreateChannel(Case):
 
     def setUp(self):
@@ -1494,6 +1530,8 @@ class TestTransportCreateChannel(Case):
         append_method.assert_called_with(self.mock_new_channel)
 
 
+@case_no_python3
+@case_no_pypy
 class TestTransportEstablishConnection(Case):
 
     def setUp(self):
@@ -1644,6 +1682,8 @@ class TestTransportEstablishConnection(Case):
                                                port=5672, transport='tcp')
 
 
+@case_no_python3
+@case_no_pypy
 class TestTransportClassAttributes(Case):
 
     def test_verify_Connection_attribute(self):
@@ -1669,6 +1709,8 @@ class TestTransportClassAttributes(Case):
         self.assertTrue(select.error in Transport.connection_errors)
 
 
+@case_no_python3
+@case_no_pypy
 class TestTransportRegisterWithEventLoop(Case):
 
     def test_transport_register_with_event_loop_calls_add_reader(self):
@@ -1681,6 +1723,8 @@ class TestTransportRegisterWithEventLoop(Case):
                                                 mock_connection, mock_loop)
 
 
+@case_no_python3
+@case_no_pypy
 class TestTransportOnReadable(Case):
 
     def setUp(self):
@@ -1723,6 +1767,42 @@ class TestTransportOnReadable(Case):
         self.assertRaises(IOError, self.transport.on_readable, Mock(), Mock())
 
 
+@case_no_python3
+@case_no_pypy
+class TestTransportVerifyRuntimeEnvironment(Case):
+
+    def setUp(self):
+        self.verify_runtime_environment = Transport.verify_runtime_environment
+        self.patch_a = patch.object(Transport, 'verify_runtime_environment')
+        self.patch_a.start()
+        self.transport = Transport(Mock())
+
+    def tearDown(self):
+        self.patch_a.stop()
+
+    @patch(QPID_MODULE + '.PY3', new=True)
+    def test_transport_verify_runtime_env_raises_exception_for_Python3(self):
+        self.assertRaises(RuntimeError, self.verify_runtime_environment,
+                          self.transport)
+
+    @patch('__builtin__.getattr')
+    def test_transport_verify_runtime_env_raises_exception_for_PyPy(self,
+            mock_getattr):
+        mock_getattr.return_value = True
+        self.assertRaises(RuntimeError, self.verify_runtime_environment,
+                          self.transport)
+
+    def test_transport_verify_runtime_env_raises_no_exception(self):
+        try:
+            self.verify_runtime_environment(self.transport)
+        except Exception:
+            self.fail(
+                "verify_runtime_environment raised an unexpected Exception")
+
+
+
+@case_no_python3
+@case_no_pypy
 class TestTransport(ExtraAssertionsMixin, Case):
 
     def setUp(self):

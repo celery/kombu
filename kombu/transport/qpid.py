@@ -72,6 +72,8 @@ OBJECT_ALREADY_EXISTS_STRING = 'object already exists'
 VERSION = (1, 0, 0)
 __version__ = '.'.join(map(str, VERSION))
 
+PY3 = sys.version_info[0] == 3
+
 
 class AuthenticationFailure(Exception):
     pass
@@ -1384,9 +1386,25 @@ class Transport(base.Transport):
         descriptors as attributes. The behavior of the read file descriptor
         is modified to be non-blocking using fcntl.fcntl.
         """
+        self.verify_runtime_environment()
         super(Transport, self).__init__(*args, **kwargs)
         self.r, self._w = os.pipe()
         fcntl.fcntl(self.r, fcntl.F_SETFL, os.O_NONBLOCK)
+
+    def verify_runtime_environment(self):
+        """Verify that the runtime environment is acceptable.
+
+        This method is called as part of __init__ and raises a RuntimeError
+        in Python3 or PyPi environments. This module is not compatible with
+        Python3 or PyPi. The RuntimeError identifies this to the user up
+        front along with suggesting Python 2.7 be used instead.
+        """
+        if getattr(sys, 'pypy_version_info', None):
+            raise RuntimeError('The Qpid transport does not support PyPy. '
+                               'Try using Python 2.7')
+        if PY3:
+            raise RuntimeError('The Qpid transport does not support Python3. '
+                               'Try using Python 2.7')
 
     def on_readable(self, connection, loop):
         """Handle any messages associated with this Transport.
