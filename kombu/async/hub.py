@@ -144,7 +144,7 @@ class Hub(object):
                     logger.error('Error in timer: %r', exc, exc_info=1)
                 except Exception as exc:
                     logger.error('Error in timer: %r', exc, exc_info=1)
-        return min(max(delay or 0, min_delay), max_delay)
+        return min(delay or min_delay, max_delay)
 
     def add(self, fd, callback, flags, args=(), consolidate=False):
         fd = fileno(fd)
