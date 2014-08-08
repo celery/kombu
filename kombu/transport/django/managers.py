@@ -1,10 +1,24 @@
 from __future__ import absolute_import
 
+from functools import wraps
+
 from django.db import transaction, connection, models
 try:
     from django.db import connections, router
 except ImportError:  # pre-Django 1.2
     connections = router = None  # noqa
+
+
+try:
+    transaction.atomic
+except AttributeError:
+    commit_on_success = transaction.commit_on_success
+else:
+    def commit_on_success(fun):
+        @wraps(fun)
+        def _commit(*args, **kwargs):
+            with transaction.atomic():
+                return fun(*args, **kwargs)
 
 
 class QueueManager(models.Manager):
@@ -47,7 +61,7 @@ class MessageManager(models.Manager):
     _messages_received = [0]
     cleanup_every = 10
 
-    @transaction.commit_manually
+    @commit_on_success
     def pop(self):
         try:
             resultset = select_for_update(
@@ -63,22 +77,15 @@ class MessageManager(models.Manager):
             transaction.commit()
             return result.payload
         except self.model.DoesNotExist:
-            transaction.commit()
-        except:
-            transaction.rollback()
+            pass
 
     def cleanup(self):
         cursor = self.connection_for_write().cursor()
-        try:
-            cursor.execute(
-                'DELETE FROM %s WHERE visible=%%s' % (
-                    self.model._meta.db_table, ),
-                (False, )
-            )
-        except:
-            transaction.rollback_unless_managed()
-        else:
-            transaction.commit_unless_managed()
+        cursor.execute(
+            'DELETE FROM %s WHERE visible=%%s' % (
+                self.model._meta.db_table, ),
+            (False, )
+        )
 
     def connection_for_write(self):
         if connections:
