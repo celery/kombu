@@ -15,9 +15,9 @@ command:
 
 `pip install qpid-tools qpid-python`
 
-    .. admonition:: Python3 and PyPy Limitations
+    .. admonition:: Python 3 and PyPy Limitations
 
-        The Qpid transport does not support Python3 or PyPy environments due
+        The Qpid transport does not support Python 3 or PyPy environments due
         to underlying dependencies not being compatible. This version is
         tested and works with with Python 2.7.
 
@@ -1406,11 +1406,11 @@ class Transport(base.Transport):
         front along with suggesting Python 2.7 be used instead.
         """
         if getattr(sys, 'pypy_version_info', None):
-            raise RuntimeError('The Qpid transport does not support PyPy. '
-                               'Try using Python 2.7')
+            raise RuntimeError('The Qpid transport for Kombu does not '
+                               'support PyPy. Try using Python 2.7')
         if PY3:
-            raise RuntimeError('The Qpid transport does not support Python3. '
-                               'Try using Python 2.7')
+            raise RuntimeError('The Qpid transport for Kombu does not '
+                               'support Python 3. Try using Python 2.7')
 
     def on_readable(self, connection, loop):
         """Handle any messages associated with this Transport.
