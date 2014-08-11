@@ -4,6 +4,26 @@
  Change history
 ================
 
+.. _version-3.0.22:
+
+3.0.22
+======
+
+- kombu.async: Min. delay between waiting for timer was always increased to
+  one second.
+
+- Fixed bug in itermessages where message is received after the with
+  statement exits the block.
+
+    Fixed by Rumyana Neykova
+
+- Django: Now sets custom app label for ``kombu.transport.django`` to work
+  with recent changes in Django 1.7.
+
+- SimpleQueue removed messages from the wrong end of buffer (Issue #380).
+
+- Tests: Now using ``unittest.mock`` if available (Issue #381).
+
 .. _version-3.0.21:
 
 3.0.21
