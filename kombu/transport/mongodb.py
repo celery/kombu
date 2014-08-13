@@ -21,6 +21,7 @@ from pymongo.connection import Connection
 from kombu.exceptions import StdConnectionError, StdChannelError
 
 from . import virtual
+from .el_mongodb import *
 
 DEFAULT_HOST = '127.0.0.1'
 DEFAULT_PORT = 27017
@@ -53,9 +54,18 @@ class Channel(virtual.Channel):
                 self._queue_readcounts[queue] += 1
                 return loads(msg['payload'])
             else:
+                # Patch by Elastica
+                el_channel = ElMongodbChannel(self.client, queue)
+                tenant = el_channel.get_tenant()
+                if tenant: 
+                    query = {'queue': queue, 'tenant':tenant}
+                    print "Processing task for [Queue: (%s) & Tenant: (%s)]" % (queue, tenant)
+                else:
+                    query = {'queue': queue}
+
                 msg = self.client.command(
                     'findandmodify', 'messages',
-                    query={'queue': queue},
+                    query=query,
                     sort={'_id': pymongo.ASCENDING}, remove=True,
                 )
         except errors.OperationFailure, exc:
@@ -78,8 +88,10 @@ class Channel(virtual.Channel):
         return self.client.messages.find({'queue': queue}).count()
 
     def _put(self, queue, message, **kwargs):
+        # patch by Elastica
         self.client.messages.insert({'payload': dumps(message),
-                                     'queue': queue})
+                                     'queue': queue,
+                                     "tenant": kwargs.get("tenant", "default")})
 
     def _purge(self, queue):
         size = self._size(queue)
