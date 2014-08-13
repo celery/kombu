@@ -107,7 +107,7 @@ class Producer(object):
             return maybe_declare(entity, self.channel, retry, **retry_policy)
 
     def publish(self, body, routing_key=None, delivery_mode=None,
-                mandatory=False, immediate=False, priority=0,
+                mandatory=False, immediate=False, tenant=None, priority=0,
                 content_type=None, content_encoding=None, serializer=None,
                 headers=None, compression=None, exchange=None, retry=False,
                 retry_policy=None, declare=[], **properties):
@@ -161,11 +161,11 @@ class Producer(object):
             publish = self.connection.ensure(self, publish, **retry_policy)
         return publish(body, priority, content_type,
                        content_encoding, headers, properties,
-                       routing_key, mandatory, immediate, exchange, declare)
+                       routing_key, mandatory, immediate, exchange, declare, tenant)
 
     def _publish(self, body, priority, content_type, content_encoding,
                  headers, properties, routing_key, mandatory,
-                 immediate, exchange, declare):
+                 immediate, exchange, declare, tenant):
         channel = self.channel
         message = channel.prepare_message(
             body, priority, content_type,
@@ -178,6 +178,7 @@ class Producer(object):
             message,
             exchange=exchange, routing_key=routing_key,
             mandatory=mandatory, immediate=immediate,
+            tenant=tenant,
         )
 
     def _get_channel(self):
