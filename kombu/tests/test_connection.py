@@ -418,7 +418,6 @@ class test_Connection(Case):
 
     def test_autoretry(self):
         myfun = Mock()
-        myfun.__name__ = 'test_autoretry'
 
         self.conn.transport.connection_errors = (KeyError, )
 

@@ -495,9 +495,9 @@ class Connection(object):
         create_channel = self.channel
 
         class Revival(object):
-            __name__ = fun.__name__
-            __module__ = fun.__module__
-            __doc__ = fun.__doc__
+            __name__ = getattr(fun, '__name__', None)
+            __module__ = getattr(fun, '__module__', None)
+            __doc__ = getattr(fun, '__doc__', None)
 
             def revive(self, channel):
                 channels[0] = channel
