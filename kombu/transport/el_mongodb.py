@@ -10,10 +10,17 @@ ElMongoDB transport.
 import logging
 from multiprocessing import Manager
 
-# global data
-manager = Manager()
-GlobalData = manager.dict()
+# logger
 logger = logging.getLogger('kombu.transport.el_mongodb')
+
+#------------------------------------------------------------------------------------------------------
+# Managers provide a way to create data which can be shared between different processes
+# Manager processes will be shutdown as soon as they are garbage collected or their parent process exits
+# Manager() Returns a started SyncManager object which can be used for sharing objects between processes
+# Reference: https://docs.python.org/2/library/multiprocessing.html#managers
+el_manager = Manager()
+GlobalData = el_manager.dict()
+#------------------------------------------------------------------------------------------------------
 
 
 class ElMongodbChannel(object):
