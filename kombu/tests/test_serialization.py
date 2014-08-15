@@ -232,6 +232,7 @@ class test_Serialization(Case):
             res,
         )
 
+    @skip_if_pypy
     @skip_if_not_module('msgpack', (ImportError, ValueError))
     def test_msgpack_dumps(self):
         register_msgpack()
