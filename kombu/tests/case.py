@@ -222,6 +222,17 @@ def mask_modules(*modnames):
     return _inner
 
 
+def skip_if_pypy(fun):
+
+    @wraps(fun)
+    def _skips_if_pypy(*args, **kwargs):
+        if getattr(sys, 'pypy_version_info', None):
+            raise SkipTest('pypy incompatible')
+        return fun(*args, **kwargs)
+
+    return _skips_if_pypy
+
+
 def skip_if_environ(env_var_name):
 
     def _wrap_test(fun):
