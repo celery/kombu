@@ -21,7 +21,7 @@ from pymongo.connection import Connection
 from kombu.exceptions import StdConnectionError, StdChannelError
 
 from . import virtual
-from .el_mongodb import *
+from .el_mongodb import ElMongodbChannel
 
 DEFAULT_HOST = '127.0.0.1'
 DEFAULT_PORT = 27017
@@ -57,12 +57,8 @@ class Channel(virtual.Channel):
                 # Patch by Elastica
                 el_channel = ElMongodbChannel(self.client, queue)
                 tenant = el_channel.get_tenant()
-                if tenant: 
-                    query = {'queue': queue, 'tenant':tenant}
-                    print "Processing task for [Queue: (%s) & Tenant: (%s)]" % (queue, tenant)
-                else:
-                    query = {'queue': queue}
-
+                query = {'queue': queue, 'tenant':tenant} if tenant \
+                        else {'queue': queue}
                 msg = self.client.command(
                     'findandmodify', 'messages',
                     query=query,
