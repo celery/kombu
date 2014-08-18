@@ -34,7 +34,7 @@ class ElMongodbChannel(object):
     def __init__(self, mongodb_client, queue):
 
         self.mongodb_client = mongodb_client  # mongo client
-        self.queue = queue  # queue being consumed
+        self.queue = queue if queue else ""  # queue being consumed
 
         logger.debug('Queue: "%s" | Tenants: "%s"' % (self.queue, ','.join(GlobalData.get(self.queue, []))))
 
