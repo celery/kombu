@@ -13,14 +13,16 @@ from multiprocessing import Manager
 # logger
 logger = logging.getLogger('kombu.transport.el_mongodb')
 
-#------------------------------------------------------------------------------------------------------
-# Managers provide a way to create data which can be shared between different processes
-# Manager processes will be shutdown as soon as they are garbage collected or their parent process exits
-# Manager() Returns a started SyncManager object which can be used for sharing objects between processes
-# Reference: https://docs.python.org/2/library/multiprocessing.html#managers
-el_manager = Manager()
-GlobalData = el_manager.dict()
-#------------------------------------------------------------------------------------------------------
+#----------------------------------------------------------------------------------------------
+# GlobalData is initially an empty dict
+# Keys of GlobalData will be queue names
+# Values of GlobalData will be list of active tenants for respective queues
+# So GlobalData would look like:
+# GlobalData = {'box_queue': ['elasticaco', 'elasticanet'],
+#               'box_dnld_queue': ['elasticanet', 'elasticala', 'elastica']}
+# This GlobalData shows that the worker is consuming two queues 'box_queue' and 'box_dnld_queue'
+#----------------------------------------------------------------------------------------------
+GlobalData = {}
 
 
 class ElMongodbChannel(object):
@@ -35,16 +37,6 @@ class ElMongodbChannel(object):
         self.queue = queue  # queue being consumed
 
         logger.debug('Queue: "%s" | Tenants: "%s"' % (self.queue, ','.join(GlobalData.get(self.queue, []))))
-
-        #----------------------------------------------------------------------------------------------
-        # GlobalData is initially an empty dict
-        # Keys of GlobalData will be queue names
-        # Values of GlobalData will be list of active tenants for respective queues
-        # So GlobalData would look like:
-        # GlobalData = {'box_queue': ['elasticaco', 'elasticanet'],
-        #               'box_dnld_queue': ['elasticanet', 'elasticala', 'elastica']}
-        # This GlobalData shows that the worker is consuming two queues 'box_queue' and 'box_dnld_queue'
-        #----------------------------------------------------------------------------------------------
 
         # Functionality of __init__ :
         #----------------------------------------------------------------------------------------------
