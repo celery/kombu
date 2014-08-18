@@ -94,6 +94,18 @@ def case_no_pypy(cls):
     return cls
 
 
+def case_no_python3(cls):
+    setup = cls.setUp
+
+    @wraps(setup)
+    def around_setup(self):
+        if PY3:
+            raise SkipTest('Python3 incompatible')
+        setup(self)
+    cls.setUp = around_setup
+    return cls
+
+
 class HubCase(Case):
 
     def setUp(self):

@@ -65,8 +65,8 @@ class Connection(object):
 
     .. admonition:: SSL compatibility
 
-        SSL currently only works with the py-amqp & amqplib transports.
-        For other transports you can use stunnel.
+        SSL currently only works with the py-amqp, amqplib, and qpid
+        transports.  For other transports you can use stunnel.
 
     :keyword hostname: Default host name/address if not provided in the URL.
     :keyword userid: Default user name if not provided in the URL.
