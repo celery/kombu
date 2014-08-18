@@ -8,6 +8,7 @@ broker management.
 .. _`Qpid`: http://qpid.apache.org/
 .. _`qpid-python`: http://pypi.python.org/pypi/qpid-python/
 .. _`qpid-tools`: http://pypi.python.org/pypi/qpid-tools/
+.. _`Issue 2199`: https://github.com/celery/celery/issues/2199
 
 The use this transport you must install the necessary dependencies. These
 dependencies are available via PyPI and can be installed using the pip
@@ -20,6 +21,11 @@ command:
         The Qpid transport does not support Python 3 or PyPy environments due
         to underlying dependencies not being compatible. This version is
         tested and works with with Python 2.7.
+
+    .. admonition:: Potential Deadlock
+
+        This transport should be used with caution due to a known
+        potential deadlock. See `Issue 2199`_ for more details.
 
 """
 from __future__ import absolute_import
