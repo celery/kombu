@@ -87,8 +87,8 @@ class ElMongodbChannel(object):
         if not global_tenants:
             return None
 
-        # Pop out the tenant that is sitting at index zero, it will be honored
-        tenant = global_tenants.pop(0)
+        # Pop out the tenant that is sitting at the last index, it will be honored
+        tenant = global_tenants.pop()
         logger.debug("Processing task for [Queue: (%s) & Tenant: (%s)]" % (self.queue, tenant))
 
         # update the tenants list for the given queue in GlobalData
