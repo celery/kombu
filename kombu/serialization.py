@@ -26,7 +26,7 @@ from .exceptions import (
 )
 from .five import reraise, text_t
 from .utils import entrypoints
-from .utils.encoding import str_to_bytes, bytes_t
+from .utils.encoding import bytes_to_str, str_to_bytes, bytes_t
 
 __all__ = ['pickle', 'loads', 'dumps', 'register', 'unregister']
 SKIP_DECODE = frozenset(['binary', 'ascii-8bit'])
@@ -168,7 +168,8 @@ class SerializerRegistry(object):
 
     def loads(self, data, content_type, content_encoding,
               accept=None, force=False, _trusted_content=TRUSTED_CONTENT):
-        content_type = content_type or 'application/data'
+        content_type = (bytes_to_str(content_type) if content_type
+                        else 'application/data')
         if accept is not None:
             if content_type not in _trusted_content \
                     and content_type not in accept:

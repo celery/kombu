@@ -70,7 +70,7 @@ class _epoll(object):
         try:
             self._epoll.register(fd, events)
         except Exception as exc:
-            if exc.errno != errno.EEXIST:
+            if getattr(exc, 'errno', None) != errno.EEXIST:
                 raise
         return fd
 
@@ -80,7 +80,7 @@ class _epoll(object):
         except (socket.error, ValueError, KeyError, TypeError):
             pass
         except (IOError, OSError) as exc:
-            if exc.errno != errno.ENOENT:
+            if getattr(exc, 'errno', None) != errno.ENOENT:
                 raise
 
     def poll(self, timeout):
@@ -207,7 +207,7 @@ class _poll(object):
         except socket.error as exc:
             # we don't know the previous fd of this object
             # but it will be removed by the next poll iteration.
-            if exc.errno in SELECT_BAD_FD:
+            if getattr(exc, 'errno', None) in SELECT_BAD_FD:
                 return fd
             raise
         self._quick_unregister(fd)
@@ -264,7 +264,7 @@ class _select(object):
             try:
                 _selectf([fd], [], [], 0)
             except (_selecterr, socket.error) as exc:
-                if exc.errno in SELECT_BAD_FD:
+                if getattr(exc, 'errno', None) in SELECT_BAD_FD:
                     self.unregister(fd)
 
     def unregister(self, fd):
@@ -273,7 +273,7 @@ class _select(object):
         except socket.error as exc:
             # we don't know the previous fd of this object
             # but it will be removed by the next poll iteration.
-            if exc.errno in SELECT_BAD_FD:
+            if getattr(exc, 'errno', None) in SELECT_BAD_FD:
                 return
             raise
         self._rfd.discard(fd)
@@ -286,10 +286,9 @@ class _select(object):
                 self._rfd, self._wfd, self._efd, timeout,
             )
         except (_selecterr, socket.error) as exc:
-            err = getattr(exc, 'errno', None)
-            if err == errno.EINTR:
+            if getattr(exc, 'errno', None) == errno.EINTR:
                 return
-            elif err in SELECT_BAD_FD:
+            elif getattr(exc, 'errno', None) in SELECT_BAD_FD:
                 return self._remove_bad()
             raise
 

@@ -9,7 +9,10 @@ from contextlib import contextmanager
 from functools import wraps
 from io import StringIO
 
-import mock
+try:
+    from unittest import mock
+except ImportError:
+    import mock  # noqa
 
 from nose import SkipTest
 
@@ -77,6 +80,30 @@ def case_requires(package, *more_packages):
         cls.setUp = around_setup
         return cls
     return attach
+
+
+def case_no_pypy(cls):
+    setup = cls.setUp
+
+    @wraps(setup)
+    def around_setup(self):
+        if getattr(sys, 'pypy_version_info', None):
+            raise SkipTest('pypy incompatible')
+        setup(self)
+    cls.setUp = around_setup
+    return cls
+
+
+def case_no_python3(cls):
+    setup = cls.setUp
+
+    @wraps(setup)
+    def around_setup(self):
+        if PY3:
+            raise SkipTest('Python3 incompatible')
+        setup(self)
+    cls.setUp = around_setup
+    return cls
 
 
 class HubCase(Case):
@@ -205,6 +232,17 @@ def mask_modules(*modnames):
 
         return __inner
     return _inner
+
+
+def skip_if_pypy(fun):
+
+    @wraps(fun)
+    def _skips_if_pypy(*args, **kwargs):
+        if getattr(sys, 'pypy_version_info', None):
+            raise SkipTest('pypy incompatible')
+        return fun(*args, **kwargs)
+
+    return _skips_if_pypy
 
 
 def skip_if_environ(env_var_name):

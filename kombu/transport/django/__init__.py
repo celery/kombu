@@ -12,6 +12,17 @@ from kombu.utils.json import loads, dumps
 
 from .models import Queue
 
+try:
+    from django.apps import AppConfig
+except ImportError:  # pragma: no cover
+    pass
+else:
+    class KombuAppConfig(AppConfig):
+        name = __name__
+        label = name.replace('.', '_')
+        verbose_name = 'Message queue'
+    default_app_config = 'kombu.transport.django.KombuAppConfig'
+
 VERSION = (1, 0, 0)
 __version__ = '.'.join(map(str, VERSION))
 

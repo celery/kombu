@@ -4,6 +4,7 @@ python:
     - 3.3
     - 3.4
     - pypy
+    - pypy3
 before_install:
     - |
       deactivate

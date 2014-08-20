@@ -18,7 +18,9 @@ from kombu.serialization import (
 )
 from kombu.utils.encoding import str_to_bytes
 
-from .case import Case, call, mask_modules, patch, skip_if_not_module
+from .case import (
+    Case, call, mask_modules, patch, skip_if_not_module, skip_if_pypy,
+)
 
 # For content_encoding tests
 unicode_string = 'abcdé\u8463'
@@ -212,6 +214,7 @@ class test_Serialization(Case):
             ),
         )
 
+    @skip_if_pypy
     @skip_if_not_module('msgpack', (ImportError, ValueError))
     def test_msgpack_loads(self):
         register_msgpack()
@@ -229,6 +232,7 @@ class test_Serialization(Case):
             res,
         )
 
+    @skip_if_pypy
     @skip_if_not_module('msgpack', (ImportError, ValueError))
     def test_msgpack_dumps(self):
         register_msgpack()
