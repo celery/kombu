@@ -694,7 +694,7 @@ class Connection(object):
     def _establish_connection(self):
         self._debug('establishing connection...')
         conn = self.transport.establish_connection()
-        self._debug('connection established: %r', conn)
+        self._debug('connection established: %r', self)
         return conn
 
     def __repr__(self):
