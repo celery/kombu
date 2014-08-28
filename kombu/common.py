@@ -88,7 +88,7 @@ class Broadcast(Queue):
 
 
 def declaration_cached(entity, channel):
-    return entity in channel.connection.client.declared_entities
+    return entity.can_cache_declaration and entity.declaration_key in channel.connection.client.declared_entities
 
 
 def maybe_declare(entity, channel=None, retry=False, **retry_policy):
@@ -106,7 +106,7 @@ def maybe_declare(entity, channel=None, retry=False, **retry_policy):
     declared = ident = None
     if channel.connection and entity.can_cache_declaration:
         declared = channel.connection.client.declared_entities
-        ident = hash(entity)
+        ident = entity.declaration_key
         if ident in declared:
             return False
 

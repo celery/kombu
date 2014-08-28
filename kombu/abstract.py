@@ -101,6 +101,15 @@ class MaybeChannelBound(Object):
         return '<unbound {0}>'.format(item)
 
     @property
+    def declaration_key(self):
+        """Uniquely identifies a cacheable declaration.
+
+        This method must be overriden by subclasses if :attr:`can_cache_declaration` is True
+        """
+        if self.can_cache_declaration:
+            raise NotImplementedError('Cacheable declarations must implement declaration_key')
+
+    @property
     def is_bound(self):
         """Flag set if the channel is bound."""
         return self._is_bound and self._channel is not None
