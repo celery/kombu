@@ -18,7 +18,7 @@ except ImportError:  # pragma: no cover
     pass
 else:
     class KombuAppConfig(AppConfig):
-        name = __name__
+        name = 'kombu.transport.django'
         label = name.replace('.', '_')
         verbose_name = 'Message queue'
     default_app_config = 'kombu.transport.django.KombuAppConfig'
