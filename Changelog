@@ -8,6 +8,8 @@
 
 3.0.22
 ======
+:release-date: 2014-09-04 03:00 P.M UTC
+:release-by: Ask Solem
 
 - kombu.async: Min. delay between waiting for timer was always increased to
   one second.
@@ -16,6 +18,11 @@
   statement exits the block.
 
     Fixed by Rumyana Neykova
+
+- Connection.autoretry: Now works with functions missing wrapped attributes
+    (``__module__``, ``__name__``, ``__doc__``).  Fixes #392.
+
+    Contributed by johtso.
 
 - Django: Now sets custom app label for ``kombu.transport.django`` to work
   with recent changes in Django 1.7.
