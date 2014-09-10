@@ -10,7 +10,7 @@ class test_couchdb(transport.TransportCase):
 
     def before_connect(self):
         try:
-            import couchdb  # noqa
+            import pycouchdb  # noqa
         except ImportError:
             raise SkipTest('couchdb not installed')
 
