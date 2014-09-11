@@ -235,7 +235,7 @@ class _poll(object):
                 events |= ERR
             if not isinstance(fd, Integral):
                 fd = fd.fileno()
-            ready.append(fd, events)
+            ready.append((fd, events))
         return ready
 
     def close(self):
