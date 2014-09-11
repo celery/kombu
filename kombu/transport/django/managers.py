@@ -19,6 +19,7 @@ else:
         def _commit(*args, **kwargs):
             with transaction.atomic():
                 return fun(*args, **kwargs)
+        return _commit
 
 
 
@@ -75,7 +76,6 @@ class MessageManager(models.Manager):
             recv[0] += 1
             if not recv[0] % self.cleanup_every:
                 self.cleanup()
-            transaction.commit()
             return result.payload
         except self.model.DoesNotExist:
             pass
