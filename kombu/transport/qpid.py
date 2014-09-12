@@ -1638,4 +1638,4 @@ class Transport(base.Transport):
         """
         return {'userid': 'guest', 'password': 'guest',
                 'port': self.default_port, 'virtual_host': '',
-                'hostname': 'localhost', 'sasl_mechanisms': 'PLAIN'}
+                'hostname': 'localhost', 'sasl_mechanisms': 'PLAIN ANONYMOUS'}
