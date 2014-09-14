@@ -8,7 +8,8 @@
 
 3.0.23
 ======
-:release-date: 2014-09-11 02:00 P.M UTC
+:release-date: 2014-09-14 10:45 P.M UTC
+:release-by: Ask Solem
 
 - Django: Fixed bug in the Django 1.7 compatibility improvements related
   to autocommit handling.
