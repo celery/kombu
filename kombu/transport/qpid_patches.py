@@ -25,6 +25,13 @@
 #############################################################################
 
 
+# this import is needed for Python 2.6. Without it, qpid.py will "mask" the
+# system's qpid lib
+from __future__ import absolute_import
+
+import os
+
+
 # Imports for Monkey Patch 1
 try:
     from qpid.selector import Selector
