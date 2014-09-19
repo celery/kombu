@@ -1179,6 +1179,7 @@ class Connection(object):
 
     # A class reference to the :class:`Channel` object
     Channel = Channel
+    SASL_ANONYMOUS_MECH = 'ANONYMOUS'
 
     def __init__(self, **connection_options):
         """Instantiate a Connection object.
@@ -1213,16 +1214,49 @@ class Connection(object):
         self.connection_options = connection_options
         self.channels = []
         self._callbacks = {}
+        self._qpid_conn = None
         establish = qpid.messaging.Connection.establish
-        try:
-            self._qpid_conn = establish(**self.connection_options)
-        except ConnectionError as conn_exc:
-            coded_as_auth_failure = getattr(conn_exc, 'code', None) == 320
-            contains_auth_fail_text = 'Authentication failed' in conn_exc.text
-            if coded_as_auth_failure or contains_auth_fail_text:
-                exc = sys.exc_info()
-                raise AuthenticationFailure, exc[1], exc[2]  # flake8: noqa
-            raise
+        # There is a behavior difference in qpid.messaging's sasl_mechanism
+        # selection method and cyrus-sasl's. The former will put PLAIN before
+        # ANONYMOUS if a username and password is given, but the latter will
+        # simply take whichever mech is listed first. Thus, if we had
+        # "ANONYMOUS PLAIN" as the default, the user would never be able to
+        # select PLAIN if cyrus-sasl was installed.
+
+        # The following code will put ANONYMOUS last in the mech list, and then
+        # try sasl mechs one by one. This should still result in secure
+        # behavior since it will select the first suitable mech. Unsuitable
+        # mechs will be rejected by the server.
+
+        sasl_mechanisms = [x for x in connection_options['sasl_mechanisms'].split() \
+                           if x != self.SASL_ANONYMOUS_MECH]
+        if self.SASL_ANONYMOUS_MECH in connection_options['sasl_mechanisms'].split():
+            sasl_mechanisms.append(self.SASL_ANONYMOUS_MECH)
+
+        for sasl_mech in sasl_mechanisms:
+            try:
+                logger.debug("Attempting to connect to qpid with SASL mechanism %s" % sasl_mech)
+                modified_conn_opts = self.connection_options
+                modified_conn_opts['sasl_mechanisms'] = sasl_mech
+                self._qpid_conn = establish(**modified_conn_opts)
+                # connection was successful if we got this far
+                logger.info("Connected to qpid with SASL mechanism %s" % sasl_mech)
+                break
+            except ConnectionError as conn_exc:
+                coded_as_auth_failure = getattr(conn_exc, 'code', None) == 320
+                contains_auth_fail_text = 'Authentication failed' in conn_exc.text
+                contains_mech_fail_text = 'sasl negotiation failed: no mechanism agreed'\
+                                          in conn_exc.text
+                if coded_as_auth_failure or contains_auth_fail_text or contains_mech_fail_text:
+                    logger.debug("Unable to connect to qpid with SASL mechanism %s" % sasl_mech)
+                    continue
+                raise
+
+        if not self.get_qpid_connection():
+            exc = sys.exc_info()
+            logger.error("Unable to authenticate to qpid using the following mechanisms: %s" %
+                         sasl_mechanisms)
+            raise AuthenticationFailure, exc[1], exc[2] # flake8: noqa
 
     def get_qpid_connection(self):
         """Return the existing connection (singleton).
@@ -1604,9 +1638,15 @@ class Transport(base.Transport):
         These connection parameters will be used whenever the creator of
         Transport does not specify a required parameter.
 
+        NOTE: password is set to '' by default instead of None so the a
+        connection is attempted[1]. An empty password is considered valid for
+        qpidd if "auth=no" is set on the server.
+
+        [1] https://issues.apache.org/jira/browse/QPID-6109
+
         :return: A dict containing the default parameters.
         :rtype: dict
         """
-        return {'userid': 'guest', 'password': 'guest',
+        return {'userid': 'guest', 'password': '',
                 'port': self.default_port, 'virtual_host': '',
                 'hostname': 'localhost', 'sasl_mechanisms': 'PLAIN ANONYMOUS'}
