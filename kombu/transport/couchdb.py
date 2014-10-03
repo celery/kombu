@@ -20,9 +20,11 @@ from kombu.utils.json import loads, dumps
 from . import virtual
 
 try:
-    import couchdb
+    import pycouchdb
+    from pycouchdb import exceptions
+    from requests import exceptions as requests_exceptions
 except ImportError:  # pragma: no cover
-    couchdb = None   # noqa
+    pycouchdb = exceptions = requests_exceptions = None   # noqa
 
 DEFAULT_PORT = 5984
 DEFAULT_DATABASE = 'kombu_default'
@@ -30,17 +32,22 @@ DEFAULT_DATABASE = 'kombu_default'
 __author__ = 'David Clymer <david@zettazebra.com>'
 
 
-def create_message_view(db):
-    from couchdb import design
-
-    view = design.ViewDefinition('kombu', 'messages', """
+def create_message_view(container):
+    _id = '_design/kombu'
+    try:
+        existing = container.get(_id)
+    except exceptions.NotFound:
+        existing = {'_id': _id, 'views': {}}
+    existing['language'] = 'javascript'
+    existing['views']['messages'] = {
+        'map': """
         function (doc) {
           if (doc.queue && doc.payload)
             emit(doc.queue, doc);
         }
-        """)
-    if not view.get_doc(db):
-        view.sync(db)
+        """
+    }
+    container.save(existing)
 
 
 class Channel(virtual.Channel):
@@ -58,14 +65,17 @@ class Channel(virtual.Channel):
         if not result:
             raise Empty()
 
-        item = result.rows[0].value
-        self.client.delete(item)
+        try:
+            item = result[0]['value']
+        except (KeyError, IndexError):
+            raise Empty()
+        self.client.delete(item['_id'])
         return loads(bytes_to_str(item['payload']))
 
     def _purge(self, queue):
         result = self._query(queue)
         for item in result:
-            self.client.delete(item.value)
+            self.client.delete(item['value']['_id'])
         return len(result)
 
     def _size(self, queue):
@@ -78,19 +88,18 @@ class Channel(virtual.Channel):
         if not dbname or dbname == '/':
             dbname = DEFAULT_DATABASE
         port = conninfo.port or DEFAULT_PORT
-        server = couchdb.Server('%s://%s:%s/' % (proto,
-                                                 conninfo.hostname,
-                                                 port))
-        # Use username and password if avaliable
+
+        if conninfo.userid and conninfo.password:
+            server = pycouchdb.Server('%s://%s:%s@%s:%s/' % (
+                proto, conninfo.userid, conninfo.password,
+                conninfo.hostname, port),
+                authmethod='basic')
+        else:
+            server = pycouchdb.Server('%s://%s:%s/' % (
+                proto, conninfo.hostname, port))
         try:
-            if conninfo.userid:
-                server.resource.credentials = (conninfo.userid,
-                                               conninfo.password)
-        except AttributeError:
-            pass
-        try:
-            return server[dbname]
-        except couchdb.http.ResourceNotFound:
+            return server.database(dbname)
+        except exceptions.NotFound:
             return server.create(dbname)
 
     def _query(self, queue, **kwargs):
@@ -98,7 +107,7 @@ class Channel(virtual.Channel):
             # if the message view is not yet set up, we'll need it now.
             create_message_view(self.client)
             self.view_created = True
-        return self.client.view('kombu/messages', key=queue, **kwargs)
+        return list(self.client.query('kombu/messages', key=queue, **kwargs))
 
     @property
     def client(self):
@@ -115,27 +124,30 @@ class Transport(virtual.Transport):
     connection_errors = (
         virtual.Transport.connection_errors + (
             socket.error,
-            getattr(couchdb, 'HTTPError', None),
-            getattr(couchdb, 'ServerError', None),
-            getattr(couchdb, 'Unauthorized', None),
+            getattr(exceptions, 'AuthenticationFailed', None),
+            getattr(requests_exceptions, 'HTTPError', None),
+            getattr(requests_exceptions, 'ConnectionError', None),
+            getattr(requests_exceptions, 'SSLError', None),
+            getattr(requests_exceptions, 'Timeout', None)
         )
     )
     channel_errors = (
         virtual.Transport.channel_errors + (
-            getattr(couchdb, 'HTTPError', None),
-            getattr(couchdb, 'ServerError', None),
-            getattr(couchdb, 'PreconditionFailed', None),
-            getattr(couchdb, 'ResourceConflict', None),
-            getattr(couchdb, 'ResourceNotFound', None),
+            getattr(exceptions, 'Error', None),
+            getattr(exceptions, 'UnexpectedError', None),
+            getattr(exceptions, 'NotFound', None),
+            getattr(exceptions, 'Conflict', None),
+            getattr(exceptions, 'ResourceNotFound', None),
+            getattr(exceptions, 'GenericError', None)
         )
     )
     driver_type = 'couchdb'
     driver_name = 'couchdb'
 
     def __init__(self, *args, **kwargs):
-        if couchdb is None:
-            raise ImportError('Missing couchdb library (pip install couchdb)')
+        if pycouchdb is None:
+            raise ImportError('Missing pycouchdb library (pip install pycouchdb)')  # noqa
         super(Transport, self).__init__(*args, **kwargs)
 
     def driver_version(self):
-        return couchdb.__version__
+        return pycouchdb.__version__
