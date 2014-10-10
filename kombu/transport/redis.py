@@ -143,7 +143,7 @@ class QoS(virtual.QoS):
                 .execute()
             super(QoS, self).append(message, delivery_tag)
 
-    def restore_unacked(self):
+    def restore_unacked(self, client=None):
         with self.channel.conn_or_acquire(client) as client:
             for tag in self._delivered:
                 self.restore_by_tag(tag, client=client)
