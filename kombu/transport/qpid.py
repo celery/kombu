@@ -1253,10 +1253,9 @@ class Connection(object):
                 raise
 
         if not self.get_qpid_connection():
-            exc = sys.exc_info()
             logger.error("Unable to authenticate to qpid using the following mechanisms: %s" %
                          sasl_mechanisms)
-            raise AuthenticationFailure, exc[1], exc[2] # flake8: noqa
+            raise AuthenticationFailure(sys.exc_info()[1]) # flake8: noqa
 
     def get_qpid_connection(self):
         """Return the existing connection (singleton).
