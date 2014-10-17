@@ -1476,7 +1476,7 @@ class Transport(base.Transport):
         """
         symbol = os.read(self.r, 1)
         if symbol == 'e':
-            raise self.session.exc_info[1], None, self.session.exc_info[2]
+            raise self.session.exc_info[0]()
         try:
             self.drain_events(connection)
         except socket.timeout:
