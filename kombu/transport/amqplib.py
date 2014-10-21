@@ -198,7 +198,7 @@ class Connection(amqp.Connection):  # pragma: no cover
     def read_timeout(self, timeout=None):
         if timeout is None:
             return self.method_reader.read_method()
-        sock = self.transport.sock
+        sock = self.transport.sslobj or self.transport.sock
         prev = sock.gettimeout()
         if prev != timeout:
             sock.settimeout(timeout)
