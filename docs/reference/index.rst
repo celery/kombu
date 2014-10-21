@@ -31,6 +31,7 @@
     kombu.transport
     kombu.transport.pyamqp
     kombu.transport.librabbitmq
+    kombu.transport.qpid
     kombu.transport.memory
     kombu.transport.redis
     kombu.transport.zmq

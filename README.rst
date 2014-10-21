@@ -22,7 +22,7 @@ Features
 * Allows application authors to support several message server
   solutions by using pluggable transports.
 
-    * AMQP transport using the `py-amqp`_ or `librabbitmq`_ client libraries.
+    * AMQP transport using the `py-amqp`_, `librabbitmq`_, or `qpid-python`_ client libraries.
 
     * High performance AMQP transport written in C - when using `librabbitmq`_
 
@@ -60,6 +60,7 @@ and the `Wikipedia article about AMQP`_.
 .. _`RabbitMQ`: http://www.rabbitmq.com/
 .. _`AMQP`: http://amqp.org
 .. _`py-amqp`: http://pypi.python.org/pypi/amqp/
+.. _`qpid-python`: http://pypi.python.org/pypi/qpid-python/
 .. _`Redis`: http://code.google.com/p/redis/
 .. _`Amazon SQS`: http://aws.amazon.com/sqs/
 .. _`MongoDB`: http://www.mongodb.org/
@@ -85,6 +86,8 @@ Transport Comparison
 | **Client**    | **Type** | **Direct** | **Topic**  | **Fanout**    |
 +---------------+----------+------------+------------+---------------+
 | *amqp*        | Native   | Yes        | Yes        | Yes           |
++---------------+----------+------------+------------+---------------+
+| *qpid*        | Native   | Yes        | Yes        | Yes           |
 +---------------+----------+------------+------------+---------------+
 | *redis*       | Virtual  | Yes        | Yes        | Yes (PUB/SUB) |
 +---------------+----------+------------+------------+---------------+

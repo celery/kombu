@@ -4,6 +4,19 @@
  Change history
 ================
 
+.. _version-3.0.24:
+
+3.0.24
+======
+:release-date:
+:release-by:
+
+- The `Qpid <http://qpid.apache.org/>`_ broker is supported for Python 2.x
+  environments. The Qpid transport includes full SSL support within Kombu. See
+  the :mod:`kombu.transport.qpid` docs for more info.
+
+    Contributed by Brian Bouterse and Chris Duryee through support from Red Hat.
+
 .. _version-3.0.23:
 
 3.0.23
