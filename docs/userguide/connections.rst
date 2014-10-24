@@ -10,7 +10,7 @@ Basics
 ======
 
 To send and receive messages you need a transport and a connection.
-There are several transports to choose from (amqp, librabbitmq, redis, in-memory, etc.),
+There are several transports to choose from (amqp, librabbitmq, redis, qpid, in-memory, etc.),
 and you can even create your own. The default transport is amqp.
 
 Create a connection using the default transport::
@@ -73,6 +73,9 @@ All of these are valid URLs::
     # Using Redis over a Unix socket
     redis+socket:///tmp/redis.sock
 
+    # Using Qpid
+    qpid://localhost/
+
     # Using virtual host '/foo'
     amqp://localhost//foo
 
@@ -114,10 +117,10 @@ keyword arguments, these are:
 :transport: Default transport if not provided in the URL.
   Can be a string specifying the path to the class. (e.g.
   ``kombu.transport.pyamqp:Transport``), or one of the aliases:
-  ``pyamqp``, ``librabbitmq``, ``redis``, ``memory``, and so on.
+  ``pyamqp``, ``librabbitmq``, ``redis``, ``qpid``, ``memory``, and so on.
 
 :ssl: Use SSL to connect to the server. Default is ``False``.
-  Only supported by the amqp transport.
+  Only supported by the amqp and qpid transports.
 :insist: Insist on connecting to a server.
   *No longer supported, relic from AMQP 0.8*
 :connect_timeout: Timeout in seconds for connecting to the
@@ -129,7 +132,7 @@ keyword arguments, these are:
 AMQP Transports
 ===============
 
-There are 3 transports available for AMQP use.
+There are 4 transports available for AMQP use.
 
 1. ``pyamqp`` uses the pure Python library ``amqp``, automatically
    installed with Kombu.
@@ -137,6 +140,9 @@ There are 3 transports available for AMQP use.
    This requires the ``librabbitmq`` Python package to be installed, which
    automatically compiles the C library.
 3. ``amqp`` tries to use ``librabbitmq`` but falls back to ``pyamqp``.
+4. ``qpid`` uses the pure Python library ``qpid.messaging``, automatically
+   installed with Kombu.  The Qpid library uses AMQP, but uses custom
+   extensions specifically supported by the Apache Qpid Broker.
 
 For the highest performance, you should install the ``librabbitmq`` package.
 To ensure librabbitmq is used, you can explicitly specify it in the
@@ -149,6 +155,8 @@ Transport Comparison
 | **Client**    | **Type** | **Direct** | **Topic**  | **Fanout**    |
 +---------------+----------+------------+------------+---------------+
 | *amqp*        | Native   | Yes        | Yes        | Yes           |
++---------------+----------+------------+------------+---------------+
+| *qpid*        | Native   | Yes        | Yes        | Yes           |
 +---------------+----------+------------+------------+---------------+
 | *redis*       | Virtual  | Yes        | Yes        | Yes (PUB/SUB) |
 +---------------+----------+------------+------------+---------------+
