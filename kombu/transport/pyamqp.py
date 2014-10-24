@@ -93,6 +93,9 @@ class Transport(base.Transport):
     def drain_events(self, connection, **kwargs):
         return connection.drain_events(**kwargs)
 
+    def _collect(self, connection):
+        connection.collect()
+
     def establish_connection(self):
         """Establish connection to the AMQP broker."""
         conninfo = self.client
