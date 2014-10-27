@@ -135,6 +135,7 @@ extras_require = extra['extras_require'] = {
     'librabbitmq': extras('librabbitmq.txt'),
     'pyro': extras('pyro.txt'),
     'slmq': extras('slmq.txt'),
+    'qpid': extras('qpid.txt'),
 }
 
 extras_require[':python_version=="2.6"'] = reqs('py26.txt')

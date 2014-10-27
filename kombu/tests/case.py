@@ -192,3 +192,28 @@ def skip_if_not_module(module, import_errors=(ImportError, )):
 
 def skip_if_quick(fun):
     return skip_if_environ('QUICKTEST')(fun)
+
+
+def case_no_pypy(cls):
+    setup = cls.setUp
+
+    @wraps(setup)
+    def around_setup(self):
+        if getattr(sys, 'pypy_version_info', None):
+            raise SkipTest('pypy incompatible')
+        setup(self)
+    cls.setUp = around_setup
+    return cls
+
+
+def case_no_python3(cls):
+    setup = cls.setUp
+
+    @wraps(setup)
+    def around_setup(self):
+        if PY3:
+            raise SkipTest('Python3 incompatible')
+        setup(self)
+    cls.setUp = around_setup
+    return cls
+
