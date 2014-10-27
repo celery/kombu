@@ -1,5 +1,7 @@
 from __future__ import absolute_import
 
+import django
+
 from django.db import models
 from django.utils.translation import ugettext_lazy as _
 
@@ -12,6 +14,8 @@ class Queue(models.Model):
     objects = QueueManager()
 
     class Meta:
+        if django.VERSION >= (1, 7):
+            app_label = 'kombu_transport_django'
         db_table = 'djkombu_queue'
         verbose_name = _('queue')
         verbose_name_plural = _('queues')
@@ -27,6 +31,8 @@ class Message(models.Model):
     objects = MessageManager()
 
     class Meta:
+        if django.VERSION >= (1, 7):
+            app_label = 'kombu_transport_django'
         db_table = 'djkombu_message'
         verbose_name = _('message')
         verbose_name_plural = _('messages')
