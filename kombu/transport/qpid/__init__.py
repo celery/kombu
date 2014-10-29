@@ -73,7 +73,7 @@ from kombu.utils.compat import OrderedDict
 logger = get_logger(__name__)
 
 ## The Following Import Applies Monkey Patches at Import Time ##
-from . import qpid_patches  # noqa
+from . import patches  # noqa
 ################################################################
 
 
