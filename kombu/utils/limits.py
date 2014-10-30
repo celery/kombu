@@ -21,7 +21,9 @@ class TokenBucket(object):
 
     .. admonition:: Thread safety
 
-        This implementation may not be thread safe.
+        This implementation is not thread safe. Access to a `TokenBucket`
+        instance should occur within the critical section of any multithreaded
+        code.
 
     """
 
@@ -42,7 +44,10 @@ class TokenBucket(object):
 
     def can_consume(self, tokens=1):
         """Return :const:`True` if the number of tokens can be consumed
-        from the bucket."""
+        from the bucket.  If they can be consumed, a call will also consume the
+        requested number of tokens from the bucket. Calls will only consume
+        `tokens` (the number requested) or zero tokens -- it will never consume
+        a partial number of tokens."""
         if tokens <= self._get_tokens():
             self._tokens -= tokens
             return True
@@ -50,11 +55,7 @@ class TokenBucket(object):
 
     def expected_time(self, tokens=1):
         """Return the time (in seconds) when a new token is expected
-        to be available.
-
-        This will also consume a token from the bucket.
-
-        """
+        to be available. This will not consume any tokens from the bucket."""
         _tokens = self._get_tokens()
         tokens = max(tokens, _tokens)
         return (tokens - _tokens) / self.fill_rate
