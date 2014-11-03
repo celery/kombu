@@ -94,7 +94,6 @@ to the ``news`` exchange:
 .. code-block:: python
 
     from kombu import Connection, Exchange
-    from kombu.common import maybe_declare
     from kombu.pools import producers
 
     # The exchange we send our news articles to.
@@ -108,12 +107,13 @@ to the ``news`` exchange:
     connection = Connection('amqp://guest:guest@localhost:5672//')
 
     with producers[connection].acquire(block=True) as producer:
-        # maybe_declare knows what entities have already been declared
-        # so we don't have to do so multiple times in the same process.
-        maybe_declare(news_exchange)
-        producer.publish(article, routing_key='domestic',
-                                  serializer='json',
-                                  compression='zlib')
+        producer.publish(
+            article,
+            exchange=new_exchange,
+            routing_key='domestic',
+            declare=[news_exchange],
+            serializer='json',
+            compression='zlib')
 
 .. _default-pool-limits:
 
