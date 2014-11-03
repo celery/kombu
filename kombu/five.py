@@ -41,8 +41,13 @@ if sys.version_info < (3, 3):
     import platform
     SYSTEM = platform.system()
 
-    if SYSTEM == 'Darwin':
+    has_ctypes = True
+    try:
         import ctypes
+    except ImportError:
+        has_ctypes = False
+
+    if SYSTEM == 'Darwin' and has_ctypes:
         from ctypes.util import find_library
         libSystem = ctypes.CDLL('libSystem.dylib')
         CoreServices = ctypes.CDLL(find_library('CoreServices'),
@@ -56,10 +61,9 @@ if sys.version_info < (3, 3):
         def _monotonic():
             return absolute_to_nanoseconds(mach_absolute_time()) * 1e-9
 
-    elif SYSTEM == 'Linux':
+    elif SYSTEM == 'Linux' and has_ctypes:
         # from stackoverflow:
         # questions/1205722/how-do-i-get-monotonic-time-durations-in-python
-        import ctypes
         import os
 
         CLOCK_MONOTONIC = 1  # see <linux/time.h>
