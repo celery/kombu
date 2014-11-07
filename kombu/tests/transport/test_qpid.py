@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 
 import datetime
+import pkg_resources
 import select
 import ssl
 import socket
@@ -9,6 +10,7 @@ import threading
 import time
 
 from itertools import count
+from functools import wraps
 
 from mock import call
 
@@ -24,6 +26,28 @@ from kombu.utils.compat import OrderedDict
 
 
 QPID_MODULE = 'kombu.transport.qpid'
+
+
+def disable_runtime_dependency_check(cls):
+    """A decorator to disable runtime dependency checking"""
+    setup = cls.setUp
+    teardown = cls.tearDown
+    dependency_is_none_patcher = patch(QPID_MODULE + '.dependency_is_none')
+
+    @wraps(setup)
+    def around_setup(self):
+        mock_dependency_is_none = dependency_is_none_patcher.start()
+        mock_dependency_is_none.return_value = False
+        setup(self)
+
+    @wraps(setup)
+    def around_teardown(self):
+        dependency_is_none_patcher.stop()
+        teardown(self)
+
+    cls.setUp = around_setup
+    cls.tearDown = around_teardown
+    return cls
 
 
 class ExtraAssertionsMixin(object):
@@ -1470,6 +1494,7 @@ class TestReceiversMonitorMonitorReceivers(ReceiversMonitorTestBase):
 
 @case_no_python3
 @case_no_pypy
+@disable_runtime_dependency_check
 class TestTransportInit(Case):
 
     def setUp(self):
@@ -1519,6 +1544,7 @@ class TestTransportInit(Case):
 
 @case_no_python3
 @case_no_pypy
+@disable_runtime_dependency_check
 class TestTransportDrainEvents(Case):
 
     def setUp(self):
@@ -1571,6 +1597,7 @@ class TestTransportDrainEvents(Case):
 
 @case_no_python3
 @case_no_pypy
+@disable_runtime_dependency_check
 class TestTransportCreateChannel(Case):
 
     def setUp(self):
@@ -1592,6 +1619,7 @@ class TestTransportCreateChannel(Case):
 
 @case_no_python3
 @case_no_pypy
+@disable_runtime_dependency_check
 class TestTransportEstablishConnection(Case):
 
     def setUp(self):
@@ -1793,6 +1821,7 @@ class TestTransportClassAttributes(Case):
 
 @case_no_python3
 @case_no_pypy
+@disable_runtime_dependency_check
 class TestTransportRegisterWithEventLoop(Case):
 
     def test_transport_register_with_event_loop_calls_add_reader(self):
@@ -1807,6 +1836,7 @@ class TestTransportRegisterWithEventLoop(Case):
 
 @case_no_python3
 @case_no_pypy
+@disable_runtime_dependency_check
 class TestTransportOnReadable(Case):
 
     def setUp(self):
@@ -1851,6 +1881,7 @@ class TestTransportOnReadable(Case):
 
 @case_no_python3
 @case_no_pypy
+@disable_runtime_dependency_check
 class TestTransportVerifyRuntimeEnvironment(Case):
 
     def setUp(self):
@@ -1863,18 +1894,35 @@ class TestTransportVerifyRuntimeEnvironment(Case):
         self.patch_a.stop()
 
     @patch(QPID_MODULE + '.PY3', new=True)
-    def test_transport_verify_runtime_env_raises_exception_for_Python3(self):
+    def test_verify_runtime_env_raises_exception_for_Python3(self):
         self.assertRaises(RuntimeError, self.verify_runtime_environment,
                           self.transport)
 
     @patch('__builtin__.getattr')
-    def test_transport_verify_runtime_env_raises_exc_for_PyPy(self,
+    def test_verify_runtime_env_raises_exc_for_PyPy(self,
                                                               mock_getattr):
         mock_getattr.return_value = True
         self.assertRaises(RuntimeError, self.verify_runtime_environment,
                           self.transport)
 
-    def test_transport_verify_runtime_env_raises_no_exception(self):
+    @patch(QPID_MODULE + '.dependency_is_none')
+    def test_verify_runtime_env_raises_exc_dep_missing(self,
+                                                       mock_dep_is_none):
+        mock_dep_is_none.return_value = True
+        self.assertRaises(RuntimeError, self.verify_runtime_environment, self.transport)
+
+    @patch(QPID_MODULE + '.dependency_is_none')
+    def test_verify_runtime_env_calls_dependency_is_none(self,
+                                                         mock_dep_is_none):
+        mock_dep_is_none.return_value = False
+        try:
+            self.verify_runtime_environment(self.transport)
+        except Exception:
+            self.fail(
+                "verify_runtime_environment raised an unexpected Exception")
+        self.assertTrue(mock_dep_is_none.called)
+
+    def test_verify_runtime_env_raises_no_exception(self):
         try:
             self.verify_runtime_environment(self.transport)
         except Exception:
@@ -1884,6 +1932,7 @@ class TestTransportVerifyRuntimeEnvironment(Case):
 
 @case_no_python3
 @case_no_pypy
+@disable_runtime_dependency_check
 class TestTransport(ExtraAssertionsMixin, Case):
 
     def setUp(self):

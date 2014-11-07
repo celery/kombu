@@ -72,10 +72,6 @@ from kombu.utils.compat import OrderedDict
 
 logger = get_logger(__name__)
 
-## The Following Import Applies Monkey Patches at Import Time ##
-from . import patches  # noqa
-################################################################
-
 
 DEFAULT_PORT = 5672
 
@@ -85,6 +81,17 @@ VERSION = (1, 0, 0)
 __version__ = '.'.join(map(str, VERSION))
 
 PY3 = sys.version_info[0] == 3
+
+
+def dependency_is_none(dependency):
+    """
+    Return True if the dependency is None, otherwise False. This is done
+    using a function so that tests can mock this behavior easily.
+
+    :param dependency: The module to check if it is None
+    :return: True if dependency is None otherwise False.
+    """
+    return dependency is None
 
 
 class AuthenticationFailure(Exception):
@@ -1445,14 +1452,32 @@ class Transport(base.Transport):
         This method is called as part of __init__ and raises a RuntimeError
         in Python3 or PyPi environments. This module is not compatible with
         Python3 or PyPi. The RuntimeError identifies this to the user up
-        front along with suggesting Python 2.7 be used instead.
+        front along with suggesting Python 2.6+ be used instead.
+
+        This method also checks that the dependencies qpidtoollibs and
+        qpid.messaging are installed. If either one is not installed a
+        RuntimeError is raised.
+
+        :raises: RuntimeError if the runtime environment is not acceptable.
         """
         if getattr(sys, 'pypy_version_info', None):
-            raise RuntimeError('The Qpid transport for Kombu does not '
-                               'support PyPy. Try using Python 2.7')
+            raise RuntimeError("The Qpid transport for Kombu does not "
+                               "support PyPy. Try using Python 2.6+")
         if PY3:
-            raise RuntimeError('The Qpid transport for Kombu does not '
-                               'support Python 3. Try using Python 2.7')
+            raise RuntimeError("The Qpid transport for Kombu does not "
+                               "support Python 3. Try using Python 2.6+")
+
+        if dependency_is_none(qpidtoollibs):
+            raise RuntimeError(
+                "The Python package 'qpidtoollibs' is missing. Install it "
+                "with your package manager. You can also try `pip install "
+                "qpid-tools`.")
+
+        if dependency_is_none(qpid):
+            raise RuntimeError(
+                "The Python package 'qpid.messaging' is missing. Install it "
+                "with your package manager. You can also try `pip install "
+                "qpid-python`.")
 
     def on_readable(self, connection, loop):
         """Handle any messages associated with this Transport.
