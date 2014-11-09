@@ -255,9 +255,10 @@ class MultiChannelPoller(object):
         self._channels.discard(channel)
 
     def _on_connection_disconnect(self, connection):
-        sock = getattr(connection, '_sock', None)
-        if sock is not None:
-            self.poller.unregister(sock)
+        try:
+            self.poller.unregister(connection._sock)
+        except (AttributeError, TypeError):
+            pass
 
     def _register(self, channel, client, type):
         if (channel, client, type) in self._chan_to_sock:
