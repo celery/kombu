@@ -216,4 +216,3 @@ def case_no_python3(cls):
         setup(self)
     cls.setUp = around_setup
     return cls
-
