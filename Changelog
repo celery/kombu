@@ -8,7 +8,7 @@
 
 3.0.24
 ======
-:release-date: 2014-11-17 02:45 P.M UTC
+:release-date: 2014-11-17 11:00 P.M UTC
 :release-by: Ask Solem
 
 - The `Qpid <http://qpid.apache.org/>`_ broker is supported for Python 2.x
