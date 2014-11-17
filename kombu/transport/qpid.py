@@ -16,16 +16,16 @@ command:
 
 `pip install qpid-tools qpid-python`
 
-    .. admonition:: Python 3 and PyPy Limitations
+.. admonition:: Python 3 and PyPy Limitations
 
-        The Qpid transport does not support Python 3 or PyPy environments due
-        to underlying dependencies not being compatible. This version is
-        tested and works with with Python 2.7.
+    The Qpid transport does not support Python 3 or PyPy environments due
+    to underlying dependencies not being compatible. This version is
+    tested and works with with Python 2.7.
 
-    .. admonition:: Potential Deadlock
+.. admonition:: Potential Deadlock
 
-        This transport should be used with caution due to a known
-        potential deadlock. See `Issue 2199`_ for more details.
+    This transport should be used with caution due to a known
+    potential deadlock. See `Issue 2199`_ for more details.
 
 """
 from __future__ import absolute_import
@@ -84,12 +84,12 @@ PY3 = sys.version_info[0] == 3
 
 
 def dependency_is_none(dependency):
-    """
-    Return True if the dependency is None, otherwise False. This is done
+    """Return True if the dependency is None, otherwise False. This is done
     using a function so that tests can mock this behavior easily.
 
     :param dependency: The module to check if it is None
     :return: True if dependency is None otherwise False.
+
     """
     return dependency is None
 
@@ -122,19 +122,19 @@ class QpidMessagingExceptionHandler(object):
         """
         self.allowed_exception_string = allowed_exception_string
 
-    def __call__(self, original_func):
+    def __call__(self, original_fun):
         """The decorator method.
 
         Method that wraps the actual function with exception silencing
         functionality. Any exception that contains the string
         self.allowed_exception_string in the message will be silenced.
 
-        :param original_func: function that is automatically passed in
+        :param original_fun: function that is automatically passed in
         when this object is used as a decorator.
-        :type original_func: function
+        :type original_fun: function
 
         :return: A function that decorates (wraps) the original function.
-        :rtype: func
+        :rtype: function
         """
 
         def decorator(*args, **kwargs):
@@ -143,9 +143,9 @@ class QpidMessagingExceptionHandler(object):
             a try/except block that can silence errors.
             """
             try:
-                return original_func(*args, **kwargs)
-            except Exception as error:
-                if self.allowed_exception_string not in error.message:
+                return original_fun(*args, **kwargs)
+            except Exception as exc:
+                if self.allowed_exception_string not in str(exc):
                     raise
 
         return decorator
@@ -641,9 +641,9 @@ class Channel(base.StdChannel):
             options['qpid.policy_type'] = 'ring'
         try:
             self._broker.addQueue(queue, options=options)
-        except Exception as err:
-            if OBJECT_ALREADY_EXISTS_STRING not in err.message:
-                raise err
+        except Exception as exc:
+            if OBJECT_ALREADY_EXISTS_STRING not in str(exc):
+                raise exc
         queue_to_check = self._broker.getQueue(queue)
         message_count = queue_to_check.values['msgDepth']
         consumer_count = queue_to_check.values['consumerCount']
@@ -1162,7 +1162,7 @@ class Channel(base.StdChannel):
         qpid_exchange = self._broker.getExchange(exchange)
         if qpid_exchange:
             qpid_exchange_attributes = qpid_exchange.getAttributes()
-            return qpid_exchange_attributes["type"]
+            return qpid_exchange_attributes['type']
         else:
             return default
 
@@ -1250,34 +1250,47 @@ class Connection(object):
         # behavior since it will select the first suitable mech. Unsuitable
         # mechs will be rejected by the server.
 
-        sasl_mechanisms = [x for x in connection_options['sasl_mechanisms'].split() \
+        _saslm = connection_options['sasl_mechanisms'].split()
+        sasl_mechanisms = [x for x in _saslm
                            if x != self.SASL_ANONYMOUS_MECH]
-        if self.SASL_ANONYMOUS_MECH in connection_options['sasl_mechanisms'].split():
+        if self.SASL_ANONYMOUS_MECH in _saslm:
             sasl_mechanisms.append(self.SASL_ANONYMOUS_MECH)
 
         for sasl_mech in sasl_mechanisms:
             try:
-                logger.debug("Attempting to connect to qpid with SASL mechanism %s" % sasl_mech)
+                logger.debug(
+                    'Attempting to connect to qpid '
+                    'with SASL mechanism %s', sasl_mech,
+                )
                 modified_conn_opts = self.connection_options
                 modified_conn_opts['sasl_mechanisms'] = sasl_mech
                 self._qpid_conn = establish(**modified_conn_opts)
                 # connection was successful if we got this far
-                logger.info("Connected to qpid with SASL mechanism %s" % sasl_mech)
+                logger.info(
+                    'Connected to qpid with SASL mechanism %s', sasl_mech,
+                )
                 break
             except ConnectionError as conn_exc:
                 coded_as_auth_failure = getattr(conn_exc, 'code', None) == 320
-                contains_auth_fail_text = 'Authentication failed' in conn_exc.text
-                contains_mech_fail_text = 'sasl negotiation failed: no mechanism agreed'\
-                                          in conn_exc.text
-                if coded_as_auth_failure or contains_auth_fail_text or contains_mech_fail_text:
-                    logger.debug("Unable to connect to qpid with SASL mechanism %s" % sasl_mech)
+                contains_auth_fail_text = \
+                    'Authentication failed' in conn_exc.text
+                contains_mech_fail_text = \
+                    'sasl negotiation failed: no mechanism agreed' \
+                    in conn_exc.text
+                if coded_as_auth_failure or \
+                        contains_auth_fail_text or contains_mech_fail_text:
+                    logger.debug(
+                        'Unable to connect to qpid with SASL mechanism %s',
+                        sasl_mech,
+                    )
                     continue
                 raise
 
         if not self.get_qpid_connection():
-            exc = sys.exc_info()
-            logger.error("Unable to authenticate to qpid using the following mechanisms: %s" %
-                         sasl_mechanisms)
+            logger.error(
+                'Unable to authenticate to qpid using '
+                'the following mechanisms: %s', sasl_mechanisms,
+            )
             raise AuthenticationFailure(sys.exc_info()[1])
 
     def get_qpid_connection(self):
@@ -1364,12 +1377,12 @@ class ReceiversMonitor(threading.Thread):
         while True:
             try:
                 self.monitor_receivers()
-            except Exception as error:
-                if isinstance(error, Transport.connection_errors):
-                    self._session.saved_exception = error
-                    os.write(self._w_fd, 'e')
-                    return
-                logger.error(error)
+            except Transport.connection_errors as exc:
+                self._session.saved_exception = exc
+                os.write(self._w_fd, 'e')
+                break
+            except Exception as exc:
+                logger.error(exc, exc_info=1)
             time.sleep(10)
 
     def monitor_receivers(self):
@@ -1461,23 +1474,27 @@ class Transport(base.Transport):
         :raises: RuntimeError if the runtime environment is not acceptable.
         """
         if getattr(sys, 'pypy_version_info', None):
-            raise RuntimeError("The Qpid transport for Kombu does not "
-                               "support PyPy. Try using Python 2.6+")
+            raise RuntimeError(
+                'The Qpid transport for Kombu does not '
+                'support PyPy. Try using Python 2.6+',
+            )
         if PY3:
-            raise RuntimeError("The Qpid transport for Kombu does not "
-                               "support Python 3. Try using Python 2.6+")
+            raise RuntimeError(
+                'The Qpid transport for Kombu does not '
+                'support Python 3. Try using Python 2.6+',
+            )
 
         if dependency_is_none(qpidtoollibs):
             raise RuntimeError(
-                "The Python package 'qpidtoollibs' is missing. Install it "
-                "with your package manager. You can also try `pip install "
-                "qpid-tools`.")
+                'The Python package "qpidtoollibs" is missing. Install it '
+                'with your package manager. You can also try `pip install '
+                'qpid-tools`.')
 
         if dependency_is_none(qpid):
             raise RuntimeError(
-                "The Python package 'qpid.messaging' is missing. Install it "
-                "with your package manager. You can also try `pip install "
-                "qpid-python`.")
+                'The Python package "qpid.messaging" is missing. Install it '
+                'with your package manager. You can also try `pip install '
+                'qpid-python`.')
 
     def on_readable(self, connection, loop):
         """Handle any messages associated with this Transport.

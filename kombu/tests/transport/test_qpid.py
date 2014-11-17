@@ -1,7 +1,5 @@
 from __future__ import absolute_import
 
-import datetime
-import pkg_resources
 import select
 import ssl
 import socket
@@ -9,12 +7,13 @@ import sys
 import threading
 import time
 
+from collections import Callable
 from itertools import count
 from functools import wraps
 
 from mock import call
 
-import kombu.five
+from kombu.five import Empty, keys, range, monotonic
 from kombu.transport.qpid import AuthenticationFailure, QoS, Message
 from kombu.transport.qpid import QpidMessagingExceptionHandler, Channel
 from kombu.transport.qpid import Connection, ReceiversMonitor, Transport
@@ -23,7 +22,6 @@ from kombu.transport.virtual import Base64
 from kombu.tests.case import Case, Mock, case_no_pypy, case_no_python3
 from kombu.tests.case import patch
 from kombu.utils.compat import OrderedDict
-
 
 QPID_MODULE = 'kombu.transport.qpid'
 
@@ -53,7 +51,7 @@ def disable_runtime_dependency_check(cls):
 class ExtraAssertionsMixin(object):
     """A mixin class adding assertDictEqual and assertDictContainsSubset"""
 
-    def assertDictEqual(self, a, b):
+    def assertDictEqual(self, a, b, msg=None):
         """
         Test that two dictionaries are equal.
 
@@ -62,17 +60,17 @@ class ExtraAssertionsMixin(object):
         Also asserts that the value of each key is the same in a and b using
         the is operator.
         """
-        self.assertEqual(set(a.keys()), set(b.keys()))
-        for key in a.keys():
+        self.assertEqual(set(keys(a)), set(keys(b)))
+        for key in keys(a):
             self.assertEqual(a[key], b[key])
 
-    def assertDictContainsSubset(self, a, b):
+    def assertDictContainsSubset(self, a, b, msg=None):
         """
         Assert that all the key/value pairs in a exist in b.
         """
-        for key in a.keys():
-            self.assertTrue(key in b)
-            self.assertTrue(a[key] == b[key])
+        for key in keys(a):
+            self.assertIn(key, b)
+            self.assertEqual(a[key], b[key])
 
 
 class MockException(Exception):
@@ -101,29 +99,24 @@ class TestQpidMessagingExceptionHandler(Case):
 
     def test_exception_positive(self):
         """Assert that an exception is silenced if it contains the
-        allowed_string text
-        """
+        allowed_string text."""
         exception_to_raise = Exception(self.allowed_string)
 
-        def exception_raise_func():
+        def exception_raise_fun():
             raise exception_to_raise
-        decorated_func = self.handler(exception_raise_func)
-        try:
-            decorated_func()
-        except:
-            self.fail("QpidMessagingExceptionHandler allowed an exception "
-                      "to be raised that should have been silenced!")
+        decorated_fun = self.handler(exception_raise_fun)
+        decorated_fun()
 
     def test_exception_negative(self):
         """Assert that an exception that does not contain the
-        allowed_string text is properly raised
-        """
+        allowed_string text is properly raised."""
         exception_to_raise = Exception(self.not_allowed_string)
 
-        def exception_raise_func():
+        def exception_raise_fun():
             raise exception_to_raise
-        decorated_func = self.handler(exception_raise_func)
-        self.assertRaises(Exception, decorated_func)
+        decorated_fun = self.handler(exception_raise_fun)
+        with self.assertRaises(Exception):
+            decorated_fun()
 
 
 @case_no_python3
@@ -142,7 +135,7 @@ class TestQoS__init__(Case):
         self.assertEqual(qos_limit_two.prefetch_count, 1)
 
     def test__init___not_yet_acked_is_initialized(self):
-        self.assertTrue(isinstance(self.qos._not_yet_acked, OrderedDict))
+        self.assertIsInstance(self.qos._not_yet_acked, OrderedDict)
 
 
 @case_no_python3
@@ -198,9 +191,9 @@ class TestQoSAck(Case):
     def test_ack_pops__not_yet_acked(self):
         message = Mock()
         self.qos.append(message, 1)
-        self.assertTrue(1 in self.qos._not_yet_acked)
+        self.assertIn(1, self.qos._not_yet_acked)
         self.qos.ack(1)
-        self.assertTrue(1 not in self.qos._not_yet_acked)
+        self.assertNotIn(1, self.qos._not_yet_acked)
 
     def test_ack_calls_session_acknowledge_with_message(self):
         message = Mock()
@@ -228,9 +221,9 @@ class TestQoSReject(Case):
 
     def test_reject_pops__not_yet_acked(self):
         self.qos.append(self.mock_message, 1)
-        self.assertTrue(1 in self.qos._not_yet_acked)
+        self.assertIn(1, self.qos._not_yet_acked)
         self.qos.reject(1)
-        self.assertTrue(1 not in self.qos._not_yet_acked)
+        self.assertNotIn(1, self.qos._not_yet_acked)
 
     def test_reject_requeue_true(self):
         self.qos.append(self.mock_message, 1)
@@ -238,7 +231,8 @@ class TestQoSReject(Case):
         self.mock_Disposition.assert_called_with(self.mock_RELEASED)
         self.qos.session.acknowledge.assert_called_with(
             message=self.mock_message,
-            disposition=self.mock_Disposition.return_value)
+            disposition=self.mock_Disposition.return_value,
+        )
 
     def test_reject_requeue_false(self):
         message = Mock()
@@ -246,7 +240,8 @@ class TestQoSReject(Case):
         self.qos.reject(1, requeue=False)
         self.mock_Disposition.assert_called_with(self.mock_REJECTED)
         self.qos.session.acknowledge.assert_called_with(
-            message=message, disposition=self.mock_Disposition.return_value)
+            message=message, disposition=self.mock_Disposition.return_value,
+        )
 
 
 @case_no_python3
@@ -256,8 +251,8 @@ class TestQoS(Case):
     def mock_message_factory(self):
         """Create and return a mock message tag and delivery_tag."""
         m_delivery_tag = self.delivery_tag_generator.next()
-        m = 'message %s' % m_delivery_tag
-        return (m, m_delivery_tag)
+        m = 'message %s' % (m_delivery_tag, )
+        return m, m_delivery_tag
 
     def add_n_messages_to_qos(self, n, qos):
         """Add N mock messages into the passed in qos object"""
@@ -290,12 +285,12 @@ class TestQoS(Case):
         length_not_yet_acked = len(qos._not_yet_acked)
         self.assertEqual(length_not_yet_acked, 1)
         checked_message1 = qos._not_yet_acked[m1_tag]
-        self.assertTrue(m1 is checked_message1)
+        self.assertIs(m1, checked_message1)
         qos.append(m2, m2_tag)
         length_not_yet_acked = len(qos._not_yet_acked)
         self.assertEqual(length_not_yet_acked, 2)
         checked_message2 = qos._not_yet_acked[m2_tag]
-        self.assertTrue(m2 is checked_message2)
+        self.assertIs(m2, checked_message2)
 
     def test_get(self):
         """Append two messages, and use get to receive them"""
@@ -306,8 +301,8 @@ class TestQoS(Case):
         qos.append(m2, m2_tag)
         message1 = qos.get(m1_tag)
         message2 = qos.get(m2_tag)
-        self.assertTrue(m1 is message1)
-        self.assertTrue(m2 is message2)
+        self.assertIs(m1, message1)
+        self.assertIs(m2, message2)
 
 
 @case_no_python3
@@ -316,13 +311,15 @@ class ConnectionTestBase(Case):
 
     @patch(QPID_MODULE + '.qpid')
     def setUp(self, mock_qpid):
-        self.connection_options = {'host': 'localhost',
-                                   'port': 5672,
-                                   'username': 'guest',
-                                   'password': '',
-                                   'transport': 'tcp',
-                                   'timeout': 10,
-                                   'sasl_mechanisms': 'ANONYMOUS PLAIN'}
+        self.connection_options = {
+            'host': 'localhost',
+            'port': 5672,
+            'username': 'guest',
+            'password': '',
+            'transport': 'tcp',
+            'timeout': 10,
+            'sasl_mechanisms': 'ANONYMOUS PLAIN',
+        }
         self.mock_qpid_connection = mock_qpid.messaging.Connection
         self.conn = Connection(**self.connection_options)
 
@@ -336,77 +333,79 @@ class TestConnectionInit(ExtraAssertionsMixin, ConnectionTestBase):
         # options should all be passed through as-is
         modified_conn_opts = self.connection_options
         modified_conn_opts['sasl_mechanisms'] = 'PLAIN'
-        self.assertDictEqual(modified_conn_opts,
-                             self.conn.connection_options)
+        self.assertDictEqual(
+            modified_conn_opts, self.conn.connection_options,
+        )
 
     def test_connection__init__variables(self):
-        self.assertTrue(isinstance(self.conn.channels, list))
-        self.assertTrue(isinstance(self.conn._callbacks, dict))
+        self.assertIsInstance(self.conn.channels, list)
+        self.assertIsInstance(self.conn._callbacks, dict)
 
     def test_connection__init__establishes_connection(self):
         modified_conn_opts = self.connection_options
         modified_conn_opts['sasl_mechanisms'] = 'PLAIN'
-        self.mock_qpid_connection.establish.assert_called_with(**modified_conn_opts)
+        self.mock_qpid_connection.establish.assert_called_with(
+            **modified_conn_opts
+        )
 
     def test_connection__init__saves_established_connection(self):
         created_conn = self.mock_qpid_connection.establish.return_value
-        self.assertTrue(self.conn._qpid_conn is created_conn)
+        self.assertIs(self.conn._qpid_conn, created_conn)
 
     @patch(QPID_MODULE + '.ConnectionError', new=(MockException, ))
     @patch(QPID_MODULE + '.sys.exc_info')
     @patch(QPID_MODULE + '.qpid')
-    def test_connection__init__mutates_ConnError_by_message(self, mock_qpid,
-                                                            mock_exc_info):
+    def test_init_mutates_ConnError_by_message(self, mock_qpid, mock_exc_info):
         my_conn_error = MockException()
         my_conn_error.text = 'connection-forced: Authentication failed(320)'
         mock_qpid.messaging.Connection.establish.side_effect = my_conn_error
-        mock_exc_info.return_value = ('a', 'b', None)
+        mock_exc_info.return_value = 'a', 'b', None
         try:
             self.conn = Connection(**self.connection_options)
         except AuthenticationFailure as error:
             exc_info = sys.exc_info()
-            self.assertTrue(not isinstance(error, MockException))
-            self.assertTrue(exc_info[1] is 'b')
-            self.assertTrue(exc_info[2] is None)
+            self.assertNotIsInstance(error, MockException)
+            self.assertIs(exc_info[1], 'b')
+            self.assertIsNone(exc_info[2])
         else:
             self.fail('ConnectionError type was not mutated correctly')
 
     @patch(QPID_MODULE + '.ConnectionError', new=(MockException, ))
     @patch(QPID_MODULE + '.sys.exc_info')
     @patch(QPID_MODULE + '.qpid')
-    def test_connection__init__mutates_ConnError_by_code(self, mock_qpid,
-                                                         mock_exc_info):
+    def test__init_mutates_ConnError_by_code(self, mock_qpid, mock_exc_info):
         my_conn_error = MockException()
         my_conn_error.code = 320
         my_conn_error.text = 'someothertext'
         mock_qpid.messaging.Connection.establish.side_effect = my_conn_error
-        mock_exc_info.return_value = ('a', 'b', None)
+        mock_exc_info.return_value = 'a', 'b', None
         try:
             self.conn = Connection(**self.connection_options)
         except AuthenticationFailure as error:
             exc_info = sys.exc_info()
-            self.assertTrue(not isinstance(error, MockException))
-            self.assertTrue(exc_info[1] is 'b')
-            self.assertTrue(exc_info[2] is None)
+            self.assertNotIsInstance(error, MockException)
+            self.assertIs(exc_info[1], 'b')
+            self.assertIsNone(exc_info[2])
         else:
             self.fail('ConnectionError type was not mutated correctly')
 
     @patch(QPID_MODULE + '.ConnectionError', new=(MockException, ))
     @patch(QPID_MODULE + '.sys.exc_info')
     @patch(QPID_MODULE + '.qpid')
-    def test_connection__init__unknown_connection_error(self, mock_qpid, mock_exc_info):
-        # If we get a connection error that we don't understand, bubble it up as-is
+    def test_init_unknown_connection_error(self, mock_qpid, mock_exc_info):
+        # If we get a connection error that we don't understand,
+        # bubble it up as-is
         my_conn_error = MockException()
         my_conn_error.code = 999
         my_conn_error.text = 'someothertext'
         mock_qpid.messaging.Connection.establish.side_effect = my_conn_error
-        mock_exc_info.return_value = ('a', 'b', None)
+        mock_exc_info.return_value = 'a', 'b', None
         try:
             self.conn = Connection(**self.connection_options)
         except Exception as error:
             self.assertTrue(error.code == 999)
         else:
-            self.fail("Connection should have thrown an exception")
+            self.fail('Connection should have thrown an exception')
 
     @patch.object(Transport, 'channel_errors', new=(MockException, ))
     @patch(QPID_MODULE + '.qpid')
@@ -416,7 +415,8 @@ class TestConnectionInit(ExtraAssertionsMixin, ConnectionTestBase):
         my_conn_error = SyntaxError()
         my_conn_error.text = 'some non auth related error message'
         mock_Qpid_Connection.establish.side_effect = my_conn_error
-        self.assertRaises(SyntaxError, Connection, **self.connection_options)
+        with self.assertRaises(SyntaxError):
+            Connection(**self.connection_options)
 
     @patch(QPID_MODULE + '.qpid')
     @patch(QPID_MODULE + '.ConnectionError', new=IOError)
@@ -425,7 +425,8 @@ class TestConnectionInit(ExtraAssertionsMixin, ConnectionTestBase):
         my_conn_error = IOError()
         my_conn_error.text = 'some non auth related error message'
         mock_Qpid_Connection.establish.side_effect = my_conn_error
-        self.assertRaises(IOError, Connection, **self.connection_options)
+        with self.assertRaises(IOError):
+            Connection(**self.connection_options)
 
 
 @case_no_python3
@@ -443,7 +444,7 @@ class TestConnectionGetQpidConnection(ConnectionTestBase):
     def test_connection_get_qpid_connection(self):
         self.conn._qpid_conn = Mock()
         returned_connection = self.conn.get_qpid_connection()
-        self.assertTrue(self.conn._qpid_conn is returned_connection)
+        self.assertIs(self.conn._qpid_conn, returned_connection)
 
 
 @case_no_python3
@@ -461,17 +462,14 @@ class TestConnectionCloseChannel(ConnectionTestBase):
 
     def test_connection_close_channel_handles_ValueError_being_raised(self):
         self.conn.channels.remove = Mock(side_effect=ValueError())
-        try:
-            self.conn.close_channel(Mock())
-        except ValueError:
-            self.fail('ValueError should not have been raised')
+        self.conn.close_channel(Mock())
 
     def test_connection_close_channel_set_channel_connection_to_None(self):
         mock_channel = Mock()
         mock_channel.connection = False
         self.conn.channels.remove = Mock(side_effect=ValueError())
         self.conn.close_channel(mock_channel)
-        self.assertTrue(mock_channel.connection is None)
+        self.assertIsNone(mock_channel.connection)
 
 
 @case_no_python3
@@ -508,7 +506,7 @@ class TestChannelPurge(ChannelTestBase):
         queue_obj = self.mock_broker_agent.return_value.getQueue.return_value
         queue_obj.values = values
         self.channel._purge(self.mock_queue)
-        self.assertTrue(not queue_obj.purge.called)
+        self.assertFalse(queue_obj.purge.called)
 
     def test_channel__purge_purges_all_messages_from_queue(self):
         values = {'msgDepth': 5}
@@ -522,7 +520,7 @@ class TestChannelPurge(ChannelTestBase):
         queue_obj = self.mock_broker_agent.return_value.getQueue.return_value
         queue_obj.values = values
         result = self.channel._purge(self.mock_queue)
-        self.assertTrue(result is 5)
+        self.assertEqual(result, 5)
 
 
 @case_no_python3
@@ -537,14 +535,17 @@ class TestChannelPut(ChannelTestBase):
 
         self.channel._put(routing_key, mock_message)
 
-        address_string = '%s; {assert: always, node: {type: queue}}' % \
-                         routing_key
-        self.transport.session.sender.assert_called_with(address_string)
-        mock_Message_cls.assert_called_with(content=mock_message,
-                                            subject=None)
+        address_str = '{0}; {{assert: always, node: {{type: queue}}}}'.format(
+            routing_key,
+        )
+        self.transport.session.sender.assert_called_with(address_str)
+        mock_Message_cls.assert_called_with(
+            content=mock_message, subject=None,
+        )
         mock_sender = self.transport.session.sender.return_value
-        mock_sender.send.assert_called_with(mock_Message_cls.return_value,
-                                            sync=True)
+        mock_sender.send.assert_called_with(
+            mock_Message_cls.return_value, sync=True,
+        )
         mock_sender.close.assert_called_with()
 
     @patch(QPID_MODULE + '.qpid')
@@ -556,14 +557,17 @@ class TestChannelPut(ChannelTestBase):
 
         self.channel._put(mock_routing_key, mock_message, mock_exchange_name)
 
-        address_string = '%s/%s; {assert: always, node: {type: topic}}' % \
-                         (mock_exchange_name, mock_routing_key)
-        self.transport.session.sender.assert_called_with(address_string)
-        mock_Message_cls.assert_called_with(content=mock_message,
-                                            subject=mock_routing_key)
+        addrstr = '{0}/{1}; {{assert: always, node: {{type: topic}}}}'.format(
+            mock_exchange_name, mock_routing_key,
+        )
+        self.transport.session.sender.assert_called_with(addrstr)
+        mock_Message_cls.assert_called_with(
+            content=mock_message, subject=mock_routing_key,
+        )
         mock_sender = self.transport.session.sender.return_value
-        mock_sender.send.assert_called_with(mock_Message_cls.return_value,
-                                            sync=True)
+        mock_sender.send.assert_called_with(
+            mock_Message_cls.return_value, sync=True,
+        )
         mock_sender.close.assert_called_with()
 
 
@@ -580,7 +584,7 @@ class TestChannelGet(ChannelTestBase):
         mock_rx = self.transport.session.receiver.return_value
         mock_rx.fetch.assert_called_once_with(timeout=0)
         mock_rx.close.assert_called_once_with()
-        self.assertTrue(mock_rx.fetch.return_value is result)
+        self.assertIs(mock_rx.fetch.return_value, result)
 
 
 @case_no_python3
@@ -593,8 +597,9 @@ class TestChannelClose(ChannelTestBase):
         self.mock_basic_cancel = self.patch_basic_cancel.start()
         self.mock_receiver1 = Mock()
         self.mock_receiver2 = Mock()
-        self.channel._receivers = {1: self.mock_receiver1,
-                                   2: self.mock_receiver2}
+        self.channel._receivers = {
+            1: self.mock_receiver1, 2: self.mock_receiver2,
+        }
         self.channel.closed = False
 
     def tearDown(self):
@@ -620,12 +625,12 @@ class TestChannelClose(ChannelTestBase):
     def test_channel_close_does_nothing_if_already_closed(self):
         self.channel.closed = True
         self.channel.close()
-        self.assertTrue(not self.mock_basic_cancel.called)
+        self.assertFalse(self.mock_basic_cancel.called)
 
     def test_channel_close_does_not_call_close_channel_if_conn_is_None(self):
         self.channel.connection = None
         self.channel.close()
-        self.assertTrue(not self.conn.close_channel.called)
+        self.assertFalse(self.conn.close_channel.called)
 
 
 @case_no_python3
@@ -634,7 +639,7 @@ class TestChannelBasicQoS(ChannelTestBase):
 
     def test_channel_basic_qos_always_returns_one(self):
         self.channel.basic_qos(2)
-        self.assertTrue(self.channel.qos.prefetch_count is 1)
+        self.assertEqual(self.channel.qos.prefetch_count, 1)
 
 
 @case_no_python3
@@ -655,8 +660,9 @@ class TestChannelBasicGet(ChannelTestBase):
         mock_queue = Mock()
         self.channel.basic_get(mock_queue)
         mock_raw_message = self.channel._get.return_value.content
-        self.channel.Message.assert_called_once_with(self.channel,
-                                                     mock_raw_message)
+        self.channel.Message.assert_called_once_with(
+            self.channel, mock_raw_message,
+        )
 
     def test_channel_basic_get_acknowledges_message_by_default(self):
         mock_queue = Mock()
@@ -683,14 +689,14 @@ class TestChannelBasicGet(ChannelTestBase):
         mock_queue = Mock()
         basic_get_result = self.channel.basic_get(mock_queue)
         expected_message = self.channel.Message.return_value
-        self.assertTrue(expected_message is basic_get_result)
+        self.assertIs(expected_message, basic_get_result)
 
     def test_basic_get_returns_None_when_channel__get_raises_Empty(self):
         mock_queue = Mock()
-        self.channel._get = Mock(side_effect=kombu.five.Empty)
+        self.channel._get = Mock(side_effect=Empty)
         basic_get_result = self.channel.basic_get(mock_queue)
         self.assertEqual(self.channel.Message.call_count, 0)
-        self.assertTrue(basic_get_result is None)
+        self.assertIsNone(basic_get_result)
 
 
 @case_no_python3
@@ -706,7 +712,7 @@ class TestChannelBasicCancel(ChannelTestBase):
 
     def test_channel_basic_cancel_pops_receiver(self):
         self.channel.basic_cancel(1)
-        self.assertTrue(1 not in self.channel._receivers)
+        self.assertNotIn(1, self.channel._receivers)
 
     def test_channel_basic_cancel_closes_receiver(self):
         mock_receiver = self.channel._receivers[1]
@@ -730,15 +736,15 @@ class TestChannelBasicCancel(ChannelTestBase):
 class TestChannelInit(ChannelTestBase, ExtraAssertionsMixin):
 
     def test_channel___init__sets_variables_as_expected(self):
-        self.assertTrue(self.conn is self.channel.connection)
-        self.assertTrue(self.transport is self.channel.transport)
+        self.assertIs(self.conn, self.channel.connection)
+        self.assertIs(self.transport, self.channel.transport)
         self.assertFalse(self.channel.closed)
         self.conn.get_qpid_connection.assert_called_once_with()
         expected_broker_agent = self.mock_broker_agent.return_value
-        self.assertTrue(self.channel._broker is expected_broker_agent)
+        self.assertIs(self.channel._broker, expected_broker_agent)
         self.assertDictEqual(self.channel._tag_to_queue, {})
         self.assertDictEqual(self.channel._receivers, {})
-        self.assertTrue(self.channel._qos is None)
+        self.assertIs(self.channel._qos, None)
 
 
 @case_no_python3
@@ -759,9 +765,8 @@ class TestChannelBasicConsume(ChannelTestBase, ExtraAssertionsMixin):
     def test_channel_basic_consume_adds_entry_to_connection__callbacks(self):
         mock_queue = Mock()
         self.channel.basic_consume(mock_queue, Mock(), Mock(), Mock())
-        self.assertTrue(mock_queue in self.conn._callbacks)
-        if not hasattr(self.conn._callbacks[mock_queue], '__call__'):
-            self.fail('Callback stored must be callable')
+        self.assertIn(mock_queue, self.conn._callbacks)
+        self.assertIsInstance(self.conn._callbacks[mock_queue], Callable)
 
     def test_channel_basic_consume_creates_new_receiver(self):
         mock_queue = Mock()
@@ -793,8 +798,9 @@ class TestChannelBasicConsume(ChannelTestBase, ExtraAssertionsMixin):
         mock_qpid_message = Mock()
         callback(mock_qpid_message)
         mock_content = mock_qpid_message.content
-        self.channel.Message.assert_called_once_with(self.channel,
-                                                     mock_content)
+        self.channel.Message.assert_called_once_with(
+            self.channel, mock_content,
+        )
 
     def test_channel_basic_consume_callback_adds_message_to_QoS(self):
         self.channel._qos = Mock()
@@ -802,8 +808,9 @@ class TestChannelBasicConsume(ChannelTestBase, ExtraAssertionsMixin):
         mock_qpid_message = Mock()
         callback(mock_qpid_message)
         mock_delivery_tag = self.channel.Message.return_value.delivery_tag
-        self.channel._qos.append.assert_called_once_with(mock_qpid_message,
-                                                         mock_delivery_tag)
+        self.channel._qos.append.assert_called_once_with(
+            mock_qpid_message, mock_delivery_tag,
+        )
 
     def test_channel_basic_consume_callback_gratuitously_acks(self):
         self.channel.basic_ack = Mock()
@@ -818,7 +825,7 @@ class TestChannelBasicConsume(ChannelTestBase, ExtraAssertionsMixin):
         callback = self.get_callback(no_ack=False)
         mock_qpid_message = Mock()
         callback(mock_qpid_message)
-        self.assertTrue(not self.channel.basic_ack.called)
+        self.assertFalse(self.channel.basic_ack.called)
 
     def test_channel_basic_consume_callback_calls_real_callback(self):
         self.channel.basic_ack = Mock()
@@ -857,13 +864,13 @@ class TestChannelQueueDelete(ChannelTestBase):
     def test_channel_queue_delete_does_nothing_if_queue_does_not_exist(self):
         self.mock__has_queue.return_value = False
         self.channel.queue_delete(self.mock_queue)
-        self.assertTrue(not self.mock__delete.called)
+        self.assertFalse(self.mock__delete.called)
 
     def test_channel_queue_delete__not_empty_and_if_empty_True_no_delete(self):
         self.mock__size.return_value = 1
         self.channel.queue_delete(self.mock_queue, if_empty=True)
         mock_broker = self.mock_broker_agent.return_value
-        self.assertTrue(not mock_broker.getQueue.called)
+        self.assertFalse(mock_broker.getQueue.called)
 
     def test_channel_queue_delete_calls_get_queue(self):
         self.channel.queue_delete(self.mock_queue)
@@ -879,7 +886,7 @@ class TestChannelQueueDelete(ChannelTestBase):
         queue_obj = self.mock_broker_agent.return_value.getQueue.return_value
         queue_obj.getAttributes.return_value = {'consumerCount': 1}
         self.channel.queue_delete(self.mock_queue, if_unused=True)
-        self.assertTrue(not self.mock__delete.called)
+        self.assertFalse(self.mock__delete.called)
 
     def test_channel_queue_delete_calls__delete_with_queue(self):
         self.channel.queue_delete(self.mock_queue)
@@ -895,28 +902,30 @@ class TestChannel(ExtraAssertionsMixin, Case):
         self.mock_connection = Mock()
         self.mock_qpid_connection = Mock()
         self.mock_qpid_session = Mock()
-        self.mock_qpid_connection.session = \
-            Mock(return_value=self.mock_qpid_session)
-        self.mock_connection.get_qpid_connection = \
-            Mock(return_value=self.mock_qpid_connection)
+        self.mock_qpid_connection.session = Mock(
+            return_value=self.mock_qpid_session,
+        )
+        self.mock_connection.get_qpid_connection = Mock(
+            return_value=self.mock_qpid_connection,
+        )
         self.mock_transport = Mock()
         self.mock_broker = Mock()
         self.mock_Message = Mock()
         self.mock_BrokerAgent = mock_qpidtoollibs.BrokerAgent
         self.mock_BrokerAgent.return_value = self.mock_broker
-        self.my_channel = Channel(self.mock_connection,
-                                  self.mock_transport)
+        self.my_channel = Channel(
+            self.mock_connection, self.mock_transport,
+        )
         self.my_channel.Message = self.mock_Message
 
     def test_verify_QoS_class_attribute(self):
         """Verify that the class attribute QoS refers to the QoS object"""
-        self.assertTrue(QoS is Channel.QoS)
+        self.assertIs(QoS, Channel.QoS)
 
     def test_verify_Message_class_attribute(self):
         """Verify that the class attribute Message refers to the Message
-        object
-        """
-        self.assertTrue(Message is Channel.Message)
+        object."""
+        self.assertIs(Message, Channel.Message)
 
     def test_body_encoding_class_attribute(self):
         """Verify that the class attribute body_encoding is set to base64"""
@@ -924,20 +933,18 @@ class TestChannel(ExtraAssertionsMixin, Case):
 
     def test_codecs_class_attribute(self):
         """Verify that the codecs class attribute has a correct key and
-        value
-        """
-        self.assertTrue(isinstance(Channel.codecs, dict))
-        self.assertTrue('base64' in Channel.codecs)
-        self.assertTrue(isinstance(Channel.codecs['base64'], Base64))
+        value."""
+        self.assertIsInstance(Channel.codecs, dict)
+        self.assertIn('base64', Channel.codecs)
+        self.assertIsInstance(Channel.codecs['base64'], Base64)
 
     def test_delivery_tags(self):
         """Test that _delivery_tags is using itertools"""
-        self.assertTrue(isinstance(Channel._delivery_tags, count))
+        self.assertIsInstance(Channel._delivery_tags, count)
 
     def test_size(self):
         """Test getting the number of messages in a queue specified by
-        name and returning them.
-        """
+        name and returning them."""
         message_count = 5
         mock_queue = Mock()
         mock_queue_to_check = Mock()
@@ -948,23 +955,23 @@ class TestChannel(ExtraAssertionsMixin, Case):
         self.assertEqual(message_count, result)
 
     def test_delete(self):
-        """Test deleting a queue calls purge and delQueue with queue name"""
+        """Test deleting a queue calls purge and delQueue with queue name."""
         mock_queue = Mock()
         self.my_channel._purge = Mock()
         result = self.my_channel._delete(mock_queue)
         self.my_channel._purge.assert_called_with(mock_queue)
         self.mock_broker.delQueue.assert_called_with(mock_queue)
-        self.assertTrue(result is None)
+        self.assertIsNone(result)
 
     def test_has_queue_true(self):
-        """Test checking if a queue exists, and it does"""
+        """Test checking if a queue exists, and it does."""
         mock_queue = Mock()
         self.mock_broker.getQueue.return_value = True
         result = self.my_channel._has_queue(mock_queue)
         self.assertTrue(result)
 
     def test_has_queue_false(self):
-        """Test checking if a queue exists, and it does not"""
+        """Test checking if a queue exists, and it does not."""
         mock_queue = Mock()
         self.mock_broker.getQueue.return_value = False
         result = self.my_channel._has_queue(mock_queue)
@@ -973,7 +980,7 @@ class TestChannel(ExtraAssertionsMixin, Case):
     @patch('amqp.protocol.queue_declare_ok_t')
     def test_queue_declare_with_exception_raised(self,
                                                  mock_queue_declare_ok_t):
-        """Test declare_queue, where an exception is raised and silenced"""
+        """Test declare_queue, where an exception is raised and silenced."""
         mock_queue = Mock()
         mock_passive = Mock()
         mock_durable = Mock()
@@ -984,51 +991,61 @@ class TestChannel(ExtraAssertionsMixin, Case):
         mock_msg_count = Mock()
         mock_queue.startswith.return_value = False
         mock_queue.endswith.return_value = False
-        options = {'passive': mock_passive,
-                   'durable': mock_durable,
-                   'exclusive': mock_exclusive,
-                   'auto-delete': mock_auto_delete,
-                   'arguments': mock_arguments}
+        options = {
+            'passive': mock_passive,
+            'durable': mock_durable,
+            'exclusive': mock_exclusive,
+            'auto-delete': mock_auto_delete,
+            'arguments': mock_arguments,
+        }
         mock_consumer_count = Mock()
         mock_return_value = Mock()
-        values_dict = {'msgDepth': mock_msg_count,
-                       'consumerCount': mock_consumer_count}
+        values_dict = {
+            'msgDepth': mock_msg_count,
+            'consumerCount': mock_consumer_count,
+        }
         mock_queue_data = Mock()
         mock_queue_data.values = values_dict
         exception_to_raise = Exception('The foo object already exists.')
         self.mock_broker.addQueue.side_effect = exception_to_raise
         self.mock_broker.getQueue.return_value = mock_queue_data
         mock_queue_declare_ok_t.return_value = mock_return_value
-        result = self.my_channel.queue_declare(mock_queue,
-                                               passive=mock_passive,
-                                               durable=mock_durable,
-                                               exclusive=mock_exclusive,
-                                               auto_delete=mock_auto_delete,
-                                               nowait=mock_nowait,
-                                               arguments=mock_arguments,
-                                               )
-        self.mock_broker.addQueue.assert_called_with(mock_queue,
-                                                     options=options)
-        mock_queue_declare_ok_t.assert_called_with(mock_queue,
-                                                   mock_msg_count,
-                                                   mock_consumer_count)
-        self.assertTrue(mock_return_value is result)
+        result = self.my_channel.queue_declare(
+            mock_queue,
+            passive=mock_passive,
+            durable=mock_durable,
+            exclusive=mock_exclusive,
+            auto_delete=mock_auto_delete,
+            nowait=mock_nowait,
+            arguments=mock_arguments,
+        )
+        self.mock_broker.addQueue.assert_called_with(
+            mock_queue, options=options,
+        )
+        mock_queue_declare_ok_t.assert_called_with(
+            mock_queue, mock_msg_count, mock_consumer_count,
+        )
+        self.assertIs(mock_return_value, result)
 
     def test_queue_declare_set_ring_policy_for_celeryev(self):
-        """Test declare_queue sets ring_policy for celeryev"""
+        """Test declare_queue sets ring_policy for celeryev."""
         mock_queue = Mock()
         mock_queue.startswith.return_value = True
         mock_queue.endswith.return_value = False
-        expected_default_options = {'passive': False,
-                                    'durable': False,
-                                    'exclusive': False,
-                                    'auto-delete': True,
-                                    'arguments': None,
-                                    'qpid.policy_type': 'ring'}
+        expected_default_options = {
+            'passive': False,
+            'durable': False,
+            'exclusive': False,
+            'auto-delete': True,
+            'arguments': None,
+            'qpid.policy_type': 'ring',
+        }
         mock_msg_count = Mock()
         mock_consumer_count = Mock()
-        values_dict = {'msgDepth': mock_msg_count,
-                       'consumerCount': mock_consumer_count}
+        values_dict = {
+            'msgDepth': mock_msg_count,
+            'consumerCount': mock_consumer_count,
+        }
         mock_queue_data = Mock()
         mock_queue_data.values = values_dict
         self.mock_broker.addQueue.return_value = None
@@ -1036,23 +1053,28 @@ class TestChannel(ExtraAssertionsMixin, Case):
         self.my_channel.queue_declare(mock_queue)
         mock_queue.startswith.assert_called_with('celeryev')
         self.mock_broker.addQueue.assert_called_with(
-            mock_queue, options=expected_default_options)
+            mock_queue, options=expected_default_options,
+        )
 
     def test_queue_declare_set_ring_policy_for_pidbox(self):
-        """Test declare_queue sets ring_policy for pidbox"""
+        """Test declare_queue sets ring_policy for pidbox."""
         mock_queue = Mock()
         mock_queue.startswith.return_value = False
         mock_queue.endswith.return_value = True
-        expected_default_options = {'passive': False,
-                                    'durable': False,
-                                    'exclusive': False,
-                                    'auto-delete': True,
-                                    'arguments': None,
-                                    'qpid.policy_type': 'ring'}
+        expected_default_options = {
+            'passive': False,
+            'durable': False,
+            'exclusive': False,
+            'auto-delete': True,
+            'arguments': None,
+            'qpid.policy_type': 'ring',
+        }
         mock_msg_count = Mock()
         mock_consumer_count = Mock()
-        values_dict = {'msgDepth': mock_msg_count,
-                       'consumerCount': mock_consumer_count}
+        values_dict = {
+            'msgDepth': mock_msg_count,
+            'consumerCount': mock_consumer_count,
+        }
         mock_queue_data = Mock()
         mock_queue_data.values = values_dict
         self.mock_broker.addQueue.return_value = None
@@ -1060,22 +1082,27 @@ class TestChannel(ExtraAssertionsMixin, Case):
         self.my_channel.queue_declare(mock_queue)
         mock_queue.endswith.assert_called_with('pidbox')
         self.mock_broker.addQueue.assert_called_with(
-            mock_queue, options=expected_default_options)
+            mock_queue, options=expected_default_options,
+        )
 
     def test_queue_declare_ring_policy_not_set_as_expected(self):
-        """Test declare_queue does not set ring_policy as expected"""
+        """Test declare_queue does not set ring_policy as expected."""
         mock_queue = Mock()
         mock_queue.startswith.return_value = False
         mock_queue.endswith.return_value = False
-        expected_default_options = {'passive': False,
-                                    'durable': False,
-                                    'exclusive': False,
-                                    'auto-delete': True,
-                                    'arguments': None}
+        expected_default_options = {
+            'passive': False,
+            'durable': False,
+            'exclusive': False,
+            'auto-delete': True,
+            'arguments': None,
+        }
         mock_msg_count = Mock()
         mock_consumer_count = Mock()
-        values_dict = {'msgDepth': mock_msg_count,
-                       'consumerCount': mock_consumer_count}
+        values_dict = {
+            'msgDepth': mock_msg_count,
+            'consumerCount': mock_consumer_count,
+        }
         mock_queue_data = Mock()
         mock_queue_data.values = values_dict
         self.mock_broker.addQueue.return_value = None
@@ -1084,22 +1111,27 @@ class TestChannel(ExtraAssertionsMixin, Case):
         mock_queue.startswith.assert_called_with('celeryev')
         mock_queue.endswith.assert_called_with('pidbox')
         self.mock_broker.addQueue.assert_called_with(
-            mock_queue, options=expected_default_options)
+            mock_queue, options=expected_default_options,
+        )
 
     def test_queue_declare_test_defaults(self):
-        """Test declare_queue defaults"""
+        """Test declare_queue defaults."""
         mock_queue = Mock()
         mock_queue.startswith.return_value = False
         mock_queue.endswith.return_value = False
-        expected_default_options = {'passive': False,
-                                    'durable': False,
-                                    'exclusive': False,
-                                    'auto-delete': True,
-                                    'arguments': None}
+        expected_default_options = {
+            'passive': False,
+            'durable': False,
+            'exclusive': False,
+            'auto-delete': True,
+            'arguments': None,
+        }
         mock_msg_count = Mock()
         mock_consumer_count = Mock()
-        values_dict = {'msgDepth': mock_msg_count,
-                       'consumerCount': mock_consumer_count}
+        values_dict = {
+            'msgDepth': mock_msg_count,
+            'consumerCount': mock_consumer_count,
+        }
         mock_queue_data = Mock()
         mock_queue_data.values = values_dict
         self.mock_broker.addQueue.return_value = None
@@ -1107,116 +1139,118 @@ class TestChannel(ExtraAssertionsMixin, Case):
         self.my_channel.queue_declare(mock_queue)
         self.mock_broker.addQueue.assert_called_with(
             mock_queue,
-            options=expected_default_options)
+            options=expected_default_options,
+        )
 
     def test_queue_declare_raises_exception_not_silenced(self):
         unique_exception = Exception('This exception should not be silenced')
         mock_queue = Mock()
         self.mock_broker.addQueue.side_effect = unique_exception
-        self.assertRaises(unique_exception.__class__,
-                          self.my_channel.queue_declare,
-                          mock_queue)
+        with self.assertRaises(unique_exception.__class__):
+            self.my_channel.queue_declare(mock_queue)
         self.mock_broker.addQueue.assert_called_once()
 
     def test_exchange_declare_raises_exception_and_silenced(self):
         """Create exchange where an exception is raised and then silenced"""
-        self.mock_broker.addExchange.side_effect = \
-            Exception('The foo object already exists.')
+        self.mock_broker.addExchange.side_effect = Exception(
+            'The foo object already exists.',
+        )
         self.my_channel.exchange_declare()
 
     def test_exchange_declare_raises_exception_not_silenced(self):
-        """Create Exchange where an exception is raised and not silenced"""
+        """Create Exchange where an exception is raised and not silenced."""
         unique_exception = Exception('This exception should not be silenced')
         self.mock_broker.addExchange.side_effect = unique_exception
-        self.assertRaises(unique_exception.__class__,
-                          self.my_channel.exchange_declare)
+        with self.assertRaises(unique_exception.__class__):
+            self.my_channel.exchange_declare()
 
     def test_exchange_declare(self):
-        """Create Exchange where an exception is NOT raised"""
+        """Create Exchange where an exception is NOT raised."""
         mock_exchange = Mock()
         mock_type = Mock()
         mock_durable = Mock()
         options = {'durable': mock_durable}
-        result = self.my_channel.exchange_declare(mock_exchange,
-                                                  mock_type,
-                                                  mock_durable)
-        self.mock_broker.addExchange.assert_called_with(mock_type,
-                                                        mock_exchange,
-                                                        options)
-        self.assertTrue(result is None)
+        result = self.my_channel.exchange_declare(
+            mock_exchange, mock_type, mock_durable,
+        )
+        self.mock_broker.addExchange.assert_called_with(
+            mock_type, mock_exchange, options,
+        )
+        self.assertIsNone(result)
 
     def test_exchange_delete(self):
-        """Test the deletion of an exchange by name"""
+        """Test the deletion of an exchange by name."""
         mock_exchange = Mock()
         result = self.my_channel.exchange_delete(mock_exchange)
         self.mock_broker.delExchange.assert_called_with(mock_exchange)
-        self.assertTrue(result is None)
+        self.assertIsNone(result)
 
     def test_queue_bind(self):
-        """Test binding a queue to an exchange using a routing key"""
+        """Test binding a queue to an exchange using a routing key."""
         mock_queue = Mock()
         mock_exchange = Mock()
         mock_routing_key = Mock()
-        self.my_channel.queue_bind(mock_queue,
-                                   mock_exchange,
-                                   mock_routing_key)
-        self.mock_broker.bind.assert_called_with(mock_exchange,
-                                                 mock_queue,
-                                                 mock_routing_key)
+        self.my_channel.queue_bind(
+            mock_queue, mock_exchange, mock_routing_key,
+        )
+        self.mock_broker.bind.assert_called_with(
+            mock_exchange, mock_queue, mock_routing_key,
+        )
 
     def test_queue_unbind(self):
-        """Test unbinding a queue from an exchange using a routing key"""
+        """Test unbinding a queue from an exchange using a routing key."""
         mock_queue = Mock()
         mock_exchange = Mock()
         mock_routing_key = Mock()
-        self.my_channel.queue_unbind(mock_queue,
-                                     mock_exchange,
-                                     mock_routing_key)
-        self.mock_broker.unbind.assert_called_with(mock_exchange,
-                                                   mock_queue,
-                                                   mock_routing_key)
+        self.my_channel.queue_unbind(
+            mock_queue, mock_exchange, mock_routing_key,
+        )
+        self.mock_broker.unbind.assert_called_with(
+            mock_exchange, mock_queue, mock_routing_key,
+        )
 
     def test_queue_purge(self):
-        """Test purging a queue by name"""
+        """Test purging a queue by name."""
         mock_queue = Mock()
         purge_result = Mock()
         self.my_channel._purge = Mock(return_value=purge_result)
         result = self.my_channel.queue_purge(mock_queue)
         self.my_channel._purge.assert_called_with(mock_queue)
-        self.assertTrue(purge_result is result)
+        self.assertIs(purge_result, result)
 
     @patch(QPID_MODULE + '.Channel.qos')
     def test_basic_ack(self, mock_qos):
-        """Test that basic_ack calls the QoS object properly"""
+        """Test that basic_ack calls the QoS object properly."""
         mock_delivery_tag = Mock()
         self.my_channel.basic_ack(mock_delivery_tag)
         mock_qos.ack.assert_called_with(mock_delivery_tag)
 
     @patch(QPID_MODULE + '.Channel.qos')
     def test_basic_reject(self, mock_qos):
-        """Test that basic_reject calls the QoS object properly"""
+        """Test that basic_reject calls the QoS object properly."""
         mock_delivery_tag = Mock()
         mock_requeue_value = Mock()
         self.my_channel.basic_reject(mock_delivery_tag, mock_requeue_value)
-        mock_qos.reject.assert_called_with(mock_delivery_tag,
-                                           requeue=mock_requeue_value)
+        mock_qos.reject.assert_called_with(
+            mock_delivery_tag, requeue=mock_requeue_value,
+        )
 
     def test_qos_manager_is_none(self):
-        """Test the qos property if the QoS object did not already exist"""
+        """Test the qos property if the QoS object did not already exist."""
         self.my_channel._qos = None
         result = self.my_channel.qos
-        self.assertTrue(isinstance(result, QoS))
+        self.assertIsInstance(result, QoS)
         self.assertEqual(result, self.my_channel._qos)
 
     def test_qos_manager_already_exists(self):
-        """Test the qos property if the QoS object already exists"""
+        """Test the qos property if the QoS object already exists."""
         mock_existing_qos = Mock()
         self.my_channel._qos = mock_existing_qos
         result = self.my_channel.qos
-        self.assertTrue(mock_existing_qos is result)
+        self.assertIs(mock_existing_qos, result)
 
     def test_prepare_message(self):
-        """Test that prepare_message() returns the correct result"""
+        """Test that prepare_message() returns the correct result."""
         mock_body = Mock()
         mock_priority = Mock()
         mock_content_encoding = Mock()
@@ -1235,13 +1269,14 @@ class TestChannel(ExtraAssertionsMixin, Case):
             content_encoding=mock_content_encoding,
             headers=headers,
             properties=properties)
-        self.assertTrue(mock_body is result['body'])
-        self.assertTrue(mock_content_encoding is result['content-encoding'])
-        self.assertTrue(mock_content_type is result['content-type'])
+        self.assertIs(mock_body, result['body'])
+        self.assertIs(mock_content_encoding, result['content-encoding'])
+        self.assertIs(mock_content_type, result['content-type'])
         self.assertDictEqual(headers, result['headers'])
         self.assertDictContainsSubset(properties, result['properties'])
-        self.assertTrue(mock_priority is
-                        result['properties']['delivery_info']['priority'])
+        self.assertIs(
+            mock_priority, result['properties']['delivery_info']['priority'],
+        )
 
     @patch('__builtin__.buffer')
     @patch(QPID_MODULE + '.Channel.body_encoding')
@@ -1251,36 +1286,43 @@ class TestChannel(ExtraAssertionsMixin, Case):
                            mock_encode_body,
                            mock_body_encoding,
                            mock_buffer):
-        """Test basic_publish()"""
+        """Test basic_publish()."""
         mock_original_body = Mock()
         mock_encoded_body = 'this is my encoded body'
         mock_message = {'body': mock_original_body,
                         'properties': {'delivery_info': {}}}
-        mock_encode_body.return_value = (mock_encoded_body,
-                                         mock_body_encoding)
+        mock_encode_body.return_value = (
+            mock_encoded_body, mock_body_encoding,
+        )
         mock_exchange = Mock()
         mock_routing_key = Mock()
         mock_encoded_buffered_body = Mock()
         mock_buffer.return_value = mock_encoded_buffered_body
-        self.my_channel.basic_publish(mock_message,
-                                      mock_exchange,
-                                      mock_routing_key)
-        mock_encode_body.assert_called_once(mock_original_body,
-                                            mock_body_encoding)
+        self.my_channel.basic_publish(
+            mock_message, mock_exchange, mock_routing_key,
+        )
+        mock_encode_body.assert_called_once(
+            mock_original_body, mock_body_encoding,
+        )
         mock_buffer.assert_called_once(mock_encode_body)
-        self.assertTrue(mock_message['body'] is mock_encoded_buffered_body)
-        self.assertTrue(mock_message['properties']['body_encoding'] is
-                        mock_body_encoding)
-        self.assertTrue(
-            isinstance(mock_message['properties']['delivery_tag'], int))
-        self.assertTrue(mock_message['properties']['delivery_info']
-                        ['exchange'] is mock_exchange)
-        self.assertTrue(
-            mock_message['properties']['delivery_info']['routing_key'] is
-            mock_routing_key)
-        mock_put.assert_called_with(mock_routing_key,
-                                    mock_message,
-                                    mock_exchange)
+        self.assertIs(mock_message['body'], mock_encoded_buffered_body)
+        self.assertIs(
+            mock_message['properties']['body_encoding'], mock_body_encoding,
+        )
+        self.assertIsInstance(
+            mock_message['properties']['delivery_tag'], int,
+        )
+        self.assertIs(
+            mock_message['properties']['delivery_info']['exchange'],
+            mock_exchange,
+        )
+        self.assertIs(
+            mock_message['properties']['delivery_info']['routing_key'],
+            mock_routing_key,
+        )
+        mock_put.assert_called_with(
+            mock_routing_key, mock_message, mock_exchange,
+        )
 
     @patch(QPID_MODULE + '.Channel.codecs')
     def test_encode_body_expected_encoding(self, mock_codecs):
@@ -1296,16 +1338,15 @@ class TestChannel(ExtraAssertionsMixin, Case):
 
     @patch(QPID_MODULE + '.Channel.codecs')
     def test_encode_body_not_expected_encoding(self, mock_codecs):
-        """Test if encode_body() works when encoding is not set correctly"""
+        """Test if encode_body() works when encoding is not set correctly."""
         mock_body = Mock()
-        result = self.my_channel.encode_body(mock_body,
-                                             encoding=None)
-        expected_result = (mock_body, None)
+        result = self.my_channel.encode_body(mock_body, encoding=None)
+        expected_result = mock_body, None
         self.assertEqual(expected_result, result)
 
     @patch(QPID_MODULE + '.Channel.codecs')
     def test_decode_body_expected_encoding(self, mock_codecs):
-        """Test if decode_body() works when encoding is set correctly"""
+        """Test if decode_body() works when encoding is set correctly."""
         mock_body = Mock()
         mock_decoder = Mock()
         mock_decoded_result = Mock()
@@ -1316,13 +1357,13 @@ class TestChannel(ExtraAssertionsMixin, Case):
 
     @patch(QPID_MODULE + '.Channel.codecs')
     def test_decode_body_not_expected_encoding(self, mock_codecs):
-        """Test if decode_body() works when encoding is not set correctly"""
+        """Test if decode_body() works when encoding is not set correctly."""
         mock_body = Mock()
         result = self.my_channel.decode_body(mock_body, encoding=None)
         self.assertEqual(mock_body, result)
 
     def test_typeof_exchange_exists(self):
-        """Test that typeof() finds an exchange that already exists"""
+        """Test that typeof() finds an exchange that already exists."""
         mock_exchange = Mock()
         mock_qpid_exchange = Mock()
         mock_attributes = {}
@@ -1331,15 +1372,15 @@ class TestChannel(ExtraAssertionsMixin, Case):
         mock_qpid_exchange.getAttributes.return_value = mock_attributes
         self.mock_broker.getExchange.return_value = mock_qpid_exchange
         result = self.my_channel.typeof(mock_exchange)
-        self.assertTrue(mock_type is result)
+        self.assertIs(mock_type, result)
 
     def test_typeof_exchange_does_not_exist(self):
-        """Test that typeof() finds an exchange that does not exists"""
+        """Test that typeof() finds an exchange that does not exists."""
         mock_exchange = Mock()
         mock_default = Mock()
         self.mock_broker.getExchange.return_value = None
         result = self.my_channel.typeof(mock_exchange, default=mock_default)
-        self.assertTrue(mock_default is result)
+        self.assertIs(mock_default, result)
 
 
 @case_no_python3
@@ -1357,7 +1398,7 @@ class ReceiversMonitorTestBase(Case):
 class TestReceiversMonitorType(ReceiversMonitorTestBase):
 
     def test_qpid_messaging_receivers_monitor_subclass_of_threading(self):
-        self.assertTrue(isinstance(self.monitor, threading.Thread))
+        self.assertIsInstance(self.monitor, threading.Thread)
 
 
 @case_no_python3
@@ -1374,10 +1415,10 @@ class TestReceiversMonitorInit(ReceiversMonitorTestBase):
         self.patch_parent___init__.stop()
 
     def test_qpid_messaging_receivers_monitor_init_saves_session(self):
-        self.assertTrue(self.monitor._session is self.mock_session)
+        self.assertIs(self.monitor._session, self.mock_session)
 
     def test_qpid_messaging_receivers_monitor_init_saves_fd(self):
-        self.assertTrue(self.monitor._w_fd is self.mock_w)
+        self.assertIs(self.monitor._w_fd, self.mock_w)
 
     def test_qpid_messaging_Receivers_monitor_init_calls_parent__init__(self):
         self.mock_Thread___init__.assert_called_once_with()
@@ -1392,7 +1433,8 @@ class TestReceiversMonitorRun(ReceiversMonitorTestBase):
     def test_receivers_monitor_run_calls_monitor_receivers(
             self, mock_sleep, mock_monitor_receivers):
         mock_sleep.side_effect = BreakOutException()
-        self.assertRaises(BreakOutException, self.monitor.run)
+        with self.assertRaises(BreakOutException):
+            self.monitor.run()
         mock_monitor_receivers.assert_called_once_with()
 
     @patch.object(Transport, 'connection_errors', new=(BreakOutException, ))
@@ -1404,8 +1446,9 @@ class TestReceiversMonitorRun(ReceiversMonitorTestBase):
         exc_to_raise = IOError()
         mock_monitor_receivers.side_effect = exc_to_raise
         mock_sleep.side_effect = BreakOutException()
-        self.assertRaises(BreakOutException, self.monitor.run)
-        mock_logger.error.assert_called_once_with(exc_to_raise)
+        with self.assertRaises(BreakOutException):
+            self.monitor.run()
+        mock_logger.error.assert_called_once_with(exc_to_raise, exc_info=1)
         mock_sleep.assert_called_once_with(10)
 
     @patch.object(ReceiversMonitor, 'monitor_receivers')
@@ -1414,9 +1457,9 @@ class TestReceiversMonitorRun(ReceiversMonitorTestBase):
             self, mock_sleep, mock_monitor_receivers):
         def return_once_raise_on_second_call(*args):
             mock_sleep.side_effect = BreakOutException()
-            return None
         mock_sleep.side_effect = return_once_raise_on_second_call
-        self.assertRaises(BreakOutException, self.monitor.run)
+        with self.assertRaises(BreakOutException):
+            self.monitor.run()
         mock_monitor_receivers.has_calls([call(), call()])
 
     @patch.object(Transport, 'connection_errors', new=(MockException, ))
@@ -1430,12 +1473,8 @@ class TestReceiversMonitorRun(ReceiversMonitorTestBase):
             mock_monitor_receivers):
         mock_monitor_receivers.side_effect = MockException()
         mock_sleep.side_effect = BreakOutException()
-        try:
-            self.monitor.run()
-        except Exception:
-            self.fail('ReceiversMonitor.run() should exit normally when '
-                      'recoverable error is caught')
-        self.assertTrue(not mock_logger.error.called)
+        self.monitor.run()
+        self.assertFalse(mock_logger.error.called)
 
     @patch.object(Transport, 'connection_errors', new=(MockException, ))
     @patch.object(ReceiversMonitor, 'monitor_receivers')
@@ -1447,13 +1486,11 @@ class TestReceiversMonitorRun(ReceiversMonitorTestBase):
             mock_monitor_receivers):
         mock_monitor_receivers.side_effect = MockException()
         mock_sleep.side_effect = BreakOutException()
-        try:
-            self.monitor.run()
-        except Exception:
-            self.fail('ReceiversMonitor.run() should exit normally when '
-                      'recoverable error is caught')
-        self.assertTrue(
-            self.mock_session.saved_exception is mock_monitor_receivers.side_effect)
+        self.monitor.run()
+        self.assertIs(
+            self.mock_session.saved_exception,
+            mock_monitor_receivers.side_effect,
+        )
 
     @patch.object(Transport, 'connection_errors', new=(MockException, ))
     @patch.object(ReceiversMonitor, 'monitor_receivers')
@@ -1466,11 +1503,7 @@ class TestReceiversMonitorRun(ReceiversMonitorTestBase):
             mock_monitor_receivers):
         mock_monitor_receivers.side_effect = MockException()
         mock_sleep.side_effect = BreakOutException()
-        try:
-            self.monitor.run()
-        except Exception:
-            self.fail('ReceiversMonitor.run() should exit normally when '
-                      'recoverable error is caught')
+        self.monitor.run()
         mock_os_write.assert_called_once_with(self.mock_w, 'e')
 
 
@@ -1480,15 +1513,15 @@ class TestReceiversMonitorMonitorReceivers(ReceiversMonitorTestBase):
 
     def test_receivers_monitor_monitor_receivers_calls_next_receivers(self):
         self.mock_session.next_receiver.side_effect = BreakOutException()
-        self.assertRaises(BreakOutException,
-                          self.monitor.monitor_receivers)
+        with self.assertRaises(BreakOutException):
+            self.monitor.monitor_receivers()
         self.mock_session.next_receiver.assert_called_once_with()
 
     def test_receivers_monitor_monitor_receivers_writes_to_fd(self):
         with patch(QPID_MODULE + '.os.write') as mock_os_write:
             mock_os_write.side_effect = BreakOutException()
-            self.assertRaises(BreakOutException,
-                              self.monitor.monitor_receivers)
+            with self.assertRaises(BreakOutException):
+                self.monitor.monitor_receivers()
             mock_os_write.assert_called_once_with(self.mock_w, '0')
 
 
@@ -1508,7 +1541,7 @@ class TestTransportInit(Case):
         self.mock_os = self.patch_c.start()
         self.mock_r = Mock()
         self.mock_w = Mock()
-        self.mock_os.pipe.return_value = (self.mock_r, self.mock_w)
+        self.mock_os.pipe.return_value = self.mock_r, self.mock_w
 
         self.patch_d = patch(QPID_MODULE + '.fcntl')
         self.mock_fcntl = self.patch_d.start()
@@ -1533,13 +1566,14 @@ class TestTransportInit(Case):
 
     def test_transport___init___saves_os_pipe_file_descriptors(self):
         transport = Transport(Mock())
-        self.assertTrue(transport.r is self.mock_r)
-        self.assertTrue(transport._w is self.mock_w)
+        self.assertIs(transport.r, self.mock_r)
+        self.assertIs(transport._w, self.mock_w)
 
     def test_transport___init___sets_non_blocking_behavior_on_r_fd(self):
         Transport(Mock())
         self.mock_fcntl.fcntl.assert_called_once_with(
-            self.mock_r,  self.mock_fcntl.F_SETFL,  self.mock_os.O_NONBLOCK)
+            self.mock_r,  self.mock_fcntl.F_SETFL,  self.mock_os.O_NONBLOCK,
+        )
 
 
 @case_no_python3
@@ -1566,25 +1600,23 @@ class TestTransportDrainEvents(Case):
     def test_socket_timeout_raised_when_all_receivers_empty(self):
         with patch(QPID_MODULE + '.QpidEmpty', new=MockException):
             self.transport.session.next_receiver.side_effect = MockException()
-            self.assertRaises(socket.timeout, self.transport.drain_events,
-                              Mock())
+            with self.assertRaises(socket.timeout):
+                self.transport.drain_events(Mock())
 
     def test_socket_timeout_raised_when_by_timeout(self):
         self.transport.session.next_receiver = self.mock_next_receiver
-        self.assertRaises(socket.timeout, self.transport.drain_events,
-                          self.mock_conn, timeout=1)
+        with self.assertRaises(socket.timeout):
+            self.transport.drain_events(self.mock_conn, timeout=1)
 
     def test_timeout_returns_no_earlier_then_asked_for(self):
         self.transport.session.next_receiver = self.mock_next_receiver
-        start_time = datetime.datetime.now()
+        start_time = monotonic()
         try:
             self.transport.drain_events(self.mock_conn, timeout=1)
         except socket.timeout:
             pass
-        end_time = datetime.datetime.now()
-        td = end_time - start_time
-        elapsed_time_in_s = (td.microseconds + td.seconds * 10**6) / 10**6
-        self.assertTrue(elapsed_time_in_s >= 1)
+        elapsed_time_in_s = monotonic() - start_time
+        self.assertGreaterEqual(elapsed_time_in_s, 1.0)
 
     def test_callback_is_called(self):
         self.transport.session.next_receiver = self.mock_next_receiver
@@ -1608,9 +1640,10 @@ class TestTransportCreateChannel(Case):
         self.returned_channel = self.transport.create_channel(self.mock_conn)
 
     def test_new_channel_created_from_connection(self):
-        self.assertTrue(self.mock_new_channel is self.returned_channel)
-        self.mock_conn.Channel.assert_called_with(self.mock_conn,
-                                                  self.transport)
+        self.assertIs(self.mock_new_channel, self.returned_channel)
+        self.mock_conn.Channel.assert_called_with(
+            self.mock_conn, self.transport,
+        )
 
     def test_new_channel_added_to_connection_channel_list(self):
         append_method = self.mock_conn.channels.append
@@ -1645,133 +1678,156 @@ class TestTransportEstablishConnection(Case):
         new_userid_string = 'new-userid'
         self.client.userid = new_userid_string
         self.transport.establish_connection()
-        self.mock_conn.assert_called_once_with(username=new_userid_string,
-                                               sasl_mechanisms='PLAIN ANONYMOUS',
-                                               host='127.0.0.1',
-                                               timeout=4,
-                                               password='',
-                                               port=5672,
-                                               transport='tcp')
+        self.mock_conn.assert_called_once_with(
+            username=new_userid_string,
+            sasl_mechanisms='PLAIN ANONYMOUS',
+            host='127.0.0.1',
+            timeout=4,
+            password='',
+            port=5672,
+            transport='tcp',
+        )
 
     def test_transport_establish_conn_sasl_mech_sorting(self):
         self.client.sasl_mechanisms = 'MECH1 MECH2'
         self.transport.establish_connection()
-        self.mock_conn.assert_called_once_with(username='guest',
-                                               sasl_mechanisms='MECH1 MECH2',
-                                               host='127.0.0.1',
-                                               timeout=4,
-                                               password='',
-                                               port=5672,
-                                               transport='tcp')
+        self.mock_conn.assert_called_once_with(
+            username='guest',
+            sasl_mechanisms='MECH1 MECH2',
+            host='127.0.0.1',
+            timeout=4,
+            password='',
+            port=5672,
+            transport='tcp',
+        )
 
     def test_transport_establish_conn_empty_client_is_default(self):
         self.transport.establish_connection()
-        self.mock_conn.assert_called_once_with(username='guest',
-                                               sasl_mechanisms='PLAIN ANONYMOUS',
-                                               host='127.0.0.1',
-                                               timeout=4,
-                                               password='',
-                                               port=5672,
-                                               transport='tcp')
+        self.mock_conn.assert_called_once_with(
+            username='guest',
+            sasl_mechanisms='PLAIN ANONYMOUS',
+            host='127.0.0.1',
+            timeout=4,
+            password='',
+            port=5672,
+            transport='tcp',
+        )
 
     def test_transport_establish_conn_additional_transport_option(self):
         new_param_value = 'mynewparam'
         self.client.transport_options['new_param'] = new_param_value
         self.transport.establish_connection()
-        self.mock_conn.assert_called_once_with(username='guest',
-                                               sasl_mechanisms='PLAIN ANONYMOUS',
-                                               host='127.0.0.1',
-                                               timeout=4,
-                                               new_param=new_param_value,
-                                               password='',
-                                               port=5672,
-                                               transport='tcp')
+        self.mock_conn.assert_called_once_with(
+            username='guest',
+            sasl_mechanisms='PLAIN ANONYMOUS',
+            host='127.0.0.1',
+            timeout=4,
+            new_param=new_param_value,
+            password='',
+            port=5672,
+            transport='tcp',
+        )
 
     def test_transport_establish_conn_transform_localhost_to_127_0_0_1(self):
         self.client.hostname = 'localhost'
         self.transport.establish_connection()
-        self.mock_conn.assert_called_once_with(username='guest',
-                                               sasl_mechanisms='PLAIN ANONYMOUS',
-                                               host='127.0.0.1',
-                                               timeout=4,
-                                               password='',
-                                               port=5672,
-                                               transport='tcp')
+        self.mock_conn.assert_called_once_with(
+            username='guest',
+            sasl_mechanisms='PLAIN ANONYMOUS',
+            host='127.0.0.1',
+            timeout=4,
+            password='',
+            port=5672,
+            transport='tcp',
+        )
 
     def test_transport_establish_conn_set_password(self):
         self.client.password = 'somepass'
         self.transport.establish_connection()
-        self.mock_conn.assert_called_once_with(username='guest',
-                                               sasl_mechanisms='PLAIN ANONYMOUS',
-                                               host='127.0.0.1',
-                                               timeout=4,
-                                               password='somepass',
-                                               port=5672,
-                                               transport='tcp')
+        self.mock_conn.assert_called_once_with(
+            username='guest',
+            sasl_mechanisms='PLAIN ANONYMOUS',
+            host='127.0.0.1',
+            timeout=4,
+            password='somepass',
+            port=5672,
+            transport='tcp',
+        )
 
     def test_transport_establish_conn_no_ssl_sets_transport_tcp(self):
         self.client.ssl = False
         self.transport.establish_connection()
-        self.mock_conn.assert_called_once_with(username='guest',
-                                               sasl_mechanisms='PLAIN ANONYMOUS',
-                                               host='127.0.0.1',
-                                               timeout=4,
-                                               password='',
-                                               port=5672,
-                                               transport='tcp')
+        self.mock_conn.assert_called_once_with(
+            username='guest',
+            sasl_mechanisms='PLAIN ANONYMOUS',
+            host='127.0.0.1',
+            timeout=4,
+            password='',
+            port=5672,
+            transport='tcp',
+        )
 
     def test_transport_establish_conn_with_ssl_with_hostname_check(self):
-        self.client.ssl = {'keyfile': 'my_keyfile',
-                           'certfile': 'my_certfile',
-                           'ca_certs': 'my_cacerts',
-                           'cert_reqs': ssl.CERT_REQUIRED}
+        self.client.ssl = {
+            'keyfile': 'my_keyfile',
+            'certfile': 'my_certfile',
+            'ca_certs': 'my_cacerts',
+            'cert_reqs': ssl.CERT_REQUIRED,
+        }
         self.transport.establish_connection()
-        self.mock_conn.assert_called_once_with(username='guest',
-                                               ssl_certfile='my_certfile',
-                                               ssl_trustfile='my_cacerts',
-                                               timeout=4,
-                                               ssl_skip_hostname_check=False,
-                                               sasl_mechanisms='PLAIN ANONYMOUS',
-                                               host='127.0.0.1',
-                                               ssl_keyfile='my_keyfile',
-                                               password='',
-                                               port=5672, transport='ssl')
+        self.mock_conn.assert_called_once_with(
+            username='guest',
+            ssl_certfile='my_certfile',
+            ssl_trustfile='my_cacerts',
+            timeout=4,
+            ssl_skip_hostname_check=False,
+            sasl_mechanisms='PLAIN ANONYMOUS',
+            host='127.0.0.1',
+            ssl_keyfile='my_keyfile',
+            password='',
+            port=5672, transport='ssl',
+        )
 
     def test_transport_establish_conn_with_ssl_skip_hostname_check(self):
-        self.client.ssl = {'keyfile': 'my_keyfile',
-                           'certfile': 'my_certfile',
-                           'ca_certs': 'my_cacerts',
-                           'cert_reqs': ssl.CERT_OPTIONAL}
+        self.client.ssl = {
+            'keyfile': 'my_keyfile',
+            'certfile': 'my_certfile',
+            'ca_certs': 'my_cacerts',
+            'cert_reqs': ssl.CERT_OPTIONAL,
+        }
         self.transport.establish_connection()
-        self.mock_conn.assert_called_once_with(username='guest',
-                                               ssl_certfile='my_certfile',
-                                               ssl_trustfile='my_cacerts',
-                                               timeout=4,
-                                               ssl_skip_hostname_check=True,
-                                               sasl_mechanisms='PLAIN ANONYMOUS',
-                                               host='127.0.0.1',
-                                               ssl_keyfile='my_keyfile',
-                                               password='',
-                                               port=5672, transport='ssl')
+        self.mock_conn.assert_called_once_with(
+            username='guest',
+            ssl_certfile='my_certfile',
+            ssl_trustfile='my_cacerts',
+            timeout=4,
+            ssl_skip_hostname_check=True,
+            sasl_mechanisms='PLAIN ANONYMOUS',
+            host='127.0.0.1',
+            ssl_keyfile='my_keyfile',
+            password='',
+            port=5672, transport='ssl',
+        )
 
     def test_transport_establish_conn_sets_client_on_connection_object(self):
         self.transport.establish_connection()
-        self.assertTrue(self.mock_conn.return_value.client is self.client)
+        self.assertIs(self.mock_conn.return_value.client, self.client)
 
     def test_transport_establish_conn_creates_session_on_transport(self):
         self.transport.establish_connection()
         qpid_conn = self.mock_conn.return_value.get_qpid_connection
         new_mock_session = qpid_conn.return_value.session.return_value
-        self.assertTrue(self.transport.session is new_mock_session)
+        self.assertIs(self.transport.session, new_mock_session)
 
     def test_transport_establish_conn_returns_new_connection_object(self):
         new_conn = self.transport.establish_connection()
-        self.assertTrue(new_conn is self.mock_conn.return_value)
+        self.assertIs(new_conn, self.mock_conn.return_value)
 
     def test_transport_establish_conn_creates_ReceiversMonitor(self):
         self.transport.establish_connection()
         self.mock_ReceiverMonitor.assert_called_once_with(
-            self.transport.session, self.transport._w)
+            self.transport.session, self.transport._w,
+        )
 
     def test_transport_establish_conn_daemonizes_thread(self):
         self.transport.establish_connection()
@@ -1785,11 +1841,13 @@ class TestTransportEstablishConnection(Case):
     def test_transport_establish_conn_ignores_hostname_if_not_localhost(self):
         self.client.hostname = 'some_other_hostname'
         self.transport.establish_connection()
-        self.mock_conn.assert_called_once_with(username='guest',
-                                               sasl_mechanisms='PLAIN ANONYMOUS',
-                                               host='some_other_hostname',
-                                               timeout=4, password='',
-                                               port=5672, transport='tcp')
+        self.mock_conn.assert_called_once_with(
+            username='guest',
+            sasl_mechanisms='PLAIN ANONYMOUS',
+            host='some_other_hostname',
+            timeout=4, password='',
+            port=5672, transport='tcp',
+        )
 
 
 @case_no_python3
@@ -1797,13 +1855,13 @@ class TestTransportEstablishConnection(Case):
 class TestTransportClassAttributes(Case):
 
     def test_verify_Connection_attribute(self):
-        self.assertTrue(Connection is Transport.Connection)
+        self.assertIs(Connection, Transport.Connection)
 
     def test_verify_default_port(self):
         self.assertEqual(5672, Transport.default_port)
 
     def test_verify_polling_disabled(self):
-        self.assertTrue(Transport.polling_interval is None)
+        self.assertIsNone(Transport.polling_interval)
 
     def test_transport_verify_supports_asynchronous_events(self):
         self.assertTrue(Transport.supports_ev)
@@ -1813,10 +1871,10 @@ class TestTransportClassAttributes(Case):
         self.assertEqual('qpid', Transport.driver_name)
 
     def test_transport_channel_error_contains_qpid_ConnectionError(self):
-        self.assertTrue(ConnectionError in Transport.connection_errors)
+        self.assertIn(ConnectionError, Transport.connection_errors)
 
     def test_transport_channel_error_contains_socket_error(self):
-        self.assertTrue(select.error in Transport.connection_errors)
+        self.assertIn(select.error, Transport.connection_errors)
 
 
 @case_no_python3
@@ -1829,9 +1887,9 @@ class TestTransportRegisterWithEventLoop(Case):
         mock_connection = Mock()
         mock_loop = Mock()
         transport.register_with_event_loop(mock_connection, mock_loop)
-        mock_loop.add_reader.assert_called_with(transport.r,
-                                                transport.on_readable,
-                                                mock_connection, mock_loop)
+        mock_loop.add_reader.assert_called_with(
+            transport.r, transport.on_readable, mock_connection, mock_loop,
+        )
 
 
 @case_no_python3
@@ -1860,14 +1918,12 @@ class TestTransportOnReadable(Case):
 
     def test_transport_on_readable_catches_socket_timeout(self):
         self.mock_drain_events.side_effect = socket.timeout()
-        try:
-            self.transport.on_readable(Mock(), Mock())
-        except Exception:
-            self.fail('Transport.on_readable did not catch socket.timeout()')
+        self.transport.on_readable(Mock(), Mock())
 
     def test_transport_on_readable_ignores_non_socket_timeout_exception(self):
         self.mock_drain_events.side_effect = IOError()
-        self.assertRaises(IOError, self.transport.on_readable, Mock(), Mock())
+        with self.assertRaises(IOError):
+            self.transport.on_readable(Mock(), Mock())
 
     def test_transport_on_readable_reads_e_off_of_pipe_raises_exc_info(self):
         self.transport.session = Mock()
@@ -1876,7 +1932,8 @@ class TestTransportOnReadable(Case):
         except Exception as error:
             self.transport.session.saved_exception = error
         self.mock_os_read.return_value = 'e'
-        self.assertRaises(IOError, self.transport.on_readable, Mock(), Mock())
+        with self.assertRaises(IOError):
+            self.transport.on_readable(Mock(), Mock())
 
 
 @case_no_python3
@@ -1895,39 +1952,29 @@ class TestTransportVerifyRuntimeEnvironment(Case):
 
     @patch(QPID_MODULE + '.PY3', new=True)
     def test_verify_runtime_env_raises_exception_for_Python3(self):
-        self.assertRaises(RuntimeError, self.verify_runtime_environment,
-                          self.transport)
+        with self.assertRaises(RuntimeError):
+            self.verify_runtime_environment(self.transport)
 
     @patch('__builtin__.getattr')
-    def test_verify_runtime_env_raises_exc_for_PyPy(self,
-                                                              mock_getattr):
+    def test_verify_runtime_env_raises_exc_for_PyPy(self, mock_getattr):
         mock_getattr.return_value = True
-        self.assertRaises(RuntimeError, self.verify_runtime_environment,
-                          self.transport)
-
-    @patch(QPID_MODULE + '.dependency_is_none')
-    def test_verify_runtime_env_raises_exc_dep_missing(self,
-                                                       mock_dep_is_none):
-        mock_dep_is_none.return_value = True
-        self.assertRaises(RuntimeError, self.verify_runtime_environment, self.transport)
-
-    @patch(QPID_MODULE + '.dependency_is_none')
-    def test_verify_runtime_env_calls_dependency_is_none(self,
-                                                         mock_dep_is_none):
-        mock_dep_is_none.return_value = False
-        try:
+        with self.assertRaises(RuntimeError):
             self.verify_runtime_environment(self.transport)
-        except Exception:
-            self.fail(
-                "verify_runtime_environment raised an unexpected Exception")
+
+    @patch(QPID_MODULE + '.dependency_is_none')
+    def test_verify_runtime_env_raises_exc_dep_missing(self, mock_dep_is_none):
+        mock_dep_is_none.return_value = True
+        with self.assertRaises(RuntimeError):
+            self.verify_runtime_environment(self.transport)
+
+    @patch(QPID_MODULE + '.dependency_is_none')
+    def test_runtime_env_calls_dependency_is_none(self, mock_dep_is_none):
+        mock_dep_is_none.return_value = False
+        self.verify_runtime_environment(self.transport)
         self.assertTrue(mock_dep_is_none.called)
 
     def test_verify_runtime_env_raises_no_exception(self):
-        try:
-            self.verify_runtime_environment(self.transport)
-        except Exception:
-            self.fail(
-                "verify_runtime_environment raised an unexpected Exception")
+        self.verify_runtime_environment(self.transport)
 
 
 @case_no_python3
@@ -1941,8 +1988,7 @@ class TestTransport(ExtraAssertionsMixin, Case):
 
     def test_close_connection(self):
         """Test that close_connection calls close on each channel in the
-        list of channels on the connection object.
-        """
+        list of channels on the connection object."""
         my_transport = Transport(self.mock_client)
         mock_connection = Mock()
         mock_channel_1 = Mock()
@@ -1954,10 +2000,12 @@ class TestTransport(ExtraAssertionsMixin, Case):
 
     def test_default_connection_params(self):
         """Test that the default_connection_params are correct"""
-        correct_params = {'userid': 'guest', 'password': '',
-                          'port': 5672, 'virtual_host': '',
-                          'hostname': 'localhost',
-                          'sasl_mechanisms': 'PLAIN ANONYMOUS'}
+        correct_params = {
+            'userid': 'guest', 'password': '',
+            'port': 5672, 'virtual_host': '',
+            'hostname': 'localhost',
+            'sasl_mechanisms': 'PLAIN ANONYMOUS',
+        }
         my_transport = Transport(self.mock_client)
         result_params = my_transport.default_connection_params
         self.assertDictEqual(correct_params, result_params)
