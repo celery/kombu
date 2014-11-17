@@ -8,14 +8,39 @@
 
 3.0.24
 ======
-:release-date:
-:release-by:
+:release-date: 2014-11-17 02:45 P.M UTC
+:release-by: Ask Solem
 
 - The `Qpid <http://qpid.apache.org/>`_ broker is supported for Python 2.x
   environments. The Qpid transport includes full SSL support within Kombu. See
   the :mod:`kombu.transport.qpid` docs for more info.
 
     Contributed by Brian Bouterse and Chris Duryee through support from Red Hat.
+
+- Dependencies: extra[librabbitmq] now requires librabbitmq 1.6.0
+
+- Docstrings for :class:`~kombu.utils.limit.TokenBucket` did not match
+  implementation.
+
+    Fix contributed by Jesse Dhillon.
+
+- :func:`~kombu.common.oid_from` accidentally called ``uuid.getnode()`` but
+  did not use the return value.
+
+    Fix contributed by Alexander Todorov.
+
+- Redis: Now ignores errors when cosing the underlying connection.
+
+- Redis: Restoring messages will now use a single connection.
+
+- ``kombu.five.monotonic``: Can now be imported even if ctypes is not
+  available for some reason (e.g. App Engine)
+
+- Documentation: Improved example to use the ``declare`` argument to
+  ``Producer`` (Issue #423).
+
+- Django: Fixed ``app_label`` for older Django versions (``< 1.7``).
+  (Issue #414).
 
 .. _version-3.0.23:
 
