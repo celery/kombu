@@ -15,7 +15,7 @@ from collections import deque
 from contextlib import contextmanager
 from functools import partial
 from itertools import count
-from uuid import getnode as _getnode, uuid4, uuid3, NAMESPACE_OID
+from uuid import uuid4, uuid3, NAMESPACE_OID
 
 from amqp import RecoverableConnectionError
 
@@ -54,12 +54,12 @@ def get_node_id():
 
 
 def generate_oid(node_id, process_id, thread_id, instance):
-    ent = '%x-%x-%x-%x' % (get_node_id(), process_id, thread_id, id(instance))
+    ent = '%x-%x-%x-%x' % (node_id, process_id, thread_id, id(instance))
     return str(uuid3(NAMESPACE_OID, ent))
 
 
 def oid_from(instance):
-    return generate_oid(_getnode(), os.getpid(), get_ident(), instance)
+    return generate_oid(get_node_id(), os.getpid(), get_ident(), instance)
 
 
 class Broadcast(Queue):
