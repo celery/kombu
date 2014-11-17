@@ -54,7 +54,7 @@ def get_node_id():
 
 
 def generate_oid(node_id, process_id, thread_id, instance):
-    ent = '%x-%x-%x-%x' % (get_node_id(), process_id, thread_id, id(instance))
+    ent = '%x-%x-%x-%x' % (node_id, process_id, thread_id, id(instance))
     return str(uuid3(NAMESPACE_OID, ent))
 
 
