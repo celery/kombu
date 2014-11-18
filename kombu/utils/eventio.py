@@ -86,7 +86,7 @@ class _epoll(Poller):
         except (socket.error, ValueError, KeyError, TypeError):
             pass
         except (IOError, OSError) as exc:
-            if get_errno(exc) != errno.ENOENT:
+            if get_errno(exc) not in (errno.ENOENT, errno.EPERM):
                 raise
 
     def _poll(self, timeout):
