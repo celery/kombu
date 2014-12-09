@@ -202,9 +202,10 @@ def retry_over_time(fun, catch, args=[], kwargs={}, errback=None,
     :keyword args: Positional arguments passed on to the function.
     :keyword kwargs: Keyword arguments passed on to the function.
     :keyword errback: Callback for when an exception in ``catch`` is raised.
-        The callback must take two arguments: ``exc`` and ``interval``, where
-        ``exc`` is the exception instance, and ``interval`` is the time in
-        seconds to sleep next..
+        The callback must take three arguments: ``exc``, ``interval_range`` and
+        ``retries``, where ``exc`` is the exception instance, ``interval_range``
+        is an iterator which return the time in seconds to sleep next, and
+        ``retries`` is the number of previous retries.
     :keyword max_retries: Maximum number of retries before we give up.
         If this is not set, we will retry forever.
     :keyword interval_start: How long (in seconds) we start sleeping between
