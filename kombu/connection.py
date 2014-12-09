@@ -227,7 +227,7 @@ class Connection(object):
 
     def _debug(self, msg, *args, **kwargs):
         if self._logger:  # pragma: no cover
-            fmt = '[Kombu connection:0x{id:x}] {msg}'
+            fmt = '[Kombu connection:{id:#x}] {msg}'
             logger.debug(fmt.format(id=id(self), msg=text_t(msg)),
                          *args, **kwargs)
 
@@ -699,7 +699,7 @@ class Connection(object):
 
     def __repr__(self):
         """``x.__repr__() <==> repr(x)``"""
-        return '<Connection: {0} at 0x{1:x}>'.format(self.as_uri(), id(self))
+        return '<Connection: {0} at {1:#x}>'.format(self.as_uri(), id(self))
 
     def __copy__(self):
         """``x.__copy__() <==> copy(x)``"""
