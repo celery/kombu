@@ -9,6 +9,7 @@ from __future__ import absolute_import
 
 import os
 import socket
+import random
 
 from contextlib import contextmanager
 from itertools import count, cycle
@@ -84,6 +85,9 @@ class Connection(object):
     :keyword heartbeat: Heartbeat interval in int/float seconds.
         Note that if heartbeats are enabled then the :meth:`heartbeat_check`
         method must be called regularly, around once per second.
+    :keyword random_host_on_connect: Connect to a random host instead of the
+      first in the URL if multiple brokers are specified. This does not
+      affect the failover strategy.
 
     .. note::
 
@@ -132,12 +136,21 @@ class Connection(object):
 
     hostname = userid = password = ssl = login_method = None
 
+    #: Use a random host instead of the first specified in the URL.
+    #: This does not affect failover strategy. For example, when the failover
+    #: strategy is set to 'round-robin' and :meth:`ensure_connection()` is
+    #: called, Kombu will first connect to a random host. If the connection
+    #: fails, the 'round-robin' strategy will use the first node in the list
+    #: of brokers and attempt the connection again, continuing through the
+    #: list until a successful connection is made.
+    random_host_on_connect = False
+
     def __init__(self, hostname='localhost', userid=None,
                  password=None, virtual_host=None, port=None, insist=False,
                  ssl=False, transport=None, connect_timeout=5,
                  transport_options=None, login_method=None, uri_prefix=None,
                  heartbeat=0, failover_strategy='round-robin',
-                 alternates=None, **kwargs):
+                 alternates=None, random_host_on_connect=False, **kwargs):
         alt = [] if alternates is None else alternates
         # have to spell the args out, just to get nice docstrings :(
         params = self._initial_params = {
@@ -145,7 +158,8 @@ class Connection(object):
             'password': password, 'virtual_host': virtual_host,
             'port': port, 'insist': insist, 'ssl': ssl,
             'transport': transport, 'connect_timeout': connect_timeout,
-            'login_method': login_method, 'heartbeat': heartbeat
+            'login_method': login_method, 'heartbeat': heartbeat,
+            'random_host_on_connect': random_host_on_connect
         }
 
         if hostname and not isinstance(hostname, string_t):
@@ -174,9 +188,6 @@ class Connection(object):
         self.alt = alt
         self.failover_strategy = failover_strategies.get(
             failover_strategy or 'round-robin') or failover_strategy
-        if self.alt:
-            self.cycle = self.failover_strategy(self.alt)
-            next(self.cycle)  # skip first entry
 
         if transport_options is None:
             transport_options = {}
@@ -189,6 +200,13 @@ class Connection(object):
             self.uri_prefix = uri_prefix
 
         self.declared_entities = set()
+
+        if self.alt:
+            self.cycle = self.failover_strategy(self.alt)
+            if self.random_host_on_connect:
+                self.switch(random.choice(self.alt))
+            else:
+                next(self.cycle)  # skip first entry
 
     def switch(self, url):
         """Switch connection parameters to use a new URL (does not
@@ -206,7 +224,7 @@ class Connection(object):
 
     def _init_params(self, hostname, userid, password, virtual_host, port,
                      insist, ssl, transport, connect_timeout,
-                     login_method, heartbeat):
+                     login_method, heartbeat, random_host_on_connect):
         transport = transport or 'amqp'
         if transport == 'amqp' and supports_librabbitmq():
             transport = 'librabbitmq'
@@ -221,6 +239,7 @@ class Connection(object):
         self.ssl = ssl
         self.transport_cls = transport
         self.heartbeat = heartbeat and float(heartbeat)
+        self.random_host_on_connect = random_host_on_connect
 
     def register_with_event_loop(self, loop):
         self.transport.register_with_event_loop(self.connection, loop)
@@ -552,6 +571,7 @@ class Connection(object):
             ('login_method', self.login_method or D.get('login_method')),
             ('uri_prefix', self.uri_prefix),
             ('heartbeat', self.heartbeat),
+            ('random_host_on_connect', self.random_host_on_connect),
             ('alternates', self.alt),
         )
         return info

@@ -165,6 +165,35 @@ class test_Connection(Case):
         self.assertEqual(conn2.hostname, 'foo')
         self.assertListEqual(conn2.alt, ['amqp://foo', 'amqp://bar'])
 
+    def test_multiple_urls_random_host_on_connect(self):
+        hosts = ['host1', 'host2', 'host3', 'host4', 'host5']
+
+        brokers = ['amqp://{0}'.format(h) for h in hosts]
+        broker_url = ';'.join(brokers)
+
+        # Test using a URL with multiple brokers
+        with patch('random.choice') as mocked:
+            # Simulate a random selection from a list of hosts
+            host = 'host3'
+            url = 'amqp://{0}'.format(host)
+            mocked.return_value = url
+
+            conn1 = Connection(broker_url, random_host_on_connect=True)
+
+            self.assertEqual(host, conn1.hostname)
+            self.assertListEqual(conn1.alt, brokers)
+
+        # Test using a list of brokers
+        with patch('random.choice') as mocked:
+            # Simulate a random selection from a list of hosts
+            host = 'host4'
+            url = 'amqp://{0}'.format(host)
+            mocked.return_value = url
+
+            conn2 = Connection(brokers, random_host_on_connect=True)
+            self.assertEqual(host, conn2.hostname)
+            self.assertListEqual(conn2.alt, brokers)
+
     def test_collect(self):
         connection = Connection('memory://')
         trans = connection._transport = Mock(name='transport')
