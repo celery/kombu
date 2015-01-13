@@ -62,7 +62,7 @@ try:
 except ImportError:  # pragma: no cover
     qpid = None
 
-
+from kombu.exceptions import ChannelError
 from kombu.five import Empty, items
 from kombu.log import get_logger
 from kombu.transport.virtual import Base64, Message
@@ -503,6 +503,9 @@ class Channel(base.StdChannel):
         :rtype: int
         """
         queue_to_purge = self._broker.getQueue(queue)
+        if queue_to_purge is None:
+            raise ChannelError("queue.purge: server channel error 404, message: "
+                               "NOT_FOUND - no queue '%s'" % queue)
         message_count = queue_to_purge.values['msgDepth']
         if message_count > 0:
             queue_to_purge.purge(message_count)

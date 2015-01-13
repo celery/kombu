@@ -522,6 +522,11 @@ class TestChannelPurge(ChannelTestBase):
         result = self.channel._purge(self.mock_queue)
         self.assertEqual(result, 5)
 
+    @patch(QPID_MODULE + '.ChannelError', new=MockException)
+    def test_channel__purge_raises_channel_error_if_queue_does_not_exist(self):
+        self.mock_broker_agent.return_value.getQueue.return_value = None
+        self.assertRaises(MockException, self.channel._purge, self.mock_queue)
+
 
 @case_no_python3
 @case_no_pypy
