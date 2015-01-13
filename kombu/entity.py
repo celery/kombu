@@ -9,6 +9,7 @@ from __future__ import absolute_import
 
 from .abstract import MaybeChannelBound
 from .exceptions import ContentDisallowed
+from .five import string_t
 from .serialization import prepare_accept_content
 
 TRANSIENT_DELIVERY_MODE = 1
@@ -17,6 +18,13 @@ DELIVERY_MODES = {'transient': TRANSIENT_DELIVERY_MODE,
                   'persistent': PERSISTENT_DELIVERY_MODE}
 
 __all__ = ['Exchange', 'Queue', 'binding']
+
+
+def _reprstr(s):
+    s = repr(s)
+    if isinstance(s, string_t) and s.startswith("u'"):
+        return s[2:-1]
+    return s[1:-1]
 
 
 def pretty_bindings(bindings):
@@ -284,7 +292,7 @@ class Exchange(MaybeChannelBound):
         return super(Exchange, self).__repr__(str(self))
 
     def __str__(self):
-        return 'Exchange %s(%s)' % (self.name or repr(''), self.type)
+        return 'Exchange %s(%s)' % (_reprstr(self.name) or repr(''), self.type)
 
     @property
     def can_cache_declaration(self):
@@ -332,7 +340,9 @@ class binding(object):
         return '<binding: %s>' % (self, )
 
     def __str__(self):
-        return '%s->%s' % (self.exchange.name, self.routing_key)
+        return '%s->%s' % (
+            _reprstr(self.exchange.name), _reprstr(self.routing_key),
+        )
 
 
 class Queue(MaybeChannelBound):
@@ -663,12 +673,16 @@ class Queue(MaybeChannelBound):
     def __repr__(self):
         s = super(Queue, self).__repr__
         if self.bindings:
-            return s('Queue {0.name} -> {bindings}'.format(
-                self, bindings=pretty_bindings(self.bindings),
+            return s('Queue {name} -> {bindings}'.format(
+                name=_reprstr(self.name),
+                bindings=pretty_bindings(self.bindings),
             ))
         return s(
-            'Queue {0.name} -> {0.exchange!r} -> {0.routing_key}'.format(
-                self))
+            'Queue {name} -> {0.exchange!r} -> {routing_key}'.format(
+                self, name=_reprstr(self.name),
+                routing_key=_reprstr(self.routing_key),
+            ),
+        )
 
     @property
     def can_cache_declaration(self):
