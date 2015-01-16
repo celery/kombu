@@ -114,7 +114,7 @@ class Producer(object):
                 mandatory=False, immediate=False, priority=0,
                 content_type=None, content_encoding=None, serializer=None,
                 headers=None, compression=None, exchange=None, retry=False,
-                retry_policy=None, declare=[], **properties):
+                retry_policy=None, declare=[], expiration=None, **properties):
         """Publish message to the specified exchange.
 
         :param body: Message body.
@@ -138,6 +138,8 @@ class Producer(object):
             connection is lost.
         :keyword retry_policy: Retry configuration, this is the keywords
             supported by :meth:`~kombu.Connection.ensure`.
+        :keyword expiration: A TTL can be specified on a per-message basis.
+            Default is no expiration.
         :keyword \*\*properties: Additional message properties, see AMQP spec.
 
         """
@@ -155,6 +157,8 @@ class Producer(object):
         if not isinstance(delivery_mode, numbers.Integral):
             delivery_mode = DELIVERY_MODES[delivery_mode]
         properties['delivery_mode'] = delivery_mode
+        if expiration is not None:
+            properties['expiration'] = str(expiration)
 
         body, content_type, content_encoding = self._prepare(
             body, serializer, content_type, content_encoding,
