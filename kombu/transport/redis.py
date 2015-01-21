@@ -613,7 +613,7 @@ class Channel(virtual.Channel):
         queues = self._consume_cycle()
         if not queues:
             return
-        keys = [self._q_for_pri(queue, pri) for pri in PRIORITY_STEPS
+        keys = [self._q_for_pri(queue, pri) for pri in self.priority_steps
                 for queue in queues] + [timeout or 0]
         self._in_poll = True
         self.client.connection.send_command('BRPOP', *keys)
@@ -647,7 +647,7 @@ class Channel(virtual.Channel):
 
     def _get(self, queue):
         with self.conn_or_acquire() as client:
-            for pri in PRIORITY_STEPS:
+            for pri in self.priority_steps:
                 item = client.rpop(self._q_for_pri(queue, pri))
                 if item:
                     return loads(bytes_to_str(item))
@@ -656,7 +656,7 @@ class Channel(virtual.Channel):
     def _size(self, queue):
         with self.conn_or_acquire() as client:
             with client.pipeline() as pipe:
-                for pri in PRIORITY_STEPS:
+                for pri in self.priority_steps:
                     pipe = pipe.llen(self._q_for_pri(queue, pri))
                 sizes = pipe.execute()
                 return sum(size for size in sizes
@@ -672,7 +672,7 @@ class Channel(virtual.Channel):
 
     def _put(self, queue, message, **kwargs):
         """Deliver message."""
-        pri = self._get_message_priority(message)
+        pri = self._get_message_priority(message, reverse=True)
 
         with self.conn_or_acquire() as client:
             client.lpush(self._q_for_pri(queue, pri), dumps(message))
@@ -709,14 +709,14 @@ class Channel(virtual.Channel):
                                        pattern or '',
                                        queue or '']))
             with client.pipeline() as pipe:
-                for pri in PRIORITY_STEPS:
+                for pri in self.priority_steps:
                     pipe = pipe.delete(self._q_for_pri(queue, pri))
                 pipe.execute()
 
     def _has_queue(self, queue, **kwargs):
         with self.conn_or_acquire() as client:
             with client.pipeline() as pipe:
-                for pri in PRIORITY_STEPS:
+                for pri in self.priority_steps:
                     pipe = pipe.exists(self._q_for_pri(queue, pri))
                 return any(pipe.execute())
 
@@ -731,7 +731,7 @@ class Channel(virtual.Channel):
     def _purge(self, queue):
         with self.conn_or_acquire() as client:
             with client.pipeline() as pipe:
-                for pri in PRIORITY_STEPS:
+                for pri in self.priority_steps:
                     priq = self._q_for_pri(queue, pri)
                     pipe = pipe.llen(priq).delete(priq)
                 sizes = pipe.execute()

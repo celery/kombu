@@ -47,7 +47,7 @@ class Channel(virtual.Channel):
 
     def _put(self, queue, message, **kwargs):
         extra = {}
-        priority = self._get_message_priority(message)
+        priority = self._get_message_priority(message, reverse=True)
         ttr = message['properties'].get('ttr')
         if ttr is not None:
             extra['ttr'] = ttr

@@ -104,18 +104,18 @@ class Client(object):
             raise Empty()
 
     def brpop(self, keys, timeout=None):
-        key = keys[0]
-        try:
-            item = self.queues[key].get(timeout=timeout)
-        except Empty:
-            pass
-        else:
-            return key, item
+        for key in keys:
+            try:
+                item = self.queues[key].get_nowait()
+            except Empty:
+                pass
+            else:
+                return key, item
 
     def rpop(self, key):
         try:
             return self.queues[key].get_nowait()
-        except KeyError:
+        except (KeyError, Empty):
             pass
 
     def __contains__(self, k):
@@ -212,7 +212,8 @@ class Channel(redis.Channel):
         return ResponseError
 
     def _new_queue(self, queue, **kwargs):
-        self.client._new_queue(queue)
+        for pri in self.priority_steps:
+            self.client._new_queue(self._q_for_pri(queue, pri))
 
     def pipeline(self):
         return Pipeline(Client())
@@ -244,10 +245,9 @@ class test_Channel(Case):
             chan.queue_bind(n, n, n)
             msg = chan.prepare_message('quick brown fox')
             chan.basic_publish(msg, n, n)
-            q, payload = chan.client.brpop([n])
-            self.assertEqual(q, n)
+            payload = chan._get(n)
             self.assertTrue(payload)
-            pymsg = chan.message_to_python(loads(payload))
+            pymsg = chan.message_to_python(payload)
             return pymsg.delivery_tag
 
     def test_delivery_tag_is_uuid(self):
@@ -567,19 +567,19 @@ class test_Channel(Case):
 
         self.channel._put('george', msg1)
         client.lpush.assert_called_with(
-            self.channel._q_for_pri('george', 3), dumps(msg1),
+            self.channel._q_for_pri('george', 6), dumps(msg1),
         )
 
         msg2 = {'properties': {'priority': 313}}
         self.channel._put('george', msg2)
         client.lpush.assert_called_with(
-            self.channel._q_for_pri('george', 9), dumps(msg2),
+            self.channel._q_for_pri('george', 0), dumps(msg2),
         )
 
         msg3 = {'properties': {}}
         self.channel._put('george', msg3)
         client.lpush.assert_called_with(
-            self.channel._q_for_pri('george', 0), dumps(msg3),
+            self.channel._q_for_pri('george', 9), dumps(msg3),
         )
 
     def test_delete(self):
