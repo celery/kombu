@@ -376,7 +376,7 @@ def register_msgpack():
     except (ImportError, ValueError):
 
         def not_available(*args, **kwargs):
-            """In case a client receives a msgpack message, but yaml
+            """In case a client receives a msgpack message, but msgpack
             isn't installed."""
             raise SerializerNotInstalled(
                 'No decoder installed for msgpack. '
