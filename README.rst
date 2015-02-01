@@ -4,6 +4,8 @@
  kombu - Messaging library for Python
 ========================================
 
+|build-status| |coverage-status|
+
 :Version: 3.1.0a1
 
 `Kombu` is a messaging library for Python.
@@ -329,3 +331,8 @@ file in the top distribution directory for the full license text.
 .. image:: https://d2weczhvl823v0.cloudfront.net/celery/kombu/trend.png
     :alt: Bitdeli badge
     :target: https://bitdeli.com/free
+
+.. |build-status| image:: https://travis-ci.org/celery/kombu.svg?branch=master
+   :target: https://travis-ci.org/celery/kombu
+.. |coverage-status| image:: https://coveralls.io/repos/celery/kombu/badge.svg
+   :target: https://coveralls.io/r/celery/kombu
