@@ -53,8 +53,10 @@ except ImportError:  # pragma: no cover
 try:
     from qpid.messaging.exceptions import ConnectionError
     from qpid.messaging.exceptions import Empty as QpidEmpty
+    from qpid.messaging.exceptions import NotFound
 except ImportError:  # pragma: no cover
     ConnectionError = None
+    NotFound = None
     QpidEmpty = None
 
 try:
@@ -62,7 +64,7 @@ try:
 except ImportError:  # pragma: no cover
     qpid = None
 
-from kombu.exceptions import ChannelError
+
 from kombu.five import Empty, items
 from kombu.log import get_logger
 from kombu.transport.virtual import Base64, Message
@@ -479,11 +481,14 @@ class Channel(base.StdChannel):
         """Purge all undelivered messages from a queue specified by name.
 
         An internal method to purge all undelivered messages from a queue
-        specified by name. The queue message depth is first checked,
-        and then the broker is asked to purge that number of messages. The
-        integer number of messages requested to be purged is returned. The
-        actual number of messages purged may be different than the
-        requested number of messages to purge (see below).
+        specified by name. If the queue does not exist a
+        :class:`qpid.messaging.exceptions.NotFound` exception is raised.
+
+        The queue message depth is first checked, and then the broker is
+        asked to purge that number of messages. The integer number of
+        messages requested to be purged is returned. The actual number of
+        messages purged may be different than the requested number of
+        messages to purge (see below).
 
         Sometimes delivered messages are asked to be purged, but are not.
         This case fails silently, which is the correct behavior when a
@@ -501,11 +506,14 @@ class Channel(base.StdChannel):
 
         :return: The number of messages requested to be purged.
         :rtype: int
+
+        :raises: :class:`qpid.messaging.exceptions.NotFound` if the queue
+                 being purged cannot be found.
         """
         queue_to_purge = self._broker.getQueue(queue)
         if queue_to_purge is None:
-            raise ChannelError("queue.purge: server channel error 404, message: "
-                               "NOT_FOUND - no queue '%s'" % queue)
+            error_text = "NOT_FOUND - no queue '{0}'".format(queue)
+            raise NotFound(code=404, text=error_text)
         message_count = queue_to_purge.values['msgDepth']
         if message_count > 0:
             queue_to_purge.purge(message_count)
@@ -760,12 +768,12 @@ class Channel(base.StdChannel):
     def queue_purge(self, queue, **kwargs):
         """Remove all undelivered messages from queue.
 
-        Purge all undelivered messages from a queue specified by name. The
-        queue message depth is first checked, and then the broker is asked
-        to purge that number of messages. The integer number of messages
-        requested to be purged is returned. The actual number of messages
-        purged may be different than the requested number of messages to
-        purge.
+        Purge all undelivered messages from a queue specified by name. If the
+        queue does not exist an exception is raised. The queue message
+        depth is first checked, and then the broker is asked to purge that
+        number of messages. The integer number of messages requested to be
+        purged is returned. The actual number of messages purged may be
+        different than the requested number of messages to purge.
 
         Sometimes delivered messages are asked to be purged, but are not.
         This case fails silently, which is the correct behavior when a
@@ -783,6 +791,9 @@ class Channel(base.StdChannel):
 
         :return: The number of messages requested to be purged.
         :rtype: int
+
+        :raises: :class:`qpid.messaging.exceptions.NotFound` if the queue
+                 being purged cannot be found.
         """
         return self._purge(queue)
 
@@ -1445,9 +1456,17 @@ class Transport(base.Transport):
     driver_type = 'qpid'
     driver_name = 'qpid'
 
-    connection_errors = (
+    # Exceptions that can be recovered from, but where the connection must be
+    # closed and re-established first.
+    recoverable_connection_errors = (
         ConnectionError,
-        select.error
+        select.error,
+    )
+
+    # Exceptions that can be automatically recovered from without
+    # re-establishing the connection.
+    recoverable_channel_errors = (
+        NotFound,
     )
 
     def __init__(self, *args, **kwargs):
