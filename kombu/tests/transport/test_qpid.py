@@ -14,14 +14,15 @@ from functools import wraps
 from mock import call
 
 from kombu.five import Empty, keys, range, monotonic
-from kombu.transport.qpid import AuthenticationFailure, QoS, Message
-from kombu.transport.qpid import QpidMessagingExceptionHandler, Channel
-from kombu.transport.qpid import Connection, ReceiversMonitor, Transport
-from kombu.transport.qpid import ConnectionError
+from kombu.transport.qpid import (AuthenticationFailure, Channel, Connection,
+                                  ConnectionError, Message, NotFound, QoS,
+                                  QpidMessagingExceptionHandler,
+                                  ReceiversMonitor, Transport)
 from kombu.transport.virtual import Base64
 from kombu.tests.case import Case, Mock, case_no_pypy, case_no_python3
 from kombu.tests.case import patch
 from kombu.utils.compat import OrderedDict
+
 
 QPID_MODULE = 'kombu.transport.qpid'
 
@@ -73,8 +74,15 @@ class ExtraAssertionsMixin(object):
             self.assertEqual(a[key], b[key])
 
 
-class MockException(Exception):
-    pass
+class QpidException(Exception):
+    """
+    An object used to mock Exceptions provided by qpid.messaging.exceptions
+    """
+
+    def __init__(self, code=None, text=None):
+        super(Exception, self).__init__(self)
+        self.code = code
+        self.text = text
 
 
 class BreakOutException(Exception):
@@ -328,7 +336,7 @@ class ConnectionTestBase(Case):
 @case_no_pypy
 class TestConnectionInit(ExtraAssertionsMixin, ConnectionTestBase):
 
-    def test_connection__init__stores_connection_options(self):
+    def test_stores_connection_options(self):
         # ensure that only one mech was passed into connection. The other
         # options should all be passed through as-is
         modified_conn_opts = self.connection_options
@@ -337,67 +345,63 @@ class TestConnectionInit(ExtraAssertionsMixin, ConnectionTestBase):
             modified_conn_opts, self.conn.connection_options,
         )
 
-    def test_connection__init__variables(self):
+    def test_class_variables(self):
         self.assertIsInstance(self.conn.channels, list)
         self.assertIsInstance(self.conn._callbacks, dict)
 
-    def test_connection__init__establishes_connection(self):
+    def test_establishes_connection(self):
         modified_conn_opts = self.connection_options
         modified_conn_opts['sasl_mechanisms'] = 'PLAIN'
         self.mock_qpid_connection.establish.assert_called_with(
             **modified_conn_opts
         )
 
-    def test_connection__init__saves_established_connection(self):
+    def test_saves_established_connection(self):
         created_conn = self.mock_qpid_connection.establish.return_value
         self.assertIs(self.conn._qpid_conn, created_conn)
 
-    @patch(QPID_MODULE + '.ConnectionError', new=(MockException, ))
+    @patch(QPID_MODULE + '.ConnectionError', new=(QpidException, ))
     @patch(QPID_MODULE + '.sys.exc_info')
     @patch(QPID_MODULE + '.qpid')
-    def test_init_mutates_ConnError_by_message(self, mock_qpid, mock_exc_info):
-        my_conn_error = MockException()
-        my_conn_error.text = 'connection-forced: Authentication failed(320)'
+    def test_mutates_ConnError_by_message(self, mock_qpid, mock_exc_info):
+        text = 'connection-forced: Authentication failed(320)'
+        my_conn_error = QpidException(text=text)
         mock_qpid.messaging.Connection.establish.side_effect = my_conn_error
         mock_exc_info.return_value = 'a', 'b', None
         try:
             self.conn = Connection(**self.connection_options)
         except AuthenticationFailure as error:
             exc_info = sys.exc_info()
-            self.assertNotIsInstance(error, MockException)
+            self.assertNotIsInstance(error, QpidException)
             self.assertIs(exc_info[1], 'b')
             self.assertIsNone(exc_info[2])
         else:
             self.fail('ConnectionError type was not mutated correctly')
 
-    @patch(QPID_MODULE + '.ConnectionError', new=(MockException, ))
+    @patch(QPID_MODULE + '.ConnectionError', new=(QpidException, ))
     @patch(QPID_MODULE + '.sys.exc_info')
     @patch(QPID_MODULE + '.qpid')
-    def test__init_mutates_ConnError_by_code(self, mock_qpid, mock_exc_info):
-        my_conn_error = MockException()
-        my_conn_error.code = 320
-        my_conn_error.text = 'someothertext'
+    def test_mutates_ConnError_by_code(self, mock_qpid, mock_exc_info):
+        my_conn_error = QpidException(code=320, text='someothertext')
         mock_qpid.messaging.Connection.establish.side_effect = my_conn_error
         mock_exc_info.return_value = 'a', 'b', None
         try:
             self.conn = Connection(**self.connection_options)
         except AuthenticationFailure as error:
             exc_info = sys.exc_info()
-            self.assertNotIsInstance(error, MockException)
+            self.assertNotIsInstance(error, QpidException)
             self.assertIs(exc_info[1], 'b')
             self.assertIsNone(exc_info[2])
         else:
             self.fail('ConnectionError type was not mutated correctly')
 
-    @patch(QPID_MODULE + '.ConnectionError', new=(MockException, ))
+    @patch(QPID_MODULE + '.ConnectionError', new=(QpidException, ))
     @patch(QPID_MODULE + '.sys.exc_info')
     @patch(QPID_MODULE + '.qpid')
-    def test_init_unknown_connection_error(self, mock_qpid, mock_exc_info):
+    def test_unknown_connection_error(self, mock_qpid, mock_exc_info):
         # If we get a connection error that we don't understand,
         # bubble it up as-is
-        my_conn_error = MockException()
-        my_conn_error.code = 999
-        my_conn_error.text = 'someothertext'
+        my_conn_error = QpidException(code=999, text='someothertext')
         mock_qpid.messaging.Connection.establish.side_effect = my_conn_error
         mock_exc_info.return_value = 'a', 'b', None
         try:
@@ -407,10 +411,10 @@ class TestConnectionInit(ExtraAssertionsMixin, ConnectionTestBase):
         else:
             self.fail('Connection should have thrown an exception')
 
-    @patch.object(Transport, 'channel_errors', new=(MockException, ))
+    @patch.object(Transport, 'channel_errors', new=(QpidException, ))
     @patch(QPID_MODULE + '.qpid')
     @patch(QPID_MODULE + '.ConnectionError', new=IOError)
-    def test_connection__init__non_qpid_error_raises(self, mock_qpid):
+    def test_non_qpid_error_raises(self, mock_qpid):
         mock_Qpid_Connection = mock_qpid.messaging.Connection
         my_conn_error = SyntaxError()
         my_conn_error.text = 'some non auth related error message'
@@ -420,7 +424,7 @@ class TestConnectionInit(ExtraAssertionsMixin, ConnectionTestBase):
 
     @patch(QPID_MODULE + '.qpid')
     @patch(QPID_MODULE + '.ConnectionError', new=IOError)
-    def test_connection__init__non_auth_conn_error_raises(self, mock_qpid):
+    def test_non_auth_conn_error_raises(self, mock_qpid):
         mock_Qpid_Connection = mock_qpid.messaging.Connection
         my_conn_error = IOError()
         my_conn_error.text = 'some non auth related error message'
@@ -496,36 +500,36 @@ class TestChannelPurge(ChannelTestBase):
         super(TestChannelPurge, self).setUp()
         self.mock_queue = Mock()
 
-    def test_channel__purge_gets_queue(self):
+    def test_gets_queue(self):
         self.channel._purge(self.mock_queue)
         getQueue = self.mock_broker_agent.return_value.getQueue
         getQueue.assert_called_once_with(self.mock_queue)
 
-    def test_channel__purge_does_not_call_purge_if_message_count_is_zero(self):
+    def test_does_not_call_purge_if_message_count_is_zero(self):
         values = {'msgDepth': 0}
         queue_obj = self.mock_broker_agent.return_value.getQueue.return_value
         queue_obj.values = values
         self.channel._purge(self.mock_queue)
         self.assertFalse(queue_obj.purge.called)
 
-    def test_channel__purge_purges_all_messages_from_queue(self):
+    def test_purges_all_messages_from_queue(self):
         values = {'msgDepth': 5}
         queue_obj = self.mock_broker_agent.return_value.getQueue.return_value
         queue_obj.values = values
         self.channel._purge(self.mock_queue)
         queue_obj.purge.assert_called_with(5)
 
-    def test_channel__purge_returns_message_count(self):
+    def test_returns_message_count(self):
         values = {'msgDepth': 5}
         queue_obj = self.mock_broker_agent.return_value.getQueue.return_value
         queue_obj.values = values
         result = self.channel._purge(self.mock_queue)
         self.assertEqual(result, 5)
 
-    @patch(QPID_MODULE + '.ChannelError', new=MockException)
-    def test_channel__purge_raises_channel_error_if_queue_does_not_exist(self):
+    @patch(QPID_MODULE + '.NotFound', new=QpidException)
+    def test_raises_channel_error_if_queue_does_not_exist(self):
         self.mock_broker_agent.return_value.getQueue.return_value = None
-        self.assertRaises(MockException, self.channel._purge, self.mock_queue)
+        self.assertRaises(QpidException, self.channel._purge, self.mock_queue)
 
 
 @case_no_python3
@@ -862,38 +866,38 @@ class TestChannelQueueDelete(ChannelTestBase):
         self.mock__delete.stop()
         super(TestChannelQueueDelete, self).tearDown()
 
-    def test_channel_queue_delete_checks_if_queue_exists(self):
+    def test_checks_if_queue_exists(self):
         self.channel.queue_delete(self.mock_queue)
         self.mock__has_queue.assert_called_once_with(self.mock_queue)
 
-    def test_channel_queue_delete_does_nothing_if_queue_does_not_exist(self):
+    def test_does_nothing_if_queue_does_not_exist(self):
         self.mock__has_queue.return_value = False
         self.channel.queue_delete(self.mock_queue)
         self.assertFalse(self.mock__delete.called)
 
-    def test_channel_queue_delete__not_empty_and_if_empty_True_no_delete(self):
+    def test_not_empty_and_if_empty_True_no_delete(self):
         self.mock__size.return_value = 1
         self.channel.queue_delete(self.mock_queue, if_empty=True)
         mock_broker = self.mock_broker_agent.return_value
         self.assertFalse(mock_broker.getQueue.called)
 
-    def test_channel_queue_delete_calls_get_queue(self):
+    def test_calls_get_queue(self):
         self.channel.queue_delete(self.mock_queue)
         getQueue = self.mock_broker_agent.return_value.getQueue
         getQueue.assert_called_once_with(self.mock_queue)
 
-    def test_channel_queue_delete_gets_queue_attribute(self):
+    def test_gets_queue_attribute(self):
         self.channel.queue_delete(self.mock_queue)
         queue_obj = self.mock_broker_agent.return_value.getQueue.return_value
         queue_obj.getAttributes.assert_called_once_with()
 
-    def test_channel_queue_delete__queue_in_use_and_if_unused_no_delete(self):
+    def test_queue_in_use_and_if_unused_no_delete(self):
         queue_obj = self.mock_broker_agent.return_value.getQueue.return_value
         queue_obj.getAttributes.return_value = {'consumerCount': 1}
         self.channel.queue_delete(self.mock_queue, if_unused=True)
         self.assertFalse(self.mock__delete.called)
 
-    def test_channel_queue_delete_calls__delete_with_queue(self):
+    def test_calls__delete_with_queue(self):
         self.channel.queue_delete(self.mock_queue)
         self.mock__delete.assert_called_once_with(self.mock_queue)
 
@@ -1467,7 +1471,7 @@ class TestReceiversMonitorRun(ReceiversMonitorTestBase):
             self.monitor.run()
         mock_monitor_receivers.has_calls([call(), call()])
 
-    @patch.object(Transport, 'connection_errors', new=(MockException, ))
+    @patch.object(Transport, 'connection_errors', new=(QpidException, ))
     @patch.object(ReceiversMonitor, 'monitor_receivers')
     @patch(QPID_MODULE + '.time.sleep')
     @patch(QPID_MODULE + '.logger')
@@ -1476,12 +1480,12 @@ class TestReceiversMonitorRun(ReceiversMonitorTestBase):
     def test_receivers_monitor_exits_when_recoverable_exception_raised(
             self, mock_sys_exc_info, mock_os_write, mock_logger, mock_sleep,
             mock_monitor_receivers):
-        mock_monitor_receivers.side_effect = MockException()
+        mock_monitor_receivers.side_effect = QpidException()
         mock_sleep.side_effect = BreakOutException()
         self.monitor.run()
         self.assertFalse(mock_logger.error.called)
 
-    @patch.object(Transport, 'connection_errors', new=(MockException, ))
+    @patch.object(Transport, 'connection_errors', new=(QpidException, ))
     @patch.object(ReceiversMonitor, 'monitor_receivers')
     @patch(QPID_MODULE + '.time.sleep')
     @patch(QPID_MODULE + '.logger')
@@ -1489,7 +1493,7 @@ class TestReceiversMonitorRun(ReceiversMonitorTestBase):
     def test_receivers_monitor_saves_exception_when_recoverable_exc_raised(
             self, mock_os_write, mock_logger, mock_sleep,
             mock_monitor_receivers):
-        mock_monitor_receivers.side_effect = MockException()
+        mock_monitor_receivers.side_effect = QpidException()
         mock_sleep.side_effect = BreakOutException()
         self.monitor.run()
         self.assertIs(
@@ -1497,7 +1501,7 @@ class TestReceiversMonitorRun(ReceiversMonitorTestBase):
             mock_monitor_receivers.side_effect,
         )
 
-    @patch.object(Transport, 'connection_errors', new=(MockException, ))
+    @patch.object(Transport, 'connection_errors', new=(QpidException, ))
     @patch.object(ReceiversMonitor, 'monitor_receivers')
     @patch(QPID_MODULE + '.time.sleep')
     @patch(QPID_MODULE + '.logger')
@@ -1506,7 +1510,7 @@ class TestReceiversMonitorRun(ReceiversMonitorTestBase):
     def test_receivers_monitor_writes_e_to_pipe_when_recoverable_exc_raised(
             self, mock_sys_exc_info, mock_os_write, mock_logger, mock_sleep,
             mock_monitor_receivers):
-        mock_monitor_receivers.side_effect = MockException()
+        mock_monitor_receivers.side_effect = QpidException()
         mock_sleep.side_effect = BreakOutException()
         self.monitor.run()
         mock_os_write.assert_called_once_with(self.mock_w, 'e')
@@ -1603,8 +1607,8 @@ class TestTransportDrainEvents(Case):
         return mock_receiver
 
     def test_socket_timeout_raised_when_all_receivers_empty(self):
-        with patch(QPID_MODULE + '.QpidEmpty', new=MockException):
-            self.transport.session.next_receiver.side_effect = MockException()
+        with patch(QPID_MODULE + '.QpidEmpty', new=QpidException):
+            self.transport.session.next_receiver.side_effect = QpidException()
             with self.assertRaises(socket.timeout):
                 self.transport.drain_events(Mock())
 
@@ -1875,11 +1879,14 @@ class TestTransportClassAttributes(Case):
         self.assertEqual('qpid', Transport.driver_type)
         self.assertEqual('qpid', Transport.driver_name)
 
-    def test_transport_channel_error_contains_qpid_ConnectionError(self):
-        self.assertIn(ConnectionError, Transport.connection_errors)
+    def test_transport_verify_recoverable_connection_errors(self):
+        connection_errors = Transport.recoverable_connection_errors
+        self.assertIn(ConnectionError, connection_errors)
+        self.assertIn(select.error, connection_errors)
 
-    def test_transport_channel_error_contains_socket_error(self):
-        self.assertIn(select.error, Transport.connection_errors)
+    def test_transport_verify_recoverable_channel_errors(self):
+        channel_errors = Transport.recoverable_channel_errors
+        self.assertIn(NotFound, channel_errors)
 
 
 @case_no_python3
@@ -1956,29 +1963,29 @@ class TestTransportVerifyRuntimeEnvironment(Case):
         self.patch_a.stop()
 
     @patch(QPID_MODULE + '.PY3', new=True)
-    def test_verify_runtime_env_raises_exception_for_Python3(self):
+    def test_raises_exception_for_Python3(self):
         with self.assertRaises(RuntimeError):
             self.verify_runtime_environment(self.transport)
 
     @patch('__builtin__.getattr')
-    def test_verify_runtime_env_raises_exc_for_PyPy(self, mock_getattr):
+    def test_raises_exc_for_PyPy(self, mock_getattr):
         mock_getattr.return_value = True
         with self.assertRaises(RuntimeError):
             self.verify_runtime_environment(self.transport)
 
     @patch(QPID_MODULE + '.dependency_is_none')
-    def test_verify_runtime_env_raises_exc_dep_missing(self, mock_dep_is_none):
+    def test_raises_exc_dep_missing(self, mock_dep_is_none):
         mock_dep_is_none.return_value = True
         with self.assertRaises(RuntimeError):
             self.verify_runtime_environment(self.transport)
 
     @patch(QPID_MODULE + '.dependency_is_none')
-    def test_runtime_env_calls_dependency_is_none(self, mock_dep_is_none):
+    def test_calls_dependency_is_none(self, mock_dep_is_none):
         mock_dep_is_none.return_value = False
         self.verify_runtime_environment(self.transport)
         self.assertTrue(mock_dep_is_none.called)
 
-    def test_verify_runtime_env_raises_no_exception(self):
+    def test_raises_no_exception(self):
         self.verify_runtime_environment(self.transport)
 
 
