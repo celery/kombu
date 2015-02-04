@@ -4,7 +4,6 @@ import select
 import ssl
 import socket
 import sys
-import threading
 import time
 
 from collections import Callable
@@ -16,7 +15,7 @@ from mock import call
 from kombu.five import Empty, keys, range, monotonic
 from kombu.transport.qpid import (AuthenticationFailure, Channel, Connection,
                                   ConnectionError, Message, NotFound, QoS,
-                                  ReceiversMonitor, Transport)
+                                  Transport)
 from kombu.transport.virtual import Base64
 from kombu.tests.case import Case, Mock, case_no_pypy, case_no_python3
 from kombu.tests.case import patch
@@ -855,9 +854,9 @@ class TestChannelQueueDelete(ChannelTestBase):
         self.mock_queue = Mock()
 
     def tearDown(self):
-        self.mock__has_queue.stop()
-        self.mock__size.stop()
-        self.mock__delete.stop()
+        self.patch__has_queue.stop()
+        self.patch__size.stop()
+        self.patch__delete.stop()
         super(TestChannelQueueDelete, self).tearDown()
 
     def test_checks_if_queue_exists(self):
@@ -1397,164 +1396,6 @@ class TestChannel(ExtraAssertionsMixin, Case):
 
 @case_no_python3
 @case_no_pypy
-class ReceiversMonitorTestBase(Case):
-
-    def setUp(self):
-        self.mock_session = Mock()
-        self.mock_w = Mock()
-        self.monitor = ReceiversMonitor(self.mock_session, self.mock_w)
-
-
-@case_no_python3
-@case_no_pypy
-class TestReceiversMonitorType(ReceiversMonitorTestBase):
-
-    def test_qpid_messaging_receivers_monitor_subclass_of_threading(self):
-        self.assertIsInstance(self.monitor, threading.Thread)
-
-
-@case_no_python3
-@case_no_pypy
-class TestReceiversMonitorInit(ReceiversMonitorTestBase):
-
-    def setUp(self):
-        thread___init___str = QPID_MODULE + '.threading.Thread.__init__'
-        self.patch_parent___init__ = patch(thread___init___str)
-        self.mock_Thread___init__ = self.patch_parent___init__.start()
-        super(TestReceiversMonitorInit, self).setUp()
-
-    def tearDown(self):
-        self.patch_parent___init__.stop()
-
-    def test_qpid_messaging_receivers_monitor_init_saves_session(self):
-        self.assertIs(self.monitor._session, self.mock_session)
-
-    def test_qpid_messaging_receivers_monitor_init_saves_fd(self):
-        self.assertIs(self.monitor._w_fd, self.mock_w)
-
-    def test_qpid_messaging_Receivers_monitor_init_calls_parent__init__(self):
-        self.mock_Thread___init__.assert_called_once_with()
-
-
-@case_no_python3
-@case_no_pypy
-class TestReceiversMonitorRun(ReceiversMonitorTestBase):
-
-    @patch.object(ReceiversMonitor, 'monitor_receivers')
-    @patch(QPID_MODULE + '.time.sleep')
-    def test_receivers_monitor_run_calls_monitor_receivers(
-            self, mock_sleep, mock_monitor_receivers):
-        mock_sleep.side_effect = BreakOutException()
-        with self.assertRaises(BreakOutException):
-            self.monitor.run()
-        mock_monitor_receivers.assert_called_once_with()
-
-    @patch(QPID_MODULE + '.SessionClosed', new=QpidException)
-    @patch.object(ReceiversMonitor, 'monitor_receivers')
-    @patch(QPID_MODULE + '.time.sleep')
-    def test_receivers_monitor_run_exits_on_session_closed(
-            self, mock_sleep, mock_monitor_receivers):
-        mock_monitor_receivers.side_effect = QpidException()
-        try:
-            self.monitor.run()
-        except Exception:
-            self.fail('No exception should be raised here')
-        mock_monitor_receivers.assert_called_once_with()
-        mock_sleep.has_calls([])
-
-    @patch.object(Transport, 'connection_errors', new=(BreakOutException, ))
-    @patch.object(ReceiversMonitor, 'monitor_receivers')
-    @patch(QPID_MODULE + '.time.sleep')
-    @patch(QPID_MODULE + '.logger')
-    def test_receivers_monitors_run_calls_logs_exception_and_sleeps(
-            self, mock_logger, mock_sleep, mock_monitor_receivers):
-        exc_to_raise = IOError()
-        mock_monitor_receivers.side_effect = exc_to_raise
-        mock_sleep.side_effect = BreakOutException()
-        with self.assertRaises(BreakOutException):
-            self.monitor.run()
-        mock_logger.error.assert_called_once_with(exc_to_raise, exc_info=1)
-        mock_sleep.assert_called_once_with(10)
-
-    @patch.object(ReceiversMonitor, 'monitor_receivers')
-    @patch(QPID_MODULE + '.time.sleep')
-    def test_receivers_monitor_run_loops_when_exception_is_raised(
-            self, mock_sleep, mock_monitor_receivers):
-        def return_once_raise_on_second_call(*args):
-            mock_sleep.side_effect = BreakOutException()
-        mock_sleep.side_effect = return_once_raise_on_second_call
-        with self.assertRaises(BreakOutException):
-            self.monitor.run()
-        mock_monitor_receivers.has_calls([call(), call()])
-
-    @patch.object(Transport, 'recoverable_connection_errors',
-                  new=(QpidException, ))
-    @patch.object(ReceiversMonitor, 'monitor_receivers')
-    @patch(QPID_MODULE + '.time.sleep')
-    @patch(QPID_MODULE + '.logger')
-    @patch(QPID_MODULE + '.os.write')
-    @patch(QPID_MODULE + '.sys.exc_info')
-    def test_receivers_monitor_exits_when_recoverable_exception_raised(
-            self, mock_sys_exc_info, mock_os_write, mock_logger, mock_sleep,
-            mock_monitor_receivers):
-        mock_monitor_receivers.side_effect = QpidException()
-        mock_sleep.side_effect = BreakOutException()
-        self.monitor.run()
-        self.assertFalse(mock_logger.error.called)
-
-    @patch.object(Transport, 'recoverable_connection_errors',
-                  new=(QpidException, ))
-    @patch.object(ReceiversMonitor, 'monitor_receivers')
-    @patch(QPID_MODULE + '.time.sleep')
-    @patch(QPID_MODULE + '.logger')
-    @patch(QPID_MODULE + '.os.write')
-    def test_receivers_monitor_saves_exception_when_recoverable_exc_raised(
-            self, mock_os_write, mock_logger, mock_sleep,
-            mock_monitor_receivers):
-        mock_monitor_receivers.side_effect = QpidException()
-        mock_sleep.side_effect = BreakOutException()
-        self.monitor.run()
-        self.assertIs(
-            self.mock_session.saved_exception,
-            mock_monitor_receivers.side_effect,
-        )
-
-    @patch.object(Transport, 'recoverable_connection_errors',
-                  new=(QpidException, ))
-    @patch.object(ReceiversMonitor, 'monitor_receivers')
-    @patch(QPID_MODULE + '.time.sleep')
-    @patch(QPID_MODULE + '.logger')
-    @patch(QPID_MODULE + '.os.write')
-    @patch(QPID_MODULE + '.sys.exc_info')
-    def test_receivers_monitor_writes_e_to_pipe_when_recoverable_exc_raised(
-            self, mock_sys_exc_info, mock_os_write, mock_logger, mock_sleep,
-            mock_monitor_receivers):
-        mock_monitor_receivers.side_effect = QpidException()
-        mock_sleep.side_effect = BreakOutException()
-        self.monitor.run()
-        mock_os_write.assert_called_once_with(self.mock_w, 'e')
-
-
-@case_no_python3
-@case_no_pypy
-class TestReceiversMonitorMonitorReceivers(ReceiversMonitorTestBase):
-
-    def test_receivers_monitor_monitor_receivers_calls_next_receivers(self):
-        self.mock_session.next_receiver.side_effect = BreakOutException()
-        with self.assertRaises(BreakOutException):
-            self.monitor.monitor_receivers()
-        self.mock_session.next_receiver.assert_called_once_with()
-
-    def test_receivers_monitor_monitor_receivers_writes_to_fd(self):
-        with patch(QPID_MODULE + '.os.write') as mock_os_write:
-            mock_os_write.side_effect = BreakOutException()
-            with self.assertRaises(BreakOutException):
-                self.monitor.monitor_receivers()
-            mock_os_write.assert_called_once_with(self.mock_w, '0')
-
-
-@case_no_python3
-@case_no_pypy
 @disable_runtime_dependency_check
 class TestTransportInit(Case):
 
@@ -1699,12 +1540,6 @@ class TestTransportEstablishConnection(Case):
         self.transport = Transport(self.client)
         self.mock_conn = Mock()
         self.transport.Connection = self.mock_conn
-        path_to_mock = QPID_MODULE + '.ReceiversMonitor'
-        self.patcher = patch(path_to_mock)
-        self.mock_ReceiverMonitor = self.patcher.start()
-
-    def tearDown(self):
-        self.patcher.stop()
 
     def test_transport_establish_conn_new_option_overwrites_default(self):
         self.client.userid = 'new-userid'
@@ -1863,22 +1698,7 @@ class TestTransportEstablishConnection(Case):
         new_conn = self.transport.establish_connection()
         self.assertIs(new_conn, self.mock_conn.return_value)
 
-    def test_transport_establish_conn_creates_ReceiversMonitor(self):
-        self.transport.establish_connection()
-        self.mock_ReceiverMonitor.assert_called_once_with(
-            self.transport.session, self.transport._w,
-        )
-
-    def test_transport_establish_conn_daemonizes_thread(self):
-        self.transport.establish_connection()
-        self.assertTrue(self.mock_ReceiverMonitor.return_value.daemon)
-
-    def test_transport_establish_conn_starts_thread(self):
-        self.transport.establish_connection()
-        new_receiver_monitor = self.mock_ReceiverMonitor.return_value
-        new_receiver_monitor.start.assert_called_once_with()
-
-    def test_transport_establish_conn_ignores_hostname_if_not_localhost(self):
+    def test_transport_establish_conn_uses_hostname_if_not_default(self):
         self.client.hostname = 'some_other_hostname'
         self.transport.establish_connection()
         self.mock_conn.assert_called_once_with(
@@ -1888,6 +1708,14 @@ class TestTransportEstablishConnection(Case):
             port=5672,
             transport='tcp',
         )
+
+    def test_transport_sets_qpid_message_received_handler(self):
+        self.transport.establish_connection()
+        qpid_conn = self.mock_conn.return_value.get_qpid_connection
+        new_mock_session = qpid_conn.return_value.session.return_value
+        mock_set_callback = new_mock_session.set_message_received_handler
+        expected_callback = self.transport._qpid_session_ready
+        mock_set_callback.assert_called_once_with(expected_callback)
 
 
 @case_no_python3
@@ -1941,6 +1769,24 @@ class TestTransportRegisterWithEventLoop(Case):
 @case_no_python3
 @case_no_pypy
 @disable_runtime_dependency_check
+class TestTransportQpidSessionReady(Case):
+
+    def setUp(self):
+        self.patch_a = patch(QPID_MODULE + '.os.write')
+        self.mock_os_write = self.patch_a.start()
+        self.transport = Transport(Mock())
+
+    def tearDown(self):
+        self.patch_a.stop()
+
+    def test_transport__qpid_session_ready_writes_symbol_to_fd(self):
+        self.transport._qpid_session_ready()
+        self.mock_os_write.assert_called_once_with(self.transport._w, '0')
+
+
+@case_no_python3
+@case_no_pypy
+@disable_runtime_dependency_check
 class TestTransportOnReadable(Case):
 
     def setUp(self):
@@ -1952,6 +1798,7 @@ class TestTransportOnReadable(Case):
 
     def tearDown(self):
         self.patch_a.stop()
+        self.patch_b.stop()
 
     def test_transport_on_readable_reads_symbol_from_fd(self):
         self.transport.on_readable(Mock(), Mock())
@@ -1968,16 +1815,6 @@ class TestTransportOnReadable(Case):
 
     def test_transport_on_readable_ignores_non_socket_timeout_exception(self):
         self.mock_drain_events.side_effect = IOError()
-        with self.assertRaises(IOError):
-            self.transport.on_readable(Mock(), Mock())
-
-    def test_transport_on_readable_reads_e_off_of_pipe_raises_exc_info(self):
-        self.transport.session = Mock()
-        try:
-            raise IOError()
-        except Exception as error:
-            self.transport.session.saved_exception = error
-        self.mock_os_read.return_value = 'e'
         with self.assertRaises(IOError):
             self.transport.on_readable(Mock(), Mock())
 
