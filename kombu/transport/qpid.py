@@ -51,9 +51,8 @@ except ImportError:  # pragma: no cover
     qpidtoollibs = None     # noqa
 
 try:
-    from qpid.messaging.exceptions import ConnectionError
+    from qpid.messaging.exceptions import ConnectionError, NotFound
     from qpid.messaging.exceptions import Empty as QpidEmpty
-    from qpid.messaging.exceptions import NotFound
 except ImportError:  # pragma: no cover
     ConnectionError = None
     NotFound = None
@@ -98,59 +97,6 @@ def dependency_is_none(dependency):
 
 class AuthenticationFailure(Exception):
     pass
-
-
-class QpidMessagingExceptionHandler(object):
-    """An exception handling decorator that silences some exceptions.
-
-    An exception handling class designed to silence specific exceptions
-    that qpid.messaging raises as part of normal operation. qpid.messaging
-    exceptions require string parsing, and are not machine consumable.
-    This is designed to be used as a decorator, and accepts a whitelist
-    string as an argument.
-
-    Usage:
-    @QpidMessagingExceptionHandler('whitelist string goes here')
-
-    """
-
-    def __init__(self, allowed_exception_string):
-        """Instantiate a QpidMessagingExceptionHandler object.
-
-        :param allowed_exception_string: a string that, if present in the
-            exception message, will be silenced.
-        :type allowed_exception_string: str
-
-        """
-        self.allowed_exception_string = allowed_exception_string
-
-    def __call__(self, original_fun):
-        """The decorator method.
-
-        Method that wraps the actual function with exception silencing
-        functionality. Any exception that contains the string
-        self.allowed_exception_string in the message will be silenced.
-
-        :param original_fun: function that is automatically passed in
-        when this object is used as a decorator.
-        :type original_fun: function
-
-        :return: A function that decorates (wraps) the original function.
-        :rtype: function
-        """
-
-        def decorator(*args, **kwargs):
-            """A runtime-built function that will be returned which contains
-            a reference to the original function, and wraps a call to it in
-            a try/except block that can silence errors.
-            """
-            try:
-                return original_fun(*args, **kwargs)
-            except Exception as exc:
-                if self.allowed_exception_string not in str(exc):
-                    raise
-
-        return decorator
 
 
 class QoS(object):
@@ -419,6 +365,8 @@ class Channel(base.StdChannel):
 
         :return: The received message.
         :rtype: :class:`qpid.messaging.Message`
+        :raises: :class:`qpid.messaging.exceptions.Empty` if no
+                 message is available.
         """
         rx = self.transport.session.receiver(queue)
         try:
@@ -688,7 +636,6 @@ class Channel(base.StdChannel):
                 return
             self._delete(queue)
 
-    @QpidMessagingExceptionHandler(OBJECT_ALREADY_EXISTS_STRING)
     def exchange_declare(self, exchange='', type='direct', durable=False,
                          **kwargs):
         """Create a new exchange.
@@ -715,7 +662,11 @@ class Channel(base.StdChannel):
         :type durable: bool
         """
         options = {'durable': durable}
-        self._broker.addExchange(type, exchange, options)
+        try:
+            self._broker.addExchange(type, exchange, options)
+        except Exception as exc:
+            if OBJECT_ALREADY_EXISTS_STRING not in str(exc):
+                raise exc
 
     def exchange_delete(self, exchange_name, **kwargs):
         """Delete an exchange specified by name
@@ -1352,9 +1303,7 @@ class ReceiversMonitor(threading.Thread):
     session.next_receiver() forever.
 
     The entry point of the thread is :meth:`run` which calls
-    :meth:`monitor_receivers` and catches and logs all exceptions raised.
-    After an exception is logged, the method sleeps for 10 seconds, and
-    re-enters :meth:`monitor_receivers`
+    :meth:`monitor_receivers`.
 
     The thread is designed to be daemonized, and will be forcefully killed
     when all non-daemon threads have already exited.
@@ -1377,27 +1326,20 @@ class ReceiversMonitor(threading.Thread):
     def run(self):
         """Thread entry point for ReceiversMonitor
 
-        Calls :meth:`monitor_receivers` with a log-and-reenter behavior. This
-        guards against unexpected exceptions which could cause this thread to
-        exit unexpectedly.
+        Calls :meth:`monitor_receivers` with a log-and-reenter behavior for
+        non connection errors. This guards against unexpected exceptions
+        which could cause this thread to exit unexpectedly.
 
-        If a recoverable error occurs, then the exception needs to be
-        propagated to the Main Thread where an exception handler can properly
-        handle it. An Exception is checked if it is recoverable, and if so,
-        it is stored as saved_exception on the self._session object. The
-        character 'e' is then written to the self.w_fd file descriptor
-        causing Main Thread to raise the saved exception. Once the Exception
-        info is saved and the file descriptor is written, this Thread
-        gracefully exits.
-
-        Typically recoverable errors are connection errors, and can be
-        recovered through a call to Transport.establish_connection which will
-        spawn a new ReceiversMonitor Thread.
+        If a connection error occurs, the exception needs to be propagated
+        to MainThread where the kombu exception handler can properly handle
+        it. The exception is stored as saved_exception on the self._session
+        object. The character 'e' is then written to the self.w_fd file
+        descriptor and then this thread exits.
         """
         while True:
             try:
                 self.monitor_receivers()
-            except Transport.connection_errors as exc:
+            except Transport.recoverable_connection_errors as exc:
                 self._session.saved_exception = exc
                 os.write(self._w_fd, 'e')
                 break
@@ -1438,12 +1380,17 @@ class Transport(base.Transport):
     The Transport can create :class:`Channel` objects to communicate with the
     broker with using the :meth:`create_channel` method.
 
-    The Transport identifies recoverable errors, allowing for error recovery
-    when certain exceptions occur. These exception types are stored in the
-    Transport class attribute connection_errors. This adds support for Kombu
-    to retry an operation if a ConnectionError occurs. ConnectionErrors occur
-    when the Transport cannot communicate with the Qpid broker.
+    The Transport identifies recoverable connection errors and recoverable
+    channel errors according to the Kombu 3.0 interface. These exception are
+    listed as tuples and store in the Transport class attribute
+    `recoverable_connection_errors` and `recoverable_channel_errors`
+    respectively. Any exception raised that is not a member of one of these
+    tuples is considered non-recoverable. This allows Kombu support for
+    automatic retry of certain operations to function correctly.
 
+    For backwards compatibility to the pre Kombu 3.0 exception interface, the
+    recoverable errors are also listed as `connection_errors` and
+    `channel_errors`.
     """
 
     # Reference to the class that should be used as the Connection object
@@ -1474,6 +1421,12 @@ class Transport(base.Transport):
     recoverable_channel_errors = (
         NotFound,
     )
+
+    # Support the pre 3.0 Kombu exception labeling interface which treats
+    # connection_errors and channel_errors both as recoverable via a
+    # reconnect.
+    connection_errors = recoverable_connection_errors
+    channel_errors = recoverable_channel_errors
 
     def __init__(self, *args, **kwargs):
         """Instantiate a Transport object.
@@ -1537,10 +1490,10 @@ class Transport(base.Transport):
         ensuring that an accidental call to this method when no more messages
         will arrive will not cause indefinite blocking.
 
-        If the self.r file descriptor returns the character 'e', a
-        recoverable error occurred in the background thread, and this thread
-        should raise the saved exception. The exception is stored as
-        saved_exception on the session object.
+        If the self.r file descriptor receives the character 'e', an error
+        occurred in the background thread, and this thread should raise the
+        saved exception. The exception is stored as saved_exception on the
+        session object.
 
         Nothing is expected to be returned from :meth:`drain_events` because
         :meth:`drain_events` handles messages by calling callbacks that are
