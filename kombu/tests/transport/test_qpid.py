@@ -16,7 +16,6 @@ from mock import call
 from kombu.five import Empty, keys, range, monotonic
 from kombu.transport.qpid import (AuthenticationFailure, Channel, Connection,
                                   ConnectionError, Message, NotFound, QoS,
-                                  QpidMessagingExceptionHandler,
                                   ReceiversMonitor, Transport)
 from kombu.transport.virtual import Base64
 from kombu.tests.case import Case, Mock, case_no_pypy, case_no_python3
@@ -87,44 +86,6 @@ class QpidException(Exception):
 
 class BreakOutException(Exception):
     pass
-
-
-@case_no_python3
-@case_no_pypy
-class TestQpidMessagingExceptionHandler(Case):
-
-    allowed_string = 'object in use'
-    not_allowed_string = 'a different string'
-
-    def setUp(self):
-        """Create a mock ExceptionHandler for testing by this object."""
-        self.handler = QpidMessagingExceptionHandler(self.allowed_string)
-
-    def test_string_stored(self):
-        """Assert that the allowed_exception_string is stored correctly"""
-        handler_string = self.handler.allowed_exception_string
-        self.assertEqual(self.allowed_string, handler_string)
-
-    def test_exception_positive(self):
-        """Assert that an exception is silenced if it contains the
-        allowed_string text."""
-        exception_to_raise = Exception(self.allowed_string)
-
-        def exception_raise_fun():
-            raise exception_to_raise
-        decorated_fun = self.handler(exception_raise_fun)
-        decorated_fun()
-
-    def test_exception_negative(self):
-        """Assert that an exception that does not contain the
-        allowed_string text is properly raised."""
-        exception_to_raise = Exception(self.not_allowed_string)
-
-        def exception_raise_fun():
-            raise exception_to_raise
-        decorated_fun = self.handler(exception_raise_fun)
-        with self.assertRaises(Exception):
-            decorated_fun()
 
 
 @case_no_python3
@@ -399,7 +360,7 @@ class TestConnectionInit(ExtraAssertionsMixin, ConnectionTestBase):
     @patch(QPID_MODULE + '.sys.exc_info')
     @patch(QPID_MODULE + '.qpid')
     def test_connection__init__mutates_ConnError_by_message2(self, mock_qpid,
-                                                            mock_exc_info):
+                                                             mock_exc_info):
         """
         Test for PLAIN connection via python-saslwrapper, sans cyrus-sasl-plain
 
@@ -421,7 +382,6 @@ class TestConnectionInit(ExtraAssertionsMixin, ConnectionTestBase):
             self.assertTrue(exc_info[2] is None)
         else:
             self.fail('ConnectionError type was not mutated correctly')
-
 
     @patch(QPID_MODULE + '.ConnectionError', new=(QpidException, ))
     @patch(QPID_MODULE + '.sys.exc_info')
@@ -1499,7 +1459,7 @@ class TestReceiversMonitorRun(ReceiversMonitorTestBase):
             self.monitor.run()
         mock_monitor_receivers.has_calls([call(), call()])
 
-    @patch.object(Transport, 'connection_errors', new=(QpidException, ))
+    @patch.object(Transport, 'recoverable_connection_errors', new=(QpidException, ))
     @patch.object(ReceiversMonitor, 'monitor_receivers')
     @patch(QPID_MODULE + '.time.sleep')
     @patch(QPID_MODULE + '.logger')
@@ -1513,7 +1473,7 @@ class TestReceiversMonitorRun(ReceiversMonitorTestBase):
         self.monitor.run()
         self.assertFalse(mock_logger.error.called)
 
-    @patch.object(Transport, 'connection_errors', new=(QpidException, ))
+    @patch.object(Transport, 'recoverable_connection_errors', new=(QpidException, ))
     @patch.object(ReceiversMonitor, 'monitor_receivers')
     @patch(QPID_MODULE + '.time.sleep')
     @patch(QPID_MODULE + '.logger')
@@ -1529,7 +1489,7 @@ class TestReceiversMonitorRun(ReceiversMonitorTestBase):
             mock_monitor_receivers.side_effect,
         )
 
-    @patch.object(Transport, 'connection_errors', new=(QpidException, ))
+    @patch.object(Transport, 'recoverable_connection_errors', new=(QpidException, ))
     @patch.object(ReceiversMonitor, 'monitor_receivers')
     @patch(QPID_MODULE + '.time.sleep')
     @patch(QPID_MODULE + '.logger')
@@ -1915,6 +1875,12 @@ class TestTransportClassAttributes(Case):
     def test_transport_verify_recoverable_channel_errors(self):
         channel_errors = Transport.recoverable_channel_errors
         self.assertIn(NotFound, channel_errors)
+
+    def test_transport_verify_pre_kombu_3_0_exception_labels(self):
+        self.assertEqual(Transport.recoverable_channel_errors,
+                         Transport.channel_errors)
+        self.assertEqual(Transport.recoverable_connection_errors,
+                         Transport.connection_errors)
 
 
 @case_no_python3
