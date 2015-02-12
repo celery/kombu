@@ -153,7 +153,7 @@ class Channel(virtual.Channel):
                 if not host_port:
                     continue
                 try:
-                    host, port = host_port.split(":", 1)
+                    host, port = host_port.split(':', 1)
                     host_port = (host, int(port))
                 except ValueError:
                     if host_port == conninfo.hostname:
@@ -164,7 +164,7 @@ class Channel(virtual.Channel):
         host_port = (conninfo.hostname, conninfo.port or DEFAULT_PORT)
         if host_port not in hosts:
             hosts.insert(0, host_port)
-        conn_str = ",".join(["%s:%s" % (host, port) for (host, port) in hosts])
+        conn_str = ",".join(['%s:%s' % (host, port) for host, port in hosts])
         conn = KazooClient(conn_str)
         conn.start()
         return conn
