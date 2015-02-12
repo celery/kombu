@@ -144,10 +144,27 @@ class Channel(virtual.Channel):
 
     def _open(self):
         conninfo = self.connection.client
-        port = conninfo.port or DEFAULT_PORT
-        conn_str = '%s:%s' % (conninfo.hostname, port)
         self.vhost = os.path.join('/', conninfo.virtual_host[0:-1])
-
+        hosts = []
+        if conninfo.alt:
+            for host_port in conninfo.alt:
+                if host_port.startswith('zookeeper://'):
+                    host_port = host_port[len('zookeeper://'):]
+                if not host_port:
+                    continue
+                try:
+                    host, port = host_port.split(":", 1)
+                    host_port = (host, int(port))
+                except ValueError:
+                    if host_port == conninfo.hostname:
+                        host_port = (host_port, conninfo.port or DEFAULT_PORT)
+                    else:
+                        host_port = (host_port, DEFAULT_PORT)
+                hosts.append(host_port)
+        host_port = (conninfo.hostname, conninfo.port or DEFAULT_PORT)
+        if host_port not in hosts:
+            hosts.insert(0, host_port)
+        conn_str = ",".join(["%s:%s" % (host, port) for (host, port) in hosts])
         conn = KazooClient(conn_str)
         conn.start()
         return conn
