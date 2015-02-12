@@ -730,3 +730,13 @@ class Queue(MaybeChannelBound):
                      queue_arguments=q_arguments,
                      binding_arguments=b_arguments,
                      bindings=bindings)
+
+    def as_dict(self, recurse=False):
+        res = super(Queue, self).as_dict(recurse)
+        if not recurse:
+            return res
+        bindings = res.get('bindings')
+        if bindings:
+            res['bindings'] = [b.as_dict(recurse=True) for b in bindings]
+        return res
+
