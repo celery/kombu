@@ -152,3 +152,22 @@ class Message(object):
         if not self._decoded_cache:
             self._decoded_cache = self.decode()
         return self._decoded_cache
+
+    def __repr__(self):
+        details = {
+            'state': self._state,
+            'content_type': self.content_type,
+            'delivery_tag': self.delivery_tag,
+            'properties': {},
+        }
+        if self.body is not None:
+            details['body_length'] = len(self.body)
+        for k in ('correlation_id', 'type'):
+            if k in self.properties:
+                details['properties'][k] = self.properties[k]
+        if 'routing_key' in self.delivery_info:
+            details['delivery_info'] = {
+                'routing_key': self.delivery_info['routing_key'],
+            }
+        return "<%s object at 0x%x with details %s>" % (
+            self.__class__.__name__, id(self), details)
