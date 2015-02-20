@@ -441,6 +441,16 @@ class TestConnectionGetQpidConnection(ConnectionTestBase):
 
 @case_no_python3
 @case_no_pypy
+class TestConnectionClose(ConnectionTestBase):
+
+    def test_connection_close(self):
+        self.conn._qpid_conn = Mock()
+        self.conn.close()
+        self.conn._qpid_conn.close.assert_called_once_with()
+
+
+@case_no_python3
+@case_no_pypy
 class TestConnectionCloseChannel(ConnectionTestBase):
 
     def setUp(self):
@@ -1993,16 +2003,11 @@ class TestTransport(ExtraAssertionsMixin, Case):
         self.mock_client = Mock()
 
     def test_close_connection(self):
-        """Test that close_connection calls close on each channel in the
-        list of channels on the connection object."""
+        """Test that close_connection calls close on the connection."""
         my_transport = Transport(self.mock_client)
         mock_connection = Mock()
-        mock_channel_1 = Mock()
-        mock_channel_2 = Mock()
-        mock_connection.channels = [mock_channel_1, mock_channel_2]
         my_transport.close_connection(mock_connection)
-        mock_channel_1.close.assert_called_with()
-        mock_channel_2.close.assert_called_with()
+        mock_connection.close.assert_called_once_with()
 
     def test_default_connection_params(self):
         """Test that the default_connection_params are correct"""

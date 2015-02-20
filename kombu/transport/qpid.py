@@ -928,7 +928,7 @@ class Channel(base.StdChannel):
             self.connection._callbacks.pop(queue, None)
 
     def close(self):
-        """Close Channel and all associated messages.
+        """Cancel all associated messages and close the Channel.
 
         This cancels all consumers by calling :meth:`basic_cancel` for each
         known consumer_tag. It also closes the self._broker sessions. Closing
@@ -1271,6 +1271,14 @@ class Connection(object):
         :rtype: :class:`qpid.messaging.endpoints.Connection`
         """
         return self._qpid_conn
+
+    def close(self):
+        """Close the connection
+
+        Closing the connection will close all associated session, senders, or
+        receivers used by the Connection.
+        """
+        self._qpid_conn.close()
 
     def close_channel(self, channel):
         """Close a Channel.
@@ -1620,18 +1628,13 @@ class Transport(base.Transport):
         return conn
 
     def close_connection(self, connection):
-        """Close the :class:`Connection` object, and all associated
-        :class:`Channel` objects.
-
-        Iterates through all :class:`Channel` objects associated with the
-        :class:`Connection`, pops them from the list of channels, and calls
-        :meth:Channel.close` on each.
-
-        :param connection: The Connection that should be closed
-        :type connection: Connection
         """
-        for channel in connection.channels:
-                channel.close()
+        Close the :class:`Connection` object.
+
+        :param connection: The Connection that should be closed.
+        :type connection: :class:`kombu.transport.qpid.Connection`
+        """
+        connection.close()
 
     def drain_events(self, connection, timeout=0, **kwargs):
         """Handle and call callbacks for all ready Transport messages.
