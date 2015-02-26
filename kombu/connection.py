@@ -162,12 +162,12 @@ class Connection(object):
                 transport = self.uri_prefix = params['transport']
             else:
                 transport = transport or urlparse(hostname).scheme
-                if get_transport_cls(transport).can_parse_url:
-                    # set the transport so that the default is not used.
-                    params['transport'] = transport
-                else:
+                if not get_transport_cls(transport).can_parse_url:
                     # we must parse the URL
                     params.update(parse_url(hostname))
+
+                params['transport'] = transport
+
         self._init_params(**params)
 
         # fallback hosts
