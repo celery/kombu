@@ -368,6 +368,8 @@ class Channel(virtual.Channel):
                         raise
 
     def _get_regioninfo(self, regions):
+        if self.regioninfo:
+            return self.regioninfo
         if self.region:
             for _r in regions:
                 if _r.name == self.region:
@@ -376,10 +378,13 @@ class Channel(virtual.Channel):
     def _aws_connect_to(self, fun, regions):
         conninfo = self.conninfo
         region = self._get_regioninfo(regions)
+        is_secure = self.is_secure if self.is_secure is not None else True
+        port = self.port if self.port is not None else conninfo.port
         return fun(region=region,
                    aws_access_key_id=conninfo.userid,
                    aws_secret_access_key=conninfo.password,
-                   port=conninfo.port)
+                   is_secure=is_secure,
+                   port=port)
 
     @property
     def sqs(self):
@@ -419,6 +424,18 @@ class Channel(virtual.Channel):
     @cached_property
     def region(self):
         return self.transport_options.get('region') or self.default_region
+
+    @cached_property
+    def regioninfo(self):
+        return self.transport_options.get('regioninfo')
+
+    @cached_property
+    def is_secure(self):
+        return self.transport_options.get('is_secure')
+
+    @cached_property
+    def port(self):
+        return self.transport_options.get('port')
 
     @cached_property
     def wait_time_seconds(self):
