@@ -10,7 +10,7 @@ from kombu.utils.encoding import bytes_to_str
 from kombu.utils.json import loads, dumps
 
 
-from .models import Queue
+from .models import Queue, Message
 
 try:
     from django.apps import AppConfig
@@ -45,10 +45,12 @@ class Channel(virtual.Channel):
             return
         super(Channel, self).basic_consume(queue, *args, **kwargs)
 
-    def _get(self, queue):
-        m = Queue.objects.fetch(queue)
-        if m:
-            return loads(bytes_to_str(m))
+    def _get(self, queue, manager='objects', **kwargs):
+        message = getattr(Message, manager).pop(queue)
+        if message:
+            payload = loads(bytes_to_str(message.payload))
+            payload['properties']['delivery_tag'] = message.pk
+            return payload
         raise Empty()
 
     def _size(self, queue):

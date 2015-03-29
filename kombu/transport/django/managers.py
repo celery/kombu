@@ -21,6 +21,7 @@ else:
                 return fun(*args, **kwargs)
         return _commit
 
+from . import pgsql
 
 
 class QueueManager(models.Manager):
@@ -28,14 +29,6 @@ class QueueManager(models.Manager):
     def publish(self, queue_name, payload):
         queue, created = self.get_or_create(name=queue_name)
         queue.messages.create(payload=payload)
-
-    def fetch(self, queue_name):
-        try:
-            queue = self.get(name=queue_name)
-        except self.model.DoesNotExist:
-            return
-
-        return queue.messages.pop()
 
     def size(self, queue_name):
         return self.get(name=queue_name).messages.count()
@@ -64,10 +57,10 @@ class MessageManager(models.Manager):
     cleanup_every = 10
 
     @commit_on_success
-    def pop(self):
+    def pop(self, queue):
         try:
             resultset = select_for_update(
-                self.filter(visible=True).order_by('sent_at', 'id')
+                self.filter(visible=True, queue__name=queue).order_by('sent_at', 'id')
             )
             result = resultset[0:1].get()
             result.visible = False
@@ -76,7 +69,7 @@ class MessageManager(models.Manager):
             recv[0] += 1
             if not recv[0] % self.cleanup_every:
                 self.cleanup()
-            return result.payload
+            return result
         except self.model.DoesNotExist:
             pass
 
@@ -92,3 +85,23 @@ class MessageManager(models.Manager):
         if connections:
             return connections[router.db_for_write(self.model)]
         return connection
+
+
+class PostgresMessageManager(MessageManager):
+    def pop(self, queue):
+        results = self.raw(
+            pgsql.LOCK_JOB, dict(app_id=pgsql.APP_ID, queue=queue)
+        )
+        if results:
+            return results[0]
+
+    def ack(self, delivery_tag):
+        """Delete the message and remove the advisory lock"""
+        self.filter(pk=delivery_tag).delete()
+        cursor = self.connection_for_write().cursor()
+        cursor.execute(pgsql.UNLOCK, dict(app_id=pgsql.APP_ID, lock_id=delivery_tag))
+
+    def reject(self, delivery_tag):
+        """Remove the advisory lock without deleting the message"""
+        cursor = self.connection_for_write().cursor()
+        cursor.execute(pgsql.UNLOCK, dict(app_id=pgsql.APP_ID, lock_id=delivery_tag))
