@@ -27,6 +27,7 @@ W_VERSION = """
     so make sure you are using librabbitmq 1.5 when using rabbitmq > 3.3
 """
 DEFAULT_PORT = 5672
+DEFAULT_SSL_PORT = 5671
 
 NO_SSL_ERROR = """\
 ssl not supported by librabbitmq, please use pyamqp:// or stunnel\
@@ -71,6 +72,8 @@ class Transport(base.Transport):
     Connection = Connection
 
     default_port = DEFAULT_PORT
+    default_ssl_port = DEFAULT_SSL_PORT
+
     connection_errors = (
         base.Transport.connection_errors + (
             ConnectionError, socket.error, IOError, OSError)
@@ -86,6 +89,8 @@ class Transport(base.Transport):
     def __init__(self, client, **kwargs):
         self.client = client
         self.default_port = kwargs.get('default_port') or self.default_port
+        self.default_ssl_port = (kwargs.get('default_ssl_port') or
+                                 self.default_ssl_port)
         self.__reader = None
 
     def driver_version(self):
@@ -161,6 +166,11 @@ class Transport(base.Transport):
 
     @property
     def default_connection_params(self):
-        return {'userid': 'guest', 'password': 'guest',
-                'port': self.default_port,
-                'hostname': 'localhost', 'login_method': 'AMQPLAIN'}
+        return {
+            'userid': 'guest',
+            'password': 'guest',
+            'port': (self.default_ssl_port if self.client.ssl
+                     else self.default_port),
+            'hostname': 'localhost',
+            'login_method': 'AMQPLAIN',
+        }

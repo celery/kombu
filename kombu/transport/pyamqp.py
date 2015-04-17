@@ -16,6 +16,7 @@ from kombu.utils.text import version_string_as_tuple
 from . import base
 
 DEFAULT_PORT = 5672
+DEFAULT_SSL_PORT = 5671
 
 
 class Message(base.Message):
@@ -63,6 +64,7 @@ class Transport(base.Transport):
     Connection = Connection
 
     default_port = DEFAULT_PORT
+    default_ssl_port = DEFAULT_SSL_PORT
 
     # it's very annoying that pyamqp sometimes raises AttributeError
     # if the connection is lost, but nothing we can do about that here.
@@ -77,9 +79,11 @@ class Transport(base.Transport):
     supports_heartbeats = True
     supports_ev = True
 
-    def __init__(self, client, default_port=None, **kwargs):
+    def __init__(self, client,
+                 default_port=None, default_ssl_port=None, **kwargs):
         self.client = client
         self.default_port = default_port or self.default_port
+        self.default_ssl_port = default_ssl_port or self.default_ssl_port
 
     def driver_version(self):
         return amqp.__version__
@@ -138,9 +142,14 @@ class Transport(base.Transport):
 
     @property
     def default_connection_params(self):
-        return {'userid': 'guest', 'password': 'guest',
-                'port': self.default_port,
-                'hostname': 'localhost', 'login_method': 'AMQPLAIN'}
+        return {
+            'userid': 'guest',
+            'password': 'guest',
+            'port': (self.default_ssl_port if self.client.ssl
+                     else self.default_port),
+            'hostname': 'localhost',
+            'login_method': 'AMQPLAIN',
+        }
 
     def get_manager(self, *args, **kwargs):
         return get_manager(self.client, *args, **kwargs)
