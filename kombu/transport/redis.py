@@ -782,11 +782,12 @@ class Channel(virtual.Channel):
                       'socket_timeout': self.socket_timeout}
         host = connparams['host']
         if '://' in host:
-            scheme, _, _, _, _, path, query = _parse_url(host)
+            scheme, _, _, _, password, path, query = _parse_url(host)
             if scheme == 'socket':
                 connparams.update({
                     'connection_class': redis.UnixDomainSocketConnection,
-                    'path': '/' + path}, **query)
+                    'path': '/' + path,
+                    'password': password}, **query)
             connparams.pop('host', None)
             connparams.pop('port', None)
         connparams['db'] = self._prepare_virtual_host(
@@ -796,7 +797,7 @@ class Channel(virtual.Channel):
         connection_cls = (
             connparams.get('connection_class') or
             redis.Connection
-            )
+        )
 
         class Connection(connection_cls):
             def disconnect(self):
