@@ -1469,7 +1469,8 @@ class TestReceiversMonitorRun(ReceiversMonitorTestBase):
             self.monitor.run()
         mock_monitor_receivers.has_calls([call(), call()])
 
-    @patch.object(Transport, 'recoverable_connection_errors', new=(QpidException, ))
+    @patch.object(Transport, 'recoverable_connection_errors',
+                  new=(QpidException, ))
     @patch.object(ReceiversMonitor, 'monitor_receivers')
     @patch(QPID_MODULE + '.time.sleep')
     @patch(QPID_MODULE + '.logger')
@@ -1483,7 +1484,8 @@ class TestReceiversMonitorRun(ReceiversMonitorTestBase):
         self.monitor.run()
         self.assertFalse(mock_logger.error.called)
 
-    @patch.object(Transport, 'recoverable_connection_errors', new=(QpidException, ))
+    @patch.object(Transport, 'recoverable_connection_errors',
+                  new=(QpidException, ))
     @patch.object(ReceiversMonitor, 'monitor_receivers')
     @patch(QPID_MODULE + '.time.sleep')
     @patch(QPID_MODULE + '.logger')
@@ -1499,7 +1501,8 @@ class TestReceiversMonitorRun(ReceiversMonitorTestBase):
             mock_monitor_receivers.side_effect,
         )
 
-    @patch.object(Transport, 'recoverable_connection_errors', new=(QpidException, ))
+    @patch.object(Transport, 'recoverable_connection_errors',
+                  new=(QpidException, ))
     @patch.object(ReceiversMonitor, 'monitor_receivers')
     @patch(QPID_MODULE + '.time.sleep')
     @patch(QPID_MODULE + '.logger')

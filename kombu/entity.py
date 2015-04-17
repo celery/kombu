@@ -739,4 +739,3 @@ class Queue(MaybeChannelBound):
         if bindings:
             res['bindings'] = [b.as_dict(recurse=True) for b in bindings]
         return res
-
