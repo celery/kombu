@@ -4,6 +4,68 @@
  Change history
 ================
 
+.. _version-3.0.25:
+
+3.0.25
+======
+:release-date: 2015-04-21 02:00 P.M UTC
+:releasy-by: Ask Solem
+
+- pyamqp/librabbitmq now uses 5671 as default port when SSL is enabled
+  (Issue #459).
+
+- Redis: Now supports passwords in ``redis+socket://:pass@host:port`` URLs
+  (Issue #460).
+
+- ``Producer.publish`` now defines the ``expiration`` property in support
+  of the `RabbitMQ per-message TTL extension`_.
+
+    Contributed by Anastasis Andronidis.
+
+- Connection transport attribute now set correctly for all transports.
+
+    Contributed by Alex Koshelev.
+
+- qpid: Fixed bug where the connectionw as not being closed properly.
+
+    Contributed by Brian Bouterse.
+
+- :class:`~kombu.entity.bindings` is now JSON serializable (Issue #453).
+
+    Contributed by Sergey Tikhonov.
+
+- Fixed typo in error when yaml is not installed (said ``msgpack``).
+
+    Contributed by Joshua Harlow.
+
+- Redis: Now properly handles ``TimeoutError raised by py-redis.
+
+    Contributed by markow.
+
+- qpid: Adds additional string to check for when connecting to qpid.
+
+    When we connect to qpid, we need to ensure that we skip to the next SASL
+    mechanism if the current mechanism fails. Otherwise, we will keep retrying the
+    connection with a non-working mech.
+
+    Contributed by Chris Duryee.
+
+- qpid: Handle ``NotFound`` exceptions.
+
+    Contributed by Brian Bouterse.
+
+- :class:`Queue.__repr__` now makes sure return value is not unicode
+  (Issue #440).
+
+- qpid: ``Queue.purge`` incorrectly raised :exc:`AttributeErrror` if the
+  does not exist (Issue #439).
+
+    Contributed by Brian Bouterse.
+
+- Linux: Now ignores permission errors on epoll unregister.
+
+.. _`RabbitMQ per-message TTL extension`: https://www.rabbitmq.com/ttl.html
+
 .. _version-3.0.24:
 
 3.0.24
