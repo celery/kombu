@@ -82,14 +82,14 @@ def get_redis_error_classes():
     else:
         DataError = exceptions.DataError
     return error_classes_t(
-        (virtual.Transport.connection_errors + (
+        (virtual.Transport.connection_errors + tuple(filter(None, (
             InconsistencyError,
             socket.error,
             IOError,
             OSError,
             exceptions.ConnectionError,
             exceptions.AuthenticationError,
-            exceptions.TimeoutError)),
+            getattr(exceptions, 'TimeoutError', None))))),
         (virtual.Transport.channel_errors + (
             DataError,
             exceptions.InvalidResponse,
