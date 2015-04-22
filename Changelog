@@ -4,12 +4,21 @@
  Change history
 ================
 
+.. _version-3.0.26"
+
+3.0.26
+======
+:release-date: 2015-04-22 06:00 P.M UTC
+:release-by: Ask Solem
+
+- Fixed compatibility with py-redis versions before 2.10.3 (Issue #470).
+
 .. _version-3.0.25:
 
 3.0.25
 ======
 :release-date: 2015-04-21 02:00 P.M UTC
-:releasy-by: Ask Solem
+:release-by: Ask Solem
 
 - pyamqp/librabbitmq now uses 5671 as default port when SSL is enabled
   (Issue #459).
