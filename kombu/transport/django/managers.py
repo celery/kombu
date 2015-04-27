@@ -92,7 +92,7 @@ class PostgresMessageManager(MessageManager):
         results = self.raw(
             pgsql.LOCK_JOB, dict(app_id=pgsql.APP_ID, queue=queue)
         )
-        if results:
+        if list(results):
             return results[0]
 
     def ack(self, delivery_tag):

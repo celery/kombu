@@ -6,6 +6,9 @@ Django database transport optimized for PostgreSQL
  using advisory locks to hide messages that are held
  by a worker.
 
+This transport is meant to be used with `CELERY_ACKS_LATE = True`,
+so messages are not acknowledged until after they have completed.
+
 Inspired by `que` by Chris Hanks: https://github.com/chanks/que
 """
 from __future__ import absolute_import
