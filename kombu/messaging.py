@@ -7,14 +7,12 @@ Sending and receiving messages.
 """
 from __future__ import absolute_import
 
-import numbers
-
 from itertools import count
 
 from .common import maybe_declare
 from .compression import compress
 from .connection import maybe_channel, is_connection
-from .entity import Exchange, Queue, DELIVERY_MODES
+from .entity import Exchange, Queue, maybe_delivery_mode
 from .exceptions import ContentDisallowed
 from .five import text_t, values
 from .serialization import dumps, prepare_accept_content
@@ -110,6 +108,19 @@ class Producer(object):
         if entity:
             return maybe_declare(entity, self.channel, retry, **retry_policy)
 
+    def _delivery_details(self, exchange, delivery_mode=None,
+                          maybe_delivery_mode=maybe_delivery_mode,
+                          Exchange=Exchange):
+        if isinstance(exchange, Exchange):
+            return exchange.name, maybe_delivery_mode(
+                delivery_mode or exchange.delivery_mode,
+            )
+        # exchange is string, so inherit the delivery
+        # mode of our default exchange.
+        return exchange, maybe_delivery_mode(
+            delivery_mode or self.exchange.delivery_mode,
+        )
+
     def publish(self, body, routing_key=None, delivery_mode=None,
                 mandatory=False, immediate=False, priority=0,
                 content_type=None, content_encoding=None, serializer=None,
@@ -143,20 +154,17 @@ class Producer(object):
         :keyword \*\*properties: Additional message properties, see AMQP spec.
 
         """
+        _publish = self._publish
+
         headers = {} if headers is None else headers
         retry_policy = {} if retry_policy is None else retry_policy
         routing_key = self.routing_key if routing_key is None else routing_key
         compression = self.compression if compression is None else compression
-        exchange = exchange or self.exchange
 
-        if isinstance(exchange, Exchange):
-            delivery_mode = delivery_mode or exchange.delivery_mode
-            exchange = exchange.name
-        else:
-            delivery_mode = delivery_mode or self.exchange.delivery_mode
-        if not isinstance(delivery_mode, numbers.Integral):
-            delivery_mode = DELIVERY_MODES[delivery_mode]
-        properties['delivery_mode'] = delivery_mode
+        exchange_name, properties['delivery_mode'] = self._delivery_details(
+            exchange or self.exchange, delivery_mode,
+        )
+
         if expiration is not None:
             properties['expiration'] = str(int(expiration*1000))
 
@@ -164,12 +172,13 @@ class Producer(object):
             body, serializer, content_type, content_encoding,
             compression, headers)
 
-        publish = self._publish
         if retry:
-            publish = self.connection.ensure(self, publish, **retry_policy)
-        return publish(body, priority, content_type,
-                       content_encoding, headers, properties,
-                       routing_key, mandatory, immediate, exchange, declare)
+            _publish = self.connection.ensure(self, _publish, **retry_policy)
+        return _publish(
+            body, priority, content_type, content_encoding,
+            headers, properties, routing_key, mandatory, immediate,
+            exchange_name, declare,
+        )
 
     def _publish(self, body, priority, content_type, content_encoding,
                  headers, properties, routing_key, mandatory,

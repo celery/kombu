@@ -7,6 +7,8 @@ Exchange and Queue declarations.
 """
 from __future__ import absolute_import
 
+import numbers
+
 from .abstract import MaybeChannelBound
 from .exceptions import ContentDisallowed
 from .five import string_t
@@ -17,7 +19,7 @@ PERSISTENT_DELIVERY_MODE = 2
 DELIVERY_MODES = {'transient': TRANSIENT_DELIVERY_MODE,
                   'persistent': PERSISTENT_DELIVERY_MODE}
 
-__all__ = ['Exchange', 'Queue', 'binding']
+__all__ = ['Exchange', 'Queue', 'binding', 'maybe_delivery_mode']
 
 
 def _reprstr(s):
@@ -29,6 +31,13 @@ def _reprstr(s):
 
 def pretty_bindings(bindings):
     return '[%s]' % (', '.join(map(str, bindings)))
+
+
+def maybe_delivery_mode(
+        v, modes=DELIVERY_MODES, default=PERSISTENT_DELIVERY_MODE):
+    if v:
+        return v if isinstance(v, numbers.Integral) else modes[v]
+    return default
 
 
 class Exchange(MaybeChannelBound):
@@ -136,7 +145,7 @@ class Exchange(MaybeChannelBound):
     durable = True
     auto_delete = False
     passive = False
-    delivery_mode = PERSISTENT_DELIVERY_MODE
+    delivery_mode = None
 
     attrs = (
         ('name', None),
@@ -230,10 +239,9 @@ class Exchange(MaybeChannelBound):
         :keyword headers: Message headers.
 
         """
+        # XXX This method is unused by kombu itself AFAICT [ask].
         properties = {} if properties is None else properties
-        dm = delivery_mode or self.delivery_mode
-        properties['delivery_mode'] = \
-            DELIVERY_MODES[dm] if (dm != 2 and dm != 1) else dm
+        properties['delivery_mode'] = maybe_delivery_mode(self.delivery_mode)
         return self.channel.prepare_message(body,
                                             properties=properties,
                                             priority=priority,
@@ -739,4 +747,3 @@ class Queue(MaybeChannelBound):
         if bindings:
             res['bindings'] = [b.as_dict(recurse=True) for b in bindings]
         return res
-
