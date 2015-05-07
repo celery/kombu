@@ -176,9 +176,14 @@ class Channel(virtual.Channel):
 
         return hostname, dbname, options
 
+    def _prepare_client_options(self, options):
+        if pymongo.version_tuple >= (3, ):
+            options.pop('auto_start_request', None)
+
     def _open(self, scheme='mongodb://'):
         hostname, dbname, options = self._parse_uri(scheme=scheme)
 
+        self._prepare_client_options(options)
         mongoconn = MongoClient(
             host=hostname, ssl=options['ssl'],
             auto_start_request=options['auto_start_request'],
