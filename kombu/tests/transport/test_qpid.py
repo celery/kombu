@@ -2023,3 +2023,26 @@ class TestTransport(ExtraAssertionsMixin, Case):
         my_transport = Transport(self.mock_client)
         result_params = my_transport.default_connection_params
         self.assertDictEqual(correct_params, result_params)
+
+    @patch('os.close')
+    def test_del(self, close):
+        my_transport = Transport(self.mock_client)
+        my_transport.__del__()
+        self.assertEqual(
+            close.call_args_list,
+            [
+                ((my_transport.r,), {}),
+                ((my_transport._w,), {}),
+            ])
+
+    @patch('os.close')
+    def test_del_failed(self, close):
+        close.side_effect = OSError()
+        my_transport = Transport(self.mock_client)
+        my_transport.__del__()
+        self.assertEqual(
+            close.call_args_list,
+            [
+                ((my_transport.r,), {}),
+                ((my_transport._w,), {}),
+            ])
