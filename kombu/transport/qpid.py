@@ -1707,3 +1707,14 @@ class Transport(base.Transport):
         return {'userid': 'guest', 'password': '',
                 'port': self.default_port, 'virtual_host': '',
                 'hostname': 'localhost', 'sasl_mechanisms': 'PLAIN ANONYMOUS'}
+
+    def __del__(self):
+        """
+        Ensure file descriptors opened in __init__() are closed.
+        """
+        for fd in (self.r, self._w):
+            try:
+                os.close(fd)
+            except OSError:
+                # ignored
+                pass
