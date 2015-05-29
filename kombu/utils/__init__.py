@@ -16,6 +16,7 @@ from contextlib import contextmanager
 from itertools import count, repeat
 from functools import wraps
 from time import sleep
+from sys import stderr
 from uuid import UUID, uuid4 as _uuid4, _uuid_generate_random
 
 from kombu.five import items, reraise, string_t
@@ -33,7 +34,10 @@ try:
 except ImportError:  # pragma: no cover
     # Py2
     FILENO_ERRORS = (AttributeError, ValueError)  # noqa
-
+try:
+    from cPickle import dump
+except ImportError:
+    from pickle import dump
 
 __all__ = ['EqualityDict', 'uuid', 'maybe_list',
            'fxrange', 'fxrangemax', 'retry_over_time',
@@ -238,19 +242,13 @@ def retry_over_time(fun, catch, args=[], kwargs={}, errback=None,
                 sleep(abs(int(tts) - tts))
 
 
-def emergency_dump_state(state, open_file=open, dump=None, stderr=None):
+def emergency_dump_state(state, open_file=open, dump=dump, stderr=stderr):
     from pprint import pformat
     from tempfile import mktemp
-    stderr = sys.stderr if stderr is None else stderr
-
-    if dump is None:
-        import pickle
-        dump = pickle.dump
     persist = mktemp()
     print('EMERGENCY DUMP STATE TO FILE -> {0} <-'.format(persist), ## noqa
           file=stderr)
-    fh = open_file(persist, 'w')
-    try:
+    with open_file(persist, 'w') as fh:
         try:
             dump(state, fh, protocol=0)
         except Exception as exc:
@@ -259,9 +257,6 @@ def emergency_dump_state(state, open_file=open, dump=None, stderr=None):
                 file=stderr,
             )
             fh.write(default_encode(pformat(state)))
-    finally:
-        fh.flush()
-        fh.close()
     return persist
 
 
