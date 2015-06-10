@@ -1444,6 +1444,19 @@ class TestReceiversMonitorRun(ReceiversMonitorTestBase):
             self.monitor.run()
         mock_monitor_receivers.assert_called_once_with()
 
+    @patch(QPID_MODULE + '.SessionClosed', new=QpidException)
+    @patch.object(ReceiversMonitor, 'monitor_receivers')
+    @patch(QPID_MODULE + '.time.sleep')
+    def test_receivers_monitor_run_exits_on_session_closed(
+            self, mock_sleep, mock_monitor_receivers):
+        mock_monitor_receivers.side_effect = QpidException()
+        try:
+            self.monitor.run()
+        except Exception:
+            self.fail('No exception should be raised here')
+        mock_monitor_receivers.assert_called_once_with()
+        mock_sleep.has_calls([])
+
     @patch.object(Transport, 'connection_errors', new=(BreakOutException, ))
     @patch.object(ReceiversMonitor, 'monitor_receivers')
     @patch(QPID_MODULE + '.time.sleep')
