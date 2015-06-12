@@ -53,10 +53,12 @@ except ImportError:  # pragma: no cover
 try:
     from qpid.messaging.exceptions import ConnectionError, NotFound
     from qpid.messaging.exceptions import Empty as QpidEmpty
+    from qpid.messaging.exceptions import SessionClosed
 except ImportError:  # pragma: no cover
     ConnectionError = None
     NotFound = None
     QpidEmpty = None
+    SessionClosed = None
 
 try:
     import qpid
@@ -1338,6 +1340,10 @@ class ReceiversMonitor(threading.Thread):
         non connection errors. This guards against unexpected exceptions
         which could cause this thread to exit unexpectedly.
 
+        A :class:`qpid.messaging.exceptions.SessionClosed` exception should
+        cause this thread to exit. This is a normal exit condition and the
+        thread is no longer needed.
+
         If a connection error occurs, the exception needs to be propagated
         to MainThread where the kombu exception handler can properly handle
         it. The exception is stored as saved_exception on the self._session
@@ -1350,6 +1356,8 @@ class ReceiversMonitor(threading.Thread):
             except Transport.recoverable_connection_errors as exc:
                 self._session.saved_exception = exc
                 os.write(self._w_fd, 'e')
+                break
+            except SessionClosed:
                 break
             except Exception as exc:
                 logger.error(exc, exc_info=1)
@@ -1707,3 +1715,14 @@ class Transport(base.Transport):
         return {'userid': 'guest', 'password': '',
                 'port': self.default_port, 'virtual_host': '',
                 'hostname': 'localhost', 'sasl_mechanisms': 'PLAIN ANONYMOUS'}
+
+    def __del__(self):
+        """
+        Ensure file descriptors opened in __init__() are closed.
+        """
+        for fd in (self.r, self._w):
+            try:
+                os.close(fd)
+            except OSError:
+                # ignored
+                pass

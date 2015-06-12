@@ -1444,6 +1444,19 @@ class TestReceiversMonitorRun(ReceiversMonitorTestBase):
             self.monitor.run()
         mock_monitor_receivers.assert_called_once_with()
 
+    @patch(QPID_MODULE + '.SessionClosed', new=QpidException)
+    @patch.object(ReceiversMonitor, 'monitor_receivers')
+    @patch(QPID_MODULE + '.time.sleep')
+    def test_receivers_monitor_run_exits_on_session_closed(
+            self, mock_sleep, mock_monitor_receivers):
+        mock_monitor_receivers.side_effect = QpidException()
+        try:
+            self.monitor.run()
+        except Exception:
+            self.fail('No exception should be raised here')
+        mock_monitor_receivers.assert_called_once_with()
+        mock_sleep.has_calls([])
+
     @patch.object(Transport, 'connection_errors', new=(BreakOutException, ))
     @patch.object(ReceiversMonitor, 'monitor_receivers')
     @patch(QPID_MODULE + '.time.sleep')
@@ -2023,3 +2036,26 @@ class TestTransport(ExtraAssertionsMixin, Case):
         my_transport = Transport(self.mock_client)
         result_params = my_transport.default_connection_params
         self.assertDictEqual(correct_params, result_params)
+
+    @patch('os.close')
+    def test_del(self, close):
+        my_transport = Transport(self.mock_client)
+        my_transport.__del__()
+        self.assertEqual(
+            close.call_args_list,
+            [
+                ((my_transport.r,), {}),
+                ((my_transport._w,), {}),
+            ])
+
+    @patch('os.close')
+    def test_del_failed(self, close):
+        close.side_effect = OSError()
+        my_transport = Transport(self.mock_client)
+        my_transport.__del__()
+        self.assertEqual(
+            close.call_args_list,
+            [
+                ((my_transport.r,), {}),
+                ((my_transport._w,), {}),
+            ])
