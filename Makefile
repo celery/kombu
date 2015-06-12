@@ -16,7 +16,7 @@ docsclean:
 	-rm -rf "$(SPHINX_BUILDDIR)"
 
 htmlclean:
-	-rm -rf "$(SPHINX)"
+	(cd "$(SPHINX_DIR)"; make clean)
 
 apicheck:
 	extra/release/doc4allmods kombu
