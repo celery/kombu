@@ -131,7 +131,7 @@ entry-points.
 
 The entry-point must provide the name of the serializer along
 with the path to a tuple providing the rest of the args:
-``decoder_function, encoder_function, content_type, content_encoding``.
+``encoder_function, decoder_function, content_type, content_encoding``.
 
 An example entrypoint could be:
 
@@ -152,7 +152,7 @@ Then the module ``my_module.serializer`` would look like:
 
 .. code-block:: python
 
-    register_args = (my_decoder, my_encoder, 'application/x-mimetype', 'utf-8')
+    register_args = (my_encoder, my_decoder, 'application/x-mimetype', 'utf-8')
 
 
 When this package is installed the new 'my_serializer' serializer will be
