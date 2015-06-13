@@ -52,6 +52,8 @@ class QueueManager(models.Manager):
 
 
 def select_for_update(qs):
+    if connection.vendor == 'oracle':
+        return qs
     try:
         return qs.select_for_update()
     except AttributeError:
