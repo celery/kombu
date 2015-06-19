@@ -444,7 +444,6 @@ class Connection(object):
                     if max_retries is not None and retries > max_retries:
                         raise
                     self._debug('ensure connection error: %r', exc, exc_info=1)
-                    self._connection = None
                     self._do_close_self()
                     errback and errback(exc, 0)
                     remaining_retries = None
