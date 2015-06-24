@@ -800,7 +800,7 @@ class Channel(virtual.Channel):
                 channel._on_connection_disconnect(self)
                 super(Connection, self).disconnect()
         connparams['connection_class'] = Connection
-
+        connparams.update(socket_timeout=5)
         return connparams
 
     def _create_client(self):
