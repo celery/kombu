@@ -384,7 +384,7 @@ class Channel(virtual.Channel):
     unacked_restore_limit = None
     visibility_timeout = 3600   # 1 hour
     priority_steps = PRIORITY_STEPS
-    socket_timeout = None
+    socket_timeout = 60
     max_connections = 10
     #: Transport option to enable disable fanout keyprefix.
     #: Should be enabled by default, but that is not
@@ -800,7 +800,6 @@ class Channel(virtual.Channel):
                 channel._on_connection_disconnect(self)
                 super(Connection, self).disconnect()
         connparams['connection_class'] = Connection
-        connparams.update(socket_timeout=5)
         return connparams
 
     def _create_client(self):
