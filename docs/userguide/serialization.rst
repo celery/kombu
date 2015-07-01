@@ -106,10 +106,10 @@ Sending raw data without Serialization
 ======================================
 
 In some cases, you don't need your message data to be serialized. If you
-pass in a plain string or Unicode object as your message, then `Kombu` will
+pass in a plain string or Unicode object as your message and a custom `content_type`, then `Kombu` will
 not waste cycles serializing/deserializing the data.
 
-You can optionally specify a `content_type` and `content_encoding`
+You can optionally specify a `content_encoding`
 for the raw data::
 
     >>> with open("~/my_picture.jpg", "rb") as fh:
