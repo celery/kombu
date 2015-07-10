@@ -5,8 +5,8 @@ from kombu.tests.case import redirect_stdouts
 from funtests import transport
 
 
-class test_django(transport.TransportCase):
-    transport = 'django'
+class test_django_postgres(transport.TransportCase):
+    transport = 'django_postgres'
     prefix = 'django'
     event_loop_max = 10
 
@@ -21,12 +21,10 @@ class test_django(transport.TransportCase):
             from django.conf import settings
             if not settings.configured:
                 settings.configure(
-                    DATABASE_ENGINE='sqlite3',
-                    DATABASE_NAME=':memory:',
                     DATABASES={
                         'default': {
-                            'ENGINE': 'django.db.backends.sqlite3',
-                            'NAME': ':memory:',
+                            'ENGINE': 'django.db.backends.postgresql_psycopg2',
+                            'NAME': 'kombu',
                         },
                     },
                     INSTALLED_APPS=('kombu.transport.django', ),

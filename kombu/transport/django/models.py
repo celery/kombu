@@ -5,7 +5,7 @@ import django
 from django.db import models
 from django.utils.translation import ugettext_lazy as _
 
-from .managers import QueueManager, MessageManager
+from .managers import QueueManager, MessageManager, PostgresMessageManager
 
 
 class Queue(models.Model):
@@ -29,6 +29,7 @@ class Message(models.Model):
     queue = models.ForeignKey(Queue, related_name='messages')
 
     objects = MessageManager()
+    pg_objects = PostgresMessageManager()
 
     class Meta:
         if django.VERSION >= (1, 7):

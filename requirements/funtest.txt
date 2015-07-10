@@ -14,11 +14,10 @@ beanstalkc
 kazoo
 
 # SQLAlchemy transport
-kombu-sqlalchemy
+sqlalchemy
 
 # Django ORM transport
 Django
-django-kombu
 
 # SQS transport
 boto
