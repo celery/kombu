@@ -155,7 +155,7 @@ instances:
     from kombu import pools
     from kombu import Connection
 
-    connections = pools.Connection(limit=100)
+    connections = pools.Connections(limit=100)
     producers = pools.Producers(limit=connections.limit)
 
     connection = Connection('amqp://guest:guest@localhost:5672//')
