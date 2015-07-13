@@ -3,7 +3,7 @@
 # https://issues.apache.org/jira/browse/QPID-5637
 # https://issues.apache.org/jira/browse/QPID-5557
 
-### Begin Monkey Patch 1 ###
+# ## Begin Monkey Patch 1 ###
 # https://issues.apache.org/jira/browse/QPID-5637
 
 #############################################################################
@@ -68,9 +68,9 @@ try:
 except ImportError:  # pragma: no cover
     pass
 
-### End Monkey Patch 1 ###
+# ## End Monkey Patch 1 ###
 
-### Begin Monkey Patch 2 ###
+# ## Begin Monkey Patch 2 ###
 # https://issues.apache.org/jira/browse/QPID-5557
 
 # Imports for Monkey Patch 2
@@ -81,7 +81,9 @@ except ImportError:  # pragma: no cover
     QueueQuery = None
 
 try:
-    from qpid.messaging.exceptions import NotFound, AssertionFailed, ConnectionError
+    from qpid.messaging.exceptions import (
+        NotFound, AssertionFailed, ConnectionError,
+    )
 except ImportError:  # pragma: no cover
     NotFound = None
     AssertionFailed = None
@@ -162,5 +164,4 @@ try:
     qpid.messaging.driver.Engine.resolve = resolve_monkey
 except ImportError:  # pragma: no cover
     pass
-
-### End Monkey Patch 2 ###
+# ## End Monkey Patch 2 ###

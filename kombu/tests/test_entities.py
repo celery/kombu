@@ -79,9 +79,8 @@ class test_Exchange(Case):
         self.assertTrue(Exchange('a', durable=False).can_cache_declaration)
         self.assertFalse(Exchange('a', auto_delete=True).can_cache_declaration)
         self.assertFalse(
-            Exchange('a',
-                     durable=True,
-                     auto_delete=True
+            Exchange(
+                'a', durable=True, auto_delete=True
             ).can_cache_declaration,
         )
 

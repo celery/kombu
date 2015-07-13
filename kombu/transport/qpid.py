@@ -72,8 +72,8 @@ from kombu.transport import base
 
 logger = get_logger(__name__)
 
-## The Following Import Applies Monkey Patches at Import Time ##
-import kombu.transport.qpid_patches
+# ## The Following Import Applies Monkey Patches at Import Time ##
+import kombu.transport.qpid_patches  # noqa
 ################################################################
 
 
@@ -85,6 +85,15 @@ VERSION = (1, 0, 0)
 __version__ = '.'.join(map(str, VERSION))
 
 PY3 = sys.version_info[0] == 3
+
+
+E_AUTH = """
+Unable to authenticate to qpid using the following mechanisms: %s
+"""
+
+E_UNREACHABLE = """
+Unable to connect to qpid with SASL mechanism %s
+"""
 
 
 class AuthenticationFailure(Exception):
@@ -120,25 +129,25 @@ class QpidMessagingExceptionHandler(object):
 
         Method that wraps the actual function with exception silencing
         functionality. Any exception that contains the string
-        self.allowed_exception_string in the message will be silenced.
+        :attr:`allowed_exception_string` in the message will be silenced.
 
         :param original_func: function that is automatically passed in
-        when this object is used as a decorator.
+            when this object is used as a decorator.
         :type original_func: function
 
         :return: A function that decorates (wraps) the original function.
-        :rtype: func
+        :rtype: function
+
         """
 
         def decorator(*args, **kwargs):
             """A runtime-built function that will be returned which contains
             a reference to the original function, and wraps a call to it in
-            a try/except block that can silence errors.
-            """
+            a try/except block that can silence errors."""
             try:
                 return original_func(*args, **kwargs)
-            except Exception as error:
-                if self.allowed_exception_string not in error.message:
+            except Exception as exc:
+                if self.allowed_exception_string not in exc.message:
                     raise
 
         return decorator
@@ -189,9 +198,12 @@ class QoS(object):
             without violating the prefetch_count. If prefetch_count is 0,
             can_consume will always return True.
         :rtype: bool
+
         """
-        return not self.prefetch_count or len(self._not_yet_acked) < self\
-            .prefetch_count
+        return (
+            not self.prefetch_count or
+            len(self._not_yet_acked) < self.prefetch_count
+        )
 
     def can_consume_max_estimate(self):
         """Return the remaining message capacity for the associated
@@ -204,6 +216,7 @@ class QoS(object):
         :returns: The number of estimated messages that can be fetched
             without violating the prefetch_count.
         :rtype: int
+
         """
         if self.prefetch_count:
             return self.prefetch_count - len(self._not_yet_acked)
@@ -222,6 +235,7 @@ class QoS(object):
         :param delivery_tag: An integer number to refer to this message by
             upon receipt.
         :type delivery_tag: int
+
         """
         self._not_yet_acked[delivery_tag] = message
 
@@ -236,6 +250,7 @@ class QoS(object):
 
         :return: An un-ACKed message that is looked up by delivery_tag.
         :rtype: qpid.messaging.Message
+
         """
         return self._not_yet_acked[delivery_tag]
 
@@ -248,6 +263,7 @@ class QoS(object):
         :param delivery_tag: the delivery tag associated with the message
             to be acknowledged.
         :type delivery_tag: int
+
         """
         message = self._not_yet_acked.pop(delivery_tag)
         self.session.acknowledge(message=message)
@@ -271,6 +287,7 @@ class QoS(object):
             message entirely. In both cases, the message will be removed
             from this object.
         :type requeue: bool
+
         """
         message = self._not_yet_acked.pop(delivery_tag)
         QpidDisposition = qpid.messaging.Disposition
@@ -379,6 +396,7 @@ class Channel(base.StdChannel):
         :type connection: Connection
         :param transport: The Transport this Channel is associated with.
         :type transport: Transport
+
         """
         self.connection = connection
         self.transport = transport
@@ -410,6 +428,7 @@ class Channel(base.StdChannel):
 
         :return: The received message.
         :rtype: :class:`qpid.messaging.Message`
+
         """
         rx = self.transport.session.receiver(queue)
         try:
@@ -451,14 +470,17 @@ class Channel(base.StdChannel):
             should be sent on. If no exchange is specified, the message is
             sent directly to a queue specified by routing_key.
         :type exchange: str
+
         """
         if not exchange:
-            address = '%s; {assert: always, node: {type: queue}}' % \
-                      routing_key
+            address = '%s; {assert: always, node: {type: queue}}' % (
+                routing_key,
+            )
             msg_subject = None
         else:
             address = '%s/%s; {assert: always, node: {type: topic}}' % (
-                exchange, routing_key)
+                exchange, routing_key,
+            )
             msg_subject = str(routing_key)
         sender = self.transport.session.sender(address)
         qpid_message = qpid.messaging.Message(content=message,
@@ -494,6 +516,7 @@ class Channel(base.StdChannel):
 
         :return: The number of messages requested to be purged.
         :rtype: int
+
         """
         queue_to_purge = self._broker.getQueue(queue)
         message_count = queue_to_purge.values['msgDepth']
@@ -514,6 +537,7 @@ class Channel(base.StdChannel):
 
         :return the number of messages in the queue specified by name.
         :rtype: int
+
         """
         queue_to_check = self._broker.getQueue(queue)
         message_depth = queue_to_check.values['msgDepth']
@@ -532,6 +556,7 @@ class Channel(base.StdChannel):
 
         :param queue: The name of the queue to be deleted.
         :type queue: str
+
         """
         self._purge(queue)
         self._broker.delQueue(queue)
@@ -545,6 +570,7 @@ class Channel(base.StdChannel):
         :return: True if a queue exists on the broker, and false
             otherwise.
         :rtype: bool
+
         """
         if self._broker.getQueue(queue):
             return True
@@ -634,9 +660,9 @@ class Channel(base.StdChannel):
             options['qpid.policy_type'] = 'ring'
         try:
             self._broker.addQueue(queue, options=options)
-        except Exception as err:
-            if OBJECT_ALREADY_EXISTS_STRING not in err.message:
-                raise err
+        except Exception as exc:
+            if OBJECT_ALREADY_EXISTS_STRING not in exc.message:
+                raise
         queue_to_check = self._broker.getQueue(queue)
         message_count = queue_to_check.values['msgDepth']
         consumer_count = queue_to_check.values['consumerCount']
@@ -660,6 +686,7 @@ class Channel(base.StdChannel):
         :keyword if_empty: If True, only delete the queue if it is empty. If
             False, delete the queue if it is empty or not.
         :type if_empty: bool
+
         """
         if self._has_queue(queue):
             if if_empty and self._size(queue):
@@ -695,6 +722,7 @@ class Channel(base.StdChannel):
         :keyword durable: True if the exchange should be durable, or False
         otherwise.
         :type durable: bool
+
         """
         options = {'durable': durable}
         self._broker.addExchange(type, exchange, options)
@@ -704,6 +732,7 @@ class Channel(base.StdChannel):
 
         :param exchange_name: The name of the exchange to be deleted.
         :type exchange_name: str
+
         """
         self._broker.delExchange(exchange_name)
 
@@ -723,6 +752,7 @@ class Channel(base.StdChannel):
         :param routing_key: The bind key that the specified queue should
             bind to the specified exchange with.
         :type routing_key: str
+
         """
         self._broker.bind(exchange, queue, routing_key)
 
@@ -744,6 +774,7 @@ class Channel(base.StdChannel):
         :param routing_key: The existing bind key between the specified
             queue and a specified exchange that should be unbound.
         :type routing_key: str
+
         """
         self._broker.unbind(exchange, queue, routing_key)
 
@@ -773,6 +804,7 @@ class Channel(base.StdChannel):
 
         :return: The number of messages requested to be purged.
         :rtype: int
+
         """
         return self._purge(queue)
 
@@ -803,6 +835,7 @@ class Channel(base.StdChannel):
 
         :return: The received message.
         :rtype: :class:`~kombu.transport.virtual.Message`
+
         """
         try:
             qpid_message = self._get(queue)
@@ -827,6 +860,7 @@ class Channel(base.StdChannel):
         :param delivery_tag: The delivery tag associated with the message
             to be acknowledged.
         :type delivery_tag: int
+
         """
         self.qos.ack(delivery_tag)
 
@@ -915,6 +949,7 @@ class Channel(base.StdChannel):
         :param consumer_tag: a tag to reference the created consumer by.
             This consumer_tag is needed to cancel the consumer.
         :type consumer_tag: an immutable object
+
         """
         self._tag_to_queue[consumer_tag] = queue
 
@@ -948,6 +983,7 @@ class Channel(base.StdChannel):
             cancelled. Originally specified when the consumer was created
             as a parameter to :meth:`basic_consume`.
         :type consumer_tag: an immutable object
+
         """
         if consumer_tag in self._receivers:
             receiver = self._receivers.pop(consumer_tag)
@@ -962,6 +998,7 @@ class Channel(base.StdChannel):
         known consumer_tag. It also closes the self._broker sessions. Closing
         the sessions implicitly causes all outstanding, un-ACKed messages to
         be considered undelivered by the broker.
+
         """
         if not self.closed:
             self.closed = True
@@ -980,6 +1017,7 @@ class Channel(base.StdChannel):
 
         :return: An already existing, or newly created QoS object
         :rtype: :class:`QoS`
+
         """
         if self._qos is None:
             self._qos = self.QoS(self.transport.session)
@@ -996,6 +1034,7 @@ class Channel(base.StdChannel):
 
         :param prefetch_count: Not used. This method is hard-coded to 1.
         :type prefetch_count: int
+
         """
         self.qos.prefetch_count = 1
 
@@ -1030,16 +1069,19 @@ class Channel(base.StdChannel):
             attributes. See parameters for more details on attributes that
             can be set.
         :rtype: dict
+
         """
         properties = properties or {}
         info = properties.setdefault('delivery_info', {})
         info['priority'] = priority or 0
 
-        return {'body': body,
-                'content-encoding': content_encoding,
-                'content-type': content_type,
-                'headers': headers or {},
-                'properties': properties or {}}
+        return {
+            'body': body,
+            'content-encoding': content_encoding,
+            'content-type': content_type,
+            'headers': headers or {},
+            'properties': properties or {},
+        }
 
     def basic_publish(self, message, exchange, routing_key, **kwargs):
         """Publish message onto an exchange using a routing key.
@@ -1070,6 +1112,7 @@ class Channel(base.StdChannel):
         :param routing_key: The routing key to be used as the message is
             submitted onto the exchange.
         :type routing_key: str
+
         """
         message['body'], body_encoding = self.encode_body(
             message['body'], self.body_encoding,
@@ -1106,6 +1149,7 @@ class Channel(base.StdChannel):
             encoding used. If encoding is not specified, the body is passed
             through unchanged.
         :rtype: tuple
+
         """
         if encoding:
             return self.codecs.get(encoding).encode(body), encoding
@@ -1129,6 +1173,7 @@ class Channel(base.StdChannel):
         :return: If encoding is specified, the decoded body is returned.
             If encoding is not specified, the body is returned unchanged.
         :rtype: str
+
         """
         if encoding:
             return self.codecs.get(encoding).decode(body)
@@ -1151,6 +1196,7 @@ class Channel(base.StdChannel):
 
         :return: The exchange type either 'direct', 'topic', or 'fanout'.
         :rtype: str
+
         """
         qpid_exchange = self._broker.getExchange(exchange)
         if qpid_exchange:
@@ -1189,6 +1235,7 @@ class Connection(object):
     All keyword arguments are collected into the connection_options dict
     and passed directly through to
     :meth:`qpid.messaging.endpoints.Connection.establish`.
+
     """
 
     # A class reference to the :class:`Channel` object
@@ -1243,41 +1290,50 @@ class Connection(object):
         # behavior since it will select the first suitable mech. Unsuitable
         # mechs will be rejected by the server.
 
-        sasl_mechanisms = [x for x in connection_options['sasl_mechanisms'].split() \
-                           if x != self.SASL_ANONYMOUS_MECH]
-        if self.SASL_ANONYMOUS_MECH in connection_options['sasl_mechanisms'].split():
+        sasl_mechanisms = [
+            x for x in connection_options['sasl_mechanisms'].split()
+            if x != self.SASL_ANONYMOUS_MECH
+        ]
+        if self.SASL_ANONYMOUS_MECH in \
+                connection_options['sasl_mechanisms'].split():
             sasl_mechanisms.append(self.SASL_ANONYMOUS_MECH)
 
         for sasl_mech in sasl_mechanisms:
             try:
-                logger.debug("Attempting to connect to qpid with SASL mechanism %s" % sasl_mech)
+                logger.debug(
+                    'Attempting to connect to qpid with SASL mechanism %s',
+                    sasl_mech,
+                )
                 modified_conn_opts = self.connection_options
                 modified_conn_opts['sasl_mechanisms'] = sasl_mech
                 self._qpid_conn = establish(**modified_conn_opts)
                 # connection was successful if we got this far
-                logger.info("Connected to qpid with SASL mechanism %s" % sasl_mech)
+                logger.info(
+                    'Connected to qpid with SASL mechanism %s', sasl_mech)
                 break
-            except ConnectionError as conn_exc:
-                coded_as_auth_failure = getattr(conn_exc, 'code', None) == 320
-                contains_auth_fail_text = 'Authentication failed' in conn_exc.text
-                contains_mech_fail_text = 'sasl negotiation failed: no mechanism agreed'\
-                                          in conn_exc.text
-                if coded_as_auth_failure or contains_auth_fail_text or contains_mech_fail_text:
-                    logger.debug("Unable to connect to qpid with SASL mechanism %s" % sasl_mech)
-                    continue
-                raise
+            except ConnectionError as exc:
+                if self._is_unreachable_error(exc):
+                    logger.debug(E_UNREACHABLE, sasl_mech)
+                else:
+                    raise
 
         if not self.get_qpid_connection():
-            exc = sys.exc_info()
-            logger.error("Unable to authenticate to qpid using the following mechanisms: %s" %
-                         sasl_mechanisms)
+            logger.error(E_AUTH, sasl_mechanisms, exc_info=1)
             raise AuthenticationFailure(sys.exc_info()[1])
+
+    def _is_unreachable_error(self, exc):
+        return (
+            getattr(exc, 'code', None) == 320 or
+            'Authentication failed' in exc.text or
+            'sasl negotiation failed: no mechanism agreed' in exc.text
+        )
 
     def get_qpid_connection(self):
         """Return the existing connection (singleton).
 
         :return: The existing qpid.messaging.Connection
         :rtype: :class:`qpid.messaging.endpoints.Connection`
+
         """
         return self._qpid_conn
 
@@ -1289,6 +1345,7 @@ class Connection(object):
 
         :param channel: Channel that should be closed.
         :type channel: Channel
+
         """
         try:
             self.channels.remove(channel)
@@ -1318,6 +1375,7 @@ class ReceiversMonitor(threading.Thread):
 
     The thread is designed to be daemonized, and will be forcefully killed
     when all non-daemon threads have already exited.
+
     """
 
     def __init__(self, session, w):
@@ -1329,6 +1387,7 @@ class ReceiversMonitor(threading.Thread):
         :param w: The file descriptor to write the '0' into when
             next_receiver unblocks.
         :type w: int
+
         """
         super(ReceiversMonitor, self).__init__()
         self._session = session
@@ -1353,16 +1412,17 @@ class ReceiversMonitor(threading.Thread):
         Typically recoverable errors are connection errors, and can be
         recovered through a call to Transport.establish_connection which will
         spawn a new ReceiversMonitor Thread.
+
         """
-        while True:
+        while 1:
             try:
                 self.monitor_receivers()
-            except Exception as error:
-                if isinstance(error, Transport.connection_errors):
-                    self._session.saved_exception = error
-                    os.write(self._w_fd, 'e')
-                    return
-                logger.error(error)
+            except Transport.connection_errors as exc:
+                self._session.saved_exception = exc
+                os.write(self._w_fd, 'e')
+                return
+            except Exception as exc:
+                logger.error(exc, exc_info=1)
             time.sleep(10)
 
     def monitor_receivers(self):
@@ -1370,8 +1430,9 @@ class ReceiversMonitor(threading.Thread):
 
         The call to next_receiver() blocks until a message is ready. Once a
         message is ready, write a '0' to _w_fd.
+
         """
-        while True:
+        while 1:
             self._session.next_receiver()
             os.write(self._w_fd, '0')
 
@@ -1433,6 +1494,7 @@ class Transport(base.Transport):
         This method creates a pipe, and saves the read and write file
         descriptors as attributes. The behavior of the read file descriptor
         is modified to be non-blocking using fcntl.fcntl.
+
         """
         self.verify_runtime_environment()
         super(Transport, self).__init__(*args, **kwargs)
@@ -1505,6 +1567,7 @@ class Transport(base.Transport):
         :param loop: The asynchronous loop object that contains epoll like
             functionality.
         :type loop: kombu.async.Hub
+
         """
         symbol = os.read(self.r, 1)
         if symbol == 'e':
@@ -1538,6 +1601,7 @@ class Transport(base.Transport):
         :type connection: Connection
         :param loop: A reference to the external loop.
         :type loop: kombu.async.hub.Hub
+
         """
         loop.add_reader(self.r, self.on_readable, connection, loop)
 
@@ -1560,6 +1624,7 @@ class Transport(base.Transport):
 
         :return: The created :class:`Connection` object is returned.
         :rtype: :class:`Connection`
+
         """
         conninfo = self.client
         for name, default_value in items(self.default_connection_params):
@@ -1606,6 +1671,7 @@ class Transport(base.Transport):
 
         :param connection: The Connection that should be closed
         :type connection: Connection
+
         """
         for channel in connection.channels:
                 channel.close()
@@ -1629,6 +1695,7 @@ class Transport(base.Transport):
             waiting for a new message, or cause this method to return before
             all messages are drained. Defaults to 0.
         :type timeout: int
+
         """
         start_time = time.time()
         elapsed_time = -1
@@ -1657,6 +1724,7 @@ class Transport(base.Transport):
 
         :return: The new Channel that is made.
         :rtype: :class:`Channel`.
+
         """
         channel = connection.Channel(connection, self)
         connection.channels.append(channel)
@@ -1677,7 +1745,10 @@ class Transport(base.Transport):
 
         :return: A dict containing the default parameters.
         :rtype: dict
+
         """
-        return {'userid': 'guest', 'password': '',
-                'port': self.default_port, 'virtual_host': '',
-                'hostname': 'localhost', 'sasl_mechanisms': 'PLAIN ANONYMOUS'}
+        return {
+            'userid': 'guest', 'password': '',
+            'port': self.default_port, 'virtual_host': '',
+            'hostname': 'localhost', 'sasl_mechanisms': 'PLAIN ANONYMOUS',
+        }

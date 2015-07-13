@@ -22,7 +22,6 @@ else:
         return _commit
 
 
-
 class QueueManager(models.Manager):
 
     def publish(self, queue_name, payload):

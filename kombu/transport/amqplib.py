@@ -17,6 +17,7 @@ except ImportError:
         pass
 from struct import unpack
 
+
 class NA(object):
     pass
 
