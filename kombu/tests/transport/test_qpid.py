@@ -1122,7 +1122,14 @@ class TestChannel(ExtraAssertionsMixin, Case):
         self.broker.addQueue.side_effect = unique_exception
         with self.assertRaises(unique_exception.__class__):
             self.my_channel.queue_declare(queue)
-        self.broker.addQueue.assert_called_once()
+        self.broker.addQueue.assert_called_once_with(queue, options={
+            'exclusive': False,
+            'durable': False,
+            'qpid.policy_type': 'ring',
+            'passive': False,
+            'arguments': None,
+            'auto-delete': True,
+        })
 
     def test_exchange_declare_raises_exception_and_silenced(self):
         """Create exchange where an exception is raised and then silenced."""
@@ -1265,8 +1272,8 @@ class TestChannel(ExtraAssertionsMixin, Case):
         encoded_buffered_body = Mock(name='encoded_buffered_body')
         buffer.return_value = encoded_buffered_body
         self.my_channel.basic_publish(message, exchange, routing_key)
-        encode_body.assert_called_once(original_body, body_encoding)
-        buffer.assert_called_once(encode_body)
+        encode_body.assert_called_once_with(original_body, body_encoding)
+        buffer.assert_called_once_with(encoded_body)
         self.assertIs(message['body'], encoded_buffered_body)
         self.assertIs(message['properties']['body_encoding'],
                       body_encoding)
