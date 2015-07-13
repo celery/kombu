@@ -17,9 +17,9 @@ def pretty(obj):
 
 #: This is the callback applied when a message is received.
 def handle_message(body, message):
-    print('Received message: %r' % (body, ))
-    print('  properties:\n%s' % (pretty(message.properties), ))
-    print('  delivery_info:\n%s' % (pretty(message.delivery_info), ))
+    print('Received message: %r' % (body,))
+    print('  properties:\n%s' % (pretty(message.properties),))
+    print('  delivery_info:\n%s' % (pretty(message.delivery_info),))
     message.ack()
 
 #: Create a connection and a channel.

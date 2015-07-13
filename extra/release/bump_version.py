@@ -56,7 +56,7 @@ class TupleVersion(object):
 
         def quote(lit):
             if isinstance(lit, str_t):
-                return '"%s"' % (lit, )
+                return '"%s"' % (lit,)
             return str(lit)
 
         if not v[-1]:
@@ -144,12 +144,12 @@ def bump(*files, **kwargs):
     print("Bump version from %s -> %s" % (to_str(current), to_str(next)))
 
     for v in files:
-        print("  writing %r..." % (v.filename, ))
+        print("  writing %r..." % (v.filename,))
         v.write(next)
 
-    print(cmd("git", "commit", "-m", "Bumps version to %s" % (to_str(next), ),
+    print(cmd("git", "commit", "-m", "Bumps version to %s" % (to_str(next),),
           *[f.filename for f in files]))
-    print(cmd("git", "tag", "v%s" % (to_str(next), )))
+    print(cmd("git", "tag", "v%s" % (to_str(next),)))
 
 
 def main(argv=sys.argv, version=None):

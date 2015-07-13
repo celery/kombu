@@ -24,5 +24,5 @@ if __name__ == '__main__':
     from .tasks import hello_task
 
     connection = Connection('amqp://guest:guest@localhost:5672//')
-    send_as_task(connection, fun=hello_task, args=('Kombu', ), kwargs={},
+    send_as_task(connection, fun=hello_task, args=('Kombu',), kwargs={},
                  priority='high')

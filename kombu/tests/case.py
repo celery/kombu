@@ -276,7 +276,7 @@ def skip_if_module(module):
     return _wrap_test
 
 
-def skip_if_not_module(module, import_errors=(ImportError, )):
+def skip_if_not_module(module, import_errors=(ImportError,)):
     def _wrap_test(fun):
         @wraps(fun)
         def _skip_if_not_module(*args, **kwargs):

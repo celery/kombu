@@ -79,7 +79,7 @@ class Transport(base.Transport):
             ConnectionError, socket.error, IOError, OSError)
     )
     channel_errors = (
-        base.Transport.channel_errors + (ChannelError, )
+        base.Transport.channel_errors + (ChannelError,)
     )
     driver_type = 'amqp'
     driver_name = 'librabbitmq'

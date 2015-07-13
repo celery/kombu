@@ -34,7 +34,7 @@ class LaxBoundedSemaphore(object):
 
         >>> x.acquire(printf, 'HELLO 3')
         >>> x._waiters   # private, do not access directly
-        [print, ('HELLO 3', )]
+        [print, ('HELLO 3',)]
 
         >>> x.release()
         HELLO 3

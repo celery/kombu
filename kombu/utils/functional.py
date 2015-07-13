@@ -116,7 +116,7 @@ def memoize(maxsize=None, Cache=LRUCache):
 
         @wraps(fun)
         def _M(*args, **kwargs):
-            key = args + (KEYWORD_MARK, ) + tuple(sorted(kwargs.items()))
+            key = args + (KEYWORD_MARK,) + tuple(sorted(kwargs.items()))
             try:
                 with mutex:
                     value = cache[key]
@@ -181,8 +181,8 @@ class lazy(object):
         return self
 
     def __reduce__(self):
-        return (self.__class__, (self._fun, ), {'_args': self._args,
-                                                '_kwargs': self._kwargs})
+        return (self.__class__, (self._fun,), {'_args': self._args,
+                                               '_kwargs': self._kwargs})
 
     if sys.version_info[0] < 3:
 
@@ -199,7 +199,7 @@ def maybe_evaluate(value):
     return value
 
 
-def is_list(l, scalars=(Mapping, string_t), iters=(Iterable, )):
+def is_list(l, scalars=(Mapping, string_t), iters=(Iterable,)):
     """Return true if the object is iterable (but not
     if object is a mapping or string)."""
     return isinstance(l, iters) and not isinstance(l, scalars or ())

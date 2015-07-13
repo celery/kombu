@@ -164,7 +164,7 @@ class Exchange(MaybeChannelBound):
         self.maybe_bind(channel)
 
     def __hash__(self):
-        return hash('E|%s' % (self.name, ))
+        return hash('E|%s' % (self.name,))
 
     def declare(self, nowait=False, passive=None):
         """Declare the exchange.
@@ -345,7 +345,7 @@ class binding(object):
                            nowait=nowait)
 
     def __repr__(self):
-        return '<binding: %s>' % (self, )
+        return '<binding: %s>' % (self,)
 
     def __str__(self):
         return '%s->%s' % (
@@ -508,7 +508,7 @@ class Queue(MaybeChannelBound):
         return bound
 
     def __hash__(self):
-        return hash('Q|%s' % (self.name, ))
+        return hash('Q|%s' % (self.name,))
 
     def when_bound(self):
         if self.exchange:

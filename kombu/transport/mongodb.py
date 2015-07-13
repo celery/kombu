@@ -177,7 +177,7 @@ class Channel(virtual.Channel):
         return hostname, dbname, options
 
     def _prepare_client_options(self, options):
-        if pymongo.version_tuple >= (3, ):
+        if pymongo.version_tuple >= (3,):
             options.pop('auto_start_request', None)
 
     def _open(self, scheme='mongodb://'):
@@ -310,7 +310,7 @@ class Transport(virtual.Transport):
     polling_interval = 1
     default_port = DEFAULT_PORT
     connection_errors = (
-        virtual.Transport.connection_errors + (errors.ConnectionFailure, )
+        virtual.Transport.connection_errors + (errors.ConnectionFailure,)
     )
     channel_errors = (
         virtual.Transport.channel_errors + (

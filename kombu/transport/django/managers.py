@@ -84,8 +84,8 @@ class MessageManager(models.Manager):
         cursor = self.connection_for_write().cursor()
         cursor.execute(
             'DELETE FROM %s WHERE visible=%%s' % (
-                self.model._meta.db_table, ),
-            (False, )
+                self.model._meta.db_table,),
+            (False,)
         )
 
     def connection_for_write(self):

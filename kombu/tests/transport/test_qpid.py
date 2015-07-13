@@ -328,7 +328,7 @@ class TestConnectionInit(ExtraAssertionsMixin, ConnectionTestBase):
         created_conn = self.mock_qpid_connection.establish.return_value
         self.assertTrue(self.conn._qpid_conn is created_conn)
 
-    @patch(QPID_MODULE + '.ConnectionError', new=(MockException, ))
+    @patch(QPID_MODULE + '.ConnectionError', new=(MockException,))
     @patch(QPID_MODULE + '.sys.exc_info')
     @patch(QPID_MODULE + '.qpid')
     def test_connection__init__mutates_ConnError_by_message(self, mock_qpid,
@@ -347,7 +347,7 @@ class TestConnectionInit(ExtraAssertionsMixin, ConnectionTestBase):
         else:
             self.fail('ConnectionError type was not mutated correctly')
 
-    @patch(QPID_MODULE + '.ConnectionError', new=(MockException, ))
+    @patch(QPID_MODULE + '.ConnectionError', new=(MockException,))
     @patch(QPID_MODULE + '.sys.exc_info')
     @patch(QPID_MODULE + '.qpid')
     def test_connection__init__mutates_ConnError_by_code(self, mock_qpid,
@@ -367,7 +367,7 @@ class TestConnectionInit(ExtraAssertionsMixin, ConnectionTestBase):
         else:
             self.fail('ConnectionError type was not mutated correctly')
 
-    @patch(QPID_MODULE + '.ConnectionError', new=(MockException, ))
+    @patch(QPID_MODULE + '.ConnectionError', new=(MockException,))
     @patch(QPID_MODULE + '.sys.exc_info')
     @patch(QPID_MODULE + '.qpid')
     def test_connection__init__unknown_connection_error(self, mock_qpid, mock_exc_info):
@@ -384,7 +384,7 @@ class TestConnectionInit(ExtraAssertionsMixin, ConnectionTestBase):
         else:
             self.fail("Connection should have thrown an exception")
 
-    @patch.object(Transport, 'channel_errors', new=(MockException, ))
+    @patch.object(Transport, 'channel_errors', new=(MockException,))
     @patch(QPID_MODULE + '.qpid')
     @patch(QPID_MODULE + '.ConnectionError', new=IOError)
     def test_connection__init__non_qpid_error_raises(self, mock_qpid):
@@ -1371,7 +1371,7 @@ class TestReceiversMonitorRun(ReceiversMonitorTestBase):
         self.assertRaises(BreakOutException, self.monitor.run)
         mock_monitor_receivers.assert_called_once_with()
 
-    @patch.object(Transport, 'connection_errors', new=(BreakOutException, ))
+    @patch.object(Transport, 'connection_errors', new=(BreakOutException,))
     @patch.object(ReceiversMonitor, 'monitor_receivers')
     @patch(QPID_MODULE + '.time.sleep')
     @patch(QPID_MODULE + '.logger')
@@ -1395,7 +1395,7 @@ class TestReceiversMonitorRun(ReceiversMonitorTestBase):
         self.assertRaises(BreakOutException, self.monitor.run)
         mock_monitor_receivers.has_calls([call(), call()])
 
-    @patch.object(Transport, 'connection_errors', new=(MockException, ))
+    @patch.object(Transport, 'connection_errors', new=(MockException,))
     @patch.object(ReceiversMonitor, 'monitor_receivers')
     @patch(QPID_MODULE + '.time.sleep')
     @patch(QPID_MODULE + '.logger')
@@ -1413,7 +1413,7 @@ class TestReceiversMonitorRun(ReceiversMonitorTestBase):
                       'recoverable error is caught')
         self.assertTrue(not mock_logger.error.called)
 
-    @patch.object(Transport, 'connection_errors', new=(MockException, ))
+    @patch.object(Transport, 'connection_errors', new=(MockException,))
     @patch.object(ReceiversMonitor, 'monitor_receivers')
     @patch(QPID_MODULE + '.time.sleep')
     @patch(QPID_MODULE + '.logger')
@@ -1431,7 +1431,7 @@ class TestReceiversMonitorRun(ReceiversMonitorTestBase):
         self.assertTrue(
             self.mock_session.saved_exception is mock_monitor_receivers.side_effect)
 
-    @patch.object(Transport, 'connection_errors', new=(MockException, ))
+    @patch.object(Transport, 'connection_errors', new=(MockException,))
     @patch.object(ReceiversMonitor, 'monitor_receivers')
     @patch(QPID_MODULE + '.time.sleep')
     @patch(QPID_MODULE + '.logger')

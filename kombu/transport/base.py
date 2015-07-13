@@ -95,10 +95,10 @@ class Transport(object):
     default_port = None
 
     #: Tuple of errors that can happen due to connection failure.
-    connection_errors = (ConnectionError, )
+    connection_errors = (ConnectionError,)
 
     #: Tuple of errors that can happen due to channel/method failure.
-    channel_errors = (ChannelError, )
+    channel_errors = (ChannelError,)
 
     #: Type of driver, can be used to separate transports
     #: using the AMQP protocol (driver_type: 'amqp'),

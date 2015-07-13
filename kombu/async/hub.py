@@ -276,12 +276,12 @@ class Hub(object):
                     item()
 
             poll_timeout = fire_timers(propagate=propagate) if scheduled else 1
-            #  print('[[[HUB]]]: %s' % (self.repr_active(), ))
+            #  print('[[[HUB]]]: %s' % (self.repr_active(),))
             if readers or writers:
                 to_consolidate = []
                 try:
                     events = poll(poll_timeout)
-                    #  print('[EVENTS]: %s' % (self.repr_events(events), ))
+                    #  print('[EVENTS]: %s' % (self.repr_events(events),))
                 except ValueError:  # Issue 882
                     raise StopIteration()
 

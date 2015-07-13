@@ -28,7 +28,7 @@ def send_many(n):
         with connection.SimpleQueue('kombu_demo') as queue:
 
             def send_message(i):
-                queue.put({'hello': 'world%s' % (i, )})
+                queue.put({'hello': 'world%s' % (i,)})
 
             pool = eventlet.GreenPool(10)
             for i in range(n):

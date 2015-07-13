@@ -344,7 +344,7 @@ class test_Connection(Case):
             pass
 
         class MyTransport(Transport):
-            connection_errors = (_CustomError, )
+            connection_errors = (_CustomError,)
 
             def close_connection(self, connection):
                 raise _CustomError('foo')
@@ -366,7 +366,7 @@ class test_Connection(Case):
 
             @property
             def connection_errors(self):
-                return (KeyError, )
+                return (KeyError,)
 
         conn = Conn('memory://')
         conn._default_channel = Mock()
@@ -419,7 +419,7 @@ class test_Connection(Case):
     def test_autoretry(self):
         myfun = Mock()
 
-        self.conn.transport.connection_errors = (KeyError, )
+        self.conn.transport.connection_errors = (KeyError,)
 
         def on_call(*args, **kwargs):
             myfun.side_effect = None

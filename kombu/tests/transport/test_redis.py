@@ -215,7 +215,7 @@ class Transport(redis.Transport):
     Channel = Channel
 
     def _get_errors(self):
-        return ((KeyError, ), (IndexError, ))
+        return ((KeyError,), (IndexError,))
 
 
 class test_Channel(Case):
@@ -579,7 +579,7 @@ class test_Channel(Case):
 
         x._delete('queue', 'exchange', 'routing_key', None)
         delete.assert_has_call('queue')
-        srem.assert_has_call(x.keyprefix_queue % ('exchange', ),
+        srem.assert_has_call(x.keyprefix_queue % ('exchange',),
                              x.sep.join(['routing_key', '', 'queue']))
 
     def test_has_queue(self):
@@ -842,7 +842,7 @@ class test_Redis(Case):
         self.queue(channel).declare()
 
         for i in range(10):
-            producer.publish({'hello': 'world-%s' % (i, )})
+            producer.publish({'hello': 'world-%s' % (i,)})
 
         self.assertEqual(channel._size('test_Redis'), 10)
         self.assertEqual(self.queue(channel).purge(), 10)
@@ -1026,9 +1026,9 @@ class test_MultiChannelPoller(Case):
         self.assertEqual(poller.unregister.call_count, 3)
         u_args = poller.unregister.call_args_list
 
-        self.assertItemsEqual(u_args, [((1, ), {}),
-                                       ((2, ), {}),
-                                       ((3, ), {})])
+        self.assertItemsEqual(u_args, [((1,), {}),
+                                       ((2,), {}),
+                                       ((3,), {})])
 
     def test_close_when_unregister_raises_KeyError(self):
         p = self.Poller()

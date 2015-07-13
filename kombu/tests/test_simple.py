@@ -62,7 +62,7 @@ class SimpleBase(Case):
         q = self.Queue('test_clear', no_ack=True)
 
         for i in range(10):
-            q.put({'hello': 'SimplePurge%d' % (i, )})
+            q.put({'hello': 'SimplePurge%d' % (i,)})
 
         self.assertEqual(q.clear(), 10)
 
@@ -82,7 +82,7 @@ class SimpleBase(Case):
         q = self.Queue('test_clear', no_ack=True)
 
         for i in range(10):
-            q.put({'hello': 'SimplePurge%d' % (i, )})
+            q.put({'hello': 'SimplePurge%d' % (i,)})
 
         self.assertEqual(q.qsize(), 10)
         self.assertEqual(len(q), 10)
@@ -98,8 +98,8 @@ class SimpleBase(Case):
         if self.abstract:
             return
         n = self.__class__.__name__
-        exchange = Exchange('%s-test.custom.Queue' % (n, ))
-        queue = Queue('%s-test.custom.Queue' % (n, ),
+        exchange = Exchange('%s-test.custom.Queue' % (n,))
+        queue = Queue('%s-test.custom.Queue' % (n,),
                       exchange,
                       'my.routing.key')
 

@@ -67,7 +67,7 @@ class test_Exchange(Case):
         bound = exchange.bind(chan)
         self.assertTrue(bound.is_bound)
         self.assertIs(bound.channel, chan)
-        self.assertIn('bound to chan:%r' % (chan.channel_id, ),
+        self.assertIn('bound to chan:%r' % (chan.channel_id,),
                       repr(bound))
 
     def test_hash(self):

@@ -79,7 +79,7 @@ class Broadcast(Queue):
 
     def __init__(self, name=None, queue=None, **kwargs):
         return super(Broadcast, self).__init__(
-            name=queue or 'bcast.%s' % (uuid(), ),
+            name=queue or 'bcast.%s' % (uuid(),),
             **dict({'alias': name,
                     'auto_delete': True,
                     'exchange': Exchange(name, type='fanout')}, **kwargs))
@@ -343,7 +343,7 @@ class QoS(object):
 
 
         >>> def set_qos(prefetch_count):
-        ...     print('prefetch count now: %r' % (prefetch_count, ))
+        ...     print('prefetch count now: %r' % (prefetch_count,))
         >>> QoS(set_qos, 10)
 
     """

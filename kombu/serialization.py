@@ -51,7 +51,7 @@ codec = namedtuple('codec', ('content_type', 'content_encoding', 'encoder'))
 
 @contextmanager
 def _reraise_errors(wrapper,
-                    include=(Exception, ), exclude=(SerializerNotInstalled, )):
+                    include=(Exception,), exclude=(SerializerNotInstalled,)):
     try:
         yield
     except exclude:

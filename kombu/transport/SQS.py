@@ -273,7 +273,7 @@ class Channel(virtual.Channel):
         if queue in self._active_queues:
             if self.qos.can_consume():
                 self._get_bulk_async(
-                    queue, callback=promise(self._loop1, (queue, )),
+                    queue, callback=promise(self._loop1, (queue,)),
                 )
             else:
                 self._loop1(queue)
@@ -454,7 +454,7 @@ class Transport(virtual.Transport):
         (exception.SQSError, socket.error)
     )
     channel_errors = (
-        virtual.Transport.channel_errors + (exception.SQSDecodeError, )
+        virtual.Transport.channel_errors + (exception.SQSDecodeError,)
     )
     driver_type = 'sqs'
     driver_name = 'sqs'

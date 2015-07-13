@@ -139,7 +139,7 @@ class test_pyamqp(Case):
 
         c = Connection(port=None, transport=Transport).connect()
         self.assertEqual(c['host'],
-                         '127.0.0.1:%s' % (Transport.default_port, ))
+                         '127.0.0.1:%s' % (Transport.default_port,))
 
     def test_custom_port(self):
 

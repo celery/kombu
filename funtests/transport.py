@@ -114,8 +114,9 @@ class TransportCase(unittest.TestCase):
             self.connection.connect()
             self.after_connect(self.connection)
         except self.connection.connection_errors:
-            self.skip_test_reason = '%s transport cannot connect' % (
-                self.transport, )
+            self.skip_test_reason = '{0} transport cannot connect'.format(
+                self.transport,
+            )
         else:
             self.connected = True
 

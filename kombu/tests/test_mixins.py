@@ -151,9 +151,9 @@ class test_ConsumerMixin_interface(Case):
     def test_connection_errors(self):
         conn = Mock(name='connection')
         self.c.connection = conn
-        conn.connection_errors = (KeyError, )
+        conn.connection_errors = (KeyError,)
         self.assertTupleEqual(self.c.connection_errors, conn.connection_errors)
-        conn.channel_errors = (ValueError, )
+        conn.channel_errors = (ValueError,)
         self.assertTupleEqual(self.c.channel_errors, conn.channel_errors)
 
     def test__consume_from(self):
@@ -180,7 +180,7 @@ class test_ConsumerMixin_interface(Case):
 
     def test_maybe_conn_error(self):
         conn = ContextMock(name='connection')
-        conn.connection_errors = (KeyError, )
+        conn.connection_errors = (KeyError,)
         conn.channel_errors = ()
 
         self.c.connection = conn
@@ -192,7 +192,7 @@ class test_ConsumerMixin_interface(Case):
     def test_run(self):
         conn = ContextMock(name='connection')
         self.c.connection = conn
-        conn.connection_errors = (KeyError, )
+        conn.connection_errors = (KeyError,)
         conn.channel_errors = ()
         consume = self.c.consume = Mock(name='c.consume')
 
@@ -206,7 +206,7 @@ class test_ConsumerMixin_interface(Case):
     def test_run_restart_rate_limited(self):
         conn = ContextMock(name='connection')
         self.c.connection = conn
-        conn.connection_errors = (KeyError, )
+        conn.connection_errors = (KeyError,)
         conn.channel_errors = ()
         consume = self.c.consume = Mock(name='c.consume')
         with patch('kombu.mixins.sleep') as sleep:
@@ -225,7 +225,7 @@ class test_ConsumerMixin_interface(Case):
     def test_run_raises(self):
         conn = ContextMock(name='connection')
         self.c.connection = conn
-        conn.connection_errors = (KeyError, )
+        conn.connection_errors = (KeyError,)
         conn.channel_errors = ()
         consume = self.c.consume = Mock(name='c.consume')
 

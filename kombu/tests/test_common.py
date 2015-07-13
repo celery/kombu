@@ -19,8 +19,8 @@ class test_ignore_errors(Case):
 
     def test_ignored(self):
         connection = Mock()
-        connection.channel_errors = (KeyError, )
-        connection.connection_errors = (KeyError, )
+        connection.channel_errors = (KeyError,)
+        connection.connection_errors = (KeyError,)
 
         with ignore_errors(connection):
             raise KeyError()

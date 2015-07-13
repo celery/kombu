@@ -326,7 +326,7 @@ class Transport(base.Transport):
             AMQPConnectionException,
             socket.error, IOError, OSError, AttributeError)
     )
-    channel_errors = base.Transport.channel_errors + (AMQPChannelException, )
+    channel_errors = base.Transport.channel_errors + (AMQPChannelException,)
 
     driver_name = 'amqplib'
     driver_type = 'amqp'

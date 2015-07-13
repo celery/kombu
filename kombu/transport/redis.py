@@ -510,7 +510,7 @@ class Channel(virtual.Channel):
         if connection:
             if connection.cycle._in_protected_read:
                 return connection.cycle.after_read.add(
-                    promise(self._basic_cancel, (consumer_tag, )),
+                    promise(self._basic_cancel, (consumer_tag,)),
                 )
             return self._basic_cancel(consumer_tag)
 
@@ -689,7 +689,7 @@ class Channel(virtual.Channel):
                 exchange, routing_key.replace('#', '*'),
             )
         with self.conn_or_acquire() as client:
-            client.sadd(self.keyprefix_queue % (exchange, ),
+            client.sadd(self.keyprefix_queue % (exchange,),
                         self.sep.join([routing_key or '',
                                        pattern or '',
                                        queue or '']))
@@ -697,7 +697,7 @@ class Channel(virtual.Channel):
     def _delete(self, queue, exchange, routing_key, pattern, *args):
         self.auto_delete_queues.discard(queue)
         with self.conn_or_acquire() as client:
-            client.srem(self.keyprefix_queue % (exchange, ),
+            client.srem(self.keyprefix_queue % (exchange,),
                         self.sep.join([routing_key or '',
                                        pattern or '',
                                        queue or '']))

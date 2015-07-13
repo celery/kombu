@@ -44,7 +44,7 @@ def find_distribution_modules(name=__name__, file=__file__):
 def import_all_modules(name=__name__, file=__file__, skip=[]):
     for module in find_distribution_modules(name, file):
         if module not in skip:
-            print('preimporting %r for coverage...' % (module, ))
+            print('preimporting %r for coverage...' % (module,))
             try:
                 __import__(module)
             except (ImportError, VersionMismatch, AttributeError):
@@ -72,7 +72,7 @@ def setup_django_env():
             },
             DATABASE_ENGINE='sqlite3',
             DATABASE_NAME=':memory:',
-            INSTALLED_APPS=('kombu.transport.django', ),
+            INSTALLED_APPS=('kombu.transport.django',),
         )
 
 

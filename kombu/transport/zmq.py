@@ -243,7 +243,7 @@ class Transport(virtual.Transport):
     driver_type = 'zeromq'
     driver_name = 'zmq'
 
-    connection_errors = virtual.Transport.connection_errors + (ZMQError, )
+    connection_errors = virtual.Transport.connection_errors + (ZMQError,)
 
     implements = virtual.Transport.implements.extend(
         async=True,

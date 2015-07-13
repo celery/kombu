@@ -49,7 +49,7 @@ Let's acquire and release a connection:
     connection = Connection('redis://localhost:6379')
 
     with connections[connection].acquire(block=True) as conn:
-        print('Got connection: %r' % (connection.as_uri(), ))
+        print('Got connection: {0!r}'.format(connection.as_uri()))
 
 .. note::
 
