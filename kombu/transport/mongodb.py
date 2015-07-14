@@ -130,7 +130,7 @@ class Channel(virtual.Channel):
         size = self._size(queue)
 
         if queue in self._fanout_queues:
-            self.get_broadcaset_cursor(queue).purge()
+            self.get_broadcast_cursor(queue).purge()
         else:
             self.get_messages().remove({'queue': queue})
 
