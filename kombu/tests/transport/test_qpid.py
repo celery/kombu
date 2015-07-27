@@ -283,11 +283,9 @@ class ConnectionTestBase(Case):
         self.connection_options = {
             'host': 'localhost',
             'port': 5672,
-            'username': 'guest',
-            'password': '',
             'transport': 'tcp',
             'timeout': 10,
-            'sasl_mechanisms': 'ANONYMOUS PLAIN',
+            'sasl_mechanisms': 'ANONYMOUS',
         }
         self.mock_qpid_connection = mock_qpid.messaging.Connection
         self.conn = Connection(**self.connection_options)
@@ -301,7 +299,6 @@ class TestConnectionInit(ExtraAssertionsMixin, ConnectionTestBase):
         # ensure that only one mech was passed into connection. The other
         # options should all be passed through as-is
         modified_conn_opts = self.connection_options
-        modified_conn_opts['sasl_mechanisms'] = 'PLAIN'
         self.assertDictEqual(
             modified_conn_opts, self.conn.connection_options,
         )
@@ -312,7 +309,6 @@ class TestConnectionInit(ExtraAssertionsMixin, ConnectionTestBase):
 
     def test_establishes_connection(self):
         modified_conn_opts = self.connection_options
-        modified_conn_opts['sasl_mechanisms'] = 'PLAIN'
         self.mock_qpid_connection.establish.assert_called_with(
             **modified_conn_opts
         )
@@ -1155,7 +1151,16 @@ class TestChannel(ExtraAssertionsMixin, Case):
         self.mock_broker.addQueue.side_effect = unique_exception
         with self.assertRaises(unique_exception.__class__):
             self.my_channel.queue_declare(mock_queue)
-        self.mock_broker.addQueue.assert_called_once()
+        self.mock_broker.addQueue.assert_called_once_with(
+            mock_queue,
+            options={
+                'exclusive': False,
+                'durable': False,
+                'qpid.policy_type':'ring',
+                'passive': False,
+                'arguments': None,
+                'auto-delete': True
+            })
 
     def test_exchange_declare_raises_exception_and_silenced(self):
         """Create exchange where an exception is raised and then silenced"""
@@ -1308,10 +1313,10 @@ class TestChannel(ExtraAssertionsMixin, Case):
         self.my_channel.basic_publish(
             mock_message, mock_exchange, mock_routing_key,
         )
-        mock_encode_body.assert_called_once(
+        mock_encode_body.assert_called_once_with(
             mock_original_body, mock_body_encoding,
         )
-        mock_buffer.assert_called_once(mock_encode_body)
+        mock_buffer.assert_called_once_with(mock_encoded_body)
         self.assertIs(mock_message['body'], mock_encoded_buffered_body)
         self.assertIs(
             mock_message['properties']['body_encoding'], mock_body_encoding,
@@ -1580,8 +1585,9 @@ class TestTransportInit(Case):
         self.mock_verify_runtime_environment.assert_called_once_with()
 
     def test_transport___init___calls_parent_class___init__(self):
-        Transport(Mock())
-        self.mock_base_Transport__init__.assert_caled_once_with()
+        m = Mock()
+        Transport(m)
+        self.mock_base_Transport__init__.assert_called_once_with(m)
 
     def test_transport___init___calls_os_pipe(self):
         Transport(Mock())
@@ -1687,6 +1693,8 @@ class TestTransportEstablishConnection(Case):
         self.client.connect_timeout = 4
         self.client.ssl = False
         self.client.transport_options = {}
+        self.client.userid = ''
+        self.client.password = ''
         self.transport = Transport(self.client)
         self.mock_conn = Mock()
         self.transport.Connection = self.mock_conn
@@ -1703,23 +1711,9 @@ class TestTransportEstablishConnection(Case):
         self.transport.establish_connection()
         self.mock_conn.assert_called_once_with(
             username=new_userid_string,
-            sasl_mechanisms='PLAIN ANONYMOUS',
+            sasl_mechanisms='PLAIN',
             host='127.0.0.1',
             timeout=4,
-            password='',
-            port=5672,
-            transport='tcp',
-        )
-
-    def test_transport_establish_conn_sasl_mech_sorting(self):
-        self.client.sasl_mechanisms = 'MECH1 MECH2'
-        self.transport.establish_connection()
-        self.mock_conn.assert_called_once_with(
-            username='guest',
-            sasl_mechanisms='MECH1 MECH2',
-            host='127.0.0.1',
-            timeout=4,
-            password='',
             port=5672,
             transport='tcp',
         )
@@ -1727,11 +1721,9 @@ class TestTransportEstablishConnection(Case):
     def test_transport_establish_conn_empty_client_is_default(self):
         self.transport.establish_connection()
         self.mock_conn.assert_called_once_with(
-            username='guest',
-            sasl_mechanisms='PLAIN ANONYMOUS',
+            sasl_mechanisms='ANONYMOUS',
             host='127.0.0.1',
             timeout=4,
-            password='',
             port=5672,
             transport='tcp',
         )
@@ -1741,12 +1733,10 @@ class TestTransportEstablishConnection(Case):
         self.client.transport_options['new_param'] = new_param_value
         self.transport.establish_connection()
         self.mock_conn.assert_called_once_with(
-            username='guest',
-            sasl_mechanisms='PLAIN ANONYMOUS',
+            sasl_mechanisms='ANONYMOUS',
             host='127.0.0.1',
             timeout=4,
             new_param=new_param_value,
-            password='',
             port=5672,
             transport='tcp',
         )
@@ -1755,24 +1745,27 @@ class TestTransportEstablishConnection(Case):
         self.client.hostname = 'localhost'
         self.transport.establish_connection()
         self.mock_conn.assert_called_once_with(
-            username='guest',
-            sasl_mechanisms='PLAIN ANONYMOUS',
+            sasl_mechanisms='ANONYMOUS',
             host='127.0.0.1',
             timeout=4,
-            password='',
             port=5672,
             transport='tcp',
         )
 
+    def test_transport_password_no_username_raises_exception(self):
+        self.client.password = 'somepass'
+        self.assertRaises(Exception, self.transport.establish_connection)
+
     def test_transport_establish_conn_set_password(self):
+        self.client.userid = 'someuser'
         self.client.password = 'somepass'
         self.transport.establish_connection()
         self.mock_conn.assert_called_once_with(
-            username='guest',
-            sasl_mechanisms='PLAIN ANONYMOUS',
+            username='someuser',
+            password='somepass',
+            sasl_mechanisms='PLAIN',
             host='127.0.0.1',
             timeout=4,
-            password='somepass',
             port=5672,
             transport='tcp',
         )
@@ -1781,11 +1774,9 @@ class TestTransportEstablishConnection(Case):
         self.client.ssl = False
         self.transport.establish_connection()
         self.mock_conn.assert_called_once_with(
-            username='guest',
-            sasl_mechanisms='PLAIN ANONYMOUS',
+            sasl_mechanisms='ANONYMOUS',
             host='127.0.0.1',
             timeout=4,
-            password='',
             port=5672,
             transport='tcp',
         )
@@ -1799,15 +1790,13 @@ class TestTransportEstablishConnection(Case):
         }
         self.transport.establish_connection()
         self.mock_conn.assert_called_once_with(
-            username='guest',
             ssl_certfile='my_certfile',
             ssl_trustfile='my_cacerts',
             timeout=4,
             ssl_skip_hostname_check=False,
-            sasl_mechanisms='PLAIN ANONYMOUS',
+            sasl_mechanisms='ANONYMOUS',
             host='127.0.0.1',
             ssl_keyfile='my_keyfile',
-            password='',
             port=5672, transport='ssl',
         )
 
@@ -1820,15 +1809,13 @@ class TestTransportEstablishConnection(Case):
         }
         self.transport.establish_connection()
         self.mock_conn.assert_called_once_with(
-            username='guest',
             ssl_certfile='my_certfile',
             ssl_trustfile='my_cacerts',
             timeout=4,
             ssl_skip_hostname_check=True,
-            sasl_mechanisms='PLAIN ANONYMOUS',
+            sasl_mechanisms='ANONYMOUS',
             host='127.0.0.1',
             ssl_keyfile='my_keyfile',
-            password='',
             port=5672, transport='ssl',
         )
 
@@ -1865,11 +1852,11 @@ class TestTransportEstablishConnection(Case):
         self.client.hostname = 'some_other_hostname'
         self.transport.establish_connection()
         self.mock_conn.assert_called_once_with(
-            username='guest',
-            sasl_mechanisms='PLAIN ANONYMOUS',
+            sasl_mechanisms='ANONYMOUS',
             host='some_other_hostname',
-            timeout=4, password='',
-            port=5672, transport='tcp',
+            timeout=4,
+            port=5672,
+            transport='tcp',
         )
 
 
@@ -2028,10 +2015,12 @@ class TestTransport(ExtraAssertionsMixin, Case):
     def test_default_connection_params(self):
         """Test that the default_connection_params are correct"""
         correct_params = {
-            'userid': 'guest', 'password': '',
-            'port': 5672, 'virtual_host': '',
             'hostname': 'localhost',
-            'sasl_mechanisms': 'PLAIN ANONYMOUS',
+            'password': None,
+            'port': 5672,
+            'sasl_mechanisms': 'ANONYMOUS',
+            'userid': None,
+            'virtual_host': '',
         }
         my_transport = Transport(self.mock_client)
         result_params = my_transport.default_connection_params
