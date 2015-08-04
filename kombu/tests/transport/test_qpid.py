@@ -1693,8 +1693,9 @@ class TestTransportEstablishConnection(Case):
         self.client.connect_timeout = 4
         self.client.ssl = False
         self.client.transport_options = {}
-        self.client.userid = ''
-        self.client.password = ''
+        self.client.userid = None
+        self.client.password = None
+        self.client.login_method = None
         self.transport = Transport(self.client)
         self.mock_conn = Mock()
         self.transport.Connection = self.mock_conn
@@ -1706,11 +1707,12 @@ class TestTransportEstablishConnection(Case):
         self.patcher.stop()
 
     def test_transport_establish_conn_new_option_overwrites_default(self):
-        new_userid_string = 'new-userid'
-        self.client.userid = new_userid_string
+        self.client.userid = 'new-userid'
+        self.client.password = 'new-password'
         self.transport.establish_connection()
         self.mock_conn.assert_called_once_with(
-            username=new_userid_string,
+            username=self.client.userid,
+            password=self.client.password,
             sasl_mechanisms='PLAIN',
             host='127.0.0.1',
             timeout=4,
@@ -1752,9 +1754,37 @@ class TestTransportEstablishConnection(Case):
             transport='tcp',
         )
 
-    def test_transport_password_no_username_raises_exception(self):
+    def test_transport_password_no_userid_raises_exception(self):
         self.client.password = 'somepass'
         self.assertRaises(Exception, self.transport.establish_connection)
+
+    def test_transport_userid_no_password_raises_exception(self):
+        self.client.userid = 'someusername'
+        self.assertRaises(Exception, self.transport.establish_connection)
+
+    def test_transport_overrides_sasl_mech_from_login_method(self):
+        self.client.login_method = 'EXTERNAL'
+        self.transport.establish_connection()
+        self.mock_conn.assert_called_once_with(
+            sasl_mechanisms='EXTERNAL',
+            host='127.0.0.1',
+            timeout=4,
+            port=5672,
+            transport='tcp',
+        )
+
+    def test_transport_overrides_sasl_mech_has_username(self):
+        self.client.userid = 'new-userid'
+        self.client.login_method = 'EXTERNAL'
+        self.transport.establish_connection()
+        self.mock_conn.assert_called_once_with(
+            username=self.client.userid,
+            sasl_mechanisms='EXTERNAL',
+            host='127.0.0.1',
+            timeout=4,
+            port=5672,
+            transport='tcp',
+        )
 
     def test_transport_establish_conn_set_password(self):
         self.client.userid = 'someuser'
@@ -1866,9 +1896,6 @@ class TestTransportClassAttributes(Case):
 
     def test_verify_Connection_attribute(self):
         self.assertIs(Connection, Transport.Connection)
-
-    def test_verify_default_port(self):
-        self.assertEqual(5672, Transport.default_port)
 
     def test_verify_polling_disabled(self):
         self.assertIsNone(Transport.polling_interval)
@@ -2016,11 +2043,7 @@ class TestTransport(ExtraAssertionsMixin, Case):
         """Test that the default_connection_params are correct"""
         correct_params = {
             'hostname': 'localhost',
-            'password': None,
             'port': 5672,
-            'sasl_mechanisms': 'ANONYMOUS',
-            'userid': None,
-            'virtual_host': '',
         }
         my_transport = Transport(self.mock_client)
         result_params = my_transport.default_connection_params
