@@ -27,6 +27,55 @@ command:
     This transport should be used with caution due to a known
     potential deadlock. See `Issue 2199`_ for more details.
 
+Authentication
+==============
+
+This transport supports SASL authentication with the Qpid broker. Normally,
+SASL mechanisms are negotiated from a client list and a server list of
+possible mechanisms, but in practice, different SASL client libraries give
+different behaviors. These different behaviors cause the expected SASL
+mechanism to not be selected in many cases. As such, this transport restricts
+the mechanism types based on Kombu's configuration according to the following
+table.
+
++------------------------------------+--------------------+
+| **Broker String**                  | **SASL Mechanism** |
++------------------------------------+--------------------+
+| qpid://hostname/                   | ANONYMOUS          |
++------------------------------------+--------------------+
+| qpid://username:password@hostname/ | PLAIN              |
++------------------------------------+--------------------+
+| see instructions below             | EXTERNAL           |
++------------------------------------+--------------------+
+
+The user can override the above SASL selection behaviors and specify the SASL
+string using the :attr:`~kombu.Connection.login_method` argument to the
+:class:`~kombu.Connection` object. The string can be a single SASL mechanism
+or a space separated list of SASL mechanisms. If you are using Celery with
+Kombu, this can be accomplished by setting the *BROKER_LOGIN_METHOD* Celery
+option.
+
+.. note::
+
+    While using SSL, Qpid users may want to override the SASL mechanism to
+    use *EXTERNAL*. In that case, Qpid requires a username to be presented
+    that matches the *CN* of the SSL client certificate. Ensure that the
+    broker string contains the corresponding username. For example, if the
+    client certificate has *CN=asdf* and the client connects to *example.com*
+    on port 5671, the broker string should be:
+
+        **qpid://asdf@example.com:5671/**
+
+Transport Options
+=================
+
+The :attr:`~kombu.Connection.transport_options` argument to the
+:class:`~kombu.Connection` object are passed directly to the
+:class:`qpid.messaging.endpoints.Connection` as keyword arguments. These
+options override and replace any other default or specified values. If using
+Celery with Kombu, this can be accomplished by setting the
+*BROKER_TRANSPORT_OPTIONS* Celery option.
+
 """
 from __future__ import absolute_import
 
@@ -76,8 +125,6 @@ from kombu.utils.compat import OrderedDict
 
 logger = get_logger(__name__)
 
-
-DEFAULT_PORT = 5672
 
 OBJECT_ALREADY_EXISTS_STRING = 'object already exists'
 
@@ -655,13 +702,14 @@ class Channel(base.StdChannel):
         functionality.
 
         :keyword type: The exchange type. Valid values include 'direct',
-        'topic', and 'fanout'.
+            'topic', and 'fanout'.
         :type type: str
         :keyword exchange: The name of the exchange to be created. If no
-        exchange is specified, then a blank string will be used as the name.
+            exchange is specified, then a blank string will be used as the
+            name.
         :type exchange: str
         :keyword durable: True if the exchange should be durable, or False
-        otherwise.
+            otherwise.
         :type durable: bool
         """
         options = {'durable': durable}
@@ -1211,8 +1259,10 @@ class Connection(object):
         establish = qpid.messaging.Connection.establish
 
         # There are several inconsistent behaviors in the sasl libraries
-        # used on different systems. This implementation uses only
-        # advertises one type to the server either ANONYMOUS or PLAIN.
+        # used on different systems. Although qpid.messaging allows
+        # multiple space separated sasl mechanisms, this implementation
+        # only advertises one type to the server. These are either
+        # ANONYMOUS, PLAIN, or an overridden value specified by the user.
 
         sasl_mech = connection_options['sasl_mechanisms']
 
@@ -1245,7 +1295,6 @@ class Connection(object):
                 logger.error(msg)
                 raise AuthenticationFailure(sys.exc_info()[1])
             raise
-
 
     def get_qpid_connection(self):
         """Return the existing connection (singleton).
@@ -1392,9 +1441,6 @@ class Transport(base.Transport):
 
     # Reference to the class that should be used as the Connection object
     Connection = Connection
-
-    # The default port
-    default_port = DEFAULT_PORT
 
     # This Transport does not specify a polling interval.
     polling_interval = None
@@ -1602,22 +1648,39 @@ class Transport(base.Transport):
                 conninfo.transport_options['ssl_skip_hostname_check'] = True
         else:
             conninfo.qpid_transport = 'tcp'
-        opts = dict({
+
+        credentials = {}
+        if conninfo.login_method is None:
+            if conninfo.userid is not None and conninfo.password is not None:
+                sasl_mech = 'PLAIN'
+                credentials['username'] = conninfo.userid
+                credentials['password'] = conninfo.password
+            elif conninfo.userid is None and conninfo.password is not None:
+                raise Exception(
+                    'Password configured but no username. SASL PLAIN '
+                    'requires a username when using a password.')
+            elif conninfo.userid is not None and conninfo.password is None:
+                raise Exception(
+                    'Username configured but no password. SASL PLAIN '
+                    'requires a password when using a username.')
+            else:
+                sasl_mech = 'ANONYMOUS'
+        else:
+            sasl_mech = conninfo.login_method
+            if conninfo.userid is not None:
+                credentials['username'] = conninfo.userid
+
+        opts = {
             'host': conninfo.hostname,
             'port': conninfo.port,
-            'sasl_mechanisms': conninfo.sasl_mechanisms,
+            'sasl_mechanisms': sasl_mech,
             'timeout': conninfo.connect_timeout,
             'transport': conninfo.qpid_transport
-        }, **conninfo.transport_options or {})
-        if conninfo.userid is not None:
-            opts['username'] = conninfo.userid
-            opts['sasl_mechanisms'] = 'PLAIN'
-        elif conninfo.password is not None:
-                raise Exception(
-                    'Password configured but no username. A username is '
-                    'required when using a password.')
-        if conninfo.password is not None:
-            opts['password'] = conninfo.password
+        }
+
+        opts.update(credentials)
+        opts.update(conninfo.transport_options)
+
         conn = self.Connection(**opts)
         conn.client = self.client
         self.session = conn.get_qpid_connection().session()
@@ -1699,11 +1762,7 @@ class Transport(base.Transport):
         """
         return {
             'hostname': 'localhost',
-            'password': None,
-            'port': self.default_port,
-            'sasl_mechanisms': 'ANONYMOUS',
-            'userid': None,
-            'virtual_host': ''
+            'port': 5672,
         }
 
     def __del__(self):
