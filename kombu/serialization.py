@@ -312,7 +312,7 @@ def register_json():
     def _loads(obj):
         if isinstance(obj, bytes_t):
             obj = obj.decode()
-        return json_loads(obj)
+        return json_loads(str(obj))
 
     registry.register('json', json_dumps, _loads,
                       content_type='application/json',
