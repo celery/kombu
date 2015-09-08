@@ -10,6 +10,8 @@ from __future__ import absolute_import
 import errno
 import socket
 
+from amqp.exceptions import RecoverableConnectionError
+
 from kombu.exceptions import ChannelError, ConnectionError
 from kombu.message import Message
 from kombu.utils import cached_property
@@ -139,7 +141,7 @@ class Transport(object):
 
         def _read(loop):
             if not connection.connected:
-                raise ConnectionError('Socket was disconnected')
+                raise RecoverableConnectionError('Socket was disconnected')
             try:
                 drain_events(timeout=0)
             except timeout:
