@@ -47,7 +47,7 @@ class LaxBoundedSemaphore(object):
         self._add_waiter = self._waiting.append
         self._pop_waiter = self._waiting.popleft
 
-    def acquire(self, callback, *partial_args):
+    def acquire(self, callback, *partial_args, **partial_kwargs):
         """Acquire semaphore, applying ``callback`` if
         the resource is available.
 
@@ -57,11 +57,11 @@ class LaxBoundedSemaphore(object):
         """
         value = self.value
         if value <= 0:
-            self._add_waiter((callback, partial_args))
+            self._add_waiter((callback, partial_args, partial_kwargs))
             return False
         else:
             self.value = max(value - 1, 0)
-            callback(*partial_args)
+            callback(*partial_args, **partial_kwargs)
             return True
 
     def release(self):
@@ -72,11 +72,11 @@ class LaxBoundedSemaphore(object):
 
         """
         try:
-            waiter, args = self._pop_waiter()
+            waiter, args, kwargs = self._pop_waiter()
         except IndexError:
             self.value = min(self.value + 1, self.initial_value)
         else:
-            waiter(*args)
+            waiter(*args, **kwargs)
 
     def grow(self, n=1):
         """Change the size of the semaphore to accept more users."""
