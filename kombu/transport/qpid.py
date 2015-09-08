@@ -27,6 +27,55 @@ command:
     This transport should be used with caution due to a known
     potential deadlock. See `Issue 2199`_ for more details.
 
+Authentication
+==============
+
+This transport supports SASL authentication with the Qpid broker. Normally,
+SASL mechanisms are negotiated from a client list and a server list of
+possible mechanisms, but in practice, different SASL client libraries give
+different behaviors. These different behaviors cause the expected SASL
+mechanism to not be selected in many cases. As such, this transport restricts
+the mechanism types based on Kombu's configuration according to the following
+table.
+
++------------------------------------+--------------------+
+| **Broker String**                  | **SASL Mechanism** |
++------------------------------------+--------------------+
+| qpid://hostname/                   | ANONYMOUS          |
++------------------------------------+--------------------+
+| qpid://username:password@hostname/ | PLAIN              |
++------------------------------------+--------------------+
+| see instructions below             | EXTERNAL           |
++------------------------------------+--------------------+
+
+The user can override the above SASL selection behaviors and specify the SASL
+string using the :attr:`~kombu.Connection.login_method` argument to the
+:class:`~kombu.Connection` object. The string can be a single SASL mechanism
+or a space separated list of SASL mechanisms. If you are using Celery with
+Kombu, this can be accomplished by setting the *BROKER_LOGIN_METHOD* Celery
+option.
+
+.. note::
+
+    While using SSL, Qpid users may want to override the SASL mechanism to
+    use *EXTERNAL*. In that case, Qpid requires a username to be presented
+    that matches the *CN* of the SSL client certificate. Ensure that the
+    broker string contains the corresponding username. For example, if the
+    client certificate has *CN=asdf* and the client connects to *example.com*
+    on port 5671, the broker string should be:
+
+        **qpid://asdf@example.com:5671/**
+
+Transport Options
+=================
+
+The :attr:`~kombu.Connection.transport_options` argument to the
+:class:`~kombu.Connection` object are passed directly to the
+:class:`qpid.messaging.endpoints.Connection` as keyword arguments. These
+options override and replace any other default or specified values. If using
+Celery with Kombu, this can be accomplished by setting the
+*BROKER_TRANSPORT_OPTIONS* Celery option.
+
 """
 from __future__ import absolute_import
 
@@ -42,6 +91,7 @@ import threading
 import time
 
 from itertools import count
+from gettext import gettext as _
 
 import amqp.protocol
 
@@ -75,8 +125,6 @@ from kombu.utils.compat import OrderedDict
 
 logger = get_logger(__name__)
 
-
-DEFAULT_PORT = 5672
 
 OBJECT_ALREADY_EXISTS_STRING = 'object already exists'
 
@@ -654,13 +702,14 @@ class Channel(base.StdChannel):
         functionality.
 
         :keyword type: The exchange type. Valid values include 'direct',
-        'topic', and 'fanout'.
+            'topic', and 'fanout'.
         :type type: str
         :keyword exchange: The name of the exchange to be created. If no
-        exchange is specified, then a blank string will be used as the name.
+            exchange is specified, then a blank string will be used as the
+            name.
         :type exchange: str
         :keyword durable: True if the exchange should be durable, or False
-        otherwise.
+            otherwise.
         :type durable: bool
         """
         options = {'durable': durable}
@@ -1167,7 +1216,6 @@ class Connection(object):
 
     # A class reference to the :class:`Channel` object
     Channel = Channel
-    SASL_ANONYMOUS_MECH = 'ANONYMOUS'
 
     def __init__(self, **connection_options):
         """Instantiate a Connection object.
@@ -1177,26 +1225,31 @@ class Connection(object):
         * host: The host that connections should connect to.
         * port: The port that connection should connect to.
         * username: The username that connections should connect with.
+              Optional.
         * password: The password that connections should connect with.
-        * transport: The transport type that connections should use. Either
-              'tcp', or 'ssl' are expected as values.
-        * timeout: the timeout used when a Connection connects to the broker.
+              Optional but requires a username.
+        * transport: The transport type that connections should use.
+              Either 'tcp', or 'ssl' are expected as values.
+        * timeout: the timeout used when a Connection connects to the
+              broker.
         * sasl_mechanisms: The sasl authentication mechanism type to use.
-              refer to SASL documentation for an explanation of valid values.
+              refer to SASL documentation for an explanation of valid
+              values.
 
         Creates a :class:`qpid.messaging.endpoints.Connection` object with
         the saved parameters, and stores it as _qpid_conn.
 
         qpid.messaging has an AuthenticationFailure exception type, but
         instead raises a ConnectionError with a message that indicates an
-        authentication failure occurred in those situations. ConnectionError
-        is listed as a recoverable error type, so kombu will attempt to retry
-        if a ConnectionError is raised. Retrying the operation without
-        adjusting the credentials is not correct, so this method specifically
-        checks for a ConnectionError that indicates an Authentication Failure
-        occurred. In those situations, the error type is mutated while
-        preserving the original message and raised so kombu will allow the
-        exception to not be considered recoverable.
+        authentication failure occurred in those situations.
+        ConnectionError is listed as a recoverable error type, so kombu
+        will attempt to retry if a ConnectionError is raised. Retrying
+        the operation without adjusting the credentials is not correct,
+        so this method specifically checks for a ConnectionError that
+        indicates an Authentication Failure occurred. In those
+        situations, the error type is mutated while preserving the
+        original message and raised so kombu will allow the exception to
+        not be considered recoverable.
 
         """
         self.connection_options = connection_options
@@ -1205,66 +1258,43 @@ class Connection(object):
         self._qpid_conn = None
         establish = qpid.messaging.Connection.establish
 
-        # There is a behavior difference in qpid.messaging's sasl_mechanism
-        # selection method and cyrus-sasl's. The former will put PLAIN before
-        # ANONYMOUS if a username and password is given, but the latter will
-        # simply take whichever mech is listed first. Thus, if we had
-        # "ANONYMOUS PLAIN" as the default, the user would never be able to
-        # select PLAIN if cyrus-sasl was installed.
+        # There are several inconsistent behaviors in the sasl libraries
+        # used on different systems. Although qpid.messaging allows
+        # multiple space separated sasl mechanisms, this implementation
+        # only advertises one type to the server. These are either
+        # ANONYMOUS, PLAIN, or an overridden value specified by the user.
 
-        # The following code will put ANONYMOUS last in the mech list, and then
-        # try sasl mechs one by one. This should still result in secure
-        # behavior since it will select the first suitable mech. Unsuitable
-        # mechs will be rejected by the server.
+        sasl_mech = connection_options['sasl_mechanisms']
 
-        _saslm = connection_options['sasl_mechanisms'].split()
-        sasl_mechanisms = [x for x in _saslm
-                           if x != self.SASL_ANONYMOUS_MECH]
-        if self.SASL_ANONYMOUS_MECH in _saslm:
-            sasl_mechanisms.append(self.SASL_ANONYMOUS_MECH)
-
-        for sasl_mech in sasl_mechanisms:
-            try:
-                logger.debug(
-                    'Attempting to connect to qpid '
-                    'with SASL mechanism %s', sasl_mech,
-                )
-                modified_conn_opts = self.connection_options
-                modified_conn_opts['sasl_mechanisms'] = sasl_mech
-                self._qpid_conn = establish(**modified_conn_opts)
-                # connection was successful if we got this far
-                logger.info(
-                    'Connected to qpid with SASL mechanism %s', sasl_mech,
-                )
-                break
-            except ConnectionError as conn_exc:
-                # if we get one of these errors, do not raise an exception.
-                # Raising will cause the connection to be retried. Instead,
-                # just continue on to the next mech.
-                coded_as_auth_failure = getattr(conn_exc, 'code', None) == 320
-                contains_auth_fail_text = \
-                    'Authentication failed' in conn_exc.text
-                contains_mech_fail_text = \
-                    'sasl negotiation failed: no mechanism agreed' \
-                    in conn_exc.text
-                contains_mech_unavail_text = 'no mechanism available' \
-                    in conn_exc.text
-                if coded_as_auth_failure or \
-                        contains_auth_fail_text or contains_mech_fail_text or \
-                        contains_mech_unavail_text:
-                    logger.debug(
-                        'Unable to connect to qpid with SASL mechanism %s',
-                        sasl_mech,
-                    )
-                    continue
-                raise
-
-        if not self.get_qpid_connection():
-            logger.error(
-                'Unable to authenticate to qpid using '
-                'the following mechanisms: %s', sasl_mechanisms,
-            )
-            raise AuthenticationFailure(sys.exc_info()[1])
+        try:
+            msg = _('Attempting to connect to qpid with '
+                    'SASL mechanism %s') % sasl_mech
+            logger.debug(msg)
+            self._qpid_conn = establish(**self.connection_options)
+            # connection was successful if we got this far
+            msg = _('Connected to qpid with SASL '
+                    'mechanism %s') % sasl_mech
+            logger.info(msg)
+        except ConnectionError as conn_exc:
+            # if we get one of these errors, do not raise an exception.
+            # Raising will cause the connection to be retried. Instead,
+            # just continue on to the next mech.
+            coded_as_auth_failure = getattr(conn_exc, 'code', None) == 320
+            contains_auth_fail_text = \
+                'Authentication failed' in conn_exc.text
+            contains_mech_fail_text = \
+                'sasl negotiation failed: no mechanism agreed' \
+                in conn_exc.text
+            contains_mech_unavail_text = 'no mechanism available' \
+                in conn_exc.text
+            if coded_as_auth_failure or \
+                    contains_auth_fail_text or contains_mech_fail_text or \
+                    contains_mech_unavail_text:
+                msg = _('Unable to connect to qpid with SASL '
+                        'mechanism %s') % sasl_mech
+                logger.error(msg)
+                raise AuthenticationFailure(sys.exc_info()[1])
+            raise
 
     def get_qpid_connection(self):
         """Return the existing connection (singleton).
@@ -1411,9 +1441,6 @@ class Transport(base.Transport):
 
     # Reference to the class that should be used as the Connection object
     Connection = Connection
-
-    # The default port
-    default_port = DEFAULT_PORT
 
     # This Transport does not specify a polling interval.
     polling_interval = None
@@ -1583,19 +1610,20 @@ class Transport(base.Transport):
     def establish_connection(self):
         """Establish a Connection object.
 
-        Determines the correct options to use when creating any connections
-        needed by this Transport, and create a :class:`Connection` object
-        which saves those values for connections generated as they are
-        needed. The options are a mixture of what is passed in through the
-        creator of the Transport, and the defaults provided by
+        Determines the correct options to use when creating any
+        connections needed by this Transport, and create a
+        :class:`Connection` object which saves those values for
+        connections generated as they are needed. The options are a
+        mixture of what is passed in through the creator of the
+        Transport, and the defaults provided by
         :meth:`default_connection_params`. Options cover broker network
         settings, timeout behaviors, authentication, and identity
         verification settings.
 
         This method also creates and stores a
         :class:`~qpid.messaging.endpoints.Session` using the
-        :class:`~qpid.messaging.endpoints.Connection` created by this method.
-        The Session is stored on self.
+        :class:`~qpid.messaging.endpoints.Connection` created by this
+        method. The Session is stored on self.
 
         :return: The created :class:`Connection` object is returned.
         :rtype: :class:`Connection`
@@ -1620,13 +1648,39 @@ class Transport(base.Transport):
                 conninfo.transport_options['ssl_skip_hostname_check'] = True
         else:
             conninfo.qpid_transport = 'tcp'
-        opts = dict({'host': conninfo.hostname, 'port': conninfo.port,
-                     'username': conninfo.userid,
-                     'password': conninfo.password,
-                     'transport': conninfo.qpid_transport,
-                     'timeout': conninfo.connect_timeout,
-                     'sasl_mechanisms': conninfo.sasl_mechanisms},
-                    **conninfo.transport_options or {})
+
+        credentials = {}
+        if conninfo.login_method is None:
+            if conninfo.userid is not None and conninfo.password is not None:
+                sasl_mech = 'PLAIN'
+                credentials['username'] = conninfo.userid
+                credentials['password'] = conninfo.password
+            elif conninfo.userid is None and conninfo.password is not None:
+                raise Exception(
+                    'Password configured but no username. SASL PLAIN '
+                    'requires a username when using a password.')
+            elif conninfo.userid is not None and conninfo.password is None:
+                raise Exception(
+                    'Username configured but no password. SASL PLAIN '
+                    'requires a password when using a username.')
+            else:
+                sasl_mech = 'ANONYMOUS'
+        else:
+            sasl_mech = conninfo.login_method
+            if conninfo.userid is not None:
+                credentials['username'] = conninfo.userid
+
+        opts = {
+            'host': conninfo.hostname,
+            'port': conninfo.port,
+            'sasl_mechanisms': sasl_mech,
+            'timeout': conninfo.connect_timeout,
+            'transport': conninfo.qpid_transport
+        }
+
+        opts.update(credentials)
+        opts.update(conninfo.transport_options)
+
         conn = self.Connection(**opts)
         conn.client = self.client
         self.session = conn.get_qpid_connection().session()
@@ -1703,18 +1757,13 @@ class Transport(base.Transport):
         These connection parameters will be used whenever the creator of
         Transport does not specify a required parameter.
 
-        NOTE: password is set to '' by default instead of None so the a
-        connection is attempted[1]. An empty password is considered valid for
-        qpidd if "auth=no" is set on the server.
-
-        [1] https://issues.apache.org/jira/browse/QPID-6109
-
         :return: A dict containing the default parameters.
         :rtype: dict
         """
-        return {'userid': 'guest', 'password': '',
-                'port': self.default_port, 'virtual_host': '',
-                'hostname': 'localhost', 'sasl_mechanisms': 'PLAIN ANONYMOUS'}
+        return {
+            'hostname': 'localhost',
+            'port': 5672,
+        }
 
     def __del__(self):
         """

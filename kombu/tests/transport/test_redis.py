@@ -578,16 +578,18 @@ class test_Channel(Case):
         srem = x.client.srem = Mock()
 
         x._delete('queue', 'exchange', 'routing_key', None)
-        delete.assert_has_call('queue')
-        srem.assert_has_call(x.keyprefix_queue % ('exchange', ),
-                             x.sep.join(['routing_key', '', 'queue']))
+        delete.assert_any_call('queue')
+        srem.assert_called_once_with(
+            x.keyprefix_queue % ('exchange', ),
+            x.sep.join(['routing_key', '', 'queue'])
+        )
 
     def test_has_queue(self):
         self.channel._in_poll = False
         exists = self.channel.client.exists = Mock()
         exists.return_value = True
         self.assertTrue(self.channel._has_queue('foo'))
-        exists.assert_has_call('foo')
+        exists.assert_any_call('foo')
 
         exists.return_value = False
         self.assertFalse(self.channel._has_queue('foo'))
