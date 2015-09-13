@@ -99,7 +99,14 @@ class Channel(virtual.Channel):
         # exists with a different visibility_timeout, so this prepopulates
         # the queue_cache to protect us from recreating
         # queues that are known to already exist.
-        queues = self.sqs.get_all_queues(prefix=self.queue_name_prefix)
+        queues = None
+        try:
+            queues = self.sqs.get_all_queues(prefix=self.queue_name_prefix)
+        except exception.SQSError, e:
+            if e.status == 403:
+                raise RuntimeError('SQS authorization error, access_key=%s' % self.sqs.access_key)
+            else:
+                raise e
         for queue in queues:
             self._queue_cache[queue.name] = queue
 
