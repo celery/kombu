@@ -13,6 +13,7 @@ from kombu import Connection, Exchange, Queue
 from kombu.tests.case import Case, case_requires
 
 from kombu.transport import SQS
+from kombu.async.aws.ext import exception
 
 
 class SQSQueueMock(object):
@@ -131,6 +132,26 @@ class test_Channel(Case):
     def test_init(self):
         """kombu.SQS.Channel instantiates correctly with mocked queues"""
         self.assertIn(self.queue_name, self.channel._queue_cache)
+
+    def test_auth_fail(self):
+        normal_func = SQS.Channel.sqs.get_all_queues
+        # mock auth error
+        def get_all_queues_fail_403(prefix=''):
+            raise exception.SQSError(403, None, None)
+        # mock non-auth error
+        def get_all_queues_fail_not_403(prefix=''):
+            raise exception.SQSError(500, None, None)
+        try:
+            SQS.Channel.sqs.access_key = '1234'
+            SQS.Channel.sqs.get_all_queues = get_all_queues_fail_403
+            with self.assertRaises(RuntimeError) as context:
+                self.channel = self.connection.channel()
+            self.assertTrue('access_key=1234' in context.exception.message)
+            SQS.Channel.sqs.get_all_queues = get_all_queues_fail_not_403
+            with self.assertRaises(exception.SQSError) as context:
+                self.channel = self.connection.channel()
+        finally:
+            SQS.Channel.sqs.get_all_queues = normal_func
 
     def test_new_queue(self):
         queue_name = 'new_unittest_queue'
