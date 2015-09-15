@@ -868,7 +868,7 @@ class Resource(object):
                         R = self.prepare(R)
                     except BaseException:
                         if isinstance(R, lazy):
-                            # no evaluated yet, just put it back
+                            # not evaluated yet, just put it back
                             self._resource.put_nowait(R)
                         else:
                             # evaluted so must try to release/close first.
