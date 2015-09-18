@@ -284,6 +284,7 @@ class Consumer(object):
     :keyword callbacks: see :attr:`callbacks`.
     :keyword on_message: See :attr:`on_message`
     :keyword on_decode_error: see :attr:`on_decode_error`.
+    :keyword prefetch_count: see :attr:`prefetch_count`.
 
     """
     ContentDisallowed = ContentDisallowed
@@ -350,11 +351,17 @@ class Consumer(object):
     #: in which case only json is allowed.
     accept = None
 
+    #: Initial prefetch count
+    #:
+    #: If set, the consumer will set the prefetch_count QoS value at startup.
+    #: Can also be changed using :meth:`qos`.
+    prefetch_count = None
+
     _tags = count(1)   # global
 
     def __init__(self, channel, queues=None, no_ack=None, auto_declare=None,
                  callbacks=None, on_decode_error=None, on_message=None,
-                 accept=None):
+                 accept=None, prefetch_count=None):
         self.channel = channel
         self.queues = self.queues or [] if queues is None else queues
         self.no_ack = self.no_ack if no_ack is None else no_ack
@@ -367,6 +374,7 @@ class Consumer(object):
         if on_decode_error is not None:
             self.on_decode_error = on_decode_error
         self.accept = prepare_accept_content(accept)
+        self.prefetch_count = prefetch_count
 
         if self.channel:
             self.revive(self.channel)
@@ -382,6 +390,9 @@ class Consumer(object):
 
         if self.auto_declare:
             self.declare()
+
+        if self.prefetch_count is not None:
+            self.qos(prefetch_count=self.prefetch_count)
 
     def declare(self):
         """Declare queues, exchanges and bindings.
