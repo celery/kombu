@@ -1534,10 +1534,6 @@ class TestTransportInit(Case):
         Transport(Mock())
         self.verify_runtime_environment.assert_called_once_with()
 
-    def test_transport___init___calls_parent_class___init__(self):
-        Transport(Mock())
-        self.base_Transport__init__.assert_caled_once_with()
-
     def test_transport___init___calls_os_pipe(self):
         Transport(Mock())
         self.os.pipe.assert_called_once_with()

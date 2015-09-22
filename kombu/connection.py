@@ -455,11 +455,11 @@ class Connection(object):
                                            interval_start,
                                            interval_step,
                                            interval_max)
-                    new_channel = self.channel()
-                    self.revive(new_channel)
-                    obj.revive(new_channel)
+                    channel = self.default_channel
+                    self.revive(channel)
+                    obj.revive(channel)
                     if on_revive:
-                        on_revive(new_channel)
+                        on_revive(channel)
                     got_connection += 1
                 except chan_errors as exc:
                     if max_retries is not None and retries > max_retries:
@@ -492,22 +492,24 @@ class Connection(object):
                 channel.close()
         """
         channels = [channel]
-        create_channel = self.channel
 
         class Revival(object):
             __name__ = getattr(fun, '__name__', None)
             __module__ = getattr(fun, '__module__', None)
             __doc__ = getattr(fun, '__doc__', None)
 
+            def __init__(self, connection):
+                self.connection = connection
+
             def revive(self, channel):
                 channels[0] = channel
 
             def __call__(self, *args, **kwargs):
                 if channels[0] is None:
-                    self.revive(create_channel())
+                    self.revive(self.connection.default_channel)
                 return fun(*args, channel=channels[0], **kwargs), channels[0]
 
-        revive = Revival()
+        revive = Revival(self)
         return self.ensure(revive, revive, **ensure_options)
 
     def create_transport(self):
