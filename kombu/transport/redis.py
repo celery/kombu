@@ -1001,3 +1001,50 @@ class Transport(virtual.Transport):
     def _get_errors(self):
         """Utility to import redis-py's exceptions at runtime."""
         return get_redis_error_classes()
+
+
+class SentinelChannel(Channel):
+    """Channel with explicit Redis Sentinel knowledge.
+
+    Broker url is supposed to look like:
+
+    sentinel://0.0.0.0:26379;sentinel://0.0.0.0:26380/...
+
+    where each sentinel is separated by a `;`. Multiple sentinels are handled
+    by :class:`kombu.Connection` constructor, and placed in the alternative
+    list of servers to connect to in case of connection failure.
+
+    Other arguments for the sentinel should come from the transport options
+    (see :method:`Celery.connection` which is in charge of creating the
+    `Connection` object).
+    """
+
+    from_transport_options = Channel.from_transport_options + (
+        'service_name',
+        'password',
+        'min_other_sentinels',
+        'sentinel_timeout')
+
+    @cached_property
+    def _sentinel_managed_pool(self):
+
+        connparams = self._connparams()
+
+        sentinel = redis.sentinel.Sentinel(
+            [(connparams['host'], connparams['port'])],
+            min_other_sentinels=self.min_other_sentinels,
+            password=self.password,
+            sentinel_kwargs={"socket_timeout": self.sentinel_timeout},
+        )
+
+        return sentinel.master_for(
+            self.service_name,
+            self.Client,
+            socket_timeout=self.socket_timeout).connection_pool
+
+    def _get_pool(self):
+        return self._sentinel_managed_pool
+
+
+class SentinelTransport(Transport):
+    Channel = SentinelChannel
