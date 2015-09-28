@@ -603,7 +603,7 @@ class test_Consumer(Case):
     def test_revive__with_prefetch_count(self):
         channel = Mock(name='channel')
         b1 = Queue('qname1', self.exchange, 'rkey')
-        consumer = Consumer(channel, [b1], prefetch_count=14)
+        Consumer(channel, [b1], prefetch_count=14)
         channel.basic_qos.assert_called_with(0, 14, False)
 
     def test__repr__(self):

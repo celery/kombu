@@ -362,7 +362,9 @@ def register_msgpack():
     try:
         try:
             from msgpack import packb as pack, unpackb
-            unpack = lambda s: unpackb(s, encoding='utf-8')
+
+            def unpack(s):
+                return unpackb(s, encoding='utf-8')
         except ImportError:
             # msgpack < 0.2.0 and Python 2.5
             from msgpack import packs as pack, unpacks as unpack  # noqa

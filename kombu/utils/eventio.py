@@ -14,6 +14,12 @@ import socket
 
 from numbers import Integral
 
+from kombu.syn import detect_environment
+
+from . import fileno
+
+__all__ = ['poll']
+
 _selectf = __select__.select
 _selecterr = __select__.error
 xpoll = getattr(__select__, 'poll', None)
@@ -44,12 +50,6 @@ KQ_NOTE_REVOKE = getattr(__select__, 'KQ_NOTE_REVOKE', 64)
 POLLIN = getattr(__select__, 'POLLIN', 1)
 POLLOUT = getattr(__select__, 'POLLOUT', 4)
 POLLERR = getattr(__select__, 'POLLERR', 8)
-
-from kombu.syn import detect_environment
-
-from . import fileno
-
-__all__ = ['poll']
 
 READ = POLL_READ = 0x001
 WRITE = POLL_WRITE = 0x004

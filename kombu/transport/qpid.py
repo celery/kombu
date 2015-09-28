@@ -30,8 +30,6 @@ command:
 """
 from __future__ import absolute_import
 
-"""Kombu transport using a Qpid broker as a message store."""
-
 import fcntl
 import os
 import select
@@ -46,6 +44,11 @@ from itertools import count
 
 import amqp.protocol
 
+from kombu.five import Empty, items
+from kombu.log import get_logger
+from kombu.transport.virtual import Base64, Message
+from kombu.transport import base
+
 try:
     import qpidtoollibs
 except ImportError:  # pragma: no cover
@@ -58,24 +61,16 @@ except ImportError:  # pragma: no cover
     ConnectionError = None
     QpidEmpty = None
 
+# ## The Following Import Applies Monkey Patches at Import Time ##
+import kombu.transport.qpid_patches  # noqa
+################################################################
+
 try:
     import qpid
 except ImportError:  # pragma: no cover
     qpid = None
 
-
-from kombu.five import Empty, items
-from kombu.log import get_logger
-from kombu.transport.virtual import Base64, Message
-from kombu.transport import base
-
-
 logger = get_logger(__name__)
-
-# ## The Following Import Applies Monkey Patches at Import Time ##
-import kombu.transport.qpid_patches  # noqa
-################################################################
-
 
 DEFAULT_PORT = 5672
 

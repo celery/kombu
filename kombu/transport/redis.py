@@ -26,6 +26,8 @@ from kombu.utils.encoding import bytes_to_str
 from kombu.utils.json import loads, dumps
 from kombu.utils.url import _parse_url
 
+from . import virtual
+
 NO_ROUTE_ERROR = """
 Cannot route message for exchange {0!r}: Table empty or key no longer exists.
 Probably the key ({1!r}) has been removed from the Redis database.
@@ -44,8 +46,6 @@ try:
     import redis
 except ImportError:  # pragma: no cover
     redis = None     # noqa
-
-from . import virtual
 
 logger = get_logger('kombu.transport.redis')
 crit, warn = logger.critical, logger.warn

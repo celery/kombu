@@ -33,7 +33,8 @@ class _poll(eventio._select):
 
 
 eventio.poll = _poll
-from kombu.transport import redis  # must import after poller patch
+# must import after poller patch, pep8 complains
+from kombu.transport import redis  # noqa
 
 
 class ResponseError(Exception):
@@ -590,7 +591,8 @@ class test_Channel(Case):
         exists.return_value = True
         self.assertTrue(self.channel._has_queue('foo'))
         exists.assert_has_calls([
-            call(self.channel._q_for_pri('foo', pri)) for pri in redis.PRIORITY_STEPS
+            call(self.channel._q_for_pri('foo', pri))
+            for pri in redis.PRIORITY_STEPS
         ])
 
         exists.return_value = False

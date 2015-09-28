@@ -6,7 +6,9 @@ try:  # pragma: no cover
     from email.mime.message import MIMEMessage
 except ImportError:  # Py2
     from mimetools import Message as MIMEMessage   # noqa
-    message_from_file = lambda m: m  # noqa
+
+    def message_from_file(m):  # noqa
+        return m
 
 from io import BytesIO
 
