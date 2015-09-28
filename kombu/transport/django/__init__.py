@@ -10,7 +10,7 @@ from kombu.utils.encoding import bytes_to_str
 from kombu.utils.json import loads, dumps
 
 
-from .models import Queue
+from .models import Queue, Message
 
 try:
     from django.apps import AppConfig
@@ -45,6 +45,31 @@ class Channel(virtual.Channel):
             return
         super(Channel, self).basic_consume(queue, *args, **kwargs)
 
+    def basic_publish(self, message, exchange, routing_key, **kwargs):
+        try:
+            content_type = message['content-type']
+
+            if content_type == 'application/json':
+                # parse the body to see what kind of message this is
+                body = loads(message['body'])
+
+                # try and execute this method on the channel, else
+                # continue with the default action of basic_publish
+                #
+                # Methods are of the form 'do_revoke_method' where revoke
+                # is the name of the method
+                method = getattr(self, 'do_%s_method' % body['method'])
+                arguments = body['arguments']
+
+                # FIXME: this method should raise like normal
+                return method(routing_key, **arguments)
+
+        except (KeyError, AttributeError):
+            pass
+
+        return super(Channel, self).basic_publish(message, exchange,
+                                                  routing_key, **kwargs)
+
     def _get(self, queue):
         m = Queue.objects.fetch(queue)
         if m:
@@ -60,6 +85,35 @@ class Channel(virtual.Channel):
     def refresh_connection(self):
         from django import db
         db.close_connection()
+
+    def do_revoke_method(self, queue, task_id=None, terminate=False, **kwargs):
+        """
+        Revoke some jobs
+        """
+
+        if terminate:
+            raise NotImplementedError("terminate flag is not implemented")
+
+        task_id = task_id or []
+
+        # drop the messages from the queue
+        # this requires Postgres 9.3
+        # FIXME: raise NotImplementedError on older Postgres
+        Message.objects.extra(
+            where=["payload::json->'properties'->>'correlation_id' in %s"],
+            params=[tuple(task_id)])\
+            .delete()
+
+        # inform Celery we've revoked the task in case anyone is waiting-
+        # use store_result so that it creates the task entry if required
+        from djcelery.models import TaskMeta
+        from celery import states
+        from celery.exceptions import TaskRevokedError
+
+        for task in task_id:
+            # FIXME: shouldn't overwrite finished tasks
+            TaskMeta.objects.store_result(task, TaskRevokedError,
+                                          states.REVOKED)
 
 
 class Transport(virtual.Transport):
