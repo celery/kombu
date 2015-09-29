@@ -3,6 +3,7 @@ python:
     - 2.7
     - 3.3
     - 3.4
+    - 3.5
     - pypy
     - pypy3
 before_install:
@@ -17,7 +18,7 @@ before_install:
       python --version
       uname -a
       lsb_release -a
-      sudo pip install tox
+      sudo travis_retry pip install tox
 script: tox -v -e $TRAVIS_PYTHON_VERSION -- -v
 after_success:
     - .tox/$TRAVIS_PYTHON_VERSION/bin/coveralls
