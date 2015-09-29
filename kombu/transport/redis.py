@@ -942,7 +942,8 @@ class Transport(virtual.Transport):
         def on_poll_start():
             cycle_poll_start()
             [add_reader(fd, on_readable, fd) for fd in cycle.fds]
-        loop.on_tick.add(on_poll_start)
+        self.on_poll_start = on_poll_start
+        loop.call_soon(on_poll_start)
         loop.call_repeatedly(10, cycle.maybe_restore_messages)
 
     def on_readable(self, fileno):
@@ -955,6 +956,7 @@ class Transport(virtual.Transport):
                     'Message for queue {0!r} without consumers: {1}'.format(
                         queue, message))
             self._callbacks[queue](message)
+        self.on_poll_start()
 
     def _get_errors(self):
         """Utility to import redis-py's exceptions at runtime."""
