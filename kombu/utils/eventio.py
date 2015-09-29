@@ -216,7 +216,7 @@ class _poll(object):
     def poll(self, timeout, round=math.ceil,
              POLLIN=POLLIN, POLLOUT=POLLOUT, POLLERR=POLLERR,
              READ=READ, WRITE=WRITE, ERR=ERR, Integral=Integral):
-        timeout = 0 if timeout and timeout < 0 else round(timeout or 0 * 1e3)
+        timeout = 0 if timeout and timeout < 0 else round((timeout or 0) * 1e3)
         try:
             event_list = self._quick_poll(timeout)
         except (_selecterr, socket.error) as exc:
