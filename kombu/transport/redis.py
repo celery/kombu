@@ -584,7 +584,7 @@ class Channel(virtual.Channel):
             response = c.parse_response()
         except self.connection_errors:
             self._in_listen = False
-            raise Empty()
+            raise
         if response is not None:
             payload = self._handle_message(c, response)
             if bytes_to_str(payload['type']).endswith('message'):
@@ -621,7 +621,7 @@ class Channel(virtual.Channel):
                 # if there's a ConnectionError, disconnect so the next
                 # iteration will reconnect automatically.
                 self.client.connection.disconnect()
-                raise Empty()
+                raise
             if dest__item:
                 dest, item = dest__item
                 dest = bytes_to_str(dest).rsplit(self.sep, 1)[0]
@@ -797,8 +797,8 @@ class Channel(virtual.Channel):
 
         class Connection(connection_cls):
             def disconnect(self):
-                channel._on_connection_disconnect(self)
                 super(Connection, self).disconnect()
+                channel._on_connection_disconnect(self)
         connparams['connection_class'] = Connection
 
         return connparams
