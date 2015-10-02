@@ -1632,8 +1632,6 @@ class Transport(base.Transport):
         for name, default_value in items(self.default_connection_params):
             if not getattr(conninfo, name, None):
                 setattr(conninfo, name, default_value)
-        if conninfo.hostname == 'localhost':
-            conninfo.hostname = '127.0.0.1'
         if conninfo.ssl:
             conninfo.qpid_transport = 'ssl'
             conninfo.transport_options['ssl_keyfile'] = conninfo.ssl[

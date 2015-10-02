@@ -1714,7 +1714,7 @@ class TestTransportEstablishConnection(Case):
             username=self.client.userid,
             password=self.client.password,
             sasl_mechanisms='PLAIN',
-            host='127.0.0.1',
+            host='localhost',
             timeout=4,
             port=5672,
             transport='tcp',
@@ -1724,7 +1724,7 @@ class TestTransportEstablishConnection(Case):
         self.transport.establish_connection()
         self.mock_conn.assert_called_once_with(
             sasl_mechanisms='ANONYMOUS',
-            host='127.0.0.1',
+            host='localhost',
             timeout=4,
             port=5672,
             transport='tcp',
@@ -1736,7 +1736,7 @@ class TestTransportEstablishConnection(Case):
         self.transport.establish_connection()
         self.mock_conn.assert_called_once_with(
             sasl_mechanisms='ANONYMOUS',
-            host='127.0.0.1',
+            host='localhost',
             timeout=4,
             new_param=new_param_value,
             port=5672,
@@ -1748,7 +1748,7 @@ class TestTransportEstablishConnection(Case):
         self.transport.establish_connection()
         self.mock_conn.assert_called_once_with(
             sasl_mechanisms='ANONYMOUS',
-            host='127.0.0.1',
+            host='localhost',
             timeout=4,
             port=5672,
             transport='tcp',
@@ -1767,7 +1767,7 @@ class TestTransportEstablishConnection(Case):
         self.transport.establish_connection()
         self.mock_conn.assert_called_once_with(
             sasl_mechanisms='EXTERNAL',
-            host='127.0.0.1',
+            host='localhost',
             timeout=4,
             port=5672,
             transport='tcp',
@@ -1780,7 +1780,7 @@ class TestTransportEstablishConnection(Case):
         self.mock_conn.assert_called_once_with(
             username=self.client.userid,
             sasl_mechanisms='EXTERNAL',
-            host='127.0.0.1',
+            host='localhost',
             timeout=4,
             port=5672,
             transport='tcp',
@@ -1794,7 +1794,7 @@ class TestTransportEstablishConnection(Case):
             username='someuser',
             password='somepass',
             sasl_mechanisms='PLAIN',
-            host='127.0.0.1',
+            host='localhost',
             timeout=4,
             port=5672,
             transport='tcp',
@@ -1805,7 +1805,7 @@ class TestTransportEstablishConnection(Case):
         self.transport.establish_connection()
         self.mock_conn.assert_called_once_with(
             sasl_mechanisms='ANONYMOUS',
-            host='127.0.0.1',
+            host='localhost',
             timeout=4,
             port=5672,
             transport='tcp',
@@ -1825,7 +1825,7 @@ class TestTransportEstablishConnection(Case):
             timeout=4,
             ssl_skip_hostname_check=False,
             sasl_mechanisms='ANONYMOUS',
-            host='127.0.0.1',
+            host='localhost',
             ssl_keyfile='my_keyfile',
             port=5672, transport='ssl',
         )
@@ -1844,7 +1844,7 @@ class TestTransportEstablishConnection(Case):
             timeout=4,
             ssl_skip_hostname_check=True,
             sasl_mechanisms='ANONYMOUS',
-            host='127.0.0.1',
+            host='localhost',
             ssl_keyfile='my_keyfile',
             port=5672, transport='ssl',
         )
