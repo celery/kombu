@@ -49,7 +49,7 @@ if sys.version_info < (3, 3):
 
     if SYSTEM == 'Darwin' and has_ctypes:
         from ctypes.util import find_library
-        libSystem = ctypes.CDLL('libSystem.dylib')
+        libSystem = ctypes.CDLL(find_library('libSystem.dylib'))
         CoreServices = ctypes.CDLL(find_library('CoreServices'),
                                    use_errno=True)
         mach_absolute_time = libSystem.mach_absolute_time
