@@ -4,6 +4,17 @@
  Change history
 ================
 
+.. _version-3.0.27:
+
+3.0.27
+======
+:release-date: TBA
+:release-by: TBA
+
+- Fixed libSystem import error on some OS X 10.11 (El Capitan) installations.
+
+    Fix contributed by Eric Wang.
+
 .. _version-3.0.26:
 
 3.0.26
