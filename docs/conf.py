@@ -7,9 +7,9 @@ import os
 # is relative to the documentation root, use os.path.abspath to make it
 # absolute, like shown here.
 sys.path.append(os.path.join(os.pardir, "tests"))
-import kombu
+import kombu  # noqa
 
-from django.conf import settings
+from django.conf import settings  # noqa
 if not settings.configured:
     settings.configure()
 

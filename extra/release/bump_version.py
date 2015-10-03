@@ -10,8 +10,11 @@ import subprocess
 from contextlib import contextmanager
 from tempfile import NamedTemporaryFile
 
-rq = lambda s: s.strip("\"'")
 str_t = str if sys.version_info[0] >= 3 else basestring
+
+
+def rq(s):
+    return s.strip("\"'")
 
 
 def cmd(*args):

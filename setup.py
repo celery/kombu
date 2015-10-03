@@ -1,8 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import os
+import re
 import sys
 import codecs
+
+from distutils.command.install import INSTALL_SCHEMES
 
 extra = {}
 PY3 = sys.version_info[0] == 3
@@ -15,14 +18,14 @@ try:
 except ImportError:
     from distutils.core import setup  # noqa
 
-from distutils.command.install import INSTALL_SCHEMES
-
 # -- Parse meta
-import re
 re_meta = re.compile(r'__(\w+?)__\s*=\s*(.*)')
 re_vers = re.compile(r'VERSION\s*=.*?\((.*?)\)')
 re_doc = re.compile(r'^"""(.+?)"""')
-rq = lambda s: s.strip("\"'")
+
+
+def rq(s):
+    return s.strip("\"'")
 
 
 def add_default(m):
@@ -116,9 +119,12 @@ install_requires = reqs('default.txt')
 
 # -*- Tests Requires -*-
 
+
+def extras(*p):
+    return reqs('extras', *p)
+
 tests_require = reqs('test3.txt' if PY3 else 'test.txt')
 
-extras = lambda *p: reqs('extras', *p)
 extras_require = extra['extras_require'] = {
     'msgpack': extras('msgpack.txt'),
     'yaml': extras('yaml.txt'),
