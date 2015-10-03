@@ -6,11 +6,6 @@ import sys
 
 from functools import wraps
 
-if sys.version_info >= (3, 0):
-    from io import StringIO, BytesIO
-else:
-    from StringIO import StringIO, StringIO as BytesIO  # noqa
-
 from kombu import version_info_t
 from kombu import utils
 from kombu.utils.text import version_string_as_tuple
@@ -20,6 +15,11 @@ from kombu.tests.case import (
     Case, Mock, patch,
     redirect_stdouts, mask_modules, module_exists, skip_if_module,
 )
+
+if sys.version_info >= (3, 0):
+    from io import StringIO, BytesIO
+else:
+    from StringIO import StringIO, StringIO as BytesIO  # noqa
 
 
 class OldString(object):

@@ -1156,7 +1156,7 @@ class TestChannel(ExtraAssertionsMixin, Case):
             options={
                 'exclusive': False,
                 'durable': False,
-                'qpid.policy_type':'ring',
+                'qpid.policy_type': 'ring',
                 'passive': False,
                 'arguments': None,
                 'auto-delete': True

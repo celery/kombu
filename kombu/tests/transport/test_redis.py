@@ -33,7 +33,8 @@ class _poll(eventio._select):
 
 
 eventio.poll = _poll
-from kombu.transport import redis  # must import after poller patch
+# must import after poller patch
+from kombu.transport import redis  # noqa
 
 
 class ResponseError(Exception):

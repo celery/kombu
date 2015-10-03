@@ -52,9 +52,15 @@ class timetuple(tuple):
             return self[1] < other[1]  # ... or use timestamp
         except IndexError:
             return NotImplemented
-    __gt__ = lambda self, other: other < self
-    __le__ = lambda self, other: not other < self
-    __ge__ = lambda self, other: not self < other
+
+    def __gt__(self, other):
+        return other < self
+
+    def __le__(self, other):
+        return not other < self
+
+    def __ge__(self, other):
+        return not self < other
 
     clock = property(itemgetter(0))
     timestamp = property(itemgetter(1))

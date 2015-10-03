@@ -20,17 +20,20 @@ def unpickle_dict(cls, kwargs):
     return cls(**kwargs)
 
 
+def _any(v):
+    return v
+
+
 class Object(object):
     """Common base class supporting automatic kwargs->attributes handling,
     and cloning."""
     attrs = ()
 
     def __init__(self, *args, **kwargs):
-        any = lambda v: v
         for name, type_ in self.attrs:
             value = kwargs.get(name)
             if value is not None:
-                setattr(self, name, (type_ or any)(value))
+                setattr(self, name, (type_ or _any)(value))
             else:
                 try:
                     getattr(self, name)

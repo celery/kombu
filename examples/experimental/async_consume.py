@@ -2,11 +2,11 @@
 
 from kombu import Connection, Exchange, Queue, Producer, Consumer
 from kombu.async import Hub
-from threading import Event
 
 hub = Hub()
 exchange = Exchange('asynt')
 queue = Queue('asynt', exchange, 'asynt')
+
 
 def send_message(conn):
     producer = Producer(conn)

@@ -26,10 +26,7 @@ from kombu.utils.eventio import poll, READ, ERR
 from kombu.utils.encoding import bytes_to_str
 from kombu.utils.url import _parse_url
 
-NO_ROUTE_ERROR = """
-Cannot route message for exchange {0!r}: Table empty or key no longer exists.
-Probably the key ({1!r}) has been removed from the Redis database.
-"""
+from . import virtual
 
 try:
     from billiard.util import register_after_fork
@@ -45,8 +42,6 @@ try:
 except ImportError:  # pragma: no cover
     redis = None     # noqa
 
-from . import virtual
-
 logger = get_logger('kombu.transport.redis')
 crit, warn = logger.critical, logger.warn
 
@@ -58,6 +53,11 @@ PRIORITY_STEPS = [0, 3, 6, 9]
 error_classes_t = namedtuple('error_classes_t', (
     'connection_errors', 'channel_errors',
 ))
+
+NO_ROUTE_ERROR = """
+Cannot route message for exchange {0!r}: Table empty or key no longer exists.
+Probably the key ({1!r}) has been removed from the Redis database.
+"""
 
 # This implementation may seem overly complex, but I assure you there is
 # a good reason for doing it this way.

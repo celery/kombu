@@ -79,8 +79,6 @@ Celery with Kombu, this can be accomplished by setting the
 """
 from __future__ import absolute_import
 
-"""Kombu transport using a Qpid broker as a message store."""
-
 import fcntl
 import os
 import select

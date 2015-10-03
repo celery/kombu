@@ -13,6 +13,17 @@ import socket
 
 from numbers import Integral
 
+from kombu.syn import detect_environment
+
+from . import fileno
+from .compat import get_errno
+
+__all__ = ['poll']
+
+READ = POLL_READ = 0x001
+WRITE = POLL_WRITE = 0x004
+ERR = POLL_ERR = 0x008 | 0x010
+
 _selectf = __select__.select
 _selecterr = __select__.error
 epoll = getattr(__select__, 'epoll', None)
@@ -39,18 +50,6 @@ KQ_NOTE_ATTRIB = getattr(__select__, 'KQ_NOTE_ATTRIB', 8)
 KQ_NOTE_LINK = getattr(__select__, 'KQ_NOTE_LINK', 16)
 KQ_NOTE_RENAME = getattr(__select__, 'KQ_NOTE_RENAME', 32)
 KQ_NOTE_REVOKE = getattr(__select__, 'kQ_NOTE_REVOKE', 64)
-
-
-from kombu.syn import detect_environment
-
-from . import fileno
-from .compat import get_errno
-
-__all__ = ['poll']
-
-READ = POLL_READ = 0x001
-WRITE = POLL_WRITE = 0x004
-ERR = POLL_ERR = 0x008 | 0x010
 
 try:
     SELECT_BAD_FD = set((errno.EBADF, errno.WSAENOTSOCK))
