@@ -64,12 +64,12 @@ class test_mongodb(Case):
 
     @skip_if_not_module('pymongo')
     def test_options(self):
-        url = 'mongodb://localhost,localhost2:29017/dbname?safe=true'
+        url = 'mongodb://localhost,localhost2:29017/dbname?fsync=true'
         c = self._get_connection(url)
 
         hostname, dbname, options = c.channels[0]._parse_uri()
 
-        self.assertEqual(options['safe'], True)
+        self.assertTrue(options['fsync'])
 
     @skip_if_not_module('pymongo')
     def test_real_connections(self):
