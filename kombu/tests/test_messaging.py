@@ -381,6 +381,16 @@ class test_Consumer(Case):
         consumer.cancel_by_queue(queue.name)
         self.assertFalse(consumer._active_tags)
 
+    def test_consumer_tag_prefix(self):
+        channel = self.connection.channel()
+        queue = Queue('qname', self.exchange, 'rkey')
+        consumer = Consumer(channel, queue, tag_prefix='consumer_')
+        consumer.consume()
+
+        self.assertTrue(
+            consumer._active_tags[queue.name].startswith('consumer_'),
+        )
+
     def test_manual_declare(self):
         channel = self.connection.channel()
         queue = Queue('qname', self.exchange, 'rkey')
