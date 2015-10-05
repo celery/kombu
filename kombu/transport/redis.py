@@ -812,9 +812,9 @@ class Channel(virtual.Channel):
         return redis.ConnectionPool(**params)
 
     def _get_client(self):
-        if redis.VERSION < (2, 4, 4):
+        if redis.VERSION < (2, 10, 0):
             raise VersionMismatch(
-                'Redis transport requires redis-py versions 2.4.4 or later. '
+                'Redis transport requires redis-py versions 2.10.0 or later. '
                 'You have {0.__version__}'.format(redis))
 
         # KombuRedis maintains a connection attribute on it's instance and
