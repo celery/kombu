@@ -317,7 +317,10 @@ class MultiChannelPoller(object):
                 )
 
     def on_readable(self, fileno):
-        chan, type = self._fd_to_chan[fileno]
+        try:
+            chan, type = self._fd_to_chan[fileno]
+        except KeyError:
+            return
         if chan.qos.can_consume():
             return chan.handlers[type]()
 
