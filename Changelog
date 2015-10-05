@@ -11,9 +11,47 @@
 :release-date: TBA
 :release-by: TBA
 
+- Now depends on :mod:`amqp` 1.4.7.
+
 - Fixed libSystem import error on some OS X 10.11 (El Capitan) installations.
 
     Fix contributed by Eric Wang.
+
+- Now compatible with Django 1.9.
+
+- Django: Adds migrations for the database transport.
+
+- Redis: Now depends on py-redis 2.10.0 or later (Issue #468).
+
+- QPid: Can now connect as localhost (Issue #519).
+
+    Fix contributed by Brian Bouterse.
+
+- QPid: Adds support for ``login_method`` (Issue #502, Issue #499).
+
+    Contributed by Brian Bouterse.
+
+- QPid: Now reads SASL mechanism from broker string (Issue #498).
+
+    Fix contributed by Brian Bouterse.
+
+- QPid: Monitor thread now properly terminated on session close (Issue #485).
+
+    Fix contributed by Brian Bouterse.
+
+- QPid: Fixed file descriptor leak (Issue #476).
+
+    Fix contributed by Jeff Ortel
+
+- Docs: Fixed wrong order for entrypoint arguments (Issue #473).
+
+- ConsumerMixin: Connection error logs now include traceback (Issue #480).
+
+- BaseTransport now raises RecoverableConnectionError when disconnected
+  (Issue #507).
+
+- Consumer: Adds ``tag_prefix`` option to modify how consumer tags are
+  generated (Issue #509).
 
 .. _version-3.0.26:
 
