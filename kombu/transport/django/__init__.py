@@ -8,9 +8,8 @@ from django.core import exceptions as errors
 
 from kombu.five import Empty
 from kombu.transport import virtual
+from kombu.utils import cached_property, symbol_by_name
 from kombu.utils.encoding import bytes_to_str
-
-from .models import Queue
 
 try:
     from django.apps import AppConfig
@@ -31,12 +30,13 @@ POLLING_INTERVAL = getattr(settings, 'KOMBU_POLLING_INTERVAL',
 
 
 class Channel(virtual.Channel):
+    queue_model = 'kombu.transport.django.models:Queue'
 
     def _new_queue(self, queue, **kwargs):
-        Queue.objects.get_or_create(name=queue)
+        self.Queue.objects.get_or_create(name=queue)
 
     def _put(self, queue, message, **kwargs):
-        Queue.objects.publish(queue, dumps(message))
+        self.Queue.objects.publish(queue, dumps(message))
 
     def basic_consume(self, queue, *args, **kwargs):
         qinfo = self.state.bindings[queue]
@@ -46,20 +46,24 @@ class Channel(virtual.Channel):
         super(Channel, self).basic_consume(queue, *args, **kwargs)
 
     def _get(self, queue):
-        m = Queue.objects.fetch(queue)
+        m = self.Queue.objects.fetch(queue)
         if m:
             return loads(bytes_to_str(m))
         raise Empty()
 
     def _size(self, queue):
-        return Queue.objects.size(queue)
+        return self.Queue.objects.size(queue)
 
     def _purge(self, queue):
-        return Queue.objects.purge(queue)
+        return self.Queue.objects.purge(queue)
 
     def refresh_connection(self):
         from django import db
         db.close_connection()
+
+    @cached_property
+    def Queue(self):
+        return symbol_by_name(self.queue_model)
 
 
 class Transport(virtual.Transport):
