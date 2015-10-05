@@ -17,9 +17,12 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Message',
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('id', models.AutoField(
+                    auto_created=True, primary_key=True,
+                    serialize=False, verbose_name='ID')),
                 ('visible', models.BooleanField(db_index=True, default=True)),
-                ('sent_at', models.DateTimeField(auto_now_add=True, db_index=True, null=True)),
+                ('sent_at', models.DateTimeField(
+                    auto_now_add=True, db_index=True, null=True)),
                 ('payload', models.TextField(verbose_name='payload')),
             ],
             options={
@@ -31,8 +34,11 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Queue',
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=200, unique=True, verbose_name='name')),
+                ('id', models.AutoField(
+                    auto_created=True, primary_key=True,
+                    serialize=False, verbose_name='ID')),
+                ('name', models.CharField(
+                    max_length=200, unique=True, verbose_name='name')),
             ],
             options={
                 'db_table': 'djkombu_queue',
@@ -43,6 +49,9 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='message',
             name='queue',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='messages', to='kombu_transport_django.Queue'),
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name='messages',
+                to='kombu_transport_django.Queue'),
         ),
     ]
