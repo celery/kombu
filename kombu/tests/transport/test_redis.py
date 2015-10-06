@@ -482,12 +482,12 @@ class test_Channel(Case):
         self.assertDictEqual(payload, {'hello': 'world'})
         self.assertEqual(queue, 'b')
 
-    def test_receive_raises(self):
+    def test_receive_raises_for_connection_error(self):
         self.channel._in_listen = True
         s = self.channel.subclient = Mock()
         s.parse_response.side_effect = KeyError('foo')
 
-        with self.assertRaises(redis.Empty):
+        with self.assertRaises(KeyError):
             self.channel._receive()
         self.assertFalse(self.channel._in_listen)
 
@@ -509,7 +509,7 @@ class test_Channel(Case):
         c = self.channel.client = Mock()
         c.parse_response.side_effect = KeyError('foo')
 
-        with self.assertRaises(redis.Empty):
+        with self.assertRaises(KeyError):
             self.channel._brpop_read()
 
         c.connection.disconnect.assert_called_with()
