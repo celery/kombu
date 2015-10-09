@@ -34,8 +34,8 @@ class test_mongodb(Case):
         c = self._get_connection(url)
         hostname, dbname, options = c.channels[0]._parse_uri()
 
-        self.assertEquals(dbname, 'kombu_default')
-        self.assertEquals(hostname, 'mongodb://127.0.0.1')
+        self.assertEqual(dbname, 'kombu_default')
+        self.assertEqual(hostname, 'mongodb://127.0.0.1')
 
     @skip_if_not_module('pymongo')
     def test_custom_host(self):
@@ -43,7 +43,7 @@ class test_mongodb(Case):
         c = self._get_connection(url)
         hostname, dbname, options = c.channels[0]._parse_uri()
 
-        self.assertEquals(dbname, 'kombu_default')
+        self.assertEqual(dbname, 'kombu_default')
 
     @skip_if_not_module('pymongo')
     def test_custom_database(self):
@@ -51,7 +51,7 @@ class test_mongodb(Case):
         c = self._get_connection(url)
         hostname, dbname, options = c.channels[0]._parse_uri()
 
-        self.assertEquals(dbname, 'dbname')
+        self.assertEqual(dbname, 'dbname')
 
     @skip_if_not_module('pymongo')
     def test_custom_credentials(self):
@@ -59,8 +59,8 @@ class test_mongodb(Case):
         c = self._get_connection(url, userid='foo', password='bar')
         hostname, dbname, options = c.channels[0]._parse_uri()
 
-        self.assertEquals(hostname, 'mongodb://foo:bar@localhost/dbname')
-        self.assertEquals(dbname, 'dbname')
+        self.assertEqual(hostname, 'mongodb://foo:bar@localhost/dbname')
+        self.assertEqual(dbname, 'dbname')
 
     @skip_if_not_module('pymongo')
     def test_options(self):
@@ -87,7 +87,7 @@ class test_mongodb(Case):
         # server instead of a repl / mongoss.
         if len(nodes) == 2:
             self.assertTrue(('localhost', 29017) in nodes)
-            self.assertEquals(client.name, 'dbname')
+            self.assertEqual(client.name, 'dbname')
 
         url = 'mongodb://localhost:27017,localhost2:29017/dbname'
         c = self._get_connection(url)
@@ -97,7 +97,7 @@ class test_mongodb(Case):
         url = 'mongodb://adminusername:adminpassword@localhost'
         c = self._get_connection()
         client = c.channels[0].client
-        self.assertEquals(client.name, 'kombu_default')
+        self.assertEqual(client.name, 'kombu_default')
 
         # Lets make sure that using admin db doesn't break anything
         # when no user is specified
