@@ -318,6 +318,7 @@ class test_Channel(Case):
         client.rpush.assert_has_calls([
             call('george', spl1), call('elaine', spl1),
         ])
+        client.rpush.reset_mock()
 
         pl2 = {'body': 'BODY2', 'headers': {'x-funny': 1}}
         headers_after = dict(pl2['headers'], redelivered=True)
