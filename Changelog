@@ -8,8 +8,8 @@
 
 3.0.27
 ======
-:release-date: TBA
-:release-by: TBA
+:release-date: 2015-10-09 3:10 PM PDT
+:release-by: Ask Solem
 
 - Now depends on :mod:`amqp` 1.4.7.
 
