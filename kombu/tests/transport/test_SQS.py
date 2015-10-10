@@ -164,7 +164,7 @@ class test_Channel(Case):
         self.assertEqual(len(results), 1)
 
         # Now test getting many messages
-        for i in xrange(3):
+        for i in range(3):
             message = 'message: {0}'.format(i)
             self.producer.publish(message)
 
@@ -210,11 +210,11 @@ class test_Channel(Case):
         self.assertEqual(message, results)
 
     def test_puts_and_gets(self):
-        for i in xrange(3):
+        for i in range(3):
             message = 'message: %s' % i
             self.producer.publish(message)
 
-        for i in xrange(3):
+        for i in range(3):
             self.assertEqual('message: %s' % i,
                              self.queue(self.channel).get().payload)
 
@@ -233,7 +233,7 @@ class test_Channel(Case):
         self.channel.qos.prefetch_count = 5
 
         # Now, generate all the messages
-        for i in xrange(message_count):
+        for i in range(message_count):
             message = 'message: %s' % i
             self.producer.publish(message)
 
@@ -262,11 +262,11 @@ class test_Channel(Case):
         self.channel.qos.prefetch_count = 5
 
         # Now, generate all the messages
-        for i in xrange(message_count):
+        for i in range(message_count):
             self.producer.publish('message: %s' % i)
 
         # Now drain all the events
-        for i in xrange(message_count):
+        for i in range(message_count):
             self.channel.drain_events()
 
         # How many times was the SQSConnectionMock get_message method called?
@@ -283,11 +283,11 @@ class test_Channel(Case):
         self.channel.qos.prefetch_count = None
 
         # Now, generate all the messages
-        for i in xrange(message_count):
+        for i in range(message_count):
             self.producer.publish('message: %s' % i)
 
         # Now drain all the events
-        for i in xrange(message_count):
+        for i in range(message_count):
             self.channel.drain_events()
 
         # How many times was the SQSConnectionMock get_message method called?
