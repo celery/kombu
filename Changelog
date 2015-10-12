@@ -4,6 +4,26 @@
  Change history
 ================
 
+.. _version-3.0.28:
+
+3.0.28
+======
+:release-date: 2015-10-12 12:00 PM PDT
+
+- No longer compatible with South by default.
+
+    To keep using kombu.transport.django with South migrations
+    you now need to configure a new location for the kombu migrations:
+
+    .. code-block:: python
+
+        SOUTH_MIGRATION_MODULES = {
+            'kombu_transport_django':
+                'kombu.transport.django.south_migrations',
+        }
+
+- Keep old South migrations in ``kombu.south.migrations``.
+
 .. _version-3.0.27:
 
 3.0.27
