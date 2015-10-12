@@ -6,6 +6,8 @@ SKIP_FILES="kombu.entity.rst
             kombu.messaging.rst
             kombu.transport.django.migrations.rst
             kombu.transport.django.migrations.0001_initial.rst
+            kombu.transport.django.south_migrations.rst
+            kombu.transport.django.south_migrations.0001_initial.rst
             kombu.transport.django.management.rst
             kombu.transport.django.management.commands.rst"
 
