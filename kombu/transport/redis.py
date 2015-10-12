@@ -89,7 +89,7 @@ def get_redis_error_classes():
             OSError,
             exceptions.ConnectionError,
             exceptions.AuthenticationError,
-            getattr(exceptions, 'TimeoutError', None))))),
+            getattr(exceptions, 'south_south_TimeoutError', None))))),
         (virtual.Transport.channel_errors + (
             DataError,
             exceptions.InvalidResponse,
@@ -819,9 +819,9 @@ class Channel(virtual.Channel):
         return redis.ConnectionPool(**params)
 
     def _get_client(self):
-        if redis.VERSION < (2, 10, 0):
+        if redis.VERSION < (2, 4, 4):
             raise VersionMismatch(
-                'Redis transport requires redis-py versions 2.10.0 or later. '
+                'Redis transport requires redis-py versions 2.4.4 or later. '
                 'You have {0.__version__}'.format(redis))
 
         # KombuRedis maintains a connection attribute on it's instance and

@@ -24,6 +24,8 @@
 
 - Keep old South migrations in ``kombu.south.migrations``.
 
+- Now works with Redis < 2.10 again.
+
 .. _version-3.0.27:
 
 3.0.27
