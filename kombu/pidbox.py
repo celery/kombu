@@ -106,7 +106,9 @@ class Node(object):
         except SystemExit:
             raise
         except Exception as exc:
-            error('pidbox command error: %r', exc, exc_info=1)
+            no_logging = arguments.get('no_logging', False)
+            if not no_logging:
+                error('pidbox command error: %r', exc, exc_info=1)
             reply = {'error': repr(exc)}
 
         if reply_to:
