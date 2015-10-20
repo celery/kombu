@@ -563,20 +563,20 @@ class test_Channel(Case):
 
     def test_put_priority(self):
         client = self.channel.client = Mock(name='client')
-        msg1 = {'properties': {'delivery_info': {'priority': 3}}}
+        msg1 = {'properties': {'priority': 3}}
 
         self.channel._put('george', msg1)
         client.lpush.assert_called_with(
             self.channel._q_for_pri('george', 3), dumps(msg1),
         )
 
-        msg2 = {'properties': {'delivery_info': {'priority': 313}}}
+        msg2 = {'properties': {'priority': 313}}
         self.channel._put('george', msg2)
         client.lpush.assert_called_with(
             self.channel._q_for_pri('george', 9), dumps(msg2),
         )
 
-        msg3 = {'properties': {'delivery_info': {}}}
+        msg3 = {'properties': {}}
         self.channel._put('george', msg3)
         client.lpush.assert_called_with(
             self.channel._q_for_pri('george', 0), dumps(msg3),

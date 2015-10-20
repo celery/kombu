@@ -741,7 +741,7 @@ class Channel(AbstractChannel, base.StdChannel):
         """
         try:
             priority = max(
-                min(int(message['properties']['delivery_info']['priority']),
+                min(int(message['properties']['priority']),
                     self.max_priority),
                 self.min_priority,
             )
