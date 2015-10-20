@@ -10,7 +10,7 @@ version_info_t = namedtuple(
     'version_info_t', ('major', 'minor', 'micro', 'releaselevel', 'serial'),
 )
 
-VERSION = version_info_t(3, 1, 0, 'a1', '')
+VERSION = version_info_t(4, 0, 0, 'a1', '')
 __version__ = '{0.major}.{0.minor}.{0.micro}{0.releaselevel}'.format(VERSION)
 __author__ = 'Ask Solem'
 __contact__ = 'ask@celeryproject.org'
@@ -20,7 +20,7 @@ __docformat__ = 'restructuredtext en'
 # -eof meta-
 
 if sys.version_info < (2, 7):  # pragma: no cover
-    raise Exception('Kombu 3.1 requires Python versions 2.7 or later.')
+    raise Exception('Kombu 4.0 requires Python versions 2.7 or later.')
 
 STATICA_HACK = True
 globals()['kcah_acitats'[::-1].upper()] = False

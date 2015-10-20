@@ -11,7 +11,7 @@ extra = {}
 PY3 = sys.version_info[0] == 3
 
 if sys.version_info < (2, 7):
-    raise Exception('Kombu requires Python 2.7 or higher.')
+    raise Exception('Kombu 4.0 requires Python 2.7 or higher.')
 
 try:
     from setuptools import setup

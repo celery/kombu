@@ -6,7 +6,7 @@
 
 |build-status| |coverage-status|
 
-:Version: 3.1.0a1
+:Version: 4.0.0a1
 
 `Kombu` is a messaging library for Python.
 
