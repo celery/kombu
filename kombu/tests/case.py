@@ -27,6 +27,7 @@ except AttributeError:
 
 PY3 = sys.version_info[0] == 3
 
+MagicMock = mock.MagicMock
 patch = mock.patch
 call = mock.call
 
@@ -139,7 +140,7 @@ class _ContextMock(Mock):
     in the class, not just the instance."""
 
     def __enter__(self):
-        pass
+        return self
 
     def __exit__(self, *exc_info):
         pass

@@ -115,14 +115,14 @@ def Mutex(client, name, expire):
             raise MutexHeld()
     finally:
         if i_won:
-            pipe = client.pipeline(True)
             try:
-                pipe.watch(name)
-                if pipe.get(name) == lock_id:
-                    pipe.multi()
-                    pipe.delete(name)
-                    pipe.execute()
-                pipe.unwatch()
+                with client.pipeline(True) as pipe:
+                    pipe.watch(name)
+                    if pipe.get(name) == lock_id:
+                        pipe.multi()
+                        pipe.delete(name)
+                        pipe.execute()
+                    pipe.unwatch()
             except redis.WatchError:
                 pass
 
@@ -160,11 +160,11 @@ class QoS(virtual.QoS):
         self.ack(delivery_tag)
 
     @contextmanager
-    def pipe_or_acquire(self, pipe=None):
+    def pipe_or_acquire(self, pipe=None, client=None):
         if pipe:
             yield pipe
         else:
-            with self.channel.conn_or_acquire() as client:
+            with self.channel.conn_or_acquire(client) as client:
                 yield client.pipeline()
 
     def _remove_from_indices(self, delivery_tag, pipe=None):
@@ -191,8 +191,9 @@ class QoS(virtual.QoS):
 
     def restore_by_tag(self, tag, client=None, leftmost=False):
         with self.channel.conn_or_acquire(client) as client:
-            p, _, _ = self._remove_from_indices(
-                tag, client.pipeline().hget(self.unacked_key, tag)).execute()
+            with client.pipeline() as pipe:
+                p, _, _ = self._remove_from_indices(
+                    tag, pipe.hget(self.unacked_key, tag)).execute()
             if p:
                 M, EX, RK = loads(bytes_to_str(p))  # json is unicode
                 self.channel._do_restore_message(M, EX, RK, client, leftmost)
@@ -481,10 +482,10 @@ class Channel(virtual.Channel):
             return super(Channel, self)._restore(message)
         tag = message.delivery_tag
         with self.conn_or_acquire() as client:
-            P, _ = client.pipeline() \
-                .hget(self.unacked_key, tag) \
-                .hdel(self.unacked_key, tag) \
-                .execute()
+            with client.pipeline() as pipe:
+                P, _ = pipe.hget(self.unacked_key, tag) \
+                           .hdel(self.unacked_key, tag) \
+                           .execute()
             if P:
                 M, EX, RK = loads(bytes_to_str(P))  # json is unicode
                 self._do_restore_message(M, EX, RK, client, leftmost)
@@ -648,12 +649,12 @@ class Channel(virtual.Channel):
 
     def _size(self, queue):
         with self.conn_or_acquire() as client:
-            cmds = client.pipeline()
-            for pri in PRIORITY_STEPS:
-                cmds = cmds.llen(self._q_for_pri(queue, pri))
-            sizes = cmds.execute()
-            return sum(size for size in sizes
-                       if isinstance(size, numbers.Integral))
+            with client.pipeline() as pipe:
+                for pri in PRIORITY_STEPS:
+                    pipe = pipe.llen(self._q_for_pri(queue, pri))
+                sizes = pipe.execute()
+                return sum(size for size in sizes
+                           if isinstance(size, numbers.Integral))
 
     def _q_for_pri(self, queue, pri):
         pri = self.priority(pri)
@@ -701,17 +702,17 @@ class Channel(virtual.Channel):
                         self.sep.join([routing_key or '',
                                        pattern or '',
                                        queue or '']))
-            cmds = client.pipeline()
-            for pri in PRIORITY_STEPS:
-                cmds = cmds.delete(self._q_for_pri(queue, pri))
-            cmds.execute()
+            with client.pipeline() as pipe:
+                for pri in PRIORITY_STEPS:
+                    pipe = pipe.delete(self._q_for_pri(queue, pri))
+                pipe.execute()
 
     def _has_queue(self, queue, **kwargs):
         with self.conn_or_acquire() as client:
-            cmds = client.pipeline()
-            for pri in PRIORITY_STEPS:
-                cmds = cmds.exists(self._q_for_pri(queue, pri))
-            return any(cmds.execute())
+            with client.pipeline() as pipe:
+                for pri in PRIORITY_STEPS:
+                    pipe = pipe.exists(self._q_for_pri(queue, pri))
+                return any(pipe.execute())
 
     def get_table(self, exchange):
         key = self.keyprefix_queue % exchange
@@ -723,12 +724,12 @@ class Channel(virtual.Channel):
 
     def _purge(self, queue):
         with self.conn_or_acquire() as client:
-            cmds = client.pipeline()
-            for pri in PRIORITY_STEPS:
-                priq = self._q_for_pri(queue, pri)
-                cmds = cmds.llen(priq).delete(priq)
-            sizes = cmds.execute()
-            return sum(sizes[::2])
+            with client.pipeline() as pipe:
+                for pri in PRIORITY_STEPS:
+                    priq = self._q_for_pri(queue, pri)
+                    pipe = pipe.llen(priq).delete(priq)
+                sizes = pipe.execute()
+                return sum(sizes[::2])
 
     def close(self):
         if self._pool:
