@@ -661,8 +661,8 @@ class Channel(AbstractChannel, base.StdChannel):
                         content_encoding=None, headers=None, properties=None):
         """Prepare message data."""
         properties = properties or {}
-        info = properties.setdefault('delivery_info', {})
-        info['priority'] = priority or self.default_priority
+        properties.setdefault('delivery_info', {})
+        properties.setdefault('priority', priority or self.default_priority)
 
         return {'body': body,
                 'content-encoding': content_encoding,
