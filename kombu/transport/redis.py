@@ -778,6 +778,13 @@ class Channel(virtual.Channel):
                       'password': conninfo.password,
                       'max_connections': self.max_connections,
                       'socket_timeout': self.socket_timeout}
+        if conninfo.ssl:
+            # Connection(ssl={}) can be a dict like in amqplib.
+            connparams['ssl'] = True
+            try:
+                connparams.update(conninfo.ssl)
+            except TypeError:
+                pass
         host = connparams['host']
         if '://' in host:
             scheme, _, _, _, _, path, query = _parse_url(host)

@@ -802,6 +802,21 @@ class test_Channel(Case):
                 ))
                 self.assertEqual(connparams['path'], '/tmp/redis.sock')
 
+    @skip_if_not_module('redis')
+    def test_ssl_argument__dict(self):
+        with patch('kombu.transport.redis.Channel._create_client'):
+            with Connection('redis://', ssl={'ca_cert': '/foo'}) as conn:
+                connparams = conn.default_channel._connparams()
+                self.assertTrue(connparams['ssl'])
+                self.assertEqual(connparams['ca_cert'], '/foo')
+
+    @skip_if_not_module('redis')
+    def test_ssl_argument__bool(self):
+        with patch('kombu.transport.redis.Channel._create_client'):
+            with Connection('redis://', ssl=True) as conn:
+                connparams = conn.default_channel._connparams()
+                self.assertTrue(connparams['ssl'])
+
 
 class test_Redis(Case):
 
