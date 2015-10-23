@@ -168,7 +168,7 @@ class AsyncConnection(object):
     def _mexe(self, request, sender=None, callback=None):
         callback = callback or promise()
         boto.log.debug(
-            'HTTP %s %s/%s headers=%s body=%s',
+            'HTTP %s/%s headers=%s body=%s',
             request.host, request.path,
             request.headers, request.body,
         )
