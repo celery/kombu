@@ -184,11 +184,13 @@ class test_Connection(Case):
     def test_collect_no_transport(self):
         connection = Connection('memory://')
         connection._transport = None
-        connection._close = Mock()
+        connection._do_close_self = Mock()
+        connection._do_close_transport = Mock()
         connection.collect()
-        connection._close.assert_called_with()
+        connection._do_close_self.assert_called_with()
+        connection._do_close_transport.assert_called_with()
 
-        connection._close.side_effect = socket.timeout()
+        connection._do_close_self.side_effect = socket.timeout()
         connection.collect()
 
     def test_collect_transport_gone(self):

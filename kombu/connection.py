@@ -296,11 +296,14 @@ class Connection(object):
     def _close(self):
         """Really close connection, even if part of a connection pool."""
         self._do_close_self()
+        self._do_close_transport()
+        self._debug('closed')
+        self._closed = True
+
+    def _do_close_transport(self):
         if self._transport:
             self._transport.client = None
             self._transport = None
-        self._debug('closed')
-        self._closed = True
 
     def collect(self, socket_timeout=None):
         # amqp requires communication to close, we don't need that just
@@ -312,18 +315,17 @@ class Connection(object):
             _timeo = socket.getdefaulttimeout()
             socket.setdefaulttimeout(socket_timeout)
             try:
-                self._close()
+                self._do_close_self()
             except socket.timeout:
                 pass
             finally:
                 socket.setdefaulttimeout(_timeo)
         else:
             gc_transport(self._connection)
-            if self._transport:
-                self._transport.client = None
-                self._transport = None
-            self.declared_entities.clear()
-            self._connection = None
+
+        self._do_close_transport()
+        self.declared_entities.clear()
+        self._connection = None
 
     def release(self):
         """Close the connection (if open)."""
@@ -444,8 +446,7 @@ class Connection(object):
                     if max_retries is not None and retries > max_retries:
                         raise
                     self._debug('ensure connection error: %r', exc, exc_info=1)
-                    self._connection = None
-                    self._do_close_self()
+                    self.collect()
                     errback and errback(exc, 0)
                     remaining_retries = None
                     if max_retries is not None:
