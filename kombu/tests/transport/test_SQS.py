@@ -135,12 +135,15 @@ class test_Channel(Case):
 
     def test_auth_fail(self):
         normal_func = SQS.Channel.sqs.get_all_queues
-        # mock auth error
+
         def get_all_queues_fail_403(prefix=''):
+            # mock auth error
             raise exception.SQSError(403, None, None)
-        # mock non-auth error
+
         def get_all_queues_fail_not_403(prefix=''):
+            # mock non-auth error
             raise exception.SQSError(500, None, None)
+
         try:
             SQS.Channel.sqs.access_key = '1234'
             SQS.Channel.sqs.get_all_queues = get_all_queues_fail_403
