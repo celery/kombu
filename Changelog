@@ -10,14 +10,14 @@
 ===
 :release-date: TBA
 
-.. _version-3.0.26:
+.. _version-3.0.28:
 
-3.0.26
+3.0.28
 ======
-:release-date: 2015-04-22 06:00 P.M UTC
+:release-date: 2015-10-12 12:00 PM PDT
 :release-by: Ask Solem
 
-.. admonition:: Django transport migrations.
+:.. admonition:: Django transport migrations.
 
     If you're using Django 1.8 and have already created the
     kombu_transport_django tables, you have to run a fake initial migration:
@@ -25,6 +25,78 @@
     .. code-block:: pycon
 
         python manage.py migrate kombu_transport_django --fake-initial
+
+- No longer compatible with South by default.
+
+    To keep using kombu.transport.django with South migrations
+    you now need to configure a new location for the kombu migrations:
+
+    .. code-block:: python
+
+        SOUTH_MIGRATION_MODULES = {
+            'kombu_transport_django':
+                'kombu.transport.django.south_migrations',
+        }
+
+- Keep old South migrations in ``kombu.south.migrations``.
+
+- Now works with Redis < 2.10 again.
+
+.. _version-3.0.27:
+
+3.0.27
+======
+:release-date: 2015-10-09 3:10 PM PDT
+:release-by: Ask Solem
+
+- Now depends on :mod:`amqp` 1.4.7.
+
+- Fixed libSystem import error on some OS X 10.11 (El Capitan) installations.
+
+    Fix contributed by Eric Wang.
+
+- Now compatible with Django 1.9.
+
+- Django: Adds migrations for the database transport.
+
+- Redis: Now depends on py-redis 2.10.0 or later (Issue #468).
+
+- QPid: Can now connect as localhost (Issue #519).
+
+    Fix contributed by Brian Bouterse.
+
+- QPid: Adds support for ``login_method`` (Issue #502, Issue #499).
+
+    Contributed by Brian Bouterse.
+
+- QPid: Now reads SASL mechanism from broker string (Issue #498).
+
+    Fix contributed by Brian Bouterse.
+
+- QPid: Monitor thread now properly terminated on session close (Issue #485).
+
+    Fix contributed by Brian Bouterse.
+
+- QPid: Fixed file descriptor leak (Issue #476).
+
+    Fix contributed by Jeff Ortel
+
+- Docs: Fixed wrong order for entrypoint arguments (Issue #473).
+
+- ConsumerMixin: Connection error logs now include traceback (Issue #480).
+
+- BaseTransport now raises RecoverableConnectionError when disconnected
+  (Issue #507).
+
+- Consumer: Adds ``tag_prefix`` option to modify how consumer tags are
+  generated (Issue #509).
+
+.. _version-3.0.26:
+
+3.0.26
+======
+:release-date: 2015-04-22 06:00 P.M UTC
+:release-by: Ask Solem
 
 - Fixed compatibility with py-redis versions before 2.10.3 (Issue #470).
 
