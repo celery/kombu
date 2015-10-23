@@ -9,6 +9,16 @@
 3.0.28
 ======
 :release-date: 2015-10-12 12:00 PM PDT
+:release-by: Ask Solem
+
+:.. admonition:: Django transport migrations.
+
+    If you're using Django 1.8 and have already created the
+    kombu_transport_django tables, you have to run a fake initial migration:
+
+    .. code-block:: pycon
+
+        python manage.py migrate kombu_transport_django --fake-initial
 
 - No longer compatible with South by default.
 
