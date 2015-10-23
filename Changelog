@@ -17,6 +17,15 @@
 :release-date: 2015-04-22 06:00 P.M UTC
 :release-by: Ask Solem
 
+.. admonition:: Django transport migrations.
+
+    If you're using Django 1.8 and have already created the
+    kombu_transport_django tables, you have to run a fake initial migration:
+
+    .. code-block:: pycon
+
+        python manage.py migrate kombu_transport_django --fake-initial
+
 - Fixed compatibility with py-redis versions before 2.10.3 (Issue #470).
 
 .. _version-3.0.25:
