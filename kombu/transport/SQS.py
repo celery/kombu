@@ -95,20 +95,22 @@ class Channel(virtual.Channel):
             raise ImportError('boto is not installed')
         super(Channel, self).__init__(*args, **kwargs)
 
-        # SQS blows up when you try to create a new queue if one already
-        # exists with a different visibility_timeout, so this prepopulates
+        # SQS blows up if you try to create a new queue when one already
+        # exists but with a different visibility_timeout.  This prepopulates
         # the queue_cache to protect us from recreating
         # queues that are known to already exist.
-        queues = None
         try:
             queues = self.sqs.get_all_queues(prefix=self.queue_name_prefix)
-        except exception.SQSError, e:
-            if e.status == 403:
-                raise RuntimeError('SQS authorization error, access_key=%s' % self.sqs.access_key)
-            else:
-                raise e
-        for queue in queues:
-            self._queue_cache[queue.name] = queue
+        except exception.SQSError as exc:
+            if exc.status == 403:
+                raise RuntimeError(
+                    'SQS authorization error, access_key={0}'.format(
+                        self.sqs.access_key))
+            raise
+        else:
+            self._queue_cache.update({
+                queue.name: queue for queue in queues
+            })
 
         # The drain_events() method stores extra messages in a local
         # Deque object. This allows multiple messages to be requested from
