@@ -18,8 +18,9 @@
 - Json serializer wrongly treated bytes as ``ascii``, not ``utf-8``
   (Issue #532).
 
+- MongoDB: Now supports pymongo 3.x.
 
-
+    Contributed by Len Buckens.
 
 .. _version-3.0.28:
 
