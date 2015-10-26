@@ -8,7 +8,7 @@
 
 3.0.29
 ======
-:release-date: 2015-10-23 05:00 P.M PDT
+:release-date: 2015-10-26 11:10 A.M PDT
 :release-by: Ask Solem
 
 - Fixed serialization issue for ``bindings.as_dict()`` (Issue #453).
