@@ -22,6 +22,10 @@
 
     Contributed by Len Buckens.
 
+- SQS: Tests passing on Python 3.
+
+    Fix contributed by Felix Yan
+
 .. _version-3.0.28:
 
 3.0.28
