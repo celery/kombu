@@ -15,13 +15,18 @@ import pymongo
 from pymongo import errors
 from anyjson import loads, dumps
 from pymongo import MongoClient, uri_parser
-from pymongo.cursor import CursorType
 
 from kombu.five import Empty
 from kombu.syn import _detect_environment
 from kombu.utils.encoding import bytes_to_str
 
 from . import virtual
+
+try:
+    from pymongo.cursor import CursorType
+except ImportError:
+    class CursorType(object):  # noqa
+        pass
 
 DEFAULT_HOST = '127.0.0.1'
 DEFAULT_PORT = 27017
