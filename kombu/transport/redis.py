@@ -398,8 +398,10 @@ class Channel(virtual.Channel):
 
     #: If enabled the fanout exchange will support patterns in routing
     #: and binding keys (like a topic exchange but using PUB/SUB).
-    #: This will be enabled by default in a future version.
-    fanout_patterns = False
+    #:
+    #: Enabled by default since Kombu 4.x.
+    #: Disable for backwards compatibility with Kombu 3.x.
+    fanout_patterns = True
     _pool = None
 
     from_transport_options = (
