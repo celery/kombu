@@ -387,12 +387,14 @@ class Channel(virtual.Channel):
     priority_steps = PRIORITY_STEPS
     socket_timeout = None
     max_connections = 10
-    #: Transport option to enable disable fanout keyprefix.
-    #: Should be enabled by default, but that is not
-    #: backwards compatible.  Can also be string, in which
-    #: case it changes the default prefix ('/{db}.') into to something
-    #: else.  The prefix must include a leading slash and a trailing dot.
-    fanout_prefix = False
+    #: Transport option to disable fanout keyprefix.
+    #: Can also be string, in which case it changes the default
+    #: prefix ('/{db}.') into to something else.  The prefix must
+    #: include a leading slash and a trailing dot.
+    #:
+    #: Enabled by default since Kombu 4.x.
+    #: Disable for backwards compatibility with Kombu 3.x.
+    fanout_prefix = True
 
     #: If enabled the fanout exchange will support patterns in routing
     #: and binding keys (like a topic exchange but using PUB/SUB).
