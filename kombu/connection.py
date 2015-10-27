@@ -700,6 +700,9 @@ class Connection(object):
         self._debug('connection established: %r', self)
         return conn
 
+    def supports_exchange_type(self, exchange_type):
+        return exchange_type in self.transport.implements.exchange_type
+
     def __repr__(self):
         """``x.__repr__() <==> repr(x)``"""
         return '<Connection: {0} at {1:#x}>'.format(self.as_uri(), id(self))
