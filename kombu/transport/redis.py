@@ -275,20 +275,22 @@ class MultiChannelPoller(object):
     def _unregister(self, channel, client, type):
         self.poller.unregister(self._chan_to_sock[(channel, client, type)])
 
+    def _client_registered(self, channel, client, cmd):
+        return (client.connection._sock is not None and
+                (channel, client, cmd) in self._chan_to_sock)
+
     def _register_BRPOP(self, channel):
         """enable BRPOP mode for channel."""
         ident = channel, channel.client, 'BRPOP'
-        if channel.client.connection._sock is None or \
-                ident not in self._chan_to_sock:
+        if not self._client_registered(channel, channel.client, 'BRPOP'):
             channel._in_poll = False
             self._register(*ident)
-
         if not channel._in_poll:  # send BRPOP
             channel._brpop_start()
 
     def _register_LISTEN(self, channel):
         """enable LISTEN mode for channel."""
-        if channel.subclient.connection._sock is None:
+        if not self._client_registered(channel, channel.subclient, 'LISTEN'):
             channel._in_listen = False
             self._register(channel, channel.subclient, 'LISTEN')
         if not channel._in_listen:

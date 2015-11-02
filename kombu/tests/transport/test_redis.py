@@ -1138,6 +1138,7 @@ class test_MultiChannelPoller(Case):
         self.assertEqual(channel._subscribe.call_count, 1)
 
         channel._in_listen = True
+        p._chan_to_sock[(channel, channel.subclient, 'LISTEN')] = 3
         channel.subclient.connection._sock = Mock()
         p._register_LISTEN(channel)
         self.assertEqual(p._register.call_count, 1)
