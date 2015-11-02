@@ -440,7 +440,7 @@ class test_Channel(Case):
         self.channel._subscribe()
         self.assertTrue(self.channel.subclient.psubscribe.called)
         s_args, _ = self.channel.subclient.psubscribe.call_args
-        self.assertItemsEqual(s_args[0], ['a', 'b'])
+        self.assertItemsEqual(s_args[0], ['/{db}.a', '/{db}.b'])
 
         self.channel.subclient.connection._sock = None
         self.channel._subscribe()
@@ -559,7 +559,7 @@ class test_Channel(Case):
 
         body = {'hello': 'world'}
         self.channel._put_fanout('exchange', body, '')
-        c.publish.assert_called_with('exchange', dumps(body))
+        c.publish.assert_called_with('/{db}.exchange', dumps(body))
 
     def test_put_priority(self):
         client = self.channel.client = Mock(name='client')
