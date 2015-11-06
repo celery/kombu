@@ -1588,9 +1588,8 @@ class TestTransportDrainEvents(Case):
         except socket.timeout:
             pass
         end_time = datetime.datetime.now()
-        td = end_time - start_time
-        elapsed_time_in_s = (td.microseconds + td.seconds * 10**6) / 10**6
-        self.assertGreaterEqual(elapsed_time_in_s, 1)
+        elapsed_time = end_time - start_time
+        self.assertGreaterEqual(elapsed_time.total_seconds() >= 1)
 
     def test_callback_is_called(self):
         self.transport.session.next_receiver = self.mock_next_receiver
