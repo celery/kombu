@@ -95,10 +95,12 @@ class Client(object):
 
     def parse_response(self, connection, type, **options):
         cmd, queues = self.connection._sock.data.pop()
+        queues = list(queues)
         assert cmd == type
         self.connection._sock.data = []
         if type == 'BRPOP':
-            item = self.brpop(queues, 0.001)
+            timeout = queues.pop()
+            item = self.brpop(queues, timeout)
             if item:
                 return item
             raise Empty()
