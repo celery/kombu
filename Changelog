@@ -18,6 +18,20 @@
 
     Donated by NextDoor, with additional contributions from mdk.
 
+- Redis: Priority 0 is now lowest, 9 is highest.
+  (**backward incompatible**)
+
+    This to match how priorities in AMQP works.
+
+    Fix contributed by Alex Koshelev.
+
+- Beanstalk: Priority 0 is now lowest, 9 is highest.
+  (**backward incompatible**)
+
+    This to match how priorities in AMQP works.
+
+    Fix contributed by Alex Koshelev.
+
 - Redis: now supports SSL using the ``ssl`` argument to
   :class:`~kombu.Connection`.
 
