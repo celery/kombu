@@ -1589,7 +1589,7 @@ class TestTransportDrainEvents(Case):
             pass
         end_time = datetime.datetime.now()
         elapsed_time = end_time - start_time
-        self.assertGreaterEqual(elapsed_time.total_seconds() >= 1)
+        self.assertGreaterEqual(elapsed_time.total_seconds(), 1)
 
     def test_callback_is_called(self):
         self.transport.session.next_receiver = self.mock_next_receiver
