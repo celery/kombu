@@ -10,6 +10,77 @@
 ===
 :release-date: TBA
 
+- Now depends on :mod:`amqp` 2.0.0.
+
+- No longer depends on :mod:`anyjson`.
+
+- New SQS transport
+
+    Donated by NextDoor, with additional contributions from mdk.
+
+- Redis: now supports SSL using the ``ssl`` argument to
+  :class:`~kombu.Connection`.
+
+- Redis: Fanout exchanges are no longer visible between vhosts,
+  and fanout messages can be filtered by patterns.
+  (**backward incompatible**)
+
+    It was possible to enable this mode previously using the
+    ``fanout_prefix``, and ``fanout_patterns``
+    transport options, but now these are enabled by default.
+
+    If you want to mix and match producers/consumers running different
+    versions you need to configure your kombu 3.x clients to also enable
+    these options:
+
+    .. code-block:: pycon
+
+        >>> Connection(transport_options={
+            'fanout_prefix': True,
+            'fanout_patterns': True,
+        })
+
+- Exchange.delivery_mode now defaults to :const:`None`, and the default
+  is instead set by ``Producer.publish``.
+
+- :class:`~kombu.Consumer` now supports a new ``prefetch_count`` argument,
+  which if provided will force the consumer to set an initial prefetch count
+  just before starting.
+
+- Virtual transports now stores ``priority`` as a property, not in
+  ``delivery_info``, to be compatible with AMQP.
+
+- ``reply_to`` argument to ``Producer.publish`` can now be
+  :class:`~kombu.Queue` instance.
+
+- Connection: There's now a new method
+  ``Connection.supports_exchange_type(type)`` that can be used to check if the
+    current transport supports a specific exchange type.
+
+- SQS: Will now log the access key used when authentication fails.
+
+    Contributed by Hank John.
+
+- Added new :class:`kombu.mixins.ConsumerProducerMixin` for consumers that
+  will also publish messages on a separate connection.
+
+- Messages: Now have a more descriptive ``repr``.
+
+    Contributed by Joshua Harlow.
+
+- Async: HTTP client based on curl.
+
+- Async: Now uses `poll` instead of `select` where available.
+
+- MongoDB: Now supports priorities
+
+    Contributed by Alex Koshelev.
+
+- Zookeeper: Transport now uses the built-in suport in kazoo to handle
+  failover when using a list of server names.
+
+    Contributed by Joshua Harlow.
+
 .. _version-3.0.28:
 
 3.0.28
