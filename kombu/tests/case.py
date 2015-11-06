@@ -101,7 +101,7 @@ def case_no_python3(cls):
     @wraps(setup)
     def around_setup(self):
         if PY3:
-            raise SkipTest('Python3 incompatible')
+            raise SkipTest('Python 3 incompatible')
         setup(self)
     cls.setUp = around_setup
     return cls
