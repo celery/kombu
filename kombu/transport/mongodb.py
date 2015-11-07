@@ -84,6 +84,7 @@ class Channel(virtual.Channel):
     ssl = False
     capped_queue_size = 100000
     ttl = False
+    calc_queue_size = True
 
     default_hostname = '127.0.0.1'
     default_port = 27017
@@ -99,7 +100,8 @@ class Channel(virtual.Channel):
         + ('connect_timeout', 'ssl', 'ttl', 'capped_queue_size',
            'default_hostname', 'default_port', 'default_database',
            'messages_collection', 'routing_collection',
-           'broadcast_collection', 'queues_collection'))
+           'broadcast_collection', 'queues_collection',
+           'calc_queue_size'))
 
 
     def __init__(self, *vargs, **kwargs):
@@ -143,6 +145,11 @@ class Channel(virtual.Channel):
         return loads(bytes_to_str(msg['payload']))
 
     def _size(self, queue):
+        # Do not calculate actual queue size if requested
+        # for performance considerations
+        if not self.calc_queue_size:
+            return super(Channel, self)._size(queue)
+
         if queue in self._fanout_queues:
             return self._get_broadcast_cursor(queue).get_size()
 

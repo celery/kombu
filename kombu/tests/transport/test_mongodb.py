@@ -440,3 +440,23 @@ class test_mongodb_channel_ttl(BaseMongoDBChannelCase):
                                           {'_id': 'foobar'},
                                           {'$set': {'expire_at': self.expire_at}},
                                           multiple=True)
+
+
+class test_mongodb_channel_calc_queue_size(BaseMongoDBChannelCase):
+    @skip_if_not_module('pymongo')
+    def setup(self):
+        self.connection = _create_mock_connection(transport_options={'calc_queue_size': False})
+        self.channel = self.connection.default_channel
+
+        self.expire_at = self.channel.get_now() + datetime.timedelta(milliseconds=777)
+
+    # Tests
+
+    def test_size(self):
+        self.set_operation_return_value('messages', 'find.count', 77)
+
+        result = self.channel._size('foobar')
+
+        self.assert_operation_has_calls('messages', 'find', [])
+
+        self.assertEqual(result, 0)
