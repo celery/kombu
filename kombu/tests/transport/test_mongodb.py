@@ -1,120 +1,321 @@
 from __future__ import absolute_import
 
 from kombu import Connection
-
-from kombu.tests.case import Case, SkipTest, Mock, skip_if_not_module
-
-
-class MockConnection(dict):
-
-    def __setattr__(self, key, value):
-        self[key] = value
+from kombu.five import Empty
+from kombu.tests.case import Case, MagicMock, call, patch, skip_if_not_module
 
 
-class test_mongodb(Case):
+def _create_mock_connection(url='', **kwargs):
+    from kombu.transport import mongodb  # noqa
 
-    def _get_connection(self, url, **kwargs):
-        from kombu.transport import mongodb
+    class _Channel(mongodb.Channel):
+        # reset _fanout_queues for each instance
+        _fanout_queues = {}
 
-        class _Channel(mongodb.Channel):
+        collections = {}
 
-            def _create_client(self):
-                self._client = Mock(name='client')
+        def _create_client(self):
+            mock = MagicMock(name='client')
 
-        class Transport(mongodb.Transport):
-            Connection = MockConnection
-            Channel = _Channel
+            # we need new mock object for every collection
+            def get_collection(name):
+                try:
+                    return self.collections[name]
+                except KeyError:
+                    mock = self.collections[name] = MagicMock(name='collection:%s' % name)
 
-        return Connection(url, transport=Transport, **kwargs).connect()
+                    return mock
 
+            mock.__getitem__.side_effect = get_collection
+
+            self._client = mock
+
+            return mock
+
+    class Transport(mongodb.Transport):
+        Channel = _Channel
+
+    return Connection(url, transport=Transport, **kwargs)
+
+
+class test_mongodb_uri_parsing(Case):
     @skip_if_not_module('pymongo')
+    def setup(self):
+        pass
+
+    # Tests
+
     def test_defaults(self):
         url = 'mongodb://'
 
-        c = self._get_connection(url)
-        hostname, dbname, options = c.channels[0]._parse_uri()
+        channel = _create_mock_connection(url).default_channel
+
+        hostname, dbname, options = channel._parse_uri()
 
         self.assertEquals(dbname, 'kombu_default')
         self.assertEquals(hostname, 'mongodb://127.0.0.1')
 
-    @skip_if_not_module('pymongo')
     def test_custom_host(self):
         url = 'mongodb://localhost'
-        c = self._get_connection(url)
-        hostname, dbname, options = c.channels[0]._parse_uri()
+        channel = _create_mock_connection(url).default_channel
+        hostname, dbname, options = channel._parse_uri()
 
         self.assertEquals(dbname, 'kombu_default')
 
-    @skip_if_not_module('pymongo')
     def test_custom_database(self):
         url = 'mongodb://localhost/dbname'
-        c = self._get_connection(url)
-        hostname, dbname, options = c.channels[0]._parse_uri()
+        channel = _create_mock_connection(url).default_channel
+        hostname, dbname, options = channel._parse_uri()
 
         self.assertEquals(dbname, 'dbname')
 
-    @skip_if_not_module('pymongo')
     def test_custom_credentials(self):
         url = 'mongodb://localhost/dbname'
-        c = self._get_connection(url, userid='foo', password='bar')
-        hostname, dbname, options = c.channels[0]._parse_uri()
+        channel = _create_mock_connection(url, userid='foo', password='bar').default_channel
+        hostname, dbname, options = channel._parse_uri()
 
         self.assertEquals(hostname, 'mongodb://foo:bar@localhost/dbname')
         self.assertEquals(dbname, 'dbname')
 
-    @skip_if_not_module('pymongo')
     def test_options(self):
         url = 'mongodb://localhost,localhost2:29017/dbname?tz_aware=true'
-        c = self._get_connection(url)
+        channel = _create_mock_connection(url).default_channel
 
-        hostname, dbname, options = c.channels[0]._parse_uri()
+        hostname, dbname, options = channel._parse_uri()
 
         self.assertEqual(options['tz_aware'], True)
 
+
+class test_mongodb_channel(Case):
     @skip_if_not_module('pymongo')
-    def test_real_connections(self):
-        from pymongo.errors import ConfigurationError
+    def setup(self):
+        self.connection = _create_mock_connection()
+        self.channel = self.connection.default_channel
 
-        raise SkipTest(
-            'Test is functional: it actually connects to mongod')
+    def _get_method(self, cname, mname):
+        collection = getattr(self.channel, 'get_%s' % cname)()
+        method = getattr(collection, mname.split('.', 1)[0])
 
-        url = 'mongodb://localhost,localhost:29017/dbname'
-        c = self._get_connection(url)
-        client = c.channels[0].client
+        for bit in mname.split('.')[1:]:
+            method = getattr(method.return_value, bit)
 
-        nodes = client.connection.nodes
-        # If there's just 1 node it is because we're  connecting to a single
-        # server instead of a repl / mongoss.
-        if len(nodes) == 2:
-            self.assertTrue(('localhost', 29017) in nodes)
-            self.assertEquals(client.name, 'dbname')
+        return method
 
-        url = 'mongodb://localhost:27017,localhost2:29017/dbname'
-        c = self._get_connection(url)
-        client = c.channels[0].client
+    def set_operation_return_value(self, cname, mname, *values):
+        method = self._get_method(cname, mname)
 
-        # Login to admin db since there's no db specified
-        url = 'mongodb://adminusername:adminpassword@localhost'
-        c = self._get_connection()
-        client = c.channels[0].client
-        self.assertEquals(client.name, 'kombu_default')
+        if len(values) == 1:
+            method.return_value = values[0]
+        else:
+            method.side_effect = values
 
-        # Lets make sure that using admin db doesn't break anything
-        # when no user is specified
-        url = 'mongodb://localhost'
-        c = self._get_connection(url)
-        client = c.channels[0].client
+    def declare_droadcast_queue(self, queue):
+        self.channel.exchange_declare('fanout_exchange', type='fanout')
 
-        # Assuming there's user 'username' with password 'password'
-        # configured in mongodb
-        url = 'mongodb://username:password@localhost/dbname'
-        c = self._get_connection(url)
-        client = c.channels[0].client
+        self.channel._queue_bind('fanout_exchange', 'foo', '*', queue)
 
-        # Assuming there's no user 'nousername' with password 'nopassword'
-        # configured in mongodb
-        url = 'mongodb://nousername:nopassword@localhost/dbname'
-        c = self._get_connection(url)
+        self.assertTrue(queue in self.channel._broadcast_cursors)
 
-        with self.assertRaises(ConfigurationError):
-            c.channels[0].client
+    def get_broadcast(self, queue):
+        return self.channel._broadcast_cursors[queue]
+
+    def set_broadcast_return_value(self, queue, *values):
+        self.declare_droadcast_queue(queue)
+
+        cursor = MagicMock(name='cursor')
+        cursor.__iter__.return_value = iter(values)
+
+        self.channel._broadcast_cursors[queue]._cursor = iter(cursor)
+
+    def assert_collection_accessed(self, *collections):
+        self.channel.client.__getitem__.assert_has_calls(map(call, collections), any_order=True)
+
+    def assert_operation_has_calls(self, cname, mname, calls, any_order=False):
+        method = self._get_method(cname, mname)
+
+        method.assert_has_calls(calls, any_order=any_order)
+
+    def assert_operation_called_with(self, cname, mname, *args, **kwargs):
+        self.assert_operation_has_calls(cname, mname, [call(*args, **kwargs)])
+
+    # Tests for "public" channel interface
+
+    def test_new_queue(self):
+        self.channel._new_queue('foobar')
+        self.assertFalse(self.channel.client.called)
+
+    def test_get(self):
+        import pymongo
+
+        self.set_operation_return_value('messages', 'find_and_modify',
+                                        {'_id': 'docId', 'payload': '{"some": "data"}'})
+
+        event = self.channel._get('foobar')
+        self.assert_collection_accessed('messages')
+        self.assert_operation_called_with('messages', 'find_and_modify',
+                                          query={'queue': 'foobar'},
+                                          remove=True,
+                                          sort=[('priority', pymongo.ASCENDING),
+                                                ('_id', pymongo.ASCENDING)])
+
+        self.assertEqual(event, {'some': 'data'})
+
+        self.set_operation_return_value('messages', 'find_and_modify', None)
+        self.assertRaises(Empty, lambda: self.channel._get('foobar'))
+
+    def test_get_fanout(self):
+        self.set_broadcast_return_value('foobar', {'_id': 'docId1', 'payload': '{"some": "data"}'})
+
+        event = self.channel._get('foobar')
+        self.assert_collection_accessed('messages.broadcast')
+        self.assertEqual(event, {'some': 'data'})
+
+        self.assertRaises(Empty, lambda: self.channel._get('foobar'))
+
+    def test_put(self):
+        self.channel._put('foobar', {'some': 'data'})
+
+        self.assert_collection_accessed('messages')
+        self.assert_operation_called_with('messages', 'insert', {'queue': 'foobar',
+                                                                 'priority': 9,
+                                                                 'payload': '{"some": "data"}'})
+
+    def test_put_fanout(self):
+        self.declare_droadcast_queue('foobar')
+
+        self.channel._put_fanout('foobar', {'some': 'data'}, 'foo')
+
+        self.assert_collection_accessed('messages.broadcast')
+        self.assert_operation_called_with('broadcast', 'insert',
+                                          {'queue': 'foobar',
+                                           'payload': '{"some": "data"}'})
+
+    def test_size(self):
+        self.set_operation_return_value('messages', 'find.count', 77)
+
+        result = self.channel._size('foobar')
+        self.assert_collection_accessed('messages')
+        self.assert_operation_called_with('messages', 'find', {'queue': 'foobar'})
+
+        self.assertEqual(result, 77)
+
+    def test_size_fanout(self):
+        self.declare_droadcast_queue('foobar')
+
+        cursor = MagicMock(name='cursor')
+        cursor.get_size.return_value = 77
+        self.channel._broadcast_cursors['foobar'] = cursor
+
+        result = self.channel._size('foobar')
+
+        self.assertEqual(result, 77)
+
+    def test_purge(self):
+        self.set_operation_return_value('messages', 'find.count', 77)
+
+        result = self.channel._purge('foobar')
+        self.assert_collection_accessed('messages')
+        self.assert_operation_called_with('messages', 'remove', {'queue': 'foobar'})
+
+        self.assertEqual(result, 77)
+
+    def test_purge_fanout(self):
+        self.declare_droadcast_queue('foobar')
+
+        cursor = MagicMock(name='cursor')
+        cursor.get_size.return_value = 77
+        self.channel._broadcast_cursors['foobar'] = cursor
+
+        result = self.channel._purge('foobar')
+
+        cursor.purge.assert_any_call()
+
+        self.assertEqual(result, 77)
+
+    def test_get_table(self):
+        state_table = [('foo', '*', 'foo')]
+        stored_table = [('bar', '*', 'bar')]
+
+        self.channel.exchange_declare('test_exchange')
+        self.channel.state.exchanges['test_exchange']['table'] = state_table
+
+        self.set_operation_return_value('routing', 'find',
+                                        [{'_id': 'docId',
+                                         'routing_key': stored_table[0][0],
+                                         'pattern': stored_table[0][1],
+                                         'queue': stored_table[0][2]}])
+
+        result = self.channel.get_table('test_exchange')
+        self.assert_collection_accessed('messages.routing')
+        self.assert_operation_called_with('routing', 'find', {'exchange': 'test_exchange'})
+
+        self.assertEqual(result, frozenset(state_table) | frozenset(stored_table))
+
+    def test_queue_bind(self):
+        self.channel._queue_bind('test_exchange', 'foo', '*', 'foo')
+        self.assert_collection_accessed('messages.routing')
+        self.assert_operation_called_with('routing', 'update',
+                                          {'queue': 'foo', 'pattern': '*',
+                                           'routing_key': 'foo', 'exchange': 'test_exchange'},
+                                          {'queue': 'foo', 'pattern': '*',
+                                           'routing_key': 'foo', 'exchange': 'test_exchange'},
+                                          upsert=True)
+
+    def test_queue_delete(self):
+        self.channel.queue_delete('foobar')
+        self.assert_collection_accessed('messages.routing')
+        self.assert_operation_called_with('routing', 'remove', {'queue': 'foobar'})
+
+    def test_queue_delete_fanout(self):
+        self.declare_droadcast_queue('foobar')
+
+        cursor = MagicMock(name='cursor')
+        self.channel._broadcast_cursors['foobar'] = cursor
+
+        self.channel.queue_delete('foobar')
+
+        cursor.close.assert_any_call()
+
+        self.assertTrue('foobar' not in self.channel._broadcast_cursors)
+        self.assertTrue('foobar' not in self.channel._fanout_queues)
+
+    # Tests for channel internals
+
+    def test_create_broadcast(self):
+        self.channel._create_broadcast(self.channel.client, {})
+
+        self.channel.client.create_collection.assert_called_with('messages.broadcast',
+                                                                 capped=True,
+                                                                 size=100000)
+
+    def test_ensure_indexes(self):
+        self.channel._ensure_indexes()
+
+        self.assert_operation_called_with('messages', 'ensure_index',
+                                          [('queue', 1), ('priority', 1), ('_id', 1)],
+                                          background=True)
+        self.assert_operation_called_with('broadcast', 'ensure_index',
+                                          [('queue', 1)])
+        self.assert_operation_called_with('routing', 'ensure_index',
+                                          [('queue', 1), ('exchange', 1)])
+
+    def test_create_broadcast_cursor(self):
+        import pymongo
+
+        with patch.object(pymongo, 'version_tuple', (2, )):
+            self.channel.create_broadcast_cursor('fanout_exchange', 'foo', '*', 'foobar')
+
+            self.assert_collection_accessed('messages.broadcast')
+            self.assert_operation_called_with('broadcast', 'find',
+                                              tailable=True,
+                                              query={'queue': 'fanout_exchange'},
+                                              sort=[('$natural', pymongo.ASCENDING)])
+
+        if pymongo.version_tuple >= (3, ):
+            self.channel.create_broadcast_cursor('fanout_exchange1', 'foo', '*', 'foobar')
+
+            self.assert_collection_accessed('messages.broadcast')
+            self.assert_operation_called_with('broadcast', 'find',
+                                              cursor_type=pymongo.CursorType.TAILABLE,
+                                              filter={'queue': 'fanout_exchange1'},
+                                              sort=[('$natural', pymongo.ASCENDING)])
