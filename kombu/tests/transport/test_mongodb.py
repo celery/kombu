@@ -31,8 +31,6 @@ def _create_mock_connection(url='', **kwargs):
 
             mock.__getitem__.side_effect = get_collection
 
-            self._client = mock
-
             return mock
 
         def get_now(self):
@@ -94,7 +92,7 @@ class test_mongodb_uri_parsing(Case):
 
 class BaseMongoDBChannelCase(Case):
     def _get_method(self, cname, mname):
-        collection = getattr(self.channel, 'get_%s' % cname)()
+        collection = getattr(self.channel, cname)
         method = getattr(collection, mname.split('.', 1)[0])
 
         for bit in mname.split('.')[1:]:
@@ -297,7 +295,7 @@ class test_mongodb_channel(BaseMongoDBChannelCase):
                                                                  size=100000)
 
     def test_ensure_indexes(self):
-        self.channel._ensure_indexes()
+        self.channel._ensure_indexes(self.channel.client)
 
         self.assert_operation_called_with('messages', 'ensure_index',
                                           [('queue', 1), ('priority', 1), ('_id', 1)],
@@ -311,7 +309,7 @@ class test_mongodb_channel(BaseMongoDBChannelCase):
         import pymongo
 
         with patch.object(pymongo, 'version_tuple', (2, )):
-            self.channel.create_broadcast_cursor('fanout_exchange', 'foo', '*', 'foobar')
+            self.channel._create_broadcast_cursor('fanout_exchange', 'foo', '*', 'foobar')
 
             self.assert_collection_accessed('messages.broadcast')
             self.assert_operation_called_with('broadcast', 'find',
@@ -320,7 +318,7 @@ class test_mongodb_channel(BaseMongoDBChannelCase):
                                               sort=[('$natural', pymongo.ASCENDING)])
 
         if pymongo.version_tuple >= (3, ):
-            self.channel.create_broadcast_cursor('fanout_exchange1', 'foo', '*', 'foobar')
+            self.channel._create_broadcast_cursor('fanout_exchange1', 'foo', '*', 'foobar')
 
             self.assert_collection_accessed('messages.broadcast')
             self.assert_operation_called_with('broadcast', 'find',
@@ -403,7 +401,7 @@ class test_mongodb_channel_ttl(BaseMongoDBChannelCase):
         self.assert_operation_called_with('queues', 'remove', {'_id': 'foobar'})
 
     def test_ensure_indexes(self):
-        self.channel._ensure_indexes()
+        self.channel._ensure_indexes(self.channel.client)
 
         self.assert_operation_called_with('messages', 'ensure_index',
                                           [('expire_at', 1)], expireAfterSeconds=0)
@@ -413,7 +411,7 @@ class test_mongodb_channel_ttl(BaseMongoDBChannelCase):
                                           [('expire_at', 1)], expireAfterSeconds=0)
 
     def test_get_expire(self):
-        result = self.channel.get_expire({'arguments': {'x-expires': 777}}, 'x-expires')
+        result = self.channel._get_expire({'arguments': {'x-expires': 777}}, 'x-expires')
 
         self.assertFalse(self.channel.client.called)
 
@@ -423,7 +421,7 @@ class test_mongodb_channel_ttl(BaseMongoDBChannelCase):
                                         {'_id': 'docId',
                                          'options': {'arguments': {'x-expires': 777}}})
 
-        result = self.channel.get_expire('foobar', 'x-expires')
+        result = self.channel._get_expire('foobar', 'x-expires')
         self.assertEqual(result, self.expire_at)
 
 
@@ -431,7 +429,7 @@ class test_mongodb_channel_ttl(BaseMongoDBChannelCase):
         self.set_operation_return_value('queues', 'find_one',
                                         {'_id': 'docId',
                                          'options': {'arguments': {'x-expires': 777}}})
-        self.channel.update_queues_expire('foobar')
+        self.channel._update_queues_expire('foobar')
 
         self.assert_collection_accessed('messages.routing', 'messages.queues')
         self.assert_operation_called_with('routing', 'update',
