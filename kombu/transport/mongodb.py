@@ -132,7 +132,7 @@ class Channel(virtual.Channel):
             msg = self.messages.find_and_modify(
                 query={'queue': queue},
                 sort=[('priority', pymongo.ASCENDING),
-                      ('_id', pymongo.ASCENDING)],
+                      ('$natural', pymongo.ASCENDING)],
                 remove=True,
             )
 
@@ -373,12 +373,12 @@ class Channel(virtual.Channel):
     def _create_broadcast_cursor(self, exchange, routing_key, pattern, queue):
         if pymongo.version_tuple >= (3, ):
             query = dict(filter={'queue': exchange},
-                         sort=[('$natural', 1)],
+                         sort=[('$natural', pymongo.ASCENDING)],
                          cursor_type=CursorType.TAILABLE
                          )
         else:
             query = dict(query={'queue': exchange},
-                         sort=[('$natural', 1)],
+                         sort=[('$natural', pymongo.ASCENDING)],
                          tailable=True
                          )
 

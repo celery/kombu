@@ -162,7 +162,7 @@ class test_mongodb_channel(BaseMongoDBChannelCase):
                                           query={'queue': 'foobar'},
                                           remove=True,
                                           sort=[('priority', pymongo.ASCENDING),
-                                                ('_id', pymongo.ASCENDING)])
+                                                ('$natural', pymongo.ASCENDING)])
 
         self.assertEqual(event, {'some': 'data'})
 
@@ -361,7 +361,7 @@ class test_mongodb_channel_ttl(BaseMongoDBChannelCase):
                                           query={'queue': 'foobar'},
                                           remove=True,
                                           sort=[('priority', pymongo.ASCENDING),
-                                                ('_id', pymongo.ASCENDING)])
+                                                ('$natural', pymongo.ASCENDING)])
         self.assert_operation_called_with('routing', 'update',
                                           {'queue': 'foobar'},
                                           {'$set': {'expire_at': self.expire_at}},
