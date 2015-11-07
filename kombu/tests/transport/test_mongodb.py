@@ -1,5 +1,7 @@
 from __future__ import absolute_import
 
+import datetime
+
 from kombu import Connection
 from kombu.five import Empty
 from kombu.tests.case import Case, MagicMock, call, patch, skip_if_not_module
@@ -13,6 +15,7 @@ def _create_mock_connection(url='', **kwargs):
         _fanout_queues = {}
 
         collections = {}
+        now = datetime.datetime.utcnow()
 
         def _create_client(self):
             mock = MagicMock(name='client')
@@ -31,6 +34,9 @@ def _create_mock_connection(url='', **kwargs):
             self._client = mock
 
             return mock
+
+        def get_now(self):
+            return self.now
 
     class Transport(mongodb.Transport):
         Channel = _Channel
@@ -86,12 +92,7 @@ class test_mongodb_uri_parsing(Case):
         self.assertEqual(options['tz_aware'], True)
 
 
-class test_mongodb_channel(Case):
-    @skip_if_not_module('pymongo')
-    def setup(self):
-        self.connection = _create_mock_connection()
-        self.channel = self.connection.default_channel
-
+class BaseMongoDBChannelCase(Case):
     def _get_method(self, cname, mname):
         collection = getattr(self.channel, 'get_%s' % cname)()
         method = getattr(collection, mname.split('.', 1)[0])
@@ -137,6 +138,13 @@ class test_mongodb_channel(Case):
 
     def assert_operation_called_with(self, cname, mname, *args, **kwargs):
         self.assert_operation_has_calls(cname, mname, [call(*args, **kwargs)])
+
+
+class test_mongodb_channel(BaseMongoDBChannelCase):
+    @skip_if_not_module('pymongo')
+    def setup(self):
+        self.connection = _create_mock_connection()
+        self.channel = self.connection.default_channel
 
     # Tests for "public" channel interface
 
@@ -282,7 +290,7 @@ class test_mongodb_channel(Case):
     # Tests for channel internals
 
     def test_create_broadcast(self):
-        self.channel._create_broadcast(self.channel.client, {})
+        self.channel._create_broadcast(self.channel.client)
 
         self.channel.client.create_collection.assert_called_with('messages.broadcast',
                                                                  capped=True,
@@ -319,3 +327,118 @@ class test_mongodb_channel(Case):
                                               cursor_type=pymongo.CursorType.TAILABLE,
                                               filter={'queue': 'fanout_exchange1'},
                                               sort=[('$natural', pymongo.ASCENDING)])
+
+
+class test_mongodb_channel_ttl(BaseMongoDBChannelCase):
+    @skip_if_not_module('pymongo')
+    def setup(self):
+        self.connection = _create_mock_connection(transport_options={'ttl': True})
+        self.channel = self.connection.default_channel
+
+        self.expire_at = self.channel.get_now() + datetime.timedelta(milliseconds=777)
+
+    # Tests
+
+    def test_new_queue(self):
+        self.channel._new_queue('foobar')
+
+        self.assert_operation_called_with('queues', 'update',
+                                          {'_id': 'foobar'},
+                                          {'_id': 'foobar', 'options': {}, 'expire_at': None},
+                                          upsert=True)
+
+    def test_get(self):
+        import pymongo
+
+        self.set_operation_return_value('queues', 'find_one',
+                                        {'_id': 'docId',
+                                         'options': {'arguments': {'x-expires': 777}}})
+
+        self.set_operation_return_value('messages', 'find_and_modify',
+                                        {'_id': 'docId', 'payload': '{"some": "data"}'})
+
+        self.channel._get('foobar')
+        self.assert_collection_accessed('messages', 'messages.queues')
+        self.assert_operation_called_with('messages', 'find_and_modify',
+                                          query={'queue': 'foobar'},
+                                          remove=True,
+                                          sort=[('priority', pymongo.ASCENDING),
+                                                ('_id', pymongo.ASCENDING)])
+        self.assert_operation_called_with('routing', 'update',
+                                          {'queue': 'foobar'},
+                                          {'$set': {'expire_at': self.expire_at}},
+                                          multiple=True)
+
+    def test_put(self):
+        self.set_operation_return_value('queues', 'find_one',
+                                        {'_id': 'docId',
+                                         'options': {'arguments': {'x-message-ttl': 777}}})
+
+        self.channel._put('foobar', {'some': 'data'})
+
+        self.assert_collection_accessed('messages')
+        self.assert_operation_called_with('messages', 'insert', {'queue': 'foobar',
+                                                                 'priority': 9,
+                                                                 'payload': '{"some": "data"}',
+                                                                 'expire_at': self.expire_at})
+
+    def test_queue_bind(self):
+        self.set_operation_return_value('queues', 'find_one',
+                                        {'_id': 'docId',
+                                         'options': {'arguments': {'x-expires': 777}}})
+
+        self.channel._queue_bind('test_exchange', 'foo', '*', 'foo')
+        self.assert_collection_accessed('messages.routing')
+        self.assert_operation_called_with('routing', 'update',
+                                          {'queue': 'foo', 'pattern': '*',
+                                           'routing_key': 'foo', 'exchange': 'test_exchange'},
+                                          {'queue': 'foo', 'pattern': '*',
+                                           'routing_key': 'foo', 'exchange': 'test_exchange',
+                                           'expire_at': self.expire_at},
+                                          upsert=True)
+
+    def test_queue_delete(self):
+        self.channel.queue_delete('foobar')
+        self.assert_collection_accessed('messages.queues')
+        self.assert_operation_called_with('queues', 'remove', {'_id': 'foobar'})
+
+    def test_ensure_indexes(self):
+        self.channel._ensure_indexes()
+
+        self.assert_operation_called_with('messages', 'ensure_index',
+                                          [('expire_at', 1)], expireAfterSeconds=0)
+        self.assert_operation_called_with('routing', 'ensure_index',
+                                          [('expire_at', 1)], expireAfterSeconds=0)
+        self.assert_operation_called_with('queues', 'ensure_index',
+                                          [('expire_at', 1)], expireAfterSeconds=0)
+
+    def test_get_expire(self):
+        result = self.channel.get_expire({'arguments': {'x-expires': 777}}, 'x-expires')
+
+        self.assertFalse(self.channel.client.called)
+
+        self.assertEqual(result, self.expire_at)
+
+        self.set_operation_return_value('queues', 'find_one',
+                                        {'_id': 'docId',
+                                         'options': {'arguments': {'x-expires': 777}}})
+
+        result = self.channel.get_expire('foobar', 'x-expires')
+        self.assertEqual(result, self.expire_at)
+
+
+    def test_update_queues_expire(self):
+        self.set_operation_return_value('queues', 'find_one',
+                                        {'_id': 'docId',
+                                         'options': {'arguments': {'x-expires': 777}}})
+        self.channel.update_queues_expire('foobar')
+
+        self.assert_collection_accessed('messages.routing', 'messages.queues')
+        self.assert_operation_called_with('routing', 'update',
+                                          {'queue': 'foobar'},
+                                          {'$set': {'expire_at': self.expire_at}},
+                                          multiple=True)
+        self.assert_operation_called_with('queues', 'update',
+                                          {'_id': 'foobar'},
+                                          {'$set': {'expire_at': self.expire_at}},
+                                          multiple=True)
