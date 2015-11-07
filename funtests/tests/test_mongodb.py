@@ -1,8 +1,7 @@
-from nose import SkipTest
-
 from kombu import Consumer, Producer, Exchange, Queue
 from kombu.five import range
 from kombu.utils import nested
+from kombu.tests.case import skip_if_not_module
 
 from funtests import transport
 
@@ -12,11 +11,9 @@ class test_mongodb(transport.TransportCase):
     prefix = 'mongodb'
     event_loop_max = 100
 
-    def before_connect(self):
-        try:
-            import pymongo  # noqa
-        except ImportError:
-            raise SkipTest('pymongo not installed')
+    @skip_if_not_module('pymongo')
+    def setup(self):
+        pass
 
     def after_connect(self, connection):
         connection.channel().client  # evaluate connection.
