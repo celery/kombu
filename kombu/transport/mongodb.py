@@ -21,16 +21,9 @@ from kombu.five import Empty
 from kombu.syn import _detect_environment
 from kombu.utils.encoding import bytes_to_str
 from kombu.utils.json import loads, dumps
+from kombu.utils import cached_property
 
 from . import virtual
-
-DEFAULT_HOST = '127.0.0.1'
-DEFAULT_PORT = 27017
-
-DEFAULT_MESSAGES_COLLECTION = 'messages'
-DEFAULT_ROUTING_COLLECTION = 'messages.routing'
-DEFAULT_BROADCAST_COLLECTION = 'messages.broadcast'
-DEFAULT_QUEUES_COLLECTION = 'messages.queues'
 
 
 class BroadcastCursor(object):
@@ -81,10 +74,9 @@ class BroadcastCursor(object):
 
 
 class Channel(virtual.Channel):
-    _client = None
     supports_fanout = True
 
-    # Mutable containers. Shared by all class instances
+    # Mutable container. Shared by all class instances
     _fanout_queues = {}
 
     # Options
@@ -93,9 +85,21 @@ class Channel(virtual.Channel):
     capped_queue_size = 100000
     ttl = False
 
+    default_hostname = '127.0.0.1'
+    default_port = 27017
+    default_database = 'kombu_default'
+
+    messages_collection = 'messages'
+    routing_collection = 'messages.routing'
+    broadcast_collection = 'messages.broadcast'
+    queues_collection = 'messages.queues'
+
     from_transport_options = (
         virtual.Channel.from_transport_options
-        + ('connect_timeout', 'ssl', 'ttl', 'capped_queue_size'))
+        + ('connect_timeout', 'ssl', 'ttl', 'capped_queue_size',
+           'default_hostname', 'default_port', 'default_database',
+           'messages_collection', 'routing_collection',
+           'broadcast_collection', 'queues_collection'))
 
 
     def __init__(self, *vargs, **kwargs):
@@ -104,26 +108,26 @@ class Channel(virtual.Channel):
         self._broadcast_cursors = {}
 
         # Evaluate connection
-        self._create_client()
+        self.client
 
     # AbstractChannel/Channel interface implementation
 
     def _new_queue(self, queue, **kwargs):
         if self.ttl:
-            self.get_queues().update({'_id': queue},
-                                     {'_id': queue,
-                                      'options': kwargs,
-                                      'expire_at': self.get_expire(kwargs, 'x-expires')},
-                                     upsert=True)
+            self.queues.update({'_id': queue},
+                               {'_id': queue,
+                                'options': kwargs,
+                                'expire_at': self._get_expire(kwargs, 'x-expires')},
+                                upsert=True)
 
     def _get(self, queue):
         if queue in self._fanout_queues:
             try:
-                msg = next(self.get_broadcast_cursor(queue))
+                msg = next(self._get_broadcast_cursor(queue))
             except StopIteration:
                 msg = None
         else:
-            msg = self.get_messages().find_and_modify(
+            msg = self.messages.find_and_modify(
                 query={'queue': queue},
                 sort=[('priority', pymongo.ASCENDING),
                       ('_id', pymongo.ASCENDING)],
@@ -131,7 +135,7 @@ class Channel(virtual.Channel):
             )
 
         if self.ttl:
-            self.update_queues_expire(queue)
+            self._update_queues_expire(queue)
 
         if msg is None:
             raise Empty()
@@ -140,9 +144,9 @@ class Channel(virtual.Channel):
 
     def _size(self, queue):
         if queue in self._fanout_queues:
-            return self.get_broadcast_cursor(queue).get_size()
+            return self._get_broadcast_cursor(queue).get_size()
 
-        return self.get_messages().find({'queue': queue}).count()
+        return self.messages.find({'queue': queue}).count()
 
     def _put(self, queue, message, **kwargs):
         data = {
@@ -152,24 +156,29 @@ class Channel(virtual.Channel):
         }
 
         if self.ttl:
-            data['expire_at'] = self.get_expire(queue, 'x-message-ttl')
+            data['expire_at'] = self._get_expire(queue, 'x-message-ttl')
 
-        self.get_messages().insert(data)
+        self.messages.insert(data)
+
+    def _put_fanout(self, exchange, message, routing_key, **kwargs):
+        """Deliver fanout message."""
+        self.broadcast.insert({'payload': dumps(message),
+                               'queue': exchange})
 
     def _purge(self, queue):
         size = self._size(queue)
 
         if queue in self._fanout_queues:
-            self.get_broadcast_cursor(queue).purge()
+            self._get_broadcast_cursor(queue).purge()
         else:
-            self.get_messages().remove({'queue': queue})
+            self.messages.remove({'queue': queue})
 
         return size
 
     def get_table(self, exchange):
         """Get table of bindings for ``exchange``."""
         localRoutes = frozenset(self.state.exchanges[exchange]['table'])
-        brokerRoutes = self.get_messages().routing.find(
+        brokerRoutes = self.routing.find(
             {'exchange': exchange}
         )
 
@@ -179,7 +188,7 @@ class Channel(virtual.Channel):
 
     def _queue_bind(self, exchange, routing_key, pattern, queue):
         if self.typeof(exchange).type == 'fanout':
-            self.create_broadcast_cursor(exchange, routing_key, pattern, queue)
+            self._create_broadcast_cursor(exchange, routing_key, pattern, queue)
             self._fanout_queues[queue] = exchange
 
         lookup = {'exchange': exchange,
@@ -190,15 +199,15 @@ class Channel(virtual.Channel):
         data = lookup.copy()
 
         if self.ttl:
-            data['expire_at'] = self.get_expire(queue, 'x-expires')
+            data['expire_at'] = self._get_expire(queue, 'x-expires')
 
-        self.get_routing().update(lookup, data, upsert=True)
+        self.routing.update(lookup, data, upsert=True)
 
     def queue_delete(self, queue, **kwargs):
-        self.get_routing().remove({'queue': queue})
+        self.routing.remove({'queue': queue})
 
         if self.ttl:
-            self.get_queues().remove({'_id': queue})
+            self.queues.remove({'_id': queue})
 
         super(Channel, self).queue_delete(queue, **kwargs)
 
@@ -224,7 +233,7 @@ class Channel(virtual.Channel):
             hostname = scheme + hostname
 
         if not hostname[len(scheme):]:
-            hostname += DEFAULT_HOST
+            hostname += self.default_hostname
 
         if client.userid and '@' not in hostname:
             head, tail = hostname.split('://')
@@ -235,14 +244,14 @@ class Channel(virtual.Channel):
 
             hostname = head + '://' + credentials + '@' + tail
 
-        port = client.port if client.port is not None else DEFAULT_PORT
+        port = client.port if client.port else self.default_port
 
         parsed = uri_parser.parse_uri(hostname, port)
 
         dbname = parsed['database'] or client.virtual_host
 
         if dbname in ('/', None):
-            dbname = 'kombu_default'
+            dbname = self.default_database
 
         options = {
             'auto_start_request': True,
@@ -286,76 +295,75 @@ class Channel(virtual.Channel):
             raise NotImplementedError('Kombu requires MongoDB version 2.2+'
                                       '(server is {0}) for TTL indexes support'.format(version_str))
 
-        self._create_broadcast(database)
-
-        self._client = database
+        return database
 
     def _create_broadcast(self, database):
         '''Create capped collection for broadcast messages.'''
-        if DEFAULT_BROADCAST_COLLECTION in database.collection_names():
+        if self.broadcast_collection in database.collection_names():
             return
 
-        database.create_collection(DEFAULT_BROADCAST_COLLECTION,
-                                   size=self.capped_queue_size, capped=True)
+        database.create_collection(self.broadcast_collection,
+                                   size=self.capped_queue_size,
+                                   capped=True)
 
-    def _ensure_indexes(self):
+    def _ensure_indexes(self, database):
         '''Ensure indexes on collections.'''
-        messages = self.get_messages()
+        messages = database[self.messages_collection]
         messages.ensure_index(
             [('queue', 1), ('priority', 1), ('_id', 1)], background=True,
         )
 
-        self.get_broadcast().ensure_index([('queue', 1)])
+        database[self.broadcast_collection].ensure_index([('queue', 1)])
 
-        routing = self.get_routing()
+        routing = database[self.routing_collection]
         routing.ensure_index([('queue', 1), ('exchange', 1)])
 
         if self.ttl:
             messages.ensure_index([('expire_at', 1)], expireAfterSeconds=0)
             routing.ensure_index([('expire_at', 1)], expireAfterSeconds=0)
 
-            self.get_queues().ensure_index([('expire_at', 1)], expireAfterSeconds=0)
-
-    def _put_fanout(self, exchange, message, routing_key, **kwargs):
-        """Deliver fanout message."""
-        self.get_broadcast().insert({'payload': dumps(message),
-                                     'queue': exchange})
+            database[self.queues_collection].ensure_index([('expire_at', 1)], expireAfterSeconds=0)
 
     def _create_client(self):
         '''Actualy creates connection'''
-        self._open()
-        self._ensure_indexes()
+        database = self._open()
+        self._create_broadcast(database)
+        self._ensure_indexes(database)
 
-    @property
+        return database
+
+    @cached_property
     def client(self):
-        if self._client is None:
-            self._create_client()
-        return self._client
+        return self._create_client()
 
-    def get_messages(self):
-        return self.client[DEFAULT_MESSAGES_COLLECTION]
+    @cached_property
+    def messages(self):
+        return self.client[self.messages_collection]
 
-    def get_routing(self):
-        return self.client[DEFAULT_ROUTING_COLLECTION]
+    @cached_property
+    def routing(self):
+        return self.client[self.routing_collection]
 
-    def get_broadcast(self):
-        return self.client[DEFAULT_BROADCAST_COLLECTION]
+    @cached_property
+    def broadcast(self):
+        return self.client[self.broadcast_collection]
 
-    def get_queues(self):
-        return self.client[DEFAULT_QUEUES_COLLECTION]
+    @cached_property
+    def queues(self):
+        return self.client[self.queues_collection]
 
-    def get_broadcast_cursor(self, queue):
+    def _get_broadcast_cursor(self, queue):
         try:
             return self._broadcast_cursors[queue]
         except KeyError:
             # Cursor may be absent when Channel created more than once.
             # _fanout_queues is a class-level mutable attribute so it's
             # shared over all Channel instances.
-            return self.create_broadcast_cursor(
+            return self._create_broadcast_cursor(
                 self._fanout_queues[queue], None, None, queue,
             )
 
-    def create_broadcast_cursor(self, exchange, routing_key, pattern, queue):
+    def _create_broadcast_cursor(self, exchange, routing_key, pattern, queue):
         if pymongo.version_tuple >= (3, ):
             query = dict(filter={'queue': exchange},
                          sort=[('$natural', 1)],
@@ -367,16 +375,16 @@ class Channel(virtual.Channel):
                          tailable=True
                          )
 
-        cursor = self.get_broadcast().find(**query)
+        cursor = self.broadcast.find(**query)
         ret = self._broadcast_cursors[queue] = BroadcastCursor(cursor)
         return ret
 
-    def get_expire(self, queue, argument):
+    def _get_expire(self, queue, argument):
         """Gets expiration header named `argument` of queue definition.
         `queue` must be either queue name or options itself.
         """
         if isinstance(queue, basestring):
-            doc = self.get_queues().find_one({'_id': queue})
+            doc = self.queues.find_one({'_id': queue})
 
             if not doc:
                 return
@@ -392,18 +400,18 @@ class Channel(virtual.Channel):
 
         return self.get_now() + datetime.timedelta(milliseconds=value)
 
-    def update_queues_expire(self, queue):
+    def _update_queues_expire(self, queue):
         """Updates expiration field on queues documents
         """
-        expire_at = self.get_expire(queue, 'x-expires')
+        expire_at = self._get_expire(queue, 'x-expires')
 
         if not expire_at:
             return
 
-        self.get_routing().update({'queue': queue}, {'$set': {'expire_at': expire_at}},
-                                  multiple=True)
-        self.get_queues().update({'_id': queue}, {'$set': {'expire_at': expire_at}},
-                                 multiple=True)
+        self.routing.update({'queue': queue}, {'$set': {'expire_at': expire_at}},
+                            multiple=True)
+        self.queues.update({'_id': queue}, {'$set': {'expire_at': expire_at}},
+                           multiple=True)
 
     def get_now(self):
         return datetime.datetime.utcnow()
@@ -414,7 +422,7 @@ class Transport(virtual.Transport):
 
     can_parse_url = True
     polling_interval = 1
-    default_port = DEFAULT_PORT
+    default_port = Channel.default_port
     connection_errors = (
         virtual.Transport.connection_errors + (errors.ConnectionFailure,)
     )
