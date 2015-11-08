@@ -27,7 +27,8 @@ from . import virtual
 
 
 class BroadcastCursor(object):
-    """Cursor for broadcast queues."""
+    """Cursor for broadcast queues.
+    """
 
     def __init__(self, cursor):
         self._cursor = cursor
@@ -168,7 +169,6 @@ class Channel(virtual.Channel):
         self.messages.insert(data)
 
     def _put_fanout(self, exchange, message, routing_key, **kwargs):
-        """Deliver fanout message."""
         self.broadcast.insert({'payload': dumps(message),
                                'queue': exchange})
 
@@ -183,7 +183,6 @@ class Channel(virtual.Channel):
         return size
 
     def get_table(self, exchange):
-        """Get table of bindings for ``exchange``."""
         localRoutes = frozenset(self.state.exchanges[exchange]['table'])
         brokerRoutes = self.routing.find(
             {'exchange': exchange}
@@ -305,7 +304,8 @@ class Channel(virtual.Channel):
         return database
 
     def _create_broadcast(self, database):
-        '''Create capped collection for broadcast messages.'''
+        """Create capped collection for broadcast messages.
+        """
         if self.broadcast_collection in database.collection_names():
             return
 
@@ -314,7 +314,8 @@ class Channel(virtual.Channel):
                                    capped=True)
 
     def _ensure_indexes(self, database):
-        '''Ensure indexes on collections.'''
+        """Ensure indexes on collections.
+        """
         messages = database[self.messages_collection]
         messages.ensure_index(
             [('queue', 1), ('priority', 1), ('_id', 1)], background=True,
@@ -332,7 +333,8 @@ class Channel(virtual.Channel):
             database[self.queues_collection].ensure_index([('expire_at', 1)], expireAfterSeconds=0)
 
     def _create_client(self):
-        '''Actualy creates connection'''
+        """Actualy creates connection.
+        """
         database = self._open()
         self._create_broadcast(database)
         self._ensure_indexes(database)
@@ -408,7 +410,7 @@ class Channel(virtual.Channel):
         return self.get_now() + datetime.timedelta(milliseconds=value)
 
     def _update_queues_expire(self, queue):
-        """Updates expiration field on queues documents
+        """Updates expiration field on queues documents.
         """
         expire_at = self._get_expire(queue, 'x-expires')
 
@@ -421,6 +423,8 @@ class Channel(virtual.Channel):
                            multiple=True)
 
     def get_now(self):
+        """Return current time in UTC.
+        """
         return datetime.datetime.utcnow()
 
 
