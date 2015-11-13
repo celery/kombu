@@ -146,6 +146,7 @@ class Exchange(MaybeChannelBound):
     auto_delete = False
     passive = False
     delivery_mode = None
+    default_priority = None
 
     attrs = (
         ('name', None),
@@ -157,10 +158,12 @@ class Exchange(MaybeChannelBound):
         ('delivery_mode', lambda m: DELIVERY_MODES.get(m) or m),
     )
 
-    def __init__(self, name='', type='', channel=None, **kwargs):
+    def __init__(self, name='', type='', channel=None,
+                 default_priority=None, **kwargs):
         super(Exchange, self).__init__(**kwargs)
         self.name = name or self.name
         self.type = type or self.type
+        self.default_priority = default_priority or self.default_priority
         self.maybe_bind(channel)
 
     def __hash__(self):
@@ -244,7 +247,7 @@ class Exchange(MaybeChannelBound):
         properties['delivery_mode'] = maybe_delivery_mode(self.delivery_mode)
         return self.channel.prepare_message(body,
                                             properties=properties,
-                                            priority=priority,
+                                            priority=priority or self.default_priority,
                                             content_type=content_type,
                                             content_encoding=content_encoding,
                                             headers=headers)
