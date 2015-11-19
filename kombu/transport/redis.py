@@ -138,7 +138,7 @@ class QoS(virtual.QoS):
         delivery = message.delivery_info
         EX, RK = delivery['exchange'], delivery['routing_key']
         with self.pipe_or_acquire() as pipe:
-            pipe.zadd(self.unacked_index_key, delivery_tag, time()) \
+            pipe.zadd(self.unacked_index_key, time(), delivery_tag) \
                 .hset(self.unacked_key, delivery_tag,
                       dumps([message._raw, EX, RK])) \
                 .execute()
@@ -834,7 +834,7 @@ class Channel(virtual.Channel):
         # KombuRedis maintains a connection attribute on it's instance and
         # uses that when executing commands
         # This was added after redis-py was changed.
-        class KombuRedis(redis.Redis):  # pragma: no cover
+        class KombuRedis(redis.StrictRedis):  # pragma: no cover
 
             def __init__(self, *args, **kwargs):
                 super(KombuRedis, self).__init__(*args, **kwargs)

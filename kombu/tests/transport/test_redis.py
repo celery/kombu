@@ -75,7 +75,9 @@ class Client(object):
 
     def sadd(self, key, member, *args):
         self.sets[key].add(member)
-    zadd = sadd
+
+    def zadd(self, key, score1, member1, *args):
+        self.sets[key].add(member1)
 
     def smembers(self, key):
         return self.sets.get(key, set())
