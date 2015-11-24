@@ -662,10 +662,11 @@ class test_Channel(Case):
         )
 
     def test_rotate_cycle_ValueError(self):
-        cycle = self.channel._queue_cycle = ['kramer', 'jerry']
-        self.channel._rotate_cycle('kramer')
-        self.assertEqual(cycle, ['jerry', 'kramer'])
-        self.channel._rotate_cycle('elaine')
+        cycle = self.channel._queue_cycle
+        cycle.update(['kramer', 'jerry'])
+        cycle.rotate('kramer')
+        self.assertEqual(cycle.items, ['jerry', 'kramer'])
+        cycle.rotate('elaine')
 
     @skip_if_not_module('redis')
     def test_get_client(self):

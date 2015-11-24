@@ -24,6 +24,7 @@ from kombu.utils import cached_property, uuid
 from kombu.utils.eventio import poll, READ, ERR
 from kombu.utils.encoding import bytes_to_str
 from kombu.utils.json import loads, dumps
+from kombu.utils.scheduling import cycle_by_name
 from kombu.utils.url import _parse_url
 
 from . import virtual
@@ -404,6 +405,33 @@ class Channel(virtual.Channel):
     #: Enabled by default since Kombu 4.x.
     #: Disable for backwards compatibility with Kombu 3.x.
     fanout_patterns = True
+
+    #: Order in which we consume from queues.
+    #:
+    #: Can be either string alias, or a cycle strategy class
+    #:
+    #: - ``round_robin``
+    #:  :class:`~kombu.utils.scheduling.round_robin_cycle``
+    #:
+    #:  Make sure each queue has an equal opportunity to be consumed from.
+    #:
+    #: - ``sorted``
+    #:    :class:`~kombu.utils.scheduling.sorted_cycle`.
+    #:
+    #:    Consume from queues in alphabetical order.
+    #:    If the first queue in the sorted list always contains messages,
+    #:    then the rest of the queues will never be consumed from.
+    #:
+    #: - ``priority``
+    #:  :class:`~kombu.utils.scheduling.priority_cycle`.
+    #:
+    #:  Consume from queues in original order, so that if the first
+    #:  queue always contains messages, the rest of the queues
+    #:  in the list will never be consumed from.
+    #:
+    #: The default is to consume from queues in round robin.
+    queue_order_strategy = 'round_robin'
+
     _pool = None
 
     from_transport_options = (
@@ -418,6 +446,7 @@ class Channel(virtual.Channel):
          'fanout_prefix',
          'fanout_patterns',
          'socket_timeout',
+         'queue_order_strategy',
          'max_connections',
          'priority_steps')  # <-- do not add comma here!
     )
@@ -429,7 +458,7 @@ class Channel(virtual.Channel):
         if not self.ack_emulation:  # disable visibility timeout
             self.QoS = virtual.QoS
 
-        self._queue_cycle = []
+        self._queue_cycle = cycle_by_name(self.queue_order_strategy)()
         self.Client = self._get_client()
         self.ResponseError = self._get_response_error()
         self.active_fanout_queues = set()
@@ -505,7 +534,18 @@ class Channel(virtual.Channel):
             self.active_fanout_queues.add(queue)
             self._fanout_to_queue[exchange] = queue
         ret = super(Channel, self).basic_consume(queue, *args, **kwargs)
-        self._update_cycle()
+
+        # Update fair cycle between queues.
+        #
+        # We cycle between queues fairly to make sure that
+        # each queue is equally likely to be consumed from,
+        # so that a very busy queue will not block others.
+        #
+        # This works by using Redis's `BRPOP` command and
+        # by rotating the most recently used queue to the
+        # and of the list.  See Kombu github issue #166 for
+        # more discussion of this method.
+        self._update_queue_cycle()
         return ret
 
     def basic_cancel(self, consumer_tag):
@@ -538,7 +578,7 @@ class Channel(virtual.Channel):
         except KeyError:
             pass
         ret = super(Channel, self).basic_cancel(consumer_tag)
-        self._update_cycle()
+        self._update_queue_cycle()
         return ret
 
     def _get_publish_topic(self, exchange, routing_key):
@@ -610,7 +650,7 @@ class Channel(virtual.Channel):
         raise Empty()
 
     def _brpop_start(self, timeout=1):
-        queues = self._consume_cycle()
+        queues = self._queue_cycle.consume(len(self.active_queues))
         if not queues:
             return
         keys = [self._q_for_pri(queue, pri) for pri in self.priority_steps
@@ -632,7 +672,7 @@ class Channel(virtual.Channel):
             if dest__item:
                 dest, item = dest__item
                 dest = bytes_to_str(dest).rsplit(self.sep, 1)[0]
-                self._rotate_cycle(dest)
+                self._queue_cycle.rotate(dest)
                 return loads(bytes_to_str(item)), dest
             else:
                 raise Empty()
@@ -876,33 +916,8 @@ class Channel(virtual.Channel):
         pubsub.connection = pool.get_connection('pubsub', pubsub.shard_hint)
         return pubsub
 
-    def _update_cycle(self):
-        """Update fair cycle between queues.
-
-        We cycle between queues fairly to make sure that
-        each queue is equally likely to be consumed from,
-        so that a very busy queue will not block others.
-
-        This works by using Redis's `BRPOP` command and
-        by rotating the most recently used queue to the
-        and of the list.  See Kombu github issue #166 for
-        more discussion of this method.
-
-        """
-        self._queue_cycle = list(self.active_queues)
-
-    def _consume_cycle(self):
-        """Get a fresh list of queues from the queue cycle."""
-        active = len(self.active_queues)
-        return self._queue_cycle[0:active]
-
-    def _rotate_cycle(self, used):
-        """Move most recently used queue to end of list."""
-        cycle = self._queue_cycle
-        try:
-            cycle.append(cycle.pop(cycle.index(used)))
-        except ValueError:
-            pass
+    def _update_queue_cycle(self):
+        self._queue_cycle.update(self.active_queues)
 
     def _get_response_error(self):
         from redis import exceptions

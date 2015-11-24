@@ -56,7 +56,7 @@ from kombu.log import get_logger
 from kombu.utils import cached_property
 from kombu.utils.encoding import bytes_to_str, safe_str
 from kombu.utils.json import loads, dumps
-from kombu.transport.virtual import scheduling
+from kombu.utils import scheduling
 
 from . import virtual
 

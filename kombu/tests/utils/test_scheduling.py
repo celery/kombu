@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 
-from kombu.transport.virtual.scheduling import FairCycle
+from kombu.utils.scheduling import FairCycle
 
 from kombu.tests.case import Case
 

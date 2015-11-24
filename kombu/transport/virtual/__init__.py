@@ -26,10 +26,10 @@ from kombu.exceptions import ResourceError, ChannelError
 from kombu.five import Empty, items, monotonic
 from kombu.utils import emergency_dump_state, uuid
 from kombu.utils.encoding import str_to_bytes, bytes_to_str
+from kombu.utils.scheduling import FairCycle
 
 from kombu.transport import base
 
-from .scheduling import FairCycle
 from .exchange import STANDARD_EXCHANGE_TYPES
 
 ARRAY_TYPE_H = 'H' if sys.version_info[0] == 3 else b'H'
@@ -779,7 +779,7 @@ class Transport(base.Transport):
     #: bindings (set by constructor).
     state = BrokerState()
 
-    #: :class:`~kombu.transport.virtual.scheduling.FairCycle` instance
+    #: :class:`~kombu.utils.scheduling.FairCycle` instance
     #: used to fairly drain events from channels (set by constructor).
     cycle = None
 
