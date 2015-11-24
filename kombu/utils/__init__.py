@@ -16,20 +16,11 @@ from contextlib import contextmanager
 from itertools import count, repeat
 from functools import wraps
 from time import sleep
-from uuid import UUID, uuid4
-try:
-    from uuid import _uuid_generate_random
-except ImportError:
-    _uuid_generate_random = None
+from uuid import uuid4
 
 from kombu.five import items, reraise, string_t
 
 from .encoding import default_encode, safe_repr as _safe_repr
-
-try:
-    import ctypes
-except:
-    ctypes = None  # noqa
 
 try:
     from io import UnsupportedOperation
@@ -138,14 +129,6 @@ class EqualityDict(dict):
 
     def __delitem__(self, key):
         return dict.__delitem__(self, eqhash(key))
-
-
-if ctypes and _uuid_generate_random:  # pragma: no cover
-    def uuid4():
-        # Workaround for http://bugs.python.org/issue4607
-        buffer = ctypes.create_string_buffer(16)
-        _uuid_generate_random(buffer)
-        return UUID(bytes=buffer.raw)
 
 
 def uuid():
