@@ -138,7 +138,6 @@ def uuid():
     For now this is provided by :func:`uuid.uuid4`.
     """
     return str(uuid4())
-gen_unique_id = uuid
 
 
 def maybe_list(v):
