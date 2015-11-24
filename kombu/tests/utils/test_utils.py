@@ -2,7 +2,6 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import pickle
-import sys
 
 from functools import wraps
 from io import StringIO, BytesIO
@@ -10,11 +9,9 @@ from io import StringIO, BytesIO
 from kombu import version_info_t
 from kombu import utils
 from kombu.utils.text import version_string_as_tuple
-from kombu.five import string_t
 
 from kombu.tests.case import (
-    Case, Mock, patch,
-    redirect_stdouts, mask_modules, module_exists, skip_if_module,
+    Case, Mock, patch, redirect_stdouts, mask_modules, module_exists,
 )
 
 
@@ -78,24 +75,6 @@ class test_UUID(Case):
         i2 = utils.uuid()
         self.assertIsInstance(i1, str)
         self.assertNotEqual(i1, i2)
-
-    @skip_if_module('__pypy__')
-    def test_uuid_without_ctypes(self):
-        old_utils = sys.modules.pop('kombu.utils')
-
-        @mask_modules('ctypes')
-        def with_ctypes_masked():
-            from kombu.utils import ctypes, uuid
-
-            self.assertIsNone(ctypes)
-            tid = uuid()
-            self.assertTrue(tid)
-            self.assertIsInstance(tid, string_t)
-
-        try:
-            with_ctypes_masked()
-        finally:
-            sys.modules['celery.utils'] = old_utils
 
 
 class MyStringIO(StringIO):
