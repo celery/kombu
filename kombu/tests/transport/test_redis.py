@@ -11,7 +11,7 @@ from kombu.exceptions import InconsistencyError, VersionMismatch
 from kombu.five import Empty, Queue as _Queue
 from kombu.transport import virtual
 from kombu.utils import eventio  # patch poll
-from kombu.utils.json import dumps, loads
+from kombu.utils.json import dumps
 
 from kombu.tests.case import (
     Case, ContextMock, Mock, call, module_exists, skip_if_not_module, patch,
