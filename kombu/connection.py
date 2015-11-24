@@ -164,7 +164,11 @@ class Connection(object):
                 transport = transport or urlparse(hostname).scheme
                 if not get_transport_cls(transport).can_parse_url:
                     # we must parse the URL
-                    params.update(dictfilter(parse_url(hostname)))
+                    url_params = parse_url(hostname)
+                    params.update(
+                        dictfilter(url_params),
+                        hostname=url_params['hostname'],
+                    )
 
                 params['transport'] = transport
 
