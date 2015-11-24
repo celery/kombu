@@ -11,7 +11,7 @@ from __future__ import absolute_import
 import errno
 
 from contextlib import contextmanager
-from time import sleep
+from time import sleep, time
 from types import GeneratorType as generator
 
 from amqp.promise import Thenable, promise
@@ -21,6 +21,7 @@ from kombu.log import get_logger
 from kombu.utils import cached_property, fileno
 from kombu.utils.eventio import READ, WRITE, ERR, poll
 
+from .debug import repr_flag
 from .timer import Timer
 
 __all__ = ['Hub', 'get_event_loop', 'set_event_loop']
@@ -177,9 +178,14 @@ class Hub(object):
 
     def run_once(self):
         try:
-            next(self.loop)
+            return next(self.loop)
         except StopIteration:
             self._loop = None
+
+    def run_until_ready(self, p):
+        while not p.ready:
+            self.run_once()
+        return p
 
     def call_soon(self, callback, *args):
         if not isinstance(callback, Thenable):
@@ -335,7 +341,7 @@ class Hub(object):
             else:
                 # no sockets yet, startup is probably not done.
                 sleep(min(poll_timeout, 0.1))
-            yield
+            yield poll_timeout
 
     def repr_active(self):
         from .debug import repr_active

@@ -127,6 +127,7 @@ tests_require = reqs('test3.txt' if PY3 else 'test.txt')
 
 extras_require = extra['extras_require'] = {
     'msgpack': extras('msgpack.txt'),
+    'nsq': extras('nsq.txt'),
     'yaml': extras('yaml.txt'),
     'redis': extras('redis.txt'),
     'mongodb': extras('mongodb.txt'),

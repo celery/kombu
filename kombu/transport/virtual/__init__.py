@@ -547,6 +547,7 @@ class Channel(AbstractChannel, base.StdChannel):
         self._consumers.add(consumer_tag)
 
         self._reset_cycle()
+        return consumer_tag
 
     def basic_cancel(self, consumer_tag):
         """Cancel consumer by consumer tag."""

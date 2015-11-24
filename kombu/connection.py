@@ -823,6 +823,11 @@ class Connection(object):
     @property
     def is_evented(self):
         return self.transport.implements.async
+
+    @property
+    def requires_hub(self):
+        return self.transport.requires_hub
+
 BrokerConnection = Connection
 
 

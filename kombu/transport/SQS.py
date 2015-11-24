@@ -472,3 +472,6 @@ class Transport(virtual.Transport):
         async=True,
         exchange_type=frozenset(['direct']),
     )
+
+    def driver_version(self):
+        return gettatr(boto, '__version__', None)

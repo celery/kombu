@@ -112,6 +112,9 @@ class Transport(object):
 
     __reader = None
 
+    #: Override this if the transport requires a specific Hub type.
+    requires_hub = None
+
     implements = default_transport_capabilities.extend()
 
     def __init__(self, client, **kwargs):
