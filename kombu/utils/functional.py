@@ -7,10 +7,10 @@ from collections import Iterable, Mapping, OrderedDict
 from functools import wraps
 from itertools import islice
 
-from kombu.five import UserDict, string_t, keys
+from kombu.five import UserDict, items, keys, string_t
 
 __all__ = ['LRUCache', 'memoize', 'lazy', 'maybe_evaluate',
-           'is_list', 'maybe_list']
+           'is_list', 'maybe_list', 'dictfilter']
 KEYWORD_MARK = object()
 
 
@@ -208,6 +208,12 @@ def is_list(l, scalars=(Mapping, string_t), iters=(Iterable,)):
 def maybe_list(l, scalars=(Mapping, string_t)):
     """Return list of one element if ``l`` is a scalar."""
     return l if l is None or is_list(l, scalars) else [l]
+
+
+def dictfilter(d=None, **kw):
+    """Remove all keys from dict ``d`` whose value is :const:`None`"""
+    d = kw if d is None else (dict(d, **kw) if kw else d)
+    return {k: v for k, v in items(d) if v is not None}
 
 
 # Compat names (before kombu 3.0)

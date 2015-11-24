@@ -22,7 +22,7 @@ from .five import Empty, range, string_t, text_t, LifoQueue as _LifoQueue
 from .log import get_logger
 from .transport import get_transport_cls, supports_librabbitmq
 from .utils import cached_property, retry_over_time, shufflecycle, HashedSeq
-from .utils.functional import lazy
+from .utils.functional import dictfilter, lazy
 from .utils.url import as_url, parse_url, quote, urlparse
 
 __all__ = ['Connection', 'ConnectionPool', 'ChannelPool']
@@ -164,7 +164,7 @@ class Connection(object):
                 transport = transport or urlparse(hostname).scheme
                 if not get_transport_cls(transport).can_parse_url:
                     # we must parse the URL
-                    params.update(parse_url(hostname))
+                    params.update(dictfilter(parse_url(hostname)))
 
                 params['transport'] = transport
 
