@@ -93,5 +93,4 @@ CYCLE_ALIASES = {
 
 
 def cycle_by_name(name):
-    print('NAME: %r' % (name,))
     return symbol_by_name(name, CYCLE_ALIASES)
