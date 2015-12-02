@@ -43,4 +43,13 @@ def loads(s, _loads=json.loads, decode_bytes=IS_PY3):
         s = s.decode('utf-8')
     elif isinstance(s, buffer_t):
         s = text_t(s)  # ... awwwwwww :(
-    return _loads(s)
+
+    if json.__name__ == 'simplejson':
+        try:
+            return _loads(s)
+        # catch simplejson.decoder.JSONDecodeError: Unpaired high surrogate
+        except json.decoder.JSONDecodeError, e:
+            import json as fulljson
+            return fulljson.loads(s)
+    else:
+        return _loads(s)
