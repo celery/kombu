@@ -50,6 +50,8 @@ KQ_NOTE_REVOKE = getattr(__select__, 'KQ_NOTE_REVOKE', 64)
 POLLIN = getattr(__select__, 'POLLIN', 1)
 POLLOUT = getattr(__select__, 'POLLOUT', 4)
 POLLERR = getattr(__select__, 'POLLERR', 8)
+POLLHUP = getattr(__select__, 'POLLHUP', 16)
+POLLNVAL = getattr(__select__, 'POLLNVAL', 32)
 
 READ = POLL_READ = 0x001
 WRITE = POLL_WRITE = 0x004
@@ -231,8 +233,9 @@ class _poll(object):
                 events |= READ
             if event & POLLOUT:
                 events |= WRITE
-            if event & POLLERR:
+            if event & POLLERR or event & POLLNVAL or event & POLLHUP:
                 events |= ERR
+            assert events
             if not isinstance(fd, Integral):
                 fd = fd.fileno()
             ready.append((fd, events))
