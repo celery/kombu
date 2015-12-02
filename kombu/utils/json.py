@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, unicode_literals
 
+import json as stdjson
 import sys
 
 from kombu.five import buffer_t, text_t, bytes_t
@@ -48,8 +49,7 @@ def loads(s, _loads=json.loads, decode_bytes=IS_PY3):
         try:
             return _loads(s)
         # catch simplejson.decoder.JSONDecodeError: Unpaired high surrogate
-        except json.decoder.JSONDecodeError, e:
-            import json as fulljson
-            return fulljson.loads(s)
+        except json.decoder.JSONDecodeError:
+            return stdjson.loads(s)
     else:
         return _loads(s)
