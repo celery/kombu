@@ -1,16 +1,29 @@
 [run]
 branch = 1
 cover_pylib = 0
-omit = kombu.five,kombu.transport.mongodb,kombu.transport.filesystem,
-       kombu.utils.compat,kombu.utils.eventio,
-       kombu.transport.amqplib,kombu.transport.couchdb,
-       kombu.transport.beanstalk,kombu.transport.sqlalchemy*
-       kombu.transport.zookeeper,kombu.transport.zmq,
-       kombu.transport.django*,kombu.transport.pyro
+include=*kombu/*
+omit = kombu.tests.*
 
 [report]
+omit =
+    */python?.?/*
+    */site-packages/*
+    */pypy/*
+    *kombu/five.py
+    *kombu/transport/mongodb.py
+    *Kombu/transport/filesystem.py
+    *kombu/utils.compat.py
+    *kombu/utils/eventio.py
+    *kombu/transport/amqplib.py
+    *kombu/transport/couchdb.py
+    *kombu/transport/beanstalk.py
+    *kombu/transport/sqlalchemy.py
+    *kombu/transport/zookeeper.py
+    *kombu/transport/zmq.py
+    *kombu/transport/django.py
+    *kombu/transport/pyro.py
+    *kombu/transport/qpid*
 exclude_lines =
     pragma: no cover
 
     for infinity
-omit = */python?.?/*,*/site-packages/*,*/pypy/*
