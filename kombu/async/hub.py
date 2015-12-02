@@ -30,6 +30,14 @@ logger = get_logger(__name__)
 
 _current_loop = None
 
+W_UNKNOWN_EVENT = """\
+Received unknown event %r for fd %r, please contact support!\
+"""
+
+W_EVENT_UNREGISTERED = """\
+Deregistered fd %r from event loop without registered callbacks.\
+"""
+
 
 class Stop(BaseException):
     """Stops the event loop."""
@@ -283,6 +291,7 @@ class Hub(object):
                     raise StopIteration()
 
                 for fd, event in events or ():
+                    general_error = False
                     if fd in consolidate and \
                             writers.get(fd) is None:
                         to_consolidate.append(fd)
@@ -302,6 +311,12 @@ class Hub(object):
                             self.remove_writer(fd)
                             continue
                     elif event & ERR:
+                        general_error = True
+                    else:
+                        logger.info(W_UNKNOWN_EVENT, event, fd)
+                        general_error = True
+
+                    if general_error:
                         try:
                             cb, cbargs = (readers.get(fd) or
                                           writers.get(fd))
@@ -309,8 +324,10 @@ class Hub(object):
                             pass
 
                     if cb is None:
+                        logger.info(W_EVENT_UNREGISTERED, fd)
                         self.remove(fd)
                         continue
+
                     if isinstance(cb, generator):
                         try:
                             next(cb)
