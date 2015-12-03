@@ -30,7 +30,6 @@ command:
 """
 from __future__ import absolute_import
 
-import fcntl
 import os
 import select
 import socket
@@ -48,6 +47,11 @@ from kombu.five import Empty, items
 from kombu.log import get_logger
 from kombu.transport.virtual import Base64, Message
 from kombu.transport import base
+
+try:
+    import fcntl
+except ImportError:
+    fcntl = None
 
 try:
     import qpidtoollibs
@@ -1494,7 +1498,8 @@ class Transport(base.Transport):
         self.verify_runtime_environment()
         super(Transport, self).__init__(*args, **kwargs)
         self.r, self._w = os.pipe()
-        fcntl.fcntl(self.r, fcntl.F_SETFL, os.O_NONBLOCK)
+        if fcntl is not None:
+            fcntl.fcntl(self.r, fcntl.F_SETFL, os.O_NONBLOCK)
 
     def verify_runtime_environment(self):
         """Verify that the runtime environment is acceptable.
