@@ -98,6 +98,11 @@ def get_redis_error_classes():
     )
 
 
+def get_redis_ConnectionError():
+    from redis import exceptions
+    return exceptions.ConnectionError
+
+
 class MutexHeld(Exception):
     pass
 
@@ -373,6 +378,7 @@ class Channel(virtual.Channel):
 
     _client = None
     _subclient = None
+    _closing = False
     supports_fanout = True
     keyprefix_queue = '_kombu.binding.%s'
     keyprefix_fanout = '/{db}.'
@@ -494,8 +500,12 @@ class Channel(virtual.Channel):
             self._pool.disconnect()
 
     def _on_connection_disconnect(self, connection):
+        self._in_poll = False
+        self._in_listen = False
         if self.connection and self.connection.cycle:
             self.connection.cycle._on_connection_disconnect(connection)
+        if not self._closing:
+            raise get_redis_ConnectionError()
 
     def _do_restore_message(self, payload, exchange, routing_key,
                             client=None, leftmost=False):
@@ -778,6 +788,7 @@ class Channel(virtual.Channel):
                 return sum(sizes[::2])
 
     def close(self):
+        self._closing = True
         if self._pool:
             self._pool.disconnect()
         if not self.closed:
