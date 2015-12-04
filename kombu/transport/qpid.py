@@ -79,7 +79,6 @@ Celery with Kombu, this can be accomplished by setting the
 """
 from __future__ import absolute_import
 
-import fcntl
 import os
 import select
 import socket
@@ -92,6 +91,11 @@ from itertools import count
 from gettext import gettext as _
 
 import amqp.protocol
+
+try:
+    import fcntl
+except ImportError:
+    fcntl = None  # noqa
 
 try:
     import qpidtoollibs
@@ -1479,7 +1483,8 @@ class Transport(base.Transport):
         self.verify_runtime_environment()
         super(Transport, self).__init__(*args, **kwargs)
         self.r, self._w = os.pipe()
-        fcntl.fcntl(self.r, fcntl.F_SETFL, os.O_NONBLOCK)
+        if fcntl is not None:
+            fcntl.fcntl(self.r, fcntl.F_SETFL, os.O_NONBLOCK)
 
     def verify_runtime_environment(self):
         """Verify that the runtime environment is acceptable.
