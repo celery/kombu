@@ -52,7 +52,9 @@ class TestBeanstalk(Case):
 
             def _open(self):
                 return FakeBeanstalkConnection()
-        return _Channel()
+        channel = _Channel()
+        channel._tube_map = {}
+        return channel
 
     def test_valid_beanstalk_tube_name_in_get_many(self):
         self.channel = self.create_channel()
