@@ -274,6 +274,11 @@ class Channel(virtual.Channel):
         self._open()
         self._ensure_indexes()
 
+        # tailable cursors won't block if empty.
+        # ensure at least one row exists.
+        if self.get_broadcast().count() == 0:
+            self.get_broadcast().save({'pad':'pad'})
+
     @property
     def client(self):
         if self._client is None:
