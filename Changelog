@@ -4,6 +4,34 @@
  Change history
 ================
 
+.. _version-3.0.30:
+
+3.0.30
+======
+:release-date: 2015-12-07 12:28 A.M PDT
+:release-by: Ask Solem
+
+- Fixes compatiblity with uuid in Python 2.7.11 and 3.5.1.
+
+    Fix contributed by Kai Groner.
+
+- Redis transport: Attempt at fixing problem with hanging consumer
+  after disconnected from server.
+
+- Event loop:
+    Attempt at fixing issue with 100% CPU when using the Redis transport,
+
+- Database transport: Fixed oracle compatiblity.
+
+    An "ORA-00907: missing right parenthesis" error could manifest when using
+    an Oracle database with the database transport.
+
+    Fix contributed by Deepak N.
+
+- Documentation fixes
+
+    Contributed by Tommaso Barbugli.
+
 .. _version-3.0.29:
 
 3.0.29
