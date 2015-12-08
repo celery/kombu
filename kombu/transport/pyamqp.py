@@ -121,6 +121,7 @@ class Transport(base.Transport):
         }, **conninfo.transport_options or {})
         conn = self.Connection(**opts)
         conn.client = self.client
+        conn.connect()
         return conn
 
     def verify_connection(self, connection):
