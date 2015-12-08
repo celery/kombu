@@ -21,6 +21,9 @@ class MockConnection(dict):
     def __setattr__(self, key, value):
         self[key] = value
 
+    def connect(self):
+        pass
+
 
 class test_Channel(Case):
 
@@ -101,6 +104,9 @@ class test_Transport(Case):
 
             def __init__(self, **kwargs):
                 vars(self).update(kwargs)
+
+            def connect(self):
+                pass
 
         self.transport.Connection = Conn
         self.transport.client.hostname = 'localhost'
