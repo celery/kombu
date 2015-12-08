@@ -137,7 +137,17 @@ class Message(object):
 
     def decode(self):
         """Deserialize the message body, returning the original
-        python structure sent by the publisher."""
+        python structure sent by the publisher.
+
+        Note: The return value is memoized, use `_decode` to force
+        re-evaluation.
+
+        """
+        if not self._decoded_cache:
+            self._decoded_cache = self._decode()
+        return self._decoded_cache
+
+    def _decode(self):
         return loads(self.body, self.content_type,
                      self.content_encoding, accept=self.accept)
 
@@ -149,9 +159,7 @@ class Message(object):
     @property
     def payload(self):
         """The decoded message body."""
-        if not self._decoded_cache:
-            self._decoded_cache = self.decode()
-        return self._decoded_cache
+        return self._decoded_cache if self._decoded_cache else self.decode()
 
     def __repr__(self):
         details = {
