@@ -293,12 +293,7 @@ class Transport(virtual.Transport):
 
     def _handle_event(self, evt):
         item, channel = evt
-        message, queue = item
-        if not queue or queue not in self._callbacks:
-            raise KeyError(
-                'Message for queue {0!r} without consumers: {1}'.format(
-                    queue, message))
-        self._callbacks[queue](message)
+        self._deliver(*item)
 
     def establish_connection(self):
         self.context.closed

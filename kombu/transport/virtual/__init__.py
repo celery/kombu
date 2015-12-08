@@ -24,6 +24,7 @@ from amqp.protocol import queue_declare_ok_t
 
 from kombu.exceptions import ResourceError, ChannelError
 from kombu.five import Empty, items, monotonic
+from kombu.log import get_logger
 from kombu.utils import emergency_dump_state, uuid
 from kombu.utils.encoding import str_to_bytes, bytes_to_str
 from kombu.utils.scheduling import FairCycle
@@ -44,8 +45,14 @@ Cannot redeclare exchange {0!r} in vhost {1!r} with \
 different type, durable, autodelete or arguments value.\
 """
 
+W_NO_CONSUMERS = """\
+Requeuing undeliverable message for queue %r: No consumers.\
+"""
+
 RESTORING_FMT = 'Restoring {0!r} unacknowledged message(s)'
 RESTORE_PANIC_FMT = 'UNABLE TO RESTORE {0} MESSAGES: {1}'
+
+logger = get_logger(__name__)
 
 
 class Base64(object):
@@ -869,15 +876,28 @@ class Transport(base.Transport):
                     sleep(polling_interval)
             else:
                 break
+        self._deliver(*item)
 
-        message, queue = item
-
-        if not queue or queue not in self._callbacks:
+    def _deliver(self, message, queue):
+        if not queue:
             raise KeyError(
-                'Message for queue {0!r} without consumers: {1}'.format(
-                    queue, message))
+                'Received message without destination queue: {1}'.format(
+                    message))
+        try:
+            callback = self._callbacks[queue]
+        except KeyError:
+            logger.warn(W_NO_CONSUMERS, queue)
+            self._reject_inbound_message(message)
+        else:
+            callback(message)
 
-        self._callbacks[queue](message)
+    def _reject_inbound_message(self, raw_message):
+        for channel in self.channels:
+            if channel:
+                message = channel.Message(channel, raw_message)
+                channel.qos.append(message, message.delivery_tag)
+                channel.basic_reject(message.delivery_tag, requeue=True)
+                break
 
     def on_message_ready(self, channel, message, queue):
         if not queue or queue not in self._callbacks:

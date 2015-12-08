@@ -29,11 +29,6 @@ from kombu.utils.url import _parse_url
 
 from . import virtual
 
-NO_ROUTE_ERROR = """
-Cannot route message for exchange {0!r}: Table empty or key no longer exists.
-Probably the key ({1!r}) has been removed from the Redis database.
-"""
-
 try:
     from billiard.util import register_after_fork
 except ImportError:  # pragma: no cover
@@ -59,6 +54,11 @@ PRIORITY_STEPS = [0, 3, 6, 9]
 error_classes_t = namedtuple('error_classes_t', (
     'connection_errors', 'channel_errors',
 ))
+
+NO_ROUTE_ERROR = """
+Cannot route message for exchange {0!r}: Table empty or key no longer exists.
+Probably the key ({1!r}) has been removed from the Redis database.
+"""
 
 # This implementation may seem overly complex, but I assure you there is
 # a good reason for doing it this way.
@@ -989,12 +989,7 @@ class Transport(virtual.Transport):
         """Handle AIO event for one of our file descriptors."""
         item = self.cycle.on_readable(fileno)
         if item:
-            message, queue = item
-            if not queue or queue not in self._callbacks:
-                raise KeyError(
-                    'Message for queue {0!r} without consumers: {1}'.format(
-                        queue, message))
-            self._callbacks[queue](message)
+            self._deliver(*item)
 
     def _get_errors(self):
         """Utility to import redis-py's exceptions at runtime."""

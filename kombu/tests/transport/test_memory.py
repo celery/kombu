@@ -138,15 +138,24 @@ class test_MemoryTransport(Case):
 
     def test_drain_events_unregistered_queue(self):
         c1 = self.c.channel()
+        producer = self.c.Producer()
+        consumer = self.c.Consumer([self.q2])
+
+        producer.publish(
+            {'hello': 'world'},
+            declare=consumer.queues,
+            routing_key=self.q2.routing_key,
+            exchange=self.q2.exchange,
+        )
+        message = consumer.queues[0].get()._raw
 
         class Cycle(object):
 
             def get(self, timeout=None):
-                return ('foo', 'foo'), c1
+                return (message, 'foo'), c1
 
         self.c.transport.cycle = Cycle()
-        with self.assertRaises(KeyError):
-            self.c.drain_events()
+        self.c.drain_events()
 
     def test_queue_for(self):
         chan = self.c.channel()
