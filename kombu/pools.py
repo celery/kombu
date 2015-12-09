@@ -19,7 +19,7 @@ from .utils.functional import lazy
 
 __all__ = ['ProducerPool', 'PoolGroup', 'register_group',
            'connections', 'producers', 'get_limit', 'set_limit', 'reset']
-_limit = [200]
+_limit = [10]
 _groups = []
 use_global_limit = object()
 disable_limit_protection = os.environ.get('KOMBU_DISABLE_LIMIT_PROTECTION')
