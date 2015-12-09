@@ -18,8 +18,9 @@ from operator import itemgetter
 # jython breaks on relative import for .exceptions for some reason
 # (Issue #112)
 from kombu import exceptions
-from .five import Empty, range, string_t, text_t, LifoQueue as _LifoQueue
+from .five import range, string_t, text_t
 from .log import get_logger
+from .resource import Resource
 from .transport import get_transport_cls, supports_librabbitmq
 from .utils import cached_property, retry_over_time, shufflecycle, HashedSeq
 from .utils.functional import dictfilter, lazy
@@ -590,15 +591,13 @@ class Connection(object):
             sanitize=not include_password, mask=mask,
         )
 
-    def Pool(self, limit=None, preload=None):
+    def Pool(self, limit=None, **kwargs):
         """Pool of connections.
 
         See :class:`ConnectionPool`.
 
         :keyword limit: Maximum number of active connections.
           Default is no limit.
-        :keyword preload: Number of connections to preload
-          when the pool is created.  Default is 0.
 
         *Example usage*::
 
@@ -616,17 +615,15 @@ class Connection(object):
             >>> c3 = pool.acquire()
 
         """
-        return ConnectionPool(self, limit, preload)
+        return ConnectionPool(self, limit, **kwargs)
 
-    def ChannelPool(self, limit=None, preload=None):
+    def ChannelPool(self, limit=None, **kwargs):
         """Pool of channels.
 
         See :class:`ChannelPool`.
 
         :keyword limit: Maximum number of active channels.
           Default is no limit.
-        :keyword preload: Number of channels to preload
-          when the pool is created.  Default is 0.
 
         *Example usage*::
 
@@ -644,7 +641,7 @@ class Connection(object):
             >>> c3 = pool.acquire()
 
         """
-        return ChannelPool(self, limit, preload)
+        return ChannelPool(self, limit, **kwargs)
 
     def Producer(self, channel=None, *args, **kwargs):
         """Create new :class:`kombu.Producer` instance using this
@@ -830,193 +827,12 @@ class Connection(object):
 BrokerConnection = Connection
 
 
-class Resource(object):
-    LimitExceeded = exceptions.LimitExceeded
-
-    def __init__(self, limit=None, preload=None):
-        self._limit = limit
-        self.preload = preload or 0
-        self._closed = False
-
-        self._resource = _LifoQueue()
-        self._dirty = set()
-        self.setup()
-
-    def setup(self):
-        raise NotImplementedError('subclass responsibility')
-
-    def _add_when_empty(self):
-        if self.limit and len(self._dirty) >= self.limit:
-            raise self.LimitExceeded(self.limit)
-        # All taken, put new on the queue and
-        # try get again, this way the first in line
-        # will get the resource.
-        self._resource.put_nowait(self.new())
-
-    def acquire(self, block=False, timeout=None):
-        """Acquire resource.
-
-        :keyword block: If the limit is exceeded,
-          block until there is an available item.
-        :keyword timeout: Timeout to wait
-          if ``block`` is true. Default is :const:`None` (forever).
-
-        :raises LimitExceeded: if block is false
-          and the limit has been exceeded.
-
-        """
-        if self._closed:
-            raise RuntimeError('Acquire on closed pool')
-        if self.limit:
-            while 1:
-                try:
-                    R = self._resource.get(block=block, timeout=timeout)
-                except Empty:
-                    self._add_when_empty()
-                else:
-                    try:
-                        R = self.prepare(R)
-                    except BaseException:
-                        if isinstance(R, lazy):
-                            # not evaluated yet, just put it back
-                            self._resource.put_nowait(R)
-                        else:
-                            # evaluted so must try to release/close first.
-                            self.release(R)
-                        raise
-                    self._dirty.add(R)
-                    break
-        else:
-            R = self.prepare(self.new())
-
-        def release():
-            """Release resource so it can be used by another thread.
-
-            The caller is responsible for discarding the object,
-            and to never use the resource again.  A new resource must
-            be acquired if so needed.
-
-            """
-            self.release(R)
-        R.release = release
-
-        return R
-
-    def prepare(self, resource):
-        return resource
-
-    def close_resource(self, resource):
-        resource.close()
-
-    def release_resource(self, resource):
-        pass
-
-    def replace(self, resource):
-        """Replace resource with a new instance.  This can be used in case
-        of defective resources."""
-        if self.limit:
-            self._dirty.discard(resource)
-        self.close_resource(resource)
-
-    def release(self, resource):
-        if self.limit:
-            self._dirty.discard(resource)
-            self._resource.put_nowait(resource)
-            self.release_resource(resource)
-        else:
-            self.close_resource(resource)
-
-    def collect_resource(self, resource):
-        pass
-
-    def force_close_all(self):
-        """Close and remove all resources in the pool (also those in use).
-
-        Can be used to close resources from parent processes
-        after fork (e.g. sockets/connections).
-
-        """
-        self._closed = True
-        dirty = self._dirty
-        resource = self._resource
-        while 1:  # - acquired
-            try:
-                dres = dirty.pop()
-            except KeyError:
-                break
-            try:
-                self.collect_resource(dres)
-            except AttributeError:  # Issue #78
-                pass
-        while 1:  # - available
-            # deque supports '.clear', but lists do not, so for that
-            # reason we use pop here, so that the underlying object can
-            # be any object supporting '.pop' and '.append'.
-            try:
-                res = resource.queue.pop()
-            except IndexError:
-                break
-            try:
-                self.collect_resource(res)
-            except AttributeError:
-                pass  # Issue #78
-
-    def resize(self, limit, force=False, ignore_errors=False, reset=False):
-        if (self._dirty and limit < self._limit) and not ignore_errors:
-            if not force:
-                raise RuntimeError(
-                    "Can't shrink pool when in use: was={0} now={1}".format(
-                        limit, self._limit))
-            reset = True
-        self._limit = limit
-        if reset:
-            try:
-                self.force_close_all()
-            except Exception:
-                pass
-
-    @property
-    def limit(self):
-        return self._limit
-
-    @limit.setter
-    def limit(self, limit):
-        self.resize(limit)
-
-    if os.environ.get('KOMBU_DEBUG_POOL'):  # pragma: no cover
-        _orig_acquire = acquire
-        _orig_release = release
-
-        _next_resource_id = 0
-
-        def acquire(self, *args, **kwargs):  # noqa
-            import traceback
-            id = self._next_resource_id = self._next_resource_id + 1
-            print('+{0} ACQUIRE {1}'.format(id, self.__class__.__name__))
-            r = self._orig_acquire(*args, **kwargs)
-            r._resource_id = id
-            print('-{0} ACQUIRE {1}'.format(id, self.__class__.__name__))
-            if not hasattr(r, 'acquired_by'):
-                r.acquired_by = []
-            r.acquired_by.append(traceback.format_stack())
-            return r
-
-        def release(self, resource):  # noqa
-            id = resource._resource_id
-            print('+{0} RELEASE {1}'.format(id, self.__class__.__name__))
-            r = self._orig_release(resource)
-            print('-{0} RELEASE {1}'.format(id, self.__class__.__name__))
-            self._next_resource_id -= 1
-            return r
-
-
 class ConnectionPool(Resource):
     LimitExceeded = exceptions.ConnectionLimitExceeded
 
-    def __init__(self, connection, limit=None, preload=None):
+    def __init__(self, connection, limit=None, **kwargs):
         self.connection = connection
-        super(ConnectionPool, self).__init__(limit=limit,
-                                             preload=preload)
+        super(ConnectionPool, self).__init__(limit=limit)
 
     def new(self):
         return self.connection.clone()
@@ -1031,7 +847,8 @@ class ConnectionPool(Resource):
         resource._close()
 
     def collect_resource(self, resource, socket_timeout=0.1):
-        return resource.collect(socket_timeout)
+        if not isinstance(resource, lazy):
+            return resource.collect(socket_timeout)
 
     @contextmanager
     def acquire_channel(self, block=False):
@@ -1040,13 +857,10 @@ class ConnectionPool(Resource):
 
     def setup(self):
         if self.limit:
-            for i in range(self.limit):
-                if i < self.preload:
-                    conn = self.new()
-                    conn.connect()
-                else:
-                    conn = lazy(self.new)
-                self._resource.put_nowait(conn)
+            assert not self._dirty
+            q = self._resource.queue
+            while len(q) < self.limit:
+                self._resource.put_nowait(lazy(self.new))
 
     def prepare(self, resource):
         if callable(resource):
@@ -1058,10 +872,9 @@ class ConnectionPool(Resource):
 class ChannelPool(Resource):
     LimitExceeded = exceptions.ChannelLimitExceeded
 
-    def __init__(self, connection, limit=None, preload=None):
+    def __init__(self, connection, limit=None, **kwargs):
         self.connection = connection
-        super(ChannelPool, self).__init__(limit=limit,
-                                          preload=preload)
+        super(ChannelPool, self).__init__(limit=limit)
 
     def new(self):
         return lazy(self.connection.channel)
@@ -1069,9 +882,10 @@ class ChannelPool(Resource):
     def setup(self):
         channel = self.new()
         if self.limit:
-            for i in range(self.limit):
-                self._resource.put_nowait(
-                    i < self.preload and channel() or lazy(channel))
+            assert not self._dirty
+            q = self._resource.queue
+            while len(q) < self.limit:
+                self._resource.put_nowait(lazy(channel))
 
     def prepare(self, channel):
         if callable(channel):
