@@ -17,6 +17,7 @@ from pymongo import errors
 from pymongo import MongoClient, uri_parser
 from pymongo.cursor import CursorType
 
+from kombu.exceptions import VersionMismatch
 from kombu.five import Empty
 from kombu.syn import _detect_environment
 from kombu.utils.encoding import bytes_to_str
@@ -25,10 +26,17 @@ from kombu.utils import cached_property
 
 from . import virtual
 
+E_SERVER_VERSION = """\
+Kombu requires MongoDB version 1.3+ (server is {0})\
+"""
+
+E_NO_TTL_INDEXES = """\
+Kombu requires MongoDB version 2.2+ (server is {0}) for TTL indexes support\
+"""
+
 
 class BroadcastCursor(object):
-    """Cursor for broadcast queues.
-    """
+    """Cursor for broadcast queues."""
 
     def __init__(self, cursor):
         self._cursor = cursor
@@ -81,10 +89,10 @@ class Channel(virtual.Channel):
     _fanout_queues = {}
 
     # Options
-    connect_timeout = None
     ssl = False
-    capped_queue_size = 100000
     ttl = False
+    connect_timeout = None
+    capped_queue_size = 100000
     calc_queue_size = True
 
     default_hostname = '127.0.0.1'
@@ -96,14 +104,13 @@ class Channel(virtual.Channel):
     broadcast_collection = 'messages.broadcast'
     queues_collection = 'messages.queues'
 
-    from_transport_options = (
-        virtual.Channel.from_transport_options
-        + ('connect_timeout', 'ssl', 'ttl', 'capped_queue_size',
-           'default_hostname', 'default_port', 'default_database',
-           'messages_collection', 'routing_collection',
-           'broadcast_collection', 'queues_collection',
-           'calc_queue_size'))
-
+    from_transport_options = (virtual.Channel.from_transport_options + (
+        'connect_timeout', 'ssl', 'ttl', 'capped_queue_size',
+        'default_hostname', 'default_port', 'default_database',
+        'messages_collection', 'routing_collection',
+        'broadcast_collection', 'queues_collection',
+        'calc_queue_size',
+    ))
 
     def __init__(self, *vargs, **kwargs):
         super(Channel, self).__init__(*vargs, **kwargs)
@@ -117,11 +124,12 @@ class Channel(virtual.Channel):
 
     def _new_queue(self, queue, **kwargs):
         if self.ttl:
-            self.queues.update({'_id': queue},
-                               {'_id': queue,
-                                'options': kwargs,
-                                'expire_at': self._get_expire(kwargs, 'x-expires')},
-                                upsert=True)
+            self.queues.update(
+                {'_id': queue},
+                {'_id': queue,
+                 'options': kwargs,
+                 'expire_at': self._get_expire(kwargs, 'x-expires')},
+                upsert=True)
 
     def _get(self, queue):
         if queue in self._fanout_queues:
@@ -188,19 +196,23 @@ class Channel(virtual.Channel):
             {'exchange': exchange}
         )
 
-        return localRoutes | frozenset((r['routing_key'],
-                                        r['pattern'],
-                                        r['queue']) for r in brokerRoutes)
+        return localRoutes | frozenset(
+            (r['routing_key'], r['pattern'], r['queue'])
+            for r in brokerRoutes
+        )
 
     def _queue_bind(self, exchange, routing_key, pattern, queue):
         if self.typeof(exchange).type == 'fanout':
-            self._create_broadcast_cursor(exchange, routing_key, pattern, queue)
+            self._create_broadcast_cursor(
+                exchange, routing_key, pattern, queue)
             self._fanout_queues[queue] = exchange
 
-        lookup = {'exchange': exchange,
-                  'queue': queue,
-                  'routing_key': routing_key,
-                  'pattern': pattern}
+        lookup = {
+            'exchange': exchange,
+            'queue': queue,
+            'routing_key': routing_key,
+            'pattern': pattern,
+        }
 
         data = lookup.copy()
 
@@ -295,17 +307,14 @@ class Channel(virtual.Channel):
         version = tuple(map(int, version_str.split('.')))
 
         if version < (1, 3):
-            raise NotImplementedError('Kombu requires MongoDB version 1.3+'
-                                      '(server is {0})'.format(version_str))
+            raise VersionMismatch(E_SERVER_VERSION.format(version_str))
         elif self.ttl and version < (2, 2):
-            raise NotImplementedError('Kombu requires MongoDB version 2.2+'
-                                      '(server is {0}) for TTL indexes support'.format(version_str))
+            raise VersionMismatch(E_NO_TTL_INDEXES.format(version_str))
 
         return database
 
     def _create_broadcast(self, database):
-        """Create capped collection for broadcast messages.
-        """
+        """Create capped collection for broadcast messages."""
         if self.broadcast_collection in database.collection_names():
             return
 
@@ -330,11 +339,11 @@ class Channel(virtual.Channel):
             messages.ensure_index([('expire_at', 1)], expireAfterSeconds=0)
             routing.ensure_index([('expire_at', 1)], expireAfterSeconds=0)
 
-            database[self.queues_collection].ensure_index([('expire_at', 1)], expireAfterSeconds=0)
+            database[self.queues_collection].ensure_index(
+                [('expire_at', 1)], expireAfterSeconds=0)
 
     def _create_client(self):
-        """Actualy creates connection.
-        """
+        """Actualy creates connection."""
         database = self._open()
         self._create_broadcast(database)
         self._ensure_indexes(database)
@@ -374,15 +383,17 @@ class Channel(virtual.Channel):
 
     def _create_broadcast_cursor(self, exchange, routing_key, pattern, queue):
         if pymongo.version_tuple >= (3, ):
-            query = dict(filter={'queue': exchange},
-                         sort=[('$natural', pymongo.ASCENDING)],
-                         cursor_type=CursorType.TAILABLE
-                         )
+            query = dict(
+                filter={'queue': exchange},
+                sort=[('$natural', pymongo.ASCENDING)],
+                cursor_type=CursorType.TAILABLE
+            )
         else:
-            query = dict(query={'queue': exchange},
-                         sort=[('$natural', pymongo.ASCENDING)],
-                         tailable=True
-                         )
+            query = dict(
+                query={'queue': exchange},
+                sort=[('$natural', pymongo.ASCENDING)],
+                tailable=True
+            )
 
         cursor = self.broadcast.find(**query)
         ret = self._broadcast_cursors[queue] = BroadcastCursor(cursor)
@@ -390,8 +401,7 @@ class Channel(virtual.Channel):
 
     def _get_expire(self, queue, argument):
         """Gets expiration header named `argument` of queue definition.
-        `queue` must be either queue name or options itself.
-        """
+        `queue` must be either queue name or options itself."""
         if isinstance(queue, basestring):
             doc = self.queues.find_one({'_id': queue})
 
@@ -410,21 +420,21 @@ class Channel(virtual.Channel):
         return self.get_now() + datetime.timedelta(milliseconds=value)
 
     def _update_queues_expire(self, queue):
-        """Updates expiration field on queues documents.
-        """
+        """Updates expiration field on queues documents."""
         expire_at = self._get_expire(queue, 'x-expires')
 
         if not expire_at:
             return
 
-        self.routing.update({'queue': queue}, {'$set': {'expire_at': expire_at}},
-                            multiple=True)
-        self.queues.update({'_id': queue}, {'$set': {'expire_at': expire_at}},
-                           multiple=True)
+        self.routing.update(
+            {'queue': queue}, {'$set': {'expire_at': expire_at}},
+            multiple=True)
+        self.queues.update(
+            {'_id': queue}, {'$set': {'expire_at': expire_at}},
+            multiple=True)
 
     def get_now(self):
-        """Return current time in UTC.
-        """
+        """Return current time in UTC."""
         return datetime.datetime.utcnow()
 
 
