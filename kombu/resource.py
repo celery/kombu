@@ -10,7 +10,6 @@ from __future__ import absolute_import, unicode_literals
 import os
 
 from collections import deque
-from itertools import count
 
 from . import exceptions
 from .five import Empty, LifoQueue as _LifoQueue
