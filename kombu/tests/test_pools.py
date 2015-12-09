@@ -128,14 +128,11 @@ class test_PoolGroup(Case):
             g.create(Mock(), 10)
 
     def test_getitem_using_global_limit(self):
-        pools._used[0] = False
         g = self.MyGroup(limit=pools.use_global_limit)
         res = g['foo']
         self.assertTupleEqual(res, ('foo', pools.get_limit()))
-        self.assertTrue(pools._used[0])
 
     def test_getitem_using_custom_limit(self):
-        pools._used[0] = True
         g = self.MyGroup(limit=102456)
         res = g['foo']
         self.assertTupleEqual(res, ('foo', 102456))
@@ -196,14 +193,16 @@ class test_PoolGroup(Case):
         limit = pools.get_limit()
         self.assertEqual(limit, 34576)
 
-        pools.connections[Connection('memory://')]
-        pools.set_limit(limit + 1)
-        self.assertEqual(pools.get_limit(), limit + 1)
-        limit = pools.get_limit()
-        with self.assertRaises(RuntimeError):
-            pools.set_limit(limit - 1)
-        pools.set_limit(limit - 1, force=True)
-        self.assertEqual(pools.get_limit(), limit - 1)
+        conn = Connection('memory://')
+        pool = pools.connections[conn]
+        with pool.acquire():
+            pools.set_limit(limit + 1)
+            self.assertEqual(pools.get_limit(), limit + 1)
+            limit = pools.get_limit()
+            with self.assertRaises(RuntimeError):
+                pools.set_limit(limit - 1)
+            pools.set_limit(limit - 1, force=True)
+            self.assertEqual(pools.get_limit(), limit - 1)
 
         pools.set_limit(pools.get_limit())
 

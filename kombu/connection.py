@@ -834,7 +834,7 @@ class Resource(object):
     LimitExceeded = exceptions.LimitExceeded
 
     def __init__(self, limit=None, preload=None):
-        self.limit = limit
+        self._limit = limit
         self.preload = preload or 0
         self._closed = False
 
@@ -960,6 +960,28 @@ class Resource(object):
                 self.collect_resource(res)
             except AttributeError:
                 pass  # Issue #78
+
+    def resize(self, limit, force=False, ignore_errors=False, reset=False):
+        if (self._dirty and limit < self._limit) and not ignore_errors:
+            if not force:
+                raise RuntimeError(
+                    "Can't shrink pool when in use: was={0} now={1}".format(
+                        limit, self._limit))
+            reset = True
+        self._limit = limit
+        if reset:
+            try:
+                self.force_close_all()
+            except Exception:
+                pass
+
+    @property
+    def limit(self):
+        return self._limit
+
+    @limit.setter
+    def limit(self, limit):
+        self.resize(limit)
 
     if os.environ.get('KOMBU_DEBUG_POOL'):  # pragma: no cover
         _orig_acquire = acquire

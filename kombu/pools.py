@@ -20,7 +20,6 @@ from .utils.functional import lazy
 __all__ = ['ProducerPool', 'PoolGroup', 'register_group',
            'connections', 'producers', 'get_limit', 'set_limit', 'reset']
 _limit = [200]
-_used = [False]
 _groups = []
 use_global_limit = object()
 disable_limit_protection = os.environ.get('KOMBU_DISABLE_LIMIT_PROTECTION')
@@ -87,8 +86,6 @@ class PoolGroup(EqualityDict):
         limit = self.limit
         if limit is use_global_limit:
             limit = get_limit()
-        if not _used[0]:
-            _used[0] = True
         k = self[resource] = self.create(resource, limit)
         return k
 
@@ -120,19 +117,13 @@ def get_limit():
     return _limit[0]
 
 
-def set_limit(limit, force=False, reset_after=False):
+def set_limit(limit, force=False, reset_after=False, ignore_errors=False):
     limit = limit or 0
     glimit = _limit[0] or 0
-    if limit < glimit:
-        if not disable_limit_protection and (_used[0] and not force):
-            raise RuntimeError("Can't lower limit after pool in use.")
-        reset_after = True
     if limit != glimit:
         _limit[0] = limit
         for pool in _all_pools():
-            pool.limit = limit
-        if reset_after:
-            reset()
+            pool.resize(limit)
     return limit
 
 
@@ -144,7 +135,6 @@ def reset(*args, **kwargs):
             pass
     for group in _groups:
         group.clear()
-    _used[0] = False
 
 try:
     from multiprocessing.util import register_after_fork
