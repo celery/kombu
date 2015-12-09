@@ -13,7 +13,15 @@ from collections import deque
 
 from . import exceptions
 from .five import Empty, LifoQueue as _LifoQueue
+from .utils import register_after_fork
 from .utils.functional import lazy
+
+
+def _after_fork_cleanup_resource(resource):
+    try:
+        resource.force_close_all()
+    except Exception:
+        pass
 
 
 class LifoQueue(_LifoQueue):
@@ -25,13 +33,21 @@ class LifoQueue(_LifoQueue):
 class Resource(object):
     LimitExceeded = exceptions.LimitExceeded
 
-    def __init__(self, limit=None, preload=None):
+    close_after_fork = False
+
+    def __init__(self, limit=None, preload=None, close_after_fork=None):
         self._limit = limit
         self.preload = preload or 0
         self._closed = False
+        self.close_after_fork = (
+            close_after_fork
+            if close_after_fork is not None else self.close_after_fork
+        )
 
         self._resource = LifoQueue()
         self._dirty = set()
+        if self.close_after_fork and register_after_fork is not None:
+            register_after_fork(self, _after_fork_cleanup_resource)
         self.setup()
 
     def setup(self):
@@ -128,6 +144,8 @@ class Resource(object):
         after fork (e.g. sockets/connections).
 
         """
+        if self._closed:
+            return
         self._closed = True
         dirty = self._dirty
         resource = self._resource

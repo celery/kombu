@@ -829,6 +829,7 @@ BrokerConnection = Connection
 
 class ConnectionPool(Resource):
     LimitExceeded = exceptions.ConnectionLimitExceeded
+    close_after_fork = True
 
     def __init__(self, connection, limit=None, **kwargs):
         self.connection = connection

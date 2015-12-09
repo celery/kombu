@@ -29,10 +29,18 @@ except ImportError:  # pragma: no cover
     # Py2
     FILENO_ERRORS = (AttributeError, ValueError)  # noqa
 
+try:
+    from billiard.util import register_after_fork
+except ImportError:  # pragma: no cover
+    try:
+        from multiprocessing.util import register_after_fork  # noqa
+    except ImportError:
+        register_after_fork = None  # noqa
+
 
 __all__ = ['EqualityDict', 'uuid', 'maybe_list',
            'fxrange', 'fxrangemax', 'retry_over_time',
-           'emergency_dump_state', 'cached_property',
+           'emergency_dump_state', 'cached_property', 'register_after_fork',
            'reprkwargs', 'reprcall', 'nested', 'fileno', 'maybe_fileno']
 
 

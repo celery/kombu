@@ -20,7 +20,7 @@ from amqp import promise
 from kombu.exceptions import InconsistencyError, VersionMismatch
 from kombu.five import Empty, values, string_t
 from kombu.log import get_logger
-from kombu.utils import cached_property, uuid
+from kombu.utils import cached_property, register_after_fork, uuid
 from kombu.utils.eventio import poll, READ, ERR
 from kombu.utils.encoding import bytes_to_str
 from kombu.utils.json import loads, dumps
@@ -28,15 +28,6 @@ from kombu.utils.scheduling import cycle_by_name
 from kombu.utils.url import _parse_url
 
 from . import virtual
-
-try:
-    from billiard.util import register_after_fork
-except ImportError:  # pragma: no cover
-    try:
-        from multiprocessing.util import register_after_fork  # noqa
-    except ImportError:
-        def register_after_fork(*args, **kwargs):  # noqa
-            pass
 
 try:
     import redis
@@ -131,6 +122,10 @@ def Mutex(client, name, expire):
                     pipe.unwatch()
             except redis.WatchError:
                 pass
+
+
+def _after_fork_cleanup_channel(channel):
+    channel._after_fork()
 
 
 class QoS(virtual.QoS):
@@ -493,7 +488,8 @@ class Channel(virtual.Channel):
         # are still waiting for data.
         self.connection_errors = self.connection.connection_errors
 
-        register_after_fork(self, self._after_fork)
+        if register_after_fork is not None:
+            register_after_fork(self, _after_fork_cleanup_channel)
 
     def _after_fork(self):
         if self._pool is not None:

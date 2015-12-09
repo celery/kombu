@@ -14,7 +14,7 @@ from itertools import chain
 from .connection import Resource
 from .five import range, values
 from .messaging import Producer
-from .utils import EqualityDict
+from .utils import EqualityDict, register_after_fork
 from .utils.functional import lazy
 
 __all__ = ['ProducerPool', 'PoolGroup', 'register_group',
@@ -25,8 +25,13 @@ use_global_limit = object()
 disable_limit_protection = os.environ.get('KOMBU_DISABLE_LIMIT_PROTECTION')
 
 
+def _after_fork_cleanup_group(group):
+    group.clear()
+
+
 class ProducerPool(Resource):
     Producer = Producer
+    close_after_fork = True
 
     def __init__(self, connections, *args, **kwargs):
         self.connections = connections
@@ -76,8 +81,11 @@ class ProducerPool(Resource):
 
 class PoolGroup(EqualityDict):
 
-    def __init__(self, limit=None):
+    def __init__(self, limit=None, close_after_fork=True):
         self.limit = limit
+        self.close_after_fork = close_after_fork
+        if self.close_after_fork and register_after_fork is not None:
+            register_after_fork(self, _after_fork_cleanup_group)
 
     def create(self, resource, limit):
         raise NotImplementedError('PoolGroups must define ``create``')
@@ -135,9 +143,3 @@ def reset(*args, **kwargs):
             pass
     for group in _groups:
         group.clear()
-
-try:
-    from multiprocessing.util import register_after_fork
-    register_after_fork(connections, reset)
-except ImportError:  # pragma: no cover
-    pass
