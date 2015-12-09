@@ -506,7 +506,7 @@ class xResource(Resource):
 class ResourceCase(Case):
     abstract = True
 
-    def create_resource(self, limit, preload):
+    def create_resource(self, limit):
         raise NotImplementedError('subclass responsibility')
 
     def assertState(self, P, avail, dirty):
@@ -521,7 +521,7 @@ class ResourceCase(Case):
     def test_acquire__release(self):
         if self.abstract:
             return
-        P = self.create_resource(10, 0)
+        P = self.create_resource(10)
         self.assertState(P, 10, 0)
         chans = [P.acquire() for _ in range(10)]
         self.assertState(P, 0, 10)
@@ -535,7 +535,7 @@ class ResourceCase(Case):
     def test_acquire_prepare_raises(self):
         if self.abstract:
             return
-        P = self.create_resource(10, 0)
+        P = self.create_resource(10)
 
         self.assertEqual(len(P._resource.queue), 10)
         P.prepare = Mock()
@@ -547,13 +547,13 @@ class ResourceCase(Case):
     def test_acquire_no_limit(self):
         if self.abstract:
             return
-        P = self.create_resource(None, 0)
+        P = self.create_resource(None)
         P.acquire().release()
 
     def test_replace_when_limit(self):
         if self.abstract:
             return
-        P = self.create_resource(10, 0)
+        P = self.create_resource(10)
         r = P.acquire()
         P._dirty = Mock()
         P.close_resource = Mock()
@@ -565,7 +565,7 @@ class ResourceCase(Case):
     def test_replace_no_limit(self):
         if self.abstract:
             return
-        P = self.create_resource(None, 0)
+        P = self.create_resource(None)
         r = P.acquire()
         P._dirty = Mock()
         P.close_resource = Mock()
@@ -583,7 +583,7 @@ class ResourceCase(Case):
     def test_force_close_all_handles_AttributeError(self):
         if self.abstract:
             return
-        P = self.create_resource(10, 10)
+        P = self.create_resource(10)
         cr = P.collect_resource = Mock()
         cr.side_effect = AttributeError('x')
 
@@ -595,7 +595,7 @@ class ResourceCase(Case):
     def test_force_close_all_no_mutex(self):
         if self.abstract:
             return
-        P = self.create_resource(10, 10)
+        P = self.create_resource(10)
         P.close_resource = Mock()
 
         m = P._resource = Mock()
@@ -607,8 +607,8 @@ class ResourceCase(Case):
     def test_add_when_empty(self):
         if self.abstract:
             return
-        P = self.create_resource(None, None)
-        P._resource.queue[:] = []
+        P = self.create_resource(None)
+        P._resource.queue.clear()
         self.assertFalse(P._resource.queue)
         P._add_when_empty()
         self.assertTrue(P._resource.queue)
@@ -617,18 +617,18 @@ class ResourceCase(Case):
 class test_ConnectionPool(ResourceCase):
     abstract = False
 
-    def create_resource(self, limit, preload):
-        return Connection(port=5672, transport=Transport).Pool(limit, preload)
+    def create_resource(self, limit):
+        return Connection(port=5672, transport=Transport).Pool(limit)
 
     def test_setup(self):
-        P = self.create_resource(10, 2)
+        P = self.create_resource(10)
         q = P._resource.queue
-        self.assertIsNotNone(q[0]._connection)
-        self.assertIsNotNone(q[1]._connection)
+        self.assertIsNone(q[0]()._connection)
+        self.assertIsNone(q[1]()._connection)
         self.assertIsNone(q[2]()._connection)
 
     def test_acquire_raises_evaluated(self):
-        P = self.create_resource(1, 0)
+        P = self.create_resource(1)
         # evaluate the connection first
         r = P.acquire()
         r.release()
@@ -641,23 +641,23 @@ class test_ConnectionPool(ResourceCase):
         P.release.assert_called_with(r)
 
     def test_release_no__debug(self):
-        P = self.create_resource(10, 2)
+        P = self.create_resource(10)
         R = Mock()
         R._debug.side_effect = AttributeError()
         P.release_resource(R)
 
     def test_setup_no_limit(self):
-        P = self.create_resource(None, None)
+        P = self.create_resource(None)
         self.assertFalse(P._resource.queue)
         self.assertIsNone(P.limit)
 
     def test_prepare_not_callable(self):
-        P = self.create_resource(None, None)
+        P = self.create_resource(None)
         conn = Connection('memory://')
         self.assertIs(P.prepare(conn), conn)
 
     def test_acquire_channel(self):
-        P = self.create_resource(10, 0)
+        P = self.create_resource(10)
         with P.acquire_channel() as (conn, channel):
             self.assertIs(channel, conn.default_channel)
 
@@ -665,25 +665,22 @@ class test_ConnectionPool(ResourceCase):
 class test_ChannelPool(ResourceCase):
     abstract = False
 
-    def create_resource(self, limit, preload):
-        return Connection(port=5672, transport=Transport) \
-            .ChannelPool(limit, preload)
+    def create_resource(self, limit):
+        return Connection(port=5672, transport=Transport).ChannelPool(limit)
 
     def test_setup(self):
-        P = self.create_resource(10, 2)
+        P = self.create_resource(10)
         q = P._resource.queue
-        self.assertTrue(q[0].basic_consume)
-        self.assertTrue(q[1].basic_consume)
         with self.assertRaises(AttributeError):
-            getattr(q[2], 'basic_consume')
+            q[0].basic_consume
 
     def test_setup_no_limit(self):
-        P = self.create_resource(None, None)
+        P = self.create_resource(None)
         self.assertFalse(P._resource.queue)
         self.assertIsNone(P.limit)
 
     def test_prepare_not_callable(self):
-        P = self.create_resource(10, 0)
+        P = self.create_resource(10)
         conn = Connection('memory://')
         chan = conn.default_channel
         self.assertIs(P.prepare(chan), chan)

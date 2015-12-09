@@ -857,7 +857,6 @@ class ConnectionPool(Resource):
 
     def setup(self):
         if self.limit:
-            assert not self._dirty
             q = self._resource.queue
             while len(q) < self.limit:
                 self._resource.put_nowait(lazy(self.new))
@@ -882,7 +881,6 @@ class ChannelPool(Resource):
     def setup(self):
         channel = self.new()
         if self.limit:
-            assert not self._dirty
             q = self._resource.queue
             while len(q) < self.limit:
                 self._resource.put_nowait(lazy(channel))
