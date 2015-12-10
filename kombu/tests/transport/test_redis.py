@@ -209,7 +209,7 @@ class Channel(redis.Channel):
     def _get_client(self):
         return Client
 
-    def _get_pool(self):
+    def _get_pool(self, async=False):
         return Mock()
 
     def _get_response_error(self):
@@ -306,9 +306,9 @@ class test_Channel(Case):
         self.channel._pool = None
         self.channel._after_fork()
 
-        self.channel._pool = Mock(name='pool')
+        pool = self.channel._pool = Mock(name='pool')
         self.channel._after_fork()
-        self.channel._pool.disconnect.assert_called_with()
+        pool.disconnect.assert_called_with()
 
     def test_next_delivery_tag(self):
         self.assertNotEqual(
