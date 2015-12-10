@@ -433,6 +433,7 @@ class Channel(virtual.Channel):
     #: The default is to consume from queues in round robin.
     queue_order_strategy = 'round_robin'
 
+    _async_pool = None
     _pool = None
 
     from_transport_options = (
@@ -479,8 +480,7 @@ class Channel(virtual.Channel):
         try:
             self.client.info()
         except Exception:
-            if self._pool:
-                self._pool.disconnect()
+            self._disconnect_pools()
             raise
 
         self.connection.cycle.add(self)  # add to channel poller.
@@ -492,14 +492,21 @@ class Channel(virtual.Channel):
             register_after_fork(self, _after_fork_cleanup_channel)
 
     def _after_fork(self):
+        self._disconnect_pools()
+
+    def _disconnect_pools(self):
+        if self._async_pool is not None:
+            self._async_pool.disconnect()
         if self._pool is not None:
             self._pool.disconnect()
+        self._async_pool = self._pool = None
 
     def _on_connection_disconnect(self, connection):
         self._in_poll = False
         self._in_listen = False
         if self.connection and self.connection.cycle:
             self.connection.cycle._on_connection_disconnect(connection)
+        self._disconnect_pools()
         if not self._closing:
             raise get_redis_ConnectionError()
 
@@ -785,8 +792,7 @@ class Channel(virtual.Channel):
 
     def close(self):
         self._closing = True
-        if self._pool:
-            self._pool.disconnect()
+        self._disconnect_pools()
         if not self.closed:
             # remove from channel poller.
             self.connection.cycle.discard(self)
@@ -823,7 +829,7 @@ class Channel(virtual.Channel):
                     ))
         return vhost
 
-    def _connparams(self):
+    def _connparams(self, async=False):
         conninfo = self.connection.client
         connparams = {'host': conninfo.hostname or '127.0.0.1',
                       'port': conninfo.port or DEFAULT_PORT,
@@ -856,19 +862,22 @@ class Channel(virtual.Channel):
             redis.Connection
             )
 
-        class Connection(connection_cls):
-            def disconnect(self):
-                super(Connection, self).disconnect()
-                channel._on_connection_disconnect(self)
-        connparams['connection_class'] = Connection
+        if async:
+            class Connection(connection_cls):
+                def disconnect(self):
+                    super(Connection, self).disconnect()
+                    channel._on_connection_disconnect(self)
+            connparams['connection_class'] = Connection
 
         return connparams
 
-    def _create_client(self):
+    def _create_client(self, async=False):
+        if async:
+            return self.Client(connection_pool=self.async_pool)
         return self.Client(connection_pool=self.pool)
 
-    def _get_pool(self):
-        params = self._connparams()
+    def _get_pool(self, async=False):
+        params = self._connparams(async=async)
         self.keyprefix_fanout = self.keyprefix_fanout.format(db=params['db'])
         return redis.ConnectionPool(**params)
 
@@ -909,15 +918,20 @@ class Channel(virtual.Channel):
             self._pool = self._get_pool()
         return self._pool
 
+    @property
+    def async_pool(self):
+        if self._async_pool is None:
+            self._async_pool = self._get_pool(async=True)
+
     @cached_property
     def client(self):
         """Client used to publish messages, BRPOP etc."""
-        return self._create_client()
+        return self._create_client(async=True)
 
     @cached_property
     def subclient(self):
         """Pub/Sub connection used to consume fanout queues."""
-        client = self._create_client()
+        client = self._create_client(async=True)
         pubsub = client.pubsub()
         pool = pubsub.connection_pool
         pubsub.connection = pool.get_connection('pubsub', pubsub.shard_hint)
