@@ -98,7 +98,8 @@ class Transport(base.Transport):
         return connection.drain_events(**kwargs)
 
     def _collect(self, connection):
-        connection.collect()
+        if connection is not None:
+            connection.collect()
 
     def establish_connection(self):
         """Establish connection to the AMQP broker."""
