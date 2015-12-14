@@ -11,6 +11,7 @@ import socket
 import warnings
 
 from collections import defaultdict, deque
+from contextlib import contextmanager
 from copy import copy
 from itertools import count
 from threading import local
@@ -23,6 +24,7 @@ from .exceptions import InconsistencyError
 from .five import range
 from .log import get_logger
 from .utils import cached_property, uuid, reprcall
+from .utils.functional import maybe_evaluate
 
 REPLY_QUEUE_EXPIRES = 10
 
@@ -167,7 +169,7 @@ class Mailbox(object):
 
     def __init__(self, namespace,
                  type='direct', connection=None, clock=None,
-                 accept=None, serializer=None):
+                 accept=None, serializer=None, producer_pool=None):
         self.namespace = namespace
         self.connection = connection
         self.type = type
@@ -178,6 +180,7 @@ class Mailbox(object):
         self.unclaimed = defaultdict(deque)
         self.accept = self.accept if accept is None else accept
         self.serializer = self.serializer if serializer is None else serializer
+        self._producer_pool = producer_pool
 
     def __call__(self, connection):
         bound = copy(self)
@@ -231,27 +234,38 @@ class Mailbox(object):
                      durable=False,
                      auto_delete=True)
 
+    @contextmanager
+    def producer_or_acquire(self, producer=None, channel=None):
+        if producer:
+            yield producer
+        elif self.producer_pool:
+            with self.producer_pool.acquire() as producer:
+                yield producer
+        else:
+            yield Producer(channel, auto_declare=False)
+
     def _publish_reply(self, reply, exchange, routing_key, ticket,
-                       channel=None, **opts):
+                       channel=None, producer=None, **opts):
         chan = channel or self.connection.default_channel
         exchange = Exchange(exchange, exchange_type='direct',
                             delivery_mode='transient',
                             durable=False)
-        producer = Producer(chan, auto_declare=False)
-        try:
-            producer.publish(
-                reply, exchange=exchange, routing_key=routing_key,
-                declare=[exchange], headers={
-                    'ticket': ticket, 'clock': self.clock.forward(),
-                },
-                **opts
-            )
-        except InconsistencyError:
-            pass   # queue probably deleted and no one is expecting a reply.
+        with self.producer_or_acquire(producer, chan) as producer:
+            try:
+                producer.publish(
+                    reply, exchange=exchange, routing_key=routing_key,
+                    declare=[exchange], headers={
+                        'ticket': ticket, 'clock': self.clock.forward(),
+                    },
+                    **opts
+                )
+            except InconsistencyError:
+                # queue probably deleted and no one is expecting a reply.
+                pass
 
     def _publish(self, type, arguments, destination=None,
                  reply_ticket=None, channel=None, timeout=None,
-                 serializer=None):
+                 serializer=None, producer=None):
         message = {'method': type,
                    'arguments': arguments,
                    'destination': destination}
@@ -263,13 +277,13 @@ class Mailbox(object):
                            reply_to={'exchange': self.reply_exchange.name,
                                      'routing_key': self.oid})
         serializer = serializer or self.serializer
-        producer = Producer(chan, auto_declare=False)
-        producer.publish(
-            message, exchange=exchange.name, declare=[exchange],
-            headers={'clock': self.clock.forward(),
-                     'expires': time() + timeout if timeout else 0},
-            serializer=serializer,
-        )
+        with self.producer_or_acquire(producer, chan) as producer:
+            producer.publish(
+                message, exchange=exchange.name, declare=[exchange],
+                headers={'clock': self.clock.forward(),
+                        'expires': time() + timeout if timeout else 0},
+                serializer=serializer,
+            )
 
     def _broadcast(self, command, arguments=None, destination=None,
                    reply=False, timeout=1, limit=None,
@@ -364,3 +378,7 @@ class Mailbox(object):
         except AttributeError:
             oid = self._tls.OID = oid_from(self)
             return oid
+
+    @cached_property
+    def producer_pool(self):
+        return maybe_evaluate(self._producer_pool)
