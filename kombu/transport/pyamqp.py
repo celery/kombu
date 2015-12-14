@@ -137,6 +137,7 @@ class Transport(base.Transport):
         return connection.heartbeat
 
     def register_with_event_loop(self, connection, loop):
+        connection.transport.raise_on_initial_eintr = True
         loop.add_reader(connection.sock, self.on_readable, connection, loop)
 
     def heartbeat_check(self, connection, rate=2):
