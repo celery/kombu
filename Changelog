@@ -4,11 +4,23 @@
  Change history
 ================
 
+.. _version-3.0.31:
+
+3.0.31
+======
+:release-date: 2015-12-16 12:00 P.M PST
+:release-by: Ask Solem
+
+- Redis: Fixed bug introduced in 3.0.30 where socket was prematurely
+  disconnected.
+
+- Hub: Removed debug logging message: "Deregistered fd..." (Issue #549).
+
 .. _version-3.0.30:
 
 3.0.30
 ======
-:release-date: 2015-12-07 12:28 A.M PDT
+:release-date: 2015-12-07 12:28 A.M PST
 :release-by: Ask Solem
 
 - Fixes compatiblity with uuid in Python 2.7.11 and 3.5.1.
