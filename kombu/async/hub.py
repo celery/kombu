@@ -32,10 +32,6 @@ W_UNKNOWN_EVENT = """\
 Received unknown event %r for fd %r, please contact support!\
 """
 
-W_EVENT_UNREGISTERED = """\
-Deregistered fd %r from event loop without registered callbacks.\
-"""
-
 
 class Stop(BaseException):
     """Stops the event loop."""
@@ -330,7 +326,6 @@ class Hub(object):
                             pass
 
                     if cb is None:
-                        logger.info(W_EVENT_UNREGISTERED, fd)
                         self.remove(fd)
                         continue
 
