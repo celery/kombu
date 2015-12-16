@@ -202,7 +202,7 @@ class Pipeline(object):
 
 class Channel(redis.Channel):
 
-    def _get_client(self):
+    def _get_async_client(self):
         return Client
 
     def _get_pool(self, async=False):
@@ -280,7 +280,7 @@ class test_Channel(Case):
                 self._pool = pool_at_init[0]
                 super(XChannel, self).__init__(*args, **kwargs)
 
-            def _get_client(self):
+            def _get_async_client(self):
                 return lambda *_, **__: client
 
         class XTransport(Transport):
@@ -662,16 +662,16 @@ class test_Channel(Case):
         self.channel._rotate_cycle('elaine')
 
     @skip_if_not_module('redis')
-    def test_get_client(self):
+    def test_get_async_client(self):
         import redis as R
-        KombuRedis = redis.Channel._get_client(self.channel)
+        KombuRedis = redis.Channel._get_async_client(self.channel)
         self.assertTrue(KombuRedis)
 
         Rv = getattr(R, 'VERSION', None)
         try:
             R.VERSION = (2, 4, 0)
             with self.assertRaises(VersionMismatch):
-                redis.Channel._get_client(self.channel)
+                redis.Channel._get_async_client(self.channel)
         finally:
             if Rv is not None:
                 R.VERSION = Rv
@@ -693,11 +693,10 @@ class test_Channel(Case):
         self.channel._in_poll = True
         self.channel._pool = Mock()
         cc = self.channel._create_client = Mock()
-        client = cc.return_value = Mock()
+        cc.return_value = Mock()
 
         with self.channel.conn_or_acquire():
             pass
-        self.channel.pool.release.assert_called_with(client.connection)
         cc.assert_called_with()
 
     def test_register_with_event_loop(self):
@@ -908,7 +907,7 @@ class test_Redis(Case):
             channel._get('does-not-exist')
         channel.close()
 
-    def test_get_client(self):
+    def test_get_async_client(self):
 
         myredis, exceptions = _redis_modules()
 
