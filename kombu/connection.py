@@ -895,7 +895,7 @@ class ChannelPool(Resource):
 def maybe_channel(channel):
     """Return the default channel if argument is a connection instance,
     otherwise just return the channel given."""
-    if isinstance(channel, Connection):
+    if is_connection(channel):
         return channel.default_channel
     return channel
 
