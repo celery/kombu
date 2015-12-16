@@ -410,6 +410,7 @@ class Channel(virtual.Channel):
 
     _async_pool = None
     _pool = None
+    _disconnecting_pools = False
 
     from_transport_options = (
         virtual.Channel.from_transport_options +
@@ -435,7 +436,8 @@ class Channel(virtual.Channel):
             self.QoS = virtual.QoS
 
         self._queue_cycle = []
-        self.Client = self._get_client()
+        self.AsyncClient = self._get_async_client()
+        self.Client = redis.Redis
         self.ResponseError = self._get_response_error()
         self.active_fanout_queues = set()
         self.auto_delete_queues = set()
@@ -468,11 +470,16 @@ class Channel(virtual.Channel):
         self._disconnect_pools()
 
     def _disconnect_pools(self):
-        if self._async_pool is not None:
-            self._async_pool.disconnect()
-        if self._pool is not None:
-            self._pool.disconnect()
-        self._async_pool = self._pool = None
+        if not self._disconnecting_pools:
+            self._disconnecting_pools = True
+            try:
+                if self._async_pool is not None:
+                    self._async_pool.disconnect()
+                if self._pool is not None:
+                    self._pool.disconnect()
+                self._async_pool = self._pool = None
+            finally:
+                self._disconnecting_pools = False
 
     def _on_connection_disconnect(self, connection):
         self._in_poll = False
@@ -832,7 +839,7 @@ class Channel(virtual.Channel):
 
     def _create_client(self, async=False):
         if async:
-            return self.Client(connection_pool=self.async_pool)
+            return self.AsyncClient(connection_pool=self.async_pool)
         return self.Client(connection_pool=self.pool)
 
     def _get_pool(self, async=False):
@@ -840,22 +847,22 @@ class Channel(virtual.Channel):
         self.keyprefix_fanout = self.keyprefix_fanout.format(db=params['db'])
         return redis.ConnectionPool(**params)
 
-    def _get_client(self):
+    def _get_async_client(self):
         if redis.VERSION < (2, 4, 4):
             raise VersionMismatch(
                 'Redis transport requires redis-py versions 2.4.4 or later. '
                 'You have {0.__version__}'.format(redis))
 
-        # KombuRedis maintains a connection attribute on it's instance and
+        # AsyncRedis maintains a connection attribute on it's instance and
         # uses that when executing commands
         # This was added after redis-py was changed.
-        class KombuRedis(redis.Redis):  # pragma: no cover
+        class AsyncRedis(redis.Redis):  # pragma: no cover
 
             def __init__(self, *args, **kwargs):
-                super(KombuRedis, self).__init__(*args, **kwargs)
+                super(AsyncRedis, self).__init__(*args, **kwargs)
                 self.connection = self.connection_pool.get_connection('_')
 
-        return KombuRedis
+        return AsyncRedis
 
     @contextmanager
     def conn_or_acquire(self, client=None):
@@ -863,11 +870,7 @@ class Channel(virtual.Channel):
             yield client
         else:
             if self._in_poll:
-                client = self._create_client()
-                try:
-                    yield client
-                finally:
-                    self.pool.release(client.connection)
+                yield self._create_client()
             else:
                 yield self.client
 
@@ -881,6 +884,7 @@ class Channel(virtual.Channel):
     def async_pool(self):
         if self._async_pool is None:
             self._async_pool = self._get_pool(async=True)
+        return self._async_pool
 
     @cached_property
     def client(self):
