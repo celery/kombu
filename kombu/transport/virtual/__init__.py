@@ -577,7 +577,7 @@ class Channel(AbstractChannel, base.StdChannel):
         except Empty:
             pass
 
-    def basic_ack(self, delivery_tag):
+    def basic_ack(self, delivery_tag, multiple=False):
         """Acknowledge message."""
         self.qos.ack(delivery_tag)
 

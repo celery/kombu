@@ -65,7 +65,7 @@ class Message(object):
                 raise
             callback(self, exc)
 
-    def ack(self):
+    def ack(self, multiple=False):
         """Acknowledge this message as being processed.,
         This will remove the message from the queue.
 
@@ -85,12 +85,12 @@ class Message(object):
             raise self.MessageStateError(
                 'Message already acknowledged with state: {0._state}'.format(
                     self))
-        self.channel.basic_ack(self.delivery_tag)
+        self.channel.basic_ack(self.delivery_tag, multiple=multiple)
         self._state = 'ACK'
 
-    def ack_log_error(self, logger, errors):
+    def ack_log_error(self, logger, errors, multiple=False):
         try:
-            self.ack()
+            self.ack(multiple=multiple)
         except errors as exc:
             logger.critical("Couldn't ack %r, reason:%r",
                             self.delivery_tag, exc, exc_info=True)
