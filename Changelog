@@ -4,6 +4,16 @@
  Change history
 ================
 
+.. _version-3.0.32:
+
+3.0.32
+======
+:release-date: 2015-12-16 02:29 P.M PST
+:release-by: Ask Solem
+
+- Redis: Fixed bug introduced in 3.0.31 where the redis transport always
+  connects to localhost, regardless of host setting.
+
 .. _version-3.0.31:
 
 3.0.31
