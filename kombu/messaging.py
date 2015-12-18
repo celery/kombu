@@ -457,16 +457,6 @@ class Consumer(object):
         self._queues[queue.name] = queue
         return queue
 
-    def add_queue_from_dict(self, queue, **options):
-        """This method is deprecated.
-
-        Instead please use::
-
-            consumer.add_queue(Queue.from_dict(d))
-
-        """
-        return self.add_queue(Queue.from_dict(queue, **options))
-
     def consume(self, no_ack=None):
         """Start consuming messages.
 
