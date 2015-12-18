@@ -66,7 +66,7 @@ class test_Message(Case):
         ack = self.channel.basic_ack = Mock()
 
         self.message.ack()
-        ack.assert_called_with(self.message.delivery_tag)
+        ack.assert_called_with(self.message.delivery_tag, multiple=False)
 
     def test_ack_not_no_ack(self):
         self.channel.no_ack_consumers = set()
@@ -74,19 +74,19 @@ class test_Message(Case):
         ack = self.channel.basic_ack = Mock()
 
         self.message.ack()
-        ack.assert_called_with(self.message.delivery_tag)
+        ack.assert_called_with(self.message.delivery_tag, multiple=False)
 
     def test_ack_log_error_when_no_error(self):
         ack = self.message.ack = Mock()
         self.message.ack_log_error(Mock(), KeyError)
-        ack.assert_called_with()
+        ack.assert_called_with(multiple=False)
 
     def test_ack_log_error_when_error(self):
         ack = self.message.ack = Mock()
         ack.side_effect = KeyError('foo')
         logger = Mock()
         self.message.ack_log_error(logger, KeyError)
-        ack.assert_called_with()
+        ack.assert_called_with(multiple=False)
         self.assertTrue(logger.critical.called)
         self.assertIn("Couldn't ack", logger.critical.call_args[0][0])
 
