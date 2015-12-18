@@ -310,12 +310,11 @@ class test_ConsumerSet(Case):
         for cq in c.queues:
             self.assertIs(cq.channel, c.channel)
 
-        c2.add_consumer_from_dict({
-            '%s.xxx' % prefix: {
-                'exchange': '%s.xxx' % prefix,
-                'routing_key': 'xxx',
-            },
-        })
+        c2.add_consumer_from_dict(
+            '%s.xxx' % prefix,
+            exchange='%s.xxx' % prefix,
+            routing_key='xxx',
+        )
         self.assertEqual(len(c2.queues), 3)
         for c2q in c2.queues:
             self.assertIs(c2q.channel, c2.channel)

@@ -14,7 +14,7 @@ from .compression import compress
 from .connection import maybe_channel, is_connection
 from .entity import Exchange, Queue, maybe_delivery_mode
 from .exceptions import ContentDisallowed
-from .five import text_t, values
+from .five import items, text_t, values
 from .serialization import dumps, prepare_accept_content
 from .utils import ChannelPromise, maybe_list
 
@@ -362,13 +362,16 @@ class Consumer(object):
     #: Can also be changed using :meth:`qos`.
     prefetch_count = None
 
+    #: Mapping of queues we consume from.
+    _queues = None
+
     _tags = count(1)   # global
 
     def __init__(self, channel, queues=None, no_ack=None, auto_declare=None,
                  callbacks=None, on_decode_error=None, on_message=None,
                  accept=None, prefetch_count=None, tag_prefix=None):
         self.channel = channel
-        self.queues = self.queues or [] if queues is None else queues
+        self.queues = maybe_list(queues or [])
         self.no_ack = self.no_ack if no_ack is None else no_ack
         self.callbacks = (self.callbacks or [] if callbacks is None
                           else callbacks)
@@ -385,13 +388,22 @@ class Consumer(object):
         if self.channel:
             self.revive(self.channel)
 
+    @property
+    def queues(self):
+        return list(self._queues.values())
+
+    @queues.setter
+    def queues(self, queues):
+        self._queues = {q.name: q for q in queues}
+
     def revive(self, channel):
         """Revive consumer after connection loss."""
         self._active_tags.clear()
         channel = self.channel = maybe_channel(channel)
-        self.queues = [queue(self.channel)
-                       for queue in maybe_list(self.queues)]
-        for queue in self.queues:
+        for qname, queue in items(self._queues):
+            # name may have changed after declare
+            self._queues.pop(qname, None)
+            queue = self._queues[queue.name] = queue(self.channel)
             queue.revive(channel)
 
         if self.auto_declare:
@@ -407,7 +419,7 @@ class Consumer(object):
         is set.
 
         """
-        for queue in self.queues:
+        for queue in values(self._queues):
             queue.declare()
 
     def register_callback(self, callback):
@@ -442,7 +454,7 @@ class Consumer(object):
         queue = queue(self.channel)
         if self.auto_declare:
             queue.declare()
-        self.queues.append(queue)
+        self._queues[queue.name] = queue
         return queue
 
     def add_queue_from_dict(self, queue, **options):
@@ -466,10 +478,11 @@ class Consumer(object):
         :param no_ack: See :attr:`no_ack`.
 
         """
-        if self.queues:
+        queues = list(values(self._queues))
+        if queues:
             no_ack = self.no_ack if no_ack is None else no_ack
 
-            H, T = self.queues[:-1], self.queues[-1]
+            H, T = queues[:-1], queues[-1]
             for queue in H:
                 self._basic_consume(queue, no_ack=no_ack, nowait=True)
             self._basic_consume(T, no_ack=no_ack, nowait=False)
@@ -489,13 +502,15 @@ class Consumer(object):
 
     def cancel_by_queue(self, queue):
         """Cancel consumer by queue name."""
+        qname = queue.name if isinstance(queue, Queue) else queue
         try:
-            tag = self._active_tags.pop(queue)
+            tag = self._active_tags.pop(qname)
         except KeyError:
             pass
         else:
-            self.queues[:] = [q for q in self.queues if q.name != queue]
             self.channel.basic_cancel(tag)
+        finally:
+            self._queues.pop(qname, None)
 
     def consuming_from(self, queue):
         """Return :const:`True` if the consumer is currently
@@ -513,7 +528,7 @@ class Consumer(object):
             undo operation.
 
         """
-        return sum(queue.purge() for queue in self.queues)
+        return sum(queue.purge() for queue in values(self._queues))
 
     def flow(self, active):
         """Enable/disable flow from peer.
