@@ -22,11 +22,6 @@ command:
     to underlying dependencies not being compatible. This version is
     tested and works with with Python 2.7.
 
-.. admonition:: Potential Deadlock
-
-    This transport should be used with caution due to a known
-    potential deadlock. See `Issue 2199`_ for more details.
-
 Authentication
 ==============
 
@@ -84,7 +79,6 @@ import select
 import socket
 import ssl
 import sys
-import threading
 import time
 
 from itertools import count
@@ -1331,81 +1325,6 @@ class Connection(object):
             channel.connection = None
 
 
-class ReceiversMonitor(threading.Thread):
-    """A monitoring thread that reads and handles messages from all receivers.
-
-    A single instance of ReceiversMonitor is expected to be created by
-    :class:`Transport`.
-
-    In :meth:`monitor_receivers`, the thread monitors all receivers
-    associated with the session created by the Transport using the blocking
-    call to session.next_receiver(). When any receiver has messages
-    available, a symbol '0' is written to the self._w_fd file descriptor. The
-    :meth:`monitor_receivers` is designed not to exit, and loops over
-    session.next_receiver() forever.
-
-    The entry point of the thread is :meth:`run` which calls
-    :meth:`monitor_receivers`.
-
-    The thread is designed to be daemonized, and will be forcefully killed
-    when all non-daemon threads have already exited.
-    """
-
-    def __init__(self, session, w):
-        """Instantiate a ReceiversMonitor object
-
-        :param session: The session which needs all of its receivers
-            monitored.
-        :type session: :class:`qpid.messaging.endpoints.Session`
-        :param w: The file descriptor to write the '0' into when
-            next_receiver unblocks.
-        :type w: int
-        """
-        super(ReceiversMonitor, self).__init__()
-        self._session = session
-        self._w_fd = w
-
-    def run(self):
-        """Thread entry point for ReceiversMonitor
-
-        Calls :meth:`monitor_receivers` with a log-and-reenter behavior for
-        non connection errors. This guards against unexpected exceptions
-        which could cause this thread to exit unexpectedly.
-
-        A :class:`qpid.messaging.exceptions.SessionClosed` exception should
-        cause this thread to exit. This is a normal exit condition and the
-        thread is no longer needed.
-
-        If a connection error occurs, the exception needs to be propagated
-        to MainThread where the kombu exception handler can properly handle
-        it. The exception is stored as saved_exception on the self._session
-        object. The character 'e' is then written to the self.w_fd file
-        descriptor and then this thread exits.
-        """
-        while True:
-            try:
-                self.monitor_receivers()
-            except Transport.recoverable_connection_errors as exc:
-                self._session.saved_exception = exc
-                os.write(self._w_fd, 'e')
-                break
-            except SessionClosed:
-                break
-            except Exception as exc:
-                logger.error(exc, exc_info=1)
-            time.sleep(10)
-
-    def monitor_receivers(self):
-        """Monitor all receivers, and write to _w_fd when a message is ready.
-
-        The call to next_receiver() blocks until a message is ready. Once a
-        message is ready, write a '0' to _w_fd.
-        """
-        while True:
-            self._session.next_receiver()
-            os.write(self._w_fd, '0')
-
-
 class Transport(base.Transport):
     """Kombu native transport for a Qpid broker.
 
@@ -1523,23 +1442,22 @@ class Transport(base.Transport):
                 'with your package manager. You can also try `pip install '
                 'qpid-python`.')
 
+    def _qpid_session_ready(self):
+        os.write(self._w, '0')
+
     def on_readable(self, connection, loop):
         """Handle any messages associated with this Transport.
 
         This method clears a single message from the externally monitored
         file descriptor by issuing a read call to the self.r file descriptor
         which removes a single '0' character that was placed into the pipe
-        by :class:`ReceiversMonitor`. Once a '0' is read, all available
-        events are drained through a call to :meth:`drain_events`.
+        by the Qpid session message callback handler. Once a '0' is read,
+        all available events are drained through a call to
+        :meth:`drain_events`.
 
         The behavior of self.r is adjusted in __init__ to be non-blocking,
         ensuring that an accidental call to this method when no more messages
         will arrive will not cause indefinite blocking.
-
-        If the self.r file descriptor receives the character 'e', an error
-        occurred in the background thread, and this thread should raise the
-        saved exception. The exception is stored as saved_exception on the
-        session object.
 
         Nothing is expected to be returned from :meth:`drain_events` because
         :meth:`drain_events` handles messages by calling callbacks that are
@@ -1575,13 +1493,12 @@ class Transport(base.Transport):
             functionality.
         :type loop: kombu.async.Hub
         """
-        symbol = os.read(self.r, 1)
-        if symbol == 'e':
-            raise self.session.saved_exception
+        os.read(self.r, 1)
         try:
             self.drain_events(connection)
         except socket.timeout:
             pass
+
 
     def register_with_event_loop(self, connection, loop):
         """Register a file descriptor and callback with the loop.
@@ -1589,7 +1506,7 @@ class Transport(base.Transport):
         Register the callback self.on_readable to be called when an
         external epoll loop sees that the file descriptor registered is
         ready for reading. The file descriptor is created by this Transport,
-        and is updated by the ReceiversMonitor thread.
+        and is written to when a message is available.
 
         Because supports_ev == True, Celery expects to call this method to
         give the Transport an opportunity to register a read file descriptor
@@ -1685,9 +1602,7 @@ class Transport(base.Transport):
         conn = self.Connection(**opts)
         conn.client = self.client
         self.session = conn.get_qpid_connection().session()
-        monitor_thread = ReceiversMonitor(self.session, self._w)
-        monitor_thread.daemon = True
-        monitor_thread.start()
+        self.session.set_message_received_handler(self._qpid_session_ready)
         return conn
 
     def close_connection(self, connection):
