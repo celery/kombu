@@ -8,7 +8,6 @@ broker management.
 .. _`Qpid`: http://qpid.apache.org/
 .. _`qpid-python`: http://pypi.python.org/pypi/qpid-python/
 .. _`qpid-tools`: http://pypi.python.org/pypi/qpid-tools/
-.. _`Issue 2199`: https://github.com/celery/celery/issues/2199
 
 The use this transport you must install the necessary dependencies. These
 dependencies are available via PyPI and can be installed using the pip
