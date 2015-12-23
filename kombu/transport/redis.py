@@ -909,8 +909,6 @@ class Channel(virtual.Channel):
                     yield client
                 finally:
                     self.pool.release(client.connection)
-            else:
-                yield self.client
 
     @property
     def pool(self):
