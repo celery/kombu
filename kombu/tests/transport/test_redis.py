@@ -5,6 +5,7 @@ import types
 
 from anyjson import dumps, loads
 from collections import defaultdict
+from contextlib import contextmanager
 from itertools import count
 
 from kombu import Connection, Exchange, Queue, Consumer, Producer
@@ -171,6 +172,9 @@ class Client(object):
 
         return self
 
+    def __repr__(self):
+        return '<MockClient: %r' % (id(self),)
+
 
 class Pipeline(object):
 
@@ -201,12 +205,20 @@ class Pipeline(object):
 
 
 class Channel(redis.Channel):
+    Client = Client
 
     def _get_async_client(self):
         return Client
 
+    def _create_client(self, async=False):
+        return Client()
+
     def _get_pool(self, async=False):
         return Mock()
+
+    @contextmanager
+    def conn_or_acquire(self, client=None):
+        yield client if client is not None else self._create_client()
 
     def _get_response_error(self):
         return ResponseError
@@ -280,8 +292,8 @@ class test_Channel(Case):
                 self._pool = pool_at_init[0]
                 super(XChannel, self).__init__(*args, **kwargs)
 
-            def _get_async_client(self):
-                return lambda *_, **__: client
+            def _create_client(self, async=False):
+                return client
 
         class XTransport(Transport):
             Channel = XChannel
@@ -347,7 +359,8 @@ class test_Channel(Case):
         message = Mock(name='message')
         with patch('kombu.transport.redis.loads') as loads:
             loads.return_value = 'M', 'EX', 'RK'
-            client = self.channel.client = Mock(name='client')
+            client = self.channel._create_client = Mock(name='client')
+            client = client()
             client.pipeline = ContextMock()
             restore = self.channel._do_restore_message = Mock(
                 name='_do_restore_message',
@@ -376,7 +389,8 @@ class test_Channel(Case):
             restore.assert_called_with('M', 'EX', 'RK', client, False)
 
     def test_qos_restore_visible(self):
-        client = self.channel.client = Mock(name='client')
+        client = self.channel._create_client = Mock(name='client')
+        client = client()
 
         def pipe(*args, **kwargs):
             return Pipeline(client)
@@ -556,36 +570,37 @@ class test_Channel(Case):
 
     def test_put_fanout(self):
         self.channel._in_poll = False
-        c = self.channel.client = Mock()
+        c = self.channel._create_client = Mock()
 
         body = {'hello': 'world'}
         self.channel._put_fanout('exchange', body, '')
-        c.publish.assert_called_with('exchange', dumps(body))
+        c().publish.assert_called_with('exchange', dumps(body))
 
     def test_put_priority(self):
-        client = self.channel.client = Mock(name='client')
+        client = self.channel._create_client = Mock(name='client')
         msg1 = {'properties': {'delivery_info': {'priority': 3}}}
 
         self.channel._put('george', msg1)
-        client.lpush.assert_called_with(
+        client().lpush.assert_called_with(
             self.channel._q_for_pri('george', 3), dumps(msg1),
         )
 
         msg2 = {'properties': {'delivery_info': {'priority': 313}}}
         self.channel._put('george', msg2)
-        client.lpush.assert_called_with(
+        client().lpush.assert_called_with(
             self.channel._q_for_pri('george', 9), dumps(msg2),
         )
 
         msg3 = {'properties': {'delivery_info': {}}}
         self.channel._put('george', msg3)
-        client.lpush.assert_called_with(
+        client().lpush.assert_called_with(
             self.channel._q_for_pri('george', 0), dumps(msg3),
         )
 
     def test_delete(self):
         x = self.channel
-        self.channel._in_poll = False
+        x._create_client = Mock()
+        x._create_client.return_value = x.client
         delete = x.client.delete = Mock()
         srem = x.client.srem = Mock()
 
@@ -597,7 +612,8 @@ class test_Channel(Case):
         )
 
     def test_has_queue(self):
-        self.channel._in_poll = False
+        self.channel._create_client = Mock()
+        self.channel._create_client.return_value = self.channel.client
         exists = self.channel.client.exists = Mock()
         exists.return_value = True
         self.assertTrue(self.channel._has_queue('foo'))
@@ -681,23 +697,6 @@ class test_Channel(Case):
         from redis.exceptions import ResponseError
         self.assertIs(redis.Channel._get_response_error(self.channel),
                       ResponseError)
-
-    def test_avail_client_when_not_in_poll(self):
-        self.channel._in_poll = False
-        c = self.channel.client = Mock()
-
-        with self.channel.conn_or_acquire() as client:
-            self.assertIs(client, c)
-
-    def test_avail_client_when_in_poll(self):
-        self.channel._in_poll = True
-        self.channel._pool = Mock()
-        cc = self.channel._create_client = Mock()
-        cc.return_value = Mock()
-
-        with self.channel.conn_or_acquire():
-            pass
-        cc.assert_called_with()
 
     def test_register_with_event_loop(self):
         transport = self.connection.transport
