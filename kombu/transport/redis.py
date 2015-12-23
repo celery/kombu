@@ -871,8 +871,6 @@ class Channel(virtual.Channel):
         else:
             if self._in_poll:
                 yield self._create_client()
-            else:
-                yield self.client
 
     @property
     def pool(self):
