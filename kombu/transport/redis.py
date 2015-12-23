@@ -903,12 +903,11 @@ class Channel(virtual.Channel):
         if client:
             yield client
         else:
-            if self._in_poll:
-                client = self._create_client()
-                try:
-                    yield client
-                finally:
-                    self.pool.release(client.connection)
+            client = self._create_client()
+            try:
+                yield client
+            finally:
+                self.pool.release(client.connection)
 
     @property
     def pool(self):
