@@ -1017,6 +1017,9 @@ class SentinelChannel(Channel):
     Other arguments for the sentinel should come from the transport options
     (see :method:`Celery.connection` which is in charge of creating the
     `Connection` object).
+
+    You must provide at least one option in Transport options:
+     * `service_name` - name of the redis group to poll
     """
 
     from_transport_options = Channel.from_transport_options + (
@@ -1032,9 +1035,9 @@ class SentinelChannel(Channel):
 
         sentinel = redis.sentinel.Sentinel(
             [(connparams['host'], connparams['port'])],
-            min_other_sentinels=self.min_other_sentinels,
-            password=self.password,
-            sentinel_kwargs={"socket_timeout": self.sentinel_timeout},
+            min_other_sentinels=getattr(self, 'min_other_sentinels', None),
+            password=getattr(self, 'password', connparams['password']),
+            sentinel_kwargs={"socket_timeout": getattr(self, 'sentinel_timeout', self.socket_timeout)},
         )
 
         return sentinel.master_for(
