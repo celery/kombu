@@ -1008,7 +1008,7 @@ class SentinelChannel(Channel):
 
     Broker url is supposed to look like:
 
-    sentinel://0.0.0.0:26379;0.0.0.0:26380/...
+    sentinel://0.0.0.0:26379;sentinel://0.0.0.0:26380/...
 
     where each sentinel is separated by a `;`. Multiple sentinels are handled
     by :class:`kombu.Connection` constructor, and placed in the alternative
