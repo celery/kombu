@@ -958,7 +958,7 @@ class Transport(virtual.Transport):
 
     implements = virtual.Transport.implements.extend(
         async=True,
-        exchange_types=frozenset(['direct', 'topic', 'fanout'])
+        exchange_type=frozenset(['direct', 'topic', 'fanout'])
     )
 
     def __init__(self, *args, **kwargs):

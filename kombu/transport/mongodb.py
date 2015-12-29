@@ -456,7 +456,7 @@ class Transport(virtual.Transport):
     driver_name = 'pymongo'
 
     implements = virtual.Transport.implements.extend(
-        exchange_types=frozenset(['direct', 'topic', 'fanout']),
+        exchange_type=frozenset(['direct', 'topic', 'fanout']),
     )
 
     def driver_version(self):
