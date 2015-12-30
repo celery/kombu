@@ -1043,9 +1043,6 @@ class SentinelChannel(Channel):
         del additional_params['host']
         del additional_params['port']
 
-        print("Async", self._connparams(True))
-        print("Sync", self._connparams(False))
-
         sentinel = redis.sentinel.Sentinel(
             [(connparams['host'], connparams['port'])],
             min_other_sentinels=getattr(self, 'min_other_sentinels', 0),
