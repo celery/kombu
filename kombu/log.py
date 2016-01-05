@@ -24,17 +24,11 @@ LOG_LEVELS.setdefault(logging.FATAL, 'FATAL')
 DISABLE_TRACEBACKS = os.environ.get('DISABLE_TRACEBACKS')
 
 
-class NullHandler(logging.Handler):
-
-    def emit(self, record):
-        pass
-
-
 def get_logger(logger):
     if isinstance(logger, string_t):
         logger = logging.getLogger(logger)
     if not logger.handlers:
-        logger.addHandler(NullHandler())
+        logger.addHandler(logging.NullHandler())
     return logger
 
 
