@@ -1498,7 +1498,6 @@ class Transport(base.Transport):
         except socket.timeout:
             pass
 
-
     def register_with_event_loop(self, connection, loop):
         """Register a file descriptor and callback with the loop.
 
