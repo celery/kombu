@@ -19,6 +19,23 @@ from kombu.tests.case import (
 )
 
 
+class JSONEqual(object):
+    # The order in which a dict is serialized to json depends on the hashseed
+    # so we have this to support json in .assert_has_call*.
+
+    def __init__(self, expected):
+        self.expected = expected
+
+    def __eq__(self, other):
+        return loads(other) == loads(self.expected)
+
+    def __str__(self):
+        return self.expected
+
+    def __repr__(self):
+        return '(json)%r' % (self.expected,)
+
+
 class _poll(eventio._select):
 
     def register(self, fd, flags):
@@ -344,8 +361,10 @@ class test_Channel(Case):
         self.channel._do_restore_message(
             pl2, 'ex', 'rkey', client,
         )
+
         client.rpush.assert_has_calls([
-            call('george', spl2), call('elaine', spl2),
+            call('george', JSONEqual(spl2)),
+            call('elaine', JSONEqual(spl2)),
         ])
 
         client.rpush.side_effect = KeyError()
@@ -574,7 +593,7 @@ class test_Channel(Case):
 
         body = {'hello': 'world'}
         self.channel._put_fanout('exchange', body, '')
-        c().publish.assert_called_with('exchange', dumps(body))
+        c().publish.assert_called_with('exchange', JSONEqual(dumps(body)))
 
     def test_put_priority(self):
         client = self.channel._create_client = Mock(name='client')
@@ -582,19 +601,19 @@ class test_Channel(Case):
 
         self.channel._put('george', msg1)
         client().lpush.assert_called_with(
-            self.channel._q_for_pri('george', 3), dumps(msg1),
+            self.channel._q_for_pri('george', 3), JSONEqual(dumps(msg1)),
         )
 
         msg2 = {'properties': {'delivery_info': {'priority': 313}}}
         self.channel._put('george', msg2)
         client().lpush.assert_called_with(
-            self.channel._q_for_pri('george', 9), dumps(msg2),
+            self.channel._q_for_pri('george', 9), JSONEqual(dumps(msg2)),
         )
 
         msg3 = {'properties': {'delivery_info': {}}}
         self.channel._put('george', msg3)
         client().lpush.assert_called_with(
-            self.channel._q_for_pri('george', 0), dumps(msg3),
+            self.channel._q_for_pri('george', 0), JSONEqual(dumps(msg3)),
         )
 
     def test_delete(self):
