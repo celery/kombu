@@ -4,6 +4,20 @@
  Change history
 ================
 
+.. _version-3.0.33:
+
+3.0.33
+======
+:release-date: 2016-01-08 06:15 P.M PST
+
+- Now depends on :mod:`amqp` 1.4.9.
+
+- Redis: Fixed problem with auxilliary connections causing the main
+  consumer connection to be closed (Issue #550).
+
+- Qpid: No longer uses threads to operate, to ensure compatibility with
+  all environments (Issue #531).
+
 .. _version-3.0.32:
 
 3.0.32
