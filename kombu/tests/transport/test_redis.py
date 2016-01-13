@@ -943,6 +943,16 @@ class test_Redis(Case):
         _do_test()
 
 
+    def test_check_at_least_we_try_to_connect_and_fail(self):
+        import redis
+        connection = Connection('redis://localhost:65534/')
+
+        with self.assertRaises(redis.exceptions.ConnectionError):
+            chan = connection.channel()
+            chan._size('some_queue')
+
+
+
 def _redis_modules():
 
     class ConnectionError(Exception):
