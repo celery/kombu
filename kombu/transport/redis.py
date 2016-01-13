@@ -498,11 +498,16 @@ class Channel(virtual.Channel):
         self._disconnect_pools()
 
     def _disconnect_pools(self):
-        if self._async_pool is not None:
-            self._async_pool.disconnect()
-        if self._pool is not None:
-            self._pool.disconnect()
+        pool = self._pool
+        async_pool = self._async_pool
+
         self._async_pool = self._pool = None
+
+        if async_pool is not None:
+            async_pool.disconnect()
+
+        if pool is not None:
+            pool.disconnect()
 
     def _on_connection_disconnect(self, connection):
         self._in_poll = False
