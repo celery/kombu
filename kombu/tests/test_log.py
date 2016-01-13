@@ -4,7 +4,6 @@ import logging
 import sys
 
 from kombu.log import (
-    NullHandler,
     get_logger,
     get_loglevel,
     safeify_format,
@@ -16,13 +15,6 @@ from kombu.log import (
 from .case import Case, Mock, patch
 
 
-class test_NullHandler(Case):
-
-    def test_emit(self):
-        h = NullHandler()
-        h.emit('record')
-
-
 class test_get_logger(Case):
 
     def test_when_string(self):
@@ -30,16 +22,16 @@ class test_get_logger(Case):
 
         self.assertIs(l, logging.getLogger('foo'))
         h1 = l.handlers[0]
-        self.assertIsInstance(h1, NullHandler)
+        self.assertIsInstance(h1, logging.NullHandler)
 
     def test_when_logger(self):
         l = get_logger(logging.getLogger('foo'))
         h1 = l.handlers[0]
-        self.assertIsInstance(h1, NullHandler)
+        self.assertIsInstance(h1, logging.NullHandler)
 
     def test_with_custom_handler(self):
         l = logging.getLogger('bar')
-        handler = NullHandler()
+        handler = logging.NullHandler()
         l.addHandler(handler)
 
         l = get_logger('bar')
