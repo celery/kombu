@@ -503,11 +503,11 @@ class Channel(virtual.Channel):
 
         self._async_pool = self._pool = None
 
-        if async_pool is not None:
-            async_pool.disconnect()
-
         if pool is not None:
             pool.disconnect()
+
+        if async_pool is not None:
+            async_pool.disconnect()
 
     def _on_connection_disconnect(self, connection):
         self._in_poll = False
@@ -1063,7 +1063,7 @@ class SentinelChannel(Channel):
         ).connection_pool
 
     def _get_pool(self, async=False):
-        return self._sentinel_managed_pool(False)
+        return self._sentinel_managed_pool(async)
 
 
 class SentinelTransport(Transport):
