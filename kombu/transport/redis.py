@@ -35,9 +35,9 @@ except ImportError:  # pragma: no cover
     redis = None     # noqa
 
 try:
-    import redis.sentinel
+    from redis import sentinel
 except ImportError:  # pragma: no cover
-    pass
+    sentinel = None  # noqa
 
 
 logger = get_logger('kombu.transport.redis')
@@ -459,7 +459,7 @@ class Channel(virtual.Channel):
          'priority_steps')  # <-- do not add comma here!
     )
 
-    connection_class = redis.Connection
+    connection_class = redis.Connection if redis else None
 
     def __init__(self, *args, **kwargs):
         super_ = super(Channel, self)
@@ -1043,7 +1043,7 @@ class SentinelChannel(Channel):
         'min_other_sentinels',
         'sentinel_kwargs')
 
-    connection_class = redis.sentinel.SentinelManagedConnection
+    connection_class = sentinel.SentinelManagedConnection if sentinel else None
 
     def _sentinel_managed_pool(self, async=False):
         connparams = self._connparams(async)
@@ -1053,7 +1053,7 @@ class SentinelChannel(Channel):
         del additional_params['host']
         del additional_params['port']
 
-        sentinel = redis.sentinel.Sentinel(
+        sentinel_inst = sentinel.Sentinel(
             [(connparams['host'], connparams['port'])],
             min_other_sentinels=getattr(self, 'min_other_sentinels', 0),
             sentinel_kwargs=getattr(self, 'sentinel_kwargs', {}),
@@ -1062,7 +1062,7 @@ class SentinelChannel(Channel):
 
         master_name = getattr(self, 'master_name', None)
 
-        return sentinel.master_for(
+        return sentinel_inst.master_for(
             master_name,
             self.Client,
         ).connection_pool
