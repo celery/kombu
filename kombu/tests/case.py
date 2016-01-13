@@ -30,6 +30,7 @@ PY3 = sys.version_info[0] == 3
 MagicMock = mock.MagicMock
 patch = mock.patch
 call = mock.call
+ANY = mock.ANY
 
 
 class Case(unittest.TestCase):
