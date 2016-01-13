@@ -31,9 +31,14 @@ from . import virtual
 
 try:
     import redis
-    import redis.sentinel
 except ImportError:  # pragma: no cover
     redis = None     # noqa
+
+try:
+    import redis.sentinel
+except ImportError:  # pragma: no cover
+    pass
+
 
 logger = get_logger('kombu.transport.redis')
 crit, warn = logger.critical, logger.warn
