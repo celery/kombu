@@ -149,7 +149,7 @@ class test_Channel(Case):
             SQS.Channel.sqs.get_all_queues = get_all_queues_fail_403
             with self.assertRaises(RuntimeError) as context:
                 self.channel = self.connection.channel()
-            self.assertTrue('access_key=1234' in context.exception.message)
+            self.assertIn('access_key=1234', str(context.exception))
             SQS.Channel.sqs.get_all_queues = get_all_queues_fail_not_403
             with self.assertRaises(exception.SQSError) as context:
                 self.channel = self.connection.channel()
