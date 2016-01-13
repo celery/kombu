@@ -40,6 +40,7 @@ class test_connection_utils(Case):
         self.assertEqual(conn.as_uri(), self.nopass)
         self.assertEqual(conn.as_uri(include_password=True), self.url)
 
+    @skip_if_not_module('redis')
     def test_as_uri_when_prefix(self):
         conn = Connection('redis+socket:///var/spool/x/y/z/redis.sock')
         self.assertEqual(

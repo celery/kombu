@@ -1283,6 +1283,10 @@ class test_Mutex(Case):
 
 
 class test_RedisSentinel(Case):
+    @skip_if_not_module('redis.sentinel')
+    def setUp(self):
+        super(test_RedisSentinel, self).setUp()
+
     def test_method_called(self):
         from kombu.transport.redis import SentinelChannel
 
