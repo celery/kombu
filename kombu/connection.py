@@ -582,12 +582,13 @@ class Connection(object):
             if self.uri_prefix:
                 return '%s+%s' % (self.uri_prefix, hostname)
             return self.hostname
+        if self.uri_prefix:
+            return '%s+%s' % (self.uri_prefix, hostname)
         fields = self.info()
         port, userid, password, vhost, transport = getfields(fields)
-        scheme = ('{0}+{1}'.format(self.uri_prefix, transport)
-                  if self.uri_prefix else transport)
+
         return as_url(
-            scheme, hostname, port, userid, password, quote(vhost),
+            transport, hostname, port, userid, password, quote(vhost),
             sanitize=not include_password, mask=mask,
         )
 
