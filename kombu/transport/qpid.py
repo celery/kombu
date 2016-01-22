@@ -74,6 +74,7 @@ Celery with Kombu, this can be accomplished by setting the
 from __future__ import absolute_import
 
 import os
+import random
 import select
 import socket
 import ssl
@@ -938,6 +939,10 @@ class Channel(base.StdChannel):
 
         def _callback(qpid_message):
             raw_message = qpid_message.content
+
+            # workaround for https://github.com/celery/celery/issues/3019
+            raw_message['properties']['delivery_tag'] = random.randint(1, 100000000000)
+
             message = self.Message(self, raw_message)
             delivery_tag = message.delivery_tag
             self.qos.append(qpid_message, delivery_tag)
