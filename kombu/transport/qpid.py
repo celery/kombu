@@ -74,14 +74,13 @@ Celery with Kombu, this can be accomplished by setting the
 from __future__ import absolute_import
 
 import os
-import random
 import select
 import socket
 import ssl
 import sys
 import time
+import uuid
 
-from itertools import count
 from gettext import gettext as _
 
 import amqp.protocol
@@ -160,7 +159,7 @@ class QoS(object):
     ACKed asynchronously through a call to :meth:`ack`. Messages that are
     received, but not ACKed will not be delivered by the broker to another
     consumer until an ACK is received, or the session is closed. Messages
-    are referred to using delivery_tag integers, which are unique per
+    are referred to using delivery_tag, which are unique per
     :class:`Channel`. Delivery tags are managed outside of this object and
     are passed in with a message to :meth:`append`. Un-ACKed messages can
     be looked up from QoS using :meth:`get` and can be rejected and
@@ -214,15 +213,15 @@ class QoS(object):
     def append(self, message, delivery_tag):
         """Append message to the list of un-ACKed messages.
 
-        Add a message, referenced by the integer delivery_tag, for ACKing,
+        Add a message, referenced by the delivery_tag, for ACKing,
         rejecting, or getting later. Messages are saved into an
         :class:`~kombu.utils.compat.OrderedDict` by delivery_tag.
 
         :param message: A received message that has not yet been ACKed.
         :type message: qpid.messaging.Message
-        :param delivery_tag: An integer number to refer to this message by
+        :param delivery_tag: A UUID to refer to this message by
             upon receipt.
-        :type delivery_tag: int
+        :type delivery_tag: uuid.UUID
         """
         self._not_yet_acked[delivery_tag] = message
 
@@ -233,7 +232,7 @@ class QoS(object):
 
         :param delivery_tag: The delivery tag associated with the message
             to be returned.
-        :type delivery_tag: int
+        :type delivery_tag: uuid.UUID
 
         :return: An un-ACKed message that is looked up by delivery_tag.
         :rtype: qpid.messaging.Message
@@ -248,7 +247,7 @@ class QoS(object):
 
         :param delivery_tag: the delivery tag associated with the message
             to be acknowledged.
-        :type delivery_tag: int
+        :type delivery_tag: uuid.UUID
         """
         message = self._not_yet_acked.pop(delivery_tag)
         self.session.acknowledge(message=message)
@@ -266,7 +265,7 @@ class QoS(object):
 
         :param delivery_tag: The delivery tag associated with the message
             to be rejected.
-        :type delivery_tag: int
+        :type delivery_tag: uuid.UUID
         :keyword requeue: If True, the broker will be notified to requeue
             the message. If False, the broker will be told to drop the
             message entirely. In both cases, the message will be removed
@@ -311,10 +310,9 @@ class Channel(base.StdChannel):
     Messages sent using this Channel are assigned a delivery_tag. The
     delivery_tag is generated for a message as they are prepared for
     sending by :meth:`basic_publish`. The delivery_tag is unique per
-    Channel instance using :meth:`~itertools.count`. The delivery_tag has
-    no meaningful context in other objects, and is only maintained in the
-    memory of this object, and the underlying :class:`QoS` object that
-    provides support.
+    Channel instance. The delivery_tag has no meaningful context in other
+    objects, and is only maintained in the memory of this object, and the
+    underlying :class:`QoS` object that provides support.
 
     Each Channel object instantiates exactly one :class:`QoS` object for
     prefetch limiting, and asynchronous ACKing. The :class:`QoS` object is
@@ -842,7 +840,7 @@ class Channel(base.StdChannel):
 
         :param delivery_tag: The delivery tag associated with the message
             to be acknowledged.
-        :type delivery_tag: int
+        :type delivery_tag: uuid.UUID
         """
         self.qos.ack(delivery_tag)
 
@@ -860,7 +858,7 @@ class Channel(base.StdChannel):
 
         :param delivery_tag: The delivery tag associated with the message
             to be rejected.
-        :type delivery_tag: int
+        :type delivery_tag: uuid.UUID
         :keyword requeue: If False, the rejected message will be dropped by
             the broker and not delivered to any other consumers. If True,
             then the rejected message will be requeued for delivery to
@@ -901,10 +899,9 @@ class Channel(base.StdChannel):
         handled by the caller of :meth:`~Transport.drain_events`. Messages
         can be ACKed after being received through a call to :meth:`basic_ack`.
 
-        If no_ack is True, the messages are immediately ACKed to avoid a
-        memory leak in qpid.messaging when messages go un-ACKed. The no_ack
-        flag indicates that the receiver of the message does not intent to
-        call :meth:`basic_ack`.
+        If no_ack is True, The no_ack flag indicates that the receiver of
+        the message will not call :meth:`basic_ack` later. Since the
+        message will not be ACKed later, it is ACKed immediately.
 
         :meth:`basic_consume` transforms the message object type prior to
         calling the callback. Initially the message comes in as a
@@ -940,9 +937,7 @@ class Channel(base.StdChannel):
             delivery_tag = message.delivery_tag
             self.qos.append(qpid_message, delivery_tag)
             if no_ack:
-                # Celery will not ack this message later, so we should to
-                # avoid a memory leak in qpid.messaging due to un-ACKed
-                # messages.
+                # Celery will not ack this message later, so we should ack now
                 self.basic_ack(delivery_tag)
             return callback(message)
 
@@ -1068,7 +1063,7 @@ class Channel(base.StdChannel):
         - wraps the body as a buffer object, so that
             :class:`qpid.messaging.endpoints.Sender` uses a content type
             that can support arbitrarily large messages.
-        - assigns a random delivery_tag
+        - sets delivery_tag to a random uuid.UUID
         - sets the exchange and routing_key info as delivery_info
 
         Internally uses :meth:`_put` to send the message synchronously. This
@@ -1094,7 +1089,7 @@ class Channel(base.StdChannel):
         props = message['properties']
         props.update(
             body_encoding=body_encoding,
-            delivery_tag=random.randint(1, sys.maxint),
+            delivery_tag=uuid.uuid4(),
         )
         props['delivery_info'].update(
             exchange=exchange,

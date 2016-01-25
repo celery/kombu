@@ -5,6 +5,7 @@ import ssl
 import socket
 import sys
 import time
+import uuid
 
 from collections import Callable
 from itertools import count
@@ -1317,7 +1318,7 @@ class TestChannel(ExtraAssertionsMixin, Case):
             mock_message['properties']['body_encoding'], mock_body_encoding,
         )
         self.assertIsInstance(
-            mock_message['properties']['delivery_tag'], int,
+            mock_message['properties']['delivery_tag'], uuid.UUID,
         )
         self.assertIs(
             mock_message['properties']['delivery_info']['exchange'],
