@@ -74,6 +74,7 @@ Celery with Kombu, this can be accomplished by setting the
 from __future__ import absolute_import
 
 import os
+import random
 import select
 import socket
 import ssl
@@ -367,9 +368,6 @@ class Channel(base.StdChannel):
 
     #: Binary <-> ASCII codecs.
     codecs = {'base64': Base64()}
-
-    #: counter used to generate delivery tags for this channel.
-    _delivery_tags = count(1)
 
     def __init__(self, connection, transport):
         """Instantiate a Channel object.
@@ -1070,7 +1068,7 @@ class Channel(base.StdChannel):
         - wraps the body as a buffer object, so that
             :class:`qpid.messaging.endpoints.Sender` uses a content type
             that can support arbitrarily large messages.
-        - assigns a delivery_tag generated through self._delivery_tags
+        - assigns a random delivery_tag
         - sets the exchange and routing_key info as delivery_info
 
         Internally uses :meth:`_put` to send the message synchronously. This
@@ -1096,7 +1094,7 @@ class Channel(base.StdChannel):
         props = message['properties']
         props.update(
             body_encoding=body_encoding,
-            delivery_tag=next(self._delivery_tags),
+            delivery_tag=random.randint(1, sys.maxint),
         )
         props['delivery_info'].update(
             exchange=exchange,

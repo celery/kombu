@@ -940,10 +940,6 @@ class TestChannel(ExtraAssertionsMixin, Case):
         self.assertIn('base64', Channel.codecs)
         self.assertIsInstance(Channel.codecs['base64'], Base64)
 
-    def test_delivery_tags(self):
-        """Test that _delivery_tags is using itertools"""
-        self.assertIsInstance(Channel._delivery_tags, count)
-
     def test_size(self):
         """Test getting the number of messages in a queue specified by
         name and returning them."""
