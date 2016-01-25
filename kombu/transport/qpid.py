@@ -369,9 +369,6 @@ class Channel(base.StdChannel):
     #: Binary <-> ASCII codecs.
     codecs = {'base64': Base64()}
 
-    #: counter used to generate delivery tags for this channel.
-    _delivery_tags = count(1)
-
     def __init__(self, connection, transport):
         """Instantiate a Channel object.
 
@@ -939,10 +936,6 @@ class Channel(base.StdChannel):
 
         def _callback(qpid_message):
             raw_message = qpid_message.content
-
-            # workaround for https://github.com/celery/celery/issues/3019
-            raw_message['properties']['delivery_tag'] = random.randint(1, 100000000000)
-
             message = self.Message(self, raw_message)
             delivery_tag = message.delivery_tag
             self.qos.append(qpid_message, delivery_tag)
@@ -1075,7 +1068,7 @@ class Channel(base.StdChannel):
         - wraps the body as a buffer object, so that
             :class:`qpid.messaging.endpoints.Sender` uses a content type
             that can support arbitrarily large messages.
-        - assigns a delivery_tag generated through self._delivery_tags
+        - assigns a random delivery_tag
         - sets the exchange and routing_key info as delivery_info
 
         Internally uses :meth:`_put` to send the message synchronously. This
@@ -1101,7 +1094,7 @@ class Channel(base.StdChannel):
         props = message['properties']
         props.update(
             body_encoding=body_encoding,
-            delivery_tag=next(self._delivery_tags),
+            delivery_tag=random.randint(1, sys.maxint),
         )
         props['delivery_info'].update(
             exchange=exchange,
