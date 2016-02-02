@@ -47,7 +47,7 @@ def to_timestamp(d, default_timezone=utc):
 class Entry(object):
     if not IS_PYPY:  # pragma: no cover
         __slots__ = (
-            'fun', 'args', 'kwargs', 'tref', 'cancelled',
+            'fun', 'args', 'kwargs', 'tref', 'canceled',
             '_last_run', '__weakref__',
         )
 
@@ -57,14 +57,14 @@ class Entry(object):
         self.kwargs = kwargs or {}
         self.tref = weakrefproxy(self)
         self._last_run = None
-        self.cancelled = False
+        self.canceled = False
 
     def __call__(self):
         return self.fun(*self.args, **self.kwargs)
 
     def cancel(self):
         try:
-            self.tref.cancelled = True
+            self.tref.canceled = True
         except ReferenceError:  # pragma: no cover
             pass
 
@@ -93,6 +93,14 @@ class Entry(object):
 
     def __ne__(self, other):
         return not self.__eq__(other)
+
+    @property
+    def cancelled(self):
+        return self.canceled
+
+    @cancelled.setter
+    def cancelled(self, value):
+        self.canceled = value
 
 
 class Timer(object):
@@ -130,7 +138,7 @@ class Timer(object):
                     tref._last_run = now
                     return fun(*args, **kwargs)
             finally:
-                if not tref.cancelled:
+                if not tref.canceled:
                     last = tref._last_run
                     next = secs - (now - last) if last else secs
                     self.enter_after(next, tref, priority)
@@ -200,7 +208,7 @@ class Timer(object):
 
                     if eventB is eventA:
                         entry = eventA[2]
-                        if not entry.cancelled:
+                        if not entry.canceled:
                             yield None, entry
                         continue
                     else:

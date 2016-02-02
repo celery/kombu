@@ -577,7 +577,7 @@ class Channel(virtual.Channel):
     def basic_cancel(self, consumer_tag):
         # If we are busy reading messages we may experience
         # a race condition where a message is consumed after
-        # cancelling, so we must delay this operation until reading
+        # canceling, so we must delay this operation until reading
         # is complete (Issue celery/celery#1773).
         connection = self.connection
         if connection:

@@ -10,16 +10,16 @@ from kombu.exceptions import VersionMismatch
 def teardown():
     # Workaround for multiprocessing bug where logging
     # is attempted after global already collected at shutdown.
-    cancelled = set()
+    canceled = set()
     try:
         import multiprocessing.util
-        cancelled.add(multiprocessing.util._exit_function)
+        canceled.add(multiprocessing.util._exit_function)
     except (AttributeError, ImportError):
         pass
 
     try:
         atexit._exithandlers[:] = [
-            e for e in atexit._exithandlers if e[0] not in cancelled
+            e for e in atexit._exithandlers if e[0] not in canceled
         ]
     except AttributeError:  # pragma: no cover
         pass  # Py3 missing _exithandlers

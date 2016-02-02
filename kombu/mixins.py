@@ -106,7 +106,7 @@ class ConsumerMixin(object):
 
         * :meth:`on_consume_end`
 
-            Handler called after the consumers are cancelled.
+            Handler called after the consumers are canceled.
             Takes arguments ``(connection, channel)``.
 
         * :meth:`on_iteration`
@@ -234,7 +234,7 @@ class ConsumerMixin(object):
                           on_decode_error=self.on_decode_error)
             with self._consume_from(*self.get_consumers(cls, channel)) as c:
                 yield conn, channel, c
-            debug('Consumers cancelled')
+            debug('Consumers canceled')
             self.on_consume_end(conn, channel)
         debug('Connection closed')
 

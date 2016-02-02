@@ -435,7 +435,7 @@ class Queue(MaybeChannelBound):
     .. attribute:: auto_delete
 
         If set, the queue is deleted when all consumers have
-        finished using it. Last consumer can be cancelled
+        finished using it. Last consumer can be canceled
         either explicitly or because its channel is closed. If
         there was no consumer ever on the queue, it won't be
         deleted.

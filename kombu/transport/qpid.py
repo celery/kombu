@@ -360,8 +360,8 @@ class Channel(base.StdChannel):
 
     Each call to :meth:`basic_consume` creates a consumer, which is given a
     consumer tag that is identified by the caller of :meth:`basic_consume`.
-    Already started consumers can be cancelled using by their consumer_tag
-    using :meth:`basic_cancel`. Cancellation of a consumer causes the
+    Already started consumers can be canceled using by their consumer_tag
+    using :meth:`basic_cancel`. Cancelation of a consumer causes the
     :class:`~qpid.messaging.endpoints.Receiver` object to be closed.
 
     Asynchronous message ACKing is supported through :meth:`basic_ack`,
@@ -602,7 +602,7 @@ class Channel(base.StdChannel):
         'exclusive' flag always implies 'auto-delete'. Default is False.
 
         If auto_delete is True,  the queue is deleted when all consumers
-        have finished using it. The last consumer can be cancelled either
+        have finished using it. The last consumer can be canceled either
         explicitly or because its channel is closed. If there was no
         consumer ever on the queue, it won't be deleted. Default is True.
 
@@ -979,7 +979,7 @@ class Channel(base.StdChannel):
         This method also cleans up all lingering references of the consumer.
 
         :param consumer_tag: The tag which refers to the consumer to be
-            cancelled. Originally specified when the consumer was created
+            canceled. Originally specified when the consumer was created
             as a parameter to :meth:`basic_consume`.
         :type consumer_tag: an immutable object
 

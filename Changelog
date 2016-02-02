@@ -614,7 +614,7 @@
 - Redis: ``Consumer.cancel()`` is now thread safe.
 
     This fixes an issue when using gevent/eventlet and a
-    message is handled after the consumer is cancelled resulting
+    message is handled after the consumer is canceled resulting
     in a "message for queue without consumers" error.
 
 - Retry operations would not always respect the interval_start
@@ -640,7 +640,7 @@
   ``UNSUBSCRIBE`` command to the server.
 
     This fixes an issue with pidbox where reply messages could be received
-    after the consumer was cancelled, giving the ``"message to queue without
+    after the consumer was canceled, giving the ``"message to queue without
     consumers"`` error.
 
 - MongoDB: Improved connection string and options handling
@@ -1329,7 +1329,7 @@ SQS: Now supports long polling (Issue #176).
 - SQS: Now removes unpickleable fields before restoring messages.
 
 - Consumer.__exit__ now ignores exceptions occurring while
-  cancelling the consumer.
+  canceling the consumer.
 
 - Virtual:  Routing keys can now consist of characters also used
   in regular expressions (e.g. parens) (Issue #194).
@@ -3043,7 +3043,7 @@ Fixes
   BRPOP/LISTEN mode (Issue #35).
 
     Also the async BRPOP now times out after 1 second, this means that
-    cancelling consuming from a queue/starting consuming from additional queues
+    canceling consuming from a queue/starting consuming from additional queues
     has a latency of up to one second (BRPOP does not support subsecond
     timeouts).
 
