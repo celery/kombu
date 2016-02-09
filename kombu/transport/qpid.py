@@ -1437,6 +1437,9 @@ class Transport(base.Transport):
     def _qpid_session_ready(self):
         os.write(self._w, '0')
 
+    def _qpid_exception(self, obj_with_exception):
+        os.write(self._w, 'e')
+
     def on_readable(self, connection, loop):
         """Handle any messages associated with this Transport.
 
@@ -1594,6 +1597,12 @@ class Transport(base.Transport):
         conn.client = self.client
         self.session = conn.get_qpid_connection().session()
         self.session.set_message_received_handler(self._qpid_session_ready)
+        conn.get_qpid_connection().set_exception_notify_handler(
+            self._qpid_exception
+        )
+        self.session.set_exception_notify_handler(
+            self._qpid_exception
+        )
         return conn
 
     def close_connection(self, connection):
