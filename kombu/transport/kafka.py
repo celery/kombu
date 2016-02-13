@@ -28,6 +28,7 @@ from __future__ import absolute_import
 import socket
 
 from json import loads, dumps
+import copy
 
 # from kombu.exceptions import StdConnectionError, StdChannelError
 from kombu.five import Empty
@@ -57,12 +58,16 @@ class Channel(virtual.Channel):
     _kafka_consumers = {}
     _kafka_producers = {}
 
+    def sanatize_queue_name(self, queue):
+        """Need to sanatize the queue name, celery sometimes pushes in @ signs"""
+        return str(queue).replace('@', '')
+
     def _get_producer(self, queue):
         """Create/get a producer instance for the given topic/queue"""
-
+        queue = self.sanatize_queue_name(queue)
         producer = self._kafka_producers.get(queue, None)
         if producer is None:
-            producer = self.client.topics[queue].get_sync_producer()
+            producer = self.client.topics[queue].get_producer()
             self._kafka_producers[queue] = producer
 
         return producer
@@ -71,26 +76,28 @@ class Channel(virtual.Channel):
         """
         Create/get a consumer instance for the given topic/queue
         """
+        queue = self.sanatize_queue_name(queue)
         consumer = self._kafka_consumers.get(queue, None)
         if consumer is None:
             consumer = self.client.topics[queue].get_simple_consumer(consumer_group=self._kafka_group,
                                                                      auto_commit_enable=True,
-                                                                     auto_commit_interval_ms=20)
-            # consumer = SimpleConsumer(self.client, self._kafka_group, queue,
-            #                           auto_commit=True,
-            #                           auto_commit_every_n = 20,
-            #                           auto_commit_every_t = 5000)
+                                                                     auto_commit_interval_ms=5000,
+                                                                     queued_max_messages=10)
             self._kafka_consumers[queue] = consumer
 
         return consumer
 
     def _put(self, queue, message, **kwargs):
         """Put a message on the topic/queue"""
+        queue = self.sanatize_queue_name(queue)
         _producer = self._get_producer(queue)
         _producer.produce(dumps(message))
 
     def _get(self, queue, **kwargs):
         """Get a message from the topic/queue"""
+        queue = self.sanatize_queue_name(queue)
+        if 'pid' in queue:
+            raise Empty()
         consumer = self._get_consumer(queue)
         message = consumer.consume()
 
@@ -119,6 +126,7 @@ class Channel(virtual.Channel):
 
     def _size(self, queue):
         """Gets the number of pending messages in the topic/queue"""
+        queue = self.sanatize_queue_name(queue)
         consumer = self._get_consumer(queue)
         latest = consumer.topic.latest_available_offsets()[0].offset[0]
         earliest = consumer.topic.earliest_available_offsets()[0].offset[0]
@@ -129,10 +137,12 @@ class Channel(virtual.Channel):
         # Just create a producer, the queue will be created automatically
         # Note: Please, please, please create the topic before hand,
         # preferably with high replication factor and loads of partitions
+        queue = self.sanatize_queue_name(queue)
         self._get_producer(queue)
 
     def _has_queue(self, queue, **kwargs):
         """Check if a queue already exists"""
+        queue = self.sanatize_queue_name(queue)
 
         client = self._open()
 
@@ -140,12 +150,6 @@ class Channel(virtual.Channel):
             return True
         else:
             return False
-        #
-        # client._load_metadata_for_topics()
-        # exists = queue in client.topic_partitions
-        # client.close()
-        #
-        # return exists
 
     def _open(self):
         conninfo = self.connection.client
