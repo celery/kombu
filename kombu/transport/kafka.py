@@ -27,14 +27,15 @@ from __future__ import absolute_import
 
 import socket
 
-from anyjson import loads, dumps
+from json import loads, dumps
 
-from kombu.exceptions import StdConnectionError, StdChannelError
+# from kombu.exceptions import StdConnectionError, StdChannelError
 from kombu.five import Empty
 
 from . import virtual
 
 try:
+    import pykafka
     from pykafka import KafkaClient
 
     KAFKA_CONNECTION_ERRORS = ()
@@ -85,18 +86,18 @@ class Channel(virtual.Channel):
 
     def _put(self, queue, message, **kwargs):
         """Put a message on the topic/queue"""
-        producer = self._get_producer(queue)
-        producer.produce(dumps(message))
+        _producer = self._get_producer(queue)
+        _producer.produce(dumps(message))
 
     def _get(self, queue, **kwargs):
         """Get a message from the topic/queue"""
         consumer = self._get_consumer(queue)
-        msgs = consumer.consume()
+        message = consumer.consume()
 
-        if not msgs:
+        if not message:
             raise Empty()
 
-        return loads(msgs[0].message.value)
+        return loads(message.value)
 
     def _purge(self, queue):
         """Purge all pending messages in the topic/queue"""
@@ -119,7 +120,9 @@ class Channel(virtual.Channel):
     def _size(self, queue):
         """Gets the number of pending messages in the topic/queue"""
         consumer = self._get_consumer(queue)
-        return consumer.pending()
+        latest = consumer.topic.latest_available_offsets()[0].offset[0]
+        earliest = consumer.topic.earliest_available_offsets()[0].offset[0]
+        return earliest + latest
 
     def _new_queue(self, queue, **kwargs):
         """Create a new queue if it does not exist"""
@@ -147,7 +150,8 @@ class Channel(virtual.Channel):
     def _open(self):
         conninfo = self.connection.client
         port = conninfo.port or DEFAULT_PORT
-        client = KafkaClient(hosts='{0}:{1}'.format(conninfo.hostname, int(port)))
+        client = KafkaClient(hosts='{0}:{1}'.format(conninfo.hostname, int(port)),
+                             use_greenlets=True)
         return client
 
     @property
@@ -162,13 +166,13 @@ class Transport(virtual.Transport):
     Channel = Channel
     polling_interval = 1
     default_port = DEFAULT_PORT
-    connection_errors = (StdConnectionError, ) + KAFKA_CONNECTION_ERRORS
-    channel_errors = (StdChannelError, socket.error) + KAFKA_CHANNEL_ERRORS
+    # connection_errors = ( ) + KAFKA_CONNECTION_ERRORS
+    # channel_errors = (socket.error) + KAFKA_CHANNEL_ERRORS
     driver_type = 'kafka'
     driver_name = 'kafka'
 
     def __init__(self, *args, **kwargs):
-        if kafka is None:
+        if pykafka is None:
             raise ImportError('The kafka library is not installed')
 
         super(Transport, self).__init__(*args, **kwargs)
