@@ -38,6 +38,7 @@ from . import virtual
 try:
     import pykafka
     from pykafka import KafkaClient
+    from pykafka.protocol import PartitionOffsetCommitRequest
 
     KAFKA_CONNECTION_ERRORS = ()
     KAFKA_CHANNEL_ERRORS = ()
@@ -57,6 +58,30 @@ class Channel(virtual.Channel):
     _kafka_group = None
     _kafka_consumers = {}
     _kafka_producers = {}
+
+    def fetch_offsets(self, client, topic, offset):
+        """Fetch raw offset data from a topic.
+        note: stolen from the pykafka cli
+        :param client: KafkaClient connected to the cluster.
+        :type client:  :class:`pykafka.KafkaClient`
+        :param topic:  Name of the topic.
+        :type topic:  :class:`pykafka.topic.Topic`
+        :param offset: Offset to reset to. Can be earliest, latest or a datetime.
+            Using a datetime will reset the offset to the latest message published
+            *before* the datetime.
+        :type offset: :class:`pykafka.common.OffsetType` or
+            :class:`datetime.datetime`
+        :returns: {partition_id: :class:`pykafka.protocol.OffsetPartitionResponse`}
+        """
+        if offset.lower() == 'earliest':
+            return topic.earliest_available_offsets()
+        elif offset.lower() == 'latest':
+            return topic.latest_available_offsets()
+        else:
+            offset = dt.datetime.strptime(offset, "%Y-%m-%dT%H:%M:%S")
+            offset = int(calendar.timegm(offset.utctimetuple())*1000)
+            return topic.fetch_offset_limits(offset)
+
 
     def sanatize_queue_name(self, queue):
         """Need to sanatize the queue name, celery sometimes pushes in @ signs"""
@@ -90,16 +115,14 @@ class Channel(virtual.Channel):
     def _put(self, queue, message, **kwargs):
         """Put a message on the topic/queue"""
         queue = self.sanatize_queue_name(queue)
-        _producer = self._get_producer(queue)
-        _producer.produce(dumps(message))
+        producer = self._get_producer(queue)
+        producer.produce(dumps(message))
 
     def _get(self, queue, **kwargs):
         """Get a message from the topic/queue"""
         queue = self.sanatize_queue_name(queue)
-        if 'pid' in queue:
-            raise Empty()
         consumer = self._get_consumer(queue)
-        message = consumer.consume()
+        message = consumer.consume(block=False)
 
         if not message:
             raise Empty()
@@ -107,21 +130,29 @@ class Channel(virtual.Channel):
         return loads(message.value)
 
     def _purge(self, queue):
-        """Purge all pending messages in the topic/queue"""
-        # consumer = self._get_consumer(queue)
-        #
-        # # Seek to the end of the queue and commit
-        # consumer.seek(0, 2)
-        # consumer.commit()
+        """Purge all pending messages in the topic/queue, taken from the pykafka cli"""
+        queue = self.sanatize_queue_name(queue)
+        #build offset commit requests
+        offsets = self.fetch_offsets(self.client, queue, 0)
 
-        # not sure how this works in pykafka so just pass, we can get the earliest offset
-        pass
+        tmsp = int(time.time() * 1000)
+        reqs = [PartitionOffsetCommitRequest(queue,
+                                             partition_id,
+                                             res.offset[0],
+                                             tmsp,
+                                             'kafka-tools')
+                for partition_id, res in offsets.iteritems()]
+
+        # Send them to the appropriate broker.
+        broker = self.client.cluster.get_offset_manager(self._kafka_group)
+        broker.commit_consumer_group_offsets(
+            args.consumer_group, 1, 'kafka-tools', reqs
+        )
 
     def _delete(self, queue, *args, **kwargs):
         """Delete a queue/topic"""
-
         # We will just let it go through. There is no API defined yet
-        # for deleting a queue/topic
+        # for deleting a queue/topic, need to be done through kafka itself
         pass
 
     def _size(self, queue):
@@ -177,9 +208,9 @@ class Transport(virtual.Transport):
 
     def __init__(self, *args, **kwargs):
         if pykafka is None:
-            raise ImportError('The kafka library is not installed')
+            raise ImportError('The pykafka library is not installed')
 
         super(Transport, self).__init__(*args, **kwargs)
 
     def driver_version(self):
-        return kafka.__version__
+        return pykafka.__version__
