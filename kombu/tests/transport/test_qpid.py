@@ -1706,13 +1706,29 @@ class TestTransportEstablishConnection(Case):
             transport='tcp',
         )
 
-    def test_transport_sets_qpid_message_received_handler(self):
+    def test_transport_sets_qpid_message_ready_handler(self):
         self.transport.establish_connection()
-        qpid_conn = self.mock_conn.return_value.get_qpid_connection
-        new_mock_session = qpid_conn.return_value.session.return_value
-        mock_set_callback = new_mock_session.set_message_received_handler
-        expected_callback = self.transport._qpid_session_ready
-        mock_set_callback.assert_called_once_with(expected_callback)
+        qpid_conn_call = self.mock_conn.return_value.get_qpid_connection
+        mock_session = qpid_conn_call.return_value.session.return_value
+        mock_set_callback = mock_session.set_message_received_notify_handler
+        expected_msg_callback = self.transport._qpid_message_ready_handler
+        mock_set_callback.assert_called_once_with(expected_msg_callback)
+
+    def test_transport_sets_session_exception_handler(self):
+        self.transport.establish_connection()
+        qpid_conn_call = self.mock_conn.return_value.get_qpid_connection
+        mock_session = qpid_conn_call.return_value.session.return_value
+        mock_set_callback = mock_session.set_async_exception_notify_handler
+        exc_callback = self.transport._qpid_async_exception_notify_handler
+        mock_set_callback.assert_called_once_with(exc_callback)
+
+    def test_transport_sets_connection_exception_handler(self):
+        self.transport.establish_connection()
+        qpid_conn_call = self.mock_conn.return_value.get_qpid_connection
+        qpid_conn = qpid_conn_call.return_value
+        mock_set_callback = qpid_conn.set_async_exception_notify_handler
+        exc_callback = self.transport._qpid_async_exception_notify_handler
+        mock_set_callback.assert_called_once_with(exc_callback)
 
 
 @case_no_python3
@@ -1766,7 +1782,7 @@ class TestTransportRegisterWithEventLoop(Case):
 @case_no_python3
 @case_no_pypy
 @disable_runtime_dependency_check
-class TestTransportQpidSessionReady(Case):
+class TestTransportQpidCallbackHandlers(Case):
 
     def setUp(self):
         self.patch_a = patch(QPID_MODULE + '.os.write')
@@ -1776,9 +1792,13 @@ class TestTransportQpidSessionReady(Case):
     def tearDown(self):
         self.patch_a.stop()
 
-    def test_transport__qpid_session_ready_writes_symbol_to_fd(self):
-        self.transport._qpid_session_ready()
+    def test__qpid_message_ready_handler_writes_symbol_to_fd(self):
+        self.transport._qpid_message_ready_handler(Mock())
         self.mock_os_write.assert_called_once_with(self.transport._w, '0')
+
+    def test__qpid_async_exception_notify_handler_writes_symbol_to_fd(self):
+        self.transport._qpid_async_exception_notify_handler(Mock(), Mock())
+        self.mock_os_write.assert_called_once_with(self.transport._w, 'e')
 
 
 @case_no_python3
