@@ -167,14 +167,14 @@ class ConsumerMixin(object):
     def extra_context(self, connection, channel):
         yield
 
-    def run(self, _tokens=1):
+    def run(self, _tokens=1, **kwargs):
         restart_limit = self.restart_limit
         errors = (self.connection.connection_errors +
                   self.connection.channel_errors)
         while not self.should_stop:
             try:
-                if restart_limit.can_consume(_tokens):
-                    for _ in self.consume(limit=None):  # pragma: no cover
+                if restart_limit.can_consume(_tokens):  # pragma: no cover
+                    for _ in self.consume(limit=None, **kwargs):
                         pass
                 else:
                     sleep(restart_limit.expected_time(_tokens))
