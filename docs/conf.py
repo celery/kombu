@@ -16,7 +16,12 @@ if not settings.configured:
 # General configuration
 # ---------------------
 
-extensions = ['sphinx.ext.autodoc', 'sphinx.ext.coverage']
+extensions = [
+    'sphinx.ext.autodoc',
+    'sphinx.ext.coverage',
+    'sphinx.ext.viewcode',
+    'sphinx.ext.intersphinx',
+]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['.templates']
@@ -72,4 +77,10 @@ html_sidebars = {
     'index': ['sidebarintro.html', 'sourcelink.html', 'searchbox.html'],
     '**': ['sidebarlogo.html', 'localtoc.html', 'relations.html',
            'sourcelink.html', 'searchbox.html'],
+}
+
+intersphinx_mapping = {
+    'python': ('http://docs.python.org/dev', None),
+    'amqp': ('http://amqp.readthedocs.org/en/latest', None),
+    'vine': ('http://vine.readthedocs.org/en/latest', None),
 }

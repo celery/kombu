@@ -14,7 +14,7 @@ from contextlib import contextmanager
 from time import sleep
 from types import GeneratorType as generator
 
-from amqp.promise import Thenable, promise
+from vine import Thenable, promise
 
 from kombu.five import Empty, range
 from kombu.log import get_logger

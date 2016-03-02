@@ -3,7 +3,7 @@ from __future__ import absolute_import
 
 from contextlib import contextmanager
 
-from amqp.promise import Thenable
+from vine.abstract import Thenable
 
 from kombu.exceptions import HttpError
 from kombu.five import WhateverIO

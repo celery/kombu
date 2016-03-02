@@ -43,7 +43,7 @@ import collections
 import socket
 import string
 
-from amqp.promise import transform, ensure_promise, promise
+from vine import transform, ensure_promise, promise
 
 from kombu.async import get_event_loop
 from kombu.async.aws import sqs as _asynsqs
@@ -322,7 +322,7 @@ class Channel(virtual.Channel):
                       count=1, connection=None, callback=None):
         """Retrieve and handle messages from SQS.
 
-        Uses long polling and returns :class:`~amqp.promise`.
+        Uses long polling and returns :class:`~vine.promises.promise`.
 
         """
         connection = connection if connection is not None else queue.connection

@@ -2,7 +2,8 @@ from __future__ import absolute_import
 
 from io import BytesIO
 
-from amqp import promise
+from vine import promise
+
 from kombu.async import http
 from kombu.async.http.base import BaseClient, normalize_header
 from kombu.exceptions import HttpError

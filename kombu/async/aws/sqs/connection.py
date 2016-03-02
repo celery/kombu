@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 
-from amqp.promise import transform
+from vine import transform
 
 from kombu.async.aws.connection import AsyncAWSQueryConnection
 from kombu.async.aws.ext import RegionInfo

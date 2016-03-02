@@ -18,7 +18,7 @@ except ImportError:
     from urlparse import urlunsplit  # noqa
 from xml.sax import parseString as sax_parse
 
-from amqp.promise import promise, transform
+from vine import promise, transform
 
 from kombu.async.http import Headers, Request, get_client
 from kombu.five import items

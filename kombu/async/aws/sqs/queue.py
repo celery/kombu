@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 
-from amqp.promise import transform
+from vine import transform
 
 from .ext import Queue as _Queue
 from .message import AsyncMessage

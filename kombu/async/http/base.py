@@ -2,7 +2,7 @@ from __future__ import absolute_import
 
 import sys
 
-from amqp.promise import Thenable, promise, maybe_promise
+from vine import Thenable, promise, maybe_promise
 
 from kombu.exceptions import HttpError
 from kombu.five import items
