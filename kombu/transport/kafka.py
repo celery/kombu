@@ -83,13 +83,13 @@ class Channel(virtual.Channel):
             return topic.fetch_offset_limits(offset)
 
 
-    def sanatize_queue_name(self, queue):
-        """Need to sanatize the queue name, celery sometimes pushes in @ signs"""
+    def sanitize_queue_name(self, queue):
+        """Need to sanitize the queue name, celery sometimes pushes in @ signs"""
         return str(queue).replace('@', '')
 
     def _get_producer(self, queue):
         """Create/get a producer instance for the given topic/queue"""
-        queue = self.sanatize_queue_name(queue)
+        queue = self.sanitize_queue_name(queue)
         producer = self._kafka_producers.get(queue, None)
         if producer is None:
             producer = self.client.topics[queue].get_producer()
@@ -101,7 +101,7 @@ class Channel(virtual.Channel):
         """
         Create/get a consumer instance for the given topic/queue
         """
-        queue = self.sanatize_queue_name(queue)
+        queue = self.sanitize_queue_name(queue)
         consumer = self._kafka_consumers.get(queue, None)
         if consumer is None:
             consumer = self.client.topics[queue].get_simple_consumer(consumer_group=self._kafka_group,
@@ -114,13 +114,13 @@ class Channel(virtual.Channel):
 
     def _put(self, queue, message, **kwargs):
         """Put a message on the topic/queue"""
-        queue = self.sanatize_queue_name(queue)
+        queue = self.sanitize_queue_name(queue)
         producer = self._get_producer(queue)
         producer.produce(dumps(message))
 
     def _get(self, queue, **kwargs):
         """Get a message from the topic/queue"""
-        queue = self.sanatize_queue_name(queue)
+        queue = self.sanitize_queue_name(queue)
         consumer = self._get_consumer(queue)
         message = consumer.consume(block=False)
 
@@ -131,7 +131,7 @@ class Channel(virtual.Channel):
 
     def _purge(self, queue):
         """Purge all pending messages in the topic/queue, taken from the pykafka cli"""
-        queue = self.sanatize_queue_name(queue)
+        queue = self.sanitize_queue_name(queue)
         #build offset commit requests
         offsets = self.fetch_offsets(self.client, queue, 0)
 
@@ -157,7 +157,7 @@ class Channel(virtual.Channel):
 
     def _size(self, queue):
         """Gets the number of pending messages in the topic/queue"""
-        queue = self.sanatize_queue_name(queue)
+        queue = self.sanitize_queue_name(queue)
         consumer = self._get_consumer(queue)
         latest = consumer.topic.latest_available_offsets()[0].offset[0]
         earliest = consumer.topic.earliest_available_offsets()[0].offset[0]
@@ -168,12 +168,12 @@ class Channel(virtual.Channel):
         # Just create a producer, the queue will be created automatically
         # Note: Please, please, please create the topic before hand,
         # preferably with high replication factor and loads of partitions
-        queue = self.sanatize_queue_name(queue)
+        queue = self.sanitize_queue_name(queue)
         self._get_producer(queue)
 
     def _has_queue(self, queue, **kwargs):
         """Check if a queue already exists"""
-        queue = self.sanatize_queue_name(queue)
+        queue = self.sanitize_queue_name(queue)
 
         client = self._open()
 
