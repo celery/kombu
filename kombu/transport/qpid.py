@@ -1434,10 +1434,10 @@ class Transport(base.Transport):
                 'with your package manager. You can also try `pip install '
                 'qpid-python`.')
 
-    def _qpid_session_ready(self):
+    def _qpid_message_ready_handler(self, session):
         os.write(self._w, '0')
 
-    def _qpid_exception(self, obj_with_exception):
+    def _qpid_async_exception_notify_handler(self, obj_with_exception, exc):
         os.write(self._w, 'e')
 
     def on_readable(self, connection, loop):
@@ -1596,12 +1596,14 @@ class Transport(base.Transport):
         conn = self.Connection(**opts)
         conn.client = self.client
         self.session = conn.get_qpid_connection().session()
-        self.session.set_message_received_handler(self._qpid_session_ready)
-        conn.get_qpid_connection().set_exception_notify_handler(
-            self._qpid_exception
+        self.session.set_message_received_notify_handler(
+            self._qpid_message_ready_handler
         )
-        self.session.set_exception_notify_handler(
-            self._qpid_exception
+        conn.get_qpid_connection().set_async_exception_notify_handler(
+            self._qpid_async_exception_notify_handler
+        )
+        self.session.set_async_exception_notify_handler(
+            self._qpid_async_exception_notify_handler
         )
         return conn
 
