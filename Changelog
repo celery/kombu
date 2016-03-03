@@ -4,6 +4,24 @@
  Change history
 ================
 
+.. _version-3.0.34:
+
+3.0.34
+======
+:release-date: TBA
+:release-by: Ask Solem
+
+- Qpid: Adds async error handling.
+
+    Contributed by Brian Bouterse.
+
+- Qpid: Delivery tag is now a UUID4 (Issue #563).
+
+    Fix contributed by Brian Bouterse.
+
+- Redis: Connection.as_uri() returned malformed URLs when the
+  ``redis+socket`` scheme was ised (Issue celery/celery#2995).
+
 .. _version-3.0.33:
 
 3.0.33
