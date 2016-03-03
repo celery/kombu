@@ -26,3 +26,7 @@ boto
 # Qpid transport
 qpid-python>=0.26
 qpid-tools>=0.26
+
+# Kafka transport
+pykafka
+gevent~=1.1b6
