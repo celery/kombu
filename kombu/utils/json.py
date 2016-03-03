@@ -13,10 +13,12 @@ except ImportError:  # pragma: no cover
 
 IS_PY3 = sys.version_info[0] == 3
 
+_encoder_cls = type(json._default_encoder)
 
-class JSONEncoder(json.JSONEncoder):
 
-    def default(self, obj, _super=json.JSONEncoder.default):
+class JSONEncoder(_encoder_cls):
+
+    def default(self, obj, _super=_encoder_cls.default):
         try:
             reducer = obj.__json__
         except AttributeError:
