@@ -8,7 +8,7 @@ import sys
 from base64 import b64decode
 
 from kombu.exceptions import ContentDisallowed, EncodeError, DecodeError
-from kombu.five import text_t, bytes_t
+from kombu.five import text_t, bytes_t, items
 from kombu.serialization import (
     registry, register, SerializerNotInstalled,
     raw_encode, register_yaml, register_msgpack,
@@ -62,8 +62,13 @@ unicode: "Th\\xE9 quick brown fox jumps over th\\xE9 lazy dog"
 
 
 msgpack_py_data = dict(py_data)
+msgpack_py_data['unicode'] = b'Th quick brown fox jumps over th lazy dog'
+msgpack_py_data['list'] = [str_to_bytes(x) for x in msgpack_py_data['list']]
+msgpack_py_data = dict(
+    (str_to_bytes(k), str_to_bytes(v) if isinstance(v, text_t) else v)
+    for k, v in items(msgpack_py_data)
+)
 # Unicode chars are lost in transmit :(
-msgpack_py_data['unicode'] = 'Th quick brown fox jumps over th lazy dog'
 msgpack_data = b64decode(str_to_bytes("""\
 haNpbnQKpWZsb2F0y0AJIftTyNTxpGxpc3SUpmdlb3JnZaVqZXJyeaZlbGFpbmWlY29zbW+mc3Rya\
 W5n2gArVGhlIHF1aWNrIGJyb3duIGZveCBqdW1wcyBvdmVyIHRoZSBsYXp5IGRvZ6d1bmljb2Rl2g\
