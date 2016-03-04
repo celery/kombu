@@ -364,10 +364,7 @@ def register_msgpack():
     """See http://msgpack.sourceforge.net/"""
     try:
         try:
-            from msgpack import packb as pack, unpackb
-
-            def unpack(s, encoding='utf-8'):
-                return unpackb(s, encoding=encoding)
+            from msgpack import packb as pack, unpackb as unpack
         except ImportError:
             # msgpack < 0.2.0 and Python 2.5
             from msgpack import packs as pack, unpacks as unpack  # noqa
