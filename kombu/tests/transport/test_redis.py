@@ -14,7 +14,8 @@ from kombu.utils import eventio  # patch poll
 from kombu.utils.json import dumps
 
 from kombu.tests.case import (
-    Case, ContextMock, Mock, call, module_exists, skip_if_not_module, patch, ANY,
+    Case, ContextMock, Mock, call, module_exists,
+    skip_if_not_module, patch, ANY,
 )
 
 
@@ -942,7 +943,6 @@ class test_Redis(Case):
 
         _do_test()
 
-
     def test_check_at_least_we_try_to_connect_and_fail(self):
         import redis
         connection = Connection('redis://localhost:65534/')
@@ -950,7 +950,6 @@ class test_Redis(Case):
         with self.assertRaises(redis.exceptions.ConnectionError):
             chan = connection.channel()
             chan._size('some_queue')
-
 
 
 def _redis_modules():
@@ -1283,42 +1282,57 @@ class test_Mutex(Case):
 
 
 class test_RedisSentinel(Case):
+
     @skip_if_not_module('redis.sentinel')
-    def setUp(self):
-        super(test_RedisSentinel, self).setUp()
+    def setup(self):
+        pass
 
     def test_method_called(self):
         from kombu.transport.redis import SentinelChannel
 
-        with patch.object(SentinelChannel, '_sentinel_managed_pool') as patched:
-            connection = Connection('sentinel://localhost:65534/', transport_options={
-                'master_name': 'not_important'
-            })
+        with patch.object(SentinelChannel, '_sentinel_managed_pool') as p:
+            connection = Connection(
+                'sentinel://localhost:65534/',
+                transport_options={
+                    'master_name': 'not_important',
+                },
+            )
 
             connection.channel()
-            self.assertTrue(patched.called)
+            self.assertTrue(p.called)
 
     def test_getting_master_from_sentinel(self):
         from redis.sentinel import Sentinel
 
         with patch.object(Sentinel, '__new__') as patched:
-            connection = Connection('sentinel://localhost:65534/', transport_options={
-                'master_name': 'not_important'
-            })
+            connection = Connection(
+                'sentinel://localhost:65534/',
+                transport_options={
+                    'master_name': 'not_important',
+                },
+            )
 
             connection.channel()
             self.assertTrue(patched)
 
-            sentinel_obj = patched.return_value
-            self.assertTrue(sentinel_obj.master_for.called, 'master_for was not called')
-            sentinel_obj.master_for.assert_called_with('not_important', ANY)
-            self.assertTrue(sentinel_obj.master_for().connection_pool.get_connection.called, 'get_connection on redis connection pool was not called')
+            master_for = patched.return_value.master_for
+            self.assertTrue(
+                master_for.called, 'master_for was not called',
+            )
+            master_for.assert_called_with('not_important', ANY)
+            self.assertTrue(
+                master_for().connection_pool.get_connection.called,
+                'get_connection on redis connection pool was not called',
+            )
 
     def test_can_create_connection(self):
         from redis.exceptions import ConnectionError
 
         with self.assertRaises(ConnectionError):
-            connection = Connection('sentinel://localhost:65534/', transport_options={
-                'master_name': 'not_important'
-            })
+            connection = Connection(
+                'sentinel://localhost:65534/',
+                transport_options={
+                    'master_name': 'not_important',
+                },
+            )
             connection.channel()

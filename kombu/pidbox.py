@@ -281,7 +281,7 @@ class Mailbox(object):
             producer.publish(
                 message, exchange=exchange.name, declare=[exchange],
                 headers={'clock': self.clock.forward(),
-                        'expires': time() + timeout if timeout else 0},
+                         'expires': time() + timeout if timeout else 0},
                 serializer=serializer,
             )
 
