@@ -8,7 +8,7 @@
 
 3.0.34
 ======
-:release-date: TBA
+:release-date: 2016-03-03 05:30 P.M PST
 :release-by: Ask Solem
 
 - Qpid: Adds async error handling.
@@ -21,6 +21,8 @@
 
 - Redis: Connection.as_uri() returned malformed URLs when the
   ``redis+socket`` scheme was ised (Issue celery/celery#2995).
+
+- msgpack: Use binary encoding instead of utf-8 (Issue #570).
 
 .. _version-3.0.33:
 
