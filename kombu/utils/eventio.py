@@ -11,6 +11,7 @@ import errno
 import math
 import select as __select__
 import socket
+import sys
 
 from numbers import Integral
 
@@ -323,12 +324,10 @@ def _get_poller():
     elif epoll:
         # Py2.6+ Linux
         return _epoll
+    elif kqueue and 'netbsd' in sys.platform:
+        return _kqueue
     elif xpoll:
         return _poll
-    elif kqueue:
-        # Py2.6+ on BSD / Darwin
-        # but kqueue has too many bugs
-        return _poll if xpoll else _select
     else:
         return _select
 
