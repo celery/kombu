@@ -1,7 +1,6 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 
 import sys
 
@@ -62,12 +61,7 @@ unicode: "Th\\xE9 quick brown fox jumps over th\\xE9 lazy dog"
 
 
 msgpack_py_data = dict(py_data)
-msgpack_py_data['unicode'] = b'Th quick brown fox jumps over th lazy dog'
-msgpack_py_data['list'] = [str_to_bytes(x) for x in msgpack_py_data['list']]
-msgpack_py_data = dict(
-    (str_to_bytes(k), str_to_bytes(v) if isinstance(v, text_t) else v)
-    for k, v in items(msgpack_py_data)
-)
+msgpack_py_data['unicode'] = 'Th quick brown fox jumps over th lazy dog'
 # Unicode chars are lost in transmit :(
 msgpack_data = b64decode(str_to_bytes("""\
 haNpbnQKpWZsb2F0y0AJIftTyNTxpGxpc3SUpmdlb3JnZaVqZXJyeaZlbGFpbmWlY29zbW+mc3Rya\
