@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from kombu import Connection, Producer, Queue
+from kombu import Connection, Queue
 from kombu.mixins import ConsumerProducerMixin
 
 rpc_queue = Queue('rpc_queue')

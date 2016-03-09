@@ -7,7 +7,7 @@ import sys
 from base64 import b64decode
 
 from kombu.exceptions import ContentDisallowed, EncodeError, DecodeError
-from kombu.five import text_t, bytes_t, items
+from kombu.five import text_t, bytes_t
 from kombu.serialization import (
     registry, register, SerializerNotInstalled,
     raw_encode, register_yaml, register_msgpack,
