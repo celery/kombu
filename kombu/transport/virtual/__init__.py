@@ -13,6 +13,7 @@ import base64
 import socket
 import sys
 import warnings
+import collections
 
 from array import array
 from collections import OrderedDict
@@ -79,16 +80,64 @@ class BrokerState(object):
     #: exchange declarations.
     exchanges = None
 
-    #: active bindings.
-    bindings = None
+    # This is the actual bindings registry, used to store bindings and to
+    # test 'in' relationships in constant time. It has the following structure:
+    # {
+    #    (queue, exchange, routing_key): arguments,
+    #    ...
+    # }
+    __bindings = None
 
-    def __init__(self, exchanges=None, bindings=None):
+    # The queue index is used to access directly (constant time)
+    # all the bindings of a certain queue. It has the following structure:
+    # {
+    #    queue: { (queue, exchange, routing_key), ... }
+    #    ...
+    # }
+    __queue_index = None
+
+    def __init__(self, exchanges=None):
         self.exchanges = {} if exchanges is None else exchanges
-        self.bindings = {} if bindings is None else bindings
+        self.__bindings = dict()
+        self.__queue_index = collections.defaultdict(set)
 
     def clear(self):
         self.exchanges.clear()
-        self.bindings.clear()
+        # self.bindings.clear()
+        self.__bindings.clear()
+        self.__queue_index.clear()
+
+    def has_binding(self, queue, exchange, routing_key):
+        return (queue, exchange, routing_key) in self.__bindings
+
+    def binding_declare(self, queue, exchange, routing_key, arguments):
+        if not self.has_binding(queue, exchange, routing_key):
+            key = (queue, exchange, routing_key)
+            self.__bindings[key] = arguments
+            self.__queue_index[queue].add(key)
+
+    def binding_delete(self, queue, exchange, routing_key):
+        if self.has_binding(queue, exchange, routing_key):
+            key = (queue, exchange, routing_key)
+            del self.__bindings[key]
+            self.__queue_index[queue].remove(key)
+
+    def queue_bindings_delete(self, queue):
+        if queue in self.__queue_index:
+            for binding in self.__queue_index[queue]:
+                del self.__bindings[binding]
+            del self.__queue_index[queue]
+
+    def queue_bindings(self, queue):
+        for queue, exchange, routing_key in self.__queue_index[queue]:
+            yield (
+                # Not yelding directly from self.__queue_index because
+                # we need to remove 'queue' field and retrieve 'arguments'
+                # as needed by client code:
+                exchange,
+                routing_key,
+                self.__bindings[(queue, exchange, routing_key)]
+            )
 
 
 class QoS(object):
@@ -466,15 +515,12 @@ class Channel(AbstractChannel, base.StdChannel):
         """Delete queue."""
         if if_empty and self._size(queue):
             return
-        try:
-            exchange, routing_key, arguments = self.state.bindings[queue]
-        except KeyError:
-            return
-        meta = self.typeof(exchange).prepare_bind(
-            queue, exchange, routing_key, arguments,
-        )
-        self._delete(queue, exchange, *meta, **kwargs)
-        self.state.bindings.pop(queue, None)
+        for exchange, routing_key, arguments in self.state.queue_bindings(queue):
+            meta = self.typeof(exchange).prepare_bind(
+                queue, exchange, routing_key, arguments,
+            )
+            self._delete(queue, exchange, *meta, **kwargs)
+        self.state.queue_bindings_delete(queue)
 
     def after_reply_message_received(self, queue):
         self.queue_delete(queue)
@@ -490,11 +536,13 @@ class Channel(AbstractChannel, base.StdChannel):
     def queue_bind(self, queue, exchange=None, routing_key='',
                    arguments=None, **kwargs):
         """Bind `queue` to `exchange` with `routing key`."""
-        if queue in self.state.bindings:
-            return
         exchange = exchange or 'amq.direct'
+        if self.state.has_binding(queue, exchange, routing_key):
+            return
+        # Add binding:
+        self.state.binding_declare(queue, exchange, routing_key, arguments)
+        # Update exchange's routing table:
         table = self.state.exchanges[exchange].setdefault('table', [])
-        self.state.bindings[queue] = exchange, routing_key, arguments
         meta = self.typeof(exchange).prepare_bind(
             queue, exchange, routing_key, arguments,
         )
@@ -504,7 +552,19 @@ class Channel(AbstractChannel, base.StdChannel):
 
     def queue_unbind(self, queue, exchange=None, routing_key='',
                      arguments=None, **kwargs):
-        raise NotImplementedError('transport does not support queue_unbind')
+        # Remove queue binding:
+        self.state.binding_delete(queue, exchange, routing_key)
+        # Remove binding from exchange's routing table:
+        try:
+            table = self.get_table(exchange)
+        except KeyError:
+            return
+        binding_meta = self.typeof(exchange).prepare_bind(
+            queue, exchange, routing_key, arguments,
+        )
+        # TODO: the complexity of this operation is O(number of bindings).
+        # Should be optimized. Modifying table in place.
+        table[:] = [meta for meta in table if meta != binding_meta]
 
     def list_bindings(self):
         return ((queue, exchange, rkey)
