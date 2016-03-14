@@ -123,6 +123,13 @@ class BrokerState(object):
             key = (queue, exchange, routing_key)
             del self.__bindings[key]
             self.__queue_index[queue].remove(key)
+            # TODO: delete binding from exchange's routing table
+
+    def queue_bindings_delete(self, queue):
+        if queue in self.__queue_index:
+            for binding in self.__queue_index[queue]:
+                del self.__bindings[binding]
+            del self.__queue_index[queue]
 
     def queue_bindings(self, queue):
         for queue, exchange, routing_key in self.__queue_index[queue]:
@@ -134,12 +141,6 @@ class BrokerState(object):
                 routing_key,
                 self.__bindings[(queue, exchange, routing_key)]
             )
-
-    def queue_bindings_delete(self, queue):
-        if queue in self.__queue_index:
-            for binding in self.__queue_index[queue]:
-                del self.__bindings[binding]
-            del self.__queue_index[queue]
 
 
 class QoS(object):
