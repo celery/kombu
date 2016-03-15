@@ -89,7 +89,7 @@ def get_redis_error_classes():
             OSError,
             exceptions.ConnectionError,
             exceptions.AuthenticationError,
-            getattr(exceptions, 'south_south_TimeoutError', None))))),
+            getattr(exceptions, 'TimeoutError', None))))),
         (virtual.Transport.channel_errors + (
             DataError,
             exceptions.InvalidResponse,
