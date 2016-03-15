@@ -565,6 +565,7 @@ class Channel(AbstractChannel, base.StdChannel):
 
     def queue_unbind(self, queue, exchange=None, routing_key='',
                      arguments=None, **kwargs):
+        # Remove queue binding:
         self.state.binding_delete(queue, exchange, routing_key)
         try:
             table = self.get_table(exchange)
@@ -573,6 +574,8 @@ class Channel(AbstractChannel, base.StdChannel):
         binding_meta = self.typeof(exchange).prepare_bind(
             queue, exchange, routing_key, arguments,
         )
+        # TODO: the complexity of this operation is O(number of bindings).
+        # Should be optimized. Modifying table in place.
         table[:] = [meta for meta in table if meta != binding_meta]
 
     def list_bindings(self):
