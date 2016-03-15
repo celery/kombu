@@ -28,11 +28,9 @@ class test_BrokerState(Case):
     def test_constructor(self):
         s = virtual.BrokerState()
         self.assertTrue(hasattr(s, 'exchanges'))
-        self.assertTrue(hasattr(s, 'bindings'))
 
-        t = virtual.BrokerState(exchanges=16, bindings=32)
+        t = virtual.BrokerState(exchanges=16)
         self.assertEqual(t.exchanges, 16)
-        self.assertEqual(t.bindings, 32)
 
 
 class test_QoS(Case):
