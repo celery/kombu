@@ -123,7 +123,6 @@ class BrokerState(object):
             key = (queue, exchange, routing_key)
             del self.__bindings[key]
             self.__queue_index[queue].remove(key)
-            # TODO: delete binding from exchange's routing table
 
     def queue_bindings_delete(self, queue):
         if queue in self.__queue_index:
@@ -555,10 +554,17 @@ class Channel(AbstractChannel, base.StdChannel):
 
     def queue_unbind(self, queue, exchange=None, routing_key='',
                      arguments=None, **kwargs):
-        # Remove queue binding:
         self.state.binding_delete(queue, exchange, routing_key)
-        # Remove binding from exchange's routing table:
-        # TODO
+        # TODO: the complexity of this operation is O(number of bindings).
+        # Should be optimized.
+        try:
+            table = self.get_table(exchange)
+        except KeyError:
+            return
+        binding_meta = self.typeof(exchange).prepare_bind(
+            queue, exchange, routing_key, arguments,
+        )
+        table[:] = [meta for meta in table if meta != binding_meta]
 
     def list_bindings(self):
         return ((queue, exchange, rkey)
