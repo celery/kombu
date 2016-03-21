@@ -396,6 +396,9 @@ class Channel(virtual.Channel):
     visibility_timeout = 3600   # 1 hour
     priority_steps = PRIORITY_STEPS
     socket_timeout = None
+    socket_connect_timeout = None
+    socket_keepalive = None
+    socket_keepalive_options = None
     max_connections = 10
     #: Transport option to disable fanout keyprefix.
     #: Can also be string, in which case it changes the default
@@ -454,6 +457,9 @@ class Channel(virtual.Channel):
          'fanout_prefix',
          'fanout_patterns',
          'socket_timeout',
+         'socket_connect_timeout',
+         'socket_keepalive',
+         'socket_keepalive_options',
          'queue_order_strategy',
          'max_connections',
          'priority_steps')  # <-- do not add comma here!
@@ -844,12 +850,17 @@ class Channel(virtual.Channel):
 
     def _connparams(self, async=False):
         conninfo = self.connection.client
-        connparams = {'host': conninfo.hostname or '127.0.0.1',
-                      'port': conninfo.port or self.connection.default_port,
-                      'virtual_host': conninfo.virtual_host,
-                      'password': conninfo.password,
-                      'max_connections': self.max_connections,
-                      'socket_timeout': self.socket_timeout}
+        connparams = {
+            'host': conninfo.hostname or '127.0.0.1',
+            'port': conninfo.port or self.connection.default_port,
+            'virtual_host': conninfo.virtual_host,
+            'password': conninfo.password,
+            'max_connections': self.max_connections,
+            'socket_timeout': self.socket_timeout,
+            'socket_connect_timeout': self.socket_connect_timeout,
+            'socket_keepalive': self.socket_keepalive,
+            'socket_keepalive_options': self.socket_keepalive_options,
+        }
         if conninfo.ssl:
             # Connection(ssl={}) can be a dict like in amqplib.
             connparams['ssl'] = True
