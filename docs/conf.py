@@ -6,7 +6,7 @@ import os
 # If your extensions are in another directory, add it here. If the directory
 # is relative to the documentation root, use os.path.abspath to make it
 # absolute, like shown here.
-sys.path.append(os.path.join(os.pardir, "tests"))
+sys.path.append(os.path.join(os.pardir, 'tests'))
 import kombu  # noqa
 
 from django.conf import settings  # noqa
@@ -41,7 +41,7 @@ copyright = '2009-2016, Ask Solem'
 # built documents.
 #
 # The short X.Y version.
-version = ".".join(map(str, kombu.VERSION[0:2]))
+version = '.'.join(map(str, kombu.VERSION[0:2]))
 # The full version, including alpha/beta/rc tags.
 release = kombu.__version__
 
@@ -71,8 +71,8 @@ latex_documents = [
      'Ask Solem', 'manual'),
 ]
 
-html_theme = "celery"
-html_theme_path = ["_theme"]
+html_theme = 'celery'
+html_theme_path = ['_theme']
 html_sidebars = {
     'index': ['sidebarintro.html', 'sourcelink.html', 'searchbox.html'],
     '**': ['sidebarlogo.html', 'localtoc.html', 'relations.html',

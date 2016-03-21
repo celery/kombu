@@ -45,7 +45,7 @@ class Worker(ConsumerProducerMixin):
 
 def start_worker(broker_url):
     connection = Connection(broker_url)
-    print " [x] Awaiting RPC requests"
+    print(' [x] Awaiting RPC requests')
     worker = Worker(connection)
     worker.run()
 

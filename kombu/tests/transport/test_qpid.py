@@ -30,22 +30,20 @@ class ExtraAssertionsMixin(object):
     """A mixin class adding assertDictEqual and assertDictContainsSubset"""
 
     def assertDictEqual(self, a, b):
-        """
-        Test that two dictionaries are equal.
+        """Test that two dictionaries are equal.
 
         Implemented here because this method was not available until Python
         2.6. This asserts that the unique set of keys are the same in a and b.
         Also asserts that the value of each key is the same in a and b using
         the is operator.
+
         """
         self.assertEqual(set(a.keys()), set(b.keys()))
         for key in a.keys():
             self.assertEqual(a[key], b[key])
 
     def assertDictContainsSubset(self, a, b):
-        """
-        Assert that all the key/value pairs in a exist in b.
-        """
+        """Assert that all the key/value pairs in a exist in b."""
         for key in a.keys():
             self.assertTrue(key in b)
             self.assertTrue(a[key] == b[key])
@@ -85,8 +83,8 @@ class TestQpidMessagingExceptionHandler(Case):
         try:
             decorated_fun()
         except:
-            self.fail("QpidMessagingExceptionHandler allowed an exception "
-                      "to be raised that should have been silenced!")
+            self.fail('QpidMessagingExceptionHandler allowed an exception '
+                      'to be raised that should have been silenced!')
 
     def test_exception_negative(self):
         """Assert that an exception that does not contain the
@@ -385,7 +383,7 @@ class TestConnectionInit(ExtraAssertionsMixin, ConnectionTestBase):
         except Exception as error:
             self.assertEqual(error.code, 999)
         else:
-            self.fail("Connection should have thrown an exception")
+            self.fail('Connection should have thrown an exception')
 
     @patch.object(Transport, 'channel_errors', new=(MockException,))
     @patch(QPID_MODULE + '.qpid')
@@ -903,8 +901,7 @@ class TestChannel(ExtraAssertionsMixin, Case):
 
     def test_verify_Message_class_attribute(self):
         """Verify that the class attribute Message refers to the Message
-        object
-        """
+        object."""
         self.assertIs(Message, Channel.Message)
 
     def test_body_encoding_class_attribute(self):
@@ -913,8 +910,7 @@ class TestChannel(ExtraAssertionsMixin, Case):
 
     def test_codecs_class_attribute(self):
         """Verify that the codecs class attribute has a correct key and
-        value
-        """
+        value."""
         self.assertIsInstance(Channel.codecs, dict)
         self.assertIn('base64', Channel.codecs)
         self.assertIsInstance(Channel.codecs['base64'], Base64)
@@ -925,8 +921,7 @@ class TestChannel(ExtraAssertionsMixin, Case):
 
     def test_size(self):
         """Test getting the number of messages in a queue specified by
-        name and returning them.
-        """
+        name and returning them."""
         message_count = 5
         queue = Mock(name='queue')
         queue_to_check = Mock(name='queue_to_check')
@@ -1937,7 +1932,7 @@ class TestTransportVerifyRuntimeEnvironment(Case):
             self.verify_runtime_environment(self.transport)
         except Exception:
             self.fail(
-                "verify_runtime_environment raised an unexpected Exception")
+                'verify_runtime_environment raised an unexpected Exception')
 
 
 @case_no_python3

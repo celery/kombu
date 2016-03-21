@@ -89,12 +89,12 @@ use one of the following options.
 
             >>> producer = Producer(channel,
             ...                     exchange=exchange,
-            ...                     serializer="yaml")
+            ...                     serializer='yaml')
 
     2.  Set the serialization option per message::
 
             >>> producer.publish(message, routing_key=rkey,
-            ...                  serializer="pickle")
+            ...                  serializer='pickle')
 
 Note that a `Consumer` do not need the serialization method specified.
 They can auto-detect the serialization method as the
@@ -112,10 +112,10 @@ not waste cycles serializing/deserializing the data.
 You can optionally specify a `content_encoding`
 for the raw data::
 
-    >>> with open("~/my_picture.jpg", "rb") as fh:
+    >>> with open('~/my_picture.jpg', 'rb') as fh:
     ...     producer.publish(fh.read(),
-                             content_type="image/jpeg",
-                             content_encoding="binary",
+                             content_type='image/jpeg',
+                             content_encoding='binary',
                              routing_key=rkey)
 
 The `Message` object returned by the `Consumer` class will have a

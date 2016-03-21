@@ -177,5 +177,5 @@ class Message(object):
             details['delivery_info'] = {
                 'routing_key': self.delivery_info['routing_key'],
             }
-        return "<%s object at 0x%x with details %s>" % (
+        return '<%s object at 0x%x with details %s>' % (
             self.__class__.__name__, id(self), details)

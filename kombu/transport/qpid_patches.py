@@ -92,9 +92,9 @@ except ImportError:  # pragma: no cover
 
 # Prepare for Monkey Patch 2
 def resolve_declare_monkey(self, sst, lnk, dir, action):  # pragma: no cover
-    declare = lnk.options.get("create") in ("always", dir)
-    assrt = lnk.options.get("assert") in ("always", dir)
-    requested_type = lnk.options.get("node", {}).get("type")
+    declare = lnk.options.get('create') in ('always', dir)
+    assrt = lnk.options.get('assert') in ('always', dir)
+    requested_type = lnk.options.get('node', {}).get('type')
 
     def do_resolved(type, subtype):
         err = None
@@ -102,13 +102,13 @@ def resolve_declare_monkey(self, sst, lnk, dir, action):  # pragma: no cover
             if declare:
                 err = self.declare(sst, lnk, action)
             else:
-                err = NotFound(text="no such queue: %s" % lnk.name)
+                err = NotFound(text='no such queue: %s' % lnk.name)
         else:
             if assrt:
-                expected = lnk.options.get("node", {}).get("type")
+                expected = lnk.options.get('node', {}).get('type')
                 if expected and type != expected:
                     err = AssertionFailed(
-                        text="expected %s, got %s" % (expected, type))
+                        text='expected %s, got %s' % (expected, type))
             if err is None:
                 action(type, subtype)
         if err:
@@ -139,16 +139,16 @@ def resolve_monkey(self, sst, name, action, force=False,
     def do_action(r):
         do_result(r)
         er, qr = args
-        if node_type == "topic" and not er.not_found:
-            type, subtype = "topic", er.type
-        elif node_type == "queue" and qr.queue:
-            type, subtype = "queue", None
+        if node_type == 'topic' and not er.not_found:
+            type, subtype = 'topic', er.type
+        elif node_type == 'queue' and qr.queue:
+            type, subtype = 'queue', None
         elif er.not_found and not qr.queue:
             type, subtype = None, None
         elif qr.queue:
-            type, subtype = "queue", None
+            type, subtype = 'queue', None
         else:
-            type, subtype = "topic", er.type
+            type, subtype = 'topic', er.type
         if type is not None:
             self.address_cache[name] = (type, subtype)
         action(type, subtype)

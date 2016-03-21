@@ -41,10 +41,10 @@ class Channel(virtual.Channel):
 
         This function will change '@' to '.'.
         """
-        if "@" not in tube_name:
+        if '@' not in tube_name:
             new_tube_name = tube_name
         else:
-            new_tube_name = tube_name.replace("@", ".")
+            new_tube_name = tube_name.replace('@', '.')
         self._tube_map[new_tube_name] = tube_name
         return new_tube_name
 

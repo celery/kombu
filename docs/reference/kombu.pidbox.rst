@@ -13,15 +13,15 @@
 
     .. code-block:: python
 
-        >>> mailbox = pidbox.Mailbox("celerybeat", type="direct")
+        >>> mailbox = pidbox.Mailbox('celerybeat', type='direct')
 
         >>> @mailbox.handler
         >>> def reload_schedule(state, **kwargs):
-        ...     state["beat"].reload_schedule()
+        ...     state['beat'].reload_schedule()
 
         >>> @mailbox.handler
         >>> def connection_info(state, **kwargs):
-        ...     return {"connection": state["connection"].info()}
+        ...     return {'connection': state['connection'].info()}
 
     Example Node
     ~~~~~~~~~~~~
@@ -29,8 +29,8 @@
     .. code-block:: python
 
         >>> connection = kombu.Connection()
-        >>> state = {"beat": beat,
-                    "connection": connection}
+        >>> state = {'beat': beat,
+                     'connection': connection}
         >>> consumer = mailbox(connection).Node(hostname).listen()
         >>> try:
         ...     while True:
@@ -43,8 +43,8 @@
 
     .. code-block:: python
 
-        >>> mailbox.cast("reload_schedule")   # cast is async.
-        >>> info = celerybeat.call("connection_info", timeout=1)
+        >>> mailbox.cast('reload_schedule')   # cast is async.
+        >>> info = celerybeat.call('connection_info', timeout=1)
 
     Mailbox
     -------

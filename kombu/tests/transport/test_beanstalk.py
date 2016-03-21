@@ -11,7 +11,7 @@ class FakeJob(object):
 
     def stats(self):
         return {
-            "tube": self.tube
+            'tube': self.tube
         }
 
     def delete(self):

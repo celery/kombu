@@ -60,7 +60,7 @@ Or using :class:`~kombu.mixins.ConsumerMixin`:
             ]
 
         def on_message(self, body, message):
-            print("RECEIVED MESSAGE: {0!r}".format(body))
+            print('RECEIVED MESSAGE: {0!r}'.format(body))
             message.ack()
 
     C(connection).run()
