@@ -822,7 +822,7 @@ class Channel(virtual.Channel):
             'socket_keepalive_options': self.socket_keepalive_options,
         }
         if redis.VERSION < (2, 10):
-            for param in {'socket_keepalive', 'socket_keepalive_options'}:
+            for param in ('socket_keepalive', 'socket_keepalive_options'):
                 val = connparams.pop('socket_keepalive', None)
                 if val is not None:
                     raise VersionMismatch(
