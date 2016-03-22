@@ -219,7 +219,8 @@
 
     Contributed by Joshua Harlow.
 
-- Redis: Now properly handles ``TimeoutError raised by py-redis.
+- Redis: Now properly handles :exc:`redis.exceptions.TimeoutError`
+  raised by :mod:`redis`.
 
     Contributed by markow.
 
