@@ -5,27 +5,85 @@ kombu.transport.qpid
 `Qpid`_ transport using `qpid-python`_ as the client and `qpid-tools`_ for
 broker management.
 
+The use this transport you must install the necessary dependencies. These
+dependencies are available via PyPI and can be installed using the pip
+command:
+
+.. code-block:: console
+
+    $ pip install kombu[qpid]
+
+or to install the requirements manually:
+
+.. code-block:: console
+
+    $ pip install qpid-tools qpid-python
+
+.. admonition:: Python 3 and PyPy Limitations
+
+    The Qpid transport does not support Python 3 or PyPy environments due
+    to underlying dependencies not being compatible. This version is
+    tested and works with with Python 2.7.
+
+.. admonition:: Potential Deadlock
+
+    This transport should be used with caution due to a known
+    potential deadlock. See `Issue 2199`_ for more details.
+
 .. _`Qpid`: http://qpid.apache.org/
 .. _`qpid-python`: http://pypi.python.org/pypi/qpid-python/
 .. _`qpid-tools`: http://pypi.python.org/pypi/qpid-tools/
 .. _`Issue 2199`: https://github.com/celery/celery/issues/2199
 
-The use this transport you must install the necessary dependencies. These
-dependencies are available via PyPI and can be installed using the pip
-command:
+Authentication
+==============
 
-`pip install qpid-tools qpid-python`
+This transport supports SASL authentication with the Qpid broker. Normally,
+SASL mechanisms are negotiated from a client list and a server list of
+possible mechanisms, but in practice, different SASL client libraries give
+different behaviors. These different behaviors cause the expected SASL
+mechanism to not be selected in many cases. As such, this transport restricts
+the mechanism types based on Kombu's configuration according to the following
+table.
 
-    .. admonition:: Python 3 and PyPy Limitations
++------------------------------------+--------------------+
+| **Broker String**                  | **SASL Mechanism** |
++------------------------------------+--------------------+
+| qpid://hostname/                   | ANONYMOUS          |
++------------------------------------+--------------------+
+| qpid://username:password@hostname/ | PLAIN              |
++------------------------------------+--------------------+
+| see instructions below             | EXTERNAL           |
++------------------------------------+--------------------+
 
-        The Qpid transport does not support Python 3 or PyPy environments due
-        to underlying dependencies not being compatible. This version is
-        tested and works with with Python 2.7.
+The user can override the above SASL selection behaviors and specify the SASL
+string using the :attr:`~kombu.Connection.login_method` argument to the
+:class:`~kombu.Connection` object. The string can be a single SASL mechanism
+or a space separated list of SASL mechanisms. If you are using Celery with
+Kombu, this can be accomplished by setting the *BROKER_LOGIN_METHOD* Celery
+option.
 
-    .. admonition:: Potential Deadlock
+.. note::
 
-        This transport should be used with caution due to a known
-        potential deadlock. See `Issue 2199`_ for more details.
+    While using SSL, Qpid users may want to override the SASL mechanism to
+    use *EXTERNAL*. In that case, Qpid requires a username to be presented
+    that matches the *CN* of the SSL client certificate. Ensure that the
+    broker string contains the corresponding username. For example, if the
+    client certificate has *CN=asdf* and the client connects to *example.com*
+    on port 5671, the broker string should be:
+
+        **qpid://asdf@example.com:5671/**
+
+Transport Options
+=================
+
+The :attr:`~kombu.Connection.transport_options` argument to the
+:class:`~kombu.Connection` object are passed directly to the
+:class:`qpid.messaging.endpoints.Connection` as keyword arguments. These
+options override and replace any other default or specified values. If using
+Celery, this can be accomplished by setting the
+*BROKER_TRANSPORT_OPTIONS* Celery option.
+>>>>>>> ba4fa60... [qpid] Fixes rst syntax errors in docstrings
 
 """
 from __future__ import absolute_import
@@ -155,13 +213,18 @@ class QpidMessagingExceptionHandler(object):
 class QoS(object):
     """A helper object for message prefetch and ACKing purposes.
 
+    :keyword prefetch_count: Initial prefetch count, hard set to 1.
+    :type prefetch_count: int
+
+
     NOTE: prefetch_count is currently hard set to 1, and needs to be improved
 
-    This object is instantiated 1-for-1 with a :class:`Channel`. QoS
-    allows prefetch_count to be set to the number of outstanding messages
-    the corresponding :class:`Channel` should be allowed to prefetch.
-    Setting prefetch_count to 0 disables prefetch limits, and the object
-    can hold an arbitrary number of messages.
+    This object is instantiated 1-for-1 with a
+    :class:`~.kombu.transport.qpid.Channel` instance. QoS allows
+    ``prefetch_count`` to be set to the number of outstanding messages
+    the corresponding :class:`~kombu.transport.qpid.Channel` should be
+    allowed to prefetch.  Setting ``prefetch_count`` to 0 disables
+    prefetch limits, and the object can hold an arbitrary number of messages.
 
     Messages are added using :meth:`append`, which are held until they are
     ACKed asynchronously through a call to :meth:`ack`. Messages that are
@@ -176,19 +239,13 @@ class QoS(object):
     """
 
     def __init__(self, session, prefetch_count=1):
-        """Instantiate a QoS object.
-
-        :keyword prefetch_count: Initial prefetch count, hard set to 1.
-        :type prefetch_count: int
-
-        """
         self.session = session
         self.prefetch_count = 1
         self._not_yet_acked = OrderedDict()
 
     def can_consume(self):
-        """Return True if the :class:`Channel` can consume more messages,
-        else False.
+        """Return True if the :class:`~kombu.transport.qpid.Channel` can
+        consume more messages, else False.
 
         Used to ensure the client adheres to currently active prefetch
         limits.
@@ -206,42 +263,41 @@ class QoS(object):
 
     def can_consume_max_estimate(self):
         """Return the remaining message capacity for the associated
-        :class:`Channel`.
+        :class:`kombu.transport.qpid.Channel`.
 
         Returns an estimated number of outstanding messages that a
-        :class:`Channel` can accept without exceeding prefetch_count. If
-        prefetch_count is 0, then this method returns 1.
+        :class:`kombu.transport.qpid.Channel` can accept without
+        exceeding ``prefetch_count``. If ``prefetch_count`` is 0, then
+        this method returns 1.
 
         :returns: The number of estimated messages that can be fetched
             without violating the prefetch_count.
         :rtype: int
 
         """
-        if self.prefetch_count:
-            return self.prefetch_count - len(self._not_yet_acked)
-        else:
-            return 1
+        return 1 if not self.prefetch_count else (
+            self.prefetch_count - len(self._not_yet_acked)
+        )
 
     def append(self, message, delivery_tag):
         """Append message to the list of un-ACKed messages.
 
         Add a message, referenced by the integer delivery_tag, for ACKing,
         rejecting, or getting later. Messages are saved into an
-        :class:`~kombu.utils.compat.OrderedDict` by delivery_tag.
+        :class:`collections.OrderedDict` by delivery_tag.
 
         :param message: A received message that has not yet been ACKed.
         :type message: qpid.messaging.Message
         :param delivery_tag: An integer number to refer to this message by
             upon receipt.
-        :type delivery_tag: int
+        :type delivery_tag: uuid.UUID
 
         """
         self._not_yet_acked[delivery_tag] = message
 
     def get(self, delivery_tag):
-        """
-        Get an un-ACKed message by delivery_tag. If called with an invalid
-        delivery_tag a KeyError is raised.
+        """Get an un-ACKed message by delivery_tag. If called with an invalid
+        delivery_tag a :exc:`KeyError` is raised.
 
         :param delivery_tag: The delivery tag associated with the message
             to be returned.
@@ -261,7 +317,7 @@ class QoS(object):
 
         :param delivery_tag: the delivery tag associated with the message
             to be acknowledged.
-        :type delivery_tag: int
+        :type delivery_tag: uuid.UUID
 
         """
         message = self._not_yet_acked.pop(delivery_tag)
@@ -270,7 +326,7 @@ class QoS(object):
     def reject(self, delivery_tag, requeue=False):
         """Reject a message by delivery_tag.
 
-        Explicitly notify the broker that the :class:`Channel` associated
+        Explicitly notify the broker that the channel associated
         with this QoS object is rejecting the message that was previously
         delivered.
 
@@ -300,7 +356,13 @@ class QoS(object):
 class Channel(base.StdChannel):
     """Supports broker configuration and messaging send and receive.
 
-    A Channel object is designed to have method-parity with a Channel as
+    :param connection: A Connection object that this Channel can
+        reference. Currently only used to access callbacks.
+    :type connection: kombu.transport.qpid.Connection
+    :param transport: The Transport this Channel is associated with.
+    :type transport: kombu.transport.qpid.Transport
+
+    A channel object is designed to have method-parity with a Channel as
     defined in AMQP 0-10 and earlier, which allows for the following broker
     actions:
 
@@ -316,14 +378,15 @@ class Channel(base.StdChannel):
     Channels are designed to all share a single TCP connection with a
     broker, but provide a level of isolated communication with the broker
     while benefiting from a shared TCP connection. The Channel is given
-    its :class:`Connection` object by the :class:`Transport` that
-    instantiates the Channel.
+    its :class:`~kombu.transport.qpid.Connection` object by the
+    :class:`~kombu.transport.qpid.Transport` that
+    instantiates the channel.
 
-    This Channel inherits from :class:`~kombu.transport.base.StdChannel`,
-    which makes this a 'native' Channel versus a 'virtual' Channel which
+    This channel inherits from :class:`~kombu.transport.base.StdChannel`,
+    which makes this a 'native' channel versus a 'virtual' channel which
     would inherit from :class:`kombu.transports.virtual`.
 
-    Messages sent using this Channel are assigned a delivery_tag. The
+    Messages sent using this channel are assigned a delivery_tag. The
     delivery_tag is generated for a message as they are prepared for
     sending by :meth:`basic_publish`. The delivery_tag is unique per
     Channel instance using :meth:`~itertools.count`. The delivery_tag has
@@ -331,11 +394,11 @@ class Channel(base.StdChannel):
     memory of this object, and the underlying :class:`QoS` object that
     provides support.
 
-    Each Channel object instantiates exactly one :class:`QoS` object for
+    Each channel object instantiates exactly one :class:`QoS` object for
     prefetch limiting, and asynchronous ACKing. The :class:`QoS` object is
     lazily instantiated through a property method :meth:`qos`. The
     :class:`QoS` object is a supporting object that should not be accessed
-    directly except by the Channel itself.
+    directly except by the channel itself.
 
     Synchronous reads on a queue are done using a call to :meth:`basic_get`
     which uses :meth:`_get` to perform the reading. These methods read
@@ -388,15 +451,6 @@ class Channel(base.StdChannel):
     _delivery_tags = count(1)
 
     def __init__(self, connection, transport):
-        """Instantiate a Channel object.
-
-        :param connection: A Connection object that this Channel can
-            reference. Currently only used to access callbacks.
-        :type connection: Connection
-        :param transport: The Transport this Channel is associated with.
-        :type transport: Transport
-
-        """
         self.connection = connection
         self.transport = transport
         qpid_connection = connection.get_qpid_connection()
@@ -413,9 +467,9 @@ class Channel(base.StdChannel):
         from a queue by name. This method creates a
         :class:`~qpid.messaging.endpoints.Receiver` to read from the queue
         using the :class:`~qpid.messaging.endpoints.Session` saved on the
-        associated :class:`Transport`. The receiver is closed before the
-        method exits. If a message is available, a
-        :class:`qpid.messaging.Message` object is returned. If no message is
+        associated :class:`~kombu.transport.qpid.Transport`.  The receiver
+        is closed before the method exits. If a message is available, a
+        :class:`qpid.messaging.Message` object is returned.  If no message is
         available, a :class:`qpid.messaging.exceptions.Empty` exception is
         raised.
 
@@ -427,6 +481,8 @@ class Channel(base.StdChannel):
 
         :return: The received message.
         :rtype: :class:`qpid.messaging.Message`
+        :raises: :class:`qpid.messaging.exceptions.Empty` if no
+                 message is available.
 
         """
         rx = self.transport.session.receiver(queue)
@@ -452,8 +508,8 @@ class Channel(base.StdChannel):
         This method creates a :class:`qpid.messaging.endpoints.Sender` to
         send the message to the queue using the
         :class:`qpid.messaging.endpoints.Session` created and referenced by
-        the associated :class:`Transport`. The sender is closed before the
-        method exits.
+        the associated :class:`~kombu.transport.qpid.Transport`.  The sender
+        is closed before the method exits.
 
         External calls for put functionality should be done using
         :meth:`basic_publish`.
@@ -515,6 +571,9 @@ class Channel(base.StdChannel):
 
         :return: The number of messages requested to be purged.
         :rtype: int
+
+        :raises: :class:`qpid.messaging.exceptions.NotFound` if the queue
+                 being purged cannot be found.
 
         """
         queue_to_purge = self._broker.getQueue(queue)
@@ -804,6 +863,9 @@ class Channel(base.StdChannel):
         :return: The number of messages requested to be purged.
         :rtype: int
 
+        :raises: :class:`qpid.messaging.exceptions.NotFound` if the queue
+                 being purged cannot be found.
+
         """
         return self._purge(queue)
 
@@ -858,7 +920,7 @@ class Channel(base.StdChannel):
 
         :param delivery_tag: The delivery tag associated with the message
             to be acknowledged.
-        :type delivery_tag: int
+        :type delivery_tag: uuid.UUID
 
         """
         self.qos.ack(delivery_tag)
@@ -1206,12 +1268,45 @@ class Channel(base.StdChannel):
 
 
 class Connection(object):
-    """Encapsulate a connection object for the :class:`Transport`.
+    """Encapsulate a connection object for the
+    :class:`~kombu.transport.qpid.Transport`.
 
-    A Connection object is created by a :class:`Transport` during a call to
-    :meth:`Transport.establish_connection`. The :class:`Transport` passes in
+    :param host: The host that connections should connect to.
+    :param port: The port that connection should connect to.
+    :param username: The username that connections should connect with.
+        Optional.
+    :param password: The password that connections should connect with.
+        Optional but requires a username.
+    :param transport: The transport type that connections should use.
+        Either 'tcp', or 'ssl' are expected as values.
+    :param timeout: the timeout used when a Connection connects
+        to the broker.
+    :param sasl_mechanisms: The sasl authentication mechanism type to use.
+        refer to SASL documentation for an explanation of valid
+        values.
+
+    .. note::
+
+        qpid.messaging has an AuthenticationFailure exception type, but
+        instead raises a ConnectionError with a message that indicates an
+        authentication failure occurred in those situations.
+        ConnectionError is listed as a recoverable error type, so kombu
+        will attempt to retry if a ConnectionError is raised. Retrying
+        the operation without adjusting the credentials is not correct,
+        so this method specifically checks for a ConnectionError that
+        indicates an Authentication Failure occurred. In those
+        situations, the error type is mutated while preserving the
+        original message and raised so kombu will allow the exception to
+        not be considered recoverable.
+
+
+    A connection object is created by a
+    :class:`~kombu.transport.qpid.Transport` during a call to
+    :meth:`~kombu.transport.qpid.Transport.establish_connection`.  The
+    :class:`~kombu.transport.qpid.Transport` passes in
     connection options as keywords that should be used for any connections
-    created. Each :class:`Transport` creates exactly one Connection.
+    created. Each :class:`~kombu.transport.qpid.Transport` creates exactly
+    one Connection.
 
     A Connection object maintains a reference to a
     :class:`~qpid.messaging.endpoints.Connection` which can be accessed
@@ -1242,35 +1337,6 @@ class Connection(object):
     SASL_ANONYMOUS_MECH = 'ANONYMOUS'
 
     def __init__(self, **connection_options):
-        """Instantiate a Connection object.
-
-        The following parameters are expected:
-
-        * host: The host that connections should connect to.
-        * port: The port that connection should connect to.
-        * username: The username that connections should connect with.
-        * password: The password that connections should connect with.
-        * transport: The transport type that connections should use. Either
-              'tcp', or 'ssl' are expected as values.
-        * timeout: the timeout used when a Connection connects to the broker.
-        * sasl_mechanisms: The sasl authentication mechanism type to use.
-              refer to SASL documentation for an explanation of valid values.
-
-        Creates a :class:`qpid.messaging.endpoints.Connection` object with
-        the saved parameters, and stores it as _qpid_conn.
-
-        qpid.messaging has an AuthenticationFailure exception type, but
-        instead raises a ConnectionError with a message that indicates an
-        authentication failure occurred in those situations. ConnectionError
-        is listed as a recoverable error type, so kombu will attempt to retry
-        if a ConnectionError is raised. Retrying the operation without
-        adjusting the credentials is not correct, so this method specifically
-        checks for a ConnectionError that indicates an Authentication Failure
-        occurred. In those situations, the error type is mutated while
-        preserving the original message and raised so kombu will allow the
-        exception to not be considered recoverable.
-
-        """
         self.connection_options = connection_options
         self.channels = []
         self._callbacks = {}
@@ -1336,14 +1402,23 @@ class Connection(object):
         """
         return self._qpid_conn
 
+    def close(self):
+        """Close the connection
+
+        Closing the connection will close all associated session, senders, or
+        receivers used by the Connection.
+
+        """
+        return self._qpid_conn
+
     def close_channel(self, channel):
         """Close a Channel.
 
-        Close a channel specified by a reference to the :class:`Channel`
-        object.
+        Close a channel specified by a reference to the
+        :class:`~kombu.transport.qpid.Channel` object.
 
         :param channel: Channel that should be closed.
-        :type channel: Channel
+        :type channel: :class:`~kombu.transport.qpid.Channel`.
 
         """
         try:
@@ -1488,13 +1563,6 @@ class Transport(base.Transport):
     )
 
     def __init__(self, *args, **kwargs):
-        """Instantiate a Transport object.
-
-        This method creates a pipe, and saves the read and write file
-        descriptors as attributes. The behavior of the read file descriptor
-        is modified to be non-blocking using fcntl.fcntl.
-
-        """
         self.verify_runtime_environment()
         super(Transport, self).__init__(*args, **kwargs)
         self.r, self._w = os.pipe()
@@ -1508,6 +1576,7 @@ class Transport(base.Transport):
         in Python 3 or PyPi environments. This module is not compatible with
         Python 3 or PyPi. The RuntimeError identifies this to the user up
         front along with suggesting Python 2.7 be used instead.
+
         """
         if getattr(sys, 'pypy_version_info', None):
             raise RuntimeError('The Qpid transport for Kombu does not '
@@ -1536,8 +1605,8 @@ class Transport(base.Transport):
 
         Nothing is expected to be returned from :meth:`drain_events` because
         :meth:`drain_events` handles messages by calling callbacks that are
-        maintained on the :class:`Connection` object. When
-        :meth:`drain_events` returns, all associated messages have been
+        maintained on the :class:`~kombu.transport.qpid.Connection` object.
+        When :meth:`drain_events` returns, all associated messages have been
         handled.
 
         This method calls drain_events() which reads as many messages as are
@@ -1563,7 +1632,7 @@ class Transport(base.Transport):
         :param connection: The connection associated with the readable
             events, which contains the callbacks that need to be called for
             the readable objects.
-        :type connection: Connection
+        :type connection: kombu.transport.qpid.Connection
         :param loop: The asynchronous loop object that contains epoll like
             functionality.
         :type loop: kombu.async.Hub
@@ -1598,7 +1667,7 @@ class Transport(base.Transport):
 
         :param connection: A reference to the connection associated with
             this Transport.
-        :type connection: Connection
+        :type connection: kombu.transport.qpid.Connection
         :param loop: A reference to the external loop.
         :type loop: kombu.async.hub.Hub
 
@@ -1662,15 +1731,10 @@ class Transport(base.Transport):
         return conn
 
     def close_connection(self, connection):
-        """Close the :class:`Connection` object, and all associated
-        :class:`Channel` objects.
+        """Close the :class:`Connection` object.
 
-        Iterates through all :class:`Channel` objects associated with the
-        :class:`Connection`, pops them from the list of channels, and calls
-        :meth:Channel.close` on each.
-
-        :param connection: The Connection that should be closed
-        :type connection: Connection
+        :param connection: The Connection that should be closed.
+        :type connection: :class:`kombu.transport.qpid.Connection`
 
         """
         for channel in connection.channels:
@@ -1686,10 +1750,10 @@ class Transport(base.Transport):
         For each drained message, the message is called to the appropriate
         callback. Callbacks are organized by queue name.
 
-        :param connection: The :class:`Connection` that contains the
-            callbacks, indexed by queue name, which will be called by this
-            method.
-        :type connection: Connection
+        :param connection: The :class:`~kombu.transport.qpid.Connection` that
+            contains the callbacks, indexed by queue name, which will be called
+            by this method.
+        :type connection: kombu.transport.qpid.Connection
         :keyword timeout: The timeout that limits how long this method will
             run for. The timeout could interrupt a blocking read that is
             waiting for a new message, or cause this method to return before
@@ -1712,18 +1776,18 @@ class Transport(base.Transport):
         raise socket.timeout()
 
     def create_channel(self, connection):
-        """Create and return a :class:`Channel`.
+        """Create and return a :class:`~kombu.transport.qpid.Channel`.
 
-        Creates a new :class:`Channel`, and append the :class:`Channel` to the
-        list of channels known by the :class:`Connection`. Once the new
-        :class:`Channel` is created, it is returned.
+        Creates a new channel, and appends the channel to the
+        list of channels known by the Connection.  Once the new
+        channel is created, it is returned.
 
         :param connection: The connection that should support the new
-            :class:`Channel`.
-        :type connection: Connection
+            :class:`~kombu.transport.qpid.Channel`.
+        :type connection: kombu.transport.qpid.Connection
 
         :return: The new Channel that is made.
-        :rtype: :class:`Channel`.
+        :rtype: :class:`kombu.transport.qpid.Channel`.
 
         """
         channel = connection.Channel(connection, self)
