@@ -2722,7 +2722,7 @@ Fixes
 
     Fix contributed by Hong Minhee
 
-* SQS Transport: Fixes KeyError on message acknowledgements (Issue #73).
+* SQS Transport: Fixes KeyError on message acknowledgments (Issue #73).
 
     The SQS transport now uses UUID's for delivery tags, rather than
     a counter.

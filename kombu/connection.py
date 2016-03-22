@@ -666,7 +666,7 @@ class Connection(object):
         also it will be used as the default routing key.
 
         :param name: Name of the queue/or a :class:`~kombu.Queue`.
-        :keyword no_ack: Disable acknowledgements. Default is false.
+        :keyword no_ack: Disable acknowledgments. Default is false.
         :keyword queue_opts: Additional keyword arguments passed to the
           constructor of the automatically created
           :class:`~kombu.Queue`.
@@ -689,7 +689,7 @@ class Connection(object):
         Same as :meth:`SimpleQueue`, but configured with buffering
         semantics. The resulting queue and exchange will not be durable, also
         auto delete is enabled. Messages will be transient (not persistent),
-        and acknowledgements are disabled (``no_ack``).
+        and acknowledgments are disabled (``no_ack``).
 
         """
         from .simple import SimpleBuffer

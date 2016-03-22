@@ -24,7 +24,7 @@
 
         .. attribute:: no_ack
 
-            flag to enable/disable acknowledgements.
+            flag to enable/disable acknowledgments.
 
         .. attribute:: queue
 
@@ -65,7 +65,7 @@
 
         .. attribute:: no_ack
 
-            flag to enable/disable acknowledgements.
+            flag to enable/disable acknowledgments.
 
         .. attribute:: queue
 
