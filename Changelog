@@ -4,6 +4,26 @@
  Change history
 ================
 
+.. _version-3.0.35:
+
+3.0.35
+======
+:release-date: 2016-03-22 11:22 P.M PST
+:release-by: Ask Solem
+
+- msgpack: msgpack support now requires msgpack-python > 0.4.7.
+
+- Redis: TimeoutError was no longer handled as a recoverable error.
+
+- Redis: Adds the ability to set more Redis connection options
+  using ``Connection(transport_options={...})``.
+
+    - ``socket_connect_timeout``
+    - ``socket_keepalive`` (requires :mod:`redis-py` > 2.10)
+    - ``socket_keepalive_options`` (requires :mod:`redis-py` > 2.10)
+
+- msgpack: Fixes support for binary/unicode data
+
 .. _version-3.0.34:
 
 3.0.34
