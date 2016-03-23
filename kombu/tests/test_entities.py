@@ -190,6 +190,24 @@ class test_Exchange(Case):
         foo(chan).unbind_from('bar')
         self.assertIn('exchange_unbind', chan)
 
+    def test_declare__no_declare(self):
+        chan = get_conn().channel()
+        foo = Exchange('foo', 'topic', no_declare=True)
+        foo(chan).declare()
+        self.assertNotIn('exchange_declare', chan)
+
+    def test_declare__internal_exchange(self):
+        chan = get_conn().channel()
+        foo = Exchange('amq.rabbitmq.trace', 'topic')
+        foo(chan).declare()
+        self.assertNotIn('exchange_declare', chan)
+
+    def test_declare(self):
+        chan = get_conn().channel()
+        foo = Exchange('foo', 'topic', no_declare=False)
+        foo(chan).declare()
+        self.assertIn('exchange_declare', chan)
+
 
 class test_Queue(Case):
 
@@ -256,6 +274,16 @@ class test_Queue(Case):
 
         q.declare()
         q.queue_declare.assert_called_with(False, passive=False)
+
+    def test_declare__no_declare(self):
+        q = Queue('a', no_declare=True)
+        q.queue_declare = Mock()
+        q.queue_bind = Mock()
+        q.exchange = None
+
+        q.declare()
+        self.assertFalse(q.queue_declare.called)
+        self.assertFalse(q.queue_bind.called)
 
     def test_bind_to_when_name(self):
         chan = Mock()
