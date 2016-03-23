@@ -177,8 +177,8 @@ class Exchange(MaybeChannelBound):
 
     def _can_declare(self):
         return not self.no_declare and (
-                self.name and not self.name.startswith(
-                    INTERNAL_EXCHANGE_PREFIX))
+            self.name and not self.name.startswith(
+                INTERNAL_EXCHANGE_PREFIX))
 
     def declare(self, nowait=False, passive=None):
         """Declare the exchange.
