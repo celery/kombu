@@ -7,7 +7,6 @@ import types
 
 from contextlib import contextmanager
 from functools import wraps
-from io import StringIO
 
 try:
     from unittest import mock
@@ -16,7 +15,7 @@ except ImportError:
 
 from nose import SkipTest
 
-from kombu.five import builtins, string_t
+from kombu.five import builtins, string_t, WhateverIO
 from kombu.utils.encoding import ensure_bytes
 
 try:
@@ -171,8 +170,8 @@ def redirect_stdouts(fun):
 
     @wraps(fun)
     def _inner(*args, **kwargs):
-        sys.stdout = StringIO()
-        sys.stderr = StringIO()
+        sys.stdout = WhateverIO()
+        sys.stderr = WhateverIO()
         try:
             return fun(*args, **dict(kwargs,
                                      stdout=sys.stdout, stderr=sys.stderr))
