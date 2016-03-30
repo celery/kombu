@@ -212,11 +212,20 @@ class Channel(virtual.Channel):
         if queue_name in self._noack_queues:
             queue.delete_message(message)
         else:
-            payload['properties']['delivery_info'].update({
-                'sqs_message': message, 'sqs_queue': queue,
-            })
-            # set delivery tag to SQS receipt handle
-            payload['properties']['delivery_tag'] = message.receipt_handle
+            try:
+                payload['properties']['delivery_info'].update({
+                    'sqs_message': message, 'sqs_queue': queue,
+                })
+                # set delivery tag to SQS receipt handle
+                payload['properties']['delivery_tag'] = message.receipt_handle
+            except KeyError as e:
+                # It's probably just a json message NOT created with celery
+                payload.update({'body': bytes_to_str(message.get_body())})
+                data = {'sqs_message': message, 'sqs_queue': queue}
+                payload.update({'properties': {'delivery_info': data,
+                                'delivery_tag': None}})
+                payload['properties']['delivery_tag'] = message.receipt_handle
+                return payload
         return payload
 
     def _messages_to_python(self, messages, queue):
@@ -339,7 +348,7 @@ class Channel(virtual.Channel):
             message.delivery_info.pop(unwanted_key, None)
         return super(Channel, self)._restore(message)
 
-    def basic_ack(self, delivery_tag):
+    def basic_ack(self, delivery_tag, multiple=False):
         delivery_info = self.qos.get(delivery_tag).delivery_info
         try:
             queue = delivery_info['sqs_queue']
