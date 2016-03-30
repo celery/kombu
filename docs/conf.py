@@ -88,7 +88,7 @@ html_sidebars = {
 
 intersphinx_mapping = {
     'python': ('http://docs.python.org/dev', None),
-    'celery': ('http://docs.celeryproject.org/en/lataest', None),
+    'celery': ('http://docs.celeryproject.org/en/latest', None),
     'djcelery': ('http://django-celery.readthedocs.org/en/latest', None),
     'cyme': ('http://cyme.readthedocs.org/en/latest', None),
     'amqp': ('http://amqp.readthedocs.org/en/latest', None),
