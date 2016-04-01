@@ -204,7 +204,7 @@ class QpidMessagingExceptionHandler(object):
             try:
                 return original_func(*args, **kwargs)
             except Exception as exc:
-                if self.allowed_exception_string not in exc.message:
+                if self.allowed_exception_string not in str(exc):
                     raise
 
         return decorator
@@ -719,7 +719,7 @@ class Channel(base.StdChannel):
         try:
             self._broker.addQueue(queue, options=options)
         except Exception as exc:
-            if OBJECT_ALREADY_EXISTS_STRING not in exc.message:
+            if OBJECT_ALREADY_EXISTS_STRING not in str(exc):
                 raise
         queue_to_check = self._broker.getQueue(queue)
         message_count = queue_to_check.values['msgDepth']

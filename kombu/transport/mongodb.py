@@ -67,7 +67,7 @@ class BroadcastCursor(object):
             except pymongo.errors.OperationFailure as exc:
                 # In some cases tailed cursor can become invalid
                 # and have to be reinitalized
-                if 'not valid at server' in exc.message:
+                if 'not valid at server' in str(exc):
                     self.purge()
 
                     continue
