@@ -1,5 +1,7 @@
 from __future__ import absolute_import, unicode_literals
 
+from kombu.five import module_name_t
+
 from kombu.async.timer import Entry, Timer, to_timestamp
 
 from kombu.tests.case import Case, Mock, patch, redirect_stdouts
@@ -99,7 +101,7 @@ class test_Timer(Case):
             t.schedule.enter_after = Mock()
 
             myfun = Mock()
-            myfun.__name__ = b'myfun'
+            myfun.__name__ = module_name_t('myfun')
             t.call_repeatedly(0.03, myfun)
 
             self.assertEqual(t.schedule.enter_after.call_count, 1)
