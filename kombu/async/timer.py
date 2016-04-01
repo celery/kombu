@@ -13,7 +13,7 @@ import sys
 
 from collections import namedtuple
 from datetime import datetime
-from functools import wraps
+from functools import total_ordering, wraps
 from time import time
 from weakref import proxy as weakrefproxy
 
@@ -22,7 +22,7 @@ from kombu.log import get_logger
 
 try:
     from pytz import utc
-except ImportError:
+except ImportError:  # pragma: no cover
     utc = None
 
 DEFAULT_MAX_INTERVAL = 2
@@ -44,6 +44,7 @@ def to_timestamp(d, default_timezone=utc):
     return d
 
 
+@total_ordering
 class Entry(object):
     if not IS_PYPY:  # pragma: no cover
         __slots__ = (
@@ -78,15 +79,6 @@ class Entry(object):
     # must not use hash() to order entries
     def __lt__(self, other):
         return id(self) < id(other)
-
-    def __gt__(self, other):
-        return id(self) > id(other)
-
-    def __le__(self, other):
-        return id(self) <= id(other)
-
-    def __ge__(self, other):
-        return id(self) >= id(other)
 
     def __eq__(self, other):
         return hash(self) == hash(other)

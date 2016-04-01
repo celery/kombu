@@ -11,6 +11,11 @@ try:
 except ImportError:  # pragma: no cover
     import json  # noqa
 
+    class _DecodeError(Exception):  # noqa
+        pass
+else:
+    from simplejson.decoder import JSONDecodeError as _DecodeError
+
 IS_PY3 = sys.version_info[0] == 3
 
 _encoder_cls = type(json._default_encoder)
@@ -47,11 +52,8 @@ def loads(s, _loads=json.loads, decode_bytes=IS_PY3):
     elif isinstance(s, buffer_t):
         s = text_t(s)  # ... awwwwwww :(
 
-    if json.__name__ == 'simplejson':
-        try:
-            return _loads(s)
-        # catch simplejson.decoder.JSONDecodeError: Unpaired high surrogate
-        except json.decoder.JSONDecodeError:
-            return stdjson.loads(s)
-    else:
+    try:
         return _loads(s)
+    except _DecodeError:
+        # catch "Unpaired high surrogate" error
+        return stdjson.loads(s)

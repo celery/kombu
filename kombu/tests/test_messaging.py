@@ -1,6 +1,7 @@
 from __future__ import absolute_import, unicode_literals
 
 import pickle
+import sys
 
 from collections import defaultdict
 
@@ -129,6 +130,19 @@ class test_Producer(Case):
             p._channel.basic_publish.call_args[1]['exchange'], 'foo',
         )
 
+    def test_publish_with_expiration(self):
+        p = self.connection.Producer()
+        p.channel = Mock()
+        p.publish('hello', exchange=Exchange('foo'), expiration=10)
+        properties = p._channel.prepare_message.call_args[0][5]
+        self.assertEqual(properties['expiration'], '10000')
+
+    def test_publish_with_reply_to(self):
+        p = self.connection.Producer()
+        p.channel = Mock()
+        p.publish('hello', exchange=Exchange('foo'), reply_to=Queue('foo'))
+        properties = p._channel.prepare_message.call_args[0][5]
+        self.assertEqual(properties['reply_to'], 'foo')
     def test_set_on_return(self):
         chan = Mock()
         chan.events = defaultdict(Mock)
@@ -348,6 +362,19 @@ class test_Consumer(Case):
             recv.assert_called_with('Hello', message)
         finally:
             channel.message_to_python = m2p
+
+    def test_receive_callback__message_errors(self):
+        channel = self.connection.channel()
+        channel.message_to_python = None
+        c = channel.Consumer()
+        message = Mock()
+        try:
+            raise KeyError('foo')
+        except KeyError:
+            message.errors = [sys.exc_info()]
+        message._reraise_error.side_effect = KeyError()
+        with self.assertRaises(KeyError):
+            c._receive_callback(message)
 
     def test_set_callbacks(self):
         channel = self.connection.channel()

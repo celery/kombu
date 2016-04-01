@@ -4,7 +4,7 @@ from __future__ import absolute_import
 try:  # pragma: no cover
     from email import message_from_file
     from email.mime.message import MIMEMessage
-except ImportError:  # Py2
+except ImportError:  # pragma: no cover
     from mimetools import Message as MIMEMessage   # noqa
 
     def message_from_file(m):  # noqa

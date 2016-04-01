@@ -9,7 +9,7 @@ from kombu.transport import virtual
 from kombu.utils import uuid
 from kombu.compression import compress
 
-from kombu.tests.case import Case, Mock, patch, redirect_stdouts
+from kombu.tests.case import Case, MagicMock, Mock, patch, redirect_stdouts
 
 PY3 = sys.version_info[0] == 3
 PRINT_FQDN = 'builtins.print' if PY3 else '__builtin__.print'
@@ -48,6 +48,10 @@ class test_QoS(Case):
         self.assertTrue(self.q.prefetch_count)
         self.assertFalse(self.q._delivered.restored)
         self.assertTrue(self.q._on_collect)
+
+    def test_restore_visible__interface(self):
+        qos = virtual.QoS(client().channel())
+        qos.restore_visible()
 
     @redirect_stdouts
     def test_can_consume(self, stdout, stderr):
@@ -296,6 +300,15 @@ class test_Channel(Case):
         c.queue_bind(n, n, n)
         c.queue_purge(n)
         self.assertIn(n, c.purged)
+
+    def test_basic_publish__anon_exchange(self):
+        c = memory_client().channel()
+        msg = MagicMock(name='msg')
+        c.encode_body = Mock(name='c.encode_body')
+        c.encode_body.return_value = (1, 2)
+        c._put = Mock(name='c._put')
+        c.basic_publish(msg, None, 'rkey', kw=1)
+        c._put.assert_called_with('rkey', msg, kw=1)
 
     def test_basic_publish_unique_delivery_tags(self, n='test_uniq_tag'):
         c1 = memory_client().channel()
@@ -573,3 +586,38 @@ class test_Transport(Case):
         channel = self.transport.create_channel(self.transport)
         with self.assertRaises(virtual.Empty):
             self.transport._drain_channel(channel)
+
+    def test__deliver__no_queue(self):
+        with self.assertRaises(KeyError):
+            self.transport._deliver(Mock(name='msg'), queue=None)
+
+    def test__reject_inbound_message(self):
+        channel = Mock(name='channel')
+        self.transport.channels = [None, channel]
+        self.transport._reject_inbound_message({'foo': 'bar'})
+        channel.Message.assert_called_with(channel, {'foo': 'bar'})
+        channel.qos.append.assert_called_with(
+            channel.Message(), channel.Message().delivery_tag,
+        )
+        channel.basic_reject.assert_called_with(
+            channel.Message().delivery_tag, requeue=True,
+        )
+
+    def test_on_message_ready(self):
+        channel = Mock(name='channel')
+        msg = Mock(name='msg')
+        callback = Mock(name='callback')
+        self.transport._callbacks = {'q1': callback}
+        self.transport.on_message_ready(channel, msg, queue='q1')
+        callback.assert_called_with(msg)
+
+    def test_on_message_ready__no_queue(self):
+        with self.assertRaises(KeyError):
+            self.transport.on_message_ready(
+                Mock(name='channel'), Mock(name='msg'), queue=None)
+
+    def test_on_message_ready__no_callback(self):
+        self.transport._callbacks = {}
+        with self.assertRaises(KeyError):
+            self.transport.on_message_ready(
+                Mock(name='channel'), Mock(name='msg'), queue='q1')

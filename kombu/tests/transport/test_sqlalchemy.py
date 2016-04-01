@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 
 from kombu import Connection
+
 from kombu.tests.case import Case, SkipTest, patch, case_requires
 
 

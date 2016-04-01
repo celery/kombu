@@ -8,6 +8,7 @@ from copy import copy
 from kombu import Connection, Consumer, Producer, parse_url
 from kombu.connection import Resource
 from kombu.five import items, range
+from kombu.utils.functional import lazy
 
 from .case import Case, Mock, SkipTest, patch, skip_if_not_module
 from .mocks import Transport
@@ -332,6 +333,28 @@ class test_Connection(Case):
         self.assertFalse(c.completes_cycle(1))
         self.assertTrue(c.completes_cycle(2))
 
+    def test_get_heartbeat_interval(self):
+        self.conn.transport.get_heartbeat_interval = Mock(name='ghi')
+        self.assertIs(
+            self.conn.get_heartbeat_interval(),
+            self.conn.transport.get_heartbeat_interval.return_value,
+        )
+        self.conn.transport.get_heartbeat_interval.assert_called_with(
+            self.conn.connection)
+
+    def test_supports_exchange_type(self):
+        self.conn.transport.implements.exchange_type = {'topic'}
+        self.assertTrue(self.conn.supports_exchange_type('topic'))
+        self.assertFalse(self.conn.supports_exchange_type('fanout'))
+
+    def test_qos_semantics_matches_spec(self):
+        qsms = self.conn.transport.qos_semantics_matches_spec = Mock(name='qsms')
+        self.assertIs(
+            self.conn.qos_semantics_matches_spec,
+            qsms.return_value,
+        )
+        qsms.assert_called_with(self.conn.connection)
+
     def test__enter____exit__(self):
         conn = self.conn
         context = conn.__enter__()
@@ -621,6 +644,19 @@ class test_ConnectionPool(ResourceCase):
 
     def create_resource(self, limit):
         return Connection(port=5672, transport=Transport).Pool(limit)
+
+    def test_collect_resource__does_not_collect_lazy_resource(self):
+        P = self.create_resource(10)
+        res = lazy(object())
+        res.collect = Mock(name='collect')
+        P.collect_resource(res)
+        self.assertFalse(res.collect.called)
+
+    def test_collect_resource(self):
+        res = Mock(name='res')
+        P = self.create_resource(10)
+        P.collect_resource(res, socket_timeout=10.3)
+        res.collect.assert_called_with(10.3)
 
     def test_setup(self):
         P = self.create_resource(10)

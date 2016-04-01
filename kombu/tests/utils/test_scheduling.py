@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 
-from kombu.utils.scheduling import FairCycle
+from kombu.utils.scheduling import FairCycle, cycle_by_name
 
 from kombu.tests.case import Case
 
@@ -65,3 +65,48 @@ class test_FairCycle(Case):
 
     def test__repr__(self):
         self.assertTrue(repr(FairCycle(lambda x: x, [1, 2, 3], MyEmpty)))
+
+
+class test_round_robin_cycle(Case):
+
+    def test_round_robin_cycle(self):
+        it = cycle_by_name('round_robin')(['A', 'B', 'C'])
+        self.assertListEqual(it.consume(3), ['A', 'B', 'C'])
+        it.rotate('B')
+        self.assertListEqual(it.consume(3), ['A', 'C', 'B'])
+        it.rotate('A')
+        self.assertListEqual(it.consume(3), ['C', 'B', 'A'])
+        it.rotate('A')
+        self.assertListEqual(it.consume(3), ['C', 'B', 'A'])
+        it.rotate('C')
+        self.assertListEqual(it.consume(3), ['B', 'A', 'C'])
+
+
+class test_priority_cycle(Case):
+
+    def test_priority_cycle(self):
+        it = cycle_by_name('priority')(['A', 'B', 'C'])
+        self.assertListEqual(it.consume(3), ['A', 'B', 'C'])
+        it.rotate('B')
+        self.assertListEqual(it.consume(3), ['A', 'B', 'C'])
+        it.rotate('A')
+        self.assertListEqual(it.consume(3), ['A', 'B', 'C'])
+        it.rotate('A')
+        self.assertListEqual(it.consume(3), ['A', 'B', 'C'])
+        it.rotate('C')
+        self.assertListEqual(it.consume(3), ['A', 'B', 'C'])
+
+
+class test_sorted_cycle(Case):
+
+    def test_sorted_cycle(self):
+        it = cycle_by_name('sorted')(['B', 'C', 'A'])
+        self.assertListEqual(it.consume(3), ['A', 'B', 'C'])
+        it.rotate('B')
+        self.assertListEqual(it.consume(3), ['A', 'B', 'C'])
+        it.rotate('A')
+        self.assertListEqual(it.consume(3), ['A', 'B', 'C'])
+        it.rotate('A')
+        self.assertListEqual(it.consume(3), ['A', 'B', 'C'])
+        it.rotate('C')
+        self.assertListEqual(it.consume(3), ['A', 'B', 'C'])

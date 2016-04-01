@@ -881,7 +881,7 @@ class Transport(base.Transport):
     def _deliver(self, message, queue):
         if not queue:
             raise KeyError(
-                'Received message without destination queue: {1}'.format(
+                'Received message without destination queue: {0}'.format(
                     message))
         try:
             callback = self._callbacks[queue]

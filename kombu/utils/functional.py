@@ -5,7 +5,6 @@ import threading
 
 from collections import Iterable, Mapping, OrderedDict
 from functools import wraps
-from itertools import islice
 
 from kombu.five import UserDict, items, keys, string_t
 
@@ -32,7 +31,7 @@ class LRUCache(UserDict):
     def __getitem__(self, key):
         with self.mutex:
             value = self[key] = self.data.pop(key)
-        return value
+            return value
 
     def update(self, *args, **kwargs):
         with self.mutex:
@@ -40,9 +39,12 @@ class LRUCache(UserDict):
             data.update(*args, **kwargs)
             if limit and len(data) > limit:
                 # pop additional items in case limit exceeded
-                # negative overflow will lead to an empty list
-                for item in islice(iter(data), len(data) - limit):
-                    data.pop(item)
+                for _ in range(len(data) - limit):
+                    data.popitem(last=False)
+
+    def popitem(self, last=True):
+        with self.mutex:
+            return self.data.popitem(last)
 
     def __setitem__(self, key, value):
         # remove least recently used key.
@@ -55,24 +57,28 @@ class LRUCache(UserDict):
         return iter(self.data)
 
     def _iterate_items(self):
-        for k in self:
-            try:
-                yield (k, self.data[k])
-            except KeyError:  # pragma: no cover
-                pass
+        with self.mutex:
+            for k in self:
+                try:
+                    yield (k, self.data[k])
+                except KeyError:  # pragma: no cover
+                    pass
     iteritems = _iterate_items
 
     def _iterate_values(self):
-        for k in self:
-            try:
-                yield self.data[k]
-            except KeyError:  # pragma: no cover
-                pass
+        with self.mutex:
+            for k in self:
+                try:
+                    yield self.data[k]
+                except KeyError:  # pragma: no cover
+                    pass
+
     itervalues = _iterate_values
 
     def _iterate_keys(self):
         # userdict.keys in py3k calls __getitem__
-        return keys(self.data)
+        with self.mutex:
+            return keys(self.data)
     iterkeys = _iterate_keys
 
     def incr(self, key, delta=1):
@@ -81,7 +87,7 @@ class LRUCache(UserDict):
             # integer as long as it exists and we can cast it
             newval = int(self.data.pop(key)) + delta
             self[key] = str(newval)
-        return newval
+            return newval
 
     def __getstate__(self):
         d = dict(vars(self))
@@ -108,7 +114,7 @@ class LRUCache(UserDict):
             return list(self._iterate_items())
 
 
-def memoize(maxsize=None, Cache=LRUCache):
+def memoize(maxsize=None, keyfun=None, Cache=LRUCache):
 
     def _memoize(fun):
         mutex = threading.Lock()
@@ -116,7 +122,10 @@ def memoize(maxsize=None, Cache=LRUCache):
 
         @wraps(fun)
         def _M(*args, **kwargs):
-            key = args + (KEYWORD_MARK,) + tuple(sorted(kwargs.items()))
+            if keyfun:
+                key = keyfun(args, kwargs)
+            else:
+                key = args + (KEYWORD_MARK,) + tuple(sorted(kwargs.items()))
             try:
                 with mutex:
                     value = cache[key]

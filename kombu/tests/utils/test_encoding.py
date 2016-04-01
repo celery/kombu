@@ -7,7 +7,10 @@ import sys
 from contextlib import contextmanager
 
 from kombu.five import bytes_t, string_t
-from kombu.utils.encoding import safe_str, default_encoding
+from kombu.utils.encoding import (
+    get_default_encoding_file, safe_str,
+    set_default_encoding_file, default_encoding,
+)
 
 from kombu.tests.case import Case, SkipTest, patch
 
@@ -24,6 +27,14 @@ def clean_encoding():
 
 
 class test_default_encoding(Case):
+
+    def test_set_default_file(self):
+        prev = get_default_encoding_file()
+        try:
+            set_default_encoding_file('/foo.txt')
+            self.assertEqual(get_default_encoding_file(), '/foo.txt')
+        finally:
+            set_default_encoding_file(prev)
 
     @patch('sys.getfilesystemencoding')
     def test_default(self, getdefaultencoding):

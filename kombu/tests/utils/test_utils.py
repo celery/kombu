@@ -373,3 +373,13 @@ class test_version_string_as_tuple(Case):
             version_string_as_tuple('3.3.1.a3.40c32'),
             version_info_t(3, 3, 1, 'a3', '40c32'),
         )
+
+
+class test_maybe_fileno(Case):
+
+    def test_maybe_fileno(self):
+        self.assertEqual(utils.maybe_fileno(3), 3)
+        f = Mock(name='file')
+        self.assertIs(utils.maybe_fileno(f), f.fileno())
+        f.fileno.side_effect = ValueError()
+        self.assertIsNone(utils.maybe_fileno(f))

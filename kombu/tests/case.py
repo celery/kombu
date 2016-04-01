@@ -1,12 +1,13 @@
 from __future__ import absolute_import
 
 import importlib
+import inspect
 import os
 import sys
 import types
 
 from contextlib import contextmanager
-from functools import wraps
+from functools import partial, wraps
 from io import StringIO
 
 try:
@@ -16,7 +17,7 @@ except ImportError:
 
 from nose import SkipTest
 
-from kombu.five import builtins, string_t
+from kombu.five import builtins, reraise, string_t
 from kombu.utils.encoding import ensure_bytes
 
 try:
@@ -50,6 +51,51 @@ class Case(unittest.TestCase):
 
     def teardown(self):
         pass
+
+    def patch(self, *path, **options):
+        manager = patch('.'.join(path), **options)
+        patched = manager.start()
+        self.addCleanup(manager.stop)
+        return patched
+
+    def mock_modules(self, *mods):
+        modules = []
+        for mod in mods:
+            mod = mod.split('.')
+            modules.extend(reversed([
+                '.'.join(mod[:-i] if i else mod) for i in range(len(mod))
+            ]))
+        modules = sorted(set(modules))
+        return self.wrap_context(mock_module(*modules))
+
+    def on_nth_call_do(self, mock, side_effect, n=1):
+
+        def on_call(*args, **kwargs):
+            if mock.call_count >= n:
+                mock.side_effect = side_effect
+            return mock.return_value
+        mock.side_effect = on_call
+        return mock
+
+    def on_nth_call_return(self, mock, retval, n=1):
+
+        def on_call(*args, **kwargs):
+            if mock.call_count >= n:
+                mock.return_value = retval
+            return mock.return_value
+        mock.side_effect = on_call
+        return mock
+
+    def mask_modules(self, *modules):
+        self.wrap_context(mask_modules(*modules))
+
+    def wrap_context(self, context):
+        ret = context.__enter__()
+        self.addCleanup(partial(context.__exit__, None, None, None))
+        return ret
+
+    def mock_environ(self, env_name, env_value):
+        return self.wrap_context(mock_environ(env_name, env_value))
 
 
 def PromiseMock(*args, **kwargs):
@@ -97,14 +143,18 @@ def case_no_pypy(cls):
 
 
 def case_no_python3(cls):
-    setup = cls.setUp
+    wrap, is_cls = cls, False
+    if inspect.isclass(cls):
+        wrap, is_cls = cls.setUp, True
 
-    @wraps(setup)
+    @wraps(wrap)
     def around_setup(self):
         if PY3:
             raise SkipTest('Python 3 incompatible')
-        setup(self)
-    cls.setUp = around_setup
+        return wrap(self) if is_cls else wrap()
+
+    if is_cls:
+        cls.setUp = around_setup
     return cls
 
 
@@ -306,3 +356,65 @@ def set_module_symbol(module, key, value):
         yield
     finally:
         setattr(module, key, prev)
+
+
+@contextmanager
+def mock_module(*names):
+    prev = {}
+
+    class MockModule(types.ModuleType):
+
+        def __getattr__(self, attr):
+            setattr(self, attr, Mock())
+            return types.ModuleType.__getattribute__(self, attr)
+
+    mods = []
+    for name in names:
+        try:
+            prev[name] = sys.modules[name]
+        except KeyError:
+            pass
+        mod = sys.modules[name] = MockModule(name)
+        mods.append(mod)
+    try:
+        yield mods
+    finally:
+        for name in names:
+            try:
+                sys.modules[name] = prev[name]
+            except KeyError:
+                try:
+                    del(sys.modules[name])
+                except KeyError:
+                    pass
+
+
+@contextmanager
+def mock_context(mock, typ=Mock):
+    context = mock.return_value = Mock()
+    context.__enter__ = typ()
+    context.__exit__ = typ()
+
+    def on_exit(*x):
+        if x[0]:
+            reraise(x[0], x[1], x[2])
+    context.__exit__.side_effect = on_exit
+    context.__enter__.return_value = context
+    try:
+        yield context
+    finally:
+        context.reset()
+
+
+@contextmanager
+def mock_environ(env_name, env_value):
+    sentinel = object()
+    prev_val = os.environ.get(env_name, sentinel)
+    os.environ[env_name] = env_value
+    try:
+        yield env_value
+    finally:
+        if prev_val is sentinel:
+            os.environ.pop(env_name, None)
+        else:
+            os.environ[env_name] = prev_val

@@ -13,6 +13,7 @@ from .compression import decompress
 from .exceptions import MessageStateError
 from .five import reraise, text_t
 from .serialization import loads
+from .utils.functional import dictfilter
 
 ACK_STATES = frozenset(['ACK', 'REJECTED', 'REQUEUED'])
 
@@ -162,20 +163,19 @@ class Message(object):
         return self._decoded_cache if self._decoded_cache else self.decode()
 
     def __repr__(self):
-        details = {
-            'state': self._state,
-            'content_type': self.content_type,
-            'delivery_tag': self.delivery_tag,
-            'properties': {},
-        }
-        if self.body is not None:
-            details['body_length'] = len(self.body)
-        for k in ('correlation_id', 'type'):
-            if k in self.properties:
-                details['properties'][k] = self.properties[k]
-        if 'routing_key' in self.delivery_info:
-            details['delivery_info'] = {
-                'routing_key': self.delivery_info['routing_key'],
-            }
-        return '<%s object at 0x%x with details %s>' % (
-            self.__class__.__name__, id(self), details)
+        return '<{0} object at {1:#x} with details {2!r}>'.format(
+            type(self).__name__, id(self), dictfilter(
+                state=self._state,
+                content_type=self.content_type,
+                delivery_tag=self.delivery_tag,
+                body_length=len(self.body) if self.body is not None else None,
+                properties=dictfilter(
+                    correlation_id=self.properties.get('correlation_id'),
+                    type=self.properties.get('type'),
+                ),
+                delivery_info=dictfilter(
+                    exchange=self.delivery_info.get('exchange'),
+                    routing_key=self.delivery_info.get('routing_key'),
+                ),
+            ),
+        )

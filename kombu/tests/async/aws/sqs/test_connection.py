@@ -21,6 +21,15 @@ class test_AsyncSQSConnection(AWSCase):
         self.x.get_list = Mock(nanme='X.get_list')
         self.callback = PromiseMock(name='callback')
 
+    def test_without_boto(self):
+        from kombu.async.aws.sqs import connection
+        prev, connection.boto = connection.boto, None
+        try:
+            with self.assertRaises(ImportError):
+                AsyncSQSConnection('ak', 'sk', http_client=Mock())
+        finally:
+            connection.boto = prev
+
     def test_default_region(self):
         self.assertTrue(self.x.region)
         self.assertTrue(issubclass(

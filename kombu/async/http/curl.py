@@ -14,7 +14,7 @@ from .base import BaseClient
 
 try:
     import pycurl  # noqa
-except ImportError:
+except ImportError:  # pragma: no cover
     pycurl = Curl = METH_TO_CURL = None  # noqa
 else:
     from pycurl import Curl  # noqa

@@ -100,7 +100,7 @@ def safe_str(s, errors='replace'):
     return _safe_str(s, errors)
 
 
-if is_py3k:
+if is_py3k:  # pragma: no cover
 
     def _safe_str(s, errors='replace', file=None):
         if isinstance(s, str):

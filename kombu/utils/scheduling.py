@@ -71,6 +71,7 @@ class round_robin_cycle(object):
             items.append(items.pop(items.index(last_used)))
         except ValueError:
             pass
+        return last_used
 
 
 class priority_cycle(round_robin_cycle):
