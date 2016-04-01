@@ -18,9 +18,9 @@
 - Redis: Adds the ability to set more Redis connection options
   using ``Connection(transport_options={...})``.
 
-    - ``socket_connect_timeout``
-    - ``socket_keepalive`` (requires :mod:`redis-py` > 2.10)
-    - ``socket_keepalive_options`` (requires :mod:`redis-py` > 2.10)
+    - ``socket_connect_timeout`` (requires :mod:`redis-py` 2.10 or later)
+    - ``socket_keepalive`` (requires :mod:`redis-py` 2.10 or later)
+    - ``socket_keepalive_options`` (requires :mod:`redis-py` 2.10 or later)
 
 - msgpack: Fixes support for binary/unicode data
 

@@ -808,7 +808,9 @@ class Channel(virtual.Channel):
                     ))
         return vhost
 
-    def _connparams(self, async=False):
+    def _connparams(self, async=False, _r210_options=(
+            'socket_connect_timeout', 'socket_keepalive',
+            'socket_keepalive_options')):
         conninfo = self.connection.client
         connparams = {
             'host': conninfo.hostname or '127.0.0.1',
@@ -822,8 +824,8 @@ class Channel(virtual.Channel):
             'socket_keepalive_options': self.socket_keepalive_options,
         }
         if redis.VERSION < (2, 10):
-            for param in ('socket_keepalive', 'socket_keepalive_options'):
-                val = connparams.pop('socket_keepalive', None)
+            for param in _r210_options:
+                val = connparams.pop(param, None)
                 if val is not None:
                     raise VersionMismatch(
                         'redis: {0!r} requires redis 2.10.0 or higher'.format(
