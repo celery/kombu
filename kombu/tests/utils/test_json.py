@@ -27,10 +27,15 @@ class test_dumps_loads(Case):
             dumps(x)
 
     def test_loads_memoryview(self):
-        self.assertEqual(loads(memoryview(dumps({'x': 'z'}))), {'x': 'z'})
+        self.assertEqual(
+            loads(memoryview(bytearray(dumps({'x': 'z'}), encoding='utf-8'))),
+            {'x': 'z'},
+        )
 
     def test_loads_bytearray(self):
-        self.assertEqual(loads(bytearray(dumps({'x': 'z'}))), {'x': 'z'})
+        self.assertEqual(
+            loads(bytearray(dumps({'x': 'z'}), encoding='utf-8')),
+            {'x': 'z'})
 
     def test_loads_bytes(self):
         self.assertEqual(
