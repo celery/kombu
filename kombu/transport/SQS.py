@@ -225,7 +225,6 @@ class Channel(virtual.Channel):
                 payload.update({'properties': {'delivery_info': data,
                                 'delivery_tag': None}})
                 payload['properties']['delivery_tag'] = message.receipt_handle
-                return payload
         return payload
 
     def _messages_to_python(self, messages, queue):

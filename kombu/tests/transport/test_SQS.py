@@ -14,6 +14,7 @@ from kombu.tests.case import Case, case_requires
 
 from kombu.transport import SQS
 from kombu.async.aws.ext import exception
+from kombu.async.aws.sqs.message import Message
 
 
 class SQSQueueMock(object):
@@ -194,40 +195,55 @@ class test_Channel(Case):
             self.channel._get_bulk(self.queue_name)
 
     def test_messages_to_python(self):
-        celery_message_count = 3
-        json_message_count = 3
+        message_count = 3
         # Create several test messages and publish them
-        for i in range(celery_message_count):
+        for i in range(message_count):
             message = 'message: %s' % i
             self.producer.publish(message)
 
-        # JSON formatted message NOT created by celery
-        for i in range(json_message_count):
-            message = '{"foo":"bar"}'
-            self.channel._put(self.producer.routing_key, message)
-
         q = self.channel._new_queue(self.queue_name)
         # Get the messages now
-        celery_messages = q.get_messages(num_messages=celery_message_count)
-        json_messages = q.get_messages(num_messages=json_message_count)
+        messages = q.get_messages(num_messages=message_count)
 
         # Now convert them to payloads
-        celery_payloads = self.channel._messages_to_python(
-            celery_messages, self.queue_name,
-        )
-        json_payloads = self.channel._messages_to_python(
-            json_messages, self.queue_name,
+        payloads = self.channel._messages_to_python(
+            messages, self.queue_name,
         )
 
         # We got the same number of payloads back, right?
-        self.assertEquals(len(celery_payloads), celery_message_count)
-        self.assertEquals(len(json_payloads), json_message_count)
+        self.assertEquals(len(payloads), message_count)
 
         # Make sure they're payload-style objects
-        for p in celery_payloads:
+        for p in payloads:
             self.assertTrue('properties' in p)
-        for p in json_payloads:
+
+    def test_messages_to_python_with_json_message(self):
+        message_count = 3
+        # JSON formatted message NOT created by celery
+        q = self.channel._new_queue(self.queue_name)
+        message = '{"foo":"bar"}'
+        for i in range(message_count):
+            m = Message()
+            m.set_body(message)
+            q.write(m)
+
+        # Get the messages now
+        messages = q.get_messages(num_messages=message_count)
+        for mess in messages:
+            print mess.get_body()
+
+        # Now convert them to payloads
+        payloads = self.channel._messages_to_python(
+            messages, self.queue_name,
+        )
+
+        # We got the same number of payloads back, right?
+        self.assertEquals(len(payloads), message_count)
+
+        # Make sure they're payload-style objects, and body is the same
+        for p in payloads:
             self.assertTrue('properties' in p)
+            self.assertEqual(p['body'], message)
 
     def test_put_and_get(self):
         message = 'my test message'
