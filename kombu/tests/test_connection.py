@@ -348,7 +348,7 @@ class test_Connection(Case):
         self.assertFalse(self.conn.supports_exchange_type('fanout'))
 
     def test_qos_semantics_matches_spec(self):
-        qsms = self.conn.transport.qos_semantics_matches_spec = Mock(name='qsms')
+        qsms = self.conn.transport.qos_semantics_matches_spec = Mock()
         self.assertIs(
             self.conn.qos_semantics_matches_spec,
             qsms.return_value,

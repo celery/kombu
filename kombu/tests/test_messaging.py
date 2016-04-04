@@ -143,6 +143,7 @@ class test_Producer(Case):
         p.publish('hello', exchange=Exchange('foo'), reply_to=Queue('foo'))
         properties = p._channel.prepare_message.call_args[0][5]
         self.assertEqual(properties['reply_to'], 'foo')
+
     def test_set_on_return(self):
         chan = Mock()
         chan.events = defaultdict(Mock)

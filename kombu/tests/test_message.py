@@ -27,7 +27,7 @@ class test_Message(Case):
         callback = Mock(name='callback')
         try:
             raise KeyError('foo')
-        except KeyError as exc:
+        except KeyError:
             m.errors.append(sys.exc_info())
         m._reraise_error(callback)
         self.assertTrue(callback.called)
@@ -41,4 +41,3 @@ class test_Message(Case):
         m = Message(Mock(), 'body', headers={'compression': 'zlib'})
         with self.assertRaises(RuntimeError):
             m._reraise_error(None)
-
