@@ -229,8 +229,6 @@ class test_Channel(Case):
 
         # Get the messages now
         messages = q.get_messages(num_messages=message_count)
-        for mess in messages:
-            print mess.get_body()
 
         # Now convert them to payloads
         payloads = self.channel._messages_to_python(
