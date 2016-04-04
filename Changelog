@@ -71,6 +71,10 @@
   ``Connection.supports_exchange_type(type)`` that can be used to check if the
     current transport supports a specific exchange type.
 
+- SQS: Consumers can now read json messages not sent by Kombu.
+
+    Contributed by Juan Carlos Ferrer.
+
 - SQS: Will now log the access key used when authentication fails.
 
     Contributed by Hank John.

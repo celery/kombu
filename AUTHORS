@@ -1,7 +1,7 @@
 =========
  AUTHORS
 =========
-:order: sorted
+:order: sorted (`.,$!sort -uf`)
 
 Adam Gaca <adam.gaca@oke.pl>
 Adam Nelson <adam@varud.com>
@@ -69,6 +69,7 @@ John Watson <john@disqus.com>
 Jonathan Halcrow <jonathan.halcrow@gmail.com>
 Joseph Crosland <jcrosland@flumotion.com>
 Joshua Harlow <harlowja@gmail.com>
+Juan Carlos Ferrer <juan.carlos@micronixsolutions.com>
 Kai Groner <kai@gronr.com>
 Keith Fitzgerald <ghostrocket@me.com>
 Kevin McCarthy <me@kevinmccarthy.org>
