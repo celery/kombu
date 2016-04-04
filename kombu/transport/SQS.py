@@ -213,19 +213,21 @@ class Channel(virtual.Channel):
             queue.delete_message(message)
         else:
             try:
-                payload['properties']['delivery_info'].update({
-                    'sqs_message': message, 'sqs_queue': queue,
+                properties = payload['properties']
+                delivery_info = payload['properties']['delivery_info']
+            except KeyError:
+                # json message not sent by kombu?
+                delivery_info = {}
+                properties = {'delivery_info': delivery_info}
+                payload.update({
+                    'body': bytes_to_str(message.get_body()),
+                    'properties': properties,
                 })
-                # set delivery tag to SQS receipt handle
-                payload['properties']['delivery_tag'] = message.receipt_handle
-            except KeyError as e:
-                # It's probably just a json message NOT created with celery
-                payload.update({'body': bytes_to_str(message.get_body())})
-                data = {'sqs_message': message, 'sqs_queue': queue}
-                payload.update({'properties': {'delivery_info': data,
-                                'delivery_tag': None}})
-                payload['properties']['delivery_tag'] = message.receipt_handle
-                return payload
+        # set delivery tag to SQS receipt handle
+        delivery_info.update({
+            'sqs_message': message, 'sqs_queue': queue,
+        })
+        properties['delivery_tag'] = message.receipt_handle
         return payload
 
     def _messages_to_python(self, messages, queue):
