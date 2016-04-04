@@ -175,7 +175,7 @@ class test_Channel(Case):
         self.producer.publish(message)
         q = self.channel._new_queue(self.queue_name)
         results = q.get_messages()
-        self.assertEquals(len(results), 1)
+        self.assertEqual(len(results), 1)
 
         # Now test getting many messages
         for i in range(3):
@@ -183,7 +183,7 @@ class test_Channel(Case):
             self.producer.publish(message)
 
         results = q.get_messages(num_messages=3)
-        self.assertEquals(len(results), 3)
+        self.assertEqual(len(results), 3)
 
     def test_get_with_empty_list(self):
         with self.assertRaises(five.Empty):
@@ -220,8 +220,8 @@ class test_Channel(Case):
         )
 
         # We got the same number of payloads back, right?
-        self.assertEquals(len(kombu_payloads), kombu_message_count)
-        self.assertEquals(len(json_payloads), json_message_count)
+        self.assertEqual(len(kombu_payloads), kombu_message_count)
+        self.assertEqual(len(json_payloads), json_message_count)
 
         # Make sure they're payload-style objects
         for p in kombu_payloads:
@@ -233,14 +233,14 @@ class test_Channel(Case):
         message = 'my test message'
         self.producer.publish(message)
         results = self.queue(self.channel).get().payload
-        self.assertEquals(message, results)
+        self.assertEqual(message, results)
 
     def test_put_and_get_bulk(self):
         # With QoS.prefetch_count = 0
         message = 'my test message'
         self.producer.publish(message)
         results = self.channel._get_bulk(self.queue_name)
-        self.assertEquals(1, len(results))
+        self.assertEqual(1, len(results))
 
     def test_puts_and_get_bulk(self):
         # Generate 8 messages
@@ -257,13 +257,13 @@ class test_Channel(Case):
         # Count how many messages are retrieved the first time. Should
         # be 5 (message_count).
         results = self.channel._get_bulk(self.queue_name)
-        self.assertEquals(5, len(results))
+        self.assertEqual(5, len(results))
         for i, r in enumerate(results):
             self.channel.qos.append(r, i)
 
         # Now, do the get again, the number of messages returned should be 1.
         results = self.channel._get_bulk(self.queue_name)
-        self.assertEquals(len(results), 1)
+        self.assertEqual(len(results), 1)
 
     def test_drain_events_with_empty_list(self):
         def mock_can_consume():
@@ -289,7 +289,7 @@ class test_Channel(Case):
             self.channel.drain_events()
 
         # How many times was the SQSConnectionMock get_message method called?
-        self.assertEquals(
+        self.assertEqual(
             expected_get_message_count,
             self.channel._queue_cache[self.queue_name]._get_message_calls)
 
@@ -310,6 +310,6 @@ class test_Channel(Case):
             self.channel.drain_events()
 
         # How many times was the SQSConnectionMock get_message method called?
-        self.assertEquals(
+        self.assertEqual(
             expected_get_message_count,
             self.channel._queue_cache[self.queue_name]._get_message_calls)
