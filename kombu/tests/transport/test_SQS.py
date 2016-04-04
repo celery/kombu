@@ -14,6 +14,7 @@ from kombu.tests.case import Case, case_requires
 
 from kombu.transport import SQS
 from kombu.async.aws.ext import exception
+from kombu.async.aws.sqs.message import Message
 
 
 class SQSQueueMock(object):
@@ -215,6 +216,32 @@ class test_Channel(Case):
         # Make sure they're payload-style objects
         for p in payloads:
             self.assertTrue('properties' in p)
+
+    def test_messages_to_python_with_json_message(self):
+        message_count = 3
+        # JSON formatted message NOT created by celery
+        q = self.channel._new_queue(self.queue_name)
+        message = '{"foo":"bar"}'
+        for i in range(message_count):
+            m = Message()
+            m.set_body(message)
+            q.write(m)
+
+        # Get the messages now
+        messages = q.get_messages(num_messages=message_count)
+
+        # Now convert them to payloads
+        payloads = self.channel._messages_to_python(
+            messages, self.queue_name,
+        )
+
+        # We got the same number of payloads back, right?
+        self.assertEquals(len(payloads), message_count)
+
+        # Make sure they're payload-style objects, and body is the same
+        for p in payloads:
+            self.assertTrue('properties' in p)
+            self.assertEqual(p['body'], message)
 
     def test_put_and_get(self):
         message = 'my test message'
