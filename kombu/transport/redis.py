@@ -808,6 +808,10 @@ class Channel(virtual.Channel):
                     ))
         return vhost
 
+    def _filter_tcp_connparams(self, socket_keepalive=None,
+                               socket_keepalive_options=None, **params):
+        return params
+
     def _connparams(self, async=False, _r210_options=(
             'socket_connect_timeout', 'socket_keepalive',
             'socket_keepalive_options')):
@@ -834,6 +838,7 @@ class Channel(virtual.Channel):
         if '://' in host:
             scheme, _, _, _, password, path, query = _parse_url(host)
             if scheme == 'socket':
+                connparams = self._filter_tcp_connparams(**connparams)
                 connparams.update({
                     'connection_class': redis.UnixDomainSocketConnection,
                     'path': '/' + path,
