@@ -219,6 +219,7 @@ class Channel(virtual.Channel):
                 # set delivery tag to SQS receipt handle
                 payload['properties']['delivery_tag'] = message.receipt_handle
             except Exception, e:
+                # It's probably just a json message NOT created with celery
                 payload.update({'body': bytes_to_str(message.get_body())})
                 data = {'sqs_message': message, 'sqs_queue': queue}
                 payload.update({'properties': {'delivery_info': data,
