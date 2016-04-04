@@ -848,6 +848,10 @@ class Channel(virtual.Channel):
                     ))
         return vhost
 
+    def _filter_tcp_connparams(self, socket_keepalive=None,
+                               socket_keepalive_options=None, **params):
+        return params
+
     def _connparams(self, async=False):
         conninfo = self.connection.client
         connparams = {
@@ -872,6 +876,7 @@ class Channel(virtual.Channel):
         if '://' in host:
             scheme, _, _, _, _, path, query = _parse_url(host)
             if scheme == 'socket':
+                connparams = self._filter_tcp_connparams(connparams)
                 connparams.update({
                     'connection_class': redis.UnixDomainSocketConnection,
                     'path': '/' + path}, **query)
@@ -884,7 +889,7 @@ class Channel(virtual.Channel):
         connection_cls = (
             connparams.get('connection_class') or
             self.connection_class
-            )
+        )
 
         if async:
             class Connection(connection_cls):
