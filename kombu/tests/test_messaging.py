@@ -227,7 +227,7 @@ class test_Producer(Case):
             pass
 
         p = Producer(chan, on_return=on_return)
-        self.assertTrue(on_return in chan.events['basic_return'])
+        self.assertIn(on_return, chan.events['basic_return'])
         self.assertTrue(p.on_return)
 
 

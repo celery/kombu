@@ -136,7 +136,7 @@ class test_Message(Case):
         self.assertEqual(dict_['body'],
                          'the quick brown fox...'.encode('utf-8'))
         self.assertEqual(dict_['properties']['delivery_tag'], tag)
-        self.assertFalse('compression' in dict_['headers'])
+        self.assertNotIn('compression', dict_['headers'])
 
 
 class test_AbstractChannel(Case):

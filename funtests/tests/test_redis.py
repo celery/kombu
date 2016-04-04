@@ -19,4 +19,5 @@ class test_redis(transport.TransportCase):
 
     def test_cant_connect_raises_connection_error(self):
         conn = self.get_connection(port=65534)
-        self.assertRaises(conn.connection_errors, conn.connect)
+        with self.assertRaises(conn.connection_errors):
+            conn.connect()

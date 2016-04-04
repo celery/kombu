@@ -26,29 +26,6 @@ from kombu.tests.case import patch
 QPID_MODULE = 'kombu.transport.qpid'
 
 
-class ExtraAssertionsMixin(object):
-    """A mixin class adding assertDictEqual and assertDictContainsSubset"""
-
-    def assertDictEqual(self, a, b):
-        """Test that two dictionaries are equal.
-
-        Implemented here because this method was not available until Python
-        2.6. This asserts that the unique set of keys are the same in a and b.
-        Also asserts that the value of each key is the same in a and b using
-        the is operator.
-
-        """
-        self.assertEqual(set(a.keys()), set(b.keys()))
-        for key in a.keys():
-            self.assertEqual(a[key], b[key])
-
-    def assertDictContainsSubset(self, a, b):
-        """Assert that all the key/value pairs in a exist in b."""
-        for key in a.keys():
-            self.assertTrue(key in b)
-            self.assertTrue(a[key] == b[key])
-
-
 class MockException(Exception):
     pass
 
@@ -303,7 +280,7 @@ class ConnectionTestBase(Case):
 
 @case_no_python3
 @case_no_pypy
-class TestConnectionInit(ExtraAssertionsMixin, ConnectionTestBase):
+class TestConnectionInit(ConnectionTestBase):
 
     def test_connection__init__stores_connection_options(self):
         # ensure that only one mech was passed into connection. The other
@@ -710,7 +687,7 @@ class TestChannelBasicCancel(ChannelTestBase):
 
 @case_no_python3
 @case_no_pypy
-class TestChannelInit(ChannelTestBase, ExtraAssertionsMixin):
+class TestChannelInit(ChannelTestBase):
 
     def test_channel___init__sets_variables_as_expected(self):
         self.assertIs(self.conn, self.channel.connection)
@@ -726,7 +703,7 @@ class TestChannelInit(ChannelTestBase, ExtraAssertionsMixin):
 
 @case_no_python3
 @case_no_pypy
-class TestChannelBasicConsume(ChannelTestBase, ExtraAssertionsMixin):
+class TestChannelBasicConsume(ChannelTestBase):
 
     def setUp(self):
         super(TestChannelBasicConsume, self).setUp()
@@ -871,7 +848,7 @@ class TestChannelQueueDelete(ChannelTestBase):
 
 @case_no_python3
 @case_no_pypy
-class TestChannel(ExtraAssertionsMixin, Case):
+class TestChannel(Case):
 
     @patch(QPID_MODULE + '.qpidtoollibs')
     def setUp(self, qpidtoollibs):
@@ -1937,7 +1914,7 @@ class TestTransportVerifyRuntimeEnvironment(Case):
 
 @case_no_python3
 @case_no_pypy
-class TestTransport(ExtraAssertionsMixin, Case):
+class TestTransport(Case):
 
     def setUp(self):
         """Creates a mock client to be used in testing."""
