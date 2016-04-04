@@ -876,7 +876,7 @@ class Channel(virtual.Channel):
         if '://' in host:
             scheme, _, _, _, _, path, query = _parse_url(host)
             if scheme == 'socket':
-                connparams = self._filter_tcp_connparams(connparams)
+                connparams = self._filter_tcp_connparams(**connparams)
                 connparams.update({
                     'connection_class': redis.UnixDomainSocketConnection,
                     'path': '/' + path}, **query)
