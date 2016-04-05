@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 
 import sys
 
@@ -12,7 +11,7 @@ from kombu.utils.encoding import (
     set_default_encoding_file, default_encoding,
 )
 
-from kombu.tests.case import Case, SkipTest, patch
+from kombu.tests.case import Case, patch, skip
 
 
 @contextmanager
@@ -48,11 +47,8 @@ class test_default_encoding(Case):
                 getdefaultencoding.assert_called_with()
 
 
+@skip.if_python3
 class test_encoding_utils(Case):
-
-    def setup(self):
-        if sys.version_info >= (3, 0):
-            raise SkipTest('not relevant on py3k')
 
     def test_str_to_bytes(self):
         with clean_encoding() as e:

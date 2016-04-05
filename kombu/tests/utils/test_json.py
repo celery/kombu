@@ -3,7 +3,7 @@ from __future__ import absolute_import, unicode_literals
 from kombu.utils.encoding import str_to_bytes
 from kombu.utils.json import _DecodeError, dumps, loads
 
-from kombu.tests.case import Case, MagicMock, Mock, case_no_python3
+from kombu.tests.case import Case, MagicMock, Mock, skip
 
 
 class Custom(object):
@@ -43,7 +43,7 @@ class test_dumps_loads(Case):
             {'x': 'z'},
         )
 
-    @case_no_python3
+    @skip.if_python3()
     def test_loads_buffer(self):
         self.assertEqual(loads(buffer(dumps({'x': 'z'}))), {'x': 'z'})
 

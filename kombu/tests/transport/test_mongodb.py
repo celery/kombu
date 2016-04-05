@@ -4,7 +4,7 @@ import datetime
 
 from kombu import Connection
 from kombu.five import Empty
-from kombu.tests.case import Case, MagicMock, call, patch, skip_if_not_module
+from kombu.tests.case import Case, MagicMock, call, patch, skip
 
 
 def _create_mock_connection(url='', **kwargs):
@@ -43,13 +43,8 @@ def _create_mock_connection(url='', **kwargs):
     return Connection(url, transport=Transport, **kwargs)
 
 
+@skip.unless_module('pymongo')
 class test_mongodb_uri_parsing(Case):
-
-    @skip_if_not_module('pymongo')
-    def setup(self):
-        pass
-
-    # Tests
 
     def test_defaults(self):
         url = 'mongodb://'
@@ -143,9 +138,9 @@ class BaseMongoDBChannelCase(Case):
         self.assert_operation_has_calls(cname, mname, [call(*args, **kwargs)])
 
 
+@skip.unless_module('pymongo')
 class test_mongodb_channel(BaseMongoDBChannelCase):
 
-    @skip_if_not_module('pymongo')
     def setup(self):
         self.connection = _create_mock_connection()
         self.channel = self.connection.default_channel
@@ -370,9 +365,9 @@ class test_mongodb_channel(BaseMongoDBChannelCase):
             )
 
 
+@skip.unless_module('pymongo')
 class test_mongodb_channel_ttl(BaseMongoDBChannelCase):
 
-    @skip_if_not_module('pymongo')
     def setup(self):
         self.connection = _create_mock_connection(
             transport_options={'ttl': True},
@@ -511,9 +506,9 @@ class test_mongodb_channel_ttl(BaseMongoDBChannelCase):
         )
 
 
+@skip.unless_module('pymongo')
 class test_mongodb_channel_calc_queue_size(BaseMongoDBChannelCase):
 
-    @skip_if_not_module('pymongo')
     def setup(self):
         self.connection = _create_mock_connection(
             transport_options={'calc_queue_size': False})

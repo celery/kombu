@@ -7,9 +7,6 @@ import codecs
 
 from distutils.command.install import INSTALL_SCHEMES
 
-extra = {}
-PY3 = sys.version_info[0] == 3
-
 if sys.version_info < (2, 7):
     raise Exception('Kombu 4.0 requires Python 2.7 or higher.')
 
@@ -115,32 +112,9 @@ def reqs(*f):
                 os.path.join(os.getcwd(), 'requirements', *f)).readlines()
         ) if r]
 
-install_requires = reqs('default.txt')
-
-# -*- Tests Requires -*-
-
 
 def extras(*p):
     return reqs('extras', *p)
-
-tests_require = reqs('test3.txt' if PY3 else 'test.txt')
-
-extras_require = extra['extras_require'] = {
-    'msgpack': extras('msgpack.txt'),
-    'yaml': extras('yaml.txt'),
-    'redis': extras('redis.txt'),
-    'mongodb': extras('mongodb.txt'),
-    'sqs': extras('sqs.txt'),
-    'couchdb': extras('couchdb.txt'),
-    'beanstalk': extras('beanstalk.txt'),
-    'zookeeper': extras('zookeeper.txt'),
-    'zeromq': extras('zeromq.txt'),
-    'sqlalchemy': extras('sqlalchemy.txt'),
-    'librabbitmq': extras('librabbitmq.txt'),
-    'pyro': extras('pyro.txt'),
-    'slmq': extras('slmq.txt'),
-    'qpid': extras('qpid.txt'),
-}
 
 setup(
     name='kombu',
@@ -154,8 +128,8 @@ setup(
     data_files=data_files,
     zip_safe=False,
     test_suite='nose.collector',
-    install_requires=install_requires,
-    tests_require=tests_require,
+    install_requires=reqs('default.txt'),
+    tests_require=reqs('test.txt'),
     classifiers=[
         'Development Status :: 5 - Production/Stable',
         'License :: OSI Approved :: BSD License',
@@ -163,7 +137,7 @@ setup(
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.4',
-        'Programming Language :: Python :: 3.3',
+        'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: Implementation :: CPython',
@@ -176,4 +150,20 @@ setup(
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],
     long_description=long_description,
-    **extra)
+    extras_require={
+        'msgpack': extras('msgpack.txt'),
+        'yaml': extras('yaml.txt'),
+        'redis': extras('redis.txt'),
+        'mongodb': extras('mongodb.txt'),
+        'sqs': extras('sqs.txt'),
+        'couchdb': extras('couchdb.txt'),
+        'beanstalk': extras('beanstalk.txt'),
+        'zookeeper': extras('zookeeper.txt'),
+        'zeromq': extras('zeromq.txt'),
+        'sqlalchemy': extras('sqlalchemy.txt'),
+        'librabbitmq': extras('librabbitmq.txt'),
+        'pyro': extras('pyro.txt'),
+        'slmq': extras('slmq.txt'),
+        'qpid': extras('qpid.txt'),
+    },
+)

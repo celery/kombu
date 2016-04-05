@@ -4,12 +4,12 @@ from __future__ import absolute_import
 from kombu.async.http.curl import READ, WRITE, CurlClient
 
 from kombu.tests.case import (
-    HubCase, Mock, call, patch, case_no_pypy, case_requires, set_module_symbol,
+    HubCase, Mock, call, patch, set_module_symbol, skip,
 )
 
 
-@case_no_pypy
-@case_requires('pycurl')
+@skip.if_pypy()
+@skip.unless_module('pycurl')
 class test_CurlClient(HubCase):
 
     class Client(CurlClient):

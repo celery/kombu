@@ -10,10 +10,11 @@ from __future__ import absolute_import
 from kombu import five
 from kombu import messaging
 from kombu import Connection, Exchange, Queue
-from kombu.tests.case import Case, case_requires
 
 from kombu.transport import SQS
 from kombu.async.aws.ext import exception
+
+from kombu.tests.case import Case, skip
 
 
 class SQSQueueMock(object):
@@ -82,7 +83,7 @@ class SQSConnectionMock(object):
         return q
 
 
-@case_requires('boto')
+@skip.unless_module('boto')
 class test_Channel(Case):
 
     def handleMessageCallback(self, message):

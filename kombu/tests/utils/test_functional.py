@@ -1,14 +1,13 @@
 from __future__ import absolute_import
 
 import pickle
-import sys
 
 from itertools import count
 
-from kombu.five import THREAD_TIMEOUT_MAX, items
+from kombu.five import items
 from kombu.utils.functional import LRUCache, memoize, lazy, maybe_evaluate
 
-from kombu.tests.case import Case, SkipTest
+from kombu.tests.case import Case, skip
 
 
 def double(x):
@@ -65,52 +64,6 @@ class test_LRUCache(Case):
         x.update({x: x for x in range(100)})
         self.assertEqual(list(x.keys()), [98, 99])
 
-    def assertSafeIter(self, method, interval=0.01, size=10000):
-        if sys.version_info >= (3, 5):
-            raise SkipTest('Fails on Py3.5')
-        from threading import Thread, Event
-        from time import sleep
-        x = LRUCache(size)
-        x.update(zip(range(size), range(size)))
-
-        class Burglar(Thread):
-
-            def __init__(self, cache):
-                self.cache = cache
-                self.__is_shutdown = Event()
-                self.__is_stopped = Event()
-                Thread.__init__(self)
-
-            def run(self):
-                while not self.__is_shutdown.isSet():
-                    try:
-                        self.cache.popitem(last=False)
-                    except KeyError:
-                        break
-                self.__is_stopped.set()
-
-            def stop(self):
-                self.__is_shutdown.set()
-                self.__is_stopped.wait()
-                self.join(THREAD_TIMEOUT_MAX)
-
-        burglar = Burglar(x)
-        burglar.start()
-        try:
-            for _ in getattr(x, method)():
-                sleep(0.0001)
-        finally:
-            burglar.stop()
-
-    def test_safe_to_remove_while_iteritems(self):
-        self.assertSafeIter('iteritems')
-
-    def test_safe_to_remove_while_keys(self):
-        self.assertSafeIter('keys')
-
-    def test_safe_to_remove_while_itervalues(self):
-        self.assertSafeIter('itervalues')
-
     def test_items(self):
         c = LRUCache()
         c.update(a=1, b=2, c=3)
@@ -155,10 +108,8 @@ class test_lazy(Case):
             "'fi fa fo'",
         )
 
+    @skip.if_python3()
     def test__cmp__(self):
-        if sys.version_info[0] == 3:
-            raise SkipTest('irrelevant on py3')
-
         self.assertEqual(lazy(lambda: 10).__cmp__(lazy(lambda: 20)), -1)
         self.assertEqual(lazy(lambda: 10).__cmp__(5), 1)
 

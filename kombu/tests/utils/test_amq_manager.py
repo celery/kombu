@@ -2,17 +2,17 @@ from __future__ import absolute_import
 
 from kombu import Connection
 
-from kombu.tests.case import Case, mask_modules, module_exists, patch
+from kombu.tests.case import Case, mock, patch
 
 
 class test_get_manager(Case):
 
-    @mask_modules('pyrabbit')
+    @mock.mask_modules('pyrabbit')
     def test_without_pyrabbit(self):
         with self.assertRaises(ImportError):
             Connection('amqp://').get_manager()
 
-    @module_exists('pyrabbit')
+    @mock.module_exists('pyrabbit')
     def test_with_pyrabbit(self):
         with patch('pyrabbit.Client', create=True) as Client:
             manager = Connection('amqp://').get_manager()
@@ -21,7 +21,7 @@ class test_get_manager(Case):
                 'localhost:15672', 'guest', 'guest',
             )
 
-    @module_exists('pyrabbit')
+    @mock.module_exists('pyrabbit')
     def test_transport_options(self):
         with patch('pyrabbit.Client', create=True) as Client:
             manager = Connection('amqp://', transport_options={

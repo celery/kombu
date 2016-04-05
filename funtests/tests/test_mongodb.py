@@ -1,23 +1,20 @@
 from kombu import Consumer, Producer, Exchange, Queue
 from kombu.five import range
 from kombu.utils import nested
-from kombu.tests.case import skip_if_not_module
 
 from funtests import transport
 
+from kombu.tests.case import skip
 
+
+@skip.unless_module('pymongo')
 class test_mongodb(transport.TransportCase):
     transport = 'mongodb'
     prefix = 'mongodb'
     event_loop_max = 100
 
-    @skip_if_not_module('pymongo')
-    def setup(self):
-        pass
-
     def after_connect(self, connection):
         connection.channel().client  # evaluate connection.
-
         self.c = self.connection   # shortcut
 
     def test_fanout(self, name='test_mongodb_fanout'):

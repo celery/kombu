@@ -6,7 +6,7 @@ import types
 
 from kombu import syn
 
-from kombu.tests.case import Case, patch, module_exists
+from kombu.tests.case import Case, mock, patch
 
 
 class test_syn(Case):
@@ -25,7 +25,7 @@ class test_syn(Case):
         finally:
             syn._environment = None
 
-    @module_exists('eventlet', 'eventlet.patcher')
+    @mock.module_exists('eventlet', 'eventlet.patcher')
     def test_detect_environment_eventlet(self):
         with patch('eventlet.patcher.is_monkey_patched', create=True) as m:
             self.assertTrue(sys.modules['eventlet'])
@@ -34,7 +34,7 @@ class test_syn(Case):
             m.assert_called_with(socket)
             self.assertEqual(env, 'eventlet')
 
-    @module_exists('gevent')
+    @mock.module_exists('gevent')
     def test_detect_environment_gevent(self):
         with patch('gevent.socket', create=True) as m:
             prev, socket.socket = socket.socket, m.socket

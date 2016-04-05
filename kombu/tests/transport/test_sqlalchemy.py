@@ -2,10 +2,10 @@ from __future__ import absolute_import
 
 from kombu import Connection
 
-from kombu.tests.case import Case, SkipTest, patch, case_requires
+from kombu.tests.case import Case, patch, skip
 
 
-@case_requires('sqlalchemy')
+@skip.unless_module('sqlalchemy')
 class test_sqlalchemy(Case):
 
     def test_url_parser(self):
@@ -36,8 +36,8 @@ class test_sqlalchemy(Case):
         channel._put('celery', 'DATA')
         assert channel._get('celery') == 'DATA'
 
+    @skip.todo(reason='global side effects')
     def test_custom_table_names(self):
-        raise SkipTest('causes global side effect')
         conn = Connection('sqlalchemy+sqlite:///:memory:', transport_options={
             'queue_tablename': 'my_custom_queue',
             'message_tablename': 'my_custom_message'

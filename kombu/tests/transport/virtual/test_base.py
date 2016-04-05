@@ -9,7 +9,7 @@ from kombu.transport import virtual
 from kombu.utils import uuid
 from kombu.compression import compress
 
-from kombu.tests.case import Case, MagicMock, Mock, patch, redirect_stdouts
+from kombu.tests.case import Case, MagicMock, Mock, mock, patch
 
 PY3 = sys.version_info[0] == 3
 PRINT_FQDN = 'builtins.print' if PY3 else '__builtin__.print'
@@ -53,7 +53,7 @@ class test_QoS(Case):
         qos = virtual.QoS(client().channel())
         qos.restore_visible()
 
-    @redirect_stdouts
+    @mock.stdouts
     def test_can_consume(self, stdout, stderr):
         _restored = []
 

@@ -1,9 +1,13 @@
-
 from funtests import transport
-from nose import SkipTest
-import os
+
+from kombu.tests.case import skip
 
 
+@skip.unless_environ('SLMQ_ACCOUNT')
+@skip.unless_environ('SL_USERNAME')
+@skip.unless_environ('SL_API_KEY')
+@skip.unless_environ('SLMQ_HOST')
+@skip.unless_environ('SLMQ_SECURE')
 class test_SLMQ(transport.TransportCase):
     transport = 'SLMQ'
     prefix = 'slmq'
@@ -12,18 +16,3 @@ class test_SLMQ(transport.TransportCase):
     reliable_purge = False
     #: does not guarantee FIFO order, even in simple cases.
     suppress_disorder_warning = True
-
-    def before_connect(self):
-        if 'SLMQ_ACCOUNT' not in os.environ:
-            raise SkipTest('Missing envvar SLMQ_ACCOUNT')
-        if 'SL_USERNAME' not in os.environ:
-            raise SkipTest('Missing envvar SL_USERNAME')
-        if 'SL_API_KEY' not in os.environ:
-            raise SkipTest('Missing envvar SL_API_KEY')
-        if 'SLMQ_HOST' not in os.environ:
-            raise SkipTest('Missing envvar SLMQ_HOST')
-        if 'SLMQ_SECURE' not in os.environ:
-            raise SkipTest('Missing envvar SLMQ_SECURE')
-
-    def after_connect(self, connection):
-        pass

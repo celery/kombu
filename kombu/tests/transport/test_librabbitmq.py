@@ -7,10 +7,10 @@ except ImportError:
 else:
     from kombu.transport import librabbitmq  # noqa
 
-from kombu.tests.case import Case, Mock, patch, case_requires
+from kombu.tests.case import Case, Mock, patch, skip
 
 
-@case_requires('librabbitmq')
+@skip.unless_module('librabbitmq')
 class lrmqCase(Case):
     pass
 

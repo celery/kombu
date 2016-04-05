@@ -4,7 +4,7 @@ from kombu.five import module_name_t
 
 from kombu.async.timer import Entry, Timer, to_timestamp
 
-from kombu.tests.case import Case, Mock, patch, redirect_stdouts
+from kombu.tests.case import Case, Mock, mock, patch
 
 
 class test_to_timestamp(Case):
@@ -132,7 +132,7 @@ class test_Timer(Case):
         t.schedule.apply_entry(fun)
         self.assertTrue(logger.error.called)
 
-    @redirect_stdouts
+    @mock.stdouts
     def test_apply_entry_error_not_handled(self, stdout, stderr):
         t = Timer()
         t.schedule.on_error = Mock()

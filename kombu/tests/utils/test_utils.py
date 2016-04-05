@@ -1,18 +1,14 @@
-from __future__ import absolute_import
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 
 import pickle
 
-from functools import wraps
 from io import StringIO, BytesIO
 
 from kombu import version_info_t
 from kombu import utils
 from kombu.utils.text import version_string_as_tuple
 
-from kombu.tests.case import (
-    Case, Mock, patch, redirect_stdouts, mask_modules, module_exists,
-)
+from kombu.tests.case import Case, Mock, patch, mock
 
 
 class OldString(object):
@@ -91,16 +87,18 @@ class MyBytesIO(BytesIO):
 
 class test_emergency_dump_state(Case):
 
-    @redirect_stdouts
+    @mock.stdouts
     def test_dump(self, stdout, stderr):
         fh = MyBytesIO()
 
-        utils.emergency_dump_state({'foo': 'bar'}, open_file=lambda n, m: fh)
-        self.assertDictEqual(pickle.loads(fh.getvalue()), {'foo': 'bar'})
+        utils.emergency_dump_state(
+            {'foo': 'bar'}, open_file=lambda n, m: fh)
+        self.assertDictEqual(
+            pickle.loads(fh.getvalue()), {'foo': 'bar'})
         self.assertTrue(stderr.getvalue())
         self.assertFalse(stdout.getvalue())
 
-    @redirect_stdouts
+    @mock.stdouts
     def test_dump_second_strategy(self, stdout, stderr):
         fh = MyStringIO()
 
@@ -115,23 +113,6 @@ class test_emergency_dump_state(Case):
         self.assertIn('bar', fh.getvalue())
         self.assertTrue(stderr.getvalue())
         self.assertFalse(stdout.getvalue())
-
-
-def insomnia(fun):
-
-    @wraps(fun)
-    def _inner(*args, **kwargs):
-        def mysleep(i):
-            pass
-
-        prev_sleep = utils.sleep
-        utils.sleep = mysleep
-        try:
-            return fun(*args, **kwargs)
-        finally:
-            utils.sleep = prev_sleep
-
-    return _inner
 
 
 class test_retry_over_time(Case):
@@ -154,7 +135,7 @@ class test_retry_over_time(Case):
         self.assertEqual(interval, sleepvals[self.index])
         return interval
 
-    @insomnia
+    @mock.sleepdeprived(module=utils)
     def test_simple(self):
         prev_count, utils.count = utils.count, Mock()
         try:
@@ -173,7 +154,7 @@ class test_retry_over_time(Case):
         finally:
             utils.count = prev_count
 
-    @insomnia
+    @mock.sleepdeprived(module=utils)
     def test_retry_once(self):
         with self.assertRaises(self.Predicate):
             utils.retry_over_time(
@@ -188,7 +169,7 @@ class test_retry_over_time(Case):
                 max_retries=1, errback=None, interval_max=14,
             )
 
-    @insomnia
+    @mock.sleepdeprived(module=utils)
     def test_retry_always(self):
         Predicate = self.Predicate
 
@@ -311,11 +292,11 @@ class test_ChannelPromise(Case):
 
 class test_entrypoints(Case):
 
-    @mask_modules('pkg_resources')
+    @mock.mask_modules('pkg_resources')
     def test_without_pkg_resources(self):
         self.assertListEqual(list(utils.entrypoints('kombu.test')), [])
 
-    @module_exists('pkg_resources')
+    @mock.module_exists('pkg_resources')
     def test_with_pkg_resources(self):
         with patch('pkg_resources.iter_entry_points', create=True) as iterep:
             eps = iterep.return_value = [Mock(), Mock()]

@@ -9,7 +9,7 @@ import unittest2 as unittest
 import warnings
 import weakref
 
-from nose import SkipTest
+from case.skip import SkipTest
 
 from kombu import Connection
 from kombu import Exchange, Queue

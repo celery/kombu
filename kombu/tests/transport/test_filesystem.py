@@ -1,18 +1,17 @@
 from __future__ import absolute_import
 
-import sys
 import tempfile
 
 from kombu import Connection, Exchange, Queue, Consumer, Producer
 
-from kombu.tests.case import Case, SkipTest
+from case.skip import SkipTest
+from kombu.tests.case import Case, skip
 
 
+@skip.if_win32()
 class test_FilesystemTransport(Case):
 
     def setup(self):
-        if sys.platform == 'win32':
-            raise SkipTest('Needs win32con module')
         try:
             data_folder_in = tempfile.mkdtemp()
             data_folder_out = tempfile.mkdtemp()

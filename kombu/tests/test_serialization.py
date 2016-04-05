@@ -17,9 +17,7 @@ from kombu.serialization import (
 )
 from kombu.utils.encoding import str_to_bytes
 
-from .case import (
-    Case, call, mask_modules, patch, skip_if_not_module, skip_if_pypy,
-)
+from .case import Case, call, mock, patch, skip
 
 # For content_encoding tests
 unicode_string = 'abcdé\u8463'
@@ -213,8 +211,8 @@ class test_Serialization(Case):
             ),
         )
 
-    @skip_if_pypy
-    @skip_if_not_module('msgpack', (ImportError, ValueError))
+    @skip.if_pypy()
+    @skip.unless_module('msgpack', (ImportError, ValueError))
     def test_msgpack_loads(self):
         register_msgpack()
         res = loads(msgpack_data,
@@ -231,8 +229,8 @@ class test_Serialization(Case):
             res,
         )
 
-    @skip_if_pypy
-    @skip_if_not_module('msgpack', (ImportError, ValueError))
+    @skip.if_pypy()
+    @skip.unless_module('msgpack', (ImportError, ValueError))
     def test_msgpack_dumps(self):
         register_msgpack()
         self.assertEqual(
@@ -248,7 +246,7 @@ class test_Serialization(Case):
             ),
         )
 
-    @skip_if_not_module('yaml')
+    @skip.unless_module('yaml')
     def test_yaml_loads(self):
         register_yaml()
         self.assertEqual(
@@ -258,7 +256,7 @@ class test_Serialization(Case):
                   content_encoding='utf-8'),
         )
 
-    @skip_if_not_module('yaml')
+    @skip.unless_module('yaml')
     def test_yaml_dumps(self):
         register_yaml()
         self.assertEqual(
@@ -334,13 +332,13 @@ class test_Serialization(Case):
             ('application/data', 'binary', 'foo'.encode('utf-8')),
         )
 
-    @mask_modules('yaml')
+    @mock.mask_modules('yaml')
     def test_register_yaml__no_yaml(self):
         register_yaml()
         with self.assertRaises(SerializerNotInstalled):
             loads('foo', 'application/x-yaml', 'utf-8')
 
-    @mask_modules('msgpack')
+    @mock.mask_modules('msgpack')
     def test_register_msgpack__no_msgpack(self):
         register_msgpack()
         with self.assertRaises(SerializerNotInstalled):

@@ -14,8 +14,7 @@ from kombu.utils import eventio  # patch poll
 from kombu.utils.json import dumps
 
 from kombu.tests.case import (
-    Case, ContextMock, Mock, call, module_exists,
-    skip_if_not_module, patch, ANY,
+    Case, ContextMock, Mock, call, mock, skip, patch, ANY,
 )
 
 
@@ -231,9 +230,9 @@ class Transport(redis.Transport):
         return ((KeyError,), (IndexError,))
 
 
+@skip.unless_module('redis')
 class test_Channel(Case):
 
-    @skip_if_not_module('redis')
     def setup(self):
         self.connection = self.create_connection()
         self.channel = self.connection.default_channel
@@ -330,6 +329,7 @@ class test_Channel(Case):
             call('george', spl1), call('elaine', spl1),
         ])
 
+        client = Mock(name='client')
         pl2 = {'body': 'BODY2', 'headers': {'x-funny': 1}}
         headers_after = dict(pl2['headers'], redelivered=True)
         spl2 = dumps(dict(pl2, headers=headers_after))
@@ -642,12 +642,10 @@ class test_Channel(Case):
             self.channel.connection.client.virtual_host = 'dwqeq'
             self.channel._connparams()
 
-    @skip_if_not_module('redis')
     def test_connparams_allows_slash_in_db(self):
         self.channel.connection.client.virtual_host = '/123'
         self.assertEqual(self.channel._connparams()['db'], 123)
 
-    @skip_if_not_module('redis')
     def test_connparams_db_can_be_int(self):
         self.channel.connection.client.virtual_host = 124
         self.assertEqual(self.channel._connparams()['db'], 124)
@@ -658,7 +656,6 @@ class test_Channel(Case):
         redis.Channel._new_queue(self.channel, 'elaine', auto_delete=True)
         self.assertIn('elaine', self.channel.auto_delete_queues)
 
-    @skip_if_not_module('redis')
     def test_connparams_regular_hostname(self):
         self.channel.connection.client.hostname = 'george.vandelay.com'
         self.assertEqual(
@@ -673,7 +670,6 @@ class test_Channel(Case):
         self.assertEqual(cycle.items, ['jerry', 'kramer'])
         cycle.rotate('elaine')
 
-    @skip_if_not_module('redis')
     def test_get_client(self):
         import redis as R
         KombuRedis = redis.Channel._get_client(self.channel)
@@ -688,7 +684,6 @@ class test_Channel(Case):
             if Rv is not None:
                 R.VERSION = Rv
 
-    @skip_if_not_module('redis')
     def test_get_response_error(self):
         from redis.exceptions import ResponseError
         self.assertIs(redis.Channel._get_response_error(self.channel),
@@ -745,17 +740,14 @@ class test_Channel(Case):
         redis.Transport.on_readable(transport, 14)
         cb.assert_called_with(ret[0])
 
-    @skip_if_not_module('redis')
     def test_transport_get_errors(self):
         self.assertTrue(redis.Transport._get_errors(self.connection.transport))
 
-    @skip_if_not_module('redis')
     def test_transport_driver_version(self):
         self.assertTrue(
             redis.Transport.driver_version(self.connection.transport),
         )
 
-    @skip_if_not_module('redis')
     def test_transport_get_errors_when_InvalidData_used(self):
         from redis import exceptions
 
@@ -794,7 +786,6 @@ class test_Channel(Case):
         with self.assertRaises(InconsistencyError):
             self.channel.get_table('celery')
 
-    @skip_if_not_module('redis')
     def test_socket_connection(self):
         with patch('kombu.transport.redis.Channel._create_client'):
             with Connection('redis+socket:///tmp/redis.sock') as conn:
@@ -805,7 +796,6 @@ class test_Channel(Case):
                 ))
                 self.assertEqual(connparams['path'], '/tmp/redis.sock')
 
-    @skip_if_not_module('redis')
     def test_ssl_argument__dict(self):
         with patch('kombu.transport.redis.Channel._create_client'):
             with Connection('redis://', ssl={'ca_cert': '/foo'}) as conn:
@@ -813,7 +803,6 @@ class test_Channel(Case):
                 self.assertTrue(connparams['ssl'])
                 self.assertEqual(connparams['ca_cert'], '/foo')
 
-    @skip_if_not_module('redis')
     def test_ssl_argument__bool(self):
         with patch('kombu.transport.redis.Channel._create_client'):
             with Connection('redis://', ssl=True) as conn:
@@ -821,9 +810,9 @@ class test_Channel(Case):
                 self.assertTrue(connparams['ssl'])
 
 
+@skip.unless_module('redis')
 class test_Redis(Case):
 
-    @skip_if_not_module('redis')
     def setup(self):
         self.connection = Connection(transport=Transport)
         self.exchange = Exchange('test_Redis', type='direct')
@@ -929,19 +918,13 @@ class test_Redis(Case):
         channel.close()
 
     def test_get_client(self):
-
-        myredis, exceptions = _redis_modules()
-
-        @module_exists(myredis, exceptions)
-        def _do_test():
+        with mock.module_exists(*_redis_modules()):
             conn = Connection(transport=Transport)
             chan = conn.channel()
             self.assertTrue(chan.Client)
             self.assertTrue(chan.ResponseError)
             self.assertTrue(conn.transport.connection_errors)
             self.assertTrue(conn.transport.channel_errors)
-
-        _do_test()
 
     def test_check_at_least_we_try_to_connect_and_fail(self):
         import redis
@@ -986,9 +969,9 @@ def _redis_modules():
     return myredis, exceptions
 
 
+@skip.unless_module('redis')
 class test_MultiChannelPoller(Case):
 
-    @skip_if_not_module('redis')
     def setup(self):
         self.Poller = redis.MultiChannelPoller
 
@@ -1232,9 +1215,9 @@ class test_MultiChannelPoller(Case):
         channel._poll_error.assert_called_with('BRPOP')
 
 
+@skip.unless_module('redis')
 class test_Mutex(Case):
 
-    @skip_if_not_module('redis')
     def test_mutex(self, lock_id='xxx'):
         client = Mock(name='client')
         with patch('kombu.transport.redis.uuid') as uuid:
@@ -1281,9 +1264,9 @@ class test_Mutex(Case):
             self.assertTrue(held)
 
 
+@skip.unless_module('redis.sentinel')
 class test_RedisSentinel(Case):
 
-    @skip_if_not_module('redis.sentinel')
     def setup(self):
         pass
 

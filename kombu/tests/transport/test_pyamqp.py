@@ -13,7 +13,7 @@ else:
 from kombu import Connection
 from kombu.five import nextfun
 
-from kombu.tests.case import Case, Mock, mask_modules, patch
+from kombu.tests.case import Case, Mock, mock, patch
 
 
 class MockConnection(dict):
@@ -125,7 +125,7 @@ class test_Transport(Case):
         self.assertIsNone(connection.client)
         connection.close.assert_called_with()
 
-    @mask_modules('ssl')
+    @mock.mask_modules('ssl')
     def test_import_no_ssl(self):
         pm = sys.modules.pop('amqp.connection')
         try:

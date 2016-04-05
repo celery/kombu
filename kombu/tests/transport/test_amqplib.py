@@ -4,7 +4,7 @@ import sys
 
 from kombu import Connection
 
-from kombu.tests.case import Case, Mock, mask_modules, case_requires
+from kombu.tests.case import Case, Mock, mock, skip
 
 
 class MockConnection(dict):
@@ -32,7 +32,7 @@ else:
             pass
 
 
-@case_requires('amqplib')
+@skip.unless_module('amqplib')
 class amqplibCase(Case):
     pass
 
@@ -125,7 +125,7 @@ class test_Transport(amqplibCase):
         connection.channels = {1: 1, 2: 2}
         self.assertTrue(self.transport.verify_connection(connection))
 
-    @mask_modules('ssl')
+    @mock.mask_modules('ssl')
     def test_import_no_ssl(self):
         pm = sys.modules.pop('kombu.transport.amqplib')
         try:

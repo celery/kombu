@@ -10,7 +10,7 @@ from kombu.connection import Resource
 from kombu.five import items, range
 from kombu.utils.functional import lazy
 
-from .case import Case, Mock, SkipTest, patch, skip_if_not_module
+from .case import Case, Mock, patch, skip
 from .mocks import Transport
 
 
@@ -41,14 +41,14 @@ class test_connection_utils(Case):
         self.assertEqual(conn.as_uri(), self.nopass)
         self.assertEqual(conn.as_uri(include_password=True), self.url)
 
-    @skip_if_not_module('redis')
+    @skip.unless_module('redis')
     def test_as_uri_when_prefix(self):
         conn = Connection('redis+socket:///var/spool/x/y/z/redis.sock')
         self.assertEqual(
             conn.as_uri(), 'redis+socket:///var/spool/x/y/z/redis.sock',
         )
 
-    @skip_if_not_module('pymongo')
+    @skip.unless_module('pymongo')
     def test_as_uri_when_mongodb(self):
         x = Connection('mongodb://localhost')
         self.assertTrue(x.as_uri())
@@ -131,9 +131,8 @@ class test_connection_utils(Case):
             port=5672, virtual_host='/',
         )
 
+    @skip.todo('urllib cannot parse ipv6 urls')
     def test_url_IPV6(self):
-        raise SkipTest("urllib can't parse ipv6 urls")
-
         self.assert_info(
             Connection('amqp://[::1]'),
             userid='guest', password='guest', hostname='[::1]',

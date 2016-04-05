@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 
-from kombu.tests.case import HubCase, case_requires, case_no_pypy
+from kombu.tests.case import HubCase, skip
 
 
-@case_no_pypy
-@case_requires('boto', 'pycurl')
+@skip.if_pypy()
+@skip.unless_module('boto')
+@skip.unless_module('pycurl')
 class AWSCase(HubCase):
     pass
