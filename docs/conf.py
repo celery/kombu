@@ -28,6 +28,7 @@ extensions = [
     'sphinx.ext.coverage',
     'sphinx.ext.viewcode',
     'sphinx.ext.pngmath',
+    'githubsphinx',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -85,6 +86,10 @@ html_sidebars = {
     '**': ['sidebarlogo.html', 'localtoc.html', 'relations.html',
            'sourcelink.html', 'searchbox.html'],
 }
+
+# ## Issuetracker
+
+github_project = 'celery/kombu'
 
 intersphinx_mapping = {
     'python': ('http://docs.python.org/dev', None),
