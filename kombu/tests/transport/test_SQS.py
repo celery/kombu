@@ -5,7 +5,7 @@ http://github.com/pcsforeducation/sqs-mock-python. They have been patched
 slightly.
 """
 
-from __future__ import absolute_import
+from __future__ import absolute_import, unicode_literals
 
 from kombu import five
 from kombu import messaging

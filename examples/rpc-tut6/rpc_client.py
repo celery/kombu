@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from __future__ import absolute_import, unicode_literals
 
 from kombu import Connection, Producer, Consumer, Queue
 from kombu.utils import uuid

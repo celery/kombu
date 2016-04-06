@@ -8,7 +8,7 @@ applications without crashing with the infamous :exc:`UnicodeDecodeError`
 exception.
 
 """
-from __future__ import absolute_import
+from __future__ import absolute_import, unicode_literals
 
 import sys
 import traceback

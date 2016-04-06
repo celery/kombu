@@ -5,7 +5,7 @@ kombu.transport.filesystem
 Transport using the file system as the message store.
 
 """
-from __future__ import absolute_import
+from __future__ import absolute_import, unicode_literals
 
 import os
 import shutil

@@ -34,7 +34,7 @@ flakediag:
 	-$(MAKE) flakecheck
 
 flakepluscheck:
-	flakeplus kombu --2.6
+	flakeplus --2.7 kombu
 
 flakeplusdiag:
 	-$(MAKE) flakepluscheck

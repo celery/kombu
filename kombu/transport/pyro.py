@@ -7,7 +7,7 @@ Pyro transport.
 Requires the :mod:`Pyro4` library to be installed.
 
 """
-from __future__ import absolute_import
+from __future__ import absolute_import, unicode_literals
 
 import sys
 

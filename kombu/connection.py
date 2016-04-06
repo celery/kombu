@@ -5,7 +5,7 @@ kombu.connection
 Broker connection and pools.
 
 """
-from __future__ import absolute_import
+from __future__ import absolute_import, unicode_literals
 
 import os
 import socket
@@ -18,7 +18,7 @@ from operator import itemgetter
 # jython breaks on relative import for .exceptions for some reason
 # (Issue #112)
 from kombu import exceptions
-from .five import string_t, text_t
+from .five import bytes_if_py2, string_t, text_t
 from .log import get_logger
 from .resource import Resource
 from .transport import get_transport_cls, supports_librabbitmq
@@ -472,7 +472,7 @@ class Connection(object):
                         raise
                     self._debug('ensure channel error: %r', exc, exc_info=1)
                     errback and errback(exc, 0)
-        _ensured.__name__ = "%s(ensured)" % fun.__name__
+        _ensured.__name__ = bytes_if_py2('{0}(ensured)'.format(fun.__name__))
         _ensured.__doc__ = fun.__doc__
         _ensured.__module__ = fun.__module__
         return _ensured

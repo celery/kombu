@@ -5,7 +5,7 @@ kombu.messaging
 Sending and receiving messages.
 
 """
-from __future__ import absolute_import
+from __future__ import absolute_import, unicode_literals
 
 from itertools import count
 

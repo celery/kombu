@@ -5,7 +5,7 @@ kombu.utils.limits
 Token bucket implementation for rate limiting.
 
 """
-from __future__ import absolute_import
+from __future__ import absolute_import, unicode_literals
 
 from kombu.five import monotonic
 

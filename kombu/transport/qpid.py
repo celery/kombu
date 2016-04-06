@@ -86,7 +86,7 @@ Celery, this can be accomplished by setting the
 >>>>>>> ba4fa60... [qpid] Fixes rst syntax errors in docstrings
 
 """
-from __future__ import absolute_import
+from __future__ import absolute_import, unicode_literals
 
 import os
 import select

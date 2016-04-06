@@ -6,7 +6,7 @@ kombu.async.timer
 Timer scheduling Python callbacks.
 
 """
-from __future__ import absolute_import
+from __future__ import absolute_import, unicode_literals
 
 import heapq
 import sys

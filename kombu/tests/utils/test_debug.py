@@ -1,11 +1,13 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, unicode_literals
 
 import logging
 
+from kombu.five import bytes_if_py2
 from kombu.utils.debug import (
     setup_logging,
     Logwrapped,
 )
+
 from kombu.tests.case import Case, Mock, patch
 
 
@@ -38,7 +40,7 @@ class test_Logwrapped(Case):
             W.instance.some_attr = 303
             self.assertEqual(W.some_attr, 303)
 
-            W.instance.some_method.__name__ = 'some_method'
+            W.instance.some_method.__name__ = bytes_if_py2('some_method')
             W.some_method(1, 2, kw=1)
             W.instance.some_method.assert_called_with(1, 2, kw=1)
 

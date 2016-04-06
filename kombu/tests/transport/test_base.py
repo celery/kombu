@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, unicode_literals
 
 from kombu import Connection, Consumer, Exchange, Producer, Queue
 from kombu.five import text_t

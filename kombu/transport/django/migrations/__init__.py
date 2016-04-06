@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, unicode_literals
 
 SOUTH_ERROR_MESSAGE = """
 For South support, customize the SOUTH_MIGRATION_MODULES setting

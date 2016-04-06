@@ -5,6 +5,8 @@ Example producer that sends a single message and exits.
 You can use `complete_receive.py` to receive the message sent.
 
 """
+from __future__ import absolute_import, unicode_literals
+
 from kombu import Connection, Producer, Exchange, Queue
 
 #: By default messages sent to exchanges are persistent (delivery_mode=2),

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import
+from __future__ import absolute_import, unicode_literals
 
 try:  # pragma: no cover
     from email import message_from_file
@@ -52,8 +52,8 @@ class AsyncHTTPResponse(object):
     def msg(self):
         if self._msg is None:
             self._msg = MIMEMessage(message_from_file(
-                BytesIO('\r\n'.join(
-                    '{0}: {1}'.format(*h) for h in self.getheaders())
+                BytesIO(b'\r\n'.join(
+                    b'{0}: {1}'.format(*h) for h in self.getheaders())
                 )
             ))
         return self._msg

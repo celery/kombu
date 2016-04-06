@@ -8,7 +8,9 @@
 
 
 """
-from __future__ import absolute_import
+from __future__ import absolute_import, unicode_literals
 
-from amqp.five import *        # noqa
-from amqp.five import __all__  # noqa
+import amqp.five
+import sys
+
+sys.modules[__name__] = amqp.five

@@ -5,7 +5,7 @@ kombu.common
 Common Utilities.
 
 """
-from __future__ import absolute_import
+from __future__ import absolute_import, unicode_literals
 
 import os
 import socket
@@ -20,7 +20,7 @@ from uuid import uuid4, uuid3, NAMESPACE_OID
 from amqp import RecoverableConnectionError
 
 from .entity import Exchange, Queue
-from .five import range
+from .five import bytes_if_py2, range
 from .log import get_logger
 from .serialization import registry as serializers
 from .utils import uuid
@@ -54,7 +54,8 @@ def get_node_id():
 
 
 def generate_oid(node_id, process_id, thread_id, instance):
-    ent = '%x-%x-%x-%x' % (node_id, process_id, thread_id, id(instance))
+    ent = bytes_if_py2('%x-%x-%x-%x' % (
+        node_id, process_id, thread_id, id(instance)))
     return str(uuid3(NAMESPACE_OID, ent))
 
 

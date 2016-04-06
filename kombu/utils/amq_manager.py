@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, unicode_literals
 
 
 def get_manager(client, hostname=None, port=None, userid=None,

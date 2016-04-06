@@ -2,7 +2,7 @@
 # SQLAlchemy overrides != False to have special meaning and pep8 complains
 # flake8: noqa
 
-from __future__ import absolute_import
+from __future__ import absolute_import, unicode_literals
 
 from sqlalchemy import create_engine
 from sqlalchemy.exc import OperationalError

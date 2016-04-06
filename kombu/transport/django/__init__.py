@@ -1,5 +1,5 @@
 """Kombu transport using the Django database as a message store."""
-from __future__ import absolute_import
+from __future__ import absolute_import, unicode_literals
 
 from django.conf import settings
 from django.core import exceptions as errors

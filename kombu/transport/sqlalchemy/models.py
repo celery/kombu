@@ -1,9 +1,11 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, unicode_literals
 
 import datetime
 
-from sqlalchemy import (Column, Integer, String, Text, DateTime,
-                        Sequence, Boolean, ForeignKey, SmallInteger)
+from sqlalchemy import (
+    Column, Integer, String, Text, DateTime,
+    Sequence, Boolean, ForeignKey, SmallInteger,
+)
 from sqlalchemy.orm import relation
 from sqlalchemy.ext.declarative import declarative_base, declared_attr
 from sqlalchemy.schema import MetaData

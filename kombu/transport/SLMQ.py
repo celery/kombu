@@ -5,7 +5,7 @@ kombu.transport.SLMQ
 SoftLayer Message Queue transport.
 
 """
-from __future__ import absolute_import
+from __future__ import absolute_import, unicode_literals
 
 import socket
 import string

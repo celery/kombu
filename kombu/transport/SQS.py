@@ -37,7 +37,7 @@ SQS Features supported by this transport:
     'polling_interval' expires before moving back and checking on queueA.
 """
 
-from __future__ import absolute_import
+from __future__ import absolute_import, unicode_literals
 
 import collections
 import socket

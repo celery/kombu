@@ -1,6 +1,8 @@
 """
 Example receiving a message using the SimpleQueue interface.
+
 """
+from __future__ import absolute_import, unicode_literals
 
 from kombu import Connection
 

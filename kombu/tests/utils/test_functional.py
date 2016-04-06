@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, unicode_literals
 
 import pickle
 
@@ -104,7 +104,7 @@ class test_lazy(Case):
 
     def test__repr__(self):
         self.assertEqual(
-            repr(lazy(lambda: 'fi fa fo')),
+            repr(lazy(lambda: 'fi fa fo')).strip('u'),
             "'fi fa fo'",
         )
 

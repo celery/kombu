@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, unicode_literals
 
 import logging
 import sys
@@ -12,7 +12,7 @@ from kombu.log import (
     setup_logging,
 )
 
-from .case import Case, Mock, patch
+from .case import ANY, Case, Mock, patch
 
 
 class test_get_logger(Case):
@@ -50,7 +50,10 @@ class test_safe_format(Case):
         args = ['frog', 'foo', 'elephant']
 
         res = list(safeify_format(fmt, args))
-        self.assertListEqual(res, ["'frog'", 'foo', 'elephant'])
+        self.assertListEqual(
+            [x.strip('u') for x in res],
+            ["'frog'", 'foo', 'elephant'],
+        )
 
 
 class test_LogMixin(Case):
@@ -118,7 +121,11 @@ class test_LogMixin(Case):
     def test_log_with_format(self):
         self.log.debug('Host %r removed', 'example.com')
         self.logger.log.assert_called_with(
-            logging.DEBUG, 'Log - Host %s removed', "'example.com'",
+            logging.DEBUG, 'Log - Host %s removed', ANY,
+        )
+        self.assertEqual(
+            self.logger.log.call_args[0][2].strip('u'),
+            "'example.com'",
         )
 
 

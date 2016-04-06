@@ -7,7 +7,7 @@ kombu.transport.librabbitmq
 .. _`librabbitmq`: http://pypi.python.org/librabbitmq/
 
 """
-from __future__ import absolute_import
+from __future__ import absolute_import, unicode_literals
 
 import os
 import socket

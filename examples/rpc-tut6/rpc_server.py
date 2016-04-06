@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from __future__ import absolute_import, unicode_literals
 
 from kombu import Connection, Queue
 from kombu.mixins import ConsumerProducerMixin

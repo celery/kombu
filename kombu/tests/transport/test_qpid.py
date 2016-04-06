@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, unicode_literals
 
 import datetime
 import select
@@ -13,7 +13,7 @@ from itertools import count
 
 from mock import call
 
-import kombu.five
+from kombu.five import Empty, bytes_if_py2
 from kombu.transport.qpid import AuthenticationFailure, QoS, Message
 from kombu.transport.qpid import QpidMessagingExceptionHandler, Channel
 from kombu.transport.qpid import Connection, ReceiversMonitor, Transport
@@ -292,15 +292,16 @@ class test_Connection__init__(ConnectionCase):
     @patch(QPID_MODULE + '.qpid')
     def test_mutates_ConnError_by_message(self, qpid, exc_info):
         my_conn_error = MockException()
-        my_conn_error.text = 'connection-forced: Authentication failed(320)'
+        my_conn_error.text = bytes_if_py2(
+            'connection-forced: Authentication failed(320)')
         qpid.messaging.Connection.establish.side_effect = my_conn_error
-        exc_info.return_value = ('a', 'b', None)
+        exc_info.return_value = (bytes_if_py2('a'), bytes_if_py2('b'), None)
         try:
             self.conn = Connection(**self.connection_options)
         except AuthenticationFailure as error:
             exc_info = sys.exc_info()
             self.assertNotIsInstance(error, MockException)
-            self.assertIs(exc_info[1], 'b')
+            self.assertEqual(exc_info[1], 'b')
             self.assertIsNone(exc_info[2])
         else:
             self.fail('ConnectionError type was not mutated correctly')
@@ -311,15 +312,15 @@ class test_Connection__init__(ConnectionCase):
     def test_mutates_ConnError_by_code(self, qpid, exc_info):
         my_conn_error = MockException()
         my_conn_error.code = 320
-        my_conn_error.text = 'someothertext'
+        my_conn_error.text = bytes_if_py2('someothertext')
         qpid.messaging.Connection.establish.side_effect = my_conn_error
-        exc_info.return_value = ('a', 'b', None)
+        exc_info.return_value = (bytes_if_py2('a'), bytes_if_py2('b'), None)
         try:
             self.conn = Connection(**self.connection_options)
         except AuthenticationFailure as error:
             exc_info = sys.exc_info()
             self.assertNotIsInstance(error, MockException)
-            self.assertIs(exc_info[1], 'b')
+            self.assertEqual(exc_info[1], bytes_if_py2('b'))
             self.assertIsNone(exc_info[2])
         else:
             self.fail('ConnectionError type was not mutated correctly')
@@ -332,7 +333,7 @@ class test_Connection__init__(ConnectionCase):
         # bubble it up as-is
         my_conn_error = MockException()
         my_conn_error.code = 999
-        my_conn_error.text = 'someothertext'
+        my_conn_error.text = bytes_if_py2('someothertext')
         qpid.messaging.Connection.establish.side_effect = my_conn_error
         exc_info.return_value = ('a', 'b', None)
         try:
@@ -348,7 +349,8 @@ class test_Connection__init__(ConnectionCase):
     def test_non_qpid_error_raises(self, qpid):
         Qpid_Connection = qpid.messaging.Connection
         my_conn_error = SyntaxError()
-        my_conn_error.text = 'some non auth related error message'
+        my_conn_error.text = bytes_if_py2(
+            'some non auth related error message')
         Qpid_Connection.establish.side_effect = my_conn_error
         with self.assertRaises(SyntaxError):
             Connection(**self.connection_options)
@@ -358,7 +360,8 @@ class test_Connection__init__(ConnectionCase):
     def test_non_auth_conn_error_raises(self, qpid):
         Qpid_Connection = qpid.messaging.Connection
         my_conn_error = IOError()
-        my_conn_error.text = 'some non auth related error message'
+        my_conn_error.text = bytes_if_py2(
+            'some non auth related error message')
         Qpid_Connection.establish.side_effect = my_conn_error
         with self.assertRaises(IOError):
             Connection(**self.connection_options)
@@ -605,7 +608,7 @@ class test_Channel_basic_get(ChannelCase):
     def test_returns_None_when_channel__get_raises_Empty(self):
         queue = Mock(name='queue')
         self.channel._get = Mock(
-            name='channel._get', side_effect=kombu.five.Empty,
+            name='channel._get', side_effect=Empty,
         )
         basic_get_result = self.channel.basic_get(queue)
         self.assertEqual(self.channel.Message.call_count, 0)

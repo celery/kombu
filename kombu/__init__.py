@@ -1,5 +1,5 @@
 """Messaging library for Python"""
-from __future__ import absolute_import
+from __future__ import absolute_import, unicode_literals
 
 import os
 import sys
@@ -100,7 +100,10 @@ new_module.__dict__.update({
     '__docformat__': __docformat__,
     '__package__': package,
     'version_info_t': version_info_t,
-    'VERSION': VERSION})
+    'VERSION': VERSION,
+    'absolute_import': absolute_import,
+    'unicode_literals': unicode_literals,
+})
 
 if os.environ.get('KOMBU_LOG_DEBUG'):  # pragma: no cover
     os.environ.update(KOMBU_LOG_CHANNEL='1', KOMBU_LOG_CONNECTION='1')

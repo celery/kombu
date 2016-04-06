@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import
+from __future__ import absolute_import, unicode_literals
 
 from kombu.async.aws.sqs import regions, connect_to_region
 from kombu.async.aws.sqs.connection import AsyncSQSConnection

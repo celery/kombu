@@ -1,3 +1,5 @@
+from __future__ import absolute_import, unicode_literals
+
 from kombu import Consumer, Producer, Exchange, Queue
 from kombu.five import range
 from kombu.utils import nested

@@ -1,10 +1,11 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, unicode_literals
 
 import socket
 import sys
 import types
 
 from kombu import syn
+from kombu.five import bytes_if_py2
 
 from kombu.tests.case import Case, mock, patch
 
@@ -47,14 +48,17 @@ class test_syn(Case):
 
     def test_detect_environment_no_eventlet_or_gevent(self):
         try:
-            sys.modules['eventlet'] = types.ModuleType('eventlet')
-            sys.modules['eventlet.patcher'] = types.ModuleType('eventlet')
+            sys.modules['eventlet'] = types.ModuleType(
+                bytes_if_py2('eventlet'))
+            sys.modules['eventlet.patcher'] = types.ModuleType(
+                bytes_if_py2('patcher'))
             self.assertEqual(syn._detect_environment(), 'default')
         finally:
+            sys.modules.pop('eventlet.patcher', None)
             sys.modules.pop('eventlet', None)
         syn._detect_environment()
         try:
-            sys.modules['gevent'] = types.ModuleType('gevent')
+            sys.modules['gevent'] = types.ModuleType(bytes_if_py2('gevent'))
             self.assertEqual(syn._detect_environment(), 'default')
         finally:
             sys.modules.pop('gevent', None)
