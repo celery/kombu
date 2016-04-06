@@ -31,6 +31,22 @@ extensions = [
     'githubsphinx',
 ]
 
+LINKCODE_URL = 'https://github.com/{proj}/tree/{branch}/{filename}.py'
+GITHUB_PROJECT = 'celery/kombu'
+GITHUB_BRANCH = 'master'
+
+
+def linkcode_resolve(domain, info):
+    if domain != 'py' or not info['module']:
+        return
+    filename = info['module'].replace('.', '/')
+    return LINKCODE_URL.format(
+        proj=GITHUB_PROJECT,
+        branch=GITHUB_BRANCH,
+        filename=filename,
+    )
+
+
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['.templates']
 
@@ -89,7 +105,7 @@ html_sidebars = {
 
 # ## Issuetracker
 
-github_project = 'celery/kombu'
+github_project = GITHUB_PROJECT
 
 intersphinx_mapping = {
     'python': ('http://docs.python.org/dev', None),
