@@ -5,12 +5,12 @@
 *.sqlite
 *.sqlite-journal
 settings_local.py
-.build
-build
+build/
+.build/
+_build/
 .*.sw[pon]
 dist/
 *.egg-info
-doc/__build/*
 pip-log.txt
 devdatabase.db
 ^parts

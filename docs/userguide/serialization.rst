@@ -85,13 +85,17 @@ Each option has its advantages and disadvantages.
 To instruct `Kombu` to use an alternate serialization method,
 use one of the following options.
 
-    1.  Set the serialization option on a per-producer basis::
+    1.  Set the serialization option on a per-producer basis:
+
+        .. code-block:: pycon
 
             >>> producer = Producer(channel,
             ...                     exchange=exchange,
             ...                     serializer='yaml')
 
-    2.  Set the serialization option per message::
+    2.  Set the serialization option per message:
+
+        .. code-block:: pycon
 
             >>> producer.publish(message, routing_key=rkey,
             ...                  serializer='pickle')
@@ -110,7 +114,9 @@ pass in a plain string or Unicode object as your message and a custom `content_t
 not waste cycles serializing/deserializing the data.
 
 You can optionally specify a `content_encoding`
-for the raw data::
+for the raw data:
+
+.. code-block:: pycon
 
     >>> with open('~/my_picture.jpg', 'rb') as fh:
     ...     producer.publish(fh.read(),

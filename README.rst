@@ -28,7 +28,9 @@ Features
 
     * High performance AMQP transport written in C - when using `librabbitmq`_
 
-      This is automatically enabled if librabbitmq is installed::
+      This is automatically enabled if librabbitmq is installed:
+
+      .. code-block:: console
 
         $ pip install librabbitmq
 
@@ -134,7 +136,7 @@ Kombu is using Sphinx, and the latest documentation can be found here:
 Quick overview
 --------------
 
-::
+.. code-block:: python
 
     from kombu import Connection, Exchange, Queue
 
@@ -177,7 +179,9 @@ Quick overview
             connection.drain_events()
 
 
-Or handle channels manually::
+Or handle channels manually:
+
+.. code-block:: python
 
     with connection.channel() as channel:
         producer = Producer(channel, ...)
@@ -185,7 +189,9 @@ Or handle channels manually::
 
 
 All objects can be used outside of with statements too,
-just remember to close the objects after use::
+just remember to close the objects after use:
+
+.. code-block:: python
 
     from kombu import Connection, Consumer, Producer
 
@@ -209,7 +215,7 @@ to a channel.
 Binding exchanges and queues to a connection will make it use
 that connections default channel.
 
-::
+.. code-block:: pycon
 
     >>> exchange = Exchange('tasks', 'direct')
 
@@ -228,16 +234,22 @@ Installation
 You can install `Kombu` either via the Python Package Index (PyPI)
 or from source.
 
-To install using `pip`,::
+To install using `pip`,:
+
+.. code-block:: console
 
     $ pip install kombu
 
-To install using `easy_install`,::
+To install using `easy_install`,:
+
+.. code-block:: console
 
     $ easy_install kombu
 
 If you have downloaded a source tarball you can install it
-by doing the following,::
+by doing the following,:
+
+.. code-block:: console
 
     $ python setup.py build
     # python setup.py install # as root

@@ -238,9 +238,9 @@
     If you're using Django 1.8 and have already created the
     kombu_transport_django tables, you have to run a fake initial migration:
 
-    .. code-block:: pycon
+    .. code-block:: console
 
-        python manage.py migrate kombu_transport_django --fake-initial
+        $ python manage.py migrate kombu_transport_django --fake-initial
 
 - No longer compatible with South by default.
 
@@ -575,13 +575,17 @@
     http://www.rabbitmq.com/blog/2014/04/02/breaking-things-with-rabbitmq-3-3/
 
     A new connection property has been added that can be used to detect
-    whether the remote server is using this new QoS behavior::
+    whether the remote server is using this new QoS behavior:
+
+    .. code-block:: pycon
 
         >>> Connection('amqp://').qos_behavior_matches_spec
         False
 
     so if your application depends on the old semantics you can
-    use this to set the ``apply_global`` flag appropriately::
+    use this to set the ``apply_global`` flag appropriately:
+
+    .. code-block:: python
 
         def update_prefetch_count(channel, new_value):
             channel.basic_qos(
@@ -668,7 +672,9 @@
   messages.
 
     This change is backwards incompatible and must be enabled with
-    the ``fanout_patterns`` transport option::
+    the ``fanout_patterns`` transport option:
+
+    .. code-block:: pycon
 
         >>> conn = kombu.Connection('redis://', transport_options={
         ...     'fanout_patterns': True,
@@ -871,7 +877,9 @@
 - Redis: Unix socket URLs can now specify a virtual host by including
   it as a query parameter.
 
-    Example URL specifying a virtual host using database number 3::
+    Example URL specifying a virtual host using database number 3:
+
+    .. code-block:: text
 
         redis+socket:///tmp/redis.sock?virtual_host=3
 
@@ -953,7 +961,9 @@
 
     This transport option is recommended for all users as it ensures
     that broadcast (fanout) messages sent is only seen by the current
-    virtual host::
+    virtual host:
+
+    .. code-block:: python
 
         Connection('redis://', transport_options={'fanout_keyprefix': True})
 
@@ -1023,11 +1033,15 @@
 
     To have your consumer accept formats other than json you have to
     explicitly add the wanted formats to a white-list of accepted
-    content types::
+    content types:
+
+    .. code-block:: pycon
 
         >>> c = Consumer(conn, accept=['json', 'pickle', 'msgpack'])
 
-    or when using synchronous access::
+    or when using synchronous access:
+
+    .. code-block:: pycon
 
         >>> msg = queue.get(accept=['json', 'pickle', 'msgpack'])
 
@@ -1326,7 +1340,9 @@ Changes
     is raised.  Note that this error can be handled by the already
     existing `on_decode_error` callback
 
-    Examples::
+    Examples:
+
+    .. code-block:: python
 
         Consumer(accept=['application/json'])
         Consumer(accept=['pickle', 'json'])
@@ -1390,7 +1406,9 @@ Changes
     Ack emulation adds quite a lot of overhead to ensure data is safe
     even in the event of an unclean shutdown.  If data loss do not worry
     you there is now an `ack_emulation` transport option you can use
-    to disable it::
+    to disable it:
+
+    .. code-block:: python
 
         Connection('redis://', transport_options={'ack_emulation': False})
 
@@ -1918,11 +1936,15 @@ SQS: Now supports long polling (Issue #176).
     ensures that we can quickly roll out new features and fixes without
     resorting to monkey patching.
 
-    To use the py-amqp transport you must install the :mod:`amqp` library::
+    To use the py-amqp transport you must install the :mod:`amqp` library:
+
+    .. code-block:: console
 
         $ pip install amqp
 
-    and change the connection URL to use the correct transport::
+    and change the connection URL to use the correct transport:
+
+    .. code-block:: pycon
 
         >>> conn = Connection('pyamqp://guest:guest@localhost//')
 
@@ -2081,16 +2103,18 @@ SQS: Now supports long polling (Issue #176).
 - Exchange & Queue can now be bound to connections (which will use the default
   channel):
 
-    >>> exchange = Exchange('name')
-    >>> bound_exchange = exchange(connection)
-    >>> bound_exchange.declare()
+    .. code-block:: pycon
+
+        >>> exchange = Exchange('name')
+        >>> bound_exchange = exchange(connection)
+        >>> bound_exchange.declare()
 
 - ``SimpleQueue`` & ``SimpleBuffer`` can now be bound to connections (which
   will use the default channel).
 
 - ``Connection.manager.get_bindings`` now works for librabbitmq and pika.
 
-- Adds new transport info attributes::
+- Adds new transport info attributes:
 
     - ``Transport.driver_type``
 
@@ -2129,9 +2153,11 @@ Important Notes
     these are named ``mailbox_name.pidbox``,
     and ``reply.mailbox_name.pidbox``.
 
-    The following command can be used to clean up these exchanges::
+    The following command can be used to clean up these exchanges:
 
-        VHOST=/ URL=amqp:// python -c'import sys,kombu;[kombu.Connection(
+    .. code-block:: text
+
+        $ VHOST=/ URL=amqp:// python -c'import sys,kombu;[kombu.Connection(
             sys.argv[-1]).channel().exchange_delete(x)
                 for x in sys.argv[1:-1]]' \
             $(sudo rabbitmqctl -q list_exchanges -p "$VHOST" \
@@ -2146,7 +2172,9 @@ Important Notes
     `py-librabbitmq`_ is a fast AMQP client for Python
     using the librabbitmq C library.
 
-    It can be installed by::
+    It can be installed by:
+
+    .. code-block:: console
 
         $ pip install librabbitmq
 
@@ -2188,7 +2216,9 @@ News
     this means that ETA/countdown tasks that are scheduled to execute
     with a time that exceeds the visibility timeout will be executed
     twice (or more).  If you plan on using long ETA/countdowns you
-    should tweak the visibility timeout accordingly::
+    should tweak the visibility timeout accordingly:
+
+    .. code-block:: python
 
         BROKER_TRANSPORT_OPTIONS = {'visibility_timeout': 18000}  # 5 hours
 
@@ -2218,7 +2248,9 @@ News
     The priority range is collapsed into four steps by default, since it is
     unlikely that nine steps will yield more benefit than using four steps.
     The number of steps can be configured by setting the ``priority_steps``
-    transport option, which must be a list of numbers in **sorted order**::
+    transport option, which must be a list of numbers in **sorted order**:
+
+    .. code-block:: pycon
 
         >>> x = Connection('redis://', transport_options={
         ...     'priority_steps': [0, 2, 4, 6, 8, 9],
@@ -2414,7 +2446,9 @@ callback-based API later.
 
 * SQLAlchemy: Can now specify url using + separator
 
-    Example::
+    Example:
+
+    .. code-block:: python
 
         Connection('sqla+mysql://localhost/db')
 
@@ -2533,7 +2567,9 @@ callback-based API later.
 * Virtual transports: can now set polling interval via the
   transport options (Issue #96).
 
-    Example::
+    Example:
+
+    .. code-block:: pycon
 
         >>> Connection('sqs://', transport_options={
         ...     'polling_interval': 5.0})
@@ -2587,7 +2623,9 @@ New Transports
     is needed you shall consider switching to a non-polling transport.
 
     To use it you must use transport alias ``"django"``,
-    or as an URL::
+    or as an URL:
+
+    .. code-block:: text
 
         django://
 
@@ -2598,10 +2636,14 @@ New Transports
 
     If you have previously used ``django-kombu``, then the entry
     in ``INSTALLED_APPS`` must be changed from ``djkombu``
-    to ``kombu.transport.django``::
+    to ``kombu.transport.django``:
 
-        INSTALLED_APPS = (…,
-                          'kombu.transport.django')
+    .. code-block:: python
+
+        INSTALLED_APPS = (
+            # …,
+            'kombu.transport.django',
+        )
 
     If you have previously used django-kombu, then there is no need
     to recreate the tables, as the old tables will be fully compatible
@@ -2625,7 +2667,9 @@ News
 * SQS Transport: Added support for SQS queue prefixes (Issue #84).
 
     The queue prefix can be set using the transport option
-    ``queue_name_prefix``::
+    ``queue_name_prefix``:
+
+    .. code-block:: python
 
         BrokerTransport('SQS://', transport_options={
             'queue_name_prefix': 'myapp'})
@@ -2635,7 +2679,9 @@ News
 * ``Producer.publish`` now supports automatic retry.
 
     Retry is enabled by the ``reply`` argument, and retry options
-    set by the ``retry_policy`` argument::
+    set by the ``retry_policy`` argument:
+
+    .. code-block:: python
 
         exchange = Exchange('foo')
         producer.publish(message, exchange=exchange, retry=True,
@@ -2699,7 +2745,9 @@ Fixes
     than a feature.
 
     If wanted the dead-letter queue can still be enabled, by using
-    the ``deadletter_queue`` transport option::
+    the ``deadletter_queue`` transport option:
+
+    .. code-block:: pycon
 
         >>> x = Connection('redis://',
         ...       transport_options={'deadletter_queue': 'ae.undeliver'})
@@ -2824,7 +2872,9 @@ Fixes
 
     The connections default channel will then be used.
 
-    In addition shortcut methods has been added to Connection::
+    In addition shortcut methods has been added to Connection:
+
+    .. code-block:: pycon
 
         >>> connection.Producer(exchange)
         >>> connection.Consumer(queues=..., callbacks=...)
@@ -2929,11 +2979,15 @@ Fixes
 
 * Broker connection info can be now be specified using URLs
 
-    The broker hostname can now be given as an URL instead, of the format::
+    The broker hostname can now be given as an URL instead, of the format:
+
+    .. code-block:: text
 
         transport://user:password@hostname:port/virtual_host
 
-    for example the default broker is expressed as::
+    for example the default broker is expressed as:
+
+    .. code-block:: pycon
 
         >>> Connection('amqp://guest:guest@localhost:5672//')
 
@@ -2947,11 +3001,15 @@ Fixes
         forward-slash.  This is necessary to distinguish between the virtual
         host '' (empty) and '/', which are both acceptable virtual host names.
 
-        A virtual host of '/' becomes:
+        A virtual host of '/' becomes::
+
+        .. code-block:: text
 
             amqp://guest:guest@localhost:5672//
 
-        and a virtual host of '' (empty) becomes::
+        and a virtual host of '' (empty) becomes:
+
+        .. code-block:: text
 
             amqp://guest:guest@localhost:5672/
 
@@ -2960,7 +3018,9 @@ Fixes
 * Now comes with default global connection and producer pools.
 
     The acquire a connection using the connection parameters
-    from a :class:`Connection`::
+    from a :class:`Connection`:
+
+    .. code-block:: pycon
 
         >>> from kombu import Connection, connections
         >>> connection = Connection('amqp://guest:guest@localhost//')
@@ -2968,7 +3028,9 @@ Fixes
         ...     # do something with connection
 
     To acquire a producer using the connection parameters
-    from a :class:`Connection`::
+    from a :class:`Connection`:
+
+    .. code-block:: pycon
 
         >>> from kombu import Connection, producers
         >>> connection = Connection('amqp://guest:guest@localhost//')
@@ -2980,12 +3042,16 @@ Fixes
     of producers is bound the same limit as number of connections.
 
     The default limit of 100 connections per connection instance
-    can be changed by doing::
+    can be changed by doing:
+
+    .. code-block:: pycon
 
         >>> from kombu import pools
         >>> pools.set_limit(10)
 
-    The pool can also be forcefully closed by doing::
+    The pool can also be forcefully closed by doing:
+
+    .. code-block:: pycon
 
         >>> from kombu import pools
         >>> pool.reset()
@@ -3241,7 +3307,9 @@ Important Notes
     the ``body_encoding`` property.
 
     If you need to disable base64 encoding then you can do so
-    via the transport options::
+    via the transport options:
+
+    .. code-block:: python
 
         Connection(transport='...',
                    transport_options={'body_encoding': None})
@@ -3364,7 +3432,9 @@ Important Notes
     * :envvar:`KOMBU_LOG_DEBUG` both enables channel logging and configures the
       root logger to emit messages to standard error.
 
-    **Example Usage**::
+    **Example Usage**:
+
+    .. code-block:: console
 
         $ KOMBU_LOG_DEBUG=1 python
         >>> from kombu import Connection

@@ -1,6 +1,6 @@
 PYTHON=python
 SPHINX_DIR="docs/"
-SPHINX_BUILDDIR="${SPHINX_DIR}/.build"
+SPHINX_BUILDDIR="${SPHINX_DIR}/_build"
 README="README.rst"
 README_SRC="docs/templates/readme.txt"
 CONTRIBUTING_SRC="docs/contributing.rst"

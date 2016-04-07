@@ -29,7 +29,9 @@ This is a pool group, which means you give it a connection instance,
 and you get a pool instance back.  We have one pool per connection
 instance to support multiple connections in the same app.
 All connection instances with the same connection parameters will
-get the same pool::
+get the same pool:
+
+.. code-block:: pycon
 
     >>> from kombu import Connection
     >>> from kombu.pools import connections
@@ -124,7 +126,9 @@ By default every connection instance has a limit of 200 connections.
 You can change this limit using :func:`kombu.pools.set_limit`.
 You are able to grow the pool at runtime, but you can't shrink it,
 so it is best to set the limit as early as possible after your application
-starts::
+starts:
+
+.. code-block:: pycon
 
     >>> from kombu import pools
     >>> pools.set_limit()

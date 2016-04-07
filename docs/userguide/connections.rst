@@ -13,7 +13,9 @@ To send and receive messages you need a transport and a connection.
 There are several transports to choose from (amqp, librabbitmq, redis, qpid, in-memory, etc.),
 and you can even create your own. The default transport is amqp.
 
-Create a connection using the default transport::
+Create a connection using the default transport:
+
+.. code-block:: pycon
 
     >>> from kombu import Connection
     >>> connection = Connection('amqp://guest:guest@localhost:5672//')
@@ -21,23 +23,31 @@ Create a connection using the default transport::
 The connection will not be established yet, as the connection is established
 when needed. If you want to explicitly establish the connection
 you have to call the :meth:`~kombu.Connection.connect`
-method::
+method:
+
+.. code-block:: pycon
 
     >>> connection.connect()
 
-You can also check whether the connection is connected::
+You can also check whether the connection is connected:
+
+.. code-block:: pycon
 
     >>> connection.connected
     True
 
-Connections must always be closed after use::
+Connections must always be closed after use:
+
+.. code-block:: pycon
 
     >>> connection.close()
 
 But best practice is to release the connection instead,
 this will release the resource if the connection is associated
 with a connection pool, or close the connection if not,
-and makes it easier to do the transition to connection pools later::
+and makes it easier to do the transition to connection pools later:
+
+.. code-block:: pycon
 
     >>> connection.release()
 
@@ -47,7 +57,9 @@ and makes it easier to do the transition to connection pools later::
 
 Of course, the connection can be used as a context, and you are
 encouraged to do so as it makes it harder to forget releasing open
-resources::
+resources:
+
+.. code-block:: python
 
     with Connection() as connection:
         # work with connection
@@ -57,11 +69,15 @@ resources::
 URLs
 ====
 
-Connection parameters can be provided as an URL in the format::
+Connection parameters can be provided as an URL in the format:
+
+.. code-block:: text
 
     transport://userid:password@hostname:port/virtual_host
 
-All of these are valid URLs::
+All of these are valid URLs:
+
+.. code-block:: text
 
     # Specifies using the amqp transport only, default values
     # are taken from the keyword arguments.
@@ -82,7 +98,9 @@ All of these are valid URLs::
     # Using virtual host 'foo'
     amqp://localhost/foo
 
-The query part of the URL can also be used to set options, e.g.::
+The query part of the URL can also be used to set options, e.g.:
+
+.. code-block:: text
 
     amqp://localhost/myvhost?ssl=1
 
@@ -91,7 +109,9 @@ See :ref:`connection-options` for a list of supported options.
 A connection without options will use the default connection settings,
 which is using the localhost host, default port, user name `guest`,
 password `guest` and virtual host "/". A connection without arguments
-is the same as::
+is the same as:
+
+.. code-block:: pycon
 
     >>> Connection('amqp://guest:guest@localhost:5672//')
 
