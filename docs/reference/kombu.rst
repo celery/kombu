@@ -174,7 +174,6 @@
         .. automethod:: declare
         .. automethod:: register_callback
         .. automethod:: add_queue
-        .. automethod:: add_queue_from_dict
         .. automethod:: consume
         .. automethod:: cancel
         .. automethod:: cancel_by_queue

@@ -53,9 +53,9 @@
     kombu.transport.base
     kombu.transport.virtual
     kombu.transport.virtual.exchange
-    kombu.transport.virtual.scheduling
     kombu.serialization
     kombu.utils
+    kombu.utils.scheduling
     kombu.utils.eventio
     kombu.utils.limits
     kombu.utils.debug

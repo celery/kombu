@@ -421,23 +421,23 @@ class Channel(virtual.Channel):
     #: Can be either string alias, or a cycle strategy class
     #:
     #: - ``round_robin``
-    #:  :class:`~kombu.utils.scheduling.round_robin_cycle``
+    #:   (:class:`~kombu.utils.scheduling.round_robin_cycle`).
     #:
-    #:  Make sure each queue has an equal opportunity to be consumed from.
+    #:    Make sure each queue has an equal opportunity to be consumed from.
     #:
     #: - ``sorted``
-    #:    :class:`~kombu.utils.scheduling.sorted_cycle`.
+    #:   (:class:`~kombu.utils.scheduling.sorted_cycle`).
     #:
     #:    Consume from queues in alphabetical order.
     #:    If the first queue in the sorted list always contains messages,
     #:    then the rest of the queues will never be consumed from.
     #:
     #: - ``priority``
-    #:  :class:`~kombu.utils.scheduling.priority_cycle`.
+    #:   (:class:`~kombu.utils.scheduling.priority_cycle`).
     #:
-    #:  Consume from queues in original order, so that if the first
-    #:  queue always contains messages, the rest of the queues
-    #:  in the list will never be consumed from.
+    #:    Consume from queues in original order, so that if the first
+    #:    queue always contains messages, the rest of the queues
+    #:    in the list will never be consumed from.
     #:
     #: The default is to consume from queues in round robin.
     queue_order_strategy = 'round_robin'

@@ -69,7 +69,7 @@
 
 - Connection: There's now a new method
   ``Connection.supports_exchange_type(type)`` that can be used to check if the
-    current transport supports a specific exchange type.
+  current transport supports a specific exchange type.
 
 - SQS: Consumers can now read json messages not sent by Kombu.
 
