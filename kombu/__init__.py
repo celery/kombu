@@ -10,7 +10,7 @@ version_info_t = namedtuple(
     'version_info_t', ('major', 'minor', 'micro', 'releaselevel', 'serial'),
 )
 
-VERSION = version_info_t(4, 0, 0, 'a1', '')
+VERSION = version_info = version_info_t(4, 0, 0, 'a1', '')
 __version__ = '{0.major}.{0.minor}.{0.micro}{0.releaselevel}'.format(VERSION)
 __author__ = 'Ask Solem'
 __contact__ = 'ask@celeryproject.org'
@@ -100,6 +100,7 @@ new_module.__dict__.update({
     '__docformat__': __docformat__,
     '__package__': package,
     'version_info_t': version_info_t,
+    'version_info': version_info,
     'VERSION': VERSION,
     'absolute_import': absolute_import,
     'unicode_literals': unicode_literals,
