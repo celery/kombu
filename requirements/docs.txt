@@ -1,3 +1,4 @@
 Sphinx>=1.4
+sphinxcontrib-cheeseshop
 Django
 -r extras/mongodb.txt
