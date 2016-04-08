@@ -9,23 +9,17 @@ SPHINX2RST="sphinx2rst"
 SPHINX_HTMLDIR = "${SPHINX_BUILDDIR}/html"
 
 html:
-	(cd "$(SPHINX_DIR)"; make html)
+	(cd "$(SPHINX_DIR)"; $(MAKE) html)
 	mv "$(SPHINX_HTMLDIR)" Documentation
 
 docsclean:
 	-rm -rf "$(SPHINX_BUILDDIR)"
 
 htmlclean:
-	(cd "$(SPHINX_DIR)"; make clean)
+	(cd "$(SPHINX_DIR)"; $(MAKE) clean)
 
 apicheck:
-	extra/release/doc4allmods kombu
-
-indexcheck:
-	extra/release/verify-reference-index.sh
-
-configcheck:
-	PYTHONPATH=. $(PYTHON) extra/release/verify_config_reference.py $(CONFIGREF_SRC)
+	(cd "$(SPHINX_DIR)"; $(MAKE) apicheck)
 
 flakecheck:
 	flake8 kombu
@@ -68,6 +62,9 @@ gitclean:
 gitcleanforce:
 	git clean -xdf
 
-distcheck: flakecheck apicheck indexcheck configcheck readmecheck test gitclean
+tox: removepyc
+	tox
+
+distcheck: flakecheck apicheck readmecheck test gitclean
 
 dist: readme docsclean gitcleanforce removepyc

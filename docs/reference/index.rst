@@ -22,12 +22,22 @@
     kombu.compression
     kombu.pools
     kombu.abstract
+    kombu.resource
     kombu.syn
     kombu.async
     kombu.async.hub
     kombu.async.semaphore
     kombu.async.timer
     kombu.async.debug
+    kombu.async.http
+    kombu.async.http.base
+    kombu.async.http.curl
+    kombu.async.aws
+    kombu.async.aws.connection
+    kombu.async.aws.sqs
+    kombu.async.aws.sqs.connection
+    kombu.async.aws.sqs.message
+    kombu.async.aws.sqs.queue
     kombu.transport
     kombu.transport.pyamqp
     kombu.transport.librabbitmq
@@ -61,6 +71,7 @@
     kombu.utils.debug
     kombu.utils.encoding
     kombu.utils.functional
+    kombu.utils.json
     kombu.utils.url
     kombu.utils.text
     kombu.utils.amq_manager

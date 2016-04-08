@@ -1,4 +1,4 @@
-sphinx_celery
+sphinx_celery>=1.1
 Django
 librabbitmq
 -r extras/mongodb.txt

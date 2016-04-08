@@ -20,4 +20,15 @@ globals().update(conf.build_config(
     html_prepend_sidebars=['sidebardonations.html'],
     extra_extensions=[],
     configure_django_settings={'DEBUG': False},
+    apicheck_ignore_modules=[
+        'kombu.entity',
+        'kombu.messaging',
+        'kombu.transport.django.management',
+        'kombu.transport.django.management.commands',
+        r'kombu.transport.django.migrations.*',
+        r'kombu.transport.django.south_migrations.*',
+        'kombu.async.aws.ext',
+        'kombu.async.aws.sqs.ext',
+        'kombu.transport.qpid_patches',
+    ],
 ))
