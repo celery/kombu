@@ -8,7 +8,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
 
-from kombu.five import Empty
+from kombu.five import Empty, bytes_if_py2
 from kombu.transport import virtual
 from kombu.utils import cached_property
 from kombu.utils.encoding import bytes_to_str
@@ -31,8 +31,10 @@ class Channel(virtual.Channel):
         super(Channel, self).__init__(connection, **kwargs)
 
     def _configure_entity_tablenames(self, opts):
-        self.queue_tablename = opts.get('queue_tablename', 'kombu_queue')
-        self.message_tablename = opts.get('message_tablename', 'kombu_message')
+        self.queue_tablename = opts.get(
+            bytes_if_py2('queue_tablename'), bytes_if_py2('kombu_queue'))
+        self.message_tablename = opts.get(
+            bytes_if_py2('message_tablename'), bytes_if_py2('kombu_message'))
 
         #
         # Define the model definitions.  This registers the declarative
@@ -132,7 +134,7 @@ class Channel(virtual.Channel):
     @cached_property
     def queue_cls(self):
         return self._declarative_cls(
-            'Queue',
+            bytes_if_py2('Queue'),
             QueueBase,
             {'__tablename__': self.queue_tablename}
         )
@@ -140,7 +142,7 @@ class Channel(virtual.Channel):
     @cached_property
     def message_cls(self):
         return self._declarative_cls(
-            'Message',
+            bytes_if_py2('Message'),
             MessageBase,
             {'__tablename__': self.message_tablename}
         )
