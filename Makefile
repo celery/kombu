@@ -68,9 +68,6 @@ gitclean:
 gitcleanforce:
 	git clean -xdf
 
-bump_version:
-	$(PYTHON) extra/release/bump_version.py kombu/__init__.py README.rst
-
 distcheck: flakecheck apicheck indexcheck configcheck readmecheck test gitclean
 
 dist: readme docsclean gitcleanforce removepyc
