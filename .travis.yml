@@ -21,3 +21,9 @@ before_install:
 script: tox -v -e $TRAVIS_PYTHON_VERSION -- -v
 after_success:
     - .tox/$TRAVIS_PYTHON_VERSION/bin/coveralls
+notifications:
+  irc:
+    channels:
+      - "chat.freenode.net#celery"
+    on_success: change
+    on_failure: change
