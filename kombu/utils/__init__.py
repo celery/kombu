@@ -14,9 +14,10 @@ import sys
 
 from contextlib import contextmanager
 from itertools import count, repeat
-from functools import wraps
 from time import sleep
 from uuid import uuid4
+
+from vine.utils import wraps
 
 from kombu.five import items, reraise, string_t
 

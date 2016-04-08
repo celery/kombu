@@ -13,9 +13,11 @@ import sys
 
 from collections import namedtuple
 from datetime import datetime
-from functools import total_ordering, wraps
+from functools import total_ordering
 from time import time
 from weakref import proxy as weakrefproxy
+
+from vine.utils import wraps
 
 from kombu.five import monotonic
 from kombu.log import get_logger

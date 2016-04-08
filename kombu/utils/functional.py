@@ -4,7 +4,8 @@ import sys
 import threading
 
 from collections import Iterable, Mapping, OrderedDict
-from functools import wraps
+
+from vine.utils import wraps
 
 from kombu.five import UserDict, items, keys, string_t
 

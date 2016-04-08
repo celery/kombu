@@ -9,7 +9,7 @@ from __future__ import absolute_import, unicode_literals
 
 import logging
 
-from functools import wraps
+from vine.utils import wraps
 
 from kombu.five import items
 from kombu.log import get_logger

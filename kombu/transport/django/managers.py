@@ -1,6 +1,6 @@
 from __future__ import absolute_import, unicode_literals
 
-from functools import wraps
+from vine.utils import wraps
 
 from django.db import transaction, connection, models
 try:
