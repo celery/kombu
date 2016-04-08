@@ -79,14 +79,6 @@ class test_mongodb_uri_parsing(Case):
         self.assertEqual(hostname, 'mongodb://foo:bar@localhost/dbname')
         self.assertEqual(dbname, 'dbname')
 
-    def test_options(self):
-        url = 'mongodb://localhost,localhost2:29017/dbname?tz_aware=true'
-        channel = _create_mock_connection(url).default_channel
-
-        hostname, dbname, options = channel._parse_uri()
-
-        self.assertTrue(options['tz_aware'])
-
 
 class BaseMongoDBChannelCase(Case):
 
