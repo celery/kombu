@@ -1,3 +1,4 @@
 sphinx_celery
 Django
+librabbitmq
 -r extras/mongodb.txt
