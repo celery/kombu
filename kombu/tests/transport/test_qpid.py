@@ -11,15 +11,13 @@ import time
 from collections import OrderedDict
 from itertools import count
 
-from mock import call
-
 from kombu.five import Empty, bytes_if_py2
 from kombu.transport.qpid import AuthenticationFailure, QoS, Message
 from kombu.transport.qpid import QpidMessagingExceptionHandler, Channel
 from kombu.transport.qpid import Connection, ReceiversMonitor, Transport
 from kombu.transport.qpid import ConnectionError
 from kombu.transport.virtual import Base64
-from kombu.tests.case import Case, Mock, skip
+from kombu.tests.case import Case, Mock, call, skip
 from kombu.tests.case import patch
 
 QPID_MODULE = 'kombu.transport.qpid'
