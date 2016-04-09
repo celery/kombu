@@ -348,5 +348,3 @@ file in the top distribution directory for the full license text.
 
 .. |build-status| image:: https://travis-ci.org/celery/kombu.svg?branch=master
    :target: https://travis-ci.org/celery/kombu
-.. |coverage-status| image:: https://coveralls.io/repos/celery/kombu/badge.svg
-   :target: https://coveralls.io/r/celery/kombu

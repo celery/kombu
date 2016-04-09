@@ -1,26 +1,25 @@
 language: python
+sudo: false
+cache: false
 python:
-    - 2.7
-    - 3.3
-    - 3.4
-    - pypy
-    - pypy3
-before_install:
-    - |
-      deactivate
-      if python --version |& grep PyPy; then
-        sudo apt-add-repository --yes ppa:pypy/ppa
-        sudo apt-get update
-        sudo apt-get install pypy
-        source ~/virtualenv/pypy/bin/activate
-      fi
-      python --version
-      uname -a
-      lsb_release -a
-      sudo pip install tox
-script: tox -v -e $TRAVIS_PYTHON_VERSION -- -v
+    - '3.5'
+env:
+  global:
+    PYTHONUNBUFFERED=yes
+  matrix:
+    - TOXENV=2.7
+    - TOXENV=3.4
+    - TOXENV=3.5
+    - TOXENV=pypy
+    - TOXENV=pypy3
+    - TOXENV=flake8
+    - TOXENV=flakeplus
+    - TOXENV=apicheck
+install: travis_retry pip install -U tox
+script: tox -v -- -v
 after_success:
-    - .tox/$TRAVIS_PYTHON_VERSION/bin/coveralls
+  - .tox/$TRAVIS_PYTHON_VERSION/bin/coverage xml
+  - .tox/$TRAVIS_PYTHON_VERSION/bin/codecov -e TOXENV
 notifications:
   irc:
     channels:
