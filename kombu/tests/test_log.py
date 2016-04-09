@@ -116,7 +116,7 @@ class test_LogMixin(Case):
     def test_log_when_not_enabled(self):
         self.logger.isEnabledFor.return_value = False
         self.log.debug('debug')
-        self.assertFalse(self.logger.log.called)
+        self.logger.log.assert_not_called()
 
     def test_log_with_format(self):
         self.log.debug('Host %r removed', 'example.com')
@@ -138,7 +138,7 @@ class test_setup_logging(Case):
         setup_logging()
 
         logger.setLevel.assert_called_with(logging.ERROR)
-        self.assertTrue(logger.addHandler.called)
+        logger.addHandler.assert_called()
         ah_args, _ = logger.addHandler.call_args
         handler = ah_args[0]
         self.assertIsInstance(handler, logging.StreamHandler)
@@ -152,8 +152,8 @@ class test_setup_logging(Case):
         setup_logging(loglevel=logging.DEBUG, logfile='/var/logfile')
 
         logger.setLevel.assert_called_with(logging.DEBUG)
-        self.assertTrue(logger.addHandler.called)
-        self.assertTrue(WatchedFileHandler.called)
+        logger.addHandler.assert_called()
+        WatchedFileHandler.assert_called()
 
     @patch('logging.getLogger')
     def test_logger_already_setup(self, getLogger):
@@ -161,4 +161,4 @@ class test_setup_logging(Case):
         logger.handlers = [Mock()]
         setup_logging()
 
-        self.assertFalse(logger.setLevel.called)
+        logger.setLevel.assert_not_called()

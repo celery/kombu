@@ -57,7 +57,7 @@ class test_LaxBoundedSemaphore(Case):
         c3 = Mock()
         x.acquire(c3, 3)
         self.assertEqual(x.value, 0)
-        self.assertFalse(c3.called)
+        c3.assert_not_called()
 
         x.release()
         self.assertEqual(x.value, 0)
@@ -86,12 +86,12 @@ class test_LaxBoundedSemaphore(Case):
 
         cb2 = Mock()
         x.acquire(cb2, 2)
-        self.assertFalse(cb2.called)
+        cb2.assert_not_called()
         self.assertEqual(x.value, 0)
 
         cb3 = Mock()
         x.acquire(cb3, 3)
-        self.assertFalse(cb3.called)
+        cb3.assert_not_called()
 
         x.grow(2)
         cb2.assert_called_with(2)
@@ -281,7 +281,7 @@ class test_Hub(Case):
         with patch('kombu.async.hub.logger') as logger:
             with self.assertRaises(StopIteration):
                 self.hub.fire_timers()
-            self.assertTrue(logger.error.called)
+            logger.error.assert_called()
 
         eback.side_effect = MemoryError('foo')
         self.hub.scheduler = iter([(0, eback)])
@@ -300,7 +300,7 @@ class test_Hub(Case):
         with patch('kombu.async.hub.logger') as logger:
             with self.assertRaises(StopIteration):
                 self.hub.fire_timers()
-            self.assertTrue(logger.error.called)
+            logger.error.assert_called()
 
     def test_add_raises_ValueError(self):
         self.hub.poller = Mock(name='hub.poller')
@@ -335,7 +335,7 @@ class test_Hub(Case):
     @patch('kombu.async.hub.logger')
     def test_on_callback_error(self, logger):
         self.hub.on_callback_error(Mock(name='callback'), KeyError())
-        self.assertTrue(logger.error.called)
+        logger.error.assert_called()
 
     def test_loop_property(self):
         self.hub._loop = None

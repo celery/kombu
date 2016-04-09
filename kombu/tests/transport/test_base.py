@@ -58,7 +58,7 @@ class test_Message(Case):
 
         self.message.ack()
         self.assertNotEqual(self.message._state, 'ACK')
-        self.assertFalse(ack.called)
+        ack.assert_not_called()
 
     def test_ack_missing_consumer_tag(self):
         self.channel.no_ack_consumers = {'abc'}
@@ -87,7 +87,7 @@ class test_Message(Case):
         logger = Mock()
         self.message.ack_log_error(logger, KeyError)
         ack.assert_called_with(multiple=False)
-        self.assertTrue(logger.critical.called)
+        logger.critical.assert_called()
         self.assertIn("Couldn't ack", logger.critical.call_args[0][0])
 
     def test_reject_log_error_when_no_error(self):
@@ -101,7 +101,7 @@ class test_Message(Case):
         logger = Mock()
         self.message.reject_log_error(logger, KeyError)
         reject.assert_called_with(requeue=False)
-        self.assertTrue(logger.critical.called)
+        logger.critical.assert_called()
         self.assertIn("Couldn't reject", logger.critical.call_args[0][0])
 
 

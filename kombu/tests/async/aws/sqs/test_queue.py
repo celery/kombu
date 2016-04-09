@@ -32,7 +32,7 @@ class test_AsyncQueue(AWSCase):
 
     def test_get_timeout(self):
         self.x.get_timeout(callback=self.callback)
-        self.assertTrue(self.x.connection.get_queue_attributes.called)
+        self.x.connection.get_queue_attributes.assert_called()
         on_ready = self.x.connection.get_queue_attributes.call_args[0][2]
         self.x.connection.get_queue_attributes.assert_called_with(
             self.x, 'VisibilityTimeout', on_ready,
@@ -43,7 +43,7 @@ class test_AsyncQueue(AWSCase):
 
     def test_set_timeout(self):
         self.x.set_timeout(808, callback=self.callback)
-        self.assertTrue(self.x.connection.set_queue_attribute.called)
+        self.x.connection.set_queue_attribute.assert_called()
         on_ready = self.x.connection.set_queue_attribute.call_args[0][3]
         self.x.connection.set_queue_attribute.assert_called_with(
             self.x, 'VisibilityTimeout', 808, on_ready,
@@ -71,7 +71,7 @@ class test_AsyncQueue(AWSCase):
 
     def test_read(self):
         self.x.read(visibility_timeout=909, callback=self.callback)
-        self.assertTrue(self.x.connection.receive_message.called)
+        self.x.connection.receive_message.assert_called()
         on_ready = self.x.connection.receive_message.call_args[1]['callback']
         self.x.connection.receive_message.assert_called_with(
             self.x, number_messages=1, visibility_timeout=909,
@@ -92,7 +92,7 @@ class test_AsyncQueue(AWSCase):
     def test_write(self):
         message = self.MockMessage('id1', 'digest1')
         self.x.write(message, delay_seconds=303, callback=self.callback)
-        self.assertTrue(self.x.connection.send_message.called)
+        self.x.connection.send_message.assert_called()
         on_ready = self.x.connection.send_message.call_args[1]['callback']
         self.x.connection.send_message.assert_called_with(
             self.x, message.get_body_encoded(), 303,
@@ -148,7 +148,7 @@ class test_AsyncQueue(AWSCase):
 
     def test_count(self):
         self.x.count(callback=self.callback)
-        self.assertTrue(self.x.connection.get_queue_attributes.called)
+        self.x.connection.get_queue_attributes.assert_called()
         on_ready = self.x.connection.get_queue_attributes.call_args[0][2]
         self.x.connection.get_queue_attributes.assert_called_with(
             self.x, 'ApproximateNumberOfMessages', on_ready,

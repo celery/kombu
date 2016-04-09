@@ -106,7 +106,7 @@ class test_CurlClient(HubCase):
             hub = x.hub = Mock(name='hub')
             x._fds.clear()
             x._handle_socket(0xff3f, fd, x._multi, None, _pycurl)
-            self.assertFalse(hub.remove.called)
+            hub.remove.assert_not_called()
 
     def test_set_timeout(self):
         x = self.Client()

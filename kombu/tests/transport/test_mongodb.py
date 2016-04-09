@@ -141,7 +141,7 @@ class test_mongodb_channel(BaseMongoDBChannelCase):
 
     def test_new_queue(self):
         self.channel._new_queue('foobar')
-        self.assertFalse(self.channel.client.called)
+        self.channel.client.assert_not_called()
 
     def test_get(self):
         import pymongo
@@ -466,7 +466,7 @@ class test_mongodb_channel_ttl(BaseMongoDBChannelCase):
         result = self.channel._get_expire(
             {'arguments': {'x-expires': 777}}, 'x-expires')
 
-        self.assertFalse(self.channel.client.called)
+        self.channel.client.assert_not_called()
 
         self.assertEqual(result, self.expire_at)
 

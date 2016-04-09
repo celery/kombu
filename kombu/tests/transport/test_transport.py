@@ -41,4 +41,4 @@ class test_transport_ghettoq(Case):
         x = transport._ghettoq('Redis', 'redis', 'redis')
 
         self.assertEqual(x(), 'kombu.transport.redis.Transport')
-        self.assertTrue(warn.called)
+        warn.assert_called()

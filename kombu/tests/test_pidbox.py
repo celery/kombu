@@ -43,7 +43,7 @@ class test_Mailbox(Case):
             mailbox._publish_reply(
                 {'foo': 'bar'}, mailbox.reply_exchange, mailbox.oid, 'foo',
             )
-            self.assertTrue(producer.publish.called)
+            producer.publish.assert_called()
 
     def test_reply__collect(self):
         mailbox = pidbox.Mailbox('test_reply__collect')(self.connection)

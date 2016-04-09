@@ -30,7 +30,7 @@ class test_Message(Case):
         except KeyError:
             m.errors.append(sys.exc_info())
         m._reraise_error(callback)
-        self.assertTrue(callback.called)
+        callback.assert_called()
 
         with self.assertRaises(KeyError):
             m._reraise_error(None)

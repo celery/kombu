@@ -20,7 +20,7 @@ class test_setup_logging(Case):
 
             get_logger.assert_called_with('kombu.test')
 
-            self.assertTrue(logger.addHandler.called)
+            logger.addHandler.assert_called()
             logger.setLevel.assert_called_with(logging.DEBUG)
 
 
@@ -52,7 +52,7 @@ class test_Logwrapped(Case):
 
             W.ident = 'ident'
             W.some_method(kw=1)
-            self.assertTrue(logger.debug.called)
+            logger.debug.assert_called()
             self.assertIn('ident', logger.debug.call_args[0][0])
 
             self.assertEqual(dir(W), dir(W.instance))

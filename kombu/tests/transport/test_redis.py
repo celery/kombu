@@ -300,7 +300,7 @@ class test_Channel(Case):
         pool_at_init = [None]
         with self.assertRaises(RuntimeError):
             conn.channel()
-        self.assertFalse(pool.disconnect.called)
+        pool.disconnect.assert_not_called()
 
     def test_after_fork(self):
         self.channel._pool = None
@@ -345,7 +345,7 @@ class test_Channel(Case):
             self.channel._do_restore_message(
                 pl2, 'ex', 'rkey', client,
             )
-            self.assertTrue(crit.called)
+            crit.assert_called()
 
     def test_restore(self):
         message = Mock(name='message')
@@ -368,7 +368,7 @@ class test_Channel(Case):
             self.channel._restore(message)
             client.pipeline.assert_called_with()
             unacked_key = self.channel.unacked_key
-            self.assertFalse(loads.called)
+            loads.assert_not_called()
 
             tag = message.delivery_tag
             pipe.hget.assert_called_with(unacked_key, tag)
@@ -396,7 +396,7 @@ class test_Channel(Case):
         restore = qos.restore_by_tag = Mock(name='restore_by_tag')
         qos._vrestore_count = 1
         qos.restore_visible()
-        self.assertFalse(client.zrevrangebyscore.called)
+        client.zrevrangebyscore.assert_not_called()
         self.assertEqual(qos._vrestore_count, 2)
 
         qos._vrestore_count = 0
@@ -410,7 +410,7 @@ class test_Channel(Case):
         restore.reset_mock()
         client.zrevrangebyscore.return_value = []
         qos.restore_visible()
-        self.assertFalse(restore.called)
+        restore.assert_not_called()
         self.assertEqual(qos._vrestore_count, 1)
 
         qos._vrestore_count = 0
@@ -435,8 +435,7 @@ class test_Channel(Case):
         self.channel.subclient = Mock()
         self.channel.active_fanout_queues.clear()
         self.channel._subscribe()
-
-        self.assertFalse(self.channel.subclient.subscribe.called)
+        self.channel.subclient.subscribe.assert_not_called()
 
     def test_subscribe(self):
         self.channel.subclient = Mock()
@@ -445,7 +444,7 @@ class test_Channel(Case):
         self.channel._fanout_queues.update(a=('a', ''), b=('b', ''))
 
         self.channel._subscribe()
-        self.assertTrue(self.channel.subclient.psubscribe.called)
+        self.channel.subclient.psubscribe.assert_called()
         s_args, _ = self.channel.subclient.psubscribe.call_args
         self.assertItemsEqual(s_args[0], ['/{db}.a', '/{db}.b'])
 
@@ -710,7 +709,7 @@ class test_Channel(Case):
         loop.call_repeatedly.assert_called_with(
             10, transport.cycle.maybe_restore_messages,
         )
-        self.assertTrue(loop.on_tick.add.called)
+        loop.on_tick.add.assert_called()
         on_poll_start = loop.on_tick.add.call_args[0][0]
 
         on_poll_start()
@@ -994,7 +993,7 @@ class test_MultiChannelPoller(Case):
 
         p.on_poll_start()
         p._register_LISTEN.assert_called_with(chan1)
-        self.assertFalse(p._register_BRPOP.called)
+        p._register_BRPOP.assert_not_called()
 
         chan1.qos.can_consume.return_value = True
         p._register_LISTEN.reset_mock()
@@ -1025,7 +1024,7 @@ class test_MultiChannelPoller(Case):
 
         chan.qos.can_consume.return_value = False
         p.handle_event(13, redis.READ)
-        self.assertFalse(chan.handlers['BRPOP'].called)
+        chan.handlers['BRPOP'].assert_not_called()
 
         chan.qos.can_consume.return_value = True
         p.handle_event(13, redis.READ)
@@ -1185,7 +1184,7 @@ class test_MultiChannelPoller(Case):
         with self.assertRaises(redis.Empty):
             p.get()
 
-        self.assertFalse(p._register_BRPOP.called)
+        p._register_BRPOP.assert_not_called()
 
     def test_get_listen(self):
         p, channel = self.create_get(fanouts=['f_queue'])
@@ -1253,7 +1252,7 @@ class test_Mutex(Case):
                 with redis.Mutex(client, 'foo1', '100'):
                     held = True
                 self.assertFalse(held)
-            self.assertTrue(client.expire.called)
+            client.expire.assert_called()
 
             # Wins but raises WatchError (and that is ignored)
             client.setnx.return_value = True
@@ -1282,7 +1281,7 @@ class test_RedisSentinel(Case):
             )
 
             connection.channel()
-            self.assertTrue(p.called)
+            p.assert_called()
 
     def test_getting_master_from_sentinel(self):
         from redis.sentinel import Sentinel
@@ -1299,14 +1298,9 @@ class test_RedisSentinel(Case):
             self.assertTrue(patched)
 
             master_for = patched.return_value.master_for
-            self.assertTrue(
-                master_for.called, 'master_for was not called',
-            )
+            master_for.assert_called()
             master_for.assert_called_with('not_important', ANY)
-            self.assertTrue(
-                master_for().connection_pool.get_connection.called,
-                'get_connection on redis connection pool was not called',
-            )
+            master_for().connection_pool.get_connection.assert_called(),
 
     def test_can_create_connection(self):
         from redis.exceptions import ConnectionError

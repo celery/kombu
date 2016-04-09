@@ -48,7 +48,7 @@ class test_Producer(Case):
     def test_maybe_declare_when_entity_false(self, maybe_declare):
         p = self.connection.Producer()
         p.maybe_declare(None)
-        self.assertFalse(maybe_declare.called)
+        maybe_declare.assert_not_called()
 
     def test_auto_declare(self):
         channel = self.connection.channel()
@@ -156,7 +156,7 @@ class test_Producer(Case):
         p._connection = Mock()
         ensure = p.connection.ensure = Mock()
         p.publish('foo', exchange='foo', retry=True)
-        self.assertTrue(ensure.called)
+        ensure.assert_called()
 
     def test_publish_retry_with_declare(self):
         p = self.connection.Producer()
@@ -284,7 +284,7 @@ class test_Consumer(Case):
         with conn.Consumer(queues=[q], callbacks=[callback]) as consumer:
             with self.assertRaises(consumer.ContentDisallowed):
                 conn.drain_events(timeout=1)
-        self.assertFalse(callback.called)
+        callback.assert_not_called()
 
     def test_accept__content_allowed(self):
         conn = Connection('memory://')
@@ -299,7 +299,7 @@ class test_Consumer(Case):
         with conn.Consumer(queues=[q], accept=['pickle'],
                            callbacks=[callback]):
             conn.drain_events(timeout=1)
-        self.assertTrue(callback.called)
+        callback.assert_called()
         body, message = callback.call_args[0]
         self.assertTrue(body['complex'])
 

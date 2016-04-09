@@ -130,7 +130,7 @@ class test_Timer(Case):
         fun.side_effect = ValueError()
 
         t.schedule.apply_entry(fun)
-        self.assertTrue(logger.error.called)
+        logger.error.assert_called()
 
     @mock.stdouts
     def test_apply_entry_error_not_handled(self, stdout, stderr):

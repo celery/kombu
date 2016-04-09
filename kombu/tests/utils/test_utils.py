@@ -287,7 +287,7 @@ class test_ChannelPromise(Case):
             'promise',
             repr(utils.ChannelPromise(obj)),
         )
-        self.assertFalse(obj.called)
+        obj.assert_not_called()
 
 
 class test_entrypoints(Case):

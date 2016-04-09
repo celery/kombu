@@ -167,17 +167,9 @@ class test_AbstractChannel(Case):
         self.assertTrue(virtual.AbstractChannel()._has_queue('queue'))
 
     def test_poll(self):
-
-        class Cycle(object):
-            called = False
-
-            def get(self):
-                self.called = True
-                return True
-
-        cycle = Cycle()
+        cycle = Mock(name='cycle')
         self.assertTrue(virtual.AbstractChannel()._poll(cycle))
-        self.assertTrue(cycle.called)
+        cycle.get.assert_called()
 
 
 class test_Channel(Case):
@@ -430,8 +422,8 @@ class test_Channel(Case):
 
         self.channel.do_restore = True
         q.restore_unacked_once()
-        self.assertTrue(print_.called)
-        self.assertTrue(emergency_dump_state.called)
+        print_.assert_called()
+        emergency_dump_state.assert_called()
 
     def test_basic_recover(self):
         with self.assertRaises(NotImplementedError):

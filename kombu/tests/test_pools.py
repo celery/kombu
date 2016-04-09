@@ -89,7 +89,7 @@ class test_ProducerPool(Case):
         pool.instance._channel = None
         first = pool._resource.get_nowait()
         producer = pool.prepare(first)
-        self.assertTrue(self.connections.acquire.called)
+        self.connections.acquire.assert_called()
         producer.revive.assert_called_with(connection)
 
     def test_prepare_channel_already_created(self):
@@ -99,7 +99,7 @@ class test_ProducerPool(Case):
         first = pool._resource.get_nowait()
         self.connections.acquire.reset()
         producer = pool.prepare(first)
-        self.assertFalse(producer.revive.called)
+        producer.revive.assert_not_called()
 
     def test_prepare_not_callable(self):
         x = Producer(Mock)

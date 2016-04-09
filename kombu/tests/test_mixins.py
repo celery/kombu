@@ -50,7 +50,7 @@ class test_ConsumerMixin(Case):
         Acons.__enter__.assert_called_with()
         Bcons.__enter__.assert_called_with()
         c.extra_context.__enter__.assert_called_with()
-        self.assertTrue(c.on_consume_ready.called)
+        c.on_consume_ready.assert_called()
         c.on_iteration.assert_called_with()
         c.connection.drain_events.assert_called_with(timeout=1)
         next(it)
@@ -95,7 +95,7 @@ class test_ConsumerMixin(Case):
             self.assertIs(conn, c.connection)
             self.assertIs(channel, conn.default_channel)
             c.on_connection_revived.assert_called_with()
-            self.assertTrue(c.get_consumers.called)
+            c.get_consumers.assert_called()
             cls = c.get_consumers.call_args[0][0]
 
             subcons = cls()
@@ -133,13 +133,13 @@ class test_ConsumerMixin_interface(Case):
         message = Message('foo')
         with patch('kombu.mixins.error') as error:
             self.c.on_decode_error(message, KeyError('foo'))
-            self.assertTrue(error.called)
+            error.assert_called()
             message.ack.assert_called_with()
 
     def test_on_connection_error(self):
         with patch('kombu.mixins.warn') as warn:
             self.c.on_connection_error(KeyError('foo'), 3)
-            self.assertTrue(warn.called)
+            warn.assert_called()
 
     def test_extra_context(self):
         with self.c.extra_context(Mock(), Mock()):
@@ -220,7 +220,7 @@ class test_ConsumerMixin_interface(Case):
             self.c.should_stop = False
             consume.side_effect = se
             self.c.run()
-            self.assertTrue(sleep.called)
+            sleep.assert_called()
 
     def test_run_raises(self):
         conn = ContextMock(name='connection')
@@ -236,4 +236,4 @@ class test_ConsumerMixin_interface(Case):
             self.c.should_stop = False
             consume.side_effect = se_raises
             self.c.run()
-            self.assertTrue(warn.called)
+            warn.assert_called()

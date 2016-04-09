@@ -172,7 +172,7 @@ class test_replies(Case):
         m = next(it)
         self.assertIs(m, body)
         itermessages.assert_called_with(conn, channel, queue, no_ack=True)
-        self.assertFalse(message.ack.called)
+        message.ack.assert_not_called()
 
     @patch('kombu.common.itermessages')
     def test_collect_replies_no_replies(self, itermessages):
@@ -182,7 +182,7 @@ class test_replies(Case):
         with self.assertRaises(StopIteration):
             next(it)
 
-        self.assertFalse(channel.after_reply_message_received.called)
+        channel.after_reply_message_received.assert_not_called()
 
 
 class test_insured(Case):
@@ -190,7 +190,7 @@ class test_insured(Case):
     @patch('kombu.common.logger')
     def test_ensure_errback(self, logger):
         common._ensure_errback('foo', 30)
-        self.assertTrue(logger.error.called)
+        logger.error.assert_called()
 
     def test_revive_connection(self):
         on_revive = Mock()
@@ -217,13 +217,13 @@ class test_insured(Case):
             errback=common._ensure_errback,
         )
 
-        self.assertTrue(insured.called)
+        insured.assert_called()
         i_args, i_kwargs = insured.call_args
         self.assertTupleEqual(i_args, (2, 2))
         self.assertDictEqual(i_kwargs, {'foo': 'bar',
                                         'connection': conn})
 
-        self.assertTrue(conn.autoretry.called)
+        conn.autoretry.assert_called()
         ar_args, ar_kwargs = conn.autoretry.call_args
         self.assertTupleEqual(ar_args, (fun, conn.default_channel))
         self.assertTrue(ar_kwargs.get('on_revive'))
@@ -321,7 +321,7 @@ class test_QoS(Case):
             # cannot use 2 ** 32 because of a bug on OSX Py2.5:
             # https://jira.mongodb.org/browse/PYTHON-389
             qos.set(4294967296)
-            self.assertTrue(logger.warn.called)
+            logger.warn.assert_called()
             callback.assert_called_with(prefetch_count=0)
 
     def test_qos_increment_decrement(self):

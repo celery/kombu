@@ -272,7 +272,7 @@ class test_ConsumerSet(Case):
 
         cs.cancel = Mock(name='cancel')
         cs.close()
-        self.assertFalse(chan.close.called)
+        chan.close.assert_not_called()
 
     @patch('kombu.compat._iterconsume')
     def test_iterconsume(self, _iterconsume, n='test_iterconsume'):

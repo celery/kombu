@@ -89,7 +89,7 @@ class test_BaseClient(HubCase):
         c.add_request = Mock(name='add_request')
 
         c.perform('http://foo')
-        self.assertTrue(c.add_request.called)
+        c.add_request.assert_called()
         self.assertIsInstance(c.add_request.call_args[0][0], http.Request)
 
         req = http.Request('http://bar')

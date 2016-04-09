@@ -64,7 +64,7 @@ class test_Fanout(ExchangeCase):
         self.e.channel.supports_fanout = False
 
         self.e.deliver(Mock(), 'exchange', None)
-        self.assertFalse(self.e.channel._put_fanout.called)
+        self.e.channel._put_fanout.assert_not_called()
 
 
 class test_Topic(ExchangeCase):

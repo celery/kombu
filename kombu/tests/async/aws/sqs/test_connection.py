@@ -273,7 +273,7 @@ class test_AsyncSQSConnection(AWSCase):
 
     def test_get_queue(self):
         self.x.get_queue('foo', callback=self.callback)
-        self.assertTrue(self.x.get_list.called)
+        self.x.get_list.assert_called()
         on_ready = self.x.get_list.call_args[1]['callback']
         queues = [
             self.MockQueue('/queues/bar'),

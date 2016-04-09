@@ -176,7 +176,7 @@ class test_Connection(Case):
         uconn = connection._connection = Mock(name='_connection')
         connection.collect()
 
-        self.assertFalse(_close.called)
+        _close.assert_not_called()
         _collect.assert_called_with(uconn)
         connection.declared_entities.clear.assert_called_with()
         self.assertIsNone(trans.client)
@@ -217,13 +217,13 @@ class test_Connection(Case):
             with patch('kombu.connection.parse_url') as parse_url:
                 c = Connection('foo+mysql://some_host')
                 self.assertEqual(c.transport_cls, 'foo')
-                self.assertFalse(parse_url.called)
+                parse_url.assert_not_called()
                 self.assertEqual(c.hostname, 'mysql://some_host')
                 self.assertTrue(c.as_uri().startswith('foo+'))
             with patch('kombu.connection.parse_url') as parse_url:
                 c = Connection('mysql://some_host', transport='foo')
                 self.assertEqual(c.transport_cls, 'foo')
-                self.assertFalse(parse_url.called)
+                parse_url.assert_not_called()
                 self.assertEqual(c.hostname, 'mysql://some_host')
         c = Connection('pyamqp+sqlite://some_host')
         self.assertTrue(c.as_uri().startswith('pyamqp+'))
@@ -232,13 +232,13 @@ class test_Connection(Case):
         with patch('kombu.connection.logger') as logger:
             c = Connection(transport=Mock)
             c._default_ensure_callback(KeyError(), 3)
-            self.assertTrue(logger.error.called)
+            logger.error.assert_called()
 
     def test_ensure_connection_on_error(self):
         c = Connection('amqp://A;amqp://B')
         with patch('kombu.connection.retry_over_time') as rot:
             c.ensure_connection()
-            self.assertTrue(rot.called)
+            rot.assert_called()
 
             args = rot.call_args[0]
             cb = args[4]
@@ -257,7 +257,7 @@ class test_Connection(Case):
             args = rot.call_args[0]
             cb = args[4]
             self.assertEqual(cb(KeyError(), intervals, 0), 0)
-            self.assertTrue(errback.called)
+            errback.assert_called()
 
     def test_supports_heartbeats(self):
         c = Connection(transport=Mock)
@@ -455,7 +455,7 @@ class test_Connection(Case):
         insured = self.conn.autoretry(myfun)
         insured()
 
-        self.assertTrue(myfun.called)
+        myfun.assert_called()
 
     def test_SimpleQueue(self):
         conn = self.conn
@@ -595,7 +595,7 @@ class ResourceCase(Case):
         P.close_resource = Mock()
 
         P.replace(r)
-        self.assertFalse(P._dirty.discard.called)
+        P._dirty.discard.assert_not_called()
         P.close_resource.assert_called_with(r)
 
     def test_interface_prepare(self):
@@ -649,7 +649,7 @@ class test_ConnectionPool(ResourceCase):
         res = lazy(object())
         res.collect = Mock(name='collect')
         P.collect_resource(res)
-        self.assertFalse(res.collect.called)
+        res.collect.assert_not_called()
 
     def test_collect_resource(self):
         res = Mock(name='res')

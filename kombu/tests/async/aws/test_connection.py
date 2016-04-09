@@ -142,7 +142,7 @@ class test_AsyncHTTPConnection(AWSCase):
 
         response = http.Response(request, 200, headers, buf)
         request.on_ready(response)
-        self.assertTrue(callback.called)
+        callback.assert_called()
         wresponse = callback.call_args[0][0]
 
         self.assertEqual(wresponse.read(), 'The quick brown fox jumps')
@@ -240,7 +240,7 @@ class test_AsyncAWSAuthConnection(AWSCase):
         callback = PromiseMock(name='callback')
         ret = x.make_request('GET', '/foo', callback=callback)
         self.assertIs(ret, callback)
-        self.assertTrue(Conn.return_value.request.called)
+        Conn.return_value.request.assert_called()
         Conn.return_value.getresponse.assert_called_with(
             callback=callback,
         )
@@ -294,14 +294,14 @@ class test_AsyncAWSQueryConnection(AWSCase):
         self.x.make_request(
             'action', {'foo': 1}, '/', 'GET', callback=callback,
         )
-        self.assertTrue(self.x._mexe.called)
+        self.x._mexe.assert_called()
         request = self.x._mexe.call_args[0][0]
         self.assertEqual(request.params['Action'], 'action')
         self.assertEqual(request.params['Version'], self.x.APIVersion)
 
         ret = _mexe(request, callback=callback)
         self.assertIs(ret, callback)
-        self.assertTrue(Conn.return_value.request.called)
+        Conn.return_value.request.assert_called()
         Conn.return_value.getresponse.assert_called_with(
             callback=callback,
         )
@@ -314,7 +314,7 @@ class test_AsyncAWSQueryConnection(AWSCase):
         self.x.make_request(
             None, {'foo': 1}, '/', 'GET', callback=callback,
         )
-        self.assertTrue(self.x._mexe.called)
+        self.x._mexe.assert_called()
         request = self.x._mexe.call_args[0][0]
         self.assertNotIn('Action', request.params)
         self.assertEqual(request.params['Version'], self.x.APIVersion)
@@ -328,7 +328,7 @@ class test_AsyncAWSQueryConnection(AWSCase):
                     return parser(xh.call_args[0][0], body, h)
                 sax_parse.side_effect = effect
                 yield (sax_parse, xh)
-                self.assertTrue(sax_parse.called)
+                sax_parse.assert_called()
 
     def Response(self, status, body):
         r = Mock(name='response')
@@ -343,7 +343,7 @@ class test_AsyncAWSQueryConnection(AWSCase):
         yield callback
 
     def assert_make_request_called(self):
-        self.assertTrue(self.x.make_request.called)
+        self.x.make_request.assert_called()
         return self.x.make_request.call_args[1]['callback']
 
     def test_get_list(self):
@@ -357,7 +357,7 @@ class test_AsyncAWSQueryConnection(AWSCase):
 
             with self.mock_sax_parse(parser):
                 on_ready(self.Response(200, 'hello'))
-            self.assertTrue(callback.called_with(['hi', 'there']))
+            callback.assert_called_with(['hi', 'there'])
 
     def test_get_list_error(self):
         with self.mock_make_request() as callback:
@@ -386,7 +386,7 @@ class test_AsyncAWSQueryConnection(AWSCase):
             with self.mock_sax_parse(parser):
                 on_ready(self.Response(200, 'hello'))
 
-            self.assertTrue(callback.called)
+            callback.assert_called()
             result = callback.call_args[0][0]
             self.assertEqual(result.value, 42)
             self.assertTrue(result.parent)

@@ -443,7 +443,7 @@ class test_Channel__purge(ChannelCase):
         queue_obj = self.broker_agent.return_value.getQueue.return_value
         queue_obj.values = values
         self.channel._purge(self.queue)
-        self.assertFalse(queue_obj.purge.called)
+        queue_obj.purge.assert_not_called()
 
     def test_purges_all_messages_from_queue(self):
         values = {'msgDepth': 5}
@@ -545,12 +545,12 @@ class test_Channel__close(ChannelCase):
     def test_does_nothing_if_already_closed(self):
         self.channel.closed = True
         self.channel.close()
-        self.assertFalse(self.basic_cancel.called)
+        self.basic_cancel.assert_not_called()
 
     def test_does_not_call_close_channel_if_conn_is_None(self):
         self.channel.connection = None
         self.channel.close()
-        self.assertFalse(self.conn.close_channel.called)
+        self.conn.close_channel.assert_not_called()
 
 
 class test_Channel__basic_qos(ChannelCase):
@@ -732,7 +732,7 @@ class test_Channel__basic_consume(ChannelCase):
         callback = self.get_callback(no_ack=False)
         qpid_message = Mock(name='qpid_message')
         callback(qpid_message)
-        self.assertFalse(self.channel.basic_ack.called)
+        self.channel.basic_ack.assert_not_called()
 
     def test_callback_calls_real_callback(self):
         self.channel.basic_ack = Mock(name='basic_ack')
@@ -768,13 +768,13 @@ class test_Channel__queue_delete(ChannelCase):
     def test_does_nothing_if_queue_does_not_exist(self):
         self.has_queue.return_value = False
         self.channel.queue_delete(self.queue)
-        self.assertFalse(self.delete.called)
+        self.delete.assert_not_called()
 
     def test_not_empty_and_if_empty_True_no_delete(self):
         self.size.return_value = 1
         self.channel.queue_delete(self.queue, if_empty=True)
         broker = self.broker_agent.return_value
-        self.assertFalse(broker.getQueue.called)
+        broker.getQueue.assert_not_called()
 
     def test_calls_get_queue(self):
         self.channel.queue_delete(self.queue)
@@ -790,7 +790,7 @@ class test_Channel__queue_delete(ChannelCase):
         queue_obj = self.broker_agent.return_value.getQueue.return_value
         queue_obj.getAttributes.return_value = {'consumerCount': 1}
         self.channel.queue_delete(self.queue, if_unused=True)
-        self.assertFalse(self.delete.called)
+        self.delete.assert_not_called()
 
     def test_calls__delete_with_queue(self):
         self.channel.queue_delete(self.queue)
@@ -1360,7 +1360,7 @@ class test_ReceiversMonitor_run(ReceiversMonitorCase):
         except Exception:
             self.fail('ReceiversMonitor.run() should exit normally when '
                       'recoverable error is caught')
-        self.assertFalse(logger.error.called)
+        logger.error.assert_not_called()
 
     @patch.object(Transport, 'connection_errors', new=(MockException,))
     @patch.object(ReceiversMonitor, 'monitor_receivers')

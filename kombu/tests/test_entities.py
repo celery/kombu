@@ -282,14 +282,14 @@ class test_Queue(Case):
         q.exchange = None
 
         q.declare()
-        self.assertFalse(q.queue_declare.called)
-        self.assertFalse(q.queue_bind.called)
+        q.queue_declare.assert_not_called()
+        q.queue_bind.assert_not_called()
 
     def test_bind_to_when_name(self):
         chan = Mock()
         q = Queue('a')
         q(chan).bind_to('ex')
-        self.assertTrue(chan.queue_bind.called)
+        chan.queue_bind.assert_called()
 
     def test_get_when_no_m2p(self):
         chan = Mock()
