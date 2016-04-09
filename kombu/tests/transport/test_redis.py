@@ -1300,7 +1300,7 @@ class test_RedisSentinel(Case):
             master_for = patched.return_value.master_for
             master_for.assert_called()
             master_for.assert_called_with('not_important', ANY)
-            master_for().connection_pool.get_connection.assert_called(),
+            master_for().connection_pool.get_connection.assert_called()
 
     def test_can_create_connection(self):
         from redis.exceptions import ConnectionError
