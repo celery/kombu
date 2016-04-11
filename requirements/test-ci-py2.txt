@@ -1,0 +1,2 @@
+boto>=2.8
+pycurl
