@@ -28,11 +28,9 @@ class test_BrokerState(Case):
     def test_constructor(self):
         s = virtual.BrokerState()
         self.assertTrue(hasattr(s, 'exchanges'))
-        self.assertTrue(hasattr(s, 'bindings'))
 
-        t = virtual.BrokerState(exchanges=16, bindings=32)
+        t = virtual.BrokerState(exchanges=16)
         self.assertEqual(t.exchanges, 16)
-        self.assertEqual(t.bindings, 32)
 
 
 class test_QoS(Case):
@@ -198,8 +196,7 @@ class test_Channel(Case):
             self.channel.exchange_unbind('dest', 'src', 'key')
 
     def test_queue_unbind_interface(self):
-        with self.assertRaises(NotImplementedError):
-            self.channel.queue_unbind('dest', 'ex', 'key')
+        self.channel.queue_unbind('dest', 'ex', 'key')
 
     def test_management(self):
         m = self.channel.connection.client.get_manager()
@@ -240,16 +237,16 @@ class test_Channel(Case):
 
         c.exchange_declare(ex, 'direct', durable=True, auto_delete=True)
         self.assertIn(ex, c.state.exchanges)
-        self.assertNotIn(ex, c.state.bindings)  # no bindings yet
+        self.assertFalse(c.state.has_binding(ex, ex, ex))  # no bindings yet
         c.exchange_delete(ex)
         self.assertNotIn(ex, c.state.exchanges)
 
         c.exchange_declare(ex, 'direct', durable=True, auto_delete=True)
         c.queue_declare(ex)
         c.queue_bind(ex, ex, ex)
-        self.assertTrue(c.state.bindings[ex])
+        self.assertTrue(c.state.has_binding(ex, ex, ex))
         c.exchange_delete(ex)
-        self.assertNotIn(ex, c.state.bindings)
+        self.assertFalse(c.state.has_binding(ex, ex, ex))
         self.assertIn(ex, c.purged)
 
     def test_queue_delete__if_empty(self, n='test_queue_delete__if_empty'):
@@ -271,11 +268,11 @@ class test_Channel(Case):
         c.queue_bind(n, n, n)
 
         c.queue_delete(n, if_empty=True)
-        self.assertIn(n, c.state.bindings)
+        self.assertTrue(c.state.has_binding(n, n, n))
 
         c.size = 0
         c.queue_delete(n, if_empty=True)
-        self.assertNotIn(n, c.state.bindings)
+        self.assertFalse(c.state.has_binding(n, n, n))
         self.assertIn(n, c.purged)
 
     def test_queue_purge(self, n='test_queue_purge'):
