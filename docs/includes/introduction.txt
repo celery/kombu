@@ -1,9 +1,3 @@
-========================================
- kombu - Messaging library for Python
-========================================
-
-|build-status| |coverage| |bitdeli|
-
 :Version: 4.0.0a1
 :Web: http://kombu.me/
 :Download: http://pypi.python.org/pypi/kombu/
@@ -34,7 +28,8 @@ Features
     * High performance AMQP transport written in C - when using `librabbitmq`_
 
       This is automatically enabled if librabbitmq is installed:
-      ::
+
+      .. code-block:: console
 
         $ pip install librabbitmq
 
@@ -138,7 +133,8 @@ Kombu is using Sphinx, and the latest documentation can be found here:
 
 Quick overview
 --------------
-::
+
+.. code-block:: python
 
     from kombu import Connection, Exchange, Queue
 
@@ -182,7 +178,8 @@ Quick overview
 
 
 Or handle channels manually:
-::
+
+.. code-block:: python
 
     with connection.channel() as channel:
         producer = Producer(channel, ...)
@@ -191,7 +188,8 @@ Or handle channels manually:
 
 All objects can be used outside of with statements too,
 just remember to close the objects after use:
-::
+
+.. code-block:: python
 
     from kombu import Connection, Consumer, Producer
 
@@ -214,7 +212,8 @@ to a channel.
 
 Binding exchanges and queues to a connection will make it use
 that connections default channel.
-::
+
+.. code-block:: pycon
 
     >>> exchange = Exchange('tasks', 'direct')
 
@@ -283,73 +282,4 @@ There are some concepts you should be familiar with before starting:
                 zero or more words. For example `"*.stock.#"` matches the
                 routing keys `"usd.stock"` and `"eur.stock.db"` but not
                 `"stock.nasdaq"`.
-
-
-Installation
-============
-
-You can install `Kombu` either via the Python Package Index (PyPI)
-or from source.
-
-To install using `pip`,:
-::
-
-    $ pip install kombu
-
-To install using `easy_install`,:
-::
-
-    $ easy_install kombu
-
-If you have downloaded a source tarball you can install it
-by doing the following,:
-::
-
-    $ python setup.py build
-    # python setup.py install # as root
-
-
-
-Getting Help
-============
-
-Mailing list
-------------
-
-Join the `carrot-users`_ mailing list.
-
-.. _`carrot-users`: http://groups.google.com/group/carrot-users/
-
-Bug tracker
-===========
-
-If you have any suggestions, bug reports or annoyances please report them
-to our issue tracker at http://github.com/celery/kombu/issues/
-
-Contributing
-============
-
-Development of `Kombu` happens at Github: http://github.com/celery/kombu
-
-You are highly encouraged to participate in the development. If you don't
-like Github (for some reason) you're welcome to send regular patches.
-
-License
-=======
-
-This software is licensed under the `New BSD License`. See the `LICENSE`
-file in the top distribution directory for the full license text.
-
-
-.. |build-status| image:: https://secure.travis-ci.org/celery/kombu.png?branch=master
-    :alt: Build status
-    :target: https://travis-ci.org/celery/kombu
-
-.. |coverage| image:: https://codecov.io/github/celery/kombu/coverage.svg?branch=master
-    :target: https://codecov.io/github/celery/kombu?branch=master
-
-.. |bitdeli| image:: https://d2weczhvl823v0.cloudfront.net/celery/kombu/trend.png
-    :alt: Bitdeli badge
-    :target: https://bitdeli.com/free
---
 

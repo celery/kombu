@@ -1,70 +1,116 @@
+PROJ=kombu
 PYTHON=python
-SPHINX_DIR="docs/"
+GIT=git
+TOX=tox
+NOSETESTS=nosetests
+ICONV=iconv
+FLAKE8=flake8
+FLAKEPLUS=flakeplus
+
+SPHINX_DIR=docs/
 SPHINX_BUILDDIR="${SPHINX_DIR}/_build"
-README="README.rst"
+README=README.rst
 README_SRC="docs/templates/readme.txt"
-CONTRIBUTING_SRC="docs/contributing.rst"
 SPHINX2RST="sphinx2rst"
-
 SPHINX_HTMLDIR = "${SPHINX_BUILDDIR}/html"
+DOCUMENTATION=Documentation
+FLAKEPLUSTARGET=2.7
 
-html:
+all: help
+
+help:
+	@echo "docs                 - Build documentation."
+	@echo "test-all             - Run tests for all supported python versions."
+	@echo "distcheck ---------- - Check distribution for problems."
+	@echo "  test               - Run unittests using current python."
+	@echo "  lint ------------  - Check codebase for problems."
+	@echo "    apicheck         - Check API reference coverage."
+	@echo "    configcheck      - Check configuration reference coverage."
+	@echo "    readmecheck      - Check README encoding."
+	@echo "    flakes --------  - Check code for syntax and style errors."
+	@echo "      flakecheck     - Run flake8 on the source code."
+	@echo "      flakepluscheck - Run flakeplus on the source code."
+	@echo "readme               - Regenerate README.rst file."
+	@echo "clean-dist --------- - Clean all distribution build artifacts."
+	@echo "  clean-git-force    - Remove all uncomitted files."
+	@echo "  clean ------------ - Non-destructive clean"
+	@echo "    clean-pyc        - Remove .pyc/__pycache__ files"
+	@echo "    clean-docs       - Remove documentation build artifacts."
+	@echo "    clean-build      - Remove setup artifacts."
+
+clean: clean-docs clean-pyc clean-build
+
+clean-dist: clean clean-git-force
+
+Documentation:
 	(cd "$(SPHINX_DIR)"; $(MAKE) html)
-	mv "$(SPHINX_HTMLDIR)" Documentation
+	mv "$(SPHINX_HTMLDIR)" $(DOCUMENTATION)
 
-docsclean:
+docs: Documentation
+
+clean-docs:
 	-rm -rf "$(SPHINX_BUILDDIR)"
 
-htmlclean:
-	(cd "$(SPHINX_DIR)"; $(MAKE) clean)
+lint: flakecheck apicheck configcheck readmecheck
 
 apicheck:
 	(cd "$(SPHINX_DIR)"; $(MAKE) apicheck)
 
+configcheck:
+	(cd "$(SPHINX_DIR)"; $(MAKE) configcheck)
+
 flakecheck:
-	flake8 kombu
+	$(FLAKE8) "$(PROJ)"
 
 flakediag:
 	-$(MAKE) flakecheck
 
 flakepluscheck:
-	flakeplus --2.7 kombu
+	$(FLAKEPLUS) --$(FLAKEPLUSTARGET) "$(PROJ)"
 
 flakeplusdiag:
 	-$(MAKE) flakepluscheck
 
 flakes: flakediag flakeplusdiag
 
-readmeclean:
+clean-readme:
 	-rm -f $(README)
 
 readmecheck:
-	iconv -f ascii -t ascii $(README) >/dev/null
+	$(ICONV) -f ascii -t ascii $(README) >/dev/null
 
 $(README):
 	$(SPHINX2RST) $(README_SRC) --ascii > $@
 
-readme: readmeclean $(README) readmecheck
+readme: clean-readme $(README) readmecheck
 
-test:
-	nosetests -xv kombu.tests
-
-cov:
-	nosetests -xv kombu.tests --with-coverage --cover-html --cover-branch
-
-removepyc:
+clean-pyc:
 	-find . -type f -a \( -name "*.pyc" -o -name "*$$py.class" \) | xargs rm
 	-find . -type d -name "__pycache__" | xargs rm -r
 
-gitclean:
-	git clean -xdn
+removepyc: clean-pyc
 
-gitcleanforce:
-	git clean -xdf
+clean-build:
+	rm -rf build/ dist/ .eggs/ *.egg-info/ .tox/ .coverage cover/
 
-tox: removepyc
-	tox
+clean-git:
+	$(GIT) clean -xdn
 
-distcheck: flakecheck apicheck readmecheck test gitclean
+clean-git-force:
+	$(GIT) clean -xdf
 
-dist: readme docsclean gitcleanforce removepyc
+test-all: clean-pyc
+	$(TOX)
+
+test:
+	$(PYTHON) setup.py test
+
+cov:
+	$(NOSETESTS) -xv --with-coverage --cover-html --cover-branch
+
+build:
+	$(PYTHON) setup.py sdist bdist_wheel
+
+distcheck: lint test clean
+
+dist: readme clean-dist build

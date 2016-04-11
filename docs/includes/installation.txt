@@ -1,0 +1,27 @@
+Installation
+============
+
+You can install `Kombu` either via the Python Package Index (PyPI)
+or from source.
+
+To install using `pip`,:
+
+.. code-block:: console
+
+    $ pip install kombu
+
+To install using `easy_install`,:
+
+.. code-block:: console
+
+    $ easy_install kombu
+
+If you have downloaded a source tarball you can install it
+by doing the following,:
+
+.. code-block:: console
+
+    $ python setup.py build
+    # python setup.py install # as root
+
+
