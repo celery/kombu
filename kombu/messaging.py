@@ -14,13 +14,14 @@ from .compression import compress
 from .connection import maybe_channel, is_connection
 from .entity import Exchange, Queue, maybe_delivery_mode
 from .exceptions import ContentDisallowed
-from .five import items, text_t, values
+from .five import items, python_2_unicode_compatible, text_t, values
 from .serialization import dumps, prepare_accept_content
 from .utils import ChannelPromise, maybe_list
 
 __all__ = ['Exchange', 'Queue', 'Producer', 'Consumer']
 
 
+@python_2_unicode_compatible
 class Producer(object):
     """Message Producer.
 
@@ -279,6 +280,7 @@ class Producer(object):
             pass
 
 
+@python_2_unicode_compatible
 class Consumer(object):
     """Message consumer.
 

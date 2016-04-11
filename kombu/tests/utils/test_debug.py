@@ -3,10 +3,7 @@ from __future__ import absolute_import, unicode_literals
 import logging
 
 from kombu.five import bytes_if_py2
-from kombu.utils.debug import (
-    setup_logging,
-    Logwrapped,
-)
+from kombu.utils.debug import Logwrapped, setup_logging
 
 from kombu.tests.case import Case, Mock, patch
 
@@ -35,7 +32,7 @@ class test_Logwrapped(Case):
             self.assertIsNotNone(W.instance)
             self.assertIs(W.logger, logger)
 
-            W.instance.__repr__ = lambda s: 'foo'
+            W.instance.__repr__ = lambda s: bytes_if_py2('foo')
             self.assertEqual(repr(W), 'foo')
             W.instance.some_attr = 303
             self.assertEqual(W.some_attr, 303)

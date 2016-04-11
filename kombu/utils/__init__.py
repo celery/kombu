@@ -19,7 +19,7 @@ from uuid import uuid4
 
 from vine.utils import wraps
 
-from kombu.five import items, reraise, string_t
+from kombu.five import items, python_2_unicode_compatible, reraise, string_t
 
 from .encoding import default_encode, safe_repr as _safe_repr
 
@@ -390,6 +390,7 @@ def entrypoints(namespace):
     return ((ep, ep.load()) for ep in iter_entry_points(namespace))
 
 
+@python_2_unicode_compatible
 class ChannelPromise(object):
 
     def __init__(self, contract):

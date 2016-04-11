@@ -9,11 +9,16 @@ from __future__ import absolute_import, unicode_literals
 
 from itertools import count
 
+from kombu.five import python_2_unicode_compatible
+
 from . import symbol_by_name
 
-__all__ = ['FairCycle', 'priority_cycle', 'round_robin_cycle', 'sorted_cycle']
+__all__ = [
+    'FairCycle', 'priority_cycle', 'round_robin_cycle', 'sorted_cycle',
+]
 
 
+@python_2_unicode_compatible
 class FairCycle(object):
     """Consume from a set of resources, where each resource gets
     an equal chance to be consumed from."""

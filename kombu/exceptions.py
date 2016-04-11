@@ -7,17 +7,19 @@ Exceptions.
 """
 from __future__ import absolute_import, unicode_literals
 
-import socket
+from socket import timeout as TimeoutError
 
 from amqp import ChannelError, ConnectionError, ResourceError
 
-__all__ = ['NotBoundError', 'MessageStateError', 'TimeoutError',
-           'LimitExceeded', 'ConnectionLimitExceeded',
-           'ChannelLimitExceeded', 'ConnectionError', 'ChannelError',
-           'VersionMismatch', 'SerializerNotInstalled', 'ResourceError',
-           'SerializationError', 'EncodeError', 'DecodeError', 'HttpError']
+from kombu.five import python_2_unicode_compatible
 
-TimeoutError = socket.timeout
+__all__ = [
+    'NotBoundError', 'MessageStateError', 'TimeoutError',
+    'LimitExceeded', 'ConnectionLimitExceeded',
+    'ChannelLimitExceeded', 'ConnectionError', 'ChannelError',
+    'VersionMismatch', 'SerializerNotInstalled', 'ResourceError',
+    'SerializationError', 'EncodeError', 'DecodeError', 'HttpError',
+]
 
 
 class KombuError(Exception):
@@ -83,6 +85,7 @@ class InconsistencyError(ConnectionError):
     pass
 
 
+@python_2_unicode_compatible
 class HttpError(Exception):
 
     def __init__(self, code, message=None, response=None):

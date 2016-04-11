@@ -10,11 +10,14 @@ from sqlalchemy.orm import relation
 from sqlalchemy.ext.declarative import declarative_base, declared_attr
 from sqlalchemy.schema import MetaData
 
+from kombu.five import python_2_unicode_compatible
+
 class_registry = {}
 metadata = MetaData()
 ModelBase = declarative_base(metadata=metadata, class_registry=class_registry)
 
 
+@python_2_unicode_compatible
 class Queue(object):
     __table_args__ = {'sqlite_autoincrement': True, 'mysql_engine': 'InnoDB'}
 
@@ -33,6 +36,7 @@ class Queue(object):
         return relation('Message', backref='queue', lazy='noload')
 
 
+@python_2_unicode_compatible
 class Message(object):
     __table_args__ = {'sqlite_autoincrement': True, 'mysql_engine': 'InnoDB'}
 

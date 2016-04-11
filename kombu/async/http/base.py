@@ -5,7 +5,7 @@ import sys
 from vine import Thenable, promise, maybe_promise
 
 from kombu.exceptions import HttpError
-from kombu.five import items
+from kombu.five import items, python_2_unicode_compatible
 from kombu.utils import coro
 from kombu.utils.encoding import bytes_to_str
 from kombu.utils.functional import maybe_list, memoize
@@ -36,6 +36,7 @@ class Headers(dict):
     _prev_key = None
 
 
+@python_2_unicode_compatible
 class Request(object):
     """A HTTP Request.
 

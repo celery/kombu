@@ -19,7 +19,7 @@ from weakref import proxy as weakrefproxy
 
 from vine.utils import wraps
 
-from kombu.five import monotonic
+from kombu.five import monotonic, python_2_unicode_compatible
 from kombu.log import get_logger
 
 try:
@@ -27,13 +27,13 @@ try:
 except ImportError:  # pragma: no cover
     utc = None
 
-DEFAULT_MAX_INTERVAL = 2
-EPOCH = datetime.utcfromtimestamp(0).replace(tzinfo=utc)
-IS_PYPY = hasattr(sys, 'pypy_version_info')
+__all__ = ['Entry', 'Timer', 'to_timestamp']
 
 logger = get_logger(__name__)
 
-__all__ = ['Entry', 'Timer', 'to_timestamp']
+DEFAULT_MAX_INTERVAL = 2
+EPOCH = datetime.utcfromtimestamp(0).replace(tzinfo=utc)
+IS_PYPY = hasattr(sys, 'pypy_version_info')
 
 scheduled = namedtuple('scheduled', ('eta', 'priority', 'entry'))
 
@@ -47,6 +47,7 @@ def to_timestamp(d, default_timezone=utc):
 
 
 @total_ordering
+@python_2_unicode_compatible
 class Entry(object):
     if not IS_PYPY:  # pragma: no cover
         __slots__ = (

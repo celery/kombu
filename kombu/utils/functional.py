@@ -7,10 +7,15 @@ from collections import Iterable, Mapping, OrderedDict
 
 from vine.utils import wraps
 
-from kombu.five import UserDict, items, keys, string_t
+from kombu.five import (
+    UserDict, items, keys, python_2_unicode_compatible, string_t,
+)
 
-__all__ = ['LRUCache', 'memoize', 'lazy', 'maybe_evaluate',
-           'is_list', 'maybe_list', 'dictfilter']
+__all__ = [
+    'LRUCache', 'memoize', 'lazy', 'maybe_evaluate',
+    'is_list', 'maybe_list', 'dictfilter',
+]
+
 KEYWORD_MARK = object()
 
 
@@ -152,6 +157,7 @@ def memoize(maxsize=None, keyfun=None, Cache=LRUCache):
     return _memoize
 
 
+@python_2_unicode_compatible
 class lazy(object):
     """Holds lazy evaluation.
 

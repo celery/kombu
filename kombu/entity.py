@@ -11,7 +11,7 @@ import numbers
 
 from .abstract import MaybeChannelBound, Object
 from .exceptions import ContentDisallowed
-from .five import string_t
+from .five import python_2_unicode_compatible, string_t
 from .serialization import prepare_accept_content
 
 TRANSIENT_DELIVERY_MODE = 1
@@ -32,7 +32,7 @@ def _reprstr(s):
 
 
 def pretty_bindings(bindings):
-    return '[%s]' % (', '.join(map(str, bindings)))
+    return '[{0}]'.format(', '.join(map(str, bindings)))
 
 
 def maybe_delivery_mode(
@@ -42,6 +42,7 @@ def maybe_delivery_mode(
     return default
 
 
+@python_2_unicode_compatible
 class Exchange(MaybeChannelBound):
     """An Exchange declaration.
 
@@ -311,16 +312,19 @@ class Exchange(MaybeChannelBound):
         return not self.__eq__(other)
 
     def __repr__(self):
-        return super(Exchange, self).__repr__(str(self))
+        return self._repr_entity(self)
 
     def __str__(self):
-        return 'Exchange %s(%s)' % (_reprstr(self.name) or repr(''), self.type)
+        return 'Exchange {0}({1})'.format(
+            _reprstr(self.name) or repr(''), self.type,
+        )
 
     @property
     def can_cache_declaration(self):
         return not self.auto_delete
 
 
+@python_2_unicode_compatible
 class binding(Object):
     """Represents a queue or exchange binding.
 
@@ -366,14 +370,15 @@ class binding(Object):
                            nowait=nowait)
 
     def __repr__(self):
-        return '<binding: %s>' % (self,)
+        return '<binding: {0}>'.format(self)
 
     def __str__(self):
-        return '%s->%s' % (
+        return '{0}->{1}'.format(
             _reprstr(self.exchange.name), _reprstr(self.routing_key),
         )
 
 
+@python_2_unicode_compatible
 class Queue(MaybeChannelBound):
     """A Queue declaration.
 
@@ -728,13 +733,12 @@ class Queue(MaybeChannelBound):
         return not self.__eq__(other)
 
     def __repr__(self):
-        s = super(Queue, self).__repr__
         if self.bindings:
-            return s('Queue {name} -> {bindings}'.format(
+            return self._repr_entity('Queue {name} -> {bindings}'.format(
                 name=_reprstr(self.name),
                 bindings=pretty_bindings(self.bindings),
             ))
-        return s(
+        return self._repr_entity(
             'Queue {name} -> {0.exchange!r} -> {routing_key}'.format(
                 self, name=_reprstr(self.name),
                 routing_key=_reprstr(self.routing_key),

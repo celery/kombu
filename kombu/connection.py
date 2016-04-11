@@ -18,7 +18,7 @@ from operator import itemgetter
 # jython breaks on relative import for .exceptions for some reason
 # (Issue #112)
 from kombu import exceptions
-from .five import bytes_if_py2, string_t, text_t
+from .five import bytes_if_py2, python_2_unicode_compatible, string_t, text_t
 from .log import get_logger
 from .resource import Resource
 from .transport import get_transport_cls, supports_librabbitmq
@@ -28,21 +28,25 @@ from .utils.url import as_url, parse_url, quote, urlparse
 
 __all__ = ['Connection', 'ConnectionPool', 'ChannelPool']
 
-RESOLVE_ALIASES = {'pyamqp': 'amqp',
-                   'librabbitmq': 'amqp'}
-
-_LOG_CONNECTION = os.environ.get('KOMBU_LOG_CONNECTION', False)
-_LOG_CHANNEL = os.environ.get('KOMBU_LOG_CHANNEL', False)
-
 logger = get_logger(__name__)
+
 roundrobin_failover = cycle
+
+resolve_aliases = {
+    'pyamqp': 'amqp',
+    'librabbitmq': 'amqp',
+}
 
 failover_strategies = {
     'round-robin': roundrobin_failover,
     'shuffle': shufflecycle,
 }
 
+_log_connection = os.environ.get('KOMBU_LOG_CONNECTION', False)
+_log_channel = os.environ.get('KOMBU_LOG_CHANNEL', False)
 
+
+@python_2_unicode_compatible
 class Connection(object):
     """A connection to the broker.
 
@@ -131,6 +135,9 @@ class Connection(object):
     #: Heartbeat value, currently only supported by the py-amqp transport.
     heartbeat = None
 
+    resolve_aliases = resolve_aliases
+    failover_strategies = failover_strategies
+
     hostname = userid = password = ssl = login_method = None
 
     def __init__(self, hostname='localhost', userid=None,
@@ -177,7 +184,7 @@ class Connection(object):
 
         # fallback hosts
         self.alt = alt
-        self.failover_strategy = failover_strategies.get(
+        self.failover_strategy = self.failover_strategies.get(
             failover_strategy or 'round-robin') or failover_strategy
         if self.alt:
             self.cycle = self.failover_strategy(self.alt)
@@ -187,7 +194,7 @@ class Connection(object):
             transport_options = {}
         self.transport_options = transport_options
 
-        if _LOG_CONNECTION:  # pragma: no cover
+        if _log_connection:  # pragma: no cover
             self._logger = True
 
         if uri_prefix:
@@ -245,7 +252,7 @@ class Connection(object):
         """Create and return a new channel."""
         self._debug('create channel')
         chan = self.transport.create_channel(self.connection)
-        if _LOG_CHANNEL:  # pragma: no cover
+        if _log_channel:  # pragma: no cover
             from .utils.debug import Logwrapped
             return Logwrapped(chan, 'kombu.channel',
                               '[Kombu channel:{0.channel_id}] ')
@@ -539,7 +546,8 @@ class Connection(object):
     def _info(self, resolve=True):
         transport_cls = self.transport_cls
         if resolve:
-            transport_cls = RESOLVE_ALIASES.get(transport_cls, transport_cls)
+            transport_cls = self.resolve_aliases.get(
+                transport_cls, transport_cls)
         D = self.transport.default_connection_params
 
         hostname = self.hostname or D.get('hostname')

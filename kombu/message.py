@@ -11,22 +11,29 @@ import sys
 
 from .compression import decompress
 from .exceptions import MessageStateError
-from .five import reraise, text_t
+from .five import python_2_unicode_compatible, reraise, text_t
 from .serialization import loads
 from .utils.functional import dictfilter
 
-ACK_STATES = frozenset(['ACK', 'REJECTED', 'REQUEUED'])
+ACK_STATES = {'ACK', 'REJECTED', 'REQUEUED'}
+IS_PYPY = hasattr(sys, 'pypy_version_info')
 
 
+@python_2_unicode_compatible
 class Message(object):
     """Base class for received messages."""
-    __slots__ = ('_state', 'channel', 'delivery_tag',
-                 'content_type', 'content_encoding',
-                 'delivery_info', 'headers', 'properties',
-                 'body', '_decoded_cache', 'accept', '__dict__')
+
     MessageStateError = MessageStateError
 
     errors = None
+
+    if not IS_PYPY:  # pragma: no cover
+        __slots__ = (
+            '_state', 'channel', 'delivery_tag',
+            'content_type', 'content_encoding',
+            'delivery_info', 'headers', 'properties',
+            'body', '_decoded_cache', 'accept', '__dict__',
+        )
 
     def __init__(self, channel, body=None, delivery_tag=None,
                  content_type=None, content_encoding=None, delivery_info={},

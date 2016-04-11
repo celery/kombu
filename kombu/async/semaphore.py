@@ -10,9 +10,12 @@ from __future__ import absolute_import, unicode_literals
 
 from collections import deque
 
+from kombu.five import python_2_unicode_compatible
+
 __all__ = ['DummyLock', 'LaxBoundedSemaphore']
 
 
+@python_2_unicode_compatible
 class LaxBoundedSemaphore(object):
     """Asynchronous Bounded Semaphore.
 
@@ -20,6 +23,8 @@ class LaxBoundedSemaphore(object):
     range even if released more times than it was acquired.
 
     Example:
+
+    .. code-block:: pycon
 
         >>> from future import print_statement as printf
         # ^ ignore: just fooling stupid pyflakes
