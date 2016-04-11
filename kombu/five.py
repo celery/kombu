@@ -10,7 +10,7 @@
 """
 from __future__ import absolute_import, unicode_literals
 
-import amqp.five
 import sys
+import vine.five
 
-sys.modules[__name__] = amqp.five
+sys.modules[__name__] = vine.five
