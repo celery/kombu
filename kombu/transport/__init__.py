@@ -70,6 +70,7 @@ TRANSPORT_ALIASES = {
     'amqplib': 'kombu.transport.amqplib:Transport',
     'qpid': 'kombu.transport.qpid:Transport',
     'sentinel': 'kombu.transport.redis:SentinelTransport',
+    'consul': 'kombu.transport.consul:Transport'
 }
 
 _transport_cache = {}
