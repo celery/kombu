@@ -77,66 +77,71 @@ class UndeliverableWarning(UserWarning):
 
 class BrokerState(object):
 
-    #: exchange declarations.
+    #: Mapping of exchange name to
+    #: :class:`kombu.transport.virtual.exchange.ExchangeType`
     exchanges = None
 
-    # This is the actual bindings registry, used to store bindings and to
-    # test 'in' relationships in constant time. It has the following structure:
-    # {
-    #    (queue, exchange, routing_key): arguments,
-    #    ...
-    # }
-    __bindings = None
+    #: This is the actual bindings registry, used to store bindings and to
+    #: test 'in' relationships in constant time.  It has the following
+    #: structure::
+    #:     {
+    #:         (queue, exchange, routing_key): arguments,
+    #:         # ...,
+    #:     }
+    bindings = None
 
-    # The queue index is used to access directly (constant time)
-    # all the bindings of a certain queue. It has the following structure:
-    # {
-    #    queue: { (queue, exchange, routing_key), ... }
-    #    ...
-    # }
-    __queue_index = None
+    #: The queue index is used to access directly (constant time)
+    #: all the bindings of a certain queue.  It has the following structure::
+    #:     {
+    #:         queue: {
+    #:             (queue, exchange, routing_key),
+    #:             # ...,
+    #:         },
+    #:         # ...,
+    #:     }
+    queue_index = None
 
     def __init__(self, exchanges=None):
         self.exchanges = {} if exchanges is None else exchanges
-        self.__bindings = dict()
-        self.__queue_index = collections.defaultdict(set)
+        self.bindings = dict()
+        self.queue_index = collections.defaultdict(set)
 
     def clear(self):
         self.exchanges.clear()
         # self.bindings.clear()
-        self.__bindings.clear()
-        self.__queue_index.clear()
+        self.bindings.clear()
+        self.queue_index.clear()
 
     def has_binding(self, queue, exchange, routing_key):
-        return (queue, exchange, routing_key) in self.__bindings
+        return (queue, exchange, routing_key) in self.bindings
 
     def binding_declare(self, queue, exchange, routing_key, arguments):
         if not self.has_binding(queue, exchange, routing_key):
             key = (queue, exchange, routing_key)
-            self.__bindings[key] = arguments
-            self.__queue_index[queue].add(key)
+            self.bindings[key] = arguments
+            self.queue_index[queue].add(key)
 
     def binding_delete(self, queue, exchange, routing_key):
         if self.has_binding(queue, exchange, routing_key):
             key = (queue, exchange, routing_key)
-            del self.__bindings[key]
-            self.__queue_index[queue].remove(key)
+            del self.bindings[key]
+            self.queue_index[queue].remove(key)
 
     def queue_bindings_delete(self, queue):
-        if queue in self.__queue_index:
-            for binding in self.__queue_index[queue]:
-                del self.__bindings[binding]
-            del self.__queue_index[queue]
+        if queue in self.queue_index:
+            for binding in self.queue_index[queue]:
+                del self.bindings[binding]
+            del self.queue_index[queue]
 
     def queue_bindings(self, queue):
-        for queue, exchange, routing_key in self.__queue_index[queue]:
+        for queue, exchange, routing_key in self.queue_index[queue]:
             yield (
-                # Not yelding directly from self.__queue_index because
-                # we need to remove 'queue' field and retrieve 'arguments'
+                # Not yelding directly from `queue_index` because
+                # we need to remove the `queue` field and retrieve `arguments`
                 # as needed by client code:
                 exchange,
                 routing_key,
-                self.__bindings[(queue, exchange, routing_key)]
+                self.bindings[(queue, exchange, routing_key)]
             )
 
 
@@ -515,9 +520,9 @@ class Channel(AbstractChannel, base.StdChannel):
         """Delete queue."""
         if if_empty and self._size(queue):
             return
-        for exchange, routing_key, arguments in self.state.queue_bindings(queue):
+        for exchange, routing_key, args in self.state.queue_bindings(queue):
             meta = self.typeof(exchange).prepare_bind(
-                queue, exchange, routing_key, arguments,
+                queue, exchange, routing_key, args,
             )
             self._delete(queue, exchange, *meta, **kwargs)
         self.state.queue_bindings_delete(queue)
