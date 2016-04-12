@@ -625,8 +625,11 @@ class test_Channel(Case):
         self.channel.auto_delete_queues = ['foo']
         self.channel.queue_delete = Mock(name='queue_delete')
 
+        client = self.channel.client
         self.channel.close()
-        self.channel.queue_delete.assert_has_calls([call('foo')])
+        self.channel.queue_delete.assert_has_calls([
+            call('foo', client=client),
+        ])
 
     def test_close_client_close_raises(self):
         c = self.channel.client = Mock()

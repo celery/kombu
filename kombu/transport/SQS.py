@@ -195,7 +195,7 @@ class Channel(virtual.Channel):
             )
             return q
 
-    def _delete(self, queue, *args):
+    def _delete(self, queue, *args, **kwargs):
         """delete queue by name."""
         super(Channel, self)._delete(queue)
         self._queue_cache.pop(queue, None)

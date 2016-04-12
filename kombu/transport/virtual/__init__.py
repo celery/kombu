@@ -473,7 +473,7 @@ class Channel(AbstractChannel, base.StdChannel):
         meta = self.typeof(exchange).prepare_bind(
             queue, exchange, routing_key, arguments,
         )
-        self._delete(queue, exchange, *meta)
+        self._delete(queue, exchange, *meta, **kwargs)
         self.state.bindings.pop(queue, None)
 
     def after_reply_message_received(self, queue):

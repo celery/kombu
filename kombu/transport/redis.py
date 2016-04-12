@@ -773,9 +773,9 @@ class Channel(virtual.Channel):
                                        pattern or '',
                                        queue or '']))
 
-    def _delete(self, queue, exchange, routing_key, pattern, *args):
+    def _delete(self, queue, exchange, routing_key, pattern, *args, **kwargs):
         self.auto_delete_queues.discard(queue)
-        with self.conn_or_acquire() as client:
+        with self.conn_or_acquire(client=kwargs.get('client')) as client:
             client.srem(self.keyprefix_queue % (exchange,),
                         self.sep.join([routing_key or '',
                                        pattern or '',
@@ -811,18 +811,18 @@ class Channel(virtual.Channel):
 
     def close(self):
         self._closing = True
-        self._disconnect_pools()
         if not self.closed:
             # remove from channel poller.
             self.connection.cycle.discard(self)
 
             # delete fanout bindings
-            for queue in self._fanout_queues:
-                if queue in self.auto_delete_queues:
-                    self.queue_delete(queue)
-
+            client = self.__dict__.get('client')  # only if property cached
+            if client is not None:
+                for queue in self._fanout_queues:
+                    if queue in self.auto_delete_queues:
+                        self.queue_delete(queue, client=client)
+            self._disconnect_pools()
             self._close_clients()
-
         super(Channel, self).close()
 
     def _close_clients(self):

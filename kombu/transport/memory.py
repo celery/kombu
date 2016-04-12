@@ -45,7 +45,7 @@ class Channel(virtual.Channel):
     def _size(self, queue):
         return self._queue_for(queue).qsize()
 
-    def _delete(self, queue, *args):
+    def _delete(self, queue, *args, **kwargs):
         self.queues.pop(queue, None)
 
     def _purge(self, queue):
