@@ -688,6 +688,9 @@ class Channel(AbstractChannel, base.StdChannel):
         """
         if default is None:
             default = self.deadletter_queue
+        if not exchange:  # anon exchange
+            return [routing_key or default]
+
         try:
             R = self.typeof(exchange).lookup(
                 self.get_table(exchange),
