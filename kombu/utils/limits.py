@@ -7,6 +7,8 @@ Token bucket implementation for rate limiting.
 """
 from __future__ import absolute_import, unicode_literals
 
+from collections import deque
+
 from kombu.five import monotonic
 
 __all__ = ['TokenBucket']
@@ -41,6 +43,16 @@ class TokenBucket(object):
         self._tokens = capacity
         self.fill_rate = float(fill_rate)
         self.timestamp = monotonic()
+        self.contents = deque()
+
+    def add(self, item):
+        self.contents.append(item)
+
+    def pop(self):
+        return self.contents.popleft()
+
+    def clear_pending(self):
+        self.contents.clear()
 
     def can_consume(self, tokens=1):
         """Return :const:`True` if the number of tokens can be consumed

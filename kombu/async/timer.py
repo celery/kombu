@@ -14,7 +14,6 @@ import sys
 from collections import namedtuple
 from datetime import datetime
 from functools import total_ordering
-from time import time
 from weakref import proxy as weakrefproxy
 
 from vine.utils import wraps
@@ -142,7 +141,7 @@ class Timer(object):
         tref._last_run = None
         return self.enter_after(secs, tref, priority)
 
-    def enter_at(self, entry, eta=None, priority=0, time=time):
+    def enter_at(self, entry, eta=None, priority=0, time=monotonic):
         """Enter function into the scheduler.
 
         :param entry: Item to enter.
@@ -161,7 +160,7 @@ class Timer(object):
                 return
         return self._enter(eta, priority, entry)
 
-    def enter_after(self, secs, entry, priority=0, time=time):
+    def enter_after(self, secs, entry, priority=0, time=monotonic):
         return self.enter_at(entry, time() + secs, priority)
 
     def _enter(self, eta, priority, entry, push=heapq.heappush):
@@ -183,7 +182,7 @@ class Timer(object):
     def stop(self):
         pass
 
-    def __iter__(self, min=min, nowfun=time,
+    def __iter__(self, min=min, nowfun=monotonic,
                  pop=heapq.heappop, push=heapq.heappush):
         """This iterator yields a tuple of ``(entry, wait_seconds)``,
         where if entry is :const:`None` the caller should wait
