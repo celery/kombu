@@ -36,6 +36,7 @@ class Headers(dict):
     _prev_key = None
 
 
+@Thenable.register
 @python_2_unicode_compatible
 class Request(object):
     """A HTTP Request.
@@ -126,7 +127,6 @@ class Request(object):
 
     def __repr__(self):
         return '<Request: {0.method} {0.url} {0.body}>'.format(self)
-Thenable.register(Request)
 
 
 class Response(object):
