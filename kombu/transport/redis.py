@@ -880,6 +880,11 @@ class Channel(virtual.Channel):
                 connparams.update({
                     'connection_class': redis.UnixDomainSocketConnection,
                     'path': '/' + path}, **query)
+
+                connparams.pop('socket_connect_timeout', None)
+                connparams.pop('socket_keepalive', None)
+                connparams.pop('socket_keepalive_options', None)
+
             connparams.pop('host', None)
             connparams.pop('port', None)
         connparams['db'] = self._prepare_virtual_host(
