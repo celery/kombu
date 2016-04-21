@@ -843,6 +843,11 @@ class Channel(virtual.Channel):
                     'connection_class': redis.UnixDomainSocketConnection,
                     'path': '/' + path,
                     'password': password}, **query)
+
+                connparams.pop('socket_connect_timeout', None)
+                connparams.pop('socket_keepalive', None)
+                connparams.pop('socket_keepalive_options', None)
+
             connparams.pop('host', None)
             connparams.pop('port', None)
         connparams['db'] = self._prepare_virtual_host(
