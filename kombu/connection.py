@@ -73,11 +73,6 @@ class Connection(object):
         SSL currently only works with the py-amqp, amqplib, and qpid
         transports.  For other transports you can use stunnel.
 
-    :keyword hostname: Default host name/address if not provided in the URL.
-    :keyword userid: Default user name if not provided in the URL.
-    :keyword password: Default password if not provided in the URL.
-    :keyword virtual_host: Default virtual host if not provided in the URL.
-    :keyword port: Default port if not provided in the URL.
     :keyword ssl: Use SSL to connect to the server. Default is ``False``.
       May not be supported by the specified transport.
     :keyword transport: Default transport if not specified in the URL.
@@ -102,6 +97,19 @@ class Connection(object):
         and always remember to close the connection::
 
             >>> conn.release()
+
+    *Legacy options*
+
+    These options have been replaced by the URL argument, but are still
+    supported for backwards compatibility:
+
+    :keyword hostname: Host name/address.
+        NOTE: You cannot specify both the URL argument and use the hostname
+        keyword argument at the same time.
+    :keyword userid: Default user name if not provided in the URL.
+    :keyword password: Default password if not provided in the URL.
+    :keyword virtual_host: Default virtual host if not provided in the URL.
+    :keyword port: Default port if not provided in the URL.
 
     """
     port = None
