@@ -59,15 +59,21 @@ class SQSQueueMock(object):
 class SQSConnectionMock(object):
 
     def __init__(self):
-        self.queues = {'q_%s' % n: SQSQueueMock('q_%s' % n) for n in range(1500)}
+        self.queues = {
+            'q_%s' % n: SQSQueueMock('q_%s' % n) for n in range(1500)
+        }
 
     def get_queue(self, queue):
         return self.queues.get(queue)
 
     def get_all_queues(self, prefix=""):
         if not prefix:
-            return [self.queues[key] for key in sorted(self.queues.keys())[:1000]]
-        return [self.queues[key] for key in filter(lambda k: k.startswith(prefix), sorted(self.queues.keys()))[:1000]]
+            keys = sorted(self.queues.keys())[:1000]
+        else:
+            keys = filter(
+                lambda k: k.startswith(prefix), sorted(self.queues.keys())
+            )[:1000]
+        return [self.queues[key] for key in keys]
 
     def delete_queue(self, queue, force_deletion=False):
         q = self.get_queue(queue)
