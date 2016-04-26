@@ -59,13 +59,15 @@ class SQSQueueMock(object):
 class SQSConnectionMock(object):
 
     def __init__(self):
-        self.queues = {}
+        self.queues = {'q_%s' % n: SQSQueueMock('q_%s' % n) for n in range(1500)}
 
     def get_queue(self, queue):
         return self.queues.get(queue)
 
     def get_all_queues(self, prefix=""):
-        return self.queues.values()
+        if not prefix:
+            return [self.queues[key] for key in sorted(self.queues.keys())[:1000]]
+        return [self.queues[key] for key in filter(lambda k: k.startswith(prefix), sorted(self.queues.keys()))[:1000]]
 
     def delete_queue(self, queue, force_deletion=False):
         q = self.get_queue(queue)
@@ -161,6 +163,20 @@ class test_Channel(Case):
         queue_name = 'new_unittest_queue'
         self.channel._new_queue(queue_name)
         self.assertIn(queue_name, self.sqs_conn_mock.queues)
+        # For cleanup purposes, delete the queue and the queue file
+        self.channel._delete(queue_name)
+
+    def test_dont_create_duplicate_new_queue(self):
+        queue_name = 'unittest_queue'
+        self.channel._new_queue(queue_name)
+        self.assertIn(queue_name, self.sqs_conn_mock.queues)
+        q = self.sqs_conn_mock.get_queue(queue_name)
+        q.write('hello')
+        self.channel._new_queue(queue_name)
+        self.assertIn(queue_name, self.sqs_conn_mock.queues)
+        q = self.sqs_conn_mock.get_queue(queue_name)
+        self.assertEqual(1, q.count())
+        self.assertEqual('hello', q.read())
         # For cleanup purposes, delete the queue and the queue file
         self.channel._delete(queue_name)
 

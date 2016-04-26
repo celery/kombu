@@ -99,8 +99,19 @@ class Channel(virtual.Channel):
         # exists but with a different visibility_timeout.  This prepopulates
         # the queue_cache to protect us from recreating
         # queues that are known to already exist.
+        self._update_queue_cache(self.queue_name_prefix)
+
+        # The drain_events() method stores extra messages in a local
+        # Deque object. This allows multiple messages to be requested from
+        # SQS at once for performance, but maintains the same external API
+        # to the caller of the drain_events() method.
+        self._queue_message_cache = collections.deque()
+
+        self.hub = kwargs.get('hub') or get_event_loop()
+
+    def _update_queue_cache(self, queue_name_prefix):
         try:
-            queues = self.sqs.get_all_queues(prefix=self.queue_name_prefix)
+            queues = self.sqs.get_all_queues(prefix=queue_name_prefix)
         except exception.SQSError as exc:
             if exc.status == 403:
                 raise RuntimeError(
@@ -111,14 +122,6 @@ class Channel(virtual.Channel):
             self._queue_cache.update({
                 queue.name: queue for queue in queues
             })
-
-        # The drain_events() method stores extra messages in a local
-        # Deque object. This allows multiple messages to be requested from
-        # SQS at once for performance, but maintains the same external API
-        # to the caller of the drain_events() method.
-        self._queue_message_cache = collections.deque()
-
-        self.hub = kwargs.get('hub') or get_event_loop()
 
     def basic_consume(self, queue, no_ack, *args, **kwargs):
         if no_ack:
@@ -187,6 +190,13 @@ class Channel(virtual.Channel):
         # Translate to SQS name for consistency with initial
         # _queue_cache population.
         queue = self.entity_name(self.queue_name_prefix + queue)
+
+        # The SQS ListQueues method only returns 1000 queues. When you have
+        # so many queues, it's possible that the queue you are looking for is
+        # not cached. In this case, we could update the cache with the exact
+        # queue name first.
+        if queue not in self._queue_cache:
+            self._update_queue_cache(queue)
         try:
             return self._queue_cache[queue]
         except KeyError:
