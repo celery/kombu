@@ -62,6 +62,9 @@ class SQSConnectionMock(object):
         self.queues = {
             'q_%s' % n: SQSQueueMock('q_%s' % n) for n in range(1500)
         }
+        q = SQSQueueMock('unittest_queue')
+        q.write('hello')
+        self.queues['unittest_queue'] = q
 
     def get_queue(self, queue):
         return self.queues.get(queue)
@@ -173,18 +176,15 @@ class test_Channel(Case):
         self.channel._delete(queue_name)
 
     def test_dont_create_duplicate_new_queue(self):
+        # All queue names start with "q", except "unittest_queue".
+        # which is definitely out of cache when get_all_queues returns the
+        # first 1000 queues sorted by name.
         queue_name = 'unittest_queue'
-        self.channel._new_queue(queue_name)
-        self.assertIn(queue_name, self.sqs_conn_mock.queues)
-        q = self.sqs_conn_mock.get_queue(queue_name)
-        q.write('hello')
         self.channel._new_queue(queue_name)
         self.assertIn(queue_name, self.sqs_conn_mock.queues)
         q = self.sqs_conn_mock.get_queue(queue_name)
         self.assertEqual(1, q.count())
         self.assertEqual('hello', q.read())
-        # For cleanup purposes, delete the queue and the queue file
-        self.channel._delete(queue_name)
 
     def test_delete(self):
         queue_name = 'new_unittest_queue'
