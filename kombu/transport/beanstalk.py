@@ -69,7 +69,7 @@ class Channel(virtual.Channel):
             # Sleep for one millisecond in case the queue is empty.
             # This ensures that we don't pound beanstalkd repeatedly
             # because of the timeout=0 that we use when we are reserving jobs.
-            time.sleep(0.001) 
+            time.sleep(0.001)
             raise Empty()
         return item, dest
 
@@ -94,9 +94,9 @@ class Channel(virtual.Channel):
         # use timeout = 0 so that we don't block on beanstalkd.
         # in _parse_job(), we sleep for a millisecond if we get an empty job.
         # That sleep will allow us not pound beanstalkd because of timeout=0.
-        # timeout of 0 is needed because we can't afford to block on beanstalkd 
+        # timeout of 0 is needed because we can't afford to block on beanstalkd
         # for a good 1 second in case the queue is empty.
-        job = self.client.reserve(timeout=0)  
+        job = self.client.reserve(timeout=0)
         item, dest = self._parse_job(job)
         return item
 
@@ -119,9 +119,9 @@ class Channel(virtual.Channel):
         # use timeout = 0 so that we don't block on beanstalkd.
         # in _parse_job(), we sleep for a millisecond if we get an empty job.
         # That sleep will allow us not pound beanstalkd because of timeout=0.
-        # timeout of 0 is needed because we can't afford to block on beanstalkd 
+        # timeout of 0 is needed because we can't afford to block on beanstalkd
         # for a good 1 second in case the queue is empty.
-        job = self.client.reserve(timeout=0) 
+        job = self.client.reserve(timeout=0)
         return self._parse_job(job)
 
     def _purge(self, queue):
