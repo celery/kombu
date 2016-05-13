@@ -69,7 +69,7 @@ resources:
 URLs
 ====
 
-Connection parameters can be provided as an URL in the format:
+Connection parameters can be provided as a URL in the format:
 
 .. code-block:: text
 

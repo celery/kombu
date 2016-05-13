@@ -2623,7 +2623,7 @@ New Transports
     is needed you shall consider switching to a non-polling transport.
 
     To use it you must use transport alias ``"django"``,
-    or as an URL:
+    or as a URL:
 
     .. code-block:: text
 
@@ -2979,7 +2979,7 @@ Fixes
 
 * Broker connection info can be now be specified using URLs
 
-    The broker hostname can now be given as an URL instead, of the format:
+    The broker hostname can now be given as a URL instead, of the format:
 
     .. code-block:: text
 
