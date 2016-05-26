@@ -1,1 +1,1 @@
-amqp>dev
+amqp>=2.0.0
