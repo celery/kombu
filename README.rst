@@ -124,7 +124,7 @@ Documentation
 
 Kombu is using Sphinx, and the latest documentation can be found here:
 
-    http://kombu.readthedocs.org/
+    https://kombu.readthedocs.io/
 
 Quick overview
 --------------

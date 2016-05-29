@@ -18,7 +18,7 @@ This uses the built-in kazoo recipe for queues
 **References**
 
 - https://zookeeper.apache.org/doc/trunk/recipes.html#sc_recipes_Queues
-- https://kazoo.readthedocs.org/en/latest/api/recipe/queue.html
+- https://kazoo.readthedocs.io/en/latest/api/recipe/queue.html
 
 **Limitations**
 This queue does not offer reliable consumption. An entry is removed from
