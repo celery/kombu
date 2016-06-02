@@ -1403,20 +1403,9 @@ class TestTransportInit(Case):
         self.patch_b = patch(QPID_MODULE + '.base.Transport.__init__')
         self.mock_base_Transport__init__ = self.patch_b.start()
 
-        self.patch_c = patch(QPID_MODULE + '.os')
-        self.mock_os = self.patch_c.start()
-        self.mock_r = Mock()
-        self.mock_w = Mock()
-        self.mock_os.pipe.return_value = self.mock_r, self.mock_w
-
-        self.patch_d = patch(QPID_MODULE + '.fcntl')
-        self.mock_fcntl = self.patch_d.start()
-
     def tearDown(self):
         self.patch_a.stop()
         self.patch_b.stop()
-        self.patch_c.stop()
-        self.patch_d.stop()
 
     def test_Transport___init___calls_verify_runtime_environment(self):
         Transport(Mock())
@@ -1427,20 +1416,9 @@ class TestTransportInit(Case):
         Transport(m)
         self.mock_base_Transport__init__.assert_called_once_with(m)
 
-    def test_transport___init___calls_os_pipe(self):
-        Transport(Mock())
-        self.mock_os.pipe.assert_called_once_with()
-
-    def test_transport___init___saves_os_pipe_file_descriptors(self):
+    def test_transport___init___sets_use_async_interface_False(self):
         transport = Transport(Mock())
-        self.assertIs(transport.r, self.mock_r)
-        self.assertIs(transport._w, self.mock_w)
-
-    def test_transport___init___sets_non_blocking_behavior_on_r_fd(self):
-        Transport(Mock())
-        self.mock_fcntl.fcntl.assert_called_once_with(
-            self.mock_r,  self.mock_fcntl.F_SETFL,  self.mock_os.O_NONBLOCK,
-        )
+        self.assertFalse(transport.use_async_interface)
 
 
 @case_no_python3
@@ -1769,6 +1747,20 @@ class TestTransportClassAttributes(Case):
 @disable_runtime_dependency_check
 class TestTransportRegisterWithEventLoop(Case):
 
+    def setUp(self):
+        self.patch_a = patch(QPID_MODULE + '.os')
+        self.mock_os = self.patch_a.start()
+        self.mock_r = 1
+        self.mock_w = 2
+        self.mock_os.pipe.return_value = self.mock_r, self.mock_w
+
+        self.patch_b = patch(QPID_MODULE + '.fcntl')
+        self.mock_fcntl = self.patch_b.start()
+
+    def tearDown(self):
+        self.patch_a.stop()
+        self.patch_b.stop()
+
     def test_transport_register_with_event_loop_calls_add_reader(self):
         transport = Transport(Mock())
         mock_connection = Mock()
@@ -1778,16 +1770,39 @@ class TestTransportRegisterWithEventLoop(Case):
             transport.r, transport.on_readable, mock_connection, mock_loop,
         )
 
+    def test_transport___init___calls_os_pipe(self):
+        transport = Transport(Mock())
+        transport.register_with_event_loop(Mock(), Mock())
+        self.mock_os.pipe.assert_called_once_with()
+
+    def test_transport___init___saves_os_pipe_file_descriptors(self):
+        transport = Transport(Mock())
+        mock_connection = Mock()
+        mock_loop = Mock()
+        transport.register_with_event_loop(mock_connection, mock_loop)
+        self.assertIs(transport.r, self.mock_r)
+        self.assertIs(transport._w, self.mock_w)
+
+    def test_transport___init___sets_non_blocking_behavior_on_r_fd(self):
+        transport = Transport(Mock())
+        mock_connection = Mock()
+        mock_loop = Mock()
+        transport.register_with_event_loop(mock_connection, mock_loop)
+        self.mock_fcntl.fcntl.assert_called_once_with(
+            self.mock_r,  self.mock_fcntl.F_SETFL,  self.mock_os.O_NONBLOCK,
+        )
+
 
 @case_no_python3
 @case_no_pypy
 @disable_runtime_dependency_check
-class TestTransportQpidCallbackHandlers(Case):
+class TestTransportQpidCallbackHandlersAsync(Case):
 
     def setUp(self):
         self.patch_a = patch(QPID_MODULE + '.os.write')
         self.mock_os_write = self.patch_a.start()
         self.transport = Transport(Mock())
+        self.transport.register_with_event_loop(Mock(), Mock())
 
     def tearDown(self):
         self.patch_a.stop()
@@ -1804,14 +1819,38 @@ class TestTransportQpidCallbackHandlers(Case):
 @case_no_python3
 @case_no_pypy
 @disable_runtime_dependency_check
+class TestTransportQpidCallbackHandlersSync(Case):
+
+    def setUp(self):
+        self.patch_a = patch(QPID_MODULE + '.os.write')
+        self.mock_os_write = self.patch_a.start()
+        self.transport = Transport(Mock())
+
+    def tearDown(self):
+        self.patch_a.stop()
+
+    def test__qpid_message_ready_handler_dows_not_write(self):
+        self.transport._qpid_message_ready_handler(Mock())
+        self.assertTrue(not self.mock_os_write.called)
+
+    def test__qpid_async_exception_notify_handler_does_not_write(self):
+        self.transport._qpid_async_exception_notify_handler(Mock(), Mock())
+        self.assertTrue(not self.mock_os_write.called)
+
+
+@case_no_python3
+@case_no_pypy
+@disable_runtime_dependency_check
 class TestTransportOnReadable(Case):
 
     def setUp(self):
         self.patch_a = patch(QPID_MODULE + '.os.read')
         self.mock_os_read = self.patch_a.start()
+
         self.patch_b = patch.object(Transport, 'drain_events')
         self.mock_drain_events = self.patch_b.start()
         self.transport = Transport(Mock())
+        self.transport.register_with_event_loop(Mock(), Mock())
 
     def tearDown(self):
         self.patch_a.stop()
@@ -1903,25 +1942,23 @@ class TestTransport(ExtraAssertionsMixin, Case):
         result_params = my_transport.default_connection_params
         self.assertDictEqual(correct_params, result_params)
 
-    @patch('os.close')
-    def test_del(self, close):
+    @patch(QPID_MODULE + '.os.close')
+    def test_del_sync(self, close):
         my_transport = Transport(self.mock_client)
         my_transport.__del__()
-        self.assertEqual(
-            close.call_args_list,
-            [
-                ((my_transport.r,), {}),
-                ((my_transport._w,), {}),
-            ])
+        self.assertFalse(close.called)
 
-    @patch('os.close')
-    def test_del_failed(self, close):
+    @patch(QPID_MODULE + '.os.close')
+    def test_del_async(self, close):
+        my_transport = Transport(self.mock_client)
+        my_transport.register_with_event_loop(Mock(), Mock())
+        my_transport.__del__()
+        self.assertTrue(close.called)
+
+    @patch(QPID_MODULE + '.os.close')
+    def test_del_async_failed(self, close):
         close.side_effect = OSError()
         my_transport = Transport(self.mock_client)
+        my_transport.register_with_event_loop(Mock(), Mock())
         my_transport.__del__()
-        self.assertEqual(
-            close.call_args_list,
-            [
-                ((my_transport.r,), {}),
-                ((my_transport._w,), {}),
-            ])
+        self.assertTrue(close.called)

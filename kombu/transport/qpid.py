@@ -1428,9 +1428,7 @@ class Transport(base.Transport):
     def __init__(self, *args, **kwargs):
         self.verify_runtime_environment()
         super(Transport, self).__init__(*args, **kwargs)
-        self.r, self._w = os.pipe()
-        if fcntl is not None:
-            fcntl.fcntl(self.r, fcntl.F_SETFL, os.O_NONBLOCK)
+        self.use_async_interface = False
 
     def verify_runtime_environment(self):
         """Verify that the runtime environment is acceptable.
@@ -1471,10 +1469,12 @@ class Transport(base.Transport):
                 'qpid-python`.')
 
     def _qpid_message_ready_handler(self, session):
-        os.write(self._w, '0')
+        if self.use_async_interface:
+            os.write(self._w, '0')
 
     def _qpid_async_exception_notify_handler(self, obj_with_exception, exc):
-        os.write(self._w, 'e')
+        if self.use_async_interface:
+            os.write(self._w, 'e')
 
     def on_readable(self, connection, loop):
         """Handle any messages associated with this Transport.
@@ -1486,9 +1486,9 @@ class Transport(base.Transport):
         all available events are drained through a call to
         :meth:`drain_events`.
 
-        The behavior of self.r is adjusted in __init__ to be non-blocking,
-        ensuring that an accidental call to this method when no more messages
-        will arrive will not cause indefinite blocking.
+        The file descriptor self.r is modified to be non-blocking, ensuring
+        that an accidental call to this method when no more messages will
+        not cause indefinite blocking.
 
         Nothing is expected to be returned from :meth:`drain_events` because
         :meth:`drain_events` handles messages by calling callbacks that are
@@ -1557,6 +1557,10 @@ class Transport(base.Transport):
         :type loop: kombu.async.hub.Hub
 
         """
+        self.r, self._w = os.pipe()
+        if fcntl is not None:
+            fcntl.fcntl(self.r, fcntl.F_SETFL, os.O_NONBLOCK)
+        self.use_async_interface = True
         loop.add_reader(self.r, self.on_readable, connection, loop)
 
     def establish_connection(self):
@@ -1727,9 +1731,10 @@ class Transport(base.Transport):
 
     def __del__(self):
         """Ensure file descriptors opened in __init__() are closed."""
-        for fd in (self.r, self._w):
-            try:
-                os.close(fd)
-            except OSError:
-                # ignored
-                pass
+        if self.use_async_interface:
+            for fd in (self.r, self._w):
+                try:
+                    os.close(fd)
+                except OSError:
+                    # ignored
+                    pass

@@ -76,13 +76,20 @@ class Broadcast(Queue):
         of additional keyword arguments supported.
 
     """
+    attrs = Queue.attrs + (('queue', None),)
 
-    def __init__(self, name=None, queue=None, **kwargs):
+    def __init__(self, name=None, queue=None, auto_delete=True,
+                 exchange=None, alias=None, **kwargs):
+        queue = queue or 'bcast.%s' % (uuid(),)
         return super(Broadcast, self).__init__(
-            name=queue or 'bcast.%s' % (uuid(), ),
-            **dict({'alias': name,
-                    'auto_delete': True,
-                    'exchange': Exchange(name, type='fanout')}, **kwargs))
+            alias=alias or name,
+            queue=queue,
+            name=queue,
+            auto_delete=auto_delete,
+            exchange=(exchange if exchange is not None
+                      else Exchange(name, type='fanout')),
+            **kwargs
+        )
 
 
 def declaration_cached(entity, channel):
