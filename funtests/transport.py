@@ -21,6 +21,9 @@ if sys.version_info >= (2, 5):
 else:
     from sha import new as _digest  # noqa
 
+if not hasattr(string, 'letters'):
+    string.letters = string.ascii_letters
+
 
 def say(msg):
     print(msg, file=sys.stderr)
