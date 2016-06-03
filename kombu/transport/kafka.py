@@ -44,6 +44,7 @@ try:
     KAFKA_CHANNEL_ERRORS = ()
 
 except ImportError:
+    pykafka = None                                        # noqa
     kafka = None                                          # noqa
     KAFKA_CONNECTION_ERRORS = KAFKA_CHANNEL_ERRORS = ()   # noqa
 
@@ -212,7 +213,12 @@ class Channel(virtual.Channel):
                 for partition_id, res in offsets.iteritems()]
 
         # Send them to the appropriate broker.
-        broker = self.client.cluster.get_offset_manager(self._kafka_group)
+        if pykafka and pykafka.__version__ >= '2.3.0':
+            broker_getter = self.client.cluster.get_group_coordinator
+        else:
+            broker_getter = self.client.cluster.get_offset_manager
+
+        broker = broker_getter(self._kafka_group)
         broker.commit_consumer_group_offsets(
             self._kafka_group, 1, 'kombu', reqs
         )
