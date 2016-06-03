@@ -168,6 +168,8 @@ class TransportCase(unittest.TestCase):
                 purged += self.purge_consumer(consumer)
 
     def _digest(self, data):
+        if isinstance(data, type(u'')):
+            data = data.encode()
         return _digest(data).hexdigest()
 
     @skip_if_quick
