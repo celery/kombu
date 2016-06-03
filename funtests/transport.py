@@ -21,13 +21,19 @@ if sys.version_info >= (2, 5):
 else:
     from sha import new as _digest  # noqa
 
+if not hasattr(string, 'letters'):
+    string.letters = string.ascii_letters
+
 
 def say(msg):
     print(msg, file=sys.stderr)
 
 
 def _nobuf(x):
-    return [str(i) if isinstance(i, buffer) else i for i in x]
+    if 'buffer' in locals():
+        return [str(i) if isinstance(i, buffer) else i for i in x]
+    else:
+        return [str(i) for i in x]
 
 
 def consumeN(conn, consumer, n=1, timeout=30):
@@ -165,6 +171,8 @@ class TransportCase(unittest.TestCase):
                 purged += self.purge_consumer(consumer)
 
     def _digest(self, data):
+        if isinstance(data, type(u'')):
+            data = data.encode()
         return _digest(data).hexdigest()
 
     @skip_if_quick
