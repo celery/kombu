@@ -20,6 +20,9 @@ if sys.version_info >= (2, 5):
 else:
     from sha import new as _digest  # noqa
 
+if not hasattr(string, 'letters'):
+    string.letters = string.ascii_letters
+
 
 def _nobuf(x):
     return [str(i) if isinstance(i, buffer) else i for i in x]
