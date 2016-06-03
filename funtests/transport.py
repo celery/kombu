@@ -30,7 +30,10 @@ def say(msg):
 
 
 def _nobuf(x):
-    return [str(i) if isinstance(i, buffer) else i for i in x]
+    if 'buffer' in locals():
+        return [str(i) if isinstance(i, buffer) else i for i in x]
+    else:
+        return [str(i) for i in x]
 
 
 def consumeN(conn, consumer, n=1, timeout=30):
