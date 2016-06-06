@@ -114,6 +114,45 @@ class test_Topic(ExchangeCase):
         self.assertListEqual(self.e.channel._put.call_args_list, expected)
 
 
+class test_TopicMultibind(ExchangeCase):
+    # Testing message delivery in case of multiple overlapping
+    # bindings for the same queue. As AMQP states, in case of
+    # overlapping bindings, a message must be delivered once to
+    # each matching queue.
+    type = exchange.TopicExchange
+    table = [
+        ('stock', None, 'rFoo'),
+        ('stock.#', None, 'rFoo'),
+        ('stock.us.*', None, 'rFoo'),
+        ('#', None, 'rFoo'),
+    ]
+
+    def setup(self):
+        super(test_TopicMultibind, self).setup()
+        self.table = [(rkey, self.e.key_to_pattern(rkey), queue)
+                      for rkey, _, queue in self.table]
+
+    def test_lookup(self):
+        self.assertListEqual(
+            self.e.lookup(self.table, 'eFoo', 'stock.us.nasdaq', None),
+            ['rFoo'],
+        )
+        self.assertTrue(self.e._compiled)
+        self.assertListEqual(
+            self.e.lookup(self.table, 'eFoo', 'stock.europe.OSE', None),
+            ['rFoo'],
+        )
+        self.assertListEqual(
+            self.e.lookup(self.table, 'eFoo', 'stockxeuropexOSE', None),
+            ['rFoo'],
+        )
+        self.assertListEqual(
+            self.e.lookup(self.table, 'eFoo',
+                          'candy.schleckpulver.snap_crackle', None),
+            ['rFoo'],
+        )
+
+
 class test_ExchangeType(ExchangeCase):
     type = exchange.ExchangeType
 

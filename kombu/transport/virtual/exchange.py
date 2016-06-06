@@ -11,6 +11,7 @@ from __future__ import absolute_import, unicode_literals
 from kombu.utils import escape_regex
 
 import re
+import collections
 
 
 class ExchangeType(object):
@@ -51,8 +52,14 @@ class DirectExchange(ExchangeType):
     type = 'direct'
 
     def lookup(self, table, exchange, routing_key, default):
-        return [queue for rkey, _, queue in table
-                if rkey == routing_key]
+        # Using an OrderedDict to purge queue duplicates while
+        # keeping the same order in which they appear in the table
+        return list(
+            collections.OrderedDict.fromkeys(
+                queue for rkey, _, queue in table
+                if rkey == routing_key
+            )
+        )
 
     def deliver(self, message, exchange, routing_key, **kwargs):
         _lookup = self.channel._lookup
@@ -75,8 +82,14 @@ class TopicExchange(ExchangeType):
     _compiled = {}
 
     def lookup(self, table, exchange, routing_key, default):
-        return [queue for rkey, pattern, queue in table
-                if self._match(pattern, routing_key)]
+        # Using an OrderedDict to purge queue duplicates while
+        # keeping the same order in which they appear in the table
+        return list(
+            collections.OrderedDict.fromkeys(
+                queue for rkey, pattern, queue in table
+                if self._match(pattern, routing_key)
+            )
+        )
 
     def deliver(self, message, exchange, routing_key, **kwargs):
         _lookup = self.channel._lookup
@@ -120,7 +133,13 @@ class FanoutExchange(ExchangeType):
     type = 'fanout'
 
     def lookup(self, table, exchange, routing_key, default):
-        return [queue for _, _, queue in table]
+        # Using an OrderedDict to purge queue duplicates while
+        # keeping the same order in which they appear in the table
+        return list(
+            collections.OrderedDict.fromkeys(
+                queue for _, _, queue in table
+            )
+        )
 
     def deliver(self, message, exchange, routing_key, **kwargs):
         if self.channel.supports_fanout:
