@@ -18,3 +18,6 @@ class test_kafka(transport.TransportCase):
             import pykafka # noqa
         except ImportError:
             raise SkipTest('pykafka not installed')
+
+    def purge(self, *args, **kwargs):
+        return super(test_kafka, self).purge(ensure=False, *args, **kwargs)

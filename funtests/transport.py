@@ -99,16 +99,16 @@ class TransportCase(unittest.TestCase):
             self.exchange = Exchange(self.prefix, 'direct')
             self.queue = Queue(self.prefix, self.exchange, self.prefix)
 
-    def purge(self, names):
+    def purge(self, names, ensure=True):
         chan = self.connection.channel()
         total = 0
         for queue in names:
             while 1:
-                # ensure the queue is completly empty
+                # ensure the queue is completly empty?
                 purged = chan.queue_purge(queue=queue)
-                if not purged:
-                    break
                 total += purged
+                if not purged or not ensure:
+                    break
         chan.close()
         return total
 
