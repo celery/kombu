@@ -192,6 +192,7 @@ class Channel(virtual.Channel):
         """Purge all pending messages in the topic/queue, taken from the pykafka
         cli
         """
+        MAX_TRIES = 3
         queue = self.sanitize_queue_name(queue)
 
         # Don't auto-create topics.
@@ -218,10 +219,22 @@ class Channel(virtual.Channel):
         else:
             broker_getter = self.client.cluster.get_offset_manager
 
-        broker = broker_getter(self._kafka_group)
-        broker.commit_consumer_group_offsets(
-            self._kafka_group, 1, 'kombu', reqs
-        )
+        error_topics = True  # sentinel for the loop.
+        tries = 0
+        while tries < MAX_TRIES and error_topics:
+            tries += 1
+            broker = broker_getter(self._kafka_group)
+            result = broker.commit_consumer_group_offsets(
+                self._kafka_group, 1, 'kombu', reqs
+            )
+            error_topics = set()
+            for topic_name, topic_results in result.topics.items():
+                for topic_result in topic_results.values():
+                    if topic_result.err != 0:
+                        error_topics.add(topic_name)
+
+        if error_topics:
+            result.raise_error(result.topics.values()[0].values()[0].err, result.topics)
 
         return size
 
