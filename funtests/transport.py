@@ -272,6 +272,27 @@ class TransportCase(unittest.TestCase):
         self.purge([queue.name])
         chan2.close()
 
+    def test_basic_get_that(self):
+        if not self.verify_alive():
+            return
+        chan1 = self.connection.channel()
+        producer = chan1.Producer(self.exchange)
+        chan2 = self.connection.channel()
+        queue = Queue(self.P('basic_get'), self.exchange, 'basic_get')
+        queue = queue(chan2)
+        queue.declare()
+        producer.publish({'basic.get': 'that_not_this'}, routing_key='basic_get')
+        chan1.close()
+
+        for i in range(self.event_loop_max):
+            m = queue.get()
+            if m:
+                break
+            time.sleep(0.1)
+        self.assertEqual(m.payload, {'basic.get': 'that_not_this'})
+        self.purge([queue.name])
+        chan2.close()
+
     def test_cyclic_reference_transport(self):
         if not self.verify_alive():
             return
