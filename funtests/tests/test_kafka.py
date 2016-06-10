@@ -12,6 +12,7 @@ class test_kafka(transport.TransportCase):
     transport = 'pykafka'
     prefix = 'pykafka'
     message_size_limit = 100000
+    reliable_purge = False
 
     def before_connect(self):
         try:
