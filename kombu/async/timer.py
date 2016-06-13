@@ -20,6 +20,7 @@ from vine.utils import wraps
 
 from kombu.five import monotonic, python_2_unicode_compatible
 from kombu.log import get_logger
+from time import time as _time
 
 try:
     from pytz import utc
@@ -37,11 +38,12 @@ IS_PYPY = hasattr(sys, 'pypy_version_info')
 scheduled = namedtuple('scheduled', ('eta', 'priority', 'entry'))
 
 
-def to_timestamp(d, default_timezone=utc):
+def to_timestamp(d, default_timezone=utc, time=monotonic):
     if isinstance(d, datetime):
         if d.tzinfo is None:
             d = d.replace(tzinfo=default_timezone)
-        return max((d - EPOCH).total_seconds(), 0)
+        diff = _time() - time()
+        return max((d - EPOCH).total_seconds() - diff, 0)
     return d
 
 
