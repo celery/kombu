@@ -67,7 +67,7 @@ class Channel(virtual.Channel):
 
         try:
             item = result[0]['value']
-        except (KeyError, IndexError):
+        except LookupError:
             raise Empty()
         self.client.delete(item['_id'])
         return loads(bytes_to_str(item['payload']))

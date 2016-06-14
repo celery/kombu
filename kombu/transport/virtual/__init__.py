@@ -923,7 +923,7 @@ class Transport(base.Transport):
             while l:
                 try:
                     channel = l.pop()
-                except (IndexError, KeyError):  # pragma: no cover
+                except LookupError:  # pragma: no cover
                     pass
                 else:
                     channel.close()
