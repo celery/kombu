@@ -320,7 +320,9 @@ def register_yaml():
     """Register a encoder/decoder for YAML serialization.
 
     It is slower than JSON, but allows for more data types
-    to be serialized. Useful if you need to send data such as dates"""
+    to be serialized. Useful if you need to send data such as dates
+
+    """
     try:
         import yaml
         registry.register('yaml', yaml.safe_dump, yaml.safe_load,
