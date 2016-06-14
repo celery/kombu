@@ -267,7 +267,7 @@
 
 - Now depends on :mod:`amqp` 1.4.7.
 
-- Fixed libSystem import error on some OS X 10.11 (El Capitan) installations.
+- Fixed libSystem import error on some macOS 10.11 (El Capitan) installations.
 
     Fix contributed by Eric Wang.
 
