@@ -11,7 +11,6 @@ from __future__ import absolute_import, unicode_literals
 from kombu.utils import escape_regex
 
 import re
-import collections
 
 
 class ExchangeType(object):
