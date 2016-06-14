@@ -52,13 +52,9 @@ class DirectExchange(ExchangeType):
     type = 'direct'
 
     def lookup(self, table, exchange, routing_key, default):
-        # Using an OrderedDict to purge queue duplicates while
-        # keeping the same order in which they appear in the table
-        return list(
-            collections.OrderedDict.fromkeys(
-                queue for rkey, _, queue in table
-                if rkey == routing_key
-            )
+        return set(
+            queue for rkey, _, queue in table
+            if rkey == routing_key
         )
 
     def deliver(self, message, exchange, routing_key, **kwargs):
@@ -82,13 +78,9 @@ class TopicExchange(ExchangeType):
     _compiled = {}
 
     def lookup(self, table, exchange, routing_key, default):
-        # Using an OrderedDict to purge queue duplicates while
-        # keeping the same order in which they appear in the table
-        return list(
-            collections.OrderedDict.fromkeys(
-                queue for rkey, pattern, queue in table
-                if self._match(pattern, routing_key)
-            )
+        return set(
+            queue for rkey, pattern, queue in table
+            if self._match(pattern, routing_key)
         )
 
     def deliver(self, message, exchange, routing_key, **kwargs):
@@ -133,12 +125,8 @@ class FanoutExchange(ExchangeType):
     type = 'fanout'
 
     def lookup(self, table, exchange, routing_key, default):
-        # Using an OrderedDict to purge queue duplicates while
-        # keeping the same order in which they appear in the table
-        return list(
-            collections.OrderedDict.fromkeys(
-                queue for _, _, queue in table
-            )
+        return set(
+            queue for _, _, queue in table
         )
 
     def deliver(self, message, exchange, routing_key, **kwargs):
