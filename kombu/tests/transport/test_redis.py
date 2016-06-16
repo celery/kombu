@@ -321,13 +321,13 @@ class test_Channel(Case):
         pl1 = {'body': 'BODY'}
         spl1 = dumps(pl1)
         lookup = self.channel._lookup = Mock(name='_lookup')
-        lookup.return_value = ['george', 'elaine']
+        lookup.return_value = {'george', 'elaine'}
         self.channel._do_restore_message(
             pl1, 'ex', 'rkey', client,
         )
         client.rpush.assert_has_calls([
             call('george', spl1), call('elaine', spl1),
-        ])
+        ], any_order=True)
 
         client = Mock(name='client')
         pl2 = {'body': 'BODY2', 'headers': {'x-funny': 1}}
@@ -338,7 +338,7 @@ class test_Channel(Case):
         )
         client.rpush.assert_has_calls([
             call('george', spl2), call('elaine', spl2),
-        ])
+        ], any_order=True)
 
         client.rpush.side_effect = KeyError()
         with patch('kombu.transport.redis.crit') as crit:

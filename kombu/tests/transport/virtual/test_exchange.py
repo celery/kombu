@@ -23,17 +23,17 @@ class test_Direct(ExchangeCase):
              ('rBaz', None, 'qBaz')]
 
     def test_lookup(self):
-        self.assertListEqual(
+        self.assertSetEqual(
             self.e.lookup(self.table, 'eFoo', 'rFoo', None),
-            ['qFoo', 'qFox'],
+            {'qFoo', 'qFox'},
         )
-        self.assertListEqual(
+        self.assertSetEqual(
             self.e.lookup(self.table, 'eMoz', 'rMoz', 'DEFAULT'),
-            [],
+            set(),
         )
-        self.assertListEqual(
+        self.assertSetEqual(
             self.e.lookup(self.table, 'eBar', 'rBar', None),
-            ['qBar'],
+            {'qBar'},
         )
 
 
@@ -44,9 +44,9 @@ class test_Fanout(ExchangeCase):
              (None, None, 'qBar')]
 
     def test_lookup(self):
-        self.assertListEqual(
+        self.assertSetEqual(
             self.e.lookup(self.table, 'eFoo', 'rFoo', None),
-            ['qFoo', 'qFox', 'qBar'],
+            {'qFoo', 'qFox', 'qBar'},
         )
 
     def test_deliver_when_fanout_supported(self):
@@ -84,23 +84,23 @@ class test_Topic(ExchangeCase):
         self.assertTupleEqual(x, ('stock.#', r'^stock\..*?$', 'qFoo'))
 
     def test_lookup(self):
-        self.assertListEqual(
+        self.assertSetEqual(
             self.e.lookup(self.table, 'eFoo', 'stock.us.nasdaq', None),
-            ['rFoo', 'rBar'],
+            {'rFoo', 'rBar'},
         )
         self.assertTrue(self.e._compiled)
-        self.assertListEqual(
+        self.assertSetEqual(
             self.e.lookup(self.table, 'eFoo', 'stock.europe.OSE', None),
-            ['rFoo'],
+            {'rFoo'},
         )
-        self.assertListEqual(
+        self.assertSetEqual(
             self.e.lookup(self.table, 'eFoo', 'stockxeuropexOSE', None),
-            [],
+            set(),
         )
-        self.assertListEqual(
+        self.assertSetEqual(
             self.e.lookup(self.table, 'eFoo',
                           'candy.schleckpulver.snap_crackle', None),
-            [],
+            set(),
         )
 
     def test_deliver(self):
@@ -112,6 +112,45 @@ class test_Topic(ExchangeCase):
         expected = [(('a', message), {}),
                     (('b', message), {})]
         self.assertListEqual(self.e.channel._put.call_args_list, expected)
+
+
+class test_TopicMultibind(ExchangeCase):
+    # Testing message delivery in case of multiple overlapping
+    # bindings for the same queue. As AMQP states, in case of
+    # overlapping bindings, a message must be delivered once to
+    # each matching queue.
+    type = exchange.TopicExchange
+    table = [
+        ('stock', None, 'rFoo'),
+        ('stock.#', None, 'rFoo'),
+        ('stock.us.*', None, 'rFoo'),
+        ('#', None, 'rFoo'),
+    ]
+
+    def setup(self):
+        super(test_TopicMultibind, self).setup()
+        self.table = [(rkey, self.e.key_to_pattern(rkey), queue)
+                      for rkey, _, queue in self.table]
+
+    def test_lookup(self):
+        self.assertSetEqual(
+            self.e.lookup(self.table, 'eFoo', 'stock.us.nasdaq', None),
+            {'rFoo'},
+        )
+        self.assertTrue(self.e._compiled)
+        self.assertSetEqual(
+            self.e.lookup(self.table, 'eFoo', 'stock.europe.OSE', None),
+            {'rFoo'},
+        )
+        self.assertSetEqual(
+            self.e.lookup(self.table, 'eFoo', 'stockxeuropexOSE', None),
+            {'rFoo'},
+        )
+        self.assertSetEqual(
+            self.e.lookup(self.table, 'eFoo',
+                          'candy.schleckpulver.snap_crackle', None),
+            {'rFoo'},
+        )
 
 
 class test_ExchangeType(ExchangeCase):
