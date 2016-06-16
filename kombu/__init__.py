@@ -44,14 +44,16 @@ if STATICA_HACK:  # pragma: no cover
 from types import ModuleType  # noqa
 
 all_by_module = {
-    'kombu.connection':    ['Connection', 'BrokerConnection'],
-    'kombu.entity':        ['Exchange', 'Queue', 'binding'],
-    'kombu.messaging':     ['Consumer', 'Producer'],
-    'kombu.pools':         ['connections', 'producers'],
-    'kombu.utils.url':     ['parse_url'],
-    'kombu.common':        ['eventloop', 'uuid'],
-    'kombu.serialization': ['enable_insecure_serializers',
-                            'disable_insecure_serializers'],
+    'kombu.connection': ['Connection', 'BrokerConnection'],
+    'kombu.entity': ['Exchange', 'Queue', 'binding'],
+    'kombu.messaging': ['Consumer', 'Producer'],
+    'kombu.pools': ['connections', 'producers'],
+    'kombu.utils.url': ['parse_url'],
+    'kombu.common': ['eventloop', 'uuid'],
+    'kombu.serialization': [
+        'enable_insecure_serializers',
+        'disable_insecure_serializers',
+    ],
 }
 
 object_origins = {}

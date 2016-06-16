@@ -649,12 +649,18 @@ class Channel(virtual.Channel):
     def _handle_message(self, client, r):
         if bytes_to_str(r[0]) == 'unsubscribe' and r[2] == 0:
             client.subscribed = False
-        elif bytes_to_str(r[0]) == 'pmessage':
-            return {'type':    r[0], 'pattern': r[1],
-                    'channel': r[2], 'data':    r[3]}
+            return
+
+        if bytes_to_str(r[0]) == 'pmessage':
+            type, pattern, channel, data = r[0], r[1], r[2], r[3]
         else:
-            return {'type':    r[0], 'pattern': None,
-                    'channel': r[1], 'data':    r[2]}
+            type, pattern, channel, data = r[0], None, r[1], r[2]
+        return {
+            'type': type,
+            'pattern': pattern,
+            'channel': channel,
+            'data': data,
+        }
 
     def _receive(self):
         c = self.subclient

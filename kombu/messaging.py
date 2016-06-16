@@ -167,7 +167,7 @@ class Producer(object):
         )
 
         if expiration is not None:
-            properties['expiration'] = str(int(expiration*1000))
+            properties['expiration'] = str(int(expiration * 1000))
 
         body, content_type, content_encoding = self._prepare(
             body, serializer, content_type, content_encoding,

@@ -13,7 +13,7 @@ def fib(n):
     elif n == 1:
         return 1
     else:
-        return fib(n-1) + fib(n-2)
+        return fib(n - 1) + fib(n - 2)
 
 
 class Worker(ConsumerProducerMixin):

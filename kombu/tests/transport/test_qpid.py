@@ -1453,7 +1453,7 @@ class test_Transport__init(QPidCase):
     def test_sets_non_blocking_behavior_on_r_fd(self):
         Transport(Mock())
         self.fcntl.fcntl.assert_called_once_with(
-            self.r,  self.fcntl.F_SETFL,  self.os.O_NONBLOCK)
+            self.r, self.fcntl.F_SETFL, self.os.O_NONBLOCK)
 
 
 class test_Transport__drain_events(QPidCase):
