@@ -8,7 +8,7 @@ logging.basicConfig()
 logging.getLogger('pykafka.producer').setLevel(logging.DEBUG)
 
 
-class test_kafka(transport.TransportCase):
+class test_pykafka(transport.TransportCase):
     transport = 'pykafka'
     prefix = 'pykafka'
     message_size_limit = 100000
@@ -21,4 +21,4 @@ class test_kafka(transport.TransportCase):
             raise SkipTest('pykafka not installed')
 
     def purge(self, *args, **kwargs):
-        return super(test_kafka, self).purge(ensure=False, *args, **kwargs)
+        return super(test_pykafka, self).purge(ensure=False, *args, **kwargs)

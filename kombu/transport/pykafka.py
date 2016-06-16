@@ -1,5 +1,5 @@
 """
-kombu.transport.kafka
+kombu.transport.pykafka
 =====================
 
 Kafka transport.
