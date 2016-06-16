@@ -165,5 +165,6 @@ setup(
         'pyro': extras('pyro.txt'),
         'slmq': extras('slmq.txt'),
         'qpid': extras('qpid.txt'),
+        'consul': extras('consul.txt'),
     },
 )
