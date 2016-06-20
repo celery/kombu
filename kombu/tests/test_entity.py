@@ -3,6 +3,7 @@ from __future__ import absolute_import, unicode_literals
 import pickle
 
 from kombu import Connection, Exchange, Producer, Queue, binding
+from kombu.abstract import MaybeChannelBound
 from kombu.exceptions import NotBoundError
 from kombu.serialization import registry
 
@@ -406,3 +407,9 @@ class test_Queue(Case):
         b = Queue('foo', self.exchange, 'foo')
         self.assertIn('foo', repr(b))
         self.assertIn('Queue', repr(b))
+
+
+class test_MaybeChannelBound(Case):
+
+    def test_repr(self):
+        self.assertTrue(repr(MaybeChannelBound()))
