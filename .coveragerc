@@ -16,6 +16,7 @@ omit =
     *kombu/transport/sqlalchemy/*
     *kombu/utils.compat.py
     *kombu/utils/eventio.py
+    *kombu/async/debug.py
     *kombu/transport/amqplib.py
     *kombu/transport/couchdb.py
     *kombu/transport/beanstalk.py

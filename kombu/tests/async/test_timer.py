@@ -1,5 +1,7 @@
 from __future__ import absolute_import, unicode_literals
 
+from datetime import datetime
+
 from kombu.five import bytes_if_py2
 
 from kombu.async.timer import Entry, Timer, to_timestamp
@@ -9,8 +11,11 @@ from kombu.tests.case import Case, Mock, mock, patch
 
 class test_to_timestamp(Case):
 
-    def test_to_timestamp(self):
+    def test_timestamp(self):
         self.assertIs(to_timestamp(3.13), 3.13)
+
+    def test_datetime(self):
+        self.assertTrue(to_timestamp(datetime.utcnow()))
 
 
 class test_Entry(Case):

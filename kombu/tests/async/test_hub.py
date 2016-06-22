@@ -2,6 +2,8 @@ from __future__ import absolute_import, unicode_literals
 
 import errno
 
+from vine import promise
+
 from kombu.async import hub as _hub
 from kombu.async import Hub, READ, WRITE, ERR
 from kombu.async.debug import callback_for, repr_flag, _rcb
@@ -184,6 +186,20 @@ class test_Hub(Case):
         self.hub.stop()
         self.hub.call_soon.assert_called_with(_raise_stop_error)
 
+    @patch('kombu.async.hub.promise')
+    def test_call_soon(self, promise):
+        callback = Mock(name='callback')
+        ret = self.hub.call_soon(callback, 1, 2, 3)
+        promise.assert_called_with(callback, (1, 2, 3))
+        self.assertIn(promise(), self.hub._ready)
+        self.assertIs(ret, promise())
+
+    def test_call_soon__promise_argument(self):
+        callback = promise(Mock(name='callback'), (1, 2, 3))
+        ret = self.hub.call_soon(callback)
+        self.assertIs(ret, callback)
+        self.assertIn(ret, self.hub._ready)
+
     def test_call_later(self):
         callback = Mock(name='callback')
         self.hub.timer = Mock(name='hub.timer')
@@ -318,12 +334,24 @@ class test_Hub(Case):
         self.assertNotIn(2, self.hub.readers)
         self.assertIn(2, self.hub.writers)
 
+    def test_remove_reader__not_writeable(self):
+        self.hub.poller = Mock(name='hub.poller')
+        self.hub.add(2, Mock(), READ)
+        self.hub.remove_reader(2)
+        self.assertNotIn(2, self.hub.readers)
+
     def test_remove_writer(self):
         self.hub.poller = Mock(name='hub.poller')
         self.hub.add(2, Mock(), READ)
         self.hub.add(2, Mock(), WRITE)
         self.hub.remove_writer(2)
         self.assertIn(2, self.hub.readers)
+        self.assertNotIn(2, self.hub.writers)
+
+    def test_remove_writer__not_readable(self):
+        self.hub.poller = Mock(name='hub.poller')
+        self.hub.add(2, Mock(), WRITE)
+        self.hub.remove_writer(2)
         self.assertNotIn(2, self.hub.writers)
 
     def test_add__consolidate(self):
@@ -477,3 +505,31 @@ class test_Hub(Case):
     def test_scheduler_property(self):
         hub = Hub(timer=[1, 2, 3])
         self.assertEqual(list(hub.scheduler), [1, 2, 3])
+
+    def test_loop__tick_callbacks(self):
+        self.hub._ready = Mock(name='_ready')
+        self.hub._ready.pop.side_effect = RuntimeError()
+        ticks = [Mock(name='cb1'), Mock(name='cb2')]
+        self.hub.on_tick = list(ticks)
+
+        with self.assertRaises(RuntimeError):
+            next(self.hub.loop)
+
+        ticks[0].assert_called_once_with()
+        ticks[1].assert_called_once_with()
+
+    def test_loop__todo(self):
+        self.hub.fire_timers = Mock(name='fire_timers')
+        self.hub.fire_timers.side_effect = RuntimeError()
+        self.hub.timer = Mock(name='timer')
+
+        callbacks = [Mock(name='cb1'), Mock(name='cb2')]
+        for cb in callbacks:
+            self.hub.call_soon(cb)
+        self.hub._ready.add(None)
+
+        with self.assertRaises(RuntimeError):
+            next(self.hub.loop)
+
+        callbacks[0].assert_called_once_with()
+        callbacks[1].assert_called_once_with()
