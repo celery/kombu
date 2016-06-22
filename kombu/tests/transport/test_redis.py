@@ -338,7 +338,7 @@ class test_Channel(Case):
         )
         client.rpush.assert_has_calls([
             call('george', spl2), call('elaine', spl2),
-        ])
+        ], any_order=True)
 
         client.rpush.side_effect = KeyError()
         with patch('kombu.transport.redis.crit') as crit:
