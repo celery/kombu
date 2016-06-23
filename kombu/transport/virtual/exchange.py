@@ -51,10 +51,10 @@ class DirectExchange(ExchangeType):
     type = 'direct'
 
     def lookup(self, table, exchange, routing_key, default):
-        return set(
+        return {
             queue for rkey, _, queue in table
             if rkey == routing_key
-        )
+        }
 
     def deliver(self, message, exchange, routing_key, **kwargs):
         _lookup = self.channel._lookup
@@ -77,10 +77,10 @@ class TopicExchange(ExchangeType):
     _compiled = {}
 
     def lookup(self, table, exchange, routing_key, default):
-        return set(
+        return {
             queue for rkey, pattern, queue in table
             if self._match(pattern, routing_key)
-        )
+        }
 
     def deliver(self, message, exchange, routing_key, **kwargs):
         _lookup = self.channel._lookup
@@ -124,9 +124,7 @@ class FanoutExchange(ExchangeType):
     type = 'fanout'
 
     def lookup(self, table, exchange, routing_key, default):
-        return set(
-            queue for _, _, queue in table
-        )
+        return {queue for _, _, queue in table}
 
     def deliver(self, message, exchange, routing_key, **kwargs):
         if self.channel.supports_fanout:
