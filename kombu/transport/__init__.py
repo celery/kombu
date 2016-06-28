@@ -22,26 +22,6 @@ def supports_librabbitmq():
             return True
 
 
-def _ghettoq(name, new, alias=None):
-    xxx = new   # stupid enclosing
-
-    def __inner():
-        import warnings
-        _new = callable(xxx) and xxx() or xxx
-        gtransport = 'ghettoq.taproot.{0}'.format(name)
-        ktransport = 'kombu.transport.{0}.Transport'.format(_new)
-        this = alias or name
-        warnings.warn("""
-    Ghettoq does not work with Kombu, but there is now a built-in version
-    of the {0} transport.
-
-    You should replace {1!r} with: {2!r}
-        """.format(name, gtransport, this))
-        return ktransport
-
-    return __inner
-
-
 TRANSPORT_ALIASES = {
     'amqp': 'kombu.transport.pyamqp:Transport',
     'pyamqp': 'kombu.transport.pyamqp:Transport',
@@ -57,11 +37,6 @@ TRANSPORT_ALIASES = {
     'django': 'kombu.transport.django:Transport',
     'SLMQ': 'kombu.transport.SLMQ.Transport',
     'slmq': 'kombu.transport.SLMQ.Transport',
-    'ghettoq.taproot.Redis': _ghettoq('Redis', 'redis', 'redis'),
-    'ghettoq.taproot.Database': _ghettoq('Database', 'django', 'django'),
-    'ghettoq.taproot.MongoDB': _ghettoq('MongoDB', 'mongodb'),
-    'ghettoq.taproot.Beanstalk': _ghettoq('Beanstalk', 'beanstalk'),
-    'ghettoq.taproot.CouchDB': _ghettoq('CouchDB', 'couchdb'),
     'filesystem': 'kombu.transport.filesystem:Transport',
     'zeromq': 'kombu.transport.zmq:Transport',
     'zmq': 'kombu.transport.zmq:Transport',

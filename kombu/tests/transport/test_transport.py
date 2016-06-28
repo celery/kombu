@@ -32,13 +32,3 @@ class test_transport(Case):
 
     def test_resolve_transport_alias(self):
         self.assertTrue(transport.resolve_transport('pyamqp'))
-
-
-class test_transport_ghettoq(Case):
-
-    @patch('warnings.warn')
-    def test_compat(self, warn):
-        x = transport._ghettoq('Redis', 'redis', 'redis')
-
-        self.assertEqual(x(), 'kombu.transport.redis.Transport')
-        warn.assert_called()
