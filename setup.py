@@ -156,7 +156,6 @@ setup(
         'redis': extras('redis.txt'),
         'mongodb': extras('mongodb.txt'),
         'sqs': extras('sqs.txt'),
-        'couchdb': extras('couchdb.txt'),
         'beanstalk': extras('beanstalk.txt'),
         'zookeeper': extras('zookeeper.txt'),
         'zeromq': extras('zeromq.txt'),

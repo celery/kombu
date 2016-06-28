@@ -51,7 +51,6 @@ setup(
         'PyYAML',
         'msgpack-python',
         'pymongo',
-        'couchdb',
         'kazoo',
         'beanstalkc',
     ],

@@ -4,9 +4,6 @@ redis
 # MongoDB transport
 pymongo
 
-# CouchDB transport
-couchdb
-
 # Beanstalk transport
 beanstalkc
 

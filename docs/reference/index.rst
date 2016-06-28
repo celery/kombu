@@ -47,7 +47,6 @@
     kombu.transport.zmq
     kombu.transport.beanstalk
     kombu.transport.mongodb
-    kombu.transport.couchdb
     kombu.transport.zookeeper
     kombu.transport.filesystem
     kombu.transport.SQS

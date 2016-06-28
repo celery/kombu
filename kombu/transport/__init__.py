@@ -32,7 +32,6 @@ TRANSPORT_ALIASES = {
     'sqs': 'kombu.transport.SQS:Transport',
     'beanstalk': 'kombu.transport.beanstalk:Transport',
     'mongodb': 'kombu.transport.mongodb:Transport',
-    'couchdb': 'kombu.transport.couchdb:Transport',
     'zookeeper': 'kombu.transport.zookeeper:Transport',
     'SLMQ': 'kombu.transport.SLMQ.Transport',
     'slmq': 'kombu.transport.SLMQ.Transport',
