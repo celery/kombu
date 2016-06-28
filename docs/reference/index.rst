@@ -44,7 +44,6 @@
     kombu.transport.qpid
     kombu.transport.memory
     kombu.transport.redis
-    kombu.transport.zmq
     kombu.transport.mongodb
     kombu.transport.zookeeper
     kombu.transport.filesystem

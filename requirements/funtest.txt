@@ -4,9 +4,6 @@ redis
 # MongoDB transport
 pymongo
 
-# Zookeeper transport
-kazoo
-
 # SQS transport
 boto
 

@@ -51,7 +51,6 @@ setup(
         'PyYAML',
         'msgpack-python',
         'pymongo',
-        'kazoo',
     ],
     classifiers=[
         'Operating System :: OS Independent',

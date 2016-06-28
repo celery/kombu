@@ -157,7 +157,6 @@ setup(
         'mongodb': extras('mongodb.txt'),
         'sqs': extras('sqs.txt'),
         'zookeeper': extras('zookeeper.txt'),
-        'zeromq': extras('zeromq.txt'),
         'librabbitmq': extras('librabbitmq.txt'),
         'pyro': extras('pyro.txt'),
         'slmq': extras('slmq.txt'),
