@@ -243,9 +243,6 @@ class ConsumerMixin(object):
 
     @cached_property
     def restart_limit(self):
-        # the AttributeError that can be catched from amqplib
-        # poses problems for the too often restarts protection
-        # in Connection.ensure_connection
         return TokenBucket(1)
 
     @cached_property

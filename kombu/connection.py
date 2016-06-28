@@ -70,7 +70,7 @@ class Connection(object):
 
     .. admonition:: SSL compatibility
 
-        SSL currently only works with the py-amqp, amqplib, and qpid
+        SSL currently only works with the py-amqp, and qpid
         transports.  For other transports you can use stunnel.
 
     :keyword ssl: Use SSL to connect to the server. Default is ``False``.

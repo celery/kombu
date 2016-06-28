@@ -50,7 +50,6 @@
     kombu.transport.SQS
     kombu.transport.SLMQ
     kombu.transport.pyro
-    kombu.transport.amqplib
     kombu.transport.base
     kombu.transport.virtual
     kombu.transport.virtual.exchange
