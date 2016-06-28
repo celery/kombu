@@ -40,7 +40,7 @@ Features
 
     * Virtual transports makes it really easy to add support for non-AMQP
       transports.  There is already built-in support for `Redis`_,
-      `Beanstalk`_, `Amazon SQS`_, `CouchDB`_, `MongoDB`_, `ZeroMQ`_,
+      `Beanstalk`_, `Amazon SQS`_, `ZeroMQ`_,
       `ZooKeeper`_, `SoftLayer MQ`_ and `Pyro`_.
 
     * In-memory transport for unit testing.
@@ -68,8 +68,6 @@ and the `Wikipedia article about AMQP`_.
 .. _`qpid-python`: http://pypi.python.org/pypi/qpid-python/
 .. _`Redis`: http://code.google.com/p/redis/
 .. _`Amazon SQS`: http://aws.amazon.com/sqs/
-.. _`MongoDB`: http://www.mongodb.org/
-.. _`CouchDB`: http://couchdb.apache.org/
 .. _`ZeroMQ`: http://zeromq.org/
 .. _`Zookeeper`: https://zookeeper.apache.org/
 .. _`Beanstalk`: http://kr.github.com/beanstalkd/
@@ -100,8 +98,6 @@ Transport Comparison
 | *beanstalk*   | Virtual  | Yes        | Yes [#f1]_ | No            | Yes          | No                    |
 +---------------+----------+------------+------------+---------------+--------------+-----------------------+
 | *SQS*         | Virtual  | Yes        | Yes [#f1]_ | Yes [#f2]_    | No           | No                    |
-+---------------+----------+------------+------------+---------------+--------------+-----------------------+
-| *couchdb*     | Virtual  | Yes        | Yes [#f1]_ | No            | No           | No                    |
 +---------------+----------+------------+------------+---------------+--------------+-----------------------+
 | *zookeeper*   | Virtual  | Yes        | Yes [#f1]_ | No            | Yes          | No                    |
 +---------------+----------+------------+------------+---------------+--------------+-----------------------+

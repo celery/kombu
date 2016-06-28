@@ -63,7 +63,6 @@ and the `Wikipedia article about AMQP`_.
 .. _`qpid-python`: http://pypi.python.org/pypi/qpid-python/
 .. _`Redis`: http://code.google.com/p/redis/
 .. _`Amazon SQS`: http://aws.amazon.com/sqs/
-.. _`MongoDB`: http://www.mongodb.org/
 .. _`ZeroMQ`: http://zeromq.org/
 .. _`Zookeeper`: https://zookeeper.apache.org/
 .. _`Beanstalk`: http://kr.github.com/beanstalkd/
