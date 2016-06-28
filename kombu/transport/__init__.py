@@ -55,8 +55,6 @@ TRANSPORT_ALIASES = {
     'couchdb': 'kombu.transport.couchdb:Transport',
     'zookeeper': 'kombu.transport.zookeeper:Transport',
     'django': 'kombu.transport.django:Transport',
-    'sqlalchemy': 'kombu.transport.sqlalchemy:Transport',
-    'sqla': 'kombu.transport.sqlalchemy:Transport',
     'SLMQ': 'kombu.transport.SLMQ.Transport',
     'slmq': 'kombu.transport.SLMQ.Transport',
     'ghettoq.taproot.Redis': _ghettoq('Redis', 'redis', 'redis'),

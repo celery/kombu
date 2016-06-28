@@ -13,9 +13,6 @@ beanstalkc
 # Zookeeper transport
 kazoo
 
-# SQLAlchemy transport
-kombu-sqlalchemy
-
 # Django ORM transport
 Django
 django-kombu

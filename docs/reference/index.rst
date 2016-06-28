@@ -54,8 +54,6 @@
     kombu.transport.django.models
     kombu.transport.django.managers
     kombu.transport.django.management.commands.clean_kombu_messages
-    kombu.transport.sqlalchemy
-    kombu.transport.sqlalchemy.models
     kombu.transport.SQS
     kombu.transport.SLMQ
     kombu.transport.pyro

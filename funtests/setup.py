@@ -54,7 +54,6 @@ setup(
         'couchdb',
         'kazoo',
         'beanstalkc',
-        'kombu-sqlalchemy',
         'django',
         'django-kombu',
     ],

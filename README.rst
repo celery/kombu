@@ -43,9 +43,6 @@ Features
       `Beanstalk`_, `Amazon SQS`_, `CouchDB`_, `MongoDB`_, `ZeroMQ`_,
       `ZooKeeper`_, `SoftLayer MQ`_ and `Pyro`_.
 
-    * You can also use the SQLAlchemy and Django ORM transports to
-      use a database as the broker.
-
     * In-memory transport for unit testing.
 
 * Supports automatic encoding, serialization and compression of message
@@ -111,8 +108,6 @@ Transport Comparison
 | *in-memory*   | Virtual  | Yes        | Yes [#f1]_ | No            | No           | No                    |
 +---------------+----------+------------+------------+---------------+--------------+-----------------------+
 | *django*      | Virtual  | Yes        | Yes [#f1]_ | No            | No           | No                    |
-+---------------+----------+------------+------------+---------------+--------------+-----------------------+
-| *sqlalchemy*  | Virtual  | Yes        | Yes [#f1]_ | No            | No           | No                    |
 +---------------+----------+------------+------------+---------------+--------------+-----------------------+
 | *SLMQ*        | Virtual  | Yes        | Yes [#f1]_ | No            | No           | No                    |
 +---------------+----------+------------+------------+---------------+--------------+-----------------------+
