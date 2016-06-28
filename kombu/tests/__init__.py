@@ -56,28 +56,7 @@ def is_in_coverage():
             '--with-coverage3' in sys.argv)
 
 
-def setup_django_env():
-    try:
-        from django.conf import settings
-    except ImportError:
-        return
-
-    if not settings.configured:
-        settings.configure(
-            DATABASES={
-                'default': {
-                    'ENGINE': 'django.db.backends.sqlite3',
-                    'NAME': ':memory:',
-                },
-            },
-            DATABASE_ENGINE='sqlite3',
-            DATABASE_NAME=':memory:',
-            INSTALLED_APPS=('kombu.transport.django',),
-        )
-
-
 def setup():
     # so coverage sees all our modules.
-    setup_django_env()
     if is_in_coverage():
         import_all_modules()

@@ -54,8 +54,6 @@ setup(
         'couchdb',
         'kazoo',
         'beanstalkc',
-        'django',
-        'django-kombu',
     ],
     classifiers=[
         'Operating System :: OS Independent',

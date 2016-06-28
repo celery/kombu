@@ -50,10 +50,6 @@
     kombu.transport.couchdb
     kombu.transport.zookeeper
     kombu.transport.filesystem
-    kombu.transport.django
-    kombu.transport.django.models
-    kombu.transport.django.managers
-    kombu.transport.django.management.commands.clean_kombu_messages
     kombu.transport.SQS
     kombu.transport.SLMQ
     kombu.transport.pyro

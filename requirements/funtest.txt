@@ -13,10 +13,6 @@ beanstalkc
 # Zookeeper transport
 kazoo
 
-# Django ORM transport
-Django
-django-kombu
-
 # SQS transport
 boto
 
