@@ -45,7 +45,6 @@
     kombu.transport.memory
     kombu.transport.redis
     kombu.transport.zmq
-    kombu.transport.beanstalk
     kombu.transport.mongodb
     kombu.transport.zookeeper
     kombu.transport.filesystem

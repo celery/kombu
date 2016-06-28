@@ -35,7 +35,7 @@ Features
 
     * Virtual transports makes it really easy to add support for non-AMQP
       transports.  There is already built-in support for `Redis`_,
-      `Beanstalk`_, `Amazon SQS`_, `ZeroMQ`_,
+      `Amazon SQS`_, `ZeroMQ`_,
       `ZooKeeper`_, `SoftLayer MQ`_ and `Pyro`_.
 
     * In-memory transport for unit testing.
@@ -65,7 +65,6 @@ and the `Wikipedia article about AMQP`_.
 .. _`Amazon SQS`: http://aws.amazon.com/sqs/
 .. _`ZeroMQ`: http://zeromq.org/
 .. _`Zookeeper`: https://zookeeper.apache.org/
-.. _`Beanstalk`: http://kr.github.com/beanstalkd/
 .. _`Rabbits and warrens`: http://blogs.digitar.com/jjww/2009/01/rabbits-and-warrens/
 .. _`amqplib`: http://barryp.org/software/py-amqplib/
 .. _`Wikipedia article about AMQP`: http://en.wikipedia.org/wiki/AMQP
@@ -89,8 +88,6 @@ Transport Comparison
 | *redis*       | Virtual  | Yes        | Yes        | Yes (PUB/SUB) | Yes          | No                    |
 +---------------+----------+------------+------------+---------------+--------------+-----------------------+
 | *mongodb*     | Virtual  | Yes        | Yes        | Yes           | Yes          | Yes                   |
-+---------------+----------+------------+------------+---------------+--------------+-----------------------+
-| *beanstalk*   | Virtual  | Yes        | Yes [#f1]_ | No            | Yes          | No                    |
 +---------------+----------+------------+------------+---------------+--------------+-----------------------+
 | *SQS*         | Virtual  | Yes        | Yes [#f1]_ | Yes [#f2]_    | No           | No                    |
 +---------------+----------+------------+------------+---------------+--------------+-----------------------+

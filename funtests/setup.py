@@ -52,7 +52,6 @@ setup(
         'msgpack-python',
         'pymongo',
         'kazoo',
-        'beanstalkc',
     ],
     classifiers=[
         'Operating System :: OS Independent',

@@ -107,7 +107,7 @@ class Transport(object):
     #: Redis (driver_type: 'redis'), etc...
     driver_type = 'N/A'
 
-    #: Name of driver library (e.g. 'py-amqp', 'redis', 'beanstalkc').
+    #: Name of driver library (e.g. 'py-amqp', 'redis').
     driver_name = 'N/A'
 
     __reader = None

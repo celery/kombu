@@ -4,9 +4,6 @@ redis
 # MongoDB transport
 pymongo
 
-# Beanstalk transport
-beanstalkc
-
 # Zookeeper transport
 kazoo
 
