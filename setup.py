@@ -17,30 +17,18 @@ except ImportError:
 
 # -- Parse meta
 re_meta = re.compile(r'__(\w+?)__\s*=\s*(.*)')
-re_vers = re.compile(r'VERSION\s*=.*?\((.*?)\)')
 re_doc = re.compile(r'^"""(.+?)"""')
-
-
-def rq(s):
-    return s.strip("\"'")
 
 
 def add_default(m):
     attr_name, attr_value = m.groups()
-    return ((attr_name, rq(attr_value)),)
-
-
-def add_version(m):
-    v = list(map(rq, m.groups()[0].split(', ')))
-    return (('VERSION', '.'.join(v[0:3]) + ''.join(v[3:])),)
+    return ((attr_name, attr_value.strip("\"'")),)
 
 
 def add_doc(m):
     return (('doc', m.groups()[0]),)
 
-pats = {re_meta: add_default,
-        re_vers: add_version,
-        re_doc: add_doc}
+pats = {re_meta: add_default, re_doc: add_doc}
 here = os.path.abspath(os.path.dirname(__file__))
 meta_fh = open(os.path.join(here, 'kombu/__init__.py'))
 try:
@@ -118,7 +106,7 @@ def extras(*p):
 
 setup(
     name='kombu',
-    version=meta['VERSION'],
+    version=meta['version'],
     description=meta['doc'],
     author=meta['author'],
     author_email=meta['contact'],
