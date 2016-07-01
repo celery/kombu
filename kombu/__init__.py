@@ -18,9 +18,9 @@ __docformat__ = 'restructuredtext en'
 
 # -eof meta-
 
-version_info_t = namedtuple(
-    'version_info_t', ('major', 'minor', 'micro', 'releaselevel', 'serial'),
-)
+version_info_t = namedtuple('version_info_t', (
+    'major', 'minor', 'micro', 'releaselevel', 'serial',
+))
 
 # bumpversion can only search for {current_version}
 # so we have to parse the version here.
