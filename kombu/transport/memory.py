@@ -55,7 +55,7 @@ class Channel(virtual.Channel):
         return size
 
     def close(self):
-        super(Channel, self).close()
+        super().close()
         for queue in values(self.queues):
             queue.empty()
         self.queues = {}

@@ -93,7 +93,7 @@ class Channel(virtual.Channel):
     def __init__(self, *args, **kwargs):
         if boto is None:
             raise ImportError('boto is not installed')
-        super(Channel, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         # SQS blows up if you try to create a new queue when one already
         # exists but with a different visibility_timeout.  This prepopulates
@@ -128,15 +128,13 @@ class Channel(virtual.Channel):
             self._noack_queues.add(queue)
         if self.hub:
             self._loop1(queue)
-        return super(Channel, self).basic_consume(
-            queue, no_ack, *args, **kwargs
-        )
+        return super().basic_consume(queue, no_ack, *args, **kwargs)
 
     def basic_cancel(self, consumer_tag):
         if consumer_tag in self._consumers:
             queue = self._tag_to_queue[consumer_tag]
             self._noack_queues.discard(queue)
-        return super(Channel, self).basic_cancel(consumer_tag)
+        return super().basic_cancel(consumer_tag)
 
     def drain_events(self, timeout=None):
         """Return a single payload message from one of our queues.
@@ -207,7 +205,7 @@ class Channel(virtual.Channel):
 
     def _delete(self, queue, *args, **kwargs):
         """delete queue by name."""
-        super(Channel, self)._delete(queue)
+        super()._delete(queue)
         self._queue_cache.pop(queue, None)
 
     def _put(self, queue, message, **kwargs):
@@ -358,7 +356,7 @@ class Channel(virtual.Channel):
         for unwanted_key in unwanted_delivery_info:
             # Remove objects that aren't JSON serializable (Issue #1108).
             message.delivery_info.pop(unwanted_key, None)
-        return super(Channel, self)._restore(message)
+        return super()._restore(message)
 
     def basic_ack(self, delivery_tag, multiple=False):
         delivery_info = self.qos.get(delivery_tag).delivery_info
@@ -368,7 +366,7 @@ class Channel(virtual.Channel):
             pass
         else:
             queue.delete_message(delivery_info['sqs_message'])
-        super(Channel, self).basic_ack(delivery_tag)
+        super().basic_ack(delivery_tag)
 
     def _size(self, queue):
         """Return the number of messages in a queue."""
@@ -388,7 +386,7 @@ class Channel(virtual.Channel):
         return size
 
     def close(self):
-        super(Channel, self).close()
+        super().close()
         for conn in (self._sqs, self._asynsqs):
             if conn:
                 try:

@@ -24,11 +24,11 @@ class HubCase(Case):
         self._prev_hub = get_event_loop()
         self.hub = Hub()
         set_event_loop(self.hub)
-        super(HubCase, self).setUp()
+        super().setUp()
 
     def tearDown(self):
         try:
-            super(HubCase, self).tearDown()
+            super().tearDown()
         finally:
             from kombu.async import set_event_loop
             if self._prev_hub is not None:

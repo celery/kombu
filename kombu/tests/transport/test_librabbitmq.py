@@ -60,7 +60,7 @@ class test_Channel(lrmqCase):
 class test_Transport(lrmqCase):
 
     def setup(self):
-        super(test_Transport, self).setup()
+        super().setup()
         self.client = Mock(name='client')
         self.T = librabbitmq.Transport(self.client)
 

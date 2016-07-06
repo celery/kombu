@@ -258,7 +258,7 @@ class ConnectionCase(QPidCase):
         }
         self.qpid_connection = qpid.messaging.Connection
         self.conn = Connection(**self.connection_options)
-        super(ConnectionCase, self).setUp()
+        super().setUp()
 
 
 class test_Connection__init__(ConnectionCase):
@@ -419,11 +419,11 @@ class ChannelCase(QPidCase):
         self.conn = Mock(name='conn')
         self.transport = Mock(name='transport')
         self.channel = Channel(self.conn, self.transport)
-        super(ChannelCase, self).setUp()
+        super().setUp()
 
     def tearDown(self):
         self.patch_qpidtoollibs.stop()
-        super(ChannelCase, self).tearDown()
+        super().tearDown()
 
 
 class test_Channel__purge(ChannelCase):
@@ -1278,7 +1278,7 @@ class ReceiversMonitorCase(QPidCase):
         self.session = Mock(name='session')
         self.w = Mock(name='w')
         self.monitor = ReceiversMonitor(self.session, self.w)
-        super(ReceiversMonitorCase, self).setUp()
+        super().setUp()
 
 
 class test_ReceiversMonitor__type(ReceiversMonitorCase):
@@ -1293,7 +1293,7 @@ class test_ReceiversMonitor__init__(ReceiversMonitorCase):
         self.Thread___init__ = self.patch(
             QPID_MODULE + '.threading.Thread.__init__',
         )
-        super(test_ReceiversMonitor__init__, self).setUp()
+        super().setUp()
 
     def test_saves_session(self):
         self.assertIs(self.monitor._session, self.session)

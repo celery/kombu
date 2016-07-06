@@ -326,7 +326,7 @@ class Message(base.Message):
             'delivery_info': properties.get('delivery_info'),
             'postencode': 'utf-8',
         })
-        super(Message, self).__init__(channel, **kwargs)
+        super().__init__(channel, **kwargs)
 
     def serializable(self):
         props = self.properties
@@ -836,7 +836,7 @@ class Channel(AbstractChannel, base.StdChannel):
 class Management(base.Management):
 
     def __init__(self, transport):
-        super(Management, self).__init__(transport)
+        super().__init__(transport)
         self.channel = transport.client.channel()
 
     def get_bindings(self):

@@ -49,7 +49,7 @@ class Channel(virtual.Channel):
         if consul is None:
             raise ImportError('Missing python-consul library')
 
-        super(Channel, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         port = self.connection.client.port or self.connection.default_port
         host = self.connection.client.hostname or DEFAULT_HOST
@@ -255,7 +255,7 @@ class Transport(virtual.Transport):
         if consul is None:
             raise ImportError('Missing python-consul library')
 
-        super(Transport, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self.connection_errors = (
             virtual.Transport.connection_errors + (

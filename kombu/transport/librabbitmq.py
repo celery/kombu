@@ -37,7 +37,7 @@ ssl not supported by librabbitmq, please use pyamqp:// or stunnel\
 class Message(base.Message):
 
     def __init__(self, channel, props, info, body):
-        super(Message, self).__init__(
+        super().__init__(
             channel,
             body=body,
             delivery_info=info,

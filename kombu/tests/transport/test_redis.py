@@ -282,7 +282,7 @@ class test_Channel(Case):
 
             def __init__(self, *args, **kwargs):
                 self._pool = pool_at_init[0]
-                super(XChannel, self).__init__(*args, **kwargs)
+                super().__init__(*args, **kwargs)
 
             def _get_client(self):
                 return lambda *_, **__: client

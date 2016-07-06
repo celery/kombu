@@ -168,7 +168,7 @@ class Exchange(MaybeChannelBound):
     )
 
     def __init__(self, name='', type='', channel=None, **kwargs):
-        super(Exchange, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.name = name or self.name
         self.type = type or self.type
         self.maybe_bind(channel)
@@ -528,7 +528,7 @@ class Queue(MaybeChannelBound):
     def __init__(self, name='', exchange=None, routing_key='',
                  channel=None, bindings=None, on_declared=None,
                  **kwargs):
-        super(Queue, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.name = name or self.name
         self.exchange = exchange or self.exchange
         self.routing_key = routing_key or self.routing_key
@@ -548,7 +548,7 @@ class Queue(MaybeChannelBound):
 
     def bind(self, channel):
         on_declared = self.on_declared
-        bound = super(Queue, self).bind(channel)
+        bound = super().bind(channel)
         bound.on_declared = on_declared
         return bound
 
@@ -795,7 +795,7 @@ class Queue(MaybeChannelBound):
                      bindings=bindings)
 
     def as_dict(self, recurse=False):
-        res = super(Queue, self).as_dict(recurse)
+        res = super().as_dict(recurse)
         if not recurse:
             return res
         bindings = res.get('bindings')

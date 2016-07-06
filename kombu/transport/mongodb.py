@@ -113,7 +113,7 @@ class Channel(virtual.Channel):
     ))
 
     def __init__(self, *vargs, **kwargs):
-        super(Channel, self).__init__(*vargs, **kwargs)
+        super().__init__(*vargs, **kwargs)
 
         self._broadcast_cursors = {}
 
@@ -157,7 +157,7 @@ class Channel(virtual.Channel):
         # Do not calculate actual queue size if requested
         # for performance considerations
         if not self.calc_queue_size:
-            return super(Channel, self)._size(queue)
+            return super()._size(queue)
 
         if queue in self._fanout_queues:
             return self._get_broadcast_cursor(queue).get_size()
@@ -227,7 +227,7 @@ class Channel(virtual.Channel):
         if self.ttl:
             self.queues.remove({'_id': queue})
 
-        super(Channel, self).queue_delete(queue, **kwargs)
+        super().queue_delete(queue, **kwargs)
 
         if queue in self._fanout_queues:
             try:

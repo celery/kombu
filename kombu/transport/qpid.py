@@ -1463,7 +1463,7 @@ class ReceiversMonitor(threading.Thread):
         :type w: int
 
         """
-        super(ReceiversMonitor, self).__init__()
+        super().__init__()
         self._session = session
         self._w_fd = w
 
@@ -1564,7 +1564,7 @@ class Transport(base.Transport):
 
     def __init__(self, *args, **kwargs):
         self.verify_runtime_environment()
-        super(Transport, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.r, self._w = os.pipe()
         if fcntl is not None:
             fcntl.fcntl(self.r, fcntl.F_SETFL, os.O_NONBLOCK)

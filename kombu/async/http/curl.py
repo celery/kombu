@@ -39,7 +39,7 @@ class CurlClient(BaseClient):
         if pycurl is None:
             raise ImportError('The curl client requires the pycurl library.')
         hub = hub or get_event_loop()
-        super(CurlClient, self).__init__(hub)
+        super().__init__(hub)
         self.max_clients = max_clients
 
         self._multi = pycurl.CurlMulti()

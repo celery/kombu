@@ -193,7 +193,7 @@ class Transport(virtual.Transport):
         if kazoo is None:
             raise ImportError('The kazoo library is not installed')
 
-        super(Transport, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def driver_version(self):
         return kazoo.__version__

@@ -10,12 +10,12 @@ class Message(base.Message):
 
     def __init__(self, *args, **kwargs):
         self.throw_decode_error = kwargs.get('throw_decode_error', False)
-        super(Message, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def decode(self):
         if self.throw_decode_error:
             raise ValueError("can't decode message")
-        return super(Message, self).decode()
+        return super().decode()
 
 
 class Channel(base.StdChannel):

@@ -850,7 +850,7 @@ class ConnectionPool(Resource):
 
     def __init__(self, connection, limit=None, **kwargs):
         self.connection = connection
-        super(ConnectionPool, self).__init__(limit=limit)
+        super().__init__(limit=limit)
 
     def new(self):
         return self.connection.clone()
@@ -891,7 +891,7 @@ class ChannelPool(Resource):
 
     def __init__(self, connection, limit=None, **kwargs):
         self.connection = connection
-        super(ChannelPool, self).__init__(limit=limit)
+        super().__init__(limit=limit)
 
     def new(self):
         return lazy(self.connection.channel)

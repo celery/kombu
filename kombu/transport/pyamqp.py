@@ -23,7 +23,7 @@ class Message(base.Message):
 
     def __init__(self, channel, msg, **kwargs):
         props = msg.properties
-        super(Message, self).__init__(
+        super().__init__(
             channel,
             body=msg.body,
             delivery_tag=msg.delivery_tag,
