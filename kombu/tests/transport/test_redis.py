@@ -336,9 +336,8 @@ class test_Channel(Case):
         self.channel._do_restore_message(
             pl2, 'ex', 'rkey', client,
         )
-        client.rpush.assert_has_calls([
-            call('george', spl2), call('elaine', spl2),
-        ], any_order=True)
+        client.rpush.assert_any_call('george', spl2)
+        client.rpush.assert_any_call('elaine', spl2)
 
         client.rpush.side_effect = KeyError()
         with patch('kombu.transport.redis.crit') as crit:
