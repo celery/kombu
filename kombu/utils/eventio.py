@@ -82,9 +82,8 @@ class _epoll(object):
             self._epoll.unregister(fd)
         except (socket.error, ValueError, KeyError, TypeError):
             pass
-        except (IOError, OSError) as exc:
-            if getattr(exc, 'errno', None) not in (errno.ENOENT, errno.EPERM):
-                raise
+        except (PermissionError, FileNotFoundError):
+            pass
 
     def poll(self, timeout):
         try:
