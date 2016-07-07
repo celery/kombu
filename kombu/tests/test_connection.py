@@ -3,7 +3,7 @@ from __future__ import absolute_import, unicode_literals
 import pickle
 import socket
 
-from copy import copy
+from copy import copy, deepcopy
 
 from kombu import Connection, Consumer, Producer, parse_url
 from kombu.connection import Resource
@@ -138,6 +138,11 @@ class test_connection_utils(Case):
             userid='guest', password='guest', hostname='[::1]',
             port=5672, virtual_host='/',
         )
+
+    def test_connection_copy(self):
+        conn = Connection(self.url, alternates=['amqp://host'])
+        clone = deepcopy(conn)
+        self.assertEqual(clone.alt, ['amqp://host'])
 
 
 class test_Connection(Case):
