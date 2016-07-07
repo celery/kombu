@@ -576,6 +576,7 @@ class Connection(object):
             ('login_method', self.login_method or D.get('login_method')),
             ('uri_prefix', self.uri_prefix),
             ('heartbeat', self.heartbeat),
+            ('failover_strategy', self.failover_strategy),
             ('alternates', self.alt),
         )
         return info
