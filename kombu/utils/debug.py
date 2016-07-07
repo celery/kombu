@@ -26,7 +26,7 @@ def setup_logging(loglevel=logging.DEBUG, loggers=['kombu.connection',
 
 
 @python_2_unicode_compatible
-class Logwrapped(object):
+class Logwrapped:
     __ignore = ('__enter__', '__exit__')
 
     def __init__(self, instance, logger=None, ident=None):

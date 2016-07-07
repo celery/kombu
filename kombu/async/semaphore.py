@@ -16,7 +16,7 @@ __all__ = ['DummyLock', 'LaxBoundedSemaphore']
 
 
 @python_2_unicode_compatible
-class LaxBoundedSemaphore(object):
+class LaxBoundedSemaphore:
     """Asynchronous Bounded Semaphore.
 
     Lax means that the value will stay within the specified
@@ -105,7 +105,7 @@ class LaxBoundedSemaphore(object):
         )
 
 
-class DummyLock(object):
+class DummyLock:
     """Pretending to be a lock."""
 
     def __enter__(self):

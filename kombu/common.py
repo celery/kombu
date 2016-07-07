@@ -317,7 +317,7 @@ def insured(pool, fun, args, kwargs, errback=None, on_revive=None, **opts):
         return retval
 
 
-class QoS(object):
+class QoS:
     """Thread safe increment/decrement of a channels prefetch_count.
 
     :param callback: Function used to set new prefetch count,

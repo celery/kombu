@@ -22,7 +22,7 @@ __all__ = ['Exchange', 'Queue', 'Producer', 'Consumer']
 
 
 @python_2_unicode_compatible
-class Producer(object):
+class Producer:
     """Message Producer.
 
     :param channel: Connection or channel.
@@ -281,7 +281,7 @@ class Producer(object):
 
 
 @python_2_unicode_compatible
-class Consumer(object):
+class Consumer:
     """Message consumer.
 
     :param channel: see :attr:`channel`.

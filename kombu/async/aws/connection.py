@@ -35,7 +35,7 @@ __all__ = [
 
 
 @python_2_unicode_compatible
-class AsyncHTTPResponse(object):
+class AsyncHTTPResponse:
 
     def __init__(self, response):
         self.response = response
@@ -76,7 +76,7 @@ class AsyncHTTPResponse(object):
 
 
 @python_2_unicode_compatible
-class AsyncHTTPConnection(object):
+class AsyncHTTPConnection:
     Request = Request
     Response = AsyncHTTPResponse
 
@@ -157,7 +157,7 @@ class AsyncHTTPSConnection(AsyncHTTPConnection):
     scheme = 'https'
 
 
-class AsyncConnection(object):
+class AsyncConnection:
 
     def __init__(self, http_client=None, **kwargs):
         if boto is None:

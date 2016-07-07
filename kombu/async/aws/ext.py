@@ -7,7 +7,7 @@ try:
 except ImportError:  # pragma: no cover
     boto = get_regions = ResultSet = RegionInfo = XmlHandler = None
 
-    class _void(object):
+    class _void:
         pass
     AWSAuthConnection = AWSQueryConnection = _void  # noqa
 

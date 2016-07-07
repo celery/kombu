@@ -30,7 +30,7 @@ class LifoQueue(_LifoQueue):
         self.queue = deque()
 
 
-class Resource(object):
+class Resource:
     LimitExceeded = exceptions.LimitExceeded
 
     close_after_fork = False

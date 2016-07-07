@@ -64,7 +64,7 @@ except AttributeError:
     SELECT_BAD_FD = {errno.EBADF}
 
 
-class _epoll(object):
+class _epoll:
 
     def __init__(self):
         self._epoll = epoll()
@@ -96,7 +96,7 @@ class _epoll(object):
         self._epoll.close()
 
 
-class _kqueue(object):
+class _kqueue:
     w_fflags = (KQ_NOTE_WRITE | KQ_NOTE_EXTEND |
                 KQ_NOTE_ATTRIB | KQ_NOTE_DELETE)
 
@@ -183,7 +183,7 @@ class _kqueue(object):
         self._kqueue.close()
 
 
-class _poll(object):
+class _poll:
 
     def __init__(self):
         self._poller = xpoll()
@@ -245,7 +245,7 @@ class _poll(object):
         self._poller = None
 
 
-class _select(object):
+class _select:
 
     def __init__(self):
         self._all = (self._rfd,

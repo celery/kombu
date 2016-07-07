@@ -37,7 +37,7 @@ Broker connection error, trying again in %s seconds: %r.\
 """
 
 
-class ConsumerMixin(object):
+class ConsumerMixin:
     """Convenience mixin for implementing consumer programs.
 
     It can be used outside of threads, with threads, or greenthreads

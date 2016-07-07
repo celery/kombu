@@ -52,7 +52,7 @@ def safeify_format(fmt, args,
         yield filt(args[index]) if filt else args[index]
 
 
-class LogMixin(object):
+class LogMixin:
 
     def debug(self, *args, **kwargs):
         return self.log(logging.DEBUG, *args, **kwargs)

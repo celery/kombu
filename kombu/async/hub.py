@@ -57,7 +57,7 @@ def set_event_loop(loop):
 
 
 @python_2_unicode_compatible
-class Hub(object):
+class Hub:
     """Event loop object.
 
     :keyword timer: Specify timer object.

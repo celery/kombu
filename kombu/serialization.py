@@ -69,7 +69,7 @@ def parenthesize_alias(first, second):
     return '%s (%s)' % (first, second) if first else second
 
 
-class SerializerRegistry(object):
+class SerializerRegistry:
     """The registry keeps track of serialization methods."""
 
     def __init__(self):

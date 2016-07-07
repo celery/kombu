@@ -19,7 +19,7 @@ __all__ = [
 
 
 @python_2_unicode_compatible
-class FairCycle(object):
+class FairCycle:
     """Consume from a set of resources, where each resource gets
     an equal chance to be consumed from."""
 
@@ -58,7 +58,7 @@ class FairCycle(object):
             self=self, size=len(self.resources))
 
 
-class round_robin_cycle(object):
+class round_robin_cycle:
 
     def __init__(self, it=None):
         self.items = it if it is not None else []

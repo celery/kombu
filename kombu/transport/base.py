@@ -25,7 +25,7 @@ def _LeftBlank(obj, method):
             obj.__class__, method))
 
 
-class StdChannel(object):
+class StdChannel:
     no_ack_consumers = None
 
     def Consumer(self, *args, **kwargs):
@@ -51,7 +51,7 @@ class StdChannel(object):
         self.close()
 
 
-class Management(object):
+class Management:
 
     def __init__(self, transport):
         self.transport = transport
@@ -82,7 +82,7 @@ default_transport_capabilities = Implements(
 )
 
 
-class Transport(object):
+class Transport:
     """Base class for transports."""
     Management = Management
 

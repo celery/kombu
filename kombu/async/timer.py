@@ -49,7 +49,7 @@ def to_timestamp(d, default_timezone=utc, time=monotonic):
 
 @total_ordering
 @python_2_unicode_compatible
-class Entry(object):
+class Entry:
     if not IS_PYPY:  # pragma: no cover
         __slots__ = (
             'fun', 'args', 'kwargs', 'tref', 'canceled',
@@ -99,7 +99,7 @@ class Entry(object):
         self.canceled = value
 
 
-class Timer(object):
+class Timer:
     """ETA scheduler."""
     Entry = Entry
 

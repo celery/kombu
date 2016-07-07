@@ -325,7 +325,7 @@ class Exchange(MaybeChannelBound):
 
 
 @python_2_unicode_compatible
-class binding(Object):
+class binding:
     """Represents a queue or exchange binding.
 
     :keyword exchange: Exchange to bind to.

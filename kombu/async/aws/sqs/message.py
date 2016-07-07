@@ -9,7 +9,7 @@ __all__ = ['BaseAsyncMessage', 'AsyncRawMessage', 'AsyncMessage',
            'AsyncMHMessage', 'AsyncEncodedMHMessage', 'AsyncJSONMessage']
 
 
-class BaseAsyncMessage(object):
+class BaseAsyncMessage:
 
     def delete(self, callback=None):
         if self.queue:

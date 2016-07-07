@@ -16,7 +16,7 @@ from kombu.async.semaphore import DummyLock, LaxBoundedSemaphore
 from kombu.tests.case import Case, Mock, call, patch
 
 
-class File(object):
+class File:
 
     def __init__(self, fd):
         self.fd = fd

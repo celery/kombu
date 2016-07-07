@@ -226,7 +226,7 @@ class QoS(virtual.QoS):
         return self.channel.visibility_timeout
 
 
-class MultiChannelPoller(object):
+class MultiChannelPoller:
     eventflags = READ | ERR
 
     #: Set by :meth:`get` while reading from the socket.

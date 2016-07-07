@@ -11,14 +11,14 @@ class test_misc(Case):
 
     def test_iterconsume(self):
 
-        class MyConnection(object):
+        class MyConnection:
             drained = 0
 
             def drain_events(self, *args, **kwargs):
                 self.drained += 1
                 return self.drained
 
-        class Consumer(object):
+        class Consumer:
             active = False
 
             def consume(self, *args, **kwargs):

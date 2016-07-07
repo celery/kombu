@@ -6,7 +6,7 @@ from kombu.utils.json import _DecodeError, dumps, loads
 from kombu.tests.case import Case, MagicMock, Mock, skip
 
 
-class Custom(object):
+class Custom:
 
     def __init__(self, data):
         self.data = data

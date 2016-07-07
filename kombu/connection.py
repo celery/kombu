@@ -47,7 +47,7 @@ _log_channel = os.environ.get('KOMBU_LOG_CHANNEL', False)
 
 
 @python_2_unicode_compatible
-class Connection(object):
+class Connection:
     """A connection to the broker.
 
     :param URL:  Broker URL, or a list of URLs, e.g.
@@ -514,7 +514,7 @@ class Connection(object):
         """
         channels = [channel]
 
-        class Revival(object):
+        class Revival:
             __name__ = getattr(fun, '__name__', None)
             __module__ = getattr(fun, '__module__', None)
             __doc__ = getattr(fun, '__doc__', None)

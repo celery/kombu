@@ -101,7 +101,7 @@ class test_safe_str(Case):
 
     def test_when_unrepresentable(self):
 
-        class O(object):
+        class O:
 
             def __repr__(self):
                 raise KeyError('foo')

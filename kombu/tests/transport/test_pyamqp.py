@@ -100,7 +100,7 @@ class test_Transport(Case):
 
     def test_dnspython_localhost_resolve_bug(self):
 
-        class Conn(object):
+        class Conn:
 
             def __init__(self, **kwargs):
                 vars(self).update(kwargs)

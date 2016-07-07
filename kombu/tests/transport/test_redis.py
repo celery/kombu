@@ -41,7 +41,7 @@ class ResponseError(Exception):
     pass
 
 
-class Client(object):
+class Client:
     queues = {}
     sets = defaultdict(set)
     hashes = defaultdict(dict)
@@ -134,10 +134,10 @@ class Client(object):
     def _new_queue(self, key):
         self.queues[key] = _Queue()
 
-    class _sconnection(object):
+    class _sconnection:
         disconnected = False
 
-        class _socket(object):
+        class _socket:
             blocking = True
             filenos = count(30)
 
@@ -167,7 +167,7 @@ class Client(object):
     def pubsub(self, *args, **kwargs):
         connection = self.connection
 
-        class ConnectionPool(object):
+        class ConnectionPool:
 
             def get_connection(self, *args, **kwargs):
                 return connection
@@ -176,7 +176,7 @@ class Client(object):
         return self
 
 
-class Pipeline(object):
+class Pipeline:
 
     def __init__(self, client):
         self.client = client
@@ -960,7 +960,7 @@ def _redis_modules():
     exceptions.InvalidResponse = InvalidResponse
     exceptions.ResponseError = ResponseError
 
-    class Redis(object):
+    class Redis:
         pass
 
     myredis = types.ModuleType(bytes_if_py2('redis'))

@@ -259,7 +259,7 @@ def emergency_dump_state(state, open_file=open, dump=None, stderr=None):
     return persist
 
 
-class cached_property(object):
+class cached_property:
     """Property descriptor that caches the return value
     of the get function.
 
@@ -391,7 +391,7 @@ def entrypoints(namespace):
 
 
 @python_2_unicode_compatible
-class ChannelPromise(object):
+class ChannelPromise:
 
     def __init__(self, contract):
         self.__contract__ = contract

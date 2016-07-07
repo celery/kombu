@@ -35,7 +35,7 @@ Kombu requires MongoDB version 2.2+ (server is {0}) for TTL indexes support\
 """
 
 
-class BroadcastCursor(object):
+class BroadcastCursor:
     """Cursor for broadcast queues."""
 
     def __init__(self, cursor):

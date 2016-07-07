@@ -5,7 +5,7 @@ from kombu import Connection, Producer, Consumer, Queue
 from kombu.utils import uuid
 
 
-class FibonacciRpcClient(object):
+class FibonacciRpcClient:
 
     def __init__(self, connection):
         self.connection = connection

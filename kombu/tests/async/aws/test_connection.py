@@ -370,7 +370,7 @@ class test_AsyncAWSQueryConnection(AWSCase):
     def test_get_object(self):
         with self.mock_make_request() as callback:
 
-            class Result(object):
+            class Result:
                 parent = None
                 value = None
 

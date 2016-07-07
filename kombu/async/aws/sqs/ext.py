@@ -7,7 +7,7 @@ try:
 except ImportError:  # pragma: no cover
     boto = Attributes = BatchResults = None  # noqa
 
-    class _void(object):
+    class _void:
         pass
     regions = SQSConnection = Queue = _void
 

@@ -1527,7 +1527,7 @@ class test_Transport__establish_connection(QPidCase):
 
     def setup(self):
 
-        class MockClient(object):
+        class MockClient:
             pass
 
         self.client = MockClient()

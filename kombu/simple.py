@@ -19,7 +19,7 @@ from .five import Empty, monotonic
 __all__ = ['SimpleQueue', 'SimpleBuffer']
 
 
-class SimpleBase(object):
+class SimpleBase:
     Empty = Empty
     _consuming = False
 

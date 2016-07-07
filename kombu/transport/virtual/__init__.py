@@ -65,7 +65,7 @@ queue_binding_t = namedtuple('queue_binding_t', (
 ))
 
 
-class Base64(object):
+class Base64:
 
     def encode(self, s):
         return bytes_to_str(base64.b64encode(str_to_bytes(s)))
@@ -84,7 +84,7 @@ class UndeliverableWarning(UserWarning):
     pass
 
 
-class BrokerState(object):
+class BrokerState:
 
     #: Mapping of exchange name to
     #: :class:`kombu.transport.virtual.exchange.ExchangeType`
@@ -153,7 +153,7 @@ class BrokerState(object):
         )
 
 
-class QoS(object):
+class QoS:
     """Quality of Service guarantees.
 
     Only supports `prefetch_count` at this point.
@@ -344,7 +344,7 @@ class Message(base.Message):
         }
 
 
-class AbstractChannel(object):
+class AbstractChannel:
     """This is an abstract class defining the channel methods
     you'd usually want to implement in a virtual channel.
 

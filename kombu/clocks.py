@@ -70,7 +70,7 @@ class timetuple(tuple):
 
 
 @python_2_unicode_compatible
-class LamportClock(object):
+class LamportClock:
     """Lamport's logical clock.
 
     From Wikipedia:

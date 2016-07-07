@@ -20,7 +20,7 @@ IS_PYPY = hasattr(sys, 'pypy_version_info')
 
 
 @python_2_unicode_compatible
-class Message(object):
+class Message:
     """Base class for received messages."""
 
     MessageStateError = MessageStateError

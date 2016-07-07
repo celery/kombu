@@ -122,7 +122,7 @@ class Channel(base.StdChannel):
         self._called('basic_qos')
 
 
-class Connection(object):
+class Connection:
     connected = True
 
     def __init__(self, client):

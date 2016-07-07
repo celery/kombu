@@ -17,7 +17,7 @@ from kombu.async.aws.ext import exception
 from kombu.tests.case import Case, skip
 
 
-class SQSQueueMock(object):
+class SQSQueueMock:
 
     def __init__(self, name):
         self.name = name
@@ -56,7 +56,7 @@ class SQSQueueMock(object):
         return True
 
 
-class SQSConnectionMock(object):
+class SQSConnectionMock:
 
     def __init__(self):
         self.queues = {

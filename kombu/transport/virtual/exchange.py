@@ -13,7 +13,7 @@ from kombu.utils import escape_regex
 import re
 
 
-class ExchangeType(object):
+class ExchangeType:
     """Implements the specifics for an exchange type.
 
     :param channel: AMQ Channel

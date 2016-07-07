@@ -157,7 +157,7 @@ class AuthenticationFailure(Exception):
     pass
 
 
-class QpidMessagingExceptionHandler(object):
+class QpidMessagingExceptionHandler:
     """An exception handling decorator that silences some exceptions.
 
     An exception handling class designed to silence specific exceptions
@@ -210,7 +210,7 @@ class QpidMessagingExceptionHandler(object):
         return decorator
 
 
-class QoS(object):
+class QoS:
     """A helper object for message prefetch and ACKing purposes.
 
     :keyword prefetch_count: Initial prefetch count, hard set to 1.
@@ -1267,7 +1267,7 @@ class Channel(base.StdChannel):
             return default
 
 
-class Connection(object):
+class Connection:
     """Encapsulate a connection object for the
     :class:`~kombu.transport.qpid.Transport`.
 

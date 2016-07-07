@@ -41,7 +41,7 @@ logger = get_logger(__name__)
 debug, error = logger.debug, logger.error
 
 
-class Node(object):
+class Node:
 
     #: hostname of the node.
     hostname = None
@@ -141,7 +141,7 @@ class Node(object):
                                     serializer=self.mailbox.serializer)
 
 
-class Mailbox(object):
+class Mailbox:
     node_cls = Node
     exchange_fmt = '%s.pidbox'
     reply_exchange_fmt = 'reply.%s.pidbox'

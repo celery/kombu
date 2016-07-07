@@ -158,7 +158,7 @@ def memoize(maxsize=None, keyfun=None, Cache=LRUCache):
 
 
 @python_2_unicode_compatible
-class lazy(object):
+class lazy:
     """Holds lazy evaluation.
 
     Evaluated when called or if the :meth:`evaluate` method is called.

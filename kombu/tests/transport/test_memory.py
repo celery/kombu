@@ -149,7 +149,7 @@ class test_MemoryTransport(Case):
         )
         message = consumer.queues[0].get()._raw
 
-        class Cycle(object):
+        class Cycle:
 
             def get(self, timeout=None):
                 return (message, 'foo'), c1

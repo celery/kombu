@@ -25,7 +25,7 @@ def _any(v):
     return v
 
 
-class Object(object):
+class Object:
     """Common base class supporting automatic kwargs->attributes handling,
     and cloning."""
     attrs = ()

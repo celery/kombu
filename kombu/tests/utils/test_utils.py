@@ -13,7 +13,7 @@ from kombu.tests.case import Case, Mock, patch, mock
 
 
 @python_2_unicode_compatible
-class OldString(object):
+class OldString:
 
     def __init__(self, value):
         self.value = value
@@ -175,7 +175,7 @@ class test_retry_over_time(Case):
     def test_retry_always(self):
         Predicate = self.Predicate
 
-        class Fun(object):
+        class Fun:
 
             def __init__(self):
                 self.calls = 0
@@ -203,7 +203,7 @@ class test_cached_property(Case):
 
     def test_deleting(self):
 
-        class X(object):
+        class X:
             xx = False
 
             @utils.cached_property
@@ -223,7 +223,7 @@ class test_cached_property(Case):
 
     def test_when_access_from_class(self):
 
-        class X(object):
+        class X:
             xx = None
 
             @utils.cached_property

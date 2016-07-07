@@ -48,7 +48,7 @@ def PromiseMock(*args, **kwargs):
     return m
 
 
-class MockPool(object):
+class MockPool:
 
     def __init__(self, value=None):
         self.value = value or ContextMock()
