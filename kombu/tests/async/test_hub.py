@@ -38,7 +38,7 @@ class test_DummyLock(Case):
     def test_context(self):
         mutex = DummyLock()
         with mutex:
-            pass
+            ...
 
 
 class test_LaxBoundedSemaphore(Case):
@@ -149,7 +149,7 @@ class test_Utils(Case):
 
     def test_dummy_context(self):
         with _dummy_context():
-            pass
+            ...
 
     def test_raise_stop_error(self):
         with self.assertRaises(Stop):
@@ -227,7 +227,7 @@ class test_Hub(Case):
     def test_repr_callback_rcb(self):
 
         def f():
-            pass
+            ...
 
         self.assertEqual(_rcb(f), f.__name__)
         self.assertEqual(_rcb('foo'), 'foo')

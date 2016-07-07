@@ -17,7 +17,7 @@ def blocking(fun, *args, **kwargs):
 
 
 def select_blocking_method(type):
-    pass
+    ...
 
 
 def _detect_environment():

@@ -66,7 +66,7 @@ class test_Timer(Case):
         x = Timer()
         x.stop = Mock(name='timer.stop')
         with x:
-            pass
+            ...
         x.stop.assert_called_with()
 
     def test_supports_Timer_interface(self):

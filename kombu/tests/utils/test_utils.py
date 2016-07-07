@@ -78,13 +78,13 @@ class test_UUID(Case):
 class MyStringIO(StringIO):
 
     def close(self):
-        pass
+        ...
 
 
 class MyBytesIO(BytesIO):
 
     def close(self):
-        pass
+        ...
 
 
 class test_emergency_dump_state(Case):
@@ -123,7 +123,7 @@ class test_retry_over_time(Case):
         self.index = 0
 
     class Predicate(Exception):
-        pass
+        ...
 
     def myfun(self):
         if self.index < 9:

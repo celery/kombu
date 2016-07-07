@@ -58,7 +58,7 @@ class ProducerPool(Resource):
                 self._resource.put_nowait(self.new())
 
     def close_resource(self, resource):
-        pass
+        ...
 
     def prepare(self, p):
         if callable(p):

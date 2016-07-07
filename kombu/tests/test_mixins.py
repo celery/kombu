@@ -143,7 +143,7 @@ class test_ConsumerMixin_interface(Case):
 
     def test_extra_context(self):
         with self.c.extra_context(Mock(), Mock()):
-            pass
+            ...
 
     def test_restart_limit(self):
         self.assertTrue(self.c.restart_limit)
@@ -162,7 +162,7 @@ class test_ConsumerMixin_interface(Case):
         a.__enter__ = Mock(name='A.__enter__')
         b.__enter__ = Mock(name='B.__enter__')
         with self.c._consume_from(a, b):
-            pass
+            ...
         a.__enter__.assert_called_with()
         b.__enter__.assert_called_with()
 

@@ -33,7 +33,7 @@ class Channel(virtual.Channel):
         return self.queues[queue]
 
     def _queue_bind(self, *args):
-        pass
+        ...
 
     def _put_fanout(self, exchange, message, routing_key=None, **kwargs):
         for queue in self._lookup(exchange, routing_key):
@@ -61,7 +61,7 @@ class Channel(virtual.Channel):
         self.queues = {}
 
     def after_reply_message_received(self, queue):
-        pass
+        ...
 
 
 class Transport(virtual.Transport):

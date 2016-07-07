@@ -12,7 +12,7 @@ from kombu.tests.case import Case, Mock, patch, skip
 
 @skip.unless_module('librabbitmq')
 class lrmqCase(Case):
-    pass
+    ...
 
 
 class test_Message(lrmqCase):

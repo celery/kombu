@@ -10,15 +10,13 @@ from __future__ import absolute_import, unicode_literals
 from threading import Lock
 from itertools import islice
 from operator import itemgetter
-
-from .five import python_2_unicode_compatible, zip
+from typing import Any, List, Sequence, Tuple
 
 __all__ = ['LamportClock', 'timetuple']
 
 R_CLOCK = '_lamport(clock={0}, timestamp={1}, id={2} {3!r})'
 
 
-@python_2_unicode_compatible
 class timetuple(tuple):
     """Tuple of event clock information.
 
@@ -32,16 +30,17 @@ class timetuple(tuple):
     """
     __slots__ = ()
 
-    def __new__(cls, clock, timestamp, id, obj=None):
+    def __new__(cls, clock: int, timestamp: float,
+                id: str, obj: Any=None) -> 'timetuple':
         return tuple.__new__(cls, (clock, timestamp, id, obj))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return R_CLOCK.format(*self)
 
-    def __getnewargs__(self):
+    def __getnewargs__(self) -> Sequence:
         return tuple(self)
 
-    def __lt__(self, other):
+    def __lt__(self, other: Any) -> bool:
         # 0: clock 1: timestamp 3: process id
         try:
             A, B = self[0], other[0]
@@ -54,13 +53,13 @@ class timetuple(tuple):
         except IndexError:
             return NotImplemented
 
-    def __gt__(self, other):
+    def __gt__(self, other: Any) -> bool:
         return other < self
 
-    def __le__(self, other):
+    def __le__(self, other: Any) -> bool:
         return not other < self
 
-    def __ge__(self, other):
+    def __ge__(self, other: Any) -> bool:
         return not self < other
 
     clock = property(itemgetter(0))
@@ -69,7 +68,6 @@ class timetuple(tuple):
     obj = property(itemgetter(3))
 
 
-@python_2_unicode_compatible
 class LamportClock:
     """Lamport's logical clock.
 
@@ -109,21 +107,21 @@ class LamportClock:
     #: The clocks current value.
     value = 0
 
-    def __init__(self, initial_value=0, Lock=Lock):
+    def __init__(self, initial_value: int=0, Lock: Any=Lock) -> None:
         self.value = initial_value
         self.mutex = Lock()
 
-    def adjust(self, other):
+    def adjust(self, other: int) -> int:
         with self.mutex:
             value = self.value = max(self.value, other) + 1
             return value
 
-    def forward(self):
+    def forward(self) -> int:
         with self.mutex:
             self.value += 1
             return self.value
 
-    def sort_heap(self, h):
+    def sort_heap(self, h: List[Sequence]) -> Any:
         """List of tuples containing at least two elements, representing
         an event, where the first element is the event's scalar clock value,
         and the second element is the id of the process (usually
@@ -149,8 +147,8 @@ class LamportClock:
         # clock values unique, return first item
         return h[0]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self.value)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return '<LamportClock: {0.value}>'.format(self)

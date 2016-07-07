@@ -101,7 +101,7 @@ def get_redis_ConnectionError():
 
 
 class MutexHeld(Exception):
-    pass
+    ...
 
 
 @contextmanager

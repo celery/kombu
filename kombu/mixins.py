@@ -143,16 +143,16 @@ class ConsumerMixin:
         raise NotImplementedError('Subclass responsibility')
 
     def on_connection_revived(self):
-        pass
+        ...
 
     def on_consume_ready(self, connection, channel, consumers, **kwargs):
-        pass
+        ...
 
     def on_consume_end(self, connection, channel):
-        pass
+        ...
 
     def on_iteration(self):
-        pass
+        ...
 
     def on_decode_error(self, message, exc):
         error("Can't decode message body: %r (type:%r encoding:%r raw:%r')",
@@ -175,7 +175,7 @@ class ConsumerMixin:
             try:
                 if restart_limit.can_consume(_tokens):  # pragma: no cover
                     for _ in self.consume(limit=None, **kwargs):
-                        pass
+                        ...
                 else:
                     sleep(restart_limit.expected_time(_tokens))
             except errors:

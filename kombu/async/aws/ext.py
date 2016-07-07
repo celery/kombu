@@ -7,12 +7,10 @@ try:
 except ImportError:  # pragma: no cover
     boto = get_regions = ResultSet = RegionInfo = XmlHandler = None
 
-    class _void:
-        pass
+    class _void: ...  # noqa
     AWSAuthConnection = AWSQueryConnection = _void  # noqa
 
-    class BotoError(Exception):
-        pass
+    class BotoError(Exception): ...  # noqa
     exception = _void()
     exception.SQSError = BotoError
     exception.SQSDecodeError = BotoError

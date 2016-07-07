@@ -14,10 +14,13 @@ import socket
 import sys
 
 from numbers import Integral
+from typing import Any, Callable, Optional, Sequence, IO, cast
+from typing import Set, Tuple  # noqa
 
 from kombu.syn import detect_environment
 
 from . import fileno
+from .typing import Fd, Timeout
 
 __all__ = ['poll']
 
@@ -64,12 +67,16 @@ except AttributeError:
     SELECT_BAD_FD = {errno.EBADF}
 
 
-class _epoll:
+class BasePoller:
+    ...
+
+
+class _epoll(BasePoller):
 
     def __init__(self):
         self._epoll = epoll()
 
-    def register(self, fd, events):
+    def register(self, fd: Fd, events: int) -> Fd:
         try:
             self._epoll.register(fd, events)
         except Exception as exc:
@@ -77,7 +84,7 @@ class _epoll:
                 raise
         return fd
 
-    def unregister(self, fd):
+    def unregister(self, fd: Fd) -> None:
         try:
             self._epoll.unregister(fd)
         except (socket.error, ValueError, KeyError, TypeError):
@@ -85,18 +92,18 @@ class _epoll:
         except (PermissionError, FileNotFoundError):
             pass
 
-    def poll(self, timeout):
+    def poll(self, timeout: Timeout) -> Optional[Sequence]:
         try:
             return self._epoll.poll(timeout if timeout is not None else -1)
         except Exception as exc:
             if getattr(exc, 'errno', None) != errno.EINTR:
                 raise
 
-    def close(self):
+    def close(self) -> None:
         self._epoll.close()
 
 
-class _kqueue:
+class _kqueue(BasePoller):
     w_fflags = (KQ_NOTE_WRITE | KQ_NOTE_EXTEND |
                 KQ_NOTE_ATTRIB | KQ_NOTE_DELETE)
 
@@ -106,12 +113,12 @@ class _kqueue:
         self.on_file_change = None
         self._kcontrol = self._kqueue.control
 
-    def register(self, fd, events):
+    def register(self, fd: Fd, events: int) -> Fd:
         self._control(fd, events, KQ_EV_ADD)
         self._active[fd] = events
         return fd
 
-    def unregister(self, fd):
+    def unregister(self, fd: Fd) -> None:
         events = self._active.pop(fd, None)
         if events:
             try:
@@ -119,21 +126,21 @@ class _kqueue:
             except socket.error:
                 pass
 
-    def watch_file(self, fd):
+    def watch_file(self, fd: Fd) -> None:
         ev = kevent(fd,
                     filter=KQ_FILTER_VNODE,
                     flags=KQ_EV_ADD | KQ_EV_ENABLE | KQ_EV_CLEAR,
                     fflags=self.w_fflags)
         self._kcontrol([ev], 0)
 
-    def unwatch_file(self, fd):
+    def unwatch_file(self, fd: Fd) -> None:
         ev = kevent(fd,
                     filter=KQ_FILTER_VNODE,
                     flags=KQ_EV_DELETE,
                     fflags=self.w_fflags)
         self._kcontrol([ev], 0)
 
-    def _control(self, fd, events, flags):
+    def _control(self, fd: Fd, events: int, flags: int) -> None:
         if not events:
             return
         kevents = []
@@ -152,14 +159,15 @@ class _kqueue:
             except ValueError:
                 pass
 
-    def poll(self, timeout):
+    def poll(self, timeout: Timeout) -> Sequence:
         try:
             kevents = self._kcontrol(None, 1000, timeout)
         except Exception as exc:
             if getattr(exc, 'errno', None) == errno.EINTR:
-                return
+                return []
             raise
-        events, file_changes = {}, []
+        events = {}        # type: Dict
+        file_changes = []  # type: List
         for k in kevents:
             fd = k.ident
             if k.filter == KQ_FILTER_READ:
@@ -179,19 +187,19 @@ class _kqueue:
             self.on_file_change(file_changes)
         return list(events.items())
 
-    def close(self):
+    def close(self) -> None:
         self._kqueue.close()
 
 
-class _poll:
+class _poll(BasePoller):
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._poller = xpoll()
         self._quick_poll = self._poller.poll
         self._quick_register = self._poller.register
         self._quick_unregister = self._poller.unregister
 
-    def register(self, fd, events):
+    def register(self, fd: Fd, events: int) -> Fd:
         fd = fileno(fd)
         poll_flags = 0
         if events & ERR:
@@ -203,7 +211,7 @@ class _poll:
         self._quick_register(fd, poll_flags)
         return fd
 
-    def unregister(self, fd):
+    def unregister(self, fd: Fd) -> None:
         try:
             fd = fileno(fd)
         except socket.error as exc:
@@ -215,15 +223,17 @@ class _poll:
         self._quick_unregister(fd)
         return fd
 
-    def poll(self, timeout, round=math.ceil,
-             POLLIN=POLLIN, POLLOUT=POLLOUT, POLLERR=POLLERR,
-             READ=READ, WRITE=WRITE, ERR=ERR, Integral=Integral):
+    def poll(self, timeout: Timeout,
+             round: Callable=math.ceil,
+             POLLIN: int=POLLIN, POLLOUT: int=POLLOUT, POLLERR: int=POLLERR,
+             READ: int=READ, WRITE: int=WRITE, ERR: int=ERR,
+             Integral: Any=Integral) -> Sequence:
         timeout = 0 if timeout and timeout < 0 else round((timeout or 0) * 1e3)
         try:
             event_list = self._quick_poll(timeout)
         except (_selecterr, socket.error) as exc:
             if getattr(exc, 'errno', None) == errno.EINTR:
-                return
+                return []
             raise
 
         ready = []
@@ -241,18 +251,20 @@ class _poll:
             ready.append((fd, events))
         return ready
 
-    def close(self):
+    def close(self) -> None:
         self._poller = None
 
 
-class _select:
+class _select(BasePoller):
 
-    def __init__(self):
-        self._all = (self._rfd,
-                     self._wfd,
-                     self._efd) = set(), set(), set()
+    def __init__(self) -> None:
+        self._rfd = set()  # type: Set[Fd]
+        self._wfd = set()  # type: Set[Fd]
+        self._efd = set()  # type: Set[Fd]
+        # type: Tuple[Set[Fd], Set[Fd], Set[Fd]]
+        self._all = (self._rfd, self._wfd, self._efd)
 
-    def register(self, fd, events):
+    def register(self, fd: Fd, events: int) -> Fd:
         fd = fileno(fd)
         if events & ERR:
             self._efd.add(fd)
@@ -262,7 +274,7 @@ class _select:
             self._rfd.add(fd)
         return fd
 
-    def _remove_bad(self):
+    def _remove_bad(self) -> None:
         for fd in self._rfd | self._wfd | self._efd:
             try:
                 _selectf([fd], [], [], 0)
@@ -270,7 +282,7 @@ class _select:
                 if getattr(exc, 'errno', None) in SELECT_BAD_FD:
                     self.unregister(fd)
 
-    def unregister(self, fd):
+    def unregister(self, fd: Fd) -> None:
         try:
             fd = fileno(fd)
         except socket.error as exc:
@@ -283,40 +295,44 @@ class _select:
         self._wfd.discard(fd)
         self._efd.discard(fd)
 
-    def poll(self, timeout):
+    def poll(self, timeout: Timeout) -> Sequence:
         try:
             read, write, error = _selectf(
-                self._rfd, self._wfd, self._efd, timeout,
+                cast(Sequence, self._rfd),
+                cast(Sequence, self._wfd),
+                cast(Sequence, self._efd),
+                timeout,
             )
         except (_selecterr, socket.error) as exc:
             if getattr(exc, 'errno', None) == errno.EINTR:
-                return
+                return []
             elif getattr(exc, 'errno', None) in SELECT_BAD_FD:
-                return self._remove_bad()
+                self._remove_bad()
+                return []
             raise
 
-        events = {}
+        events = {}  # type: Dict
         for fd in read:
             if not isinstance(fd, Integral):
-                fd = fd.fileno()
+                fd = cast(IO, fd).fileno()
             events[fd] = events.get(fd, 0) | READ
         for fd in write:
             if not isinstance(fd, Integral):
-                fd = fd.fileno()
+                fd = cast(IO, fd).fileno()
             events[fd] = events.get(fd, 0) | WRITE
         for fd in error:
             if not isinstance(fd, Integral):
-                fd = fd.fileno()
+                fd = cast(IO, fd).fileno()
             events[fd] = events.get(fd, 0) | ERR
         return list(events.items())
 
-    def close(self):
+    def close(self) -> None:
         self._rfd.clear()
         self._wfd.clear()
         self._efd.clear()
 
 
-def _get_poller():
+def _get_poller() -> Any:
     if detect_environment() != 'default':
         # greenlet
         return _select
@@ -331,5 +347,5 @@ def _get_poller():
         return _select
 
 
-def poll(*args, **kwargs):
+def poll(*args, **kwargs) -> BasePoller:
     return _get_poller()(*args, **kwargs)

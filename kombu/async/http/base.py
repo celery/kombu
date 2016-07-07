@@ -245,7 +245,7 @@ class BaseClient:
         raise NotImplementedError('must implement add_request')
 
     def close(self):
-        pass
+        ...
 
     def on_header(self, headers, line):
         try:

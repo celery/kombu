@@ -17,11 +17,13 @@ from .exceptions import ContentDisallowed
 from .five import items, python_2_unicode_compatible, text_t, values
 from .serialization import dumps, prepare_accept_content
 from .utils import ChannelPromise, maybe_list
+from .utils import abstract
 
 __all__ = ['Exchange', 'Queue', 'Producer', 'Consumer']
 
 
 @python_2_unicode_compatible
+@abstract.Producer.register
 class Producer:
     """Message Producer.
 
@@ -281,6 +283,7 @@ class Producer:
 
 
 @python_2_unicode_compatible
+@abstract.Consumer.register
 class Consumer:
     """Message consumer.
 

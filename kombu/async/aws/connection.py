@@ -125,13 +125,13 @@ class AsyncHTTPConnection:
         return self.http_client.add_request(request)
 
     def set_debuglevel(self, level):
-        pass
+        ...
 
     def connect(self):
-        pass
+        ...
 
     def close(self):
-        pass
+        ...
 
     def putrequest(self, method, path, **kwargs):
         self.method = method
@@ -141,7 +141,7 @@ class AsyncHTTPConnection:
         self.headers.append((header, value))
 
     def endheaders(self):
-        pass
+        ...
 
     def send(self, data):
         if self.body:

@@ -18,11 +18,11 @@ from operator import itemgetter
 # jython breaks on relative import for .exceptions for some reason
 # (Issue #112)
 from kombu import exceptions
-from .five import bytes_if_py2, python_2_unicode_compatible, string_t, text_t
 from .log import get_logger
 from .resource import Resource
 from .transport import get_transport_cls, supports_librabbitmq
 from .utils import cached_property, retry_over_time, shufflecycle, HashedSeq
+from .utils import abstract
 from .utils.functional import dictfilter, lazy
 from .utils.url import as_url, parse_url, quote, urlparse
 
@@ -46,7 +46,7 @@ _log_connection = os.environ.get('KOMBU_LOG_CONNECTION', False)
 _log_channel = os.environ.get('KOMBU_LOG_CHANNEL', False)
 
 
-@python_2_unicode_compatible
+@abstract.Connection.register
 class Connection:
     """A connection to the broker.
 
@@ -164,7 +164,7 @@ class Connection:
             'login_method': login_method, 'heartbeat': heartbeat
         }
 
-        if hostname and not isinstance(hostname, string_t):
+        if hostname and not isinstance(hostname, str):
             alt.extend(hostname)
             hostname = alt[0]
         if hostname and '://' in hostname:
@@ -248,7 +248,7 @@ class Connection:
     def _debug(self, msg, *args, **kwargs):
         if self._logger:  # pragma: no cover
             fmt = '[Kombu connection:{id:#x}] {msg}'
-            logger.debug(fmt.format(id=id(self), msg=text_t(msg)),
+            logger.debug(fmt.format(id=id(self), msg=str(msg)),
                          *args, **kwargs)
 
     def connect(self):
@@ -487,7 +487,7 @@ class Connection:
                         raise
                     self._debug('ensure channel error: %r', exc, exc_info=1)
                     errback and errback(exc, 0)
-        _ensured.__name__ = bytes_if_py2('{0}(ensured)'.format(fun.__name__))
+        _ensured.__name__ = '{0}(ensured)'.format(fun.__name__)
         _ensured.__doc__ = fun.__doc__
         _ensured.__module__ = fun.__module__
         return _ensured
@@ -539,7 +539,7 @@ class Connection:
     def get_transport_cls(self):
         """Get the currently used transport class."""
         transport_cls = self.transport_cls
-        if not transport_cls or isinstance(transport_cls, string_t):
+        if not transport_cls or isinstance(transport_cls, str):
             transport_cls = get_transport_cls(transport_cls)
         return transport_cls
 

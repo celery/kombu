@@ -13,6 +13,7 @@ from .abstract import MaybeChannelBound, Object
 from .exceptions import ContentDisallowed
 from .five import python_2_unicode_compatible, string_t
 from .serialization import prepare_accept_content
+from .utils import abstract
 
 TRANSIENT_DELIVERY_MODE = 1
 PERSISTENT_DELIVERY_MODE = 2
@@ -43,6 +44,7 @@ def maybe_delivery_mode(
 
 
 @python_2_unicode_compatible
+@abstract.Entity.register
 class Exchange(MaybeChannelBound):
     """An Exchange declaration.
 
@@ -325,6 +327,7 @@ class Exchange(MaybeChannelBound):
 
 
 @python_2_unicode_compatible
+@abstract.Entity.register
 class binding:
     """Represents a queue or exchange binding.
 
@@ -379,6 +382,7 @@ class binding:
 
 
 @python_2_unicode_compatible
+@abstract.Entity.register
 class Queue(MaybeChannelBound):
     """A Queue declaration.
 

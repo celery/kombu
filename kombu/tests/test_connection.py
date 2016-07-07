@@ -367,7 +367,7 @@ class test_Connection(Case):
     def test_close_survives_connerror(self):
 
         class _CustomError(Exception):
-            pass
+            ...
 
         class MyTransport(Transport):
             connection_errors = (_CustomError,)
@@ -421,7 +421,7 @@ class test_Connection(Case):
 
     def test_ensure_failure(self):
         class _CustomError(Exception):
-            pass
+            ...
 
         def publish():
             raise _CustomError('bar')
@@ -432,7 +432,7 @@ class test_Connection(Case):
 
     def test_ensure_connection_failure(self):
         class _ConnectionError(Exception):
-            pass
+            ...
 
         def publish():
             raise _ConnectionError('failed connection')
@@ -524,7 +524,7 @@ class test_Connection_with_transport_options(Case):
 class xResource(Resource):
 
     def setup(self):
-        pass
+        ...
 
 
 class ResourceCase(Case):

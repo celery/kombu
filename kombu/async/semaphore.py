@@ -112,4 +112,4 @@ class DummyLock:
         return self
 
     def __exit__(self, *exc_info):
-        pass
+        ...

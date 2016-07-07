@@ -72,10 +72,10 @@ class TransportCase(unittest.TestCase):
     message_size_limit = None
 
     def before_connect(self):
-        pass
+        ...
 
     def after_connect(self, connection):
-        pass
+        ...
 
     def setUp(self):
         if self.transport:

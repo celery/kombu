@@ -13,6 +13,7 @@ from collections import deque
 
 from . import exceptions
 from .five import Empty, LifoQueue as _LifoQueue
+from .utils import abstract
 from .utils import register_after_fork
 from .utils.functional import lazy
 
@@ -30,6 +31,7 @@ class LifoQueue(_LifoQueue):
         self.queue = deque()
 
 
+@abstract.Resource.register
 class Resource:
     LimitExceeded = exceptions.LimitExceeded
 
@@ -117,7 +119,7 @@ class Resource:
         resource.close()
 
     def release_resource(self, resource):
-        pass
+        ...
 
     def replace(self, resource):
         """Replace resource with a new instance.  This can be used in case
@@ -135,7 +137,7 @@ class Resource:
             self.close_resource(resource)
 
     def collect_resource(self, resource):
-        pass
+        ...
 
     def force_close_all(self):
         """Close and remove all resources in the pool (also those in use).

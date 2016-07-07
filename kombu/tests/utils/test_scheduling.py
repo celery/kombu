@@ -6,7 +6,7 @@ from kombu.tests.case import Case
 
 
 class MyEmpty(Exception):
-    pass
+    ...
 
 
 def consume(fun, n):

@@ -7,8 +7,7 @@ try:
 except ImportError:  # pragma: no cover
     boto = Attributes = BatchResults = None  # noqa
 
-    class _void:
-        pass
+    class _void: ...  # noqa
     regions = SQSConnection = Queue = _void
 
     RawMessage = Message = MHMessage = \

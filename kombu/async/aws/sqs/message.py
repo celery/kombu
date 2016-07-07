@@ -23,20 +23,20 @@ class BaseAsyncMessage:
 
 
 class AsyncRawMessage(BaseAsyncMessage, RawMessage):
-    pass
+    ...
 
 
 class AsyncMessage(BaseAsyncMessage, Message):
-    pass
+    ...
 
 
 class AsyncMHMessage(BaseAsyncMessage, MHMessage):
-    pass
+    ...
 
 
 class AsyncEncodedMHMessage(BaseAsyncMessage, EncodedMHMessage):
-    pass
+    ...
 
 
 class AsyncJSONMessage(BaseAsyncMessage, JSONMessage):
-    pass
+    ...

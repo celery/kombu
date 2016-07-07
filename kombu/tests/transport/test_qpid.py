@@ -26,15 +26,15 @@ QPID_MODULE = 'kombu.transport.qpid'
 @skip.if_python3()
 @skip.if_pypy()
 class QPidCase(Case):
-    pass
+    ...
 
 
 class MockException(Exception):
-    pass
+    ...
 
 
 class BreakOutException(Exception):
-    pass
+    ...
 
 
 class test_QPidMessagingExceptionHandler(QPidCase):
@@ -1528,7 +1528,7 @@ class test_Transport__establish_connection(QPidCase):
     def setup(self):
 
         class MockClient:
-            pass
+            ...
 
         self.client = MockClient()
         self.client.connect_timeout = 4

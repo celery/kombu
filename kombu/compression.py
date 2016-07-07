@@ -5,21 +5,28 @@ kombu.compression
 Compression utilities.
 
 """
-from __future__ import absolute_import, unicode_literals
+from typing import AnyStr, Callable, Sequence, Tuple
+from typing import MutableMapping  # noqa
 
 from kombu.utils.encoding import ensure_bytes
 
 import zlib
 
-_aliases = {}
-_encoders = {}
-_decoders = {}
+__all__ = [
+    'register', 'encoders', 'get_encoder',
+    'get_decoder', 'compress', 'decompress',
+]
 
-__all__ = ['register', 'encoders', 'get_encoder',
-           'get_decoder', 'compress', 'decompress']
+TEncoder = Callable[[bytes], bytes]
+TDecoder = Callable[[bytes], bytes]
+
+_aliases = {}   # type: MutableMapping[str, str]
+_encoders = {}  # type: MutableMapping[str, TEncoder]
+_decoders = {}  # type: MutableMapping[str, TDecoder]
 
 
-def register(encoder, decoder, content_type, aliases=[]):
+def register(encoder: TEncoder, decoder: TDecoder, content_type: str,
+             aliases: Sequence[str]=[]) -> None:
     """Register new compression method.
 
     :param encoder: Function used to compress text.
@@ -33,23 +40,23 @@ def register(encoder, decoder, content_type, aliases=[]):
     _aliases.update((alias, content_type) for alias in aliases)
 
 
-def encoders():
+def encoders() -> Sequence[str]:
     """Return a list of available compression methods."""
     return list(_encoders)
 
 
-def get_encoder(t):
+def get_encoder(t: str) -> Tuple[TEncoder, str]:
     """Get encoder by alias name."""
     t = _aliases.get(t, t)
     return _encoders[t], t
 
 
-def get_decoder(t):
+def get_decoder(t: str) -> TDecoder:
     """Get decoder by alias name."""
     return _decoders[_aliases.get(t, t)]
 
 
-def compress(body, content_type):
+def compress(body: AnyStr, content_type: str) -> Tuple[bytes, str]:
     """Compress text.
 
     :param body: The text to compress.
@@ -60,7 +67,7 @@ def compress(body, content_type):
     return encoder(ensure_bytes(body)), content_type
 
 
-def decompress(body, content_type):
+def decompress(body: bytes, content_type: str) -> bytes:
     """Decompress compressed text.
 
     :param body: Previously compressed text to uncompress.

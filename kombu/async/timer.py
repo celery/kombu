@@ -182,7 +182,7 @@ class Timer:
             return True
 
     def stop(self):
-        pass
+        ...
 
     def __iter__(self, min=min, nowfun=monotonic,
                  pop=heapq.heappop, push=heapq.heappush):

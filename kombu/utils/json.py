@@ -4,15 +4,16 @@ from __future__ import absolute_import, unicode_literals
 import json as stdjson
 import sys
 
-from kombu.five import buffer_t, text_t, bytes_t
+from typing import Any, Callable
+
+from .typing import AnyBuffer
 
 try:
     import simplejson as json
 except ImportError:  # pragma: no cover
     import json  # noqa
 
-    class _DecodeError(Exception):  # noqa
-        pass
+    class _DecodeError(Exception): ... # noqa
 else:
     from simplejson.decoder import JSONDecodeError as _DecodeError
 
@@ -23,7 +24,7 @@ _encoder_cls = type(json._default_encoder)
 
 class JSONEncoder(_encoder_cls):
 
-    def default(self, obj, _super=_encoder_cls.default):
+    def default(self, obj: Any, _super: Callable=_encoder_cls.default) -> Any:
         try:
             reducer = obj.__json__
         except AttributeError:
@@ -32,11 +33,11 @@ class JSONEncoder(_encoder_cls):
             return reducer()
 
 
-def dumps(s, _dumps=json.dumps, cls=JSONEncoder):
+def dumps(s: Any, _dumps: Callable=json.dumps, cls: Any=JSONEncoder) -> str:
     return _dumps(s, cls=cls)
 
 
-def loads(s, _loads=json.loads, decode_bytes=IS_PY3):
+def loads(s: AnyBuffer, _loads: Callable=json.loads) -> Any:
     # None of the json implementations supports decoding from
     # a buffer/memoryview, or even reading from a stream
     #    (load is just loads(fp.read()))
@@ -45,12 +46,8 @@ def loads(s, _loads=json.loads, decode_bytes=IS_PY3):
     # </rant>
     if isinstance(s, memoryview):
         s = s.tobytes().decode('utf-8')
-    elif isinstance(s, bytearray):
+    elif isinstance(s, (bytearray, bytes)):
         s = s.decode('utf-8')
-    elif decode_bytes and isinstance(s, bytes_t):
-        s = s.decode('utf-8')
-    elif isinstance(s, buffer_t):
-        s = text_t(s)  # ... awwwwwww :(
 
     try:
         return _loads(s)

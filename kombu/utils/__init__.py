@@ -15,13 +15,16 @@ import sys
 from contextlib import contextmanager
 from itertools import count, repeat
 from time import sleep
+from typing import (
+    Any, Callable, Generator, IO, Iterable, Iterator, Mapping,
+    Optional, Sequence, Tuple,
+)
 from uuid import uuid4
 
 from vine.utils import wraps
 
-from kombu.five import items, python_2_unicode_compatible, reraise, string_t
-
 from .encoding import default_encode, safe_repr as _safe_repr
+from .typing import Fd
 
 try:
     from io import UnsupportedOperation
@@ -45,8 +48,10 @@ __all__ = ['EqualityDict', 'uuid', 'maybe_list',
            'reprkwargs', 'reprcall', 'nested', 'fileno', 'maybe_fileno']
 
 
-def symbol_by_name(name, aliases={}, imp=None, package=None,
-                   sep='.', default=None, **kwargs):
+def symbol_by_name(name: Any, aliases: Mapping[str, str]={},
+                   imp: Optional[Callable]=None,
+                   package: str=None,
+                   sep: str='.', default: Any=None, **kwargs) -> Any:
     """Get symbol by qualified name.
 
     The name should be the full dot-separated path to the class::
@@ -83,7 +88,7 @@ def symbol_by_name(name, aliases={}, imp=None, package=None,
     if imp is None:
         imp = importlib.import_module
 
-    if not isinstance(name, string_t):
+    if not isinstance(name, str):
         return name                                 # already a class
 
     name = aliases.get(name) or name
@@ -95,9 +100,9 @@ def symbol_by_name(name, aliases={}, imp=None, package=None,
         try:
             module = imp(module_name, package=package, **kwargs)
         except ValueError as exc:
-            reraise(ValueError,
-                    ValueError("Couldn't import {0!r}: {1}".format(name, exc)),
-                    sys.exc_info()[2])
+            raise ValueError(
+                "Couldn't import {0!r}: {1}".format(
+                    name, exc)).with_traceback(sys.exc_info()[2])
         return getattr(module, cls_name) if cls_name else module
     except (ImportError, AttributeError):
         if default is None:
@@ -108,17 +113,17 @@ def symbol_by_name(name, aliases={}, imp=None, package=None,
 class HashedSeq(list):
     """type used for hash() to make sure the hash is not generated
     multiple times."""
-    __slots__ = 'hashvalue'
+    __slots__ = ('hashvalue',)
 
-    def __init__(self, *seq):
+    def __init__(self, *seq: Sequence[Any]) -> None:
         self[:] = seq
         self.hashvalue = hash(seq)
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return self.hashvalue
 
 
-def eqhash(o):
+def eqhash(o: Any) -> int:
     try:
         return o.__eqhash__()
     except AttributeError:
@@ -127,20 +132,20 @@ def eqhash(o):
 
 class EqualityDict(dict):
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: Any) -> Any:
         h = eqhash(key)
         if h not in self:
             return self.__missing__(key)
         return dict.__getitem__(self, h)
 
-    def __setitem__(self, key, value):
-        return dict.__setitem__(self, eqhash(key), value)
+    def __setitem__(self, key: Any, value: Any) -> None:
+        dict.__setitem__(self, eqhash(key), value)
 
-    def __delitem__(self, key):
-        return dict.__delitem__(self, eqhash(key))
+    def __delitem__(self, key: Any) -> None:
+        dict.__delitem__(self, eqhash(key))
 
 
-def uuid():
+def uuid() -> str:
     """Generate a unique id, having - hopefully - a very small chance of
     collision.
 
@@ -149,7 +154,7 @@ def uuid():
     return str(uuid4())
 
 
-def maybe_list(v):
+def maybe_list(v: Any) -> Iterable:
     if v is None:
         return []
     if hasattr(v, '__iter__'):
@@ -157,7 +162,10 @@ def maybe_list(v):
     return [v]
 
 
-def fxrange(start=1.0, stop=None, step=1.0, repeatlast=False):
+def fxrange(start: float=1.0,
+            stop: Optional[float]=None,
+            step: float=1.0,
+            repeatlast: bool=False) -> Iterator[float]:
     cur = start * 1.0
     while 1:
         if not stop or cur <= stop:
@@ -169,8 +177,10 @@ def fxrange(start=1.0, stop=None, step=1.0, repeatlast=False):
             yield cur - step
 
 
-def fxrangemax(start=1.0, stop=None, step=1.0, max=100.0):
-    sum_, cur = 0, start * 1.0
+def fxrangemax(start: float=1.0,
+               stop: Optional[float]=None,
+               step: float=1.0, max: float=100.0) -> Iterator[float]:
+    sum_, cur = 0.0, start * 1.0
     while 1:
         if sum_ >= max:
             break
@@ -182,9 +192,15 @@ def fxrangemax(start=1.0, stop=None, step=1.0, max=100.0):
         sum_ += cur
 
 
-def retry_over_time(fun, catch, args=[], kwargs={}, errback=None,
-                    max_retries=None, interval_start=2, interval_step=2,
-                    interval_max=30, callback=None):
+def retry_over_time(fun: Callable, catch: Tuple,
+                    args: Sequence=[],
+                    kwargs: Dict={},
+                    errback: Optional[Callable]=None,
+                    max_retries: Optional[int]=None,
+                    interval_start: Optional[float]=2.0,
+                    interval_step: Optional[float]=2.0,
+                    interval_max: Optional[float]=30.0,
+                    callback: Optional[Callable]=None) -> Any:
     """Retry the function over and over until max retries is exceeded.
 
     For each retry we sleep a for a while before we try again, this interval
@@ -232,7 +248,9 @@ def retry_over_time(fun, catch, args=[], kwargs={}, errback=None,
                 sleep(abs(int(tts) - tts))
 
 
-def emergency_dump_state(state, open_file=open, dump=None, stderr=None):
+def emergency_dump_state(state: Any, open_file: Callable=open,
+                         dump: Optional[Callable]=None,
+                         stderr: Optional[IO]=None) -> str:
     from pprint import pformat
     from tempfile import mktemp
     stderr = sys.stderr if stderr is None else stderr
@@ -285,7 +303,10 @@ class cached_property:
 
     """
 
-    def __init__(self, fget=None, fset=None, fdel=None, doc=None):
+    def __init__(self, fget: Optional[Callable]=None,
+                 fset: Optional[Callable]=None,
+                 fdel: Optional[Callable]=None,
+                 doc: Optional[str]=None) -> None:
         self.__get = fget
         self.__set = fset
         self.__del = fdel
@@ -293,7 +314,7 @@ class cached_property:
         self.__name__ = fget.__name__
         self.__module__ = fget.__module__
 
-    def __get__(self, obj, type=None):
+    def __get__(self, obj: Any, type: Optional[Any]=None) -> Any:
         if obj is None:
             return self
         try:
@@ -302,14 +323,14 @@ class cached_property:
             value = obj.__dict__[self.__name__] = self.__get(obj)
             return value
 
-    def __set__(self, obj, value):
+    def __set__(self, obj: Any, value: Any) -> Any:
         if obj is None:
             return self
         if self.__set is not None:
             value = self.__set(obj, value)
         obj.__dict__[self.__name__] = value
 
-    def __delete__(self, obj):
+    def __delete__(self, obj: Any) -> Any:
         if obj is None:
             return self
         try:
@@ -320,18 +341,19 @@ class cached_property:
             if self.__del is not None:
                 self.__del(obj, value)
 
-    def setter(self, fset):
+    def setter(self, fset: Callable) -> Any:
         return self.__class__(self.__get, fset, self.__del)
 
-    def deleter(self, fdel):
+    def deleter(self, fdel: Callable) -> Any:
         return self.__class__(self.__get, self.__set, fdel)
 
 
-def reprkwargs(kwargs, sep=', ', fmt='{0}={1}'):
-    return sep.join(fmt.format(k, _safe_repr(v)) for k, v in items(kwargs))
+def reprkwargs(kwargs: Mapping, sep: str=', ', fmt: str='{0}={1}') -> str:
+    return sep.join(fmt.format(k, _safe_repr(v)) for k, v in kwargs.items())
 
 
-def reprcall(name, args=(), kwargs={}, sep=', '):
+def reprcall(name: str,
+             args: Sequence=(), kwargs: Mapping={}, sep: str=', ') -> str:
     return '{0}({1}{2}{3})'.format(
         name, sep.join(map(_safe_repr, args or ())),
         (args and kwargs) and sep or '',
@@ -369,20 +391,20 @@ def nested(*managers):  # pragma: no cover
                 # Don't rely on sys.exc_info() still containing
                 # the right information. Another exception may
                 # have been raised and caught by an exit method
-                reraise(exc[0], exc[1], exc[2])
+                raise exc[1].with_traceback(exc[2])
     finally:
         del(exc)
 
 
-def shufflecycle(it):
-    it = list(it)  # don't modify callers list
+def shufflecycle(it: Iterable) -> Iterator[Any]:
+    l = list(it)  # don't modify callers list
     shuffle = random.shuffle
-    for _ in repeat(None):
-        shuffle(it)
-        yield it[0]
+    while 1:
+        shuffle(l)
+        yield l[0]
 
 
-def entrypoints(namespace):
+def entrypoints(namespace: str) -> Iterator[Tuple[str, Any]]:
     try:
         from pkg_resources import iter_entry_points
     except ImportError:
@@ -390,40 +412,39 @@ def entrypoints(namespace):
     return ((ep, ep.load()) for ep in iter_entry_points(namespace))
 
 
-@python_2_unicode_compatible
 class ChannelPromise:
 
-    def __init__(self, contract):
+    def __init__(self, contract: Callable) -> None:
         self.__contract__ = contract
 
-    def __call__(self):
+    def __call__(self) -> Any:
         try:
             return self.__value__
         except AttributeError:
             value = self.__value__ = self.__contract__()
             return value
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         try:
             return repr(self.__value__)
         except AttributeError:
             return '<promise: 0x{0:x}>'.format(id(self.__contract__))
 
 
-def escape_regex(p, white=''):
+def escape_regex(p: str, white: str='') -> str:
     # what's up with re.escape? that code must be neglected or someting
     return ''.join(c if c.isalnum() or c in white
                    else ('\\000' if c == '\000' else '\\' + c)
                    for c in p)
 
 
-def fileno(f):
+def fileno(f: Fd) -> int:
     if isinstance(f, numbers.Integral):
         return f
     return f.fileno()
 
 
-def maybe_fileno(f):
+def maybe_fileno(f: Any) -> Optional[int]:
     """Get object fileno, or :const:`None` if not defined."""
     try:
         return fileno(f)
@@ -431,10 +452,10 @@ def maybe_fileno(f):
         pass
 
 
-def coro(gen):
+def coro(gen: Callable) -> Callable:
 
     @wraps(gen)
-    def wind_up(*args, **kwargs):
+    def wind_up(*args, **kwargs) -> Generator:
         it = gen(*args, **kwargs)
         next(it)
         return it

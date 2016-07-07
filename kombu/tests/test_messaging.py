@@ -224,7 +224,7 @@ class test_Producer(Case):
         chan = self.connection.channel()
 
         def on_return(exception, exchange, routing_key, message):
-            pass
+            ...
 
         p = Producer(chan, on_return=on_return)
         self.assertIn(on_return, chan.events['basic_return'])
@@ -255,7 +255,7 @@ class test_Consumer(Case):
         c.cancel = Mock(name='Consumer.cancel')
         c.cancel.side_effect = KeyError('foo')
         with c:
-            pass
+            ...
         c.cancel.assert_called_with()
 
     def test_receive_callback_accept(self):

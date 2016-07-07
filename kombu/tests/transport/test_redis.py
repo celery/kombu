@@ -38,7 +38,7 @@ from kombu.transport import redis  # noqa
 
 
 class ResponseError(Exception):
-    pass
+    ...
 
 
 class Client:
@@ -186,7 +186,7 @@ class Pipeline:
         return self
 
     def __exit__(self, *exc_info):
-        pass
+        ...
 
     def __getattr__(self, key):
         if key not in self.__dict__:
@@ -753,7 +753,7 @@ class test_Channel(Case):
         from redis import exceptions
 
         class ID(Exception):
-            pass
+            ...
 
         DataError = getattr(exceptions, 'DataError', None)
         InvalidData = getattr(exceptions, 'InvalidData', None)
@@ -939,19 +939,19 @@ class test_Redis(Case):
 def _redis_modules():
 
     class ConnectionError(Exception):
-        pass
+        ...
 
     class AuthenticationError(Exception):
-        pass
+        ...
 
     class InvalidData(Exception):
-        pass
+        ...
 
     class InvalidResponse(Exception):
-        pass
+        ...
 
     class ResponseError(Exception):
-        pass
+        ...
 
     exceptions = types.ModuleType(bytes_if_py2('redis.exceptions'))
     exceptions.ConnectionError = ConnectionError
@@ -961,7 +961,7 @@ def _redis_modules():
     exceptions.ResponseError = ResponseError
 
     class Redis:
-        pass
+        ...
 
     myredis = types.ModuleType(bytes_if_py2('redis'))
     myredis.exceptions = exceptions
@@ -1269,7 +1269,7 @@ class test_Mutex(Case):
 class test_RedisSentinel(Case):
 
     def setup(self):
-        pass
+        ...
 
     def test_method_called(self):
         from kombu.transport.redis import SentinelChannel

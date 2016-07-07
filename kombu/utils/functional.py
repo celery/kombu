@@ -1,15 +1,13 @@
 from __future__ import absolute_import, unicode_literals
 
-import sys
 import threading
 
-from collections import Iterable, Mapping, OrderedDict
+from collections import Iterable, Mapping, OrderedDict, UserDict
+from typing import (
+    Any, Callable, Dict, Iterator, KeysView, Optional, Sequence, Tuple,
+)
 
 from vine.utils import wraps
-
-from kombu.five import (
-    UserDict, items, keys, python_2_unicode_compatible, string_t,
-)
 
 __all__ = [
     'LRUCache', 'memoize', 'lazy', 'maybe_evaluate',
@@ -17,6 +15,8 @@ __all__ = [
 ]
 
 KEYWORD_MARK = object()
+
+MemoizeKeyFun = Callable[[Sequence, Mapping], Any]
 
 
 class LRUCache(UserDict):
@@ -29,17 +29,17 @@ class LRUCache(UserDict):
 
     """
 
-    def __init__(self, limit=None):
+    def __init__(self, limit: Optional[int]=None) -> None:
         self.limit = limit
         self.mutex = threading.RLock()
-        self.data = OrderedDict()
+        self.data = OrderedDict()  # type: OrderedDict
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: Any) -> Any:
         with self.mutex:
             value = self[key] = self.data.pop(key)
             return value
 
-    def update(self, *args, **kwargs):
+    def update(self, *args, **kwargs) -> None:
         with self.mutex:
             data, limit = self.data, self.limit
             data.update(*args, **kwargs)
@@ -48,30 +48,29 @@ class LRUCache(UserDict):
                 for _ in range(len(data) - limit):
                     data.popitem(last=False)
 
-    def popitem(self, last=True):
+    def popitem(self, last: bool=True) -> Any:
         with self.mutex:
             return self.data.popitem(last)
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: Any, value: Any) -> None:
         # remove least recently used key.
         with self.mutex:
             if self.limit and len(self.data) >= self.limit:
                 self.data.pop(next(iter(self.data)))
             self.data[key] = value
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator:
         return iter(self.data)
 
-    def _iterate_items(self):
+    def items(self) -> Iterator[Tuple[Any, Any]]:
         with self.mutex:
             for k in self:
                 try:
                     yield (k, self.data[k])
                 except KeyError:  # pragma: no cover
                     pass
-    iteritems = _iterate_items
 
-    def _iterate_values(self):
+    def values(self) -> Iterator[Any]:
         with self.mutex:
             for k in self:
                 try:
@@ -79,15 +78,12 @@ class LRUCache(UserDict):
                 except KeyError:  # pragma: no cover
                     pass
 
-    itervalues = _iterate_values
-
-    def _iterate_keys(self):
+    def keys(self) -> KeysView:
         # userdict.keys in py3k calls __getitem__
         with self.mutex:
-            return keys(self.data)
-    iterkeys = _iterate_keys
+            return self.data.keys()
 
-    def incr(self, key, delta=1):
+    def incr(self, key: Any, delta: int=1) -> Any:
         with self.mutex:
             # this acts as memcached does- store as a string, but return a
             # integer as long as it exists and we can cast it
@@ -95,39 +91,26 @@ class LRUCache(UserDict):
             self[key] = str(newval)
             return newval
 
-    def __getstate__(self):
+    def __getstate__(self) -> Mapping[str, Any]:
         d = dict(vars(self))
         d.pop('mutex')
         return d
 
-    def __setstate__(self, state):
+    def __setstate__(self, state: Dict[str, Any]) -> None:
         self.__dict__ = state
         self.mutex = threading.RLock()
 
-    if sys.version_info[0] == 3:  # pragma: no cover
-        keys = _iterate_keys
-        values = _iterate_values
-        items = _iterate_items
-    else:  # noqa
 
-        def keys(self):
-            return list(self._iterate_keys())
+def memoize(maxsize: Optional[int]=None,
+            keyfun: Optional[MemoizeKeyFun]=None,
+            Cache: Any=LRUCache) -> Callable:
 
-        def values(self):
-            return list(self._iterate_values())
-
-        def items(self):
-            return list(self._iterate_items())
-
-
-def memoize(maxsize=None, keyfun=None, Cache=LRUCache):
-
-    def _memoize(fun):
+    def _memoize(fun: Callable) -> Callable:
         mutex = threading.Lock()
         cache = Cache(limit=maxsize)
 
         @wraps(fun)
-        def _M(*args, **kwargs):
+        def _M(*args, **kwargs) -> Any:
             if keyfun:
                 key = keyfun(args, kwargs)
             else:
@@ -144,7 +127,7 @@ def memoize(maxsize=None, keyfun=None, Cache=LRUCache):
                 _M.hits += 1
             return value
 
-        def clear():
+        def clear() -> None:
             """Clear the cache and reset cache statistics."""
             cache.clear()
             _M.hits = _M.misses = 0
@@ -157,7 +140,6 @@ def memoize(maxsize=None, keyfun=None, Cache=LRUCache):
     return _memoize
 
 
-@python_2_unicode_compatible
 class lazy:
     """Holds lazy evaluation.
 
@@ -169,67 +151,62 @@ class lazy:
 
     """
 
-    def __init__(self, fun, *args, **kwargs):
+    def __init__(self, fun: Callable, *args, **kwargs) -> None:
         self._fun = fun
         self._args = args
         self._kwargs = kwargs
 
-    def __call__(self):
+    def __call__(self) -> Any:
         return self.evaluate()
 
-    def evaluate(self):
+    def evaluate(self) -> Any:
         return self._fun(*self._args, **self._kwargs)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self())
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return repr(self())
 
-    def __eq__(self, rhs):
+    def __eq__(self, rhs) -> bool:
         return self() == rhs
 
-    def __ne__(self, rhs):
+    def __ne__(self, rhs) -> bool:
         return self() != rhs
 
-    def __deepcopy__(self, memo):
+    def __deepcopy__(self, memo: Dict) -> Any:
         memo[id(self)] = self
         return self
 
-    def __reduce__(self):
+    def __reduce__(self) -> Any:
         return (self.__class__, (self._fun,), {'_args': self._args,
                                                '_kwargs': self._kwargs})
 
-    if sys.version_info[0] < 3:
 
-        def __cmp__(self, rhs):
-            if isinstance(rhs, self.__class__):
-                return -cmp(rhs, self())
-            return cmp(self(), rhs)
-
-
-def maybe_evaluate(value):
+def maybe_evaluate(value: Any) -> Any:
     """Evaluates if the value is a :class:`lazy` instance."""
     if isinstance(value, lazy):
         return value.evaluate()
     return value
 
 
-def is_list(l, scalars=(Mapping, string_t), iters=(Iterable,)):
+def is_list(l: Any,
+            scalars: tuple=(Mapping, str),
+            iters: tuple=(Iterable,)) -> bool:
     """Return true if the object is iterable (but not
     if object is a mapping or string)."""
     return isinstance(l, iters) and not isinstance(l, scalars or ())
 
 
-def maybe_list(l, scalars=(Mapping, string_t)):
+def maybe_list(l: Any, scalars: tuple=(Mapping, str)) -> Optional[Sequence]:
     """Return list of one element if ``l`` is a scalar."""
     return l if l is None or is_list(l, scalars) else [l]
 
 
-def dictfilter(d=None, **kw):
+def dictfilter(d: Optional[Mapping]=None, **kw) -> Mapping:
     """Remove all keys from dict ``d`` whose value is :const:`None`"""
     d = kw if d is None else (dict(d, **kw) if kw else d)
-    return {k: v for k, v in items(d) if v is not None}
+    return {k: v for k, v in d.items() if v is not None}
 
 
 # Compat names (before kombu 3.0)

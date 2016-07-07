@@ -61,7 +61,7 @@ class Channel(virtual.Channel):
         return self.shared_queues._purge(queue)
 
     def after_reply_message_received(self, queue):
-        pass
+        ...
 
     @cached_property
     def shared_queues(self):

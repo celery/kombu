@@ -9,6 +9,7 @@ Emulates the AMQ API for non-AMQ transports.
 """
 from __future__ import absolute_import, print_function, unicode_literals
 
+import amqp.abstract
 import base64
 import socket
 import sys
@@ -76,12 +77,12 @@ class Base64:
 
 class NotEquivalentError(Exception):
     """Entity declaration is not equivalent to the previous declaration."""
-    pass
+    ...
 
 
 class UndeliverableWarning(UserWarning):
     """The message could not be delivered to a queue."""
-    pass
+    ...
 
 
 class BrokerState:
@@ -305,7 +306,7 @@ class QoS:
         Optional: Currently only used by the Redis transport.
 
         """
-        pass
+        ...
 
 
 class Message(base.Message):
@@ -385,7 +386,7 @@ class AbstractChannel:
         to do something whenever a new queue is declared.
 
         """
-        pass
+        ...
 
     def _has_queue(self, queue, **kwargs):
         """Verify that queue exists.
@@ -831,6 +832,8 @@ class Channel(AbstractChannel, base.StdChannel):
             priority = self.default_priority
 
         return (self.max_priority - priority) if reverse else priority
+amqp.abstract.Channel.register(Channel)
+amqp.abstract.Connection.register(Channel)
 
 
 class Management(base.Management):

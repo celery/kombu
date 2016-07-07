@@ -1,8 +1,15 @@
 from __future__ import absolute_import, unicode_literals
 
+from typing import Any, Optional, Union
 
-def get_manager(client, hostname=None, port=None, userid=None,
-                password=None):
+from . import abstract
+
+
+def get_manager(client: abstract.Connection,
+                hostname: Optional[str]=None,
+                port: Optional[Union[int, str]]=None,
+                userid: Optional[str]=None,
+                password: Optional[str]=None) -> Any:
     import pyrabbit
     opt = client.transport_options.get
 

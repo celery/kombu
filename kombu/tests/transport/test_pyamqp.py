@@ -22,7 +22,7 @@ class MockConnection(dict):
         self[key] = value
 
     def connect(self):
-        pass
+        ...
 
 
 class test_Channel(Case):
@@ -33,13 +33,13 @@ class test_Channel(Case):
             wait_returns = []
 
             def _x_open(self, *args, **kwargs):
-                pass
+                ...
 
             def wait(self, *args, **kwargs):
                 return self.wait_returns
 
             def _send_method(self, *args, **kwargs):
-                pass
+                ...
 
         self.conn = Mock()
         self.conn._get_free_channel_id.side_effect = nextfun(count(0))
@@ -106,7 +106,7 @@ class test_Transport(Case):
                 vars(self).update(kwargs)
 
             def connect(self):
-                pass
+                ...
 
         self.transport.Connection = Conn
         self.transport.client.hostname = 'localhost'

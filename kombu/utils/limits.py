@@ -8,8 +8,11 @@ Token bucket implementation for rate limiting.
 from __future__ import absolute_import, unicode_literals
 
 from collections import deque
+from typing import Any, Optional
 
 from kombu.five import monotonic
+
+from .typing import Float
 
 __all__ = ['TokenBucket']
 
@@ -33,28 +36,29 @@ class TokenBucket:
     fill_rate = None
 
     #: Maximum number of tokens in the bucket.
-    capacity = 1
+    capacity = 1.0    # type: float
 
     #: Timestamp of the last time a token was taken out of the bucket.
-    timestamp = None
+    timestamp = None  # type: Optional[float]
 
-    def __init__(self, fill_rate, capacity=1):
+    def __init__(self, fill_rate: Optional[Float],
+                 capacity: Float=1.0) -> None:
         self.capacity = float(capacity)
         self._tokens = capacity
         self.fill_rate = float(fill_rate)
         self.timestamp = monotonic()
-        self.contents = deque()
+        self.contents = deque()  # type: deque
 
-    def add(self, item):
+    def add(self, item: Any) -> None:
         self.contents.append(item)
 
-    def pop(self):
+    def pop(self) -> Any:
         return self.contents.popleft()
 
-    def clear_pending(self):
+    def clear_pending(self) -> None:
         self.contents.clear()
 
-    def can_consume(self, tokens=1):
+    def can_consume(self, tokens: int=1) -> bool:
         """Return :const:`True` if the number of tokens can be consumed
         from the bucket.  If they can be consumed, a call will also consume the
         requested number of tokens from the bucket. Calls will only consume
@@ -65,14 +69,14 @@ class TokenBucket:
             return True
         return False
 
-    def expected_time(self, tokens=1):
+    def expected_time(self, tokens: int=1) -> float:
         """Return the time (in seconds) when a new token is expected
         to be available. This will not consume any tokens from the bucket."""
         _tokens = self._get_tokens()
-        tokens = max(tokens, _tokens)
-        return (tokens - _tokens) / self.fill_rate
+        tokens_f = max(tokens, _tokens)
+        return (tokens_f - _tokens) / self.fill_rate
 
-    def _get_tokens(self):
+    def _get_tokens(self) -> float:
         if self._tokens < self.capacity:
             now = monotonic()
             delta = self.fill_rate * (now - self.timestamp)

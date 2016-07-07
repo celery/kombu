@@ -7,6 +7,7 @@ Base transport interface.
 """
 from __future__ import absolute_import, unicode_literals
 
+import amqp.abstract
 import errno
 import socket
 
@@ -42,13 +43,14 @@ class StdChannel:
     def after_reply_message_received(self, queue):
         """reply queue semantics: can be used to delete the queue
            after transient reply message received."""
-        pass
+        ...
 
     def __enter__(self):
         return self
 
     def __exit__(self, *exc_info):
         self.close()
+amqp.abstract.Channel.register(StdChannel)
 
 
 class Management:
@@ -133,7 +135,7 @@ class Transport:
         raise _LeftBlank(self, 'drain_events')
 
     def heartbeat_check(self, connection, rate=2):
-        pass
+        ...
 
     def driver_version(self):
         return 'N/A'
@@ -142,10 +144,10 @@ class Transport:
         return 0
 
     def register_with_event_loop(self, connection, loop):
-        pass
+        ...
 
     def unregister_from_event_loop(self, connection, loop):
-        pass
+        ...
 
     def verify_connection(self, connection):
         return True

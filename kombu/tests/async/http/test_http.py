@@ -134,7 +134,7 @@ class test_BaseClient(HubCase):
         c = BaseClient(Mock(name='hub'))
         c.close = Mock(name='close')
         with c:
-            pass
+            ...
         c.close.assert_called_with()
 
 
