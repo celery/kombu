@@ -54,13 +54,9 @@ def bytes_to_str(s: AnyStr) -> str:
     return s
 
 
-def from_utf8(s: str, *args, **kwargs) -> str:
-    return s
-
-
 def ensure_bytes(s: AnyStr) -> bytes:
     if not isinstance(s, bytes):
-        return str_to_bytes(s)
+        return s.encode()
     return s
 
 

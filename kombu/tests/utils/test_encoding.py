@@ -52,10 +52,6 @@ class test_encoding_utils(Case):
         with clean_encoding() as e:
             self.assertIsInstance(e.str_to_bytes('foobar'), bytes)
 
-    def test_from_utf8(self):
-        with clean_encoding() as e:
-            self.assertIsInstance(e.from_utf8('foobar'), bytes)
-
     def test_default_encode(self):
         with clean_encoding() as e:
             self.assertTrue(e.default_encode(b'foo'))
