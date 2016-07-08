@@ -1,5 +1,12 @@
 from __future__ import absolute_import, unicode_literals
 
+import pytz
+
+from datetime import datetime
+from decimal import Decimal
+from uuid import uuid4
+
+from kombu.five import text_t
 from kombu.utils.encoding import str_to_bytes
 from kombu.utils.json import _DecodeError, dumps, loads
 
@@ -13,6 +20,42 @@ class Custom(object):
 
     def __json__(self):
         return self.data
+
+
+class test_JSONEncoder(Case):
+
+    def test_datetime(self):
+        now = datetime.utcnow()
+        now_utc = now.replace(tzinfo=pytz.utc)
+        stripped = datetime(*now.timetuple()[:3])
+        serialized = loads(dumps({
+            'datetime': now,
+            'tz': now_utc,
+            'date': now.date(),
+            'time': now.time()},
+        ))
+        self.assertDictEqual(serialized, {
+            'datetime': now.isoformat(),
+            'tz': '{0}Z'.format(now_utc.isoformat().split('+', 1)[0]),
+            'time': now.time().isoformat(),
+            'date': stripped.isoformat(),
+        })
+
+    def test_Decimal(self):
+        d = Decimal('3314132.13363235235324234123213213214134')
+        self.assertDictEqual(loads(dumps({'d': d})), {
+            'd': text_t(d),
+        })
+
+    def test_UUID(self):
+        id = uuid4()
+        self.assertDictEqual(loads(dumps({'u': id})), {
+            'u': text_t(id),
+        })
+
+    def test_default(self):
+        with self.assertRaises(TypeError):
+            dumps({'o': object()})
 
 
 class test_dumps_loads(Case):

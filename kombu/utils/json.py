@@ -1,15 +1,26 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, unicode_literals
 
+import datetime
+import decimal
 import json as stdjson
 import sys
+import uuid
 
 from kombu.five import buffer_t, text_t, bytes_t
 
 try:
-    import simplejson as json
+    from django.utils.functional import Promise as DjangoPromise
 except ImportError:  # pragma: no cover
-    import json  # noqa
+    class DjangoPromise(object):  # noqa
+        pass
+
+try:
+    import simplejson as json
+    _json_extra_kwargs = {'use_decimal': False}
+except ImportError:                 # pragma: no cover
+    import json                     # noqa
+    _json_extra_kwargs = {}           # noqa
 
     class _DecodeError(Exception):  # noqa
         pass
@@ -23,17 +34,34 @@ _encoder_cls = type(json._default_encoder)
 
 class JSONEncoder(_encoder_cls):
 
-    def default(self, obj, _super=_encoder_cls.default):
-        try:
-            reducer = obj.__json__
-        except AttributeError:
-            return _super(self, obj)
-        else:
+    def default(self, o,
+                dates=(datetime.datetime, datetime.date),
+                times=(datetime.time,),
+                textual=(decimal.Decimal, uuid.UUID, DjangoPromise),
+                isinstance=isinstance,
+                datetime=datetime.datetime,
+                text_type=text_t):
+        reducer = getattr(o, '__json__', None)
+        if reducer is not None:
             return reducer()
+        else:
+            if isinstance(o, dates):
+                if not isinstance(o, datetime):
+                    o = datetime(o.year, o.month, o.day, 0, 0, 0, 0)
+                r = o.isoformat()
+                if r.endswith("+00:00"):
+                    r = r[:-6] + "Z"
+                return r
+            elif isinstance(o, times):
+                return o.isoformat()
+            elif isinstance(o, textual):
+                return text_type(o)
+            return super(JSONEncoder, self).default(o)
 
 
-def dumps(s, _dumps=json.dumps, cls=JSONEncoder):
-    return _dumps(s, cls=cls)
+def dumps(s, _dumps=json.dumps, cls=JSONEncoder,
+          default_kwargs=_json_extra_kwargs, **kwargs):
+    return _dumps(s, cls=cls, **dict(default_kwargs, **kwargs))
 
 
 def loads(s, _loads=json.loads, decode_bytes=IS_PY3):
