@@ -309,16 +309,12 @@ class cached_property(object):
             value = self.__set(obj, value)
         obj.__dict__[self.__name__] = value
 
-    def __delete__(self, obj):
+    def __delete__(self, obj, _sentinel=object()):
         if obj is None:
             return self
-        try:
-            value = obj.__dict__.pop(self.__name__)
-        except KeyError:
-            pass
-        else:
-            if self.__del is not None:
-                self.__del(obj, value)
+        value = obj.__dict__.pop(self.__name__, _sentinel)
+        if self.__del is not None and value is not _sentinel:
+            self.__del(obj, value)
 
     def setter(self, fset):
         return self.__class__(self.__get, fset, self.__del)
