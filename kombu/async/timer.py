@@ -218,7 +218,7 @@ class Timer:
     def __len__(self):
         return len(self._queue)
 
-    def __nonzero__(self):
+    def __bool__(self):
         return True
 
     @property
