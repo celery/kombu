@@ -139,9 +139,6 @@ OBJECT_ALREADY_EXISTS_STRING = 'object already exists'
 VERSION = (1, 0, 0)
 __version__ = '.'.join(map(str, VERSION))
 
-PY3 = sys.version_info[0] == 3
-
-
 E_AUTH = """
 Unable to authenticate to qpid using the following mechanisms: %s
 """
@@ -1579,9 +1576,8 @@ class Transport(base.Transport):
         if getattr(sys, 'pypy_version_info', None):
             raise RuntimeError('The Qpid transport for Kombu does not '
                                'support PyPy. Try using Python 2.7')
-        if PY3:
-            raise RuntimeError('The Qpid transport for Kombu does not '
-                               'support Python 3. Try using Python 2.7')
+        raise RuntimeError('The Qpid transport for Kombu does not '
+                           'support Python 3. Try using Python 2.7')
 
     def on_readable(self, connection, loop):
         """Handle any messages associated with this Transport.

@@ -4,8 +4,8 @@ import os
 import re
 import sys
 
-if sys.version_info < (2, 7):  # pragma: no cover
-    raise Exception('Kombu 4.0 requires Python versions 2.7 or later.')
+if sys.version_info < (3, 6):  # pragma: no cover
+    raise Exception('Kombu 5.x requires Python versions 3.6 or later.')
 
 from collections import namedtuple  # noqa
 

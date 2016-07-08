@@ -1,4 +1,5 @@
 import random
+import sha
 import socket
 import string
 import sys
@@ -12,10 +13,6 @@ from case.skip import SkipTest
 from kombu import Connection
 from kombu import Exchange, Queue
 
-if sys.version_info >= (2, 5):
-    from hashlib import sha256 as _digest
-else:
-    from sha import new as _digest  # noqa
 
 
 def _nobuf(x):
@@ -158,7 +155,7 @@ class TransportCase(unittest.TestCase):
                 purged += self.purge_consumer(consumer)
 
     def _digest(self, data):
-        return _digest(data).hexdigest()
+        return sha.new(data).hexdigest()
 
     def test_produce__consume_large_messages(
             self, bytes=1048576, n=10,

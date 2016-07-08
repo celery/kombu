@@ -16,8 +16,6 @@ except ImportError:  # pragma: no cover
 else:
     from simplejson.decoder import JSONDecodeError as _DecodeError
 
-IS_PY3 = sys.version_info[0] == 3
-
 _encoder_cls = type(json._default_encoder)
 
 

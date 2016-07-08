@@ -335,14 +335,7 @@ def register_yaml():
         registry.register('yaml', None, not_available, 'application/x-yaml')
 
 
-if sys.version_info[0] == 3:  # pragma: no cover
-
-    def unpickle(s):
-        return pickle_loads(str_to_bytes(s))
-
-else:
-    unpickle = pickle_loads  # noqa
-
+unpickle = pickle_loads
 
 def register_pickle():
     """The fastest serialization method, but restricts

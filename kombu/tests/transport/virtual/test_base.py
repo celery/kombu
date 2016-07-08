@@ -1,5 +1,4 @@
 
-import sys
 import warnings
 
 from kombu import Connection
@@ -9,9 +8,6 @@ from kombu.utils import uuid
 from kombu.compression import compress
 
 from kombu.tests.case import Case, MagicMock, Mock, mock, patch
-
-PY3 = sys.version_info[0] == 3
-PRINT_FQDN = 'builtins.print' if PY3 else '__builtin__.print'
 
 
 def client(**kwargs):
@@ -398,7 +394,7 @@ class test_Channel(Case):
         self.assertFalse(q._delivered)
 
     @patch('kombu.transport.virtual.emergency_dump_state')
-    @patch(PRINT_FQDN)
+    @patch('builtins.print')
     def test_restore_unacked_once_when_unrestored(self, print_,
                                                   emergency_dump_state):
         q = self.channel.qos

@@ -33,8 +33,6 @@ from kombu.transport import base
 
 from .exchange import STANDARD_EXCHANGE_TYPES
 
-ARRAY_TYPE_H = 'H' if sys.version_info[0] == 3 else b'H'
-
 UNDELIVERABLE_FMT = """\
 Message could not be delivered: No queues bound to exchange {exchange!r} \
 using binding key {routing_key!r}.
@@ -897,9 +895,7 @@ class Transport(base.Transport):
         polling_interval = client.transport_options.get('polling_interval')
         if polling_interval is not None:
             self.polling_interval = polling_interval
-        self._avail_channel_ids = array(
-            ARRAY_TYPE_H, range(self.channel_max, 0, -1),
-        )
+        self._avail_channel_ids = array('H', range(self.channel_max, 0, -1))
 
     def create_channel(self, connection):
         try:

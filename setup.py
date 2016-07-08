@@ -7,8 +7,8 @@ import codecs
 
 from distutils.command.install import INSTALL_SCHEMES
 
-if sys.version_info < (2, 7):
-    raise Exception('Kombu 4.0 requires Python 2.7 or higher.')
+if sys.version_info < (3, 6):
+    raise Exception('Kombu 5.0 requires Python 3.6 or higher.')
 
 try:
     from setuptools import setup
