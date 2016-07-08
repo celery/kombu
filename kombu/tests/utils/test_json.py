@@ -1,4 +1,3 @@
-from __future__ import absolute_import, unicode_literals
 
 from kombu.utils.encoding import str_to_bytes
 from kombu.utils.json import _DecodeError, dumps, loads

@@ -7,7 +7,6 @@ Virtual transport implementation.
 Emulates the AMQ API for non-AMQ transports.
 
 """
-from __future__ import absolute_import, print_function, unicode_literals
 
 import amqp.abstract
 import base64

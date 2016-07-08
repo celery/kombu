@@ -1,4 +1,3 @@
-from __future__ import absolute_import, unicode_literals
 
 from kombu.mixins import ConsumerMixin
 from kombu.log import get_logger

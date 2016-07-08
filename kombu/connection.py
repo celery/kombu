@@ -5,7 +5,6 @@ kombu.connection
 Broker connection and pools.
 
 """
-from __future__ import absolute_import, unicode_literals
 
 import os
 import socket

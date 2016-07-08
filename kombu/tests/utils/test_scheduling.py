@@ -1,4 +1,3 @@
-from __future__ import absolute_import, unicode_literals
 
 from kombu.utils.scheduling import FairCycle, cycle_by_name
 

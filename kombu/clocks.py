@@ -5,7 +5,6 @@ kombu.clocks
 Logical Clocks and Synchronization.
 
 """
-from __future__ import absolute_import, unicode_literals
 
 from threading import Lock
 from itertools import islice

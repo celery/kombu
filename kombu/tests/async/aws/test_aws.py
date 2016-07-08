@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import, unicode_literals
 
 from kombu.async.aws import connect_sqs
 from kombu.tests.case import Mock

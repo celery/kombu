@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import, unicode_literals
 
 from .ext import (
     RawMessage, Message, MHMessage, EncodedMHMessage, JSONMessage,

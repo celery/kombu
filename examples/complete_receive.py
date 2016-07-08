@@ -3,7 +3,6 @@ Example of simple consumer that waits for a single message, acknowledges it
 and exits.
 
 """
-from __future__ import absolute_import, unicode_literals, print_function
 
 from pprint import pformat
 

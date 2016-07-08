@@ -27,7 +27,6 @@
 
 # this import is needed for Python 2.6. Without it, qpid.py will "mask" the
 # system's qpid lib
-from __future__ import absolute_import, unicode_literals
 
 import os
 

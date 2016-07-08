@@ -1,4 +1,3 @@
-from __future__ import absolute_import, unicode_literals
 
 from kombu.utils.url import as_url, parse_url, maybe_sanitize_url
 
