@@ -40,7 +40,7 @@ class JSONEncoder(_encoder_cls):
                 textual=(decimal.Decimal, uuid.UUID, DjangoPromise),
                 isinstance=isinstance,
                 datetime=datetime.datetime,
-                text_type=text_t):
+                text_t=text_t):
         reducer = getattr(o, '__json__', None)
         if reducer is not None:
             return reducer()
@@ -55,7 +55,7 @@ class JSONEncoder(_encoder_cls):
             elif isinstance(o, times):
                 return o.isoformat()
             elif isinstance(o, textual):
-                return text_type(o)
+                return text_t(o)
             return super(JSONEncoder, self).default(o)
 
 
