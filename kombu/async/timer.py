@@ -77,9 +77,6 @@ class Entry(object):
         return '<TimerEntry: {0}(*{1!r}, **{2!r})'.format(
             self.fun.__name__, self.args, self.kwargs)
 
-    def __hash__(self):
-        return hash((self.fun, repr(self.args), repr(self.kwargs)))
-
     # must not use hash() to order entries
     def __lt__(self, other):
         return id(self) < id(other)
