@@ -81,12 +81,6 @@ class Entry(object):
     def __lt__(self, other):
         return id(self) < id(other)
 
-    def __eq__(self, other):
-        return hash(self) == hash(other)
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
-
     @property
     def cancelled(self):
         return self.canceled
