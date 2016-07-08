@@ -4,7 +4,7 @@
 
 |build-status| |coverage| |bitdeli|
 
-:Version: 4.0.0rc1
+:Version: 4.0.0rc3
 :Web: http://kombu.me/
 :Download: http://pypi.python.org/pypi/kombu/
 :Source: https://github.com/celery/kombu/
