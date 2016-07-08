@@ -5,11 +5,8 @@ kombu.transport.pyamqp
 pure python amqp transport.
 
 """
-from __future__ import absolute_import, unicode_literals
-
 import amqp
 
-from kombu.five import items
 from kombu.utils.amq_manager import get_manager
 from kombu.utils.text import version_string_as_tuple
 
@@ -104,7 +101,7 @@ class Transport(base.Transport):
     def establish_connection(self):
         """Establish connection to the AMQP broker."""
         conninfo = self.client
-        for name, default_value in items(self.default_connection_params):
+        for name, default_value in self.default_connection_params.items():
             if not getattr(conninfo, name, None):
                 setattr(conninfo, name, default_value)
         if conninfo.hostname == 'localhost':

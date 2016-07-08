@@ -1,6 +1,3 @@
-from __future__ import absolute_import, unicode_literals
-
-from kombu.five import items, string_t
 from kombu.utils import reprcall
 from kombu.utils.eventio import READ, WRITE, ERR
 
@@ -14,7 +11,7 @@ def repr_flag(flag):
 def _rcb(obj):
     if obj is None:
         return '<missing>'
-    if isinstance(obj, string_t):
+    if isinstance(obj, str):
         return obj
     if isinstance(obj, tuple):
         cb, args = obj
@@ -38,12 +35,12 @@ def repr_events(h, events):
 
 def repr_readers(h):
     return ['({0}){1}->{2}'.format(fd, _rcb(cb), repr_flag(READ | ERR))
-            for fd, cb in items(h.readers)]
+            for fd, cb in h.readers.items()]
 
 
 def repr_writers(h):
     return ['({0}){1}->{2}'.format(fd, _rcb(cb), repr_flag(WRITE))
-            for fd, cb in items(h.writers)]
+            for fd, cb in h.writers.items()]
 
 
 def callback_for(h, fd, flag, *default):

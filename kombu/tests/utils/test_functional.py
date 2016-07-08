@@ -1,10 +1,7 @@
-from __future__ import absolute_import, unicode_literals
-
 import pickle
 
 from itertools import count
 
-from kombu.five import items
 from kombu.utils.functional import LRUCache, memoize, lazy, maybe_evaluate
 
 from kombu.tests.case import Case, skip
@@ -67,7 +64,7 @@ class test_LRUCache(Case):
     def test_items(self):
         c = LRUCache()
         c.update(a=1, b=2, c=3)
-        self.assertTrue(list(items(c)))
+        self.assertTrue(list(c.items()))
 
     def test_incr(self):
         c = LRUCache()

@@ -6,16 +6,15 @@ It uses Consul.io's Key/Value store to transport messages in Queues
 It uses python-consul for talking to Consul's HTTP API
 
 """
-from __future__ import absolute_import, unicode_literals
-
 import uuid
 import socket
 
 from collections import defaultdict
 from contextlib import contextmanager
+from time import monotonic
+from queue import Empty
 
 from kombu.exceptions import ChannelError
-from kombu.five import Empty, monotonic
 from kombu.log import get_logger
 from kombu.utils import cached_property
 from kombu.utils.json import loads, dumps

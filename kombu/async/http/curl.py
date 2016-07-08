@@ -1,5 +1,3 @@
-from __future__ import absolute_import, unicode_literals
-
 from collections import deque
 from functools import partial
 from io import BytesIO
@@ -7,7 +5,6 @@ from time import time
 
 from kombu.async.hub import READ, WRITE, get_event_loop
 from kombu.exceptions import HttpError
-from kombu.five import bytes_if_py2, items
 from kombu.utils.encoding import bytes_to_str
 
 from .base import BaseClient
@@ -28,7 +25,7 @@ else:
 
 __all__ = ['CurlClient']
 
-DEFAULT_USER_AGENT = bytes_if_py2('Mozilla/5.0 (compatible; pycurl)')
+DEFAULT_USER_AGENT = 'Mozilla/5.0 (compatible; pycurl)'
 EXTRA_METHODS = frozenset(['DELETE', 'OPTIONS', 'PATCH'])
 
 
@@ -188,7 +185,7 @@ class CurlClient(BaseClient):
 
         setopt(
             _pycurl.HTTPHEADER,
-            ['{0}: {1}'.format(*h) for h in items(request.headers)],
+            ['{0}: {1}'.format(*h) for h in request.headers.items()],
         )
 
         setopt(

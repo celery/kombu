@@ -7,7 +7,7 @@ In-memory transport.
 """
 from __future__ import absolute_import, unicode_literals
 
-from kombu.five import Queue, values
+from queue import Queue
 
 from . import virtual
 
@@ -56,7 +56,7 @@ class Channel(virtual.Channel):
 
     def close(self):
         super().close()
-        for queue in values(self.queues):
+        for queue in self.queues.values():
             queue.empty()
         self.queues = {}
 

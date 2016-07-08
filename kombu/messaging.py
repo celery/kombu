@@ -5,8 +5,6 @@ kombu.messaging
 Sending and receiving messages.
 
 """
-from __future__ import absolute_import, unicode_literals
-
 from itertools import count
 
 from .common import maybe_declare
@@ -14,7 +12,6 @@ from .compression import compress
 from .connection import maybe_channel, is_connection
 from .entity import Exchange, Queue, maybe_delivery_mode
 from .exceptions import ContentDisallowed
-from .five import items, python_2_unicode_compatible, text_t, values
 from .serialization import dumps, prepare_accept_content
 from .utils import ChannelPromise, maybe_list
 from .utils import abstract
@@ -22,7 +19,6 @@ from .utils import abstract
 __all__ = ['Exchange', 'Queue', 'Producer', 'Consumer']
 
 
-@python_2_unicode_compatible
 @abstract.Producer.register
 class Producer:
     """Message Producer.
@@ -259,7 +255,7 @@ class Producer:
         else:
             # If the programmer doesn't want us to serialize,
             # make sure content_encoding is set.
-            if isinstance(body, text_t):
+            if isinstance(body, str):
                 if not content_encoding:
                     content_encoding = 'utf-8'
                 body = body.encode(content_encoding)
@@ -282,7 +278,6 @@ class Producer:
             pass
 
 
-@python_2_unicode_compatible
 @abstract.Consumer.register
 class Consumer:
     """Message consumer.
@@ -405,7 +400,7 @@ class Consumer:
         """Revive consumer after connection loss."""
         self._active_tags.clear()
         channel = self.channel = maybe_channel(channel)
-        for qname, queue in items(self._queues):
+        for qname, queue in self._queues.items():
             # name may have changed after declare
             self._queues.pop(qname, None)
             queue = self._queues[queue.name] = queue(self.channel)
@@ -424,7 +419,7 @@ class Consumer:
         is set.
 
         """
-        for queue in values(self._queues):
+        for queue in self._queues.values():
             queue.declare()
 
     def register_callback(self, callback):
@@ -473,7 +468,7 @@ class Consumer:
         :param no_ack: See :attr:`no_ack`.
 
         """
-        queues = list(values(self._queues))
+        queues = list(self._queues.values())
         if queues:
             no_ack = self.no_ack if no_ack is None else no_ack
 
@@ -490,7 +485,7 @@ class Consumer:
 
         """
         cancel = self.channel.basic_cancel
-        for tag in values(self._active_tags):
+        for tag in self._active_tags.values():
             cancel(tag)
         self._active_tags.clear()
     close = cancel
@@ -523,7 +518,7 @@ class Consumer:
             undo operation.
 
         """
-        return sum(queue.purge() for queue in values(self._queues))
+        return sum(queue.purge() for queue in self._queues.values())
 
     def flow(self, active):
         """Enable/disable flow from peer.

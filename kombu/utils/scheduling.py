@@ -5,13 +5,9 @@
     Consumer utilities.
 
 """
-from __future__ import absolute_import, unicode_literals
-
 from itertools import count
 from typing import Any, Callable, Iterable, Optional, Sequence, Union
 from typing import List  # noqa
-
-from kombu.five import python_2_unicode_compatible
 
 from . import symbol_by_name
 
@@ -20,7 +16,6 @@ __all__ = [
 ]
 
 
-@python_2_unicode_compatible
 class FairCycle:
     """Consume from a set of resources, where each resource gets
     an equal chance to be consumed from."""

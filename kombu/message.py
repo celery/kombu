@@ -5,13 +5,10 @@ kombu.transport.message
 Message class.
 
 """
-from __future__ import absolute_import, unicode_literals
-
 import sys
 
 from .compression import decompress
 from .exceptions import MessageStateError
-from .five import python_2_unicode_compatible, reraise, text_t
 from .serialization import loads
 from .utils import abstract
 from .utils.functional import dictfilter
@@ -20,7 +17,6 @@ ACK_STATES = {'ACK', 'REJECTED', 'REQUEUED'}
 IS_PYPY = hasattr(sys, 'pypy_version_info')
 
 
-@python_2_unicode_compatible
 @abstract.Message.register
 class Message:
     """Base class for received messages."""
@@ -60,7 +56,7 @@ class Message:
             except Exception:
                 self.errors.append(sys.exc_info())
 
-        if not self.errors and postencode and isinstance(body, text_t):
+        if not self.errors and postencode and isinstance(body, str):
             try:
                 body = body.encode(postencode)
             except Exception:
@@ -69,7 +65,7 @@ class Message:
 
     def _reraise_error(self, callback=None):
         try:
-            reraise(*self.errors[0])
+            raise self.errors[0][1].with_traceback(self.errors[0][2])
         except Exception as exc:
             if not callback:
                 raise

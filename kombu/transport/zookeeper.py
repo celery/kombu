@@ -30,7 +30,8 @@ from __future__ import absolute_import, unicode_literals
 import os
 import socket
 
-from kombu.five import Empty
+from queue import Empty
+
 from kombu.utils.encoding import bytes_to_str
 from kombu.utils.json import loads, dumps
 

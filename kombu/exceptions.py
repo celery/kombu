@@ -5,13 +5,9 @@ kombu.exceptions
 Exceptions.
 
 """
-from __future__ import absolute_import, unicode_literals
-
 from socket import timeout as TimeoutError
 
 from amqp import ChannelError, ConnectionError, ResourceError
-
-from kombu.five import python_2_unicode_compatible
 
 __all__ = [
     'NotBoundError', 'MessageStateError', 'TimeoutError',
@@ -85,7 +81,6 @@ class InconsistencyError(ConnectionError):
     ...
 
 
-@python_2_unicode_compatible
 class HttpError(Exception):
 
     def __init__(self, code, message=None, response=None):

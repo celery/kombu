@@ -19,12 +19,12 @@ from array import array
 from collections import OrderedDict, defaultdict, namedtuple
 from itertools import count
 from multiprocessing.util import Finalize
-from time import sleep
+from time import monotonic, sleep
+from queue import Empty
 
 from amqp.protocol import queue_declare_ok_t
 
 from kombu.exceptions import ResourceError, ChannelError
-from kombu.five import Empty, items, monotonic
 from kombu.log import get_logger
 from kombu.utils import emergency_dump_state, uuid
 from kombu.utils.encoding import str_to_bytes, bytes_to_str
@@ -456,9 +456,9 @@ class Channel(AbstractChannel, base.StdChannel):
         self.closed = False
 
         # instantiate exchange types
-        self.exchange_types = dict(
-            (typ, cls(self)) for typ, cls in items(self.exchange_types)
-        )
+        self.exchange_types = {
+            typ: cls(self) for typ, cls in self.exchange_types.items()
+        }
 
         try:
             self.channel_id = self.connection._avail_channel_ids.pop()

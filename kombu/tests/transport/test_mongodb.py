@@ -1,9 +1,8 @@
-from __future__ import absolute_import, unicode_literals
-
 import datetime
 
+from queue import Empty
+
 from kombu import Connection
-from kombu.five import Empty
 from kombu.tests.case import Case, MagicMock, call, patch, skip
 
 

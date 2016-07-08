@@ -5,7 +5,6 @@ import sys
 
 from contextlib import contextmanager
 
-from kombu.five import bytes_t, string_t
 from kombu.utils.encoding import (
     get_default_encoding_file, safe_str,
     set_default_encoding_file, default_encoding,
@@ -52,11 +51,11 @@ class test_encoding_utils(Case):
 
     def test_str_to_bytes(self):
         with clean_encoding() as e:
-            self.assertIsInstance(e.str_to_bytes('foobar'), bytes_t)
+            self.assertIsInstance(e.str_to_bytes('foobar'), bytes)
 
     def test_from_utf8(self):
         with clean_encoding() as e:
-            self.assertIsInstance(e.from_utf8('foobar'), bytes_t)
+            self.assertIsInstance(e.from_utf8('foobar'), bytes)
 
     def test_default_encode(self):
         with clean_encoding() as e:
@@ -77,7 +76,7 @@ class test_safe_str(Case):
         self.assertEqual(safe_str('foo'), 'foo')
 
     def test_when_unicode(self):
-        self.assertIsInstance(safe_str('foo'), string_t)
+        self.assertIsInstance(safe_str('foo'), str)
 
     def test_when_encoding_utf8(self):
         with patch('sys.getfilesystemencoding') as encoding:

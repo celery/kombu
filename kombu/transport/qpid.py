@@ -86,8 +86,6 @@ Celery, this can be accomplished by setting the
 >>>>>>> ba4fa60... [qpid] Fixes rst syntax errors in docstrings
 
 """
-from __future__ import absolute_import, unicode_literals
-
 import os
 import select
 import socket
@@ -98,10 +96,10 @@ import time
 
 from collections import OrderedDict
 from itertools import count
+from queue import Empty
 
 import amqp.protocol
 
-from kombu.five import Empty, items
 from kombu.log import get_logger
 from kombu.transport.virtual import Base64, Message
 from kombu.transport import base
@@ -1696,7 +1694,7 @@ class Transport(base.Transport):
 
         """
         conninfo = self.client
-        for name, default_value in items(self.default_connection_params):
+        for name, default_value in self.default_connection_params.items():
             if not getattr(conninfo, name, None):
                 setattr(conninfo, name, default_value)
         if conninfo.hostname == 'localhost':

@@ -1,12 +1,9 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import, unicode_literals
-
 from io import BytesIO
 
 from vine import promise, transform
 
 from kombu.async.http import Headers, Request, get_client
-from kombu.five import items, python_2_unicode_compatible
 
 from .ext import (
     boto, AWSAuthConnection, AWSQueryConnection, XmlHandler, ResultSet,
@@ -34,7 +31,6 @@ __all__ = [
 ]
 
 
-@python_2_unicode_compatible
 class AsyncHTTPResponse:
 
     def __init__(self, response):
@@ -49,7 +45,7 @@ class AsyncHTTPResponse:
         return self.response.headers.get(name, default)
 
     def getheaders(self):
-        return list(items(self.response.headers))
+        return list(self.response.headers.items())
 
     @property
     def msg(self):
@@ -75,7 +71,6 @@ class AsyncHTTPResponse:
         return repr(self.response)
 
 
-@python_2_unicode_compatible
 class AsyncHTTPConnection:
     Request = Request
     Response = AsyncHTTPResponse
@@ -106,7 +101,7 @@ class AsyncHTTPConnection:
             else:
                 self.body = read()
         if headers is not None:
-            self.headers.extend(list(items(headers)))
+            self.headers.extend(list(headers.items()))
 
     def getrequest(self, scheme=None):
         scheme = scheme if scheme else self.scheme

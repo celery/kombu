@@ -1,11 +1,8 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import, unicode_literals
-
 from difflib import SequenceMatcher
 from typing import Iterator, Sequence, NamedTuple, Tuple
 
 from kombu import version_info_t
-from kombu.five import string_t
 
 from .typing import Int
 
@@ -33,7 +30,7 @@ def fmatch_best(needle: str, haystack: Sequence[str],
 def version_string_as_tuple(s: str) -> version_info_t:
     v = _unpack_version(*s.split('.'))
     # X.Y.3a1 -> (X, Y, 3, 'a1')
-    if isinstance(v.micro, string_t):
+    if isinstance(v.micro, str):
         v = version_info_t(v.major, v.minor, *_splitmicro(*v[2:]))
     # X.Y.3a1-40 -> (X, Y, 3, 'a1', '40')
     if not v.serial and v.releaselevel and '-' in v.releaselevel:

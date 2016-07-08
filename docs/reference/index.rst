@@ -65,4 +65,3 @@
     kombu.utils.url
     kombu.utils.text
     kombu.utils.amq_manager
-    kombu.five

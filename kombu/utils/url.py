@@ -1,9 +1,5 @@
-from __future__ import absolute_import, unicode_literals
-
 from functools import partial
 from typing import Dict, Mapping, NamedTuple, Optional
-
-from kombu.five import string_t
 
 from .typing import Port
 
@@ -84,7 +80,7 @@ def sanitize_url(url: str, mask: str = '**') -> str:
                   sanitize=True, mask=mask)
 
 
-def maybe_sanitize_url(url: Optional[str], mask: str = '**') -> Optional[str]:
-    if isinstance(url, string_t) and '://' in url:
+def maybe_sanitize_url(url: Any, mask: str = '**') -> Optional[str]:
+    if isinstance(url, str) and '://' in url:
         return sanitize_url(url, mask)
     return url

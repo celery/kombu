@@ -6,17 +6,15 @@ kombu.async.hub
 Event loop implementation.
 
 """
-from __future__ import absolute_import, unicode_literals
-
 import errno
 
 from contextlib import contextmanager
 from time import sleep
 from types import GeneratorType as generator
+from queue import Empty
 
 from vine import Thenable, promise
 
-from kombu.five import Empty, python_2_unicode_compatible, range
 from kombu.log import get_logger
 from kombu.utils import cached_property, fileno
 from kombu.utils.eventio import READ, WRITE, ERR, poll
@@ -56,7 +54,6 @@ def set_event_loop(loop):
     return loop
 
 
-@python_2_unicode_compatible
 class Hub:
     """Event loop object.
 

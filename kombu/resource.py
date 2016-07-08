@@ -5,14 +5,12 @@ kombu.resource
 Generic resource pool implementation.
 
 """
-from __future__ import absolute_import, unicode_literals
-
 import os
 
 from collections import deque
+from queue import Empty, LifoQueue as _LifoQueue
 
 from . import exceptions
-from .five import Empty, LifoQueue as _LifoQueue
 from .utils import abstract
 from .utils import register_after_fork
 from .utils.functional import lazy

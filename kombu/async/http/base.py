@@ -1,11 +1,8 @@
-from __future__ import absolute_import, unicode_literals
-
 import sys
 
 from vine import Thenable, promise, maybe_promise
 
 from kombu.exceptions import HttpError
-from kombu.five import items, python_2_unicode_compatible
 from kombu.utils import coro
 from kombu.utils.encoding import bytes_to_str
 from kombu.utils.functional import maybe_list, memoize
@@ -37,7 +34,6 @@ class Headers(dict):
 
 
 @Thenable.register
-@python_2_unicode_compatible
 class Request:
     """A HTTP Request.
 
@@ -116,7 +112,7 @@ class Request:
         self.on_prepare = maybe_promise(on_prepare)
         self.on_header = maybe_promise(on_header)
         if kwargs:
-            for k, v in items(kwargs):
+            for k, v in kwargs.items():
                 setattr(self, k, v)
         if not isinstance(headers, Headers):
             headers = Headers(headers or {})

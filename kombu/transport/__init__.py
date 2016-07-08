@@ -5,9 +5,6 @@ kombu.transport
 Built-in transports.
 
 """
-from __future__ import absolute_import, unicode_literals
-
-from kombu.five import string_t
 from kombu.syn import _detect_environment
 from kombu.utils import symbol_by_name
 
@@ -44,7 +41,7 @@ _transport_cache = {}
 
 
 def resolve_transport(transport=None):
-    if isinstance(transport, string_t):
+    if isinstance(transport, str):
         try:
             transport = TRANSPORT_ALIASES[transport]
         except KeyError:

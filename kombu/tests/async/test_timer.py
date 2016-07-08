@@ -1,8 +1,4 @@
-from __future__ import absolute_import, unicode_literals
-
 from datetime import datetime
-
-from kombu.five import bytes_if_py2
 
 from kombu.async.timer import Entry, Timer, to_timestamp
 
@@ -106,7 +102,7 @@ class test_Timer(Case):
             t.schedule.enter_after = Mock()
 
             myfun = Mock()
-            myfun.__name__ = bytes_if_py2('myfun')
+            myfun.__name__ = 'myfun'
             t.call_repeatedly(0.03, myfun)
 
             self.assertEqual(t.schedule.enter_after.call_count, 1)

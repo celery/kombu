@@ -5,8 +5,6 @@ kombu.transport.redis
 Redis transport.
 
 """
-from __future__ import absolute_import, unicode_literals
-
 import numbers
 import socket
 
@@ -14,11 +12,11 @@ from bisect import bisect
 from collections import namedtuple
 from contextlib import contextmanager
 from time import time
+from queue import Empty
 
 from vine import promise
 
 from kombu.exceptions import InconsistencyError, VersionMismatch
-from kombu.five import Empty, values, string_t
 from kombu.log import get_logger
 from kombu.utils import cached_property, register_after_fork, uuid
 from kombu.utils.eventio import poll, READ, ERR
@@ -248,7 +246,7 @@ class MultiChannelPoller:
         self.after_read = set()
 
     def close(self):
-        for fd in values(self._chan_to_sock):
+        for fd in self._chan_to_sock.values():
             try:
                 self.poller.unregister(fd)
             except (KeyError, ValueError):
@@ -482,7 +480,7 @@ class Channel(virtual.Channel):
         self.handlers = {'BRPOP': self._brpop_read, 'LISTEN': self._receive}
 
         if self.fanout_prefix:
-            if isinstance(self.fanout_prefix, string_t):
+            if isinstance(self.fanout_prefix, str):
                 self.keyprefix_fanout = self.fanout_prefix
         else:
             # previous versions did not set a fanout, so cannot enable

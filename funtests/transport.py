@@ -1,5 +1,3 @@
-from __future__ import absolute_import, print_function, unicode_literals
-
 import random
 import socket
 import string
@@ -13,7 +11,6 @@ from case.skip import SkipTest
 
 from kombu import Connection
 from kombu import Exchange, Queue
-from kombu.five import range
 
 if sys.version_info >= (2, 5):
     from hashlib import sha256 as _digest

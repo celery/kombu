@@ -7,8 +7,6 @@ kombu.transport.librabbitmq
 .. _`librabbitmq`: http://pypi.python.org/librabbitmq/
 
 """
-from __future__ import absolute_import, unicode_literals
-
 import os
 import socket
 import warnings
@@ -16,7 +14,6 @@ import warnings
 import librabbitmq as amqp
 from librabbitmq import ChannelError, ConnectionError
 
-from kombu.five import items, values
 from kombu.utils.amq_manager import get_manager
 from kombu.utils.text import version_string_as_tuple
 
@@ -108,7 +105,7 @@ class Transport(base.Transport):
     def establish_connection(self):
         """Establish connection to the AMQP broker."""
         conninfo = self.client
-        for name, default_value in items(self.default_connection_params):
+        for name, default_value in self.default_connection_params.items():
             if not getattr(conninfo, name, None):
                 setattr(conninfo, name, default_value)
         if conninfo.ssl:
@@ -135,7 +132,7 @@ class Transport(base.Transport):
 
     def _collect(self, connection):
         if connection is not None:
-            for channel in values(connection.channels):
+            for channel in connection.channels.values():
                 channel.connection = None
             try:
                 os.close(connection.fileno())

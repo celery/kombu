@@ -6,8 +6,6 @@ kombu.mixins
 Useful mixin classes.
 
 """
-from __future__ import absolute_import, unicode_literals
-
 import socket
 
 from contextlib import contextmanager
@@ -16,7 +14,6 @@ from itertools import count
 from time import sleep
 
 from .common import ignore_errors
-from .five import range
 from .messaging import Consumer, Producer
 from .log import get_logger
 from .utils import cached_property, nested

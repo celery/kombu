@@ -36,12 +36,11 @@ SQS Features supported by this transport:
     moving on to queueB. If queueB is empty, it will wait up until
     'polling_interval' expires before moving back and checking on queueA.
 """
-
-from __future__ import absolute_import, unicode_literals
-
 import collections
 import socket
 import string
+
+from queue import Empty
 
 from vine import transform, ensure_promise, promise
 
@@ -51,7 +50,6 @@ from kombu.async.aws.ext import boto, exception
 from kombu.async.aws.sqs.connection import AsyncSQSConnection, SQSConnection
 from kombu.async.aws.sqs.ext import regions
 from kombu.async.aws.sqs.message import Message
-from kombu.five import Empty, range, string_t, text_t
 from kombu.log import get_logger
 from kombu.utils import cached_property
 from kombu.utils.encoding import bytes_to_str, safe_str
@@ -179,11 +177,11 @@ class Channel(virtual.Channel):
 
     def entity_name(self, name, table=CHARS_REPLACE_TABLE):
         """Format AMQP queue name into a legal SQS queue name."""
-        return text_t(safe_str(name)).translate(table)
+        return str(safe_str(name)).translate(table)
 
     def _new_queue(self, queue, **kwargs):
         """Ensure a queue with given name exists in SQS."""
-        if not isinstance(queue, string_t):
+        if not isinstance(queue, str):
             return queue
         # Translate to SQS name for consistency with initial
         # _queue_cache population.

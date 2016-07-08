@@ -1,7 +1,4 @@
-from __future__ import absolute_import, unicode_literals
-
 from kombu import Connection, Consumer, Exchange, Producer, Queue
-from kombu.five import text_t
 from kombu.message import Message
 from kombu.transport.base import StdChannel, Transport, Management
 
@@ -46,7 +43,7 @@ class test_Message(Case):
         self.message = Message(self.channel, delivery_tag=313)
 
     def test_postencode(self):
-        m = Message(self.channel, text_t('FOO'), postencode='ccyzz')
+        m = Message(self.channel, str('FOO'), postencode='ccyzz')
         with self.assertRaises(LookupError):
             m._reraise_error()
         m.ack()

@@ -7,11 +7,8 @@ Pyro transport.
 Requires the :mod:`Pyro4` library to be installed.
 
 """
-from __future__ import absolute_import, unicode_literals
-
 import sys
 
-from kombu.five import reraise
 from kombu.utils import cached_property
 
 from . import virtual
@@ -88,8 +85,8 @@ class Transport(virtual.Transport):
             uri = nameserver.lookup(conninfo.virtual_host)
             return pyro.Proxy(uri)
         except NamingError:
-            reraise(NamingError, NamingError(E_LOOKUP.format(conninfo)),
-                    sys.exc_info()[2])
+            raise NamingError(E_LOOKUP.format(conninfo)).with_traceback(
+                sys.exc_info()[2])
 
     def driver_version(self):
         return pyro.__version__

@@ -1,18 +1,14 @@
-from __future__ import absolute_import, unicode_literals
-
 import pickle
 
 from io import StringIO, BytesIO
 
 from kombu import version_info_t
 from kombu import utils
-from kombu.five import python_2_unicode_compatible
 from kombu.utils.text import version_string_as_tuple
 
 from kombu.tests.case import Case, Mock, patch, mock
 
 
-@python_2_unicode_compatible
 class OldString:
 
     def __init__(self, value):

@@ -5,13 +5,10 @@ kombu.entity
 Exchange and Queue declarations.
 
 """
-from __future__ import absolute_import, unicode_literals
-
 import numbers
 
 from .abstract import MaybeChannelBound, Object
 from .exceptions import ContentDisallowed
-from .five import python_2_unicode_compatible, string_t
 from .serialization import prepare_accept_content
 from .utils import abstract
 
@@ -27,7 +24,7 @@ INTERNAL_EXCHANGE_PREFIX = ('amq.',)
 
 def _reprstr(s):
     s = repr(s)
-    if isinstance(s, string_t) and s.startswith("u'"):
+    if isinstance(s, str) and s.startswith("u'"):
         return s[2:-1]
     return s[1:-1]
 
@@ -43,7 +40,6 @@ def maybe_delivery_mode(
     return default
 
 
-@python_2_unicode_compatible
 @abstract.Entity.register
 class Exchange(MaybeChannelBound):
     """An Exchange declaration.
@@ -326,7 +322,6 @@ class Exchange(MaybeChannelBound):
         return not self.auto_delete
 
 
-@python_2_unicode_compatible
 @abstract.Entity.register
 class binding:
     """Represents a queue or exchange binding.
@@ -381,7 +376,6 @@ class binding:
         )
 
 
-@python_2_unicode_compatible
 @abstract.Entity.register
 class Queue(MaybeChannelBound):
     """A Queue declaration.

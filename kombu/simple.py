@@ -5,16 +5,15 @@ kombu.simple
 Simple interface.
 
 """
-from __future__ import absolute_import, unicode_literals
-
 import socket
 
 from collections import deque
+from time import monotonic
+from queue import Empty
 
 from . import entity
 from . import messaging
 from .connection import maybe_channel
-from .five import Empty, monotonic
 
 __all__ = ['SimpleQueue', 'SimpleBuffer']
 

@@ -1,5 +1,3 @@
-from __future__ import absolute_import, unicode_literals
-
 import logging
 import numbers
 import os
@@ -7,7 +5,6 @@ import sys
 
 from logging.handlers import WatchedFileHandler
 
-from .five import string_t
 from .utils import cached_property
 from .utils.encoding import safe_repr, safe_str
 from .utils.functional import maybe_evaluate
@@ -25,7 +22,7 @@ DISABLE_TRACEBACKS = os.environ.get('DISABLE_TRACEBACKS')
 
 
 def get_logger(logger):
-    if isinstance(logger, string_t):
+    if isinstance(logger, str):
         logger = logging.getLogger(logger)
     if not logger.handlers:
         logger.addHandler(logging.NullHandler())
@@ -33,7 +30,7 @@ def get_logger(logger):
 
 
 def get_loglevel(level):
-    if isinstance(level, string_t):
+    if isinstance(level, str):
         return LOG_LEVELS[level]
     return level
 
@@ -81,7 +78,7 @@ class LogMixin:
     def log(self, severity, *args, **kwargs):
         if self.logger.isEnabledFor(severity):
             log = self.logger.log
-            if len(args) > 1 and isinstance(args[0], string_t):
+            if len(args) > 1 and isinstance(args[0], str):
                 expand = [maybe_evaluate(arg) for arg in args[1:]]
                 return log(severity,
                            self.annotate(args[0].replace('%r', '%s')),

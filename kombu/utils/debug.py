@@ -5,15 +5,12 @@ kombu.utils.debug
 Debugging support.
 
 """
-from __future__ import absolute_import, unicode_literals
-
 import logging
 
 from typing import Any, Optional, Sequence, Union
 
 from vine.utils import wraps
 
-from kombu.five import items, python_2_unicode_compatible
 from kombu.log import get_logger
 
 __all__ = ['setup_logging', 'Logwrapped']
@@ -31,7 +28,6 @@ def setup_logging(loglevel: int=logging.DEBUG,
         l.setLevel(loglevel)
 
 
-@python_2_unicode_compatible
 class Logwrapped:
     __ignore = ('__enter__', '__exit__')
 
@@ -60,7 +56,7 @@ class Logwrapped:
                 if args:
                     info += ', '
                 info += ', '.join('{k}={v!r}'.format(k=key, v=value)
-                                  for key, value in items(kwargs))
+                                  for key, value in kwargs.items())
             info += ')'
             self.logger.debug(info)
             return meth(*args, **kwargs)

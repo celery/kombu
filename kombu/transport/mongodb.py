@@ -8,9 +8,9 @@ MongoDB transport.
 :license: BSD, see LICENSE for more details.
 
 """
-from __future__ import absolute_import, unicode_literals
-
 import datetime
+
+from queue import Empty
 
 import pymongo
 from pymongo import errors
@@ -18,7 +18,6 @@ from pymongo import MongoClient, uri_parser
 from pymongo.cursor import CursorType
 
 from kombu.exceptions import VersionMismatch
-from kombu.five import Empty
 from kombu.syn import _detect_environment
 from kombu.utils.encoding import bytes_to_str
 from kombu.utils.json import loads, dumps

@@ -1,5 +1,3 @@
-from __future__ import absolute_import, unicode_literals
-
 import sys
 
 from itertools import count
@@ -11,7 +9,6 @@ except ImportError:
 else:
     from kombu.transport import pyamqp
 from kombu import Connection
-from kombu.five import nextfun
 
 from kombu.tests.case import Case, Mock, mock, patch
 
@@ -42,7 +39,7 @@ class test_Channel(Case):
                 ...
 
         self.conn = Mock()
-        self.conn._get_free_channel_id.side_effect = nextfun(count(0))
+        self.conn._get_free_channel_id.side_effect = next(count(0))
         self.conn.channels = {}
         self.channel = Channel(self.conn, 0)
 

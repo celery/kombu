@@ -5,14 +5,12 @@ kombu.transport.SLMQ
 SoftLayer Message Queue transport.
 
 """
-from __future__ import absolute_import, unicode_literals
-
+import os
 import socket
 import string
 
-import os
+from queue import Empty
 
-from kombu.five import Empty, text_t
 from kombu.utils import cached_property  # , uuid
 from kombu.utils.encoding import bytes_to_str, safe_str
 from kombu.utils.json import loads, dumps
@@ -61,7 +59,7 @@ class Channel(virtual.Channel):
 
     def entity_name(self, name, table=CHARS_REPLACE_TABLE):
         """Format AMQP queue name into a valid SLQS queue name."""
-        return text_t(safe_str(name)).translate(table)
+        return str(safe_str(name)).translate(table)
 
     def _new_queue(self, queue, **kwargs):
         """Ensures a queue exists in SLQS."""
