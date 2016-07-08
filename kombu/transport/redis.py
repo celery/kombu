@@ -492,7 +492,7 @@ class Channel(virtual.Channel):
 
         # Evaluate connection.
         try:
-            self.client.info()
+            self.client.ping()
         except Exception:
             self._disconnect_pools()
             raise
