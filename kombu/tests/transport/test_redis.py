@@ -82,6 +82,9 @@ class Client(object):
     def smembers(self, key):
         return self.sets.get(key, set())
 
+    def ping(self, *args, **kwargs):
+        return True
+
     def srem(self, key, *args):
         self.sets.pop(key, None)
     zrem = srem
@@ -273,7 +276,7 @@ class test_Channel(Case):
         self.assertFalse(chan.ack_emulation)
         self.assertEqual(chan.QoS, virtual.QoS)
 
-    def test_redis_info_raises(self):
+    def test_redis_ping_raises(self):
         pool = Mock(name='pool')
         pool_at_init = [pool]
         client = Mock(name='client')
@@ -291,7 +294,7 @@ class test_Channel(Case):
             Channel = XChannel
 
         conn = Connection(transport=XTransport)
-        client.info.side_effect = RuntimeError()
+        client.ping.side_effect = RuntimeError()
         with self.assertRaises(RuntimeError):
             conn.channel()
         pool.disconnect.assert_called_with()
