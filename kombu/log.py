@@ -66,11 +66,10 @@ class LogMixin:
     def critical(self, *args, **kwargs):
         return self._error(logging.CRITICAL, *args, **kwargs)
 
-    def _error(self, severity, *args, **kwargs):
-        kwargs.setdefault('exc_info', True)
+    def _error(self, severity, *args, exc_info=True, **kwargs):
         if DISABLE_TRACEBACKS:
-            kwargs.pop('exc_info', None)
-        return self.log(severity, *args, **kwargs)
+            exc_info=None
+        return self.log(severity, *args, exc_info=exc_info, **kwargs)
 
     def annotate(self, text):
         return '%s - %s' % (self.logger_name, text)

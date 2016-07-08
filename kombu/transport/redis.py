@@ -776,9 +776,10 @@ class Channel(virtual.Channel):
                                        pattern or '',
                                        queue or '']))
 
-    def _delete(self, queue, exchange, routing_key, pattern, *args, **kwargs):
+    def _delete(self, queue, exchange, routing_key, pattern,
+                *args, client=None, **kwargs):
         self.auto_delete_queues.discard(queue)
-        with self.conn_or_acquire(client=kwargs.get('client')) as client:
+        with self.conn_or_acquire(client=client)) as client:
             client.srem(self.keyprefix_queue % (exchange,),
                         self.sep.join([routing_key or '',
                                        pattern or '',

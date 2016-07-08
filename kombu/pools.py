@@ -30,9 +30,9 @@ class ProducerPool(Resource):
     Producer = Producer
     close_after_fork = True
 
-    def __init__(self, connections, *args, **kwargs):
+    def __init__(self, connections, *args, Producer=None, **kwargs):
         self.connections = connections
-        self.Producer = kwargs.pop('Producer', None) or self.Producer
+        self.Producer = Producer or self.Producer
         super().__init__(*args, **kwargs)
 
     def _acquire_connection(self):

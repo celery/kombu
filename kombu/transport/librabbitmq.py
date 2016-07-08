@@ -86,11 +86,11 @@ class Transport(base.Transport):
         heartbeats=False,
     )
 
-    def __init__(self, client, **kwargs):
+    def __init__(self, client,
+                 default_port=None, default_ssl_port=None, **kwargs):
         self.client = client
-        self.default_port = kwargs.get('default_port') or self.default_port
-        self.default_ssl_port = (kwargs.get('default_ssl_port') or
-                                 self.default_ssl_port)
+        self.default_port = default_port or self.default_port
+        self.default_ssl_port = default_ssl_port or self.default_ssl_port
         self.__reader = None
 
     def driver_version(self):

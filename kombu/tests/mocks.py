@@ -7,8 +7,8 @@ from kombu.utils import json
 
 class Message(base.Message):
 
-    def __init__(self, *args, **kwargs):
-        self.throw_decode_error = kwargs.get('throw_decode_error', False)
+    def __init__(self, *args, throw_decode_error=False, **kwargs):
+        self.throw_decode_error = throw_decode_error
         super().__init__(*args, **kwargs)
 
     def decode(self):

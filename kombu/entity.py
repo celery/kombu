@@ -7,7 +7,7 @@ Exchange and Queue declarations.
 """
 import numbers
 
-from .abstract import MaybeChannelBound, Object
+from .abstract import MaybeChannelBound
 from .exceptions import ContentDisallowed
 from .serialization import prepare_accept_content
 from .utils import abstract
@@ -748,49 +748,50 @@ class Queue(MaybeChannelBound):
         return not self.auto_delete
 
     @classmethod
-    def from_dict(self, queue, **options):
-        binding_key = options.get('binding_key') or options.get('routing_key')
-
-        e_durable = options.get('exchange_durable')
-        if e_durable is None:
-            e_durable = options.get('durable')
-
-        e_auto_delete = options.get('exchange_auto_delete')
-        if e_auto_delete is None:
-            e_auto_delete = options.get('auto_delete')
-
-        q_durable = options.get('queue_durable')
-        if q_durable is None:
-            q_durable = options.get('durable')
-
-        q_auto_delete = options.get('queue_auto_delete')
-        if q_auto_delete is None:
-            q_auto_delete = options.get('auto_delete')
-
-        e_arguments = options.get('exchange_arguments')
-        q_arguments = options.get('queue_arguments')
-        b_arguments = options.get('binding_arguments')
-        c_arguments = options.get('consumer_arguments')
-        bindings = options.get('bindings')
-
-        exchange = Exchange(options.get('exchange'),
-                            type=options.get('exchange_type'),
-                            delivery_mode=options.get('delivery_mode'),
-                            routing_key=options.get('routing_key'),
-                            durable=e_durable,
-                            auto_delete=e_auto_delete,
-                            arguments=e_arguments)
-        return Queue(queue,
-                     exchange=exchange,
-                     routing_key=binding_key,
-                     durable=q_durable,
-                     exclusive=options.get('exclusive'),
-                     auto_delete=q_auto_delete,
-                     no_ack=options.get('no_ack'),
-                     queue_arguments=q_arguments,
-                     binding_arguments=b_arguments,
-                     consumer_arguments=c_arguments,
-                     bindings=bindings)
+    def from_dict(self, queue,
+                  exchange=None,
+                  exchange_type=None,
+                  binding_key=None,
+                  routing_key=None,
+                  delivery_mode=None,
+                  bindings=None,
+                  durable=None,
+                  queue_durable=None,
+                  exchange_durable=None,
+                  auto_delete=None,
+                  queue_auto_delete=None,
+                  exchange_auto_delete=None,
+                  exchange_arguments=None,
+                  queue_arguments=None,
+                  binding_arguments=None,
+                  consumer_arguments=None,
+                  exclusive=None,
+                  no_ack=None,
+                  **options):
+        return Queue(
+            queue,
+            exchange=Exchange(
+                exchange,
+                type=exchange_type,
+                delivery_mode=delivery_mode,
+                routing_key=routing_key,
+                durable=(durable if exchange_durable is None
+                         else exchange_durable),
+                auto_delete=(auto_delete if exchange_auto_delete is None
+                             else exchange_auto_delete),
+                arguments=exchange_arguments,
+            ),
+            routing_key=routing_key if binding_key is None else binding_key,
+            durable=durable if queue_durable is None else queue_durable,
+            exclusive=exclusive,
+            auto_delete=(auto_delete if queue_auto_delete is None
+                         else queue_auto_delete),
+            no_ack=no_ack,
+            queue_arguments=queue_arguments,
+            binding_arguments=binding_arguments,
+            consumer_arguments=consumer_arguments,
+            bindings=bindings,
+        )
 
     def as_dict(self, recurse=False):
         res = super().as_dict(recurse)

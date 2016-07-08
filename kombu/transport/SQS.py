@@ -88,7 +88,7 @@ class Channel(virtual.Channel):
     _queue_cache = {}
     _noack_queues = set()
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, hub=None, **kwargs):
         if boto is None:
             raise ImportError('boto is not installed')
         super().__init__(*args, **kwargs)
@@ -105,7 +105,7 @@ class Channel(virtual.Channel):
         # to the caller of the drain_events() method.
         self._queue_message_cache = collections.deque()
 
-        self.hub = kwargs.get('hub') or get_event_loop()
+        self.hub = hub or get_event_loop()
 
     def _update_queue_cache(self, queue_name_prefix):
         try:
