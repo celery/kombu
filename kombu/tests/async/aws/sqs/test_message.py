@@ -5,7 +5,7 @@ from kombu.async.aws.sqs.message import AsyncMessage
 
 from kombu.tests.async.aws.case import AWSCase
 from kombu.tests.case import PromiseMock, Mock
-from kombu.utils import uuid
+from kombu.utils.uuid import uuid
 
 
 class test_AsyncMessage(AWSCase):

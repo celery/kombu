@@ -3,7 +3,7 @@ from __future__ import absolute_import, unicode_literals
 from kombu import Connection, Producer
 from kombu import pools
 from kombu.connection import ConnectionPool
-from kombu.utils import eqhash
+from kombu.utils.collections import eqhash
 
 from .case import Case, Mock
 

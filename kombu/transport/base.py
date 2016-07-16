@@ -8,7 +8,7 @@ from amqp.exceptions import RecoverableConnectionError
 
 from kombu.exceptions import ChannelError, ConnectionError
 from kombu.message import Message
-from kombu.utils import cached_property
+from kombu.utils.objects import cached_property
 
 __all__ = ['Message', 'StdChannel', 'Management', 'Transport']
 

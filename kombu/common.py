@@ -17,7 +17,7 @@ from .entity import Exchange, Queue
 from .five import bytes_if_py2, range
 from .log import get_logger
 from .serialization import registry as serializers
-from .utils import uuid
+from .utils.uuid import uuid
 
 try:
     from _thread import get_ident

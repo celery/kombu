@@ -51,10 +51,10 @@ from kombu.async.aws.sqs.ext import regions
 from kombu.async.aws.sqs.message import Message
 from kombu.five import Empty, range, string_t, text_t
 from kombu.log import get_logger
-from kombu.utils import cached_property
+from kombu.utils import scheduling
 from kombu.utils.encoding import bytes_to_str, safe_str
 from kombu.utils.json import loads, dumps
-from kombu.utils import scheduling
+from kombu.utils.objects import cached_property
 
 from . import virtual
 

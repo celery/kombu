@@ -1,9 +1,12 @@
 from __future__ import absolute_import, unicode_literals
 
+import random
 import sys
 import threading
 
 from collections import Iterable, Mapping, OrderedDict
+from itertools import count, repeat
+from time import sleep
 
 from vine.utils import wraps
 
@@ -11,12 +14,34 @@ from kombu.five import (
     UserDict, items, keys, python_2_unicode_compatible, string_t,
 )
 
+from .encoding import safe_repr as _safe_repr
+
 __all__ = [
     'LRUCache', 'memoize', 'lazy', 'maybe_evaluate',
     'is_list', 'maybe_list', 'dictfilter',
 ]
 
 KEYWORD_MARK = object()
+
+
+@python_2_unicode_compatible
+class ChannelPromise(object):
+
+    def __init__(self, contract):
+        self.__contract__ = contract
+
+    def __call__(self):
+        try:
+            return self.__value__
+        except AttributeError:
+            value = self.__value__ = self.__contract__()
+            return value
+
+    def __repr__(self):
+        try:
+            return repr(self.__value__)
+        except AttributeError:
+            return '<promise: 0x{0:x}>'.format(id(self.__contract__))
 
 
 class LRUCache(UserDict):
@@ -230,6 +255,104 @@ def dictfilter(d=None, **kw):
     d = kw if d is None else (dict(d, **kw) if kw else d)
     return {k: v for k, v in items(d) if v is not None}
 
+
+def shufflecycle(it):
+    it = list(it)  # don't modify callers list
+    shuffle = random.shuffle
+    for _ in repeat(None):
+        shuffle(it)
+        yield it[0]
+
+
+def fxrange(start=1.0, stop=None, step=1.0, repeatlast=False):
+    cur = start * 1.0
+    while 1:
+        if not stop or cur <= stop:
+            yield cur
+            cur += step
+        else:
+            if not repeatlast:
+                break
+            yield cur - step
+
+
+def fxrangemax(start=1.0, stop=None, step=1.0, max=100.0):
+    sum_, cur = 0, start * 1.0
+    while 1:
+        if sum_ >= max:
+            break
+        yield cur
+        if stop:
+            cur = min(cur + step, stop)
+        else:
+            cur += step
+        sum_ += cur
+
+
+def retry_over_time(fun, catch, args=[], kwargs={}, errback=None,
+                    max_retries=None, interval_start=2, interval_step=2,
+                    interval_max=30, callback=None):
+    """Retry the function over and over until max retries is exceeded.
+
+    For each retry we sleep a for a while before we try again, this interval
+    is increased for every retry until the max seconds is reached.
+
+    Arguments:
+        fun (Callable): The function to try
+        catch (Tuple[BaseException]): Exceptions to catch, can be either
+            tuple or a single exception class.
+
+    Keyword Arguments:
+        args (Tuple): Positional arguments passed on to the function.
+        kwargs (Dict): Keyword arguments passed on to the function.
+        errback (Callable): Callback for when an exception in ``catch``
+            is raised.  The callback must take three arguments:
+            ``exc``, ``interval_range`` and ``retries``, where ``exc``
+            is the exception instance, ``interval_range`` is an iterator
+            which return the time in seconds to sleep next, and ``retries``
+            is the number of previous retries.
+        max_retries (int): Maximum number of retries before we give up.
+            If this is not set, we will retry forever.
+        interval_start (float): How long (in seconds) we start sleeping
+            between retries.
+        interval_step (float): By how much the interval is increased for
+            each retry.
+        interval_max (float): Maximum number of seconds to sleep
+            between retries.
+    """
+    retries = 0
+    interval_range = fxrange(interval_start,
+                             interval_max + interval_start,
+                             interval_step, repeatlast=True)
+    for retries in count():
+        try:
+            return fun(*args, **kwargs)
+        except catch as exc:
+            if max_retries and retries >= max_retries:
+                raise
+            if callback:
+                callback()
+            tts = float(errback(exc, interval_range, retries) if errback
+                        else next(interval_range))
+            if tts:
+                for _ in range(int(tts)):
+                    if callback:
+                        callback()
+                    sleep(1.0)
+                # sleep remainder after int truncation above.
+                sleep(abs(int(tts) - tts))
+
+
+def reprkwargs(kwargs, sep=', ', fmt='{0}={1}'):
+    return sep.join(fmt.format(k, _safe_repr(v)) for k, v in items(kwargs))
+
+
+def reprcall(name, args=(), kwargs={}, sep=', '):
+    return '{0}({1}{2}{3})'.format(
+        name, sep.join(map(_safe_repr, args or ())),
+        (args and kwargs) and sep or '',
+        reprkwargs(kwargs, sep),
+    )
 
 # Compat names (before kombu 3.0)
 promise = lazy

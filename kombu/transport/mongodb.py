@@ -17,7 +17,7 @@ from kombu.five import Empty
 from kombu.syn import _detect_environment
 from kombu.utils.encoding import bytes_to_str
 from kombu.utils.json import loads, dumps
-from kombu.utils import cached_property
+from kombu.utils.objects import cached_property
 
 from . import virtual
 

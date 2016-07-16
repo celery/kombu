@@ -12,12 +12,14 @@ from operator import itemgetter
 # jython breaks on relative import for .exceptions for some reason
 # (Issue #112)
 from kombu import exceptions
+
 from .five import bytes_if_py2, python_2_unicode_compatible, string_t, text_t
 from .log import get_logger
 from .resource import Resource
 from .transport import get_transport_cls, supports_librabbitmq
-from .utils import cached_property, retry_over_time, shufflecycle, HashedSeq
-from .utils.functional import dictfilter, lazy
+from .utils.collections import HashedSeq
+from .utils.functional import dictfilter, lazy, retry_over_time, shufflecycle
+from .utils.objects import cached_property
 from .utils.url import as_url, parse_url, quote, urlparse
 
 __all__ = ['Connection', 'ConnectionPool', 'ChannelPool']

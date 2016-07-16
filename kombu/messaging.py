@@ -1,10 +1,4 @@
-"""
-kombu.messaging
-===============
-
-Sending and receiving messages.
-
-"""
+"""Sending and receiving messages."""
 from __future__ import absolute_import, unicode_literals
 
 from itertools import count
@@ -16,7 +10,7 @@ from .entity import Exchange, Queue, maybe_delivery_mode
 from .exceptions import ContentDisallowed
 from .five import items, python_2_unicode_compatible, text_t, values
 from .serialization import dumps, prepare_accept_content
-from .utils import ChannelPromise, maybe_list
+from .utils.functional import ChannelPromise, maybe_list
 
 __all__ = ['Exchange', 'Queue', 'Producer', 'Consumer']
 

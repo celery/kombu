@@ -3,7 +3,7 @@ from __future__ import absolute_import, unicode_literals
 
 from kombu.five import string_t
 from kombu.syn import _detect_environment
-from kombu.utils import symbol_by_name
+from kombu.utils.imports import symbol_by_name
 
 
 def supports_librabbitmq():

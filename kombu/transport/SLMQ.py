@@ -7,9 +7,9 @@ import string
 import os
 
 from kombu.five import Empty, text_t
-from kombu.utils import cached_property  # , uuid
 from kombu.utils.encoding import bytes_to_str, safe_str
 from kombu.utils.json import loads, dumps
+from kombu.utils.objects import cached_property
 
 from . import virtual
 

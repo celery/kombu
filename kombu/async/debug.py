@@ -2,8 +2,8 @@
 from __future__ import absolute_import, unicode_literals
 
 from kombu.five import items, string_t
-from kombu.utils import reprcall
 from kombu.utils.eventio import READ, WRITE, ERR
+from kombu.utils.functional import reprcall
 
 
 def repr_flag(flag):

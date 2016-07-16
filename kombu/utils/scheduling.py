@@ -5,7 +5,7 @@ from itertools import count
 
 from kombu.five import python_2_unicode_compatible
 
-from . import symbol_by_name
+from .imports import symbol_by_name
 
 __all__ = [
     'FairCycle', 'priority_cycle', 'round_robin_cycle', 'sorted_cycle',

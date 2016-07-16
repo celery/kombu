@@ -12,8 +12,9 @@ from vine import Thenable, promise
 
 from kombu.five import Empty, python_2_unicode_compatible, range
 from kombu.log import get_logger
-from kombu.utils import cached_property, fileno
+from kombu.utils.compat import fileno
 from kombu.utils.eventio import READ, WRITE, ERR, poll
+from kombu.utils.objects import cached_property
 
 from .timer import Timer
 

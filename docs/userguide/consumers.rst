@@ -37,7 +37,7 @@ Draining events from several consumers:
 
 .. code-block:: python
 
-    from kombu.utils import nested
+    from kombu.utils.compat import nested
 
     with connection.channel(), connection.channel() as (channel1, channel2):
         with nested(Consumer(channel1, queues1, accept=['json']),

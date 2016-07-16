@@ -7,7 +7,7 @@ from collections import deque
 
 from . import exceptions
 from .five import Empty, LifoQueue as _LifoQueue
-from .utils import register_after_fork
+from .utils.compat import register_after_fork
 from .utils.functional import lazy
 
 

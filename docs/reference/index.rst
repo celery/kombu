@@ -55,15 +55,20 @@
     kombu.transport.virtual
     kombu.transport.virtual.exchange
     kombu.serialization
-    kombu.utils
-    kombu.utils.scheduling
-    kombu.utils.eventio
-    kombu.utils.limits
-    kombu.utils.debug
-    kombu.utils.encoding
-    kombu.utils.functional
-    kombu.utils.json
-    kombu.utils.url
-    kombu.utils.text
     kombu.utils.amq_manager
+    kombu.utils.collections
+    kombu.utils.compat
+    kombu.utils.debug
+    kombu.utils.div
+    kombu.utils.encoding
+    kombu.utils.eventio
+    kombu.utils.functional
+    kombu.utils.imports
+    kombu.utils.json
+    kombu.utils.limits
+    kombu.utils.objects
+    kombu.utils.scheduling
+    kombu.utils.text
+    kombu.utils.url
+    kombu.utils.uuid
     kombu.five

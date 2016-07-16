@@ -6,7 +6,7 @@ from copy import copy
 from .connection import maybe_channel
 from .exceptions import NotBoundError
 from .five import python_2_unicode_compatible
-from .utils import ChannelPromise
+from .utils.functional import ChannelPromise
 
 __all__ = ['Object', 'MaybeChannelBound']
 

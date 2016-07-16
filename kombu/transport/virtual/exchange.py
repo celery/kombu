@@ -5,9 +5,9 @@ by the AMQ protocol  (excluding the `headers` exchange).
 """
 from __future__ import absolute_import, unicode_literals
 
-from kombu.utils import escape_regex
-
 import re
+
+from kombu.utils.text import escape_regex
 
 
 class ExchangeType(object):

@@ -19,9 +19,10 @@ from .common import ignore_errors
 from .five import range
 from .messaging import Consumer, Producer
 from .log import get_logger
-from .utils import cached_property, nested
+from .utils.compat import nested
 from .utils.encoding import safe_repr
 from .utils.limits import TokenBucket
+from .utils.objects import cached_property
 
 __all__ = ['ConsumerMixin']
 

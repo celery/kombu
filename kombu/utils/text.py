@@ -7,6 +7,13 @@ from kombu import version_info_t
 from kombu.five import string_t
 
 
+def escape_regex(p, white=''):
+    # what's up with re.escape? that code must be neglected or someting
+    return ''.join(c if c.isalnum() or c in white
+                   else ('\\000' if c == '\000' else '\\' + c)
+                   for c in p)
+
+
 def fmatch_iter(needle, haystack, min_ratio=0.6):
     for key in haystack:
         ratio = SequenceMatcher(None, needle, key).ratio()

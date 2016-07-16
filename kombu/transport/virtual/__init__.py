@@ -20,9 +20,10 @@ from amqp.protocol import queue_declare_ok_t
 from kombu.exceptions import ResourceError, ChannelError
 from kombu.five import Empty, items, monotonic
 from kombu.log import get_logger
-from kombu.utils import emergency_dump_state, uuid
 from kombu.utils.encoding import str_to_bytes, bytes_to_str
+from kombu.utils.div import emergency_dump_state
 from kombu.utils.scheduling import FairCycle
+from kombu.utils.uuid import uuid
 
 from kombu.transport import base
 

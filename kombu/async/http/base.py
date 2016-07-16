@@ -6,7 +6,7 @@ from vine import Thenable, promise, maybe_promise
 
 from kombu.exceptions import HttpError
 from kombu.five import items, python_2_unicode_compatible
-from kombu.utils import coro
+from kombu.utils.compat import coro
 from kombu.utils.encoding import bytes_to_str
 from kombu.utils.functional import maybe_list, memoize
 
@@ -223,7 +223,7 @@ class BaseClient(object):
         self._header_parser = header_parser()
 
     def perform(self, request, **kwargs):
-        for req in maybe_list(request):
+        for req in maybe_list(request) or []:
             if not isinstance(req, self.Request):
                 req = self.Request(req, **kwargs)
             self.add_request(req)

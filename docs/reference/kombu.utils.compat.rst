@@ -1,11 +1,11 @@
 ==========================================================
- Utilities - ``kombu.utils``
+ Python Compatibility - ``kombu.utils.compat``
 ==========================================================
 
 .. contents::
     :local:
-.. currentmodule:: kombu.utils
+.. currentmodule:: kombu.utils.compat
 
-.. automodule:: kombu.utils
+.. automodule:: kombu.utils.compat
     :members:
     :undoc-members:

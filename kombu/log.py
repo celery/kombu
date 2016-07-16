@@ -8,9 +8,9 @@ import sys
 from logging.handlers import WatchedFileHandler
 
 from .five import string_t
-from .utils import cached_property
 from .utils.encoding import safe_repr, safe_str
 from .utils.functional import maybe_evaluate
+from .utils.objects import cached_property
 
 __all__ = ['LogMixin', 'LOG_LEVELS', 'get_loglevel', 'setup_logging']
 

@@ -15,8 +15,8 @@ from contextlib import contextmanager
 from kombu.exceptions import ChannelError
 from kombu.five import Empty, monotonic
 from kombu.log import get_logger
-from kombu.utils import cached_property
 from kombu.utils.json import loads, dumps
+from kombu.utils.objects import cached_property
 
 from . import virtual
 

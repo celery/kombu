@@ -7,8 +7,8 @@ from collections import defaultdict
 
 from kombu import Connection, Consumer, Producer, Exchange, Queue
 from kombu.exceptions import MessageStateError
-from kombu.utils import ChannelPromise
 from kombu.utils import json
+from kombu.utils.functional import ChannelPromise
 
 from .case import Case, Mock, patch
 from .mocks import Transport

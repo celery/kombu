@@ -7,7 +7,7 @@ from __future__ import absolute_import, unicode_literals
 import sys
 
 from kombu.five import reraise
-from kombu.utils import cached_property
+from kombu.utils.objects import cached_property
 
 from . import virtual
 

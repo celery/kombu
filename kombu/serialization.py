@@ -19,7 +19,7 @@ from .exceptions import (
     ContentDisallowed, DecodeError, EncodeError, SerializerNotInstalled
 )
 from .five import reraise, text_t
-from .utils import entrypoints
+from .utils.compat import entrypoints
 from .utils.encoding import bytes_to_str, str_to_bytes, bytes_t
 
 __all__ = ['pickle', 'loads', 'dumps', 'register', 'unregister']
