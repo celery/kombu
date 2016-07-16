@@ -1,3 +1,4 @@
+"""Event-loop debugging tools."""
 from __future__ import absolute_import, unicode_literals
 
 from kombu.five import items, string_t

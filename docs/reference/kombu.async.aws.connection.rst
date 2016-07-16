@@ -1,5 +1,5 @@
 ==========================================================
- Amazon AWS Connection - kombu.async.aws.connection
+ Amazon AWS Connection - ``kombu.async.aws.connection``
 ==========================================================
 
 .. contents::

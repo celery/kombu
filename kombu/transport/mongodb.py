@@ -1,12 +1,7 @@
-"""
-kombu.transport.mongodb
-=======================
-
-MongoDB transport.
+"""MongoDB transport.
 
 :copyright: (c) 2010 - 2013 by Flavio Percoco Premoli.
 :license: BSD, see LICENSE for more details.
-
 """
 from __future__ import absolute_import, unicode_literals
 

@@ -1,10 +1,8 @@
-"""
-Consul Kombu Transport
+"""Consul Transport.
 
 It uses Consul.io's Key/Value store to transport messages in Queues
 
 It uses python-consul for talking to Consul's HTTP API
-
 """
 from __future__ import absolute_import, unicode_literals
 
@@ -73,9 +71,11 @@ class Channel(virtual.Channel):
         This session is used to acquire a lock inside Consul so that we achieve
         read-consistency between the nodes.
 
-        :param queue: The name of the Queue.
-        :returns: The ID of the session.
+        Arguments:
+            queue (str): The name of the Queue.
 
+        Returns:
+            str: The ID of the session.
         """
 
         try:
@@ -109,11 +109,15 @@ class Channel(virtual.Channel):
         This way other nodes are not able to write to the lock object which
         means that they have to wait before the lock is released.
 
-        :param queue: The name of the Queue
-        :keyword raising: Set custom lock error class.
-        :raises LockError: if the lock cannot be acquired.
-        :returns: True on success, False otherwise.
+        Arguments:
+            queue (str): The name of the Queue.
+            raising (Exception): Set custom lock error class.
 
+        Raises:
+            LockError: if the lock cannot be acquired.
+
+        Returns:
+            bool: success?
         """
         self._acquire_lock(queue, raising=raising)
         try:
@@ -140,9 +144,9 @@ class Channel(virtual.Channel):
         """Try to release a lock. It does so by simply removing the lock key
         in Consul.
 
-        :param queue: The name of the queue we want to release the lock from
-        :returns: None
-
+        Arguments:
+            queue (str): The name of the queue we want to release
+                the lock from.
         """
         logger.debug('Removing lock key %s', self._lock_key(queue))
         self.client.kv.delete(key=self._lock_key(queue))
@@ -151,9 +155,8 @@ class Channel(virtual.Channel):
         """Destroy a previously created Consul session and
         release all locks it still might hold.
 
-        :param queue: The name of the Queue
-        :return: None
-
+        Arguments:
+            queue (str): The name of the Queue.
         """
         logger.debug('Destroying session %s', self.queues[queue]['session_id'])
         self.client.session.destroy(self.queues[queue]['session_id'])
@@ -171,7 +174,6 @@ class Channel(virtual.Channel):
         """Put `message` onto `queue`.
 
         This simply writes a key to the K/V store of Consul
-
         """
         key = '{0}/msg/{1}_{2}'.format(
             self._key_prefix(queue),
@@ -186,7 +188,6 @@ class Channel(virtual.Channel):
 
         Before it does so it acquires a lock on the Key/Value store so
         only one node reads at the same time. This is for read consistency
-
         """
         with self._queue_lock(queue, raising=Empty):
             key = '{0}/msg/'.format(self._key_prefix(queue))

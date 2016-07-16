@@ -1,5 +1,5 @@
 ==========================================================
- Async Amazon AWS Client - kombu.async.aws
+ Async Amazon AWS Client - ``kombu.async.aws``
 ==========================================================
 
 .. contents::

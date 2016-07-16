@@ -1,3 +1,7 @@
+===============================================
+ Simple Messaging API - ``kombu.simple``
+===============================================
+
 .. currentmodule:: kombu.simple
 
 .. automodule:: kombu.simple

@@ -1,10 +1,4 @@
-"""
-kombu.pools
-===========
-
-Public resource pools.
-
-"""
+"""Public resource pools."""
 from __future__ import absolute_import, unicode_literals
 
 import os

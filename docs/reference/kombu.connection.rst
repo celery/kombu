@@ -1,4 +1,6 @@
-
+=======================================
+  Connection - ``kombu.connection``
+=======================================
 
 .. currentmodule:: kombu.connection
 

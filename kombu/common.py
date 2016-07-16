@@ -1,10 +1,4 @@
-"""
-kombu.common
-============
-
-Common Utilities.
-
-"""
+"""Common Utilities."""
 from __future__ import absolute_import, unicode_literals
 
 import os
@@ -69,13 +63,13 @@ class Broadcast(Queue):
     Every queue instance will have a unique name,
     and both the queue and exchange is configured with auto deletion.
 
-    :keyword name: This is used as the name of the exchange.
-    :keyword queue: By default a unique id is used for the queue
-       name for every consumer.  You can specify a custom queue
-       name here.
-    :keyword \*\*kwargs: See :class:`~kombu.Queue` for a list
-        of additional keyword arguments supported.
-
+    Arguments:
+        name (str): This is used as the name of the exchange.
+        queue (str): By default a unique id is used for the queue
+            name for every consumer.  You can specify a custom
+            queue name here.
+        **kwargs (Any): See :class:`~kombu.Queue` for a list
+            of additional keyword arguments supported.
     """
     attrs = Queue.attrs + (('queue', None),)
 
@@ -173,18 +167,17 @@ def eventloop(conn, limit=None, timeout=None, ignore_timeouts=False):
     timeout errors (a timeout of 1 is often used in environments where
     the socket can get "stuck", and is a best practice for Kombu consumers).
 
-    **Examples**
+    ``eventloop`` is a generator.
 
-    ``eventloop`` is a generator::
+    Examples:
+        >>> from kombu.common import eventloop
 
-        from kombu.common import eventloop
-
-        def run(connection):
-            it = eventloop(connection, timeout=1, ignore_timeouts=True)
-            next(it)   # one event consumed, or timed out.
-
-            for _ in eventloop(connection, timeout=1, ignore_timeouts=True):
-                pass  # loop forever.
+        >>> def run(conn):
+        ...     it = eventloop(conn, timeout=1, ignore_timeouts=True)
+        ...     next(it)   # one event consumed, or timed out.
+        ...
+        ...     for _ in eventloop(conn, timeout=1, ignore_timeouts=True):
+        ...         pass  # loop forever.
 
     It also takes an optional limit parameter, and timeout errors
     are propagated by default::
@@ -192,11 +185,9 @@ def eventloop(conn, limit=None, timeout=None, ignore_timeouts=False):
         for _ in eventloop(connection, limit=1, timeout=1):
             pass
 
-    .. seealso::
-
+    See Also:
         :func:`itermessages`, which is an event loop bound to one or more
         consumers, that yields any messages received.
-
     """
     for i in limit and range(limit) or count():
         try:
@@ -210,16 +201,16 @@ def send_reply(exchange, req, msg,
                producer=None, retry=False, retry_policy=None, **props):
     """Send reply for request.
 
-    :param exchange: Reply exchange
-    :param req: Original request, a message with a ``reply_to`` property.
-    :param producer: Producer instance
-    :param retry: If true must retry according to ``reply_policy`` argument.
-    :param retry_policy: Retry settings.
-    :param props: Extra properties
-
+    Arguments:
+        exchange (kombu.Exchange, str): Reply exchange
+        req (~kombu.Message): Original request, a message with
+            a ``reply_to`` property.
+        producer (kombu.Producer): Producer instance
+        retry (bool): If true must retry according to ``reply_policy`` argument.
+        retry_policy (Dict): Retry settings.
+        **props (Any): Extra properties.
     """
-
-    producer.publish(
+    return producer.publish(
         msg, exchange=exchange,
         retry=retry, retry_policy=retry_policy,
         **dict({'routing_key': req.properties['reply_to'],
@@ -282,12 +273,10 @@ def ignore_errors(conn, fun=None, *args, **kwargs):
                 consumer.channel.close()
 
 
-    .. note::
-
+    Note:
         Connection and channel errors should be properly handled,
         and not ignored.  Using this function is only acceptable in a cleanup
         phase, like when a connection is lost or at shutdown.
-
     """
     if fun:
         with _ignore_errors(conn):
@@ -320,15 +309,13 @@ def insured(pool, fun, args, kwargs, errback=None, on_revive=None, **opts):
 class QoS(object):
     """Thread safe increment/decrement of a channels prefetch_count.
 
-    :param callback: Function used to set new prefetch count,
-        e.g. ``consumer.qos`` or ``channel.basic_qos``.  Will be called
-        with a single ``prefetch_count`` keyword argument.
-    :param initial_value: Initial prefetch count value.
+    Arguments:
+        callback (Callable): Function used to set new prefetch count,
+            e.g. ``consumer.qos`` or ``channel.basic_qos``.  Will be called
+            with a single ``prefetch_count`` keyword argument.
+        initial_value (int): Initial prefetch count value..
 
-    **Example usage**
-
-    .. code-block:: python
-
+    Example:
         >>> from kombu import Consumer, Connection
         >>> connection = Connection('amqp://')
         >>> consumer = Consumer(connection)
@@ -358,7 +345,6 @@ class QoS(object):
         >>> def set_qos(prefetch_count):
         ...     print('prefetch count now: %r' % (prefetch_count,))
         >>> QoS(set_qos, 10)
-
     """
     prev = None
 
@@ -370,9 +356,9 @@ class QoS(object):
     def increment_eventually(self, n=1):
         """Increment the value, but do not update the channels QoS.
 
-        The MainThread will be responsible for calling :meth:`update`
-        when necessary.
-
+        Note:
+            The MainThread will be responsible for calling :meth:`update`
+            when necessary.
         """
         with self._mutex:
             if self.value:
@@ -382,9 +368,9 @@ class QoS(object):
     def decrement_eventually(self, n=1):
         """Decrement the value, but do not update the channels QoS.
 
-        The MainThread will be responsible for calling :meth:`update`
-        when necessary.
-
+        Note:
+            The MainThread will be responsible for calling :meth:`update`
+            when necessary.
         """
         with self._mutex:
             if self.value:

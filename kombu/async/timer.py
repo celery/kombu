@@ -1,11 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-kombu.async.timer
-=================
-
-Timer scheduling Python callbacks.
-
-"""
+"""Timer scheduling Python callbacks."""
 from __future__ import absolute_import, unicode_literals
 
 import heapq
@@ -137,10 +131,10 @@ class Timer(object):
     def enter_at(self, entry, eta=None, priority=0, time=monotonic):
         """Enter function into the scheduler.
 
-        :param entry: Item to enter.
-        :keyword eta: Scheduled time as a :class:`datetime.datetime` object.
-        :keyword priority: Unused.
-
+        Arguments:
+            entry (~kombu.async.timer.Entry): Item to enter.
+            eta (datetime.datetime): Scheduled time.
+            priority (int): Unused.
         """
         if eta is None:
             eta = time()

@@ -1,10 +1,4 @@
-"""
-kombu.transport
-===============
-
-Built-in transports.
-
-"""
+"""Built-in transports."""
 from __future__ import absolute_import, unicode_literals
 
 from kombu.five import string_t
@@ -72,7 +66,6 @@ def get_transport_cls(transport=None):
 
     If the name does not include `"."` (is not fully qualified),
     the alias table will be consulted.
-
     """
     if transport not in _transport_cache:
         _transport_cache[transport] = resolve_transport(transport)

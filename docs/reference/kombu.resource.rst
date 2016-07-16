@@ -1,5 +1,5 @@
 ==========================================================
- Resource Management - kombu.resource
+ Resource Management - ``kombu.resource``
 ==========================================================
 
 .. contents::

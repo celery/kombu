@@ -22,11 +22,11 @@ KEYWORD_MARK = object()
 class LRUCache(UserDict):
     """LRU Cache implementation using a doubly linked list to track access.
 
-    :keyword limit: The maximum number of keys to keep in the cache.
-        When a new key is inserted and the limit has been exceeded,
-        the *Least Recently Used* key will be discarded from the
-        cache.
-
+    Arguments:
+        limit (int): The maximum number of keys to keep in the cache.
+            When a new key is inserted and the limit has been exceeded,
+            the *Least Recently Used* key will be discarded from the
+            cache.
     """
 
     def __init__(self, limit=None):
@@ -166,7 +166,6 @@ class lazy(object):
 
     Overloaded operations that will evaluate the promise:
         :meth:`__str__`, :meth:`__repr__`, :meth:`__cmp__`.
-
     """
 
     def __init__(self, fun, *args, **kwargs):

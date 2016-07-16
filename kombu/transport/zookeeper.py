@@ -1,8 +1,4 @@
-"""
-kombu.transport.zookeeper
-=========================
-
-Zookeeper transport.
+"""Zookeeper transport.
 
 :copyright: (c) 2010 - 2013 by Mahendra M.
 :license: BSD, see LICENSE for more details.

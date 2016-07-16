@@ -1,10 +1,4 @@
-"""
-kombu.abstract
-==============
-
-Object utilities.
-
-"""
+"""Object utilities."""
 from __future__ import absolute_import, unicode_literals
 
 from copy import copy

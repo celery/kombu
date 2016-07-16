@@ -1,5 +1,5 @@
 ==========================================================
- SQS Queues - kombu.async.aws.sqs.queue
+ SQS Queues - ``kombu.async.aws.sqs.queue``
 ==========================================================
 
 .. contents::

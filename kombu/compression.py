@@ -1,10 +1,4 @@
-"""
-kombu.compression
-=================
-
-Compression utilities.
-
-"""
+"""Compression utilities."""
 from __future__ import absolute_import, unicode_literals
 
 from kombu.utils.encoding import ensure_bytes
@@ -22,11 +16,14 @@ __all__ = ['register', 'encoders', 'get_encoder',
 def register(encoder, decoder, content_type, aliases=[]):
     """Register new compression method.
 
-    :param encoder: Function used to compress text.
-    :param decoder: Function used to decompress previously compressed text.
-    :param content_type: The mime type this compression method identifies as.
-    :param aliases: A list of names to associate with this compression method.
-
+    Arguments:
+        encoder (Callable): Function used to compress text.
+        decoder (Callable): Function used to decompress previously
+            compressed text.
+        content_type (str): The mime type this compression method
+            identifies as.
+        aliases (Sequence[str]): A list of names to associate with
+            this compression method.
     """
     _encoders[content_type] = encoder
     _decoders[content_type] = decoder
@@ -52,9 +49,9 @@ def get_decoder(t):
 def compress(body, content_type):
     """Compress text.
 
-    :param body: The text to compress.
-    :param content_type: mime-type of compression method to use.
-
+    Arguments:
+        body (AnyStr): The text to compress.
+        content_type (str): mime-type of compression method to use.
     """
     encoder, content_type = get_encoder(content_type)
     return encoder(ensure_bytes(body)), content_type
@@ -63,9 +60,9 @@ def compress(body, content_type):
 def decompress(body, content_type):
     """Decompress compressed text.
 
-    :param body: Previously compressed text to uncompress.
-    :param content_type: mime-type of compression method used.
-
+    Arguments:
+        body (AnyStr): Previously compressed text to uncompress.
+        content_type (str): mime-type of compression method used.
     """
     return get_decoder(content_type)(body)
 

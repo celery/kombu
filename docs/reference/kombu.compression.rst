@@ -1,3 +1,7 @@
+=============================================
+ Message Compression - ``kombu.compression``
+=============================================
+
 .. currentmodule:: kombu.compression
 
 .. automodule:: kombu.compression

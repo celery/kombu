@@ -1,5 +1,5 @@
 ==========================================================
- Evented I/O - kombu.utils.eventio
+ Async I/O Selectors - ``kombu.utils.eventio``
 ==========================================================
 
 .. contents::

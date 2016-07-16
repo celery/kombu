@@ -1,9 +1,6 @@
-"""
-kombu.transport.filesystem
-==========================
+"""File-system Transport
 
-Transport using the file system as the message store.
-
+Transport using the file-system as the message store.
 """
 from __future__ import absolute_import, unicode_literals
 

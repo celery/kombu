@@ -1,5 +1,5 @@
 ==========================================================
- kombu.utils.functional
+ Functional-style Utilities - ``kombu.utils.functional``
 ==========================================================
 
 .. contents::

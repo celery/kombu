@@ -1,11 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-kombu.async.semaphore
-=====================
-
-Semaphores and concurrency primitives.
-
-"""
+"""Semaphores and concurrency primitives."""
 from __future__ import absolute_import, unicode_literals
 
 from collections import deque
@@ -23,9 +17,6 @@ class LaxBoundedSemaphore(object):
     range even if released more times than it was acquired.
 
     Example:
-
-    .. code-block:: pycon
-
         >>> from future import print_statement as printf
         # ^ ignore: just fooling stupid pyflakes
 
@@ -43,7 +34,6 @@ class LaxBoundedSemaphore(object):
 
         >>> x.release()
         HELLO 3
-
     """
 
     def __init__(self, value):
@@ -56,9 +46,9 @@ class LaxBoundedSemaphore(object):
         """Acquire semaphore, applying ``callback`` if
         the resource is available.
 
-        :param callback: The callback to apply.
-        :param \*partial_args: partial arguments to callback.
-
+        Arguments:
+            callback (Callable): The callback to apply.
+            *partial_args (Any): partial arguments to callback.
         """
         value = self.value
         if value <= 0:
@@ -72,9 +62,9 @@ class LaxBoundedSemaphore(object):
     def release(self):
         """Release semaphore.
 
-        If there are any waiters this will apply the first waiter
-        that is waiting for the resource (FIFO order).
-
+        Note:
+            If there are any waiters this will apply the first waiter
+            that is waiting for the resource (FIFO order).
         """
         try:
             waiter, args, kwargs = self._pop_waiter()

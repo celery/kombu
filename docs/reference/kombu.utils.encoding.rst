@@ -1,5 +1,5 @@
 ==========================================================
- String Encoding - kombu.utils.encoding
+ String Encoding Utilities - ``kombu.utils.encoding``
 ==========================================================
 
 .. contents::

@@ -1,10 +1,4 @@
-"""
-kombu.clocks
-============
-
-Logical Clocks and Synchronization.
-
-"""
+"""Logical Clocks and Synchronization."""
 from __future__ import absolute_import, unicode_literals
 
 from threading import Lock
@@ -24,11 +18,11 @@ class timetuple(tuple):
 
     Can be used as part of a heap to keep events ordered.
 
-    :param clock:  Event clock value.
-    :param timestamp: Event UNIX timestamp value.
-    :param id: Event host id (e.g. ``hostname:pid``).
-    :param obj: Optional obj to associate with this event.
-
+    Arguments:
+        clock (int):  Event clock value.
+        timestamp (float): Event UNIX timestamp value.
+        id (str): Event host id (e.g. ``hostname:pid``).
+        obj (Any): Optional obj to associate with this event.
     """
     __slots__ = ()
 
@@ -90,8 +84,7 @@ class LamportClock(object):
     process receives a message, it resynchronizes its logical clock with
     the sender.
 
-    .. seealso::
-
+    See Also:
         * `Lamport timestamps`_
 
         * `Lamports distributed mutex`_

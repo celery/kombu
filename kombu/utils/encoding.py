@@ -1,12 +1,9 @@
 # -*- coding: utf-8 -*-
-"""
-kombu.utils.encoding
-~~~~~~~~~~~~~~~~~~~~~
+"""Text encoding utilities.
 
 Utilities to encode text, and to safely emit text from running
-applications without crashing with the infamous :exc:`UnicodeDecodeError`
-exception.
-
+applications without crashing from the infamous
+:exc:`UnicodeDecodeError` exception.
 """
 from __future__ import absolute_import, unicode_literals
 

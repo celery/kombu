@@ -1,3 +1,7 @@
+============================================================
+ Virtual Transport Base Class - ``kombu.transport.virtual``
+============================================================
+
 .. currentmodule:: kombu.transport.virtual
 
 .. automodule:: kombu.transport.virtual

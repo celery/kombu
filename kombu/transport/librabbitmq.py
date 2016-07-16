@@ -1,11 +1,6 @@
-"""
-kombu.transport.librabbitmq
-===========================
-
-`librabbitmq`_ transport.
+"""`librabbitmq`_ transport.
 
 .. _`librabbitmq`: http://pypi.python.org/librabbitmq/
-
 """
 from __future__ import absolute_import, unicode_literals
 

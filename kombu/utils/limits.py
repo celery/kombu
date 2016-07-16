@@ -1,10 +1,4 @@
-"""
-kombu.utils.limits
-==================
-
-Token bucket implementation for rate limiting.
-
-"""
+"""Token bucket implementation for rate limiting."""
 from __future__ import absolute_import, unicode_literals
 
 from collections import deque
@@ -17,16 +11,16 @@ __all__ = ['TokenBucket']
 class TokenBucket(object):
     """Token Bucket Algorithm.
 
-    See http://en.wikipedia.org/wiki/Token_Bucket
-    Most of this code was stolen from an entry in the ASPN Python Cookbook:
-    http://code.activestate.com/recipes/511490/
+    See Also:
+        http://en.wikipedia.org/wiki/Token_Bucket
 
-    .. admonition:: Thread safety
+        Most of this code was stolen from an entry in the ASPN Python Cookbook:
+        http://code.activestate.com/recipes/511490/
 
-        This implementation is not thread safe. Access to a `TokenBucket`
-        instance should occur within the critical section of any multithreaded
-        code.
-
+    Warning:
+        Thread Safety: This implementation is not thread safe.
+        Access to a `TokenBucket` instance should occur within the critical
+        section of any multithreaded code.
     """
 
     #: The rate in tokens/second that the bucket will be refilled.
@@ -55,19 +49,28 @@ class TokenBucket(object):
         self.contents.clear()
 
     def can_consume(self, tokens=1):
-        """Return :const:`True` if the number of tokens can be consumed
-        from the bucket.  If they can be consumed, a call will also consume the
-        requested number of tokens from the bucket. Calls will only consume
-        `tokens` (the number requested) or zero tokens -- it will never consume
-        a partial number of tokens."""
+        """Check if one or more tokens can be consumed.
+
+        Returns:
+            bool: true if the number of tokens can be consumed
+                from the bucket.  If they can be consumed, a call will also
+                consume the requested number of tokens from the bucket.
+                Calls will only consume `tokens` (the number requested)
+                or zero tokens -- it will never consume a partial number
+                of tokens.
+        """
         if tokens <= self._get_tokens():
             self._tokens -= tokens
             return True
         return False
 
     def expected_time(self, tokens=1):
-        """Return the time (in seconds) when a new token is expected
-        to be available. This will not consume any tokens from the bucket."""
+        """Get the current exepected time for when a new token is to be
+        available.
+
+        Returns:
+            float: the time in seconds.
+        """
         _tokens = self._get_tokens()
         tokens = max(tokens, _tokens)
         return (tokens - _tokens) / self.fill_rate

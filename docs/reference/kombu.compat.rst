@@ -1,3 +1,7 @@
+==========================================
+  Carrot Compatibility - ``kombu.compat``
+==========================================
+
 .. currentmodule:: kombu.compat
 
 .. automodule:: kombu.compat

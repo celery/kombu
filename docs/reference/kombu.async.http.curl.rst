@@ -1,5 +1,5 @@
 ==========================================================
- Async pyCurl HTTP Client - kombu.async.http.curl
+ Async pyCurl HTTP Client - ``kombu.async.http.curl``
 ==========================================================
 
 .. contents::

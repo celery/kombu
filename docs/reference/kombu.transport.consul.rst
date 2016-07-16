@@ -1,3 +1,7 @@
+================================================
+ Consul Transport - ``kombu.transport.consul``
+================================================
+
 .. currentmodule:: kombu.transport.consul
 
 .. automodule:: kombu.transport.consul

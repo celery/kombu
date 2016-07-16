@@ -1,10 +1,4 @@
-"""
-kombu.transport.redis
-=====================
-
-Redis transport.
-
-"""
+"""Redis transport."""
 from __future__ import absolute_import, unicode_literals
 
 import numbers

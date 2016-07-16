@@ -1,10 +1,4 @@
-"""
-kombu.entity
-================
-
-Exchange and Queue declarations.
-
-"""
+"""Exchange and Queue declarations."""
 from __future__ import absolute_import, unicode_literals
 
 import numbers
@@ -46,104 +40,93 @@ def maybe_delivery_mode(
 class Exchange(MaybeChannelBound):
     """An Exchange declaration.
 
-    :keyword name: See :attr:`name`.
-    :keyword type: See :attr:`type`.
-    :keyword channel: See :attr:`channel`.
-    :keyword durable: See :attr:`durable`.
-    :keyword auto_delete: See :attr:`auto_delete`.
-    :keyword delivery_mode: See :attr:`delivery_mode`.
-    :keyword arguments: See :attr:`arguments`.
-    :keyword no_declare: See :attr:`no_declare`
+    Arguments:
+        name (str): See :attr:`name`.
+        type (str): See :attr:`type`.
+        channel (kombu.Connection, ChannelT): See :attr:`channel`.
+        durable (bool): See :attr:`durable`.
+        auto_delete (bool): See :attr:`auto_delete`.
+        delivery_mode (enum): See :attr:`delivery_mode`.
+        arguments (Dict): See :attr:`arguments`.
+        no_declare (bool): See :attr:`no_declare`
 
-    .. attribute:: name
+    Attributes:
+        name (str): Name of the exchange.
+            Default is no name (the default exchange).
 
-        Name of the exchange. Default is no name (the default exchange).
+        type (str):
+            *This description of AMQP exchange types was shamelessly stolen
+            from the blog post `AMQP in 10 minutes: Part 4`_ by
+            Rajith Attapattu. Reading this article is recommended if you're
+            new to amqp.*
 
-    .. attribute:: type
+            "AMQP defines four default exchange types (routing algorithms) that
+            covers most of the common messaging use cases. An AMQP broker can
+            also define additional exchange types, so see your broker
+            manual for more information about available exchange types.
 
-        *This description of AMQP exchange types was shamelessly stolen
-        from the blog post `AMQP in 10 minutes: Part 4`_ by
-        Rajith Attapattu. Reading this article is recommended if you're
-        new to amqp.*
+                * `direct` (*default*)
 
-        "AMQP defines four default exchange types (routing algorithms) that
-        covers most of the common messaging use cases. An AMQP broker can
-        also define additional exchange types, so see your broker
-        manual for more information about available exchange types.
+                    Direct match between the routing key in the message, and the
+                    routing criteria used when a queue is bound to this exchange.
 
-            * `direct` (*default*)
+                * `topic`
 
-                Direct match between the routing key in the message, and the
-                routing criteria used when a queue is bound to this exchange.
+                    Wildcard match between the routing key and the routing pattern
+                    specified in the exchange/queue binding. The routing key is
+                    treated as zero or more words delimited by `"."` and
+                    supports special wildcard characters. `"*"` matches a
+                    single word and `"#"` matches zero or more words.
 
-            * `topic`
+                * `fanout`
 
-                Wildcard match between the routing key and the routing pattern
-                specified in the exchange/queue binding. The routing key is
-                treated as zero or more words delimited by `"."` and
-                supports special wildcard characters. `"*"` matches a
-                single word and `"#"` matches zero or more words.
+                    Queues are bound to this exchange with no arguments. Hence any
+                    message sent to this exchange will be forwarded to all queues
+                    bound to this exchange.
 
-            * `fanout`
+                * `headers`
 
-                Queues are bound to this exchange with no arguments. Hence any
-                message sent to this exchange will be forwarded to all queues
-                bound to this exchange.
+                    Queues are bound to this exchange with a table of arguments
+                    containing headers and values (optional). A special argument
+                    named "x-match" determines the matching algorithm, where
+                    `"all"` implies an `AND` (all pairs must match) and
+                    `"any"` implies `OR` (at least one pair must match).
 
-            * `headers`
-
-                Queues are bound to this exchange with a table of arguments
-                containing headers and values (optional). A special argument
-                named "x-match" determines the matching algorithm, where
-                `"all"` implies an `AND` (all pairs must match) and
-                `"any"` implies `OR` (at least one pair must match).
-
-                :attr:`arguments` is used to specify the arguments.
+                    :attr:`arguments` is used to specify the arguments.
 
 
-            .. _`AMQP in 10 minutes: Part 4`:
-                http://bit.ly/amqp-exchange-types
+                .. _`AMQP in 10 minutes: Part 4`:
+                    http://bit.ly/amqp-exchange-types
 
-    .. attribute:: channel
+        channel (ChannelT): The channel the exchange is bound to (if bound).
 
-        The channel the exchange is bound to (if bound).
+        durable (bool): Durable exchanges remain active when a server restarts.
+            Non-durable exchanges (transient exchanges) are purged when a
+            server restarts.  Default is :const:`True`.
 
-    .. attribute:: durable
+        auto_delete (bool): If set, the exchange is deleted when all queues
+            have finished using it. Default is :const:`False`.
 
-        Durable exchanges remain active when a server restarts. Non-durable
-        exchanges (transient exchanges) are purged when a server restarts.
-        Default is :const:`True`.
+        delivery_mode (enum): The default delivery mode used for messages.
+            The value is an integer, or alias string.
 
-    .. attribute:: auto_delete
+                * 1 or `"transient"`
 
-        If set, the exchange is deleted when all queues have finished
-        using it. Default is :const:`False`.
+                    The message is transient. Which means it is stored in
+                    memory only, and is lost if the server dies or restarts.
 
-    .. attribute:: delivery_mode
+                * 2 or "persistent" (*default*)
+                    The message is persistent. Which means the message is
+                    stored both in-memory, and on disk, and therefore
+                    preserved if the server dies or restarts.
 
-        The default delivery mode used for messages. The value is an integer,
-        or alias string.
+            The default value is 2 (persistent).
 
-            * 1 or `"transient"`
+        arguments (Dict): Additional arguments to specify when the exchange
+            is declared.
 
-                The message is transient. Which means it is stored in
-                memory only, and is lost if the server dies or restarts.
-
-            * 2 or "persistent" (*default*)
-                The message is persistent. Which means the message is
-                stored both in-memory, and on disk, and therefore
-                preserved if the server dies or restarts.
-
-        The default value is 2 (persistent).
-
-    .. attribute:: arguments
-
-        Additional arguments to specify when the exchange is declared.
-
-    .. attribute:: no_declare
-
-        Never declare this exchange (:meth:`declare` does nothing).
-
+        no_declare (bool): Never declare this exchange
+            (:meth:`declare` does nothing).
     """
     TRANSIENT_DELIVERY_MODE = TRANSIENT_DELIVERY_MODE
     PERSISTENT_DELIVERY_MODE = PERSISTENT_DELIVERY_MODE
@@ -184,11 +167,12 @@ class Exchange(MaybeChannelBound):
     def declare(self, nowait=False, passive=None):
         """Declare the exchange.
 
-        Creates the exchange on the broker.
+        Creates the exchange on the broker, unless passive is set
+        in which case it will only assert that the exchange exists.
 
-        :keyword nowait: If set the server will not respond, and a
-            response will not be waited for. Default is :const:`False`.
-
+        Argument:
+            nowait (bool): If set the server will not respond, and a
+                response will not be waited for. Default is :const:`False`.
         """
         if self._can_declare():
             passive = self.passive if passive is None else passive
@@ -202,9 +186,10 @@ class Exchange(MaybeChannelBound):
                 arguments=None, nowait=False, **kwargs):
         """Binds the exchange to another exchange.
 
-        :keyword nowait: If set the server will not respond, and the call
-            will not block waiting for a response.  Default is :const:`False`.
-
+        Arguments:
+            nowait (bool): If set the server will not respond, and the call
+                will not block waiting for a response.
+                Default is :const:`False`.
         """
         if isinstance(exchange, Exchange):
             exchange = exchange.name
@@ -230,29 +215,29 @@ class Exchange(MaybeChannelBound):
                 properties=None, headers=None):
         """Create message instance to be sent with :meth:`publish`.
 
-        :param body: Message body.
+        Arguments:
+            body (Any): Message body.
 
-        :keyword delivery_mode: Set custom delivery mode. Defaults
-            to :attr:`delivery_mode`.
+            delivery_mode (bool): Set custom delivery mode.
+                Defaults to :attr:`delivery_mode`.
 
-        :keyword priority: Message priority, 0 to 9. (currently not
-            supported by RabbitMQ).
+            priority (int): Message priority, 0 to broker configured
+                max priority, where higher is better.
 
-        :keyword content_type: The messages content_type. If content_type
-            is set, no serialization occurs as it is assumed this is either
-            a binary object, or you've done your own serialization.
-            Leave blank if using built-in serialization as our library
-            properly sets content_type.
+            content_type (str): The messages content_type.  If content_type
+                is set, no serialization occurs as it is assumed this is either
+                a binary object, or you've done your own serialization.
+                Leave blank if using built-in serialization as our library
+                properly sets content_type.
 
-        :keyword content_encoding: The character set in which this object
-            is encoded. Use "binary" if sending in raw binary objects.
-            Leave blank if using built-in serialization as our library
-            properly sets content_encoding.
+            content_encoding (str): The character set in which this object
+                is encoded. Use "binary" if sending in raw binary objects.
+                Leave blank if using built-in serialization as our library
+                properly sets content_encoding.
 
-        :keyword properties: Message properties.
+            properties (Dict): Message properties.
 
-        :keyword headers: Message headers.
-
+            headers (Dict): Message headers.
         """
         # XXX This method is unused by kombu itself AFAICT [ask].
         properties = {} if properties is None else properties
@@ -268,11 +253,11 @@ class Exchange(MaybeChannelBound):
                 immediate=False, exchange=None):
         """Publish message.
 
-        :param message: :meth:`Message` instance to publish.
-        :param routing_key: Routing key.
-        :param mandatory: Currently not supported.
-        :param immediate: Currently not supported.
-
+        Arguments:
+            message (~kombu.Message): Message instance to publish.
+            routing_key (str): Message routing key.
+            mandatory (bool): Currently not supported.
+            immediate (bool): Currently not supported.
         """
         exchange = exchange or self.name
         return self.channel.basic_publish(message,
@@ -284,12 +269,11 @@ class Exchange(MaybeChannelBound):
     def delete(self, if_unused=False, nowait=False):
         """Delete the exchange declaration on server.
 
-        :keyword if_unused: Delete only if the exchange has no bindings.
-            Default is :const:`False`.
-
-        :keyword nowait: If set the server will not respond, and a
-            response will not be waited for. Default is :const:`False`.
-
+        Arguments:
+            if_unused (bool): Delete only if the exchange has no bindings.
+                Default is :const:`False`.
+            nowait (bool): If set the server will not respond, and a
+                response will not be waited for. Default is :const:`False`.
         """
         return self.channel.exchange_delete(exchange=self.name,
                                             if_unused=if_unused,
@@ -328,11 +312,11 @@ class Exchange(MaybeChannelBound):
 class binding(Object):
     """Represents a queue or exchange binding.
 
-    :keyword exchange: Exchange to bind to.
-    :keyword routing_key: Routing key used as binding key.
-    :keyword arguments: Arguments for bind operation.
-    :keyword unbind_arguments: Arguments for unbind operation.
-
+    Arguments:
+        exchange (Exchange): Exchange to bind to.
+        routing_key (str): Routing key used as binding key.
+        arguments (Dict): Arguments for bind operation.
+        unbind_arguments (Dict): Arguments for unbind operation.
     """
 
     attrs = (
@@ -382,33 +366,30 @@ class binding(Object):
 class Queue(MaybeChannelBound):
     """A Queue declaration.
 
-    :keyword name: See :attr:`name`.
-    :keyword exchange: See :attr:`exchange`.
-    :keyword routing_key: See :attr:`routing_key`.
-    :keyword channel: See :attr:`channel`.
-    :keyword durable: See :attr:`durable`.
-    :keyword exclusive: See :attr:`exclusive`.
-    :keyword auto_delete: See :attr:`auto_delete`.
-    :keyword queue_arguments: See :attr:`queue_arguments`.
-    :keyword binding_arguments: See :attr:`binding_arguments`.
-    :keyword consumer_arguments: See :attr:`consumer_arguments`.
-    :keyword no_declare: See :attr:`no_declare`
-    :keyword on_declared: See :attr:`on_declared`
+    Arguments:
+        name (str): See :attr:`name`.
+        exchange (Exchange, str): See :attr:`exchange`.
+        routing_key (str): See :attr:`routing_key`.
+        channel (kombu.Connection, ChannelT): See :attr:`channel`.
+        durable (bool): See :attr:`durable`.
+        exclusive (bool): See :attr:`exclusive`.
+        auto_delete (bool): See :attr:`auto_delete`.
+        queue_arguments (Dict): See :attr:`queue_arguments`.
+        binding_arguments (Dict): See :attr:`binding_arguments`.
+        consumer_arguments (Dict): See :attr:`consumer_arguments`.
+        no_declare (bool): See :attr:`no_declare`
+        on_declared (Callable): See :attr:`on_declared`
 
-    .. attribute:: name
+    Attributes:
+        name (str): Name of the queue.
+            Default is no name (default queue destination).
 
-        Name of the queue. Default is no name (default queue destination).
+        exchange (Exchange): The :class:`Exchange` the queue binds to.
 
-    .. attribute:: exchange
+        routing_key (str): The routing key (if any), also called *binding key*.
 
-        The :class:`Exchange` the queue binds to.
-
-    .. attribute:: routing_key
-
-        The routing key (if any), also called *binding key*.
-
-        The interpretation of the routing key depends on
-        the :attr:`Exchange.type`.
+            The interpretation of the routing key depends on
+            the :attr:`Exchange.type`.
 
             * direct exchange
 
@@ -430,73 +411,53 @@ class Queue(MaybeChannelBound):
                 routing keys `"usd.stock"` and `"eur.stock.db"` but not
                 `"stock.nasdaq"`.
 
-    .. attribute:: channel
+        channel (ChannelT): The channel the Queue is bound to (if bound).
 
-        The channel the Queue is bound to (if bound).
+        durable (bool): Durable queues remain active when a server restarts.
+            Non-durable queues (transient queues) are purged if/when
+            a server restarts.
+            Note that durable queues do not necessarily hold persistent
+            messages, although it does not make sense to send
+            persistent messages to a transient queue.
 
-    .. attribute:: durable
+            Default is :const:`True`.
 
-        Durable queues remain active when a server restarts.
-        Non-durable queues (transient queues) are purged if/when
-        a server restarts.
-        Note that durable queues do not necessarily hold persistent
-        messages, although it does not make sense to send
-        persistent messages to a transient queue.
+        exclusive (bool): Exclusive queues may only be consumed from by the
+            current connection. Setting the 'exclusive' flag
+            always implies 'auto-delete'.
 
-        Default is :const:`True`.
+            Default is :const:`False`.
 
-    .. attribute:: exclusive
+        auto_delete (bool): If set, the queue is deleted when all consumers
+            have finished using it. Last consumer can be canceled
+            either explicitly or because its channel is closed. If
+            there was no consumer ever on the queue, it won't be
+            deleted.
 
-        Exclusive queues may only be consumed from by the
-        current connection. Setting the 'exclusive' flag
-        always implies 'auto-delete'.
+        queue_arguments (Dict): Additional arguments used when declaring
+            the queue.  Can be used to to set the arguments value
+            for RabbitMQ/AMQP's ``queue.declare``.
 
-        Default is :const:`False`.
+        binding_arguments (Dict): Additional arguments used when binding
+            the queue.  Can be used to to set the arguments value
+            for RabbitMQ/AMQP's ``queue.declare``.
 
-    .. attribute:: auto_delete
+        consumer_arguments (Dict): Additional arguments used when consuming
+            from this queue.  Can be used to to set the arguments value
+            for RabbitMQ/AMQP's ``basic.consume``.
 
-        If set, the queue is deleted when all consumers have
-        finished using it. Last consumer can be canceled
-        either explicitly or because its channel is closed. If
-        there was no consumer ever on the queue, it won't be
-        deleted.
+        alias (str): Unused in Kombu, but applications can take advantage
+            of this,  for example to give alternate names to queues with
+            utomatically generated queue names.
 
-    .. attribute:: queue_arguments
+        on_declared (Callable): Optional callback to be applied when the
+            queue has been declared (the ``queue_declare`` operation is
+            complete).  This must be a function with a signature that
+            accepts at least 3 positional arguments:
+            ``(name, messages, consumers)``.
 
-        Additional arguments used when declaring the queue.
-        Can be used to to set the arguments value for RabbitMQ/AMQP's
-        ``queue.declare``.
-
-    .. attribute:: binding_arguments
-
-        Additional arguments used when binding the queue.
-        Can be used to to set the arguments value for RabbitMQ/AMQP's
-        ``queue.declare``.
-
-    .. attribute:: consumer_arguments
-
-        Additional arguments used when consuming from this queue.
-        Can be used to to set the arguments value for RabbitMQ/AMQP's
-        ``basic.consume``.
-
-    .. attribute:: alias
-
-        Unused in Kombu, but applications can take advantage of this.
-        For example to give alternate names to queues with automatically
-        generated queue names.
-
-    .. attribute:: on_declared
-
-        Optional callback to be applied when the queue has been
-        declared (the ``queue_declare`` operation is complete).
-        This must be a function with a signature that accepts at least 3
-        positional arguments: ``(name, messages, consumers)``.
-
-    .. attribute:: no_declare
-
-        Never declare this queue, nor related entities (:meth:`declare` does
-        nothing).
-
+        no_declare (bool): Never declare this queue, nor related
+            entities (:meth:`declare` does nothing).
     """
     ContentDisallowed = ContentDisallowed
 
@@ -586,11 +547,11 @@ class Queue(MaybeChannelBound):
     def queue_declare(self, nowait=False, passive=False):
         """Declare queue on the server.
 
-        :keyword nowait: Do not wait for a reply.
-        :keyword passive: If set, the server will not create the queue.
-            The client can use this to check whether a queue exists
-            without modifying the server state.
-
+        Arguments:
+            nowait (bool): Do not wait for a reply.
+            passive (bool): If set, the server will not create the queue.
+                The client can use this to check whether a queue exists
+                without modifying the server state.
         """
         ret = self.channel.queue_declare(queue=self.name,
                                          passive=passive,
@@ -623,18 +584,19 @@ class Queue(MaybeChannelBound):
     def get(self, no_ack=None, accept=None):
         """Poll the server for a new message.
 
-        Must return the message if a message was available,
-        or :const:`None` otherwise.
-
-        :keyword no_ack: If enabled the broker will automatically
-            ack messages.
-        :keyword accept: Custom list of accepted content types.
-
         This method provides direct access to the messages in a
         queue using a synchronous dialogue, designed for
         specific types of applications where synchronous functionality
         is more important than performance.
 
+        Returns:
+            ~kombu.Message: if a message was available,
+                or :const:`None` otherwise.
+
+        Arguments:
+            no_ack (bool): If enabled the broker will
+                automatically ack messages.
+            accept (Set[str]): Custom list of accepted content types.
         """
         no_ack = self.no_ack if no_ack is None else no_ack
         message = self.channel.basic_get(queue=self.name, no_ack=no_ack)
@@ -659,18 +621,18 @@ class Queue(MaybeChannelBound):
         Consumers last as long as the channel they were created on, or
         until the client cancels them.
 
-        :keyword consumer_tag: Unique identifier for the consumer. The
-          consumer tag is local to a connection, so two clients
-          can use the same consumer tags. If this field is empty
-          the server will generate a unique tag.
+        Arguments:
+            consumer_tag (str): Unique identifier for the consumer.
+                The consumer tag is local to a connection, so two clients
+                can use the same consumer tags. If this field is empty
+                the server will generate a unique tag.
 
-        :keyword no_ack: If enabled the broker will automatically ack
-            messages.
+            no_ack (bool): If enabled the broker will automatically
+                ack messages.
 
-        :keyword nowait: Do not wait for a reply.
+            nowait (bool): Do not wait for a reply.
 
-        :keyword callback: callback called for each delivered message
-
+            callback (Callable): callback called for each delivered message.
         """
         if no_ack is None:
             no_ack = self.no_ack
@@ -688,15 +650,15 @@ class Queue(MaybeChannelBound):
     def delete(self, if_unused=False, if_empty=False, nowait=False):
         """Delete the queue.
 
-        :keyword if_unused: If set, the server will only delete the queue
-            if it has no consumers. A channel error will be raised
-            if the queue has consumers.
+        Arguments:
+            if_unused (bool): If set, the server will only delete the queue
+                if it has no consumers. A channel error will be raised
+                if the queue has consumers.
 
-        :keyword if_empty: If set, the server will only delete the queue
-            if it is empty. If it is not empty a channel error will be raised.
+            if_empty (bool): If set, the server will only delete the queue
+                if it is empty. If it is not empty a channel error will be raised.
 
-        :keyword nowait: Do not wait for a reply.
-
+            nowait (bool): Do not wait for a reply.
         """
         return self.channel.queue_delete(queue=self.name,
                                          if_unused=if_unused,

@@ -1,5 +1,5 @@
 ==========================================================
- Text utilitites - kombu.utils.text
+ Text utilitites - ``kombu.utils.text``
 ==========================================================
 
 .. contents::

@@ -1,10 +1,4 @@
-"""
-kombu.resource
-==============
-
-Generic resource pool implementation.
-
-"""
+"""Generic resource pool implementation."""
 from __future__ import absolute_import, unicode_literals
 
 import os
@@ -64,14 +58,14 @@ class Resource(object):
     def acquire(self, block=False, timeout=None):
         """Acquire resource.
 
-        :keyword block: If the limit is exceeded,
-          block until there is an available item.
-        :keyword timeout: Timeout to wait
-          if ``block`` is true. Default is :const:`None` (forever).
+        Arguments:
+            block (bool): If the limit is exceeded,
+                then block until there is an available item.
+            timeout (float): Timeout to wait
+                if ``block`` is true.  Default is :const:`None` (forever).
 
-        :raises LimitExceeded: if block is false
-          and the limit has been exceeded.
-
+        Raises:
+            LimitExceeded: if block is false and the limit has been exceeded.
         """
         if self._closed:
             raise RuntimeError('Acquire on closed pool')
@@ -100,10 +94,10 @@ class Resource(object):
         def release():
             """Release resource so it can be used by another thread.
 
-            The caller is responsible for discarding the object,
-            and to never use the resource again.  A new resource must
-            be acquired if so needed.
-
+            Warnings:
+                The caller is responsible for discarding the object,
+                and to never use the resource again.  A new resource must
+                be acquired if so needed.
             """
             self.release(R)
         R.release = release
@@ -140,9 +134,8 @@ class Resource(object):
     def force_close_all(self):
         """Close and remove all resources in the pool (also those in use).
 
-        Can be used to close resources from parent processes
-        after fork (e.g. sockets/connections).
-
+        Used to close resources from parent processes after fork
+        (e.g. sockets/connections).
         """
         if self._closed:
             return

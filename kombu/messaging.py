@@ -25,20 +25,20 @@ __all__ = ['Exchange', 'Queue', 'Producer', 'Consumer']
 class Producer(object):
     """Message Producer.
 
-    :param channel: Connection or channel.
-    :keyword exchange: Optional default exchange.
-    :keyword routing_key: Optional default routing key.
-    :keyword serializer: Default serializer. Default is `"json"`.
-    :keyword compression: Default compression method. Default is no
-        compression.
-    :keyword auto_declare: Automatically declare the default exchange
-      at instantiation. Default is :const:`True`.
-    :keyword on_return: Callback to call for undeliverable messages,
-        when the `mandatory` or `immediate` arguments to
-        :meth:`publish` is used. This callback needs the following
-        signature: `(exception, exchange, routing_key, message)`.
-        Note that the producer needs to drain events to use this feature.
-
+    Arguments:
+        channel (kombu.Connection, ChannelT): Connection or channel.
+        exchange (Exchange, str): Optional default exchange.
+        routing_key (str): Optional default routing key.
+        serializer (str): Default serializer. Default is `"json"`.
+        compression (str): Default compression method.
+            Default is no compression.
+        auto_declare (bool): Automatically declare the default exchange
+            at instantiation. Default is :const:`True`.
+        on_return (Callable): Callback to call for undeliverable messages,
+            when the `mandatory` or `immediate` arguments to
+            :meth:`publish` is used. This callback needs the following
+            signature: `(exception, exchange, routing_key, message)`.
+            Note that the producer needs to drain events to use this feature.
     """
 
     #: Default exchange
@@ -96,9 +96,9 @@ class Producer(object):
     def declare(self):
         """Declare the exchange.
 
-        This happens automatically at instantiation if
-        :attr:`auto_declare` is enabled.
-
+        Note:
+            This happens automatically at instantiation when
+            the :attr:`auto_declare` flag is enabled.
         """
         if self.exchange.name:
             self.exchange.declare()
@@ -129,31 +129,32 @@ class Producer(object):
                 retry_policy=None, declare=[], expiration=None, **properties):
         """Publish message to the specified exchange.
 
-        :param body: Message body.
-        :keyword routing_key: Message routing key.
-        :keyword delivery_mode: See :attr:`delivery_mode`.
-        :keyword mandatory: Currently not supported.
-        :keyword immediate: Currently not supported.
-        :keyword priority: Message priority. A number between 0 and 9.
-        :keyword content_type: Content type. Default is auto-detect.
-        :keyword content_encoding: Content encoding. Default is auto-detect.
-        :keyword serializer: Serializer to use. Default is auto-detect.
-        :keyword compression: Compression method to use.  Default is none.
-        :keyword headers: Mapping of arbitrary headers to pass along
-          with the message body.
-        :keyword exchange: Override the exchange.  Note that this exchange
-          must have been declared.
-        :keyword declare: Optional list of required entities that must
-            have been declared before publishing the message.  The entities
-            will be declared using :func:`~kombu.common.maybe_declare`.
-        :keyword retry: Retry publishing, or declaring entities if the
-            connection is lost.
-        :keyword retry_policy: Retry configuration, this is the keywords
-            supported by :meth:`~kombu.Connection.ensure`.
-        :keyword expiration: A TTL in seconds can be specified per message.
-            Default is no expiration.
-        :keyword \*\*properties: Additional message properties, see AMQP spec.
-
+        Arguments:
+            body (Any): Message body.
+            routing_key (str): Message routing key.
+            delivery_mode (enum): See :attr:`delivery_mode`.
+            mandatory (bool): Currently not supported.
+            immediate (bool): Currently not supported.
+            priority (int): Message priority. A number between 0 and 9.
+            content_type (str): Content type. Default is auto-detect.
+            content_encoding (str): Content encoding. Default is auto-detect.
+            serializer (str): Serializer to use. Default is auto-detect.
+            compression (str): Compression method to use.  Default is none.
+            headers (Dict): Mapping of arbitrary headers to pass along
+                with the message body.
+            exchange (Exchange, str): Override the exchange.
+                Note that this exchange must have been declared.
+            declare (Sequence[EntityT]): Optional list of required entities
+                that must have been declared before publishing the message.
+                The entities will be declared using
+                :func:`~kombu.common.maybe_declare`.
+            retry (bool): Retry publishing, or declaring entities if the
+                connection is lost.
+            retry_policy (Dict): Retry configuration, this is the keywords
+                supported by :meth:`~kombu.Connection.ensure`.
+            expiration (float): A TTL in seconds can be specified per message.
+                Default is no expiration.
+            **properties (Any): Additional message properties, see AMQP spec.
         """
         _publish = self._publish
 
@@ -284,15 +285,15 @@ class Producer(object):
 class Consumer(object):
     """Message consumer.
 
-    :param channel: see :attr:`channel`.
-    :param queues: see :attr:`queues`.
-    :keyword no_ack: see :attr:`no_ack`.
-    :keyword auto_declare: see :attr:`auto_declare`
-    :keyword callbacks: see :attr:`callbacks`.
-    :keyword on_message: See :attr:`on_message`
-    :keyword on_decode_error: see :attr:`on_decode_error`.
-    :keyword prefetch_count: see :attr:`prefetch_count`.
-
+    Arguments:
+        channel (kombu.Connection, ChannelT): see :attr:`channel`.
+        queues (Sequence[kombu.Queue]): see :attr:`queues`.
+        no_ack (bool): see :attr:`no_ack`.
+        auto_declare (bool): see :attr:`auto_declare`
+        callbacks (Sequence[Callable]): see :attr:`callbacks`.
+        on_message (Callable): See :attr:`on_message`
+        on_decode_error (Callable): see :attr:`on_decode_error`.
+        prefetch_count (int): see :attr:`prefetch_count`.
     """
     ContentDisallowed = ContentDisallowed
 
@@ -319,8 +320,7 @@ class Consumer(object):
     #:
     #: The signature of the callbacks must take two arguments:
     #: `(body, message)`, which is the decoded message body and
-    #: the `Message` instance (a subclass of
-    #: :class:`~kombu.transport.base.Message`).
+    #: the :class:`~kombu.Message` instance.
     callbacks = None
 
     #: Optional function called whenever a message is received.
@@ -334,8 +334,7 @@ class Consumer(object):
     #: has the ``compression`` header set.
     #:
     #: The signature of the callback must take a single argument,
-    #: which is the raw message object (a subclass of
-    #: :class:`~kombu.transport.base.Message`).
+    #: which is the :class:`~kombu.Message` object.
     #:
     #: Also note that the ``message.body`` attribute, which is the raw
     #: contents of the message body, may in some cases be a read-only
@@ -417,22 +416,20 @@ class Consumer(object):
     def declare(self):
         """Declare queues, exchanges and bindings.
 
-        This is done automatically at instantiation if :attr:`auto_declare`
-        is set.
-
+        Note:
+            This is done automatically at instantiation
+            when :attr:`auto_declare` is set.
         """
         for queue in values(self._queues):
             queue.declare()
 
     def register_callback(self, callback):
-        """Register a new callback to be called when a message
-        is received.
+        """Register a new callback to be called when a message is received.
 
-        The signature of the callback needs to accept two arguments:
-        `(body, message)`, which is the decoded message body
-        and the `Message` instance (a subclass of
-        :class:`~kombu.transport.base.Message`.
-
+        Note:
+            The signature of the callback needs to accept two arguments:
+            `(body, message)`, which is the decoded message body
+            and the :class:`~kombu.Message` instance.
         """
         self.callbacks.append(callback)
 
@@ -449,9 +446,9 @@ class Consumer(object):
     def add_queue(self, queue):
         """Add a queue to the list of queues to consume from.
 
-        This will not start consuming from the queue,
-        for that you will have to call :meth:`consume` after.
-
+        Note:
+            This will not start consuming from the queue,
+            for that you will have to call :meth:`consume` after.
         """
         queue = queue(self.channel)
         if self.auto_declare:
@@ -467,8 +464,8 @@ class Consumer(object):
         it will not cancel consuming from removed queues (
         use :meth:`cancel_by_queue`).
 
-        :param no_ack: See :attr:`no_ack`.
-
+        Arguments:
+            no_ack (bool): See :attr:`no_ack`.
         """
         queues = list(values(self._queues))
         if queues:
@@ -482,9 +479,9 @@ class Consumer(object):
     def cancel(self):
         """End all active queue consumers.
 
-        This does not affect already delivered messages, but it does
-        mean the server will not send any more messages for this consumer.
-
+        Note:
+            This does not affect already delivered messages, but it does
+            mean the server will not send any more messages for this consumer.
         """
         cancel = self.channel.basic_cancel
         for tag in values(self._active_tags):
@@ -515,10 +512,8 @@ class Consumer(object):
     def purge(self):
         """Purge messages from all queues.
 
-        .. warning::
-            This will *delete all ready messages*, there is no
-            undo operation.
-
+        Warning:
+            This will *delete all ready messages*, there is no undo operation.
         """
         return sum(queue.purge() for queue in values(self._queues))
 
@@ -532,7 +527,6 @@ class Consumer(object):
         The peer that receives a request to stop sending content
         will finish sending the current content (if any), and then wait
         until flow is reactivated.
-
         """
         self.channel.flow(active)
 
@@ -547,18 +541,18 @@ class Consumer(object):
 
         The prefetch window is Ignored if the :attr:`no_ack` option is set.
 
-        :param prefetch_size: Specify the prefetch window in octets.
-          The server will send a message in advance if it is equal to
-          or smaller in size than the available prefetch size (and
-          also falls within other prefetch limits). May be set to zero,
-          meaning "no specific limit", although other prefetch limits
-          may still apply.
+        Arguments:
+            prefetch_size (int): Specify the prefetch window in octets.
+                The server will send a message in advance if it is equal to
+                or smaller in size than the available prefetch size (and
+                also falls within other prefetch limits). May be set to zero,
+                meaning "no specific limit", although other prefetch limits
+                may still apply.
 
-        :param prefetch_count: Specify the prefetch window in terms of
-          whole messages.
+            prefetch_count (int): Specify the prefetch window in terms of
+                whole messages.
 
-        :param apply_global: Apply new settings globally on all channels.
-
+            apply_global (bool): Apply new settings globally on all channels.
         """
         return self.channel.basic_qos(prefetch_size,
                                       prefetch_count,
@@ -570,11 +564,11 @@ class Consumer(object):
         Asks the broker to redeliver all unacknowledged messages
         on the specified channel.
 
-        :keyword requeue: By default the messages will be redelivered
-          to the original recipient. With `requeue` set to true, the
-          server will attempt to requeue the message, potentially then
-          delivering it to an alternative subscriber.
-
+        Arguments:
+            requeue (bool): By default the messages will be redelivered
+                to the original recipient. With `requeue` set to true, the
+                server will attempt to requeue the message, potentially then
+                delivering it to an alternative subscriber.
         """
         return self.channel.basic_recover(requeue=requeue)
 
@@ -583,12 +577,13 @@ class Consumer(object):
 
         This dispatches to the registered :attr:`callbacks`.
 
-        :param body: The decoded message body.
-        :param message: The `Message` instance.
+        Arguments:
+            body (Any): The decoded message body.
+            message (~kombu.Message): The message instance.
 
-        :raises NotImplementedError: If no consumer callbacks have been
-          registered.
-
+        Raises:
+            NotImplementedError: If no consumer callbacks have been
+                registered.
         """
         callbacks = self.callbacks
         if not callbacks:
@@ -630,7 +625,7 @@ class Consumer(object):
             return on_m(message) if on_m else self.receive(decoded, message)
 
     def __repr__(self):
-        return '<Consumer: {0.queues}>'.format(self)
+        return '<{name}: {0.queues}>'.format(self, name=type(self).__name__)
 
     @property
     def connection(self):

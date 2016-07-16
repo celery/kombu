@@ -1,10 +1,4 @@
-"""
-kombu.connection
-================
-
-Broker connection and pools.
-
-"""
+"""Client (Connection)."""
 from __future__ import absolute_import, unicode_literals
 
 import os
@@ -50,43 +44,43 @@ _log_channel = os.environ.get('KOMBU_LOG_CHANNEL', False)
 class Connection(object):
     """A connection to the broker.
 
-    :param URL:  Broker URL, or a list of URLs, e.g.
+    Example:
+        >>> Connection('amqp://guest:guest@localhost:5672//')
+        >>> Connection('amqp://foo;amqp://bar',
+        ...            failover_strategy='round-robin')
+        >>> Connection('redis://', transport_options={
+        ...     'visibility_timeout': 3000,
+        ... })
 
-    .. code-block:: python
+        >>> import ssl
+        >>> Connection('amqp://', login_method='EXTERNAL', ssl={
+        ...    'ca_certs': '/etc/pki/tls/certs/something.crt',
+        ...    'keyfile': '/etc/something/system.key',
+        ...    'certfile': '/etc/something/system.cert',
+        ...    'cert_reqs': ssl.CERT_REQUIRED,
+        ... })
 
-        Connection('amqp://guest:guest@localhost:5672//')
-        Connection('amqp://foo;amqp://bar', failover_strategy='round-robin')
-        Connection('redis://', transport_options={
-            'visibility_timeout': 3000,
-        })
-
-        import ssl
-        Connection('amqp://', login_method='EXTERNAL', ssl={
-            'ca_certs': '/etc/pki/tls/certs/something.crt',
-            'keyfile': '/etc/something/system.key',
-            'certfile': '/etc/something/system.cert',
-            'cert_reqs': ssl.CERT_REQUIRED,
-        })
-
-    .. admonition:: SSL compatibility
-
+    Note:
         SSL currently only works with the py-amqp, and qpid
         transports.  For other transports you can use stunnel.
 
-    :keyword ssl: Use SSL to connect to the server. Default is ``False``.
-      May not be supported by the specified transport.
-    :keyword transport: Default transport if not specified in the URL.
-    :keyword connect_timeout: Timeout in seconds for connecting to the
-      server. May not be supported by the specified transport.
-    :keyword transport_options: A dict of additional connection arguments to
-      pass to alternate kombu channel implementations.  Consult the transport
-      documentation for available options.
-    :keyword heartbeat: Heartbeat interval in int/float seconds.
-        Note that if heartbeats are enabled then the :meth:`heartbeat_check`
-        method must be called regularly, around once per second.
+    Arguments:
+        URL (str, Sequence): Broker URL, or a list of URLs.
 
-    .. note::
+    Keyword Arguments:
+        ssl (bool): Use SSL to connect to the server. Default is ``False``.
+            May not be supported by the specified transport.
+        transport (Transport): Default transport if not specified in the URL.
+        connect_timeout (float): Timeout in seconds for connecting to the
+            server. May not be supported by the specified transport.
+        transport_options (Dict): A dict of additional connection arguments to
+            pass to alternate kombu channel implementations.  Consult the
+            transport documentation for available options.
+        heartbeat (float): Heartbeat interval in int/float seconds.
+            Note that if heartbeats are enabled then the :meth:`heartbeat_check`
+            method must be called regularly, around once per second.
 
+    Note:
         The connection is established lazily when needed. If you need the
         connection to be established, then force it by calling
         :meth:`connect`::
@@ -98,8 +92,6 @@ class Connection(object):
 
             >>> conn.release()
 
-    *Legacy options*
-
     These options have been replaced by the URL argument, but are still
     supported for backwards compatibility:
 
@@ -110,7 +102,6 @@ class Connection(object):
     :keyword password: Default password if not provided in the URL.
     :keyword virtual_host: Default virtual host if not provided in the URL.
     :keyword port: Default port if not provided in the URL.
-
     """
     port = None
     virtual_host = '/'
@@ -274,23 +265,23 @@ class Connection(object):
         If the current transport does not support heartbeats then
         this is a noop operation.
 
-        :keyword rate: Rate is how often the tick is called
-            compared to the actual heartbeat value.  E.g. if
-            the heartbeat is set to 3 seconds, and the tick
-            is called every 3 / 2 seconds, then the rate is 2.
-            This value is currently unused by any transports.
-
+        Arguments:
+            rate (int): Rate is how often the tick is called
+                compared to the actual heartbeat value.  E.g. if
+                the heartbeat is set to 3 seconds, and the tick
+                is called every 3 / 2 seconds, then the rate is 2.
+                This value is currently unused by any transports.
         """
         return self.transport.heartbeat_check(self.connection, rate=rate)
 
     def drain_events(self, **kwargs):
         """Wait for a single event from the server.
 
-        :keyword timeout: Timeout in seconds before we give up.
+        Arguments:
+            timeout (float): Timeout in seconds before we give up.
 
-
-        :raises :exc:`socket.timeout`: if the timeout is exceeded.
-
+        Raises:
+            socket.timeout: if the timeout is exceeded.
         """
         return self.transport.drain_events(self.connection, **kwargs)
 
@@ -360,21 +351,24 @@ class Connection(object):
         If not retry establishing the connection with the settings
         specified.
 
-        :keyword errback: Optional callback called each time the connection
-          can't be established. Arguments provided are the exception
-          raised and the interval that will be slept ``(exc, interval)``.
+        Arguments:
+            errback (Callable): Optional callback called each time the
+                connection can't be established.  Arguments provided are
+                the exception raised and the interval that will be
+                slept ``(exc, interval)``.
 
-        :keyword max_retries: Maximum number of times to retry.
-          If this limit is exceeded the connection error will be re-raised.
+            max_retries (int): Maximum number of times to retry.
+                If this limit is exceeded the connection error
+                will be re-raised.
 
-        :keyword interval_start: The number of seconds we start sleeping for.
-        :keyword interval_step: How many seconds added to the interval
-          for each retry.
-        :keyword interval_max: Maximum number of seconds to sleep between
-          each retry.
-        :keyword callback: Optional callback that is called for every
-           internal iteration (1 s)
-
+            interval_start (float): The number of seconds we start
+                sleeping for.
+            interval_step (float): How many seconds added to the interval
+                for each retry.
+            interval_max (float): Maximum number of seconds to sleep between
+                each retry.
+            callback (Callable): Optional callback that is called for every
+                internal iteration (1 s).
         """
         def on_error(exc, intervals, retries, interval=0):
             round = self.completes_cycle(retries)
@@ -411,28 +405,28 @@ class Connection(object):
         """Ensure operation completes, regardless of any channel/connection
         errors occurring.
 
-        Will retry by establishing the connection, and reapplying
+        Retries by establishing the connection, and reapplying
         the function.
 
-        :param fun: Method to apply.
+        Arguments:
+            fun (Callable): Method to apply.
 
-        :keyword errback: Optional callback called each time the connection
-          can't be established. Arguments provided are the exception
-          raised and the interval that will be slept ``(exc, interval)``.
+            errback (Callable): Optional callback called each time the
+                connection can't be established.  Arguments provided are
+                the exception raised and the interval that will
+                be slept ``(exc, interval)``.
 
-        :keyword max_retries: Maximum number of times to retry.
-          If this limit is exceeded the connection error will be re-raised.
+            max_retries (int): Maximum number of times to retry.
+                If this limit is exceeded the connection error
+                will be re-raised.
 
-        :keyword interval_start: The number of seconds we start sleeping for.
-        :keyword interval_step: How many seconds added to the interval
-          for each retry.
-        :keyword interval_max: Maximum number of seconds to sleep between
-          each retry.
+            interval_start (float): The number of seconds we start sleeping for.
+            interval_step (float): How many seconds added to the interval
+                for each retry.
+            interval_max (float): Maximum number of seconds to sleep between
+                each retry.
 
-        **Example**
-
-        This is an example ensuring a publish operation::
-
+        Examples:
             >>> from kombu import Connection, Producer
             >>> conn = Connection('amqp://')
             >>> producer = Producer(conn)
@@ -444,7 +438,6 @@ class Connection(object):
             >>> publish = conn.ensure(producer, producer.publish,
             ...                       errback=errback, max_retries=3)
             >>> publish({'hello': 'world'}, routing_key='dest')
-
         """
         def _ensured(*args, **kwargs):
             got_connection = 0
@@ -502,15 +495,15 @@ class Connection(object):
         If a ``channel`` is not provided, then one will be automatically
         acquired (remember to close it afterwards).
 
-        See :meth:`ensure` for the full list of supported keyword arguments.
+        See Also:
+            :meth:`ensure` for the full list of supported keyword arguments.
 
-        Example usage::
-
-            channel = connection.channel()
-            try:
-                ret, channel = connection.autoretry(publish_messages, channel)
-            finally:
-                channel.close()
+        Example:
+            >>> channel = connection.channel()
+            >>> try:
+            ...    ret, channel = connection.autoretry(publish_messages, channel)
+            ... finally:
+            ...    channel.close()
         """
         channels = [channel]
 
@@ -612,13 +605,14 @@ class Connection(object):
     def Pool(self, limit=None, **kwargs):
         """Pool of connections.
 
-        See :class:`ConnectionPool`.
+        See Also:
+            :class:`ConnectionPool`.
 
-        :keyword limit: Maximum number of active connections.
-          Default is no limit.
+        Arguments:
+            limit (int): Maximum number of active connections.
+                Default is no limit.
 
-        *Example usage*::
-
+        Example:
             >>> connection = Connection('amqp://')
             >>> pool = connection.Pool(2)
             >>> c1 = pool.acquire()
@@ -631,20 +625,20 @@ class Connection(object):
                 kombu.exceptions.ConnectionLimitExceeded: 2
             >>> c1.release()
             >>> c3 = pool.acquire()
-
         """
         return ConnectionPool(self, limit, **kwargs)
 
     def ChannelPool(self, limit=None, **kwargs):
         """Pool of channels.
 
-        See :class:`ChannelPool`.
+        See Also:
+            :class:`ChannelPool`.
 
-        :keyword limit: Maximum number of active channels.
-          Default is no limit.
+        Arguments:
+            limit (int): Maximum number of active channels.
+                Default is no limit.
 
-        *Example usage*::
-
+        Example:
             >>> connection = Connection('amqp://')
             >>> pool = connection.ChannelPool(2)
             >>> c1 = pool.acquire()
@@ -657,7 +651,6 @@ class Connection(object):
                 kombu.connection.ChannelLimitExceeded: 2
             >>> c1.release()
             >>> c3 = pool.acquire()
-
         """
         return ChannelPool(self, limit, **kwargs)
 
@@ -682,17 +675,16 @@ class Connection(object):
         created using that name as the name of the queue and exchange,
         also it will be used as the default routing key.
 
-        :param name: Name of the queue/or a :class:`~kombu.Queue`.
-        :keyword no_ack: Disable acknowledgments. Default is false.
-        :keyword queue_opts: Additional keyword arguments passed to the
-          constructor of the automatically created
-          :class:`~kombu.Queue`.
-        :keyword exchange_opts: Additional keyword arguments passed to the
-          constructor of the automatically created
-          :class:`~kombu.Exchange`.
-        :keyword channel: Custom channel to use. If not specified the
-            connection default channel is used.
-
+        Arguments:
+            name (str, kombu.Queue): Name of the queue/or a queue.
+            no_ack (bool): Disable acknowledgments. Default is false.
+            queue_opts (Dict): Additional keyword arguments passed to the
+                constructor of the automatically created :class:`~kombu.Queue`.
+            exchange_opts (Dict): Additional keyword arguments passed to the
+                constructor of the automatically created
+                :class:`~kombu.Exchange`.
+            channel (ChannelT): Custom channel to use. If not specified the
+                connection default channel is used.
         """
         from .simple import SimpleQueue
         return SimpleQueue(channel or self, name, no_ack, queue_opts,
@@ -703,11 +695,11 @@ class Connection(object):
         """Create new :class:`~kombu.simple.SimpleQueue` using a channel
         from this connection.
 
-        Same as :meth:`SimpleQueue`, but configured with buffering
-        semantics. The resulting queue and exchange will not be durable, also
-        auto delete is enabled. Messages will be transient (not persistent),
-        and acknowledgments are disabled (``no_ack``).
-
+        See Also:
+            Same as :meth:`SimpleQueue`, but configured with buffering
+            semantics. The resulting queue and exchange will not be durable,
+            also auto delete is enabled. Messages will be transient (not
+            persistent), and acknowledgments are disabled (``no_ack``).
         """
         from .simple import SimpleBuffer
         return SimpleBuffer(channel or self, name, no_ack, queue_opts,
@@ -754,10 +746,9 @@ class Connection(object):
     def connection(self):
         """The underlying connection object.
 
-        .. warning::
+        Warning:
             This instance is transport specific, so do not
             depend on the interface of this object.
-
         """
         if not self._closed:
             if not self.connected:
@@ -772,10 +763,11 @@ class Connection(object):
         """Default channel, created upon access and closed when the connection
         is closed.
 
-        Can be used for automatic channel handling when you only need one
-        channel, and also it is the channel implicitly used if a connection
-        is passed instead of a channel, to functions that require a channel.
-
+        Note:
+            Can be used for automatic channel handling when you only need one
+            channel, and also it is the channel implicitly used if
+            a connection is passed instead of a channel, to functions that
+            require a channel.
         """
         # make sure we're still connected, and if not refresh.
         self.connection

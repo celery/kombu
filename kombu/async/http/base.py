@@ -41,51 +41,54 @@ class Headers(dict):
 class Request(object):
     """A HTTP Request.
 
-    :param url: The URL to request.
-    :param method: The HTTP method to use (defaults to ``GET``).
-    :keyword headers: Optional headers for this request
-        (:class:`dict` or :class:`~kombu.async.http.Headers`).
-    :keyword body: Optional body for this request.
-    :keyword connect_timeout: Connection timeout in float seconds
-        (default 30.0).
-    :keyword timeout: Time in float seconds before the request times out
-        (default 30.0).
-    :keyword follow_redirects: Specify if the client should follow redirects
-        (enabled by default).
-    :keyword max_redirects: Maximum number of redirects (default 6).
-    :keyword use_gzip: Allow the server to use gzip compression (enabled by
-       default).
-    :keyword validate_cert: Set to true if the server certificate should be
-        verified when performing ``https://`` requests (enabled by default).
-    :keyword auth_username: Username for HTTP authentication.
-    :keyword auth_password: Password for HTTP authentication.
-    :keyword auth_mode: Type of HTTP authentication (``basic`` or ``digest``).
-    :keyword user_agent: Custom user agent for this request.
-    :keyword network_interace: Network interface to use for this request.
-    :keyword on_ready: Callback to be called when the response has been
-        received. Must accept single ``response`` argument.
-    :kewyord on_stream: Optional callback to be called every time body content
-        has been read from the socket.  If specified then the response body
-        and buffer attributes will not be available.
-    :keyword on_timeout: Optional callback to be called if the request
-        times out.
-    :keyword on_header: Optional callback to be called for every header line
-        received from the server.  The signature is ``(headers, line)``
-        and note that if you want ``response.headers`` to be populated
-        then your callback needs to also call
-        ``client.on_header(headers, line)``.
-    :keyword on_prepare: Optional callback that is implementation specific
-        (e.g. curl client will pass the ``curl`` instance to this callback).
-    :keyword proxy_host: Optional proxy host.  Note that a ``proxy_port`` must
-        also be provided or a :exc:`ValueError` will be raised.
-    :keyword proxy_username: Optional username to use when logging in
-        to the proxy.
-    :keyword proxy_password: Optional password to use when authenticating
-        with the proxy server.
-    :keyword ca_certs: Custom CA certificates file to use.
-    :keyword client_key: Optional filename for client SSL key.
-    :keyword client_cert: Optional filename for client SSL certificate.
+    Arguments:
+        url (str): The URL to request.
+        method (str): The HTTP method to use (defaults to ``GET``).
 
+    Keyword Arguments:
+        headers (Dict, ~kombu.async.http.Headers): Optional headers for
+            this request
+        body (str): Optional body for this request.
+        connect_timeout (float): Connection timeout in float seconds
+            Default is 30.0.
+        timeout (float): Time in float seconds before the request times out
+            Default is 30.0.
+        follow_redirects (bool): Specify if the client should follow redirects
+            Enabled by default.
+        max_redirects (int): Maximum number of redirects (default 6).
+        use_gzip (bool): Allow the server to use gzip compression.
+            Enabled by default.
+        validate_cert (bool): Set to true if the server certificate should be
+            verified when performing ``https://`` requests (enabled by default).
+        auth_username (str): Username for HTTP authentication.
+        auth_password (str): Password for HTTP authentication.
+        auth_mode (str): Type of HTTP authentication (``basic`` or ``digest``).
+        user_agent (str): Custom user agent for this request.
+        network_interace (str): Network interface to use for this request.
+        on_ready (Callable): Callback to be called when the response has been
+            received. Must accept single ``response`` argument.
+        on_stream (Callable): Optional callback to be called every time body
+            content has been read from the socket.  If specified then the
+            response body and buffer attributes will not be available.
+        on_timeout (callable): Optional callback to be called if the request
+            times out.
+        on_header (Callable): Optional callback to be called for every header
+            line received from the server.  The signature
+            is ``(headers, line)`` and note that if you want
+            ``response.headers`` to be populated then your callback needs to
+            also call ``client.on_header(headers, line)``.
+        on_prepare (Callable): Optional callback that is implementation
+            specific (e.g. curl client will pass the ``curl`` instance to
+            this callback).
+        proxy_host (str): Optional proxy host.  Note that a ``proxy_port`` must
+            also be provided or a :exc:`ValueError` will be raised.
+        proxy_username (str): Optional username to use when logging in
+            to the proxy.
+        proxy_password (str): Optional password to use when authenticating
+            with the proxy server.
+        ca_certs (str): Custom CA certificates file to use.
+        client_key (str): Optional filename for client SSL key.
+        client_cert (str): Optional filename for client SSL certificate.
     """
 
     body = user_agent = network_interface = \
@@ -132,42 +135,25 @@ class Request(object):
 class Response(object):
     """HTTP Response.
 
-    :param request: See :attr:`request`.
-    :keyword code: See :attr:`code`.
-    :keyword headers: See :attr:`headers`.
-    :keyword buffer: See :attr:`buffer`
-    :keyword effective_url: See :attr:`effective_url`.
-    :keyword status: See :attr:`status`.
+    Arguments:
+        request (~kombu.async.http.Request): See :attr:`request`.
+        code (int): See :attr:`code`.
+        headers (~kombu.async.http.Headers): See :attr:`headers`.
+        buffer (bytes): See :attr:`buffer`
+        effective_url (str): See :attr:`effective_url`.
+        status (str): See :attr:`status`.
 
-    .. attribute:: request
-
-        :class:`Request` object used to get this response.
-
-    .. attribute:: code
-
-        HTTP response code (e.g. 200, 404, or 500).
-
-    .. attribute:: headers
-
-        HTTP headers for this response (:class:`Headers`).
-
-    .. attribute:: buffer
-
-        Socket read buffer.
-
-    .. attribute:: effective_url
-
-        The destination url for this request after following redirects.
-
-    .. attribute:: error
-
-        Error instance if the request resulted in a HTTP error code.
-
-    .. attribute:: status
-
-        Human equivalent of :attr:`code`, e.g. ``OK``, `Not found`, or
-        'Internal Server Error'.
-
+    Attributes:
+        request (~kombu.async.http.Request): object used to get this response.
+        code (int): HTTP response code (e.g. 200, 404, or 500).
+        headers (~kombu.async.http.Headers): HTTP headers for this response.
+        buffer (bytes): Socket read buffer.
+        effective_url (str): The destination url for this request after
+            following redirects.
+        error (Exception): Error instance if the request resulted in
+            a HTTP error code.
+        status (str): Human equivalent of :attr:`code`,
+            e.g. ``OK``, `Not found`, or 'Internal Server Error'.
     """
 
     if not PYPY:  # pragma: no cover
@@ -198,9 +184,9 @@ class Response(object):
     def body(self):
         """The full contents of the response body.
 
-        Note that accessing this propery will evaluate the buffer
-        and subsequent accesses will be cached.
-
+        Note:
+            Accessing this propery will evaluate the buffer
+            and subsequent accesses will be cached.
         """
         if self._body is None:
             if self.buffer is not None:

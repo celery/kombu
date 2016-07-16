@@ -1,3 +1,7 @@
+========================================================
+ File-system Transport - ``kombu.transport.filesystem``
+========================================================
+
 .. currentmodule:: kombu.transport.filesystem
 
 .. automodule:: kombu.transport.filesystem

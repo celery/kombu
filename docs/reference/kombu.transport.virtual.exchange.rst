@@ -1,3 +1,7 @@
+=============================================================================
+ Virtual AMQ Exchange Implementation - ``kombu.transport.virtual.exchange``
+=============================================================================
+
 .. currentmodule:: kombu.transport.virtual.exchange
 
 .. automodule:: kombu.transport.virtual.exchange

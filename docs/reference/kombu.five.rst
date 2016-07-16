@@ -1,5 +1,5 @@
 ==========================================================
- Python 2 to Python 3 utilities - kombu.five
+ Python 2 to Python 3 utilities - ``kombu.five``
 ==========================================================
 
 .. contents::

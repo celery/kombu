@@ -1,5 +1,5 @@
 ==========================================================
- General Pools - kombu.pools
+ Connection/Producer Pools - ``kombu.pools``
 ==========================================================
 
 .. contents::

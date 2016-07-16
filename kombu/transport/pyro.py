@@ -1,11 +1,6 @@
-"""
-kombu.transport.pyro
-======================
-
-Pyro transport.
+"""Pyro transport.
 
 Requires the :mod:`Pyro4` library to be installed.
-
 """
 from __future__ import absolute_import, unicode_literals
 

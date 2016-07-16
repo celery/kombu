@@ -1,3 +1,8 @@
+=========================================
+ Pidbox - ``kombu.pidbox``
+=========================================
+
+
 .. currentmodule:: kombu.pidbox
 
 .. automodule:: kombu.pidbox

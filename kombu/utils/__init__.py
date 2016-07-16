@@ -1,10 +1,4 @@
-"""
-kombu.utils
-===========
-
-Internal utilities.
-
-"""
+"""Internal utilities."""
 from __future__ import absolute_import, print_function, unicode_literals
 
 import importlib
@@ -38,11 +32,12 @@ except ImportError:  # pragma: no cover
     except ImportError:
         register_after_fork = None  # noqa
 
-
-__all__ = ['EqualityDict', 'uuid', 'maybe_list',
-           'fxrange', 'fxrangemax', 'retry_over_time',
-           'emergency_dump_state', 'cached_property', 'register_after_fork',
-           'reprkwargs', 'reprcall', 'nested', 'fileno', 'maybe_fileno']
+__all__ = [
+    'EqualityDict', 'uuid', 'maybe_list',
+    'fxrange', 'fxrangemax', 'retry_over_time',
+    'emergency_dump_state', 'cached_property', 'register_after_fork',
+    'reprkwargs', 'reprcall', 'nested', 'fileno', 'maybe_fileno',
+]
 
 
 def symbol_by_name(name, aliases={}, imp=None, package=None,
@@ -65,8 +60,7 @@ def symbol_by_name(name, aliases={}, imp=None, package=None,
     If `aliases` is provided, a dict containing short name/long name
     mappings, the name is looked up in the aliases first.
 
-    Examples::
-
+    Examples:
         >>> symbol_by_name('celery.concurrency.processes.TaskPool')
         <class 'celery.concurrency.processes.TaskPool'>
 
@@ -78,7 +72,6 @@ def symbol_by_name(name, aliases={}, imp=None, package=None,
         >>> from celery.concurrency.processes import TaskPool
         >>> symbol_by_name(TaskPool) is TaskPool
         True
-
     """
     if imp is None:
         imp = importlib.import_module
@@ -190,24 +183,28 @@ def retry_over_time(fun, catch, args=[], kwargs={}, errback=None,
     For each retry we sleep a for a while before we try again, this interval
     is increased for every retry until the max seconds is reached.
 
-    :param fun: The function to try
-    :param catch: Exceptions to catch, can be either tuple or a single
-        exception class.
-    :keyword args: Positional arguments passed on to the function.
-    :keyword kwargs: Keyword arguments passed on to the function.
-    :keyword errback: Callback for when an exception in ``catch`` is raised.
-        The callback must take three arguments: ``exc``, ``interval_range`` and
-        ``retries``, where ``exc`` is the exception instance, ``interval_range``
-        is an iterator which return the time in seconds to sleep next, and
-        ``retries`` is the number of previous retries.
-    :keyword max_retries: Maximum number of retries before we give up.
-        If this is not set, we will retry forever.
-    :keyword interval_start: How long (in seconds) we start sleeping between
-        retries.
-    :keyword interval_step: By how much the interval is increased for each
-        retry.
-    :keyword interval_max: Maximum number of seconds to sleep between retries.
+    Arguments:
+        fun (Callable): The function to try
+        catch (Tuple[BaseException]): Exceptions to catch, can be either
+            tuple or a single exception class.
 
+    Keyword Arguments:
+        args (Tuple): Positional arguments passed on to the function.
+        kwargs (Dict): Keyword arguments passed on to the function.
+        errback (Callable): Callback for when an exception in ``catch``
+            is raised.  The callback must take three arguments:
+            ``exc``, ``interval_range`` and ``retries``, where ``exc``
+            is the exception instance, ``interval_range`` is an iterator
+            which return the time in seconds to sleep next, and ``retries``
+            is the number of previous retries.
+        max_retries (int): Maximum number of retries before we give up.
+            If this is not set, we will retry forever.
+        interval_start (float): How long (in seconds) we start sleeping
+            between retries.
+        interval_step (float): By how much the interval is increased for
+            each retry.
+        interval_max (float): Maximum number of seconds to sleep
+            between retries.
     """
     retries = 0
     interval_range = fxrange(interval_start,
@@ -263,26 +260,24 @@ class cached_property(object):
     """Property descriptor that caches the return value
     of the get function.
 
-    *Examples*
+    Examples:
+        .. code-block:: python
 
-    .. code-block:: python
+            @cached_property
+            def connection(self):
+                return Connection()
 
-        @cached_property
-        def connection(self):
-            return Connection()
+            @connection.setter  # Prepares stored value
+            def connection(self, value):
+                if value is None:
+                    raise TypeError('Connection must be a connection')
+                return value
 
-        @connection.setter  # Prepares stored value
-        def connection(self, value):
-            if value is None:
-                raise TypeError('Connection must be a connection')
-            return value
-
-        @connection.deleter
-        def connection(self, value):
-            # Additional action to do at del(self.attr)
-            if value is not None:
-                print('Connection {0!r} deleted'.format(value)
-
+            @connection.deleter
+            def connection(self, value):
+                # Additional action to do at del(self.attr)
+                if value is not None:
+                    print('Connection {0!r} deleted'.format(value)
     """
 
     def __init__(self, fget=None, fset=None, fdel=None, doc=None):

@@ -1,10 +1,4 @@
-"""
-    kombu.utils.scheduling
-    ~~~~~~~~~~~~~~~~~~~~~~
-
-    Consumer utilities.
-
-"""
+"""Consumer scheduling utilities."""
 from __future__ import absolute_import, unicode_literals
 
 from itertools import count
@@ -16,6 +10,12 @@ from . import symbol_by_name
 __all__ = [
     'FairCycle', 'priority_cycle', 'round_robin_cycle', 'sorted_cycle',
 ]
+
+CYCLE_ALIASES = {
+    'priority': 'kombu.utils.scheduling:priority_cycle',
+    'round_robin': 'kombu.utils.scheduling:round_robin_cycle',
+    'sorted': 'kombu.utils.scheduling:sorted_cycle',
+}
 
 
 @python_2_unicode_compatible
@@ -89,13 +89,6 @@ class sorted_cycle(priority_cycle):
 
     def consume(self, n):
         return sorted(self.items[:n])
-
-
-CYCLE_ALIASES = {
-    'priority': 'kombu.utils.scheduling:priority_cycle',
-    'round_robin': 'kombu.utils.scheduling:round_robin_cycle',
-    'sorted': 'kombu.utils.scheduling:sorted_cycle',
-}
 
 
 def cycle_by_name(name):

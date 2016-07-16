@@ -45,6 +45,7 @@
     kombu.transport.memory
     kombu.transport.redis
     kombu.transport.mongodb
+    kombu.transport.consul
     kombu.transport.zookeeper
     kombu.transport.filesystem
     kombu.transport.SQS

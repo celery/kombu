@@ -1,11 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-kombu.async.hub
-===============
-
-Event loop implementation.
-
-"""
+"""Event loop implementation."""
 from __future__ import absolute_import, unicode_literals
 
 import errno
@@ -60,9 +54,10 @@ def set_event_loop(loop):
 class Hub(object):
     """Event loop object.
 
-    :keyword timer: Specify timer object.
-
+    Arguments:
+        timer (kombu.async.Timer): Specify custom timer instance.
     """
+
     #: Flag set if reading from an fd will not block.
     READ = READ
 

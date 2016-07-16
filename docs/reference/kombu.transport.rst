@@ -1,3 +1,7 @@
+===========================================
+  Built-in Transports - ``kombu.transport``
+===========================================
+
 .. currentmodule:: kombu.transport
 
 .. automodule:: kombu.transport
