@@ -77,8 +77,9 @@ class Connection(object):
             pass to alternate kombu channel implementations.  Consult the
             transport documentation for available options.
         heartbeat (float): Heartbeat interval in int/float seconds.
-            Note that if heartbeats are enabled then the :meth:`heartbeat_check`
-            method must be called regularly, around once per second.
+            Note that if heartbeats are enabled then the
+            :meth:`heartbeat_check` method must be called regularly,
+            around once per second.
 
     Note:
         The connection is established lazily when needed. If you need the
@@ -420,7 +421,8 @@ class Connection(object):
                 If this limit is exceeded the connection error
                 will be re-raised.
 
-            interval_start (float): The number of seconds we start sleeping for.
+            interval_start (float): The number of seconds we start
+                sleeping for.
             interval_step (float): How many seconds added to the interval
                 for each retry.
             interval_max (float): Maximum number of seconds to sleep between
@@ -501,7 +503,8 @@ class Connection(object):
         Example:
             >>> channel = connection.channel()
             >>> try:
-            ...    ret, channel = connection.autoretry(publish_messages, channel)
+            ...    ret, channel = connection.autoretry(
+            ...         publish_messages, channel)
             ... finally:
             ...    channel.close()
         """

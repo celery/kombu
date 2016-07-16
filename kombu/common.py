@@ -206,7 +206,8 @@ def send_reply(exchange, req, msg,
         req (~kombu.Message): Original request, a message with
             a ``reply_to`` property.
         producer (kombu.Producer): Producer instance
-        retry (bool): If true must retry according to ``reply_policy`` argument.
+        retry (bool): If true must retry according to
+            the ``reply_policy`` argument.
         retry_policy (Dict): Retry settings.
         **props (Any): Extra properties.
     """

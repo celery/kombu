@@ -59,7 +59,8 @@ class Request(object):
         use_gzip (bool): Allow the server to use gzip compression.
             Enabled by default.
         validate_cert (bool): Set to true if the server certificate should be
-            verified when performing ``https://`` requests (enabled by default).
+            verified when performing ``https://`` requests.
+            Enabled by default.
         auth_username (str): Username for HTTP authentication.
         auth_password (str): Password for HTTP authentication.
         auth_mode (str): Type of HTTP authentication (``basic`` or ``digest``).

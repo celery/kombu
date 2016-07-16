@@ -405,8 +405,8 @@ def enable_insecure_serializers(choices=['pickle', 'yaml', 'msgpack']):
     """Enable serializers that are considered to be unsafe.
 
     Note:
-        Will enable ``pickle``, ``yaml`` and ``msgpack`` by default,
-        but you can also specify a list of serializers (by name or content type)
+        Will enable ``pickle``, ``yaml`` and ``msgpack`` by default, but you
+        can also specify a list of serializers (by name or content type)
         to enable.
     """
     for choice in choices:

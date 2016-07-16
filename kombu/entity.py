@@ -67,29 +67,30 @@ class Exchange(MaybeChannelBound):
 
                 * `direct` (*default*)
 
-                    Direct match between the routing key in the message, and the
-                    routing criteria used when a queue is bound to this exchange.
+                    Direct match between the routing key in the message,
+                    and the routing criteria used when a queue is bound to
+                    this exchange.
 
                 * `topic`
 
-                    Wildcard match between the routing key and the routing pattern
-                    specified in the exchange/queue binding. The routing key is
-                    treated as zero or more words delimited by `"."` and
-                    supports special wildcard characters. `"*"` matches a
-                    single word and `"#"` matches zero or more words.
+                    Wildcard match between the routing key and the routing
+                    pattern specified in the exchange/queue binding.
+                    The routing key is treated as zero or more words delimited
+                    by `"."` and supports special wildcard characters. `"*"`
+                    matches a single word and `"#"` matches zero or more words.
 
                 * `fanout`
 
-                    Queues are bound to this exchange with no arguments. Hence any
-                    message sent to this exchange will be forwarded to all queues
-                    bound to this exchange.
+                    Queues are bound to this exchange with no arguments. Hence
+                    any message sent to this exchange will be forwarded to all
+                    queues bound to this exchange.
 
                 * `headers`
 
                     Queues are bound to this exchange with a table of arguments
-                    containing headers and values (optional). A special argument
-                    named "x-match" determines the matching algorithm, where
-                    `"all"` implies an `AND` (all pairs must match) and
+                    containing headers and values (optional). A special
+                    argument named "x-match" determines the matching algorithm,
+                    where `"all"` implies an `AND` (all pairs must match) and
                     `"any"` implies `OR` (at least one pair must match).
 
                     :attr:`arguments` is used to specify the arguments.
@@ -636,12 +637,13 @@ class Queue(MaybeChannelBound):
         """
         if no_ack is None:
             no_ack = self.no_ack
-        return self.channel.basic_consume(queue=self.name,
-                                          no_ack=no_ack,
-                                          consumer_tag=consumer_tag or '',
-                                          callback=callback,
-                                          nowait=nowait,
-                                          arguments=self.consumer_arguments)
+        return self.channel.basic_consume(
+            queue=self.name,
+            no_ack=no_ack,
+            consumer_tag=consumer_tag or '',
+            callback=callback,
+            nowait=nowait,
+            arguments=self.consumer_arguments)
 
     def cancel(self, consumer_tag):
         """Cancel a consumer by consumer tag."""
@@ -650,13 +652,17 @@ class Queue(MaybeChannelBound):
     def delete(self, if_unused=False, if_empty=False, nowait=False):
         """Delete the queue.
 
+        Example:
+            .. code-block:: console
+                $ foo = 'blah'
+
         Arguments:
             if_unused (bool): If set, the server will only delete the queue
                 if it has no consumers. A channel error will be raised
                 if the queue has consumers.
 
-            if_empty (bool): If set, the server will only delete the queue
-                if it is empty. If it is not empty a channel error will be raised.
+            if_empty (bool): If set, the server will only delete the queue if
+                it is empty. If it is not empty a channel error will be raised.
 
             nowait (bool): Do not wait for a reply.
         """
