@@ -186,8 +186,12 @@ class Connection(object):
 
         # fallback hosts
         self.alt = alt
+        # keep text representation for .info
+        # only temporary solution as this won't work when
+        # passing a custom object (Issue celery/celery#3320).
+        self._failover_strategy = failover_strategy or 'round-robin'
         self.failover_strategy = self.failover_strategies.get(
-            failover_strategy or 'round-robin') or failover_strategy
+            self._failover_strategy) or self._failover_strategy
         if self.alt:
             self.cycle = self.failover_strategy(self.alt)
             next(self.cycle)  # skip first entry
@@ -574,7 +578,7 @@ class Connection(object):
             ('login_method', self.login_method or D.get('login_method')),
             ('uri_prefix', self.uri_prefix),
             ('heartbeat', self.heartbeat),
-            ('failover_strategy', self.failover_strategy),
+            ('failover_strategy', self._failover_strategy),
             ('alternates', self.alt),
         )
         return info
