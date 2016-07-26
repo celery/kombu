@@ -3,6 +3,7 @@ from __future__ import absolute_import, unicode_literals
 
 from kombu.five import Queue, values
 
+from . import base
 from . import virtual
 
 
@@ -63,6 +64,8 @@ class Transport(virtual.Transport):
 
     #: memory backend state is global.
     state = virtual.BrokerState()
+
+    implements = base.Transport.implements
 
     driver_type = 'memory'
     driver_name = 'memory'
