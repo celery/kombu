@@ -5,6 +5,8 @@ import socket
 
 from copy import copy, deepcopy
 
+from amqp.exceptions import RecoverableConnectionError
+
 from kombu import Connection, Consumer, Producer, parse_url
 from kombu.connection import Resource
 from kombu.five import items, range
@@ -444,7 +446,7 @@ class test_Connection(Case):
 
         self.conn.transport.connection_errors = (_ConnectionError,)
         ensured = self.conn.ensure(self.conn, publish)
-        with self.assertRaises(_ConnectionError):
+        with self.assertRaises(RecoverableConnectionError):
             ensured()
 
     def test_autoretry(self):

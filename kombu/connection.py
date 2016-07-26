@@ -3,17 +3,24 @@ from __future__ import absolute_import, unicode_literals
 
 import os
 import socket
+import sys
 
 from collections import OrderedDict
 from contextlib import contextmanager
 from itertools import count, cycle
 from operator import itemgetter
 
+from amqp.exceptions import (
+    RecoverableConnectionError, RecoverableChannelError,
+)
+
 # jython breaks on relative import for .exceptions for some reason
 # (Issue #112)
 from kombu import exceptions
 
-from .five import bytes_if_py2, python_2_unicode_compatible, string_t, text_t
+from .five import (
+    bytes_if_py2, python_2_unicode_compatible, reraise, string_t, text_t,
+)
 from .log import get_logger
 from .resource import Resource
 from .transport import get_transport_cls, supports_librabbitmq
@@ -352,7 +359,7 @@ class Connection(object):
 
     def ensure_connection(self, errback=None, max_retries=None,
                           interval_start=2, interval_step=2, interval_max=30,
-                          callback=None):
+                          callback=None, reraise_as_library_errors=True):
         """Ensure we have a connection to the server.
 
         If not retry establishing the connection with the settings
@@ -387,10 +394,35 @@ class Connection(object):
 
             return interval if round else 0
 
-        retry_over_time(self.connect, self.recoverable_connection_errors,
-                        (), {}, on_error, max_retries,
-                        interval_start, interval_step, interval_max, callback)
+        ctx = self._reraise_as_library_errors
+        if not reraise_as_library_errors:
+            ctx = self._dummy_context
+        with ctx():
+            retry_over_time(self.connect, self.recoverable_connection_errors,
+                            (), {}, on_error, max_retries,
+                            interval_start, interval_step, interval_max,
+                            callback)
         return self
+
+    @contextmanager
+    def _reraise_as_library_errors(
+            self,
+            ConnectionError=RecoverableConnectionError,
+            ChannelError=RecoverableChannelError):
+        try:
+            yield
+        except (ConnectionError, ChannelError):
+            raise
+        except self.recoverable_connection_errors as exc:
+            reraise(ConnectionError, ConnectionError(text_t(exc)),
+                    sys.exc_info()[2])
+        except self.recoverable_channel_errors as exc:
+            reraise(ChannelError, ChannelError(text_t(exc)),
+                    sys.exc_info()[2])
+
+    @contextmanager
+    def _dummy_context(self):
+        yield
 
     def completes_cycle(self, retries):
         """Return true if the cycle is complete after number of `retries`."""
@@ -454,40 +486,44 @@ class Connection(object):
             has_modern_errors = hasattr(
                 self.transport, 'recoverable_connection_errors',
             )
-            for retries in count(0):  # for infinity
-                try:
-                    return fun(*args, **kwargs)
-                except conn_errors as exc:
-                    if got_connection and not has_modern_errors:
-                        # transport can not distinguish between
-                        # recoverable/irrecoverable errors, so we propagate
-                        # the error if it persists after a new connection was
-                        # successfully established.
-                        raise
-                    if max_retries is not None and retries > max_retries:
-                        raise
-                    self._debug('ensure connection error: %r', exc, exc_info=1)
-                    self.collect()
-                    errback and errback(exc, 0)
-                    remaining_retries = None
-                    if max_retries is not None:
-                        remaining_retries = max(max_retries - retries, 1)
-                    self.ensure_connection(errback,
-                                           remaining_retries,
-                                           interval_start,
-                                           interval_step,
-                                           interval_max)
-                    channel = self.default_channel
-                    self.revive(channel)
-                    obj.revive(channel)
-                    if on_revive:
-                        on_revive(channel)
-                    got_connection += 1
-                except chan_errors as exc:
-                    if max_retries is not None and retries > max_retries:
-                        raise
-                    self._debug('ensure channel error: %r', exc, exc_info=1)
-                    errback and errback(exc, 0)
+            with self._reraise_as_library_errors():
+                for retries in count(0):  # for infinity
+                    try:
+                        return fun(*args, **kwargs)
+                    except conn_errors as exc:
+                        if got_connection and not has_modern_errors:
+                            # transport can not distinguish between
+                            # recoverable/irrecoverable errors, so we propagate
+                            # the error if it persists after a new connection
+                            # was successfully established.
+                            raise
+                        if max_retries is not None and retries > max_retries:
+                            raise
+                        self._debug('ensure connection error: %r',
+                                    exc, exc_info=1)
+                        self.collect()
+                        errback and errback(exc, 0)
+                        remaining_retries = None
+                        if max_retries is not None:
+                            remaining_retries = max(max_retries - retries, 1)
+                        self.ensure_connection(
+                            errback,
+                            remaining_retries,
+                            interval_start, interval_step, interval_max,
+                            reraise_as_library_errors=False,
+                        )
+                        channel = self.default_channel
+                        self.revive(channel)
+                        obj.revive(channel)
+                        if on_revive:
+                            on_revive(channel)
+                        got_connection += 1
+                    except chan_errors as exc:
+                        if max_retries is not None and retries > max_retries:
+                            raise
+                        self._debug('ensure channel error: %r',
+                                    exc, exc_info=1)
+                        errback and errback(exc, 0)
         _ensured.__name__ = bytes_if_py2('{0}(ensured)'.format(fun.__name__))
         _ensured.__doc__ = fun.__doc__
         _ensured.__module__ = fun.__module__
