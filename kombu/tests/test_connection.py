@@ -5,10 +5,9 @@ import socket
 
 from copy import copy, deepcopy
 
-from amqp.exceptions import RecoverableConnectionError
-
 from kombu import Connection, Consumer, Producer, parse_url
 from kombu.connection import Resource
+from kombu.exceptions import OperationalError
 from kombu.five import items, range
 from kombu.utils.functional import lazy
 
@@ -446,7 +445,7 @@ class test_Connection(Case):
 
         self.conn.transport.connection_errors = (_ConnectionError,)
         ensured = self.conn.ensure(self.conn, publish)
-        with self.assertRaises(RecoverableConnectionError):
+        with self.assertRaises(OperationalError):
             ensured()
 
     def test_autoretry(self):

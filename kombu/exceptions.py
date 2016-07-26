@@ -8,6 +8,7 @@ from amqp import ChannelError, ConnectionError, ResourceError
 from kombu.five import python_2_unicode_compatible
 
 __all__ = [
+    'KombuError', 'OperationalError',
     'NotBoundError', 'MessageStateError', 'TimeoutError',
     'LimitExceeded', 'ConnectionLimitExceeded',
     'ChannelLimitExceeded', 'ConnectionError', 'ChannelError',
@@ -18,6 +19,11 @@ __all__ = [
 
 class KombuError(Exception):
     """Common subclass for all Kombu exceptions."""
+    pass
+
+
+class OperationalError(KombuError):
+    """Recoverable message transport connection error."""
     pass
 
 

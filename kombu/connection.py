@@ -10,10 +10,6 @@ from contextlib import contextmanager
 from itertools import count, cycle
 from operator import itemgetter
 
-from amqp.exceptions import (
-    RecoverableConnectionError, RecoverableChannelError,
-)
-
 # jython breaks on relative import for .exceptions for some reason
 # (Issue #112)
 from kombu import exceptions
@@ -407,8 +403,8 @@ class Connection(object):
     @contextmanager
     def _reraise_as_library_errors(
             self,
-            ConnectionError=RecoverableConnectionError,
-            ChannelError=RecoverableChannelError):
+            ConnectionError=exceptions.OperationalError,
+            ChannelError=exceptions.OperationalError):
         try:
             yield
         except (ConnectionError, ChannelError):
