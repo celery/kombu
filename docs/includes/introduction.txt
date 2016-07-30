@@ -34,7 +34,7 @@ Features
         $ pip install librabbitmq
 
     * Virtual transports makes it really easy to add support for non-AMQP
-      transports.  There is already built-in support for `Redis`_,
+      transports. There is already built-in support for `Redis`_,
       `Amazon SQS`_, `ZooKeeper`_, `SoftLayer MQ`_ and `Pyro`_.
 
     * In-memory transport for unit testing.
@@ -141,7 +141,7 @@ Quick overview
         # the declare above, makes sure the video queue is declared
         # so that the messages can be delivered.
         # It's a best practice in Kombu to have both publishers and
-        # consumers declare the queue.  You can also declare the
+        # consumers declare the queue. You can also declare the
         # queue manually using:
         #     video_queue(conn).declare()
 
@@ -239,7 +239,7 @@ There are some concepts you should be familiar with before starting:
 
     * Routing keys
 
-        Every message has a routing key.  The interpretation of the routing
+        Every message has a routing key. The interpretation of the routing
         key depends on the exchange type. There are four default exchange
         types defined by the AMQP standard, and vendors can define custom
         types (so see your vendors manual for details).

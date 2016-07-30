@@ -201,7 +201,7 @@ class QoS(object):
         """Returns the maximum number of messages allowed to be returned.
 
         Returns an estimated number of messages that a consumer may be allowed
-        to consume at once from the broker. This is used for services where
+        to consume at once from the broker.  This is used for services where
         bulk 'get message' calls are preferred to many individual 'get message'
         calls - like SQS.
 
@@ -573,7 +573,7 @@ class Channel(AbstractChannel, base.StdChannel):
             queue, exchange, routing_key, arguments,
         )
         # TODO: the complexity of this operation is O(number of bindings).
-        # Should be optimized. Modifying table in place.
+        # Should be optimized.  Modifying table in place.
         table[:] = [meta for meta in table if meta != binding_meta]
 
     def list_bindings(self):

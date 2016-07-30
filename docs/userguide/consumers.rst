@@ -10,7 +10,7 @@ Basics
 ======
 
 The :class:`Consumer` takes a connection (or channel) and a list of queues to
-consume from.  Several consumers can be mixed to consume from different
+consume from. Several consumers can be mixed to consume from different
 channels, as they all bind to the same connection, and ``drain_events`` will
 drain events from all channels on that connection.
 

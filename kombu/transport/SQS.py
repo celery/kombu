@@ -1,6 +1,6 @@
 """Amazon SQS Transport.
 
-Amazon SQS transport module for Kombu. This package implements an AMQP-like
+Amazon SQS transport module for Kombu.  This package implements an AMQP-like
 interface on top of Amazons SQS service, with the goal of being optimized for
 high performance and reliability.
 
@@ -13,7 +13,7 @@ SQS Features supported by this transport:
       sqs-long-polling.html
 
     Long polling is enabled by setting the `wait_time_seconds` transport
-    option to a number > 1. Amazon supports up to 20 seconds. This is
+    option to a number > 1.  Amazon supports up to 20 seconds.  This is
     disabled for now, but will be enabled by default in the near future.
 
   Batch API Actions:
@@ -31,7 +31,7 @@ SQS Features supported by this transport:
 
     When a Celery worker has multiple queues to monitor, it will pull down
     up to 'prefetch_count' messages from queueA and work on them all before
-    moving on to queueB. If queueB is empty, it will wait up until
+    moving on to queueB.  If queueB is empty, it will wait up until
     'polling_interval' expires before moving back and checking on queueA.
 """
 
@@ -100,7 +100,7 @@ class Channel(virtual.Channel):
         self._update_queue_cache(self.queue_name_prefix)
 
         # The drain_events() method stores extra messages in a local
-        # Deque object. This allows multiple messages to be requested from
+        # Deque object.  This allows multiple messages to be requested from
         # SQS at once for performance, but maintains the same external API
         # to the caller of the drain_events() method.
         self._queue_message_cache = collections.deque()
@@ -147,7 +147,7 @@ class Channel(virtual.Channel):
             raise Empty()
         message_cache = self._queue_message_cache
 
-        # Check if there are any items in our buffer. If there are any, pop
+        # Check if there are any items in our buffer.  If there are any, pop
         # off that queue first.
         try:
             return message_cache.popleft()
@@ -169,7 +169,7 @@ class Channel(virtual.Channel):
 
         Returns:
             FairCycle: object that points to our _get_bulk() method
-                rather than the standard _get() method. This allows for
+                rather than the standard _get() method.  This allows for
                 multiple messages to be returned at once from SQS (
                 based on the prefetch limit).
         """
@@ -189,9 +189,9 @@ class Channel(virtual.Channel):
         # _queue_cache population.
         queue = self.entity_name(self.queue_name_prefix + queue)
 
-        # The SQS ListQueues method only returns 1000 queues. When you have
+        # The SQS ListQueues method only returns 1000 queues.  When you have
         # so many queues, it's possible that the queue you are looking for is
-        # not cached. In this case, we could update the cache with the exact
+        # not cached.  In this case, we could update the cache with the exact
         # queue name first.
         if queue not in self._queue_cache:
             self._update_queue_cache(queue)

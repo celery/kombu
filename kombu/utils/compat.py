@@ -85,7 +85,7 @@ def nested(*managers):  # pragma: no cover
                     exc = sys.exc_info()
             if exc != (None, None, None):
                 # Don't rely on sys.exc_info() still containing
-                # the right information. Another exception may
+                # the right information.  Another exception may
                 # have been raised and caught by an exit method
                 reraise(exc[0], exc[1], exc[2])
     finally:

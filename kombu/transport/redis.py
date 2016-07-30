@@ -1049,7 +1049,7 @@ class SentinelChannel(Channel):
 
     sentinel://0.0.0.0:26379;sentinel://0.0.0.0:26380/...
 
-    where each sentinel is separated by a `;`. Multiple sentinels are handled
+    where each sentinel is separated by a `;`.  Multiple sentinels are handled
     by :class:`kombu.Connection` constructor, and placed in the alternative
     list of servers to connect to in case of connection failure.
 

@@ -6,7 +6,7 @@
 **Synopsis**
 
 Connects to a zookeeper node as <server>:<port>/<vhost>
-The <vhost> becomes the base for all the other znodes. So we can use
+The <vhost> becomes the base for all the other znodes.  So we can use
 it like a vhost.
 
 This uses the built-in kazoo recipe for queues
@@ -17,8 +17,8 @@ This uses the built-in kazoo recipe for queues
 - https://kazoo.readthedocs.io/en/latest/api/recipe/queue.html
 
 **Limitations**
-This queue does not offer reliable consumption. An entry is removed from
-the queue prior to being processed. So if an error occurs, the consumer
+This queue does not offer reliable consumption.  An entry is removed from
+the queue prior to being processed.  So if an error occurs, the consumer
 has to re-queue the item or it will be lost.
 """
 from __future__ import absolute_import, unicode_literals
