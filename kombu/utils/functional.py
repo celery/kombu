@@ -1,11 +1,12 @@
 import random
 import threading
 
-from collections import Iterable, Mapping, OrderedDict, UserDict
+from collections import OrderedDict, UserDict
 from itertools import count, repeat
 from time import sleep
 from typing import (
-    Any, Callable, Dict, Iterator, KeysView, Optional, Sequence, Tuple,
+    Any, Callable, Dict, Iterable, Iterator,
+    KeysView, Mapping, Optional, Sequence, Tuple,
 )
 
 from vine.utils import wraps
