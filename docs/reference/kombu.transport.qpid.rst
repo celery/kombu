@@ -1,3 +1,7 @@
+===================================================
+ Apache QPid Transport - ``kombu.transport.qpid``
+===================================================
+
 .. currentmodule:: kombu.transport.qpid
 
 .. automodule:: kombu.transport.qpid

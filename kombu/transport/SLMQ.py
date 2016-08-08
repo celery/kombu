@@ -1,19 +1,13 @@
-"""
-kombu.transport.SLMQ
-====================
-
-SoftLayer Message Queue transport.
-
-"""
+"""SoftLayer Message Queue transport."""
 import os
 import socket
 import string
 
 from queue import Empty
 
-from kombu.utils import cached_property  # , uuid
 from kombu.utils.encoding import bytes_to_str, safe_str
 from kombu.utils.json import loads, dumps
+from kombu.utils.objects import cached_property
 
 from . import virtual
 

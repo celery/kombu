@@ -1,10 +1,4 @@
-"""
-kombu.transport.redis
-=====================
-
-Redis transport.
-
-"""
+"""Redis transport."""
 import numbers
 import socket
 
@@ -18,12 +12,14 @@ from vine import promise
 
 from kombu.exceptions import InconsistencyError, VersionMismatch
 from kombu.log import get_logger
-from kombu.utils import cached_property, register_after_fork, uuid
+from kombu.utils.compat import register_after_fork
 from kombu.utils.eventio import poll, READ, ERR
 from kombu.utils.encoding import bytes_to_str
 from kombu.utils.json import loads, dumps
+from kombu.utils.objects import cached_property
 from kombu.utils.scheduling import cycle_by_name
 from kombu.utils.url import _parse_url
+from kombu.utils.uuid import uuid
 
 from . import virtual
 
@@ -489,7 +485,7 @@ class Channel(virtual.Channel):
 
         # Evaluate connection.
         try:
-            self.client.info()
+            self.client.ping()
         except Exception:
             self._disconnect_pools()
             raise
@@ -779,7 +775,7 @@ class Channel(virtual.Channel):
     def _delete(self, queue, exchange, routing_key, pattern,
                 *args, client=None, **kwargs):
         self.auto_delete_queues.discard(queue)
-        with self.conn_or_acquire(client=client)) as client:
+        with self.conn_or_acquire(client=client) as client:
             client.srem(self.keyprefix_queue % (exchange,),
                         self.sep.join([routing_key or '',
                                        pattern or '',
@@ -1051,7 +1047,7 @@ class SentinelChannel(Channel):
 
     sentinel://0.0.0.0:26379;sentinel://0.0.0.0:26380/...
 
-    where each sentinel is separated by a `;`. Multiple sentinels are handled
+    where each sentinel is separated by a `;`.  Multiple sentinels are handled
     by :class:`kombu.Connection` constructor, and placed in the alternative
     list of servers to connect to in case of connection failure.
 

@@ -1,10 +1,11 @@
 import pickle
 import socket
 
-from copy import copy
+from copy import copy, deepcopy
 
 from kombu import Connection, Consumer, Producer, parse_url
 from kombu.connection import Resource
+from kombu.exceptions import OperationalError
 from kombu.utils.functional import lazy
 
 from .case import Case, Mock, patch, skip
@@ -135,6 +136,11 @@ class test_connection_utils(Case):
             userid='guest', password='guest', hostname='[::1]',
             port=5672, virtual_host='/',
         )
+
+    def test_connection_copy(self):
+        conn = Connection(self.url, alternates=['amqp://host'])
+        clone = deepcopy(conn)
+        self.assertEqual(clone.alt, ['amqp://host'])
 
 
 class test_Connection(Case):
@@ -436,7 +442,7 @@ class test_Connection(Case):
 
         self.conn.transport.connection_errors = (_ConnectionError,)
         ensured = self.conn.ensure(self.conn, publish)
-        with self.assertRaises(_ConnectionError):
+        with self.assertRaises(OperationalError):
             ensured()
 
     def test_autoretry(self):

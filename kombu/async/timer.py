@@ -1,11 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-kombu.async.timer
-=================
-
-Timer scheduling Python callbacks.
-
-"""
+"""Timer scheduling Python callbacks."""
 import heapq
 import sys
 
@@ -74,18 +68,9 @@ class Entry:
         return '<TimerEntry: {0}(*{1!r}, **{2!r})'.format(
             self.fun.__name__, self.args, self.kwargs)
 
-    def __hash__(self):
-        return hash((self.fun, repr(self.args), repr(self.kwargs)))
-
     # must not use hash() to order entries
     def __lt__(self, other):
         return id(self) < id(other)
-
-    def __eq__(self, other):
-        return hash(self) == hash(other)
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
 
     @property
     def cancelled(self):
@@ -143,10 +128,10 @@ class Timer:
     def enter_at(self, entry, eta=None, priority=0, time=monotonic):
         """Enter function into the scheduler.
 
-        :param entry: Item to enter.
-        :keyword eta: Scheduled time as a :class:`datetime.datetime` object.
-        :keyword priority: Unused.
-
+        Arguments:
+            entry (~kombu.async.timer.Entry): Item to enter.
+            eta (datetime.datetime): Scheduled time.
+            priority (int): Unused.
         """
         if eta is None:
             eta = time()

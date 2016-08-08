@@ -1,3 +1,7 @@
+==================================================
+ Transport Base Class - ``kombu.transport.base``
+==================================================
+
 .. currentmodule:: kombu.transport.base
 
 .. automodule:: kombu.transport.base

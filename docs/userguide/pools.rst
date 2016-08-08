@@ -26,7 +26,7 @@ The connection pool group
 
 The connection pools are available as :attr:`kombu.pools.connections`.
 This is a pool group, which means you give it a connection instance,
-and you get a pool instance back.  We have one pool per connection
+and you get a pool instance back. We have one pool per connection
 instance to support multiple connections in the same app.
 All connection instances with the same connection parameters will
 get the same pool:
@@ -58,7 +58,7 @@ Let's acquire and release a connection:
     The ``block=True`` here means that the acquire call will block
     until a connection is available in the pool.
     Note that this will block forever in case there is a deadlock
-    in your code where a connection is not released.  There
+    in your code where a connection is not released. There
     is a ``timeout`` argument you can use to safeguard against this
     (see :meth:`kombu.connection.Resource.acquire`).
 
@@ -66,7 +66,7 @@ Let's acquire and release a connection:
     left in the pool an :class:`kombu.exceptions.ConnectionLimitExceeded`
     exception will be raised.
 
-That's about it.  If you need to connect to multiple brokers
+That's about it. If you need to connect to multiple brokers
 at once you can do that too:
 
 .. code-block:: python
@@ -137,7 +137,7 @@ Resetting all pools
 -------------------
 
 You can close all active connections and reset all pool groups by
-using the :func:`kombu.pools.reset` function.  Note that this
+using the :func:`kombu.pools.reset` function. Note that this
 will not respect anything currently using these connections,
 so will just drag the connections away from under their feet:
 you should be very careful before you use this.

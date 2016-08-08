@@ -4,13 +4,18 @@ from typing import Iterator, Sequence, NamedTuple, Tuple
 
 from kombu import version_info_t
 
-from .typing import Int
-
 fmatch_t = NamedTuple('fmatch_t', [('ratio', float), ('key', str)])
 
 
+def escape_regex(p: str, white: str = ''):
+    # what's up with re.escape? that code must be neglected or someting
+    return ''.join(c if c.isalnum() or c in white
+                   else ('\\000' if c == '\000' else '\\' + c)
+                   for c in p)
+
+
 def fmatch_iter(needle: str, haystack: Sequence[str],
-                min_ratio: float=0.6) -> Iterator[fmatch_t]:
+                min_ratio: float = 0.6) -> Iterator[fmatch_t]:
     for key in haystack:
         ratio = SequenceMatcher(None, needle, key).ratio()
         if ratio >= min_ratio:
@@ -18,7 +23,7 @@ def fmatch_iter(needle: str, haystack: Sequence[str],
 
 
 def fmatch_best(needle: str, haystack: Sequence[str],
-                min_ratio: float=0.6) -> str:
+                min_ratio: float = 0.6) -> str:
     try:
         return sorted(
             fmatch_iter(needle, haystack, min_ratio), reverse=True,
@@ -38,13 +43,15 @@ def version_string_as_tuple(s: str) -> version_info_t:
     return v
 
 
-def _unpack_version(major: Int, minor: Int=0, micro: Int=0,
-                    releaselevel: str='', serial: str='') -> version_info_t:
+def _unpack_version(major: int, minor: int = 0, micro: int = 0,
+                    releaselevel: str = '',
+                    serial: str = '') -> version_info_t:
     return version_info_t(int(major), int(minor), micro, releaselevel, serial)
 
 
 def _splitmicro(micro: str,
-                releaselevel: str='', serial: str='') -> Tuple[int, str, str]:
+                releaselevel: str = '',
+                serial: str = '') -> Tuple[int, str, str]:
     for index, char in enumerate(micro):
         if not char.isdigit():
             break

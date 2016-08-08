@@ -1,5 +1,5 @@
 ==========================================================
- SQS Messages - kombu.async.aws.sqs.message
+ SQS Messages - ``kombu.async.aws.sqs.message``
 ==========================================================
 
 .. contents::

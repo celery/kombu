@@ -1,12 +1,6 @@
-"""
-kombu.transport
-===============
-
-Built-in transports.
-
-"""
+"""Built-in transports."""
 from kombu.syn import _detect_environment
-from kombu.utils import symbol_by_name
+from kombu.utils.imports import symbol_by_name
 
 
 def supports_librabbitmq():
@@ -69,7 +63,6 @@ def get_transport_cls(transport=None):
 
     If the name does not include `"."` (is not fully qualified),
     the alias table will be consulted.
-
     """
     if transport not in _transport_cache:
         _transport_cache[transport] = resolve_transport(transport)

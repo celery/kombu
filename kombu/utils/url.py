@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Dict, Mapping, NamedTuple, Optional
+from typing import Any, Dict, Mapping, NamedTuple, Optional
 
 from .typing import Port
 

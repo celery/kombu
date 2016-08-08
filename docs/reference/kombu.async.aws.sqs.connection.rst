@@ -1,5 +1,5 @@
 ==========================================================
- SQS Connection - kombu.async.aws.sqs.connection
+ SQS Connection - ``kombu.async.aws.sqs.connection``
 ==========================================================
 
 .. contents::

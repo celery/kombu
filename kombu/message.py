@@ -1,10 +1,4 @@
-"""
-kombu.transport.message
-=======================
-
-Message class.
-
-"""
+"""Message class."""
 import sys
 
 from .compression import decompress
@@ -73,11 +67,12 @@ class Message:
 
     def ack(self, multiple=False):
         """Acknowledge this message as being processed.,
+
         This will remove the message from the queue.
 
-        :raises MessageStateError: If the message has already been
-            acknowledged/requeued/rejected.
-
+        Raises:
+            MessageStateError: If the message has already been
+                acknowledged/requeued/rejected.
         """
         if self.channel.no_ack_consumers is not None:
             try:
@@ -113,9 +108,9 @@ class Message:
 
         The message will be discarded by the server.
 
-        :raises MessageStateError: If the message has already been
-            acknowledged/requeued/rejected.
-
+        Raises:
+            MessageStateError: If the message has already been
+                acknowledged/requeued/rejected.
         """
         if self.acknowledged:
             raise self.MessageStateError(
@@ -127,12 +122,13 @@ class Message:
     def requeue(self):
         """Reject this message and put it back on the queue.
 
-        You must not use this method as a means of selecting messages
-        to process.
+        Warning:
+            You must not use this method as a means of selecting messages
+            to process.
 
-        :raises MessageStateError: If the message has already been
-            acknowledged/requeued/rejected.
-
+        Raises:
+            MessageStateError: If the message has already been
+                acknowledged/requeued/rejected.
         """
         if self.acknowledged:
             raise self.MessageStateError(
@@ -145,9 +141,9 @@ class Message:
         """Deserialize the message body, returning the original
         python structure sent by the publisher.
 
-        Note: The return value is memoized, use `_decode` to force
-        re-evaluation.
-
+        Note:
+            The return value is memoized, use `_decode` to force
+            re-evaluation.
         """
         if not self._decoded_cache:
             self._decoded_cache = self._decode()

@@ -5,9 +5,9 @@ import sys
 
 from logging.handlers import WatchedFileHandler
 
-from .utils import cached_property
 from .utils.encoding import safe_repr, safe_str
 from .utils.functional import maybe_evaluate
+from .utils.objects import cached_property
 
 __all__ = ['LogMixin', 'LOG_LEVELS', 'get_loglevel', 'setup_logging']
 
@@ -68,7 +68,7 @@ class LogMixin:
 
     def _error(self, severity, *args, exc_info=True, **kwargs):
         if DISABLE_TRACEBACKS:
-            exc_info=None
+            exc_info = None
         return self.log(severity, *args, exc_info=exc_info, **kwargs)
 
     def annotate(self, text):

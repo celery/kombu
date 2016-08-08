@@ -1,7 +1,7 @@
 
 from kombu.mixins import ConsumerMixin
 from kombu.log import get_logger
-from kombu.utils import reprcall
+from kombu.utils.functional import reprcall
 
 from .queues import task_queues
 

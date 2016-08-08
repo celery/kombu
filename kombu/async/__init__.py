@@ -1,12 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-kombu.async
-===========
-
-Event loop implementation.
-
-"""
-
+"""Event loop."""
 from .hub import Hub, get_event_loop, set_event_loop
 
 from kombu.utils.eventio import READ, WRITE, ERR

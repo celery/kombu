@@ -1,5 +1,6 @@
-from kombu.utils import reprcall
+"""Event-loop debugging tools."""
 from kombu.utils.eventio import READ, WRITE, ERR
+from kombu.utils.functional import reprcall
 
 
 def repr_flag(flag):

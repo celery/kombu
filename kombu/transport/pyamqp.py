@@ -1,10 +1,4 @@
-"""
-kombu.transport.pyamqp
-======================
-
-pure python amqp transport.
-
-"""
+"""Pure-Python amqp transport."""
 import amqp
 
 from kombu.utils.amq_manager import get_manager

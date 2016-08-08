@@ -1,5 +1,5 @@
 ==========================================================
- Event Loop Implementation - kombu.async.hub
+ Event Loop Implementation - ``kombu.async.hub``
 ==========================================================
 
 .. contents::

@@ -1,11 +1,4 @@
-"""
-kombu.common
-============
-
-Common Utilities.
-
-"""
-
+"""Common Utilities."""
 import amqp.abstract
 import os
 import socket
@@ -17,7 +10,7 @@ from functools import partial
 from itertools import count
 from numbers import Number
 from typing import (
-    Any, Callable, Dict, Iterator, Mapping,
+    Any, Callable, Dict, Iterator, List, Mapping,
     MutableSet, Optional, Sequence, Union, cast,
 )
 from uuid import uuid4, uuid3, NAMESPACE_OID
@@ -28,8 +21,8 @@ from .entity import Exchange, Queue
 from .log import get_logger
 from .serialization import registry as serializers
 from .utils import abstract
-from .utils import uuid
 from .utils.typing import Timeout
+from .utils.uuid import uuid
 
 try:
     from _thread import get_ident
@@ -78,13 +71,13 @@ class Broadcast(Queue):
     Every queue instance will have a unique name,
     and both the queue and exchange is configured with auto deletion.
 
-    :keyword name: This is used as the name of the exchange.
-    :keyword queue: By default a unique id is used for the queue
-       name for every consumer.  You can specify a custom queue
-       name here.
-    :keyword \*\*kwargs: See :class:`~kombu.Queue` for a list
-        of additional keyword arguments supported.
-
+    Arguments:
+        name (str): This is used as the name of the exchange.
+        queue (str): By default a unique id is used for the queue
+            name for every consumer.  You can specify a custom
+            queue name here.
+        **kwargs (Any): See :class:`~kombu.Queue` for a list
+            of additional keyword arguments supported.
     """
     attrs = Queue.attrs + (('queue', None),)
 
@@ -205,18 +198,17 @@ def eventloop(conn: abstract.Connection,
     timeout errors (a timeout of 1 is often used in environments where
     the socket can get "stuck", and is a best practice for Kombu consumers).
 
-    **Examples**
+    ``eventloop`` is a generator.
 
-    ``eventloop`` is a generator::
+    Examples:
+        >>> from kombu.common import eventloop
 
-        from kombu.common import eventloop
-
-        def run(connection):
-            it = eventloop(connection, timeout=1, ignore_timeouts=True)
-            next(it)   # one event consumed, or timed out.
-
-            for _ in eventloop(connection, timeout=1, ignore_timeouts=True):
-                ...  # loop forever.
+        >>> def run(conn):
+        ...     it = eventloop(conn, timeout=1, ignore_timeouts=True)
+        ...     next(it)   # one event consumed, or timed out.
+        ...
+        ...     for _ in eventloop(conn, timeout=1, ignore_timeouts=True):
+        ...         pass  # loop forever.
 
     It also takes an optional limit parameter, and timeout errors
     are propagated by default::
@@ -224,11 +216,9 @@ def eventloop(conn: abstract.Connection,
         for _ in eventloop(connection, limit=1, timeout=1):
             ...
 
-    .. seealso::
-
+    See Also:
         :func:`itermessages`, which is an event loop bound to one or more
         consumers, that yields any messages received.
-
     """
     it = range(limit) if limit else count()
     for i in it:
@@ -246,16 +236,17 @@ def send_reply(exchange: Union[abstract.Exchange, str],
                retry_policy: Optional[Mapping]=None, **props) -> None:
     """Send reply for request.
 
-    :param exchange: Reply exchange
-    :param req: Original request, a message with a ``reply_to`` property.
-    :param producer: Producer instance
-    :param retry: If true must retry according to ``reply_policy`` argument.
-    :param retry_policy: Retry settings.
-    :param props: Extra properties
-
+    Arguments:
+        exchange (kombu.Exchange, str): Reply exchange
+        req (~kombu.Message): Original request, a message with
+            a ``reply_to`` property.
+        producer (kombu.Producer): Producer instance
+        retry (bool): If true must retry according to
+            the ``reply_policy`` argument.
+        retry_policy (Dict): Retry settings.
+        **props (Any): Extra properties.
     """
-
-    producer.publish(
+    return producer.publish(
         msg, exchange=exchange,
         retry=retry, retry_policy=retry_policy,
         **dict({'routing_key': req.properties['reply_to'],
@@ -323,12 +314,10 @@ def ignore_errors(conn: abstract.Connection,
                 consumer.channel.close()
 
 
-    .. note::
-
+    Note:
         Connection and channel errors should be properly handled,
         and not ignored.  Using this function is only acceptable in a cleanup
         phase, like when a connection is lost or at shutdown.
-
     """
     if fun:
         with _ignore_errors(conn):
@@ -367,15 +356,13 @@ def insured(pool: abstract.Resource,
 class QoS:
     """Thread safe increment/decrement of a channels prefetch_count.
 
-    :param callback: Function used to set new prefetch count,
-        e.g. ``consumer.qos`` or ``channel.basic_qos``.  Will be called
-        with a single ``prefetch_count`` keyword argument.
-    :param initial_value: Initial prefetch count value.
+    Arguments:
+        callback (Callable): Function used to set new prefetch count,
+            e.g. ``consumer.qos`` or ``channel.basic_qos``.  Will be called
+            with a single ``prefetch_count`` keyword argument.
+        initial_value (int): Initial prefetch count value..
 
-    **Example usage**
-
-    .. code-block:: python
-
+    Example:
         >>> from kombu import Consumer, Connection
         >>> connection = Connection('amqp://')
         >>> consumer = Consumer(connection)
@@ -405,7 +392,6 @@ class QoS:
         >>> def set_qos(prefetch_count):
         ...     print('prefetch count now: %r' % (prefetch_count,))
         >>> QoS(set_qos, 10)
-
     """
     prev = None  # type: Optional[int]
 
@@ -418,9 +404,9 @@ class QoS:
     def increment_eventually(self, n: int=1) -> int:
         """Increment the value, but do not update the channels QoS.
 
-        The MainThread will be responsible for calling :meth:`update`
-        when necessary.
-
+        Note:
+            The MainThread will be responsible for calling :meth:`update`
+            when necessary.
         """
         with self._mutex:
             if self.value:
@@ -430,9 +416,9 @@ class QoS:
     def decrement_eventually(self, n: int=1) -> int:
         """Decrement the value, but do not update the channels QoS.
 
-        The MainThread will be responsible for calling :meth:`update`
-        when necessary.
-
+        Note:
+            The MainThread will be responsible for calling :meth:`update`
+            when necessary.
         """
         with self._mutex:
             if self.value:

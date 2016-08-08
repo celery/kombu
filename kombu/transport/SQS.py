@@ -1,8 +1,6 @@
-"""
-kombu.transport.SQS
-===================
+"""Amazon SQS Transport.
 
-Amazon SQS transport module for Kombu. This package implements an AMQP-like
+Amazon SQS transport module for Kombu.  This package implements an AMQP-like
 interface on top of Amazons SQS service, with the goal of being optimized for
 high performance and reliability.
 
@@ -15,7 +13,7 @@ SQS Features supported by this transport:
       sqs-long-polling.html
 
     Long polling is enabled by setting the `wait_time_seconds` transport
-    option to a number > 1. Amazon supports up to 20 seconds. This is
+    option to a number > 1.  Amazon supports up to 20 seconds.  This is
     disabled for now, but will be enabled by default in the near future.
 
   Batch API Actions:
@@ -33,7 +31,7 @@ SQS Features supported by this transport:
 
     When a Celery worker has multiple queues to monitor, it will pull down
     up to 'prefetch_count' messages from queueA and work on them all before
-    moving on to queueB. If queueB is empty, it will wait up until
+    moving on to queueB.  If queueB is empty, it will wait up until
     'polling_interval' expires before moving back and checking on queueA.
 """
 import collections
@@ -51,10 +49,10 @@ from kombu.async.aws.sqs.connection import AsyncSQSConnection, SQSConnection
 from kombu.async.aws.sqs.ext import regions
 from kombu.async.aws.sqs.message import Message
 from kombu.log import get_logger
-from kombu.utils import cached_property
+from kombu.utils import scheduling
 from kombu.utils.encoding import bytes_to_str, safe_str
 from kombu.utils.json import loads, dumps
-from kombu.utils import scheduling
+from kombu.utils.objects import cached_property
 
 from . import virtual
 
@@ -100,7 +98,7 @@ class Channel(virtual.Channel):
         self._update_queue_cache(self.queue_name_prefix)
 
         # The drain_events() method stores extra messages in a local
-        # Deque object. This allows multiple messages to be requested from
+        # Deque object.  This allows multiple messages to be requested from
         # SQS at once for performance, but maintains the same external API
         # to the caller of the drain_events() method.
         self._queue_message_cache = collections.deque()
@@ -137,15 +135,15 @@ class Channel(virtual.Channel):
     def drain_events(self, timeout=None):
         """Return a single payload message from one of our queues.
 
-        :raises Empty: if no messages available.
-
+        Raises:
+            Queue.Empty: if no messages available.
         """
         # If we're not allowed to consume or have no consumers, raise Empty
         if not self._consumers or not self.qos.can_consume():
             raise Empty()
         message_cache = self._queue_message_cache
 
-        # Check if there are any items in our buffer. If there are any, pop
+        # Check if there are any items in our buffer.  If there are any, pop
         # off that queue first.
         try:
             return message_cache.popleft()
@@ -165,11 +163,11 @@ class Channel(virtual.Channel):
     def _reset_cycle(self):
         """Reset the consume cycle.
 
-        :returns: a FairCycle object that points to our _get_bulk() method
-          rather than the standard _get() method. This allows for multiple
-          messages to be returned at once from SQS (based on the prefetch
-          limit).
-
+        Returns:
+            FairCycle: object that points to our _get_bulk() method
+                rather than the standard _get() method.  This allows for
+                multiple messages to be returned at once from SQS (
+                based on the prefetch limit).
         """
         self._cycle = scheduling.FairCycle(
             self._get_bulk, self._active_queues, Empty,
@@ -187,9 +185,9 @@ class Channel(virtual.Channel):
         # _queue_cache population.
         queue = self.entity_name(self.queue_name_prefix + queue)
 
-        # The SQS ListQueues method only returns 1000 queues. When you have
+        # The SQS ListQueues method only returns 1000 queues.  When you have
         # so many queues, it's possible that the queue you are looking for is
-        # not cached. In this case, we could update the cache with the exact
+        # not cached.  In this case, we could update the cache with the exact
         # queue name first.
         if queue not in self._queue_cache:
             self._update_queue_cache(queue)
@@ -243,11 +241,12 @@ class Channel(virtual.Channel):
         Payloads, and appropriately updating the queue depending on
         the 'ack' settings for that queue.
 
-        :param messages: A list of SQS Message objects.
-        :param queue: String name representing the queue they came from
+        Arguments:
+            messages (SQSMessage): A list of SQS Message objects.
+            queue (str): Name representing the queue they came from.
 
-        :returns: A list of Payload objects
-
+        Returns:
+            List: A list of Payload objects
         """
         q = self._new_queue(queue)
         return [self._message_to_python(m, queue, q) for m in messages]
@@ -262,15 +261,17 @@ class Channel(virtual.Channel):
         and the number of messages the QoS object allows (based on the
         prefetch_count).
 
-        .. note::
-
+        Note:
             Ignores QoS limits so caller is responsible for checking
             that we are allowed to consume at least one message from the
             queue.  get_bulk will then ask QoS for an estimate of
             the number of extra messages that we can consume.
 
-        :param queue: The queue name to pull from.
-        :returns list: of message objects.
+        Arguments:
+            queue (str): The queue name to pull from.
+
+        Returns:
+            List[Message]
         """
         # drain_events calls `can_consume` first, consuming
         # a token, so we know that we are allowed to consume at least
@@ -340,7 +341,6 @@ class Channel(virtual.Channel):
         """Retrieve and handle messages from SQS.
 
         Uses long polling and returns :class:`~vine.promises.promise`.
-
         """
         connection = connection if connection is not None else queue.connection
         return connection.receive_message(

@@ -1,22 +1,19 @@
-"""
-kombu.transport.virtual.exchange
-================================
+"""Virtual AMQ Exchange.
 
 Implementations of the standard exchanges defined
 by the AMQ protocol  (excluding the `headers` exchange).
-
 """
 
-from kombu.utils import escape_regex
-
 import re
+
+from kombu.utils.text import escape_regex
 
 
 class ExchangeType:
     """Implements the specifics for an exchange type.
 
-    :param channel: AMQ Channel
-
+    Arguments:
+        channel (ChannelT): AMQ Channel.
     """
     type = None
 
@@ -26,14 +23,18 @@ class ExchangeType:
     def lookup(self, table, exchange, routing_key, default):
         """Lookup all queues matching `routing_key` in `exchange`.
 
-        :returns: `default` if no queues matched.
-
+        Returns:
+            str: queue name, or 'default' if no queues matched.
         """
         raise NotImplementedError('subclass responsibility')
 
     def prepare_bind(self, queue, exchange, routing_key, arguments):
-        """Return tuple of `(routing_key, regex, queue)` to be stored
-        for bindings to this exchange."""
+        """Prepare queue-binding.
+
+        Returns:
+            Tuple[str, Pattern, str]: of `(routing_key, regex, queue)`
+                to be stored for bindings to this exchange.
+        """
         return routing_key, None, queue
 
     def equivalent(self, prev, exchange, type,
@@ -116,9 +117,10 @@ class FanoutExchange(ExchangeType):
     To support fanout the virtual channel needs to store the table
     as shared state.  This requires that the `Channel.supports_fanout`
     attribute is set to true, and the `Channel._queue_bind` and
-    `Channel.get_table` methods are implemented.  See the redis backend
-    for an example implementation of these methods.
+    `Channel.get_table` methods are implemented.
 
+    See Also:
+        the redis backend for an example implementation of these methods.
     """
     type = 'fanout'
 
@@ -132,6 +134,8 @@ class FanoutExchange(ExchangeType):
 
 
 #: Map of standard exchange types and corresponding classes.
-STANDARD_EXCHANGE_TYPES = {'direct': DirectExchange,
-                           'topic': TopicExchange,
-                           'fanout': FanoutExchange}
+STANDARD_EXCHANGE_TYPES = {
+    'direct': DirectExchange,
+    'topic': TopicExchange,
+    'fanout': FanoutExchange,
+}

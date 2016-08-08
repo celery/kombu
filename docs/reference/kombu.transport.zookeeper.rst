@@ -1,6 +1,6 @@
-===========================
- kombu.transport.zookeeper
-===========================
+======================================================
+ Zookeeper Transport - ``kombu.transport.zookeeper``
+======================================================
 
 .. currentmodule:: kombu.transport.zookeeper
 

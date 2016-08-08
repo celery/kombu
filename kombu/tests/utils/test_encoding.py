@@ -9,7 +9,7 @@ from kombu.utils.encoding import (
     set_default_encoding_file, default_encoding,
 )
 
-from kombu.tests.case import Case, patch, skip
+from kombu.tests.case import Case, patch
 
 
 @contextmanager
@@ -43,18 +43,6 @@ class test_default_encoding(Case):
             else:
                 self.assertEqual(enc, 'ascii')
                 getdefaultencoding.assert_called_with()
-
-
-@skip.if_python3
-class test_encoding_utils(Case):
-
-    def test_str_to_bytes(self):
-        with clean_encoding() as e:
-            self.assertIsInstance(e.str_to_bytes('foobar'), bytes)
-
-    def test_default_encode(self):
-        with clean_encoding() as e:
-            self.assertTrue(e.default_encode(b'foo'))
 
 
 class test_safe_str(Case):

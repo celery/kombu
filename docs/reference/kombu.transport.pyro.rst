@@ -1,3 +1,7 @@
+================================================
+ Pyro Transport - ``kombu.transport.pyro``
+================================================
+
 .. currentmodule:: kombu.transport.pyro
 
 .. automodule:: kombu.transport.pyro

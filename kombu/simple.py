@@ -1,10 +1,4 @@
-"""
-kombu.simple
-============
-
-Simple interface.
-
-"""
+"""Simple messaging interface."""
 import socket
 
 from collections import deque

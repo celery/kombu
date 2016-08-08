@@ -1,13 +1,7 @@
-"""
-kombu.connection
-================
-
-Broker connection and pools.
-
-"""
-
+"""Client (Connection)."""
 import os
 import socket
+import sys
 
 from collections import OrderedDict
 from contextlib import contextmanager
@@ -17,12 +11,14 @@ from operator import itemgetter
 # jython breaks on relative import for .exceptions for some reason
 # (Issue #112)
 from kombu import exceptions
+
 from .log import get_logger
 from .resource import Resource
 from .transport import get_transport_cls, supports_librabbitmq
-from .utils import cached_property, retry_over_time, shufflecycle, HashedSeq
 from .utils import abstract
-from .utils.functional import dictfilter, lazy
+from .utils.collections import HashedSeq
+from .utils.functional import dictfilter, lazy, retry_over_time, shufflecycle
+from .utils.objects import cached_property
 from .utils.url import as_url, parse_url, quote, urlparse
 
 __all__ = ['Connection', 'ConnectionPool', 'ChannelPool']
@@ -49,43 +45,44 @@ _log_channel = os.environ.get('KOMBU_LOG_CHANNEL', False)
 class Connection:
     """A connection to the broker.
 
-    :param URL:  Broker URL, or a list of URLs, e.g.
+    Example:
+        >>> Connection('amqp://guest:guest@localhost:5672//')
+        >>> Connection('amqp://foo;amqp://bar',
+        ...            failover_strategy='round-robin')
+        >>> Connection('redis://', transport_options={
+        ...     'visibility_timeout': 3000,
+        ... })
 
-    .. code-block:: python
+        >>> import ssl
+        >>> Connection('amqp://', login_method='EXTERNAL', ssl={
+        ...    'ca_certs': '/etc/pki/tls/certs/something.crt',
+        ...    'keyfile': '/etc/something/system.key',
+        ...    'certfile': '/etc/something/system.cert',
+        ...    'cert_reqs': ssl.CERT_REQUIRED,
+        ... })
 
-        Connection('amqp://guest:guest@localhost:5672//')
-        Connection('amqp://foo;amqp://bar', failover_strategy='round-robin')
-        Connection('redis://', transport_options={
-            'visibility_timeout': 3000,
-        })
-
-        import ssl
-        Connection('amqp://', login_method='EXTERNAL', ssl={
-            'ca_certs': '/etc/pki/tls/certs/something.crt',
-            'keyfile': '/etc/something/system.key',
-            'certfile': '/etc/something/system.cert',
-            'cert_reqs': ssl.CERT_REQUIRED,
-        })
-
-    .. admonition:: SSL compatibility
-
+    Note:
         SSL currently only works with the py-amqp, and qpid
         transports.  For other transports you can use stunnel.
 
-    :keyword ssl: Use SSL to connect to the server. Default is ``False``.
-      May not be supported by the specified transport.
-    :keyword transport: Default transport if not specified in the URL.
-    :keyword connect_timeout: Timeout in seconds for connecting to the
-      server. May not be supported by the specified transport.
-    :keyword transport_options: A dict of additional connection arguments to
-      pass to alternate kombu channel implementations.  Consult the transport
-      documentation for available options.
-    :keyword heartbeat: Heartbeat interval in int/float seconds.
-        Note that if heartbeats are enabled then the :meth:`heartbeat_check`
-        method must be called regularly, around once per second.
+    Arguments:
+        URL (str, Sequence): Broker URL, or a list of URLs.
 
-    .. note::
+    Keyword Arguments:
+        ssl (bool): Use SSL to connect to the server. Default is ``False``.
+            May not be supported by the specified transport.
+        transport (Transport): Default transport if not specified in the URL.
+        connect_timeout (float): Timeout in seconds for connecting to the
+            server. May not be supported by the specified transport.
+        transport_options (Dict): A dict of additional connection arguments to
+            pass to alternate kombu channel implementations.  Consult the
+            transport documentation for available options.
+        heartbeat (float): Heartbeat interval in int/float seconds.
+            Note that if heartbeats are enabled then the
+            :meth:`heartbeat_check` method must be called regularly,
+            around once per second.
 
+    Note:
         The connection is established lazily when needed. If you need the
         connection to be established, then force it by calling
         :meth:`connect`::
@@ -97,8 +94,6 @@ class Connection:
 
             >>> conn.release()
 
-    *Legacy options*
-
     These options have been replaced by the URL argument, but are still
     supported for backwards compatibility:
 
@@ -109,7 +104,6 @@ class Connection:
     :keyword password: Default password if not provided in the URL.
     :keyword virtual_host: Default virtual host if not provided in the URL.
     :keyword port: Default port if not provided in the URL.
-
     """
     port = None
     virtual_host = '/'
@@ -191,8 +185,12 @@ class Connection:
 
         # fallback hosts
         self.alt = alt
+        # keep text representation for .info
+        # only temporary solution as this won't work when
+        # passing a custom object (Issue celery/celery#3320).
+        self._failover_strategy = failover_strategy or 'round-robin'
         self.failover_strategy = self.failover_strategies.get(
-            failover_strategy or 'round-robin') or failover_strategy
+            self._failover_strategy) or self._failover_strategy
         if self.alt:
             self.cycle = self.failover_strategy(self.alt)
             next(self.cycle)  # skip first entry
@@ -273,23 +271,23 @@ class Connection:
         If the current transport does not support heartbeats then
         this is a noop operation.
 
-        :keyword rate: Rate is how often the tick is called
-            compared to the actual heartbeat value.  E.g. if
-            the heartbeat is set to 3 seconds, and the tick
-            is called every 3 / 2 seconds, then the rate is 2.
-            This value is currently unused by any transports.
-
+        Arguments:
+            rate (int): Rate is how often the tick is called
+                compared to the actual heartbeat value.  E.g. if
+                the heartbeat is set to 3 seconds, and the tick
+                is called every 3 / 2 seconds, then the rate is 2.
+                This value is currently unused by any transports.
         """
         return self.transport.heartbeat_check(self.connection, rate=rate)
 
     def drain_events(self, **kwargs):
         """Wait for a single event from the server.
 
-        :keyword timeout: Timeout in seconds before we give up.
+        Arguments:
+            timeout (float): Timeout in seconds before we give up.
 
-
-        :raises :exc:`socket.timeout`: if the timeout is exceeded.
-
+        Raises:
+            socket.timeout: if the timeout is exceeded.
         """
         return self.transport.drain_events(self.connection, **kwargs)
 
@@ -353,27 +351,30 @@ class Connection:
 
     def ensure_connection(self, errback=None, max_retries=None,
                           interval_start=2, interval_step=2, interval_max=30,
-                          callback=None):
+                          callback=None, reraise_as_library_errors=True):
         """Ensure we have a connection to the server.
 
         If not retry establishing the connection with the settings
         specified.
 
-        :keyword errback: Optional callback called each time the connection
-          can't be established. Arguments provided are the exception
-          raised and the interval that will be slept ``(exc, interval)``.
+        Arguments:
+            errback (Callable): Optional callback called each time the
+                connection can't be established.  Arguments provided are
+                the exception raised and the interval that will be
+                slept ``(exc, interval)``.
 
-        :keyword max_retries: Maximum number of times to retry.
-          If this limit is exceeded the connection error will be re-raised.
+            max_retries (int): Maximum number of times to retry.
+                If this limit is exceeded the connection error
+                will be re-raised.
 
-        :keyword interval_start: The number of seconds we start sleeping for.
-        :keyword interval_step: How many seconds added to the interval
-          for each retry.
-        :keyword interval_max: Maximum number of seconds to sleep between
-          each retry.
-        :keyword callback: Optional callback that is called for every
-           internal iteration (1 s)
-
+            interval_start (float): The number of seconds we start
+                sleeping for.
+            interval_step (float): How many seconds added to the interval
+                for each retry.
+            interval_max (float): Maximum number of seconds to sleep between
+                each retry.
+            callback (Callable): Optional callback that is called for every
+                internal iteration (1 s).
         """
         def on_error(exc, intervals, retries, interval=0):
             round = self.completes_cycle(retries)
@@ -385,10 +386,33 @@ class Connection:
 
             return interval if round else 0
 
-        retry_over_time(self.connect, self.recoverable_connection_errors,
-                        (), {}, on_error, max_retries,
-                        interval_start, interval_step, interval_max, callback)
+        ctx = self._reraise_as_library_errors
+        if not reraise_as_library_errors:
+            ctx = self._dummy_context
+        with ctx():
+            retry_over_time(self.connect, self.recoverable_connection_errors,
+                            (), {}, on_error, max_retries,
+                            interval_start, interval_step, interval_max,
+                            callback)
         return self
+
+    @contextmanager
+    def _reraise_as_library_errors(
+            self,
+            ConnectionError=exceptions.OperationalError,
+            ChannelError=exceptions.OperationalError):
+        try:
+            yield
+        except (ConnectionError, ChannelError):
+            raise
+        except self.recoverable_connection_errors as exc:
+            raise ConnectionError(str(exc)).with_traceback(sys.exc_info()[2])
+        except self.recoverable_channel_errors as exc:
+            raise ChannelError(str(exc)).with_traceback(sys.exc_info()[2])
+
+    @contextmanager
+    def _dummy_context(self):
+        yield
 
     def completes_cycle(self, retries):
         """Return true if the cycle is complete after number of `retries`."""
@@ -410,28 +434,29 @@ class Connection:
         """Ensure operation completes, regardless of any channel/connection
         errors occurring.
 
-        Will retry by establishing the connection, and reapplying
+        Retries by establishing the connection, and reapplying
         the function.
 
-        :param fun: Method to apply.
+        Arguments:
+            fun (Callable): Method to apply.
 
-        :keyword errback: Optional callback called each time the connection
-          can't be established. Arguments provided are the exception
-          raised and the interval that will be slept ``(exc, interval)``.
+            errback (Callable): Optional callback called each time the
+                connection can't be established.  Arguments provided are
+                the exception raised and the interval that will
+                be slept ``(exc, interval)``.
 
-        :keyword max_retries: Maximum number of times to retry.
-          If this limit is exceeded the connection error will be re-raised.
+            max_retries (int): Maximum number of times to retry.
+                If this limit is exceeded the connection error
+                will be re-raised.
 
-        :keyword interval_start: The number of seconds we start sleeping for.
-        :keyword interval_step: How many seconds added to the interval
-          for each retry.
-        :keyword interval_max: Maximum number of seconds to sleep between
-          each retry.
+            interval_start (float): The number of seconds we start
+                sleeping for.
+            interval_step (float): How many seconds added to the interval
+                for each retry.
+            interval_max (float): Maximum number of seconds to sleep between
+                each retry.
 
-        **Example**
-
-        This is an example ensuring a publish operation::
-
+        Examples:
             >>> from kombu import Connection, Producer
             >>> conn = Connection('amqp://')
             >>> producer = Producer(conn)
@@ -443,7 +468,6 @@ class Connection:
             >>> publish = conn.ensure(producer, producer.publish,
             ...                       errback=errback, max_retries=3)
             >>> publish({'hello': 'world'}, routing_key='dest')
-
         """
         def _ensured(*args, **kwargs):
             got_connection = 0
@@ -452,40 +476,44 @@ class Connection:
             has_modern_errors = hasattr(
                 self.transport, 'recoverable_connection_errors',
             )
-            for retries in count(0):  # for infinity
-                try:
-                    return fun(*args, **kwargs)
-                except conn_errors as exc:
-                    if got_connection and not has_modern_errors:
-                        # transport can not distinguish between
-                        # recoverable/irrecoverable errors, so we propagate
-                        # the error if it persists after a new connection was
-                        # successfully established.
-                        raise
-                    if max_retries is not None and retries > max_retries:
-                        raise
-                    self._debug('ensure connection error: %r', exc, exc_info=1)
-                    self.collect()
-                    errback and errback(exc, 0)
-                    remaining_retries = None
-                    if max_retries is not None:
-                        remaining_retries = max(max_retries - retries, 1)
-                    self.ensure_connection(errback,
-                                           remaining_retries,
-                                           interval_start,
-                                           interval_step,
-                                           interval_max)
-                    channel = self.default_channel
-                    self.revive(channel)
-                    obj.revive(channel)
-                    if on_revive:
-                        on_revive(channel)
-                    got_connection += 1
-                except chan_errors as exc:
-                    if max_retries is not None and retries > max_retries:
-                        raise
-                    self._debug('ensure channel error: %r', exc, exc_info=1)
-                    errback and errback(exc, 0)
+            with self._reraise_as_library_errors():
+                for retries in count(0):  # for infinity
+                    try:
+                        return fun(*args, **kwargs)
+                    except conn_errors as exc:
+                        if got_connection and not has_modern_errors:
+                            # transport can not distinguish between
+                            # recoverable/irrecoverable errors, so we propagate
+                            # the error if it persists after a new connection
+                            # was successfully established.
+                            raise
+                        if max_retries is not None and retries > max_retries:
+                            raise
+                        self._debug('ensure connection error: %r',
+                                    exc, exc_info=1)
+                        self.collect()
+                        errback and errback(exc, 0)
+                        remaining_retries = None
+                        if max_retries is not None:
+                            remaining_retries = max(max_retries - retries, 1)
+                        self.ensure_connection(
+                            errback,
+                            remaining_retries,
+                            interval_start, interval_step, interval_max,
+                            reraise_as_library_errors=False,
+                        )
+                        channel = self.default_channel
+                        self.revive(channel)
+                        obj.revive(channel)
+                        if on_revive:
+                            on_revive(channel)
+                        got_connection += 1
+                    except chan_errors as exc:
+                        if max_retries is not None and retries > max_retries:
+                            raise
+                        self._debug('ensure channel error: %r',
+                                    exc, exc_info=1)
+                        errback and errback(exc, 0)
         _ensured.__name__ = '{0}(ensured)'.format(fun.__name__)
         _ensured.__doc__ = fun.__doc__
         _ensured.__module__ = fun.__module__
@@ -501,15 +529,16 @@ class Connection:
         If a ``channel`` is not provided, then one will be automatically
         acquired (remember to close it afterwards).
 
-        See :meth:`ensure` for the full list of supported keyword arguments.
+        See Also:
+            :meth:`ensure` for the full list of supported keyword arguments.
 
-        Example usage::
-
-            channel = connection.channel()
-            try:
-                ret, channel = connection.autoretry(publish_messages, channel)
-            finally:
-                channel.close()
+        Example:
+            >>> channel = connection.channel()
+            >>> try:
+            ...    ret, channel = connection.autoretry(
+            ...         publish_messages, channel)
+            ... finally:
+            ...    channel.close()
         """
         channels = [channel]
 
@@ -575,6 +604,7 @@ class Connection:
             ('login_method', self.login_method or D.get('login_method')),
             ('uri_prefix', self.uri_prefix),
             ('heartbeat', self.heartbeat),
+            ('failover_strategy', self._failover_strategy),
             ('alternates', self.alt),
         )
         return info
@@ -610,13 +640,14 @@ class Connection:
     def Pool(self, limit=None, **kwargs):
         """Pool of connections.
 
-        See :class:`ConnectionPool`.
+        See Also:
+            :class:`ConnectionPool`.
 
-        :keyword limit: Maximum number of active connections.
-          Default is no limit.
+        Arguments:
+            limit (int): Maximum number of active connections.
+                Default is no limit.
 
-        *Example usage*::
-
+        Example:
             >>> connection = Connection('amqp://')
             >>> pool = connection.Pool(2)
             >>> c1 = pool.acquire()
@@ -629,20 +660,20 @@ class Connection:
                 kombu.exceptions.ConnectionLimitExceeded: 2
             >>> c1.release()
             >>> c3 = pool.acquire()
-
         """
         return ConnectionPool(self, limit, **kwargs)
 
     def ChannelPool(self, limit=None, **kwargs):
         """Pool of channels.
 
-        See :class:`ChannelPool`.
+        See Also:
+            :class:`ChannelPool`.
 
-        :keyword limit: Maximum number of active channels.
-          Default is no limit.
+        Arguments:
+            limit (int): Maximum number of active channels.
+                Default is no limit.
 
-        *Example usage*::
-
+        Example:
             >>> connection = Connection('amqp://')
             >>> pool = connection.ChannelPool(2)
             >>> c1 = pool.acquire()
@@ -655,7 +686,6 @@ class Connection:
                 kombu.connection.ChannelLimitExceeded: 2
             >>> c1.release()
             >>> c3 = pool.acquire()
-
         """
         return ChannelPool(self, limit, **kwargs)
 
@@ -680,17 +710,16 @@ class Connection:
         created using that name as the name of the queue and exchange,
         also it will be used as the default routing key.
 
-        :param name: Name of the queue/or a :class:`~kombu.Queue`.
-        :keyword no_ack: Disable acknowledgments. Default is false.
-        :keyword queue_opts: Additional keyword arguments passed to the
-          constructor of the automatically created
-          :class:`~kombu.Queue`.
-        :keyword exchange_opts: Additional keyword arguments passed to the
-          constructor of the automatically created
-          :class:`~kombu.Exchange`.
-        :keyword channel: Custom channel to use. If not specified the
-            connection default channel is used.
-
+        Arguments:
+            name (str, kombu.Queue): Name of the queue/or a queue.
+            no_ack (bool): Disable acknowledgments. Default is false.
+            queue_opts (Dict): Additional keyword arguments passed to the
+                constructor of the automatically created :class:`~kombu.Queue`.
+            exchange_opts (Dict): Additional keyword arguments passed to the
+                constructor of the automatically created
+                :class:`~kombu.Exchange`.
+            channel (ChannelT): Custom channel to use. If not specified the
+                connection default channel is used.
         """
         from .simple import SimpleQueue
         return SimpleQueue(channel or self, name, no_ack, queue_opts,
@@ -701,11 +730,11 @@ class Connection:
         """Create new :class:`~kombu.simple.SimpleQueue` using a channel
         from this connection.
 
-        Same as :meth:`SimpleQueue`, but configured with buffering
-        semantics. The resulting queue and exchange will not be durable, also
-        auto delete is enabled. Messages will be transient (not persistent),
-        and acknowledgments are disabled (``no_ack``).
-
+        See Also:
+            Same as :meth:`SimpleQueue`, but configured with buffering
+            semantics. The resulting queue and exchange will not be durable,
+            also auto delete is enabled. Messages will be transient (not
+            persistent), and acknowledgments are disabled (``no_ack``).
         """
         from .simple import SimpleBuffer
         return SimpleBuffer(channel or self, name, no_ack, queue_opts,
@@ -752,10 +781,9 @@ class Connection:
     def connection(self):
         """The underlying connection object.
 
-        .. warning::
+        Warning:
             This instance is transport specific, so do not
             depend on the interface of this object.
-
         """
         if not self._closed:
             if not self.connected:
@@ -770,10 +798,11 @@ class Connection:
         """Default channel, created upon access and closed when the connection
         is closed.
 
-        Can be used for automatic channel handling when you only need one
-        channel, and also it is the channel implicitly used if a connection
-        is passed instead of a channel, to functions that require a channel.
-
+        Note:
+            Can be used for automatic channel handling when you only need one
+            channel, and also it is the channel implicitly used if
+            a connection is passed instead of a channel, to functions that
+            require a channel.
         """
         # make sure we're still connected, and if not refresh.
         self.connection

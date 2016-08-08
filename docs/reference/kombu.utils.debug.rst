@@ -1,5 +1,5 @@
 ==========================================================
- Debugging - kombu.utils.debug
+ Debugging Utilities - ``kombu.utils.debug``
 ==========================================================
 
 .. contents::

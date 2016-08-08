@@ -1,11 +1,6 @@
-"""
-kombu.transport.virtual
-=======================
-
-Virtual transport implementation.
+"""Virtual transport implementation.
 
 Emulates the AMQ API for non-AMQ transports.
-
 """
 
 import amqp.abstract
@@ -25,9 +20,10 @@ from amqp.protocol import queue_declare_ok_t
 
 from kombu.exceptions import ResourceError, ChannelError
 from kombu.log import get_logger
-from kombu.utils import emergency_dump_state, uuid
 from kombu.utils.encoding import str_to_bytes, bytes_to_str
+from kombu.utils.div import emergency_dump_state
 from kombu.utils.scheduling import FairCycle
+from kombu.utils.uuid import uuid
 
 from kombu.transport import base
 
@@ -156,9 +152,9 @@ class QoS:
 
     Only supports `prefetch_count` at this point.
 
-    :param channel: AMQ Channel.
-    :keyword prefetch_count: Initial prefetch count (defaults to 0).
-
+    Arguments:
+        channel (ChannelT): Connection channel.
+        prefetch_count (int): Initial prefetch count (defaults to 0).
     """
 
     #: current prefetch count value
@@ -195,7 +191,6 @@ class QoS:
 
         Used to ensure the client adhers to currently active
         prefetch limits.
-
         """
         pcount = self.prefetch_count
         return not pcount or len(self._delivered) - len(self._dirty) < pcount
@@ -204,12 +199,12 @@ class QoS:
         """Returns the maximum number of messages allowed to be returned.
 
         Returns an estimated number of messages that a consumer may be allowed
-        to consume at once from the broker. This is used for services where
+        to consume at once from the broker.  This is used for services where
         bulk 'get message' calls are preferred to many individual 'get message'
         calls - like SQS.
 
-        returns:
-            An integer > 0
+        Returns:
+            int: greater than zero.
         """
         pcount = self.prefetch_count
         if pcount:
@@ -269,8 +264,9 @@ class QoS:
     def restore_unacked_once(self, stderr=None):
         """Restores all unacknowledged messages at shutdown/gc collect.
 
-        Will only be done once for each instance.
-
+        Note:
+            Can only be called once for each instance, subsequent
+            calls will be ignored.
         """
         self._on_collect.cancel()
         self._flush()
@@ -300,8 +296,9 @@ class QoS:
         """Restore any pending unackwnowledged messages for visibility_timeout
         style implementations.
 
-        Optional: Currently only used by the Redis transport.
-
+        Note:
+            This is implementation optional, and currently only
+            used by the Redis transport.
         """
         ...
 
@@ -346,9 +343,9 @@ class AbstractChannel:
     """This is an abstract class defining the channel methods
     you'd usually want to implement in a virtual channel.
 
-    Do not subclass directly, but rather inherit from :class:`Channel`
-    instead.
-
+    Note:
+        Do not subclass directly, but rather inherit
+        from :class:`Channel`.
     """
 
     def _get(self, queue, timeout=None):
@@ -370,27 +367,27 @@ class AbstractChannel:
     def _delete(self, queue, *args, **kwargs):
         """Delete `queue`.
 
-        This just purges the queue, if you need to do more you can
-        override this method.
-
+        Note:
+            This just purges the queue, if you need to do more you can
+            override this method.
         """
         self._purge(queue)
 
     def _new_queue(self, queue, **kwargs):
         """Create new queue.
 
-        Your transport can override this method if it needs
-        to do something whenever a new queue is declared.
-
+        Note:
+            Your transport can override this method if it needs
+            to do something whenever a new queue is declared.
         """
         ...
 
     def _has_queue(self, queue, **kwargs):
         """Verify that queue exists.
 
-        Should return :const:`True` if the queue exists or :const:`False`
-        otherwise.
-
+        Returns:
+            bool: Should return :const:`True` if the queue exists
+                or :const:`False` otherwise.
         """
         return True
 
@@ -402,8 +399,9 @@ class AbstractChannel:
 class Channel(AbstractChannel, base.StdChannel):
     """Virtual channel.
 
-    :param connection: The transport instance this channel is part of.
-
+    Arguments:
+        connection (ConnectionT): The transport instance this
+            channel is part of.
     """
     #: message class used.
     Message = Message
@@ -573,7 +571,7 @@ class Channel(AbstractChannel, base.StdChannel):
             queue, exchange, routing_key, arguments,
         )
         # TODO: the complexity of this operation is O(number of bindings).
-        # Should be optimized. Modifying table in place.
+        # Should be optimized.  Modifying table in place.
         table[:] = [meta for meta in table if meta != binding_meta]
 
     def list_bindings(self):
@@ -665,8 +663,8 @@ class Channel(AbstractChannel, base.StdChannel):
                   apply_global=False):
         """Change QoS settings for this channel.
 
-        Only `prefetch_count` is supported.
-
+        Note:
+            Only `prefetch_count` is supported.
         """
         self.qos.prefetch_count = prefetch_count
 
@@ -688,8 +686,9 @@ class Channel(AbstractChannel, base.StdChannel):
     def _lookup(self, exchange, routing_key, default=None):
         """Find all queues matching `routing_key` for the given `exchange`.
 
-        Must return the string `default` if no queues matched.
-
+        Returns:
+            str: queue name -- must return the string `default`
+                if no queues matched.
         """
         if default is None:
             default = self.deadletter_queue
@@ -753,9 +752,9 @@ class Channel(AbstractChannel, base.StdChannel):
     def flow(self, active=True):
         """Enable/disable message flow.
 
-        :raises NotImplementedError: as flow
-            is not implemented by the base virtual implementation.
-
+        Raises:
+            NotImplementedError: as flow
+                is not implemented by the base virtual implementation.
         """
         raise NotImplementedError('virtual channels do not support flow.')
 
@@ -816,8 +815,8 @@ class Channel(AbstractChannel, base.StdChannel):
         """Get priority from message and limit the value within a
         boundary of 0 to 9.
 
-        Higher value has more priority.
-
+        Note:
+            Higher value has more priority.
         """
         try:
             priority = max(
@@ -850,8 +849,8 @@ class Management(base.Management):
 class Transport(base.Transport):
     """Virtual transport.
 
-    :param client: :class:`~kombu.Connection` instance
-
+    Arguments:
+        client (kombu.Connection): The client this is a transport for.
     """
     Channel = Channel
     Cycle = FairCycle

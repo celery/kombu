@@ -1,9 +1,4 @@
-"""
-kombu.syn
-=========
-
-"""
-
+"""Detect gevent/eventlet environment."""
 import sys
 
 __all__ = ['detect_environment']

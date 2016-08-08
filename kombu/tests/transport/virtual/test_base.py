@@ -2,10 +2,10 @@
 import warnings
 
 from kombu import Connection
+from kombu.compression import compress
 from kombu.exceptions import ResourceError, ChannelError
 from kombu.transport import virtual
-from kombu.utils import uuid
-from kombu.compression import compress
+from kombu.utils.uuid import uuid
 
 from kombu.tests.case import Case, MagicMock, Mock, mock, patch
 

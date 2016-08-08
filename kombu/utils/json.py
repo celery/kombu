@@ -1,16 +1,26 @@
 # -*- coding: utf-8 -*-
 
+import datetime
+import decimal
 import json as stdjson
-import sys
+import uuid
 
-from typing import Any, Callable
+from typing import Any, Callable, Dict
 
 from .typing import AnyBuffer
 
 try:
-    import simplejson as json
+    from django.utils.functional import Promise as DjangoPromise
 except ImportError:  # pragma: no cover
-    import json  # noqa
+    class DjangoPromise(object):  # noqa
+        pass
+
+try:
+    import simplejson as json
+    _json_extra_kwargs = {'use_decimal': False}
+except ImportError:                 # pragma: no cover
+    import json                     # noqa
+    _json_extra_kwargs = {}           # noqa
 
     class _DecodeError(Exception): ... # noqa
 else:
@@ -21,17 +31,36 @@ _encoder_cls = type(json._default_encoder)
 
 class JSONEncoder(_encoder_cls):
 
-    def default(self, obj: Any, _super: Callable=_encoder_cls.default) -> Any:
-        try:
-            reducer = obj.__json__
-        except AttributeError:
-            return _super(self, obj)
-        else:
-            return reducer()
+    def default(self, o,
+                dates=(datetime.datetime, datetime.date),
+                times=(datetime.time,),
+                textual=(decimal.Decimal, uuid.UUID, DjangoPromise),
+                isinstance=isinstance,
+                datetime=datetime.datetime,
+                str=str):
+        reducer = getattr(o, '__json__', None)
+        if reducer is not None:
+            o = reducer()
+        if isinstance(o, dates):
+            if not isinstance(o, datetime):
+                o = datetime(o.year, o.month, o.day, 0, 0, 0, 0)
+            r = o.isoformat()
+            if r.endswith("+00:00"):
+                r = r[:-6] + "Z"
+            return r
+        elif isinstance(o, times):
+            return o.isoformat()
+        elif isinstance(o, textual):
+            return str(o)
+        return super(JSONEncoder, self).default(o)
 
 
-def dumps(s: Any, _dumps: Callable=json.dumps, cls: Any=JSONEncoder) -> str:
-    return _dumps(s, cls=cls)
+def dumps(s: Any,
+          _dumps: Callable=json.dumps,
+          cls: Any=JSONEncoder,
+          default_kwargs: Dict = _json_extra_kwargs,
+          **kwargs) -> str:
+    return _dumps(s, cls=cls, **dict(default_kwargs, **kwargs))
 
 
 def loads(s: AnyBuffer, _loads: Callable=json.loads) -> Any:

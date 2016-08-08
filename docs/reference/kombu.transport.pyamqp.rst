@@ -1,3 +1,7 @@
+=========================================================
+ Pure-python AMQP Transport - ``kombu.transport.pyamqp``
+=========================================================
+
 .. currentmodule:: kombu.transport.pyamqp
 
 .. automodule:: kombu.transport.pyamqp

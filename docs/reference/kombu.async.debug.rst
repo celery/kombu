@@ -1,5 +1,5 @@
 ==========================================================
- Debugging Utils - kombu.async.debug
+ Event Loop Debugging Utils - ``kombu.async.debug``
 ==========================================================
 
 .. contents::

@@ -1,7 +1,5 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-import sys
-
 from base64 import b64decode
 
 from kombu.exceptions import ContentDisallowed, EncodeError, DecodeError

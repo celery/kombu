@@ -1,5 +1,5 @@
 ==========================================================
- Async HTTP Client Interface - kombu.async.http.base
+ Async HTTP Client Interface - ``kombu.async.http.base``
 ==========================================================
 
 .. contents::

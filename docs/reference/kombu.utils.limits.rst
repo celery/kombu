@@ -1,5 +1,5 @@
 ==========================================================
- Rate limiting - kombu.utils.limits
+ Rate limiting - ``kombu.utils.limits``
 ==========================================================
 
 .. contents::

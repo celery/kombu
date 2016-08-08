@@ -146,7 +146,7 @@ keyword arguments, these are:
 :connect_timeout: Timeout in seconds for connecting to the
   server. May not be supported by the specified transport.
 :transport_options: A dict of additional connection arguments to
-  pass to alternate kombu channel implementations.  Consult the transport
+  pass to alternate kombu channel implementations. Consult the transport
   documentation for available options.
 
 AMQP Transports
@@ -161,7 +161,7 @@ There are 4 transports available for AMQP use.
    automatically compiles the C library.
 3. ``amqp`` tries to use ``librabbitmq`` but falls back to ``pyamqp``.
 4. ``qpid`` uses the pure Python library ``qpid.messaging``, automatically
-   installed with Kombu.  The Qpid library uses AMQP, but uses custom
+   installed with Kombu. The Qpid library uses AMQP, but uses custom
    extensions specifically supported by the Apache Qpid Broker.
 
 For the highest performance, you should install the ``librabbitmq`` package.

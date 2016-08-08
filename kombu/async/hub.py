@@ -1,11 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-kombu.async.hub
-===============
-
-Event loop implementation.
-
-"""
+"""Event loop implementation."""
 import errno
 
 from contextlib import contextmanager
@@ -16,8 +10,9 @@ from queue import Empty
 from vine import Thenable, promise
 
 from kombu.log import get_logger
-from kombu.utils import cached_property, fileno
+from kombu.utils.compat import fileno
 from kombu.utils.eventio import READ, WRITE, ERR, poll
+from kombu.utils.objects import cached_property
 
 from .timer import Timer
 
@@ -57,9 +52,10 @@ def set_event_loop(loop):
 class Hub:
     """Event loop object.
 
-    :keyword timer: Specify timer object.
-
+    Arguments:
+        timer (kombu.async.Timer): Specify custom timer instance.
     """
+
     #: Flag set if reading from an fd will not block.
     READ = READ
 

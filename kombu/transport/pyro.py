@@ -1,15 +1,10 @@
-"""
-kombu.transport.pyro
-======================
-
-Pyro transport.
+"""Pyro transport.
 
 Requires the :mod:`Pyro4` library to be installed.
-
 """
 import sys
 
-from kombu.utils import cached_property
+from kombu.utils.objects import cached_property
 
 from . import virtual
 

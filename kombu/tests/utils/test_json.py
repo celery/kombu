@@ -1,8 +1,13 @@
+import pytz
+
+from datetime import datetime
+from decimal import Decimal
+from uuid import uuid4
 
 from kombu.utils.encoding import str_to_bytes
 from kombu.utils.json import _DecodeError, dumps, loads
 
-from kombu.tests.case import Case, MagicMock, Mock, skip
+from kombu.tests.case import Case, MagicMock, Mock
 
 
 class Custom:
@@ -12,6 +17,38 @@ class Custom:
 
     def __json__(self):
         return self.data
+
+
+class test_JSONEncoder(Case):
+
+    def test_datetime(self):
+        now = datetime.utcnow()
+        now_utc = now.replace(tzinfo=pytz.utc)
+        stripped = datetime(*now.timetuple()[:3])
+        serialized = loads(dumps({
+            'datetime': now,
+            'tz': now_utc,
+            'date': now.date(),
+            'time': now.time()},
+        ))
+        self.assertDictEqual(serialized, {
+            'datetime': now.isoformat(),
+            'tz': '{0}Z'.format(now_utc.isoformat().split('+', 1)[0]),
+            'time': now.time().isoformat(),
+            'date': stripped.isoformat(),
+        })
+
+    def test_Decimal(self):
+        d = Decimal('3314132.13363235235324234123213213214134')
+        self.assertDictEqual(loads(dumps({'d': d})), {'d': str(d)})
+
+    def test_UUID(self):
+        id = uuid4()
+        self.assertDictEqual(loads(dumps({'u': id})), {'u': str(id)})
+
+    def test_default(self):
+        with self.assertRaises(TypeError):
+            dumps({'o': object()})
 
 
 class test_dumps_loads(Case):
@@ -41,10 +78,6 @@ class test_dumps_loads(Case):
             loads(str_to_bytes(dumps({'x': 'z'})), decode_bytes=True),
             {'x': 'z'},
         )
-
-    @skip.if_python3()
-    def test_loads_buffer(self):
-        self.assertEqual(loads(buffer(dumps({'x': 'z'}))), {'x': 'z'})
 
     def test_loads_DecodeError(self):
         _loads = Mock(name='_loads')

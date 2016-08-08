@@ -1,3 +1,7 @@
+=================================================
+ MongoDB Transport - ``kombu.transport.mongodb``
+=================================================
+
 .. currentmodule:: kombu.transport.mongodb
 
 .. automodule:: kombu.transport.mongodb

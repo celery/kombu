@@ -1,12 +1,7 @@
-"""
-kombu.transport.mongodb
-=======================
-
-MongoDB transport.
+"""MongoDB transport.
 
 :copyright: (c) 2010 - 2013 by Flavio Percoco Premoli.
 :license: BSD, see LICENSE for more details.
-
 """
 import datetime
 
@@ -21,7 +16,7 @@ from kombu.exceptions import VersionMismatch
 from kombu.syn import _detect_environment
 from kombu.utils.encoding import bytes_to_str
 from kombu.utils.json import loads, dumps
-from kombu.utils import cached_property
+from kombu.utils.objects import cached_property
 
 from . import virtual
 
@@ -401,7 +396,7 @@ class Channel(virtual.Channel):
     def _get_expire(self, queue, argument):
         """Gets expiration header named `argument` of queue definition.
         `queue` must be either queue name or options itself."""
-        if isinstance(queue, basestring):
+        if isinstance(queue, str):
             doc = self.queues.find_one({'_id': queue})
 
             if not doc:

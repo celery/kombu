@@ -1,13 +1,7 @@
-"""
-kombu.transport.memory
-======================
-
-In-memory transport.
-
-"""
-
+"""In-memory transport."""
 from queue import Queue
 
+from . import base
 from . import virtual
 
 
@@ -68,6 +62,8 @@ class Transport(virtual.Transport):
 
     #: memory backend state is global.
     state = virtual.BrokerState()
+
+    implements = base.Transport.implements
 
     driver_type = 'memory'
     driver_name = 'memory'

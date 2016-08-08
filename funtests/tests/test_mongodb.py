@@ -1,5 +1,5 @@
 from kombu import Consumer, Producer, Exchange, Queue
-from kombu.utils import nested
+from kombu.utils.compat import nested
 
 from funtests import transport
 

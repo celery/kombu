@@ -39,7 +39,7 @@ Each option has its advantages and disadvantages.
 
     The primary disadvantage to `JSON` is that it limits you to
     the following data types: strings, Unicode, floats, boolean,
-    dictionaries, and lists.  Decimals and dates are notably missing.
+    dictionaries, and lists. Decimals and dates are notably missing.
 
     Also, binary data will be transferred using Base64 encoding, which
     will cause the transferred data to be around 34% larger than an
@@ -85,7 +85,7 @@ Each option has its advantages and disadvantages.
 To instruct `Kombu` to use an alternate serialization method,
 use one of the following options.
 
-    1.  Set the serialization option on a per-producer basis:
+    1. Set the serialization option on a per-producer basis:
 
         .. code-block:: pycon
 
@@ -93,7 +93,7 @@ use one of the following options.
             ...                     exchange=exchange,
             ...                     serializer='yaml')
 
-    2.  Set the serialization option per message:
+    2. Set the serialization option per message:
 
         .. code-block:: pycon
 

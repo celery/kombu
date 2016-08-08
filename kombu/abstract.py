@@ -1,11 +1,3 @@
-"""
-kombu.abstract
-==============
-
-Object utilities.
-
-"""
-
 import amqp.abstract
 
 from copy import copy
@@ -14,7 +6,7 @@ from typing import Sequence, Tuple  # noqa
 
 from .connection import maybe_channel
 from .exceptions import NotBoundError
-from .utils import ChannelPromise
+from .utils.functional import ChannelPromise
 
 __all__ = ['Object', 'MaybeChannelBound']
 

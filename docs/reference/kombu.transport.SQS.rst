@@ -1,3 +1,7 @@
+================================================
+ Amazon SQS Transport - ``kombu.transport.SQS``
+================================================
+
 .. currentmodule:: kombu.transport.SQS
 
 .. automodule:: kombu.transport.SQS

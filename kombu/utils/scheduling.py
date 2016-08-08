@@ -1,19 +1,19 @@
-"""
-    kombu.utils.scheduling
-    ~~~~~~~~~~~~~~~~~~~~~~
-
-    Consumer utilities.
-
-"""
+"""Consumer scheduling utilities."""
 from itertools import count
 from typing import Any, Callable, Iterable, Optional, Sequence, Union
 from typing import List  # noqa
 
-from . import symbol_by_name
+from .imports import symbol_by_name
 
 __all__ = [
     'FairCycle', 'priority_cycle', 'round_robin_cycle', 'sorted_cycle',
 ]
+
+CYCLE_ALIASES = {
+    'priority': 'kombu.utils.scheduling:priority_cycle',
+    'round_robin': 'kombu.utils.scheduling:round_robin_cycle',
+    'sorted': 'kombu.utils.scheduling:sorted_cycle',
+}
 
 
 class FairCycle:
@@ -91,13 +91,6 @@ class sorted_cycle(priority_cycle):
 
     def consume(self, n: int) -> Any:
         return sorted(self.items[:n])
-
-
-CYCLE_ALIASES = {
-    'priority': 'kombu.utils.scheduling:priority_cycle',
-    'round_robin': 'kombu.utils.scheduling:round_robin_cycle',
-    'sorted': 'kombu.utils.scheduling:sorted_cycle',
-}
 
 
 def cycle_by_name(name: Union[str, BaseCycle]) -> BaseCycle:

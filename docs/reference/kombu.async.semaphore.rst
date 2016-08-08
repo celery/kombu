@@ -1,5 +1,5 @@
 ==========================================================
- Semaphores - kombu.async.semaphore
+ Semaphores - ``kombu.async.semaphore``
 ==========================================================
 
 .. contents::

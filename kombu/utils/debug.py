@@ -1,10 +1,4 @@
-"""
-kombu.utils.debug
-=================
-
-Debugging support.
-
-"""
+"""Debugging support."""
 import logging
 
 from typing import Any, Optional, Sequence, Union

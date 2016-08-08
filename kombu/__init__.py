@@ -9,7 +9,7 @@ if sys.version_info < (3, 6):  # pragma: no cover
 
 from collections import namedtuple  # noqa
 
-__version__ = '4.0.0a1'
+__version__ = '4.0.0rc3'
 __author__ = 'Ask Solem'
 __contact__ = 'ask@celeryproject.org'
 __homepage__ = 'https://kombu.readthedocs.io'
@@ -38,6 +38,7 @@ if STATICA_HACK:  # pragma: no cover
     # they contain.
     from kombu.connection import Connection, BrokerConnection   # noqa
     from kombu.entity import Exchange, Queue, binding           # noqa
+    from kombu.message import Message                           # noqa
     from kombu.messaging import Consumer, Producer              # noqa
     from kombu.pools import connections, producers              # noqa
     from kombu.utils.url import parse_url                       # noqa
@@ -54,6 +55,7 @@ from types import ModuleType  # noqa
 all_by_module = {
     'kombu.connection': ['Connection', 'BrokerConnection'],
     'kombu.entity': ['Exchange', 'Queue', 'binding'],
+    'kombu.message': ['Message'],
     'kombu.messaging': ['Consumer', 'Producer'],
     'kombu.pools': ['connections', 'producers'],
     'kombu.utils.url': ['parse_url'],
@@ -112,8 +114,6 @@ new_module.__dict__.update({
     'version_info_t': version_info_t,
     'version_info': version_info,
     'VERSION': VERSION,
-    'absolute_import': absolute_import,
-    'unicode_literals': unicode_literals,
 })
 
 if os.environ.get('KOMBU_LOG_DEBUG'):  # pragma: no cover

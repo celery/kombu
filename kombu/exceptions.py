@@ -1,15 +1,10 @@
-"""
-kombu.exceptions
-================
-
-Exceptions.
-
-"""
+"""Exceptions."""
 from socket import timeout as TimeoutError
 
 from amqp import ChannelError, ConnectionError, ResourceError
 
 __all__ = [
+    'KombuError', 'OperationalError',
     'NotBoundError', 'MessageStateError', 'TimeoutError',
     'LimitExceeded', 'ConnectionLimitExceeded',
     'ChannelLimitExceeded', 'ConnectionError', 'ChannelError',
@@ -21,6 +16,11 @@ __all__ = [
 class KombuError(Exception):
     """Common subclass for all Kombu exceptions."""
     ...
+
+
+class OperationalError(KombuError):
+    """Recoverable message transport connection error."""
+    pass
 
 
 class SerializationError(KombuError):

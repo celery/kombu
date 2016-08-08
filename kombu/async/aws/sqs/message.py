@@ -4,8 +4,10 @@ from .ext import (
     RawMessage, Message, MHMessage, EncodedMHMessage, JSONMessage,
 )
 
-__all__ = ['BaseAsyncMessage', 'AsyncRawMessage', 'AsyncMessage',
-           'AsyncMHMessage', 'AsyncEncodedMHMessage', 'AsyncJSONMessage']
+__all__ = [
+    'BaseAsyncMessage', 'AsyncRawMessage', 'AsyncMessage',
+    'AsyncMHMessage', 'AsyncEncodedMHMessage', 'AsyncJSONMessage',
+]
 
 
 class BaseAsyncMessage:

@@ -1,11 +1,6 @@
-"""
-kombu.transport.librabbitmq
-===========================
-
-`librabbitmq`_ transport.
+"""`librabbitmq`_ transport.
 
 .. _`librabbitmq`: http://pypi.python.org/librabbitmq/
-
 """
 import os
 import socket

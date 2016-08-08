@@ -1,3 +1,7 @@
+===============================================================
+ librabbitmq AMQP transport - ``kombu.transport.librabbitmq``
+===============================================================
+
 .. currentmodule:: kombu.transport.librabbitmq
 
 .. automodule:: kombu.transport.librabbitmq

@@ -1,3 +1,7 @@
+=====================================
+ Exceptions - ``kombu.exceptions``
+=====================================
+
 .. currentmodule:: kombu.exceptions
 
 .. automodule:: kombu.exceptions

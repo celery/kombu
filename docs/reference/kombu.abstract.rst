@@ -1,3 +1,7 @@
+=======================================
+ Abstract Classes - ``kombu.abstract``
+=======================================
+
 .. currentmodule:: kombu.abstract
 
 .. automodule:: kombu.abstract

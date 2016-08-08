@@ -1,17 +1,12 @@
-"""
-kombu.pools
-===========
-
-Public resource pools.
-
-"""
+"""Public resource pools."""
 import os
 
 from itertools import chain
 
 from .connection import Resource
 from .messaging import Producer
-from .utils import EqualityDict, register_after_fork
+from .utils.collections import EqualityDict
+from .utils.compat import register_after_fork
 from .utils.functional import lazy
 
 __all__ = ['ProducerPool', 'PoolGroup', 'register_group',

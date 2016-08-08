@@ -4,9 +4,8 @@ NOTE: The SQSQueueMock and SQSConnectionMock classes originally come from
 http://github.com/pcsforeducation/sqs-mock-python. They have been patched
 slightly.
 """
+from queue import Empty
 
-
-from kombu import five
 from kombu import messaging
 from kombu import Connection, Exchange, Queue
 
@@ -208,11 +207,11 @@ class test_Channel(Case):
         self.assertEqual(len(results), 3)
 
     def test_get_with_empty_list(self):
-        with self.assertRaises(five.Empty):
+        with self.assertRaises(Empty):
             self.channel._get(self.queue_name)
 
     def test_get_bulk_raises_empty(self):
-        with self.assertRaises(five.Empty):
+        with self.assertRaises(Empty):
             self.channel._get_bulk(self.queue_name)
 
     def test_messages_to_python(self):
@@ -291,7 +290,7 @@ class test_Channel(Case):
         def mock_can_consume():
             return False
         self.channel.qos.can_consume = mock_can_consume
-        with self.assertRaises(five.Empty):
+        with self.assertRaises(Empty):
             self.channel.drain_events()
 
     def test_drain_events_with_prefetch_5(self):

@@ -1,3 +1,7 @@
+=================================================
+ Redis Transport - ``kombu.transport.redis``
+=================================================
+
 .. currentmodule:: kombu.transport.redis
 
 .. automodule:: kombu.transport.redis

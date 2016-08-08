@@ -1,11 +1,6 @@
-"""
-kombu.compat
-============
-
-Carrot compatible interface for :class:`Publisher` and :class:`Producer`.
+"""Carrot compatible interface
 
 See http://packages.python.org/pypi/carrot for documentation.
-
 """
 from itertools import count
 

@@ -5,7 +5,7 @@ import warnings
 from kombu import Connection
 from kombu import pidbox
 from kombu.exceptions import ContentDisallowed, InconsistencyError
-from kombu.utils import uuid
+from kombu.utils.uuid import uuid
 
 from .case import Case, Mock, patch
 

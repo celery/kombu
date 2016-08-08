@@ -1,5 +1,5 @@
 ==========================================================
- Clocks and Synchronization - kombu.clocks
+ Logical Clocks and Synchronization - ``kombu.clocks``
 ==========================================================
 
 .. contents::

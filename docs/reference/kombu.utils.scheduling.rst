@@ -1,3 +1,7 @@
+=============================================
+ Consumer Scheduling - ``kombu.scheduling``
+=============================================
+
 .. contents::
     :local:
 .. currentmodule:: kombu.utils.scheduling

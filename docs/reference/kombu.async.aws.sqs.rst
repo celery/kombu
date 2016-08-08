@@ -1,5 +1,5 @@
 ==========================================================
- Async Amazon SQS Client - kombu.async.aws.sqs
+ Async Amazon SQS Client - ``kombu.async.aws.sqs``
 ==========================================================
 
 .. contents::
