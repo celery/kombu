@@ -79,8 +79,9 @@ Celery, this can be accomplished by setting the
 *BROKER_TRANSPORT_OPTIONS* Celery option.
 
 """
-from __future__ import absolute_import
+from __future__ import absolute_import, unicode_literals
 
+from collections import OrderedDict
 import os
 import select
 import socket
@@ -123,7 +124,6 @@ from kombu.five import Empty, items
 from kombu.log import get_logger
 from kombu.transport.virtual import Base64, Message
 from kombu.transport import base
-from kombu.utils.compat import OrderedDict
 
 
 logger = get_logger(__name__)

@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, unicode_literals
 
 import select
 import ssl
@@ -7,23 +7,48 @@ import sys
 import time
 import uuid
 
-from collections import Callable
+from collections import Callable, OrderedDict
 from itertools import count
 from functools import wraps
 
 from mock import call
+from nose import SkipTest
 
 from kombu.five import Empty, keys, range, monotonic
 from kombu.transport.qpid import (AuthenticationFailure, Channel, Connection,
                                   ConnectionError, Message, NotFound, QoS,
                                   Transport)
 from kombu.transport.virtual import Base64
-from kombu.tests.case import Case, Mock, case_no_pypy, case_no_python3
+from kombu.tests.case import Case, Mock
 from kombu.tests.case import patch
-from kombu.utils.compat import OrderedDict
 
 
 QPID_MODULE = 'kombu.transport.qpid'
+PY3 = sys.version_info[0] == 3
+
+
+def case_no_pypy(cls):
+    setup = cls.setUp
+
+    @wraps(setup)
+    def around_setup(self):
+        if getattr(sys, 'pypy_version_info', None):
+            raise SkipTest('pypy incompatible')
+        setup(self)
+    cls.setUp = around_setup
+    return cls
+
+
+def case_no_python3(cls):
+    setup = cls.setUp
+
+    @wraps(setup)
+    def around_setup(self):
+        if PY3:
+            raise SkipTest('Python3 incompatible')
+        setup(self)
+    cls.setUp = around_setup
+    return cls
 
 
 def disable_runtime_dependency_check(cls):
@@ -1747,20 +1772,6 @@ class TestTransportClassAttributes(Case):
 @disable_runtime_dependency_check
 class TestTransportRegisterWithEventLoop(Case):
 
-    def setUp(self):
-        self.patch_a = patch(QPID_MODULE + '.os')
-        self.mock_os = self.patch_a.start()
-        self.mock_r = 1
-        self.mock_w = 2
-        self.mock_os.pipe.return_value = self.mock_r, self.mock_w
-
-        self.patch_b = patch(QPID_MODULE + '.fcntl')
-        self.mock_fcntl = self.patch_b.start()
-
-    def tearDown(self):
-        self.patch_a.stop()
-        self.patch_b.stop()
-
     def test_transport_register_with_event_loop_calls_add_reader(self):
         transport = Transport(Mock())
         mock_connection = Mock()
@@ -1768,28 +1779,6 @@ class TestTransportRegisterWithEventLoop(Case):
         transport.register_with_event_loop(mock_connection, mock_loop)
         mock_loop.add_reader.assert_called_with(
             transport.r, transport.on_readable, mock_connection, mock_loop,
-        )
-
-    def test_transport___init___calls_os_pipe(self):
-        transport = Transport(Mock())
-        transport.register_with_event_loop(Mock(), Mock())
-        self.mock_os.pipe.assert_called_once_with()
-
-    def test_transport___init___saves_os_pipe_file_descriptors(self):
-        transport = Transport(Mock())
-        mock_connection = Mock()
-        mock_loop = Mock()
-        transport.register_with_event_loop(mock_connection, mock_loop)
-        self.assertIs(transport.r, self.mock_r)
-        self.assertIs(transport._w, self.mock_w)
-
-    def test_transport___init___sets_non_blocking_behavior_on_r_fd(self):
-        transport = Transport(Mock())
-        mock_connection = Mock()
-        mock_loop = Mock()
-        transport.register_with_event_loop(mock_connection, mock_loop)
-        self.mock_fcntl.fcntl.assert_called_once_with(
-            self.mock_r,  self.mock_fcntl.F_SETFL,  self.mock_os.O_NONBLOCK,
         )
 
 
