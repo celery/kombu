@@ -1747,20 +1747,6 @@ class TestTransportClassAttributes(Case):
 @disable_runtime_dependency_check
 class TestTransportRegisterWithEventLoop(Case):
 
-    def setUp(self):
-        self.patch_a = patch(QPID_MODULE + '.os')
-        self.mock_os = self.patch_a.start()
-        self.mock_r = 1
-        self.mock_w = 2
-        self.mock_os.pipe.return_value = self.mock_r, self.mock_w
-
-        self.patch_b = patch(QPID_MODULE + '.fcntl')
-        self.mock_fcntl = self.patch_b.start()
-
-    def tearDown(self):
-        self.patch_a.stop()
-        self.patch_b.stop()
-
     def test_transport_register_with_event_loop_calls_add_reader(self):
         transport = Transport(Mock())
         mock_connection = Mock()
@@ -1768,28 +1754,6 @@ class TestTransportRegisterWithEventLoop(Case):
         transport.register_with_event_loop(mock_connection, mock_loop)
         mock_loop.add_reader.assert_called_with(
             transport.r, transport.on_readable, mock_connection, mock_loop,
-        )
-
-    def test_transport___init___calls_os_pipe(self):
-        transport = Transport(Mock())
-        transport.register_with_event_loop(Mock(), Mock())
-        self.mock_os.pipe.assert_called_once_with()
-
-    def test_transport___init___saves_os_pipe_file_descriptors(self):
-        transport = Transport(Mock())
-        mock_connection = Mock()
-        mock_loop = Mock()
-        transport.register_with_event_loop(mock_connection, mock_loop)
-        self.assertIs(transport.r, self.mock_r)
-        self.assertIs(transport._w, self.mock_w)
-
-    def test_transport___init___sets_non_blocking_behavior_on_r_fd(self):
-        transport = Transport(Mock())
-        mock_connection = Mock()
-        mock_loop = Mock()
-        transport.register_with_event_loop(mock_connection, mock_loop)
-        self.mock_fcntl.fcntl.assert_called_once_with(
-            self.mock_r,  self.mock_fcntl.F_SETFL,  self.mock_os.O_NONBLOCK,
         )
 
 
