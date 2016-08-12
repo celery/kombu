@@ -31,7 +31,8 @@ TRANSPORT_ALIASES = {
     'filesystem': 'kombu.transport.filesystem:Transport',
     'qpid': 'kombu.transport.qpid:Transport',
     'sentinel': 'kombu.transport.redis:SentinelTransport',
-    'consul': 'kombu.transport.consul:Transport'
+    'consul': 'kombu.transport.consul:Transport',
+    'etcd': 'kombu.transport.etcd:Transport',
 }
 
 _transport_cache = {}
