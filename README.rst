@@ -2,7 +2,7 @@
  kombu - Messaging library for Python
 ========================================
 
-|build-status| |coverage| |bitdeli|
+|build-status| |coverage| |license| |wheel| |pyversion| |pyimp|
 
 :Version: 4.0.0rc3
 :Web: http://kombu.me/
@@ -39,7 +39,7 @@ Features
         $ pip install librabbitmq
 
     * Virtual transports makes it really easy to add support for non-AMQP
-      transports.  There is already built-in support for `Redis`_,
+      transports. There is already built-in support for `Redis`_,
       `Amazon SQS`_, `ZooKeeper`_, `SoftLayer MQ`_ and `Pyro`_.
 
     * In-memory transport for unit testing.
@@ -145,7 +145,7 @@ Quick overview
         # the declare above, makes sure the video queue is declared
         # so that the messages can be delivered.
         # It's a best practice in Kombu to have both publishers and
-        # consumers declare the queue.  You can also declare the
+        # consumers declare the queue. You can also declare the
         # queue manually using:
         #     video_queue(conn).declare()
 
@@ -240,7 +240,7 @@ There are some concepts you should be familiar with before starting:
 
     * Routing keys
 
-        Every message has a routing key.  The interpretation of the routing
+        Every message has a routing key. The interpretation of the routing
         key depends on the exchange type. There are four default exchange
         types defined by the AMQP standard, and vendors can define custom
         types (so see your vendors manual for details).
@@ -332,8 +332,20 @@ file in the top distribution directory for the full license text.
 .. |coverage| image:: https://codecov.io/github/celery/kombu/coverage.svg?branch=master
     :target: https://codecov.io/github/celery/kombu?branch=master
 
-.. |bitdeli| image:: https://d2weczhvl823v0.cloudfront.net/celery/kombu/trend.png
-    :alt: Bitdeli badge
-    :target: https://bitdeli.com/free
+.. |license| image:: https://img.shields.io/pypi/l/kombu.svg
+    :alt: BSD License
+    :target: https://opensource.org/licenses/BSD-3-Clause
+
+.. |wheel| image:: https://img.shields.io/pypi/wheel/kombu.svg
+    :alt: Kombu can be installed via wheel
+    :target: http://pypi.python.org/pypi/kombu/
+
+.. |pyversion| image:: https://img.shields.io/pypi/pyversions/kombu.svg
+    :alt: Supported Python versions.
+    :target: http://pypi.python.org/pypi/kombu/
+
+.. |pyimp| image:: https://img.shields.io/pypi/implementation/kombu.svg
+    :alt: Support Python implementations.
+    :target: http://pypi.python.org/pypi/kombu/
 --
 
