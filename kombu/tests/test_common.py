@@ -42,13 +42,26 @@ class test_declaration_cached(Case):
 
     def test_when_cached(self):
         chan = Mock()
+        entity = Mock()
+        entity.can_cache_declaration = True
+        entity.declaration_key = 'foo'
         chan.connection.client.declared_entities = ['foo']
-        self.assertTrue(declaration_cached('foo', chan))
+        self.assertTrue(declaration_cached(entity, chan))
 
     def test_when_not_cached(self):
         chan = Mock()
+        entity = Mock()
+        entity.can_cache_declaration = True
+        entity.declaration_key = 'foo'
         chan.connection.client.declared_entities = ['bar']
-        self.assertFalse(declaration_cached('foo', chan))
+        self.assertFalse(declaration_cached(entity, chan))
+
+    def test_when_not_cacheable(self):
+        chan = Mock()
+        entity = Mock()
+        entity.can_cache_declaration = False
+        chan.connection.client.declared_entities = ['bar']
+        self.assertFalse(declaration_cached(entity, chan))
 
 
 class test_Broadcast(Case):
@@ -77,6 +90,7 @@ class test_maybe_declare(Case):
         client.declared_entities = set()
         entity = Mock()
         entity.can_cache_declaration = True
+        entity.declaration_key = 'foo'
         entity.auto_delete = False
         entity.is_bound = True
         entity.channel = channel
@@ -84,7 +98,7 @@ class test_maybe_declare(Case):
         maybe_declare(entity, channel)
         self.assertEqual(entity.declare.call_count, 1)
         self.assertIn(
-            hash(entity), channel.connection.client.declared_entities,
+            entity.declaration_key, channel.connection.client.declared_entities,
         )
 
         maybe_declare(entity, channel)

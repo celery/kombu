@@ -76,6 +76,10 @@ class test_Exchange(Case):
         self.assertEqual(hash(Exchange('a')), hash(Exchange('a')))
         self.assertNotEqual(hash(Exchange('a')), hash(Exchange('b')))
 
+    def test_declaration_key(self):
+        self.assertEqual(Exchange('a').declaration_key, Exchange('a').declaration_key)
+        self.assertNotEqual(Exchange('a').declaration_key, Exchange('b').declaration_key)
+
     def test_can_cache_declaration(self):
         self.assertTrue(Exchange('a', durable=True).can_cache_declaration)
         self.assertTrue(Exchange('a', durable=False).can_cache_declaration)
@@ -218,6 +222,23 @@ class test_Queue(Case):
     def test_hash(self):
         self.assertEqual(hash(Queue('a')), hash(Queue('a')))
         self.assertNotEqual(hash(Queue('a')), hash(Queue('b')))
+
+    def test_declaration_key(self):
+        self.assertEqual(Queue('a').declaration_key, Queue('a').declaration_key)
+        self.assertNotEqual(Queue('a').declaration_key, Queue('b').declaration_key)
+
+    def test_declaration_key_with_routing_key(self):
+        self.assertEqual(Queue('a', routing_key='foo').declaration_key,
+                         Queue('a', routing_key='foo').declaration_key)
+        self.assertNotEqual(Queue('a', routing_key='foo').declaration_key,
+                            Queue('a', routing_key='bar').declaration_key)
+
+    def test_declaration_key_with_bindings(self):
+        ex = Exchange('foo')
+        self.assertEqual(Queue('a', bindings=[ex.binding('A'), ex.binding('B')]).declaration_key,
+                         Queue('a', bindings=[ex.binding('B'), ex.binding('A')]).declaration_key)
+        self.assertNotEqual(Queue('a', bindings=[ex.binding('A'), ex.binding('B')]).declaration_key,
+                            Queue('a', bindings=[ex.binding('A')]).declaration_key)
 
     def test_repr_with_bindings(self):
         ex = Exchange('foo')

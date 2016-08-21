@@ -158,7 +158,11 @@ class Exchange(MaybeChannelBound):
         self.maybe_bind(channel)
 
     def __hash__(self):
-        return hash('E|%s' % (self.name,))
+        return hash(self.declaration_key)
+
+    @property
+    def declaration_key(self):
+        return 'E|%s' % (self.name, )
 
     def _can_declare(self):
         return not self.no_declare and (
@@ -362,6 +366,10 @@ class binding(Object):
             _reprstr(self.exchange.name), _reprstr(self.routing_key),
         )
 
+    @property
+    def declaration_key(self):
+        return str(self)
+
 
 @python_2_unicode_compatible
 class Queue(MaybeChannelBound):
@@ -515,7 +523,11 @@ class Queue(MaybeChannelBound):
         return bound
 
     def __hash__(self):
-        return hash('Q|%s' % (self.name,))
+        return hash(self.declaration_key)
+
+    @property
+    def declaration_key(self):
+        return 'Q|%s|%s|%s' % (self.name, self.routing_key, '|'.join(sorted(b.declaration_key for b in self.bindings)))
 
     def when_bound(self):
         if self.exchange:
