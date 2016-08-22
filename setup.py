@@ -5,6 +5,9 @@ import re
 import sys
 import codecs
 
+import setuptools
+import setuptools.command.test
+
 from distutils.command.install import INSTALL_SCHEMES
 
 if sys.version_info < (2, 7):
@@ -44,7 +47,7 @@ finally:
     meta_fh.close()
 # --
 
-packages, data_files = [], []
+data_files = []
 root_dir = os.path.dirname(__file__)
 if root_dir != '':
     os.chdir(root_dir)
@@ -71,9 +74,7 @@ for dirpath, dirnames, filenames in os.walk(src_dir):
         if dirname.startswith('.'):
             del dirnames[i]
     for filename in filenames:
-        if filename.endswith('.py'):
-            packages.append('.'.join(fullsplit(dirpath)))
-        else:
+        if not filename.endswith('.py'):
             data_files.append(
                 [dirpath, [os.path.join(dirpath, f) for f in filenames]],
             )
@@ -104,20 +105,46 @@ def reqs(*f):
 def extras(*p):
     return reqs('extras', *p)
 
+
+class pytest(setuptools.command.test.test):
+    user_options = [('pytest-args=', 'a', 'Arguments to pass to py.test')]
+
+    def initialize_options(self):
+        setuptools.command.test.test.initialize_options(self)
+        self.pytest_args = []
+
+    def run_tests(self):
+        import pytest
+        sys.exit(pytest.main(self.pytest_args))
+
 setup(
     name='kombu',
+    packages=setuptools.find_packages(exclude=['t', 't.*']),
     version=meta['version'],
     description=meta['doc'],
+    long_description=long_description,
     author=meta['author'],
     author_email=meta['contact'],
     url=meta['homepage'],
     platforms=['any'],
-    packages=packages,
     data_files=data_files,
     zip_safe=False,
-    test_suite='nose.collector',
+    cmdclass={'test': pytest},
     install_requires=reqs('default.txt'),
     tests_require=reqs('test.txt'),
+    extras_require={
+        'msgpack': extras('msgpack.txt'),
+        'yaml': extras('yaml.txt'),
+        'redis': extras('redis.txt'),
+        'mongodb': extras('mongodb.txt'),
+        'sqs': extras('sqs.txt'),
+        'zookeeper': extras('zookeeper.txt'),
+        'librabbitmq': extras('librabbitmq.txt'),
+        'pyro': extras('pyro.txt'),
+        'slmq': extras('slmq.txt'),
+        'qpid': extras('qpid.txt'),
+        'consul': extras('consul.txt'),
+    },
     classifiers=[
         'Development Status :: 5 - Production/Stable',
         'License :: OSI Approved :: BSD License',
@@ -137,18 +164,4 @@ setup(
         'Topic :: System :: Networking',
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],
-    long_description=long_description,
-    extras_require={
-        'msgpack': extras('msgpack.txt'),
-        'yaml': extras('yaml.txt'),
-        'redis': extras('redis.txt'),
-        'mongodb': extras('mongodb.txt'),
-        'sqs': extras('sqs.txt'),
-        'zookeeper': extras('zookeeper.txt'),
-        'librabbitmq': extras('librabbitmq.txt'),
-        'pyro': extras('pyro.txt'),
-        'slmq': extras('slmq.txt'),
-        'qpid': extras('qpid.txt'),
-        'consul': extras('consul.txt'),
-    },
 )

@@ -1073,15 +1073,14 @@ class SentinelChannel(Channel):
 
         additional_params = connparams.copy()
 
-        del additional_params['host']
-        del additional_params['port']
+        additional_params.pop('host', None)
+        additional_params.pop('port', None)
 
         sentinel_inst = sentinel.Sentinel(
             [(connparams['host'], connparams['port'])],
             min_other_sentinels=getattr(self, 'min_other_sentinels', 0),
             sentinel_kwargs=getattr(self, 'sentinel_kwargs', {}),
-            **additional_params
-        )
+            **additional_params)
 
         master_name = getattr(self, 'master_name', None)
 

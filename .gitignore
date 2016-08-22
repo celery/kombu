@@ -8,7 +8,7 @@ settings_local.py
 build/
 .build/
 _build/
-.*.sw[pon]
+.*.sw*
 dist/
 *.egg-info
 pip-log.txt
@@ -26,3 +26,7 @@ kombu/tests/coverage.xml
 .coverage
 dump.rdb
 .idea/
+.cache/
+htmlcov/
+test.db
+coverage.xml
