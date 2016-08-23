@@ -282,7 +282,6 @@ class QoS(object):
             return
         try:
             if state:
-                print('GOING TO RESTORE')
                 print(RESTORING_FMT.format(len(self._delivered)),
                       file=stderr)
                 unrestored = self.restore_unacked()
