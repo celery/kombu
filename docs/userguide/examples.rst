@@ -50,8 +50,6 @@ for priorities using different queues.
 .. literalinclude:: ../../examples/simple_task_queue/tasks.py
     :language: python
 
-.. code-block:: python
-
 :file:`client.py`:
 
 .. literalinclude:: ../../examples/simple_task_queue/client.py
