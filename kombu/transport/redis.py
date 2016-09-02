@@ -325,7 +325,7 @@ class MultiChannelPoller(object):
     def on_readable(self, fileno):
         chan, type = self._fd_to_chan[fileno]
         if chan.qos.can_consume():
-            return chan.handlers[type]()
+            chan.handlers[type]()
 
     def handle_event(self, fileno, event):
         if event & READ:
@@ -334,7 +334,7 @@ class MultiChannelPoller(object):
             chan, type = self._fd_to_chan[fileno]
             chan._poll_error(type)
 
-    def get(self, timeout=None):
+    def get(self, callback, timeout=None):
         self._in_protected_read = True
         try:
             for channel in self._channels:
@@ -345,15 +345,14 @@ class MultiChannelPoller(object):
                     self._register_LISTEN(channel)
 
             events = self.poller.poll(timeout)
-            for fileno, event in events or []:
-                ret = self.handle_event(fileno, event)
-                if ret:
-                    return ret
-
+            if events:
+                for fileno, event in events:
+                    ret = self.handle_event(fileno, event)
+                    if ret:
+                        return
             # - no new data, so try to restore messages.
             # - reset active redis commands.
             self.maybe_restore_messages()
-
             raise Empty()
         finally:
             self._in_protected_read = False
@@ -660,6 +659,16 @@ class Channel(virtual.Channel):
 
     def _receive(self):
         c = self.subclient
+        ret = []
+        try:
+            ret.append(self._receive_one(c))
+        except Empty:
+            pass
+        while c.connection.can_read(timeout=0):
+            ret.append(self._receive_one(c))
+        return any(ret)
+
+    def _receive_one(self, c):
         response = None
         try:
             response = c.parse_response()
@@ -680,8 +689,9 @@ class Channel(virtual.Channel):
                              channel, repr(payload)[:4096], exc_info=1)
                         raise Empty()
                     exchange = channel.split('/', 1)[0]
-                    return message, self._fanout_to_queue[exchange]
-        raise Empty()
+                    self.connection._deliver(
+                        message, self._fanout_to_queue[exchange])
+                    return True
 
     def _brpop_start(self, timeout=1):
         queues = self._queue_cycle.consume(len(self.active_queues))
@@ -707,7 +717,8 @@ class Channel(virtual.Channel):
                 dest, item = dest__item
                 dest = bytes_to_str(dest).rsplit(self.sep, 1)[0]
                 self._queue_cycle.rotate(dest)
-                return loads(bytes_to_str(item)), dest
+                self.connection._deliver(loads(bytes_to_str(item)), dest)
+                return True
             else:
                 raise Empty()
         finally:
@@ -1033,9 +1044,7 @@ class Transport(virtual.Transport):
 
     def on_readable(self, fileno):
         """Handle AIO event for one of our file descriptors."""
-        item = self.cycle.on_readable(fileno)
-        if item:
-            self._deliver(*item)
+        self.cycle.on_readable(fileno)
 
     def _get_errors(self):
         """Utility to import redis-py's exceptions at runtime."""

@@ -166,7 +166,7 @@ class test_AbstractChannel:
 
     def test_poll(self):
         cycle = Mock(name='cycle')
-        assert virtual.AbstractChannel()._poll(cycle)
+        assert virtual.AbstractChannel()._poll(cycle, Mock())
         cycle.get.assert_called()
 
 
@@ -330,6 +330,12 @@ class test_Channel:
         c.queue_bind(n, n, n)
         c.queue_declare(n + '2')
         c.queue_bind(n + '2', n, n)
+        messages = []
+        c.connection._deliver = Mock(name='_deliver')
+
+        def on_deliver(message, queue):
+            messages.append(message)
+        c.connection._deliver.side_effect = on_deliver
 
         m = c.prepare_message('nthex quick brown fox...')
         c.basic_publish(m, n, n)
@@ -344,8 +350,8 @@ class test_Channel:
         c.basic_consume(n + '2', False,
                         consumer_tag=consumer_tag, callback=lambda *a: None)
         assert n + '2' in c._active_queues
-        r2, _ = c.drain_events()
-        r2 = c.message_to_python(r2)
+        c.drain_events()
+        r2 = c.message_to_python(messages[-1])
         assert r2.body == 'nthex quick brown fox...'.encode('utf-8')
         assert r2.delivery_info['exchange'] == n
         assert r2.delivery_info['routing_key'] == n
@@ -561,7 +567,7 @@ class test_Transport:
     def test_drain_channel(self):
         channel = self.transport.create_channel(self.transport)
         with pytest.raises(virtual.Empty):
-            self.transport._drain_channel(channel)
+            self.transport._drain_channel(channel, Mock())
 
     def test__deliver__no_queue(self):
         with pytest.raises(KeyError):

@@ -150,7 +150,7 @@ class test_MemoryTransport:
 
         class Cycle(object):
 
-            def get(self, timeout=None):
+            def get(self, callback, timeout=None):
                 return (message, 'foo'), c1
 
         self.c.transport.cycle = Cycle()

@@ -40,15 +40,19 @@ class FairCycle(object):
                 if not self.resources:
                     raise self.predicate()
 
-    def get(self, **kwargs):
+    def get(self, callback, **kwargs):
+        succeeded = 0
         for tried in count(0):  # for infinity
             resource = self._next()
-
             try:
-                return self.fun(resource, **kwargs), resource
+                return self.fun(resource, callback, **kwargs)
             except self.predicate:
                 if tried >= len(self.resources) - 1:
-                    raise
+                    if not succeeded:
+                        raise
+                    break
+            else:
+                succeeded += 1
 
     def close(self):
         pass

@@ -393,9 +393,13 @@ class AbstractChannel(object):
         """
         return True
 
-    def _poll(self, cycle, timeout=None):
+    def _poll(self, cycle, callback, timeout=None):
         """Poll a list of queues for available messages."""
-        return cycle.get()
+        return cycle.get(callback)
+
+    def _get_and_deliver(self, queue, callback):
+        message = self._get(queue)
+        callback(message, queue)
 
 
 class Channel(AbstractChannel, base.StdChannel):
@@ -590,6 +594,15 @@ class Channel(AbstractChannel, base.StdChannel):
 
     def basic_publish(self, message, exchange, routing_key, **kwargs):
         """Publish message."""
+        self._inplace_augment_message(message, exchange, routing_key)
+        if exchange:
+            return self.typeof(exchange).deliver(
+                message, exchange, routing_key, **kwargs
+            )
+        # anon exchange: routing_key is the destination queue
+        return self._put(routing_key, message, **kwargs)
+
+    def _inplace_augment_message(self, message, exchange, routing_key):
         message['body'], body_encoding = self.encode_body(
             message['body'], self.body_encoding,
         )
@@ -602,12 +615,6 @@ class Channel(AbstractChannel, base.StdChannel):
             exchange=exchange,
             routing_key=routing_key,
         )
-        if exchange:
-            return self.typeof(exchange).deliver(
-                message, exchange, routing_key, **kwargs
-            )
-        # anon exchange: routing_key is the destination queue
-        return self._put(routing_key, message, **kwargs)
 
     def basic_consume(self, queue, no_ack, callback, consumer_tag, **kwargs):
         """Consume from `queue`"""
@@ -725,11 +732,12 @@ class Channel(AbstractChannel, base.StdChannel):
     def _restore_at_beginning(self, message):
         return self._restore(message)
 
-    def drain_events(self, timeout=None):
+    def drain_events(self, timeout=None, callback=None):
+        callback = callback or self.connection._deliver
         if self._consumers and self.qos.can_consume():
             if hasattr(self, '_get_many'):
                 return self._get_many(self._active_queues, timeout=timeout)
-            return self._poll(self.cycle, timeout=timeout)
+            return self._poll(self.cycle, callback, timeout=timeout)
         raise Empty()
 
     def message_to_python(self, raw_message):
@@ -787,7 +795,8 @@ class Channel(AbstractChannel, base.StdChannel):
         return body
 
     def _reset_cycle(self):
-        self._cycle = FairCycle(self._get, self._active_queues, Empty)
+        self._cycle = FairCycle(
+            self._get_and_deliver, self._active_queues, Empty)
 
     def __enter__(self):
         return self
@@ -935,22 +944,19 @@ class Transport(base.Transport):
                     channel.close()
 
     def drain_events(self, connection, timeout=None):
-        loop = 0
         time_start = monotonic()
         get = self.cycle.get
         polling_interval = self.polling_interval
         while 1:
             try:
-                item, channel = get(timeout=timeout)
+                get(self._deliver, timeout=timeout)
             except Empty:
-                if timeout and monotonic() - time_start >= timeout:
+                if timeout is not None and monotonic() - time_start >= timeout:
                     raise socket.timeout()
-                loop += 1
                 if polling_interval is not None:
                     sleep(polling_interval)
             else:
                 break
-        self._deliver(*item)
 
     def _deliver(self, message, queue):
         if not queue:
@@ -980,8 +986,8 @@ class Transport(base.Transport):
                     queue, message))
         self._callbacks[queue](message)
 
-    def _drain_channel(self, channel, timeout=None):
-        return channel.drain_events(timeout=timeout)
+    def _drain_channel(self, channel, callback, timeout=None):
+        return channel.drain_events(callback=callback, timeout=timeout)
 
     @property
     def default_connection_params(self):

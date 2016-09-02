@@ -2,6 +2,8 @@ from __future__ import absolute_import, unicode_literals
 
 import pytest
 
+from case import Mock
+
 from kombu.utils.scheduling import FairCycle, cycle_by_name
 
 
@@ -12,7 +14,7 @@ class MyEmpty(Exception):
 def consume(fun, n):
     r = []
     for i in range(n):
-        r.append(fun())
+        r.append(fun(Mock(name='callback')))
     return r
 
 
@@ -20,6 +22,7 @@ class test_FairCycle:
 
     def test_cycle(self):
         resources = ['a', 'b', 'c', 'd', 'e']
+        callback = Mock(name='callback')
 
         def echo(r, timeout=None):
             return r
@@ -27,26 +30,24 @@ class test_FairCycle:
         # cycle should be ['a', 'b', 'c', 'd', 'e', ... repeat]
         cycle = FairCycle(echo, resources, MyEmpty)
         for i in range(len(resources)):
-            assert cycle.get() == (resources[i], resources[i])
+            assert cycle.get(callback) == resources[i]
         for i in range(len(resources)):
-            assert cycle.get() == (resources[i], resources[i])
+            assert cycle.get(callback) == resources[i]
 
     def test_cycle_breaks(self):
         resources = ['a', 'b', 'c', 'd', 'e']
 
-        def echo(r):
+        def echo(r, callback):
             if r == 'c':
                 raise MyEmpty(r)
             return r
 
         cycle = FairCycle(echo, resources, MyEmpty)
         assert consume(cycle.get, len(resources)) == [
-            ('a', 'a'), ('b', 'b'), ('d', 'd'),
-            ('e', 'e'), ('a', 'a'),
+            'a', 'b', 'd', 'e', 'a',
         ]
         assert consume(cycle.get, len(resources)) == [
-            ('b', 'b'), ('d', 'd'), ('e', 'e'),
-            ('a', 'a'), ('b', 'b'),
+            'b', 'd', 'e', 'a', 'b',
         ]
         cycle2 = FairCycle(echo, ['c', 'c'], MyEmpty)
         with pytest.raises(MyEmpty):

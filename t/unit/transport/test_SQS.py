@@ -9,14 +9,14 @@ from __future__ import absolute_import, unicode_literals
 
 import pytest
 
-from case import skip
+from case import Mock, skip
 
-from kombu import five
 from kombu import messaging
 from kombu import Connection, Exchange, Queue
 
-from kombu.transport import SQS
 from kombu.async.aws.ext import exception
+from kombu.five import Empty
+from kombu.transport import SQS
 
 
 class SQSQueueMock(object):
@@ -48,7 +48,9 @@ class SQSQueueMock(object):
     def get_messages(self, num_messages=1, visibility_timeout=None,
                      attributes=None, *args, **kwargs):
         self._get_message_calls += 1
-        return self.messages[:num_messages]
+        messages, self.messages[:num_messages] = (
+            self.messages[:num_messages], [])
+        return messages
 
     def read(self, visibility_timeout=None):
         return self.messages.pop(0)
@@ -222,11 +224,11 @@ class test_Channel:
         assert len(results) == 3
 
     def test_get_with_empty_list(self):
-        with pytest.raises(five.Empty):
+        with pytest.raises(Empty):
             self.channel._get(self.queue_name)
 
     def test_get_bulk_raises_empty(self):
-        with pytest.raises(five.Empty):
+        with pytest.raises(Empty):
             self.channel._get_bulk(self.queue_name)
 
     def test_messages_to_python(self):
@@ -239,7 +241,7 @@ class test_Channel:
 
         # json formatted message NOT created by kombu
         for i in range(json_message_count):
-            message = '{"foo":"bar"}'
+            message = {'foo': 'bar'}
             self.channel._put(self.producer.routing_key, message)
 
         q = self.channel._new_queue(self.queue_name)
@@ -275,8 +277,9 @@ class test_Channel:
         # With QoS.prefetch_count = 0
         message = 'my test message'
         self.producer.publish(message)
-        results = self.channel._get_bulk(self.queue_name)
-        assert 1 == len(results)
+        self.channel.connection._deliver = Mock(name='_deliver')
+        self.channel._get_bulk(self.queue_name)
+        self.channel.connection._deliver.assert_called_once()
 
     def test_puts_and_get_bulk(self):
         # Generate 8 messages
@@ -292,57 +295,88 @@ class test_Channel:
 
         # Count how many messages are retrieved the first time. Should
         # be 5 (message_count).
-        results = self.channel._get_bulk(self.queue_name)
-        assert 5 == len(results)
-        for i, r in enumerate(results):
-            self.channel.qos.append(r, i)
+        self.channel.connection._deliver = Mock(name='_deliver')
+        self.channel._get_bulk(self.queue_name)
+        assert self.channel.connection._deliver.call_count == 5
+        for i in range(5):
+            self.channel.qos.append(Mock(name='message{0}'.format(i)), i)
 
         # Now, do the get again, the number of messages returned should be 1.
-        results = self.channel._get_bulk(self.queue_name)
-        assert len(results) == 1
+        self.channel.connection._deliver.reset_mock()
+        self.channel._get_bulk(self.queue_name)
+        self.channel.connection._deliver.assert_called_once()
 
     def test_drain_events_with_empty_list(self):
         def mock_can_consume():
             return False
         self.channel.qos.can_consume = mock_can_consume
-        with pytest.raises(five.Empty):
+        with pytest.raises(Empty):
             self.channel.drain_events()
 
     def test_drain_events_with_prefetch_5(self):
         # Generate 20 messages
         message_count = 20
-        expected_get_message_count = 4
+        prefetch_count = 5
+
+        current_delivery_tag = [1]
 
         # Set the prefetch_count to 5
-        self.channel.qos.prefetch_count = 5
+        self.channel.qos.prefetch_count = prefetch_count
+        self.channel.connection._deliver = Mock(name='_deliver')
+
+        def on_message_delivered(message, queue):
+            current_delivery_tag[0] += 1
+            self.channel.qos.append(message, current_delivery_tag[0])
+        self.channel.connection._deliver.side_effect = on_message_delivered
 
         # Now, generate all the messages
         for i in range(message_count):
             self.producer.publish('message: %s' % i)
 
         # Now drain all the events
-        for i in range(message_count):
-            self.channel.drain_events()
+        for i in range(1000):
+            try:
+                self.channel.drain_events(timeout=0)
+            except Empty:
+                break
+        else:
+            assert False, 'disabled infinite loop'
 
-        # How many times was the SQSConnectionMock get_message method called?
-        assert (expected_get_message_count ==
-                self.channel._queue_cache[self.queue_name]._get_message_calls)
+        self.channel.qos._flush()
+        assert len(self.channel.qos._delivered) == prefetch_count
+
+        assert self.channel.connection._deliver.call_count == prefetch_count
 
     def test_drain_events_with_prefetch_none(self):
         # Generate 20 messages
         message_count = 20
-        expected_get_message_count = 2
+        expected_get_message_count = 3
+
+        current_delivery_tag = [1]
 
         # Set the prefetch_count to None
         self.channel.qos.prefetch_count = None
+        self.channel.connection._deliver = Mock(name='_deliver')
+
+        def on_message_delivered(message, queue):
+            current_delivery_tag[0] += 1
+            self.channel.qos.append(message, current_delivery_tag[0])
+        self.channel.connection._deliver.side_effect = on_message_delivered
 
         # Now, generate all the messages
         for i in range(message_count):
             self.producer.publish('message: %s' % i)
 
         # Now drain all the events
-        for i in range(message_count):
-            self.channel.drain_events()
+        for i in range(1000):
+            try:
+                self.channel.drain_events(timeout=0)
+            except Empty:
+                break
+        else:
+            assert False, 'disabled infinite loop'
+
+        assert self.channel.connection._deliver.call_count == message_count
 
         # How many times was the SQSConnectionMock get_message method called?
         assert (expected_get_message_count ==

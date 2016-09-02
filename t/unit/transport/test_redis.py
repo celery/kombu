@@ -486,11 +486,19 @@ class test_Channel:
     def test_receive(self):
         s = self.channel.subclient = Mock()
         self.channel._fanout_to_queue['a'] = 'b'
-        s.parse_response.return_value = ['message', 'a',
-                                         dumps({'hello': 'world'})]
-        payload, queue = self.channel._receive()
-        assert payload == {'hello': 'world'}
-        assert queue == 'b'
+        self.channel.connection._deliver = Mock(name='_deliver')
+        message = {
+            'body': 'hello',
+            'properties': {
+                'delivery_tag': 1,
+                'delivery_info': {'exchange': 'E', 'routing_key': 'R'},
+            },
+        }
+        s.parse_response.return_value = ['message', 'a', dumps(message)]
+        self.channel._receive_one(self.channel.subclient)
+        self.channel.connection._deliver.assert_called_once_with(
+            message, 'b',
+        )
 
     def test_receive_raises_for_connection_error(self):
         self.channel._in_listen = True
@@ -498,22 +506,20 @@ class test_Channel:
         s.parse_response.side_effect = KeyError('foo')
 
         with pytest.raises(KeyError):
-            self.channel._receive()
+            self.channel._receive_one(self.channel.subclient)
         assert not self.channel._in_listen
 
     def test_receive_empty(self):
         s = self.channel.subclient = Mock()
         s.parse_response.return_value = None
 
-        with pytest.raises(redis.Empty):
-            self.channel._receive()
+        assert self.channel._receive_one(self.channel.subclient) is None
 
     def test_receive_different_message_Type(self):
         s = self.channel.subclient = Mock()
         s.parse_response.return_value = ['message', '/foo/', 0, 'data']
 
-        with pytest.raises(redis.Empty):
-            self.channel._receive()
+        assert self.channel._receive_one(self.channel.subclient) is None
 
     def test_brpop_read_raises(self):
         c = self.channel.client = Mock()
@@ -1152,7 +1158,7 @@ class test_MultiChannelPoller:
         p, channel = self.create_get()
 
         with pytest.raises(redis.Empty):
-            p.get()
+            p.get(Mock())
 
     def test_qos_reject(self):
         p, channel = self.create_get()
@@ -1166,7 +1172,7 @@ class test_MultiChannelPoller:
         channel.qos.can_consume.return_value = True
 
         with pytest.raises(redis.Empty):
-            p.get()
+            p.get(Mock())
 
         p._register_BRPOP.assert_called_with(channel)
 
@@ -1175,7 +1181,7 @@ class test_MultiChannelPoller:
         channel.qos.can_consume.return_value = False
 
         with pytest.raises(redis.Empty):
-            p.get()
+            p.get(Mock())
 
         p._register_BRPOP.assert_not_called()
 
@@ -1183,7 +1189,7 @@ class test_MultiChannelPoller:
         p, channel = self.create_get(fanouts=['f_queue'])
 
         with pytest.raises(redis.Empty):
-            p.get()
+            p.get(Mock())
 
         p._register_LISTEN.assert_called_with(channel)
 
@@ -1192,7 +1198,7 @@ class test_MultiChannelPoller:
         p._fd_to_chan[1] = (channel, 'BRPOP')
 
         with pytest.raises(redis.Empty):
-            p.get()
+            p.get(Mock())
 
         channel._poll_error.assert_called_with('BRPOP')
 
@@ -1202,7 +1208,7 @@ class test_MultiChannelPoller:
         p._fd_to_chan[1] = (channel, 'BRPOP')
 
         with pytest.raises(redis.Empty):
-            p.get()
+            p.get(Mock())
 
         channel._poll_error.assert_called_with('BRPOP')
 

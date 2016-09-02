@@ -37,7 +37,6 @@ SQS Features supported by this transport:
 
 from __future__ import absolute_import, unicode_literals
 
-import collections
 import socket
 import string
 
@@ -99,12 +98,6 @@ class Channel(virtual.Channel):
         # queues that are known to already exist.
         self._update_queue_cache(self.queue_name_prefix)
 
-        # The drain_events() method stores extra messages in a local
-        # Deque object.  This allows multiple messages to be requested from
-        # SQS at once for performance, but maintains the same external API
-        # to the caller of the drain_events() method.
-        self._queue_message_cache = collections.deque()
-
         self.hub = kwargs.get('hub') or get_event_loop()
 
     def _update_queue_cache(self, queue_name_prefix):
@@ -145,24 +138,9 @@ class Channel(virtual.Channel):
         # If we're not allowed to consume or have no consumers, raise Empty
         if not self._consumers or not self.qos.can_consume():
             raise Empty()
-        message_cache = self._queue_message_cache
-
-        # Check if there are any items in our buffer.  If there are any, pop
-        # off that queue first.
-        try:
-            return message_cache.popleft()
-        except IndexError:
-            pass
 
         # At this point, go and get more messages from SQS
-        res, queue = self._poll(self.cycle, timeout=timeout)
-        message_cache.extend((r, queue) for r in res)
-
-        # Now try to pop off the queue again.
-        try:
-            return message_cache.popleft()
-        except IndexError:
-            raise Empty()
+        self._poll(self.cycle, self.connection._deliver, timeout=timeout)
 
     def _reset_cycle(self):
         """Reset the consume cycle.
@@ -286,7 +264,9 @@ class Channel(virtual.Channel):
             messages = q.get_messages(num_messages=maxcount)
 
             if messages:
-                return self._messages_to_python(messages, queue)
+                for msg in self._messages_to_python(messages, queue):
+                    self.connection._deliver(msg, queue)
+                return
         raise Empty()
 
     def _get(self, queue):
