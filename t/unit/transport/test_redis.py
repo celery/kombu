@@ -725,18 +725,6 @@ class test_Channel:
 
         redis.Transport.on_readable(transport, 13)
         cycle.on_readable.assert_called_with(13)
-        cycle.on_readable.reset_mock()
-
-        queue = Mock(name='queue')
-        ret = (Mock(name='message'), queue)
-        cycle.on_readable.return_value = ret
-        transport._reject_inbound_message = Mock(name='_reject_inbound')
-        redis.Transport.on_readable(transport, 14)
-        transport._reject_inbound_message.assert_called_with(ret[0])
-
-        cb = transport._callbacks[queue] = Mock(name='callback')
-        redis.Transport.on_readable(transport, 14)
-        cb.assert_called_with(ret[0])
 
     def test_transport_get_errors(self):
         assert redis.Transport._get_errors(self.connection.transport)
