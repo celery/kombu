@@ -325,10 +325,7 @@ class MultiChannelPoller(object):
     def on_readable(self, fileno):
         chan, type = self._fd_to_chan[fileno]
         if chan.qos.can_consume():
-            print('CALLING %r' % (chan.handlers[type],))
             chan.handlers[type]()
-        else:
-            print('CANNOT CONSUME')
 
     def handle_event(self, fileno, event):
         if event & READ:
