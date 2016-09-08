@@ -18,6 +18,7 @@ def supports_librabbitmq():
 
 TRANSPORT_ALIASES = {
     'amqp': 'kombu.transport.pyamqp:Transport',
+    'amqps': 'kombu.transport.pyamqp:SSLTransport',
     'pyamqp': 'kombu.transport.pyamqp:Transport',
     'librabbitmq': 'kombu.transport.librabbitmq:Transport',
     'memory': 'kombu.transport.memory:Transport',

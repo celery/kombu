@@ -156,3 +156,14 @@ class Transport(base.Transport):
 
     def get_manager(self, *args, **kwargs):
         return get_manager(self.client, *args, **kwargs)
+
+
+class SSLTransport(Transport):
+
+    def __init__(self, *args, **kwargs):
+        super(SSLTransport, self).__init__(*args, **kwargs)
+
+        # ugh, not exactly pure, but hey, it's python.
+        self.client.ssl = True
+
+

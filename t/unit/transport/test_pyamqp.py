@@ -11,6 +11,12 @@ from kombu.five import nextfun
 from kombu.transport import pyamqp
 
 
+def test_amqps_connection():
+    conn = Connection('amqps://')
+    assert conn.transport  # evaluate transport, don't connect
+    assert conn.ssl
+
+
 class MockConnection(dict):
 
     def __setattr__(self, key, value):
