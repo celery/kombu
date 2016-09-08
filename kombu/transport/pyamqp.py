@@ -165,5 +165,3 @@ class SSLTransport(Transport):
 
         # ugh, not exactly pure, but hey, it's python.
         self.client.ssl = True
-
-
