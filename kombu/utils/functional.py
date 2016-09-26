@@ -6,7 +6,7 @@ from collections import Iterable, Mapping
 
 from kombu.five import string_t
 
-__all__ = ['lazy', 'maybe_evaluate', 'is_list', 'maybe_list']
+__all__ = ['lazy', 'maybe_evaluate', 'is_list', 'maybe_list', 'dictfilter']
 
 
 class lazy(object):
@@ -75,6 +75,12 @@ def is_list(l, scalars=(Mapping, string_t), iters=(Iterable, )):
 def maybe_list(l, scalars=(Mapping, string_t)):
     """Return list of one element if ``l`` is a scalar."""
     return l if l is None or is_list(l, scalars) else [l]
+
+
+def dictfilter(d=None, **kw):
+    """Remove all keys from dict ``d`` whose value is :const:`None`"""
+    d = kw if d is None else (dict(d, **kw) if kw else d)
+    return dict((k, v) for k, v in d.iteritems() if v is not None)
 
 
 # Compat names (before kombu 3.0)

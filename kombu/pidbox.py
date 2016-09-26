@@ -22,9 +22,9 @@ from .common import maybe_declare, oid_from
 from .exceptions import InconsistencyError
 from .five import range
 from .log import get_logger
-from .utils import cached_property, kwdict, uuid, reprcall
+from .utils import cached_property, kwdict, uuid, reprcall, maybe_s_to_ms
+from .utils.functional import dictfilter
 
-REPLY_QUEUE_EXPIRES = 10
 
 W_PIDBOX_IN_USE = """\
 A node named {node.hostname} is already using this process mailbox!
@@ -167,9 +167,15 @@ class Mailbox(object):
 
     def __init__(self, namespace,
                  type='direct', connection=None, clock=None,
-                 accept=None, serializer=None):
+                 accept=None, serializer=None,
+                 queue_ttl=None, queue_expires=None,
+                 reply_queue_ttl=None, reply_queue_expires=10):
         self.namespace = namespace
         self.connection = connection
+        self.queue_ttl = queue_ttl
+        self.queue_expires = queue_expires
+        self.reply_queue_ttl = reply_queue_ttl
+        self.reply_queue_expires = reply_queue_expires
         self.type = type
         self.clock = LamportClock() if clock is None else clock
         self.exchange = self._get_exchange(self.namespace, self.type)
@@ -216,8 +222,18 @@ class Mailbox(object):
             routing_key=oid,
             durable=False,
             auto_delete=True,
-            queue_arguments={'x-expires': int(REPLY_QUEUE_EXPIRES * 1000)},
+            queue_arguments=self._get_reply_queue_arguments(),
         )
+
+    def _get_reply_queue_arguments(self, ttl=None, expires=None):
+        return dictfilter({
+            'x-message-ttl': maybe_s_to_ms(
+                ttl if ttl is not None else self.reply_queue_ttl,
+            ),
+            'x-expires': maybe_s_to_ms(
+                expires if expires is not None else self.reply_queue_expires,
+            ),
+        })
 
     @cached_property
     def reply_queue(self):
@@ -227,7 +243,18 @@ class Mailbox(object):
         return Queue('%s.%s.pidbox' % (hostname, self.namespace),
                      exchange=self.exchange,
                      durable=False,
-                     auto_delete=True)
+                     auto_delete=True,
+                     queue_arguments=self._get_queue_arguments())
+
+    def _get_queue_arguments(self, ttl=None, expires=None):
+        return dictfilter({
+            'x-message-ttl': maybe_s_to_ms(
+                ttl if ttl is not None else self.queue_ttl,
+            ),
+            'x-expires': maybe_s_to_ms(
+                expires if expires is not None else self.queue_expires,
+            ),
+        })
 
     def _publish_reply(self, reply, exchange, routing_key, ticket,
                        channel=None, **opts):

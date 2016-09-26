@@ -42,7 +42,8 @@ except ImportError:  # pragma: no cover
 __all__ = ['EqualityDict', 'say', 'uuid', 'kwdict', 'maybe_list',
            'fxrange', 'fxrangemax', 'retry_over_time',
            'emergency_dump_state', 'cached_property',
-           'reprkwargs', 'reprcall', 'nested', 'fileno', 'maybe_fileno']
+           'reprkwargs', 'reprcall', 'nested', 'fileno', 'maybe_fileno',
+           'maybe_s_to_ms']
 
 
 def symbol_by_name(name, aliases={}, imp=None, package=None,
@@ -451,3 +452,7 @@ def maybe_fileno(f):
         return fileno(f)
     except FILENO_ERRORS:
         pass
+
+
+def maybe_s_to_ms(v):
+    return int(float(v) * 1000.0) if v is not None else v
