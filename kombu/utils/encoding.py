@@ -47,8 +47,8 @@ if is_py3k:  # pragma: no cover
         return s
 
     def bytes_to_str(s):
-        if isinstance(s, bytes):
-            return s.decode()
+        #if isinstance(s, bytes):
+        #    return s.decode()
         return s
 
     def from_utf8(s, *args, **kwargs):
