@@ -783,16 +783,29 @@ class test_Channel:
 
     def test_ssl_argument__dict(self):
         with patch('kombu.transport.redis.Channel._create_client'):
-            with Connection('redis://', ssl={'ca_cert': '/foo'}) as conn:
+            # Expected format for redis-py's SSLConnection class
+            ssl_params = {
+                'ssl_cert_reqs': 2,
+                'ssl_ca_certs': '/foo/ca.pem',
+                'ssl_certfile': '/foo/cert.crt',
+                'ssl_keyfile': '/foo/pkey.key'
+            }
+            with Connection('redis://', ssl=ssl_params) as conn:
                 connparams = conn.default_channel._connparams()
-                assert connparams['ssl']
-                assert connparams['ca_cert'] == '/foo'
+                assert connparams['ssl_cert_reqs'] == ssl_params['ssl_cert_reqs']
+                assert connparams['ssl_ca_certs'] == ssl_params['ssl_ca_certs']
+                assert connparams['ssl_certfile'] == ssl_params['ssl_certfile']
+                assert connparams['ssl_keyfile'] == ssl_params['ssl_keyfile']
+                assert connparams.get('ssl') is None
 
-    def test_ssl_argument__bool(self):
+    def test_ssl_connection(self):
         with patch('kombu.transport.redis.Channel._create_client'):
-            with Connection('redis://', ssl=True) as conn:
+            with Connection('redis://', ssl={'ssl_cert_reqs': 2}) as conn:
                 connparams = conn.default_channel._connparams()
-                assert connparams['ssl']
+                assert issubclass(
+                    connparams['connection_class'],
+                    redis.redis.SSLConnection,
+                )
 
 
 @skip.unless_module('redis')
