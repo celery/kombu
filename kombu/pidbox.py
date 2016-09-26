@@ -21,8 +21,6 @@ from .utils.functional import maybe_evaluate, reprcall
 from .utils.objects import cached_property
 from .utils.uuid import uuid
 
-REPLY_QUEUE_EXPIRES = 10
-
 W_PIDBOX_IN_USE = """\
 A node named {node.hostname} is already using this process mailbox!
 
@@ -167,7 +165,9 @@ class Mailbox(object):
 
     def __init__(self, namespace,
                  type='direct', connection=None, clock=None,
-                 accept=None, serializer=None, producer_pool=None):
+                 accept=None, serializer=None, producer_pool=None,
+                 queue_ttl=None, queue_expires=None,
+                 reply_queue_ttl=None, reply_queue_expires=10.0):
         self.namespace = namespace
         self.connection = connection
         self.type = type
@@ -178,6 +178,10 @@ class Mailbox(object):
         self.unclaimed = defaultdict(deque)
         self.accept = self.accept if accept is None else accept
         self.serializer = self.serializer if serializer is None else serializer
+        self.queue_ttl = queue_ttl
+        self.queue_expires = queue_expires
+        self.reply_queue_ttl = reply_queue_ttl
+        self.reply_queue_expires = reply_queue_expires
         self._producer_pool = producer_pool
 
     def __call__(self, connection):
@@ -217,7 +221,8 @@ class Mailbox(object):
             routing_key=oid,
             durable=False,
             auto_delete=True,
-            expires=REPLY_QUEUE_EXPIRES,
+            expires=self.reply_queue_expires,
+            message_ttl=self.reply_queue_ttl,
         )
 
     @cached_property
@@ -225,10 +230,14 @@ class Mailbox(object):
         return self.get_reply_queue()
 
     def get_queue(self, hostname):
-        return Queue('%s.%s.pidbox' % (hostname, self.namespace),
-                     exchange=self.exchange,
-                     durable=False,
-                     auto_delete=True)
+        return Queue(
+            '%s.%s.pidbox' % (hostname, self.namespace),
+            exchange=self.exchange,
+            durable=False,
+            auto_delete=True,
+            expire=self.queue_expires,
+            message_ttl=self.queue_ttl,
+        )
 
     @contextmanager
     def producer_or_acquire(self, producer=None, channel=None):

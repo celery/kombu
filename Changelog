@@ -23,7 +23,7 @@
 
     This to match how priorities in AMQP works.
 
-    Fix contributed by Alex Koshelev.
+    Fix contributed by **Alex Koshelev**.
 
 - RabbitMQ Queue Extensions
 
@@ -66,7 +66,7 @@
 
     This to match how priorities in AMQP works.
 
-    Fix contributed by Alex Koshelev.
+    Fix contributed by **Alex Koshelev**.
 
 - Redis: now supports SSL using the ``ssl`` argument to
   :class:`~kombu.Connection`.
@@ -90,6 +90,21 @@
             'fanout_patterns': True,
         })
 
+- Pidbox: Mailbox new arguments: TTL and expiry.
+
+    Mailbox now supports new arguments for controlling
+    message TTLs and queue expiry, both for the mailbox
+    queue and for reply queues.
+
+    - ``queue_expires`` (float/int seconds).
+    - ``queue_ttl`` (float/int seconds).
+    - ``reply_queue_expires`` (float/int seconds).
+    - ``reply_queue_ttl`` (float/int seconds).
+
+    Contributed by **Alan Justino**.
+
+All take seconds in int/float.
+
 - Exchange.delivery_mode now defaults to :const:`None`, and the default
   is instead set by ``Producer.publish``.
 
@@ -109,18 +124,18 @@
 
 - SQS: Consumers can now read json messages not sent by Kombu.
 
-    Contributed by Juan Carlos Ferrer.
+    Contributed by **Juan Carlos Ferrer**.
 
 - SQS: Will now log the access key used when authentication fails.
 
-    Contributed by Hank John.
+    Contributed by **Hank John**.
 
 - Added new :class:`kombu.mixins.ConsumerProducerMixin` for consumers that
   will also publish messages on a separate connection.
 
 - Messages: Now have a more descriptive ``repr``.
 
-    Contributed by Joshua Harlow.
+    Contributed by **Joshua Harlow**.
 
 - Async: HTTP client based on curl.
 
@@ -128,12 +143,12 @@
 
 - MongoDB: Now supports priorities
 
-    Contributed by Alex Koshelev.
+    Contributed by **Alex Koshelev**.
 
 - Zookeeper: Transport now uses the built-in suport in kazoo to handle
   failover when using a list of server names.
 
-    Contributed by Joshua Harlow.
+    Contributed by **Joshua Harlow**.
 
 - Removed module ``kombu.syn``
 
