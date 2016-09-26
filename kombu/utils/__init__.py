@@ -23,3 +23,4 @@ __all__ = [
 
 def maybe_s_to_ms(v):
     return int(float(v) * 1000.0) if v is not None else v
+
