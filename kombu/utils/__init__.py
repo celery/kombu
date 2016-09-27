@@ -17,7 +17,7 @@ __all__ = [
     'emergency_dump_state', 'cached_property',
     'register_after_fork', 'reprkwargs', 'reprcall',
     'symbol_by_name', 'nested', 'fileno', 'maybe_fileno',
-    'maybe_s_to_ms']
+    'maybe_s_to_ms',
 ]
 
 
