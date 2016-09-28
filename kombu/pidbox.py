@@ -169,13 +169,13 @@ class Mailbox(object):
                  type='direct', connection=None, clock=None,
                  accept=None, serializer=None,
                  queue_ttl=None, queue_expires=None,
-                 reply_queue_ttl=None, reply_queue_expires=10):
+                 reply_queue_ttl=None, reply_queue_expires=None):
         self.namespace = namespace
         self.connection = connection
         self.queue_ttl = queue_ttl
         self.queue_expires = queue_expires
         self.reply_queue_ttl = reply_queue_ttl
-        self.reply_queue_expires = reply_queue_expires
+        self.reply_queue_expires = reply_queue_expires or 10
         self.type = type
         self.clock = LamportClock() if clock is None else clock
         self.exchange = self._get_exchange(self.namespace, self.type)
