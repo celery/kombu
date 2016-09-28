@@ -515,6 +515,7 @@ class Channel(virtual.Channel):
         if async_pool is not None:
             async_pool.disconnect()
 
+
     def _on_connection_disconnect(self, connection):
         self._in_poll = False
         self._in_listen = False
@@ -842,7 +843,9 @@ class Channel(virtual.Channel):
         # Close connections
         for attr in 'client', 'subclient':
             try:
-                self.__dict__[attr].connection.disconnect()
+                client = self.__dict__[attr]
+                connection, client.connection = client.connection, None
+                connection.disconnect()
             except (KeyError, AttributeError, self.ResponseError):
                 pass
 
