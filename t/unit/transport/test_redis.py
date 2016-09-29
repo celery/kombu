@@ -695,7 +695,6 @@ class test_Channel:
 
         with self.channel.conn_or_acquire():
             pass
-        self.channel.pool.release.assert_called_with(client.connection)
         cc.assert_called_with()
 
     def test_register_with_event_loop(self):

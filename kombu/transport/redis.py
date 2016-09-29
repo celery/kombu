@@ -279,6 +279,8 @@ class MultiChannelPoller(object):
         self.poller.unregister(self._chan_to_sock[(channel, client, type)])
 
     def _client_registered(self, channel, client, cmd):
+        if getattr(client, 'connection', None) is None:
+            client.connection = client.connection_pool.get_connection('_')
         return (client.connection._sock is not None and
                 (channel, client, cmd) in self._chan_to_sock)
 
@@ -517,13 +519,12 @@ class Channel(virtual.Channel):
 
 
     def _on_connection_disconnect(self, connection):
-        self._in_poll = False
-        self._in_listen = False
+        if self._in_poll is connection:
+            self._in_poll = None
+        if self._in_listen is connection:
+            self._in_listen = None
         if self.connection and self.connection.cycle:
             self.connection.cycle._on_connection_disconnect(connection)
-        self._disconnect_pools()
-        if not self._closing:
-            raise get_redis_ConnectionError()
 
     def _do_restore_message(self, payload, exchange, routing_key,
                             client=None, leftmost=False):
@@ -626,7 +627,7 @@ class Channel(virtual.Channel):
         c = self.subclient
         if c.connection._sock is None:
             c.connection.connect()
-        self._in_listen = True
+        self._in_listen = c.connection
         c.psubscribe(keys)
 
     def _unsubscribe_from(self, queue):
@@ -674,7 +675,7 @@ class Channel(virtual.Channel):
         try:
             response = c.parse_response()
         except self.connection_errors:
-            self._in_listen = False
+            self._in_listen = None
             raise
         if response is not None:
             payload = self._handle_message(c, response)
@@ -700,7 +701,7 @@ class Channel(virtual.Channel):
             return
         keys = [self._q_for_pri(queue, pri) for pri in self.priority_steps
                 for queue in queues] + [timeout or 0]
-        self._in_poll = True
+        self._in_poll = self.client.connection
         self.client.connection.send_command('BRPOP', *keys)
 
     def _brpop_read(self, **options):
@@ -723,7 +724,7 @@ class Channel(virtual.Channel):
             else:
                 raise Empty()
         finally:
-            self._in_poll = False
+            self._in_poll = None
 
     def _poll_error(self, type, **options):
         if type == 'LISTEN':
@@ -938,28 +939,14 @@ class Channel(virtual.Channel):
             raise VersionMismatch(
                 'Redis transport requires redis-py versions 2.10.0 or later. '
                 'You have {0.__version__}'.format(redis))
-
-        # KombuRedis maintains a connection attribute on it's instance and
-        # uses that when executing commands
-        # This was added after redis-py was changed.
-        class KombuRedis(redis.StrictRedis):  # pragma: no cover
-
-            def __init__(self, *args, **kwargs):
-                super(KombuRedis, self).__init__(*args, **kwargs)
-                self.connection = self.connection_pool.get_connection('_')
-
-        return KombuRedis
+        return redis.StrictRedis
 
     @contextmanager
     def conn_or_acquire(self, client=None):
         if client:
             yield client
         else:
-            client = self._create_client()
-            try:
-                yield client
-            finally:
-                self.pool.release(client.connection)
+            yield self._create_client()
 
     @property
     def pool(self):
@@ -982,10 +969,7 @@ class Channel(virtual.Channel):
     def subclient(self):
         """Pub/Sub connection used to consume fanout queues."""
         client = self._create_client(async=True)
-        pubsub = client.pubsub()
-        pool = pubsub.connection_pool
-        pubsub.connection = pool.get_connection('pubsub', pubsub.shard_hint)
-        return pubsub
+        return client.pubsub()
 
     def _update_queue_cycle(self):
         self._queue_cycle.update(self.active_queues)
