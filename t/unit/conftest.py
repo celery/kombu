@@ -10,23 +10,22 @@ from kombu.exceptions import VersionMismatch
 
 @pytest.fixture(scope='session')
 def multiprocessing_workaround(request):
-    def fin():
-        # Workaround for multiprocessing bug where logging
-        # is attempted after global already collected at shutdown.
-        canceled = set()
-        try:
-            import multiprocessing.util
-            canceled.add(multiprocessing.util._exit_function)
-        except (AttributeError, ImportError):
-            pass
+    yield
+    # Workaround for multiprocessing bug where logging
+    # is attempted after global already collected at shutdown.
+    canceled = set()
+    try:
+        import multiprocessing.util
+        canceled.add(multiprocessing.util._exit_function)
+    except (AttributeError, ImportError):
+        pass
 
-        try:
-            atexit._exithandlers[:] = [
-                e for e in atexit._exithandlers if e[0] not in canceled
-            ]
-        except AttributeError:  # pragma: no cover
-            pass  # Py3 missing _exithandlers
-    request.addfinalizer(fin)
+    try:
+        atexit._exithandlers[:] = [
+            e for e in atexit._exithandlers if e[0] not in canceled
+        ]
+    except AttributeError:  # pragma: no cover
+        pass  # Py3 missing _exithandlers
 
 
 @pytest.fixture(autouse=True)
@@ -35,9 +34,11 @@ def zzzz_test_cases_calls_setup_teardown(request):
         # we set the .patching attribute for every test class.
         setup = getattr(request.instance, 'setup', None)
         # we also call .setup() and .teardown() after every test method.
-        teardown = getattr(request.instance, 'teardown', None)
         setup and setup()
-        teardown and request.addfinalizer(teardown)
+    yield
+    if request.instance:
+        teardown = getattr(request.instance, 'teardown', None)
+        teardown and teardown()
 
 
 @pytest.fixture(autouse=True)
@@ -53,11 +54,10 @@ def hub(request):
     hub = Hub()
     set_event_loop(hub)
 
-    def fin():
-        if _prev_hub is not None:
-            set_event_loop(_prev_hub)
-    request.addfinalizer(fin)
-    return hub
+    yield hub
+
+    if _prev_hub is not None:
+        set_event_loop(_prev_hub)
 
 
 def find_distribution_modules(name=__name__, file=__file__):
