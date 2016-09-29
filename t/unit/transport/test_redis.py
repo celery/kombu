@@ -789,12 +789,12 @@ class test_Channel:
                 'ssl_keyfile': '/foo/pkey.key'
             }
             with Connection('redis://', ssl=ssl_params) as conn:
-                connparams = conn.default_channel._connparams()
-                assert connparams['ssl_cert_reqs'] == ssl_params['ssl_cert_reqs']
-                assert connparams['ssl_ca_certs'] == ssl_params['ssl_ca_certs']
-                assert connparams['ssl_certfile'] == ssl_params['ssl_certfile']
-                assert connparams['ssl_keyfile'] == ssl_params['ssl_keyfile']
-                assert connparams.get('ssl') is None
+                params = conn.default_channel._connparams()
+                assert params['ssl_cert_reqs'] == ssl_params['ssl_cert_reqs']
+                assert params['ssl_ca_certs'] == ssl_params['ssl_ca_certs']
+                assert params['ssl_certfile'] == ssl_params['ssl_certfile']
+                assert params['ssl_keyfile'] == ssl_params['ssl_keyfile']
+                assert params.get('ssl') is None
 
     def test_ssl_connection(self):
         with patch('kombu.transport.redis.Channel._create_client'):
