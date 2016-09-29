@@ -517,7 +517,6 @@ class Channel(virtual.Channel):
         if async_pool is not None:
             async_pool.disconnect()
 
-
     def _on_connection_disconnect(self, connection):
         if self._in_poll is connection:
             self._in_poll = None

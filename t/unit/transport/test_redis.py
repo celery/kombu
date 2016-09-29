@@ -691,8 +691,6 @@ class test_Channel:
     def test_avail_client(self):
         self.channel._pool = Mock()
         cc = self.channel._create_client = Mock()
-        client = cc.return_value = Mock()
-
         with self.channel.conn_or_acquire():
             pass
         cc.assert_called_with()
