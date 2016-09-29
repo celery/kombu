@@ -632,15 +632,8 @@ class Channel(virtual.Channel):
     def _unsubscribe_from(self, queue):
         topic = self._get_subscribe_topic(queue)
         c = self.subclient
-        should_disconnect = False
-        if c.connection._sock is None:
-            c.connection.connect()
-            should_disconnect = True
-        try:
+        if c.connection and c.connection._sock:
             c.unsubscribe([topic])
-        finally:
-            if should_disconnect and c.connection:
-                c.connection.disconnect()
 
     def _handle_message(self, client, r):
         if bytes_to_str(r[0]) == 'unsubscribe' and r[2] == 0:
