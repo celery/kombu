@@ -633,10 +633,11 @@ class test_Channel:
 
     def test_close_client_close_raises(self):
         c = self.channel.client = Mock()
-        c.connection.disconnect.side_effect = self.channel.ResponseError()
+        connection = c.connection
+        connection.disconnect.side_effect = self.channel.ResponseError()
 
         self.channel.close()
-        c.connection.disconnect.assert_called_with()
+        connection.disconnect.assert_called_with()
 
     def test_invalid_database_raises_ValueError(self):
 
@@ -690,11 +691,8 @@ class test_Channel:
     def test_avail_client(self):
         self.channel._pool = Mock()
         cc = self.channel._create_client = Mock()
-        client = cc.return_value = Mock()
-
         with self.channel.conn_or_acquire():
             pass
-        self.channel.pool.release.assert_called_with(client.connection)
         cc.assert_called_with()
 
     def test_register_with_event_loop(self):
