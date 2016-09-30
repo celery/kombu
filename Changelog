@@ -4,6 +4,27 @@
  Change history
 ================
 
+.. _version-3.0.36:
+
+3.0.36
+======
+:release-date: 2016-09-30 03:06 P.M PST
+:release-by: Ask Solem
+
+- Connection: Fixed bug when cloning connection with alternate urls.
+
+    Fix contributed by Emmanuel Cazenave.
+
+- Redis: Fixed problem with unix socket connections.
+
+    https://github.com/celery/celery/issues/2903
+
+    Fix contributed by Raphael Michel.
+
+- Redis: Fixed compatibility with older redis-py versions (Issue #576).
+
+- Broadcast now retains queue name when being copied/pickled (Issue #578).
+
 .. _version-3.0.35:
 
 3.0.35
