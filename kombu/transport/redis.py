@@ -875,10 +875,11 @@ class Channel(virtual.Channel):
             'socket_keepalive_options': self.socket_keepalive_options,
         }
         if conninfo.ssl:
-            # Connection(ssl={}) can be a dict like in amqplib.
-            connparams['ssl'] = True
+            # Connection(ssl={}) must be a dict containing the keys:
+            # 'ssl_cert_reqs', 'ssl_ca_certs', 'ssl_certfile', 'ssl_keyfile'
             try:
                 connparams.update(conninfo.ssl)
+                connparams['connection_class'] = redis.SSLConnection
             except TypeError:
                 pass
         host = connparams['host']
