@@ -99,6 +99,11 @@
 
     Contributed by Joshua Harlow.
 
+- Removed module ``kombu.syn``
+
+    ``detect_environment`` has been moved to kombu.utils.compat
+
+
 .. _version-3.0.35:
 
 3.0.35

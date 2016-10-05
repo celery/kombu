@@ -23,7 +23,6 @@
     kombu.pools
     kombu.abstract
     kombu.resource
-    kombu.syn
     kombu.async
     kombu.async.hub
     kombu.async.semaphore

@@ -15,9 +15,8 @@ import sys
 
 from numbers import Integral
 
-from kombu.syn import detect_environment
-
 from . import fileno
+from .compat import detect_environment
 
 __all__ = ['poll']
 

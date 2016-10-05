@@ -14,7 +14,7 @@ from pymongo.cursor import CursorType
 
 from kombu.exceptions import VersionMismatch
 from kombu.five import Empty
-from kombu.syn import _detect_environment
+from kombu.utils.compat import _detect_environment
 from kombu.utils.encoding import bytes_to_str
 from kombu.utils.json import loads, dumps
 from kombu.utils.objects import cached_property
