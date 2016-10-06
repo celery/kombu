@@ -135,8 +135,12 @@ class Connection(object):
     #: constantly yielding new URLs to try.
     failover_strategy = 'round-robin'
 
+    #: Map of failover strategy name to Callable
+    failover_strategies = failover_strategies
+
     #: Heartbeat value, currently only supported by the py-amqp transport.
     heartbeat = None
+
 
     hostname = userid = password = ssl = login_method = None
 
@@ -180,8 +184,9 @@ class Connection(object):
 
         # fallback hosts
         self.alt = alt
-        self.failover_strategy = failover_strategies.get(
-            failover_strategy or 'round-robin') or failover_strategy
+        self._failover_strategy_arg = failover_strategy or 'round-robin'
+        self.failover_strategy = self.failover_strategies.get(
+            self._failover_strategy_arg) or failover_strategy
         if self.alt:
             self.cycle = self.failover_strategy(self.alt)
             next(self.cycle)  # skip first entry
@@ -560,7 +565,7 @@ class Connection(object):
             ('login_method', self.login_method or D.get('login_method')),
             ('uri_prefix', self.uri_prefix),
             ('heartbeat', self.heartbeat),
-            ('failover_strategy', self.failover_strategy),
+            ('failover_strategy', self._failover_strategy_arg),
             ('alternates', self.alt),
         )
         return info
