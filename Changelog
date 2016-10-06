@@ -4,11 +4,22 @@
  Change history
 ================
 
+.. _version-3.0.37:
+
+3.0.37
+======
+:release-date: 2016-10-06 05:00 P.M PDT
+:release-by: Ask Solem
+
+- Connection: Return value of ``.info()`` was no longer JSON serializable,
+  leading to "itertools.cycle object not JSON serializable"
+  errors (Issue #635).
+
 .. _version-3.0.36:
 
 3.0.36
 ======
-:release-date: 2016-09-30 03:06 P.M PST
+:release-date: 2016-09-30 03:06 P.M PDT
 :release-by: Ask Solem
 
 - Connection: Fixed bug when cloning connection with alternate urls.
