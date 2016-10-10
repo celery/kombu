@@ -64,11 +64,13 @@ bump-major:
 release:
 	python setup.py register sdist bdist_wheel upload --sign --identity="$(PGPIDENT)"
 
-Documentation:
+build-docs:
 	(cd "$(SPHINX_DIR)"; $(MAKE) html)
-	mv "$(SPHINX_HTMLDIR)" $(DOCUMENTATION)
 
-docs: Documentation
+Documentation:
+	ln -sf "$(SPHINX_HTMLDIR)" $@
+
+docs: build-docs Documentation
 
 clean-docs:
 	-rm -rf "$(SPHINX_BUILDDIR)"
