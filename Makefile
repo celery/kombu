@@ -98,7 +98,7 @@ flakeplusdiag:
 	-$(MAKE) flakepluscheck
 
 pep257check:
-	$(PYDOCSTYLE) --ignore=D102,D104,D203,D105 "$(PROJ)"
+	$(PYDOCSTYLE) "$(PROJ)"
 
 flakes: flakediag flakeplusdiag pep257check
 
