@@ -24,6 +24,7 @@ Unable to locate pyro nameserver {0.virtual_host} on host {0.hostname}\
 
 
 class Channel(virtual.Channel):
+    """Pyro Channel."""
 
     def queues(self):
         return self.shared_queues.get_queue_names()
@@ -64,6 +65,8 @@ class Channel(virtual.Channel):
 
 
 class Transport(virtual.Transport):
+    """Pyro Transport."""
+
     Channel = Channel
 
     #: memory backend state is global.

@@ -1,4 +1,4 @@
-"""Carrot compatible interface
+"""Carrot compatibility interface.
 
 See http://packages.python.org/pypi/carrot for documentation.
 """
@@ -25,6 +25,8 @@ def _iterconsume(connection, consumer, no_ack=False, limit=None):
 
 
 class Publisher(messaging.Producer):
+    """Carrot compatible producer."""
+
     exchange = ''
     exchange_type = 'direct'
     routing_key = ''
@@ -74,6 +76,8 @@ class Publisher(messaging.Producer):
 
 
 class Consumer(messaging.Consumer):
+    """Carrot compatible consumer."""
+
     queue = ''
     exchange = ''
     routing_key = ''

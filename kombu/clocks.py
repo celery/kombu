@@ -24,6 +24,7 @@ class timetuple(tuple):
         id (str): Event host id (e.g. ``hostname:pid``).
         obj (Any): Optional obj to associate with this event.
     """
+
     __slots__ = ()
 
     def __new__(cls, clock, timestamp, id, obj=None):
@@ -99,6 +100,7 @@ class LamportClock(object):
     the time stamp of the incoming message.
 
     """
+
     #: The clocks current value.
     value = 0
 
@@ -117,7 +119,9 @@ class LamportClock(object):
             return self.value
 
     def sort_heap(self, h):
-        """List of tuples containing at least two elements, representing
+        """Sort heap of events.
+
+        List of tuples containing at least two elements, representing
         an event, where the first element is the event's scalar clock value,
         and the second element is the id of the process (usually
         ``"hostname:pid"``): ``sh([(clock, processid, ...?), (...)])``
@@ -129,7 +133,6 @@ class LamportClock(object):
         present.
 
         Will return the latest event.
-
         """
         if h[0][0] == h[1][0]:
             same = []

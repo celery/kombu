@@ -31,6 +31,7 @@ def pretty_bindings(bindings):
 
 def maybe_delivery_mode(
         v, modes=DELIVERY_MODES, default=PERSISTENT_DELIVERY_MODE):
+    """Get delivery mode by name (or none if undefined)."""
     if v:
         return v if isinstance(v, numbers.Integral) else modes[v]
     return default
@@ -129,6 +130,7 @@ class Exchange(MaybeChannelBound):
         no_declare (bool): Never declare this exchange
             (:meth:`declare` does nothing).
     """
+
     TRANSIENT_DELIVERY_MODE = TRANSIENT_DELIVERY_MODE
     PERSISTENT_DELIVERY_MODE = PERSISTENT_DELIVERY_MODE
 
@@ -185,7 +187,7 @@ class Exchange(MaybeChannelBound):
 
     def bind_to(self, exchange='', routing_key='',
                 arguments=None, nowait=False, **kwargs):
-        """Binds the exchange to another exchange.
+        """Bind the exchange to another exchange.
 
         Arguments:
             nowait (bool): If set the server will not respond, and the call
@@ -460,6 +462,7 @@ class Queue(MaybeChannelBound):
         no_declare (bool): Never declare this queue, nor related
             entities (:meth:`declare` does nothing).
     """
+
     ContentDisallowed = ContentDisallowed
 
     name = ''
@@ -522,8 +525,7 @@ class Queue(MaybeChannelBound):
             self.exchange = self.exchange(self.channel)
 
     def declare(self, nowait=False):
-        """Declares the queue, the exchange and binds the queue to
-        the exchange."""
+        """Declare queue and exchange then binds queue to exchange."""
         if not self.no_declare:
             # - declare main binding.
             self._create_exchange(nowait=nowait)
@@ -718,7 +720,7 @@ class Queue(MaybeChannelBound):
         return not self.auto_delete
 
     @classmethod
-    def from_dict(self, queue, **options):
+    def from_dict(cls, queue, **options):
         binding_key = options.get('binding_key') or options.get('routing_key')
 
         e_durable = options.get('exchange_durable')

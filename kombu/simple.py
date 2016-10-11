@@ -84,7 +84,7 @@ class SimpleBase(object):
             self._consuming = True
 
     def __len__(self):
-        """`len(self) -> self.qsize()`"""
+        """`len(self) -> self.qsize()`."""
         return self.qsize()
 
     def __bool__(self):
@@ -93,6 +93,8 @@ class SimpleBase(object):
 
 
 class SimpleQueue(SimpleBase):
+    """Simple API for persistent queues."""
+
     no_ack = False
     queue_opts = {}
     exchange_opts = {'type': 'direct'}
@@ -123,6 +125,8 @@ class SimpleQueue(SimpleBase):
 
 
 class SimpleBuffer(SimpleQueue):
+    """Simple API for ephemeral queues."""
+
     no_ack = True
     queue_opts = dict(durable=False,
                       auto_delete=True)

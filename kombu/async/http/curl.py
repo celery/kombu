@@ -1,3 +1,4 @@
+"""HTTP Client using pyCurl."""
 from __future__ import absolute_import, unicode_literals
 
 from collections import deque
@@ -33,6 +34,8 @@ EXTRA_METHODS = frozenset(['DELETE', 'OPTIONS', 'PATCH'])
 
 
 class CurlClient(BaseClient):
+    """Curl HTTP Client."""
+
     Curl = Curl
 
     def __init__(self, hub=None, max_clients=10):

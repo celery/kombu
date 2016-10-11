@@ -1,10 +1,4 @@
-"""
-kombu.utils.eventio
-===================
-
-Evented IO support for multiple platforms.
-
-"""
+"""Selector Utilities."""
 from __future__ import absolute_import, unicode_literals
 
 import errno
@@ -332,4 +326,5 @@ def _get_poller():
 
 
 def poll(*args, **kwargs):
+    """Create new poller instance."""
     return _get_poller()(*args, **kwargs)

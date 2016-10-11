@@ -159,7 +159,9 @@ class SerializerRegistry(object):
                 'No encoder installed for {0}'.format(name))
 
     def dumps(self, data, serializer=None):
-        """Serialize a data structure into a string suitable for sending
+        """Encode data.
+
+        Serialize a data structure into a string suitable for sending
         as an AMQP message body.
 
         Arguments:
@@ -222,7 +224,9 @@ class SerializerRegistry(object):
 
     def loads(self, data, content_type, content_encoding,
               accept=None, force=False, _trusted_content=TRUSTED_CONTENT):
-        """Deserialize a data stream as serialized using `dumps`
+        """Decode serialized data.
+
+        Deserialize a data stream as serialized using `dumps`
         based on `content_type`.
 
         Arguments:
@@ -321,8 +325,11 @@ def register_yaml():
     except ImportError:
 
         def not_available(*args, **kwargs):
-            """In case a client receives a yaml message, but yaml
-            isn't installed."""
+            """Raise SerializerNotInstalled.
+
+            Used in case a client receives a yaml message, but yaml
+            isn't installed.
+            """
             raise SerializerNotInstalled(
                 'No decoder installed for YAML. Install the PyYAML library')
         registry.register('yaml', None, not_available, 'application/x-yaml')
@@ -338,9 +345,11 @@ else:
 
 
 def register_pickle():
-    """The fastest serialization method, but restricts
-    you to python clients."""
+    """Register pickle serializer.
 
+    The fastest serialization method, but restricts
+    you to python clients.
+    """
     def pickle_dumps(obj, dumper=pickle.dumps):
         return dumper(obj, protocol=pickle_protocol)
 
@@ -350,7 +359,11 @@ def register_pickle():
 
 
 def register_msgpack():
-    """See http://msgpack.sourceforge.net/"""
+    """Register msgpack serializer.
+
+    See Also:
+        http://msgpack.sourceforge.net/.
+    """
     pack = unpack = None
     try:
         import msgpack

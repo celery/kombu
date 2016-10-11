@@ -9,6 +9,8 @@ from .five import python_2_unicode_compatible, reraise, text_t
 from .serialization import loads
 from .utils.functional import dictfilter
 
+__all__ = ['Message']
+
 ACK_STATES = {'ACK', 'REJECTED', 'REQUEUED'}
 IS_PYPY = hasattr(sys, 'pypy_version_info')
 
@@ -68,7 +70,7 @@ class Message(object):
             callback(self, exc)
 
     def ack(self, multiple=False):
-        """Acknowledge this message as being processed.,
+        """Acknowledge this message as being processed.
 
         This will remove the message from the queue.
 
@@ -140,8 +142,9 @@ class Message(object):
         self._state = 'REQUEUED'
 
     def decode(self):
-        """Deserialize the message body, returning the original
-        python structure sent by the publisher.
+        """Deserialize the message body.
+
+        Returning the original python structure sent by the publisher.
 
         Note:
             The return value is memoized, use `_decode` to force

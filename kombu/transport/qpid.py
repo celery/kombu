@@ -1,6 +1,4 @@
-"""
-kombu.transport.qpid
-=======================
+"""Qpid Transport.
 
 `Qpid`_ transport using `qpid-python`_ as the client and `qpid-tools`_ for
 broker management.
@@ -77,7 +75,6 @@ The :attr:`~kombu.Connection.transport_options` argument to the
 options override and replace any other default or specified values. If using
 Celery, this can be accomplished by setting the
 *BROKER_TRANSPORT_OPTIONS* Celery option.
-
 """
 from __future__ import absolute_import, unicode_literals
 
@@ -138,8 +135,10 @@ PY3 = sys.version_info[0] == 3
 
 
 def dependency_is_none(dependency):
-    """Return True if the dependency is None, otherwise False. This is done
-    using a function so that tests can mock this behavior easily.
+    """Return True if the dependency is None, otherwise False.
+
+    This is done using a function so that tests can mock this
+    behavior easily.
 
     :param dependency: The module to check if it is None
     :return: True if dependency is None otherwise False.
@@ -149,7 +148,7 @@ def dependency_is_none(dependency):
 
 
 class AuthenticationFailure(Exception):
-    pass
+    """Cannot authenticate with Qpid."""
 
 
 class QoS(object):
@@ -186,8 +185,7 @@ class QoS(object):
         self._not_yet_acked = OrderedDict()
 
     def can_consume(self):
-        """Return True if the :class:`~kombu.transport.qpid.Channel` can
-        consume more messages, else False.
+        """Return True if the :class:`Channel` can consume more messages.
 
         Used to ensure the client adheres to currently active prefetch
         limits.
@@ -204,8 +202,7 @@ class QoS(object):
         )
 
     def can_consume_max_estimate(self):
-        """Return the remaining message capacity for the associated
-        :class:`kombu.transport.qpid.Channel`.
+        """Return the remaining message capacity.
 
         Returns an estimated number of outstanding messages that a
         :class:`kombu.transport.qpid.Channel` can accept without
@@ -238,8 +235,9 @@ class QoS(object):
         self._not_yet_acked[delivery_tag] = message
 
     def get(self, delivery_tag):
-        """Get an un-ACKed message by delivery_tag. If called with an invalid
-        delivery_tag a :exc:`KeyError` is raised.
+        """Get an un-ACKed message by delivery_tag.
+
+        If called with an invalid delivery_tag a :exc:`KeyError` is raised.
 
         :param delivery_tag: The delivery tag associated with the message
             to be returned.
@@ -431,7 +429,7 @@ class Channel(base.StdChannel):
         return message
 
     def _put(self, routing_key, message, exchange=None, **kwargs):
-        """Synchronous send of a single message onto a queue or exchange.
+        """Synchronously send a single message onto a queue or exchange.
 
         An internal method which synchronously sends a single message onto
         a given queue or exchange. If exchange is not specified,
@@ -732,7 +730,7 @@ class Channel(base.StdChannel):
                 raise exc
 
     def exchange_delete(self, exchange_name, **kwargs):
-        """Delete an exchange specified by name
+        """Delete an exchange specified by name.
 
         :param exchange_name: The name of the exchange to be deleted.
         :type exchange_name: str
@@ -1209,7 +1207,9 @@ class Channel(base.StdChannel):
 
 
 class Connection(object):
-    """Encapsulate a connection object for the
+    """Qpid Connection.
+
+    Encapsulate a connection object for the
     :class:`~kombu.transport.qpid.Transport`.
 
     :param host: The host that connections should connect to.
@@ -1331,7 +1331,7 @@ class Connection(object):
         return self._qpid_conn
 
     def close(self):
-        """Close the connection
+        """Close the connection.
 
         Closing the connection will close all associated session, senders, or
         receivers used by the Connection.

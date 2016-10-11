@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+"""Amazon SQS message implementation."""
 from __future__ import absolute_import, unicode_literals
 
 from .ext import (
@@ -12,6 +13,7 @@ __all__ = [
 
 
 class BaseAsyncMessage(object):
+    """Base class for messages received on async client."""
 
     def delete(self, callback=None):
         if self.queue:
@@ -25,20 +27,20 @@ class BaseAsyncMessage(object):
 
 
 class AsyncRawMessage(BaseAsyncMessage, RawMessage):
-    pass
+    """Raw Message."""
 
 
 class AsyncMessage(BaseAsyncMessage, Message):
-    pass
+    """Serialized message."""
 
 
 class AsyncMHMessage(BaseAsyncMessage, MHMessage):
-    pass
+    """MHM Message (uhm, look that up later)."""
 
 
 class AsyncEncodedMHMessage(BaseAsyncMessage, EncodedMHMessage):
-    pass
+    """Encoded MH Message."""
 
 
 class AsyncJSONMessage(BaseAsyncMessage, JSONMessage):
-    pass
+    """Json serialized message."""

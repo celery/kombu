@@ -7,6 +7,7 @@ from kombu.utils.imports import symbol_by_name
 
 
 def supports_librabbitmq():
+    """Return true if :pypi:`librabbitmq` can be used."""
     if _detect_environment() == 'default':
         try:
             import librabbitmq  # noqa
@@ -40,6 +41,13 @@ _transport_cache = {}
 
 
 def resolve_transport(transport=None):
+    """Get transport by name.
+
+    Arguments:
+        transport (Union[str, type]): This can be either
+            an actual transport class, or the fully qualified
+            path to a transport class, or the alias of a transport.
+    """
     if isinstance(transport, string_t):
         try:
             transport = TRANSPORT_ALIASES[transport]

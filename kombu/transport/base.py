@@ -20,6 +20,8 @@ def _LeftBlank(obj, method):
 
 
 class StdChannel(object):
+    """Standard channel base class."""
+
     no_ack_consumers = None
 
     def Consumer(self, *args, **kwargs):
@@ -34,8 +36,12 @@ class StdChannel(object):
         raise _LeftBlank(self, 'get_bindings')
 
     def after_reply_message_received(self, queue):
-        """reply queue semantics: can be used to delete the queue
-           after transient reply message received."""
+        """Callback called after RPC reply received.
+
+        Notes:
+           Reply queue semantics: can be used to delete the queue
+           after transient reply message received.
+        """
         pass
 
     def __enter__(self):
@@ -46,6 +52,7 @@ class StdChannel(object):
 
 
 class Management(object):
+    """AMQP Management API (incomplete)."""
 
     def __init__(self, transport):
         self.transport = transport
@@ -55,6 +62,7 @@ class Management(object):
 
 
 class Implements(dict):
+    """Helper class used to define transport features."""
 
     def __getattr__(self, key):
         try:
@@ -78,6 +86,7 @@ default_transport_capabilities = Implements(
 
 class Transport(object):
     """Base class for transports."""
+
     Management = Management
 
     #: The :class:`~kombu.Connection` owning this instance.

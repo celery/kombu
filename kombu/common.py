@@ -58,7 +58,9 @@ def oid_from(instance):
 
 
 class Broadcast(Queue):
-    """Convenience class used to define broadcast queues.
+    """Broadcast queue.
+
+    Convenience class used to define broadcast queues.
 
     Every queue instance will have a unique name,
     and both the queue and exchange is configured with auto deletion.
@@ -71,6 +73,7 @@ class Broadcast(Queue):
         **kwargs (Any): See :class:`~kombu.Queue` for a list
             of additional keyword arguments supported.
     """
+
     attrs = Queue.attrs + (('queue', None),)
 
     def __init__(self, name=None, queue=None, auto_delete=True,
@@ -92,6 +95,7 @@ def declaration_cached(entity, channel):
 
 
 def maybe_declare(entity, channel=None, retry=False, **retry_policy):
+    """Declare entity (cached)."""
     is_bound = entity.is_bound
     orig = entity
 
@@ -136,6 +140,7 @@ def _imaybe_declare(entity, declared, ident, channel,
 
 
 def drain_consumer(consumer, limit=1, timeout=None, callbacks=None):
+    """Drain messages from consumer instance."""
     acc = deque()
 
     def on_message(body, message):
@@ -154,6 +159,7 @@ def drain_consumer(consumer, limit=1, timeout=None, callbacks=None):
 
 def itermessages(conn, channel, queue, limit=1, timeout=None,
                  callbacks=None, **kwargs):
+    """Iterator over messages."""
     return drain_consumer(
         conn.Consumer(queues=[queue], channel=channel, **kwargs),
         limit=limit, timeout=timeout, callbacks=callbacks,
@@ -222,7 +228,7 @@ def send_reply(exchange, req, msg,
 
 
 def collect_replies(conn, channel, queue, *args, **kwargs):
-    """Generator collecting replies from ``queue``"""
+    """Generator collecting replies from ``queue``."""
     no_ack = kwargs.setdefault('no_ack', True)
     received = False
     try:
@@ -291,8 +297,11 @@ def revive_connection(connection, channel, on_revive=None):
 
 
 def insured(pool, fun, args, kwargs, errback=None, on_revive=None, **opts):
-    """Ensures function performing broker commands completes
-    despite intermittent connection failures."""
+    """Function wrapper to handle connection errors.
+
+    Ensures function performing broker commands completes
+    despite intermittent connection failures.
+    """
     errback = errback or _ensure_errback
 
     with pool.acquire(block=True) as conn:
@@ -347,6 +356,7 @@ class QoS(object):
         ...     print('prefetch count now: %r' % (prefetch_count,))
         >>> QoS(set_qos, 10)
     """
+
     prev = None
 
     def __init__(self, callback, initial_value):

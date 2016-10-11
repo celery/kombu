@@ -25,6 +25,8 @@ def _after_fork_cleanup_group(group):
 
 
 class ProducerPool(Resource):
+    """Pool of :class:`kombu.Producer` instances."""
+
     Producer = Producer
     close_after_fork = True
 
@@ -75,6 +77,7 @@ class ProducerPool(Resource):
 
 
 class PoolGroup(EqualityDict):
+    """Collection of resource pools."""
 
     def __init__(self, limit=None, close_after_fork=True):
         self.limit = limit
@@ -94,11 +97,13 @@ class PoolGroup(EqualityDict):
 
 
 def register_group(group):
+    """Register group (can be used as decorator)."""
     _groups.append(group)
     return group
 
 
 class Connections(PoolGroup):
+    """Collection of connection pools."""
 
     def create(self, connection, limit):
         return connection.Pool(limit=limit)
@@ -106,6 +111,7 @@ connections = register_group(Connections(limit=use_global_limit))
 
 
 class Producers(PoolGroup):
+    """Collection of producer pools."""
 
     def create(self, connection, limit):
         return ProducerPool(connections[connection], limit=limit)
@@ -117,10 +123,12 @@ def _all_pools():
 
 
 def get_limit():
+    """Get current connection pool limit."""
     return _limit[0]
 
 
 def set_limit(limit, force=False, reset_after=False, ignore_errors=False):
+    """Set new connection pool limit."""
     limit = limit or 0
     glimit = _limit[0] or 0
     if limit != glimit:
@@ -131,6 +139,7 @@ def set_limit(limit, force=False, reset_after=False, ignore_errors=False):
 
 
 def reset(*args, **kwargs):
+    """Reset all pools by closing open resources."""
     for pool in _all_pools():
         try:
             pool.force_close_all()

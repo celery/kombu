@@ -21,45 +21,54 @@ default_encoding_file = None
 
 
 def set_default_encoding_file(file):
+    """Set file used to get codec information."""
     global default_encoding_file
     default_encoding_file = file
 
 
 def get_default_encoding_file():
+    """Get file used to get codec information."""
     return default_encoding_file
 
 
 if sys.platform.startswith('java'):     # pragma: no cover
 
     def default_encoding(file=None):
+        """Get default encoding."""
         return 'utf-8'
 else:
 
     def default_encoding(file=None):  # noqa
+        """Get default encoding."""
         file = file or get_default_encoding_file()
         return getattr(file, 'encoding', None) or sys.getfilesystemencoding()
 
 if is_py3k:  # pragma: no cover
 
     def str_to_bytes(s):
+        """Convert str to bytes."""
         if isinstance(s, str):
             return s.encode()
         return s
 
     def bytes_to_str(s):
+        """Convert bytes to str."""
         if isinstance(s, bytes):
             return s.decode()
         return s
 
     def from_utf8(s, *args, **kwargs):
+        """Get str from utf-8 encoding."""
         return s
 
     def ensure_bytes(s):
+        """Ensure s is bytes, not str."""
         if not isinstance(s, bytes):
             return str_to_bytes(s)
         return s
 
     def default_encode(obj):
+        """Encode using default encoding."""
         return obj
 
     str_t = str
@@ -67,17 +76,21 @@ if is_py3k:  # pragma: no cover
 else:
 
     def str_to_bytes(s):                # noqa
+        """Convert str to bytes."""
         if isinstance(s, unicode):
             return s.encode()
         return s
 
     def bytes_to_str(s):                # noqa
+        """Convert bytes to str."""
         return s
 
     def from_utf8(s, *args, **kwargs):  # noqa
+        """Convert utf-8 to ASCII."""
         return s.encode('utf-8', *args, **kwargs)
 
     def default_encode(obj, file=None):            # noqa
+        """Get default encoding."""
         return unicode(obj, default_encoding(file))
 
     str_t = unicode
@@ -91,6 +104,7 @@ except NameError:  # pragma: no cover
 
 
 def safe_str(s, errors='replace'):
+    """Safe form of str(), void of unicode errors."""
     s = bytes_to_str(s)
     if not isinstance(s, (text_t, bytes)):
         return safe_repr(s, errors)
@@ -120,6 +134,7 @@ else:
 
 
 def safe_repr(o, errors='replace'):
+    """Safe form of repr, void of Unicode errors."""
     try:
         return repr(o)
     except Exception:

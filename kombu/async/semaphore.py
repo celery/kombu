@@ -43,8 +43,11 @@ class LaxBoundedSemaphore(object):
         self._pop_waiter = self._waiting.popleft
 
     def acquire(self, callback, *partial_args, **partial_kwargs):
-        """Acquire semaphore, applying ``callback`` if
-        the resource is available.
+        """Acquire semaphore.
+
+        This will immediately apply ``callback`` if
+        the resource is available, otherwise the callback is suspended
+        until the semaphore is released.
 
         Arguments:
             callback (Callable): The callback to apply.

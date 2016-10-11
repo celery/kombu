@@ -19,12 +19,15 @@ def _after_fork_cleanup_resource(resource):
 
 
 class LifoQueue(_LifoQueue):
+    """Last in first out version of Queue."""
 
     def _init(self, maxsize):
         self.queue = deque()
 
 
 class Resource(object):
+    """Pool of resources."""
+
     LimitExceeded = exceptions.LimitExceeded
 
     close_after_fork = False
@@ -114,8 +117,10 @@ class Resource(object):
         pass
 
     def replace(self, resource):
-        """Replace resource with a new instance.  This can be used in case
-        of defective resources."""
+        """Replace existing resource with a new instance.
+
+        This can be used in case of defective resources.
+        """
         if self.limit:
             self._dirty.discard(resource)
         self.close_resource(resource)

@@ -37,6 +37,7 @@ debug, error = logger.debug, logger.error
 
 
 class Node(object):
+    """Mailbox node."""
 
     #: hostname of the node.
     hostname = None
@@ -137,6 +138,8 @@ class Node(object):
 
 
 class Mailbox(object):
+    """Process Mailbox."""
+
     node_cls = Node
     exchange_fmt = '%s.pidbox'
     reply_exchange_fmt = 'reply.%s.pidbox'

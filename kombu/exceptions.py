@@ -1,7 +1,7 @@
 """Exceptions."""
 from __future__ import absolute_import, unicode_literals
 
-from socket import timeout as TimeoutError
+from socket import timeout as TimeoutError  # noqa
 
 from amqp import ChannelError, ConnectionError, ResourceError
 
@@ -14,17 +14,16 @@ __all__ = [
     'ChannelLimitExceeded', 'ConnectionError', 'ChannelError',
     'VersionMismatch', 'SerializerNotInstalled', 'ResourceError',
     'SerializationError', 'EncodeError', 'DecodeError', 'HttpError',
+    'InconsistencyError',
 ]
 
 
 class KombuError(Exception):
     """Common subclass for all Kombu exceptions."""
-    pass
 
 
 class OperationalError(KombuError):
     """Recoverable message transport connection error."""
-    pass
 
 
 class SerializationError(KombuError):
@@ -33,7 +32,6 @@ class SerializationError(KombuError):
 
 class EncodeError(SerializationError):
     """Cannot encode object."""
-    pass
 
 
 class DecodeError(SerializationError):
@@ -42,51 +40,46 @@ class DecodeError(SerializationError):
 
 class NotBoundError(KombuError):
     """Trying to call channel dependent method on unbound entity."""
-    pass
 
 
 class MessageStateError(KombuError):
     """The message has already been acknowledged."""
-    pass
 
 
 class LimitExceeded(KombuError):
     """Limit exceeded."""
-    pass
 
 
 class ConnectionLimitExceeded(LimitExceeded):
     """Maximum number of simultaneous connections exceeded."""
-    pass
 
 
 class ChannelLimitExceeded(LimitExceeded):
     """Maximum number of simultaneous channels exceeded."""
-    pass
 
 
 class VersionMismatch(KombuError):
-    pass
+    """Library dependency version mismatch."""
 
 
 class SerializerNotInstalled(KombuError):
-    """Support for the requested serialization type is not installed"""
-    pass
+    """Support for the requested serialization type is not installed."""
 
 
 class ContentDisallowed(SerializerNotInstalled):
     """Consumer does not allow this content-type."""
-    pass
 
 
 class InconsistencyError(ConnectionError):
-    """Data or environment has been found to be inconsistent,
-    depending on the cause it may be possible to retry the operation."""
-    pass
+    """Data or environment has been found to be inconsistent.
+
+    Depending on the cause it may be possible to retry the operation.
+    """
 
 
 @python_2_unicode_compatible
 class HttpError(Exception):
+    """HTTP Client Error."""
 
     def __init__(self, code, message=None, response=None):
         self.code = code

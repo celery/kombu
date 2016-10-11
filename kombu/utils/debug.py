@@ -13,6 +13,7 @@ __all__ = ['setup_logging', 'Logwrapped']
 
 def setup_logging(loglevel=logging.DEBUG, loggers=['kombu.connection',
                                                    'kombu.channel']):
+    """Setup logging to stdout."""
     for logger in loggers:
         l = get_logger(logger)
         l.addHandler(logging.StreamHandler())
@@ -21,6 +22,8 @@ def setup_logging(loglevel=logging.DEBUG, loggers=['kombu.connection',
 
 @python_2_unicode_compatible
 class Logwrapped(object):
+    """Wrap all object methods, to log on call."""
+
     __ignore = ('__enter__', '__exit__')
 
     def __init__(self, instance, logger=None, ident=None):

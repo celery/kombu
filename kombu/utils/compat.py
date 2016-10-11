@@ -1,3 +1,4 @@
+"""Python Compatibility Utilities."""
 from __future__ import absolute_import, unicode_literals
 
 import numbers
@@ -24,10 +25,19 @@ except ImportError:  # pragma: no cover
     except ImportError:
         register_after_fork = None  # noqa
 
+try:
+    from typing import NamedTuple
+except ImportError:
+    import collections
+
+    def NamedTuple(name, fields):
+        """Typed version of collections.namedtuple."""
+        return collections.namedtuple(name, [k for k, _ in fields])
+
 _environment = None
 
 def coro(gen):
-
+    """Decorator to mark generator as co-routine."""
     @wraps(gen)
     def wind_up(*args, **kwargs):
         it = gen(*args, **kwargs)
@@ -63,12 +73,14 @@ def _detect_environment():
 
 
 def detect_environment():
+    """Detect the current environment: default, eventlet, or gevent."""
     global _environment
     if _environment is None:
         _environment = _detect_environment()
     return _environment
 
 def entrypoints(namespace):
+    """Return setuptools entrypoints for namespace."""
     try:
         from pkg_resources import iter_entry_points
     except ImportError:
@@ -77,6 +89,7 @@ def entrypoints(namespace):
 
 
 def fileno(f):
+    """Get fileno from file-like object."""
     if isinstance(f, numbers.Integral):
         return f
     return f.fileno()
@@ -92,9 +105,8 @@ def maybe_fileno(f):
 
 @contextmanager
 def nested(*managers):  # pragma: no cover
+    """Nest context managers."""
     # flake8: noqa
-    """Combine multiple context managers into a single nested
-    context manager."""
     exits = []
     vars = []
     exc = (None, None, None)

@@ -33,9 +33,7 @@ DEFAULT_HOST = 'localhost'
 
 
 class Channel(virtual.Channel):
-    """
-    Etcd Channel class which talks to the Etcd.
-    """
+    """Etcd Channel class which talks to the Etcd."""
 
     prefix = 'kombu'
     index = None
@@ -44,9 +42,6 @@ class Channel(virtual.Channel):
     lock_ttl = 10
 
     def __init__(self, *args, **kwargs):
-        """
-        Creates a new instance of the etcd.Channel.
-        """
         if etcd is None:
             raise ImportError('Missing python-etcd library')
 
@@ -62,8 +57,7 @@ class Channel(virtual.Channel):
         self.client = etcd.Client(host=host, port=int(port))
 
     def _key_prefix(self, queue):
-        """
-        Creates and returns the `queue` with the proper prefix.
+        """Create and return the `queue` with the proper prefix.
 
         Arguments:
             queue (str): The name of the queue.
@@ -94,8 +88,7 @@ class Channel(virtual.Channel):
             lock.release()
 
     def _new_queue(self, queue, **_):
-        """
-        Creates a new `queue` if the `queue` doesn't already exist.
+        """Create a new `queue` if the `queue` doesn't already exist.
 
         Arguments:
             queue (str): The name of the queue.
@@ -110,8 +103,7 @@ class Channel(virtual.Channel):
                 return self.client.read(key=self._key_prefix(queue))
 
     def _has_queue(self, queue, **kwargs):
-        """
-        Verify that queue exists.
+        """Verify that queue exists.
 
         Returns:
             bool: Should return :const:`True` if the queue exists
@@ -124,8 +116,7 @@ class Channel(virtual.Channel):
             return False
 
     def _delete(self, queue, *args, **_):
-        """
-        Deletes a `queue`.
+        """Delete a `queue`.
 
         Arguments:
             queue (str): The name of the queue.
@@ -186,8 +177,7 @@ class Channel(virtual.Channel):
             raise Empty()
 
     def _purge(self, queue):
-        """
-        Removes all `message`s from a `queue`.
+        """Remove all `message`s from a `queue`.
 
         Arguments:
             queue (str): The name of the queue.
@@ -198,8 +188,7 @@ class Channel(virtual.Channel):
             return self.client.delete(key=key, recursive=True)
 
     def _size(self, queue):
-        """
-        Returns the size of the `queue`.
+        """Return the size of the `queue`.
 
         Arguments:
             queue (str): The name of the queue.
@@ -227,9 +216,7 @@ class Channel(virtual.Channel):
 
 
 class Transport(virtual.Transport):
-    """
-    Etcd storage Transport for Kombu.
-    """
+    """Etcd storage Transport for Kombu."""
 
     Channel = Channel
 
@@ -242,9 +229,7 @@ class Transport(virtual.Transport):
         exchange_type=frozenset(['direct']))
 
     def __init__(self, *args, **kwargs):
-        """
-        Creates a new instance of etcd.Transport.
-        """
+        """Create a new instance of etcd.Transport."""
         if etcd is None:
             raise ImportError('Missing python-etcd library')
 
@@ -259,9 +244,7 @@ class Transport(virtual.Transport):
         )
 
     def verify_connection(self, connection):
-        """
-        Verifies the connection works.
-        """
+        """Verify the connection works."""
         port = connection.client.port or self.default_port
         host = connection.client.hostname or DEFAULT_HOST
 
@@ -276,8 +259,7 @@ class Transport(virtual.Transport):
         return False
 
     def driver_version(self):
-        """
-        Returns the version of the etcd library.
+        """Return the version of the etcd library.
 
         .. note::
 

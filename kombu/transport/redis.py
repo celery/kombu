@@ -69,6 +69,7 @@ Probably the key ({1!r}) has been removed from the Redis database.
 
 
 def get_redis_error_classes():
+    """Return tuple of redis error classes."""
     from redis import exceptions
     # This exception suddenly changed name between redis-py versions
     if hasattr(exceptions, 'InvalidData'):
@@ -92,16 +93,18 @@ def get_redis_error_classes():
 
 
 def get_redis_ConnectionError():
+    """Return the redis ConnectionError exception class."""
     from redis import exceptions
     return exceptions.ConnectionError
 
 
 class MutexHeld(Exception):
-    pass
+    """Raised when another party holds the lock."""
 
 
 @contextmanager
 def Mutex(client, name, expire):
+    """The Redis lock implementation (probably shaky)."""
     lock_id = uuid()
     i_won = client.setnx(name, lock_id)
     try:
@@ -131,6 +134,8 @@ def _after_fork_cleanup_channel(channel):
 
 
 class QoS(virtual.QoS):
+    """Redis Ack Emulation."""
+
     restore_at_shutdown = True
 
     def __init__(self, *args, **kwargs):
@@ -223,6 +228,8 @@ class QoS(virtual.QoS):
 
 
 class MultiChannelPoller(object):
+    """Async I/O poller for Redis transport."""
+
     eventflags = READ | ERR
 
     #: Set by :meth:`get` while reading from the socket.
@@ -285,7 +292,7 @@ class MultiChannelPoller(object):
                 (channel, client, cmd) in self._chan_to_sock)
 
     def _register_BRPOP(self, channel):
-        """enable BRPOP mode for channel."""
+        """Enable BRPOP mode for channel."""
         ident = channel, channel.client, 'BRPOP'
         if not self._client_registered(channel, channel.client, 'BRPOP'):
             channel._in_poll = False
@@ -294,7 +301,7 @@ class MultiChannelPoller(object):
             channel._brpop_start()
 
     def _register_LISTEN(self, channel):
-        """enable LISTEN mode for channel."""
+        """Enable LISTEN mode for channel."""
         if not self._client_registered(channel, channel.subclient, 'LISTEN'):
             channel._in_listen = False
             self._register(channel, channel.subclient, 'LISTEN')
@@ -372,6 +379,8 @@ class MultiChannelPoller(object):
 
 
 class Channel(virtual.Channel):
+    """Redis Channel."""
+
     QoS = QoS
 
     _client = None
@@ -979,6 +988,8 @@ class Channel(virtual.Channel):
 
 
 class Transport(virtual.Transport):
+    """Redis Transport."""
+
     Channel = Channel
 
     polling_interval = None  # disable sleep between unsuccessful polls.
@@ -1083,5 +1094,7 @@ class SentinelChannel(Channel):
 
 
 class SentinelTransport(Transport):
+    """Redis Sentinel Transport."""
+
     default_port = 26379
     Channel = SentinelChannel

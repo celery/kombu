@@ -1,4 +1,4 @@
-"""Consumer scheduling utilities."""
+"""Scheduling Utilities."""
 from __future__ import absolute_import, unicode_literals
 
 from itertools import count
@@ -20,8 +20,16 @@ CYCLE_ALIASES = {
 
 @python_2_unicode_compatible
 class FairCycle(object):
-    """Consume from a set of resources, where each resource gets
-    an equal chance to be consumed from."""
+    """Cycle between resources.
+
+    Consume from a set of resources, where each resource gets
+    an equal chance to be consumed from.
+
+    Arguments:
+        fun (Callable): Callback to call.
+        resources (Sequence[Any]): List of resources.
+        predicate (type): Exception predicate.
+    """
 
     def __init__(self, fun, resources, predicate=Exception):
         self.fun = fun
@@ -41,6 +49,7 @@ class FairCycle(object):
                     raise self.predicate()
 
     def get(self, callback, **kwargs):
+        """Get from next resource."""
         succeeded = 0
         for tried in count(0):  # for infinity
             resource = self._next()
@@ -55,22 +64,27 @@ class FairCycle(object):
                 succeeded += 1
 
     def close(self):
+        """Close cycle."""
         pass
 
     def __repr__(self):
+        """``repr(cycle)``."""
         return '<FairCycle: {self.pos}/{size} {self.resources}>'.format(
             self=self, size=len(self.resources))
 
 
 class round_robin_cycle(object):
+    """Iterator that cycles between items in round-robin."""
 
     def __init__(self, it=None):
         self.items = it if it is not None else []
 
     def update(self, it):
+        """Update items from iterable."""
         self.items[:] = it
 
     def consume(self, n):
+        """Consume n items."""
         return self.items[:n]
 
     def rotate(self, last_used):
@@ -84,16 +98,21 @@ class round_robin_cycle(object):
 
 
 class priority_cycle(round_robin_cycle):
+    """Cycle that repeats items in order."""
 
     def rotate(self, last_used):
+        """Unused in this implementation."""
         pass
 
 
 class sorted_cycle(priority_cycle):
+    """Cycle in sorted order."""
 
     def consume(self, n):
+        """Consume n items."""
         return sorted(self.items[:n])
 
 
 def cycle_by_name(name):
+    """Get cycle class by name."""
     return symbol_by_name(name, CYCLE_ALIASES)

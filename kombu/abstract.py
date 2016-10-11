@@ -20,8 +20,11 @@ def _any(v):
 
 
 class Object(object):
-    """Common base class supporting automatic kwargs->attributes handling,
-    and cloning."""
+    """Common base class.
+
+    Supports automatic kwargs->attributes handling, and cloning.
+    """
+
     attrs = ()
 
     def __init__(self, *args, **kwargs):
@@ -54,6 +57,7 @@ class Object(object):
 @python_2_unicode_compatible
 class MaybeChannelBound(Object):
     """Mixin for classes that can be bound to an AMQP channel."""
+
     _channel = None
     _is_bound = False
 
@@ -61,7 +65,7 @@ class MaybeChannelBound(Object):
     can_cache_declaration = False
 
     def __call__(self, channel):
-        """`self(channel) -> self.bind(channel)`"""
+        """`self(channel) -> self.bind(channel)`."""
         return self.bind(channel)
 
     def bind(self, channel):

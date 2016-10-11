@@ -65,8 +65,7 @@ class TokenBucket(object):
         return False
 
     def expected_time(self, tokens=1):
-        """Get the current exepected time for when a new token is to be
-        available.
+        """Return estimated time of token availability.
 
         Returns:
             float: the time in seconds.

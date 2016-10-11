@@ -71,6 +71,7 @@ SQS_MAX_MESSAGES = 10
 
 
 def maybe_int(x):
+    """Try to convert x' to int, or return x' if that fails."""
     try:
         return int(x)
     except ValueError:
@@ -78,6 +79,8 @@ def maybe_int(x):
 
 
 class Channel(virtual.Channel):
+    """SQS Channel."""
+
     default_region = 'us-east-1'
     default_visibility_timeout = 1800  # 30 minutes.
     default_wait_time_seconds = 10  # disabled see #198
@@ -454,6 +457,8 @@ class Channel(virtual.Channel):
 
 
 class Transport(virtual.Transport):
+    """SQS Transport."""
+
     Channel = Channel
 
     polling_interval = 1

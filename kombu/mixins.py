@@ -1,11 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-kombu.mixins
-============
-
-Useful mixin classes.
-
-"""
+"""Mixins."""
 from __future__ import absolute_import, unicode_literals
 
 import socket
@@ -254,7 +248,9 @@ class ConsumerMixin(object):
 
 
 class ConsumerProducerMixin(ConsumerMixin):
-    """Version of ConsumerMixin having separate connection for also
+    """Consumer and Producer mixin.
+
+    Version of ConsumerMixin having separate connection for also
     publishing messages.
 
     Example:
@@ -280,6 +276,7 @@ class ConsumerProducerMixin(ConsumerMixin):
                         retry=True,
                     )
     """
+
     _producer_connection = None
 
     def on_consume_end(self, connection, channel):

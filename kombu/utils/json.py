@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+"""JSON Serialization Utilities."""
 from __future__ import absolute_import, unicode_literals
 
 import datetime
@@ -13,7 +14,7 @@ try:
     from django.utils.functional import Promise as DjangoPromise
 except ImportError:  # pragma: no cover
     class DjangoPromise(object):  # noqa
-        pass
+        """Dummy object."""
 
 try:
     import simplejson as json
@@ -33,6 +34,7 @@ _encoder_cls = type(json._default_encoder)
 
 
 class JSONEncoder(_encoder_cls):
+    """Kombu custom json encoder."""
 
     def default(self, o,
                 dates=(datetime.datetime, datetime.date),
@@ -61,10 +63,12 @@ class JSONEncoder(_encoder_cls):
 
 def dumps(s, _dumps=json.dumps, cls=JSONEncoder,
           default_kwargs=_json_extra_kwargs, **kwargs):
+    """Serialize object to json string."""
     return _dumps(s, cls=cls, **dict(default_kwargs, **kwargs))
 
 
 def loads(s, _loads=json.loads, decode_bytes=IS_PY3):
+    """Deserialize json from string."""
     # None of the json implementations supports decoding from
     # a buffer/memoryview, or even reading from a stream
     #    (load is just loads(fp.read()))

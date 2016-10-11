@@ -1,3 +1,4 @@
+"""Div. Utilities."""
 from __future__ import absolute_import, unicode_literals, print_function
 
 from .encoding import default_encode
@@ -6,6 +7,7 @@ import sys
 
 
 def emergency_dump_state(state, open_file=open, dump=None, stderr=None):
+    """Dump message state to stdout or file."""
     from pprint import pformat
     from tempfile import mktemp
     stderr = sys.stderr if stderr is None else stderr

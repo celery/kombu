@@ -1,4 +1,4 @@
-"""Messaging library for Python"""
+"""Messaging library for Python."""
 from __future__ import absolute_import, unicode_literals
 
 import os
@@ -74,6 +74,7 @@ for module, items in all_by_module.items():
 
 
 class module(ModuleType):
+    """Customized Python module."""
 
     def __getattr__(self, name):
         if name in object_origins:

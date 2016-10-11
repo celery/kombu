@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+"""Text Utilities."""
 from __future__ import absolute_import, unicode_literals
 
 from difflib import SequenceMatcher
@@ -8,6 +9,8 @@ from kombu.five import string_t
 
 
 def escape_regex(p, white=''):
+    # type: (str, str) -> str
+    """Escape string for use within a regular expression."""
     # what's up with re.escape? that code must be neglected or someting
     return ''.join(c if c.isalnum() or c in white
                    else ('\\000' if c == '\000' else '\\' + c)
@@ -15,6 +18,12 @@ def escape_regex(p, white=''):
 
 
 def fmatch_iter(needle, haystack, min_ratio=0.6):
+    # type: (str, Sequence[str], float) -> Iterator[Tuple[float, str]]
+    """Fuzzy match: iteratively.
+
+    Yields:
+        Tuple: of ratio and key.
+    """
     for key in haystack:
         ratio = SequenceMatcher(None, needle, key).ratio()
         if ratio >= min_ratio:
@@ -22,6 +31,8 @@ def fmatch_iter(needle, haystack, min_ratio=0.6):
 
 
 def fmatch_best(needle, haystack, min_ratio=0.6):
+    # type: (str, Sequence[str], float) -> str
+    """Fuzzy match - Find best match (scalar)."""
     try:
         return sorted(
             fmatch_iter(needle, haystack, min_ratio), reverse=True,
@@ -31,6 +42,8 @@ def fmatch_best(needle, haystack, min_ratio=0.6):
 
 
 def version_string_as_tuple(s):
+    # type (str) -> version_info_t
+    """Convert version string to version info tuple."""
     v = _unpack_version(*s.split('.'))
     # X.Y.3a1 -> (X, Y, 3, 'a1')
     if isinstance(v.micro, string_t):
@@ -42,10 +55,12 @@ def version_string_as_tuple(s):
 
 
 def _unpack_version(major, minor=0, micro=0, releaselevel='', serial=''):
+    # type: (int, int, int, str, str) -> version_info_t
     return version_info_t(int(major), int(minor), micro, releaselevel, serial)
 
 
 def _splitmicro(micro, releaselevel='', serial=''):
+    # type: (int, str, str) -> Tuple[int, str, str]
     for index, char in enumerate(micro):
         if not char.isdigit():
             break

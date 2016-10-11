@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+"""Amazon AWS Connection."""
 from __future__ import absolute_import, unicode_literals
 
 from io import BytesIO
@@ -16,7 +17,7 @@ try:
     from urllib.parse import urlunsplit
 except ImportError:
     from urlparse import urlunsplit  # noqa
-from xml.sax import parseString as sax_parse
+from xml.sax import parseString as sax_parse  # noqa
 
 try:  # pragma: no cover
     from email import message_from_file
@@ -36,6 +37,7 @@ __all__ = [
 
 @python_2_unicode_compatible
 class AsyncHTTPResponse(object):
+    """Async HTTP Response."""
 
     def __init__(self, response):
         self.response = response
@@ -77,6 +79,8 @@ class AsyncHTTPResponse(object):
 
 @python_2_unicode_compatible
 class AsyncHTTPConnection(object):
+    """Async HTTP Connection."""
+
     Request = Request
     Response = AsyncHTTPResponse
 
@@ -154,10 +158,13 @@ class AsyncHTTPConnection(object):
 
 
 class AsyncHTTPSConnection(AsyncHTTPConnection):
+    """Async HTTPS Connection."""
+
     scheme = 'https'
 
 
 class AsyncConnection(object):
+    """Async AWS Connection."""
 
     def __init__(self, http_client=None, **kwargs):
         if boto is None:
@@ -193,6 +200,7 @@ class AsyncConnection(object):
 
 
 class AsyncAWSAuthConnection(AsyncConnection, AWSAuthConnection):
+    """Async AWS Authn Connection."""
 
     def __init__(self, host,
                  http_client=None, http_client_params={}, **kwargs):
@@ -208,6 +216,7 @@ class AsyncAWSAuthConnection(AsyncConnection, AWSAuthConnection):
 
 
 class AsyncAWSQueryConnection(AsyncConnection, AWSQueryConnection):
+    """Async AWS Query Connection."""
 
     def __init__(self, host,
                  http_client=None, http_client_params={}, **kwargs):

@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+"""Amazon SQS boto interface."""
 
 from __future__ import absolute_import, unicode_literals
 

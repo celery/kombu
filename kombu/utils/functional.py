@@ -1,3 +1,4 @@
+"""Functional Utilities."""
 from __future__ import absolute_import, unicode_literals
 
 import random
@@ -146,7 +147,7 @@ class LRUCache(UserDict):
 
 
 def memoize(maxsize=None, keyfun=None, Cache=LRUCache):
-
+    """Decorator to cache function return value."""
     def _memoize(fun):
         mutex = threading.Lock()
         cache = Cache(limit=maxsize)
@@ -233,15 +234,18 @@ class lazy(object):
 
 
 def maybe_evaluate(value):
-    """Evaluates if the value is a :class:`lazy` instance."""
+    """Evaluate value only if value is a :class:`lazy` instance."""
     if isinstance(value, lazy):
         return value.evaluate()
     return value
 
 
 def is_list(l, scalars=(Mapping, string_t), iters=(Iterable,)):
-    """Return true if the object is iterable (but not
-    if object is a mapping or string)."""
+    """Return true if the object is iterable.
+
+    Note:
+        Returns false if object is a mapping or string.
+    """
     return isinstance(l, iters) and not isinstance(l, scalars or ())
 
 
@@ -251,7 +255,7 @@ def maybe_list(l, scalars=(Mapping, string_t)):
 
 
 def dictfilter(d=None, **kw):
-    """Remove all keys from dict ``d`` whose value is :const:`None`"""
+    """Remove all keys from dict ``d`` whose value is :const:`None`."""
     d = kw if d is None else (dict(d, **kw) if kw else d)
     return {k: v for k, v in items(d) if v is not None}
 

@@ -30,6 +30,7 @@ ssl not supported by librabbitmq, please use pyamqp:// or stunnel\
 
 
 class Message(base.Message):
+    """AMQP Message (librabbitmq)."""
 
     def __init__(self, channel, props, info, body):
         super(Message, self).__init__(
@@ -44,6 +45,8 @@ class Message(base.Message):
 
 
 class Channel(amqp.Channel, base.StdChannel):
+    """AMQP Channel (librabbitmq)."""
+
     Message = Message
 
     def prepare_message(self, body, priority=None,
@@ -59,11 +62,15 @@ class Channel(amqp.Channel, base.StdChannel):
 
 
 class Connection(amqp.Connection):
+    """AMQP Connection (librabbitmq)."""
+
     Channel = Channel
     Message = Message
 
 
 class Transport(base.Transport):
+    """AMQP Transport (librabbitmq)."""
+
     Connection = Connection
 
     default_port = DEFAULT_PORT

@@ -14,6 +14,7 @@ DEFAULT_SSL_PORT = 5671
 
 
 class Message(base.Message):
+    """AMQP Message."""
 
     def __init__(self, channel, msg, **kwargs):
         props = msg.properties
@@ -30,12 +31,14 @@ class Message(base.Message):
 
 
 class Channel(amqp.Channel, base.StdChannel):
+    """AMQP Channel."""
+
     Message = Message
 
     def prepare_message(self, body, priority=None,
                         content_type=None, content_encoding=None,
                         headers=None, properties=None, _Message=amqp.Message):
-        """Prepares message so that it can be sent using this transport."""
+        """Prepare message so that it can be sent using this transport."""
         return _Message(
             body,
             priority=priority,
@@ -51,10 +54,14 @@ class Channel(amqp.Channel, base.StdChannel):
 
 
 class Connection(amqp.Connection):
+    """AMQP Connection."""
+
     Channel = Channel
 
 
 class Transport(base.Transport):
+    """AMQP Transport."""
+
     Connection = Connection
 
     default_port = DEFAULT_PORT
@@ -159,6 +166,7 @@ class Transport(base.Transport):
 
 
 class SSLTransport(Transport):
+    """AMQP SSL Transport."""
 
     def __init__(self, *args, **kwargs):
         super(SSLTransport, self).__init__(*args, **kwargs)

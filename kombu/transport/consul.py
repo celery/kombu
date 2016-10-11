@@ -32,7 +32,7 @@ DEFAULT_HOST = 'localhost'
 
 
 class LockError(Exception):
-    pass
+    """An error occurred while trying to acquire the lock."""
 
 
 class Channel(virtual.Channel):
@@ -65,7 +65,9 @@ class Channel(virtual.Channel):
         return '{0}/{1}'.format(self.prefix, queue)
 
     def _get_or_create_session(self, queue):
-        """Try to renew the session if it exists, otherwise create a new
+        """Get or create consul session.
+
+        Try to renew the session if it exists, otherwise create a new
         session in Consul.
 
         This session is used to acquire a lock inside Consul so that we achieve
@@ -77,7 +79,6 @@ class Channel(virtual.Channel):
         Returns:
             str: The ID of the session.
         """
-
         try:
             session_id = self.queues[queue]['session_id']
         except KeyError:
@@ -141,8 +142,9 @@ class Channel(virtual.Channel):
         raise raising()
 
     def _release_lock(self, queue):
-        """Try to release a lock. It does so by simply removing the lock key
-        in Consul.
+        """Try to release a lock.
+
+        It does so by simply removing the lock key in Consul.
 
         Arguments:
             queue (str): The name of the queue we want to release
@@ -152,8 +154,9 @@ class Channel(virtual.Channel):
         self.client.kv.delete(key=self._lock_key(queue))
 
     def _destroy_session(self, queue):
-        """Destroy a previously created Consul session and
-        release all locks it still might hold.
+        """Destroy a previously created Consul session.
+
+        Will release all locks it still might hold.
 
         Arguments:
             queue (str): The name of the Queue.

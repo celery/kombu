@@ -98,8 +98,7 @@ class Producer(object):
             self.exchange.declare()
 
     def maybe_declare(self, entity, retry=False, **retry_policy):
-        """Declare the exchange if it hasn't already been declared
-        during this session."""
+        """Declare exchange if not already declared during this session."""
         if entity:
             return maybe_declare(entity, self.channel, retry, **retry_policy)
 
@@ -289,6 +288,7 @@ class Consumer(object):
         on_decode_error (Callable): see :attr:`on_decode_error`.
         prefetch_count (int): see :attr:`prefetch_count`.
     """
+
     ContentDisallowed = ContentDisallowed
 
     #: The connection/channel to use for this consumer.
@@ -496,8 +496,7 @@ class Consumer(object):
             self._queues.pop(qname, None)
 
     def consuming_from(self, queue):
-        """Return :const:`True` if the consumer is currently
-        consuming from queue'."""
+        """Return :const:`True` if currently consuming from queue'."""
         name = queue
         if isinstance(queue, Queue):
             name = queue.name

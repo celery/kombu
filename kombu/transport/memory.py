@@ -8,6 +8,8 @@ from . import virtual
 
 
 class Channel(virtual.Channel):
+    """In-memory Channel."""
+
     queues = {}
     do_restore = False
     supports_fanout = True
@@ -60,6 +62,8 @@ class Channel(virtual.Channel):
 
 
 class Transport(virtual.Transport):
+    """In-memory Transport."""
+
     Channel = Channel
 
     #: memory backend state is global.

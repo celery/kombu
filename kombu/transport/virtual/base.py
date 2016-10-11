@@ -62,6 +62,7 @@ queue_binding_t = namedtuple('queue_binding_t', (
 
 
 class Base64(object):
+    """Base64 codec."""
 
     def encode(self, s):
         return bytes_to_str(base64.b64encode(str_to_bytes(s)))
@@ -72,15 +73,14 @@ class Base64(object):
 
 class NotEquivalentError(Exception):
     """Entity declaration is not equivalent to the previous declaration."""
-    pass
 
 
 class UndeliverableWarning(UserWarning):
     """The message could not be delivered to a queue."""
-    pass
 
 
 class BrokerState(object):
+    """Broker state holds exchanges, queues and bindings."""
 
     #: Mapping of exchange name to
     #: :class:`kombu.transport.virtual.exchange.ExchangeType`
@@ -198,7 +198,7 @@ class QoS(object):
         return not pcount or len(self._delivered) - len(self._dirty) < pcount
 
     def can_consume_max_estimate(self):
-        """Returns the maximum number of messages allowed to be returned.
+        """Return the maximum number of messages allowed to be returned.
 
         Returns an estimated number of messages that a consumer may be allowed
         to consume at once from the broker.  This is used for services where
@@ -264,7 +264,7 @@ class QoS(object):
         return errors
 
     def restore_unacked_once(self, stderr=None):
-        """Restores all unacknowledged messages at shutdown/gc collect.
+        """Restore all unacknowledged messages at shutdown/gc collect.
 
         Note:
             Can only be called once for each instance, subsequent
@@ -295,8 +295,9 @@ class QoS(object):
             state.restored = True
 
     def restore_visible(self, *args, **kwargs):
-        """Restore any pending unackwnowledged messages for visibility_timeout
-        style implementations.
+        """Restore any pending unackwnowledged messages.
+
+        To be filled in for visibility_timeout style implementations.
 
         Note:
             This is implementation optional, and currently only
@@ -306,6 +307,7 @@ class QoS(object):
 
 
 class Message(base.Message):
+    """Message object."""
 
     def __init__(self, channel, payload, **kwargs):
         self._raw = payload
@@ -342,7 +344,9 @@ class Message(base.Message):
 
 
 class AbstractChannel(object):
-    """This is an abstract class defining the channel methods
+    """Abstract channel interface.
+
+    This is an abstract class defining the channel methods
     you'd usually want to implement in a virtual channel.
 
     Note:
@@ -409,6 +413,7 @@ class Channel(AbstractChannel, base.StdChannel):
         connection (ConnectionT): The transport instance this
             channel is part of.
     """
+
     #: message class used.
     Message = Message
 
@@ -617,7 +622,7 @@ class Channel(AbstractChannel, base.StdChannel):
         )
 
     def basic_consume(self, queue, no_ack, callback, consumer_tag, **kwargs):
-        """Consume from `queue`"""
+        """Consume from `queue`."""
         self._tag_to_queue[consumer_tag] = queue
         self._active_queues.append(queue)
 
@@ -769,8 +774,10 @@ class Channel(AbstractChannel, base.StdChannel):
         raise NotImplementedError('virtual channels do not support flow.')
 
     def close(self):
-        """Close channel, cancel all consumers, and requeue unacked
-        messages."""
+        """Close channel.
+
+        Cancel all consumers, and requeue unacked messages.
+        """
         if not self.closed:
             self.closed = True
             for consumer in list(self._consumers):
@@ -823,8 +830,9 @@ class Channel(AbstractChannel, base.StdChannel):
         return self._cycle
 
     def _get_message_priority(self, message, reverse=False):
-        """Get priority from message and limit the value within a
-        boundary of 0 to 9.
+        """Get priority from message.
+
+        The value is limited to within a boundary of 0 to 9.
 
         Note:
             Higher value has more priority.
@@ -842,6 +850,7 @@ class Channel(AbstractChannel, base.StdChannel):
 
 
 class Management(base.Management):
+    """Base class for the AMQP management API."""
 
     def __init__(self, transport):
         super(Management, self).__init__(transport)
@@ -861,6 +870,7 @@ class Transport(base.Transport):
     Arguments:
         client (kombu.Connection): The client this is a transport for.
     """
+
     Channel = Channel
     Cycle = FairCycle
     Management = Management

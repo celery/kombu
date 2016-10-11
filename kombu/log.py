@@ -1,3 +1,4 @@
+"""Logging Utilities."""
 from __future__ import absolute_import, unicode_literals
 
 import logging
@@ -25,6 +26,7 @@ DISABLE_TRACEBACKS = os.environ.get('DISABLE_TRACEBACKS')
 
 
 def get_logger(logger):
+    """Get logger by name."""
     if isinstance(logger, string_t):
         logger = logging.getLogger(logger)
     if not logger.handlers:
@@ -33,6 +35,7 @@ def get_logger(logger):
 
 
 def get_loglevel(level):
+    """Get loglevel by name."""
     if isinstance(level, string_t):
         return LOG_LEVELS[level]
     return level
@@ -53,6 +56,7 @@ def safeify_format(fmt, args,
 
 
 class LogMixin(object):
+    """Mixin that adds severity methods to any class."""
 
     def debug(self, *args, **kwargs):
         return self.log(logging.DEBUG, *args, **kwargs)
@@ -128,6 +132,7 @@ class Log(LogMixin):
 
 
 def setup_logging(loglevel=None, logfile=None):
+    """Setup logging."""
     logger = logging.getLogger()
     loglevel = get_loglevel(loglevel or 'ERROR')
     logfile = logfile if logfile else sys.__stderr__

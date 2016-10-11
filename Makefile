@@ -5,6 +5,7 @@ PYTEST=py.test
 GIT=git
 TOX=tox
 ICONV=iconv
+PYDOCSTYLE=pydocstyle
 FLAKE8=flake8
 FLAKEPLUS=flakeplus
 SPHINX2RST=sphinx2rst
@@ -35,6 +36,7 @@ help:
 	@echo "    flakes --------  - Check code for syntax and style errors."
 	@echo "      flakecheck     - Run flake8 on the source code."
 	@echo "      flakepluscheck - Run flakeplus on the source code."
+	@echo "      pep257check    - Run pep257 on the source code."
 	@echo "readme               - Regenerate README.rst file."
 	@echo "contrib              - Regenerate CONTRIBUTING.rst file"
 	@echo "clean-dist --------- - Clean all distribution build artifacts."
@@ -95,7 +97,10 @@ flakepluscheck:
 flakeplusdiag:
 	-$(MAKE) flakepluscheck
 
-flakes: flakediag flakeplusdiag
+pep257check:
+	$(PYDOCSTYLE) --ignore=D102,D104,D203,D105 "$(PROJ)"
+
+flakes: flakediag flakeplusdiag pep257check
 
 clean-readme:
 	-rm -f $(README)
