@@ -1,5 +1,4 @@
-"""
-Etcd Transport.
+"""Etcd Transport.
 
 It uses Etcd as a store to transport messages in Queues
 
@@ -125,8 +124,7 @@ class Channel(virtual.Channel):
         self._purge(queue)
 
     def _put(self, queue, payload, **_):
-        """
-        Put `message` onto `queue`.
+        """Put `message` onto `queue`.
 
         This simply writes a key to the Etcd store
 
@@ -143,8 +141,7 @@ class Channel(virtual.Channel):
                 raise ChannelError('Cannot add key {0!r} to etcd'.format(key))
 
     def _get(self, queue, timeout=None):
-        """
-        Get the first available message from the queue.
+        """Get the first available message from the queue.
 
         Before it does so it acquires a lock on the store so
         only one node reads at the same time. This is for read consistency
