@@ -25,6 +25,7 @@ except ImportError:
 from kombu.five import items, reraise, string_t
 
 from .encoding import default_encode, safe_repr as _safe_repr
+from .time import maybe_s_to_ms
 
 try:
     import ctypes
@@ -452,7 +453,3 @@ def maybe_fileno(f):
         return fileno(f)
     except FILENO_ERRORS:
         pass
-
-
-def maybe_s_to_ms(v):
-    return int(float(v) * 1000.0) if v is not None else v
