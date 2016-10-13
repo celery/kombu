@@ -1,5 +1,5 @@
 from __future__ import absolute_import
-from future.utils import iteritems
+from kombu.five import items
 
 import sys
 
@@ -81,7 +81,7 @@ def maybe_list(l, scalars=(Mapping, string_t)):
 def dictfilter(d=None, **kw):
     """Remove all keys from dict ``d`` whose value is :const:`None`"""
     d = kw if d is None else (dict(d, **kw) if kw else d)
-    return dict((k, v) for k, v in iteritems(d) if v is not None)
+    return dict((k, v) for k, v in items(d) if v is not None)
 
 
 # Compat names (before kombu 3.0)
