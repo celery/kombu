@@ -9,6 +9,7 @@ from .functional import (
 )
 from .imports import symbol_by_name
 from .objects import cached_property
+from .time import maybe_s_to_ms
 from .uuid import uuid
 
 __all__ = [
@@ -19,8 +20,4 @@ __all__ = [
     'symbol_by_name', 'nested', 'fileno', 'maybe_fileno',
     'maybe_s_to_ms',
 ]
-
-
-def maybe_s_to_ms(v):
-    return int(float(v) * 1000.0) if v is not None else v
 
