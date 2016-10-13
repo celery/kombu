@@ -1,11 +1,10 @@
 from __future__ import absolute_import
-from kombu.five import items
 
 import sys
 
 from collections import Iterable, Mapping
 
-from kombu.five import string_t
+from kombu.five import string_t, items
 
 __all__ = ['lazy', 'maybe_evaluate', 'is_list', 'maybe_list', 'dictfilter']
 
