@@ -53,8 +53,13 @@ def generate_oid(node_id, process_id, thread_id, instance):
     return str(uuid3(NAMESPACE_OID, ent))
 
 
-def oid_from(instance):
-    return generate_oid(get_node_id(), os.getpid(), get_ident(), instance)
+def oid_from(instance, threads=True):
+    return generate_oid(
+        get_node_id(),
+        os.getpid(),
+        get_ident() if threads else 0,
+        instance,
+    )
 
 
 class Broadcast(Queue):
