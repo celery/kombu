@@ -25,6 +25,42 @@
 
     Fix contributed by Alex Koshelev.
 
+- RabbitMQ Queue Extensions
+
+    New arguments have been added to :class:`kombu.Queue` that lets
+    you directly and conveniently configure the RabbitMQ queue extensions.
+
+    - ``Queue(expires=20.0)``
+
+        Set queue expiry time in float seconds.
+
+        See :attr:`kombu.Queue.expires`.
+
+    - ``Queue(message_ttl=30.0)``
+
+        Set queue message time-to-live float seconds.
+
+        See :attr:`kombu.Queue.message_ttl`.
+
+    - ``Queue(max_length=1000)``
+
+        Set queue max length (number of messages) as int.
+
+        See :attr:`kombu.Queue.max_length`.
+
+    - ``Queue(max_length_bytes=1000)``
+
+        Set queue max length (message size total in bytes) as int.
+
+        See :attr:`kombu.Queue.max_length_bytes`.
+
+    - ``Queue(max_priority=10)``
+
+        Declare queue to be a priority queue that routes messages
+        based on the ``priority` field of the message.
+
+        See :attr:`kombu.Queue.max_priority`.
+
 - Beanstalk: Priority 0 is now lowest, 9 is highest.
   (**backward incompatible**)
 
