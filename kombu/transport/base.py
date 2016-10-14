@@ -7,10 +7,61 @@ import socket
 from amqp.exceptions import RecoverableConnectionError
 
 from kombu.exceptions import ChannelError, ConnectionError
+from kombu.five import items
 from kombu.message import Message
+from kombu.utils.functional import dictfilter
 from kombu.utils.objects import cached_property
+from kombu.utils.time import maybe_s_to_ms
 
 __all__ = ['Message', 'StdChannel', 'Management', 'Transport']
+
+RABBITMQ_QUEUE_ARGUMENTS = {  # type: Mapping[str, Tuple[str, Callable]]
+    'expires': ('x-expires', maybe_s_to_ms),
+    'message_ttl': ('x-message-ttl', maybe_s_to_ms),
+    'max_length': ('x-max-length', int),
+    'max_length_bytes': ('x-max-length-bytes', int),
+    'max_priority': ('x-max-priority', int),
+}
+
+
+def to_rabbitmq_queue_arguments(arguments, **options):
+    # type: (Mapping, **Any) -> Dict
+    """Convert queue arguments to RabbitMQ queue arguments.
+
+    This is the implementation for Channel.prepare_queue_arguments
+    for AMQP-based transports.  It's used by both the pyamqp and librabbitmq
+    transports.
+
+    Arguments:
+        arguments (Mapping):
+            User-supplied arguments (``Queue.queue_arguments``).
+
+    Keyword Arguments:
+        expires (float): Queue expiry time in seconds.
+            This will be converted to ``x-expires`` in int milliseconds.
+        message_ttl (float): Message TTL in seconds.
+            This will be converted to ``x-message-ttl`` in int milliseconds.
+        max_length (int): Max queue length (in number of messages).
+            This will be converted to ``x-max-length`` int.
+        max_length_bytes (int): Max queue size in bytes.
+            This will be converted to ``x-max-length-bytes`` int.
+        max_priority (int): Max priority steps for queue.
+            This will be converted to ``x-max-priority`` int.
+
+    Returns:
+        Dict: RabbitMQ compatible queue arguments.
+    """
+    prepared = dictfilter(dict(
+        _to_rabbitmq_queue_argument(key, value)
+        for key, value in items(options)
+    ))
+    return dict(arguments, **prepared) if prepared else arguments
+
+
+def _to_rabbitmq_queue_argument(key, value):
+    # type: (str, Any) -> Tuple[str, Any]
+    opt, typ = RABBITMQ_QUEUE_ARGUMENTS[key]
+    return opt, typ(value) if value is not None else value
 
 
 def _LeftBlank(obj, method):
@@ -43,6 +94,9 @@ class StdChannel(object):
            after transient reply message received.
         """
         pass
+
+    def prepare_queue_arguments(self, arguments, **kwargs):
+        return arguments
 
     def __enter__(self):
         return self

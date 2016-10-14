@@ -380,8 +380,13 @@ class Queue(MaybeChannelBound):
         queue_arguments (Dict): See :attr:`queue_arguments`.
         binding_arguments (Dict): See :attr:`binding_arguments`.
         consumer_arguments (Dict): See :attr:`consumer_arguments`.
-        no_declare (bool): See :attr:`no_declare`
-        on_declared (Callable): See :attr:`on_declared`
+        no_declare (bool): See :attr:`no_declare`.
+        on_declared (Callable): See :attr:`on_declared`.
+        expires (float): See :attr:`expires`.
+        message_ttl (float): See :attr:`message_ttl`.
+        max_length (int): See :attr:`max_length`.
+        max_length_bytes (int): See :attr:`max_length_bytes`.
+        max_priority (int): See :attr:`max_priority`.
 
     Attributes:
         name (str): Name of the queue.
@@ -437,6 +442,63 @@ class Queue(MaybeChannelBound):
             there was no consumer ever on the queue, it won't be
             deleted.
 
+        expires (float): Set the expiry time (in seconds) for when this
+            queue should expire.
+
+            The expiry time decides how long the queue can stay unused
+            before it's automatically deleted.
+            *Unused* means the queue has no consumers, the queue has not been
+            redeclared, and ``Queue.get`` has not been invoked for a duration
+            of at least the expiration period.
+
+            See https://www.rabbitmq.com/ttl.html#queue-ttl
+
+            **RabbitMQ extension**: Only available when using RabbitMQ.
+
+        message_ttl (float): Message time to live in seconds.
+
+            This setting controls how long messages can stay in the queue
+            unconsumed. If the expiry time passes before a message consumer
+            has received the message, the message is deleted and no consumer
+            will see the message.
+
+            See https://www.rabbitmq.com/ttl.html#per-queue-message-ttl
+
+            **RabbitMQ extension**: Only available when using RabbitMQ.
+
+        max_length (int): Set the maximum number of messages that the
+            queue can hold.
+
+            If the number of messages in the queue size exceeds this limit,
+            new messages will be dropped (or dead-lettered if a dead letter
+            exchange is active).
+
+            See https://www.rabbitmq.com/maxlength.html
+
+            **RabbitMQ extension**: Only available when using RabbitMQ.
+
+        max_length_bytes (int): Set the max size (in bytes) for the total
+            of messages in the queue.
+
+            If the total size of all the messages in the queue exceeds this
+            limit, new messages will be dropped (or dead-lettered if a dead
+            letter exchange is active).
+
+            **RabbitMQ extension**: Only available when using RabbitMQ.
+
+        max_priority (int): Set the highest priority number for this queue.
+
+            For example if the value is 10, then messages can delivered to
+            this queue can have a ``priority`` value between 0 and 10,
+            where 10 is the highest priority.
+
+            RabbitMQ queues without a max priority set will ignore
+            the priority field in the message, so if you want priorities
+            you need to set the max priority field to declare the queue
+            as a priority queue.
+
+            **RabbitMQ extension**: Only available when using RabbitMQ.
+
         queue_arguments (Dict): Additional arguments used when declaring
             the queue.  Can be used to to set the arguments value
             for RabbitMQ/AMQP's ``queue.declare``.
@@ -488,6 +550,11 @@ class Queue(MaybeChannelBound):
         ('alias', None),
         ('bindings', list),
         ('no_declare', bool),
+        ('expires', float),
+        ('message_ttl', float),
+        ('max_length', int),
+        ('max_length_bytes', int),
+        ('max_priority', int)
     )
 
     def __init__(self, name='', exchange=None, routing_key='',
@@ -556,13 +623,24 @@ class Queue(MaybeChannelBound):
                 The client can use this to check whether a queue exists
                 without modifying the server state.
         """
-        ret = self.channel.queue_declare(queue=self.name,
-                                         passive=passive,
-                                         durable=self.durable,
-                                         exclusive=self.exclusive,
-                                         auto_delete=self.auto_delete,
-                                         arguments=self.queue_arguments,
-                                         nowait=nowait)
+        queue_arguments = self.channel.prepare_queue_arguments(
+            self.queue_arguments or {},
+            expires=self.expires,
+            message_ttl=self.message_ttl,
+            max_length=self.max_length,
+            max_length_bytes=self.max_length_bytes,
+            max_priority=self.max_priority,
+        )
+        print('QUEUE ARGUMENTS: %r' % (queue_arguments,))
+        ret = self.channel.queue_declare(
+            queue=self.name,
+            passive=passive,
+            durable=self.durable,
+            exclusive=self.exclusive,
+            auto_delete=self.auto_delete,
+            arguments=queue_arguments,
+            nowait=nowait,
+        )
         if not self.name:
             self.name = ret[0]
         if self.on_declared:

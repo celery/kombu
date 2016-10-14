@@ -8,6 +8,7 @@ from kombu.utils.amq_manager import get_manager
 from kombu.utils.text import version_string_as_tuple
 
 from . import base
+from .base import to_rabbitmq_queue_arguments
 
 DEFAULT_PORT = 5672
 DEFAULT_SSL_PORT = 5671
@@ -47,6 +48,9 @@ class Channel(amqp.Channel, base.StdChannel):
             application_headers=headers,
             **properties or {}
         )
+
+    def prepare_queue_arguments(self, arguments, **kwargs):
+        return to_rabbitmq_queue_arguments(arguments, **kwargs)
 
     def message_to_python(self, raw_message):
         """Convert encoded message body back to a Python value."""

@@ -7,7 +7,22 @@ from case import Mock
 from kombu import Connection, Consumer, Exchange, Producer, Queue
 from kombu.five import text_t
 from kombu.message import Message
-from kombu.transport.base import StdChannel, Transport, Management
+from kombu.transport.base import (
+    StdChannel, Transport, Management, to_rabbitmq_queue_arguments,
+)
+
+
+@pytest.mark.parametrize('args,input,expected', [
+    ({}, {'message_ttl': 20}, {'x-message-ttl': 20000}),
+    ({}, {'message_ttl': None}, {}),
+    ({'foo': 'bar'}, {'expires': 30.3}, {'x-expires': 30300, 'foo': 'bar'}),
+    ({'x-expires': 3}, {'expires': 4}, {'x-expires': 4000}),
+    ({}, {'max_length': 10}, {'x-max-length': 10}),
+    ({}, {'max_length_bytes': 1033}, {'x-max-length-bytes': 1033}),
+    ({}, {'max_priority': 303}, {'x-max-priority': 303}),
+])
+def test_rabbitmq_queue_arguments(args, input, expected):
+    assert to_rabbitmq_queue_arguments(args, **input) == expected
 
 
 class test_StdChannel:
