@@ -631,7 +631,6 @@ class Queue(MaybeChannelBound):
             max_length_bytes=self.max_length_bytes,
             max_priority=self.max_priority,
         )
-        print('QUEUE ARGUMENTS: %r' % (queue_arguments,))
         ret = self.channel.queue_declare(
             queue=self.name,
             passive=passive,
