@@ -9,6 +9,7 @@ from .functional import (
 )
 from .imports import symbol_by_name
 from .objects import cached_property
+from .time import maybe_s_to_ms
 from .uuid import uuid
 
 __all__ = [
@@ -17,4 +18,6 @@ __all__ = [
     'emergency_dump_state', 'cached_property',
     'register_after_fork', 'reprkwargs', 'reprcall',
     'symbol_by_name', 'nested', 'fileno', 'maybe_fileno',
+    'maybe_s_to_ms',
 ]
+
