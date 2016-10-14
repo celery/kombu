@@ -217,9 +217,7 @@ class Mailbox(object):
             routing_key=oid,
             durable=False,
             auto_delete=True,
-            queue_arguments={
-                'x-expires': int(REPLY_QUEUE_EXPIRES * 1000),
-            },
+            expires=REPLY_QUEUE_EXPIRES,
         )
 
     @cached_property
