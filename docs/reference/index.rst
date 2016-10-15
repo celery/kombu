@@ -68,6 +68,7 @@
     kombu.utils.objects
     kombu.utils.scheduling
     kombu.utils.text
+    kombu.utils.time
     kombu.utils.url
     kombu.utils.uuid
     kombu.five

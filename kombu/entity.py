@@ -731,10 +731,6 @@ class Queue(MaybeChannelBound):
     def delete(self, if_unused=False, if_empty=False, nowait=False):
         """Delete the queue.
 
-        Example:
-            .. code-block:: console
-                $ foo = 'blah'
-
         Arguments:
             if_unused (bool): If set, the server will only delete the queue
                 if it has no consumers. A channel error will be raised
