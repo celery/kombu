@@ -4,7 +4,7 @@
 
 |build-status| |coverage| |license| |wheel| |pyversion| |pyimp|
 
-:Version: 4.0.0rc4
+:Version: 4.0.0rc5
 :Web: http://kombu.me/
 :Download: http://pypi.python.org/pypi/kombu/
 :Source: https://github.com/celery/kombu/
@@ -34,6 +34,7 @@ Features
     * High performance AMQP transport written in C - when using `librabbitmq`_
 
       This is automatically enabled if librabbitmq is installed:
+
       ::
 
         $ pip install librabbitmq
@@ -122,6 +123,7 @@ Kombu is using Sphinx, and the latest documentation can be found here:
 
 Quick overview
 --------------
+
 ::
 
     from kombu import Connection, Exchange, Queue
@@ -166,6 +168,7 @@ Quick overview
 
 
 Or handle channels manually:
+
 ::
 
     with connection.channel() as channel:
@@ -175,6 +178,7 @@ Or handle channels manually:
 
 All objects can be used outside of with statements too,
 just remember to close the objects after use:
+
 ::
 
     from kombu import Connection, Consumer, Producer
@@ -198,6 +202,7 @@ to a channel.
 
 Binding exchanges and queues to a connection will make it use
 that connections default channel.
+
 ::
 
     >>> exchange = Exchange('tasks', 'direct')
@@ -276,17 +281,20 @@ You can install `Kombu` either via the Python Package Index (PyPI)
 or from source.
 
 To install using `pip`,:
+
 ::
 
     $ pip install kombu
 
 To install using `easy_install`,:
+
 ::
 
     $ easy_install kombu
 
 If you have downloaded a source tarball you can install it
 by doing the following,:
+
 ::
 
     $ python setup.py build
