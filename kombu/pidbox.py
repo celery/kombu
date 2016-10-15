@@ -235,7 +235,7 @@ class Mailbox(object):
             exchange=self.exchange,
             durable=False,
             auto_delete=True,
-            expire=self.queue_expires,
+            expires=self.queue_expires,
             message_ttl=self.queue_ttl,
         )
 
