@@ -78,15 +78,18 @@ Celery, this can be accomplished by setting the
 """
 from __future__ import absolute_import, unicode_literals
 
-from collections import OrderedDict
+from collections import namedtuple
+from gettext import gettext as _
 import os
 import select
 import socket
 import ssl
 import sys
+import time
+import threading
 import uuid
 
-from gettext import gettext as _
+import Queue
 
 import amqp.protocol
 
@@ -115,6 +118,15 @@ try:
 except ImportError:  # pragma: no cover
     qpid = None
 
+try:
+    import proton
+    from proton.handlers import MessagingHandler
+    from proton.reactor import Container
+except ImportError:  # pragma: no cover
+    proton = None
+    MessagingHandler = None
+    Container = None
+
 
 from kombu.five import Empty, items, monotonic
 from kombu.log import get_logger
@@ -127,10 +139,15 @@ logger = get_logger(__name__)
 
 OBJECT_ALREADY_EXISTS_STRING = 'object already exists'
 
-VERSION = (1, 0, 0)
-__version__ = '.'.join(map(str, VERSION))
 
-PY3 = sys.version_info[0] == 3
+StartConsumer = namedtuple('StartConsumer', ['queue'])
+GetOneMessage = namedtuple('GetOneMessage', ['queue', 'return_queue'])
+SendMessage = namedtuple('SendMessage',
+                         ['message', 'address', 'send_complete'])
+MessageAndDelivery = namedtuple('MessageAndDelivery', ['message', 'delivery'])
+AckMessage = namedtuple('AckMessage', ['delivery', 'ack_complete'])
+RejectMessage = namedtuple('RejectMessage', ['delivery', 'reject_complete'])
+ReleaseMessage = namedtuple('ReleaseMessage', ['delivery', 'release_complete'])
 
 
 def dependency_is_none(dependency):
@@ -178,8 +195,8 @@ class QoS(object):
 
     """
 
-    def __init__(self, session, prefetch_count=1):
-        self.session = session
+    def __init__(self, main_thread_commands):
+        self.main_thread_commands = main_thread_commands
         self.prefetch_count = 1
         self._not_yet_acked = OrderedDict()
 
@@ -217,21 +234,21 @@ class QoS(object):
             self.prefetch_count - len(self._not_yet_acked)
         )
 
-    def append(self, message, delivery_tag):
+    def append(self, delivery, delivery_tag):
         """Append message to the list of un-ACKed messages.
 
         Add a message, referenced by the delivery_tag, for ACKing,
         rejecting, or getting later. Messages are saved into an
         :class:`collections.OrderedDict` by delivery_tag.
 
-        :param message: A received message that has not yet been ACKed.
-        :type message: qpid.messaging.Message
+        :param delivery: An un-acked message Delivery
+        :type delivery: proton.Delivery
         :param delivery_tag: A UUID to refer to this message by
             upon receipt.
         :type delivery_tag: uuid.UUID
 
         """
-        self._not_yet_acked[delivery_tag] = message
+        self._not_yet_acked[delivery_tag] = delivery
 
     def get(self, delivery_tag):
         """Get an un-ACKed message by delivery_tag.
@@ -249,7 +266,7 @@ class QoS(object):
         return self._not_yet_acked[delivery_tag]
 
     def ack(self, delivery_tag):
-        """Acknowledge a message by delivery_tag.
+        """Acknowledge a Delivery by delivery_tag.
 
         Called asynchronously once the message has been handled and can be
         forgotten by the broker.
@@ -259,8 +276,11 @@ class QoS(object):
         :type delivery_tag: uuid.UUID
 
         """
-        message = self._not_yet_acked.pop(delivery_tag)
-        self.session.acknowledge(message=message)
+        delivery = self._not_yet_acked.pop(delivery_tag)
+        ack_complete = threading.Event()
+        cmd = AckMessage(delivery=delivery, ack_complete=ack_complete)
+        self.main_thread_commands.put(cmd)
+        ack_complete.wait()
 
     def reject(self, delivery_tag, requeue=False):
         """Reject a message by delivery_tag.
@@ -284,12 +304,13 @@ class QoS(object):
 
         """
         message = self._not_yet_acked.pop(delivery_tag)
-        QpidDisposition = qpid.messaging.Disposition
+        event_complete = threading.Event()
         if requeue:
-            disposition = QpidDisposition(qpid.messaging.RELEASED)
+            cmd = AckMessage(delivery=message, release_complete=event_complete)
         else:
-            disposition = QpidDisposition(qpid.messaging.REJECTED)
-        self.session.acknowledge(message=message, disposition=disposition)
+            cmd = AckMessage(delivery=message, reject_complete=event_complete)
+        self.main_thread_commands.put(cmd)
+        event_complete.wait()
 
 
 class Channel(base.StdChannel):
@@ -388,44 +409,33 @@ class Channel(base.StdChannel):
     def __init__(self, connection, transport):
         self.connection = connection
         self.transport = transport
-        qpid_connection = connection.get_qpid_connection()
-        self._broker = qpidtoollibs.BrokerAgent(qpid_connection)
+        opts = {
+            'host': 'localhost',
+            'port': '5672',
+        }
+        self._broker = qpidtoollibs.BrokerAgent(qpid.messaging.Connection.establish(**opts))
         self.closed = False
         self._tag_to_queue = {}
         self._receivers = {}
         self._qos = None
 
-    def _get(self, queue):
-        """Non-blocking, single-message read from a queue.
-
-        An internal method to perform a non-blocking, single-message read
-        from a queue by name. This method creates a
-        :class:`~qpid.messaging.endpoints.Receiver` to read from the queue
-        using the :class:`~qpid.messaging.endpoints.Session` saved on the
-        associated :class:`~kombu.transport.qpid.Transport`.  The receiver
-        is closed before the method exits. If a message is available, a
-        :class:`qpid.messaging.Message` object is returned.  If no message is
-        available, a :class:`qpid.messaging.exceptions.Empty` exception is
-        raised.
-
-        This is an internal method. External calls for get functionality
-        should be done using :meth:`basic_get`.
-
-        :param queue: The queue name to get the message from
-        :type queue: str
-
-        :return: The received message.
-        :rtype: :class:`qpid.messaging.Message`
-        :raises: :class:`qpid.messaging.exceptions.Empty` if no
-                 message is available.
-
+    def _make_kombu_message_from_proton(self, proton_message):
         """
-        rx = self.transport.session.receiver(queue)
-        try:
-            message = rx.fetch(timeout=0)
-        finally:
-            rx.close()
-        return message
+        Makes and returns a Kombu message object from a Proton message object
+
+        :param proton_message: The Proton message to be used
+        :type proton_message: :class: `proton.Message`
+
+        :return: A new kombu message
+        :rtype: :class:`kombu.transport.virtual.Message`
+        """
+        pm = proton_message
+        payload = {'body': pm.body,
+                   'content_encoding': pm.content_encoding,
+                   'content_type': pm.content_type,
+                   'headers': pm.properties.pop('headers', {}),
+                   'properties': pm.properties}
+        return self.Message(self, payload)
 
     def _put(self, routing_key, message, exchange=None, durable=True,
              **kwargs):
@@ -466,22 +476,15 @@ class Channel(base.StdChannel):
         :type durable: bool
 
         """
-        if not exchange:
-            address = '%s; {assert: always, node: {type: queue}}' % (
-                routing_key,)
-            msg_subject = None
+        if exchange:
+            proton_message = proton.Message(subject=exchange, **message)
         else:
-            address = '%s/%s; {assert: always, node: {type: topic}}' % (
-                exchange, routing_key)
-            msg_subject = str(routing_key)
-        sender = self.transport.session.sender(address)
-        qpid_message = qpid.messaging.Message(content=message,
-                                              durable=durable,
-                                              subject=msg_subject)
-        try:
-            sender.send(qpid_message, sync=True)
-        finally:
-            sender.close()
+            proton_message = proton.Message(**message)
+        send_complete = threading.Event()
+        cmd = SendMessage(message=proton_message, address=routing_key,
+                          send_complete=send_complete)
+        self.transport.main_thread_commands.put(cmd)
+        send_complete.wait()
 
     def _purge(self, queue):
         """Purge all undelivered messages from a queue specified by name.
@@ -818,22 +821,7 @@ class Channel(base.StdChannel):
         return self._purge(queue)
 
     def basic_get(self, queue, no_ack=False, **kwargs):
-        """Non-blocking single message get and ACK from a queue by name.
-
-        Internally this method uses :meth:`_get` to fetch the message. If
-        an :class:`~qpid.messaging.exceptions.Empty` exception is raised by
-        :meth:`_get`, this method silences it and returns None. If
-        :meth:`_get` does return a message, that message is ACKed. The no_ack
-        parameter has no effect on ACKing behavior, and all messages are
-        ACKed in all cases. This method never adds fetched Messages to the
-        internal QoS object for asynchronous ACKing.
-
-        This method converts the object type of the method as it passes
-        through. Fetching from the broker, :meth:`_get` returns a
-        :class:`qpid.messaging.Message`, but this method takes the payload
-        of the :class:`qpid.messaging.Message` and instantiates a
-        :class:`~kombu.transport.virtual.Message` object with the payload
-        based on the class setting of self.Message.
+        """Non-blocking, returns a message, or None.
 
         :param queue: The queue name to fetch a message from.
         :type queue: str
@@ -847,10 +835,15 @@ class Channel(base.StdChannel):
 
         """
         try:
-            qpid_message = self._get(queue)
-            raw_message = qpid_message.content
-            message = self.Message(raw_message, channel=self)
-            self.transport.session.acknowledge(message=qpid_message)
+            return_queue = Queue.Queue()
+            cmd = GetOneMessage(queue, return_queue)
+            self.transport.main_thread_commands.put(cmd)
+            message_and_delivery = return_queue.get()
+            message = self._make_kombu_message_from_proton(
+                message_and_delivery.message)
+            delivery_tag = message.delivery_tag
+            self.qos.append(message_and_delivery.delivery, delivery_tag)
+            self.qos.ack(delivery_tag)
             return message
         except Empty:
             pass
@@ -961,24 +954,21 @@ class Channel(base.StdChannel):
         :param consumer_tag: a tag to reference the created consumer by.
             This consumer_tag is needed to cancel the consumer.
         :type consumer_tag: an immutable object
-
         """
         self._tag_to_queue[consumer_tag] = queue
 
-        def _callback(qpid_message):
-            raw_message = qpid_message.content
-            message = self.Message(raw_message, channel=self)
+        def _callback(proton_message):
+            message = self._make_kombu_message_from_proton(proton_message)
             delivery_tag = message.delivery_tag
-            self.qos.append(qpid_message, delivery_tag)
+            self.qos.append(proton_message, delivery_tag)
             if no_ack:
                 # Celery will not ack this message later, so we should ack now
                 self.basic_ack(delivery_tag)
+
             return callback(message)
 
         self.connection._callbacks[queue] = _callback
-        new_receiver = self.transport.session.receiver(queue)
-        new_receiver.capacity = self.qos.prefetch_count
-        self._receivers[consumer_tag] = new_receiver
+        self.transport.main_thread_commands.put(StartConsumer(queue))
 
     def basic_cancel(self, consumer_tag):
         """Cancel consumer by consumer tag.
@@ -1030,7 +1020,7 @@ class Channel(base.StdChannel):
 
         """
         if self._qos is None:
-            self._qos = self.QoS(self.transport.session)
+            self._qos = self.QoS(self.transport.main_thread_commands)
         return self._qos
 
     def basic_qos(self, prefetch_count, *args):
@@ -1085,11 +1075,11 @@ class Channel(base.StdChannel):
         info = properties.setdefault('delivery_info', {})
         info['priority'] = priority or 0
 
-        return {'body': body,
-                'content-encoding': content_encoding,
-                'content-type': content_type,
-                'headers': headers or {},
-                'properties': properties or {}}
+        to_return = {'body': body, 'content_encoding': content_encoding,
+                     'content_type': content_type,
+                     'properties': properties or {}}
+        to_return['properties']['headers'] = headers
+        return to_return
 
     def basic_publish(self, message, exchange, routing_key, **kwargs):
         """Publish message onto an exchange using a routing key.
@@ -1125,16 +1115,17 @@ class Channel(base.StdChannel):
         message['body'], body_encoding = self.encode_body(
             message['body'], self.body_encoding,
         )
-        message['body'] = buffer(message['body'])
+        delivery_tag = uuid.uuid4()
         props = message['properties']
         props.update(
             body_encoding=body_encoding,
-            delivery_tag=uuid.uuid4(),
+            delivery_tag=delivery_tag,
         )
         props['delivery_info'].update(
             exchange=exchange,
             routing_key=routing_key,
         )
+        message['id'] = delivery_tag
         self._put(routing_key, message, exchange, **kwargs)
 
     def encode_body(self, body, encoding=None):
@@ -1284,59 +1275,9 @@ class Connection(object):
     # A class reference to the :class:`Channel` object
     Channel = Channel
 
-    def __init__(self, **connection_options):
-        self.connection_options = connection_options
+    def __init__(self):
         self.channels = []
         self._callbacks = {}
-        self._qpid_conn = None
-        establish = qpid.messaging.Connection.establish
-
-        # There are several inconsistent behaviors in the sasl libraries
-        # used on different systems. Although qpid.messaging allows
-        # multiple space separated sasl mechanisms, this implementation
-        # only advertises one type to the server. These are either
-        # ANONYMOUS, PLAIN, or an overridden value specified by the user.
-
-        sasl_mech = connection_options['sasl_mechanisms']
-
-        try:
-            msg = _('Attempting to connect to qpid with '
-                    'SASL mechanism %s') % sasl_mech
-            logger.debug(msg)
-            self._qpid_conn = establish(**self.connection_options)
-            # connection was successful if we got this far
-            msg = _('Connected to qpid with SASL '
-                    'mechanism %s') % sasl_mech
-            logger.info(msg)
-        except ConnectionError as conn_exc:
-            # if we get one of these errors, do not raise an exception.
-            # Raising will cause the connection to be retried. Instead,
-            # just continue on to the next mech.
-            coded_as_auth_failure = getattr(conn_exc, 'code', None) == 320
-            contains_auth_fail_text = \
-                'Authentication failed' in conn_exc.text
-            contains_mech_fail_text = \
-                'sasl negotiation failed: no mechanism agreed' \
-                in conn_exc.text
-            contains_mech_unavail_text = 'no mechanism available' \
-                in conn_exc.text
-            if coded_as_auth_failure or \
-                    contains_auth_fail_text or contains_mech_fail_text or \
-                    contains_mech_unavail_text:
-                msg = _('Unable to connect to qpid with SASL '
-                        'mechanism %s') % sasl_mech
-                logger.error(msg)
-                raise AuthenticationFailure(sys.exc_info()[1])
-            raise
-
-    def get_qpid_connection(self):
-        """Return the existing connection (singleton).
-
-        :return: The existing qpid.messaging.Connection
-        :rtype: :class:`qpid.messaging.endpoints.Connection`
-
-        """
-        return self._qpid_conn
 
     def close(self):
         """Close the connection.
@@ -1363,6 +1304,109 @@ class Connection(object):
             pass
         finally:
             channel.connection = None
+
+
+class HelloWorld(MessagingHandler):
+
+    def __init__(self, server, _w, main_thread_commands, recv_messages):
+        super(HelloWorld, self).__init__(auto_accept=False)
+        self.server = server
+        self._w_fd = _w
+        self.main_thread_commands = main_thread_commands
+        self.recv_messages = recv_messages  # async send messages to MainThread
+        self.senders = {}  # senders indexes by address
+        self.send_complete_events = {}  # event send complete events indexed by sender address
+        self.get_one_queues = {}  # get_one send messages to MainThread
+
+    def on_connection_error(self, event):
+        print 'on_connection_error'
+        pass
+
+    def on_disconnected(self, event):
+        print 'on_disconnected'
+        pass
+
+    def on_link_error(self, event):
+        print 'on_link_error'
+        pass
+
+    def on_start(self, event):
+        self.conn = event.container.connect(self.server)
+        event.container.schedule(1, self)
+
+    def on_timer_task(self, event):
+        start_time = time.time()
+        elapsed_time = -1
+        while elapsed_time < 1.0:
+            try:
+                command = self.main_thread_commands.get(False)
+            except Queue.Empty:
+                break
+            else:
+                if isinstance(command, SendMessage):
+                    try:
+                        sender = self.senders[command.address]
+                    except KeyError:
+                        sender = event.container.create_sender(self.conn, command.address)
+                        self.senders[command.address] = sender
+                    self.send_complete_events[sender.name] = command.send_complete
+                    sender.send(command.message)
+                elif isinstance(command, StartConsumer):
+                    event.container.create_receiver(self.conn, command.queue)
+                elif isinstance(command, AckMessage):
+                    self.accept(command.delivery)
+                    command.ack_complete.set()
+                elif isinstance(command, ReleaseMessage):
+                    self.release(command.delivery)
+                    command.release_complete.set()
+                elif isinstance(command, RejectMessage):
+                    self.reject(command.delivery)
+                    command.reject_complete.set()
+                elif isinstance(command, GetOneMessage):
+                    receiver = event.container.create_receiver(self.conn, command.queue)
+                    self.get_one_queues[receiver.name] = command.return_queue
+                else:
+                    msg = _('Unrecognized command: {command}')
+                    logger.error(msg.format(command=command))
+            elapsed_time = time.time() - start_time
+        event.container.schedule(1, self)
+
+    def on_unhandled(self, call_name, *args, **kwargs):
+        pass
+
+    def on_accepted(self, event):
+        send_complete = self.send_complete_events.pop(event.sender.name)
+        send_complete.set()
+
+    def on_message(self, event):
+        message_and_delivery = MessageAndDelivery(message=event.message,
+                                                  delivery=event.delivery)
+        return_queue = self.get_one_queues.pop(event.receiver.name,
+                                               self.recv_messages)
+        return_queue.put(message_and_delivery)
+
+
+class ProtonThread(threading.Thread):
+
+    def __init__(self, _w, main_thread_commands, recv_messages):
+        super(ProtonThread, self).__init__()
+        self.main_thread_commands = main_thread_commands
+        self.recv_messages = recv_messages
+        self._w = _w
+
+    def run(self):
+        while True:
+            messaging_handler = HelloWorld('localhost:5672', self._w,
+                                            self.main_thread_commands,
+                                           self.recv_messages)
+            Container(messaging_handler).run()
+            # except Exception as error:
+            #     import pydevd
+            #     pydevd.settrace('localhost', port=29437, stdoutToServer=True,
+            #                     stderrToServer=True)
+            #     msg =_('Proton background thread encountered and exception.')
+            #     logger.exception(msg)
+
 
 
 class Transport(base.Transport):
@@ -1434,9 +1478,16 @@ class Transport(base.Transport):
     channel_errors = recoverable_channel_errors
 
     def __init__(self, *args, **kwargs):
+        # import pydevd
+        # pydevd.settrace('localhost', port=29437, stdoutToServer=True,
+        #                 stderrToServer=True)
         self.verify_runtime_environment()
+        self.main_thread_commands = Queue.Queue()
+        self.recv_messages = Queue.Queue()
+        self.r, self._w = os.pipe()
+        if fcntl is not None:
+            fcntl.fcntl(self.r, fcntl.F_SETFL, os.O_NONBLOCK)
         super(Transport, self).__init__(*args, **kwargs)
-        self.use_async_interface = False
 
     def verify_runtime_environment(self):
         """Verify that the runtime environment is acceptable.
@@ -1458,31 +1509,12 @@ class Transport(base.Transport):
                 'The Qpid transport for Kombu does not '
                 'support PyPy. Try using Python 2.6+',
             )
-        if PY3:
-            raise RuntimeError(
-                'The Qpid transport for Kombu does not '
-                'support Python 3. Try using Python 2.6+',
-            )
 
-        if dependency_is_none(qpidtoollibs):
+        if dependency_is_none(proton):
             raise RuntimeError(
-                'The Python package "qpidtoollibs" is missing. Install it '
+                'The Python package "proton" is missing. Install it '
                 'with your package manager. You can also try `pip install '
-                'qpid-tools`.')
-
-        if dependency_is_none(qpid):
-            raise RuntimeError(
-                'The Python package "qpid.messaging" is missing. Install it '
-                'with your package manager. You can also try `pip install '
-                'qpid-python`.')
-
-    def _qpid_message_ready_handler(self, session):
-        if self.use_async_interface:
-            os.write(self._w, '0')
-
-    def _qpid_async_exception_notify_handler(self, obj_with_exception, exc):
-        if self.use_async_interface:
-            os.write(self._w, 'e')
+                'python-qpid-proton`.')
 
     def on_readable(self, connection, loop):
         """Handle any messages associated with this Transport.
@@ -1533,6 +1565,7 @@ class Transport(base.Transport):
         :type loop: kombu.async.Hub
 
         """
+        raise NotImplementedError()
         os.read(self.r, 1)
         try:
             self.drain_events(connection)
@@ -1565,10 +1598,6 @@ class Transport(base.Transport):
         :type loop: kombu.async.hub.Hub
 
         """
-        self.r, self._w = os.pipe()
-        if fcntl is not None:
-            fcntl.fcntl(self.r, fcntl.F_SETFL, os.O_NONBLOCK)
-        self.use_async_interface = True
         loop.add_reader(self.r, self.on_readable, connection, loop)
 
     def establish_connection(self):
@@ -1644,19 +1673,16 @@ class Transport(base.Transport):
         opts.update(credentials)
         opts.update(conninfo.transport_options)
 
-        conn = self.Connection(**opts)
+        conn =  self.Connection()
         conn.client = self.client
-        self.session = conn.get_qpid_connection().session()
-        self.session.set_message_received_notify_handler(
-            self._qpid_message_ready_handler
-        )
-        conn.get_qpid_connection().set_async_exception_notify_handler(
-            self._qpid_async_exception_notify_handler
-        )
-        self.session.set_async_exception_notify_handler(
-            self._qpid_async_exception_notify_handler
-        )
+
+        proton_thread = ProtonThread(
+            self._w, self.main_thread_commands, self.recv_messages)
+        proton_thread.daemon = True
+        proton_thread.start()
+
         return conn
+
 
     def close_connection(self, connection):
         """Close the :class:`Connection` object.
@@ -1692,14 +1718,14 @@ class Transport(base.Transport):
         elapsed_time = -1
         while elapsed_time < timeout:
             try:
-                receiver = self.session.next_receiver(timeout=timeout)
-                message = receiver.fetch()
-                queue = receiver.source
-            except QpidEmpty:
+                proton_message = self.recv_messages.get(block=True,
+                                                        timeout=timeout)
+            except Queue.Empty:
                 raise socket.timeout()
             else:
-                connection._callbacks[queue](message)
-            elapsed_time = monotonic() - start_time
+                queue = proton_message.subject
+                connection._callbacks[queue](proton_message)
+            elapsed_time = time.time() - start_time
         raise socket.timeout()
 
     def create_channel(self, connection):
@@ -1717,7 +1743,7 @@ class Transport(base.Transport):
         :rtype: :class:`kombu.transport.qpid.Channel`.
 
         """
-        channel = connection.Channel(connection, self)
+        channel = Channel(connection, self)
         connection.channels.append(channel)
         return channel
 
@@ -1739,10 +1765,9 @@ class Transport(base.Transport):
 
     def __del__(self):
         """Ensure file descriptors opened in __init__() are closed."""
-        if getattr(self, 'use_async_interface', False):
-            for fd in (self.r, self._w):
-                try:
-                    os.close(fd)
-                except OSError:
-                    # ignored
-                    pass
+        for fd in (self.r, self._w):
+            try:
+                os.close(fd)
+            except OSError:
+                # ignored
+                pass

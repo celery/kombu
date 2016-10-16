@@ -1,2 +1,1 @@
-qpid-python>=0.26
-qpid-tools>=0.26
+python-qpid-proton

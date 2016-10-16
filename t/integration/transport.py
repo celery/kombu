@@ -248,7 +248,7 @@ class TransportCase(unittest.TestCase):
         queue = Queue(self.P('basic_get'), self.exchange, 'basic_get')
         queue = queue(chan2)
         queue.declare()
-        producer.publish({'basic.get': 'this'}, routing_key='basic_get')
+        producer.publish({'basic.get': 'this'}, routing_key=self.P('basic_get'))
         chan1.close()
 
         for i in range(self.event_loop_max):
