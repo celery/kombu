@@ -431,7 +431,7 @@ class Connection(object):
 
     def revive(self, new_channel):
         """Revive connection after connection re-established."""
-        if self._default_channel:
+        if self._default_channel and new_channel is not self._default_channel:
             self.maybe_close_channel(self._default_channel)
             self._default_channel = None
 
@@ -515,7 +515,6 @@ class Connection(object):
                             reraise_as_library_errors=False,
                         )
                         channel = self.default_channel
-                        self.revive(channel)
                         obj.revive(channel)
                         if on_revive:
                             on_revive(channel)
