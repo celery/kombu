@@ -31,6 +31,7 @@ else:
 IS_PY3 = sys.version_info[0] == 3
 
 _encoder_cls = type(json._default_encoder)
+_default_encoder = None   # ... set to JSONEncoder below.
 
 
 class JSONEncoder(_encoder_cls):
@@ -59,12 +60,14 @@ class JSONEncoder(_encoder_cls):
             elif isinstance(o, textual):
                 return text_t(o)
             return super(JSONEncoder, self).default(o)
+_default_encoder = JSONEncoder
 
 
-def dumps(s, _dumps=json.dumps, cls=JSONEncoder,
+def dumps(s, _dumps=json.dumps, cls=None,
           default_kwargs=_json_extra_kwargs, **kwargs):
     """Serialize object to json string."""
-    return _dumps(s, cls=cls, **dict(default_kwargs, **kwargs))
+    return _dumps(s, cls=cls or _default_encoder,
+                  **dict(default_kwargs, **kwargs))
 
 
 def loads(s, _loads=json.loads, decode_bytes=IS_PY3):
