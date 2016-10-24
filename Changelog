@@ -12,11 +12,50 @@
 
 - Now depends on :mod:`amqp` 2.0.0.
 
+    The new py-amqp version have been refactored for better performance,
+    using modern Python socket conventions, and API consistency.
+
 - No longer depends on :mod:`anyjson`.
+
+    Kombu will now only choose between :pypi:`simplejson` and the built-in
+    :mod:`json`.
+
+    Using the latest version of simplejson is recommended:
+
+    .. code-block:: console
+
+        $ pip install -U simplejson
+
+- Removed transports that are no longer supported in this version:
+
+    - Django ORM transport
+    - SQLAlchemy ORM transport
+    - Beanstalk transport
+    - ZeroMQ transport
+    - amqplib transport (use pyamqp).
 
 - New SQS transport
 
     Donated by NextDoor, with additional contributions from mdk.
+
+    .. note::
+
+        ``kombu[sqs]`` now depends on :pypi:`pycurl`.
+
+- New Consul transport.
+
+    Contributed by **Wido den Hollander**.
+
+- New etcd transport.
+
+    Contributed by **Stephen Milner**.
+
+- New Qpid transport.
+
+    It was introduced as an experimental transport in Kombu 3.0, but is now
+    mature enough to be fully supported.
+
+    Created and maintained by **Brian Bouterse**.
 
 - Redis: Priority 0 is now lowest, 9 is highest.
   (**backward incompatible**)
@@ -24,6 +63,20 @@
     This to match how priorities in AMQP works.
 
     Fix contributed by **Alex Koshelev**.
+
+- Redis: Support for Sentinel
+
+    You can point the connection to a list of sentinel URLs like:
+
+    .. code-block:: text
+
+        sentinel://0.0.0.0:26379;sentinel://0.0.0.0:26380/...
+
+    where each sentinel is separated by a `;`. Multiple sentinels are handled
+    by :class:`kombu.Connection` constructor, and placed in the alternative
+    list of servers to connect to in case of connection failure.
+
+   Contributed by **Sergey Azovskov**, and **Lorenzo Mancini**
 
 - RabbitMQ Queue Extensions
 
@@ -60,6 +113,61 @@
         based on the ``priority` field of the message.
 
         See :attr:`kombu.Queue.max_priority`.
+
+- RabbitMQ: ``Message.ack`` now supports the ``multiple`` argument.
+
+    If multiple is set to True, then all messages received before
+    the message being acked will also be acknowledged.
+
+- ``amqps://`` can now be specified to require SSL (Issue #610).
+
+- ``Consumer.cancel_by_queue`` is now constant time.
+
+- ``Connection.ensure*`` now raises :exc:`kombu.exceptions.OperationalError`.
+
+    Things that can be retried are now reraised as
+    :exc:`kombu.exceptions.OperationalError`.
+
+- Redis: Fixed SSL support.
+
+    Contributed by **Robert Kolba**.
+
+- New ``Queue.consumer_arguments`` can be used for the ability to
+  set consumer priority via ``x-priority``.
+
+  See https://www.rabbitmq.com/consumer-priority.html
+
+  Example:
+
+  .. code-block:: python
+
+        consumer = Consumer(channel, consumer_arguments={'x-priority': 3})
+
+- Queue/Exchange: ``no_declare`` option added (also enabled for
+  internal amq. exchanges) (Issue #565).
+
+- JSON serializer now calls ``obj.__json__`` for unsupported types.
+
+    This means you can now define a ``__json__`` method for custom
+    types that can be reduced down to a built-in json type.
+
+    Example:
+
+    .. code-block:: python
+
+        class Person:
+            first_name = None
+            last_name = None
+            address = None
+
+            def __json__(self):
+                return {
+                    'first_name': self.first_name,
+                    'last_name': self.last_name,
+                    'address': self.address,
+                }
+
+- JSON serializer now handles datetimes, Django promise, UUID and Decimal.
 
 - Beanstalk: Priority 0 is now lowest, 9 is highest.
   (**backward incompatible**)
@@ -101,9 +209,9 @@
     - ``reply_queue_expires`` (float/int seconds).
     - ``reply_queue_ttl`` (float/int seconds).
 
-    Contributed by **Alan Justino**.
+    All take seconds in int/float.
 
-All take seconds in int/float.
+    Contributed by **Alan Justino**.
 
 - Exchange.delivery_mode now defaults to :const:`None`, and the default
   is instead set by ``Producer.publish``.
@@ -145,14 +253,40 @@ All take seconds in int/float.
 
     Contributed by **Alex Koshelev**.
 
+- Virtual transports now supports multiple queue bindings.
+
+    Contributed by **Federico Ficarelli**.
+
+- Virtual transports now supports the anon exchange.
+
+    If when publishing a message, the exchange argument is set to '' (empty
+    string), the routing_key will be regarded as the destination queue.
+
+    This will bypass the routing table compeltely, and just deliver the
+    message to the queue name specified in the routing key.
+
 - Zookeeper: Transport now uses the built-in suport in kazoo to handle
   failover when using a list of server names.
 
     Contributed by **Joshua Harlow**.
 
+- ConsumerMixin.run now passes keyword arguments to .consume.
+
+Deprecations and removals
+-------------------------
+
+- The deprecated method ``Consumer.add_queue_from_dict`` has been removed.
+
+    Use instead:
+
+    .. code-block:: python
+
+        consumer.add_queue(Queue.from_dict(queue_name, **options))
+
 - Removed module ``kombu.syn``
 
     ``detect_environment`` has been moved to kombu.utils.compat
+
 
 
 .. _version-3.0.35:
