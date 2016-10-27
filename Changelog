@@ -283,6 +283,14 @@ Deprecations and removals
 
         consumer.add_queue(Queue.from_dict(queue_name, **options))
 
+- The deprecated function ``kombu.serialization.encode`` has been removed.
+
+    Use :func:`kombu.serialization.dumps` instead.
+
+- The deprecated function ``kombu.serialization.decode`` has been removed.
+
+    Use :func:`kombu.serialization.loads` instead.
+
 - Removed module ``kombu.syn``
 
     ``detect_environment`` has been moved to kombu.utils.compat

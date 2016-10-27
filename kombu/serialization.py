@@ -220,7 +220,6 @@ class SerializerRegistry(object):
         with _reraise_errors(EncodeError):
             payload = encoder(data)
         return content_type, content_encoding, payload
-    encode = dumps  # XXX compat
 
     def loads(self, data, content_type, content_encoding,
               accept=None, force=False, _trusted_content=TRUSTED_CONTENT):
@@ -267,7 +266,6 @@ class SerializerRegistry(object):
                 with _reraise_errors(DecodeError):
                     return _decode(data, content_encoding)
         return data
-    decode = loads  # XXX compat
 
     def _for_untrusted_content(self, ctype, why):
         return ContentDisallowed(
@@ -281,9 +279,7 @@ class SerializerRegistry(object):
 #: Global registry of serializers/deserializers.
 registry = SerializerRegistry()
 dumps = registry.dumps
-encode = dumps  # XXX compat alias
 loads = registry.loads
-decode = loads  # XXX compat alias
 register = registry.register
 unregister = registry.unregister
 
