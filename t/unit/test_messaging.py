@@ -59,6 +59,9 @@ class test_Producer:
         assert p.exchange is not self.exchange
         assert p.exchange.is_bound
         # auto_declare declares exchange'
+        assert 'exchange_declare' not in channel
+
+        p.publish('foo')
         assert 'exchange_declare' in channel
 
     def test_manual_declare(self):
@@ -124,12 +127,14 @@ class test_Producer:
     def test_publish_with_Exchange_instance(self):
         p = self.connection.Producer()
         p.channel = Mock()
+        p.channel.connection.client.declared_entities = set()
         p.publish('hello', exchange=Exchange('foo'), delivery_mode='transient')
         assert p._channel.basic_publish.call_args[1]['exchange'] == 'foo'
 
     def test_publish_with_expiration(self):
         p = self.connection.Producer()
         p.channel = Mock()
+        p.channel.connection.client.declared_entities = set()
         p.publish('hello', exchange=Exchange('foo'), expiration=10)
         properties = p._channel.prepare_message.call_args[0][5]
         assert properties['expiration'] == '10000'
@@ -137,6 +142,8 @@ class test_Producer:
     def test_publish_with_reply_to(self):
         p = self.connection.Producer()
         p.channel = Mock()
+        p.channel.connection.client.declared_entities = set()
+        assert not p.exchange.name
         p.publish('hello', exchange=Exchange('foo'), reply_to=Queue('foo'))
         properties = p._channel.prepare_message.call_args[0][5]
         assert properties['reply_to'] == 'foo'
@@ -151,6 +158,7 @@ class test_Producer:
     def test_publish_retry_calls_ensure(self):
         p = Producer(Mock())
         p._connection = Mock()
+        p._connection.declared_entities = set()
         ensure = p.connection.ensure = Mock()
         p.publish('foo', exchange='foo', retry=True)
         ensure.assert_called()

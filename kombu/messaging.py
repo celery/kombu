@@ -47,9 +47,8 @@ class Producer(object):
     #: Default compression method.  Disabled by default.
     compression = None
 
-    #: By default the exchange is declared at instantiation.
-    #: If you want to declare manually then you can set this
-    #: to :const:`False`.
+    #: By default, if a defualt exchange is set,
+    #: that exchange will be declare when publishing a message.
     auto_declare = True
 
     #: Basic return callback.
@@ -167,6 +166,10 @@ class Producer(object):
             body, serializer, content_type, content_encoding,
             compression, headers)
 
+        if self.auto_declare and self.exchange.name:
+            declare = [] if declare is None else declare
+            declare.append(self.exchange)
+
         if retry:
             _publish = self.connection.ensure(self, _publish, **retry_policy)
         return _publish(
@@ -225,10 +228,6 @@ class Producer(object):
             if self.on_return:
                 self._channel.events['basic_return'].add(self.on_return)
             self.exchange = self.exchange(channel)
-        if self.auto_declare:
-            # auto_decare is not recommended as this will force
-            # evaluation of the channel.
-            self.declare()
 
     def __enter__(self):
         return self
