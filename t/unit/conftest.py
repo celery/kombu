@@ -28,17 +28,10 @@ def multiprocessing_workaround(request):
         pass  # Py3 missing _exithandlers
 
 
-@pytest.fixture(autouse=True)
-def zzzz_test_cases_calls_setup_teardown(request):
-    if request.instance:
-        # we set the .patching attribute for every test class.
-        setup = getattr(request.instance, 'setup', None)
-        # we also call .setup() and .teardown() after every test method.
-        setup and setup()
+def zzz_reset_memory_transport_state():
     yield
-    if request.instance:
-        teardown = getattr(request.instance, 'teardown', None)
-        teardown and teardown()
+    from kombu.transport import memory
+    memory.Transport.state.clear()
 
 
 @pytest.fixture(autouse=True)

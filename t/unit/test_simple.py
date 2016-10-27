@@ -22,13 +22,14 @@ class SimpleBase:
 
     def setup(self):
         self.connection = Connection(transport='memory')
-        with self.connection.channel() as channel:
-            channel.exchange_declare('amq.direct')
+        self.connection.default_channel.exchange_declare('amq.direct')
         self.q = self.Queue(None, no_ack=True)
 
     def teardown(self):
         self.q.close()
         self.connection.close()
+        self.connection = None
+        self.q = None
 
     def test_produce__consume(self):
         q = self.Queue('test_produce__consume', no_ack=True)

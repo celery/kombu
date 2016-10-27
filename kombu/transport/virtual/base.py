@@ -875,8 +875,7 @@ class Transport(base.Transport):
     Cycle = FairCycle
     Management = Management
 
-    #: :class:`BrokerState` containing declared exchanges and
-    #: bindings (set by constructor).
+    #: Global :class:`BrokerState` containing declared exchanges and bindings.
     state = BrokerState()
 
     #: :class:`~kombu.utils.scheduling.FairCycle` instance

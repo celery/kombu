@@ -126,10 +126,9 @@ def maybe_declare(entity, channel=None, retry=False, **retry_policy):
 
 
 def _maybe_declare(entity, declared, ident, channel, orig=None):
-    channel = channel or entity.channel
     if not channel.connection:
         raise RecoverableConnectionError('channel disconnected')
-    entity.declare()
+    entity.declare(channel=channel)
     if declared is not None and ident:
         declared.add(ident)
     if orig is not None:

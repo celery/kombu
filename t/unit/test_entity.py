@@ -273,7 +273,8 @@ class test_Queue:
         q.exchange = None
 
         q.declare()
-        q.queue_declare.assert_called_with(False, passive=False)
+        q.queue_declare.assert_called_with(
+            channel=None, nowait=False, passive=False)
 
     def test_declare__no_declare(self):
         q = Queue('a', no_declare=True)

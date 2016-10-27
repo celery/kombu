@@ -167,7 +167,7 @@ class Exchange(MaybeChannelBound):
             self.name and not self.name.startswith(
                 INTERNAL_EXCHANGE_PREFIX))
 
-    def declare(self, nowait=False, passive=None):
+    def declare(self, nowait=False, passive=None, channel=None):
         """Declare the exchange.
 
         Creates the exchange on the broker, unless passive is set
@@ -179,14 +179,14 @@ class Exchange(MaybeChannelBound):
         """
         if self._can_declare():
             passive = self.passive if passive is None else passive
-            return self.channel.exchange_declare(
+            return (channel or self.channel).exchange_declare(
                 exchange=self.name, type=self.type, durable=self.durable,
                 auto_delete=self.auto_delete, arguments=self.arguments,
                 nowait=nowait, passive=passive,
             )
 
     def bind_to(self, exchange='', routing_key='',
-                arguments=None, nowait=False, **kwargs):
+                arguments=None, nowait=False, channel=None, **kwargs):
         """Bind the exchange to another exchange.
 
         Arguments:
@@ -196,22 +196,26 @@ class Exchange(MaybeChannelBound):
         """
         if isinstance(exchange, Exchange):
             exchange = exchange.name
-        return self.channel.exchange_bind(destination=self.name,
-                                          source=exchange,
-                                          routing_key=routing_key,
-                                          nowait=nowait,
-                                          arguments=arguments)
+        return (channel or self.channel).exchange_bind(
+            destination=self.name,
+            source=exchange,
+            routing_key=routing_key,
+            nowait=nowait,
+            arguments=arguments,
+        )
 
     def unbind_from(self, source='', routing_key='',
-                    nowait=False, arguments=None):
+                    nowait=False, arguments=None, channel=None):
         """Delete previously created exchange binding from the server."""
         if isinstance(source, Exchange):
             source = source.name
-        return self.channel.exchange_unbind(destination=self.name,
-                                            source=source,
-                                            routing_key=routing_key,
-                                            nowait=nowait,
-                                            arguments=arguments)
+        return (channel or self.channel).exchange_unbind(
+            destination=self.name,
+            source=source,
+            routing_key=routing_key,
+            nowait=nowait,
+            arguments=arguments,
+        )
 
     def Message(self, body, delivery_mode=None, priority=None,
                 content_type=None, content_encoding=None,
@@ -339,22 +343,23 @@ class binding(Object):
     def declare(self, channel, nowait=False):
         """Declare destination exchange."""
         if self.exchange and self.exchange.name:
-            ex = self.exchange(channel)
-            ex.declare(nowait=nowait)
+            self.exchange.declare(channel=channel, nowait=nowait)
 
-    def bind(self, entity, nowait=False):
+    def bind(self, entity, nowait=False, channel=None):
         """Bind entity to this binding."""
         entity.bind_to(exchange=self.exchange,
                        routing_key=self.routing_key,
                        arguments=self.arguments,
-                       nowait=nowait)
+                       nowait=nowait,
+                       channel=channel)
 
-    def unbind(self, entity, nowait=False):
+    def unbind(self, entity, nowait=False, channel=None):
         """Unbind entity from this binding."""
         entity.unbind_from(self.exchange,
                            routing_key=self.routing_key,
                            arguments=self.unbind_arguments,
-                           nowait=nowait)
+                           nowait=nowait,
+                           channel=channel)
 
     def __repr__(self):
         return '<binding: {0}>'.format(self)
@@ -591,30 +596,31 @@ class Queue(MaybeChannelBound):
         if self.exchange:
             self.exchange = self.exchange(self.channel)
 
-    def declare(self, nowait=False):
+    def declare(self, nowait=False, channel=None):
         """Declare queue and exchange then binds queue to exchange."""
         if not self.no_declare:
             # - declare main binding.
-            self._create_exchange(nowait=nowait)
-            self._create_queue(nowait=nowait)
-            self._create_bindings(nowait=nowait)
+            self._create_exchange(nowait=nowait, channel=channel)
+            self._create_queue(nowait=nowait, channel=channel)
+            self._create_bindings(nowait=nowait, channel=channel)
         return self.name
 
-    def _create_exchange(self, nowait=False):
+    def _create_exchange(self, nowait=False, channel=None):
         if self.exchange:
-            self.exchange.declare(nowait)
+            self.exchange.declare(nowait=nowait, channel=channel)
 
-    def _create_queue(self, nowait=False):
-        self.queue_declare(nowait, passive=False)
+    def _create_queue(self, nowait=False, channel=None):
+        self.queue_declare(nowait=nowait, passive=False, channel=channel)
         if self.exchange and self.exchange.name:
-            self.queue_bind(nowait)
+            self.queue_bind(nowait=nowait, channel=channel)
 
-    def _create_bindings(self, nowait=False):
+    def _create_bindings(self, nowait=False, channel=None):
         for B in self.bindings:
-            B.declare(self.channel)
-            B.bind(self, nowait=nowait)
+            channel = channel or self.channel
+            B.declare(channel)
+            B.bind(self, nowait=nowait, channel=channel)
 
-    def queue_declare(self, nowait=False, passive=False):
+    def queue_declare(self, nowait=False, passive=False, channel=None):
         """Declare queue on the server.
 
         Arguments:
@@ -623,7 +629,8 @@ class Queue(MaybeChannelBound):
                 The client can use this to check whether a queue exists
                 without modifying the server state.
         """
-        queue_arguments = self.channel.prepare_queue_arguments(
+        channel = channel or self.channel
+        queue_arguments = channel.prepare_queue_arguments(
             self.queue_arguments or {},
             expires=self.expires,
             message_ttl=self.message_ttl,
@@ -631,7 +638,7 @@ class Queue(MaybeChannelBound):
             max_length_bytes=self.max_length_bytes,
             max_priority=self.max_priority,
         )
-        ret = self.channel.queue_declare(
+        ret = channel.queue_declare(
             queue=self.name,
             passive=passive,
             durable=self.durable,
@@ -646,20 +653,24 @@ class Queue(MaybeChannelBound):
             self.on_declared(*ret)
         return ret
 
-    def queue_bind(self, nowait=False):
+    def queue_bind(self, nowait=False, channel=None):
         """Create the queue binding on the server."""
         return self.bind_to(self.exchange, self.routing_key,
-                            self.binding_arguments, nowait=nowait)
+                            self.binding_arguments,
+                            channel=channel, nowait=nowait)
 
     def bind_to(self, exchange='', routing_key='',
-                arguments=None, nowait=False):
+                arguments=None, nowait=False, channel=None):
         if isinstance(exchange, Exchange):
             exchange = exchange.name
-        return self.channel.queue_bind(queue=self.name,
-                                       exchange=exchange,
-                                       routing_key=routing_key,
-                                       arguments=arguments,
-                                       nowait=nowait)
+
+        return (channel or self.channel).queue_bind(
+            queue=self.name,
+            exchange=exchange,
+            routing_key=routing_key,
+            arguments=arguments,
+            nowait=nowait,
+        )
 
     def get(self, no_ack=None, accept=None):
         """Poll the server for a new message.
@@ -746,18 +757,20 @@ class Queue(MaybeChannelBound):
                                          if_empty=if_empty,
                                          nowait=nowait)
 
-    def queue_unbind(self, arguments=None, nowait=False):
+    def queue_unbind(self, arguments=None, nowait=False, channel=None):
         return self.unbind_from(self.exchange, self.routing_key,
-                                arguments, nowait)
+                                arguments, nowait, channel)
 
     def unbind_from(self, exchange='', routing_key='',
-                    arguments=None, nowait=False):
+                    arguments=None, nowait=False, channel=None):
         """Unbind queue by deleting the binding from the server."""
-        return self.channel.queue_unbind(queue=self.name,
-                                         exchange=exchange.name,
-                                         routing_key=routing_key,
-                                         arguments=arguments,
-                                         nowait=nowait)
+        return (channel or self.channel).queue_unbind(
+            queue=self.name,
+            exchange=exchange.name,
+            routing_key=routing_key,
+            arguments=arguments,
+            nowait=nowait,
+        )
 
     def __eq__(self, other):
         if isinstance(other, Queue):

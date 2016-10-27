@@ -115,11 +115,11 @@ class SimpleQueue(SimpleBase):
             name = queue.name
             exchange = queue.exchange
             routing_key = queue.routing_key
+        consumer = messaging.Consumer(channel, queue)
         producer = messaging.Producer(channel, exchange,
                                       serializer=serializer,
                                       routing_key=routing_key,
                                       compression=compression)
-        consumer = messaging.Consumer(channel, queue)
         super(SimpleQueue, self).__init__(channel, producer,
                                           consumer, no_ack, **kwargs)
 

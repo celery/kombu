@@ -485,7 +485,7 @@ class test_Channel:
         c._get_many.assert_called_with(c._active_queues, timeout=10.0)
 
     def test_get_exchanges(self):
-        self.channel.exchange_declare(exchange='foo')
+        self.channel.exchange_declare(exchange='unique_name')
         assert self.channel.get_exchanges()
 
     def test_basic_cancel_not_in_active_queues(self):
@@ -503,7 +503,7 @@ class test_Channel:
 
     def test_list_bindings(self):
         c = self.channel
-        c.exchange_declare(exchange='foo')
+        c.exchange_declare(exchange='unique_name')
         c.queue_declare(queue='q')
         c.queue_bind(queue='q', exchange='foo', routing_key='rk')
 
