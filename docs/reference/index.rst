@@ -6,7 +6,7 @@
 :Date: |today|
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 1
 
     kombu
     kombu.common
@@ -45,6 +45,7 @@
     kombu.transport.redis
     kombu.transport.mongodb
     kombu.transport.consul
+    kombu.transport.etcd
     kombu.transport.zookeeper
     kombu.transport.filesystem
     kombu.transport.SQS
