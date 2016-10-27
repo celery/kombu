@@ -17,11 +17,11 @@ DEFAULT_SSL_PORT = 5671
 class Message(base.Message):
     """AMQP Message."""
 
-    def __init__(self, channel, msg, **kwargs):
+    def __init__(self, msg, channel=None, **kwargs):
         props = msg.properties
         super(Message, self).__init__(
-            channel,
             body=msg.body,
+            channel=channel,
             delivery_tag=msg.delivery_tag,
             content_type=props.get('content_type'),
             content_encoding=props.get('content_encoding'),
@@ -54,7 +54,7 @@ class Channel(amqp.Channel, base.StdChannel):
 
     def message_to_python(self, raw_message):
         """Convert encoded message body back to a Python value."""
-        return self.Message(self, raw_message)
+        return self.Message(raw_message, channel=self)
 
 
 class Connection(amqp.Connection):

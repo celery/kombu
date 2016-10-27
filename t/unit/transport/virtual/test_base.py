@@ -121,9 +121,10 @@ class test_Message:
         assert message.delivery_tag, tag
 
     def test_create_no_body(self):
-        virtual.Message(Mock(), {
+        virtual.Message(channel=Mock(), payload={
             'body': None,
-            'properties': {'delivery_tag': 1}})
+            'properties': {'delivery_tag': 1},
+        })
 
     def test_serializable(self):
         c = client().channel()
@@ -577,7 +578,7 @@ class test_Transport:
         channel = Mock(name='channel')
         self.transport.channels = [None, channel]
         self.transport._reject_inbound_message({'foo': 'bar'})
-        channel.Message.assert_called_with(channel, {'foo': 'bar'})
+        channel.Message.assert_called_with({'foo': 'bar'}, channel=channel)
         channel.qos.append.assert_called_with(
             channel.Message(), channel.Message().delivery_tag,
         )

@@ -58,10 +58,10 @@ class test_Message:
     def setup(self):
         self.conn = Connection('memory://')
         self.channel = self.conn.channel()
-        self.message = Message(self.channel, delivery_tag=313)
+        self.message = Message(channel=self.channel, delivery_tag=313)
 
     def test_postencode(self):
-        m = Message(self.channel, text_t('FOO'), postencode='ccyzz')
+        m = Message(text_t('FOO'), channel=self.channel, postencode='ccyzz')
         with pytest.raises(LookupError):
             m._reraise_error()
         m.ack()

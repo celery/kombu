@@ -845,7 +845,7 @@ class Channel(base.StdChannel):
         try:
             qpid_message = self._get(queue)
             raw_message = qpid_message.content
-            message = self.Message(self, raw_message)
+            message = self.Message(raw_message, channel=self)
             self.transport.session.acknowledge(message=qpid_message)
             return message
         except Empty:
@@ -959,7 +959,7 @@ class Channel(base.StdChannel):
 
         def _callback(qpid_message):
             raw_message = qpid_message.content
-            message = self.Message(self, raw_message)
+            message = self.Message(raw_message, channel=self)
             delivery_tag = message.delivery_tag
             self.qos.append(qpid_message, delivery_tag)
             if no_ack:

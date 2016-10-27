@@ -34,6 +34,16 @@
     - ZeroMQ transport
     - amqplib transport (use pyamqp).
 
+- API Changes
+
+    * Signature of :class:`kombu.Message` now takes body as first argment.
+
+        It used to be ``Message(channel, body=body, **kw)``, but now it's
+        ``Message(body, channel=channel, **kw)``.
+
+        This is unlikey to affect you, as the Kombu API does not have
+        users instantiate messages manually.
+
 - New SQS transport
 
     Donated by NextDoor, with additional contributions from mdk.

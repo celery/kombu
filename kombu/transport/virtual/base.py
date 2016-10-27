@@ -309,23 +309,25 @@ class QoS(object):
 class Message(base.Message):
     """Message object."""
 
-    def __init__(self, channel, payload, **kwargs):
+    def __init__(self, payload, channel=None, **kwargs):
         self._raw = payload
         properties = payload['properties']
         body = payload.get('body')
         if body:
             body = channel.decode_body(body, properties.get('body_encoding'))
-        kwargs.update({
-            'body': body,
-            'delivery_tag': properties['delivery_tag'],
-            'content_type': payload.get('content-type'),
-            'content_encoding': payload.get('content-encoding'),
-            'headers': payload.get('headers'),
-            'properties': properties,
-            'delivery_info': properties.get('delivery_info'),
-            'postencode': 'utf-8',
-        })
-        super(Message, self).__init__(channel, **kwargs)
+        super(Message, self).__init__(
+            body=body,
+            channel=channel,
+            delivery_tag=properties['delivery_tag'],
+            content_type=payload.get('content-type'),
+            content_encoding=payload.get('content-encoding'),
+            headers=payload.get('headers'),
+            properties=properties,
+            delivery_info=properties.get('delivery_info'),
+            postencode='utf-8',
+            **kwargs)
+
+
 
     def serializable(self):
         props = self.properties
@@ -627,7 +629,7 @@ class Channel(AbstractChannel, base.StdChannel):
         self._active_queues.append(queue)
 
         def _callback(raw_message):
-            message = self.Message(self, raw_message)
+            message = self.Message(raw_message, channel=self)
             if not no_ack:
                 self.qos.append(message, message.delivery_tag)
             return callback(message)
@@ -652,7 +654,7 @@ class Channel(AbstractChannel, base.StdChannel):
     def basic_get(self, queue, no_ack=False, **kwargs):
         """Get message by direct access (synchronous)."""
         try:
-            message = self.Message(self, self._get(queue))
+            message = self.Message(self._get(queue), channel=self)
             if not no_ack:
                 self.qos.append(message, message.delivery_tag)
             return message
@@ -748,7 +750,7 @@ class Channel(AbstractChannel, base.StdChannel):
     def message_to_python(self, raw_message):
         """Convert raw message to :class:`Message` instance."""
         if not isinstance(raw_message, self.Message):
-            return self.Message(self, payload=raw_message)
+            return self.Message(payload=raw_message, channel=self)
         return raw_message
 
     def prepare_message(self, body, priority=None, content_type=None,
@@ -983,7 +985,7 @@ class Transport(base.Transport):
     def _reject_inbound_message(self, raw_message):
         for channel in self.channels:
             if channel:
-                message = channel.Message(channel, raw_message)
+                message = channel.Message(raw_message, channel=channel)
                 channel.qos.append(message, message.delivery_tag)
                 channel.basic_reject(message.delivery_tag, requeue=True)
                 break
