@@ -97,9 +97,16 @@
 
     Now you can perform operations like :meth:`declare` or :meth:`delete`::
 
+        >>> # Declare exchange manually
         >>> bound_exchange.declare()
-        >>> message = bound_exchange.Message('Cure for cancer found!')
-        >>> bound_exchange.publish(message, routing_key='news.science')
+
+        >>> # Publish raw string message using low-level exchange API
+        >>> bound_exchange.publish(
+        ...     'Cure for cancer found!',
+        ...     routing_key='news.science',
+        ... )
+
+        >>> # Delete exchange.
         >>> bound_exchange.delete()
 
     .. autoclass:: Exchange

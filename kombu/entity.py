@@ -217,9 +217,7 @@ class Exchange(MaybeChannelBound):
             arguments=arguments,
         )
 
-    def Message(self, body, delivery_mode=None, priority=None,
-                content_type=None, content_encoding=None,
-                properties=None, headers=None):
+    def Message(self, body, delivery_mode=None, properties=None, **kwargs):
         """Create message instance to be sent with :meth:`publish`.
 
         Arguments:
@@ -249,29 +247,32 @@ class Exchange(MaybeChannelBound):
         # XXX This method is unused by kombu itself AFAICT [ask].
         properties = {} if properties is None else properties
         properties['delivery_mode'] = maybe_delivery_mode(self.delivery_mode)
-        return self.channel.prepare_message(body,
-                                            properties=properties,
-                                            priority=priority,
-                                            content_type=content_type,
-                                            content_encoding=content_encoding,
-                                            headers=headers)
+        return self.channel.prepare_message(
+            body,
+            properties=properties,
+            **kwargs)
 
     def publish(self, message, routing_key=None, mandatory=False,
                 immediate=False, exchange=None):
         """Publish message.
 
         Arguments:
-            message (~kombu.Message): Message instance to publish.
+            message (Union[kombu.Message, str, bytes]):
+                Message to publish.
             routing_key (str): Message routing key.
             mandatory (bool): Currently not supported.
             immediate (bool): Currently not supported.
         """
+        if isinstance(message, string_t):
+            message = self.Message(message)
         exchange = exchange or self.name
-        return self.channel.basic_publish(message,
-                                          exchange=exchange,
-                                          routing_key=routing_key,
-                                          mandatory=mandatory,
-                                          immediate=immediate)
+        return self.channel.basic_publish(
+            message,
+            exchange=exchange,
+            routing_key=routing_key,
+            mandatory=mandatory,
+            immediate=immediate,
+        )
 
     def delete(self, if_unused=False, nowait=False):
         """Delete the exchange declaration on server.
