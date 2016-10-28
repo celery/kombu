@@ -10,5 +10,5 @@ from case import skip
 @skip.unless_module('boto')
 @skip.unless_module('pycurl')
 @pytest.mark.usefixtures('hub')
-class AWSCase:
+class AWSCase(object):
     pass

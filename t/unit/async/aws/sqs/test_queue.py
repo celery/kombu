@@ -16,6 +16,7 @@ from ..case import AWSCase
 class test_AsyncQueue(AWSCase):
 
     def setup(self):
+        super(test_AsyncQueue, self).setup()
         self.conn = Mock(name='connection')
         self.x = AsyncQueue(self.conn, '/url')
         self.callback = PromiseMock(name='callback')

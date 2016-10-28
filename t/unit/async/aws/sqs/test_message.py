@@ -14,6 +14,7 @@ from ..case import AWSCase
 class test_AsyncMessage(AWSCase):
 
     def setup(self):
+        super(test_AsyncMessage, self).setup()
         self.queue = Mock(name='queue')
         self.callback = PromiseMock(name='callback')
         self.x = AsyncMessage(self.queue, 'body')
