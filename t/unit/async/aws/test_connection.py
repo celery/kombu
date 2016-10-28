@@ -285,7 +285,6 @@ class test_AsyncAWSAuthConnection(AWSCase):
 class test_AsyncAWSQueryConnection(AWSCase):
 
     def setup(self):
-        super(test_AsyncAWSQueryConnection, self).setup()
         self.x = AsyncAWSQueryConnection('aws.vandelay.com',
                                          http_client=Mock(name='client'))
 

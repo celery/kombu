@@ -20,7 +20,6 @@ from ..case import AWSCase
 class test_AsyncSQSConnection(AWSCase):
 
     def setup(self):
-        super(test_AsyncSQSConnection, self).setup()
         self.x = AsyncSQSConnection('ak', 'sk', http_client=Mock())
         self.x.get_object = Mock(name='X.get_object')
         self.x.get_status = Mock(name='X.get_status')
