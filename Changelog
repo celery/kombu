@@ -8,7 +8,8 @@
 
 4.0
 ===
-:release-date: TBA
+:release-date: 2016-10-28 14:00 P.M UTC
+:release-by: Ask Solem
 
 - Now depends on :mod:`amqp` 2.0.0.
 
@@ -304,8 +305,6 @@ Deprecations and removals
 - Removed module ``kombu.syn``
 
     ``detect_environment`` has been moved to kombu.utils.compat
-
-
 
 .. _version-3.0.35:
 
