@@ -327,8 +327,6 @@ class Message(base.Message):
             postencode='utf-8',
             **kwargs)
 
-
-
     def serializable(self):
         props = self.properties
         body, _ = self.channel.encode_body(self.body,

@@ -47,6 +47,7 @@ class Message(object):
 
         headers (Dict): Message headers.
     """
+
     MessageStateError = MessageStateError
 
     errors = None
