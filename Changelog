@@ -8,10 +8,10 @@
 
 4.0
 ===
-:release-date: 2016-10-28 14:00 P.M UTC
+:release-date: 2016-10-28 16:45 P.M UTC
 :release-by: Ask Solem
 
-- Now depends on :mod:`amqp` 2.0.0.
+- Now depends on :mod:`amqp` 2.0.
 
     The new py-amqp version have been refactored for better performance,
     using modern Python socket conventions, and API consistency.
