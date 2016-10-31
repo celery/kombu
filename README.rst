@@ -124,7 +124,7 @@ Kombu is using Sphinx, and the latest documentation can be found here:
 Quick overview
 --------------
 
-::
+.. code:: python
 
     from kombu import Connection, Exchange, Queue
 
@@ -169,7 +169,7 @@ Quick overview
 
 Or handle channels manually:
 
-::
+.. code:: python
 
     with connection.channel() as channel:
         producer = Producer(channel, ...)
@@ -179,7 +179,7 @@ Or handle channels manually:
 All objects can be used outside of with statements too,
 just remember to close the objects after use:
 
-::
+.. code:: python
 
     from kombu import Connection, Consumer, Producer
 
