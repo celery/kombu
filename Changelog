@@ -121,7 +121,7 @@
     - ``Queue(max_priority=10)``
 
         Declare queue to be a priority queue that routes messages
-        based on the ``priority` field of the message.
+        based on the ``priority`` field of the message.
 
         See :attr:`kombu.Queue.max_priority`.
 
@@ -152,7 +152,12 @@
 
   .. code-block:: python
 
-        consumer = Consumer(channel, consumer_arguments={'x-priority': 3})
+        Queue(
+            'qname',
+            exchange=Exchange('exchange'),
+            routing_key='qname',
+            consumer_arguments={'x-priority': 3},
+        )
 
 - Queue/Exchange: ``no_declare`` option added (also enabled for
   internal amq. exchanges) (Issue #565).
