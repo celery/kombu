@@ -23,7 +23,7 @@ class FibonacciRpcClient(object):
                 exchange='',
                 routing_key='rpc_queue',
                 declare=[self.callback_queue],
-                reply_to=self.callback_queue,
+                reply_to=self.callback_queue.name,
                 correlation_id=self.correlation_id,
             )
         with Consumer(self.connection,
