@@ -35,7 +35,7 @@ class Message(base.Message):
 
     def __init__(self, channel, props, info, body):
         super(Message, self).__init__(
-            channel,
+            channel=channel,
             body=body,
             delivery_info=info,
             properties=props,
