@@ -10,11 +10,11 @@ except ImportError:
     from urllib import quote, unquote                  # noqa
     from urlparse import urlparse, parse_qsl    # noqa
 
-from kombu.five import string_t
+from kombu.five import bytes_if_py2, string_t
 
 from .compat import NamedTuple
 
-safequote = partial(quote, safe='')
+safequote = partial(quote, safe=bytes_if_py2(''))
 
 
 urlparts = NamedTuple('urlparts', [
