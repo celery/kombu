@@ -14,7 +14,7 @@ from kombu.five import string_t
 
 from .compat import NamedTuple
 
-safequote = partial(quote, safe='')
+safequote = partial(quote, safe=str(''))
 
 
 urlparts = NamedTuple('urlparts', [
