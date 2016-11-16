@@ -1731,7 +1731,7 @@ class Transport(base.Transport):
 
     def __del__(self):
         """Ensure file descriptors opened in __init__() are closed."""
-        if self.use_async_interface:
+        if getattr(self, 'use_async_interface', False):
             for fd in (self.r, self._w):
                 try:
                     os.close(fd)
