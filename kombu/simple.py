@@ -126,7 +126,7 @@ class SimpleQueue(SimpleBase):
         self.channel = maybe_channel(new_channel) # reset from None
         self.producer.revive(new_channel)
         self.consumer.revive(new_channel)
-        self.consumer.consume() # create consumer connection
+        self.consumer.consume(no_ack=self.no_ack) # create consumer connection
 
 class SimpleBuffer(SimpleQueue):
     """Simple API for ephemeral queues."""
