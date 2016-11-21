@@ -122,7 +122,11 @@ class SimpleQueue(SimpleBase):
                                       compression=compression)
         super(SimpleQueue, self).__init__(channel, producer,
                                           consumer, no_ack, **kwargs)
-
+    def revive(self, new_channel):
+        self.channel = maybe_channel(new_channel) # reset from None
+        self.producer.revive(new_channel)
+        self.consumer.revive(new_channel)
+        self.consumer.consume() # create consumer connection
 
 class SimpleBuffer(SimpleQueue):
     """Simple API for ephemeral queues."""
