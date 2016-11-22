@@ -891,7 +891,7 @@ class Connection(object):
     @property
     def is_evented(self):
         return self.transport.implements.async
-BrokerConnection = Connection
+BrokerConnection = Connection  # noqa: E305
 
 
 class ConnectionPool(Resource):

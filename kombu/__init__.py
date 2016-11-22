@@ -92,6 +92,7 @@ class module(ModuleType):
                        '__contact__', '__homepage__', '__docformat__'))
         return result
 
+
 # 2.5 does not define __package__
 try:
     package = __package__

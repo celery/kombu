@@ -358,6 +358,7 @@ def reprcall(name, args=(), kwargs={}, sep=', '):
         reprkwargs(kwargs, sep),
     )
 
+
 # Compat names (before kombu 3.0)
 promise = lazy
 maybe_promise = maybe_evaluate

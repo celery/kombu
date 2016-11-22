@@ -107,7 +107,7 @@ class Connections(PoolGroup):
 
     def create(self, connection, limit):
         return connection.Pool(limit=limit)
-connections = register_group(Connections(limit=use_global_limit))
+connections = register_group(Connections(limit=use_global_limit))  # noqa: E305
 
 
 class Producers(PoolGroup):
@@ -115,7 +115,7 @@ class Producers(PoolGroup):
 
     def create(self, connection, limit):
         return ProducerPool(connections[connection], limit=limit)
-producers = register_group(Producers(limit=use_global_limit))
+producers = register_group(Producers(limit=use_global_limit))  # noqa: E305
 
 
 def _all_pools():

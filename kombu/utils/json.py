@@ -60,6 +60,8 @@ class JSONEncoder(_encoder_cls):
             elif isinstance(o, textual):
                 return text_t(o)
             return super(JSONEncoder, self).default(o)
+
+
 _default_encoder = JSONEncoder
 
 

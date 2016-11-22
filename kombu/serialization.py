@@ -388,6 +388,7 @@ def register_msgpack():
         content_encoding='binary',
     )
 
+
 # Register the base serialization methods.
 register_json()
 register_pickle()
