@@ -14,7 +14,7 @@ SQS Features supported by this transport:
 
     Long polling is enabled by setting the `wait_time_seconds` transport
     option to a number > 1.  Amazon supports up to 20 seconds.  This is
-    disabled for now, but will be enabled by default in the near future.
+    enabled with 10 seconds by default.
 
   Batch API Actions:
    http://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/
@@ -83,7 +83,7 @@ class Channel(virtual.Channel):
 
     default_region = 'us-east-1'
     default_visibility_timeout = 1800  # 30 minutes.
-    default_wait_time_seconds = 10  # disabled see #198
+    default_wait_time_seconds = 10  # up to 20 seconds max
     domain_format = 'kombu%(vhost)s'
     _asynsqs = None
     _sqs = None
