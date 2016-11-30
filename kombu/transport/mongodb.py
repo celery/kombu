@@ -137,8 +137,7 @@ class Channel(virtual.Channel):
         else:
             msg = self.messages.find_and_modify(
                 query={'queue': queue},
-                sort=[('priority', pymongo.ASCENDING),
-                      ('$natural', pymongo.ASCENDING)],
+                sort=[('priority', pymongo.ASCENDING)],
                 remove=True,
             )
 
@@ -381,13 +380,11 @@ class Channel(virtual.Channel):
         if pymongo.version_tuple >= (3, ):
             query = dict(
                 filter={'queue': exchange},
-                sort=[('$natural', pymongo.ASCENDING)],
                 cursor_type=CursorType.TAILABLE
             )
         else:
             query = dict(
                 query={'queue': exchange},
-                sort=[('$natural', pymongo.ASCENDING)],
                 tailable=True
             )
 
