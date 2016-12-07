@@ -84,7 +84,6 @@ import select
 import socket
 import ssl
 import sys
-import time
 import uuid
 
 from gettext import gettext as _
@@ -117,7 +116,7 @@ except ImportError:  # pragma: no cover
     qpid = None
 
 
-from kombu.five import Empty, items
+from kombu.five import Empty, items, monotonic
 from kombu.log import get_logger
 from kombu.transport.virtual import Base64, Message
 from kombu.transport import base
@@ -1680,7 +1679,7 @@ class Transport(base.Transport):
         :type timeout: int
 
         """
-        start_time = time.time()
+        start_time = monotonic()
         elapsed_time = -1
         while elapsed_time < timeout:
             try:
@@ -1691,7 +1690,7 @@ class Transport(base.Transport):
                 raise socket.timeout()
             else:
                 connection._callbacks[queue](message)
-            elapsed_time = time.time() - start_time
+            elapsed_time = monotonic() - start_time
         raise socket.timeout()
 
     def create_channel(self, connection):
