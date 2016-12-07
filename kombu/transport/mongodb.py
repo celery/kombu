@@ -13,7 +13,7 @@ from pymongo import MongoClient, uri_parser
 from pymongo.cursor import CursorType
 
 from kombu.exceptions import VersionMismatch
-from kombu.five import Empty
+from kombu.five import Empty, string_t
 from kombu.utils.compat import _detect_environment
 from kombu.utils.encoding import bytes_to_str
 from kombu.utils.json import loads, dumps
@@ -398,7 +398,7 @@ class Channel(virtual.Channel):
         Note:
             `queue` must be either queue name or options itself.
         """
-        if isinstance(queue, basestring):
+        if isinstance(queue, string_t):
             doc = self.queues.find_one({'_id': queue})
 
             if not doc:
