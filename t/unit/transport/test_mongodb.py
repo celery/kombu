@@ -160,7 +160,6 @@ class test_mongodb_channel(BaseMongoDBChannelCase):
             remove=True,
             sort=[
                 ('priority', pymongo.ASCENDING),
-                ('$natural', pymongo.ASCENDING),
             ],
         )
 
@@ -340,7 +339,6 @@ class test_mongodb_channel(BaseMongoDBChannelCase):
                 'broadcast', 'find',
                 tailable=True,
                 query={'queue': 'fanout_exchange'},
-                sort=[('$natural', pymongo.ASCENDING)],
             )
 
         if pymongo.version_tuple >= (3, ):
@@ -353,7 +351,6 @@ class test_mongodb_channel(BaseMongoDBChannelCase):
                 'broadcast', 'find',
                 cursor_type=pymongo.CursorType.TAILABLE,
                 filter={'queue': 'fanout_exchange1'},
-                sort=[('$natural', pymongo.ASCENDING)],
             )
 
 
@@ -400,7 +397,6 @@ class test_mongodb_channel_ttl(BaseMongoDBChannelCase):
             remove=True,
             sort=[
                 ('priority', pymongo.ASCENDING),
-                ('$natural', pymongo.ASCENDING),
             ],
         )
         self.assert_operation_called_with(
