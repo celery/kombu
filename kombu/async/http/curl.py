@@ -178,8 +178,8 @@ class CurlClient(BaseClient):
                 buffer=buffer, effective_url=effective_url, error=error,
             ))
         except Exception as exc:
-            raise
             self.hub.on_callback_error(request.on_ready, exc)
+            raise
 
     def _setup_request(self, curl, request, buffer, headers, _pycurl=pycurl):
         setopt = curl.setopt
