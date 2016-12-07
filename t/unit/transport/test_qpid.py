@@ -311,7 +311,7 @@ class test_Connection__init__(ExtraAssertionsMixin, ConnectionTestBase):
         except AuthenticationFailure as error:
             exc_info = sys.exc_info()
             assert not isinstance(error, QpidException)
-            assert exc_info[1] is 'b'
+            assert exc_info[1] == 'b'
             assert exc_info[2] is None
         else:
             self.fail('ConnectionError type was not mutated correctly')
@@ -328,7 +328,7 @@ class test_Connection__init__(ExtraAssertionsMixin, ConnectionTestBase):
         except AuthenticationFailure as error:
             exc_info = sys.exc_info()
             assert not isinstance(error, QpidException)
-            assert exc_info[1] is 'b'
+            assert exc_info[1] == 'b'
             assert exc_info[2] is None
         else:
             self.fail('ConnectionError type was not mutated correctly')
@@ -355,7 +355,7 @@ class test_Connection__init__(ExtraAssertionsMixin, ConnectionTestBase):
         except AuthenticationFailure as error:
             exc_info = sys.exc_info()
             assert not isinstance(error, QpidException)
-            assert exc_info[1] is 'b'
+            assert exc_info[1] == 'b'
             assert exc_info[2] is None
         else:
             self.fail('ConnectionError type was not mutated correctly')
