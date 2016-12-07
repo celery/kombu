@@ -4,6 +4,37 @@
  Change history
 ================
 
+.. _version-4.0.1:
+
+4.0.1
+=====
+:release-date: TBA
+:release-by: Ask Solem
+
+- Now depends on :mod:`amqp` 2.1.2
+
+    This new version takes advantage of the new ``TCP_USER_TIMEOUT`` socket option
+    on Linux.
+
+- QPid: Switch to using getattr in qpid.Transport.__del__ (Issue #658)
+
+    Contributed by **Patrick Creech**.
+
+- MongoDB: Removes use of natural sort (Issue #638).
+
+    Contributed by **Anton Chaporgin**.
+
+- Fixed wrong keyword argument ``channel`` error (Issue #652).
+
+    Contributed by **Toomore Chiang**.
+
+- Safe argument to ``urllib.quote`` must be bytes on Python 2.x (Issue #645).
+
+- Documentation improvments by:
+
+    - **Carlos Edo**
+    - **Cemre Mengu**
+
 .. _version-4.0:
 
 4.0
