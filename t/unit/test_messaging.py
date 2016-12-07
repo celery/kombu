@@ -262,6 +262,15 @@ class test_Consumer:
             pass
         c.cancel.assert_called_with()
 
+    def test_enter_exit_cancel_not_called_on_connection_error(self):
+        c = Consumer(self.connection)
+        c.cancel = Mock(name='Consumer.cancel')
+        assert self.connection.connection_errors
+        with pytest.raises(self.connection.connection_errors[0]):
+            with c:
+                raise self.connection.connection_errors[0]()
+        c.cancel.assert_not_called()
+
     def test_receive_callback_accept(self):
         message = Mock(name='Message')
         message.errors = []

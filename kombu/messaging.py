@@ -430,11 +430,14 @@ class Consumer(object):
         self.consume()
         return self
 
-    def __exit__(self, *exc_info):
-        try:
-            self.cancel()
-        except Exception:
-            pass
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.channel:
+            conn_errors = self.channel.connection.client.connection_errors
+            if not isinstance(exc_val, conn_errors):
+                try:
+                    self.cancel()
+                except Exception:
+                    pass
 
     def add_queue(self, queue):
         """Add a queue to the list of queues to consume from.
