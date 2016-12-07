@@ -506,9 +506,9 @@ class test_Channel:
         c = self.channel
         c.exchange_declare(exchange='unique_name')
         c.queue_declare(queue='q')
-        c.queue_bind(queue='q', exchange='foo', routing_key='rk')
+        c.queue_bind(queue='q', exchange='unique_name', routing_key='rk')
 
-        assert ('q', 'foo', 'rk') in list(c.list_bindings())
+        assert ('q', 'unique_name', 'rk') in list(c.list_bindings())
 
     def test_after_reply_message_received(self):
         c = self.channel
