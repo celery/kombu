@@ -118,7 +118,8 @@ class Producer(object):
                 mandatory=False, immediate=False, priority=0,
                 content_type=None, content_encoding=None, serializer=None,
                 headers=None, compression=None, exchange=None, retry=False,
-                retry_policy=None, declare=None, expiration=None, **properties):
+                retry_policy=None, declare=None, expiration=None,
+                **properties):
         """Publish message to the specified exchange.
 
         Arguments:
