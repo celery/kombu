@@ -8,7 +8,7 @@
 
 4.0.1
 =====
-:release-date: TBA
+:release-date: 2016-12-07 06:00 P.M PST
 :release-by: Ask Solem
 
 - Now depends on :mod:`amqp` 2.1.2
@@ -16,9 +16,19 @@
     This new version takes advantage of the new ``TCP_USER_TIMEOUT`` socket option
     on Linux.
 
+- Producer: Fixed performance degradation when default exchange specified
+  (Issue #651).
+
 - QPid: Switch to using getattr in qpid.Transport.__del__ (Issue #658)
 
     Contributed by **Patrick Creech**.
+
+- QPid: Now uses monotonic time for timeouts.
+
+- MongoDB: Fixed compatibility with Python 3 (Issue #661).
+
+- Consumer: ``__exit__`` now skips cancelling consumer if connection-related
+  error raised (Issue #670).
 
 - MongoDB: Removes use of natural sort (Issue #638).
 
