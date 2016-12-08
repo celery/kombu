@@ -118,7 +118,7 @@ class Producer(object):
                 mandatory=False, immediate=False, priority=0,
                 content_type=None, content_encoding=None, serializer=None,
                 headers=None, compression=None, exchange=None, retry=False,
-                retry_policy=None, declare=[], expiration=None, **properties):
+                retry_policy=None, declare=None, expiration=None, **properties):
         """Publish message to the specified exchange.
 
         Arguments:
@@ -150,6 +150,7 @@ class Producer(object):
         """
         _publish = self._publish
 
+        declare = [] if declare is None else declare
         headers = {} if headers is None else headers
         retry_policy = {} if retry_policy is None else retry_policy
         routing_key = self.routing_key if routing_key is None else routing_key
@@ -167,8 +168,9 @@ class Producer(object):
             compression, headers)
 
         if self.auto_declare and self.exchange.name:
-            declare = [] if declare is None else declare
-            declare.append(self.exchange)
+            if self.exchange not in declare:
+                # XXX declare should be a Set.
+                declare.append(self.exchange)
 
         if retry:
             _publish = self.connection.ensure(self, _publish, **retry_policy)
