@@ -4,6 +4,21 @@
  Change history
 ================
 
+.. _version-4.0.2:
+
+4.0.2
+=====
+:release-date: 2016-12-15 03:31 P.M PST
+:release-by: Ask Solem
+
+- Now depends on :mod:`amqp` 2.1.4
+
+    This new version takes advantage of TCP Keepalive settings on Linux,
+    making it better at detecting closed connections, also in failover
+    conditions.
+
+- Redis: Priority was reversed so, e.g. priority 0 became priority 9.
+
 .. _version-4.0.1:
 
 4.0.1
