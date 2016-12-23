@@ -77,9 +77,9 @@ class SQSConnectionMock(object):
         if not prefix:
             keys = sorted(self.queues.keys())[:1000]
         else:
-            keys = filter(
+            keys = list(filter(
                 lambda k: k.startswith(prefix), sorted(self.queues.keys())
-            )[:1000]
+            ))[:1000]
         return [self.queues[key] for key in keys]
 
     def delete_queue(self, queue, force_deletion=False):
