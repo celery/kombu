@@ -169,7 +169,12 @@ class Channel(virtual.Channel):
 
     def entity_name(self, name, table=CHARS_REPLACE_TABLE):
         """Format AMQP queue name into a legal SQS queue name."""
-        return text_t(safe_str(name)).translate(table)
+        if name.endswith('.fifo'):
+            partial = name.rstrip('.fifo')
+            partial = text_t(safe_str(partial)).translate(table)
+            return partial + '.fifo'
+        else:
+            return text_t(safe_str(name)).translate(table)
 
     def _new_queue(self, queue, **kwargs):
         """Ensure a queue with given name exists in SQS."""
@@ -188,10 +193,12 @@ class Channel(virtual.Channel):
         try:
             return self._queue_cache[queue]
         except KeyError:
+            attributes = {'VisibilityTimeout': str(self.visibility_timeout)}
+            if queue.endswith('.fifo'):
+                attributes['FifoQueue'] = 'true'
+
             q = self._queue_cache[queue] = self.sqs.create_queue(
-                QueueName=queue,
-                Attributes={'VisibilityTimeout': str(self.visibility_timeout)}
-            )
+                QueueName=queue, Attributes=attributes)
             return q
 
     def _delete(self, queue, *args, **kwargs):
@@ -202,7 +209,12 @@ class Channel(virtual.Channel):
     def _put(self, queue, message, **kwargs):
         """Put message onto queue."""
         q = self._new_queue(queue)
-        q.send_message(MessageBody=dumps(message))
+        kwargs = {'MessageBody': dumps(message)}
+        if 'MessageGroupId' in message['properties']:
+            kwargs['MessageGroupId'] = message['properties']['MessageGroupId']
+        if 'MessageDeduplicationId' in message['properties']:
+            kwargs['MessageDeduplicationId'] = message['properties']['MessageDeduplicationId']
+        q.send_message(**kwargs)
 
     def _message_to_python(self, message, queue_name, queue):
         payload = loads(bytes_to_str(message.body))
