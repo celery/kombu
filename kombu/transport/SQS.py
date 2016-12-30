@@ -189,7 +189,8 @@ class Channel(virtual.Channel):
             return self._queue_cache[queue]
         except KeyError:
             q = self._queue_cache[queue] = self.sqs.create_queue(
-                queue, self.visibility_timeout,
+                QueueName=queue,
+                Attributes={'VisibilityTimeout': str(self.visibility_timeout)}
             )
             return q
 
@@ -410,9 +411,16 @@ class Channel(virtual.Channel):
     @property
     def sqs(self):
         if self._sqs is None:
-            # TODO: Update this to support region setting..
-            session = boto3.session.Session()
-            self._sqs = session.resource('sqs')
+            # TODO: Move to _aws_connect_to once the async stuff uses boto3
+            is_secure = self.is_secure if self.is_secure is not None else True
+            # Note: port number is not supported by boto3
+            # port = self.port if self.port is not None else self.conninfo.port
+            session = boto3.session.Session(
+                region_name=self.region,
+                aws_access_key_id=self.conninfo.userid,
+                aws_secret_access_key=self.conninfo.password
+            )
+            self._sqs = session.resource('sqs', use_ssl=is_secure)
         return self._sqs
         # TODO: old boto 2 code (SQSConnection is a boto 2 thing)
         # if self._sqs is None:
