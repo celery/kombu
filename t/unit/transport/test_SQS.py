@@ -19,83 +19,81 @@ from kombu.five import Empty
 from kombu.transport import SQS
 
 
+class SQSMessageMock(object):
+    def __init__(self):
+        """
+        Imitate the SQS Message from boto3.
+        """
+        self.body = ""
+        self.receipt_handle = "receipt_handle_xyz"
+
+
 class SQSQueueMock(object):
+    """
+    Imitate the SQS Queue in boto3.  It has two attributes, url and
+    "attributes".
+    """
 
-    def __init__(self, name):
-        self.name = name
+    def __init__(self, url):
+        self.url = url
+        self.attributes = {'ApproximateNumberOfMessages': '0'}
+
         self.messages = []
-        self._get_message_calls = 0
+        self._receive_messages_calls = 0
 
-    def clear(self, page_size=10, vtimeout=10):
+    def send_message(self, MessageBody=None, DelaySeconds=0, MessageAttributes=None):
+        msg = SQSMessageMock()
+        msg.body = MessageBody
+        self.messages.append(msg)
+        self.attributes['ApproximateNumberOfMessages'] = len(self.messages)
+
+    def receive_messages(self, MaxNumberOfMessages=10):
+        self._receive_messages_calls += 1
+        returning = self.messages[:MaxNumberOfMessages]
+        self.messages = self.messages[MaxNumberOfMessages:]
+        self.attributes['ApproximateNumberOfMessages'] = len(self.messages)
+        return returning
+
+    def purge(self):
         empty, self.messages[:] = not self.messages, []
+        self.attributes['ApproximateNumberOfMessages'] = len(self.messages)
         return not empty
 
-    def count(self, page_size=10, vtimeout=10):
-        return len(self.messages)
-    count_slow = count
-
-    def delete(self):
-        self.messages[:] = []
-        return True
-
-    def delete_message(self, message):
-        try:
-            self.messages.remove(message)
-        except ValueError:
-            return False
-        return True
-
-    def get_messages(self, num_messages=1, visibility_timeout=None,
-                     attributes=None, *args, **kwargs):
-        self._get_message_calls += 1
-        messages, self.messages[:num_messages] = (
-            self.messages[:num_messages], [])
-        return messages
-
-    def read(self, visibility_timeout=None):
-        return self.messages.pop(0)
-
-    def write(self, message):
-        self.messages.append(message)
-        return True
 
 
 class SQSConnectionMock(object):
 
     def __init__(self):
-        self.queues = {
+        """
+        Imitate the SQS Resource in boto3.
+        """
+        self.queues = self.Queues()
+        self.queues.queues = {
             'q_%s' % n: SQSQueueMock('q_%s' % n) for n in range(1500)
         }
         q = SQSQueueMock('unittest_queue')
-        q.write('hello')
-        self.queues['unittest_queue'] = q
+        q.send_message(MessageBody='hello')
+        self.queues.queues['unittest_queue'] = q
 
-    def get_queue(self, queue):
-        return self.queues.get(queue)
+    class Queues:
+        """
+        Imitate the queues attribute on the SQS Resource in boto3.  It has
+        a filter() method and is an iterator rather than a list.
+        """
+        def __init__(self):
+            self.queues = []
 
-    def get_all_queues(self, prefix=""):
-        if not prefix:
-            keys = sorted(self.queues.keys())[:1000]
-        else:
-            keys = list(filter(
-                lambda k: k.startswith(prefix), sorted(self.queues.keys())
-            ))[:1000]
-        return [self.queues[key] for key in keys]
+        def filter(self, QueueNamePrefix=None):
+            """ Return an iterable of queues. """
+            return (val for key, val in self.queues.items()
+                    if key.startswith(QueueNamePrefix))
 
-    def delete_queue(self, queue, force_deletion=False):
-        q = self.get_queue(queue)
-        if q:
-            if q.count():
-                return False
-            q.clear()
-            self.queues.pop(queue, None)
-
-    def delete_message(self, queue, message):
-        return queue.delete_message(message)
-
-    def create_queue(self, name, *args, **kwargs):
-        q = self.queues[name] = SQSQueueMock(name)
+    def create_queue(self, QueueName=None, Attributes=None):
+        q = self.queues.queues[QueueName] = SQSQueueMock(QueueName)
         return q
+
+    def get_queue_by_name(self, QueueName=None):
+        return self.queues.queues.get(QueueName)
 
 
 @skip.unless_module('boto')
@@ -160,33 +158,35 @@ class test_Channel:
         """kombu.SQS.Channel instantiates correctly with mocked queues"""
         assert self.queue_name in self.channel._queue_cache
 
-    def test_auth_fail(self):
-        normal_func = SQS.Channel.sqs.get_all_queues
-
-        def get_all_queues_fail_403(prefix=''):
-            # mock auth error
-            raise exception.SQSError(403, None, None)
-
-        def get_all_queues_fail_not_403(prefix=''):
-            # mock non-auth error
-            raise exception.SQSError(500, None, None)
-
-        try:
-            SQS.Channel.sqs.access_key = '1234'
-            SQS.Channel.sqs.get_all_queues = get_all_queues_fail_403
-            with pytest.raises(RuntimeError) as excinfo:
-                self.channel = self.connection.channel()
-            assert 'access_key=1234' in str(excinfo.value)
-            SQS.Channel.sqs.get_all_queues = get_all_queues_fail_not_403
-            with pytest.raises(exception.SQSError):
-                self.channel = self.connection.channel()
-        finally:
-            SQS.Channel.sqs.get_all_queues = normal_func
+    # TODO: I dropped the old behavior of changing the error message when
+    # bad auth is provided.  Is this stuff important?
+    # def test_auth_fail(self):
+    #     normal_func = SQS.Channel.sqs.list_queues
+    #
+    #     def get_all_queues_fail_403(prefix=''):
+    #         # mock auth error
+    #         raise exception.SQSError(403, None, None)
+    #
+    #     def get_all_queues_fail_not_403(prefix=''):
+    #         # mock non-auth error
+    #         raise exception.SQSError(500, None, None)
+    #
+    #     try:
+    #         SQS.Channel.sqs.access_key = '1234'
+    #         SQS.Channel.sqs.get_all_queues = get_all_queues_fail_403
+    #         with pytest.raises(RuntimeError) as excinfo:
+    #             self.channel = self.connection.channel()
+    #         assert 'access_key=1234' in str(excinfo.value)
+    #         SQS.Channel.sqs.get_all_queues = get_all_queues_fail_not_403
+    #         with pytest.raises(exception.SQSError):
+    #             self.channel = self.connection.channel()
+    #     finally:
+    #         SQS.Channel.sqs.get_all_queues = normal_func
 
     def test_new_queue(self):
         queue_name = 'new_unittest_queue'
         self.channel._new_queue(queue_name)
-        assert queue_name in self.sqs_conn_mock.queues
+        assert queue_name in self.sqs_conn_mock.queues.queues
         # For cleanup purposes, delete the queue and the queue file
         self.channel._delete(queue_name)
 
@@ -196,10 +196,10 @@ class test_Channel:
         # first 1000 queues sorted by name.
         queue_name = 'unittest_queue'
         self.channel._new_queue(queue_name)
-        assert queue_name in self.sqs_conn_mock.queues
-        q = self.sqs_conn_mock.get_queue(queue_name)
-        assert 1 == q.count()
-        assert 'hello' == q.read()
+        assert queue_name in self.sqs_conn_mock.queues.queues
+        queue = self.sqs_conn_mock.queues.queues[queue_name]
+        assert 1 == int(queue.attributes['ApproximateNumberOfMessages'])
+        assert 'hello' == queue.messages[0].body
 
     def test_delete(self):
         queue_name = 'new_unittest_queue'
@@ -212,7 +212,7 @@ class test_Channel:
         message = 'my test message'
         self.producer.publish(message)
         q = self.channel._new_queue(self.queue_name)
-        results = q.get_messages()
+        results = q.receive_messages()
         assert len(results) == 1
 
         # Now test getting many messages
@@ -220,7 +220,7 @@ class test_Channel:
             message = 'message: {0}'.format(i)
             self.producer.publish(message)
 
-        results = q.get_messages(num_messages=3)
+        results = q.receive_messages(MaxNumberOfMessages=3)
         assert len(results) == 3
 
     def test_get_with_empty_list(self):
@@ -246,8 +246,8 @@ class test_Channel:
 
         q = self.channel._new_queue(self.queue_name)
         # Get the messages now
-        kombu_messages = q.get_messages(num_messages=kombu_message_count)
-        json_messages = q.get_messages(num_messages=json_message_count)
+        kombu_messages = q.receive_messages(MaxNumberOfMessages=kombu_message_count)
+        json_messages = q.receive_messages(MaxNumberOfMessages=json_message_count)
 
         # Now convert them to payloads
         kombu_payloads = self.channel._messages_to_python(
@@ -350,7 +350,7 @@ class test_Channel:
     def test_drain_events_with_prefetch_none(self):
         # Generate 20 messages
         message_count = 20
-        expected_get_message_count = 3
+        expected_receive_messages_count = 3
 
         current_delivery_tag = [1]
 
@@ -379,5 +379,5 @@ class test_Channel:
         assert self.channel.connection._deliver.call_count == message_count
 
         # How many times was the SQSConnectionMock get_message method called?
-        assert (expected_get_message_count ==
-                self.channel._queue_cache[self.queue_name]._get_message_calls)
+        assert (expected_receive_messages_count ==
+                self.channel._queue_cache[self.queue_name]._receive_messages_calls)

@@ -44,6 +44,9 @@ from vine import transform, ensure_promise, promise
 
 from kombu.async import get_event_loop
 from kombu.async.aws import sqs as _asynsqs
+from kombu.async.aws.ext import boto3, exceptions
+
+# TODO: old..
 from kombu.async.aws.ext import boto, exception
 from kombu.async.aws.sqs.connection import AsyncSQSConnection, SQSConnection
 from kombu.async.aws.sqs.ext import regions
@@ -104,18 +107,24 @@ class Channel(virtual.Channel):
         self.hub = kwargs.get('hub') or get_event_loop()
 
     def _update_queue_cache(self, queue_name_prefix):
-        try:
-            queues = self.sqs.get_all_queues(prefix=queue_name_prefix)
-        except exception.SQSError as exc:
-            if exc.status == 403:
-                raise RuntimeError(
-                    'SQS authorization error, access_key={0}'.format(
-                        self.sqs.access_key))
-            raise
-        else:
-            self._queue_cache.update({
-                queue.name: queue for queue in queues
-            })
+        for q in self.sqs.queues.filter(QueueNamePrefix=queue_name_prefix):
+            name = q.url.split('/')[-1]
+            self._queue_cache[name] = q
+        # TODO: Old boto 2 code.  Is this error patching needed?
+        # try:
+        #     queues = self.sqs.get_all_queues(prefix=queue_name_prefix)
+        # except exceptions.BotoCoreError as exc:
+        #     raise
+        # except exception.SQSError as exc:
+        #     if exc.status == 403:
+        #         raise RuntimeError(
+        #             'SQS authorization error, access_key={0}'.format(
+        #                 self.sqs.access_key))
+        #     raise
+        # else:
+        #     self._queue_cache.update({
+        #         queue.name: queue for queue in queues
+        #     })
 
     def basic_consume(self, queue, no_ack, *args, **kwargs):
         if no_ack:
@@ -132,7 +141,7 @@ class Channel(virtual.Channel):
             self._noack_queues.discard(queue)
         return super(Channel, self).basic_cancel(consumer_tag)
 
-    def drain_events(self, timeout=None):
+    def drain_events(self, timeout=None, callback=None):
         """Return a single payload message from one of our queues.
 
         Raises:
@@ -143,7 +152,7 @@ class Channel(virtual.Channel):
             raise Empty()
 
         # At this point, go and get more messages from SQS
-        self._poll(self.cycle, self.connection._deliver, timeout=timeout)
+        self._poll(self.cycle, callback, timeout=timeout)
 
     def _reset_cycle(self):
         """Reset the consume cycle.
@@ -192,14 +201,12 @@ class Channel(virtual.Channel):
     def _put(self, queue, message, **kwargs):
         """Put message onto queue."""
         q = self._new_queue(queue)
-        m = Message()
-        m.set_body(dumps(message))
-        q.write(m)
+        q.send_message(MessageBody=dumps(message))
 
     def _message_to_python(self, message, queue_name, queue):
-        payload = loads(bytes_to_str(message.get_body()))
+        payload = loads(bytes_to_str(message.body))
         if queue_name in self._noack_queues:
-            queue.delete_message(message)
+            message.delete()
         else:
             try:
                 properties = payload['properties']
@@ -209,7 +216,7 @@ class Channel(virtual.Channel):
                 delivery_info = {}
                 properties = {'delivery_info': delivery_info}
                 payload.update({
-                    'body': bytes_to_str(message.get_body()),
+                    'body': bytes_to_str(message.body),
                     'properties': properties,
                 })
         # set delivery tag to SQS receipt handle
@@ -261,10 +268,12 @@ class Channel(virtual.Channel):
         # drain_events calls `can_consume` first, consuming
         # a token, so we know that we are allowed to consume at least
         # one message.
-        maxcount = self._get_message_estimate()
-        if maxcount:
+
+        # Note: ignoring max_messages for SQS with boto3
+        max_count = self._get_message_estimate()
+        if max_count:
             q = self._new_queue(queue)
-            messages = q.get_messages(num_messages=maxcount)
+            messages = q.receive_messages(MaxNumberOfMessages=max_count)
 
             if messages:
                 for msg in self._messages_to_python(messages, queue):
@@ -275,7 +284,8 @@ class Channel(virtual.Channel):
     def _get(self, queue):
         """Try to retrieve a single message off ``queue``."""
         q = self._new_queue(queue)
-        messages = q.get_messages(num_messages=1)
+        messages = q.receive_messages()
+
         if messages:
             return self._messages_to_python(messages, queue)[0]
         raise Empty()
@@ -344,18 +354,17 @@ class Channel(virtual.Channel):
         return super(Channel, self)._restore(message)
 
     def basic_ack(self, delivery_tag, multiple=False):
-        delivery_info = self.qos.get(delivery_tag).delivery_info
         try:
-            queue = delivery_info['sqs_queue']
+            message = self.qos.get(delivery_tag).delivery_info['sqs_message']
         except KeyError:
             pass
         else:
-            queue.delete_message(delivery_info['sqs_message'])
+            message.delete()
         super(Channel, self).basic_ack(delivery_tag)
 
     def _size(self, queue):
         """Return the number of messages in a queue."""
-        return self._new_queue(queue).count()
+        return int(self._new_queue(queue).attributes['ApproximateNumberOfMessages'])
 
     def _purge(self, queue):
         """Delete all current messages in a queue."""
@@ -364,21 +373,20 @@ class Channel(virtual.Channel):
         # iterations to ensure messages are deleted.
         size = 0
         for i in range(10):
-            size += q.count()
+            size += int(q.attributes['ApproximateNumberOfMessages'])
             if not size:
                 break
-        q.clear()
+        q.purge()
         return size
 
     def close(self):
         super(Channel, self).close()
-        for conn in (self._sqs, self._asynsqs):
-            if conn:
-                try:
-                    conn.close()
-                except AttributeError as exc:  # FIXME ???
-                    if "can't set attribute" not in str(exc):
-                        raise
+        if self._asynsqs:
+            try:
+                self.asynsqs.close()
+            except AttributeError as exc:  # FIXME ???
+                if "can't set attribute" not in str(exc):
+                    raise
 
     def _get_regioninfo(self, regions):
         if self.regioninfo:
@@ -402,8 +410,14 @@ class Channel(virtual.Channel):
     @property
     def sqs(self):
         if self._sqs is None:
-            self._sqs = self._aws_connect_to(SQSConnection, regions())
+            # TODO: Update this to support region setting..
+            session = boto3.session.Session()
+            self._sqs = session.resource('sqs')
         return self._sqs
+        # TODO: old boto 2 code (SQSConnection is a boto 2 thing)
+        # if self._sqs is None:
+        #     self._sqs = self._aws_connect_to(SQSConnection, regions())
+        # return self._sqs
 
     @property
     def asynsqs(self):
@@ -466,10 +480,10 @@ class Transport(virtual.Transport):
     default_port = None
     connection_errors = (
         virtual.Transport.connection_errors +
-        (exception.SQSError, socket.error)
+        (exceptions.BotoCoreError, socket.error)
     )
     channel_errors = (
-        virtual.Transport.channel_errors + (exception.SQSDecodeError,)
+        virtual.Transport.channel_errors + (exceptions.BotoCoreError,)
     )
     driver_type = 'sqs'
     driver_name = 'sqs'
