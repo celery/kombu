@@ -39,6 +39,7 @@ from __future__ import absolute_import, unicode_literals
 
 import socket
 import string
+import uuid
 
 from vine import transform, ensure_promise, promise
 
@@ -210,10 +211,15 @@ class Channel(virtual.Channel):
         """Put message onto queue."""
         q = self._new_queue(queue)
         kwargs = {'MessageBody': dumps(message)}
-        if 'MessageGroupId' in message['properties']:
-            kwargs['MessageGroupId'] = message['properties']['MessageGroupId']
-        if 'MessageDeduplicationId' in message['properties']:
-            kwargs['MessageDeduplicationId'] = message['properties']['MessageDeduplicationId']
+        if queue.endswith('.fifo'):
+            if 'MessageGroupId' in message['properties']:
+                kwargs['MessageGroupId'] = message['properties']['MessageGroupId']
+            else:
+                kwargs['MessageGroupId'] = 'default'
+            if 'MessageDeduplicationId' in message['properties']:
+                kwargs['MessageDeduplicationId'] = message['properties']['MessageDeduplicationId']
+            else:
+                kwargs['MessageDeduplicationId'] = str(uuid.uuid4())
         q.send_message(**kwargs)
 
     def _message_to_python(self, message, queue_name, queue):
