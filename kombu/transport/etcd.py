@@ -168,7 +168,7 @@ class Channel(virtual.Channel):
                 msg_content = loads(item['value'])
                 self.client.delete(key=item['key'])
                 return msg_content
-            except (TypeError, IndexError, etcd.EtcdError) as error:
+            except (TypeError, IndexError, etcd.EtcdException) as error:
                 logger.debug('_get failed: {0}:{1}'.format(type(error), error))
 
             raise Empty()
@@ -233,11 +233,11 @@ class Transport(virtual.Transport):
         super(Transport, self).__init__(*args, **kwargs)
 
         self.connection_errors = (
-            virtual.Transport.connection_errors + (etcd.EtcdError, )
+            virtual.Transport.connection_errors + (etcd.EtcdException, )
         )
 
         self.channel_errors = (
-            virtual.Transport.channel_errors + (etcd.EtcdError, )
+            virtual.Transport.channel_errors + (etcd.EtcdException, )
         )
 
     def verify_connection(self, connection):
