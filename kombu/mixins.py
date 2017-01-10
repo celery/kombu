@@ -44,7 +44,7 @@ class ConsumerMixin:
         .. code-block:: python
 
             class Worker(ConsumerMixin):
-                task_queue = Queue('tasks', Exchange('tasks'), 'tasks'))
+                task_queue = Queue('tasks', Exchange('tasks'), 'tasks')
 
                 def __init__(self, connection):
                     self.connection = None
