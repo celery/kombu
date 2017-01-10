@@ -13,7 +13,7 @@ from pymongo import MongoClient, uri_parser
 from pymongo.cursor import CursorType
 
 from kombu.exceptions import VersionMismatch
-from kombu.syn import _detect_environment
+from kombu.utils.compat import _detect_environment
 from kombu.utils.encoding import bytes_to_str
 from kombu.utils.json import loads, dumps
 from kombu.utils.objects import cached_property
@@ -77,6 +77,8 @@ class BroadcastCursor:
 
 
 class Channel(virtual.Channel):
+    """MongoDB Channel."""
+
     supports_fanout = True
 
     # Mutable container. Shared by all class instances
@@ -134,8 +136,7 @@ class Channel(virtual.Channel):
         else:
             msg = self.messages.find_and_modify(
                 query={'queue': queue},
-                sort=[('priority', pymongo.ASCENDING),
-                      ('$natural', pymongo.ASCENDING)],
+                sort=[('priority', pymongo.ASCENDING)],
                 remove=True,
             )
 
@@ -317,8 +318,7 @@ class Channel(virtual.Channel):
                                    capped=True)
 
     def _ensure_indexes(self, database):
-        """Ensure indexes on collections.
-        """
+        """Ensure indexes on collections."""
         messages = database[self.messages_collection]
         messages.ensure_index(
             [('queue', 1), ('priority', 1), ('_id', 1)], background=True,
@@ -379,13 +379,11 @@ class Channel(virtual.Channel):
         if pymongo.version_tuple >= (3, ):
             query = dict(
                 filter={'queue': exchange},
-                sort=[('$natural', pymongo.ASCENDING)],
                 cursor_type=CursorType.TAILABLE
             )
         else:
             query = dict(
                 query={'queue': exchange},
-                sort=[('$natural', pymongo.ASCENDING)],
                 tailable=True
             )
 
@@ -394,8 +392,11 @@ class Channel(virtual.Channel):
         return ret
 
     def _get_expire(self, queue, argument):
-        """Gets expiration header named `argument` of queue definition.
-        `queue` must be either queue name or options itself."""
+        """Get expiration header named `argument` of queue definition.
+
+        Note:
+            `queue` must be either queue name or options itself.
+        """
         if isinstance(queue, str):
             doc = self.queues.find_one({'_id': queue})
 
@@ -414,7 +415,7 @@ class Channel(virtual.Channel):
         return self.get_now() + datetime.timedelta(milliseconds=value)
 
     def _update_queues_expire(self, queue):
-        """Updates expiration field on queues documents."""
+        """Update expiration field on queues documents."""
         expire_at = self._get_expire(queue, 'x-expires')
 
         if not expire_at:
@@ -433,6 +434,8 @@ class Channel(virtual.Channel):
 
 
 class Transport(virtual.Transport):
+    """MongoDB Transport."""
+
     Channel = Channel
 
     can_parse_url = True

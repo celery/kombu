@@ -7,13 +7,44 @@ from .serialization import loads
 from .utils import abstract
 from .utils.functional import dictfilter
 
+__all__ = ['Message']
+
 ACK_STATES = {'ACK', 'REJECTED', 'REQUEUED'}
 IS_PYPY = hasattr(sys, 'pypy_version_info')
 
 
 @abstract.Message.register
 class Message:
-    """Base class for received messages."""
+    """Base class for received messages.
+
+    Keyword Arguments:
+
+        channel (ChannelT): If message was received, this should be the
+            channel that the message was received on.
+
+        body (str): Message body.
+
+        delivery_mode (bool): Set custom delivery mode.
+            Defaults to :attr:`delivery_mode`.
+
+        priority (int): Message priority, 0 to broker configured
+            max priority, where higher is better.
+
+        content_type (str): The messages content_type.  If content_type
+            is set, no serialization occurs as it is assumed this is either
+            a binary object, or you've done your own serialization.
+            Leave blank if using built-in serialization as our library
+            properly sets content_type.
+
+        content_encoding (str): The character set in which this object
+            is encoded. Use "binary" if sending in raw binary objects.
+            Leave blank if using built-in serialization as our library
+            properly sets content_encoding.
+
+        properties (Dict): Message properties.
+
+        headers (Dict): Message headers.
+    """
 
     MessageStateError = MessageStateError
 
@@ -27,10 +58,10 @@ class Message:
             'body', '_decoded_cache', 'accept', '__dict__',
         )
 
-    def __init__(self, channel, body=None, delivery_tag=None,
+    def __init__(self, body=None, delivery_tag=None,
                  content_type=None, content_encoding=None, delivery_info={},
                  properties=None, headers=None, postencode=None,
-                 accept=None, **kwargs):
+                 accept=None, channel=None, **kwargs):
         self.errors = [] if self.errors is None else self.errors
         self.channel = channel
         self.delivery_tag = delivery_tag
@@ -66,7 +97,7 @@ class Message:
             callback(self, exc)
 
     def ack(self, multiple=False):
-        """Acknowledge this message as being processed.,
+        """Acknowledge this message as being processed.
 
         This will remove the message from the queue.
 
@@ -74,6 +105,9 @@ class Message:
             MessageStateError: If the message has already been
                 acknowledged/requeued/rejected.
         """
+        if self.channel is None:
+            raise self.MessageStateError(
+                'This message does not have a receiving channel')
         if self.channel.no_ack_consumers is not None:
             try:
                 consumer_tag = self.delivery_info['consumer_tag']
@@ -112,6 +146,9 @@ class Message:
             MessageStateError: If the message has already been
                 acknowledged/requeued/rejected.
         """
+        if self.channel is None:
+            raise self.MessageStateError(
+                'This message does not have a receiving channel')
         if self.acknowledged:
             raise self.MessageStateError(
                 'Message already acknowledged with state: {0._state}'.format(
@@ -130,6 +167,9 @@ class Message:
             MessageStateError: If the message has already been
                 acknowledged/requeued/rejected.
         """
+        if self.channel is None:
+            raise self.MessageStateError(
+                'This message does not have a receiving channel')
         if self.acknowledged:
             raise self.MessageStateError(
                 'Message already acknowledged with state: {0._state}'.format(
@@ -138,8 +178,9 @@ class Message:
         self._state = 'REQUEUED'
 
     def decode(self):
-        """Deserialize the message body, returning the original
-        python structure sent by the publisher.
+        """Deserialize the message body.
+
+        Returning the original python structure sent by the publisher.
 
         Note:
             The return value is memoized, use `_decode` to force

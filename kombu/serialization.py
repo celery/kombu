@@ -156,7 +156,9 @@ class SerializerRegistry:
                 'No encoder installed for {0}'.format(name))
 
     def dumps(self, data, serializer=None):
-        """Serialize a data structure into a string suitable for sending
+        """Encode data.
+
+        Serialize a data structure into a string suitable for sending
         as an AMQP message body.
 
         Arguments:
@@ -215,11 +217,12 @@ class SerializerRegistry:
         with _reraise_errors(EncodeError):
             payload = encoder(data)
         return content_type, content_encoding, payload
-    encode = dumps  # XXX compat
 
     def loads(self, data, content_type, content_encoding,
               accept=None, force=False, _trusted_content=TRUSTED_CONTENT):
-        """Deserialize a data stream as serialized using `dumps`
+        """Decode serialized data.
+
+        Deserialize a data stream as serialized using `dumps`
         based on `content_type`.
 
         Arguments:
@@ -260,7 +263,6 @@ class SerializerRegistry:
                 with _reraise_errors(DecodeError):
                     return _decode(data, content_encoding)
         return data
-    decode = loads  # XXX compat
 
     def _for_untrusted_content(self, ctype, why):
         return ContentDisallowed(
@@ -274,9 +276,7 @@ class SerializerRegistry:
 #: Global registry of serializers/deserializers.
 registry = SerializerRegistry()
 dumps = registry.dumps
-encode = dumps  # XXX compat alias
 loads = registry.loads
-decode = loads  # XXX compat alias
 register = registry.register
 unregister = registry.unregister
 
@@ -318,8 +318,11 @@ def register_yaml():
     except ImportError:
 
         def not_available(*args, **kwargs):
-            """In case a client receives a yaml message, but yaml
-            isn't installed."""
+            """Raise SerializerNotInstalled.
+
+            Used in case a client receives a yaml message, but yaml
+            isn't installed.
+            """
             raise SerializerNotInstalled(
                 'No decoder installed for YAML. Install the PyYAML library')
         registry.register('yaml', None, not_available, 'application/x-yaml')
@@ -329,9 +332,11 @@ unpickle = pickle_loads
 
 
 def register_pickle():
-    """The fastest serialization method, but restricts
-    you to python clients."""
+    """Register pickle serializer.
 
+    The fastest serialization method, but restricts
+    you to python clients.
+    """
     def pickle_dumps(obj, dumper=pickle.dumps):
         return dumper(obj, protocol=pickle_protocol)
 
@@ -341,7 +346,11 @@ def register_pickle():
 
 
 def register_msgpack():
-    """See http://msgpack.sourceforge.net/"""
+    """Register msgpack serializer.
+
+    See Also:
+        http://msgpack.sourceforge.net/.
+    """
     pack = unpack = None
     try:
         import msgpack
@@ -369,6 +378,7 @@ def register_msgpack():
         content_type='application/x-msgpack',
         content_encoding='binary',
     )
+
 
 # Register the base serialization methods.
 register_json()

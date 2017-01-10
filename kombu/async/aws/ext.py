@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
-
-
+"""Amazon boto interface."""
 try:
     import boto
 except ImportError:  # pragma: no cover

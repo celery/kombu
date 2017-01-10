@@ -105,6 +105,7 @@ class Connection:
     :keyword virtual_host: Default virtual host if not provided in the URL.
     :keyword port: Default port if not provided in the URL.
     """
+
     port = None
     virtual_host = '/'
     connect_timeout = 5
@@ -208,16 +209,18 @@ class Connection:
         self.declared_entities = set()
 
     def switch(self, url):
-        """Switch connection parameters to use a new URL (does not
-        reconnect)"""
+        """Switch connection parameters to use a new URL.
+
+        Note:
+            Does not reconnect!
+        """
         self.close()
         self.declared_entities.clear()
         self._closed = False
         self._init_params(**dict(self._initial_params, **parse_url(url)))
 
     def maybe_switch_next(self):
-        """Switch to next URL given by the current failover strategy (if
-        any)."""
+        """Switch to next URL given by the current failover strategy."""
         if self.cycle:
             self.switch(next(self.cycle))
 
@@ -264,7 +267,9 @@ class Connection:
         return chan
 
     def heartbeat_check(self, rate=2):
-        """Allow the transport to perform any periodic tasks
+        """Check heartbeats.
+
+        Allow the transport to perform any periodic tasks
         required to make heartbeats work.  This should be called
         approximately every second.
 
@@ -420,7 +425,7 @@ class Connection:
 
     def revive(self, new_channel):
         """Revive connection after connection re-established."""
-        if self._default_channel:
+        if self._default_channel and new_channel is not self._default_channel:
             self.maybe_close_channel(self._default_channel)
             self._default_channel = None
 
@@ -431,8 +436,9 @@ class Connection:
     def ensure(self, obj, fun, errback=None, max_retries=None,
                interval_start=1, interval_step=1, interval_max=1,
                on_revive=None):
-        """Ensure operation completes, regardless of any channel/connection
-        errors occurring.
+        """Ensure operation completes.
+
+        Regardless of any channel/connection errors occurring.
 
         Retries by establishing the connection, and reapplying
         the function.
@@ -503,7 +509,6 @@ class Connection:
                             reraise_as_library_errors=False,
                         )
                         channel = self.default_channel
-                        self.revive(channel)
                         obj.revive(channel)
                         if on_revive:
                             on_revive(channel)
@@ -572,8 +577,7 @@ class Connection:
         return transport_cls
 
     def clone(self, **kwargs):
-        """Create a copy of the connection with the same connection
-        settings."""
+        """Create a copy of the connection with same settings."""
         return self.__class__(**dict(self._info(resolve=False), **kwargs))
 
     def get_heartbeat_interval(self):
@@ -690,20 +694,20 @@ class Connection:
         return ChannelPool(self, limit, **kwargs)
 
     def Producer(self, channel=None, *args, **kwargs):
-        """Create new :class:`kombu.Producer` instance using this
-        connection."""
+        """Create new :class:`kombu.Producer` instance."""
         from .messaging import Producer
         return Producer(channel or self, *args, **kwargs)
 
     def Consumer(self, queues=None, channel=None, *args, **kwargs):
-        """Create new :class:`kombu.Consumer` instance using this
-        connection."""
+        """Create new :class:`kombu.Consumer` instance."""
         from .messaging import Consumer
         return Consumer(channel or self, queues, *args, **kwargs)
 
     def SimpleQueue(self, name, no_ack=None, queue_opts=None,
                     exchange_opts=None, channel=None, **kwargs):
-        """Create new :class:`~kombu.simple.SimpleQueue`, using a channel
+        """Simple persistent queue API.
+
+        Create new :class:`~kombu.simple.SimpleQueue`, using a channel
         from this connection.
 
         If ``name`` is a string, a queue and exchange will be automatically
@@ -727,7 +731,9 @@ class Connection:
 
     def SimpleBuffer(self, name, no_ack=None, queue_opts=None,
                      exchange_opts=None, channel=None, **kwargs):
-        """Create new :class:`~kombu.simple.SimpleQueue` using a channel
+        """Simple ephemeral queue API.
+
+        Create new :class:`~kombu.simple.SimpleQueue` using a channel
         from this connection.
 
         See Also:
@@ -750,11 +756,9 @@ class Connection:
         return exchange_type in self.transport.implements.exchange_type
 
     def __repr__(self):
-        """``x.__repr__() <==> repr(x)``"""
         return '<Connection: {0} at {1:#x}>'.format(self.as_uri(), id(self))
 
     def __copy__(self):
-        """``x.__copy__() <==> copy(x)``"""
         return self.clone()
 
     def __reduce__(self):
@@ -795,8 +799,9 @@ class Connection:
 
     @property
     def default_channel(self):
-        """Default channel, created upon access and closed when the connection
-        is closed.
+        """Default channel.
+
+        Created upon access and closed when the connection is closed.
 
         Note:
             Can be used for automatic channel handling when you only need one
@@ -823,8 +828,13 @@ class Connection:
 
     @cached_property
     def manager(self):
-        """Experimental manager that can be used to manage/monitor the broker
-        instance.  Not available for all transports."""
+        """AMQP Management API.
+
+        Experimental manager that can be used to manage/monitor the broker
+        instance.
+
+        Not available for all transports.
+        """
         return self.transport.manager
 
     def get_manager(self, *args, **kwargs):
@@ -832,8 +842,11 @@ class Connection:
 
     @cached_property
     def recoverable_connection_errors(self):
-        """List of connection related exceptions that can be recovered from,
-        but where the connection must be closed and re-established first."""
+        """Recoverable connection errors.
+
+        List of connection related exceptions that can be recovered from,
+        but where the connection must be closed and re-established first.
+        """
         try:
             return self.transport.recoverable_connection_errors
         except AttributeError:
@@ -845,8 +858,11 @@ class Connection:
 
     @cached_property
     def recoverable_channel_errors(self):
-        """List of channel related exceptions that can be automatically
-        recovered from without re-establishing the connection."""
+        """Recoverable channel errors.
+
+        List of channel related exceptions that can be automatically
+        recovered from without re-establishing the connection.
+        """
         try:
             return self.transport.recoverable_channel_errors
         except AttributeError:
@@ -869,10 +885,12 @@ class Connection:
     @property
     def is_evented(self):
         return self.transport.implements.async
-BrokerConnection = Connection
+BrokerConnection = Connection  # noqa: E305
 
 
 class ConnectionPool(Resource):
+    """Pool of connections."""
+
     LimitExceeded = exceptions.ConnectionLimitExceeded
     close_after_fork = True
 
@@ -915,6 +933,8 @@ class ConnectionPool(Resource):
 
 
 class ChannelPool(Resource):
+    """Pool of channels."""
+
     LimitExceeded = exceptions.ChannelLimitExceeded
 
     def __init__(self, connection, limit=None, **kwargs):
@@ -938,8 +958,11 @@ class ChannelPool(Resource):
 
 
 def maybe_channel(channel):
-    """Return the default channel if argument is a connection instance,
-    otherwise just return the channel given."""
+    """Get channel from object.
+
+    Return the default channel if argument is a connection instance,
+    otherwise just return the channel given.
+    """
     if is_connection(channel):
         return channel.default_channel
     return channel

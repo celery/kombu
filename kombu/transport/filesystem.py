@@ -1,4 +1,4 @@
-"""File-system Transport
+"""File-system Transport.
 
 Transport using the file-system as the message store.
 """
@@ -34,10 +34,12 @@ if os.name == 'nt':
     __overlapped = pywintypes.OVERLAPPED()
 
     def lock(file, flags):
+        """Create file lock."""
         hfile = win32file._get_osfhandle(file.fileno())
         win32file.LockFileEx(hfile, flags, 0, 0xffff0000, __overlapped)
 
     def unlock(file):
+        """Remove file lock."""
         hfile = win32file._get_osfhandle(file.fileno())
         win32file.UnlockFileEx(hfile, 0, 0xffff0000, __overlapped)
 
@@ -47,9 +49,11 @@ elif os.name == 'posix':
     from fcntl import LOCK_EX, LOCK_SH, LOCK_NB     # noqa
 
     def lock(file, flags):  # noqa
+        """Create file lock."""
         fcntl.flock(file.fileno(), flags)
 
     def unlock(file):       # noqa
+        """Remove file lock."""
         fcntl.flock(file.fileno(), fcntl.LOCK_UN)
 else:
     raise RuntimeError(
@@ -57,10 +61,10 @@ else:
 
 
 class Channel(virtual.Channel):
+    """Filesystem Channel."""
 
     def _put(self, queue, payload, **kwargs):
         """Put `message` onto `queue`."""
-
         filename = '%s_%s.%s.msg' % (int(round(monotonic() * 1000)),
                                      uuid.uuid4(), queue)
         filename = os.path.join(self.data_folder_out, filename)
@@ -78,7 +82,6 @@ class Channel(virtual.Channel):
 
     def _get(self, queue):
         """Get next message from `queue`."""
-
         queue_find = '.' + queue + '.msg'
         folder = os.listdir(self.data_folder_in)
         folder = sorted(folder)
@@ -180,6 +183,8 @@ class Channel(virtual.Channel):
 
 
 class Transport(virtual.Transport):
+    """Filesystem Transport."""
+
     Channel = Channel
 
     default_port = 0

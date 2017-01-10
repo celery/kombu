@@ -5,18 +5,20 @@ from kombu.utils.amq_manager import get_manager
 from kombu.utils.text import version_string_as_tuple
 
 from . import base
+from .base import to_rabbitmq_queue_arguments
 
 DEFAULT_PORT = 5672
 DEFAULT_SSL_PORT = 5671
 
 
 class Message(base.Message):
+    """AMQP Message."""
 
-    def __init__(self, channel, msg, **kwargs):
+    def __init__(self, msg, channel=None, **kwargs):
         props = msg.properties
         super().__init__(
-            channel,
             body=msg.body,
+            channel=channel,
             delivery_tag=msg.delivery_tag,
             content_type=props.get('content_type'),
             content_encoding=props.get('content_encoding'),
@@ -27,12 +29,14 @@ class Message(base.Message):
 
 
 class Channel(amqp.Channel, base.StdChannel):
+    """AMQP Channel."""
+
     Message = Message
 
     def prepare_message(self, body, priority=None,
                         content_type=None, content_encoding=None,
                         headers=None, properties=None, _Message=amqp.Message):
-        """Prepares message so that it can be sent using this transport."""
+        """Prepare message so that it can be sent using this transport."""
         return _Message(
             body,
             priority=priority,
@@ -42,16 +46,23 @@ class Channel(amqp.Channel, base.StdChannel):
             **properties or {}
         )
 
+    def prepare_queue_arguments(self, arguments, **kwargs):
+        return to_rabbitmq_queue_arguments(arguments, **kwargs)
+
     def message_to_python(self, raw_message):
         """Convert encoded message body back to a Python value."""
-        return self.Message(self, raw_message)
+        return self.Message(raw_message, channel=self)
 
 
 class Connection(amqp.Connection):
+    """AMQP Connection."""
+
     Channel = Channel
 
 
 class Transport(base.Transport):
+    """AMQP Transport."""
+
     Connection = Connection
 
     default_port = DEFAULT_PORT
@@ -153,3 +164,13 @@ class Transport(base.Transport):
 
     def get_manager(self, *args, **kwargs):
         return get_manager(self.client, *args, **kwargs)
+
+
+class SSLTransport(Transport):
+    """AMQP SSL Transport."""
+
+    def __init__(self, *args, **kwargs):
+        super(SSLTransport, self).__init__(*args, **kwargs)
+
+        # ugh, not exactly pure, but hey, it's python.
+        self.client.ssl = True

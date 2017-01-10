@@ -1,12 +1,10 @@
+"""Base async HTTP client implementation."""
 import sys
-
 from vine import Thenable, promise, maybe_promise
-
 from kombu.exceptions import HttpError
 from kombu.utils.compat import coro
 from kombu.utils.encoding import bytes_to_str
 from kombu.utils.functional import maybe_list, memoize
-
 try:  # pragma: no cover
     from http.client import responses
 except ImportError:
@@ -23,6 +21,8 @@ def normalize_header(key):
 
 
 class Headers(dict):
+    """Represents a mapping of HTTP headers."""
+
     # TODO: This is just a regular dict and will not perform normalization
     # when looking up keys etc.
 
@@ -172,8 +172,11 @@ class Response:
             self.error = HttpError(self.code, self.status, self)
 
     def raise_for_error(self):
-        """Raise :class:`~kombu.exceptions.HttpError` if the request resulted
-        in a HTTP error code."""
+        """Raise if the request resulted in an HTTP error code.
+
+        Raises:
+            :class:`~kombu.exceptions.HttpError`
+        """
         if self.error:
             raise self.error
 

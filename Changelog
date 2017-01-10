@@ -4,33 +4,249 @@
  Change history
 ================
 
+.. _version-4.0.2:
+
+4.0.2
+=====
+:release-date: 2016-12-15 03:31 P.M PST
+:release-by: Ask Solem
+
+- Now depends on :mod:`amqp` 2.1.4
+
+    This new version takes advantage of TCP Keepalive settings on Linux,
+    making it better at detecting closed connections, also in failover
+    conditions.
+
+- Redis: Priority was reversed so, e.g. priority 0 became priority 9.
+
+.. _version-4.0.1:
+
+4.0.1
+=====
+:release-date: 2016-12-07 06:00 P.M PST
+:release-by: Ask Solem
+
+- Now depends on :mod:`amqp` 2.1.3
+
+    This new version takes advantage of the new ``TCP_USER_TIMEOUT`` socket option
+    on Linux.
+
+- Producer: Fixed performance degradation when default exchange specified
+  (Issue #651).
+
+- QPid: Switch to using getattr in qpid.Transport.__del__ (Issue #658)
+
+    Contributed by **Patrick Creech**.
+
+- QPid: Now uses monotonic time for timeouts.
+
+- MongoDB: Fixed compatibility with Python 3 (Issue #661).
+
+- Consumer: ``__exit__`` now skips cancelling consumer if connection-related
+  error raised (Issue #670).
+
+- MongoDB: Removes use of natural sort (Issue #638).
+
+    Contributed by **Anton Chaporgin**.
+
+- Fixed wrong keyword argument ``channel`` error (Issue #652).
+
+    Contributed by **Toomore Chiang**.
+
+- Safe argument to ``urllib.quote`` must be bytes on Python 2.x (Issue #645).
+
+- Documentation improvments by:
+
+    - **Carlos Edo**
+    - **Cemre Mengu**
+
 .. _version-4.0:
 
 4.0
 ===
-:release-date: TBA
+:release-date: 2016-10-28 16:45 P.M UTC
+:release-by: Ask Solem
 
-- Now depends on :mod:`amqp` 2.0.0.
+- Now depends on :mod:`amqp` 2.0.
+
+    The new py-amqp version have been refactored for better performance,
+    using modern Python socket conventions, and API consistency.
 
 - No longer depends on :mod:`anyjson`.
+
+    Kombu will now only choose between :pypi:`simplejson` and the built-in
+    :mod:`json`.
+
+    Using the latest version of simplejson is recommended:
+
+    .. code-block:: console
+
+        $ pip install -U simplejson
+
+- Removed transports that are no longer supported in this version:
+
+    - Django ORM transport
+    - SQLAlchemy ORM transport
+    - Beanstalk transport
+    - ZeroMQ transport
+    - amqplib transport (use pyamqp).
+
+- API Changes
+
+    * Signature of :class:`kombu.Message` now takes body as first argment.
+
+        It used to be ``Message(channel, body=body, **kw)``, but now it's
+        ``Message(body, channel=channel, **kw)``.
+
+        This is unlikey to affect you, as the Kombu API does not have
+        users instantiate messages manually.
 
 - New SQS transport
 
     Donated by NextDoor, with additional contributions from mdk.
+
+    .. note::
+
+        ``kombu[sqs]`` now depends on :pypi:`pycurl`.
+
+- New Consul transport.
+
+    Contributed by **Wido den Hollander**.
+
+- New etcd transport.
+
+    Contributed by **Stephen Milner**.
+
+- New Qpid transport.
+
+    It was introduced as an experimental transport in Kombu 3.0, but is now
+    mature enough to be fully supported.
+
+    Created and maintained by **Brian Bouterse**.
 
 - Redis: Priority 0 is now lowest, 9 is highest.
   (**backward incompatible**)
 
     This to match how priorities in AMQP works.
 
-    Fix contributed by Alex Koshelev.
+    Fix contributed by **Alex Koshelev**.
+
+- Redis: Support for Sentinel
+
+    You can point the connection to a list of sentinel URLs like:
+
+    .. code-block:: text
+
+        sentinel://0.0.0.0:26379;sentinel://0.0.0.0:26380/...
+
+    where each sentinel is separated by a `;`. Multiple sentinels are handled
+    by :class:`kombu.Connection` constructor, and placed in the alternative
+    list of servers to connect to in case of connection failure.
+
+   Contributed by **Sergey Azovskov**, and **Lorenzo Mancini**
+
+- RabbitMQ Queue Extensions
+
+    New arguments have been added to :class:`kombu.Queue` that lets
+    you directly and conveniently configure the RabbitMQ queue extensions.
+
+    - ``Queue(expires=20.0)``
+
+        Set queue expiry time in float seconds.
+
+        See :attr:`kombu.Queue.expires`.
+
+    - ``Queue(message_ttl=30.0)``
+
+        Set queue message time-to-live float seconds.
+
+        See :attr:`kombu.Queue.message_ttl`.
+
+    - ``Queue(max_length=1000)``
+
+        Set queue max length (number of messages) as int.
+
+        See :attr:`kombu.Queue.max_length`.
+
+    - ``Queue(max_length_bytes=1000)``
+
+        Set queue max length (message size total in bytes) as int.
+
+        See :attr:`kombu.Queue.max_length_bytes`.
+
+    - ``Queue(max_priority=10)``
+
+        Declare queue to be a priority queue that routes messages
+        based on the ``priority`` field of the message.
+
+        See :attr:`kombu.Queue.max_priority`.
+
+- RabbitMQ: ``Message.ack`` now supports the ``multiple`` argument.
+
+    If multiple is set to True, then all messages received before
+    the message being acked will also be acknowledged.
+
+- ``amqps://`` can now be specified to require SSL (Issue #610).
+
+- ``Consumer.cancel_by_queue`` is now constant time.
+
+- ``Connection.ensure*`` now raises :exc:`kombu.exceptions.OperationalError`.
+
+    Things that can be retried are now reraised as
+    :exc:`kombu.exceptions.OperationalError`.
+
+- Redis: Fixed SSL support.
+
+    Contributed by **Robert Kolba**.
+
+- New ``Queue.consumer_arguments`` can be used for the ability to
+  set consumer priority via ``x-priority``.
+
+  See https://www.rabbitmq.com/consumer-priority.html
+
+  Example:
+
+  .. code-block:: python
+
+        Queue(
+            'qname',
+            exchange=Exchange('exchange'),
+            routing_key='qname',
+            consumer_arguments={'x-priority': 3},
+        )
+
+- Queue/Exchange: ``no_declare`` option added (also enabled for
+  internal amq. exchanges) (Issue #565).
+
+- JSON serializer now calls ``obj.__json__`` for unsupported types.
+
+    This means you can now define a ``__json__`` method for custom
+    types that can be reduced down to a built-in json type.
+
+    Example:
+
+    .. code-block:: python
+
+        class Person:
+            first_name = None
+            last_name = None
+            address = None
+
+            def __json__(self):
+                return {
+                    'first_name': self.first_name,
+                    'last_name': self.last_name,
+                    'address': self.address,
+                }
+
+- JSON serializer now handles datetimes, Django promise, UUID and Decimal.
 
 - Beanstalk: Priority 0 is now lowest, 9 is highest.
   (**backward incompatible**)
 
     This to match how priorities in AMQP works.
 
-    Fix contributed by Alex Koshelev.
+    Fix contributed by **Alex Koshelev**.
 
 - Redis: now supports SSL using the ``ssl`` argument to
   :class:`~kombu.Connection`.
@@ -54,6 +270,21 @@
             'fanout_patterns': True,
         })
 
+- Pidbox: Mailbox new arguments: TTL and expiry.
+
+    Mailbox now supports new arguments for controlling
+    message TTLs and queue expiry, both for the mailbox
+    queue and for reply queues.
+
+    - ``queue_expires`` (float/int seconds).
+    - ``queue_ttl`` (float/int seconds).
+    - ``reply_queue_expires`` (float/int seconds).
+    - ``reply_queue_ttl`` (float/int seconds).
+
+    All take seconds in int/float.
+
+    Contributed by **Alan Justino**.
+
 - Exchange.delivery_mode now defaults to :const:`None`, and the default
   is instead set by ``Producer.publish``.
 
@@ -73,18 +304,18 @@
 
 - SQS: Consumers can now read json messages not sent by Kombu.
 
-    Contributed by Juan Carlos Ferrer.
+    Contributed by **Juan Carlos Ferrer**.
 
 - SQS: Will now log the access key used when authentication fails.
 
-    Contributed by Hank John.
+    Contributed by **Hank John**.
 
 - Added new :class:`kombu.mixins.ConsumerProducerMixin` for consumers that
   will also publish messages on a separate connection.
 
 - Messages: Now have a more descriptive ``repr``.
 
-    Contributed by Joshua Harlow.
+    Contributed by **Joshua Harlow**.
 
 - Async: HTTP client based on curl.
 
@@ -92,12 +323,81 @@
 
 - MongoDB: Now supports priorities
 
-    Contributed by Alex Koshelev.
+    Contributed by **Alex Koshelev**.
+
+- Virtual transports now supports multiple queue bindings.
+
+    Contributed by **Federico Ficarelli**.
+
+- Virtual transports now supports the anon exchange.
+
+    If when publishing a message, the exchange argument is set to '' (empty
+    string), the routing_key will be regarded as the destination queue.
+
+    This will bypass the routing table compeltely, and just deliver the
+    message to the queue name specified in the routing key.
 
 - Zookeeper: Transport now uses the built-in suport in kazoo to handle
   failover when using a list of server names.
 
-    Contributed by Joshua Harlow.
+    Contributed by **Joshua Harlow**.
+
+- ConsumerMixin.run now passes keyword arguments to .consume.
+
+Deprecations and removals
+-------------------------
+
+- The deprecated method ``Consumer.add_queue_from_dict`` has been removed.
+
+    Use instead:
+
+    .. code-block:: python
+
+        consumer.add_queue(Queue.from_dict(queue_name, **options))
+
+- The deprecated function ``kombu.serialization.encode`` has been removed.
+
+    Use :func:`kombu.serialization.dumps` instead.
+
+- The deprecated function ``kombu.serialization.decode`` has been removed.
+
+    Use :func:`kombu.serialization.loads` instead.
+
+- Removed module ``kombu.syn``
+
+    ``detect_environment`` has been moved to kombu.utils.compat
+
+.. _version-3.0.37:
+
+3.0.37
+======
+:release-date: 2016-10-06 05:00 P.M PDT
+:release-by: Ask Solem
+
+- Connection: Return value of ``.info()`` was no longer JSON serializable,
+  leading to "itertools.cycle object not JSON serializable"
+  errors (Issue #635).
+
+.. _version-3.0.36:
+
+3.0.36
+======
+:release-date: 2016-09-30 03:06 P.M PDT
+:release-by: Ask Solem
+
+- Connection: Fixed bug when cloning connection with alternate urls.
+
+    Fix contributed by Emmanuel Cazenave.
+
+- Redis: Fixed problem with unix socket connections.
+
+    https://github.com/celery/celery/issues/2903
+
+    Fix contributed by Raphael Michel.
+
+- Redis: Fixed compatibility with older redis-py versions (Issue #576).
+
+- Broadcast now retains queue name when being copied/pickled (Issue #578).
 
 .. _version-3.0.35:
 

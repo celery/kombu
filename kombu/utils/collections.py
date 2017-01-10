@@ -2,8 +2,12 @@
 
 
 class HashedSeq(list):
-    """type used for hash() to make sure the hash is not generated
-    multiple times."""
+    """Hashed Sequence.
+
+    Type used for hash() to make sure the hash is not generated
+    multiple times.
+    """
+
     __slots__ = 'hashvalue'
 
     def __init__(self, *seq):
@@ -15,6 +19,7 @@ class HashedSeq(list):
 
 
 def eqhash(o):
+    """Call ``obj.__eqhash__``."""
     try:
         return o.__eqhash__()
     except AttributeError:
@@ -22,6 +27,7 @@ def eqhash(o):
 
 
 class EqualityDict(dict):
+    """Dict using the eq operator for keying."""
 
     def __getitem__(self, key):
         h = eqhash(key)

@@ -29,6 +29,7 @@ def pretty_bindings(bindings):
 
 def maybe_delivery_mode(
         v, modes=DELIVERY_MODES, default=PERSISTENT_DELIVERY_MODE):
+    """Get delivery mode by name (or none if undefined)."""
     if v:
         return v if isinstance(v, numbers.Integral) else modes[v]
     return default
@@ -127,6 +128,7 @@ class Exchange(MaybeChannelBound):
         no_declare (bool): Never declare this exchange
             (:meth:`declare` does nothing).
     """
+
     TRANSIENT_DELIVERY_MODE = TRANSIENT_DELIVERY_MODE
     PERSISTENT_DELIVERY_MODE = PERSISTENT_DELIVERY_MODE
 
@@ -163,7 +165,7 @@ class Exchange(MaybeChannelBound):
             self.name and not self.name.startswith(
                 INTERNAL_EXCHANGE_PREFIX))
 
-    def declare(self, nowait=False, passive=None):
+    def declare(self, nowait=False, passive=None, channel=None):
         """Declare the exchange.
 
         Creates the exchange on the broker, unless passive is set
@@ -175,15 +177,15 @@ class Exchange(MaybeChannelBound):
         """
         if self._can_declare():
             passive = self.passive if passive is None else passive
-            return self.channel.exchange_declare(
+            return (channel or self.channel).exchange_declare(
                 exchange=self.name, type=self.type, durable=self.durable,
                 auto_delete=self.auto_delete, arguments=self.arguments,
                 nowait=nowait, passive=passive,
             )
 
     def bind_to(self, exchange='', routing_key='',
-                arguments=None, nowait=False, **kwargs):
-        """Binds the exchange to another exchange.
+                arguments=None, nowait=False, channel=None, **kwargs):
+        """Bind the exchange to another exchange.
 
         Arguments:
             nowait (bool): If set the server will not respond, and the call
@@ -192,26 +194,28 @@ class Exchange(MaybeChannelBound):
         """
         if isinstance(exchange, Exchange):
             exchange = exchange.name
-        return self.channel.exchange_bind(destination=self.name,
-                                          source=exchange,
-                                          routing_key=routing_key,
-                                          nowait=nowait,
-                                          arguments=arguments)
+        return (channel or self.channel).exchange_bind(
+            destination=self.name,
+            source=exchange,
+            routing_key=routing_key,
+            nowait=nowait,
+            arguments=arguments,
+        )
 
     def unbind_from(self, source='', routing_key='',
-                    nowait=False, arguments=None):
+                    nowait=False, arguments=None, channel=None):
         """Delete previously created exchange binding from the server."""
         if isinstance(source, Exchange):
             source = source.name
-        return self.channel.exchange_unbind(destination=self.name,
-                                            source=source,
-                                            routing_key=routing_key,
-                                            nowait=nowait,
-                                            arguments=arguments)
+        return (channel or self.channel).exchange_unbind(
+            destination=self.name,
+            source=source,
+            routing_key=routing_key,
+            nowait=nowait,
+            arguments=arguments,
+        )
 
-    def Message(self, body, delivery_mode=None, priority=None,
-                content_type=None, content_encoding=None,
-                properties=None, headers=None):
+    def Message(self, body, delivery_mode=None, properties=None, **kwargs):
         """Create message instance to be sent with :meth:`publish`.
 
         Arguments:
@@ -241,29 +245,32 @@ class Exchange(MaybeChannelBound):
         # XXX This method is unused by kombu itself AFAICT [ask].
         properties = {} if properties is None else properties
         properties['delivery_mode'] = maybe_delivery_mode(self.delivery_mode)
-        return self.channel.prepare_message(body,
-                                            properties=properties,
-                                            priority=priority,
-                                            content_type=content_type,
-                                            content_encoding=content_encoding,
-                                            headers=headers)
+        return self.channel.prepare_message(
+            body,
+            properties=properties,
+            **kwargs)
 
     def publish(self, message, routing_key=None, mandatory=False,
                 immediate=False, exchange=None):
         """Publish message.
 
         Arguments:
-            message (~kombu.Message): Message instance to publish.
+            message (Union[kombu.Message, str, bytes]):
+                Message to publish.
             routing_key (str): Message routing key.
             mandatory (bool): Currently not supported.
             immediate (bool): Currently not supported.
         """
+        if isinstance(message, str):
+            message = self.Message(message)
         exchange = exchange or self.name
-        return self.channel.basic_publish(message,
-                                          exchange=exchange,
-                                          routing_key=routing_key,
-                                          mandatory=mandatory,
-                                          immediate=immediate)
+        return self.channel.basic_publish(
+            message,
+            exchange=exchange,
+            routing_key=routing_key,
+            mandatory=mandatory,
+            immediate=immediate,
+        )
 
     def delete(self, if_unused=False, nowait=False):
         """Delete the exchange declaration on server.
@@ -335,22 +342,23 @@ class binding:
     def declare(self, channel, nowait=False):
         """Declare destination exchange."""
         if self.exchange and self.exchange.name:
-            ex = self.exchange(channel)
-            ex.declare(nowait=nowait)
+            self.exchange.declare(channel=channel, nowait=nowait)
 
-    def bind(self, entity, nowait=False):
+    def bind(self, entity, nowait=False, channel=None):
         """Bind entity to this binding."""
         entity.bind_to(exchange=self.exchange,
                        routing_key=self.routing_key,
                        arguments=self.arguments,
-                       nowait=nowait)
+                       nowait=nowait,
+                       channel=channel)
 
-    def unbind(self, entity, nowait=False):
+    def unbind(self, entity, nowait=False, channel=None):
         """Unbind entity from this binding."""
         entity.unbind_from(self.exchange,
                            routing_key=self.routing_key,
                            arguments=self.unbind_arguments,
-                           nowait=nowait)
+                           nowait=nowait,
+                           channel=channel)
 
     def __repr__(self):
         return '<binding: {0}>'.format(self)
@@ -376,8 +384,13 @@ class Queue(MaybeChannelBound):
         queue_arguments (Dict): See :attr:`queue_arguments`.
         binding_arguments (Dict): See :attr:`binding_arguments`.
         consumer_arguments (Dict): See :attr:`consumer_arguments`.
-        no_declare (bool): See :attr:`no_declare`
-        on_declared (Callable): See :attr:`on_declared`
+        no_declare (bool): See :attr:`no_declare`.
+        on_declared (Callable): See :attr:`on_declared`.
+        expires (float): See :attr:`expires`.
+        message_ttl (float): See :attr:`message_ttl`.
+        max_length (int): See :attr:`max_length`.
+        max_length_bytes (int): See :attr:`max_length_bytes`.
+        max_priority (int): See :attr:`max_priority`.
 
     Attributes:
         name (str): Name of the queue.
@@ -433,6 +446,63 @@ class Queue(MaybeChannelBound):
             there was no consumer ever on the queue, it won't be
             deleted.
 
+        expires (float): Set the expiry time (in seconds) for when this
+            queue should expire.
+
+            The expiry time decides how long the queue can stay unused
+            before it's automatically deleted.
+            *Unused* means the queue has no consumers, the queue has not been
+            redeclared, and ``Queue.get`` has not been invoked for a duration
+            of at least the expiration period.
+
+            See https://www.rabbitmq.com/ttl.html#queue-ttl
+
+            **RabbitMQ extension**: Only available when using RabbitMQ.
+
+        message_ttl (float): Message time to live in seconds.
+
+            This setting controls how long messages can stay in the queue
+            unconsumed. If the expiry time passes before a message consumer
+            has received the message, the message is deleted and no consumer
+            will see the message.
+
+            See https://www.rabbitmq.com/ttl.html#per-queue-message-ttl
+
+            **RabbitMQ extension**: Only available when using RabbitMQ.
+
+        max_length (int): Set the maximum number of messages that the
+            queue can hold.
+
+            If the number of messages in the queue size exceeds this limit,
+            new messages will be dropped (or dead-lettered if a dead letter
+            exchange is active).
+
+            See https://www.rabbitmq.com/maxlength.html
+
+            **RabbitMQ extension**: Only available when using RabbitMQ.
+
+        max_length_bytes (int): Set the max size (in bytes) for the total
+            of messages in the queue.
+
+            If the total size of all the messages in the queue exceeds this
+            limit, new messages will be dropped (or dead-lettered if a dead
+            letter exchange is active).
+
+            **RabbitMQ extension**: Only available when using RabbitMQ.
+
+        max_priority (int): Set the highest priority number for this queue.
+
+            For example if the value is 10, then messages can delivered to
+            this queue can have a ``priority`` value between 0 and 10,
+            where 10 is the highest priority.
+
+            RabbitMQ queues without a max priority set will ignore
+            the priority field in the message, so if you want priorities
+            you need to set the max priority field to declare the queue
+            as a priority queue.
+
+            **RabbitMQ extension**: Only available when using RabbitMQ.
+
         queue_arguments (Dict): Additional arguments used when declaring
             the queue.  Can be used to to set the arguments value
             for RabbitMQ/AMQP's ``queue.declare``.
@@ -458,6 +528,7 @@ class Queue(MaybeChannelBound):
         no_declare (bool): Never declare this queue, nor related
             entities (:meth:`declare` does nothing).
     """
+
     ContentDisallowed = ContentDisallowed
 
     name = ''
@@ -483,6 +554,11 @@ class Queue(MaybeChannelBound):
         ('alias', None),
         ('bindings', list),
         ('no_declare', bool),
+        ('expires', float),
+        ('message_ttl', float),
+        ('max_length', int),
+        ('max_length_bytes', int),
+        ('max_priority', int)
     )
 
     def __init__(self, name='', exchange=None, routing_key='',
@@ -519,31 +595,31 @@ class Queue(MaybeChannelBound):
         if self.exchange:
             self.exchange = self.exchange(self.channel)
 
-    def declare(self, nowait=False):
-        """Declares the queue, the exchange and binds the queue to
-        the exchange."""
+    def declare(self, nowait=False, channel=None):
+        """Declare queue and exchange then binds queue to exchange."""
         if not self.no_declare:
             # - declare main binding.
-            self._create_exchange(nowait=nowait)
-            self._create_queue(nowait=nowait)
-            self._create_bindings(nowait=nowait)
+            self._create_exchange(nowait=nowait, channel=channel)
+            self._create_queue(nowait=nowait, channel=channel)
+            self._create_bindings(nowait=nowait, channel=channel)
         return self.name
 
-    def _create_exchange(self, nowait=False):
+    def _create_exchange(self, nowait=False, channel=None):
         if self.exchange:
-            self.exchange.declare(nowait)
+            self.exchange.declare(nowait=nowait, channel=channel)
 
-    def _create_queue(self, nowait=False):
-        self.queue_declare(nowait, passive=False)
+    def _create_queue(self, nowait=False, channel=None):
+        self.queue_declare(nowait=nowait, passive=False, channel=channel)
         if self.exchange and self.exchange.name:
-            self.queue_bind(nowait)
+            self.queue_bind(nowait=nowait, channel=channel)
 
-    def _create_bindings(self, nowait=False):
+    def _create_bindings(self, nowait=False, channel=None):
         for B in self.bindings:
-            B.declare(self.channel)
-            B.bind(self, nowait=nowait)
+            channel = channel or self.channel
+            B.declare(channel)
+            B.bind(self, nowait=nowait, channel=channel)
 
-    def queue_declare(self, nowait=False, passive=False):
+    def queue_declare(self, nowait=False, passive=False, channel=None):
         """Declare queue on the server.
 
         Arguments:
@@ -552,33 +628,48 @@ class Queue(MaybeChannelBound):
                 The client can use this to check whether a queue exists
                 without modifying the server state.
         """
-        ret = self.channel.queue_declare(queue=self.name,
-                                         passive=passive,
-                                         durable=self.durable,
-                                         exclusive=self.exclusive,
-                                         auto_delete=self.auto_delete,
-                                         arguments=self.queue_arguments,
-                                         nowait=nowait)
+        channel = channel or self.channel
+        queue_arguments = channel.prepare_queue_arguments(
+            self.queue_arguments or {},
+            expires=self.expires,
+            message_ttl=self.message_ttl,
+            max_length=self.max_length,
+            max_length_bytes=self.max_length_bytes,
+            max_priority=self.max_priority,
+        )
+        ret = channel.queue_declare(
+            queue=self.name,
+            passive=passive,
+            durable=self.durable,
+            exclusive=self.exclusive,
+            auto_delete=self.auto_delete,
+            arguments=queue_arguments,
+            nowait=nowait,
+        )
         if not self.name:
             self.name = ret[0]
         if self.on_declared:
             self.on_declared(*ret)
         return ret
 
-    def queue_bind(self, nowait=False):
+    def queue_bind(self, nowait=False, channel=None):
         """Create the queue binding on the server."""
         return self.bind_to(self.exchange, self.routing_key,
-                            self.binding_arguments, nowait=nowait)
+                            self.binding_arguments,
+                            channel=channel, nowait=nowait)
 
     def bind_to(self, exchange='', routing_key='',
-                arguments=None, nowait=False):
+                arguments=None, nowait=False, channel=None):
         if isinstance(exchange, Exchange):
             exchange = exchange.name
-        return self.channel.queue_bind(queue=self.name,
-                                       exchange=exchange,
-                                       routing_key=routing_key,
-                                       arguments=arguments,
-                                       nowait=nowait)
+
+        return (channel or self.channel).queue_bind(
+            queue=self.name,
+            exchange=exchange,
+            routing_key=routing_key,
+            arguments=arguments,
+            nowait=nowait,
+        )
 
     def get(self, no_ack=None, accept=None):
         """Poll the server for a new message.
@@ -650,10 +741,6 @@ class Queue(MaybeChannelBound):
     def delete(self, if_unused=False, if_empty=False, nowait=False):
         """Delete the queue.
 
-        Example:
-            .. code-block:: console
-                $ foo = 'blah'
-
         Arguments:
             if_unused (bool): If set, the server will only delete the queue
                 if it has no consumers. A channel error will be raised
@@ -669,18 +756,20 @@ class Queue(MaybeChannelBound):
                                          if_empty=if_empty,
                                          nowait=nowait)
 
-    def queue_unbind(self, arguments=None, nowait=False):
+    def queue_unbind(self, arguments=None, nowait=False, channel=None):
         return self.unbind_from(self.exchange, self.routing_key,
-                                arguments, nowait)
+                                arguments, nowait, channel)
 
     def unbind_from(self, exchange='', routing_key='',
-                    arguments=None, nowait=False):
+                    arguments=None, nowait=False, channel=None):
         """Unbind queue by deleting the binding from the server."""
-        return self.channel.queue_unbind(queue=self.name,
-                                         exchange=exchange.name,
-                                         routing_key=routing_key,
-                                         arguments=arguments,
-                                         nowait=nowait)
+        return (channel or self.channel).queue_unbind(
+            queue=self.name,
+            exchange=exchange.name,
+            routing_key=routing_key,
+            arguments=arguments,
+            nowait=nowait,
+        )
 
     def __eq__(self, other):
         if isinstance(other, Queue):

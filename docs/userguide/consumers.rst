@@ -18,7 +18,7 @@ drain events from all channels on that connection.
 
     Kombu since 3.0 will only accept json/binary or text messages by default,
     to allow deserialization of other formats you have to specify them
-    in the ``accept`` argument:
+    in the ``accept`` argument (in addition to setting the right content type for your messages):
 
     .. code-block:: python
 

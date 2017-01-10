@@ -1,5 +1,4 @@
-"""Messaging library for Python"""
-
+"""Messaging library for Python."""
 import os
 import re
 import sys
@@ -9,7 +8,7 @@ if sys.version_info < (3, 6):  # pragma: no cover
 
 from collections import namedtuple  # noqa
 
-__version__ = '4.0.0rc3'
+__version__ = '4.0.2'
 __author__ = 'Ask Solem'
 __contact__ = 'ask@celeryproject.org'
 __homepage__ = 'https://kombu.readthedocs.io'
@@ -73,6 +72,7 @@ for module, items in all_by_module.items():
 
 
 class module(ModuleType):
+    """Customized Python module."""
 
     def __getattr__(self, name):
         if name in object_origins:
@@ -89,6 +89,7 @@ class module(ModuleType):
                        '__package__', '__version__', '__author__',
                        '__contact__', '__homepage__', '__docformat__'))
         return result
+
 
 # 2.5 does not define __package__
 try:

@@ -83,7 +83,7 @@ class SimpleBase:
             self._consuming = True
 
     def __len__(self):
-        """`len(self) -> self.qsize()`"""
+        """`len(self) -> self.qsize()`."""
         return self.qsize()
 
     def __bool__(self):
@@ -91,6 +91,8 @@ class SimpleBase:
 
 
 class SimpleQueue(SimpleBase):
+    """Simple API for persistent queues."""
+
     no_ack = False
     queue_opts = {}
     exchange_opts = {'type': 'direct'}
@@ -111,15 +113,17 @@ class SimpleQueue(SimpleBase):
             name = queue.name
             exchange = queue.exchange
             routing_key = queue.routing_key
+        consumer = messaging.Consumer(channel, queue)
         producer = messaging.Producer(channel, exchange,
                                       serializer=serializer,
                                       routing_key=routing_key,
                                       compression=compression)
-        consumer = messaging.Consumer(channel, queue)
         super().__init__(channel, producer, consumer, no_ack, **kwargs)
 
 
 class SimpleBuffer(SimpleQueue):
+    """Simple API for ephemeral queues."""
+
     no_ack = True
     queue_opts = dict(durable=False,
                       auto_delete=True)

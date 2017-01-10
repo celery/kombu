@@ -1,6 +1,6 @@
+"""Functional Utilities."""
 import random
 import threading
-
 from collections import OrderedDict, UserDict
 from itertools import count, repeat
 from time import sleep
@@ -8,9 +8,7 @@ from typing import (
     Any, Callable, Dict, Iterable, Iterator,
     KeysView, Mapping, Optional, Sequence, Tuple,
 )
-
 from vine.utils import wraps
-
 from .encoding import safe_repr as _safe_repr
 
 __all__ = [
@@ -52,7 +50,7 @@ class LRUCache(UserDict):
             cache.
     """
 
-    def __init__(self, limit: Optional[int]=None) -> None:
+    def __init__(self, limit: int = None) -> None:
         self.limit = limit
         self.mutex = threading.RLock()
         self.data = OrderedDict()  # type: OrderedDict
@@ -127,6 +125,7 @@ class LRUCache(UserDict):
 def memoize(maxsize: Optional[int]=None,
             keyfun: Optional[MemoizeKeyFun]=None,
             Cache: Any=LRUCache) -> Callable:
+    """Decorator to cache function return value."""
 
     def _memoize(fun: Callable) -> Callable:
         mutex = threading.Lock()
@@ -206,7 +205,7 @@ class lazy:
 
 
 def maybe_evaluate(value: Any) -> Any:
-    """Evaluates if the value is a :class:`lazy` instance."""
+    """Evaluate value only if value is a :class:`lazy` instance."""
     if isinstance(value, lazy):
         return value.evaluate()
     return value
@@ -215,8 +214,11 @@ def maybe_evaluate(value: Any) -> Any:
 def is_list(l: Any,
             scalars: tuple=(Mapping, str),
             iters: tuple=(Iterable,)) -> bool:
-    """Return true if the object is iterable (but not
-    if object is a mapping or string)."""
+    """Return true if the object is iterable.
+
+    Note:
+        Returns false if object is a mapping or string.
+    """
     return isinstance(l, iters) and not isinstance(l, scalars or ())
 
 
@@ -226,7 +228,7 @@ def maybe_list(l: Any, scalars: tuple=(Mapping, str)) -> Optional[Sequence]:
 
 
 def dictfilter(d: Optional[Mapping]=None, **kw) -> Mapping:
-    """Remove all keys from dict ``d`` whose value is :const:`None`"""
+    """Remove all keys from dict ``d`` whose value is :const:`None`."""
     d = kw if d is None else (dict(d, **kw) if kw else d)
     return {k: v for k, v in d.items() if v is not None}
 
@@ -328,6 +330,7 @@ def reprcall(name, args=(), kwargs={}, sep=', '):
         (args and kwargs) and sep or '',
         reprkwargs(kwargs, sep),
     )
+
 
 # Compat names (before kombu 3.0)
 promise = lazy

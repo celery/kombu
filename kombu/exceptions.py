@@ -1,6 +1,5 @@
 """Exceptions."""
-from socket import timeout as TimeoutError
-
+from socket import timeout as TimeoutError  # noqa
 from amqp import ChannelError, ConnectionError, ResourceError
 
 __all__ = [
@@ -10,6 +9,7 @@ __all__ = [
     'ChannelLimitExceeded', 'ConnectionError', 'ChannelError',
     'VersionMismatch', 'SerializerNotInstalled', 'ResourceError',
     'SerializationError', 'EncodeError', 'DecodeError', 'HttpError',
+    'InconsistencyError',
 ]
 
 
@@ -20,7 +20,6 @@ class KombuError(Exception):
 
 class OperationalError(KombuError):
     """Recoverable message transport connection error."""
-    pass
 
 
 class SerializationError(KombuError):
@@ -62,11 +61,12 @@ class ChannelLimitExceeded(LimitExceeded):
 
 
 class VersionMismatch(KombuError):
+    """Library dependency version mismatch."""
     ...
 
 
 class SerializerNotInstalled(KombuError):
-    """Support for the requested serialization type is not installed"""
+    """Support for the requested serialization type is not installed."""
     ...
 
 
@@ -76,12 +76,15 @@ class ContentDisallowed(SerializerNotInstalled):
 
 
 class InconsistencyError(ConnectionError):
-    """Data or environment has been found to be inconsistent,
-    depending on the cause it may be possible to retry the operation."""
+    """Data or environment has been found to be inconsistent.
+
+    Depending on the cause it may be possible to retry the operation.
+    """
     ...
 
 
 class HttpError(Exception):
+    """HTTP Client Error."""
 
     def __init__(self, code, message=None, response=None):
         self.code = code

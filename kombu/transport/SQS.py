@@ -14,7 +14,7 @@ SQS Features supported by this transport:
 
     Long polling is enabled by setting the `wait_time_seconds` transport
     option to a number > 1.  Amazon supports up to 20 seconds.  This is
-    disabled for now, but will be enabled by default in the near future.
+    enabled with 10 seconds by default.
 
   Batch API Actions:
    http://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/
@@ -70,6 +70,7 @@ SQS_MAX_MESSAGES = 10
 
 
 def maybe_int(x):
+    """Try to convert x' to int, or return x' if that fails."""
     try:
         return int(x)
     except ValueError:
@@ -77,9 +78,11 @@ def maybe_int(x):
 
 
 class Channel(virtual.Channel):
+    """SQS Channel."""
+
     default_region = 'us-east-1'
     default_visibility_timeout = 1800  # 30 minutes.
-    default_wait_time_seconds = 10  # disabled see #198
+    default_wait_time_seconds = 10  # up to 20 seconds max
     domain_format = 'kombu%(vhost)s'
     _asynsqs = None
     _sqs = None
@@ -141,24 +144,9 @@ class Channel(virtual.Channel):
         # If we're not allowed to consume or have no consumers, raise Empty
         if not self._consumers or not self.qos.can_consume():
             raise Empty()
-        message_cache = self._queue_message_cache
-
-        # Check if there are any items in our buffer.  If there are any, pop
-        # off that queue first.
-        try:
-            return message_cache.popleft()
-        except IndexError:
-            pass
 
         # At this point, go and get more messages from SQS
-        res, queue = self._poll(self.cycle, timeout=timeout)
-        message_cache.extend((r, queue) for r in res)
-
-        # Now try to pop off the queue again.
-        try:
-            return message_cache.popleft()
-        except IndexError:
-            raise Empty()
+        self._poll(self.cycle, self.connection._deliver, timeout=timeout)
 
     def _reset_cycle(self):
         """Reset the consume cycle.
@@ -282,7 +270,9 @@ class Channel(virtual.Channel):
             messages = q.get_messages(num_messages=maxcount)
 
             if messages:
-                return self._messages_to_python(messages, queue)
+                for msg in self._messages_to_python(messages, queue):
+                    self.connection._deliver(msg, queue)
+                return
         raise Empty()
 
     def _get(self, queue):
@@ -470,6 +460,8 @@ class Channel(virtual.Channel):
 
 
 class Transport(virtual.Transport):
+    """SQS Transport."""
+
     Channel = Channel
 
     polling_interval = 1

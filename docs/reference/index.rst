@@ -6,7 +6,7 @@
 :Date: |today|
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 1
 
     kombu
     kombu.common
@@ -23,7 +23,6 @@
     kombu.pools
     kombu.abstract
     kombu.resource
-    kombu.syn
     kombu.async
     kombu.async.hub
     kombu.async.semaphore
@@ -46,6 +45,7 @@
     kombu.transport.redis
     kombu.transport.mongodb
     kombu.transport.consul
+    kombu.transport.etcd
     kombu.transport.zookeeper
     kombu.transport.filesystem
     kombu.transport.SQS
@@ -69,5 +69,6 @@
     kombu.utils.objects
     kombu.utils.scheduling
     kombu.utils.text
+    kombu.utils.time
     kombu.utils.url
     kombu.utils.uuid

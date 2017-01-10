@@ -31,6 +31,10 @@ scheduled = namedtuple('scheduled', ('eta', 'priority', 'entry'))
 
 
 def to_timestamp(d, default_timezone=utc, time=monotonic):
+    """Convert datetime to timestamp.
+
+    If d' is already a timestamp, then that will be used.
+    """
     if isinstance(d, datetime):
         if d.tzinfo is None:
             d = d.replace(tzinfo=default_timezone)
@@ -41,6 +45,8 @@ def to_timestamp(d, default_timezone=utc, time=monotonic):
 
 @total_ordering
 class Entry:
+    """Schedule Entry."""
+
     if not IS_PYPY:  # pragma: no cover
         __slots__ = (
             'fun', 'args', 'kwargs', 'tref', 'canceled',
@@ -82,7 +88,8 @@ class Entry:
 
 
 class Timer:
-    """ETA scheduler."""
+    """Async timer implementation."""
+
     Entry = Entry
 
     on_error = None
@@ -168,9 +175,12 @@ class Timer:
 
     def __iter__(self, min=min, nowfun=monotonic,
                  pop=heapq.heappop, push=heapq.heappush):
-        """This iterator yields a tuple of ``(entry, wait_seconds)``,
+        """Iterate over schedule.
+
+        This iterator yields a tuple of ``(entry, wait_seconds)``,
         where if entry is :const:`None` the caller should wait
-        for ``wait_seconds`` until it polls the schedule again."""
+        for ``wait_seconds`` until it polls the schedule again.
+        """
         max_interval = self.max_interval
         queue = self._queue
 

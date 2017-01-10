@@ -1,14 +1,16 @@
 PROJ=kombu
 PGPIDENT="Celery Security Team"
 PYTHON=python
+PYTEST=py.test
 GIT=git
 TOX=tox
-NOSETESTS=nosetests
 ICONV=iconv
+PYDOCSTYLE=pydocstyle
 FLAKE8=flake8
 FLAKEPLUS=flakeplus
 SPHINX2RST=sphinx2rst
 
+TESTDIR=t
 SPHINX_DIR=docs/
 SPHINX_BUILDDIR="${SPHINX_DIR}/_build"
 README=README.rst
@@ -34,6 +36,7 @@ help:
 	@echo "    flakes --------  - Check code for syntax and style errors."
 	@echo "      flakecheck     - Run flake8 on the source code."
 	@echo "      flakepluscheck - Run flakeplus on the source code."
+	@echo "      pep257check    - Run pep257 on the source code."
 	@echo "readme               - Regenerate README.rst file."
 	@echo "contrib              - Regenerate CONTRIBUTING.rst file"
 	@echo "clean-dist --------- - Clean all distribution build artifacts."
@@ -63,11 +66,13 @@ bump-major:
 release:
 	python setup.py register sdist bdist_wheel upload --sign --identity="$(PGPIDENT)"
 
-Documentation:
+build-docs:
 	(cd "$(SPHINX_DIR)"; $(MAKE) html)
-	mv "$(SPHINX_HTMLDIR)" $(DOCUMENTATION)
 
-docs: Documentation
+Documentation:
+	ln -sf "$(SPHINX_HTMLDIR)" $@
+
+docs: build-docs Documentation
 
 clean-docs:
 	-rm -rf "$(SPHINX_BUILDDIR)"
@@ -81,18 +86,21 @@ configcheck:
 	(cd "$(SPHINX_DIR)"; $(MAKE) configcheck)
 
 flakecheck:
-	$(FLAKE8) --ignore=X999 "$(PROJ)"
+	$(FLAKE8) "$(PROJ)" "$(TESTDIR)"
 
 flakediag:
 	-$(MAKE) flakecheck
 
 flakepluscheck:
-	$(FLAKEPLUS) --$(FLAKEPLUSTARGET) "$(PROJ)"
+	$(FLAKEPLUS) --$(FLAKEPLUSTARGET) "$(PROJ)" "$(TESTDIR)"
 
 flakeplusdiag:
 	-$(MAKE) flakepluscheck
 
-flakes: flakediag flakeplusdiag
+pep257check:
+	$(PYDOCSTYLE) "$(PROJ)"
+
+flakes: flakediag flakeplusdiag pep257check
 
 clean-readme:
 	-rm -f $(README)
@@ -135,7 +143,7 @@ test:
 	$(PYTHON) setup.py test
 
 cov:
-	$(NOSETESTS) -xv --with-coverage --cover-html --cover-branch
+	$(PYTEST) -x --cov=kombu --cov-report=html
 
 build:
 	$(PYTHON) setup.py sdist bdist_wheel

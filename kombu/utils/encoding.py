@@ -20,32 +20,38 @@ default_encoding_file = None
 
 
 def set_default_encoding_file(file: IO) -> None:
+    """Set file used to get codec information."""
     global default_encoding_file
     default_encoding_file = file
 
 
 def get_default_encoding_file() -> Optional[IO]:
+    """Get file used to get codec information."""
     return default_encoding_file
 
 
 if sys.platform.startswith('java'):     # pragma: no cover
 
-    def default_encoding(file: Optional[IO]=None) -> str:
+    def default_encoding(file: IO = None) -> str:
+        """Get default encoding."""
         return 'utf-8'
 else:
 
-    def default_encoding(file: Optional[IO]=None) -> str:  # noqa
+    def default_encoding(file: IO = None) -> str:  # noqa
+        """Get default encoding."""
         file = file or get_default_encoding_file()
         return getattr(file, 'encoding', None) or sys.getfilesystemencoding()
 
 
 def str_to_bytes(s: AnyStr) -> bytes:
+    """Convert str to bytes."""
     if isinstance(s, str):
         return s.encode()
     return s
 
 
 def bytes_to_str(s: AnyStr) -> str:
+    """Convert bytes to str."""
     if isinstance(s, bytes):
         return s.decode()
     return s
@@ -62,6 +68,7 @@ def default_encode(obj: Any) -> Any:
 
 
 def safe_str(s: Any, errors: str='replace') -> str:
+    """Safe form of str(), void of unicode errors."""
     s = bytes_to_str(s)
     if not isinstance(s, (str, bytes)):
         return safe_repr(s, errors)
@@ -79,6 +86,7 @@ def _safe_str(s: Any, errors: str='replace', file: IO=None) -> str:
 
 
 def safe_repr(o: Any, errors='replace') -> str:
+    """Safe form of repr, void of Unicode errors."""
     try:
         return repr(o)
     except Exception:

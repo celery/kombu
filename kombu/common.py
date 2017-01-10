@@ -61,12 +61,19 @@ def generate_oid(node_id: int, process_id: int, thread_id: int,
     return str(uuid3(NAMESPACE_OID, ent))
 
 
-def oid_from(instance: Any) -> str:
-    return generate_oid(get_node_id(), os.getpid(), get_ident(), instance)
+def oid_from(instance: Any, threads: bool = True) -> str:
+    return generate_oid(
+        get_node_id(),
+        os.getpid(),
+        get_ident() if threads else 0,
+        instance,
+    )
 
 
 class Broadcast(Queue):
-    """Convenience class used to define broadcast queues.
+    """Broadcast queue.
+
+    Convenience class used to define broadcast queues.
 
     Every queue instance will have a unique name,
     and both the queue and exchange is configured with auto deletion.
@@ -79,6 +86,7 @@ class Broadcast(Queue):
         **kwargs (Any): See :class:`~kombu.Queue` for a list
             of additional keyword arguments supported.
     """
+
     attrs = Queue.attrs + (('queue', None),)
 
     def __init__(self, name: Optional[str]=None,
@@ -104,8 +112,10 @@ def declaration_cached(entity: abstract.Entity,
 
 
 def maybe_declare(entity: abstract.Entity,
-                  channel: Optional[amqp.abstract.Channel]=None,
-                  retry: bool=False, **retry_policy) -> bool:
+                  channel: amqp.abstract.Channel = None,
+                  retry: bool = False,
+                  **retry_policy) -> bool:
+    """Declare entity (cached)."""
     is_bound = entity.is_bound
     orig = entity
 
@@ -132,11 +142,11 @@ def maybe_declare(entity: abstract.Entity,
 
 def _maybe_declare(entity: abstract.Entity, declared: MutableSet, ident: int,
                    channel: Optional[amqp.abstract.Channel],
-                   orig: Optional[abstract.Entity]=None) -> bool:
+                   orig: abstract.Entity = None) -> bool:
     channel = channel or entity.channel
     if not channel.connection:
         raise RecoverableConnectionError('channel disconnected')
-    entity.declare()
+    entity.declare(channel=channel)
     if declared is not None and ident:
         declared.add(ident)
     if orig is not None:
@@ -157,9 +167,11 @@ def _imaybe_declare(entity: abstract.Entity,
 
 def drain_consumer(
         consumer: abstract.Consumer,
-        limit: Optional[int]=1, timeout: Timeout=None,
-        callbacks: Sequence[Callable]=None) -> Iterator[abstract.Message]:
-    acc = deque()  # type: deque
+        limit: int = 1,
+        timeout: Timeout = None,
+        callbacks: Sequence[Callable] = None) -> Iterator[abstract.Message]:
+    """Drain messages from consumer instance."""
+    acc = deque()
 
     def on_message(body: Any, message: Any) -> None:
         acc.append((body, message))
@@ -179,9 +191,11 @@ def itermessages(
         conn: abstract.Connection,
         channel: Optional[amqp.abstract.Channel],
         queue: abstract.Entity,
-        limit: Optional[int]=1, timeout: Timeout=None,
-        callbacks: Sequence[Callable]=None,
+        limit: int = 1,
+        timeout: Timeout = None,
+        callbacks: Sequence[Callable] = None,
         **kwargs) -> Iterator[abstract.Message]:
+    """Iterator over messages."""
     return drain_consumer(
         conn.Consumer(queues=[queue], channel=channel, **kwargs),
         limit=limit, timeout=timeout, callbacks=callbacks,
@@ -189,9 +203,9 @@ def itermessages(
 
 
 def eventloop(conn: abstract.Connection,
-              limit: Optional[int]=None,
-              timeout: Timeout=None,
-              ignore_timeouts: bool=False) -> Iterator[Any]:
+              limit: int = None,
+              timeout: Timeout = None,
+              ignore_timeouts: bool = False) -> Iterator[Any]:
     """Best practice generator wrapper around ``Connection.drain_events``.
 
     Able to drain events forever, with a limit, and optionally ignoring
@@ -231,9 +245,9 @@ def eventloop(conn: abstract.Connection,
 
 def send_reply(exchange: Union[abstract.Exchange, str],
                req: abstract.Message, msg: Any,
-               producer: Optional[abstract.Producer]=None,
-               retry: bool=False,
-               retry_policy: Optional[Mapping]=None, **props) -> None:
+               producer: abstract.Producer = None,
+               retry: bool = False,
+               retry_policy: Mapping = None, **props) -> None:
     """Send reply for request.
 
     Arguments:
@@ -261,7 +275,7 @@ def collect_replies(
         channel: Optional[amqp.abstract.Channel],
         queue: abstract.Entity,
         *args, **kwargs) -> Iterator[Any]:
-    """Generator collecting replies from ``queue``"""
+    """Generator collecting replies from ``queue``."""
     no_ack = kwargs.setdefault('no_ack', True)
     received = False
     try:
@@ -292,7 +306,7 @@ def _ignore_errors(conn) -> Iterator:
 
 
 def ignore_errors(conn: abstract.Connection,
-                  fun: Optional[Callable]=None, *args, **kwargs) -> Any:
+                  fun: Callable = None, *args, **kwargs) -> Any:
     """Ignore connection and channel errors.
 
     The first argument must be a connection object, or any other object
@@ -327,7 +341,7 @@ def ignore_errors(conn: abstract.Connection,
 
 def revive_connection(connection: abstract.Connection,
                       channel: amqp.abstract.Channel,
-                      on_revive: Optional[Callable]=None) -> None:
+                      on_revive: Callable = None) -> None:
     if on_revive:
         on_revive(channel)
 
@@ -335,10 +349,13 @@ def revive_connection(connection: abstract.Connection,
 def insured(pool: abstract.Resource,
             fun: Callable,
             args: Sequence, kwargs: Dict,
-            errback: Optional[Callable]=None,
-            on_revive: Optional[Callable]=None, **opts) -> Any:
-    """Ensures function performing broker commands completes
-    despite intermittent connection failures."""
+            errback: Callable = None,
+            on_revive: Callable = None, **opts) -> Any:
+    """Function wrapper to handle connection errors.
+
+    Ensures function performing broker commands completes
+    despite intermittent connection failures.
+    """
     errback = errback or _ensure_errback
 
     with pool.acquire(block=True) as conn:
@@ -393,7 +410,7 @@ class QoS:
         ...     print('prefetch count now: %r' % (prefetch_count,))
         >>> QoS(set_qos, 10)
     """
-    prev = None  # type: Optional[int]
+    prev = None  # type: int
 
     def __init__(self, callback: Callable,
                  initial_value: Optional[int]) -> None:

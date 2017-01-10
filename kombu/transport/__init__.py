@@ -1,9 +1,10 @@
 """Built-in transports."""
-from kombu.syn import _detect_environment
+from kombu.utils.compat import _detect_environment
 from kombu.utils.imports import symbol_by_name
 
 
 def supports_librabbitmq():
+    """Return true if :pypi:`librabbitmq` can be used."""
     if _detect_environment() == 'default':
         try:
             import librabbitmq  # noqa
@@ -15,6 +16,7 @@ def supports_librabbitmq():
 
 TRANSPORT_ALIASES = {
     'amqp': 'kombu.transport.pyamqp:Transport',
+    'amqps': 'kombu.transport.pyamqp:SSLTransport',
     'pyamqp': 'kombu.transport.pyamqp:Transport',
     'librabbitmq': 'kombu.transport.librabbitmq:Transport',
     'memory': 'kombu.transport.memory:Transport',
@@ -28,13 +30,21 @@ TRANSPORT_ALIASES = {
     'filesystem': 'kombu.transport.filesystem:Transport',
     'qpid': 'kombu.transport.qpid:Transport',
     'sentinel': 'kombu.transport.redis:SentinelTransport',
-    'consul': 'kombu.transport.consul:Transport'
+    'consul': 'kombu.transport.consul:Transport',
+    'etcd': 'kombu.transport.etcd:Transport',
 }
 
 _transport_cache = {}
 
 
 def resolve_transport(transport=None):
+    """Get transport by name.
+
+    Arguments:
+        transport (Union[str, type]): This can be either
+            an actual transport class, or the fully qualified
+            path to a transport class, or the alias of a transport.
+    """
     if isinstance(transport, str):
         try:
             transport = TRANSPORT_ALIASES[transport]

@@ -1,8 +1,7 @@
+"""Python Compatibility Utilities."""
 import numbers
 import sys
-
 from functools import wraps
-
 from contextlib import contextmanager
 
 try:
@@ -20,9 +19,10 @@ except ImportError:  # pragma: no cover
     except ImportError:
         register_after_fork = None  # noqa
 
+_environment = None
 
 def coro(gen):
-
+    """Decorator to mark generator as co-routine."""
     @wraps(gen)
     def wind_up(*args, **kwargs):
         it = gen(*args, **kwargs)
@@ -31,7 +31,41 @@ def coro(gen):
     return wind_up
 
 
+def _detect_environment():
+    # ## -eventlet-
+    if 'eventlet' in sys.modules:
+        try:
+            from eventlet.patcher import is_monkey_patched as is_eventlet
+            import socket
+
+            if is_eventlet(socket):
+                return 'eventlet'
+        except ImportError:
+            pass
+
+    # ## -gevent-
+    if 'gevent' in sys.modules:
+        try:
+            from gevent import socket as _gsocket
+            import socket
+
+            if socket.socket is _gsocket.socket:
+                return 'gevent'
+        except ImportError:
+            pass
+
+    return 'default'
+
+
+def detect_environment():
+    """Detect the current environment: default, eventlet, or gevent."""
+    global _environment
+    if _environment is None:
+        _environment = _detect_environment()
+    return _environment
+
 def entrypoints(namespace):
+    """Return setuptools entrypoints for namespace."""
     try:
         from pkg_resources import iter_entry_points
     except ImportError:
@@ -40,6 +74,7 @@ def entrypoints(namespace):
 
 
 def fileno(f):
+    """Get fileno from file-like object."""
     if isinstance(f, numbers.Integral):
         return f
     return f.fileno()
@@ -55,9 +90,8 @@ def maybe_fileno(f):
 
 @contextmanager
 def nested(*managers):  # pragma: no cover
+    """Nest context managers."""
     # flake8: noqa
-    """Combine multiple context managers into a single nested
-    context manager."""
     exits = []
     vars = []
     exc = (None, None, None)

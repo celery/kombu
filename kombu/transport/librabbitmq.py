@@ -13,6 +13,7 @@ from kombu.utils.amq_manager import get_manager
 from kombu.utils.text import version_string_as_tuple
 
 from . import base
+from .base import to_rabbitmq_queue_arguments
 
 W_VERSION = """
     librabbitmq version too old to detect RabbitMQ version information
@@ -27,10 +28,11 @@ ssl not supported by librabbitmq, please use pyamqp:// or stunnel\
 
 
 class Message(base.Message):
+    """AMQP Message (librabbitmq)."""
 
     def __init__(self, channel, props, info, body):
         super().__init__(
-            channel,
+            channel=channel,
             body=body,
             delivery_info=info,
             properties=props,
@@ -41,6 +43,8 @@ class Message(base.Message):
 
 
 class Channel(amqp.Channel, base.StdChannel):
+    """AMQP Channel (librabbitmq)."""
+
     Message = Message
 
     def prepare_message(self, body, priority=None,
@@ -54,13 +58,20 @@ class Channel(amqp.Channel, base.StdChannel):
                            'priority': priority})
         return body, properties
 
+    def prepare_queue_arguments(self, arguments, **kwargs):
+        return to_rabbitmq_queue_arguments(arguments, **kwargs)
+
 
 class Connection(amqp.Connection):
+    """AMQP Connection (librabbitmq)."""
+
     Channel = Channel
     Message = Message
 
 
 class Transport(base.Transport):
+    """AMQP Transport (librabbitmq)."""
+
     Connection = Connection
 
     default_port = DEFAULT_PORT

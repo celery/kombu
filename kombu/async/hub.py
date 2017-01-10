@@ -40,10 +40,12 @@ def _dummy_context(*args, **kwargs):
 
 
 def get_event_loop():
+    """Get current event loop object."""
     return _current_loop
 
 
 def set_event_loop(loop):
+    """Set the current event loop object."""
     global _current_loop
     _current_loop = loop
     return loop

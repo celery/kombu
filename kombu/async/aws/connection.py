@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+"""Amazon AWS Connection."""
 from io import BytesIO
 
 from vine import promise, transform
@@ -13,7 +14,7 @@ try:
     from urllib.parse import urlunsplit
 except ImportError:
     from urlparse import urlunsplit  # noqa
-from xml.sax import parseString as sax_parse
+from xml.sax import parseString as sax_parse  # noqa
 
 try:  # pragma: no cover
     from email import message_from_file
@@ -32,6 +33,7 @@ __all__ = [
 
 
 class AsyncHTTPResponse:
+    """Async HTTP Response."""
 
     def __init__(self, response):
         self.response = response
@@ -72,6 +74,8 @@ class AsyncHTTPResponse:
 
 
 class AsyncHTTPConnection:
+    """Async HTTP Connection."""
+
     Request = Request
     Response = AsyncHTTPResponse
 
@@ -149,10 +153,13 @@ class AsyncHTTPConnection:
 
 
 class AsyncHTTPSConnection(AsyncHTTPConnection):
+    """Async HTTPS Connection."""
+
     scheme = 'https'
 
 
 class AsyncConnection:
+    """Async AWS Connection."""
 
     def __init__(self, http_client=None, **kwargs):
         if boto is None:
@@ -188,6 +195,7 @@ class AsyncConnection:
 
 
 class AsyncAWSAuthConnection(AsyncConnection, AWSAuthConnection):
+    """Async AWS Authn Connection."""
 
     def __init__(self, host,
                  http_client=None, http_client_params={}, **kwargs):
@@ -203,6 +211,7 @@ class AsyncAWSAuthConnection(AsyncConnection, AWSAuthConnection):
 
 
 class AsyncAWSQueryConnection(AsyncConnection, AWSQueryConnection):
+    """Async AWS Query Connection."""
 
     def __init__(self, host,
                  http_client=None, http_client_params={}, **kwargs):

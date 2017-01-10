@@ -1,18 +1,10 @@
 # -*- coding: utf-8 -*-
-"""
-kombu.mixins
-============
-
-Useful mixin classes.
-
-"""
+"""Mixins."""
 import socket
-
 from contextlib import contextmanager
 from functools import partial
 from itertools import count
 from time import sleep
-
 from .common import ignore_errors
 from .messaging import Consumer, Producer
 from .log import get_logger
@@ -251,7 +243,9 @@ class ConsumerMixin:
 
 
 class ConsumerProducerMixin(ConsumerMixin):
-    """Version of ConsumerMixin having separate connection for also
+    """Consumer and Producer mixin.
+
+    Version of ConsumerMixin having separate connection for also
     publishing messages.
 
     Example:
@@ -277,6 +271,7 @@ class ConsumerProducerMixin(ConsumerMixin):
                         retry=True,
                     )
     """
+
     _producer_connection = None
 
     def on_consume_end(self, connection, channel):

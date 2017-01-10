@@ -1,25 +1,15 @@
-"""
-kombu.utils.eventio
-===================
-
-Evented IO support for multiple platforms.
-
-"""
-
+"""Selector Utilities."""
 import errno
 import math
 import select as __select__
 import socket
 import sys
-
 from numbers import Integral
 from typing import Any, Callable, Optional, Sequence, IO, cast
 from typing import Set, Tuple  # noqa
-
-from kombu.syn import detect_environment
-
 from . import fileno
 from .typing import Fd, Timeout
+from .compat import detect_environment
 
 __all__ = ['poll']
 
@@ -347,4 +337,5 @@ def _get_poller() -> Any:
 
 
 def poll(*args, **kwargs) -> BasePoller:
+    """Create new poller instance."""
     return _get_poller()(*args, **kwargs)

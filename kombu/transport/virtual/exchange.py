@@ -10,11 +10,14 @@ from kombu.utils.text import escape_regex
 
 
 class ExchangeType:
-    """Implements the specifics for an exchange type.
+    """Base class for exchanges.
+
+    Implements the specifics for an exchange type.
 
     Arguments:
         channel (ChannelT): AMQ Channel.
     """
+
     type = None
 
     def __init__(self, channel):
@@ -47,7 +50,11 @@ class ExchangeType:
 
 
 class DirectExchange(ExchangeType):
-    """The `direct` exchange routes based on exact routing keys."""
+    """Direct exchange.
+
+    The `direct` exchange routes based on exact routing keys.
+    """
+
     type = 'direct'
 
     def lookup(self, table, exchange, routing_key, default):
@@ -64,9 +71,13 @@ class DirectExchange(ExchangeType):
 
 
 class TopicExchange(ExchangeType):
-    """The `topic` exchange routes messages based on words separated by
+    """Topic exchange.
+
+    The `topic` exchange routes messages based on words separated by
     dots, using wildcard characters ``*`` (any single word), and ``#``
-    (one or more words)."""
+    (one or more words).
+    """
+
     type = 'topic'
 
     #: map of wildcard to regex conversions
@@ -101,8 +112,11 @@ class TopicExchange(ExchangeType):
         ))
 
     def _match(self, pattern, string):
-        """Same as :func:`re.match`, except the regex is compiled and cached,
-        then reused on subsequent matches with the same pattern."""
+        """Match regular expression (cached).
+
+        Same as :func:`re.match`, except the regex is compiled and cached,
+        then reused on subsequent matches with the same pattern.
+        """
         try:
             compiled = self._compiled[pattern]
         except KeyError:
@@ -111,7 +125,9 @@ class TopicExchange(ExchangeType):
 
 
 class FanoutExchange(ExchangeType):
-    """The `fanout` exchange implements broadcast messaging by delivering
+    """Fanout exchange.
+
+    The `fanout` exchange implements broadcast messaging by delivering
     copies of all messages to all queues bound to the exchange.
 
     To support fanout the virtual channel needs to store the table
@@ -122,6 +138,7 @@ class FanoutExchange(ExchangeType):
     See Also:
         the redis backend for an example implementation of these methods.
     """
+
     type = 'fanout'
 
     def lookup(self, table, exchange, routing_key, default):

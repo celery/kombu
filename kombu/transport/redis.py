@@ -67,6 +67,7 @@ Probably the key ({1!r}) has been removed from the Redis database.
 
 
 def get_redis_error_classes():
+    """Return tuple of redis error classes."""
     from redis import exceptions
     # This exception suddenly changed name between redis-py versions
     if hasattr(exceptions, 'InvalidData'):
@@ -90,16 +91,18 @@ def get_redis_error_classes():
 
 
 def get_redis_ConnectionError():
+    """Return the redis ConnectionError exception class."""
     from redis import exceptions
     return exceptions.ConnectionError
 
 
 class MutexHeld(Exception):
-    ...
+    """Raised when another party holds the lock."""
 
 
 @contextmanager
 def Mutex(client, name, expire):
+    """The Redis lock implementation (probably shaky)."""
     lock_id = uuid()
     i_won = client.setnx(name, lock_id)
     try:
@@ -129,6 +132,8 @@ def _after_fork_cleanup_channel(channel):
 
 
 class QoS(virtual.QoS):
+    """Redis Ack Emulation."""
+
     restore_at_shutdown = True
 
     def __init__(self, *args, **kwargs):
@@ -221,6 +226,8 @@ class QoS(virtual.QoS):
 
 
 class MultiChannelPoller:
+    """Async I/O poller for Redis transport."""
+
     eventflags = READ | ERR
 
     #: Set by :meth:`get` while reading from the socket.
@@ -277,11 +284,13 @@ class MultiChannelPoller:
         self.poller.unregister(self._chan_to_sock[(channel, client, type)])
 
     def _client_registered(self, channel, client, cmd):
+        if getattr(client, 'connection', None) is None:
+            client.connection = client.connection_pool.get_connection('_')
         return (client.connection._sock is not None and
                 (channel, client, cmd) in self._chan_to_sock)
 
     def _register_BRPOP(self, channel):
-        """enable BRPOP mode for channel."""
+        """Enable BRPOP mode for channel."""
         ident = channel, channel.client, 'BRPOP'
         if not self._client_registered(channel, channel.client, 'BRPOP'):
             channel._in_poll = False
@@ -290,7 +299,7 @@ class MultiChannelPoller:
             channel._brpop_start()
 
     def _register_LISTEN(self, channel):
-        """enable LISTEN mode for channel."""
+        """Enable LISTEN mode for channel."""
         if not self._client_registered(channel, channel.subclient, 'LISTEN'):
             channel._in_listen = False
             self._register(channel, channel.subclient, 'LISTEN')
@@ -323,7 +332,7 @@ class MultiChannelPoller:
     def on_readable(self, fileno):
         chan, type = self._fd_to_chan[fileno]
         if chan.qos.can_consume():
-            return chan.handlers[type]()
+            chan.handlers[type]()
 
     def handle_event(self, fileno, event):
         if event & READ:
@@ -332,7 +341,7 @@ class MultiChannelPoller:
             chan, type = self._fd_to_chan[fileno]
             chan._poll_error(type)
 
-    def get(self, timeout=None):
+    def get(self, callback, timeout=None):
         self._in_protected_read = True
         try:
             for channel in self._channels:
@@ -343,15 +352,14 @@ class MultiChannelPoller:
                     self._register_LISTEN(channel)
 
             events = self.poller.poll(timeout)
-            for fileno, event in events or []:
-                ret = self.handle_event(fileno, event)
-                if ret:
-                    return ret
-
+            if events:
+                for fileno, event in events:
+                    ret = self.handle_event(fileno, event)
+                    if ret:
+                        return
             # - no new data, so try to restore messages.
             # - reset active redis commands.
             self.maybe_restore_messages()
-
             raise Empty()
         finally:
             self._in_protected_read = False
@@ -369,6 +377,8 @@ class MultiChannelPoller:
 
 
 class Channel(virtual.Channel):
+    """Redis Channel."""
+
     QoS = QoS
 
     _client = None
@@ -514,13 +524,12 @@ class Channel(virtual.Channel):
             async_pool.disconnect()
 
     def _on_connection_disconnect(self, connection):
-        self._in_poll = False
-        self._in_listen = False
+        if self._in_poll is connection:
+            self._in_poll = None
+        if self._in_listen is connection:
+            self._in_listen = None
         if self.connection and self.connection.cycle:
             self.connection.cycle._on_connection_disconnect(connection)
-        self._disconnect_pools()
-        if not self._closing:
-            raise get_redis_ConnectionError()
 
     def _do_restore_message(self, payload, exchange, routing_key,
                             client=None, leftmost=False):
@@ -623,21 +632,14 @@ class Channel(virtual.Channel):
         c = self.subclient
         if c.connection._sock is None:
             c.connection.connect()
-        self._in_listen = True
+        self._in_listen = c.connection
         c.psubscribe(keys)
 
     def _unsubscribe_from(self, queue):
         topic = self._get_subscribe_topic(queue)
         c = self.subclient
-        should_disconnect = False
-        if c.connection._sock is None:
-            c.connection.connect()
-            should_disconnect = True
-        try:
+        if c.connection and c.connection._sock:
             c.unsubscribe([topic])
-        finally:
-            if should_disconnect and c.connection:
-                c.connection.disconnect()
 
     def _handle_message(self, client, r):
         if bytes_to_str(r[0]) == 'unsubscribe' and r[2] == 0:
@@ -657,11 +659,22 @@ class Channel(virtual.Channel):
 
     def _receive(self):
         c = self.subclient
+        ret = []
+        try:
+            ret.append(self._receive_one(c))
+        except Empty:
+            pass
+        if c.connection is not None:
+            while c.connection.can_read(timeout=0):
+                ret.append(self._receive_one(c))
+        return any(ret)
+
+    def _receive_one(self, c):
         response = None
         try:
             response = c.parse_response()
         except self.connection_errors:
-            self._in_listen = False
+            self._in_listen = None
             raise
         if response is not None:
             payload = self._handle_message(c, response)
@@ -677,8 +690,9 @@ class Channel(virtual.Channel):
                              channel, repr(payload)[:4096], exc_info=1)
                         raise Empty()
                     exchange = channel.split('/', 1)[0]
-                    return message, self._fanout_to_queue[exchange]
-        raise Empty()
+                    self.connection._deliver(
+                        message, self._fanout_to_queue[exchange])
+                    return True
 
     def _brpop_start(self, timeout=1):
         queues = self._queue_cycle.consume(len(self.active_queues))
@@ -686,7 +700,7 @@ class Channel(virtual.Channel):
             return
         keys = [self._q_for_pri(queue, pri) for pri in self.priority_steps
                 for queue in queues] + [timeout or 0]
-        self._in_poll = True
+        self._in_poll = self.client.connection
         self.client.connection.send_command('BRPOP', *keys)
 
     def _brpop_read(self, **options):
@@ -704,11 +718,12 @@ class Channel(virtual.Channel):
                 dest, item = dest__item
                 dest = bytes_to_str(dest).rsplit(self.sep, 1)[0]
                 self._queue_cycle.rotate(dest)
-                return loads(bytes_to_str(item)), dest
+                self.connection._deliver(loads(bytes_to_str(item)), dest)
+                return True
             else:
                 raise Empty()
         finally:
-            self._in_poll = False
+            self._in_poll = None
 
     def _poll_error(self, type, **options):
         if type == 'LISTEN':
@@ -743,7 +758,7 @@ class Channel(virtual.Channel):
 
     def _put(self, queue, message, **kwargs):
         """Deliver message."""
-        pri = self._get_message_priority(message, reverse=True)
+        pri = self._get_message_priority(message, reverse=False)
 
         with self.conn_or_acquire() as client:
             client.lpush(self._q_for_pri(queue, pri), dumps(message))
@@ -829,7 +844,9 @@ class Channel(virtual.Channel):
         # Close connections
         for attr in 'client', 'subclient':
             try:
-                self.__dict__[attr].connection.disconnect()
+                client = self.__dict__[attr]
+                connection, client.connection = client.connection, None
+                connection.disconnect()
             except (KeyError, AttributeError, self.ResponseError):
                 pass
 
@@ -866,10 +883,11 @@ class Channel(virtual.Channel):
             'socket_keepalive_options': self.socket_keepalive_options,
         }
         if conninfo.ssl:
-            # Connection(ssl={}) can be a dict like in amqplib.
-            connparams['ssl'] = True
+            # Connection(ssl={}) must be a dict containing the keys:
+            # 'ssl_cert_reqs', 'ssl_ca_certs', 'ssl_certfile', 'ssl_keyfile'
             try:
                 connparams.update(conninfo.ssl)
+                connparams['connection_class'] = redis.SSLConnection
             except TypeError:
                 pass
         host = connparams['host']
@@ -922,28 +940,14 @@ class Channel(virtual.Channel):
             raise VersionMismatch(
                 'Redis transport requires redis-py versions 2.10.0 or later. '
                 'You have {0.__version__}'.format(redis))
-
-        # KombuRedis maintains a connection attribute on it's instance and
-        # uses that when executing commands
-        # This was added after redis-py was changed.
-        class KombuRedis(redis.StrictRedis):  # pragma: no cover
-
-            def __init__(self, *args, **kwargs):
-                super().__init__(*args, **kwargs)
-                self.connection = self.connection_pool.get_connection('_')
-
-        return KombuRedis
+        return redis.StrictRedis
 
     @contextmanager
     def conn_or_acquire(self, client=None):
         if client:
             yield client
         else:
-            client = self._create_client()
-            try:
-                yield client
-            finally:
-                self.pool.release(client.connection)
+            yield self._create_client()
 
     @property
     def pool(self):
@@ -966,10 +970,7 @@ class Channel(virtual.Channel):
     def subclient(self):
         """Pub/Sub connection used to consume fanout queues."""
         client = self._create_client(async=True)
-        pubsub = client.pubsub()
-        pool = pubsub.connection_pool
-        pubsub.connection = pool.get_connection('pubsub', pubsub.shard_hint)
-        return pubsub
+        return client.pubsub()
 
     def _update_queue_cycle(self):
         self._queue_cycle.update(self.active_queues)
@@ -986,6 +987,8 @@ class Channel(virtual.Channel):
 
 
 class Transport(virtual.Transport):
+    """Redis Transport."""
+
     Channel = Channel
 
     polling_interval = None  # disable sleep between unsuccessful polls.
@@ -1031,9 +1034,7 @@ class Transport(virtual.Transport):
 
     def on_readable(self, fileno):
         """Handle AIO event for one of our file descriptors."""
-        item = self.cycle.on_readable(fileno)
-        if item:
-            self._deliver(*item)
+        self.cycle.on_readable(fileno)
 
     def _get_errors(self):
         """Utility to import redis-py's exceptions at runtime."""
@@ -1071,15 +1072,14 @@ class SentinelChannel(Channel):
 
         additional_params = connparams.copy()
 
-        del additional_params['host']
-        del additional_params['port']
+        additional_params.pop('host', None)
+        additional_params.pop('port', None)
 
         sentinel_inst = sentinel.Sentinel(
             [(connparams['host'], connparams['port'])],
             min_other_sentinels=getattr(self, 'min_other_sentinels', 0),
             sentinel_kwargs=getattr(self, 'sentinel_kwargs', {}),
-            **additional_params
-        )
+            **additional_params)
 
         master_name = getattr(self, 'master_name', None)
 
@@ -1093,5 +1093,7 @@ class SentinelChannel(Channel):
 
 
 class SentinelTransport(Transport):
+    """Redis Sentinel Transport."""
+
     default_port = 26379
     Channel = SentinelChannel

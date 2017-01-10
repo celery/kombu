@@ -1,6 +1,10 @@
+"""Object Utilities."""
+
+
 class cached_property(object):
-    """Property descriptor that caches the return value
-    of the get function.
+    """Cached property descriptor.
+
+    Caches the return value of the get method on first call.
 
     Examples:
         .. code-block:: python

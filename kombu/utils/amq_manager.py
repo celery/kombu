@@ -1,14 +1,14 @@
-
-from typing import Any, Optional, Union
-
+"""AMQP Management API utilities."""
+from typing import Any, Union
 from . import abstract
 
 
 def get_manager(client: abstract.Connection,
-                hostname: Optional[str]=None,
-                port: Optional[Union[int, str]]=None,
-                userid: Optional[str]=None,
-                password: Optional[str]=None) -> Any:
+                hostname: str = None,
+                port: Union[int, str] = None,
+                userid: str = None,
+                password: str = None) -> Any:
+    """Get pyrabbit manager."""
     import pyrabbit
     opt = client.transport_options.get
 

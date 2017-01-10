@@ -14,8 +14,9 @@ DEFAULT_LOGGERS = ['kombu.connection', 'kombu.channel']
 LoggerArg = Union[str, logging.Logger]
 
 
-def setup_logging(loglevel: int=logging.DEBUG,
-                  loggers: Sequence[LoggerArg]=DEFAULT_LOGGERS) -> None:
+def setup_logging(loglevel: int = logging.DEBUG,
+                  loggers: Sequence[LoggerArg] = DEFAULT_LOGGERS) -> None:
+    """Setup logging to stdout."""
     for logger in loggers:
         l = get_logger(logger)
         l.addHandler(logging.StreamHandler())
@@ -23,6 +24,8 @@ def setup_logging(loglevel: int=logging.DEBUG,
 
 
 class Logwrapped:
+    """Wrap all object methods, to log on call."""
+
     __ignore = ('__enter__', '__exit__')
 
     def __init__(self, instance: Any,

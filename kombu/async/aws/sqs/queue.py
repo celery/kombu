@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
-
+"""Amazon SQS queue implementation."""
 from vine import transform
-
 from .ext import Queue as _Queue
 from .message import AsyncMessage
 
@@ -9,10 +8,12 @@ _all__ = ['AsyncQueue']
 
 
 def list_first(rs):
+    """Get the first item in a list, or None if list empty."""
     return rs[0] if len(rs) == 1 else None
 
 
 class AsyncQueue(_Queue):
+    """Async SQS Queue."""
 
     def __init__(self, connection=None, url=None, message_class=AsyncMessage):
         self.connection = connection

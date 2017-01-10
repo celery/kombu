@@ -20,8 +20,10 @@ def _any(v: Any) -> Any:
 
 
 class Object:
-    """Common base class supporting automatic kwargs->attributes handling,
-    and cloning."""
+    """Common base class.
+
+    Supports automatic kwargs->attributes handling, and cloning.
+    """
     attrs = ()  # type: Sequence[Tuple[str, Any]]
 
     def __init__(self, *args, **kwargs) -> None:
@@ -39,7 +41,7 @@ class Object:
         def f(obj: Any, type: Any) -> Any:
             if recurse and isinstance(obj, Object):
                 return obj.as_dict(recurse=True)
-            return type(obj) if type else obj
+            return type(obj) if type and obj is not None else obj
         return {
             attr: f(getattr(self, attr), type) for attr, type in self.attrs
         }
@@ -53,6 +55,7 @@ class Object:
 
 class MaybeChannelBound(Object):
     """Mixin for classes that can be bound to an AMQP channel."""
+
     _channel = None    # type: amqp.abstract.Channel
     _is_bound = False  # type: bool
 

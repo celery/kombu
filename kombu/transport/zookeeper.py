@@ -76,6 +76,7 @@ __author__ = 'Mahendra M <mahendra.m@gmail.com>'
 
 
 class Channel(virtual.Channel):
+    """Zookeeper Channel."""
 
     _client = None
     _queues = {}
@@ -173,6 +174,8 @@ class Channel(virtual.Channel):
 
 
 class Transport(virtual.Transport):
+    """Zookeeper Transport."""
+
     Channel = Channel
     polling_interval = 1
     default_port = DEFAULT_PORT

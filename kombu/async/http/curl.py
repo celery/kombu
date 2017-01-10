@@ -1,3 +1,4 @@
+"""HTTP Client using pyCurl."""
 from collections import deque
 from functools import partial
 from io import BytesIO
@@ -30,6 +31,8 @@ EXTRA_METHODS = frozenset(['DELETE', 'OPTIONS', 'PATCH'])
 
 
 class CurlClient(BaseClient):
+    """Curl HTTP Client."""
+
     Curl = Curl
 
     def __init__(self, hub=None, max_clients=10):
@@ -172,8 +175,8 @@ class CurlClient(BaseClient):
                 buffer=buffer, effective_url=effective_url, error=error,
             ))
         except Exception as exc:
-            raise
             self.hub.on_callback_error(request.on_ready, exc)
+            raise
 
     def _setup_request(self, curl, request, buffer, headers, _pycurl=pycurl):
         setopt = curl.setopt

@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
-
+"""Amazon SQS Connection."""
 from vine import transform
-
 from kombu.async.aws.connection import AsyncAWSQueryConnection
 from kombu.async.aws.ext import RegionInfo
-
 from .ext import boto, Attributes, BatchResults, SQSConnection
 from .message import AsyncMessage
 from .queue import AsyncQueue
@@ -14,6 +12,7 @@ __all__ = ['AsyncSQSConnection']
 
 
 class AsyncSQSConnection(AsyncAWSQueryConnection, SQSConnection):
+    """Async SQS Connection."""
 
     def __init__(self, aws_access_key_id=None, aws_secret_access_key=None,
                  is_secure=True, port=None, proxy=None, proxy_port=None,

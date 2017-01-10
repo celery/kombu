@@ -1,2 +1,1 @@
-boto>=2.8
-pycurl
+-r extras/sqs.txt

@@ -45,9 +45,8 @@ class Producer:
     #: Default compression method.  Disabled by default.
     compression = None
 
-    #: By default the exchange is declared at instantiation.
-    #: If you want to declare manually then you can set this
-    #: to :const:`False`.
+    #: By default, if a defualt exchange is set,
+    #: that exchange will be declare when publishing a message.
     auto_declare = True
 
     #: Basic return callback.
@@ -96,8 +95,7 @@ class Producer:
             self.exchange.declare()
 
     def maybe_declare(self, entity, retry=False, **retry_policy):
-        """Declare the exchange if it hasn't already been declared
-        during this session."""
+        """Declare exchange if not already declared during this session."""
         if entity:
             return maybe_declare(entity, self.channel, retry, **retry_policy)
 
@@ -118,7 +116,8 @@ class Producer:
                 mandatory=False, immediate=False, priority=0,
                 content_type=None, content_encoding=None, serializer=None,
                 headers=None, compression=None, exchange=None, retry=False,
-                retry_policy=None, declare=[], expiration=None, **properties):
+                retry_policy=None, declare=None, expiration=None,
+                **properties):
         """Publish message to the specified exchange.
 
         Arguments:
@@ -150,6 +149,7 @@ class Producer:
         """
         _publish = self._publish
 
+        declare = [] if declare is None else declare
         headers = {} if headers is None else headers
         retry_policy = {} if retry_policy is None else retry_policy
         routing_key = self.routing_key if routing_key is None else routing_key
@@ -165,6 +165,11 @@ class Producer:
         body, content_type, content_encoding = self._prepare(
             body, serializer, content_type, content_encoding,
             compression, headers)
+
+        if self.auto_declare and self.exchange.name:
+            if self.exchange not in declare:
+                # XXX declare should be a Set.
+                declare.append(self.exchange)
 
         if retry:
             _publish = self.connection.ensure(self, _publish, **retry_policy)
@@ -224,10 +229,6 @@ class Producer:
             if self.on_return:
                 self._channel.events['basic_return'].add(self.on_return)
             self.exchange = self.exchange(channel)
-        if self.auto_declare:
-            # auto_decare is not recommended as this will force
-            # evaluation of the channel.
-            self.declare()
 
     def __enter__(self):
         return self
@@ -287,6 +288,7 @@ class Consumer:
         on_decode_error (Callable): see :attr:`on_decode_error`.
         prefetch_count (int): see :attr:`prefetch_count`.
     """
+
     ContentDisallowed = ContentDisallowed
 
     #: The connection/channel to use for this consumer.
@@ -429,11 +431,14 @@ class Consumer:
         self.consume()
         return self
 
-    def __exit__(self, *exc_info):
-        try:
-            self.cancel()
-        except Exception:
-            pass
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.channel:
+            conn_errors = self.channel.connection.client.connection_errors
+            if not isinstance(exc_val, conn_errors):
+                try:
+                    self.cancel()
+                except Exception:
+                    pass
 
     def add_queue(self, queue):
         """Add a queue to the list of queues to consume from.
@@ -494,8 +499,7 @@ class Consumer:
             self._queues.pop(qname, None)
 
     def consuming_from(self, queue):
-        """Return :const:`True` if the consumer is currently
-        consuming from queue'."""
+        """Return :const:`True` if currently consuming from queue'."""
         name = queue
         if isinstance(queue, Queue):
             name = queue.name

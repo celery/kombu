@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+"""Text Utilities."""
 from difflib import SequenceMatcher
 from typing import Iterator, Sequence, NamedTuple, Tuple
 
@@ -7,7 +8,8 @@ from kombu import version_info_t
 fmatch_t = NamedTuple('fmatch_t', [('ratio', float), ('key', str)])
 
 
-def escape_regex(p: str, white: str = ''):
+def escape_regex(p: str, white: str = '') -> str:
+    """Escape string for use within a regular expression."""
     # what's up with re.escape? that code must be neglected or someting
     return ''.join(c if c.isalnum() or c in white
                    else ('\\000' if c == '\000' else '\\' + c)
@@ -16,6 +18,11 @@ def escape_regex(p: str, white: str = ''):
 
 def fmatch_iter(needle: str, haystack: Sequence[str],
                 min_ratio: float = 0.6) -> Iterator[fmatch_t]:
+    """Fuzzy match: iteratively.
+
+    Yields:
+        Tuple: of ratio and key.
+    """
     for key in haystack:
         ratio = SequenceMatcher(None, needle, key).ratio()
         if ratio >= min_ratio:
@@ -24,6 +31,7 @@ def fmatch_iter(needle: str, haystack: Sequence[str],
 
 def fmatch_best(needle: str, haystack: Sequence[str],
                 min_ratio: float = 0.6) -> str:
+    """Fuzzy match - Find best match (scalar)."""
     try:
         return sorted(
             fmatch_iter(needle, haystack, min_ratio), reverse=True,
@@ -33,6 +41,7 @@ def fmatch_best(needle: str, haystack: Sequence[str],
 
 
 def version_string_as_tuple(s: str) -> version_info_t:
+    """Convert version string to version info tuple."""
     v = _unpack_version(*s.split('.'))
     # X.Y.3a1 -> (X, Y, 3, 'a1')
     if isinstance(v.micro, str):

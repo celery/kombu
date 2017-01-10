@@ -24,6 +24,8 @@ CHARS_REPLACE_TABLE = {
 
 
 class Channel(virtual.Channel):
+    """SLMQ Channel."""
+
     default_visibility_timeout = 1800  # 30 minutes.
     domain_format = 'kombu%(vhost)s'
     _slmq = None
@@ -56,7 +58,7 @@ class Channel(virtual.Channel):
         return str(safe_str(name)).translate(table)
 
     def _new_queue(self, queue, **kwargs):
-        """Ensures a queue exists in SLQS."""
+        """Ensure a queue exists in SLQS."""
         queue = self.entity_name(self.queue_name_prefix + queue)
         try:
             return self._queue_cache[queue]
@@ -70,7 +72,7 @@ class Channel(virtual.Channel):
             return q
 
     def _delete(self, queue, *args, **kwargs):
-        """delete queue by name."""
+        """Delete queue by name."""
         queue_name = self.entity_name(queue)
         self._queue_cache.pop(queue_name, None)
         self.slmq.queue(queue_name).delete(force=True)
@@ -166,6 +168,8 @@ class Channel(virtual.Channel):
 
 
 class Transport(virtual.Transport):
+    """SLMQ Transport."""
+
     Channel = Channel
 
     polling_interval = 1
