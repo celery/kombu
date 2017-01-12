@@ -39,6 +39,7 @@ from __future__ import absolute_import, unicode_literals
 
 import socket
 import string
+from urllib.parse import urlparse, urlunparse
 import uuid
 
 from vine import transform, ensure_promise, promise
@@ -48,9 +49,8 @@ from kombu.async.aws import sqs as _asynsqs
 from kombu.async.aws.ext import boto3, exceptions
 
 # TODO: old..
-from kombu.async.aws.ext import boto, exception
-from kombu.async.aws.sqs.connection import AsyncSQSConnection, SQSConnection
-from kombu.async.aws.sqs.ext import regions
+from kombu.async.aws.ext import boto
+from kombu.async.aws.sqs.connection import AsyncSQSConnection
 from kombu.async.aws.sqs.message import Message
 from kombu.five import Empty, range, string_t, text_t
 from kombu.log import get_logger
@@ -108,24 +108,10 @@ class Channel(virtual.Channel):
         self.hub = kwargs.get('hub') or get_event_loop()
 
     def _update_queue_cache(self, queue_name_prefix):
-        for q in self.sqs.queues.filter(QueueNamePrefix=queue_name_prefix):
-            name = q.url.split('/')[-1]
-            self._queue_cache[name] = q
-        # TODO: Old boto 2 code.  Is this error patching needed?
-        # try:
-        #     queues = self.sqs.get_all_queues(prefix=queue_name_prefix)
-        # except exceptions.BotoCoreError as exc:
-        #     raise
-        # except exception.SQSError as exc:
-        #     if exc.status == 403:
-        #         raise RuntimeError(
-        #             'SQS authorization error, access_key={0}'.format(
-        #                 self.sqs.access_key))
-        #     raise
-        # else:
-        #     self._queue_cache.update({
-        #         queue.name: queue for queue in queues
-        #     })
+        resp = self.sqs.list_queues(QueueNamePrefix=queue_name_prefix)
+        for url in resp.get('QueueUrls', []):
+            queue_name = url.split('/')[-1]
+            self._queue_cache[queue_name] = url
 
     def basic_consume(self, queue, no_ack, *args, **kwargs):
         if no_ack:
@@ -198,9 +184,10 @@ class Channel(virtual.Channel):
             if queue.endswith('.fifo'):
                 attributes['FifoQueue'] = 'true'
 
-            q = self._queue_cache[queue] = self.sqs.create_queue(
+            resp = self._queue_cache[queue] = self.sqs.create_queue(
                 QueueName=queue, Attributes=attributes)
-            return q
+            self._queue_cache[queue] = resp['QueueUrl']
+            return resp['QueueUrl']
 
     def _delete(self, queue, *args, **kwargs):
         """Delete queue by name."""
@@ -209,8 +196,8 @@ class Channel(virtual.Channel):
 
     def _put(self, queue, message, **kwargs):
         """Put message onto queue."""
-        q = self._new_queue(queue)
-        kwargs = {'MessageBody': dumps(message)}
+        q_url = self._new_queue(queue)
+        kwargs = {'QueueUrl': q_url, 'MessageBody': Message().encode(dumps(message))}
         if queue.endswith('.fifo'):
             if 'MessageGroupId' in message['properties']:
                 kwargs['MessageGroupId'] = message['properties']['MessageGroupId']
@@ -220,12 +207,13 @@ class Channel(virtual.Channel):
                 kwargs['MessageDeduplicationId'] = message['properties']['MessageDeduplicationId']
             else:
                 kwargs['MessageDeduplicationId'] = str(uuid.uuid4())
-        q.send_message(**kwargs)
+        self.sqs.send_message(**kwargs)
 
     def _message_to_python(self, message, queue_name, queue):
-        payload = loads(bytes_to_str(message.body))
+        payload = loads(bytes_to_str(message['Body']))
         if queue_name in self._noack_queues:
-            message.delete()
+            queue = self._new_queue(queue_name)
+            self.asynsqs.delete_message(queue, message['ReceiptHandle'])
         else:
             try:
                 properties = payload['properties']
@@ -235,14 +223,14 @@ class Channel(virtual.Channel):
                 delivery_info = {}
                 properties = {'delivery_info': delivery_info}
                 payload.update({
-                    'body': bytes_to_str(message.body),
+                    'body': bytes_to_str(message['Body']),
                     'properties': properties,
                 })
         # set delivery tag to SQS receipt handle
         delivery_info.update({
             'sqs_message': message, 'sqs_queue': queue,
         })
-        properties['delivery_tag'] = message.receipt_handle
+        properties['delivery_tag'] = message['ReceiptHandle']
         return payload
 
     def _messages_to_python(self, messages, queue):
@@ -291,22 +279,25 @@ class Channel(virtual.Channel):
         # Note: ignoring max_messages for SQS with boto3
         max_count = self._get_message_estimate()
         if max_count:
-            q = self._new_queue(queue)
-            messages = q.receive_messages(MaxNumberOfMessages=max_count)
+            q_url = self._new_queue(queue)
+            resp = self.sqs.receive_message(QueueUrl=q_url, MaxNumberOfMessages=max_count)
 
-            if messages:
-                for msg in self._messages_to_python(messages, queue):
+            if resp['Messages']:
+                for m in resp['Messages']:
+                    m['Body'] = Message().decode(m['Body'])
+                for msg in self._messages_to_python(resp['Messages'], queue):
                     self.connection._deliver(msg, queue)
                 return
         raise Empty()
 
     def _get(self, queue):
         """Try to retrieve a single message off ``queue``."""
-        q = self._new_queue(queue)
-        messages = q.receive_messages()
+        q_url = self._new_queue(queue)
+        resp = self.sqs.receive_message(q_url)
 
-        if messages:
-            return self._messages_to_python(messages, queue)[0]
+        if resp['Messages']:
+            resp['Messages'][0]['Body'] = Message().decode(resp['Messages'][0]['Body'])
+            return self._messages_to_python(resp['Messages'], queue)[0]
         raise Empty()
 
     def _loop1(self, queue, _=None):
@@ -340,8 +331,12 @@ class Channel(virtual.Channel):
 
     def _get_async(self, queue, count=1, callback=None):
         q = self._new_queue(queue)
+        result = list(urlparse(q))
+        result[0] = result[1] = ''
+        q_shortpath = urlunparse(result)
+
         return self._get_from_sqs(
-            q, count=count, connection=self.asynsqs,
+            q_shortpath, count=count, connection=self.asynsqs,
             callback=transform(self._on_messages_ready, callback, q, queue),
         )
 
@@ -378,24 +373,26 @@ class Channel(virtual.Channel):
         except KeyError:
             pass
         else:
-            message.delete()
+            resp = self.asynsqs.delete_message(message['queue'], message['ReceiptHandle'])
         super(Channel, self).basic_ack(delivery_tag)
 
     def _size(self, queue):
         """Return the number of messages in a queue."""
-        return int(self._new_queue(queue).attributes['ApproximateNumberOfMessages'])
+        url = self._new_queue(queue)
+        resp = self.sqs.get_queue_attributes(QueueUrl=url, AttributeNames=['ApproximateNumberOfMessages'])
+        return int(resp['Attributes']['ApproximateNumberOfMessages'])
 
     def _purge(self, queue):
         """Delete all current messages in a queue."""
         q = self._new_queue(queue)
         # SQS is slow at registering messages, so run for a few
-        # iterations to ensure messages are deleted.
+        # iterations to ensure messages are detected and deleted.
         size = 0
         for i in range(10):
-            size += int(q.attributes['ApproximateNumberOfMessages'])
+            size += int(self._size(queue))
             if not size:
                 break
-        q.purge()
+        self.sqs.purge_queue(q)
         return size
 
     def close(self):
@@ -415,41 +412,27 @@ class Channel(virtual.Channel):
                 if _r.name == self.region:
                     return _r
 
-    def _aws_connect_to(self, fun, regions):
-        conninfo = self.conninfo
-        region = self._get_regioninfo(regions)
-        is_secure = self.is_secure if self.is_secure is not None else True
-        port = self.port if self.port is not None else conninfo.port
-        return fun(region=region,
-                   aws_access_key_id=conninfo.userid,
-                   aws_secret_access_key=conninfo.password,
-                   is_secure=is_secure,
-                   port=port)
-
     @property
     def sqs(self):
         if self._sqs is None:
-            # TODO: Move to _aws_connect_to once the async stuff uses boto3
-            is_secure = self.is_secure if self.is_secure is not None else True
-            # Note: port number is not supported by boto3
-            # port = self.port if self.port is not None else self.conninfo.port
             session = boto3.session.Session(
                 region_name=self.region,
                 aws_access_key_id=self.conninfo.userid,
-                aws_secret_access_key=self.conninfo.password
+                aws_secret_access_key=self.conninfo.password,
             )
-            self._sqs = session.resource('sqs', use_ssl=is_secure)
+            is_secure = self.is_secure if self.is_secure is not None else True
+            self._sqs = session.client('sqs', use_ssl=is_secure)
         return self._sqs
-        # TODO: old boto 2 code (SQSConnection is a boto 2 thing)
-        # if self._sqs is None:
-        #     self._sqs = self._aws_connect_to(SQSConnection, regions())
-        # return self._sqs
 
     @property
     def asynsqs(self):
         if self._asynsqs is None:
-            self._asynsqs = self._aws_connect_to(
-                AsyncSQSConnection, _asynsqs.regions(),
+            region = self._get_regioninfo(_asynsqs.regions())
+            self._asynsqs = AsyncSQSConnection(
+                aws_access_key_id=self.conninfo.userid,
+                aws_secret_access_key=self.conninfo.password,
+                region=region,
+                is_secure=self.is_secure if self.is_secure is not None else True,
             )
         return self._asynsqs
 

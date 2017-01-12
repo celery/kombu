@@ -7,7 +7,7 @@ from vine import transform
 from kombu.async.aws.connection import AsyncAWSQueryConnection
 from kombu.async.aws.ext import RegionInfo
 
-from .ext import boto, Attributes, BatchResults, SQSConnection
+from .ext import boto, boto3, Attributes, BatchResults, SQSConnection
 from .message import AsyncMessage
 from .queue import AsyncQueue
 
@@ -24,6 +24,8 @@ class AsyncSQSConnection(AsyncAWSQueryConnection, SQSConnection):
                  https_connection_factory=None, region=None, *args, **kwargs):
         if boto is None:
             raise ImportError('boto is not installed')
+        if boto3 is None:
+            raise ImportError('boto3 is not installed')
         self.region = region or RegionInfo(
             self, self.DefaultRegionName, self.DefaultRegionEndpoint,
             connection_cls=type(self),
@@ -78,13 +80,13 @@ class AsyncSQSConnection(AsyncAWSQueryConnection, SQSConnection):
         if wait_time_seconds is not None:
             params['WaitTimeSeconds'] = wait_time_seconds
         return self.get_list(
-            'ReceiveMessage', params, [('Message', queue.message_class)],
-            queue.id, callback=callback,
+            'ReceiveMessage', params, [('Message', AsyncMessage)],
+            queue, callback=callback, parent=queue,
         )
 
-    def delete_message(self, queue, message, callback=None):
+    def delete_message(self, queue, receipt_handle, callback=None):
         return self.delete_message_from_handle(
-            queue, message.receipt_handle, callback,
+            queue, receipt_handle, callback,
         )
 
     def delete_message_batch(self, queue, messages, callback=None):
@@ -104,7 +106,7 @@ class AsyncSQSConnection(AsyncAWSQueryConnection, SQSConnection):
                                    callback=None):
         return self.get_status(
             'DeleteMessage', {'ReceiptHandle': receipt_handle},
-            queue.id, callback=callback,
+            queue, callback=callback,
         )
 
     def send_message(self, queue, message_content,
