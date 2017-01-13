@@ -39,17 +39,18 @@ from __future__ import absolute_import, unicode_literals
 
 import socket
 import string
-from urllib.parse import urlparse, urlunparse
 import uuid
+
+try:
+    from urllib.parse import urlparse, urlunparse
+except ImportError:
+    from urlparse import urlparse, urlunparse
 
 from vine import transform, ensure_promise, promise
 
 from kombu.async import get_event_loop
 from kombu.async.aws import sqs as _asynsqs
-from kombu.async.aws.ext import boto3, exceptions
-
-# TODO: old..
-from kombu.async.aws.ext import boto
+from kombu.async.aws.ext import boto, boto3, exceptions
 from kombu.async.aws.sqs.connection import AsyncSQSConnection
 from kombu.async.aws.sqs.message import Message
 from kombu.five import Empty, range, string_t, text_t
