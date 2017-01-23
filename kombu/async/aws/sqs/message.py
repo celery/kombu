@@ -24,9 +24,7 @@ class AsyncMessage(BaseAsyncMessage, Message):
     """Serialized message."""
 
     def __getitem__(self, item):
-        """
-        Support Boto3-style access on a message.
-        """
+        """Support Boto3-style access on a message."""
         if item == 'ReceiptHandle':
             return self.receipt_handle
         elif item == 'Body':
