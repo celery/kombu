@@ -98,6 +98,8 @@ class Channel(virtual.Channel):
     def __init__(self, *args, **kwargs):
         if boto is None:
             raise ImportError('boto is not installed')
+        if boto3 is None:
+            raise ImportError('boto3 is not installed')
         super(Channel, self).__init__(*args, **kwargs)
 
         # SQS blows up if you try to create a new queue when one already
