@@ -73,7 +73,7 @@ class SQSClientMock(object):
     def list_queues(self, QueueNamePrefix=None):
         """ Return a list of queue urls """
         urls = (val.url for key, val in self._queues.items()
-                  if key.startswith(QueueNamePrefix))
+                if key.startswith(QueueNamePrefix))
         return {'QueueUrls': urls}
 
     def get_queue_url(self, QueueName=None):
@@ -82,7 +82,10 @@ class SQSClientMock(object):
     def send_message(self, QueueUrl=None, MessageBody=None):
         for q in self._queues.values():
             if q.url == QueueUrl:
-                q.messages.append({'Body': MessageBody, 'ReceiptHandle': ''.join(random.choice(string.ascii_lowercase) for x in range(10))})
+                handle = ''.join(random.choice(string.ascii_lowercase) for
+                                 x in range(10))
+                q.messages.append({'Body': MessageBody,
+                                   'ReceiptHandle': handle})
                 break
 
     def receive_message(self, QueueUrl=None, MaxNumberOfMessages=1):
@@ -95,7 +98,8 @@ class SQSClientMock(object):
 
     def get_queue_attributes(self, QueueUrl=None, AttributeNames=None):
         if 'ApproximateNumberOfMessages' in AttributeNames:
-            return {'Attributes': {'ApproximateNumberOfMessages': len(self._get_q(QueueUrl).messages)}}
+            count = len(self._get_q(QueueUrl).messages)
+            return {'Attributes': {'ApproximateNumberOfMessages': count}}
 
     def purge_queue(self, QueueUrl=None):
         for q in self._queues.values():
@@ -232,11 +236,15 @@ class test_Channel:
         # Get the messages now
         kombu_messages = []
         from kombu.async.aws.sqs.ext import Message
-        for m in self.sqs_conn_mock.receive_message(QueueUrl=q_url, MaxNumberOfMessages=kombu_message_count)['Messages']:
+        for m in self.sqs_conn_mock.receive_message(
+                QueueUrl=q_url,
+                MaxNumberOfMessages=kombu_message_count)['Messages']:
             m['Body'] = Message().decode(m['Body'])
             kombu_messages.append(m)
         json_messages = []
-        for m in self.sqs_conn_mock.receive_message(QueueUrl=q_url, MaxNumberOfMessages=json_message_count)['Messages']:
+        for m in self.sqs_conn_mock.receive_message(
+                QueueUrl=q_url,
+                MaxNumberOfMessages=json_message_count)['Messages']:
             m['Body'] = Message().decode(m['Body'])
             json_messages.append(m)
 
@@ -369,5 +377,7 @@ class test_Channel:
 
         assert self.channel.connection._deliver.call_count == message_count
 
-        # How many times was the SQSConnectionMock receive_message method called?
-        assert (expected_receive_messages_count == self.sqs_conn_mock._receive_messages_calls)
+        # How many times was the SQSConnectionMock receive_message method
+        # called?
+        assert (expected_receive_messages_count ==
+                self.sqs_conn_mock._receive_messages_calls)

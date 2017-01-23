@@ -161,7 +161,8 @@ class test_AsyncSQSConnection(AWSCase):
     def test_delete_message(self):
         queue = Mock(name='queue')
         message = self.MockMessage()
-        self.x.delete_message(queue, message.receipt_handle, callback=self.callback)
+        self.x.delete_message(queue, message.receipt_handle,
+                              callback=self.callback)
         self.x.get_status.assert_called_with(
             'DeleteMessage', {'ReceiptHandle': message.receipt_handle},
             queue, callback=self.callback,

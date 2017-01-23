@@ -41,6 +41,6 @@ except ImportError:
 
 
 __all__ = [
-    'exceptions','exception', 'AWSAuthConnection', 'AWSQueryConnection',
+    'exception', 'exceptions', 'AWSAuthConnection', 'AWSQueryConnection',
     'XmlHandler', 'ResultSet', 'RegionInfo', 'get_regions',
 ]

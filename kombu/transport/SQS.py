@@ -200,14 +200,17 @@ class Channel(virtual.Channel):
     def _put(self, queue, message, **kwargs):
         """Put message onto queue."""
         q_url = self._new_queue(queue)
-        kwargs = {'QueueUrl': q_url, 'MessageBody': Message().encode(dumps(message))}
+        kwargs = {'QueueUrl': q_url,
+                  'MessageBody': Message().encode(dumps(message))}
         if queue.endswith('.fifo'):
             if 'MessageGroupId' in message['properties']:
-                kwargs['MessageGroupId'] = message['properties']['MessageGroupId']
+                kwargs['MessageGroupId'] = \
+                    message['properties']['MessageGroupId']
             else:
                 kwargs['MessageGroupId'] = 'default'
             if 'MessageDeduplicationId' in message['properties']:
-                kwargs['MessageDeduplicationId'] = message['properties']['MessageDeduplicationId']
+                kwargs['MessageDeduplicationId'] = \
+                    message['properties']['MessageDeduplicationId']
             else:
                 kwargs['MessageDeduplicationId'] = str(uuid.uuid4())
         self.sqs.send_message(**kwargs)
@@ -283,7 +286,8 @@ class Channel(virtual.Channel):
         max_count = self._get_message_estimate()
         if max_count:
             q_url = self._new_queue(queue)
-            resp = self.sqs.receive_message(QueueUrl=q_url, MaxNumberOfMessages=max_count)
+            resp = self.sqs.receive_message(
+                QueueUrl=q_url, MaxNumberOfMessages=max_count)
 
             if resp['Messages']:
                 for m in resp['Messages']:
@@ -299,7 +303,8 @@ class Channel(virtual.Channel):
         resp = self.sqs.receive_message(q_url)
 
         if resp['Messages']:
-            resp['Messages'][0]['Body'] = Message().decode(resp['Messages'][0]['Body'])
+            body = Message().decode(resp['Messages'][0]['Body'])
+            resp['Messages'][0]['Body'] = body
             return self._messages_to_python(resp['Messages'], queue)[0]
         raise Empty()
 
@@ -376,13 +381,16 @@ class Channel(virtual.Channel):
         except KeyError:
             pass
         else:
-            resp = self.asynsqs.delete_message(message['queue'], message['ReceiptHandle'])
+            self.asynsqs.delete_message(message['queue'],
+                                        message['ReceiptHandle'])
         super(Channel, self).basic_ack(delivery_tag)
 
     def _size(self, queue):
         """Return the number of messages in a queue."""
         url = self._new_queue(queue)
-        resp = self.sqs.get_queue_attributes(QueueUrl=url, AttributeNames=['ApproximateNumberOfMessages'])
+        resp = self.sqs.get_queue_attributes(
+            QueueUrl=url,
+            AttributeNames=['ApproximateNumberOfMessages'])
         return int(resp['Attributes']['ApproximateNumberOfMessages'])
 
     def _purge(self, queue):
@@ -431,11 +439,12 @@ class Channel(virtual.Channel):
     def asynsqs(self):
         if self._asynsqs is None:
             region = self._get_regioninfo(_asynsqs.regions())
+            is_secure = self.is_secure if self.is_secure is not None else True
             self._asynsqs = AsyncSQSConnection(
                 aws_access_key_id=self.conninfo.userid,
                 aws_secret_access_key=self.conninfo.password,
                 region=region,
-                is_secure=self.is_secure if self.is_secure is not None else True,
+                is_secure=is_secure,
             )
         return self._asynsqs
 
