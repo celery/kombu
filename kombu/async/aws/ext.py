@@ -29,7 +29,15 @@ try:
     from botocore import exceptions
     from boto3 import session
 except ImportError:
-    boto3 = exceptions = session = None
+    boto3 = session = None
+
+    class _void(object):
+        pass
+
+    class BotoCoreError(Exception):
+        pass
+    exceptions = _void()
+    exceptions.BotoCoreError = BotoCoreError
 
 
 __all__ = [

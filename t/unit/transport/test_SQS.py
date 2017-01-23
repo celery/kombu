@@ -103,7 +103,6 @@ class SQSClientMock(object):
                 q.messages = []
 
 
-@skip.unless_module('boto3')
 class test_Channel:
 
     def handleMessageCallback(self, message):
