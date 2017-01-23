@@ -29,7 +29,7 @@ try:
     from botocore import exceptions
     from boto3 import session
 except ImportError:
-    pass
+    boto3 = exceptions = session = None
 
 
 __all__ = [
