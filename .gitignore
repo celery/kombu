@@ -31,3 +31,5 @@ htmlcov/
 test.db
 coverage.xml
 venv/
+env
+.eggs
