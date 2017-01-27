@@ -956,6 +956,8 @@ class Transport(base.Transport):
         time_start = monotonic()
         get = self.cycle.get
         polling_interval = self.polling_interval
+        if timeout and polling_interval and polling_interval > timeout:
+            polling_interval = timeout
         while 1:
             try:
                 get(self._deliver, timeout=timeout)
