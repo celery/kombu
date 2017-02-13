@@ -8,7 +8,7 @@ from .compression import compress
 from .connection import maybe_channel, is_connection
 from .entity import Exchange, Queue, maybe_delivery_mode
 from .exceptions import ContentDisallowed
-from .five import items, python_2_unicode_compatible, text_t, values
+from .five import keys, python_2_unicode_compatible, text_t, values
 from .serialization import dumps, prepare_accept_content
 from .utils.functional import ChannelPromise, maybe_list
 
@@ -397,9 +397,9 @@ class Consumer(object):
         """Revive consumer after connection loss."""
         self._active_tags.clear()
         channel = self.channel = maybe_channel(channel)
-        for qname, queue in items(self._queues):
+        for qname in list(keys(self._queues)):
             # name may have changed after declare
-            self._queues.pop(qname, None)
+            queue = self._queues.pop(qname)
             queue = self._queues[queue.name] = queue(self.channel)
             queue.revive(channel)
 
