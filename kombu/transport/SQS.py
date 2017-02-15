@@ -96,8 +96,8 @@ class Channel(virtual.Channel):
     _noack_queues = set()
 
     def __init__(self, *args, **kwargs):
-        if boto is None:
-            raise ImportError('boto is not installed')
+        # if boto is None:
+        #     raise ImportError('boto is not installed')
         if boto3 is None:
             raise ImportError('boto3 is not installed')
         super(Channel, self).__init__(*args, **kwargs)
@@ -415,14 +415,6 @@ class Channel(virtual.Channel):
                 if "can't set attribute" not in str(exc):
                     raise
 
-    def _get_regioninfo(self, regions):
-        if self.regioninfo:
-            return self.regioninfo
-        if self.region:
-            for _r in regions:
-                if _r.name == self.region:
-                    return _r
-
     @property
     def sqs(self):
         if self._sqs is None:
@@ -438,12 +430,11 @@ class Channel(virtual.Channel):
     @property
     def asynsqs(self):
         if self._asynsqs is None:
-            region = self._get_regioninfo(_asynsqs.regions())
             is_secure = self.is_secure if self.is_secure is not None else True
             self._asynsqs = AsyncSQSConnection(
                 aws_access_key_id=self.conninfo.userid,
                 aws_secret_access_key=self.conninfo.password,
-                region=region,
+                region=self.region,
                 is_secure=is_secure,
             )
         return self._asynsqs

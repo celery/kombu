@@ -5,7 +5,7 @@ from __future__ import absolute_import, unicode_literals
 try:
     import boto
 except ImportError:  # pragma: no cover
-    boto = get_regions = ResultSet = RegionInfo = XmlHandler = None
+    boto = ResultSet = RegionInfo = XmlHandler = None
 
     class _void(object):
         pass
@@ -21,7 +21,7 @@ else:
     from boto.connection import AWSAuthConnection, AWSQueryConnection
     from boto.handler import XmlHandler
     from boto.resultset import ResultSet
-    from boto.regioninfo import RegionInfo, get_regions
+    from boto.regioninfo import RegionInfo
 
 
 try:
@@ -42,5 +42,5 @@ except ImportError:
 
 __all__ = [
     'exception', 'exceptions', 'AWSAuthConnection', 'AWSQueryConnection',
-    'XmlHandler', 'ResultSet', 'RegionInfo', 'get_regions',
+    'XmlHandler', 'ResultSet', 'RegionInfo',
 ]

@@ -7,7 +7,7 @@ from vine import transform
 from kombu.async.aws.connection import AsyncAWSQueryConnection
 from kombu.async.aws.ext import RegionInfo
 
-from .ext import boto, boto3, Attributes, BatchResults, SQSConnection
+from .ext import boto3, Attributes, BatchResults, SQSConnection
 from .message import AsyncMessage
 from .queue import AsyncQueue
 
@@ -22,14 +22,8 @@ class AsyncSQSConnection(AsyncAWSQueryConnection, SQSConnection):
                  is_secure=True, port=None, proxy=None, proxy_port=None,
                  proxy_user=None, proxy_pass=None, debug=0,
                  https_connection_factory=None, region=None, *args, **kwargs):
-        if boto is None:
-            raise ImportError('boto is not installed')
         if boto3 is None:
             raise ImportError('boto3 is not installed')
-        self.region = region or RegionInfo(
-            self, self.DefaultRegionName, self.DefaultRegionEndpoint,
-            connection_cls=type(self),
-        )
         AsyncAWSQueryConnection.__init__(
             self,
             aws_access_key_id=aws_access_key_id,
@@ -37,7 +31,7 @@ class AsyncSQSConnection(AsyncAWSQueryConnection, SQSConnection):
             is_secure=is_secure, port=port,
             proxy=proxy, proxy_port=proxy_port,
             proxy_user=proxy_user, proxy_pass=proxy_pass,
-            host=self.region.endpoint, debug=debug,
+            region_name=region, debug=debug,
             https_connection_factory=https_connection_factory, **kwargs
         )
 
