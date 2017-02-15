@@ -5,11 +5,12 @@ from __future__ import absolute_import, unicode_literals
 from vine import transform
 
 from kombu.async.aws.connection import AsyncAWSQueryConnection
-from kombu.async.aws.ext import RegionInfo
 
 from .ext import boto3, Attributes, BatchResults, SQSConnection
 from .message import AsyncMessage
 from .queue import AsyncQueue
+from botocore.exceptions import ClientError
+
 
 
 __all__ = ['AsyncSQSConnection']
@@ -18,17 +19,17 @@ __all__ = ['AsyncSQSConnection']
 class AsyncSQSConnection(AsyncAWSQueryConnection, SQSConnection):
     """Async SQS Connection."""
 
-    def __init__(self, aws_access_key_id=None, aws_secret_access_key=None,
-                 is_secure=True, port=None, proxy=None, proxy_port=None,
+    def __init__(self, sqs_connection, aws_access_key_id=None, aws_secret_access_key=None,
+                 proxy=None, proxy_port=None,
                  proxy_user=None, proxy_pass=None, debug=0,
                  https_connection_factory=None, region=None, *args, **kwargs):
         if boto3 is None:
             raise ImportError('boto3 is not installed')
         AsyncAWSQueryConnection.__init__(
             self,
+            sqs_connection,
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_secret_access_key,
-            is_secure=is_secure, port=port,
             proxy=proxy, proxy_port=proxy_port,
             proxy_user=proxy_user, proxy_pass=proxy_pass,
             region_name=region, debug=debug,
@@ -48,6 +49,18 @@ class AsyncSQSConnection(AsyncAWSQueryConnection, SQSConnection):
     def delete_queue(self, queue, force_deletion=False, callback=None):
         return self.get_status('DeleteQueue', None, queue.id,
                                callback=callback)
+
+    def get_queue_url(self, queue):
+        res = self.sqs_connection.get_queue_url(QueueName=queue)
+        # try:
+        # except ClientError as e:
+        #     print("Failed to get queue URL", e.response['Error']['Code'])
+        #     if e.response['Error']['Code'] == 'AWS.SimpleQueueService.NonExistentQueue':
+        #         return None
+        #     raise e
+        #     print("code", e['Error']['Code'])
+        #     return None
+        return res['QueueUrl']
 
     def get_queue_attributes(self, queue, attribute='All', callback=None):
         return self.get_object(
@@ -73,9 +86,10 @@ class AsyncSQSConnection(AsyncAWSQueryConnection, SQSConnection):
             self.build_list_params(params, attributes, 'AttributeName')
         if wait_time_seconds is not None:
             params['WaitTimeSeconds'] = wait_time_seconds
+        queue_url = self.get_queue_url(queue)
         return self.get_list(
             'ReceiveMessage', params, [('Message', AsyncMessage)],
-            queue, callback=callback, parent=queue,
+            queue_url, callback=callback, parent=queue,
         )
 
     def delete_message(self, queue, receipt_handle, callback=None):

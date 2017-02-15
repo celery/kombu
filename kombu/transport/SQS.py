@@ -41,16 +41,11 @@ import socket
 import string
 import uuid
 
-try:
-    from urllib.parse import urlparse, urlunparse
-except ImportError:
-    from urlparse import urlparse, urlunparse
-
 from vine import transform, ensure_promise, promise
 
 from kombu.async import get_event_loop
 from kombu.async.aws import sqs as _asynsqs
-from kombu.async.aws.ext import boto, boto3, exceptions
+from kombu.async.aws.ext import boto3, exceptions
 from kombu.async.aws.sqs.connection import AsyncSQSConnection
 from kombu.async.aws.sqs.message import Message
 from kombu.five import Empty, range, string_t, text_t
@@ -96,8 +91,6 @@ class Channel(virtual.Channel):
     _noack_queues = set()
 
     def __init__(self, *args, **kwargs):
-        # if boto is None:
-        #     raise ImportError('boto is not installed')
         if boto3 is None:
             raise ImportError('boto3 is not installed')
         super(Channel, self).__init__(*args, **kwargs)
@@ -115,6 +108,7 @@ class Channel(virtual.Channel):
         for url in resp.get('QueueUrls', []):
             queue_name = url.split('/')[-1]
             self._queue_cache[queue_name] = url
+            print(queue_name, url)
 
     def basic_consume(self, queue, no_ack, *args, **kwargs):
         if no_ack:
@@ -166,13 +160,16 @@ class Channel(virtual.Channel):
         else:
             return text_t(safe_str(name)).translate(table)
 
+    def canonical_queue_name(self, queue_name):
+        return self.entity_name(self.queue_name_prefix + queue_name)
+
     def _new_queue(self, queue, **kwargs):
         """Ensure a queue with given name exists in SQS."""
         if not isinstance(queue, string_t):
             return queue
         # Translate to SQS name for consistency with initial
         # _queue_cache population.
-        queue = self.entity_name(self.queue_name_prefix + queue)
+        queue = self.canonical_queue_name(queue)
 
         # The SQS ListQueues method only returns 1000 queues.  When you have
         # so many queues, it's possible that the queue you are looking for is
@@ -339,12 +336,9 @@ class Channel(virtual.Channel):
 
     def _get_async(self, queue, count=1, callback=None):
         q = self._new_queue(queue)
-        result = list(urlparse(q))
-        result[0] = result[1] = ''
-        q_shortpath = urlunparse(result)
-
+        qname = self.canonical_queue_name(queue)
         return self._get_from_sqs(
-            q_shortpath, count=count, connection=self.asynsqs,
+            qname, count=count, connection=self.asynsqs,
             callback=transform(self._on_messages_ready, callback, q, queue),
         )
 
@@ -362,6 +356,7 @@ class Channel(virtual.Channel):
         Uses long polling and returns :class:`~vine.promises.promise`.
         """
         connection = connection if connection is not None else queue.connection
+        # url = self.get_queue
         return connection.receive_message(
             queue, number_messages=count,
             wait_time_seconds=self.wait_time_seconds,
@@ -408,12 +403,12 @@ class Channel(virtual.Channel):
 
     def close(self):
         super(Channel, self).close()
-        if self._asynsqs:
-            try:
-                self.asynsqs.close()
-            except AttributeError as exc:  # FIXME ???
-                if "can't set attribute" not in str(exc):
-                    raise
+        # if self._asynsqs:
+        #     try:
+        #         self.asynsqs.close()
+        #     except AttributeError as exc:  # FIXME ???
+        #         if "can't set attribute" not in str(exc):
+        #             raise
 
     @property
     def sqs(self):
@@ -432,6 +427,7 @@ class Channel(virtual.Channel):
         if self._asynsqs is None:
             is_secure = self.is_secure if self.is_secure is not None else True
             self._asynsqs = AsyncSQSConnection(
+                sqs_connection=self.sqs,
                 aws_access_key_id=self.conninfo.userid,
                 aws_secret_access_key=self.conninfo.password,
                 region=self.region,

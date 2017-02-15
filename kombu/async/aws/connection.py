@@ -6,12 +6,14 @@ from io import BytesIO
 
 from vine import promise, transform
 
+from botocore.awsrequest import AWSRequest
+
 from kombu.async.http import Headers, Request, get_client
 from kombu.five import items, python_2_unicode_compatible
 
-from .ext import (
-    boto, AWSAuthConnection, AWSQueryConnection, XmlHandler, ResultSet,
-)
+# from .ext import (
+#     XmlHandler, ResultSet,
+# )
 
 try:
     from urllib.parse import urlunsplit
@@ -31,7 +33,6 @@ except ImportError:  # pragma: no cover
 __all__ = [
     'AsyncHTTPConnection', 'AsyncHTTPSConnection',
     'AsyncHTTPResponse', 'AsyncConnection',
-    'AsyncAWSAuthConnection', 'AsyncAWSQueryConnection',
 ]
 
 
@@ -78,7 +79,7 @@ class AsyncHTTPResponse(object):
 
 
 @python_2_unicode_compatible
-class AsyncHTTPConnection(object):
+class AsyncHTTPSConnection(object):
     """Async HTTP Connection."""
 
     Request = Request
@@ -87,13 +88,10 @@ class AsyncHTTPConnection(object):
     method = 'GET'
     path = '/'
     body = None
-    scheme = 'http'
+    scheme = 'https'
     default_ports = {'http': 80, 'https': 443}
 
-    def __init__(self, host, port=None,
-                 strict=None, timeout=20.0, http_client=None, **kwargs):
-        self.host = host
-        self.port = port
+    def __init__(self, strict=None, timeout=20.0, http_client=None, **kwargs):
         self.headers = []
         self.timeout = timeout
         self.strict = strict
@@ -113,13 +111,8 @@ class AsyncHTTPConnection(object):
             self.headers.extend(list(items(headers)))
 
     def getrequest(self, scheme=None):
-        scheme = scheme if scheme else self.scheme
-        host = self.host
-        if self.port and self.port != self.default_ports[scheme]:
-            host = '{0}:{1}'.format(host, self.port)
-        url = urlunsplit((scheme, host, self.path, '', ''))
         headers = Headers(self.headers)
-        return self.Request(url, method=self.method, headers=headers,
+        return self.Request(self.path, method=self.method, headers=headers,
                             body=self.body, connect_timeout=self.timeout,
                             request_timeout=self.timeout, validate_cert=False)
 
@@ -157,85 +150,56 @@ class AsyncHTTPConnection(object):
         return '<AsyncHTTPConnection: {0!r}>'.format(self.getrequest())
 
 
-class AsyncHTTPSConnection(AsyncHTTPConnection):
-    """Async HTTPS Connection."""
-
-    scheme = 'https'
-
-
 class AsyncConnection(object):
     """Async AWS Connection."""
 
-    def __init__(self, http_client=None, **kwargs):
-        if boto is None:
-            raise ImportError('boto is not installed')
+    def __init__(self, sqs_connection, http_client=None, **kwargs):
+        self.sqs_connection = sqs_connection
         self._httpclient = http_client or get_client()
 
-    def get_http_connection(self, host, port, is_secure):
-        return (AsyncHTTPSConnection if is_secure else AsyncHTTPConnection)(
-            host, port, http_client=self._httpclient,
-        )
+    def get_http_connection(self):
+        return AsyncHTTPSConnection(http_client=self._httpclient)
 
     def _mexe(self, request, sender=None, callback=None):
         callback = callback or promise()
-        boto.log.debug(
-            'HTTP %s/%s headers=%s body=%s',
-            request.host, request.path,
+        print(
+            'HTTP %s  headers=%s body=%s',
+            request.url,
             request.headers, request.body,
         )
 
-        conn = self.get_http_connection(
-            request.host, request.port, self.is_secure,
-        )
-        request.authorize(connection=self)
+        conn = self.get_http_connection()
 
         if callable(sender):
             sender(conn, request.method, request.path, request.body,
                    request.headers, callback)
         else:
-            conn.request(request.method, request.path,
+            conn.request(request.method, request.url,
                          request.body, request.headers)
             conn.getresponse(callback=callback)
         return callback
 
 
-class AsyncAWSAuthConnection(AsyncConnection, AWSAuthConnection):
-    """Async AWS Authn Connection."""
-
-    def __init__(self, host,
-                 http_client=None, http_client_params={}, **kwargs):
-        AsyncConnection.__init__(self, http_client, **http_client_params)
-        AWSAuthConnection.__init__(self, host, **kwargs)
-
-    def make_request(self, method, path, headers=None, data='', host=None,
-                     auth_path=None, sender=None, callback=None, **kwargs):
-        req = self.build_base_http_request(
-            method, path, auth_path, {}, headers, data, host,
-        )
-        return self._mexe(req, sender=sender, callback=callback)
-
-
-class AsyncAWSQueryConnection(AsyncConnection, AWSQueryConnection):
+class AsyncAWSQueryConnection(AsyncConnection):
     """Async AWS Query Connection."""
 
-    def __init__(self, host,
-                 http_client=None, http_client_params={}, **kwargs):
-        AsyncConnection.__init__(self, http_client, **http_client_params)
-        AWSAuthConnection.__init__(self, host, **kwargs)
+    def __init__(self, sqs_connection, http_client=None, http_client_params={}, **kwargs):
+        AsyncConnection.__init__(self, sqs_connection, http_client, **http_client_params)
 
-    def make_request(self, action, params, path, verb, callback=None):
-        request = self.build_base_http_request(
-            verb, path, None, params, {}, '', self.server_name())
+    def make_request(self, action, params_, path, verb, callback=None):
+        params = params_.copy()
         if action:
-            request.params['Action'] = action
-        request.params['Version'] = self.APIVersion
-        return self._mexe(request, callback=callback)
+            params['Action'] = action
+        signer = self.sqs_connection._request_signer
+        request = AWSRequest(method=verb, url=path, params=params)
+        signer.sign(action, request)
+        return self._mexe(request.prepare(), callback=callback)
 
     def get_list(self, action, params, markers,
                  path='/', parent=None, verb='GET', callback=None):
         return self.make_request(
             action, params, path, verb,
-            callback=transform(
+            callback=transform( 
                 self._on_list_ready, callback, parent or self, markers,
             ),
         )
@@ -289,7 +253,7 @@ class AsyncAWSQueryConnection(AsyncConnection, AWSQueryConnection):
             raise self._for_status(response, body)
 
     def _for_status(self, response, body):
-        context = 'Empty body' if not body else 'HTTP Error'
-        exc = self.ResponseError(response.status, response.reason, body)
-        boto.log.error('{0}: %r'.format(context), exc)
-        return exc
+        return Exception("\n".join([str(response), str(body)]))
+        # context = 'Empty body' if not body else 'HTTP Error'
+        # exc = self.ResponseError(response.status, response.reason, body)
+        # return exc
