@@ -3,3 +3,4 @@ codecov
 redis
 PyYAML
 msgpack-python>0.2.0
+-r extras/sqs.txt

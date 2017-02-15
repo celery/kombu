@@ -6,7 +6,7 @@ import pytest
 from case import Mock
 
 from kombu.async.aws.sqs.connection import (
-    AsyncSQSConnection, Attributes, BatchResults,
+    AsyncSQSConnection,
 )
 from kombu.async.aws.sqs.message import AsyncMessage
 from kombu.async.aws.sqs.queue import AsyncQueue
@@ -72,7 +72,7 @@ class test_AsyncSQSConnection(AWSCase):
         )
         self.x.get_object.assert_called_with(
             'GetQueueAttributes', {'AttributeName': 'QueueSize'},
-            Attributes, queue.id, callback=self.callback,
+            queue.id, callback=self.callback,
         )
 
     def test_set_queue_attribute(self):

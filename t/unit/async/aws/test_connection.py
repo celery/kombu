@@ -13,11 +13,9 @@ from kombu.five import WhateverIO
 
 from kombu.async import http
 from kombu.async.aws.connection import (
-    AsyncHTTPConnection,
     AsyncHTTPSConnection,
     AsyncHTTPResponse,
     AsyncConnection,
-    AsyncAWSAuthConnection,
     AsyncAWSQueryConnection,
 )
 
@@ -38,21 +36,21 @@ def passthrough(*args, **kwargs):
     return m
 
 
-class test_AsyncHTTPConnection(AWSCase):
+class test_AsyncHTTPSConnection(AWSCase):
 
     def test_AsyncHTTPSConnection(self):
         x = AsyncHTTPSConnection('aws.vandelay.com')
         assert x.scheme == 'https'
 
     def test_http_client(self):
-        x = AsyncHTTPConnection('aws.vandelay.com')
+        x = AsyncHTTPSConnection('aws.vandelay.com')
         assert x.http_client is http.get_client()
         client = Mock(name='http_client')
-        y = AsyncHTTPConnection('aws.vandelay.com', http_client=client)
+        y = AsyncHTTPSConnection('aws.vandelay.com', http_client=client)
         assert y.http_client is client
 
     def test_args(self):
-        x = AsyncHTTPConnection(
+        x = AsyncHTTPSConnection(
             'aws.vandelay.com', 8083, strict=True, timeout=33.3,
         )
         assert x.host == 'aws.vandelay.com'
@@ -62,13 +60,13 @@ class test_AsyncHTTPConnection(AWSCase):
         assert x.scheme == 'http'
 
     def test_request(self):
-        x = AsyncHTTPConnection('aws.vandelay.com')
+        x = AsyncHTTPSConnection('aws.vandelay.com')
         x.request('PUT', '/importer-exporter')
         assert x.path == '/importer-exporter'
         assert x.method == 'PUT'
 
     def test_request_with_body_buffer(self):
-        x = AsyncHTTPConnection('aws.vandelay.com')
+        x = AsyncHTTPSConnection('aws.vandelay.com')
         body = Mock(name='body')
         body.read.return_value = 'Vandelay Industries'
         x.request('PUT', '/importer-exporter', body)
@@ -78,14 +76,14 @@ class test_AsyncHTTPConnection(AWSCase):
         body.read.assert_called_with()
 
     def test_request_with_body_text(self):
-        x = AsyncHTTPConnection('aws.vandelay.com')
+        x = AsyncHTTPSConnection('aws.vandelay.com')
         x.request('PUT', '/importer-exporter', 'Vandelay Industries')
         assert x.method == 'PUT'
         assert x.path == '/importer-exporter'
         assert x.body == 'Vandelay Industries'
 
     def test_request_with_headers(self):
-        x = AsyncHTTPConnection('aws.vandelay.com')
+        x = AsyncHTTPSConnection('aws.vandelay.com')
         headers = {'Proxy': 'proxy.vandelay.com'}
         x.request('PUT', '/importer-exporter', None, headers)
         assert 'Proxy' in dict(x.headers)
@@ -106,7 +104,7 @@ class test_AsyncHTTPConnection(AWSCase):
         self.assert_request_created_with('https://aws.vandelay.com/', x)
 
     def test_getrequest_nondefault_port(self):
-        x = AsyncHTTPConnection('aws.vandelay.com', port=8080)
+        x = AsyncHTTPSConnection('aws.vandelay.com', port=8080)
         x.Request = Mock(name='Request')
         x.getrequest()
         self.assert_request_created_with('http://aws.vandelay.com:8080/', x)
@@ -119,7 +117,7 @@ class test_AsyncHTTPConnection(AWSCase):
     def test_getresponse(self):
         client = Mock(name='client')
         client.add_request = passthrough(name='client.add_request')
-        x = AsyncHTTPConnection('aws.vandelay.com', http_client=client)
+        x = AsyncHTTPSConnection('aws.vandelay.com', http_client=client)
         x.Response = Mock(name='x.Response')
         request = x.getresponse()
         x.http_client.add_request.assert_called_with(request)
@@ -134,7 +132,7 @@ class test_AsyncHTTPConnection(AWSCase):
         client = Mock(name='client')
         client.add_request = passthrough(name='client.add_request')
         callback = PromiseMock(name='callback')
-        x = AsyncHTTPConnection('aws.vandelay.com', http_client=client)
+        x = AsyncHTTPSConnection('aws.vandelay.com', http_client=client)
         request = x.getresponse(callback)
         x.http_client.add_request.assert_called_with(request)
 
@@ -157,16 +155,16 @@ class test_AsyncHTTPConnection(AWSCase):
         assert repr(wresponse)
 
     def test_repr(self):
-        assert repr(AsyncHTTPConnection('aws.vandelay.com'))
+        assert repr(AsyncHTTPSConnection('aws.vandelay.com'))
 
     def test_putrequest(self):
-        x = AsyncHTTPConnection('aws.vandelay.com')
+        x = AsyncHTTPSConnection('aws.vandelay.com')
         x.putrequest('UPLOAD', '/new')
         assert x.method == 'UPLOAD'
         assert x.path == '/new'
 
     def test_putheader(self):
-        x = AsyncHTTPConnection('aws.vandelay.com')
+        x = AsyncHTTPSConnection('aws.vandelay.com')
         x.putheader('X-Foo', 'bar')
         assert x.headers == [('X-Foo', 'bar')]
         x.putheader('X-Bar', 'baz')
@@ -176,14 +174,14 @@ class test_AsyncHTTPConnection(AWSCase):
         ]
 
     def test_send(self):
-        x = AsyncHTTPConnection('aws.vandelay.com')
+        x = AsyncHTTPSConnection('aws.vandelay.com')
         x.send('foo')
         assert x.body == 'foo'
         x.send('bar')
         assert x.body == 'foobar'
 
     def test_interface(self):
-        x = AsyncHTTPConnection('aws.vandelay.com')
+        x = AsyncHTTPSConnection('aws.vandelay.com')
         assert x.set_debuglevel(3) is None
         assert x.connect() is None
         assert x.close() is None
@@ -220,7 +218,7 @@ class test_AsyncConnection(AWSCase):
         x = AsyncConnection(client=Mock(name='client'))
         assert isinstance(
             x.get_http_connection('aws.vandelay.com', 80, False),
-            AsyncHTTPConnection,
+            AsyncHTTPSConnection,
         )
         assert isinstance(
             x.get_http_connection('aws.vandelay.com', 443, True),
@@ -231,55 +229,6 @@ class test_AsyncConnection(AWSCase):
         assert conn.http_client is x._httpclient
         assert conn.host == 'aws.vandelay.com'
         assert conn.port == 80
-
-
-class test_AsyncAWSAuthConnection(AWSCase):
-
-    @patch('boto.log', create=True)
-    def test_make_request(self, _):
-        x = AsyncAWSAuthConnection('aws.vandelay.com',
-                                   http_client=Mock(name='client'))
-        Conn = x.get_http_connection = Mock(name='get_http_connection')
-        callback = PromiseMock(name='callback')
-        ret = x.make_request('GET', '/foo', callback=callback)
-        assert ret is callback
-        Conn.return_value.request.assert_called()
-        Conn.return_value.getresponse.assert_called_with(
-            callback=callback,
-        )
-
-    @patch('boto.log', create=True)
-    def test_mexe(self, _):
-        x = AsyncAWSAuthConnection('aws.vandelay.com',
-                                   http_client=Mock(name='client'))
-        Conn = x.get_http_connection = Mock(name='get_http_connection')
-        request = x.build_base_http_request('GET', 'foo', '/auth')
-        callback = PromiseMock(name='callback')
-        x._mexe(request, callback=callback)
-        Conn.return_value.request.assert_called_with(
-            request.method, request.path, request.body, request.headers,
-        )
-        Conn.return_value.getresponse.assert_called_with(
-            callback=callback,
-        )
-
-        no_callback_ret = x._mexe(request)
-        # _mexe always returns promise
-        assert isinstance(no_callback_ret, Thenable)
-
-    @patch('boto.log', create=True)
-    def test_mexe__with_sender(self, _):
-        x = AsyncAWSAuthConnection('aws.vandelay.com',
-                                   http_client=Mock(name='client'))
-        Conn = x.get_http_connection = Mock(name='get_http_connection')
-        request = x.build_base_http_request('GET', 'foo', '/auth')
-        sender = Mock(name='sender')
-        callback = PromiseMock(name='callback')
-        x._mexe(request, sender=sender, callback=callback)
-        sender.assert_called_with(
-            Conn.return_value, request.method, request.path,
-            request.body, request.headers, callback,
-        )
 
 
 class test_AsyncAWSQueryConnection(AWSCase):
