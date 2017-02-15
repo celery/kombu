@@ -1,3 +1,2 @@
-boto3
-botocore
+boto3>=1.4.4
 pycurl
