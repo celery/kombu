@@ -180,7 +180,7 @@ class test_AsyncSQSConnection(AWSCase):
                 'DeleteMessageBatchRequestEntry.2.Id': '2',
                 'DeleteMessageBatchRequestEntry.2.ReceiptHandle': 'r2',
             },
-            BatchResults, queue.id, verb='POST', callback=self.callback,
+            queue.id, verb='POST', callback=self.callback,
         )
 
     def test_send_message(self):
@@ -188,7 +188,7 @@ class test_AsyncSQSConnection(AWSCase):
         self.x.send_message(queue, 'hello', callback=self.callback)
         self.x.get_object.assert_called_with(
             'SendMessage', {'MessageBody': 'hello'},
-            AsyncMessage, queue.id, verb='POST', callback=self.callback,
+            queue.id, verb='POST', callback=self.callback,
         )
 
     def test_send_message__with_delay_seconds(self):
@@ -198,7 +198,7 @@ class test_AsyncSQSConnection(AWSCase):
         )
         self.x.get_object.assert_called_with(
             'SendMessage', {'MessageBody': 'hello', 'DelaySeconds': 303},
-            AsyncMessage, queue.id, verb='POST', callback=self.callback,
+            queue.id, verb='POST', callback=self.callback,
         )
 
     def test_send_message_batch(self):
@@ -218,7 +218,7 @@ class test_AsyncSQSConnection(AWSCase):
                 'SendMessageBatchRequestEntry.2.MessageBody': 'B',
                 'SendMessageBatchRequestEntry.2.DelaySeconds': 303,
             },
-            BatchResults, queue.id, verb='POST', callback=self.callback,
+            queue.id, verb='POST', callback=self.callback,
         )
 
     def test_change_message_visibility(self):
@@ -256,7 +256,7 @@ class test_AsyncSQSConnection(AWSCase):
                 preamble('2.ReceiptHandle'): 'r2',
                 preamble('2.VisibilityTimeout'): 909,
             },
-            BatchResults, queue.id, verb='POST', callback=self.callback,
+            queue.id, verb='POST', callback=self.callback,
         )
 
     def test_get_all_queues(self):

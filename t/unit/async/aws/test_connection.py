@@ -7,6 +7,7 @@ from contextlib import contextmanager
 
 from case import Mock, patch
 from vine.abstract import Thenable
+import boto3
 
 from kombu.exceptions import HttpError
 from kombu.five import WhateverIO
@@ -39,25 +40,23 @@ def passthrough(*args, **kwargs):
 class test_AsyncHTTPSConnection(AWSCase):
 
     def test_AsyncHTTPSConnection(self):
-        x = AsyncHTTPSConnection('aws.vandelay.com')
+        x = AsyncHTTPSConnection()
         assert x.scheme == 'https'
 
     def test_http_client(self):
-        x = AsyncHTTPSConnection('aws.vandelay.com')
+        x = AsyncHTTPSConnection()
         assert x.http_client is http.get_client()
         client = Mock(name='http_client')
-        y = AsyncHTTPSConnection('aws.vandelay.com', http_client=client)
+        y = AsyncHTTPSConnection(http_client=client)
         assert y.http_client is client
 
     def test_args(self):
         x = AsyncHTTPSConnection(
-            'aws.vandelay.com', 8083, strict=True, timeout=33.3,
+            strict=True, timeout=33.3,
         )
-        assert x.host == 'aws.vandelay.com'
-        assert x.port == 8083
         assert x.strict
         assert x.timeout == 33.3
-        assert x.scheme == 'http'
+        assert x.scheme == 'https'
 
     def test_request(self):
         x = AsyncHTTPSConnection('aws.vandelay.com')
@@ -83,7 +82,7 @@ class test_AsyncHTTPSConnection(AWSCase):
         assert x.body == 'Vandelay Industries'
 
     def test_request_with_headers(self):
-        x = AsyncHTTPSConnection('aws.vandelay.com')
+        x = AsyncHTTPSConnection()
         headers = {'Proxy': 'proxy.vandelay.com'}
         x.request('PUT', '/importer-exporter', None, headers)
         assert 'Proxy' in dict(x.headers)
@@ -97,27 +96,10 @@ class test_AsyncHTTPSConnection(AWSCase):
             validate_cert=VALIDATES_CERT,
         )
 
-    def test_getrequest_AsyncHTTPSConnection(self):
-        x = AsyncHTTPSConnection('aws.vandelay.com')
-        x.Request = Mock(name='Request')
-        x.getrequest()
-        self.assert_request_created_with('https://aws.vandelay.com/', x)
-
-    def test_getrequest_nondefault_port(self):
-        x = AsyncHTTPSConnection('aws.vandelay.com', port=8080)
-        x.Request = Mock(name='Request')
-        x.getrequest()
-        self.assert_request_created_with('http://aws.vandelay.com:8080/', x)
-
-        y = AsyncHTTPSConnection('aws.vandelay.com', port=8443)
-        y.Request = Mock(name='Request')
-        y.getrequest()
-        self.assert_request_created_with('https://aws.vandelay.com:8443/', y)
-
     def test_getresponse(self):
         client = Mock(name='client')
         client.add_request = passthrough(name='client.add_request')
-        x = AsyncHTTPSConnection('aws.vandelay.com', http_client=client)
+        x = AsyncHTTPSConnection(http_client=client)
         x.Response = Mock(name='x.Response')
         request = x.getresponse()
         x.http_client.add_request.assert_called_with(request)
@@ -132,7 +114,7 @@ class test_AsyncHTTPSConnection(AWSCase):
         client = Mock(name='client')
         client.add_request = passthrough(name='client.add_request')
         callback = PromiseMock(name='callback')
-        x = AsyncHTTPSConnection('aws.vandelay.com', http_client=client)
+        x = AsyncHTTPSConnection(http_client=client)
         request = x.getresponse(callback)
         x.http_client.add_request.assert_called_with(request)
 
@@ -149,22 +131,22 @@ class test_AsyncHTTPSConnection(AWSCase):
         assert wresponse.read() == 'The quick brown fox jumps'
         assert wresponse.status == 200
         assert wresponse.getheader('X-Foo') == 'Hello'
-        assert dict(wresponse.getheaders()) == headers
-        assert wresponse.msg
+        headers_dict = wresponse.getheaders()
+        assert dict(headers_dict) == headers
         assert wresponse.msg
         assert repr(wresponse)
 
     def test_repr(self):
-        assert repr(AsyncHTTPSConnection('aws.vandelay.com'))
+        assert repr(AsyncHTTPSConnection())
 
     def test_putrequest(self):
-        x = AsyncHTTPSConnection('aws.vandelay.com')
+        x = AsyncHTTPSConnection()
         x.putrequest('UPLOAD', '/new')
         assert x.method == 'UPLOAD'
         assert x.path == '/new'
 
     def test_putheader(self):
-        x = AsyncHTTPSConnection('aws.vandelay.com')
+        x = AsyncHTTPSConnection()
         x.putheader('X-Foo', 'bar')
         assert x.headers == [('X-Foo', 'bar')]
         x.putheader('X-Bar', 'baz')
@@ -174,14 +156,14 @@ class test_AsyncHTTPSConnection(AWSCase):
         ]
 
     def test_send(self):
-        x = AsyncHTTPSConnection('aws.vandelay.com')
+        x = AsyncHTTPSConnection()
         x.send('foo')
         assert x.body == 'foo'
         x.send('bar')
         assert x.body == 'foobar'
 
     def test_interface(self):
-        x = AsyncHTTPSConnection('aws.vandelay.com')
+        x = AsyncHTTPSConnection()
         assert x.set_debuglevel(3) is None
         assert x.connect() is None
         assert x.close() is None
@@ -217,15 +199,15 @@ class test_AsyncConnection(AWSCase):
     def test_get_http_connection(self):
         x = AsyncConnection(client=Mock(name='client'))
         assert isinstance(
-            x.get_http_connection('aws.vandelay.com', 80, False),
+            x.get_http_connection(False),
             AsyncHTTPSConnection,
         )
         assert isinstance(
-            x.get_http_connection('aws.vandelay.com', 443, True),
+            x.get_http_connection(True),
             AsyncHTTPSConnection,
         )
 
-        conn = x.get_http_connection('aws.vandelay.com', 80, False)
+        conn = x.get_http_connection(False)
         assert conn.http_client is x._httpclient
         assert conn.host == 'aws.vandelay.com'
         assert conn.port == 80
@@ -234,8 +216,12 @@ class test_AsyncConnection(AWSCase):
 class test_AsyncAWSQueryConnection(AWSCase):
 
     def setup(self):
-        self.x = AsyncAWSQueryConnection('aws.vandelay.com',
-                                         http_client=Mock(name='client'))
+        session = boto3.session.Session(
+            aws_access_key_id='AAA',
+            aws_secret_access_key='AAAA',
+        )
+        sqs_client = session.client('sqs')
+        self.x = AsyncAWSQueryConnection(sqs_client, http_client=Mock(name='client'))
 
     @patch('boto.log', create=True)
     def test_make_request(self, _):

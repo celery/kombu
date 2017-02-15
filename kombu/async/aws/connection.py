@@ -4,8 +4,6 @@ from __future__ import absolute_import, unicode_literals
 
 from vine import promise, transform
 
-from io import BytesIO
-
 from botocore.awsrequest import AWSRequest
 from botocore.response import get_response
 
@@ -19,12 +17,12 @@ except ImportError:
 from xml.sax import parseString as sax_parse  # noqa
 
 try:  # pragma: no cover
-    from email import message_from_file
+    from email import message_from_bytes
     from email.mime.message import MIMEMessage
 except ImportError:  # pragma: no cover
     from mimetools import Message as MIMEMessage   # noqa
 
-    def message_from_file(m):  # noqa
+    def message_from_bytes(m):  # noqa
         return m
 
 __all__ = [
@@ -32,7 +30,6 @@ __all__ = [
 ]
 
 
-@python_2_unicode_compatible
 class AsyncHTTPResponse(object):
     """Async HTTP Response."""
 
@@ -53,11 +50,8 @@ class AsyncHTTPResponse(object):
     @property
     def msg(self):
         if self._msg is None:
-            self._msg = MIMEMessage(message_from_file(
-                BytesIO(b'\r\n'.join(
-                    b'{0}: {1}'.format(*h) for h in self.getheaders())
-                )
-            ))
+            bs = "\r\n".join("{}: {}".format(*h) for h in self.getheaders())
+            self._msg = MIMEMessage(message_from_bytes(bs.encode()))
         return self._msg
 
     @property
