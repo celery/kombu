@@ -4,9 +4,6 @@
 from __future__ import absolute_import, unicode_literals
 
 try:
-    import boto3
-
-    # TODO: old..
     import boto
 except ImportError:  # pragma: no cover
     boto = Attributes = BatchResults = None  # noqa
@@ -27,6 +24,13 @@ else:
     from boto.sqs.jsonmessage import JSONMessage
     from boto.sqs.connection import SQSConnection
     from boto.sqs.queue import Queue
+
+
+try:
+    import boto3
+except ImportError:
+    boto3 = None
+
 
 __all__ = [
     'Attributes', 'BatchResults', 'EncodedMHMessage', 'MHMessage',

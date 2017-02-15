@@ -93,8 +93,9 @@ class test_AsyncSQSConnection(AWSCase):
         self.x.receive_message(queue, 4, callback=self.callback)
         self.x.get_list.assert_called_with(
             'ReceiveMessage', {'MaxNumberOfMessages': 4},
-            [('Message', queue.message_class)],
-            queue.id, callback=self.callback,
+            [('Message', AsyncMessage)],
+            queue, callback=self.callback,
+            parent=queue,
         )
 
     def test_receive_message__with_visibility_timeout(self):
@@ -105,8 +106,9 @@ class test_AsyncSQSConnection(AWSCase):
                 'MaxNumberOfMessages': 4,
                 'VisibilityTimeout': 3666,
             },
-            [('Message', queue.message_class)],
-            queue.id, callback=self.callback,
+            [('Message', AsyncMessage)],
+            queue, callback=self.callback,
+            parent=queue,
         )
 
     def test_receive_message__with_wait_time_seconds(self):
@@ -119,8 +121,9 @@ class test_AsyncSQSConnection(AWSCase):
                 'MaxNumberOfMessages': 4,
                 'WaitTimeSeconds': 303,
             },
-            [('Message', queue.message_class)],
-            queue.id, callback=self.callback,
+            [('Message', AsyncMessage)],
+            queue, callback=self.callback,
+            parent=queue,
         )
 
     def test_receive_message__with_attributes(self):
@@ -134,8 +137,9 @@ class test_AsyncSQSConnection(AWSCase):
                 'AttributeName.2': 'bar',
                 'MaxNumberOfMessages': 4,
             },
-            [('Message', queue.message_class)],
-            queue.id, callback=self.callback,
+            [('Message', AsyncMessage)],
+            queue, callback=self.callback,
+            parent=queue,
         )
 
     def MockMessage(self, id=None, receipt_handle=None, body=None):
@@ -157,10 +161,11 @@ class test_AsyncSQSConnection(AWSCase):
     def test_delete_message(self):
         queue = Mock(name='queue')
         message = self.MockMessage()
-        self.x.delete_message(queue, message, callback=self.callback)
+        self.x.delete_message(queue, message.receipt_handle,
+                              callback=self.callback)
         self.x.get_status.assert_called_with(
             'DeleteMessage', {'ReceiptHandle': message.receipt_handle},
-            queue.id, callback=self.callback,
+            queue, callback=self.callback,
         )
 
     def test_delete_message_batch(self):
