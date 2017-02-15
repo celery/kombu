@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
-"""Amazon SQS boto interface."""
+"""Amazon SQS boto3 interface."""
 
 from __future__ import absolute_import, unicode_literals
 
 try:
+    import boto3
+
+    # TODO: old..
     import boto
 except ImportError:  # pragma: no cover
     boto = Attributes = BatchResults = None  # noqa
