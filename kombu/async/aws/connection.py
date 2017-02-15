@@ -1,10 +1,10 @@
-# -*- coding: utf-8 -*-
+# * coding: utf8 *
 """Amazon AWS Connection."""
 from __future__ import absolute_import, unicode_literals
 
 from vine import promise, transform
 
-import requests
+from io import BytesIO
 
 from botocore.awsrequest import AWSRequest
 from botocore.response import get_response
@@ -33,11 +33,53 @@ __all__ = [
 
 
 @python_2_unicode_compatible
+class AsyncHTTPResponse(object):
+    """Async HTTP Response."""
+
+    def __init__(self, response):
+        self.response = response
+        self._msg = None
+        self.version = 10
+
+    def read(self, *args, **kwargs):
+        return self.response.body
+
+    def getheader(self, name, default=None):
+        return self.response.headers.get(name, default)
+
+    def getheaders(self):
+        return list(items(self.response.headers))
+
+    @property
+    def msg(self):
+        if self._msg is None:
+            self._msg = MIMEMessage(message_from_file(
+                BytesIO(b'\r\n'.join(
+                    b'{0}: {1}'.format(*h) for h in self.getheaders())
+                )
+            ))
+        return self._msg
+
+    @property
+    def status(self):
+        return self.response.code
+
+    @property
+    def reason(self):
+        if self.response.error:
+            return self.response.error.message
+        return ''
+
+    def __repr__(self):
+        return repr(self.response)
+
+
+@python_2_unicode_compatible
 class AsyncHTTPSConnection(object):
     """Async HTTP Connection."""
 
     Request = Request
-    Response = requests.Response
+    Response = AsyncHTTPResponse
 
     method = 'GET'
     path = '/'
@@ -116,12 +158,6 @@ class AsyncConnection(object):
 
     def _mexe(self, request, sender=None, callback=None):
         callback = callback or promise()
-        # print(
-        #     'HTTP request',
-        #     request.url,
-        #     request.headers, request.body,
-        # )
-
         conn = self.get_http_connection()
 
         if callable(sender):
@@ -146,13 +182,13 @@ class AsyncAWSQueryConnection(AsyncConnection):
             params['Action'] = operation
         signer = self.sqs_connection._request_signer
         request = AWSRequest(method=verb, url=path, data=params)
-        signing_type = 'presign-url' if verb == 'GET' else 'standard'
+        signing_type = 'presignurl' if verb == 'GET' else 'standard'
         signer.sign(operation, request, signing_type=signing_type)
         prepared_request = request.prepare()
         # print(prepared_request.url)
         # print(prepared_request.headers)
         # print(prepared_request.body)
-        return self._mexe(request, callback=callback)
+        return self._mexe(prepared_request, callback=callback)
 
     def get_list(self, operation, params, markers,
                  path='/', parent=None, verb='POST', callback=None):
@@ -183,26 +219,28 @@ class AsyncAWSQueryConnection(AsyncConnection):
 
     def _on_list_ready(self, parent, markers, operation, response):
         service_model = self.sqs_connection.meta.service_model
-        print("OP", operation)
         if response.status == 200:
-            return get_response(service_model.operation_model(operation), response)
+            httpres, parsed = get_response(service_model.operation_model(operation), response.response)
+            return parsed
         else:
             raise self._for_status(response, response.read())
 
     def _on_obj_ready(self, parent, cls, operation, response):
         service_model = self.sqs_connection.meta.service_model
         if response.status == 200:
-            return get_response(service_model.operation_model(operation), response)
+            httpres, parsed = get_response(service_model.operation_model(operation), response.response)
+            return parsed
         else:
             raise self._for_status(response, response.read())
 
     def _on_status_ready(self, parent, operation, response):
         service_model = self.sqs_connection.meta.service_model
         if response.status == 200:
-            return get_response(service_model.operation_model(operation), response)
+            httpres, parsed = get_response(service_model.operation_model(operation), response.response)
+            return httpres['HTTPStatusCode']
         else:
             raise self._for_status(response, response.read())
 
     def _for_status(self, response, body):
         context = 'Empty body' if not body else 'HTTP Error'
-        return Exception("Request {} - HTTP {} - {} ({})".format(context, response.status, response.reason, body))
+        return Exception("Request {}  HTTP {}  {} ({})".format(context, response.status, response.reason, body))

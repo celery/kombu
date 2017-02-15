@@ -342,11 +342,11 @@ class Channel(virtual.Channel):
         )
 
     def _on_messages_ready(self, queue, qname, messages):
-        if messages:
+        if 'Messages' in messages and messages['Messages']:
             callbacks = self.connection._callbacks
-            for raw_message in messages:
-                message = self._message_to_python(raw_message, qname, queue)
-                callbacks[qname](message)
+            for msg in messages['Messages']:
+                msg_parsed = self._message_to_python(msg, qname, queue)
+                callbacks[qname](msg_parsed)
 
     def _get_from_sqs(self, queue,
                       count=1, connection=None, callback=None):
