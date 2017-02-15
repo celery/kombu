@@ -2,18 +2,15 @@
 """Amazon AWS Connection."""
 from __future__ import absolute_import, unicode_literals
 
-from io import BytesIO
-
 from vine import promise, transform
 
+import requests
+
 from botocore.awsrequest import AWSRequest
+from botocore.response import get_response
 
 from kombu.async.http import Headers, Request, get_client
 from kombu.five import items, python_2_unicode_compatible
-
-# from .ext import (
-#     XmlHandler, ResultSet,
-# )
 
 try:
     from urllib.parse import urlunsplit
@@ -31,51 +28,8 @@ except ImportError:  # pragma: no cover
         return m
 
 __all__ = [
-    'AsyncHTTPConnection', 'AsyncHTTPSConnection',
-    'AsyncHTTPResponse', 'AsyncConnection',
+    'AsyncHTTPSConnection', 'AsyncConnection',
 ]
-
-
-@python_2_unicode_compatible
-class AsyncHTTPResponse(object):
-    """Async HTTP Response."""
-
-    def __init__(self, response):
-        self.response = response
-        self._msg = None
-        self.version = 10
-
-    def read(self, *args, **kwargs):
-        return self.response.body
-
-    def getheader(self, name, default=None):
-        return self.response.headers.get(name, default)
-
-    def getheaders(self):
-        return list(items(self.response.headers))
-
-    @property
-    def msg(self):
-        if self._msg is None:
-            self._msg = MIMEMessage(message_from_file(
-                BytesIO(b'\r\n'.join(
-                    b'{0}: {1}'.format(*h) for h in self.getheaders())
-                )
-            ))
-        return self._msg
-
-    @property
-    def status(self):
-        return self.response.code
-
-    @property
-    def reason(self):
-        if self.response.error:
-            return self.response.error.message
-        return ''
-
-    def __repr__(self):
-        return repr(self.response)
 
 
 @python_2_unicode_compatible
@@ -83,7 +37,7 @@ class AsyncHTTPSConnection(object):
     """Async HTTP Connection."""
 
     Request = Request
-    Response = AsyncHTTPResponse
+    Response = requests.Response
 
     method = 'GET'
     path = '/'
@@ -162,11 +116,11 @@ class AsyncConnection(object):
 
     def _mexe(self, request, sender=None, callback=None):
         callback = callback or promise()
-        print(
-            'HTTP %s  headers=%s body=%s',
-            request.url,
-            request.headers, request.body,
-        )
+        # print(
+        #     'HTTP request',
+        #     request.url,
+        #     request.headers, request.body,
+        # )
 
         conn = self.get_http_connection()
 
@@ -186,74 +140,69 @@ class AsyncAWSQueryConnection(AsyncConnection):
     def __init__(self, sqs_connection, http_client=None, http_client_params={}, **kwargs):
         AsyncConnection.__init__(self, sqs_connection, http_client, **http_client_params)
 
-    def make_request(self, action, params_, path, verb, callback=None):
+    def make_request(self, operation, params_, path, verb, callback=None):
         params = params_.copy()
-        if action:
-            params['Action'] = action
+        if operation:
+            params['Action'] = operation
         signer = self.sqs_connection._request_signer
-        request = AWSRequest(method=verb, url=path, params=params)
-        signer.sign(action, request)
-        return self._mexe(request.prepare(), callback=callback)
+        request = AWSRequest(method=verb, url=path, data=params)
+        signing_type = 'presign-url' if verb == 'GET' else 'standard'
+        signer.sign(operation, request, signing_type=signing_type)
+        prepared_request = request.prepare()
+        # print(prepared_request.url)
+        # print(prepared_request.headers)
+        # print(prepared_request.body)
+        return self._mexe(request, callback=callback)
 
-    def get_list(self, action, params, markers,
-                 path='/', parent=None, verb='GET', callback=None):
+    def get_list(self, operation, params, markers,
+                 path='/', parent=None, verb='POST', callback=None):
         return self.make_request(
-            action, params, path, verb,
+            operation, params, path, verb,
             callback=transform( 
-                self._on_list_ready, callback, parent or self, markers,
+                self._on_list_ready, callback, parent or self, markers, operation
             ),
         )
 
-    def get_object(self, action, params, cls,
+    def get_object(self, operation, params, cls,
                    path='/', parent=None, verb='GET', callback=None):
         return self.make_request(
-            action, params, path, verb,
+            operation, params, path, verb,
             callback=transform(
-                self._on_obj_ready, callback, parent or self, cls,
+                self._on_obj_ready, callback, parent or self, cls, operation
             ),
         )
 
-    def get_status(self, action, params,
+    def get_status(self, operation, params,
                    path='/', parent=None, verb='GET', callback=None):
         return self.make_request(
-            action, params, path, verb,
+            operation, params, path, verb,
             callback=transform(
-                self._on_status_ready, callback, parent or self,
+                self._on_status_ready, callback, parent or self, operation
             ),
         )
 
-    def _on_list_ready(self, parent, markers, response):
-        body = response.read()
-        if response.status == 200 and body:
-            rs = ResultSet(markers)
-            h = XmlHandler(rs, parent)
-            sax_parse(body, h)
-            return rs
+    def _on_list_ready(self, parent, markers, operation, response):
+        service_model = self.sqs_connection.meta.service_model
+        print("OP", operation)
+        if response.status == 200:
+            return get_response(service_model.operation_model(operation), response)
         else:
-            raise self._for_status(response, body)
+            raise self._for_status(response, response.read())
 
-    def _on_obj_ready(self, parent, cls, response):
-        body = response.read()
-        if response.status == 200 and body:
-            obj = cls(parent)
-            h = XmlHandler(obj, parent)
-            sax_parse(body, h)
-            return obj
+    def _on_obj_ready(self, parent, cls, operation, response):
+        service_model = self.sqs_connection.meta.service_model
+        if response.status == 200:
+            return get_response(service_model.operation_model(operation), response)
         else:
-            raise self._for_status(response, body)
+            raise self._for_status(response, response.read())
 
-    def _on_status_ready(self, parent, response):
-        body = response.read()
-        if response.status == 200 and body:
-            rs = ResultSet()
-            h = XmlHandler(rs, parent)
-            sax_parse(body, h)
-            return rs.status
+    def _on_status_ready(self, parent, operation, response):
+        service_model = self.sqs_connection.meta.service_model
+        if response.status == 200:
+            return get_response(service_model.operation_model(operation), response)
         else:
-            raise self._for_status(response, body)
+            raise self._for_status(response, response.read())
 
     def _for_status(self, response, body):
-        return Exception("\n".join([str(response), str(body)]))
-        # context = 'Empty body' if not body else 'HTTP Error'
-        # exc = self.ResponseError(response.status, response.reason, body)
-        # return exc
+        context = 'Empty body' if not body else 'HTTP Error'
+        return Exception("Request {} - HTTP {} - {} ({})".format(context, response.status, response.reason, body))

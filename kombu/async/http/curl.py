@@ -243,7 +243,7 @@ class CurlClient(BaseClient):
             setopt(meth, True)
 
         if request.method in ('POST', 'PUT'):
-            body = request.body or ''
+            body = request.body or bytes()
             reqbuffer = BytesIO(body)
             setopt(_pycurl.READFUNCTION, reqbuffer.read)
             if request.method == 'POST':

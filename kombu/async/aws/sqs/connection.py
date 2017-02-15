@@ -9,8 +9,6 @@ from kombu.async.aws.connection import AsyncAWSQueryConnection
 from .ext import boto3, Attributes, BatchResults, SQSConnection
 from .message import AsyncMessage
 from .queue import AsyncQueue
-from botocore.exceptions import ClientError
-
 
 
 __all__ = ['AsyncSQSConnection']
@@ -52,14 +50,6 @@ class AsyncSQSConnection(AsyncAWSQueryConnection, SQSConnection):
 
     def get_queue_url(self, queue):
         res = self.sqs_connection.get_queue_url(QueueName=queue)
-        # try:
-        # except ClientError as e:
-        #     print("Failed to get queue URL", e.response['Error']['Code'])
-        #     if e.response['Error']['Code'] == 'AWS.SimpleQueueService.NonExistentQueue':
-        #         return None
-        #     raise e
-        #     print("code", e['Error']['Code'])
-        #     return None
         return res['QueueUrl']
 
     def get_queue_attributes(self, queue, attribute='All', callback=None):

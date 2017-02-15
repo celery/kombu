@@ -108,7 +108,6 @@ class Channel(virtual.Channel):
         for url in resp.get('QueueUrls', []):
             queue_name = url.split('/')[-1]
             self._queue_cache[queue_name] = url
-            print(queue_name, url)
 
     def basic_consume(self, queue, no_ack, *args, **kwargs):
         if no_ack:
