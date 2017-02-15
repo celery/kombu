@@ -6,7 +6,7 @@ from vine import transform
 
 from kombu.async.aws.connection import AsyncAWSQueryConnection
 
-from .ext import boto3, Attributes, BatchResults, SQSConnection
+from .ext import boto3
 from .message import AsyncMessage
 from .queue import AsyncQueue
 
@@ -14,7 +14,7 @@ from .queue import AsyncQueue
 __all__ = ['AsyncSQSConnection']
 
 
-class AsyncSQSConnection(AsyncAWSQueryConnection, SQSConnection):
+class AsyncSQSConnection(AsyncAWSQueryConnection):
     """Async SQS Connection."""
 
     def __init__(self, sqs_connection, aws_access_key_id=None, aws_secret_access_key=None,
@@ -41,7 +41,7 @@ class AsyncSQSConnection(AsyncAWSQueryConnection, SQSConnection):
             params['DefaultVisibilityTimeout'] = format(
                 visibility_timeout, 'd',
             )
-        return self.get_object('CreateQueue', params, AsyncQueue,
+        return self.get_object('CreateQueue', params,
                                callback=callback)
 
     def delete_queue(self, queue, force_deletion=False, callback=None):
@@ -55,7 +55,7 @@ class AsyncSQSConnection(AsyncAWSQueryConnection, SQSConnection):
     def get_queue_attributes(self, queue, attribute='All', callback=None):
         return self.get_object(
             'GetQueueAttributes', {'AttributeName': attribute},
-            Attributes, queue.id, callback=callback,
+            queue.id, callback=callback,
         )
 
     def set_queue_attribute(self, queue, attribute, value, callback=None):
@@ -96,7 +96,7 @@ class AsyncSQSConnection(AsyncAWSQueryConnection, SQSConnection):
                 '{0}.ReceiptHandle'.format(prefix): m.receipt_handle,
             })
         return self.get_object(
-            'DeleteMessageBatch', params, BatchResults, queue.id,
+            'DeleteMessageBatch', params, queue.id,
             verb='POST', callback=callback,
         )
 
@@ -113,7 +113,7 @@ class AsyncSQSConnection(AsyncAWSQueryConnection, SQSConnection):
         if delay_seconds:
             params['DelaySeconds'] = int(delay_seconds)
         return self.get_object(
-            'SendMessage', params, AsyncMessage, queue.id,
+            'SendMessage', params, queue.id,
             verb='POST', callback=callback,
         )
 
@@ -127,7 +127,7 @@ class AsyncSQSConnection(AsyncAWSQueryConnection, SQSConnection):
                 '{0}.DelaySeconds'.format(prefix): msg[2],
             })
         return self.get_object(
-            'SendMessageBatch', params, BatchResults, queue.id,
+            'SendMessageBatch', params, queue.id,
             verb='POST', callback=callback,
         )
 
@@ -150,7 +150,7 @@ class AsyncSQSConnection(AsyncAWSQueryConnection, SQSConnection):
                 '{0}.VisibilityTimeout'.format(pre): t[1],
             })
         return self.get_object(
-            'ChangeMessageVisibilityBatch', params, BatchResults, queue.id,
+            'ChangeMessageVisibilityBatch', params, queue.id,
             verb='POST', callback=callback,
         )
 

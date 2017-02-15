@@ -199,12 +199,12 @@ class AsyncAWSQueryConnection(AsyncConnection):
             ),
         )
 
-    def get_object(self, operation, params, cls,
+    def get_object(self, operation, params,
                    path='/', parent=None, verb='GET', callback=None):
         return self.make_request(
             operation, params, path, verb,
             callback=transform(
-                self._on_obj_ready, callback, parent or self, cls, operation
+                self._on_obj_ready, callback, parent or self, operation
             ),
         )
 
@@ -225,7 +225,7 @@ class AsyncAWSQueryConnection(AsyncConnection):
         else:
             raise self._for_status(response, response.read())
 
-    def _on_obj_ready(self, parent, cls, operation, response):
+    def _on_obj_ready(self, parent, operation, response):
         service_model = self.sqs_connection.meta.service_model
         if response.status == 200:
             httpres, parsed = get_response(service_model.operation_model(operation), response.response)

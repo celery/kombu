@@ -4,7 +4,6 @@ from __future__ import absolute_import, unicode_literals
 
 from vine import transform
 
-from .ext import Queue as _Queue
 from .message import AsyncMessage
 
 _all__ = ['AsyncQueue']
@@ -15,7 +14,7 @@ def list_first(rs):
     return rs[0] if len(rs) == 1 else None
 
 
-class AsyncQueue(_Queue):
+class AsyncQueue():
     """Async SQS Queue."""
 
     def __init__(self, connection=None, url=None, message_class=AsyncMessage):

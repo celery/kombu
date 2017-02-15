@@ -47,7 +47,7 @@ from kombu.async import get_event_loop
 from kombu.async.aws import sqs as _asynsqs
 from kombu.async.aws.ext import boto3, exceptions
 from kombu.async.aws.sqs.connection import AsyncSQSConnection
-from kombu.async.aws.sqs.message import Message
+from kombu.async.aws.sqs.message import AsyncMessage
 from kombu.five import Empty, range, string_t, text_t
 from kombu.log import get_logger
 from kombu.utils import scheduling
