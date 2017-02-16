@@ -19,12 +19,21 @@ except ImportError:
 try:  # pragma: no cover
     from email import message_from_bytes
     from email.mime.message import MIMEMessage
-except ImportError:  # pragma: no cover
-    from mimetools import Message as MIMEMessage   # noqa
-    from email import message_from_file
 
-    def message_from_bytes(m):  # noqa
-        return message_from_file(io.BytesIO(m))
+    # py3
+    def message_from_headers(hdr):  # noqa
+        bs = "\r\n".join("{}: {}".format(*h) for h in hdr)
+        return message_from_bytes(bs.encode())
+
+except ImportError:  # pragma: no cover
+    from email import message_from_file
+    from mimetools import Message as MIMEMessage   # noqa
+
+    # py2
+    def message_from_headers(hdr):  # noqa
+        return message_from_file(io.BytesIO(b'\r\n'.join(
+            b'{0}: {1}'.format(*h) for h in hdr
+        )))
 
 __all__ = [
     'AsyncHTTPSConnection', 'AsyncConnection',
@@ -52,8 +61,7 @@ class AsyncHTTPResponse(object):
     @property
     def msg(self):
         if self._msg is None:
-            bs = "\r\n".join("{}: {}".format(*h) for h in self.getheaders())
-            self._msg = MIMEMessage(message_from_bytes(bs.encode()))
+            self._msg = MIMEMessage(message_from_headers())
         return self._msg
 
     @property
