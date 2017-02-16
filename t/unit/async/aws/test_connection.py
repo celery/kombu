@@ -243,23 +243,13 @@ class test_AsyncAWSQueryConnection(AWSCase):
         self.x.get_http_connection = Mock(name='get_http_connection')
         callback = PromiseMock(name='callback')
         self.x.make_request(
-            None, {'foo': 1}, '/', 'GET', callback=callback,
+            None, {'foo': 1}, 'http://foo.com/', 'GET', callback=callback,
         )
         self.x._mexe.assert_called()
         request = self.x._mexe.call_args[0][0]
-        assert 'Action' not in request.params
-        assert request.params['Version'] == self.x.APIVersion
-
-    @contextmanager
-    def mock_sax_parse(self, parser):
-        with patch('kombu.async.aws.connection.sax_parse') as sax_parse:
-            with patch('kombu.async.aws.connection.XmlHandler') as xh:
-
-                def effect(body, h):
-                    return parser(xh.call_args[0][0], body, h)
-                sax_parse.side_effect = effect
-                yield (sax_parse, xh)
-                sax_parse.assert_called()
+        parsed = urlparse(request.url)
+        params = parse_qs(parsed.query)
+        assert 'Action' not in params
 
     def Response(self, status, body):
         r = Mock(name='response')
@@ -276,90 +266,3 @@ class test_AsyncAWSQueryConnection(AWSCase):
     def assert_make_request_called(self):
         self.x.make_request.assert_called()
         return self.x.make_request.call_args[1]['callback']
-
-    def test_get_list(self):
-        with self.mock_make_request() as callback:
-            self.x.get_list('action', {'p': 3.3}, ['m'], callback=callback)
-            on_ready = self.assert_make_request_called()
-
-            def parser(dest, body, h):
-                dest.append('hi')
-                dest.append('there')
-
-            with self.mock_sax_parse(parser):
-                on_ready(self.Response(200, 'hello'))
-            callback.assert_called_with(['hi', 'there'])
-
-    def test_get_list_error(self):
-        with self.mock_make_request() as callback:
-            self.x.get_list('action', {'p': 3.3}, ['m'], callback=callback)
-            on_ready = self.assert_make_request_called()
-
-            with pytest.raises(self.x.ResponseError):
-                on_ready(self.Response(404, 'Not found'))
-
-    def test_get_object(self):
-        with self.mock_make_request() as callback:
-
-            class Result(object):
-                parent = None
-                value = None
-
-                def __init__(self, parent):
-                    self.parent = parent
-
-            self.x.get_object('action', {'p': 3.3}, Result, callback=callback)
-            on_ready = self.assert_make_request_called()
-
-            def parser(dest, body, h):
-                dest.value = 42
-
-            with self.mock_sax_parse(parser):
-                on_ready(self.Response(200, 'hello'))
-
-            callback.assert_called()
-            result = callback.call_args[0][0]
-            assert result.value == 42
-            assert result.parent
-
-    def test_get_object_error(self):
-        with self.mock_make_request() as callback:
-            self.x.get_object('action', {'p': 3.3}, object, callback=callback)
-            on_ready = self.assert_make_request_called()
-
-            with pytest.raises(self.x.ResponseError):
-                on_ready(self.Response(404, 'Not found'))
-
-    def test_get_status(self):
-        with self.mock_make_request() as callback:
-            self.x.get_status('action', {'p': 3.3}, callback=callback)
-            on_ready = self.assert_make_request_called()
-            set_status_to = [True]
-
-            def parser(dest, body, b):
-                dest.status = set_status_to[0]
-
-            with self.mock_sax_parse(parser):
-                on_ready(self.Response(200, 'hello'))
-            callback.assert_called_with(True)
-
-            set_status_to[0] = False
-            with self.mock_sax_parse(parser):
-                on_ready(self.Response(200, 'hello'))
-            callback.assert_called_with(False)
-
-    def test_get_status_error(self):
-        with self.mock_make_request() as callback:
-            self.x.get_status('action', {'p': 3.3}, callback=callback)
-            on_ready = self.assert_make_request_called()
-
-            with pytest.raises(self.x.ResponseError):
-                on_ready(self.Response(404, 'Not found'))
-
-    def test_get_status_error_empty_body(self):
-        with self.mock_make_request() as callback:
-            self.x.get_status('action', {'p': 3.3}, callback=callback)
-            on_ready = self.assert_make_request_called()
-
-            with pytest.raises(self.x.ResponseError):
-                on_ready(self.Response(200, ''))
