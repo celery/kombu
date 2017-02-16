@@ -15,7 +15,13 @@ class AsyncRawMessage(BaseAsyncMessage):
 
 class AsyncMessage(BaseAsyncMessage):
     """Serialized message."""
-
+    
+    def encode(self, value):
+        return value
+    
+    def decode(self, value):
+        return value
+    
     def __getitem__(self, item):
         """Support Boto3-style access on a message."""
         if item == 'ReceiptHandle':
