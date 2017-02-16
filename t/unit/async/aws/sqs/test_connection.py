@@ -23,17 +23,15 @@ class test_AsyncSQSConnection(AWSCase):
         self.x = AsyncSQSConnection('ak', 'sk', http_client=Mock())
         self.x.get_object = Mock(name='X.get_object')
         self.x.get_status = Mock(name='X.get_status')
-        self.x.get_list = Mock(nanme='X.get_list')
+        self.x.get_list = Mock(name='X.get_list')
         self.callback = PromiseMock(name='callback')
 
     def test_without_boto(self):
         from kombu.async.aws.sqs import connection
-        prev, connection.boto = connection.boto, None
+        sqs = Mock(name='sqs')
         try:
             with pytest.raises(ImportError):
-                AsyncSQSConnection('ak', 'sk', http_client=Mock())
-        finally:
-            connection.boto = prev
+                AsyncSQSConnection(sqs, 'ak', 'sk', http_client=Mock())
 
     def test_default_region(self):
         assert self.x.region

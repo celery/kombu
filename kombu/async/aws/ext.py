@@ -6,6 +6,8 @@ try:
     import boto3
     from botocore import exceptions
     from boto3 import session
+    from botocore.awsrequest import AWSRequest
+    from botocore.response import get_response
 except ImportError:
     boto3 = session = None
 
@@ -16,8 +18,10 @@ except ImportError:
         pass
     exceptions = _void()
     exceptions.BotoCoreError = BotoCoreError
+    AWSRequest = _void()
+    get_response = _void()
 
 
 __all__ = [
-    'exceptions'
+    'exceptions', 'AWSRequest', 'get_response'
 ]

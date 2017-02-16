@@ -4,8 +4,7 @@ from __future__ import absolute_import, unicode_literals
 
 from vine import promise, transform
 
-from botocore.awsrequest import AWSRequest
-from botocore.response import get_response
+from kombu.async.aws.ext import AWSRequest, get_response
 
 from kombu.async.http import Headers, Request, get_client
 from kombu.five import items, python_2_unicode_compatible
@@ -175,10 +174,19 @@ class AsyncAWSQueryConnection(AsyncConnection):
         if operation:
             params['Action'] = operation
         signer = self.sqs_connection._request_signer
-        request = AWSRequest(method=verb, url=path, data=params)
-        signing_type = 'presignurl' if verb == 'GET' else 'standard'
+
+        # defaults for non-get
+        signing_type = 'standard'
+        param_payload = {'data': params}
+        if verb.lower() == 'get':
+            # query-based opts
+            signing_type = 'presignurl'
+            param_payload = {'params': params}
+
+        request = AWSRequest(method=verb, url=path, **param_payload)
         signer.sign(operation, request, signing_type=signing_type)
         prepared_request = request.prepare()
+
         # print(prepared_request.url)
         # print(prepared_request.headers)
         # print(prepared_request.body)

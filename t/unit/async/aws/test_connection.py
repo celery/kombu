@@ -24,6 +24,11 @@ from .case import AWSCase
 
 from t.mocks import PromiseMock
 
+try:
+    from urllib.parse import urlparse, parse_qs
+except ImportError:
+    from urlparse import urlparse, parse_qs  # noqa
+
 # Not currently working
 VALIDATES_CERT = False
 
@@ -184,33 +189,23 @@ class test_AsyncHTTPResponse(AWSCase):
 
 class test_AsyncConnection(AWSCase):
 
-    def test_when_boto_missing(self, patching):
-        patching('kombu.async.aws.connection.boto', None)
-        with pytest.raises(ImportError):
-            AsyncConnection(Mock(name='client'))
-
     def test_client(self):
-        x = AsyncConnection()
+        sqs = Mock(name='sqs')
+        x = AsyncConnection(sqs)
         assert x._httpclient is http.get_client()
         client = Mock(name='client')
-        y = AsyncConnection(http_client=client)
+        y = AsyncConnection(sqs, http_client=client)
         assert y._httpclient is client
 
     def test_get_http_connection(self):
-        x = AsyncConnection(client=Mock(name='client'))
+        sqs = Mock(name='sqs')
+        x = AsyncConnection(sqs)
         assert isinstance(
-            x.get_http_connection(False),
+            x.get_http_connection(),
             AsyncHTTPSConnection,
         )
-        assert isinstance(
-            x.get_http_connection(True),
-            AsyncHTTPSConnection,
-        )
-
-        conn = x.get_http_connection(False)
+        conn = x.get_http_connection()
         assert conn.http_client is x._httpclient
-        assert conn.host == 'aws.vandelay.com'
-        assert conn.port == 80
 
 
 class test_AsyncAWSQueryConnection(AWSCase):
@@ -223,18 +218,18 @@ class test_AsyncAWSQueryConnection(AWSCase):
         sqs_client = session.client('sqs')
         self.x = AsyncAWSQueryConnection(sqs_client, http_client=Mock(name='client'))
 
-    @patch('boto.log', create=True)
-    def test_make_request(self, _):
+    def test_make_request(self):
         _mexe, self.x._mexe = self.x._mexe, Mock(name='_mexe')
         Conn = self.x.get_http_connection = Mock(name='get_http_connection')
         callback = PromiseMock(name='callback')
         self.x.make_request(
-            'action', {'foo': 1}, '/', 'GET', callback=callback,
+            'action', {'foo': 1}, 'https://foo.com/', 'GET', callback=callback,
         )
         self.x._mexe.assert_called()
         request = self.x._mexe.call_args[0][0]
-        assert request.params['Action'] == 'action'
-        assert request.params['Version'] == self.x.APIVersion
+        parsed = urlparse(request.url)
+        params = parse_qs(parsed.query)
+        assert params['Action'][0] == 'action'
 
         ret = _mexe(request, callback=callback)
         assert ret is callback
@@ -243,8 +238,7 @@ class test_AsyncAWSQueryConnection(AWSCase):
             callback=callback,
         )
 
-    @patch('boto.log', create=True)
-    def test_make_request__no_action(self, _):
+    def test_make_request__no_action(self):
         self.x._mexe = Mock(name='_mexe')
         self.x.get_http_connection = Mock(name='get_http_connection')
         callback = PromiseMock(name='callback')
