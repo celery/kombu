@@ -44,7 +44,6 @@ import uuid
 from vine import transform, ensure_promise, promise
 
 from kombu.async import get_event_loop
-from kombu.async.aws import sqs as _asynsqs
 from kombu.async.aws.ext import boto3, exceptions
 from kombu.async.aws.sqs.connection import AsyncSQSConnection
 from kombu.async.aws.sqs.message import AsyncMessage
@@ -197,7 +196,7 @@ class Channel(virtual.Channel):
         """Put message onto queue."""
         q_url = self._new_queue(queue)
         kwargs = {'QueueUrl': q_url,
-                  'MessageBody': Message().encode(dumps(message))}
+                  'MessageBody': AsyncMessage().encode(dumps(message))}
         if queue.endswith('.fifo'):
             if 'MessageGroupId' in message['properties']:
                 kwargs['MessageGroupId'] = \
@@ -287,7 +286,7 @@ class Channel(virtual.Channel):
 
             if resp['Messages']:
                 for m in resp['Messages']:
-                    m['Body'] = Message().decode(m['Body'])
+                    m['Body'] = AsyncMessage().decode(m['Body'])
                 for msg in self._messages_to_python(resp['Messages'], queue):
                     self.connection._deliver(msg, queue)
                 return
@@ -299,7 +298,7 @@ class Channel(virtual.Channel):
         resp = self.sqs.receive_message(q_url)
 
         if resp['Messages']:
-            body = Message().decode(resp['Messages'][0]['Body'])
+            body = AsyncMessage().decode(resp['Messages'][0]['Body'])
             resp['Messages'][0]['Body'] = body
             return self._messages_to_python(resp['Messages'], queue)[0]
         raise Empty()

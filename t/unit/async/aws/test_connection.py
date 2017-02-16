@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, unicode_literals
 
-import pytest
-
 from contextlib import contextmanager
 
-from case import Mock, patch
+from case import Mock
 from vine.abstract import Thenable
 import boto3
 
@@ -217,7 +215,8 @@ class test_AsyncAWSQueryConnection(AWSCase):
             region_name='us-west-2',
         )
         sqs_client = session.client('sqs')
-        self.x = AsyncAWSQueryConnection(sqs_client, http_client=Mock(name='client'))
+        self.x = AsyncAWSQueryConnection(sqs_client,
+                                         http_client=Mock(name='client'))
 
     def test_make_request(self):
         _mexe, self.x._mexe = self.x._mexe, Mock(name='_mexe')

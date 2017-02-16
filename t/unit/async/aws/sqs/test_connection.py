@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, unicode_literals
 
-import pytest
-
 from case import Mock, MagicMock
 
 from kombu.async.aws.sqs.connection import (
@@ -33,8 +31,9 @@ class test_AsyncSQSConnection(AWSCase):
         self.x.get_list = Mock(name='X.get_list')
         self.callback = PromiseMock(name='callback')
 
-        sqs_client.get_queue_url = MagicMock(return_value={'QueueUrl': 'http://aws.com'})
-
+        sqs_client.get_queue_url = MagicMock(return_value={
+            'QueueUrl': 'http://aws.com'
+        })
 
     def test_create_queue(self):
         self.x.create_queue('foo', callback=self.callback)

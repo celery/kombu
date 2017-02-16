@@ -169,8 +169,10 @@ class AsyncConnection(object):
 class AsyncAWSQueryConnection(AsyncConnection):
     """Async AWS Query Connection."""
 
-    def __init__(self, sqs_connection, http_client=None, http_client_params={}, **kwargs):
-        AsyncConnection.__init__(self, sqs_connection, http_client, **http_client_params)
+    def __init__(self, sqs_connection, http_client=None, http_client_params={},
+                 **kwargs):
+        AsyncConnection.__init__(self, sqs_connection, http_client,
+                                 **http_client_params)
 
     def make_request(self, operation, params_, path, verb, callback=None):
         params = params_.copy()
@@ -199,8 +201,9 @@ class AsyncAWSQueryConnection(AsyncConnection):
                  path='/', parent=None, verb='POST', callback=None):
         return self.make_request(
             operation, params, path, verb,
-            callback=transform( 
-                self._on_list_ready, callback, parent or self, markers, operation
+            callback=transform(
+                self._on_list_ready, callback, parent or self, markers,
+                operation
             ),
         )
 
@@ -225,7 +228,9 @@ class AsyncAWSQueryConnection(AsyncConnection):
     def _on_list_ready(self, parent, markers, operation, response):
         service_model = self.sqs_connection.meta.service_model
         if response.status == 200:
-            httpres, parsed = get_response(service_model.operation_model(operation), response.response)
+            httpres, parsed = get_response(
+                service_model.operation_model(operation), response.response
+            )
             return parsed
         else:
             raise self._for_status(response, response.read())
@@ -233,7 +238,9 @@ class AsyncAWSQueryConnection(AsyncConnection):
     def _on_obj_ready(self, parent, operation, response):
         service_model = self.sqs_connection.meta.service_model
         if response.status == 200:
-            httpres, parsed = get_response(service_model.operation_model(operation), response.response)
+            httpres, parsed = get_response(
+                service_model.operation_model(operation), response.response
+            )
             return parsed
         else:
             raise self._for_status(response, response.read())
@@ -241,11 +248,15 @@ class AsyncAWSQueryConnection(AsyncConnection):
     def _on_status_ready(self, parent, operation, response):
         service_model = self.sqs_connection.meta.service_model
         if response.status == 200:
-            httpres, parsed = get_response(service_model.operation_model(operation), response.response)
+            httpres, parsed = get_response(
+                service_model.operation_model(operation), response.response
+            )
             return httpres['HTTPStatusCode']
         else:
             raise self._for_status(response, response.read())
 
     def _for_status(self, response, body):
         context = 'Empty body' if not body else 'HTTP Error'
-        return Exception("Request {}  HTTP {}  {} ({})".format(context, response.status, response.reason, body))
+        return Exception("Request {}  HTTP {}  {} ({})".format(
+            context, response.status, response.reason, body
+        ))

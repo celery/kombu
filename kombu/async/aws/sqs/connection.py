@@ -17,7 +17,9 @@ __all__ = ['AsyncSQSConnection']
 class AsyncSQSConnection(AsyncAWSQueryConnection):
     """Async SQS Connection."""
 
-    def __init__(self, sqs_connection, aws_access_key_id=None, aws_secret_access_key=None,
+    def __init__(self, sqs_connection,
+                 aws_access_key_id=None,
+                 aws_secret_access_key=None,
                  proxy=None, proxy_port=None,
                  proxy_user=None, proxy_pass=None, debug=0,
                  https_connection_factory=None, region=None, *args, **kwargs):
@@ -75,7 +77,7 @@ class AsyncSQSConnection(AsyncAWSQueryConnection):
         if attributes:
             attrs = {}
             for idx, attr in enumerate(attributes):
-                attrs['AttributeName.' + str(idx+1)] = attr
+                attrs['AttributeName.' + str(idx + 1)] = attr
             params.update(attrs)
         if wait_time_seconds is not None:
             params['WaitTimeSeconds'] = wait_time_seconds

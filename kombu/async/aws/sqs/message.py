@@ -2,8 +2,10 @@
 """Amazon SQS message implementation."""
 from __future__ import absolute_import, unicode_literals
 
+from kombu.message import Message
 
-class BaseAsyncMessage(object):
+
+class BaseAsyncMessage(Message):
     """Base class for messages received on async client."""
 
 
