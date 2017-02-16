@@ -1,5 +1,4 @@
 """Common Utilities."""
-import amqp.abstract
 import os
 import socket
 import threading
@@ -15,13 +14,15 @@ from typing import (
 )
 from uuid import uuid4, uuid3, NAMESPACE_OID
 
-from amqp import RecoverableConnectionError
+from amqp import ChannelT, RecoverableConnectionError
 
 from .entity import Exchange, Queue
 from .log import get_logger
 from .serialization import registry as serializers
+from .types import (
+    ClientT, ConsumerT, EntityT, MessageT, ProducerT, ResourceT,
+)
 from .utils import abstract
-from .utils.typing import Timeout
 from .utils.uuid import uuid
 
 try:
@@ -89,10 +90,10 @@ class Broadcast(Queue):
 
     attrs = Queue.attrs + (('queue', None),)
 
-    def __init__(self, name: Optional[str]=None,
-                 queue: Optional[abstract.Entity]=None,
-                 auto_delete: bool=True,
-                 exchange: Optional[Union[Exchange, str]]=None,
+    def __init__(self, name: str = None,
+                 queue: EntityT = None,
+                 auto_delete: bool = True,
+                 exchange: Union[Exchange, str] = None,
                  alias: Optional[str]=None, **kwargs) -> None:
         queue = queue or 'bcast.{0}'.format(uuid())
         return super().__init__(
@@ -106,15 +107,15 @@ class Broadcast(Queue):
         )
 
 
-def declaration_cached(entity: abstract.Entity,
-                       channel: amqp.abstract.Channel) -> bool:
+def declaration_cached(entity: EntityT,
+                       channel: ChannelT) -> bool:
     return entity in channel.connection.client.declared_entities
 
 
-def maybe_declare(entity: abstract.Entity,
-                  channel: amqp.abstract.Channel = None,
-                  retry: bool = False,
-                  **retry_policy) -> bool:
+async def maybe_declare(entity: EntityT,
+                        channel: ChannelT = None,
+                        retry: bool = False,
+                        **retry_policy) -> bool:
     """Declare entity (cached)."""
     is_bound = entity.is_bound
     orig = entity
@@ -135,18 +136,18 @@ def maybe_declare(entity: abstract.Entity,
             return False
 
     if retry:
-        return _imaybe_declare(entity, declared, ident,
-                               channel, orig, **retry_policy)
-    return _maybe_declare(entity, declared, ident, channel, orig)
+        return await _imaybe_declare(entity, declared, ident,
+                                     channel, orig, **retry_policy)
+    return await _maybe_declare(entity, declared, ident, channel, orig)
 
 
-def _maybe_declare(entity: abstract.Entity, declared: MutableSet, ident: int,
-                   channel: Optional[amqp.abstract.Channel],
-                   orig: abstract.Entity = None) -> bool:
+async def _maybe_declare(entity: EntityT, declared: MutableSet, ident: int,
+                         channel: Optional[ChannelT],
+                         orig: EntityT = None) -> bool:
     channel = channel or entity.channel
     if not channel.connection:
         raise RecoverableConnectionError('channel disconnected')
-    entity.declare(channel=channel)
+    await entity.declare(channel=channel)
     if declared is not None and ident:
         declared.add(ident)
     if orig is not None:
@@ -154,22 +155,22 @@ def _maybe_declare(entity: abstract.Entity, declared: MutableSet, ident: int,
     return True
 
 
-def _imaybe_declare(entity: abstract.Entity,
-                    declared: MutableSet,
-                    ident: int,
-                    channel: Optional[amqp.abstract.Channel],
-                    orig: Optional[abstract.Entity]=None,
-                    **retry_policy) -> bool:
-    return entity.channel.connection.client.ensure(
+async def _imaybe_declare(entity: EntityT,
+                          declared: MutableSet,
+                          ident: int,
+                          channel: Optional[ChannelT],
+                          orig: EntityT = None,
+                          **retry_policy) -> bool:
+    return await entity.channel.connection.client.ensure(
         entity, _maybe_declare, **retry_policy)(
             entity, declared, ident, channel, orig)
 
 
 def drain_consumer(
-        consumer: abstract.Consumer,
+        consumer: ConsumerT,
         limit: int = 1,
-        timeout: Timeout = None,
-        callbacks: Sequence[Callable] = None) -> Iterator[abstract.Message]:
+        timeout: float = None,
+        callbacks: Sequence[Callable] = None) -> Iterator[MessageT]:
     """Drain messages from consumer instance."""
     acc = deque()
 
@@ -189,12 +190,12 @@ def drain_consumer(
 
 def itermessages(
         conn: abstract.Connection,
-        channel: Optional[amqp.abstract.Channel],
-        queue: abstract.Entity,
+        channel: Optional[ChannelT],
+        queue: EntityT,
         limit: int = 1,
-        timeout: Timeout = None,
+        timeout: float = None,
         callbacks: Sequence[Callable] = None,
-        **kwargs) -> Iterator[abstract.Message]:
+        **kwargs) -> Iterator[MessageT]:
     """Iterator over messages."""
     return drain_consumer(
         conn.Consumer(queues=[queue], channel=channel, **kwargs),
@@ -202,9 +203,9 @@ def itermessages(
     )
 
 
-def eventloop(conn: abstract.Connection,
+def eventloop(conn: ClientT,
               limit: int = None,
-              timeout: Timeout = None,
+              timeout: float = None,
               ignore_timeouts: bool = False) -> Iterator[Any]:
     """Best practice generator wrapper around ``Connection.drain_events``.
 
@@ -243,9 +244,9 @@ def eventloop(conn: abstract.Connection,
                 raise
 
 
-def send_reply(exchange: Union[abstract.Exchange, str],
-               req: abstract.Message, msg: Any,
-               producer: abstract.Producer = None,
+def send_reply(exchange: Union[Exchange, str],
+               req: MessageT, msg: Any,
+               producer: ProducerT = None,
                retry: bool = False,
                retry_policy: Mapping = None, **props) -> None:
     """Send reply for request.
@@ -271,9 +272,9 @@ def send_reply(exchange: Union[abstract.Exchange, str],
 
 
 def collect_replies(
-        conn: abstract.Connection,
-        channel: Optional[amqp.abstract.Channel],
-        queue: abstract.Entity,
+        conn: ClientT,
+        channel: Optional[ChannelT],
+        queue: EntityT,
         *args, **kwargs) -> Iterator[Any]:
     """Generator collecting replies from ``queue``."""
     no_ack = kwargs.setdefault('no_ack', True)
@@ -305,7 +306,7 @@ def _ignore_errors(conn) -> Iterator:
         pass
 
 
-def ignore_errors(conn: abstract.Connection,
+def ignore_errors(conn: ClientT,
                   fun: Callable = None, *args, **kwargs) -> Any:
     """Ignore connection and channel errors.
 
@@ -339,14 +340,14 @@ def ignore_errors(conn: abstract.Connection,
     return _ignore_errors(conn)
 
 
-def revive_connection(connection: abstract.Connection,
-                      channel: amqp.abstract.Channel,
+def revive_connection(connection: ClientT,
+                      channel: ChannelT,
                       on_revive: Callable = None) -> None:
     if on_revive:
         on_revive(channel)
 
 
-def insured(pool: abstract.Resource,
+def insured(pool: ResourceT,
             fun: Callable,
             args: Sequence, kwargs: Dict,
             errback: Callable = None,

@@ -8,7 +8,7 @@ from numbers import Integral
 from typing import Any, Callable, Optional, Sequence, IO, cast
 from typing import Set, Tuple  # noqa
 from . import fileno
-from .typing import Fd, Timeout
+from .typing import Fd
 from .compat import detect_environment
 
 __all__ = ['poll']
@@ -81,7 +81,7 @@ class _epoll(BasePoller):
         except (PermissionError, FileNotFoundError):
             pass
 
-    def poll(self, timeout: Timeout) -> Optional[Sequence]:
+    def poll(self, timeout: float) -> Optional[Sequence]:
         try:
             return self._epoll.poll(timeout if timeout is not None else -1)
         except Exception as exc:
@@ -148,7 +148,7 @@ class _kqueue(BasePoller):
             except ValueError:
                 pass
 
-    def poll(self, timeout: Timeout) -> Sequence:
+    def poll(self, timeout: float) -> Sequence:
         try:
             kevents = self._kcontrol(None, 1000, timeout)
         except Exception as exc:
@@ -212,7 +212,7 @@ class _poll(BasePoller):
         self._quick_unregister(fd)
         return fd
 
-    def poll(self, timeout: Timeout,
+    def poll(self, timeout: float,
              round: Callable=math.ceil,
              POLLIN: int=POLLIN, POLLOUT: int=POLLOUT, POLLERR: int=POLLERR,
              READ: int=READ, WRITE: int=WRITE, ERR: int=ERR,
@@ -284,7 +284,7 @@ class _select(BasePoller):
         self._wfd.discard(fd)
         self._efd.discard(fd)
 
-    def poll(self, timeout: Timeout) -> Sequence:
+    def poll(self, timeout: float) -> Sequence:
         try:
             read, write, error = _selectf(
                 cast(Sequence, self._rfd),

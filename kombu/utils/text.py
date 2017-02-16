@@ -1,11 +1,18 @@
 # -*- coding: utf-8 -*-
 """Text Utilities."""
 from difflib import SequenceMatcher
-from typing import Iterator, Sequence, NamedTuple, Tuple
-
+from numbers import Number
+from typing import (
+    Iterator, Sequence, NamedTuple, Optional, SupportsInt, Tuple, Union,
+)
 from kombu import version_info_t
 
-fmatch_t = NamedTuple('fmatch_t', [('ratio', float), ('key', str)])
+
+class fmatch_t(NamedTuple):
+    """Return value of :func:`fmatch_iter`."""
+
+    ratio: float
+    key: str
 
 
 def escape_regex(p: str, white: str = '') -> str:
@@ -30,14 +37,14 @@ def fmatch_iter(needle: str, haystack: Sequence[str],
 
 
 def fmatch_best(needle: str, haystack: Sequence[str],
-                min_ratio: float = 0.6) -> str:
+                min_ratio: float = 0.6) -> Optional[str]:
     """Fuzzy match - Find best match (scalar)."""
     try:
         return sorted(
             fmatch_iter(needle, haystack, min_ratio), reverse=True,
         )[0][1]
     except IndexError:
-        pass
+        return None
 
 
 def version_string_as_tuple(s: str) -> version_info_t:
@@ -52,7 +59,9 @@ def version_string_as_tuple(s: str) -> version_info_t:
     return v
 
 
-def _unpack_version(major: int, minor: int = 0, micro: int = 0,
+def _unpack_version(major: Union[SupportsInt, str, bytes],
+                    minor: Union[SupportsInt, str, bytes] = 0,
+                    micro: Union[SupportsInt, str, bytes] = 0,
                     releaselevel: str = '',
                     serial: str = '') -> version_info_t:
     return version_info_t(int(major), int(minor), micro, releaselevel, serial)

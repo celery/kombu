@@ -1,7 +1,4 @@
-from __future__ import absolute_import, unicode_literals
-
 import pytest
-
 from kombu.utils.time import maybe_s_to_ms
 
 

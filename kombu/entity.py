@@ -1,42 +1,46 @@
 """Exchange and Queue declarations."""
 import numbers
-
-from .abstract import MaybeChannelBound
+from typing import (
+    Any, Callable, Dict, Mapping, Set, Sequence, Tuple, Union,
+)
+from amqp.protocol import queue_declare_ok_t
+from amqp.types import ChannelT
+from .types import EntityT
 from .exceptions import ContentDisallowed
 from .serialization import prepare_accept_content
-from .utils import abstract
-
-TRANSIENT_DELIVERY_MODE = 1
-PERSISTENT_DELIVERY_MODE = 2
-DELIVERY_MODES = {'transient': TRANSIENT_DELIVERY_MODE,
-                  'persistent': PERSISTENT_DELIVERY_MODE}
+from .types import BindingT, ExchangeT, MessageT, QueueT
 
 __all__ = ['Exchange', 'Queue', 'binding', 'maybe_delivery_mode']
 
-INTERNAL_EXCHANGE_PREFIX = ('amq.',)
+TRANSIENT_DELIVERY_MODE = 1
+PERSISTENT_DELIVERY_MODE = 2
+DELIVERY_MODES: Mapping[str, int] = {
+    'transient': TRANSIENT_DELIVERY_MODE,
+    'persistent': PERSISTENT_DELIVERY_MODE,
+}
+INTERNAL_EXCHANGE_PREFIX: Tuple[str] = ('amq.',)
 
 
-def _reprstr(s):
-    s = repr(s)
-    if isinstance(s, str) and s.startswith("u'"):
-        return s[2:-1]
-    return s[1:-1]
+def _reprstr(s: Any) -> str:
+    return repr(s).strip("'")
 
 
-def pretty_bindings(bindings):
+def pretty_bindings(bindings: Sequence) -> str:
     return '[{0}]'.format(', '.join(map(str, bindings)))
 
 
 def maybe_delivery_mode(
-        v, modes=DELIVERY_MODES, default=PERSISTENT_DELIVERY_MODE):
+        v: Union[numbers.Integral, str],
+        *,
+        modes: Mapping[str, int] = DELIVERY_MODES,
+        default: int = PERSISTENT_DELIVERY_MODE) -> int:
     """Get delivery mode by name (or none if undefined)."""
     if v:
         return v if isinstance(v, numbers.Integral) else modes[v]
     return default
 
 
-@abstract.Entity.register
-class Exchange(MaybeChannelBound):
+class Exchange(ExchangeT):
     """An Exchange declaration.
 
     Arguments:
@@ -137,7 +141,7 @@ class Exchange(MaybeChannelBound):
     durable = True
     auto_delete = False
     passive = False
-    delivery_mode = None
+    delivery_mode = None  # type: int
     no_declare = False
 
     attrs = (
@@ -151,21 +155,29 @@ class Exchange(MaybeChannelBound):
         ('no_declare', bool),
     )
 
-    def __init__(self, name='', type='', channel=None, **kwargs):
+    def __init__(self,
+                 name: str = '',
+                 type: str = '',
+                 channel: ChannelT = None,
+                 **kwargs) -> None:
         super().__init__(**kwargs)
         self.name = name or self.name
         self.type = type or self.type
         self.maybe_bind(channel)
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash('E|%s' % (self.name,))
 
-    def _can_declare(self):
+    def _can_declare(self) -> bool:
         return not self.no_declare and (
             self.name and not self.name.startswith(
                 INTERNAL_EXCHANGE_PREFIX))
 
-    def declare(self, nowait=False, passive=None, channel=None):
+    async def declare(
+            self,
+            nowait: bool = False,
+            passive: bool = None,
+            channel: ChannelT = None) -> None:
         """Declare the exchange.
 
         Creates the exchange on the broker, unless passive is set
@@ -177,14 +189,20 @@ class Exchange(MaybeChannelBound):
         """
         if self._can_declare():
             passive = self.passive if passive is None else passive
-            return (channel or self.channel).exchange_declare(
+            await (channel or self.channel).exchange_declare(
                 exchange=self.name, type=self.type, durable=self.durable,
                 auto_delete=self.auto_delete, arguments=self.arguments,
                 nowait=nowait, passive=passive,
             )
 
-    def bind_to(self, exchange='', routing_key='',
-                arguments=None, nowait=False, channel=None, **kwargs):
+    async def bind_to(
+            self,
+            exchange: Union[str, ExchangeT] = '',
+            routing_key: str = '',
+            arguments: Mapping = None,
+            nowait: bool = False,
+            channel: ChannelT = None,
+            **kwargs) -> None:
         """Bind the exchange to another exchange.
 
         Arguments:
@@ -192,9 +210,9 @@ class Exchange(MaybeChannelBound):
                 will not block waiting for a response.
                 Default is :const:`False`.
         """
-        if isinstance(exchange, Exchange):
+        if isinstance(exchange, ExchangeT):
             exchange = exchange.name
-        return (channel or self.channel).exchange_bind(
+        await (channel or self.channel).exchange_bind(
             destination=self.name,
             source=exchange,
             routing_key=routing_key,
@@ -202,12 +220,17 @@ class Exchange(MaybeChannelBound):
             arguments=arguments,
         )
 
-    def unbind_from(self, source='', routing_key='',
-                    nowait=False, arguments=None, channel=None):
+    async def unbind_from(
+            self,
+            source: Union[str, ExchangeT] = '',
+            routing_key: str = '',
+            nowait: bool = False,
+            arguments: Mapping = None,
+            channel: ChannelT = None) -> None:
         """Delete previously created exchange binding from the server."""
-        if isinstance(source, Exchange):
+        if isinstance(source, ExchangeT):
             source = source.name
-        return (channel or self.channel).exchange_unbind(
+        await (channel or self.channel).exchange_unbind(
             destination=self.name,
             source=source,
             routing_key=routing_key,
@@ -215,13 +238,92 @@ class Exchange(MaybeChannelBound):
             arguments=arguments,
         )
 
-    def Message(self, body, delivery_mode=None, properties=None, **kwargs):
+    async def publish(self, message: Union[MessageT, str, bytes],
+                      routing_key: str = None,
+                      mandatory: bool = False,
+                      immediate: bool = False,
+                      exchange: str = None) -> None:
+        """Publish message.
+
+        Arguments:
+            message (Union[kombu.Message, str, bytes]):
+                Message to publish.
+            routing_key (str): Message routing key.
+            mandatory (bool): Currently not supported.
+            immediate (bool): Currently not supported.
+        """
+        if isinstance(message, str):
+            message = self.Message(message)
+        exchange = exchange or self.name
+        await self.channel.basic_publish(
+            message,
+            exchange=exchange,
+            routing_key=routing_key,
+            mandatory=mandatory,
+            immediate=immediate,
+        )
+
+    async def delete(
+            self,
+            if_unused: bool = False,
+            nowait: bool = False) -> None:
+        """Delete the exchange declaration on server.
+
+        Arguments:
+            if_unused (bool): Delete only if the exchange has no bindings.
+                Default is :const:`False`.
+            nowait (bool): If set the server will not respond, and a
+                response will not be waited for. Default is :const:`False`.
+        """
+        await self.channel.exchange_delete(
+            exchange=self.name,
+            if_unused=if_unused,
+            nowait=nowait,
+        )
+
+    def binding(
+            self,
+            routing_key: str = '',
+            arguments: Mapping = None,
+            unbind_arguments: Mapping = None) -> 'binding':
+        return binding(self, routing_key, arguments, unbind_arguments)
+
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, Exchange):
+            return (self.name == other.name and
+                    self.type == other.type and
+                    self.arguments == other.arguments and
+                    self.durable == other.durable and
+                    self.auto_delete == other.auto_delete and
+                    self.delivery_mode == other.delivery_mode)
+        return NotImplemented
+
+    def __ne__(self, other: Any) -> bool:
+        ret = self.__eq__(other)
+        if ret is NotImplemented:
+            return ret
+        return not ret
+
+    def __repr__(self) -> str:
+        return self._repr_entity(self)
+
+    def __str__(self) -> str:
+        return '{name} {0}({1})'.format(
+            _reprstr(self.name) or repr(''), self.type,
+            name=type(self).__name__,
+        )
+
+    def Message(
+            self, body: Any,
+            delivery_mode: Union[str, int] = None,
+            properties: Mapping = None,
+            **kwargs) -> Any:
         """Create message instance to be sent with :meth:`publish`.
 
         Arguments:
             body (Any): Message body.
 
-            delivery_mode (bool): Set custom delivery mode.
+            delivery_mode (Union[str, int]): Set custom delivery mode.
                 Defaults to :attr:`delivery_mode`.
 
             priority (int): Message priority, 0 to broker configured
@@ -250,76 +352,16 @@ class Exchange(MaybeChannelBound):
             properties=properties,
             **kwargs)
 
-    def publish(self, message, routing_key=None, mandatory=False,
-                immediate=False, exchange=None):
-        """Publish message.
-
-        Arguments:
-            message (Union[kombu.Message, str, bytes]):
-                Message to publish.
-            routing_key (str): Message routing key.
-            mandatory (bool): Currently not supported.
-            immediate (bool): Currently not supported.
-        """
-        if isinstance(message, str):
-            message = self.Message(message)
-        exchange = exchange or self.name
-        return self.channel.basic_publish(
-            message,
-            exchange=exchange,
-            routing_key=routing_key,
-            mandatory=mandatory,
-            immediate=immediate,
-        )
-
-    def delete(self, if_unused=False, nowait=False):
-        """Delete the exchange declaration on server.
-
-        Arguments:
-            if_unused (bool): Delete only if the exchange has no bindings.
-                Default is :const:`False`.
-            nowait (bool): If set the server will not respond, and a
-                response will not be waited for. Default is :const:`False`.
-        """
-        return self.channel.exchange_delete(exchange=self.name,
-                                            if_unused=if_unused,
-                                            nowait=nowait)
-
-    def binding(self, routing_key='', arguments=None, unbind_arguments=None):
-        return binding(self, routing_key, arguments, unbind_arguments)
-
-    def __eq__(self, other):
-        if isinstance(other, Exchange):
-            return (self.name == other.name and
-                    self.type == other.type and
-                    self.arguments == other.arguments and
-                    self.durable == other.durable and
-                    self.auto_delete == other.auto_delete and
-                    self.delivery_mode == other.delivery_mode)
-        return NotImplemented
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
-
-    def __repr__(self):
-        return self._repr_entity(self)
-
-    def __str__(self):
-        return 'Exchange {0}({1})'.format(
-            _reprstr(self.name) or repr(''), self.type,
-        )
-
     @property
-    def can_cache_declaration(self):
+    def can_cache_declaration(self) -> bool:
         return not self.auto_delete
 
 
-@abstract.Entity.register
-class binding:
+class binding(BindingT):
     """Represents a queue or exchange binding.
 
     Arguments:
-        exchange (Exchange): Exchange to bind to.
+        exchange (ExchangeT): Exchange to bind to.
         routing_key (str): Routing key used as binding key.
         arguments (Dict): Arguments for bind operation.
         unbind_arguments (Dict): Arguments for unbind operation.
@@ -332,45 +374,58 @@ class binding:
         ('unbind_arguments', None)
     )
 
-    def __init__(self, exchange=None, routing_key='',
-                 arguments=None, unbind_arguments=None):
+    def __init__(
+            self,
+            exchange: ExchangeT = None,
+            routing_key: str = '',
+            arguments: Mapping = None,
+            unbind_arguments: Mapping = None) -> None:
         self.exchange = exchange
         self.routing_key = routing_key
         self.arguments = arguments
         self.unbind_arguments = unbind_arguments
 
-    def declare(self, channel, nowait=False):
+    def declare(self, channel: ChannelT, nowait: bool = False) -> None:
         """Declare destination exchange."""
         if self.exchange and self.exchange.name:
             self.exchange.declare(channel=channel, nowait=nowait)
 
-    def bind(self, entity, nowait=False, channel=None):
+    def bind(
+            self, entity: EntityT,
+            nowait: bool = False,
+            channel: ChannelT = None) -> None:
         """Bind entity to this binding."""
-        entity.bind_to(exchange=self.exchange,
-                       routing_key=self.routing_key,
-                       arguments=self.arguments,
-                       nowait=nowait,
-                       channel=channel)
+        entity.bind_to(
+            exchange=self.exchange,
+            routing_key=self.routing_key,
+            arguments=self.arguments,
+            nowait=nowait,
+            channel=channel,
+        )
 
-    def unbind(self, entity, nowait=False, channel=None):
+    def unbind(
+            self, entity: EntityT,
+            nowait: bool = False,
+            channel: ChannelT = None) -> None:
         """Unbind entity from this binding."""
-        entity.unbind_from(self.exchange,
-                           routing_key=self.routing_key,
-                           arguments=self.unbind_arguments,
-                           nowait=nowait,
-                           channel=channel)
+        entity.unbind_from(
+            self.exchange,
+            routing_key=self.routing_key,
+            arguments=self.unbind_arguments,
+            nowait=nowait,
+            channel=channel
+        )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return '<binding: {0}>'.format(self)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return '{0}->{1}'.format(
             _reprstr(self.exchange.name), _reprstr(self.routing_key),
         )
 
 
-@abstract.Entity.register
-class Queue(MaybeChannelBound):
+class Queue(QueueT):
     """A Queue declaration.
 
     Arguments:
@@ -561,9 +616,15 @@ class Queue(MaybeChannelBound):
         ('max_priority', int)
     )
 
-    def __init__(self, name='', exchange=None, routing_key='',
-                 channel=None, bindings=None, on_declared=None,
-                 **kwargs):
+    def __init__(
+            self,
+            name: str = '',
+            exchange: ExchangeT = None,
+            routing_key: str = '',
+            channel: ChannelT = None,
+            bindings: Sequence[BindingT] = None,
+            on_declared: Callable = None,
+            **kwargs) -> None:
         super().__init__(**kwargs)
         self.name = name or self.name
         self.exchange = exchange or self.exchange
@@ -582,44 +643,56 @@ class Queue(MaybeChannelBound):
             self.auto_delete = True
         self.maybe_bind(channel)
 
-    def bind(self, channel):
+    def bind(self, channel: ChannelT) -> EntityT:
         on_declared = self.on_declared
         bound = super().bind(channel)
         bound.on_declared = on_declared
         return bound
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash('Q|%s' % (self.name,))
 
-    def when_bound(self):
+    def when_bound(self) -> None:
         if self.exchange:
             self.exchange = self.exchange(self.channel)
 
-    def declare(self, nowait=False, channel=None):
+    async def declare(self,
+                      nowait: bool = False,
+                      channel: ChannelT = None) -> str:
         """Declare queue and exchange then binds queue to exchange."""
         if not self.no_declare:
             # - declare main binding.
-            self._create_exchange(nowait=nowait, channel=channel)
-            self._create_queue(nowait=nowait, channel=channel)
-            self._create_bindings(nowait=nowait, channel=channel)
+            await self._create_exchange(nowait=nowait, channel=channel)
+            await self._create_queue(nowait=nowait, channel=channel)
+            await self._create_bindings(nowait=nowait, channel=channel)
         return self.name
 
-    def _create_exchange(self, nowait=False, channel=None):
+    async def _create_exchange(self,
+                               nowait: bool = False,
+                               channel: ChannelT = None) -> None:
         if self.exchange:
-            self.exchange.declare(nowait=nowait, channel=channel)
+            await self.exchange.declare(nowait=nowait, channel=channel)
 
-    def _create_queue(self, nowait=False, channel=None):
-        self.queue_declare(nowait=nowait, passive=False, channel=channel)
+    async def _create_queue(self,
+                            nowait: bool = False,
+                            channel: ChannelT = None) -> None:
+        await self.queue_declare(nowait=nowait, passive=False, channel=channel)
         if self.exchange and self.exchange.name:
-            self.queue_bind(nowait=nowait, channel=channel)
+            await self.queue_bind(nowait=nowait, channel=channel)
 
-    def _create_bindings(self, nowait=False, channel=None):
+    async def _create_bindings(self,
+                               nowait: bool = False,
+                               channel: ChannelT = None) -> None:
         for B in self.bindings:
             channel = channel or self.channel
-            B.declare(channel)
-            B.bind(self, nowait=nowait, channel=channel)
+            await B.declare(channel)
+            await B.bind(self, nowait=nowait, channel=channel)
 
-    def queue_declare(self, nowait=False, passive=False, channel=None):
+    async def queue_declare(
+            self,
+            nowait: bool = False,
+            passive: bool = False,
+            channel: ChannelT = None) -> queue_declare_ok_t:
         """Declare queue on the server.
 
         Arguments:
@@ -637,7 +710,7 @@ class Queue(MaybeChannelBound):
             max_length_bytes=self.max_length_bytes,
             max_priority=self.max_priority,
         )
-        ret = channel.queue_declare(
+        ret = await channel.queue_declare(
             queue=self.name,
             passive=passive,
             durable=self.durable,
@@ -652,18 +725,26 @@ class Queue(MaybeChannelBound):
             self.on_declared(*ret)
         return ret
 
-    def queue_bind(self, nowait=False, channel=None):
+    async def queue_bind(
+            self,
+            nowait: bool = False,
+            channel: ChannelT = None) -> None:
         """Create the queue binding on the server."""
-        return self.bind_to(self.exchange, self.routing_key,
-                            self.binding_arguments,
-                            channel=channel, nowait=nowait)
+        await self.bind_to(
+            self.exchange, self.routing_key, self.binding_arguments,
+            channel=channel, nowait=nowait)
 
-    def bind_to(self, exchange='', routing_key='',
-                arguments=None, nowait=False, channel=None):
+    async def bind_to(
+            self,
+            exchange: Union[str, ExchangeT] = '',
+            routing_key: str = '',
+            arguments: Mapping = None,
+            nowait: bool = False,
+            channel: ChannelT = None) -> None:
         if isinstance(exchange, Exchange):
             exchange = exchange.name
 
-        return (channel or self.channel).queue_bind(
+        await (channel or self.channel).queue_bind(
             queue=self.name,
             exchange=exchange,
             routing_key=routing_key,
@@ -671,7 +752,10 @@ class Queue(MaybeChannelBound):
             nowait=nowait,
         )
 
-    def get(self, no_ack=None, accept=None):
+    async def get(
+            self,
+            no_ack: bool = None,
+            accept: Set[str] = None) -> MessageT:
         """Poll the server for a new message.
 
         This method provides direct access to the messages in a
@@ -686,10 +770,10 @@ class Queue(MaybeChannelBound):
         Arguments:
             no_ack (bool): If enabled the broker will
                 automatically ack messages.
-            accept (Set[str]): Custom list of accepted content types.
+            accept (Container): Custom list of accepted content types.
         """
         no_ack = self.no_ack if no_ack is None else no_ack
-        message = self.channel.basic_get(queue=self.name, no_ack=no_ack)
+        message = await self.channel.basic_get(queue=self.name, no_ack=no_ack)
         if message is not None:
             m2p = getattr(self.channel, 'message_to_python', None)
             if m2p:
@@ -699,13 +783,17 @@ class Queue(MaybeChannelBound):
             message.accept = prepare_accept_content(accept)
         return message
 
-    def purge(self, nowait=False):
+    async def purge(self, nowait: bool = False) -> int:
         """Remove all ready messages from the queue."""
         return self.channel.queue_purge(queue=self.name,
                                         nowait=nowait) or 0
 
-    def consume(self, consumer_tag='', callback=None,
-                no_ack=None, nowait=False):
+    async def consume(
+            self,
+            consumer_tag: str = '',
+            callback: Callable = None,
+            no_ack: bool = None,
+            nowait: bool = False) -> None:
         """Start a queue consumer.
 
         Consumers last as long as the channel they were created on, or
@@ -726,7 +814,7 @@ class Queue(MaybeChannelBound):
         """
         if no_ack is None:
             no_ack = self.no_ack
-        return self.channel.basic_consume(
+        await self.channel.basic_consume(
             queue=self.name,
             no_ack=no_ack,
             consumer_tag=consumer_tag or '',
@@ -734,11 +822,15 @@ class Queue(MaybeChannelBound):
             nowait=nowait,
             arguments=self.consumer_arguments)
 
-    def cancel(self, consumer_tag):
+    async def cancel(self, consumer_tag: str) -> None:
         """Cancel a consumer by consumer tag."""
-        return self.channel.basic_cancel(consumer_tag)
+        await self.channel.basic_cancel(consumer_tag)
 
-    def delete(self, if_unused=False, if_empty=False, nowait=False):
+    async def delete(
+            self,
+            if_unused: bool = False,
+            if_empty: bool = False,
+            nowait: bool = False) -> None:
         """Delete the queue.
 
         Arguments:
@@ -751,19 +843,30 @@ class Queue(MaybeChannelBound):
 
             nowait (bool): Do not wait for a reply.
         """
-        return self.channel.queue_delete(queue=self.name,
-                                         if_unused=if_unused,
-                                         if_empty=if_empty,
-                                         nowait=nowait)
+        await self.channel.queue_delete(
+            queue=self.name,
+            if_unused=if_unused,
+            if_empty=if_empty,
+            nowait=nowait,
+        )
 
-    def queue_unbind(self, arguments=None, nowait=False, channel=None):
-        return self.unbind_from(self.exchange, self.routing_key,
-                                arguments, nowait, channel)
+    async def queue_unbind(
+            self,
+            arguments: Mapping = None,
+            nowait: bool = False,
+            channel: ChannelT = None) -> None:
+        await self.unbind_from(self.exchange, self.routing_key,
+                               arguments, nowait, channel)
 
-    def unbind_from(self, exchange='', routing_key='',
-                    arguments=None, nowait=False, channel=None):
+    async def unbind_from(
+            self,
+            exchange: str = '',
+            routing_key: str = '',
+            arguments: Mapping = None,
+            nowait: bool = False,
+            channel: ChannelT = None) -> None:
         """Unbind queue by deleting the binding from the server."""
-        return (channel or self.channel).queue_unbind(
+        await (channel or self.channel).queue_unbind(
             queue=self.name,
             exchange=exchange.name,
             routing_key=routing_key,
@@ -771,7 +874,7 @@ class Queue(MaybeChannelBound):
             nowait=nowait,
         )
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if isinstance(other, Queue):
             return (self.name == other.name and
                     self.exchange == other.exchange and
@@ -785,9 +888,12 @@ class Queue(MaybeChannelBound):
         return NotImplemented
 
     def __ne__(self, other):
-        return not self.__eq__(other)
+        ret = self.__eq__(other)
+        if ret is NotImplemented:
+            return ret
+        return not ret
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         if self.bindings:
             return self._repr_entity('Queue {name} -> {bindings}'.format(
                 name=_reprstr(self.name),
@@ -801,30 +907,31 @@ class Queue(MaybeChannelBound):
         )
 
     @property
-    def can_cache_declaration(self):
+    def can_cache_declaration(self) -> bool:
         return not self.auto_delete
 
     @classmethod
-    def from_dict(self, queue,
-                  exchange=None,
-                  exchange_type=None,
-                  binding_key=None,
-                  routing_key=None,
-                  delivery_mode=None,
-                  bindings=None,
-                  durable=None,
-                  queue_durable=None,
-                  exchange_durable=None,
-                  auto_delete=None,
-                  queue_auto_delete=None,
-                  exchange_auto_delete=None,
-                  exchange_arguments=None,
-                  queue_arguments=None,
-                  binding_arguments=None,
-                  consumer_arguments=None,
-                  exclusive=None,
-                  no_ack=None,
-                  **options):
+    def from_dict(
+            self, queue: str,
+            exchange: str = None,
+            exchange_type: str = None,
+            binding_key: str = None,
+            routing_key: str = None,
+            delivery_mode: Union[int, str] = None,
+            bindings: Sequence = None,
+            durable: bool = None,
+            queue_durable: bool = None,
+            exchange_durable: bool = None,
+            auto_delete: bool = None,
+            queue_auto_delete: bool = None,
+            exchange_auto_delete: bool = None,
+            exchange_arguments: Mapping = None,
+            queue_arguments: Mapping = None,
+            binding_arguments: Mapping = None,
+            consumer_arguments: Mapping = None,
+            exclusive: bool = None,
+            no_ack: bool = None,
+            **options) -> QueueT:
         return Queue(
             queue,
             exchange=Exchange(
@@ -850,7 +957,7 @@ class Queue(MaybeChannelBound):
             bindings=bindings,
         )
 
-    def as_dict(self, recurse=False):
+    def as_dict(self, recurse: bool = False) -> Dict:
         res = super().as_dict(recurse)
         if not recurse:
             return res

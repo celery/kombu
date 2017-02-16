@@ -1,20 +1,19 @@
 """Base transport interface."""
-import amqp.abstract
+import amqp.types
 import errno
 import socket
-
+from typing import Any, Callable, ChannelT, Dict, Mapping, Sequence, Tuple
 from amqp.exceptions import RecoverableConnectionError
-
 from kombu.exceptions import ChannelError, ConnectionError
-from kombu.five import items
 from kombu.message import Message
+from kombu.types import ClientT, ConnectionT, ConsumerT, ProducerT, TransportT
 from kombu.utils.functional import dictfilter
 from kombu.utils.objects import cached_property
 from kombu.utils.time import maybe_s_to_ms
 
 __all__ = ['Message', 'StdChannel', 'Management', 'Transport']
 
-RABBITMQ_QUEUE_ARGUMENTS = {  # type: Mapping[str, Tuple[str, Callable]]
+RABBITMQ_QUEUE_ARGUMENTS: Mapping[str, Tuple[str, Callable]] = {
     'expires': ('x-expires', maybe_s_to_ms),
     'message_ttl': ('x-message-ttl', maybe_s_to_ms),
     'max_length': ('x-max-length', int),
@@ -23,8 +22,7 @@ RABBITMQ_QUEUE_ARGUMENTS = {  # type: Mapping[str, Tuple[str, Callable]]
 }
 
 
-def to_rabbitmq_queue_arguments(arguments, **options):
-    # type: (Mapping, **Any) -> Dict
+def to_rabbitmq_queue_arguments(arguments: Mapping, **options) -> Dict:
     """Convert queue arguments to RabbitMQ queue arguments.
 
     This is the implementation for Channel.prepare_queue_arguments
@@ -52,40 +50,39 @@ def to_rabbitmq_queue_arguments(arguments, **options):
     """
     prepared = dictfilter(dict(
         _to_rabbitmq_queue_argument(key, value)
-        for key, value in items(options)
+        for key, value in options.items()
     ))
     return dict(arguments, **prepared) if prepared else arguments
 
 
-def _to_rabbitmq_queue_argument(key, value):
-    # type: (str, Any) -> Tuple[str, Any]
+def _to_rabbitmq_queue_argument(key: str, value: Any) -> Tuple[str, Any]:
     opt, typ = RABBITMQ_QUEUE_ARGUMENTS[key]
     return opt, typ(value) if value is not None else value
 
 
-def _LeftBlank(obj, method):
+def _LeftBlank(obj: Any, method: str) -> Exception:
     return NotImplementedError(
         'Transport {0.__module__}.{0.__name__} does not implement {1}'.format(
             obj.__class__, method))
 
 
-class StdChannel:
+class StdChannel(amqp.types.ChannelT):
     """Standard channel base class."""
 
     no_ack_consumers = None
 
-    def Consumer(self, *args, **kwargs):
+    def Consumer(self, *args, **kwargs) -> ConsumerT:
         from kombu.messaging import Consumer
         return Consumer(self, *args, **kwargs)
 
-    def Producer(self, *args, **kwargs):
+    def Producer(self, *args, **kwargs) -> ProducerT:
         from kombu.messaging import Producer
         return Producer(self, *args, **kwargs)
 
-    def get_bindings(self):
+    async def get_bindings(self) -> Sequence[Mapping]:
         raise _LeftBlank(self, 'get_bindings')
 
-    def after_reply_message_received(self, queue):
+    async def after_reply_message_received(self, queue: str) -> None:
         """Callback called after RPC reply received.
 
         Notes:
@@ -94,42 +91,39 @@ class StdChannel:
         """
         ...
 
-    def prepare_queue_arguments(self, arguments, **kwargs):
+    def prepare_queue_arguments(self, arguments: Mapping, **kwargs) -> Mapping:
         return arguments
 
-    def __enter__(self):
+    def __enter__(self) -> ChannelT:
         return self
 
-    def __exit__(self, *exc_info):
+    def __exit__(self, *exc_info) -> None:
         self.close()
-
-
-amqp.abstract.Channel.register(StdChannel)
 
 
 class Management:
     """AMQP Management API (incomplete)."""
 
-    def __init__(self, transport):
+    def __init__(self, transport: TransportT):
         self.transport = transport
 
-    def get_bindings(self):
+    async def get_bindings(self) -> Sequence[Mapping]:
         raise _LeftBlank(self, 'get_bindings')
 
 
 class Implements(dict):
     """Helper class used to define transport features."""
 
-    def __getattr__(self, key):
+    def __getattr__(self, key: str) -> bool:
         try:
             return self[key]
         except KeyError:
             raise AttributeError(key)
 
-    def __setattr__(self, key, value):
+    def __setattr__(self, key: str, value: bool) -> None:
         self[key] = value
 
-    def extend(self, **kwargs):
+    def extend(self, **kwargs) -> 'Implements':
         return self.__class__(self, **kwargs)
 
 
@@ -140,65 +134,66 @@ default_transport_capabilities = Implements(
 )
 
 
-class Transport:
+class Transport(amqp.types.ConnectionT):
     """Base class for transports."""
 
-    Management = Management
+    Management: type = Management
 
     #: The :class:`~kombu.Connection` owning this instance.
-    client = None
+    client: ClientT = None
 
     #: Set to True if :class:`~kombu.Connection` should pass the URL
     #: unmodified.
-    can_parse_url = False
+    can_parse_url: bool = False
 
     #: Default port used when no port has been specified.
-    default_port = None
+    default_port: int = None
 
     #: Tuple of errors that can happen due to connection failure.
-    connection_errors = (ConnectionError,)
+    connection_errors: Tuple[type, ...] = (ConnectionError,)
 
     #: Tuple of errors that can happen due to channel/method failure.
-    channel_errors = (ChannelError,)
+    channel_errors: Tuple[type, ...] = (ChannelError,)
 
     #: Type of driver, can be used to separate transports
     #: using the AMQP protocol (driver_type: 'amqp'),
     #: Redis (driver_type: 'redis'), etc...
-    driver_type = 'N/A'
+    driver_type: str = 'N/A'
 
     #: Name of driver library (e.g. 'py-amqp', 'redis').
-    driver_name = 'N/A'
+    driver_name: str = 'N/A'
 
     __reader = None
 
     implements = default_transport_capabilities.extend()
 
-    def __init__(self, client, **kwargs):
+    def __init__(self, client: ClientT, **kwargs) -> None:
         self.client = client
 
-    def establish_connection(self):
+    async def establish_connection(self) -> ConnectionT:
         raise _LeftBlank(self, 'establish_connection')
 
-    def close_connection(self, connection):
+    async def close_connection(self, connection: ConnectionT) -> None:
         raise _LeftBlank(self, 'close_connection')
 
-    def create_channel(self, connection):
+    def create_channel(self, connection: ConnectionT) -> ChannelT:
         raise _LeftBlank(self, 'create_channel')
 
-    def close_channel(self, connection):
+    async def close_channel(self, connection: ConnectionT) -> None:
         raise _LeftBlank(self, 'close_channel')
 
-    def drain_events(self, connection, **kwargs):
+    async def drain_events(self, connection: ConnectionT, **kwargs) -> None:
         raise _LeftBlank(self, 'drain_events')
 
-    def heartbeat_check(self, connection, rate=2):
+    async def heartbeat_check(self, connection: ConnectionT,
+                              rate: int = 2) -> None:
         ...
 
-    def driver_version(self):
+    def driver_version(self) -> str:
         return 'N/A'
 
-    def get_heartbeat_interval(self, connection):
-        return 0
+    def get_heartbeat_interval(self, connection: ConnectionT) -> float:
+        return 0.0
 
     def register_with_event_loop(self, connection, loop):
         ...
@@ -206,7 +201,7 @@ class Transport:
     def unregister_from_event_loop(self, connection, loop):
         ...
 
-    def verify_connection(self, connection):
+    def verify_connection(self, connection: ConnectionT) -> bool:
         return True
 
     def _make_reader(self, connection, timeout=socket.timeout,
@@ -228,7 +223,7 @@ class Transport:
 
         return _read
 
-    def qos_semantics_matches_spec(self, connection):
+    def qos_semantics_matches_spec(self, connection: ConnectionT) -> bool:
         return True
 
     def on_readable(self, connection, loop):
@@ -238,20 +233,20 @@ class Transport:
         reader(loop)
 
     @property
-    def default_connection_params(self):
+    def default_connection_params(self) -> Mapping:
         return {}
 
-    def get_manager(self, *args, **kwargs):
+    def get_manager(self, *args, **kwargs) -> Management:
         return self.Management(self)
 
     @cached_property
-    def manager(self):
+    def manager(self) -> Management:
         return self.get_manager()
 
     @property
-    def supports_heartbeats(self):
+    def supports_heartbeats(self) -> bool:
         return self.implements.heartbeats
 
     @property
-    def supports_ev(self):
+    def supports_ev(self) -> bool:
         return self.implements.async

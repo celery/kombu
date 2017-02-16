@@ -1,7 +1,4 @@
-from __future__ import absolute_import, unicode_literals
-
 import pytest
-
 from kombu import version_info_t
 from kombu.utils.text import version_string_as_tuple
 

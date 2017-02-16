@@ -9,6 +9,6 @@
     .. contents::
         :local:
 
-    .. autoclass:: MaybeChannelBound
+    .. autoclass:: Entity
         :members:
         :undoc-members:

@@ -9,9 +9,9 @@ try:
 except ImportError:  # pragma: no cover
     cpickle = None  # noqa
 
-from collections import namedtuple
 from contextlib import contextmanager
 from io import BytesIO
+from typing import Callable, NamedTuple
 
 from .exceptions import (
     ContentDisallowed, DecodeError, EncodeError, SerializerNotInstalled
@@ -37,7 +37,13 @@ pickle_load = pickle.load
 #: There's a new protocol (3) but this is only supported by Python 3.
 pickle_protocol = int(os.environ.get('PICKLE_PROTOCOL', 2))
 
-codec = namedtuple('codec', ('content_type', 'content_encoding', 'encoder'))
+
+class codec(NamedTuple):
+    """Codec registration triple."""
+
+    content_type: str
+    content_encoding: str
+    encoder: Callable
 
 
 @contextmanager

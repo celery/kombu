@@ -1,8 +1,7 @@
 """Scheduling Utilities."""
 from itertools import count
-from typing import Any, Callable, Iterable, Optional, Sequence, Union
+from typing import Any, Callable, Iterable, Sequence, Union
 from typing import List  # noqa
-
 from .imports import symbol_by_name
 
 __all__ = [
@@ -24,12 +23,12 @@ class FairCycle:
 
     Arguments:
         fun (Callable): Callback to call.
-        resources (Sequence[Any]): List of resources.
+        resources (Sequence): List of resources.
         predicate (type): Exception predicate.
     """
 
     def __init__(self, fun: Callable, resources: Sequence,
-                 predicate: Any=Exception) -> None:
+                 predicate: Any = Exception) -> None:
         self.fun = fun
         self.resources = resources
         self.predicate = predicate
@@ -72,8 +71,8 @@ class BaseCycle:
 class round_robin_cycle(BaseCycle):
     """Iterator that cycles between items in round-robin."""
 
-    def __init__(self, it: Optional[Iterable]=None) -> None:
-        self.items = list(it if it is not None else [])  # type: List
+    def __init__(self, it: Iterable = None) -> None:
+        self.items = list(it if it is not None else [])
 
     def update(self, it: Sequence) -> None:
         """Update items from iterable."""

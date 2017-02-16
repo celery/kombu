@@ -76,8 +76,6 @@ options override and replace any other default or specified values. If using
 Celery, this can be accomplished by setting the
 *BROKER_TRANSPORT_OPTIONS* Celery option.
 """
-from __future__ import absolute_import, unicode_literals
-
 from collections import OrderedDict
 import os
 import select
@@ -87,6 +85,8 @@ import sys
 import uuid
 
 from gettext import gettext as _
+from time import monotonic
+from queue import Empty
 
 import amqp.protocol
 
@@ -116,7 +116,6 @@ except ImportError:  # pragma: no cover
     qpid = None
 
 
-from kombu.five import Empty, items, monotonic
 from kombu.log import get_logger
 from kombu.transport.virtual import Base64, Message
 from kombu.transport import base
@@ -1585,7 +1584,7 @@ class Transport(base.Transport):
 
         """
         conninfo = self.client
-        for name, default_value in items(self.default_connection_params):
+        for name, default_value in self.default_connection_params.items():
             if not getattr(conninfo, name, None):
                 setattr(conninfo, name, default_value)
         if conninfo.ssl:

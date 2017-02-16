@@ -2,9 +2,9 @@
 from threading import Lock
 from itertools import islice
 from operator import itemgetter
-from typing import Any, List, Sequence
+from typing import Any, Callable, List, Sequence
 
-__all__ = ['LamportClock', 'timetuple']
+__all__ = ['Clock', 'LamportClock', 'timetuple']
 
 R_CLOCK = '_lamport(clock={0}, timestamp={1}, id={2} {3!r})'
 
@@ -24,7 +24,7 @@ class timetuple(tuple):
     __slots__ = ()
 
     def __new__(cls, clock: int, timestamp: float,
-                id: str, obj: Any=None) -> 'timetuple':
+                id: str, obj: Any = None) -> 'timetuple':
         return tuple.__new__(cls, (clock, timestamp, id, obj))
 
     def __repr__(self) -> str:
@@ -61,7 +61,54 @@ class timetuple(tuple):
     obj = property(itemgetter(3))
 
 
-class LamportClock:
+class Clock:
+
+    value: int = 0
+
+    def __init__(self, initial_value: int = 0, **kwargs) -> None:
+        self.value = initial_value
+
+    def adjust(self, other: int) -> int:
+        raise NotImplementedError()
+
+    def forward(self) -> int:
+        raise NotImplementedError()
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+    def __repr__(self) -> str:
+        return '<{name}: {0.value}>'.format(self, name=type(self).__name__)
+
+    def sort_heap(self, h: List[Sequence]) -> Any:
+        """Sort heap of events.
+
+        List of tuples containing at least two elements, representing
+        an event, where the first element is the event's scalar clock value,
+        and the second element is the id of the process (usually
+        ``"hostname:pid"``): ``sh([(clock, processid, ...?), (...)])``
+
+        The list must already be sorted, which is why we refer to it as a
+        heap.
+
+        The tuple will not be unpacked, so more than two elements can be
+        present.
+
+        Will return the latest event.
+        """
+        if h[0][0] == h[1][0]:
+            same = []
+            for PN in zip(h, islice(h, 1, None)):
+                if PN[0][0] != PN[1][0]:
+                    break  # Prev and Next's clocks differ
+                same.append(PN[0])
+            # return first item sorted by process id
+            return sorted(same, key=lambda event: event[1])[0]
+        # clock values unique, return first item
+        return h[0]
+
+
+class LamportClock(Clock):
     """Lamport's logical clock.
 
     From Wikipedia:
@@ -100,9 +147,10 @@ class LamportClock:
     #: The clocks current value.
     value = 0
 
-    def __init__(self, initial_value: int=0, Lock: Any=Lock) -> None:
-        self.value = initial_value
+    def __init__(self, initial_value: int = 0,
+                 Lock: Callable = Lock, **kwargs) -> None:
         self.mutex = Lock()
+        super().__init__(initial_value)
 
     def adjust(self, other: int) -> int:
         with self.mutex:
@@ -113,36 +161,3 @@ class LamportClock:
         with self.mutex:
             self.value += 1
             return self.value
-
-    def sort_heap(self, h: List[Sequence]) -> Any:
-        """Sort heap of events.
-
-        List of tuples containing at least two elements, representing
-        an event, where the first element is the event's scalar clock value,
-        and the second element is the id of the process (usually
-        ``"hostname:pid"``): ``sh([(clock, processid, ...?), (...)])``
-
-        The list must already be sorted, which is why we refer to it as a
-        heap.
-
-        The tuple will not be unpacked, so more than two elements can be
-        present.
-
-        Will return the latest event.
-        """
-        if h[0][0] == h[1][0]:
-            same = []
-            for PN in zip(h, islice(h, 1, None)):
-                if PN[0][0] != PN[1][0]:
-                    break  # Prev and Next's clocks differ
-                same.append(PN[0])
-            # return first item sorted by process id
-            return sorted(same, key=lambda event: event[1])[0]
-        # clock values unique, return first item
-        return h[0]
-
-    def __str__(self) -> str:
-        return str(self.value)
-
-    def __repr__(self) -> str:
-        return '<LamportClock: {0.value}>'.format(self)

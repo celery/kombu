@@ -1,30 +1,25 @@
 """URL Utilities."""
 from functools import partial
 from typing import Any, Dict, Mapping, NamedTuple
+from urllib.parse import parse_qsl, quote, unquote, urlparse
 from .typing import Port
-try:
-    from urllib.parse import parse_qsl, quote, unquote, urlparse
-except ImportError:
-    from urllib import quote, unquote                  # noqa
-    from urlparse import urlparse, parse_qsl    # noqa
 
 safequote = partial(quote, safe='')
 
 
-urlparts = NamedTuple('urlparts', [
-    ('scheme', str),
-    ('hostname', str),
-    ('port', int),
-    ('username', str),
-    ('password', str),
-    ('path', str),
-    ('query', Dict),
-])
+class urlparts(NamedTuple):
+    scheme: str
+    hostname: str
+    port: int
+    username: str
+    password: str
+    path: str
+    query: Dict
 
 
-def parse_url(url: str) -> Dict:
+def parse_url(url: str) -> Mapping:
     """Parse URL into mapping of components."""
-    scheme, host, port, user, password, path, query = _parse_url(url)
+    scheme, host, port, user, password, path, query = url_to_parts(url)
     return dict(transport=scheme, hostname=host,
                 port=port, userid=user,
                 password=password, virtual_host=path, **query)
@@ -47,7 +42,6 @@ def url_to_parts(url: str) -> urlparts:
         unquote(path or '') or None,
         dict(parse_qsl(parts.query)),
     )
-_parse_url = url_to_parts  # noqa
 
 
 def as_url(scheme: str,
@@ -79,7 +73,7 @@ def as_url(scheme: str,
 
 def sanitize_url(url: str, mask: str = '**') -> str:
     """Return copy of URL with password removed."""
-    return as_url(*_parse_url(url), sanitize=True, mask=mask)
+    return as_url(*url_to_parts(url), sanitize=True, mask=mask)
 
 
 def maybe_sanitize_url(url: Any, mask: str = '**') -> Any:

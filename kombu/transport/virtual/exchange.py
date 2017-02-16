@@ -3,10 +3,11 @@
 Implementations of the standard exchanges defined
 by the AMQ protocol  (excluding the `headers` exchange).
 """
-
 import re
-
+from typing import Mapping, Match, Pattern, Set, Tuple
+from amqp.types import ChannelT
 from kombu.utils.text import escape_regex
+from kombu.types import MessageT
 
 
 class ExchangeType:
@@ -18,9 +19,10 @@ class ExchangeType:
         channel (ChannelT): AMQ Channel.
     """
 
-    type = None
+    type: str
+    channel: ChannelT
 
-    def __init__(self, channel):
+    def __init__(self, channel: ChannelT) -> None:
         self.channel = channel
 
     def lookup(self, table, exchange, routing_key, default):
@@ -57,13 +59,18 @@ class DirectExchange(ExchangeType):
 
     type = 'direct'
 
-    def lookup(self, table, exchange, routing_key, default):
+    def lookup(self,
+               table: Mapping,
+               exchange: str,
+               routing_key: str,
+               default: str) -> Set[str]:
         return {
             queue for rkey, _, queue in table
             if rkey == routing_key
         }
 
-    def deliver(self, message, exchange, routing_key, **kwargs):
+    def deliver(self, message: MessageT,
+                exchange: str, routing_key: str, **kwargs) -> None:
         _lookup = self.channel._lookup
         _put = self.channel._put
         for queue in _lookup(exchange, routing_key):
@@ -81,19 +88,26 @@ class TopicExchange(ExchangeType):
     type = 'topic'
 
     #: map of wildcard to regex conversions
-    wildcards = {'*': r'.*?[^\.]',
-                 '#': r'.*?'}
+    wildcards: Mapping[str, str] = {
+        '*': r'.*?[^\.]',
+        '#': r'.*?',
+    }
 
     #: compiled regex cache
-    _compiled = {}
+    _compiled: Mapping[str, Pattern] = {}
 
-    def lookup(self, table, exchange, routing_key, default):
+    def lookup(self,
+               table: Mapping,
+               exchange: str,
+               routing_key: str,
+               default: str) -> Set[str]:
         return {
             queue for rkey, pattern, queue in table
             if self._match(pattern, routing_key)
         }
 
-    def deliver(self, message, exchange, routing_key, **kwargs):
+    def deliver(self, message: MessageT,
+                exchange: str, routing_key: str, **kwargs) -> None:
         _lookup = self.channel._lookup
         _put = self.channel._put
         deadletter = self.channel.deadletter_queue
@@ -101,17 +115,21 @@ class TopicExchange(ExchangeType):
                       if q and q != deadletter]:
             _put(queue, message, **kwargs)
 
-    def prepare_bind(self, queue, exchange, routing_key, arguments):
+    def prepare_bind(self,
+                     queue: str,
+                     exchange: str,
+                     routing_key: str,
+                     arguments: Mapping) -> Tuple[str, Pattern, str]:
         return routing_key, self.key_to_pattern(routing_key), queue
 
-    def key_to_pattern(self, rkey):
+    def key_to_pattern(self, rkey: str) -> str:
         """Get the corresponding regex for any routing key."""
         return '^%s$' % ('\.'.join(
             self.wildcards.get(word, word)
             for word in escape_regex(rkey, '.#*').split('.')
         ))
 
-    def _match(self, pattern, string):
+    def _match(self, pattern: str, string: str) -> Match:
         """Match regular expression (cached).
 
         Same as :func:`re.match`, except the regex is compiled and cached,
@@ -141,17 +159,19 @@ class FanoutExchange(ExchangeType):
 
     type = 'fanout'
 
-    def lookup(self, table, exchange, routing_key, default):
+    def lookup(self, table: Mapping,
+               exchange: str, routing_key: str, default: str) -> Set[str]:
         return {queue for _, _, queue in table}
 
-    def deliver(self, message, exchange, routing_key, **kwargs):
+    def deliver(self, message: MessageT,
+                exchange: str, routing_key: str, **kwargs) -> None:
         if self.channel.supports_fanout:
             self.channel._put_fanout(
                 exchange, message, routing_key, **kwargs)
 
 
 #: Map of standard exchange types and corresponding classes.
-STANDARD_EXCHANGE_TYPES = {
+STANDARD_EXCHANGE_TYPES: Mapping[str, type] = {
     'direct': DirectExchange,
     'topic': TopicExchange,
     'fanout': FanoutExchange,

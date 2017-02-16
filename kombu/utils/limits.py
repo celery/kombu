@@ -1,8 +1,7 @@
 """Token bucket implementation for rate limiting."""
 from collections import deque
 from time import monotonic
-from typing import Any, Optional
-
+from typing import Any
 from .typing import Float
 
 __all__ = ['TokenBucket']
@@ -24,21 +23,21 @@ class TokenBucket:
     """
 
     #: The rate in tokens/second that the bucket will be refilled.
-    fill_rate = None
+    fill_rate: float = None
 
     #: Maximum number of tokens in the bucket.
-    capacity = 1.0    # type: float
+    capacity: float = 1.0
 
     #: Timestamp of the last time a token was taken out of the bucket.
-    timestamp = None  # type: Optional[float]
+    timestamp: float = None
 
-    def __init__(self, fill_rate: Optional[Float],
-                 capacity: Float=1.0) -> None:
+    def __init__(self, fill_rate: Float = None,
+                 capacity: Float = 1.0) -> None:
         self.capacity = float(capacity)
         self._tokens = capacity
         self.fill_rate = float(fill_rate)
         self.timestamp = monotonic()
-        self.contents = deque()  # type: deque
+        self.contents = deque()
 
     def add(self, item: Any) -> None:
         self.contents.append(item)
@@ -49,7 +48,7 @@ class TokenBucket:
     def clear_pending(self) -> None:
         self.contents.clear()
 
-    def can_consume(self, tokens: int=1) -> bool:
+    def can_consume(self, tokens: int = 1) -> bool:
         """Check if one or more tokens can be consumed.
 
         Returns:

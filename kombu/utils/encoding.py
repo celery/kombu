@@ -8,7 +8,6 @@ applications without crashing from the infamous
 
 import sys
 import traceback
-
 from typing import Any, AnyStr, IO, Optional
 
 str_t = str
@@ -67,7 +66,7 @@ def default_encode(obj: Any) -> Any:
     return obj
 
 
-def safe_str(s: Any, errors: str='replace') -> str:
+def safe_str(s: Any, errors: str = 'replace') -> str:
     """Safe form of str(), void of unicode errors."""
     s = bytes_to_str(s)
     if not isinstance(s, (str, bytes)):
@@ -75,7 +74,7 @@ def safe_str(s: Any, errors: str='replace') -> str:
     return _safe_str(s, errors)
 
 
-def _safe_str(s: Any, errors: str='replace', file: IO=None) -> str:
+def _safe_str(s: Any, errors: str = 'replace', file: IO = None) -> str:
     if isinstance(s, str):
         return s
     try:
@@ -85,7 +84,7 @@ def _safe_str(s: Any, errors: str='replace', file: IO=None) -> str:
             type(s), exc, '\n'.join(traceback.format_stack()))
 
 
-def safe_repr(o: Any, errors='replace') -> str:
+def safe_repr(o: Any, errors: str = 'replace') -> str:
     """Safe form of repr, void of Unicode errors."""
     try:
         return repr(o)

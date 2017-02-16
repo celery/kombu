@@ -1,10 +1,18 @@
 """Import related utilities."""
 import importlib
 import sys
+from typing import Any, Callable, Mapping
 
 
-def symbol_by_name(name, aliases={}, imp=None, package=None,
-                   sep='.', default=None, **kwargs):
+def symbol_by_name(
+        name: Any,
+        aliases: Mapping[str, str] = {},
+        *,
+        imp: Callable = None,
+        package: str = None,
+        sep: str = '.',
+        default: Any = None,
+        **kwargs) -> Any:
     """Get symbol by qualified name.
 
     The name should be the full dot-separated path to the class::

@@ -1,13 +1,7 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import, unicode_literals
-
 import sys
-
 from contextlib import contextmanager
-
 from case import patch, skip
-
-from kombu.five import bytes_t, string_t
 from kombu.utils.encoding import (
     get_default_encoding_file, safe_str,
     set_default_encoding_file, default_encoding,
@@ -50,13 +44,13 @@ class test_default_encoding:
 @skip.if_python3()
 def test_str_to_bytes():
     with clean_encoding() as e:
-        assert isinstance(e.str_to_bytes('foobar'), bytes_t)
+        assert isinstance(e.str_to_bytes('foobar'), bytes)
 
 
 @skip.if_python3()
 def test_from_utf8():
     with clean_encoding() as e:
-        assert isinstance(e.from_utf8('foobar'), bytes_t)
+        assert isinstance(e.from_utf8('foobar'), bytes)
 
 
 @skip.if_python3()
@@ -75,7 +69,7 @@ class test_safe_str:
         assert safe_str('foo') == 'foo'
 
     def test_when_unicode(self):
-        assert isinstance(safe_str('foo'), string_t)
+        assert isinstance(safe_str('foo'), str)
 
     def test_when_encoding_utf8(self):
         self._encoding.return_value = 'utf-8'

@@ -3,10 +3,10 @@
 import heapq
 import sys
 
-from collections import namedtuple
 from datetime import datetime
 from functools import total_ordering
 from time import monotonic
+from typing import NamedTuple
 from weakref import proxy as weakrefproxy
 
 from vine.utils import wraps
@@ -27,7 +27,13 @@ DEFAULT_MAX_INTERVAL = 2
 EPOCH = datetime.utcfromtimestamp(0).replace(tzinfo=utc)
 IS_PYPY = hasattr(sys, 'pypy_version_info')
 
-scheduled = namedtuple('scheduled', ('eta', 'priority', 'entry'))
+
+class scheduled(NamedTuple):
+    """Information about scheduled item."""
+
+    eta: float
+    priority: int
+    entry: 'Entry'
 
 
 def to_timestamp(d, default_timezone=utc, time=monotonic):

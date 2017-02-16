@@ -3,9 +3,9 @@ import numbers
 import socket
 
 from bisect import bisect
-from collections import namedtuple
 from contextlib import contextmanager
 from time import time
+from typing import NamedTuple, Tuple
 from queue import Empty
 
 from vine import promise
@@ -18,7 +18,7 @@ from kombu.utils.encoding import bytes_to_str
 from kombu.utils.json import loads, dumps
 from kombu.utils.objects import cached_property
 from kombu.utils.scheduling import cycle_by_name
-from kombu.utils.url import _parse_url
+from kombu.utils.url import url_to_parts
 from kombu.utils.uuid import uuid
 
 from . import virtual
@@ -42,14 +42,18 @@ DEFAULT_DB = 0
 
 PRIORITY_STEPS = [0, 3, 6, 9]
 
-error_classes_t = namedtuple('error_classes_t', (
-    'connection_errors', 'channel_errors',
-))
-
 NO_ROUTE_ERROR = """
 Cannot route message for exchange {0!r}: Table empty or key no longer exists.
 Probably the key ({1!r}) has been removed from the Redis database.
 """
+
+
+class error_classes_t(NamedTuple):
+    """Return value of :func:`get_redis_error_classes`."""
+
+    connection_errors: Tuple[type, ...]
+    channel_errors: Tuple[type, ...]
+
 
 # This implementation may seem overly complex, but I assure you there is
 # a good reason for doing it this way.
@@ -892,7 +896,7 @@ class Channel(virtual.Channel):
                 pass
         host = connparams['host']
         if '://' in host:
-            scheme, _, _, _, _, path, query = _parse_url(host)
+            scheme, _, _, _, _, path, query = url_to_parts(host)
             if scheme == 'socket':
                 connparams = self._filter_tcp_connparams(**connparams)
                 connparams.update({

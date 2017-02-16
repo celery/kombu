@@ -71,7 +71,7 @@ for module, items in all_by_module.items():
         object_origins[item] = module
 
 
-class module(ModuleType):
+class _module(ModuleType):
     """Customized Python module."""
 
     def __getattr__(self, name):
@@ -100,7 +100,7 @@ except NameError:  # pragma: no cover
 # keep a reference to this module so that it's not garbage collected
 old_module = sys.modules[__name__]
 
-new_module = sys.modules[__name__] = module(__name__)
+new_module = sys.modules[__name__] = _module(__name__)  # type: ignore
 new_module.__dict__.update({
     '__file__': __file__,
     '__path__': __path__,
@@ -118,6 +118,7 @@ new_module.__dict__.update({
 })
 
 if os.environ.get('KOMBU_LOG_DEBUG'):  # pragma: no cover
-    os.environ.update(KOMBU_LOG_CHANNEL='1', KOMBU_LOG_CONNECTION='1')
+    os.environ['KOMBU_LOG_CHANNEL'] = '1'
+    os.environ['KOMBU_LOG_CONNECTION'] = '1'
     from .utils import debug
     debug.setup_logging()

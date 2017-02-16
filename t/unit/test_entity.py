@@ -5,7 +5,7 @@ import pytest
 from case import Mock, call
 
 from kombu import Connection, Exchange, Producer, Queue, binding
-from kombu.abstract import MaybeChannelBound
+from kombu.abstract import Entity
 from kombu.exceptions import NotBoundError
 from kombu.serialization import registry
 
@@ -403,7 +403,7 @@ class test_Queue:
         assert 'Queue' in repr(b)
 
 
-class test_MaybeChannelBound:
+class test_Entity:
 
     def test_repr(self):
-        assert repr(MaybeChannelBound())
+        assert repr(Entity())

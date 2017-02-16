@@ -1,10 +1,7 @@
 """Debugging support."""
 import logging
-
-from typing import Any, Optional, Sequence, Union
-
+from typing import Any, Sequence, Union
 from vine.utils import wraps
-
 from kombu.log import get_logger
 
 __all__ = ['setup_logging', 'Logwrapped']
@@ -29,8 +26,8 @@ class Logwrapped:
     __ignore = ('__enter__', '__exit__')
 
     def __init__(self, instance: Any,
-                 logger: Optional[LoggerArg]=None,
-                 ident: Optional[str]=None) -> None:
+                 logger: LoggerArg = None,
+                 ident: str = None) -> None:
         self.instance = instance
         self.logger = get_logger(logger)  # type: logging.Logger
         self.ident = ident

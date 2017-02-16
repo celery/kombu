@@ -1,5 +1,3 @@
-from __future__ import absolute_import, unicode_literals
-
 import pytest
 import select
 import ssl
@@ -7,16 +5,15 @@ import socket
 import sys
 import time
 import uuid
-
 from collections import Callable, OrderedDict
 from itertools import count
-
+from queue import Empty
+from time import monotonic
 from case import Mock, call, patch, skip
-
-from kombu.five import Empty, keys, range, monotonic
-from kombu.transport.qpid import (AuthenticationFailure, Channel, Connection,
-                                  ConnectionError, Message, NotFound, QoS,
-                                  Transport)
+from kombu.transport.qpid import (
+    AuthenticationFailure, Channel, Connection,
+    ConnectionError, Message, NotFound, QoS, Transport,
+)
 from kombu.transport.virtual import Base64
 
 
@@ -42,15 +39,15 @@ class ExtraAssertionsMixin(object):
         Also asserts that the value of each key is the same in a and b using
         the is operator.
         """
-        assert set(keys(a)) == set(keys(b))
-        for key in keys(a):
+        assert set(a.keys()) == set(b.keys())
+        for key in a.keys():
             assert a[key] == b[key]
 
     def assertDictContainsSubset(self, a, b, msg=None):
         """
         Assert that all the key/value pairs in a exist in b.
         """
-        for key in keys(a):
+        for key in a.keys():
             assert key in b
             assert a[key] == b[key]
 

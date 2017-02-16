@@ -1,9 +1,9 @@
 """AMQP Management API utilities."""
 from typing import Any, Union
-from . import abstract
+from kombu.types import ClientT
 
 
-def get_manager(client: abstract.Connection,
+def get_manager(client: ClientT,
                 hostname: str = None,
                 port: Union[int, str] = None,
                 userid: str = None,

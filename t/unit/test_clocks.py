@@ -1,12 +1,7 @@
-from __future__ import absolute_import, unicode_literals
-
 import pickle
-
 from heapq import heappush
 from time import time
-
 from case import Mock
-
 from kombu.clocks import LamportClock, timetuple
 
 

@@ -7,6 +7,9 @@ from collections import OrderedDict
 from contextlib import contextmanager
 from itertools import count, cycle
 from operator import itemgetter
+from typing import Any, Callable, Iterable, Mapping, Set, Sequence, Union
+
+from amqp.types import ChannelT, ConnectionT
 
 # jython breaks on relative import for .exceptions for some reason
 # (Issue #112)
@@ -15,7 +18,7 @@ from kombu import exceptions
 from .log import get_logger
 from .resource import Resource
 from .transport import get_transport_cls, supports_librabbitmq
-from .utils import abstract
+from .types import ClientT, EntityT, ResourceT, TransportT
 from .utils.collections import HashedSeq
 from .utils.functional import dictfilter, lazy, retry_over_time, shufflecycle
 from .utils.objects import cached_property
@@ -27,22 +30,21 @@ logger = get_logger(__name__)
 
 roundrobin_failover = cycle
 
-resolve_aliases = {
+resolve_aliases: Mapping[str, str] = {
     'pyamqp': 'amqp',
     'librabbitmq': 'amqp',
 }
 
-failover_strategies = {
+failover_strategies: Mapping[str, Callable] = {
     'round-robin': roundrobin_failover,
     'shuffle': shufflecycle,
 }
 
-_log_connection = os.environ.get('KOMBU_LOG_CONNECTION', False)
-_log_channel = os.environ.get('KOMBU_LOG_CHANNEL', False)
+_log_connection = bool(os.environ.get('KOMBU_LOG_CONNECTION', False))
+_log_channel = bool(os.environ.get('KOMBU_LOG_CHANNEL', False))
 
 
-@abstract.Connection.register
-class Connection:
+class Connection(ClientT):
     """A connection to the broker.
 
     Example:
@@ -106,48 +108,65 @@ class Connection:
     :keyword port: Default port if not provided in the URL.
     """
 
-    port = None
-    virtual_host = '/'
-    connect_timeout = 5
+    hostname: str
+    userid: str
+    password: str
+    ssl: Any
+    login_method: str
+    port: int = None
+    virtual_host: str = '/'
+    connect_timeout: float = 5.0
 
-    _closed = None
-    _connection = None
-    _default_channel = None
-    _transport = None
-    _logger = False
-    uri_prefix = None
+    uri_prefix: str = None
 
     #: The cache of declared entities is per connection,
     #: in case the server loses data.
-    declared_entities = None
+    declared_entities: Set[EntityT] = None
 
     #: Iterator returning the next broker URL to try in the event
     #: of connection failure (initialized by :attr:`failover_strategy`).
-    cycle = None
+    cycle: Iterable = None
 
     #: Additional transport specific options,
     #: passed on to the transport instance.
-    transport_options = None
+    transport_options: Mapping = None
 
     #: Strategy used to select new hosts when reconnecting after connection
     #: failure.  One of "round-robin", "shuffle" or any custom iterator
     #: constantly yielding new URLs to try.
-    failover_strategy = 'round-robin'
+    failover_strategy: str = 'round-robin'
 
     #: Heartbeat value, currently only supported by the py-amqp transport.
-    heartbeat = None
+    heartbeat: float = None
 
-    resolve_aliases = resolve_aliases
-    failover_strategies = failover_strategies
+    resolve_aliases: Mapping[str, str] = resolve_aliases
+    failover_strategies: Mapping[str, Callable] = failover_strategies
 
-    hostname = userid = password = ssl = login_method = None
+    _closed: bool = None
+    _connection: ConnectionT = None
+    _default_channel: ChannelT = None
+    _transport: TransportT = None
+    _logger: bool = False
+    _initial_params: Mapping
 
-    def __init__(self, hostname='localhost', userid=None,
-                 password=None, virtual_host=None, port=None, insist=False,
-                 ssl=False, transport=None, connect_timeout=5,
-                 transport_options=None, login_method=None, uri_prefix=None,
-                 heartbeat=0, failover_strategy='round-robin',
-                 alternates=None, **kwargs):
+    def __init__(
+            self,
+            hostname: str = 'localhost',
+            userid: str = None,
+            password: str = None,
+            virtual_host: str = None,
+            port: int = None,
+            insist: bool = False,
+            ssl: Any = None,
+            transport: Union[type, str] = None,
+            connect_timeout: float = 5.0,
+            transport_options: Mapping = None,
+            login_method: str = None,
+            uri_prefix: str = None,
+            heartbeat: float = None,
+            failover_strategy: str = 'round-robin',
+            alternates: Sequence[str] = None,
+            **kwargs):
         alt = [] if alternates is None else alternates
         # have to spell the args out, just to get nice docstrings :(
         params = self._initial_params = {
@@ -208,7 +227,7 @@ class Connection:
 
         self.declared_entities = set()
 
-    def switch(self, url):
+    def switch(self, url: str) -> None:
         """Switch connection parameters to use a new URL.
 
         Note:
@@ -219,14 +238,15 @@ class Connection:
         self._closed = False
         self._init_params(**dict(self._initial_params, **parse_url(url)))
 
-    def maybe_switch_next(self):
+    def maybe_switch_next(self) -> None:
         """Switch to next URL given by the current failover strategy."""
         if self.cycle:
             self.switch(next(self.cycle))
 
-    def _init_params(self, hostname, userid, password, virtual_host, port,
-                     insist, ssl, transport, connect_timeout,
-                     login_method, heartbeat):
+    def _init_params(self, hostname: str, userid: str, password: str,
+                     virtual_host: str, port: int, insist: bool, ssl: Any,
+                     transport: Union[type, str], connect_timeout: float,
+                     login_method: str, heartbeat: float) -> None:
         transport = transport or 'amqp'
         if transport == 'amqp' and supports_librabbitmq():
             transport = 'librabbitmq'
@@ -245,18 +265,20 @@ class Connection:
     def register_with_event_loop(self, loop):
         self.transport.register_with_event_loop(self.connection, loop)
 
-    def _debug(self, msg, *args, **kwargs):
+    def _debug(self, msg: str, *args, **kwargs) -> None:
         if self._logger:  # pragma: no cover
             fmt = '[Kombu connection:{id:#x}] {msg}'
             logger.debug(fmt.format(id=id(self), msg=str(msg)),
                          *args, **kwargs)
 
-    def connect(self):
+    async def connect(self) -> None:
         """Establish connection to server immediately."""
         self._closed = False
-        return self.connection
+        if self._connection is None:
+            await self._start_connection()
+        return self._connection
 
-    def channel(self):
+    def channel(self) -> ChannelT:
         """Create and return a new channel."""
         self._debug('create channel')
         chan = self.transport.create_channel(self.connection)
@@ -266,7 +288,7 @@ class Connection:
                               '[Kombu channel:{0.channel_id}] ')
         return chan
 
-    def heartbeat_check(self, rate=2):
+    async def heartbeat_check(self, rate: int = 2) -> None:
         """Check heartbeats.
 
         Allow the transport to perform any periodic tasks
@@ -283,9 +305,9 @@ class Connection:
                 is called every 3 / 2 seconds, then the rate is 2.
                 This value is currently unused by any transports.
         """
-        return self.transport.heartbeat_check(self.connection, rate=rate)
+        await self.transport.heartbeat_check(self.connection, rate=rate)
 
-    def drain_events(self, **kwargs):
+    async def drain_events(self, timeout: float = None, **kwargs) -> None:
         """Wait for a single event from the server.
 
         Arguments:
@@ -294,30 +316,31 @@ class Connection:
         Raises:
             socket.timeout: if the timeout is exceeded.
         """
-        return self.transport.drain_events(self.connection, **kwargs)
+        await self.transport.drain_events(
+            self.connection, timeout=timeout, **kwargs)
 
-    def maybe_close_channel(self, channel):
+    async def maybe_close_channel(self, channel: ChannelT) -> None:
         """Close given channel, but ignore connection and channel errors."""
         try:
-            channel.close()
+            await channel.close()
         except (self.connection_errors + self.channel_errors):
             pass
 
-    def _do_close_self(self):
+    async def _do_close_self(self):
         # Close only connection and channel(s), but not transport.
         self.declared_entities.clear()
         if self._default_channel:
-            self.maybe_close_channel(self._default_channel)
+            await self.maybe_close_channel(self._default_channel)
         if self._connection:
             try:
-                self.transport.close_connection(self._connection)
+                await self.transport.close_connection(self._connection)
             except self.connection_errors + (AttributeError, socket.error):
                 pass
             self._connection = None
 
-    def _close(self):
+    async def _close(self):
         """Really close connection, even if part of a connection pool."""
-        self._do_close_self()
+        await self._do_close_self()
         self._do_close_transport()
         self._debug('closed')
         self._closed = True
@@ -327,7 +350,7 @@ class Connection:
             self._transport.client = None
             self._transport = None
 
-    def collect(self, socket_timeout=None):
+    async def collect(self, socket_timeout=None):
         # amqp requires communication to close, we don't need that just
         # to clear out references, Transport._collect can also be implemented
         # by other transports that want fast after fork
@@ -337,7 +360,7 @@ class Connection:
             _timeo = socket.getdefaulttimeout()
             socket.setdefaulttimeout(socket_timeout)
             try:
-                self._do_close_self()
+                await self._do_close_self()
             except socket.timeout:
                 pass
             finally:
@@ -349,14 +372,22 @@ class Connection:
         self.declared_entities.clear()
         self._connection = None
 
-    def release(self):
+    async def release(self):
         """Close the connection (if open)."""
-        self._close()
-    close = release
+        await self._close()
 
-    def ensure_connection(self, errback=None, max_retries=None,
-                          interval_start=2, interval_step=2, interval_max=30,
-                          callback=None, reraise_as_library_errors=True):
+    async def close(self):
+        await self._close()
+
+    async def ensure_connection(
+            self,
+            errback=None,
+            max_retries=None,
+            interval_start=2,
+            interval_step=2,
+            interval_max=30,
+            callback=None,
+            reraise_as_library_errors=True):
         """Ensure we have a connection to the server.
 
         If not retry establishing the connection with the settings
@@ -395,10 +426,12 @@ class Connection:
         if not reraise_as_library_errors:
             ctx = self._dummy_context
         with ctx():
-            retry_over_time(self.connect, self.recoverable_connection_errors,
-                            (), {}, on_error, max_retries,
-                            interval_start, interval_step, interval_max,
-                            callback)
+            await retry_over_time(
+                self.connect, self.recoverable_connection_errors,
+                (), {}, on_error, max_retries,
+                interval_start, interval_step, interval_max,
+                callback,
+            )
         return self
 
     @contextmanager
@@ -423,19 +456,23 @@ class Connection:
         """Return true if the cycle is complete after number of `retries`."""
         return not (retries + 1) % len(self.alt) if self.alt else True
 
-    def revive(self, new_channel):
+    async def revive(self, new_channel):
         """Revive connection after connection re-established."""
         if self._default_channel and new_channel is not self._default_channel:
-            self.maybe_close_channel(self._default_channel)
+            await self.maybe_close_channel(self._default_channel)
             self._default_channel = None
 
     def _default_ensure_callback(self, exc, interval):
         logger.error("Ensure: Operation error: %r. Retry in %ss",
                      exc, interval, exc_info=True)
 
-    def ensure(self, obj, fun, errback=None, max_retries=None,
-               interval_start=1, interval_step=1, interval_max=1,
-               on_revive=None):
+    async def ensure(self, obj, fun,
+                     errback=None,
+                     max_retries=None,
+                     interval_start=1,
+                     interval_step=1,
+                     interval_max=1,
+                     on_revive=None):
         """Ensure operation completes.
 
         Regardless of any channel/connection errors occurring.
@@ -475,7 +512,7 @@ class Connection:
             ...                       errback=errback, max_retries=3)
             >>> publish({'hello': 'world'}, routing_key='dest')
         """
-        def _ensured(*args, **kwargs):
+        async def _ensured(*args, **kwargs):
             got_connection = 0
             conn_errors = self.recoverable_connection_errors
             chan_errors = self.recoverable_channel_errors
@@ -485,7 +522,7 @@ class Connection:
             with self._reraise_as_library_errors():
                 for retries in count(0):  # for infinity
                     try:
-                        return fun(*args, **kwargs)
+                        return await fun(*args, **kwargs)
                     except conn_errors as exc:
                         if got_connection and not has_modern_errors:
                             # transport can not distinguish between
@@ -497,21 +534,21 @@ class Connection:
                             raise
                         self._debug('ensure connection error: %r',
                                     exc, exc_info=1)
-                        self.collect()
+                        await self.collect()
                         errback and errback(exc, 0)
                         remaining_retries = None
                         if max_retries is not None:
                             remaining_retries = max(max_retries - retries, 1)
-                        self.ensure_connection(
+                        await self.ensure_connection(
                             errback,
                             remaining_retries,
                             interval_start, interval_step, interval_max,
                             reraise_as_library_errors=False,
                         )
                         channel = self.default_channel
-                        obj.revive(channel)
+                        await obj.revive(channel)
                         if on_revive:
-                            on_revive(channel)
+                            await on_revive(channel)
                         got_connection += 1
                     except chan_errors as exc:
                         if max_retries is not None and retries > max_retries:
@@ -641,7 +678,7 @@ class Connection:
             sanitize=not include_password, mask=mask,
         )
 
-    def Pool(self, limit=None, **kwargs):
+    def Pool(self, limit=None, **kwargs) -> ResourceT:
         """Pool of connections.
 
         See Also:
@@ -667,7 +704,7 @@ class Connection:
         """
         return ConnectionPool(self, limit, **kwargs)
 
-    def ChannelPool(self, limit=None, **kwargs):
+    def ChannelPool(self, limit=None, **kwargs) -> ResourceT:
         """Pool of channels.
 
         See Also:
@@ -746,9 +783,9 @@ class Connection:
         return SimpleBuffer(channel or self, name, no_ack, queue_opts,
                             exchange_opts, **kwargs)
 
-    def _establish_connection(self):
+    async def _establish_connection(self):
         self._debug('establishing connection...')
-        conn = self.transport.establish_connection()
+        conn = await self.transport.establish_connection()
         self._debug('connection established: %r', self)
         return conn
 
@@ -765,10 +802,18 @@ class Connection:
         return self.__class__, tuple(self.info().values()), None
 
     def __enter__(self):
+        self.connect()
         return self
 
     def __exit__(self, *args):
         self.release()
+
+    async def __aenter__(self):
+        await self.connect()
+        return self
+
+    async def __aexit__(self, exc_type, exc_value, traceback):
+        await self.release()
 
     @property
     def qos_semantics_matches_spec(self):
@@ -781,6 +826,12 @@ class Connection:
                 self._connection is not None and
                 self.transport.verify_connection(self._connection))
 
+    async def _start_connection(self):
+        self.declared_entities.clear()
+        self._default_channel = None
+        self._connection = await self._establish_connection()
+        self._closed = False
+
     @property
     def connection(self):
         """The underlying connection object.
@@ -789,13 +840,7 @@ class Connection:
             This instance is transport specific, so do not
             depend on the interface of this object.
         """
-        if not self._closed:
-            if not self.connected:
-                self.declared_entities.clear()
-                self._default_channel = None
-                self._connection = self._establish_connection()
-                self._closed = False
-            return self._connection
+        return self._connection
 
     @property
     def default_channel(self):

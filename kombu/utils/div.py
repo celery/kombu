@@ -1,9 +1,13 @@
 """Div. Utilities."""
-from .encoding import default_encode
 import sys
+from typing import Any, Callable, IO
+from .encoding import default_encode
 
 
-def emergency_dump_state(state, open_file=open, dump=None, stderr=None):
+def emergency_dump_state(state: Any,
+                         open_file: Callable = open,
+                         dump: Callable = None,
+                         stderr: IO = None):
     """Dump message state to stdout or file."""
     from pprint import pformat
     from tempfile import mktemp

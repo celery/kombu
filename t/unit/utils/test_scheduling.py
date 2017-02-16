@@ -1,9 +1,5 @@
-from __future__ import absolute_import, unicode_literals
-
 import pytest
-
 from case import Mock
-
 from kombu.utils.scheduling import FairCycle, cycle_by_name
 
 

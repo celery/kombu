@@ -8,12 +8,19 @@ from copy import copy
 from itertools import count
 from threading import local
 from time import time
+from typing import Any, Callable, Mapping, Set, Sequence, cast
 
-from . import Exchange, Queue, Consumer, Producer
-from .clocks import LamportClock
+from amqp.types import ChannelT
+
+from .clocks import Clock, LamportClock
 from .common import maybe_declare, oid_from
+from .entity import Exchange, Queue
 from .exceptions import InconsistencyError
 from .log import get_logger
+from .messaging import Consumer, Producer
+from .typing import (
+    ClientT, ConsumerT, ExchangeT, ProducerT, MessageT, ResourceT,
+)
 from .utils.functional import maybe_evaluate, reprcall
 from .utils.objects import cached_property
 from .utils.uuid import uuid
@@ -35,22 +42,26 @@ class Node:
     """Mailbox node."""
 
     #: hostname of the node.
-    hostname = None
+    hostname: str = None
 
     #: the :class:`Mailbox` this is a node for.
-    mailbox = None
+    mailbox: 'Mailbox' = None
 
     #: map of method name/handlers.
-    handlers = None
+    handlers: Mapping[str, Callable] = None
 
     #: current context (passed on to handlers)
-    state = None
+    state: Any = None
 
     #: current channel.
-    channel = None
+    channel: ChannelT = None
 
-    def __init__(self, hostname, state=None, channel=None,
-                 handlers=None, mailbox=None):
+    def __init__(self,
+                 hostname: str,
+                 state: Any = None,
+                 channel: ChannelT = None,
+                 handlers: Mapping[str, Callable] = None,
+                 mailbox: 'Mailbox' = None) -> None:
         self.channel = channel
         self.mailbox = mailbox
         self.hostname = hostname
@@ -60,10 +71,14 @@ class Node:
             handlers = {}
         self.handlers = handlers
 
-    def Consumer(self, channel=None, no_ack=True, accept=None, **options):
+    def Consumer(self,
+                 channel: ChannelT = None,
+                 no_ack: bool = True,
+                 accept: Set[str] = None,
+                 **options) -> ConsumerT:
         queue = self.mailbox.get_queue(self.hostname)
 
-        def verify_exclusive(name, messages, consumers):
+        def verify_exclusive(name: str, messages: int, consumers: int) -> None:
             if consumers:
                 warnings.warn(W_PIDBOX_IN_USE.format(node=self))
         queue.on_declared = verify_exclusive
@@ -74,22 +89,24 @@ class Node:
             **options
         )
 
-    def handler(self, fun):
+    def handler(self, fun: Callable) -> Callable:
         self.handlers[fun.__name__] = fun
         return fun
 
-    def on_decode_error(self, message, exc):
+    def on_decode_error(self, message: str, exc: Exception) -> None:
         error('Cannot decode message: %r', exc, exc_info=1)
 
-    def listen(self, channel=None, callback=None):
+    def listen(self,
+               channel: ChannelT = None,
+               callback: Callable = None) -> ConsumerT:
         consumer = self.Consumer(channel=channel,
                                  callbacks=[callback or self.handle_message],
                                  on_decode_error=self.on_decode_error)
         consumer.consume()
         return consumer
 
-    def dispatch(self, method, arguments=None,
-                 reply_to=None, ticket=None, **kwargs):
+    def dispatch(self, method: str, arguments: Mapping = None,
+                 reply_to: str = None, ticket: str = None, **kwargs) -> Any:
         arguments = arguments or {}
         debug('pidbox received method %s [reply_to:%s ticket:%s]',
               reprcall(method, (), kwargs=arguments), reply_to, ticket)
@@ -109,16 +126,17 @@ class Node:
                        ticket=ticket)
         return reply
 
-    def handle(self, method, arguments={}):
+    def handle(self, method: str, arguments: Mapping = {}) -> Any:
         return self.handlers[method](self.state, **arguments)
 
-    def handle_call(self, method, arguments):
+    def handle_call(self, method: str, arguments: Mapping) -> Any:
         return self.handle(method, arguments)
 
-    def handle_cast(self, method, arguments):
+    def handle_cast(self, method: str, arguments: Mapping) -> Any:
         return self.handle(method, arguments)
 
-    def handle_message(self, body, message=None):
+    def handle_message(self, body: Any, message: MessageT = None) -> None:
+        body = cast(Mapping, body)
         destination = body.get('destination')
         if message:
             self.adjust_clock(message.headers.get('clock') or 0)
@@ -126,7 +144,8 @@ class Node:
             return self.dispatch(**body)
     dispatch_from_message = handle_message
 
-    def reply(self, data, exchange, routing_key, ticket, **kwargs):
+    def reply(self, data: Any, exchange: str, routing_key: str, ticket: str,
+              **kwargs) -> None:
         self.mailbox._publish_reply(data, exchange, routing_key, ticket,
                                     channel=self.channel,
                                     serializer=self.mailbox.serializer)
@@ -135,36 +154,42 @@ class Node:
 class Mailbox:
     """Process Mailbox."""
 
-    node_cls = Node
-    exchange_fmt = '%s.pidbox'
-    reply_exchange_fmt = 'reply.%s.pidbox'
+    node_cls: type = Node
+    exchange_fmt: str = '%s.pidbox'
+    reply_exchange_fmt: str = 'reply.%s.pidbox'
 
     #: Name of application.
-    namespace = None
+    namespace: str = None
 
     #: Connection (if bound).
-    connection = None
+    connection: ClientT = None
 
     #: Exchange type (usually direct, or fanout for broadcast).
-    type = 'direct'
+    type: str = 'direct'
 
     #: mailbox exchange (init by constructor).
-    exchange = None
+    exchange: ExchangeT = None
 
     #: exchange to send replies to.
-    reply_exchange = None
+    reply_exchange: ExchangeT = None
 
     #: Only accepts json messages by default.
-    accept = ['json']
+    accept: Set[str] = {'json'}
 
     #: Message serializer
-    serializer = None
+    serializer: str = None
 
-    def __init__(self, namespace,
-                 type='direct', connection=None, clock=None,
-                 accept=None, serializer=None, producer_pool=None,
-                 queue_ttl=None, queue_expires=None,
-                 reply_queue_ttl=None, reply_queue_expires=10.0):
+    def __init__(self, namespace: str,
+                 type: str = 'direct',
+                 connection: ClientT = None,
+                 clock: Clock = None,
+                 accept: Set[str] = None,
+                 serializer: str = None,
+                 producer_pool: ResourceT = None,
+                 queue_ttl: float = None,
+                 queue_expires: float = None,
+                 reply_queue_ttl: float = None,
+                 reply_queue_expires: float = 10.0) -> None:
         self.namespace = namespace
         self.connection = connection
         self.type = type
@@ -181,36 +206,48 @@ class Mailbox:
         self.reply_queue_expires = reply_queue_expires
         self._producer_pool = producer_pool
 
-    def __call__(self, connection):
+    def __call__(self, connection: ClientT) -> 'Mailbox':
         bound = copy(self)
         bound.connection = connection
         return bound
 
-    def Node(self, hostname=None, state=None, channel=None, handlers=None):
+    def Node(self,
+             hostname: str = None,
+             state: Any = None,
+             channel: ChannelT = None,
+             handlers: Mapping[str, Callable] = None) -> Node:
         hostname = hostname or socket.gethostname()
         return self.node_cls(hostname, state, channel, handlers, mailbox=self)
 
-    def call(self, destination, command, kwargs={},
-             timeout=None, callback=None, channel=None):
+    def call(self, destination: str, command: str,
+             kwargs: Mapping[str, Any] = {},
+             timeout: float = None,
+             callback: Callable = None,
+             channel: ChannelT = None) -> Sequence[Mapping]:
         return self._broadcast(command, kwargs, destination,
                                reply=True, timeout=timeout,
                                callback=callback,
                                channel=channel)
 
-    def cast(self, destination, command, kwargs={}):
-        return self._broadcast(command, kwargs, destination, reply=False)
+    def cast(self, destination: str, command: str,
+             kwargs: Mapping[str, Any] = {}) -> None:
+            self._broadcast(command, kwargs, destination, reply=False)
 
-    def abcast(self, command, kwargs={}):
-        return self._broadcast(command, kwargs, reply=False)
+    def abcast(self, command: str, kwargs: Mapping[str, Any] = {}) -> None:
+        self._broadcast(command, kwargs, reply=False)
 
-    def multi_call(self, command, kwargs={}, timeout=1,
-                   limit=None, callback=None, channel=None):
+    def multi_call(self, command: str,
+                   kwargs: Mapping[str, Any] = {},
+                   timeout: str = 1,
+                   limit: int = None,
+                   callback: Callable = None,
+                   channel: ChannelT = None) -> Sequence[Mapping]:
         return self._broadcast(command, kwargs, reply=True,
                                timeout=timeout, limit=limit,
                                callback=callback,
                                channel=channel)
 
-    def get_reply_queue(self):
+    def get_reply_queue(self) -> Queue:
         oid = self.oid
         return Queue(
             '%s.%s' % (oid, self.reply_exchange.name),
@@ -223,10 +260,10 @@ class Mailbox:
         )
 
     @cached_property
-    def reply_queue(self):
+    def reply_queue(self) -> Queue:
         return self.get_reply_queue()
 
-    def get_queue(self, hostname):
+    def get_queue(self, hostname: str) -> Queue:
         return Queue(
             '%s.%s.pidbox' % (hostname, self.namespace),
             exchange=self.exchange,
@@ -237,7 +274,9 @@ class Mailbox:
         )
 
     @contextmanager
-    def producer_or_acquire(self, producer=None, channel=None):
+    def producer_or_acquire(self,
+                            producer: ProducerT = None,
+                            channel: ChannelT = None) -> ProducerT:
         if producer:
             yield producer
         elif self.producer_pool:
@@ -246,8 +285,11 @@ class Mailbox:
         else:
             yield Producer(channel, auto_declare=False)
 
-    def _publish_reply(self, reply, exchange, routing_key, ticket,
-                       channel=None, producer=None, **opts):
+    def _publish_reply(self, reply: Any,
+                       exchange: str, routing_key: str, ticket: str,
+                       channel: ChannelT = None,
+                       producer: ProducerT = None,
+                       **opts) -> None:
         chan = channel or self.connection.default_channel
         exchange = Exchange(exchange, exchange_type='direct',
                             delivery_mode='transient',
@@ -265,9 +307,13 @@ class Mailbox:
                 # queue probably deleted and no one is expecting a reply.
                 pass
 
-    def _publish(self, type, arguments, destination=None,
-                 reply_ticket=None, channel=None, timeout=None,
-                 serializer=None, producer=None):
+    def _publish(self, type: str, arguments: Mapping[str, Any],
+                 destination: str = None,
+                 reply_ticket: str = None,
+                 channel: ChannelT = None,
+                 timeout: float = None,
+                 serializer: str = None,
+                 producer: ProducerT = None) -> None:
         message = {'method': type,
                    'arguments': arguments,
                    'destination': destination}
@@ -287,9 +333,15 @@ class Mailbox:
                 serializer=serializer,
             )
 
-    def _broadcast(self, command, arguments=None, destination=None,
-                   reply=False, timeout=1, limit=None,
-                   callback=None, channel=None, serializer=None):
+    def _broadcast(self, command: str,
+                   arguments: Mapping[str, Any] = None,
+                   destination: str = None,
+                   reply: bool = False,
+                   timeout: float = 1.0,
+                   limit: int = None,
+                   callback: Callable = None,
+                   channel: ChannelT = None,
+                   serializer: str = None) -> Sequence[Mapping]:
         if destination is not None and \
                 not isinstance(destination, (list, tuple)):
             raise ValueError(
@@ -317,9 +369,12 @@ class Mailbox:
                                  callback=callback,
                                  channel=chan)
 
-    def _collect(self, ticket,
-                 limit=None, timeout=1, callback=None,
-                 channel=None, accept=None):
+    def _collect(self, ticket: str,
+                 limit: str = None,
+                 timeout: float = 1.0,
+                 callback: Callable = None,
+                 channel: ChannelT = None,
+                 accept: Set[str] = None) -> Sequence[Mapping]:
         if accept is None:
             accept = self.accept
         chan = channel or self.connection.default_channel
@@ -334,7 +389,7 @@ class Mailbox:
         except KeyError:
             pass
 
-        def on_message(body, message):
+        def on_message(body: Any, message: MessageT) -> None:
             # ticket header added in kombu 2.5
             header = message.headers.get
             adjust_clock(header('clock') or 0)
@@ -361,20 +416,20 @@ class Mailbox:
         finally:
             chan.after_reply_message_received(queue.name)
 
-    def _get_exchange(self, namespace, type):
+    def _get_exchange(self, namespace: str, type: str) -> Exchange:
         return Exchange(self.exchange_fmt % namespace,
                         type=type,
                         durable=False,
                         delivery_mode='transient')
 
-    def _get_reply_exchange(self, namespace):
+    def _get_reply_exchange(self, namespace: str) -> Exchange:
         return Exchange(self.reply_exchange_fmt % namespace,
                         type='direct',
                         durable=False,
                         delivery_mode='transient')
 
     @cached_property
-    def oid(self):
+    def oid(self) -> str:
         try:
             return self._tls.OID
         except AttributeError:
@@ -382,5 +437,5 @@ class Mailbox:
             return oid
 
     @cached_property
-    def producer_pool(self):
+    def producer_pool(self) -> ResourceT:
         return maybe_evaluate(self._producer_pool)

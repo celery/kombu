@@ -6,9 +6,11 @@ from itertools import count, repeat
 from time import sleep
 from typing import (
     Any, Callable, Dict, Iterable, Iterator,
-    KeysView, Mapping, Optional, Sequence, Tuple,
+    KeysView, ItemsView, Mapping, Optional, Sequence, Tuple, ValuesView,
 )
+from amqp.types import ChannelT
 from vine.utils import wraps
+from ..types import ClientT
 from .encoding import safe_repr as _safe_repr
 
 __all__ = [
@@ -17,27 +19,36 @@ __all__ = [
 ]
 
 KEYWORD_MARK = object()
-
 MemoizeKeyFun = Callable[[Sequence, Mapping], Any]
 
 
 class ChannelPromise(object):
+    __value__: ChannelT
 
-    def __init__(self, contract):
-        self.__contract__ = contract
+    def __init__(self, connection: ClientT) -> None:
+        self.__connection__ = connection
 
-    def __call__(self):
+    def __call__(self) -> Any:
         try:
             return self.__value__
         except AttributeError:
-            value = self.__value__ = self.__contract__()
+            value = self.__value__ = self.__connection__.default_channel
             return value
 
-    def __repr__(self):
+    async def resolve(self):
+        try:
+            return self.__value__
+        except AttributeError:
+            await self.__connection__.connect()
+            value = self.__value__ = self.__connection__.default_channel
+            await value.open()
+            return value
+
+    def __repr__(self) -> str:
         try:
             return repr(self.__value__)
         except AttributeError:
-            return '<promise: 0x{0:x}>'.format(id(self.__contract__))
+            return '<promise: 0x{0:x}>'.format(id(self.__connection__))
 
 
 class LRUCache(UserDict):
@@ -53,7 +64,7 @@ class LRUCache(UserDict):
     def __init__(self, limit: int = None) -> None:
         self.limit = limit
         self.mutex = threading.RLock()
-        self.data = OrderedDict()  # type: OrderedDict
+        self.data: OrderedDict = OrderedDict()
 
     def __getitem__(self, key: Any) -> Any:
         with self.mutex:
@@ -69,7 +80,7 @@ class LRUCache(UserDict):
                 for _ in range(len(data) - limit):
                     data.popitem(last=False)
 
-    def popitem(self, last: bool=True) -> Any:
+    def popitem(self, last: bool = True) -> Any:
         with self.mutex:
             return self.data.popitem(last)
 
@@ -83,7 +94,7 @@ class LRUCache(UserDict):
     def __iter__(self) -> Iterator:
         return iter(self.data)
 
-    def items(self) -> Iterator[Tuple[Any, Any]]:
+    def items(self) -> ItemsView[Any, Any]:
         with self.mutex:
             for k in self:
                 try:
@@ -91,7 +102,7 @@ class LRUCache(UserDict):
                 except KeyError:  # pragma: no cover
                     pass
 
-    def values(self) -> Iterator[Any]:
+    def values(self) -> ValuesView[Any]:
         with self.mutex:
             for k in self:
                 try:
@@ -104,7 +115,7 @@ class LRUCache(UserDict):
         with self.mutex:
             return self.data.keys()
 
-    def incr(self, key: Any, delta: int=1) -> Any:
+    def incr(self, key: Any, delta: int = 1) -> Any:
         with self.mutex:
             # this acts as memcached does- store as a string, but return a
             # integer as long as it exists and we can cast it
@@ -122,9 +133,9 @@ class LRUCache(UserDict):
         self.mutex = threading.RLock()
 
 
-def memoize(maxsize: Optional[int]=None,
-            keyfun: Optional[MemoizeKeyFun]=None,
-            Cache: Any=LRUCache) -> Callable:
+def memoize(maxsize: int = None,
+            keyfun: MemoizeKeyFun = None,
+            Cache: Any = LRUCache) -> Callable:
     """Decorator to cache function return value."""
 
     def _memoize(fun: Callable) -> Callable:
@@ -189,10 +200,10 @@ class lazy:
     def __repr__(self) -> str:
         return repr(self())
 
-    def __eq__(self, rhs) -> bool:
+    def __eq__(self, rhs: Any) -> bool:
         return self() == rhs
 
-    def __ne__(self, rhs) -> bool:
+    def __ne__(self, rhs: Any) -> bool:
         return self() != rhs
 
     def __deepcopy__(self, memo: Dict) -> Any:
@@ -200,8 +211,10 @@ class lazy:
         return self
 
     def __reduce__(self) -> Any:
-        return (self.__class__, (self._fun,), {'_args': self._args,
-                                               '_kwargs': self._kwargs})
+        return (self.__class__, (self._fun,), {
+            '_args': self._args,
+            '_kwargs': self._kwargs,
+        })
 
 
 def maybe_evaluate(value: Any) -> Any:
@@ -212,8 +225,9 @@ def maybe_evaluate(value: Any) -> Any:
 
 
 def is_list(l: Any,
-            scalars: tuple=(Mapping, str),
-            iters: tuple=(Iterable,)) -> bool:
+            *,
+            scalars: tuple = (Mapping, str),
+            iters: tuple = (Iterable,)) -> bool:
     """Return true if the object is iterable.
 
     Note:
@@ -222,18 +236,19 @@ def is_list(l: Any,
     return isinstance(l, iters) and not isinstance(l, scalars or ())
 
 
-def maybe_list(l: Any, scalars: tuple=(Mapping, str)) -> Optional[Sequence]:
+def maybe_list(l: Any, *,
+               scalars: tuple = (Mapping, str)) -> Optional[Sequence]:
     """Return list of one element if ``l`` is a scalar."""
     return l if l is None or is_list(l, scalars) else [l]
 
 
-def dictfilter(d: Optional[Mapping]=None, **kw) -> Mapping:
+def dictfilter(d: Mapping = None, **kw) -> Mapping:
     """Remove all keys from dict ``d`` whose value is :const:`None`."""
     d = kw if d is None else (dict(d, **kw) if kw else d)
     return {k: v for k, v in d.items() if v is not None}
 
 
-def shufflecycle(it):
+def shufflecycle(it: Sequence) -> Iterator:
     it = list(it)  # don't modify callers list
     shuffle = random.shuffle
     for _ in repeat(None):
@@ -241,7 +256,10 @@ def shufflecycle(it):
         yield it[0]
 
 
-def fxrange(start=1.0, stop=None, step=1.0, repeatlast=False):
+def fxrange(start: float = 1.0,
+            stop: float = None,
+            step: float = 1.0,
+            repeatlast: bool = False) -> Iterator[float]:
     cur = start * 1.0
     while 1:
         if not stop or cur <= stop:
@@ -253,7 +271,10 @@ def fxrange(start=1.0, stop=None, step=1.0, repeatlast=False):
             yield cur - step
 
 
-def fxrangemax(start=1.0, stop=None, step=1.0, max=100.0):
+def fxrangemax(start: float = 1.0,
+               stop: float = None,
+               step: float = 1.0,
+               max: float = 100.0) -> Iterator[float]:
     sum_, cur = 0, start * 1.0
     while 1:
         if sum_ >= max:
@@ -266,9 +287,18 @@ def fxrangemax(start=1.0, stop=None, step=1.0, max=100.0):
         sum_ += cur
 
 
-def retry_over_time(fun, catch, args=[], kwargs={}, errback=None,
-                    max_retries=None, interval_start=2, interval_step=2,
-                    interval_max=30, callback=None):
+async def retry_over_time(
+        fun: Callable,
+        catch: Tuple[Any, ...],
+        args: Sequence = [],
+        kwargs: Mapping[str, Any] = {},
+        *,
+        errback: Callable = None,
+        max_retries: int = None,
+        interval_start: float = 2.0,
+        interval_step: float = 2.0,
+        interval_max: float = 30.0,
+        callback: Callable = None) -> Any:
     """Retry the function over and over until max retries is exceeded.
 
     For each retry we sleep a for a while before we try again, this interval
@@ -303,7 +333,7 @@ def retry_over_time(fun, catch, args=[], kwargs={}, errback=None,
                              interval_step, repeatlast=True)
     for retries in count():
         try:
-            return fun(*args, **kwargs)
+            return await fun(*args, **kwargs)
         except catch as exc:
             if max_retries and retries >= max_retries:
                 raise
@@ -320,11 +350,17 @@ def retry_over_time(fun, catch, args=[], kwargs={}, errback=None,
                 sleep(abs(int(tts) - tts))
 
 
-def reprkwargs(kwargs, sep=', ', fmt='{0}={1}'):
+def reprkwargs(kwargs: Mapping,
+               *,
+               sep: str = ', ', fmt: str = '{0}={1}') -> str:
     return sep.join(fmt.format(k, _safe_repr(v)) for k, v in kwargs.items())
 
 
-def reprcall(name, args=(), kwargs={}, sep=', '):
+def reprcall(name: str,
+             args: Sequence = (),
+             kwargs: Mapping = {},
+             *,
+             sep: str = ', ') -> str:
     return '{0}({1}{2}{3})'.format(
         name, sep.join(map(_safe_repr, args or ())),
         (args and kwargs) and sep or '',

@@ -3,6 +3,8 @@ import numbers
 import sys
 from functools import wraps
 from contextlib import contextmanager
+from typing import Any, Callable, Iterator, Optional, Tuple, Union
+from .typing import SupportsFileno
 
 try:
     from io import UnsupportedOperation
@@ -21,17 +23,17 @@ except ImportError:  # pragma: no cover
 
 _environment = None
 
-def coro(gen):
+def coro(gen: Callable) -> Callable:
     """Decorator to mark generator as co-routine."""
     @wraps(gen)
-    def wind_up(*args, **kwargs):
+    def wind_up(*args, **kwargs) -> Any:
         it = gen(*args, **kwargs)
         next(it)
         return it
     return wind_up
 
 
-def _detect_environment():
+def _detect_environment() -> str:
     # ## -eventlet-
     if 'eventlet' in sys.modules:
         try:
@@ -57,14 +59,15 @@ def _detect_environment():
     return 'default'
 
 
-def detect_environment():
+def detect_environment() -> str:
     """Detect the current environment: default, eventlet, or gevent."""
     global _environment
     if _environment is None:
         _environment = _detect_environment()
     return _environment
 
-def entrypoints(namespace):
+
+def entrypoints(namespace: str) -> Iterator[Tuple[str, Any]]:
     """Return setuptools entrypoints for namespace."""
     try:
         from pkg_resources import iter_entry_points
@@ -73,14 +76,14 @@ def entrypoints(namespace):
     return ((ep, ep.load()) for ep in iter_entry_points(namespace))
 
 
-def fileno(f):
+def fileno(f: Union[SupportsFileno, numbers.Integral]) -> numbers.Integral:
     """Get fileno from file-like object."""
     if isinstance(f, numbers.Integral):
         return f
     return f.fileno()
 
 
-def maybe_fileno(f):
+def maybe_fileno(f: Any) -> Optional[numbers.Integral]:
     """Get object fileno, or :const:`None` if not defined."""
     try:
         return fileno(f)

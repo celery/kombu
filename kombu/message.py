@@ -1,10 +1,12 @@
 """Message class."""
+import logging
 import sys
-
+from typing import Any, Callable, List, Mapping, Set, Tuple
+from amqp.types import ChannelT
+from . import types
 from .compression import decompress
 from .exceptions import MessageStateError
 from .serialization import loads
-from .utils import abstract
 from .utils.functional import dictfilter
 
 __all__ = ['Message']
@@ -13,7 +15,7 @@ ACK_STATES = {'ACK', 'REJECTED', 'REQUEUED'}
 IS_PYPY = hasattr(sys, 'pypy_version_info')
 
 
-@abstract.Message.register
+@types.MessageT.register
 class Message:
     """Base class for received messages.
 
@@ -48,7 +50,7 @@ class Message:
 
     MessageStateError = MessageStateError
 
-    errors = None
+    errors: List[Any] = None
 
     if not IS_PYPY:  # pragma: no cover
         __slots__ = (
@@ -58,10 +60,19 @@ class Message:
             'body', '_decoded_cache', 'accept', '__dict__',
         )
 
-    def __init__(self, body=None, delivery_tag=None,
-                 content_type=None, content_encoding=None, delivery_info={},
-                 properties=None, headers=None, postencode=None,
-                 accept=None, channel=None, **kwargs):
+    def __init__(
+            self,
+            body: Any = None,
+            delivery_tag: str = None,
+            content_type: str = None,
+            content_encoding: str = None,
+            delivery_info: Mapping = None,
+            properties: Mapping = None,
+            headers: Mapping = None,
+            postencode: str = None,
+            accept: Set[str] = None,
+            channel: ChannelT = None,
+            **kwargs) -> None:
         self.errors = [] if self.errors is None else self.errors
         self.channel = channel
         self.delivery_tag = delivery_tag
@@ -88,7 +99,7 @@ class Message:
                 self.errors.append(sys.exc_info())
         self.body = body
 
-    def _reraise_error(self, callback=None):
+    def _reraise_error(self, callback: Callable = None) -> None:
         try:
             raise self.errors[0][1].with_traceback(self.errors[0][2])
         except Exception as exc:
@@ -96,7 +107,7 @@ class Message:
                 raise
             callback(self, exc)
 
-    def ack(self, multiple=False):
+    async def ack(self, multiple: bool = False) -> None:
         """Acknowledge this message as being processed.
 
         This will remove the message from the queue.
@@ -120,24 +131,28 @@ class Message:
             raise self.MessageStateError(
                 'Message already acknowledged with state: {0._state}'.format(
                     self))
-        self.channel.basic_ack(self.delivery_tag, multiple=multiple)
+        await self.channel.basic_ack(self.delivery_tag, multiple=multiple)
         self._state = 'ACK'
 
-    def ack_log_error(self, logger, errors, multiple=False):
+    async def ack_log_error(
+            self, logger: logging.Logger, errors: Tuple[type, ...],
+            multiple: bool = False) -> None:
         try:
-            self.ack(multiple=multiple)
+            await self.ack(multiple=multiple)
         except errors as exc:
             logger.critical("Couldn't ack %r, reason:%r",
                             self.delivery_tag, exc, exc_info=True)
 
-    def reject_log_error(self, logger, errors, requeue=False):
+    async def reject_log_error(
+            self, logger: logging.Logger, errors: Tuple[type, ...],
+            requeue: bool = False) -> None:
         try:
-            self.reject(requeue=requeue)
+            await self.reject(requeue=requeue)
         except errors as exc:
             logger.critical("Couldn't reject %r, reason: %r",
                             self.delivery_tag, exc, exc_info=True)
 
-    def reject(self, requeue=False):
+    async def reject(self, requeue: bool = False) -> None:
         """Reject this message.
 
         The message will be discarded by the server.
@@ -153,10 +168,10 @@ class Message:
             raise self.MessageStateError(
                 'Message already acknowledged with state: {0._state}'.format(
                     self))
-        self.channel.basic_reject(self.delivery_tag, requeue=requeue)
+        await self.channel.basic_reject(self.delivery_tag, requeue=requeue)
         self._state = 'REJECTED'
 
-    def requeue(self):
+    async def requeue(self) -> None:
         """Reject this message and put it back on the queue.
 
         Warning:
@@ -174,10 +189,10 @@ class Message:
             raise self.MessageStateError(
                 'Message already acknowledged with state: {0._state}'.format(
                     self))
-        self.channel.basic_reject(self.delivery_tag, requeue=True)
+        await self.channel.basic_reject(self.delivery_tag, requeue=True)
         self._state = 'REQUEUED'
 
-    def decode(self):
+    def decode(self) -> Any:
         """Deserialize the message body.
 
         Returning the original python structure sent by the publisher.
@@ -190,21 +205,21 @@ class Message:
             self._decoded_cache = self._decode()
         return self._decoded_cache
 
-    def _decode(self):
+    def _decode(self) -> Any:
         return loads(self.body, self.content_type,
                      self.content_encoding, accept=self.accept)
 
     @property
-    def acknowledged(self):
+    def acknowledged(self) -> bool:
         """Set to true if the message has been acknowledged."""
         return self._state in ACK_STATES
 
     @property
-    def payload(self):
+    def payload(self) -> Any:
         """The decoded message body."""
         return self._decoded_cache if self._decoded_cache else self.decode()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return '<{0} object at {1:#x} with details {2!r}>'.format(
             type(self).__name__, id(self), dictfilter(
                 state=self._state,

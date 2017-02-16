@@ -4,22 +4,16 @@ It uses Etcd as a store to transport messages in Queues
 
 It uses python-etcd for talking to Etcd's HTTP API
 """
-from __future__ import absolute_import, unicode_literals
-
 import os
 import socket
-
 from collections import defaultdict
 from contextlib import contextmanager
-
+from queue import Empty
 from kombu.exceptions import ChannelError
-from kombu.five import Empty
 from kombu.log import get_logger
 from kombu.utils.json import loads, dumps
 from kombu.utils.objects import cached_property
-
 from . import virtual
-
 try:
     import etcd
 except ImportError:

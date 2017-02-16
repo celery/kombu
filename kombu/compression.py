@@ -11,15 +11,15 @@ __all__ = [
     'get_decoder', 'compress', 'decompress',
 ]
 
-TEncoder = Callable[[bytes], bytes]
-TDecoder = Callable[[bytes], bytes]
+EncoderT = Callable[[bytes], bytes]
+DecoderT = Callable[[bytes], bytes]
 
-_aliases = {}   # type: MutableMapping[str, str]
-_encoders = {}  # type: MutableMapping[str, TEncoder]
-_decoders = {}  # type: MutableMapping[str, TDecoder]
+_aliases: MutableMapping[str, str] = {}
+_encoders: MutableMapping[str, EncoderT] = {}
+_decoders: MutableMapping[str, DecoderT] = {}
 
 
-def register(encoder: TEncoder, decoder: TDecoder, content_type: str,
+def register(encoder: EncoderT, decoder: DecoderT, content_type: str,
              aliases: Sequence[str]=[]) -> None:
     """Register new compression method.
 
@@ -42,13 +42,13 @@ def encoders() -> Sequence[str]:
     return list(_encoders)
 
 
-def get_encoder(t: str) -> Tuple[TEncoder, str]:
+def get_encoder(t: str) -> Tuple[EncoderT, str]:
     """Get encoder by alias name."""
     t = _aliases.get(t, t)
     return _encoders[t], t
 
 
-def get_decoder(t: str) -> TDecoder:
+def get_decoder(t: str) -> DecoderT:
     """Get decoder by alias name."""
     return _decoders[_aliases.get(t, t)]
 

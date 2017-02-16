@@ -10,7 +10,7 @@ from .typing import AnyBuffer
 try:
     from django.utils.functional import Promise as DjangoPromise
 except ImportError:  # pragma: no cover
-    class DjangoPromise(object):  # noqa
+    class DjangoPromise(object):  # noqa, type: ignore
         """Dummy object."""
 
 try:
@@ -24,20 +24,21 @@ except ImportError:                 # pragma: no cover
 else:
     from simplejson.decoder import JSONDecodeError as _DecodeError
 
-_encoder_cls = type(json._default_encoder)
-_default_encoder = None   # ... set to JSONEncoder below.
+_encoder_cls: type = type(json._default_encoder)  # type: ignore
+_default_encoder: type = None   # ... set to JSONEncoder below.
 
 
 class JSONEncoder(_encoder_cls):
     """Kombu custom json encoder."""
 
-    def default(self, o,
+    def default(self, o: Any,
+                *,
                 dates=(datetime.datetime, datetime.date),
                 times=(datetime.time,),
                 textual=(decimal.Decimal, uuid.UUID, DjangoPromise),
                 isinstance=isinstance,
                 datetime=datetime.datetime,
-                str=str):
+                str=str) -> Any:
         reducer = getattr(o, '__json__', None)
         if reducer is not None:
             o = reducer()
@@ -59,6 +60,7 @@ _default_encoder = JSONEncoder
 
 
 def dumps(s: Any,
+          *,
           _dumps: Callable = json.dumps,
           cls: Any = None,
           default_kwargs: Dict = _json_extra_kwargs,
@@ -68,7 +70,7 @@ def dumps(s: Any,
                   **dict(default_kwargs, **kwargs))
 
 
-def loads(s: AnyBuffer, _loads: Callable = json.loads) -> Any:
+def loads(s: AnyBuffer, *, _loads: Callable = json.loads) -> Any:
     """Deserialize json from string."""
     # None of the json implementations supports decoding from
     # a buffer/memoryview, or even reading from a stream

@@ -96,14 +96,14 @@ class Transport(base.Transport):
     def create_channel(self, connection):
         return connection.channel()
 
-    def drain_events(self, connection, **kwargs):
-        return connection.drain_events(**kwargs)
+    async def drain_events(self, connection, **kwargs):
+        await connection.drain_events(**kwargs)
 
     def _collect(self, connection):
         if connection is not None:
             connection.collect()
 
-    def establish_connection(self):
+    async def establish_connection(self):
         """Establish connection to the AMQP broker."""
         conninfo = self.client
         for name, default_value in self.default_connection_params.items():
@@ -124,16 +124,16 @@ class Transport(base.Transport):
         }, **conninfo.transport_options or {})
         conn = self.Connection(**opts)
         conn.client = self.client
-        conn.connect()
+        await conn.connect()
         return conn
 
     def verify_connection(self, connection):
         return connection.connected
 
-    def close_connection(self, connection):
+    async def close_connection(self, connection):
         """Close the AMQP broker connection."""
         connection.client = None
-        connection.close()
+        await connection.close()
 
     def get_heartbeat_interval(self, connection):
         return connection.heartbeat
@@ -142,8 +142,8 @@ class Transport(base.Transport):
         connection.transport.raise_on_initial_eintr = True
         loop.add_reader(connection.sock, self.on_readable, connection, loop)
 
-    def heartbeat_check(self, connection, rate=2):
-        return connection.heartbeat_tick(rate=rate)
+    async def heartbeat_check(self, connection, rate=2):
+        await connection.heartbeat_tick(rate=rate)
 
     def qos_semantics_matches_spec(self, connection):
         props = connection.server_properties
