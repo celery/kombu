@@ -214,6 +214,7 @@ class test_AsyncAWSQueryConnection(AWSCase):
         session = boto3.session.Session(
             aws_access_key_id='AAA',
             aws_secret_access_key='AAAA',
+            region_name='us-west-2',
         )
         sqs_client = session.client('sqs')
         self.x = AsyncAWSQueryConnection(sqs_client, http_client=Mock(name='client'))
