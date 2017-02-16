@@ -9,26 +9,29 @@ from kombu.async.aws.ext import AWSRequest, get_response
 from kombu.async.http import Headers, Request, get_client
 from kombu.five import items, python_2_unicode_compatible
 
+import io
+
 try:
     from urllib.parse import urlunsplit
 except ImportError:
     from urlparse import urlunsplit  # noqa
-from xml.sax import parseString as sax_parse  # noqa
 
 try:  # pragma: no cover
     from email import message_from_bytes
     from email.mime.message import MIMEMessage
 except ImportError:  # pragma: no cover
     from mimetools import Message as MIMEMessage   # noqa
+    from email import message_from_file
 
     def message_from_bytes(m):  # noqa
-        return m
+        return message_from_file(io.BytesIO(m))
 
 __all__ = [
     'AsyncHTTPSConnection', 'AsyncConnection',
 ]
 
 
+@python_2_unicode_compatible
 class AsyncHTTPResponse(object):
     """Async HTTP Response."""
 
