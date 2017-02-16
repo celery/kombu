@@ -73,7 +73,10 @@ class AsyncSQSConnection(AsyncAWSQueryConnection):
         if visibility_timeout:
             params['VisibilityTimeout'] = visibility_timeout
         if attributes:
-            self.build_list_params(params, attributes, 'AttributeName')
+            attrs = {}
+            for idx, attr in enumerate(attributes):
+                attrs['AttributeName.' + str(idx+1)] = attr
+            params.update(attrs)
         if wait_time_seconds is not None:
             params['WaitTimeSeconds'] = wait_time_seconds
         queue_url = self.get_queue_url(queue)

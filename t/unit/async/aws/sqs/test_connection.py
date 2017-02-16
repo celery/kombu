@@ -3,11 +3,12 @@ from __future__ import absolute_import, unicode_literals
 
 import pytest
 
-from case import Mock
+from case import Mock, MagicMock
 
 from kombu.async.aws.sqs.connection import (
-    AsyncSQSConnection,
+    AsyncSQSConnection
 )
+from kombu.async.aws.ext import boto3
 from kombu.async.aws.sqs.message import AsyncMessage
 from kombu.async.aws.sqs.queue import AsyncQueue
 from kombu.utils.uuid import uuid
@@ -20,27 +21,24 @@ from ..case import AWSCase
 class test_AsyncSQSConnection(AWSCase):
 
     def setup(self):
-        self.x = AsyncSQSConnection('ak', 'sk', http_client=Mock())
+        session = boto3.session.Session(
+            aws_access_key_id='AAA',
+            aws_secret_access_key='AAAA',
+        )
+        sqs_client = session.client('sqs')
+        self.x = AsyncSQSConnection(sqs_client, 'ak', 'sk', http_client=Mock())
         self.x.get_object = Mock(name='X.get_object')
         self.x.get_status = Mock(name='X.get_status')
         self.x.get_list = Mock(name='X.get_list')
         self.callback = PromiseMock(name='callback')
 
-    def test_without_boto(self):
-        from kombu.async.aws.sqs import connection
-        sqs = Mock(name='sqs')
-        try:
-            with pytest.raises(ImportError):
-                AsyncSQSConnection(sqs, 'ak', 'sk', http_client=Mock())
+        sqs_client.get_queue_url = MagicMock(return_value={'QueueUrl': 'http://aws.com'})
 
-    def test_default_region(self):
-        assert self.x.region
-        assert issubclass(self.x.region.connection_cls, AsyncSQSConnection)
 
     def test_create_queue(self):
         self.x.create_queue('foo', callback=self.callback)
         self.x.get_object.assert_called_with(
-            'CreateQueue', {'QueueName': 'foo'}, AsyncQueue,
+            'CreateQueue', {'QueueName': 'foo'},
             callback=self.callback,
         )
 
@@ -53,7 +51,7 @@ class test_AsyncSQSConnection(AWSCase):
                 'QueueName': 'foo',
                 'DefaultVisibilityTimeout': '33'
             },
-            AsyncQueue, callback=self.callback
+            callback=self.callback
         )
 
     def test_delete_queue(self):
@@ -92,7 +90,7 @@ class test_AsyncSQSConnection(AWSCase):
         self.x.get_list.assert_called_with(
             'ReceiveMessage', {'MaxNumberOfMessages': 4},
             [('Message', AsyncMessage)],
-            queue, callback=self.callback,
+            'http://aws.com', callback=self.callback,
             parent=queue,
         )
 
@@ -105,7 +103,7 @@ class test_AsyncSQSConnection(AWSCase):
                 'VisibilityTimeout': 3666,
             },
             [('Message', AsyncMessage)],
-            queue, callback=self.callback,
+            'http://aws.com', callback=self.callback,
             parent=queue,
         )
 
@@ -120,7 +118,7 @@ class test_AsyncSQSConnection(AWSCase):
                 'WaitTimeSeconds': 303,
             },
             [('Message', AsyncMessage)],
-            queue, callback=self.callback,
+            'http://aws.com', callback=self.callback,
             parent=queue,
         )
 
@@ -136,7 +134,7 @@ class test_AsyncSQSConnection(AWSCase):
                 'MaxNumberOfMessages': 4,
             },
             [('Message', AsyncMessage)],
-            queue, callback=self.callback,
+            'http://aws.com', callback=self.callback,
             parent=queue,
         )
 
