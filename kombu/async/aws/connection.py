@@ -61,7 +61,7 @@ class AsyncHTTPResponse(object):
     @property
     def msg(self):
         if self._msg is None:
-            self._msg = MIMEMessage(message_from_headers())
+            self._msg = MIMEMessage(message_from_headers(self.getheaders()))
         return self._msg
 
     @property
