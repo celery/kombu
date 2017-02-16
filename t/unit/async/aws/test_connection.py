@@ -5,7 +5,6 @@ from contextlib import contextmanager
 
 from case import Mock
 from vine.abstract import Thenable
-import boto3
 
 from kombu.exceptions import HttpError
 from kombu.five import WhateverIO
@@ -17,6 +16,7 @@ from kombu.async.aws.connection import (
     AsyncConnection,
     AsyncAWSQueryConnection,
 )
+from kombu.async.aws.ext import boto3
 
 from .case import AWSCase
 
