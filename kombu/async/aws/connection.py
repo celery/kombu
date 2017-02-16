@@ -26,14 +26,13 @@ try:  # pragma: no cover
         return message_from_bytes(bs.encode())
 
 except ImportError:  # pragma: no cover
-    from email import message_from_file
     from mimetools import Message as MIMEMessage   # noqa
 
     # py2
     def message_from_headers(hdr):  # noqa
-        return message_from_file(io.BytesIO(b'\r\n'.join(
+        return io.BytesIO(b'\r\n'.join(
             b'{0}: {1}'.format(*h) for h in hdr
-        )))
+        ))
 
 __all__ = [
     'AsyncHTTPSConnection', 'AsyncConnection',
