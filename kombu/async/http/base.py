@@ -200,7 +200,7 @@ class Response(object):
                 self._body = self.buffer.getvalue()
         return self._body
 
-    # these are for compatibility with Requests   
+    # these are for compatibility with Requests
     @property
     def status_code(self):
         return self.code
