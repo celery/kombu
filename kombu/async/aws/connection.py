@@ -171,7 +171,9 @@ class AsyncAWSQueryConnection(AsyncConnection):
     """Async AWS Query Connection."""
 
     def __init__(self, sqs_connection, http_client=None,
-                 http_client_params={}, **kwargs):
+                 http_client_params=None, **kwargs):
+        if not http_client_params:
+            http_client_params = {}
         AsyncConnection.__init__(self, sqs_connection, http_client,
                                  **http_client_params)
 

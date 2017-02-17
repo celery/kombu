@@ -17,17 +17,12 @@ __all__ = ['AsyncSQSConnection']
 class AsyncSQSConnection(AsyncAWSQueryConnection):
     """Async SQS Connection."""
 
-    def __init__(self, sqs_connection,
-                 aws_access_key_id=None,
-                 aws_secret_access_key=None,
-                 debug=0, region=None, **kwargs):
+    def __init__(self, sqs_connection, debug=0, region=None, **kwargs):
         if boto3 is None:
             raise ImportError('boto3 is not installed')
         AsyncAWSQueryConnection.__init__(
             self,
             sqs_connection,
-            aws_access_key_id=aws_access_key_id,
-            aws_secret_access_key=aws_secret_access_key,
             region_name=region, debug=debug,
             **kwargs
         )
