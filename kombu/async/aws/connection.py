@@ -173,7 +173,7 @@ class AsyncAWSQueryConnection(AsyncConnection):
     def __init__(self, sqs_connection, http_client=None,
                  http_client_params={}, **kwargs):
         AsyncConnection.__init__(self, sqs_connection, http_client,
-                                 **http_client_params, **kwargs)
+                                 **http_client_params)
 
     def make_request(self, operation, params_, path, verb, callback=None):
         params = params_.copy()
