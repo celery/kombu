@@ -29,7 +29,7 @@ class AsyncSQSConnection(AsyncAWSQueryConnection):
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_secret_access_key,
             region_name=region, debug=debug,
-            https_connection_factory=https_connection_factory, **kwargs
+            **kwargs
         )
 
     def create_queue(self, queue_name,

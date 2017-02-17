@@ -146,7 +146,7 @@ class AsyncHTTPSConnection(object):
 class AsyncConnection(object):
     """Async AWS Connection."""
 
-    def __init__(self, sqs_connection, http_client=None):
+    def __init__(self, sqs_connection, http_client=None, **kwargs):
         self.sqs_connection = sqs_connection
         self._httpclient = http_client or get_client()
 
@@ -171,9 +171,9 @@ class AsyncAWSQueryConnection(AsyncConnection):
     """Async AWS Query Connection."""
 
     def __init__(self, sqs_connection, http_client=None,
-                 http_client_params={}):
+                 http_client_params={}, **kwargs):
         AsyncConnection.__init__(self, sqs_connection, http_client,
-                                 **http_client_params)
+                                 **http_client_params, **kwargs)
 
     def make_request(self, operation, params_, path, verb, callback=None):
         params = params_.copy()
