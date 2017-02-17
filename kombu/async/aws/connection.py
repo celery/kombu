@@ -146,7 +146,7 @@ class AsyncHTTPSConnection(object):
 class AsyncConnection(object):
     """Async AWS Connection."""
 
-    def __init__(self, sqs_connection, http_client=None, **kwargs):
+    def __init__(self, sqs_connection, http_client=None, **kwargs):  # noqa
         self.sqs_connection = sqs_connection
         self._httpclient = http_client or get_client()
 
@@ -177,11 +177,11 @@ class AsyncAWSQueryConnection(AsyncConnection):
         AsyncConnection.__init__(self, sqs_connection, http_client,
                                  **http_client_params)
 
-    def make_request(self, operation, params_, path, verb, callback=None):
+    def make_request(self, operation, params_, path, verb, callback=None):  # noqa
         params = params_.copy()
         if operation:
             params['Action'] = operation
-        signer = self.sqs_connection._request_signer
+        signer = self.sqs_connection._request_signer  # noqa
 
         # defaults for non-get
         signing_type = 'standard'
@@ -201,7 +201,7 @@ class AsyncAWSQueryConnection(AsyncConnection):
         return self._mexe(prepared_request, callback=callback)
 
     def get_list(self, operation, params, markers,
-                 path='/', parent=None, verb='POST', callback=None):
+                 path='/', parent=None, verb='POST', callback=None):  # noqa
         return self.make_request(
             operation, params, path, verb,
             callback=transform(
@@ -211,7 +211,7 @@ class AsyncAWSQueryConnection(AsyncConnection):
         )
 
     def get_object(self, operation, params,
-                   path='/', parent=None, verb='GET', callback=None):
+                   path='/', parent=None, verb='GET', callback=None):  # noqa
         return self.make_request(
             operation, params, path, verb,
             callback=transform(
@@ -220,7 +220,7 @@ class AsyncAWSQueryConnection(AsyncConnection):
         )
 
     def get_status(self, operation, params,
-                   path='/', parent=None, verb='GET', callback=None):
+                   path='/', parent=None, verb='GET', callback=None):  # noqa
         return self.make_request(
             operation, params, path, verb,
             callback=transform(
@@ -228,30 +228,30 @@ class AsyncAWSQueryConnection(AsyncConnection):
             ),
         )
 
-    def _on_list_ready(self, parent, markers, operation, response):
+    def _on_list_ready(self, parent, markers, operation, response):  # noqa
         service_model = self.sqs_connection.meta.service_model
         if response.status == 200:
-            httpres, parsed = get_response(
+            _, parsed = get_response(
                 service_model.operation_model(operation), response.response
             )
             return parsed
         else:
             raise self._for_status(response, response.read())
 
-    def _on_obj_ready(self, parent, operation, response):
+    def _on_obj_ready(self, parent, operation, response):  # noqa
         service_model = self.sqs_connection.meta.service_model
         if response.status == 200:
-            httpres, parsed = get_response(
+            _, parsed = get_response(
                 service_model.operation_model(operation), response.response
             )
             return parsed
         else:
             raise self._for_status(response, response.read())
 
-    def _on_status_ready(self, parent, operation, response):
+    def _on_status_ready(self, parent, operation, response):  # noqa
         service_model = self.sqs_connection.meta.service_model
         if response.status == 200:
-            httpres, parsed = get_response(
+            httpres, _ = get_response(
                 service_model.operation_model(operation), response.response
             )
             return httpres.code
