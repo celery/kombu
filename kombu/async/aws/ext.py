@@ -5,11 +5,10 @@ from __future__ import absolute_import, unicode_literals
 try:
     import boto3
     from botocore import exceptions
-    from boto3 import session
     from botocore.awsrequest import AWSRequest
     from botocore.response import get_response
 except ImportError:
-    boto3 = session = None
+    boto3 = None
 
     class _void(object):
         pass

@@ -11,11 +11,6 @@ from kombu.five import items, python_2_unicode_compatible
 
 import io
 
-try:
-    from urllib.parse import urlunsplit
-except ImportError:
-    from urlparse import urlunsplit  # noqa
-
 try:  # pragma: no cover
     from email import message_from_bytes
     from email.mime.message import MIMEMessage
@@ -87,7 +82,6 @@ class AsyncHTTPSConnection(object):
     method = 'GET'
     path = '/'
     body = None
-    scheme = 'https'
     default_ports = {'http': 80, 'https': 443}
 
     def __init__(self, strict=None, timeout=20.0, http_client=None, **kwargs):
@@ -109,7 +103,7 @@ class AsyncHTTPSConnection(object):
         if headers is not None:
             self.headers.extend(list(items(headers)))
 
-    def getrequest(self, scheme=None):
+    def getrequest(self):
         headers = Headers(self.headers)
         return self.Request(self.path, method=self.method, headers=headers,
                             body=self.body, connect_timeout=self.timeout,
@@ -152,7 +146,7 @@ class AsyncHTTPSConnection(object):
 class AsyncConnection(object):
     """Async AWS Connection."""
 
-    def __init__(self, sqs_connection, http_client=None, **kwargs):
+    def __init__(self, sqs_connection, http_client=None):
         self.sqs_connection = sqs_connection
         self._httpclient = http_client or get_client()
 
