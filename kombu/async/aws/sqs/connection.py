@@ -20,9 +20,7 @@ class AsyncSQSConnection(AsyncAWSQueryConnection):
     def __init__(self, sqs_connection,
                  aws_access_key_id=None,
                  aws_secret_access_key=None,
-                 proxy=None, proxy_port=None,
-                 proxy_user=None, proxy_pass=None, debug=0,
-                 https_connection_factory=None, region=None, *args, **kwargs):
+                 debug=0, region=None, **kwargs):
         if boto3 is None:
             raise ImportError('boto3 is not installed')
         AsyncAWSQueryConnection.__init__(
@@ -30,8 +28,6 @@ class AsyncSQSConnection(AsyncAWSQueryConnection):
             sqs_connection,
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_secret_access_key,
-            proxy=proxy, proxy_port=proxy_port,
-            proxy_user=proxy_user, proxy_pass=proxy_pass,
             region_name=region, debug=debug,
             https_connection_factory=https_connection_factory, **kwargs
         )

@@ -84,7 +84,7 @@ class AsyncHTTPSConnection(object):
     body = None
     default_ports = {'http': 80, 'https': 443}
 
-    def __init__(self, strict=None, timeout=20.0, http_client=None, **kwargs):
+    def __init__(self, strict=None, timeout=20.0, http_client=None):
         self.headers = []
         self.timeout = timeout
         self.strict = strict
@@ -123,7 +123,7 @@ class AsyncHTTPSConnection(object):
     def close(self):
         pass
 
-    def putrequest(self, method, path, **kwargs):
+    def putrequest(self, method, path):
         self.method = method
         self.path = path
 
@@ -170,8 +170,8 @@ class AsyncConnection(object):
 class AsyncAWSQueryConnection(AsyncConnection):
     """Async AWS Query Connection."""
 
-    def __init__(self, sqs_connection, http_client=None, http_client_params={},
-                 **kwargs):
+    def __init__(self, sqs_connection, http_client=None,
+                 http_client_params={}):
         AsyncConnection.__init__(self, sqs_connection, http_client,
                                  **http_client_params)
 

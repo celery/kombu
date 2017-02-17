@@ -42,10 +42,6 @@ def passthrough(*args, **kwargs):
 
 class test_AsyncHTTPSConnection(AWSCase):
 
-    def test_AsyncHTTPSConnection(self):
-        x = AsyncHTTPSConnection()
-        assert x.scheme == 'https'
-
     def test_http_client(self):
         x = AsyncHTTPSConnection()
         assert x.http_client is http.get_client()
@@ -59,7 +55,6 @@ class test_AsyncHTTPSConnection(AWSCase):
         )
         assert x.strict
         assert x.timeout == 33.3
-        assert x.scheme == 'https'
 
     def test_request(self):
         x = AsyncHTTPSConnection('aws.vandelay.com')
