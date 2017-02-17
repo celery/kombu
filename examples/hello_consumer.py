@@ -1,6 +1,6 @@
 from __future__ import absolute_import, unicode_literals, print_function
 
-from kombu import Connection
+from kombu import Connection  # noqa
 
 
 with Connection('amqp://guest:guest@localhost:5672//') as conn:

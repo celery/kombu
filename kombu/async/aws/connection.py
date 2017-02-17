@@ -200,8 +200,7 @@ class AsyncAWSQueryConnection(AsyncConnection):
         # print(prepared_request.body)
         return self._mexe(prepared_request, callback=callback)
 
-    def get_list(self, operation, params, markers,
-                 path='/', parent=None, verb='POST', callback=None):  # noqa
+    def get_list(self, operation, params, markers, path='/', parent=None, verb='POST', callback=None):  # noqa
         return self.make_request(
             operation, params, path, verb,
             callback=transform(
@@ -210,8 +209,7 @@ class AsyncAWSQueryConnection(AsyncConnection):
             ),
         )
 
-    def get_object(self, operation, params,
-                   path='/', parent=None, verb='GET', callback=None):  # noqa
+    def get_object(self, operation, params, path='/', parent=None, verb='GET', callback=None):  # noqa
         return self.make_request(
             operation, params, path, verb,
             callback=transform(
@@ -219,8 +217,7 @@ class AsyncAWSQueryConnection(AsyncConnection):
             ),
         )
 
-    def get_status(self, operation, params,
-                   path='/', parent=None, verb='GET', callback=None):  # noqa
+    def get_status(self, operation, params, path='/', parent=None, verb='GET', callback=None):  # noqa
         return self.make_request(
             operation, params, path, verb,
             callback=transform(
