@@ -252,7 +252,7 @@ class AsyncAWSQueryConnection(AsyncConnection):
             httpres, parsed = get_response(
                 service_model.operation_model(operation), response.response
             )
-            return httpres['HTTPStatusCode']
+            return httpres.code
         else:
             raise self._for_status(response, response.read())
 
