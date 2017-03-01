@@ -132,18 +132,19 @@ class Channel(virtual.Channel):
             self._noack_queues.discard(queue)
         return super(Channel, self).basic_cancel(consumer_tag)
 
-    def drain_events(self, timeout=None):
+    def drain_events(self, timeout=None, callback=None):
         """Return a single payload message from one of our queues.
 
         Raises:
             Queue.Empty: if no messages available.
         """
-        # If we're not allowed to consume or have no consumers, raise Empty
-        if not self._consumers or not self.qos.can_consume():
-            raise Empty()
+        callback = callback or self.connection._deliver
+        if self._consumers and self.qos.can_consume():
+            # At this point, go and get more messages from SQS
+            return self._poll(self.cycle, callback, timeout=timeout)
 
-        # At this point, go and get more messages from SQS
-        self._poll(self.cycle, self.connection._deliver, timeout=timeout)
+        # If we're not allowed to consume or have no consumers, raise Empty
+        raise Empty()
 
     def _reset_cycle(self):
         """Reset the consume cycle.
