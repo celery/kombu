@@ -894,7 +894,7 @@ class Channel(virtual.Channel):
                 pass
         host = connparams['host']
         if '://' in host:
-            scheme, _, _, _, _, path, query = _parse_url(host)
+            scheme, _, _, _, password, path, query = _parse_url(host)
             if scheme == 'socket':
                 connparams = self._filter_tcp_connparams(**connparams)
                 connparams.update({
@@ -904,6 +904,7 @@ class Channel(virtual.Channel):
                 connparams.pop('socket_connect_timeout', None)
                 connparams.pop('socket_keepalive', None)
                 connparams.pop('socket_keepalive_options', None)
+            connparams['password'] = password
 
             connparams.pop('host', None)
             connparams.pop('port', None)
