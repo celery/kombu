@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Amazon boto interface."""
+"""Amazon boto3 interface."""
 from __future__ import absolute_import, unicode_literals
 
 try:
@@ -23,7 +23,24 @@ else:
     from boto.resultset import ResultSet
     from boto.regioninfo import RegionInfo, get_regions
 
+
+try:
+    import boto3
+    from botocore import exceptions
+    from boto3 import session
+except ImportError:
+    boto3 = session = None
+
+    class _void(object):
+        pass
+
+    class BotoCoreError(Exception):
+        pass
+    exceptions = _void()
+    exceptions.BotoCoreError = BotoCoreError
+
+
 __all__ = [
-    'exception', 'AWSAuthConnection', 'AWSQueryConnection',
+    'exception', 'exceptions', 'AWSAuthConnection', 'AWSQueryConnection',
     'XmlHandler', 'ResultSet', 'RegionInfo', 'get_regions',
 ]

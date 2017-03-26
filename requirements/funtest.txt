@@ -9,6 +9,7 @@ kazoo
 
 # SQS transport
 boto
+boto3
 
 # Qpid transport
 qpid-python>=0.26
