@@ -30,3 +30,4 @@ dump.rdb
 htmlcov/
 test.db
 coverage.xml
+venv/
