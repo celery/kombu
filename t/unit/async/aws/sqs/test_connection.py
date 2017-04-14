@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, unicode_literals
 
-import pytest
-
-from case import Mock
+from case import Mock, MagicMock
 
 from kombu.async.aws.sqs.connection import (
-    AsyncSQSConnection, Attributes, BatchResults,
+    AsyncSQSConnection
 )
+from kombu.async.aws.ext import boto3
 from kombu.async.aws.sqs.message import AsyncMessage
 from kombu.async.aws.sqs.queue import AsyncQueue
 from kombu.utils.uuid import uuid
@@ -20,29 +19,26 @@ from ..case import AWSCase
 class test_AsyncSQSConnection(AWSCase):
 
     def setup(self):
-        self.x = AsyncSQSConnection('ak', 'sk', http_client=Mock())
+        session = boto3.session.Session(
+            aws_access_key_id='AAA',
+            aws_secret_access_key='AAAA',
+            region_name='us-west-2',
+        )
+        sqs_client = session.client('sqs')
+        self.x = AsyncSQSConnection(sqs_client, 'ak', 'sk', http_client=Mock())
         self.x.get_object = Mock(name='X.get_object')
         self.x.get_status = Mock(name='X.get_status')
-        self.x.get_list = Mock(nanme='X.get_list')
+        self.x.get_list = Mock(name='X.get_list')
         self.callback = PromiseMock(name='callback')
 
-    def test_without_boto(self):
-        from kombu.async.aws.sqs import connection
-        prev, connection.boto = connection.boto, None
-        try:
-            with pytest.raises(ImportError):
-                AsyncSQSConnection('ak', 'sk', http_client=Mock())
-        finally:
-            connection.boto = prev
-
-    def test_default_region(self):
-        assert self.x.region
-        assert issubclass(self.x.region.connection_cls, AsyncSQSConnection)
+        sqs_client.get_queue_url = MagicMock(return_value={
+            'QueueUrl': 'http://aws.com'
+        })
 
     def test_create_queue(self):
         self.x.create_queue('foo', callback=self.callback)
         self.x.get_object.assert_called_with(
-            'CreateQueue', {'QueueName': 'foo'}, AsyncQueue,
+            'CreateQueue', {'QueueName': 'foo'},
             callback=self.callback,
         )
 
@@ -55,7 +51,7 @@ class test_AsyncSQSConnection(AWSCase):
                 'QueueName': 'foo',
                 'DefaultVisibilityTimeout': '33'
             },
-            AsyncQueue, callback=self.callback
+            callback=self.callback
         )
 
     def test_delete_queue(self):
@@ -72,7 +68,7 @@ class test_AsyncSQSConnection(AWSCase):
         )
         self.x.get_object.assert_called_with(
             'GetQueueAttributes', {'AttributeName': 'QueueSize'},
-            Attributes, queue.id, callback=self.callback,
+            queue.id, callback=self.callback,
         )
 
     def test_set_queue_attribute(self):
@@ -93,8 +89,9 @@ class test_AsyncSQSConnection(AWSCase):
         self.x.receive_message(queue, 4, callback=self.callback)
         self.x.get_list.assert_called_with(
             'ReceiveMessage', {'MaxNumberOfMessages': 4},
-            [('Message', queue.message_class)],
-            queue.id, callback=self.callback,
+            [('Message', AsyncMessage)],
+            'http://aws.com', callback=self.callback,
+            parent=queue,
         )
 
     def test_receive_message__with_visibility_timeout(self):
@@ -105,8 +102,9 @@ class test_AsyncSQSConnection(AWSCase):
                 'MaxNumberOfMessages': 4,
                 'VisibilityTimeout': 3666,
             },
-            [('Message', queue.message_class)],
-            queue.id, callback=self.callback,
+            [('Message', AsyncMessage)],
+            'http://aws.com', callback=self.callback,
+            parent=queue,
         )
 
     def test_receive_message__with_wait_time_seconds(self):
@@ -119,8 +117,9 @@ class test_AsyncSQSConnection(AWSCase):
                 'MaxNumberOfMessages': 4,
                 'WaitTimeSeconds': 303,
             },
-            [('Message', queue.message_class)],
-            queue.id, callback=self.callback,
+            [('Message', AsyncMessage)],
+            'http://aws.com', callback=self.callback,
+            parent=queue,
         )
 
     def test_receive_message__with_attributes(self):
@@ -134,8 +133,9 @@ class test_AsyncSQSConnection(AWSCase):
                 'AttributeName.2': 'bar',
                 'MaxNumberOfMessages': 4,
             },
-            [('Message', queue.message_class)],
-            queue.id, callback=self.callback,
+            [('Message', AsyncMessage)],
+            'http://aws.com', callback=self.callback,
+            parent=queue,
         )
 
     def MockMessage(self, id=None, receipt_handle=None, body=None):
@@ -157,10 +157,11 @@ class test_AsyncSQSConnection(AWSCase):
     def test_delete_message(self):
         queue = Mock(name='queue')
         message = self.MockMessage()
-        self.x.delete_message(queue, message, callback=self.callback)
+        self.x.delete_message(queue, message.receipt_handle,
+                              callback=self.callback)
         self.x.get_status.assert_called_with(
             'DeleteMessage', {'ReceiptHandle': message.receipt_handle},
-            queue.id, callback=self.callback,
+            queue, callback=self.callback,
         )
 
     def test_delete_message_batch(self):
@@ -175,7 +176,7 @@ class test_AsyncSQSConnection(AWSCase):
                 'DeleteMessageBatchRequestEntry.2.Id': '2',
                 'DeleteMessageBatchRequestEntry.2.ReceiptHandle': 'r2',
             },
-            BatchResults, queue.id, verb='POST', callback=self.callback,
+            queue.id, verb='POST', callback=self.callback,
         )
 
     def test_send_message(self):
@@ -183,7 +184,7 @@ class test_AsyncSQSConnection(AWSCase):
         self.x.send_message(queue, 'hello', callback=self.callback)
         self.x.get_object.assert_called_with(
             'SendMessage', {'MessageBody': 'hello'},
-            AsyncMessage, queue.id, verb='POST', callback=self.callback,
+            queue.id, verb='POST', callback=self.callback,
         )
 
     def test_send_message__with_delay_seconds(self):
@@ -193,7 +194,7 @@ class test_AsyncSQSConnection(AWSCase):
         )
         self.x.get_object.assert_called_with(
             'SendMessage', {'MessageBody': 'hello', 'DelaySeconds': 303},
-            AsyncMessage, queue.id, verb='POST', callback=self.callback,
+            queue.id, verb='POST', callback=self.callback,
         )
 
     def test_send_message_batch(self):
@@ -213,7 +214,7 @@ class test_AsyncSQSConnection(AWSCase):
                 'SendMessageBatchRequestEntry.2.MessageBody': 'B',
                 'SendMessageBatchRequestEntry.2.DelaySeconds': 303,
             },
-            BatchResults, queue.id, verb='POST', callback=self.callback,
+            queue.id, verb='POST', callback=self.callback,
         )
 
     def test_change_message_visibility(self):
@@ -251,7 +252,7 @@ class test_AsyncSQSConnection(AWSCase):
                 preamble('2.ReceiptHandle'): 'r2',
                 preamble('2.VisibilityTimeout'): 909,
             },
-            BatchResults, queue.id, verb='POST', callback=self.callback,
+            queue.id, verb='POST', callback=self.callback,
         )
 
     def test_get_all_queues(self):

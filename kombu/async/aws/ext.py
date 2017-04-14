@@ -1,29 +1,26 @@
 # -*- coding: utf-8 -*-
-"""Amazon boto interface."""
+"""Amazon boto3 interface."""
 from __future__ import absolute_import, unicode_literals
 
 try:
-    import boto
-except ImportError:  # pragma: no cover
-    boto = get_regions = ResultSet = RegionInfo = XmlHandler = None
+    import boto3
+    from botocore import exceptions
+    from botocore.awsrequest import AWSRequest
+    from botocore.response import get_response
+except ImportError:
+    boto3 = None
 
     class _void(object):
         pass
-    AWSAuthConnection = AWSQueryConnection = _void  # noqa
 
-    class BotoError(Exception):
+    class BotoCoreError(Exception):
         pass
-    exception = _void()
-    exception.SQSError = BotoError
-    exception.SQSDecodeError = BotoError
-else:
-    from boto import exception
-    from boto.connection import AWSAuthConnection, AWSQueryConnection
-    from boto.handler import XmlHandler
-    from boto.resultset import ResultSet
-    from boto.regioninfo import RegionInfo, get_regions
+    exceptions = _void()
+    exceptions.BotoCoreError = BotoCoreError
+    AWSRequest = _void()
+    get_response = _void()
+
 
 __all__ = [
-    'exception', 'AWSAuthConnection', 'AWSQueryConnection',
-    'XmlHandler', 'ResultSet', 'RegionInfo', 'get_regions',
+    'exceptions', 'AWSRequest', 'get_response'
 ]

@@ -8,6 +8,7 @@ from kombu.tests.case import skip
 @skip.unless_environ('AWS_ACCESS_KEY_ID')
 @skip.unless_environ('AWS_SECRET_ACCESS_KEY')
 @skip.unless_module('boto')
+@skip.unless_module('boto3')
 class test_SQS(transport.TransportCase):
     transport = 'SQS'
     prefix = 'sqs'

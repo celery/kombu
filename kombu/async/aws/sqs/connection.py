@@ -5,9 +5,8 @@ from __future__ import absolute_import, unicode_literals
 from vine import transform
 
 from kombu.async.aws.connection import AsyncAWSQueryConnection
-from kombu.async.aws.ext import RegionInfo
 
-from .ext import boto, Attributes, BatchResults, SQSConnection
+from .ext import boto3
 from .message import AsyncMessage
 from .queue import AsyncQueue
 
@@ -15,28 +14,17 @@ from .queue import AsyncQueue
 __all__ = ['AsyncSQSConnection']
 
 
-class AsyncSQSConnection(AsyncAWSQueryConnection, SQSConnection):
+class AsyncSQSConnection(AsyncAWSQueryConnection):
     """Async SQS Connection."""
 
-    def __init__(self, aws_access_key_id=None, aws_secret_access_key=None,
-                 is_secure=True, port=None, proxy=None, proxy_port=None,
-                 proxy_user=None, proxy_pass=None, debug=0,
-                 https_connection_factory=None, region=None, *args, **kwargs):
-        if boto is None:
-            raise ImportError('boto is not installed')
-        self.region = region or RegionInfo(
-            self, self.DefaultRegionName, self.DefaultRegionEndpoint,
-            connection_cls=type(self),
-        )
+    def __init__(self, sqs_connection, debug=0, region=None, **kwargs):
+        if boto3 is None:
+            raise ImportError('boto3 is not installed')
         AsyncAWSQueryConnection.__init__(
             self,
-            aws_access_key_id=aws_access_key_id,
-            aws_secret_access_key=aws_secret_access_key,
-            is_secure=is_secure, port=port,
-            proxy=proxy, proxy_port=proxy_port,
-            proxy_user=proxy_user, proxy_pass=proxy_pass,
-            host=self.region.endpoint, debug=debug,
-            https_connection_factory=https_connection_factory, **kwargs
+            sqs_connection,
+            region_name=region, debug=debug,
+            **kwargs
         )
 
     def create_queue(self, queue_name,
@@ -46,17 +34,21 @@ class AsyncSQSConnection(AsyncAWSQueryConnection, SQSConnection):
             params['DefaultVisibilityTimeout'] = format(
                 visibility_timeout, 'd',
             )
-        return self.get_object('CreateQueue', params, AsyncQueue,
+        return self.get_object('CreateQueue', params,
                                callback=callback)
 
     def delete_queue(self, queue, force_deletion=False, callback=None):
         return self.get_status('DeleteQueue', None, queue.id,
                                callback=callback)
 
+    def get_queue_url(self, queue):
+        res = self.sqs_connection.get_queue_url(QueueName=queue)
+        return res['QueueUrl']
+
     def get_queue_attributes(self, queue, attribute='All', callback=None):
         return self.get_object(
             'GetQueueAttributes', {'AttributeName': attribute},
-            Attributes, queue.id, callback=callback,
+            queue.id, callback=callback,
         )
 
     def set_queue_attribute(self, queue, attribute, value, callback=None):
@@ -74,17 +66,21 @@ class AsyncSQSConnection(AsyncAWSQueryConnection, SQSConnection):
         if visibility_timeout:
             params['VisibilityTimeout'] = visibility_timeout
         if attributes:
-            self.build_list_params(params, attributes, 'AttributeName')
+            attrs = {}
+            for idx, attr in enumerate(attributes):
+                attrs['AttributeName.' + str(idx + 1)] = attr
+            params.update(attrs)
         if wait_time_seconds is not None:
             params['WaitTimeSeconds'] = wait_time_seconds
+        queue_url = self.get_queue_url(queue)
         return self.get_list(
-            'ReceiveMessage', params, [('Message', queue.message_class)],
-            queue.id, callback=callback,
+            'ReceiveMessage', params, [('Message', AsyncMessage)],
+            queue_url, callback=callback, parent=queue,
         )
 
-    def delete_message(self, queue, message, callback=None):
+    def delete_message(self, queue, receipt_handle, callback=None):
         return self.delete_message_from_handle(
-            queue, message.receipt_handle, callback,
+            queue, receipt_handle, callback,
         )
 
     def delete_message_batch(self, queue, messages, callback=None):
@@ -96,7 +92,7 @@ class AsyncSQSConnection(AsyncAWSQueryConnection, SQSConnection):
                 '{0}.ReceiptHandle'.format(prefix): m.receipt_handle,
             })
         return self.get_object(
-            'DeleteMessageBatch', params, BatchResults, queue.id,
+            'DeleteMessageBatch', params, queue.id,
             verb='POST', callback=callback,
         )
 
@@ -104,7 +100,7 @@ class AsyncSQSConnection(AsyncAWSQueryConnection, SQSConnection):
                                    callback=None):
         return self.get_status(
             'DeleteMessage', {'ReceiptHandle': receipt_handle},
-            queue.id, callback=callback,
+            queue, callback=callback,
         )
 
     def send_message(self, queue, message_content,
@@ -113,7 +109,7 @@ class AsyncSQSConnection(AsyncAWSQueryConnection, SQSConnection):
         if delay_seconds:
             params['DelaySeconds'] = int(delay_seconds)
         return self.get_object(
-            'SendMessage', params, AsyncMessage, queue.id,
+            'SendMessage', params, queue.id,
             verb='POST', callback=callback,
         )
 
@@ -127,7 +123,7 @@ class AsyncSQSConnection(AsyncAWSQueryConnection, SQSConnection):
                 '{0}.DelaySeconds'.format(prefix): msg[2],
             })
         return self.get_object(
-            'SendMessageBatch', params, BatchResults, queue.id,
+            'SendMessageBatch', params, queue.id,
             verb='POST', callback=callback,
         )
 
@@ -150,7 +146,7 @@ class AsyncSQSConnection(AsyncAWSQueryConnection, SQSConnection):
                 '{0}.VisibilityTimeout'.format(pre): t[1],
             })
         return self.get_object(
-            'ChangeMessageVisibilityBatch', params, BatchResults, queue.id,
+            'ChangeMessageVisibilityBatch', params, queue.id,
             verb='POST', callback=callback,
         )
 

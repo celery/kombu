@@ -171,15 +171,12 @@ class CurlClient(BaseClient):
             code = curl.getinfo(_pycurl.HTTP_CODE)
             effective_url = curl.getinfo(_pycurl.EFFECTIVE_URL)
             buffer.seek(0)
-        try:
-            request = info['request']
-            request.on_ready(self.Response(
-                request=request, code=code, headers=info['headers'],
-                buffer=buffer, effective_url=effective_url, error=error,
-            ))
-        except Exception as exc:
-            self.hub.on_callback_error(request.on_ready, exc)
-            raise
+        # try:
+        request = info['request']
+        request.on_ready(self.Response(
+            request=request, code=code, headers=info['headers'],
+            buffer=buffer, effective_url=effective_url, error=error,
+        ))
 
     def _setup_request(self, curl, request, buffer, headers, _pycurl=pycurl):
         setopt = curl.setopt
@@ -243,7 +240,7 @@ class CurlClient(BaseClient):
             setopt(meth, True)
 
         if request.method in ('POST', 'PUT'):
-            body = request.body or ''
+            body = request.body.encode('utf-8') if request.body else bytes()
             reqbuffer = BytesIO(body)
             setopt(_pycurl.READFUNCTION, reqbuffer.read)
             if request.method == 'POST':

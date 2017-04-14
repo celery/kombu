@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, unicode_literals
 
-import pytest
-
 from contextlib import contextmanager
 
-from case import Mock, patch
+from case import Mock
 from vine.abstract import Thenable
 
 from kombu.exceptions import HttpError
@@ -13,17 +11,21 @@ from kombu.five import WhateverIO
 
 from kombu.async import http
 from kombu.async.aws.connection import (
-    AsyncHTTPConnection,
     AsyncHTTPSConnection,
     AsyncHTTPResponse,
     AsyncConnection,
-    AsyncAWSAuthConnection,
     AsyncAWSQueryConnection,
 )
+from kombu.async.aws.ext import boto3
 
 from .case import AWSCase
 
 from t.mocks import PromiseMock
+
+try:
+    from urllib.parse import urlparse, parse_qs
+except ImportError:
+    from urlparse import urlparse, parse_qs  # noqa
 
 # Not currently working
 VALIDATES_CERT = False
@@ -38,37 +40,30 @@ def passthrough(*args, **kwargs):
     return m
 
 
-class test_AsyncHTTPConnection(AWSCase):
-
-    def test_AsyncHTTPSConnection(self):
-        x = AsyncHTTPSConnection('aws.vandelay.com')
-        assert x.scheme == 'https'
+class test_AsyncHTTPSConnection(AWSCase):
 
     def test_http_client(self):
-        x = AsyncHTTPConnection('aws.vandelay.com')
+        x = AsyncHTTPSConnection()
         assert x.http_client is http.get_client()
         client = Mock(name='http_client')
-        y = AsyncHTTPConnection('aws.vandelay.com', http_client=client)
+        y = AsyncHTTPSConnection(http_client=client)
         assert y.http_client is client
 
     def test_args(self):
-        x = AsyncHTTPConnection(
-            'aws.vandelay.com', 8083, strict=True, timeout=33.3,
+        x = AsyncHTTPSConnection(
+            strict=True, timeout=33.3,
         )
-        assert x.host == 'aws.vandelay.com'
-        assert x.port == 8083
         assert x.strict
         assert x.timeout == 33.3
-        assert x.scheme == 'http'
 
     def test_request(self):
-        x = AsyncHTTPConnection('aws.vandelay.com')
+        x = AsyncHTTPSConnection('aws.vandelay.com')
         x.request('PUT', '/importer-exporter')
         assert x.path == '/importer-exporter'
         assert x.method == 'PUT'
 
     def test_request_with_body_buffer(self):
-        x = AsyncHTTPConnection('aws.vandelay.com')
+        x = AsyncHTTPSConnection('aws.vandelay.com')
         body = Mock(name='body')
         body.read.return_value = 'Vandelay Industries'
         x.request('PUT', '/importer-exporter', body)
@@ -78,14 +73,14 @@ class test_AsyncHTTPConnection(AWSCase):
         body.read.assert_called_with()
 
     def test_request_with_body_text(self):
-        x = AsyncHTTPConnection('aws.vandelay.com')
+        x = AsyncHTTPSConnection('aws.vandelay.com')
         x.request('PUT', '/importer-exporter', 'Vandelay Industries')
         assert x.method == 'PUT'
         assert x.path == '/importer-exporter'
         assert x.body == 'Vandelay Industries'
 
     def test_request_with_headers(self):
-        x = AsyncHTTPConnection('aws.vandelay.com')
+        x = AsyncHTTPSConnection()
         headers = {'Proxy': 'proxy.vandelay.com'}
         x.request('PUT', '/importer-exporter', None, headers)
         assert 'Proxy' in dict(x.headers)
@@ -99,27 +94,10 @@ class test_AsyncHTTPConnection(AWSCase):
             validate_cert=VALIDATES_CERT,
         )
 
-    def test_getrequest_AsyncHTTPSConnection(self):
-        x = AsyncHTTPSConnection('aws.vandelay.com')
-        x.Request = Mock(name='Request')
-        x.getrequest()
-        self.assert_request_created_with('https://aws.vandelay.com/', x)
-
-    def test_getrequest_nondefault_port(self):
-        x = AsyncHTTPConnection('aws.vandelay.com', port=8080)
-        x.Request = Mock(name='Request')
-        x.getrequest()
-        self.assert_request_created_with('http://aws.vandelay.com:8080/', x)
-
-        y = AsyncHTTPSConnection('aws.vandelay.com', port=8443)
-        y.Request = Mock(name='Request')
-        y.getrequest()
-        self.assert_request_created_with('https://aws.vandelay.com:8443/', y)
-
     def test_getresponse(self):
         client = Mock(name='client')
         client.add_request = passthrough(name='client.add_request')
-        x = AsyncHTTPConnection('aws.vandelay.com', http_client=client)
+        x = AsyncHTTPSConnection(http_client=client)
         x.Response = Mock(name='x.Response')
         request = x.getresponse()
         x.http_client.add_request.assert_called_with(request)
@@ -134,7 +112,7 @@ class test_AsyncHTTPConnection(AWSCase):
         client = Mock(name='client')
         client.add_request = passthrough(name='client.add_request')
         callback = PromiseMock(name='callback')
-        x = AsyncHTTPConnection('aws.vandelay.com', http_client=client)
+        x = AsyncHTTPSConnection(http_client=client)
         request = x.getresponse(callback)
         x.http_client.add_request.assert_called_with(request)
 
@@ -151,22 +129,22 @@ class test_AsyncHTTPConnection(AWSCase):
         assert wresponse.read() == 'The quick brown fox jumps'
         assert wresponse.status == 200
         assert wresponse.getheader('X-Foo') == 'Hello'
-        assert dict(wresponse.getheaders()) == headers
-        assert wresponse.msg
+        headers_dict = wresponse.getheaders()
+        assert dict(headers_dict) == headers
         assert wresponse.msg
         assert repr(wresponse)
 
     def test_repr(self):
-        assert repr(AsyncHTTPConnection('aws.vandelay.com'))
+        assert repr(AsyncHTTPSConnection())
 
     def test_putrequest(self):
-        x = AsyncHTTPConnection('aws.vandelay.com')
+        x = AsyncHTTPSConnection()
         x.putrequest('UPLOAD', '/new')
         assert x.method == 'UPLOAD'
         assert x.path == '/new'
 
     def test_putheader(self):
-        x = AsyncHTTPConnection('aws.vandelay.com')
+        x = AsyncHTTPSConnection()
         x.putheader('X-Foo', 'bar')
         assert x.headers == [('X-Foo', 'bar')]
         x.putheader('X-Bar', 'baz')
@@ -176,14 +154,14 @@ class test_AsyncHTTPConnection(AWSCase):
         ]
 
     def test_send(self):
-        x = AsyncHTTPConnection('aws.vandelay.com')
+        x = AsyncHTTPSConnection()
         x.send('foo')
         assert x.body == 'foo'
         x.send('bar')
         assert x.body == 'foobar'
 
     def test_interface(self):
-        x = AsyncHTTPConnection('aws.vandelay.com')
+        x = AsyncHTTPSConnection()
         assert x.set_debuglevel(3) is None
         assert x.connect() is None
         assert x.close() is None
@@ -204,102 +182,49 @@ class test_AsyncHTTPResponse(AWSCase):
 
 class test_AsyncConnection(AWSCase):
 
-    def test_when_boto_missing(self, patching):
-        patching('kombu.async.aws.connection.boto', None)
-        with pytest.raises(ImportError):
-            AsyncConnection(Mock(name='client'))
-
     def test_client(self):
-        x = AsyncConnection()
+        sqs = Mock(name='sqs')
+        x = AsyncConnection(sqs)
         assert x._httpclient is http.get_client()
         client = Mock(name='client')
-        y = AsyncConnection(http_client=client)
+        y = AsyncConnection(sqs, http_client=client)
         assert y._httpclient is client
 
     def test_get_http_connection(self):
-        x = AsyncConnection(client=Mock(name='client'))
+        sqs = Mock(name='sqs')
+        x = AsyncConnection(sqs)
         assert isinstance(
-            x.get_http_connection('aws.vandelay.com', 80, False),
-            AsyncHTTPConnection,
-        )
-        assert isinstance(
-            x.get_http_connection('aws.vandelay.com', 443, True),
+            x.get_http_connection(),
             AsyncHTTPSConnection,
         )
-
-        conn = x.get_http_connection('aws.vandelay.com', 80, False)
+        conn = x.get_http_connection()
         assert conn.http_client is x._httpclient
-        assert conn.host == 'aws.vandelay.com'
-        assert conn.port == 80
-
-
-class test_AsyncAWSAuthConnection(AWSCase):
-
-    @patch('boto.log', create=True)
-    def test_make_request(self, _):
-        x = AsyncAWSAuthConnection('aws.vandelay.com',
-                                   http_client=Mock(name='client'))
-        Conn = x.get_http_connection = Mock(name='get_http_connection')
-        callback = PromiseMock(name='callback')
-        ret = x.make_request('GET', '/foo', callback=callback)
-        assert ret is callback
-        Conn.return_value.request.assert_called()
-        Conn.return_value.getresponse.assert_called_with(
-            callback=callback,
-        )
-
-    @patch('boto.log', create=True)
-    def test_mexe(self, _):
-        x = AsyncAWSAuthConnection('aws.vandelay.com',
-                                   http_client=Mock(name='client'))
-        Conn = x.get_http_connection = Mock(name='get_http_connection')
-        request = x.build_base_http_request('GET', 'foo', '/auth')
-        callback = PromiseMock(name='callback')
-        x._mexe(request, callback=callback)
-        Conn.return_value.request.assert_called_with(
-            request.method, request.path, request.body, request.headers,
-        )
-        Conn.return_value.getresponse.assert_called_with(
-            callback=callback,
-        )
-
-        no_callback_ret = x._mexe(request)
-        # _mexe always returns promise
-        assert isinstance(no_callback_ret, Thenable)
-
-    @patch('boto.log', create=True)
-    def test_mexe__with_sender(self, _):
-        x = AsyncAWSAuthConnection('aws.vandelay.com',
-                                   http_client=Mock(name='client'))
-        Conn = x.get_http_connection = Mock(name='get_http_connection')
-        request = x.build_base_http_request('GET', 'foo', '/auth')
-        sender = Mock(name='sender')
-        callback = PromiseMock(name='callback')
-        x._mexe(request, sender=sender, callback=callback)
-        sender.assert_called_with(
-            Conn.return_value, request.method, request.path,
-            request.body, request.headers, callback,
-        )
 
 
 class test_AsyncAWSQueryConnection(AWSCase):
 
     def setup(self):
-        self.x = AsyncAWSQueryConnection('aws.vandelay.com',
+        session = boto3.session.Session(
+            aws_access_key_id='AAA',
+            aws_secret_access_key='AAAA',
+            region_name='us-west-2',
+        )
+        sqs_client = session.client('sqs')
+        self.x = AsyncAWSQueryConnection(sqs_client,
                                          http_client=Mock(name='client'))
 
-    @patch('boto.log', create=True)
-    def test_make_request(self, _):
+    def test_make_request(self):
         _mexe, self.x._mexe = self.x._mexe, Mock(name='_mexe')
         Conn = self.x.get_http_connection = Mock(name='get_http_connection')
         callback = PromiseMock(name='callback')
         self.x.make_request(
-            'action', {'foo': 1}, '/', 'GET', callback=callback,
+            'action', {'foo': 1}, 'https://foo.com/', 'GET', callback=callback,
         )
         self.x._mexe.assert_called()
         request = self.x._mexe.call_args[0][0]
-        assert request.params['Action'] == 'action'
-        assert request.params['Version'] == self.x.APIVersion
+        parsed = urlparse(request.url)
+        params = parse_qs(parsed.query)
+        assert params['Action'][0] == 'action'
 
         ret = _mexe(request, callback=callback)
         assert ret is callback
@@ -308,29 +233,18 @@ class test_AsyncAWSQueryConnection(AWSCase):
             callback=callback,
         )
 
-    @patch('boto.log', create=True)
-    def test_make_request__no_action(self, _):
+    def test_make_request__no_action(self):
         self.x._mexe = Mock(name='_mexe')
         self.x.get_http_connection = Mock(name='get_http_connection')
         callback = PromiseMock(name='callback')
         self.x.make_request(
-            None, {'foo': 1}, '/', 'GET', callback=callback,
+            None, {'foo': 1}, 'http://foo.com/', 'GET', callback=callback,
         )
         self.x._mexe.assert_called()
         request = self.x._mexe.call_args[0][0]
-        assert 'Action' not in request.params
-        assert request.params['Version'] == self.x.APIVersion
-
-    @contextmanager
-    def mock_sax_parse(self, parser):
-        with patch('kombu.async.aws.connection.sax_parse') as sax_parse:
-            with patch('kombu.async.aws.connection.XmlHandler') as xh:
-
-                def effect(body, h):
-                    return parser(xh.call_args[0][0], body, h)
-                sax_parse.side_effect = effect
-                yield (sax_parse, xh)
-                sax_parse.assert_called()
+        parsed = urlparse(request.url)
+        params = parse_qs(parsed.query)
+        assert 'Action' not in params
 
     def Response(self, status, body):
         r = Mock(name='response')
@@ -347,90 +261,3 @@ class test_AsyncAWSQueryConnection(AWSCase):
     def assert_make_request_called(self):
         self.x.make_request.assert_called()
         return self.x.make_request.call_args[1]['callback']
-
-    def test_get_list(self):
-        with self.mock_make_request() as callback:
-            self.x.get_list('action', {'p': 3.3}, ['m'], callback=callback)
-            on_ready = self.assert_make_request_called()
-
-            def parser(dest, body, h):
-                dest.append('hi')
-                dest.append('there')
-
-            with self.mock_sax_parse(parser):
-                on_ready(self.Response(200, 'hello'))
-            callback.assert_called_with(['hi', 'there'])
-
-    def test_get_list_error(self):
-        with self.mock_make_request() as callback:
-            self.x.get_list('action', {'p': 3.3}, ['m'], callback=callback)
-            on_ready = self.assert_make_request_called()
-
-            with pytest.raises(self.x.ResponseError):
-                on_ready(self.Response(404, 'Not found'))
-
-    def test_get_object(self):
-        with self.mock_make_request() as callback:
-
-            class Result(object):
-                parent = None
-                value = None
-
-                def __init__(self, parent):
-                    self.parent = parent
-
-            self.x.get_object('action', {'p': 3.3}, Result, callback=callback)
-            on_ready = self.assert_make_request_called()
-
-            def parser(dest, body, h):
-                dest.value = 42
-
-            with self.mock_sax_parse(parser):
-                on_ready(self.Response(200, 'hello'))
-
-            callback.assert_called()
-            result = callback.call_args[0][0]
-            assert result.value == 42
-            assert result.parent
-
-    def test_get_object_error(self):
-        with self.mock_make_request() as callback:
-            self.x.get_object('action', {'p': 3.3}, object, callback=callback)
-            on_ready = self.assert_make_request_called()
-
-            with pytest.raises(self.x.ResponseError):
-                on_ready(self.Response(404, 'Not found'))
-
-    def test_get_status(self):
-        with self.mock_make_request() as callback:
-            self.x.get_status('action', {'p': 3.3}, callback=callback)
-            on_ready = self.assert_make_request_called()
-            set_status_to = [True]
-
-            def parser(dest, body, b):
-                dest.status = set_status_to[0]
-
-            with self.mock_sax_parse(parser):
-                on_ready(self.Response(200, 'hello'))
-            callback.assert_called_with(True)
-
-            set_status_to[0] = False
-            with self.mock_sax_parse(parser):
-                on_ready(self.Response(200, 'hello'))
-            callback.assert_called_with(False)
-
-    def test_get_status_error(self):
-        with self.mock_make_request() as callback:
-            self.x.get_status('action', {'p': 3.3}, callback=callback)
-            on_ready = self.assert_make_request_called()
-
-            with pytest.raises(self.x.ResponseError):
-                on_ready(self.Response(404, 'Not found'))
-
-    def test_get_status_error_empty_body(self):
-        with self.mock_make_request() as callback:
-            self.x.get_status('action', {'p': 3.3}, callback=callback)
-            on_ready = self.assert_make_request_called()
-
-            with pytest.raises(self.x.ResponseError):
-                on_ready(self.Response(200, ''))

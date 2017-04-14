@@ -13,4 +13,4 @@ class test_connect_sqs(AWSCase):
     def test_connection(self):
         x = connect_sqs('AAKI', 'ASAK', http_client=Mock())
         assert x
-        assert x.connection
+        assert x.sqs_connection
