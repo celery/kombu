@@ -27,7 +27,7 @@ import os
 import socket
 
 from kombu.five import Empty
-from kombu.utils.encoding import bytes_to_str
+from kombu.utils.encoding import bytes_to_str, ensure_bytes
 from kombu.utils.json import loads, dumps
 
 from . import virtual
@@ -98,7 +98,7 @@ class Channel(virtual.Channel):
 
     def _put(self, queue, message, **kwargs):
         return self._get_queue(queue).put(
-            dumps(message),
+            ensure_bytes(dumps(message)),
             priority=self._get_message_priority(message, reverse=True),
         )
 

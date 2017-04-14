@@ -123,7 +123,7 @@ class Channel(virtual.Channel):
             self._noack_queues.discard(queue)
         return super(Channel, self).basic_cancel(consumer_tag)
 
-    def drain_events(self, timeout=None, callback=None):
+    def drain_events(self, timeout=None, callback=None, **kwargs):
         """Return a single payload message from one of our queues.
 
         Raises:
