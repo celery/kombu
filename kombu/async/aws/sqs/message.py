@@ -19,7 +19,7 @@ class AsyncMessage(BaseAsyncMessage):
 
     def encode(self, value):
         """Encode/decode the value using Base64 encoding."""
-        return base64.b64encode(value).decode('utf-8')
+        return base64.b64encode(value.encode()).decode()
 
     def __getitem__(self, item):
         """Support Boto3-style access on a message."""

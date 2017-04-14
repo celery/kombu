@@ -37,6 +37,7 @@ SQS Features supported by this transport:
 
 from __future__ import absolute_import, unicode_literals
 
+import base64
 import socket
 import string
 import uuid
@@ -211,7 +212,8 @@ class Channel(virtual.Channel):
         self.sqs.send_message(**kwargs)
 
     def _message_to_python(self, message, queue_name, queue):
-        payload = loads(bytes_to_str(message['Body']))
+        body = base64.b64decode(message['Body'].encode())
+        payload = loads(bytes_to_str(body))
         if queue_name in self._noack_queues:
             queue = self._new_queue(queue_name)
             self.asynsqs.delete_message(queue, message['ReceiptHandle'])
@@ -224,7 +226,7 @@ class Channel(virtual.Channel):
                 delivery_info = {}
                 properties = {'delivery_info': delivery_info}
                 payload.update({
-                    'body': bytes_to_str(message['Body']),
+                    'body': bytes_to_str(body),
                     'properties': properties,
                 })
         # set delivery tag to SQS receipt handle

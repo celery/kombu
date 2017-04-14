@@ -195,9 +195,6 @@ class AsyncAWSQueryConnection(AsyncConnection):
         signer.sign(operation, request, signing_type=signing_type)
         prepared_request = request.prepare()
 
-        # print(prepared_request.url)
-        # print(prepared_request.headers)
-        # print(prepared_request.body)
         return self._mexe(prepared_request, callback=callback)
 
     def get_list(self, operation, params, markers, path='/', parent=None, verb='POST', callback=None):  # noqa
