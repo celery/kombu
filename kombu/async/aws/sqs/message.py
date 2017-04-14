@@ -2,8 +2,10 @@
 """Amazon SQS message implementation."""
 from __future__ import absolute_import, unicode_literals
 
-from kombu.message import Message
 import base64
+
+from kombu.message import Message
+from kombu.utils.encoding import str_to_bytes
 
 
 class BaseAsyncMessage(Message):
@@ -19,7 +21,7 @@ class AsyncMessage(BaseAsyncMessage):
 
     def encode(self, value):
         """Encode/decode the value using Base64 encoding."""
-        return base64.b64encode(value).decode('utf-8')
+        return base64.b64encode(str_to_bytes(value)).decode()
 
     def __getitem__(self, item):
         """Support Boto3-style access on a message."""
