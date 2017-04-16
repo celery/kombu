@@ -11,7 +11,7 @@ import pytest
 import random
 import string
 
-from case import Mock, skip, patch
+from case import Mock, skip
 
 from kombu import messaging
 from kombu import Connection, Exchange, Queue
