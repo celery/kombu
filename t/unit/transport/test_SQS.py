@@ -11,13 +11,15 @@ import pytest
 import random
 import string
 
-from case import Mock, skip
+from case import Mock, skip, patch
 
 from kombu import messaging
 from kombu import Connection, Exchange, Queue
 
 from kombu.five import Empty
 from kombu.transport import SQS
+
+SQS_Channel_sqs = SQS.Channel.sqs
 
 
 class SQSMessageMock(object):
@@ -107,7 +109,6 @@ class SQSClientMock(object):
                 q.messages = []
 
 
-@skip.unless_module('boto')
 @skip.unless_module('boto3')
 class test_Channel:
 
@@ -129,6 +130,7 @@ class test_Channel:
 
         def mock_sqs():
             return self.sqs_conn_mock
+
         SQS.Channel.sqs = mock_sqs()
 
         # Set up a task exchange for passing tasks through the queue
@@ -169,6 +171,16 @@ class test_Channel:
     def test_init(self):
         """kombu.SQS.Channel instantiates correctly with mocked queues"""
         assert self.queue_name in self.channel._queue_cache
+
+    def test_endpoint_url(self):
+        url = 'sqs://@localhost:5493'
+        self.connection = Connection(hostname=url, transport=SQS.Transport)
+        self.channel = self.connection.channel()
+        self.channel._sqs = None
+        expected_endpoint_url = 'http://localhost:5493'
+        assert self.channel.endpoint_url == expected_endpoint_url
+        boto3_sqs = SQS_Channel_sqs.__get__(self.channel, SQS.Channel)
+        assert boto3_sqs._endpoint.host == expected_endpoint_url
 
     def test_new_queue(self):
         queue_name = 'new_unittest_queue'
@@ -220,6 +232,8 @@ class test_Channel:
             self.channel._get_bulk(self.queue_name)
 
     def test_messages_to_python(self):
+        from kombu.async.aws.sqs.message import Message
+
         kombu_message_count = 3
         json_message_count = 3
         # Create several test messages and publish them
@@ -235,17 +249,16 @@ class test_Channel:
         q_url = self.channel._new_queue(self.queue_name)
         # Get the messages now
         kombu_messages = []
-        from kombu.async.aws.sqs.ext import Message
         for m in self.sqs_conn_mock.receive_message(
                 QueueUrl=q_url,
                 MaxNumberOfMessages=kombu_message_count)['Messages']:
-            m['Body'] = Message().decode(m['Body'])
+            m['Body'] = Message(body=m['Body']).decode()
             kombu_messages.append(m)
         json_messages = []
         for m in self.sqs_conn_mock.receive_message(
                 QueueUrl=q_url,
                 MaxNumberOfMessages=json_message_count)['Messages']:
-            m['Body'] = Message().decode(m['Body'])
+            m['Body'] = Message(body=m['Body']).decode()
             json_messages.append(m)
 
         # Now convert them to payloads
