@@ -8,7 +8,6 @@ pymongo
 kazoo
 
 # SQS transport
-boto
 boto3
 
 # Qpid transport
