@@ -107,7 +107,7 @@ class TopicExchange(ExchangeType):
 
     def key_to_pattern(self, rkey):
         """Get the corresponding regex for any routing key."""
-        return '^%s$' % ('\.'.join(
+        return '^%s$' % (r'\.'.join(
             self.wildcards.get(word, word)
             for word in escape_regex(rkey, '.#*').split('.')
         ))
