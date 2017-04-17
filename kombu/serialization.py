@@ -5,11 +5,10 @@ import codecs
 import os
 import sys
 
-import pickle as pypickle
 try:
-    import cPickle as cpickle
+    import cPickle as pickle
 except ImportError:  # pragma: no cover
-    cpickle = None  # noqa
+    import pickle
 
 from collections import namedtuple
 from contextlib import contextmanager
@@ -33,7 +32,6 @@ if sys.platform.startswith('java'):  # pragma: no cover
 else:
     _decode = codecs.decode
 
-pickle = cpickle or pypickle
 pickle_load = pickle.load
 
 #: Kombu requires Python 2.5 or later so we use protocol 2 by default.
