@@ -35,7 +35,6 @@ class test_StdChannel:
 
     def test_Consumer(self):
         q = Queue('foo', Exchange('foo'))
-        print(self.channel.queues)
         cons = self.channel.Consumer(q)
         assert isinstance(cons, Consumer)
         assert cons.channel is self.channel
