@@ -9,7 +9,7 @@ from collections import deque
 from contextlib import contextmanager
 from functools import partial
 from itertools import count
-from uuid import uuid4, uuid3, NAMESPACE_OID
+from uuid import uuid5, uuid4, uuid3, NAMESPACE_OID
 
 from amqp import RecoverableConnectionError
 
@@ -50,7 +50,11 @@ def get_node_id():
 def generate_oid(node_id, process_id, thread_id, instance):
     ent = bytes_if_py2('%x-%x-%x-%x' % (
         node_id, process_id, thread_id, id(instance)))
-    return str(uuid3(NAMESPACE_OID, ent))
+    try:
+        ret = str(uuid3(NAMESPACE_OID, ent))
+    except ValueError:
+        ret = str(uuid5(NAMESPACE_OID, ent))
+    return ret
 
 
 def oid_from(instance, threads=True):
