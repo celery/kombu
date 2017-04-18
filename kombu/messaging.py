@@ -435,7 +435,7 @@ class Consumer(object):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if self.channel:
+        if self.channel and self.channel.connection:
             conn_errors = self.channel.connection.client.connection_errors
             if not isinstance(exc_val, conn_errors):
                 try:
