@@ -279,7 +279,8 @@ class Hub(object):
             if todo:
                 while todo:
                     item = todo.pop()
-                    item()
+                    if item:
+                        item()
                 continue
 
             poll_timeout = fire_timers(propagate=propagate) if scheduled else 1
