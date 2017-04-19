@@ -816,7 +816,7 @@ class Connection(object):
             require a channel.
         """
         # make sure we're still connected, and if not refresh.
-        self.connection
+        self.ensure_connection()
         if self._default_channel is None:
             self._default_channel = self.channel()
         return self._default_channel
