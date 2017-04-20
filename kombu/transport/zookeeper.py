@@ -28,8 +28,7 @@ import socket
 
 from kombu.five import Empty
 from kombu.utils.encoding import bytes_to_str, ensure_bytes
-from kombu.utils.json import loads, dumps
-
+from kombu.utils.json import dumps, loads
 from . import virtual
 
 try:
@@ -141,7 +140,7 @@ class Channel(virtual.Channel):
 
     def _open(self):
         conninfo = self.connection.client
-        self.vhost = os.path.join('/', conninfo.virtual_host[0:-1])
+        self.vhost = self._normalize_chroot(conninfo.virtual_host)
         hosts = []
         if conninfo.alt:
             for host_port in conninfo.alt:
@@ -165,6 +164,13 @@ class Channel(virtual.Channel):
         conn = KazooClient(conn_str)
         conn.start()
         return conn
+
+    @staticmethod
+    def _normalize_chroot(chroot):
+        chroot = chroot.rstrip('/')
+        if not len(chroot) or chroot[0] != '/':
+            chroot = '/' + chroot
+        return chroot
 
     @property
     def client(self):
