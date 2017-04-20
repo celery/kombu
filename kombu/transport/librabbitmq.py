@@ -62,7 +62,8 @@ class Channel(amqp.Channel, base.StdChannel):
         return body, properties
 
     def prepare_queue_arguments(self, arguments, **kwargs):
-        return to_rabbitmq_queue_arguments(arguments, **kwargs)
+        arguments = to_rabbitmq_queue_arguments(arguments, **kwargs)
+        return {k.encode('utf8'): v for k, v in items(arguments)}
 
 
 class Connection(amqp.Connection):
