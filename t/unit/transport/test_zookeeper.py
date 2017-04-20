@@ -1,5 +1,6 @@
 from __future__ import absolute_import, unicode_literals
 
+import pytest
 from case import skip
 
 from kombu import Connection
@@ -25,3 +26,12 @@ class test_Channel:
 
         self.channel._queues['foo'] = AssertQueue()
         self.channel._put(queue='foo', message='bar')
+
+
+@pytest.mark.parametrize('input,expected', (
+    ('/', '/'),
+    ('/root', '/root'),
+    ('/root/', '/root'),
+))
+def test_normalize_chroot(input, expected):
+    assert zookeeper.Channel._normalize_chroot(input) == expected
