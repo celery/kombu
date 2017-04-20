@@ -133,7 +133,6 @@ from kombu.log import get_logger
 from kombu.transport.virtual import Base64, Message
 from kombu.transport import base
 
-
 logger = get_logger(__name__)
 
 
@@ -143,7 +142,7 @@ OBJECT_ALREADY_EXISTS_STRING = 'object already exists'
 StartConsumer = namedtuple('StartConsumer', ['queue'])
 GetOneMessage = namedtuple('GetOneMessage', ['queue', 'return_queue'])
 SendMessage = namedtuple('SendMessage',
-                         ['message', 'address', 'send_complete'])
+                         ['message', 'target', 'send_complete'])
 MessageAndDelivery = namedtuple('MessageAndDelivery', ['message', 'delivery'])
 AckMessage = namedtuple('AckMessage', ['delivery', 'ack_complete'])
 RejectMessage = namedtuple('RejectMessage', ['delivery', 'reject_complete'])
@@ -303,12 +302,14 @@ class QoS(object):
         :type requeue: bool
 
         """
-        message = self._not_yet_acked.pop(delivery_tag)
+        delivery = self._not_yet_acked.pop(delivery_tag)
         event_complete = threading.Event()
         if requeue:
-            cmd = AckMessage(delivery=message, release_complete=event_complete)
+            cmd = ReleaseMessage(delivery=delivery,
+                                 release_complete=event_complete)
         else:
-            cmd = AckMessage(delivery=message, reject_complete=event_complete)
+            cmd = RejectMessage(delivery=delivery,
+                                reject_complete=event_complete)
         self.main_thread_commands.put(cmd)
         event_complete.wait()
 
@@ -435,56 +436,9 @@ class Channel(base.StdChannel):
                    'content_type': pm.content_type,
                    'headers': pm.properties.pop('headers', {}),
                    'properties': pm.properties}
-        return self.Message(self, payload)
-
-    def _put(self, routing_key, message, exchange=None, durable=True,
-             **kwargs):
-        """Synchronously send a single message onto a queue or exchange.
-
-        An internal method which synchronously sends a single message onto
-        a given queue or exchange. If exchange is not specified,
-        the message is sent directly to a queue specified by routing_key.
-        If no queue is found by the name of routing_key while exchange is
-        not specified an exception is raised. If an exchange is specified,
-        then the message is delivered onto the requested
-        exchange using routing_key. Message sending is synchronous using
-        sync=True because large messages in kombu funtests were not being
-        fully sent before the receiver closed.
-
-        This method creates a :class:`qpid.messaging.endpoints.Sender` to
-        send the message to the queue using the
-        :class:`qpid.messaging.endpoints.Session` created and referenced by
-        the associated :class:`~kombu.transport.qpid.Transport`.  The sender
-        is closed before the method exits.
-
-        External calls for put functionality should be done using
-        :meth:`basic_publish`.
-
-        :param routing_key: If exchange is None, treated as the queue name
-            to send the message to. If exchange is not None, treated as the
-            routing_key to use as the message is submitted onto the exchange.
-        :type routing_key: str
-        :param message: The message to be sent as prepared by
-            :meth:`basic_publish`.
-        :type message: dict
-        :keyword exchange: keyword parameter of the exchange this message
-            should be sent on. If no exchange is specified, the message is
-            sent directly to a queue specified by routing_key.
-        :type exchange: str
-        :keyword durable: whether or not the message should persist or be
-            durable.
-        :type durable: bool
-
-        """
-        if exchange:
-            proton_message = proton.Message(subject=exchange, **message)
-        else:
-            proton_message = proton.Message(**message)
-        send_complete = threading.Event()
-        cmd = SendMessage(message=proton_message, address=routing_key,
-                          send_complete=send_complete)
-        self.transport.main_thread_commands.put(cmd)
-        send_complete.wait()
+        message = self.Message(self, payload)
+        message.id = message.delivery_tag
+        return message
 
     def _purge(self, queue):
         """Purge all undelivered messages from a queue specified by name.
@@ -826,14 +780,16 @@ class Channel(base.StdChannel):
         :param queue: The queue name to fetch a message from.
         :type queue: str
         :keyword no_ack: The no_ack parameter has no effect on the ACK
-            behavior of this method. Un-ACKed messages create a memory leak in
-            qpid.messaging, and need to be ACKed in all cases.
+            behavior of this method.
         :type noack: bool
 
         :return: The received message.
         :rtype: :class:`~kombu.transport.virtual.Message`
 
         """
+        import pydevd
+        pydevd.settrace('localhost', port=29437, stdoutToServer=True,
+                        stderrToServer=True)
         try:
             return_queue = Queue.Queue()
             cmd = GetOneMessage(queue, return_queue)
@@ -843,7 +799,8 @@ class Channel(base.StdChannel):
                 message_and_delivery.message)
             delivery_tag = message.delivery_tag
             self.qos.append(message_and_delivery.delivery, delivery_tag)
-            self.qos.ack(delivery_tag)
+            if no_ack:
+                self.qos.ack(delivery_tag)
             return message
         except Empty:
             pass
@@ -898,58 +855,29 @@ class Channel(base.StdChannel):
     def basic_consume(self, queue, no_ack, callback, consumer_tag, **kwargs):
         """Start an asynchronous consumer that reads from a queue.
 
-        This method starts a consumer of type
-        :class:`~qpid.messaging.endpoints.Receiver` using the
-        :class:`~qpid.messaging.endpoints.Session` created and referenced by
-        the :class:`Transport` that reads messages from a queue
-        specified by name until stopped by a call to :meth:`basic_cancel`.
+        The consumer started reads messages from a queue until stopped by a
+        call to :meth:`basic_cancel`. The queue name to read from is specified
+        by 'queue'.
 
-
-        Messages are available later through a synchronous call to
-        :meth:`Transport.drain_events`, which will drain from the consumer
-        started by this method. :meth:`Transport.drain_events` is
-        synchronous, but the receiving of messages over the network occurs
-        asynchronously, so it should still perform well.
-        :meth:`Transport.drain_events` calls the callback provided here with
-        the Message of type self.Message.
+        The callback will be called with the each received message as an
+        argument. Callback must accept a single positional argument.
 
         Each consumer is referenced by a consumer_tag, which is provided by
         the caller of this method.
 
-        This method sets up the callback onto the self.connection object in a
-        dict keyed by queue name. :meth:`~Transport.drain_events` is
-        responsible for calling that callback upon message receipt.
+        All messages are added to the QoS object when received. If no_ack is
+        True, the message is ACKed immediately.
 
-        All messages that are received are added to the QoS object to be
-        saved for asynchronous ACKing later after the message has been
-        handled by the caller of :meth:`~Transport.drain_events`. Messages
-        can be ACKed after being received through a call to :meth:`basic_ack`.
-
-        If no_ack is True, The no_ack flag indicates that the receiver of
-        the message will not call :meth:`basic_ack` later. Since the
-        message will not be ACKed later, it is ACKed immediately.
-
-        :meth:`basic_consume` transforms the message object type prior to
-        calling the callback. Initially the message comes in as a
-        :class:`qpid.messaging.Message`. This method unpacks the payload
-        of the :class:`qpid.messaging.Message` and creates a new object of
-        type self.Message.
-
-        This method wraps the user delivered callback in a runtime-built
-        function which provides the type transformation from
-        :class:`qpid.messaging.Message` to
-        :class:`~kombu.transport.virtual.Message`, and adds the message to
-        the associated :class:`QoS` object for asynchronous ACKing
-        if necessary.
+        All messages that are un-ACKed  are can be ACKed later with a call
+        to :meth:`basic_ack`.
 
         :param queue: The name of the queue to consume messages from
         :type queue: str
-        :param no_ack: If True, then messages will not be saved for ACKing
-            later, but will be ACKed immediately. If False, then messages
-            will be saved for ACKing later with a call to :meth:`basic_ack`.
+        :param no_ack: If True, then messages will be ACKed immediately
         :type no_ack: bool
-        :param callback: a callable that will be called when messages
-            arrive on the queue.
+        :param callback: a callable that will be called with each message
+            that arrives from the queue. Callback should accept a single
+            positional argument.
         :type callback: a callable object
         :param consumer_tag: a tag to reference the created consumer by.
             This consumer_tag is needed to cancel the consumer.
@@ -957,10 +885,13 @@ class Channel(base.StdChannel):
         """
         self._tag_to_queue[consumer_tag] = queue
 
-        def _callback(proton_message):
-            message = self._make_kombu_message_from_proton(proton_message)
+        def _callback(message_and_delivery):
+            # import pydevd
+            # pydevd.settrace('localhost', port=29437, stdoutToServer=True,
+            #                 stderrToServer=True)
+            message = self._make_kombu_message_from_proton(message_and_delivery.message)
             delivery_tag = message.delivery_tag
-            self.qos.append(proton_message, delivery_tag)
+            self.qos.append(message_and_delivery.delivery, delivery_tag)
             if no_ack:
                 # Celery will not ack this message later, so we should ack now
                 self.basic_ack(delivery_tag)
@@ -1081,17 +1012,14 @@ class Channel(base.StdChannel):
         to_return['properties']['headers'] = headers
         return to_return
 
-    def basic_publish(self, message, exchange, routing_key, **kwargs):
+    def basic_publish(self, message, exchange='', routing_key='', **kwargs):
         """Publish message onto an exchange using a routing key.
 
-        Publish a message onto an exchange specified by name using a
-        routing key specified by routing_key. Prepares the message in the
+        Publish a message onto an exchange specified by 'exchange' using a
+        routing key specified by 'routing_key'. The message is prepared in the
         following ways before sending:
 
         - encodes the body using :meth:`encode_body`
-        - wraps the body as a buffer object, so that
-            :class:`qpid.messaging.endpoints.Sender` uses a content type
-            that can support arbitrarily large messages.
         - sets delivery_tag to a random uuid.UUID
         - sets the exchange and routing_key info as delivery_info
 
@@ -1125,8 +1053,13 @@ class Channel(base.StdChannel):
             exchange=exchange,
             routing_key=routing_key,
         )
-        message['id'] = delivery_tag
-        self._put(routing_key, message, exchange, **kwargs)
+
+        proton_message = proton.Message(subject=routing_key, **message)
+        send_complete = threading.Event()
+        cmd = SendMessage(message=proton_message, target=exchange,
+                          send_complete=send_complete)
+        self.transport.main_thread_commands.put(cmd)
+        send_complete.wait()
 
     def encode_body(self, body, encoding=None):
         """Encode a body using an optionally specified encoding.
@@ -1306,12 +1239,12 @@ class Connection(object):
             channel.connection = None
 
 
-class HelloWorld(MessagingHandler):
+class ProtonMessaging(MessagingHandler):
 
-    def __init__(self, server, _w, main_thread_commands, recv_messages):
-        super(HelloWorld, self).__init__(auto_accept=False)
+    def __init__(self, server, w, main_thread_commands, recv_messages):
+        super(ProtonMessaging, self).__init__(auto_accept=False)
         self.server = server
-        self._w_fd = _w
+        self._w_fd = w
         self.main_thread_commands = main_thread_commands
         self.recv_messages = recv_messages  # async send messages to MainThread
         self.senders = {}  # senders indexes by address
@@ -1345,24 +1278,34 @@ class HelloWorld(MessagingHandler):
             else:
                 if isinstance(command, SendMessage):
                     try:
-                        sender = self.senders[command.address]
+                        sender = self.senders[command.target]
                     except KeyError:
-                        sender = event.container.create_sender(self.conn, command.address)
-                        self.senders[command.address] = sender
+                        sender = event.container.create_sender(self.conn,
+                                                               command.target)
+                        self.senders[command.target] = sender
                     self.send_complete_events[sender.name] = command.send_complete
                     sender.send(command.message)
                 elif isinstance(command, StartConsumer):
                     event.container.create_receiver(self.conn, command.queue)
                 elif isinstance(command, AckMessage):
+                    import pydevd
+                    pydevd.settrace('localhost', port=29437,
+                                    stdoutToServer=True, stderrToServer=True)
                     self.accept(command.delivery)
                     command.ack_complete.set()
                 elif isinstance(command, ReleaseMessage):
+                    import pydevd
+                    pydevd.settrace('localhost', port=29437,
+                                    stdoutToServer=True, stderrToServer=True)
                     self.release(command.delivery)
                     command.release_complete.set()
                 elif isinstance(command, RejectMessage):
                     self.reject(command.delivery)
                     command.reject_complete.set()
                 elif isinstance(command, GetOneMessage):
+                    import pydevd
+                    pydevd.settrace('localhost', port=29437,
+                                    stdoutToServer=True, stderrToServer=True)
                     receiver = event.container.create_receiver(self.conn, command.queue)
                     self.get_one_queues[receiver.name] = command.return_queue
                 else:
@@ -1384,21 +1327,23 @@ class HelloWorld(MessagingHandler):
         return_queue = self.get_one_queues.pop(event.receiver.name,
                                                self.recv_messages)
         return_queue.put(message_and_delivery)
+        if return_queue is self.recv_messages:
+            os.write(self._w_fd, '0')
 
 
 class ProtonThread(threading.Thread):
 
-    def __init__(self, _w, main_thread_commands, recv_messages):
+    def __init__(self, w, main_thread_commands, recv_messages):
         super(ProtonThread, self).__init__()
         self.main_thread_commands = main_thread_commands
         self.recv_messages = recv_messages
-        self._w = _w
+        self._w = w
 
     def run(self):
         while True:
-            messaging_handler = HelloWorld('localhost:5672', self._w,
-                                            self.main_thread_commands,
-                                           self.recv_messages)
+            messaging_handler = ProtonMessaging('localhost:5672', self._w,
+                                                self.main_thread_commands,
+                                                self.recv_messages)
             Container(messaging_handler).run()
             # except Exception as error:
             #     import pydevd
@@ -1478,9 +1423,6 @@ class Transport(base.Transport):
     channel_errors = recoverable_channel_errors
 
     def __init__(self, *args, **kwargs):
-        # import pydevd
-        # pydevd.settrace('localhost', port=29437, stdoutToServer=True,
-        #                 stderrToServer=True)
         self.verify_runtime_environment()
         self.main_thread_commands = Queue.Queue()
         self.recv_messages = Queue.Queue()
@@ -1565,7 +1507,6 @@ class Transport(base.Transport):
         :type loop: kombu.async.Hub
 
         """
-        raise NotImplementedError()
         os.read(self.r, 1)
         try:
             self.drain_events(connection)
@@ -1718,13 +1659,13 @@ class Transport(base.Transport):
         elapsed_time = -1
         while elapsed_time < timeout:
             try:
-                proton_message = self.recv_messages.get(block=True,
-                                                        timeout=timeout)
+                msg_and_delivery = self.recv_messages.get(block=True,
+                                                          timeout=timeout)
             except Queue.Empty:
                 raise socket.timeout()
             else:
-                queue = proton_message.subject
-                connection._callbacks[queue](proton_message)
+                queue = msg_and_delivery.message.subject
+                connection._callbacks[queue](msg_and_delivery)
             elapsed_time = time.time() - start_time
         raise socket.timeout()
 
