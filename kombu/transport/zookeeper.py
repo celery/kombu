@@ -29,6 +29,7 @@ import socket
 from kombu.five import Empty
 from kombu.utils.encoding import bytes_to_str, ensure_bytes
 from kombu.utils.json import dumps, loads
+
 from . import virtual
 
 try:
@@ -66,8 +67,8 @@ try:
         socket.error,
     )
 except ImportError:
-    kazoo = None                                    # noqa
-    KZ_CONNECTION_ERRORS = KZ_CHANNEL_ERRORS = ()   # noqa
+    kazoo = None  # noqa
+    KZ_CONNECTION_ERRORS = KZ_CHANNEL_ERRORS = ()  # noqa
 
 DEFAULT_PORT = 2181
 
@@ -80,8 +81,13 @@ class Channel(virtual.Channel):
     _client = None
     _queues = {}
 
+    def __init__(self, connection, **kwargs):
+        super(Channel, self).__init__(connection, **kwargs)
+        vhost = self.connection.client.virtual_host
+        self._vhost = '/{}'.format(vhost.strip('/'))
+
     def _get_path(self, queue_name):
-        return os.path.join(self.vhost, queue_name)
+        return os.path.join(self._vhost, queue_name)
 
     def _get_queue(self, queue_name):
         queue = self._queues.get(queue_name, None)
@@ -140,7 +146,6 @@ class Channel(virtual.Channel):
 
     def _open(self):
         conninfo = self.connection.client
-        self.vhost = self._normalize_chroot(conninfo.virtual_host)
         hosts = []
         if conninfo.alt:
             for host_port in conninfo.alt:
@@ -164,13 +169,6 @@ class Channel(virtual.Channel):
         conn = KazooClient(conn_str)
         conn.start()
         return conn
-
-    @staticmethod
-    def _normalize_chroot(chroot):
-        chroot = chroot.rstrip('/')
-        if not len(chroot) or chroot[0] != '/':
-            chroot = '/' + chroot
-        return chroot
 
     @property
     def client(self):
