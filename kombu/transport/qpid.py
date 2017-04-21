@@ -143,7 +143,7 @@ StartConsumer = namedtuple('StartConsumer', ['queue'])
 GetOneMessage = namedtuple('GetOneMessage', ['queue', 'return_queue'])
 SendMessage = namedtuple('SendMessage',
                          ['message', 'target', 'send_complete'])
-MessageAndDelivery = namedtuple('MessageAndDelivery', ['message', 'delivery'])
+ProtonEvent = namedtuple('ProtonEvent', ['message', 'delivery', 'queue'])
 AckMessage = namedtuple('AckMessage', ['delivery', 'ack_complete'])
 RejectMessage = namedtuple('RejectMessage', ['delivery', 'reject_complete'])
 ReleaseMessage = namedtuple('ReleaseMessage', ['delivery', 'release_complete'])
@@ -432,13 +432,11 @@ class Channel(base.StdChannel):
         """
         pm = proton_message
         payload = {'body': pm.body,
-                   'content_encoding': pm.content_encoding,
-                   'content_type': pm.content_type,
-                   'headers': pm.properties.pop('headers', {}),
                    'properties': pm.properties}
-        message = self.Message(self, payload)
-        message.id = message.delivery_tag
-        return message
+        #            'content_encoding': pm.content_encoding,
+        #            'content_type': pm.content_type,
+        #            'headers': pm.properties.pop('headers', {}),
+        return self.Message(self, payload)
 
     def _purge(self, queue):
         """Purge all undelivered messages from a queue specified by name.
@@ -885,13 +883,10 @@ class Channel(base.StdChannel):
         """
         self._tag_to_queue[consumer_tag] = queue
 
-        def _callback(message_and_delivery):
-            # import pydevd
-            # pydevd.settrace('localhost', port=29437, stdoutToServer=True,
-            #                 stderrToServer=True)
-            message = self._make_kombu_message_from_proton(message_and_delivery.message)
+        def _callback(proton_event):
+            message = self._make_kombu_message_from_proton(proton_event.message)
             delivery_tag = message.delivery_tag
-            self.qos.append(message_and_delivery.delivery, delivery_tag)
+            self.qos.append(proton_event.delivery, delivery_tag)
             if no_ack:
                 # Celery will not ack this message later, so we should ack now
                 self.basic_ack(delivery_tag)
@@ -1053,6 +1048,7 @@ class Channel(base.StdChannel):
             exchange=exchange,
             routing_key=routing_key,
         )
+        # props['id'] = delivery_tag
 
         proton_message = proton.Message(subject=routing_key, **message)
         send_complete = threading.Event()
@@ -1286,11 +1282,12 @@ class ProtonMessaging(MessagingHandler):
                     self.send_complete_events[sender.name] = command.send_complete
                     sender.send(command.message)
                 elif isinstance(command, StartConsumer):
-                    event.container.create_receiver(self.conn, command.queue)
+                    if command.queue.startswith('resource_manager'):
+                        if command.queue == 'resource_manager':
+                            event.container.create_receiver(self.conn, command.queue)
+                    else:
+                        event.container.create_receiver(self.conn, command.queue)
                 elif isinstance(command, AckMessage):
-                    import pydevd
-                    pydevd.settrace('localhost', port=29437,
-                                    stdoutToServer=True, stderrToServer=True)
                     self.accept(command.delivery)
                     command.ack_complete.set()
                 elif isinstance(command, ReleaseMessage):
@@ -1322,11 +1319,12 @@ class ProtonMessaging(MessagingHandler):
         send_complete.set()
 
     def on_message(self, event):
-        message_and_delivery = MessageAndDelivery(message=event.message,
-                                                  delivery=event.delivery)
+        proton_event = ProtonEvent(message=event.message,
+                                   delivery=event.delivery,
+                                   queue=event.link.source.address)
         return_queue = self.get_one_queues.pop(event.receiver.name,
                                                self.recv_messages)
-        return_queue.put(message_and_delivery)
+        return_queue.put(proton_event)
         if return_queue is self.recv_messages:
             os.write(self._w_fd, '0')
 
@@ -1659,13 +1657,15 @@ class Transport(base.Transport):
         elapsed_time = -1
         while elapsed_time < timeout:
             try:
-                msg_and_delivery = self.recv_messages.get(block=True,
-                                                          timeout=timeout)
+                proton_event = self.recv_messages.get(block=True,
+                                                      timeout=timeout)
             except Queue.Empty:
                 raise socket.timeout()
             else:
-                queue = msg_and_delivery.message.subject
-                connection._callbacks[queue](msg_and_delivery)
+                try:
+                    connection._callbacks[proton_event.queue](proton_event)
+                except KeyError:
+                    logger.error('Cannot determine which queue a message was received on. Something is wrong.')
             elapsed_time = time.time() - start_time
         raise socket.timeout()
 
