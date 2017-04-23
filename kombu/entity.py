@@ -707,7 +707,7 @@ class Queue(MaybeChannelBound):
                                         nowait=nowait) or 0
 
     def consume(self, consumer_tag='', callback=None,
-                no_ack=None, nowait=False):
+                no_ack=None, nowait=False, exclusive=False):
         """Start a queue consumer.
 
         Consumers last as long as the channel they were created on, or
@@ -724,6 +724,10 @@ class Queue(MaybeChannelBound):
 
             nowait (bool): Do not wait for a reply.
 
+            exclusive (bool): If enabled then this consumer will request
+                exclusive access to the queue meaning that only this consumer
+                can access the queue.
+
             callback (Callable): callback called for each delivered message.
         """
         if no_ack is None:
@@ -734,6 +738,7 @@ class Queue(MaybeChannelBound):
             consumer_tag=consumer_tag or '',
             callback=callback,
             nowait=nowait,
+            exclusive=exclusive,
             arguments=self.consumer_arguments)
 
     def cancel(self, consumer_tag):

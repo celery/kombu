@@ -284,6 +284,7 @@ class Consumer(object):
         channel (kombu.Connection, ChannelT): see :attr:`channel`.
         queues (Sequence[kombu.Queue]): see :attr:`queues`.
         no_ack (bool): see :attr:`no_ack`.
+        exclusive (bool): see :attr:`exclusive`.
         auto_declare (bool): see :attr:`auto_declare`
         callbacks (Sequence[Callable]): see :attr:`callbacks`.
         on_message (Callable): See :attr:`on_message`
@@ -307,6 +308,13 @@ class Consumer(object):
     #:
     #: Disabled by default.
     no_ack = None
+
+    #: Flag for becoming an exclusive consumer.
+    #: If enabled the consumer will request exclusive access to the queue,
+    #: meaning only this consumer can access the queue.
+    #:
+    #: Disabled by default.
+    exclusive = False
 
     #: By default all entities will be declared at instantiation, if you
     #: want to handle this manually you can set this to :const:`False`.
@@ -366,10 +374,12 @@ class Consumer(object):
 
     def __init__(self, channel, queues=None, no_ack=None, auto_declare=None,
                  callbacks=None, on_decode_error=None, on_message=None,
-                 accept=None, prefetch_count=None, tag_prefix=None):
+                 accept=None, prefetch_count=None, tag_prefix=None,
+                 exclusive=None):
         self.channel = channel
         self.queues = maybe_list(queues or [])
         self.no_ack = self.no_ack if no_ack is None else no_ack
+        self.exclusive = self.exclusive if exclusive is None else exclusive
         self.callbacks = (self.callbacks or [] if callbacks is None
                           else callbacks)
         self.on_message = on_message
@@ -456,7 +466,7 @@ class Consumer(object):
         self._queues[queue.name] = queue
         return queue
 
-    def consume(self, no_ack=None):
+    def consume(self, no_ack=None, exclusive=None):
         """Start consuming messages.
 
         Can be called multiple times, but note that while it
@@ -470,11 +480,14 @@ class Consumer(object):
         queues = list(values(self._queues))
         if queues:
             no_ack = self.no_ack if no_ack is None else no_ack
+            exclusive = self.exclusive if exclusive is None else exclusive
 
             H, T = queues[:-1], queues[-1]
             for queue in H:
-                self._basic_consume(queue, no_ack=no_ack, nowait=True)
-            self._basic_consume(T, no_ack=no_ack, nowait=False)
+                self._basic_consume(queue, no_ack=no_ack, nowait=True,
+                                    exclusive=exclusive)
+            self._basic_consume(T, no_ack=no_ack, nowait=False,
+                                exclusive=exclusive)
 
     def cancel(self):
         """End all active queue consumers.
@@ -590,12 +603,12 @@ class Consumer(object):
         [callback(body, message) for callback in callbacks]
 
     def _basic_consume(self, queue, consumer_tag=None,
-                       no_ack=no_ack, nowait=True):
+                       no_ack=no_ack, exclusive=exclusive, nowait=True):
         tag = self._active_tags.get(queue.name)
         if tag is None:
             tag = self._add_tag(queue, consumer_tag)
             queue.consume(tag, self._receive_callback,
-                          no_ack=no_ack, nowait=nowait)
+                          no_ack=no_ack, exclusive=exclusive, nowait=nowait)
         return tag
 
     def _add_tag(self, queue, consumer_tag=None):
