@@ -11,7 +11,7 @@ from kombu.common import (
     Broadcast, maybe_declare,
     send_reply, collect_replies,
     declaration_cached, ignore_errors,
-    QoS, PREFETCH_COUNT_MAX,
+    QoS, PREFETCH_COUNT_MAX, generate_oid
 )
 
 from t.mocks import MockPool
