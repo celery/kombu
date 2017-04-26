@@ -17,6 +17,25 @@ from kombu.common import (
 from t.mocks import MockPool
 
 
+def test_generate_oid():
+    from uuid import NAMESPACE_OID
+    from kombu.five import bytes_if_py2
+
+    instance = Mock()
+
+    args = (1, 1001, 2001, id(instance))
+    ent = bytes_if_py2('%x-%x-%x-%x' % args)
+
+    with patch('kombu.common.uuid3') as mock_uuid3, \
+            patch('kombu.common.uuid5') as mock_uuid5:
+        mock_uuid3.side_effect = ValueError
+        mock_uuid3.return_value = 'uuid3-6ba7b812-9dad-11d1-80b4'
+        mock_uuid5.return_value = 'uuid5-6ba7b812-9dad-11d1-80b4'
+        oid = generate_oid(1, 1001, 2001, instance)
+        mock_uuid5.assert_called_once_with(NAMESPACE_OID, ent)
+        assert oid == 'uuid5-6ba7b812-9dad-11d1-80b4'
+
+
 def test_ignore_errors():
     connection = Mock()
     connection.channel_errors = (KeyError,)
