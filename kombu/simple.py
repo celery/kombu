@@ -35,20 +35,36 @@ class SimpleBase(object):
     def get(self, block=True, timeout=None):
         if not block:
             return self.get_nowait()
+
         self._consume()
-        elapsed = 0.0
+
+        time_start = monotonic()
         remaining = timeout
         while True:
-            time_start = monotonic()
             if self.buffer:
                 return self.buffer.popleft()
+
+            if remaining is not None and remaining <= 0.0:
+                raise self.Empty()
+
             try:
-                self.channel.connection.client.drain_events(
-                    timeout=timeout and remaining)
+                # The `drain_events` method will
+                # block on the socket connection to rabbitmq. if any
+                # application-level messages are received, it will put them
+                # into `self.buffer`.
+                # * The method will block for UP TO `timeout` milliseconds.
+                # * The method may raise a socket.timeout exception; or...
+                # * The method may return without having put anything on
+                #    `self.buffer`.  This is because internal heartbeat
+                #    messages are sent over the same socket; also POSIX makes
+                #    no guarantees against socket calls returning early.
+                self.channel.connection.client.drain_events(timeout=remaining)
             except socket.timeout:
                 raise self.Empty()
-            elapsed += monotonic() - time_start
-            remaining = timeout and timeout - elapsed or None
+
+            if remaining is not None:
+                elapsed = monotonic() - time_start
+                remaining = timeout - elapsed
 
     def get_nowait(self):
         m = self.queue.get(no_ack=self.no_ack)
