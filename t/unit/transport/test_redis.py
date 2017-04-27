@@ -663,6 +663,20 @@ class test_Channel:
         self.channel.connection.client.hostname = 'george.vandelay.com'
         assert self.channel._connparams()['host'] == 'george.vandelay.com'
 
+    def test_connparams_password_for_unix_socket(self):
+        self.channel.connection.client.hostname = \
+            'socket://:foo@/var/run/redis.sock'
+        connection_parameters = self.channel._connparams()
+        password = connection_parameters['password']
+        path = connection_parameters['path']
+        assert (password, path) == ('foo', '/var/run/redis.sock')
+        self.channel.connection.client.hostname = \
+            'socket://@/var/run/redis.sock'
+        connection_parameters = self.channel._connparams()
+        password = connection_parameters['password']
+        path = connection_parameters['path']
+        assert (password, path) == (None, '/var/run/redis.sock')
+
     def test_rotate_cycle_ValueError(self):
         cycle = self.channel._queue_cycle
         cycle.update(['kramer', 'jerry'])
