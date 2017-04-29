@@ -7,7 +7,7 @@ from case import mock, skip
 from kombu import compression
 
 
-class test_compression:
+class test_compression(object):
 
     @mock.mask_modules('bz2')
     def test_no_bz2(self):

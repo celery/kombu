@@ -7,7 +7,7 @@ from case import Mock
 from kombu import Connection, Exchange, Queue
 
 
-class SimpleBase:
+class SimpleBase(object):
 
     def Queue(self, name, *args, **kwargs):
         q = name

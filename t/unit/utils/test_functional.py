@@ -15,7 +15,7 @@ from kombu.utils.functional import (
 )
 
 
-class test_ChannelPromise:
+class test_ChannelPromise(object):
 
     def test_repr(self):
         obj = Mock(name='cb')
@@ -23,7 +23,7 @@ class test_ChannelPromise:
         obj.assert_not_called()
 
 
-class test_shufflecycle:
+class test_shufflecycle(object):
 
     def test_shuffles(self):
         prev_repeat, utils.repeat = utils.repeat, Mock()
@@ -47,7 +47,7 @@ def double(x):
     return x * 2
 
 
-class test_LRUCache:
+class test_LRUCache(object):
 
     def test_expires(self):
         limit = 100
@@ -125,7 +125,7 @@ def test_memoize():
     assert x(3) == 5
 
 
-class test_lazy:
+class test_lazy(object):
 
     def test__str__(self):
         assert (str(lazy(lambda: 'the quick brown fox')) ==
@@ -170,7 +170,7 @@ def test_maybe_evaluate(obj, expected):
     assert maybe_evaluate(obj) == expected
 
 
-class test_retry_over_time:
+class test_retry_over_time(object):
 
     class Predicate(Exception):
         pass

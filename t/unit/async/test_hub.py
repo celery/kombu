@@ -38,7 +38,7 @@ def test_DummyLock():
         pass
 
 
-class test_LaxBoundedSemaphore:
+class test_LaxBoundedSemaphore(object):
 
     def test_acquire_release(self):
         x = LaxBoundedSemaphore(2)
@@ -127,7 +127,7 @@ class test_LaxBoundedSemaphore:
         assert x.value == x.initial_value
 
 
-class test_Utils:
+class test_Utils(object):
 
     def setup(self):
         self._prev_loop = get_event_loop()
@@ -153,7 +153,7 @@ class test_Utils:
             _raise_stop_error()
 
 
-class test_Hub:
+class test_Hub(object):
 
     def setup(self):
         self.hub = Hub()

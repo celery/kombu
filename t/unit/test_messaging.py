@@ -16,7 +16,7 @@ from kombu.utils.functional import ChannelPromise
 from t.mocks import Transport
 
 
-class test_Producer:
+class test_Producer(object):
 
     def setup(self):
         self.exchange = Exchange('foo', 'direct')
@@ -236,7 +236,7 @@ class test_Producer:
         assert p.on_return
 
 
-class test_Consumer:
+class test_Consumer(object):
 
     def setup(self):
         self.connection = Connection(transport=Transport)

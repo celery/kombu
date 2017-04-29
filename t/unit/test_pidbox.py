@@ -20,7 +20,7 @@ def is_call(message):
     return message['method'] and message['reply_to']
 
 
-class test_Mailbox:
+class test_Mailbox(object):
 
     class Mailbox(pidbox.Mailbox):
 

@@ -13,7 +13,7 @@ else:
 
 
 @skip.unless_module('librabbitmq')
-class lrmqCase:
+class lrmqCase(object):
     pass
 
 

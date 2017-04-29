@@ -32,7 +32,7 @@ class Cons(ConsumerMixin):
         self.extra_context.return_value = self.extra_context
 
 
-class test_ConsumerMixin:
+class test_ConsumerMixin(object):
 
     def _context(self):
         Acons = ContextMock(name='consumerA')
@@ -107,7 +107,7 @@ class test_ConsumerMixin:
         c.on_consume_end.assert_called_with(conn, channel)
 
 
-class test_ConsumerMixin_interface:
+class test_ConsumerMixin_interface(object):
 
     def setup(self):
         self.c = ConsumerMixin()

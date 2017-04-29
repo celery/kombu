@@ -26,7 +26,7 @@ class MockConnection(dict):
         pass
 
 
-class test_Channel:
+class test_Channel(object):
 
     def setup(self):
 
@@ -80,7 +80,7 @@ class test_Channel:
         assert 'my-consumer-tag' not in self.channel.no_ack_consumers
 
 
-class test_Transport:
+class test_Transport(object):
 
     def setup(self):
         self.connection = Connection('pyamqp://')
@@ -137,7 +137,7 @@ class test_Transport:
                 sys.modules['amqp.connection'] = pm
 
 
-class test_pyamqp:
+class test_pyamqp(object):
 
     def test_default_port(self):
 

@@ -3,7 +3,7 @@ from __future__ import absolute_import, unicode_literals
 from kombu.utils.uuid import uuid
 
 
-class test_UUID:
+class test_UUID(object):
 
     def test_uuid4(self):
         assert uuid() != uuid()

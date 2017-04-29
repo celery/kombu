@@ -10,7 +10,7 @@ from kombu import compat
 from t.mocks import Transport, Channel
 
 
-class test_misc:
+class test_misc(object):
 
     def test_iterconsume(self):
 
@@ -77,7 +77,7 @@ class test_misc:
                 Queue.from_dict('foo', **dict(defs)))
 
 
-class test_Publisher:
+class test_Publisher(object):
 
     def setup(self):
         self.connection = Connection(transport=Transport)
@@ -128,7 +128,7 @@ class test_Publisher:
         assert pub._closed
 
 
-class test_Consumer:
+class test_Consumer(object):
 
     def setup(self):
         self.connection = Connection(transport=Transport)
@@ -262,7 +262,7 @@ class test_Consumer:
         c.close()
 
 
-class test_ConsumerSet:
+class test_ConsumerSet(object):
 
     def setup(self):
         self.connection = Connection(transport=Transport)

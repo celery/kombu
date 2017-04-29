@@ -25,7 +25,7 @@ def clean_encoding():
             sys.modules['kombu.utils.encoding'] = old_encoding
 
 
-class test_default_encoding:
+class test_default_encoding(object):
 
     def test_set_default_file(self):
         prev = get_default_encoding_file()
@@ -65,7 +65,7 @@ def test_default_encode():
         assert e.default_encode(b'foo')
 
 
-class test_safe_str:
+class test_safe_str(object):
 
     def setup(self):
         self._encoding = self.patching('sys.getfilesystemencoding')

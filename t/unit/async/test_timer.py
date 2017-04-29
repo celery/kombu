@@ -10,7 +10,7 @@ from kombu.async.timer import Entry, Timer, to_timestamp
 from kombu.five import bytes_if_py2
 
 
-class test_to_timestamp:
+class test_to_timestamp(object):
 
     def test_timestamp(self):
         assert to_timestamp(3.13) is 3.13
@@ -19,7 +19,7 @@ class test_to_timestamp:
         assert to_timestamp(datetime.utcnow())
 
 
-class test_Entry:
+class test_Entry(object):
 
     def test_call(self):
         fun = Mock(name='fun')
@@ -56,7 +56,7 @@ class test_Entry:
         assert x != y
 
 
-class test_Timer:
+class test_Timer(object):
 
     def test_enter_exit(self):
         x = Timer()

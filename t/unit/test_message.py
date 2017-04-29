@@ -8,7 +8,7 @@ from case import Mock, patch
 from kombu.message import Message
 
 
-class test_Message:
+class test_Message(object):
 
     def test_repr(self):
         assert repr(Message('b', channel=Mock()))

@@ -10,7 +10,7 @@ from case import Mock
 from kombu.clocks import LamportClock, timetuple
 
 
-class test_LamportClock:
+class test_LamportClock(object):
 
     def test_clocks(self):
         c1 = LamportClock()
@@ -58,7 +58,7 @@ class test_LamportClock:
         assert c.sort_heap([m4, m5, m1]) == m4
 
 
-class test_timetuple:
+class test_timetuple(object):
 
     def test_repr(self):
         x = timetuple(133, time(), 'id', Mock())

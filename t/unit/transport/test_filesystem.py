@@ -9,7 +9,7 @@ from kombu import Connection, Exchange, Queue, Consumer, Producer
 
 
 @skip.if_win32()
-class test_FilesystemTransport:
+class test_FilesystemTransport(object):
 
     def setup(self):
         self.channels = set()

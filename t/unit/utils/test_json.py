@@ -23,7 +23,7 @@ class Custom(object):
         return self.data
 
 
-class test_JSONEncoder:
+class test_JSONEncoder(object):
 
     def test_datetime(self):
         now = datetime.utcnow()
@@ -55,7 +55,7 @@ class test_JSONEncoder:
             dumps({'o': object()})
 
 
-class test_dumps_loads:
+class test_dumps_loads(object):
 
     def test_dumps_custom_object(self):
         x = {'foo': Custom({'a': 'b'})}

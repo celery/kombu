@@ -3,7 +3,7 @@ from __future__ import absolute_import, unicode_literals
 from kombu.utils.objects import cached_property
 
 
-class test_cached_property:
+class test_cached_property(object):
 
     def test_deleting(self):
 

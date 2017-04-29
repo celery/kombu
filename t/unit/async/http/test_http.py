@@ -15,14 +15,14 @@ from kombu.exceptions import HttpError
 from t.mocks import PromiseMock
 
 
-class test_Headers:
+class test_Headers(object):
 
     def test_normalize(self):
         assert normalize_header('accept-encoding') == 'Accept-Encoding'
 
 
 @pytest.mark.usefixtures('hub')
-class test_Request:
+class test_Request(object):
 
     def test_init(self):
         x = http.Request('http://foo', method='POST')
@@ -48,7 +48,7 @@ class test_Request:
 
 
 @pytest.mark.usefixtures('hub')
-class test_Response:
+class test_Response(object):
 
     def test_init(self):
         req = http.Request('http://foo')
@@ -82,7 +82,7 @@ class test_Response:
         assert r.body == b'hello'
 
 
-class test_BaseClient:
+class test_BaseClient(object):
 
     @pytest.fixture(autouse=True)
     def setup_hub(self, hub):
@@ -147,7 +147,7 @@ class test_BaseClient:
 
 @skip.if_pypy()
 @skip.unless_module('pycurl')
-class test_Client:
+class test_Client(object):
 
     def test_get_client(self, hub):
         client = http.get_client()

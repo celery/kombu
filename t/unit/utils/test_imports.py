@@ -8,7 +8,7 @@ from kombu import Exchange
 from kombu.utils.imports import symbol_by_name
 
 
-class test_symbol_by_name:
+class test_symbol_by_name(object):
 
     def test_instance_returns_instance(self):
         instance = object()

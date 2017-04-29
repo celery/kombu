@@ -11,7 +11,7 @@ from kombu.utils import compat
 from kombu.utils.compat import entrypoints, maybe_fileno
 
 
-class test_entrypoints:
+class test_entrypoints(object):
 
     @mock.mask_modules('pkg_resources')
     def test_without_pkg_resources(self):
@@ -36,7 +36,7 @@ def test_maybe_fileno():
     assert maybe_fileno(f) is None
 
 
-class test_detect_environment:
+class test_detect_environment(object):
 
     def test_detect_environment(self):
         try:

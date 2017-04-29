@@ -11,7 +11,7 @@ from kombu.async.http.curl import READ, WRITE, CurlClient
 @skip.if_pypy()
 @skip.unless_module('pycurl')
 @pytest.mark.usefixtures('hub')
-class test_CurlClient:
+class test_CurlClient(object):
 
     class Client(CurlClient):
         Curl = Mock(name='Curl')

@@ -25,7 +25,7 @@ def test_rabbitmq_queue_arguments(args, input, expected):
     assert to_rabbitmq_queue_arguments(args, **input) == expected
 
 
-class test_StdChannel:
+class test_StdChannel(object):
 
     def setup(self):
         self.conn = Connection('memory://')
@@ -52,7 +52,7 @@ class test_StdChannel:
         assert StdChannel().after_reply_message_received(Queue('foo')) is None
 
 
-class test_Message:
+class test_Message(object):
 
     def setup(self):
         self.conn = Connection('memory://')
@@ -119,7 +119,7 @@ class test_Message:
         assert "Couldn't reject" in logger.critical.call_args[0][0]
 
 
-class test_interface:
+class test_interface(object):
 
     def test_establish_connection(self):
         with pytest.raises(NotImplementedError):
@@ -161,7 +161,7 @@ class test_interface:
         assert Transport(None).manager
 
 
-class test_Management:
+class test_Management(object):
 
     def test_get_bindings(self):
         m = Management(Mock(name='transport'))

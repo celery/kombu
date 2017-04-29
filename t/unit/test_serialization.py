@@ -73,7 +73,7 @@ registry.register('testS', lambda s: s, lambda s: 'decoded',
                   'application/testS', 'utf-8')
 
 
-class test_Serialization:
+class test_Serialization(object):
 
     def test_disable(self):
         disabled = registry._disabled_content_types

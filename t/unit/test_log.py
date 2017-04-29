@@ -15,7 +15,7 @@ from kombu.log import (
 )
 
 
-class test_get_logger:
+class test_get_logger(object):
 
     def test_when_string(self):
         l = get_logger('foo')
@@ -51,7 +51,7 @@ def test_safe_format():
     assert [x.strip('u') for x in res] == ["'frog'", 'foo', 'elephant']
 
 
-class test_LogMixin:
+class test_LogMixin(object):
 
     def setup(self):
         self.log = Log('Log', Mock())
@@ -119,7 +119,7 @@ class test_LogMixin:
         assert self.logger.log.call_args[0][2].strip('u') == "'example.com'"
 
 
-class test_setup_logging:
+class test_setup_logging(object):
 
     @patch('logging.getLogger')
     def test_set_up_default_values(self, getLogger):

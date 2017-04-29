@@ -17,7 +17,7 @@ from kombu.utils.functional import lazy
 from t.mocks import Transport
 
 
-class test_connection_utils:
+class test_connection_utils(object):
 
     def setup(self):
         self.url = 'amqp://user:pass@localhost:5672/my/vhost'
@@ -116,7 +116,7 @@ class test_connection_utils:
         assert clone.alt == ['amqp://host']
 
 
-class test_Connection:
+class test_Connection(object):
 
     def setup(self):
         self.conn = Connection(port=5672, transport=Transport)
@@ -480,7 +480,7 @@ class test_Connection:
         assert conn.connection_errors == (KeyError, ValueError)
 
 
-class test_Connection_with_transport_options:
+class test_Connection_with_transport_options(object):
 
     transport_options = {'pool_recycler': 3600, 'echo': True}
 
@@ -499,7 +499,7 @@ class xResource(Resource):
         pass
 
 
-class ResourceCase:
+class ResourceCase(object):
 
     def create_resource(self, limit):
         raise NotImplementedError('subclass responsibility')

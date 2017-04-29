@@ -17,7 +17,7 @@ def get_conn():
     return Connection(transport=Transport)
 
 
-class test_binding:
+class test_binding(object):
 
     def test_constructor(self):
         x = binding(
@@ -60,7 +60,7 @@ class test_binding:
         assert 'rkey' in repr(b)
 
 
-class test_Exchange:
+class test_Exchange(object):
 
     def test_bound(self):
         exchange = Exchange('foo', 'direct')
@@ -209,7 +209,7 @@ class test_Exchange:
         assert 'exchange_declare' in chan
 
 
-class test_Queue:
+class test_Queue(object):
 
     def setup(self):
         self.exchange = Exchange('foo', 'direct')
@@ -404,7 +404,7 @@ class test_Queue:
         assert 'Queue' in repr(b)
 
 
-class test_MaybeChannelBound:
+class test_MaybeChannelBound(object):
 
     def test_repr(self):
         assert repr(MaybeChannelBound())

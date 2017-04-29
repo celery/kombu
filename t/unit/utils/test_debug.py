@@ -8,7 +8,7 @@ from kombu.five import bytes_if_py2
 from kombu.utils.debug import Logwrapped, setup_logging
 
 
-class test_setup_logging:
+class test_setup_logging(object):
 
     def test_adds_handlers_sets_level(self):
         with patch('kombu.utils.debug.get_logger') as get_logger:
@@ -21,7 +21,7 @@ class test_setup_logging:
             logger.setLevel.assert_called_with(logging.DEBUG)
 
 
-class test_Logwrapped:
+class test_Logwrapped(object):
 
     def test_wraps(self):
         with patch('kombu.utils.debug.get_logger') as get_logger:

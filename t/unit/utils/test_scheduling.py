@@ -18,7 +18,7 @@ def consume(fun, n):
     return r
 
 
-class test_FairCycle:
+class test_FairCycle(object):
 
     def test_cycle(self):
         resources = ['a', 'b', 'c', 'd', 'e']

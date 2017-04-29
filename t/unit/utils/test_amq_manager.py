@@ -7,7 +7,7 @@ from case import mock, patch
 from kombu import Connection
 
 
-class test_get_manager:
+class test_get_manager(object):
 
     @mock.mask_modules('pyrabbit')
     def test_without_pyrabbit(self):

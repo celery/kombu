@@ -5,7 +5,7 @@ from case import Mock
 from kombu.exceptions import HttpError
 
 
-class test_HttpError:
+class test_HttpError(object):
 
     def test_str(self):
         assert str(HttpError(200, 'msg', Mock(name='response')))

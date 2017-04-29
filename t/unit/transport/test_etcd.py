@@ -10,7 +10,7 @@ from kombu.transport.etcd import Channel, Transport
 
 
 @skip.unless_module('etcd')
-class test_Etcd:
+class test_Etcd(object):
 
     def setup(self):
         self.connection = Mock()

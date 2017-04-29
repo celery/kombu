@@ -7,7 +7,7 @@ from kombu.transport import zookeeper
 
 
 @skip.unless_module('kazoo')
-class test_Channel:
+class test_Channel(object):
     def setup(self):
         self.connection = self.create_connection()
         self.channel = self.connection.default_channel
@@ -19,7 +19,7 @@ class test_Channel:
         self.connection.close()
 
     def test_put_puts_bytes_to_queue(self):
-        class AssertQueue:
+        class AssertQueue(object):
             def put(self, value, priority):
                 assert isinstance(value, bytes)
 

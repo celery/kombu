@@ -10,7 +10,7 @@ from kombu.transport.virtual import exchange
 from t.mocks import Transport
 
 
-class ExchangeCase:
+class ExchangeCase(object):
     type = None
 
     def setup(self):

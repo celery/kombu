@@ -9,7 +9,7 @@ from kombu.transport.consul import Channel, Transport
 
 
 @skip.unless_module('consul')
-class test_Consul:
+class test_Consul(object):
 
     def setup(self):
         self.connection = Mock()

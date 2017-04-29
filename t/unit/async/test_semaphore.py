@@ -3,7 +3,7 @@ from __future__ import absolute_import, unicode_literals
 from kombu.async.semaphore import LaxBoundedSemaphore
 
 
-class test_LaxBoundedSemaphore:
+class test_LaxBoundedSemaphore(object):
 
     def test_over_release(self):
         x = LaxBoundedSemaphore(2)

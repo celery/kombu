@@ -46,7 +46,7 @@ def _create_mock_connection(url='', **kwargs):
 
 
 @skip.unless_module('pymongo')
-class test_mongodb_uri_parsing:
+class test_mongodb_uri_parsing(object):
 
     def test_defaults(self):
         url = 'mongodb://'
@@ -82,7 +82,7 @@ class test_mongodb_uri_parsing:
         assert dbname == 'dbname'
 
 
-class BaseMongoDBChannelCase:
+class BaseMongoDBChannelCase(object):
 
     def _get_method(self, cname, mname):
         collection = getattr(self.channel, cname)

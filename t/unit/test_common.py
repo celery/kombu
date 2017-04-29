@@ -56,7 +56,7 @@ def test_ignore_errors():
             raise KeyError()
 
 
-class test_declaration_cached:
+class test_declaration_cached(object):
 
     def test_when_cached(self):
         chan = Mock()
@@ -69,7 +69,7 @@ class test_declaration_cached:
         assert not declaration_cached('foo', chan)
 
 
-class test_Broadcast:
+class test_Broadcast(object):
 
     def test_arguments(self):
         q = Broadcast(name='test_Broadcast')
@@ -87,7 +87,7 @@ class test_Broadcast:
         assert q2.name == q.name
 
 
-class test_maybe_declare:
+class test_maybe_declare(object):
 
     def test_cacheable(self):
         channel = Mock()
@@ -135,7 +135,7 @@ class test_maybe_declare:
         assert channel.connection.client.ensure.call_count
 
 
-class test_replies:
+class test_replies(object):
 
     def test_send_reply(self):
         req = Mock()
@@ -202,7 +202,7 @@ class test_replies:
         channel.after_reply_message_received.assert_not_called()
 
 
-class test_insured:
+class test_insured(object):
 
     @patch('kombu.common.logger')
     def test_ensure_errback(self, logger):
@@ -270,7 +270,7 @@ class MockConsumer(object):
         self.consumers.discard(self)
 
 
-class test_itermessages:
+class test_itermessages(object):
 
     class MockConnection(object):
         should_raise_timeout = False
@@ -319,7 +319,7 @@ class test_itermessages:
             next(it)
 
 
-class test_QoS:
+class test_QoS(object):
 
     class _QoS(QoS):
         def __init__(self, value):

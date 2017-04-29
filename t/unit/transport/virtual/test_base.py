@@ -33,7 +33,7 @@ def test_BrokerState():
     assert t.exchanges == 16
 
 
-class test_QoS:
+class test_QoS(object):
 
     def setup(self):
         self.q = virtual.QoS(client().channel(), prefetch_count=10)
@@ -105,7 +105,7 @@ class test_QoS:
         assert self.q.get('foo') == 1
 
 
-class test_Message:
+class test_Message(object):
 
     def test_create(self):
         c = client().channel()
@@ -138,7 +138,7 @@ class test_Message:
         assert 'compression' not in dict_['headers']
 
 
-class test_AbstractChannel:
+class test_AbstractChannel(object):
 
     def test_get(self):
         with pytest.raises(NotImplementedError):
@@ -171,7 +171,7 @@ class test_AbstractChannel:
         cycle.get.assert_called()
 
 
-class test_Channel:
+class test_Channel(object):
 
     def setup(self):
         self.channel = client().channel()
@@ -547,7 +547,7 @@ class test_Channel:
         ) == self.channel.max_priority - 2
 
 
-class test_Transport:
+class test_Transport(object):
 
     def setup(self):
         self.transport = client().transport

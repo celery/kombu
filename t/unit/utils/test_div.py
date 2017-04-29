@@ -19,7 +19,7 @@ class MyBytesIO(BytesIO):
         pass
 
 
-class test_emergency_dump_state:
+class test_emergency_dump_state(object):
 
     def test_dump(self, stdouts):
         fh = MyBytesIO()

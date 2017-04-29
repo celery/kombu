@@ -233,7 +233,7 @@ class Transport(redis.Transport):
 
 
 @skip.unless_module('redis')
-class test_Channel:
+class test_Channel(object):
 
     def setup(self):
         self.connection = self.create_connection()
@@ -821,7 +821,7 @@ class test_Channel:
 
 
 @skip.unless_module('redis')
-class test_Redis:
+class test_Redis(object):
 
     def setup(self):
         self.connection = Connection(transport=Transport)
@@ -979,7 +979,7 @@ def _redis_modules():
 
 
 @skip.unless_module('redis')
-class test_MultiChannelPoller:
+class test_MultiChannelPoller(object):
 
     def setup(self):
         self.Poller = redis.MultiChannelPoller
@@ -1227,7 +1227,7 @@ class test_MultiChannelPoller:
 
 
 @skip.unless_module('redis')
-class test_Mutex:
+class test_Mutex(object):
 
     def test_mutex(self, lock_id='xxx'):
         client = Mock(name='client')
@@ -1276,7 +1276,7 @@ class test_Mutex:
 
 
 @skip.unless_module('redis.sentinel')
-class test_RedisSentinel:
+class test_RedisSentinel(object):
 
     def test_method_called(self):
         from kombu.transport.redis import SentinelChannel

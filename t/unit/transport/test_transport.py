@@ -5,7 +5,7 @@ from case import Mock, patch
 from kombu import transport
 
 
-class test_supports_librabbitmq:
+class test_supports_librabbitmq(object):
 
     def test_eventlet(self):
         with patch('kombu.transport._detect_environment') as de:
@@ -13,7 +13,7 @@ class test_supports_librabbitmq:
             assert not transport.supports_librabbitmq()
 
 
-class test_transport:
+class test_transport(object):
 
     def test_resolve_transport(self):
         from kombu.transport.memory import Transport

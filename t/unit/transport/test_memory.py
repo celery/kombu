@@ -6,7 +6,7 @@ import socket
 from kombu import Connection, Exchange, Queue, Consumer, Producer
 
 
-class test_MemoryTransport:
+class test_MemoryTransport(object):
 
     def setup(self):
         self.c = Connection(transport='memory')
