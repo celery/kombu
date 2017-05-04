@@ -516,3 +516,7 @@ class Transport(virtual.Transport):
         async=True,
         exchange_type=frozenset(['direct']),
     )
+
+    @property
+    def default_connection_params(self):
+        return {'port': self.default_port}
