@@ -182,6 +182,10 @@ class test_Channel:
         boto3_sqs = SQS_Channel_sqs.__get__(self.channel, SQS.Channel)
         assert boto3_sqs._endpoint.host == expected_endpoint_url
 
+    def test_none_hostname_persists(self):
+        conn = Connection(hostname=None, transport=SQS.Transport)
+        assert conn.hostname == conn.clone().hostname
+
     def test_new_queue(self):
         queue_name = 'new_unittest_queue'
         self.channel._new_queue(queue_name)
