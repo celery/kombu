@@ -1,0 +1,3 @@
+web: source bin/activate; python manage.py run_gunicorn -b 0.0.0.0:$PORT -w 4; python manage.py syncdb
+celeryd: python manage.py celeryd -E -B --loglevel=INFO
+
