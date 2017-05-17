@@ -1074,10 +1074,9 @@ class SentinelChannel(Channel):
     def _sentinel_managed_pool(self, async=False):
         connparams = self._connparams(async)
 
-        additional_params = connparams.copy()
         additional_params = getattr(self,
                                     'connection_kwargs',
-                                    additional_params)
+                                    connparams.copy())
 
         additional_params.pop('host', None)
         additional_params.pop('port', None)
