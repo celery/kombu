@@ -1075,7 +1075,9 @@ class SentinelChannel(Channel):
         connparams = self._connparams(async)
 
         additional_params = connparams.copy()
-        additional_params = getattr(self, 'connection_kwargs', additional_params)
+        additional_params = getattr(self,
+                                    'connection_kwargs',
+                                    additional_params)
 
         additional_params.pop('host', None)
         additional_params.pop('port', None)
