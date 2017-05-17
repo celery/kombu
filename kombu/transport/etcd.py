@@ -259,7 +259,6 @@ class Transport(virtual.Transport):
         """Return the version of the etcd library.
 
         .. note::
-
            python-etcd has no __version__. This is a workaround.
         """
         try:

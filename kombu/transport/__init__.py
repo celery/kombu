@@ -28,6 +28,8 @@ TRANSPORT_ALIASES = {
     'sqs': 'kombu.transport.SQS:Transport',
     'mongodb': 'kombu.transport.mongodb:Transport',
     'zookeeper': 'kombu.transport.zookeeper:Transport',
+    'sqlalchemy': 'kombu.transport.sqlalchemy:Transport',
+    'sqla': 'kombu.transport.sqlalchemy:Transport',
     'SLMQ': 'kombu.transport.SLMQ.Transport',
     'slmq': 'kombu.transport.SLMQ.Transport',
     'filesystem': 'kombu.transport.filesystem:Transport',

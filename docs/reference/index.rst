@@ -48,6 +48,8 @@
     kombu.transport.etcd
     kombu.transport.zookeeper
     kombu.transport.filesystem
+    kombu.transport.sqlalchemy
+    kombu.transport.sqlalchemy.models
     kombu.transport.SQS
     kombu.transport.SLMQ
     kombu.transport.pyro
