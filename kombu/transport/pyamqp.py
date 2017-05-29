@@ -114,6 +114,8 @@ class Transport(base.Transport):
                 setattr(conninfo, name, default_value)
         if conninfo.hostname == 'localhost':
             conninfo.hostname = '127.0.0.1'
+        if conninfo.ssl and 'server_hostname' not in conninfo.ssl:
+            conninfo.ssl['server_hostname'] = conninfo.hostname
         opts = dict({
             'host': conninfo.host,
             'userid': conninfo.userid,
