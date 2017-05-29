@@ -71,7 +71,7 @@ Transport Options
 
 The :attr:`~kombu.Connection.transport_options` argument to the
 :class:`~kombu.Connection` object are passed directly to the
-:class:`qpid.messaging.endpoints.Connection` as keyword arguments. These
+:class:`proton.util.` as keyword arguments. These
 options override and replace any other default or specified values. If using
 Celery, this can be accomplished by setting the
 *BROKER_TRANSPORT_OPTIONS* Celery option.
@@ -99,19 +99,9 @@ except ImportError:
     fcntl = None  # noqa
 
 try:
-    import qpidtoollibs
+    from qmf.client import BrokerAgent
 except ImportError:  # pragma: no cover
-    qpidtoollibs = None     # noqa
-
-try:
-    from qpid.messaging.exceptions import ConnectionError, NotFound
-    from qpid.messaging.exceptions import Empty as QpidEmpty
-    from qpid.messaging.exceptions import SessionClosed
-except ImportError:  # pragma: no cover
-    ConnectionError = None
-    NotFound = None
-    QpidEmpty = None
-    SessionClosed = None
+    BrokerAgent = None     # noqa
 
 try:
     import qpid
@@ -367,11 +357,8 @@ class Channel(base.StdChannel):
     def __init__(self, connection, transport):
         self.connection = connection
         self.transport = transport
-        opts = {
-            'host': 'localhost',
-            'port': '5672',
-        }
-        self._broker = qpidtoollibs.BrokerAgent(qpid.messaging.Connection.establish(**opts))
+        url = 'amqp://localhost:5672/'
+        self._broker = BrokerAgent.connect(url=url)
         self.closed = False
         self._tag_to_queue = {}
         self._receivers = {}
@@ -790,9 +777,7 @@ class Channel(base.StdChannel):
     def basic_cancel(self, consumer_tag):
         """Cancel consumer by consumer tag.
 
-        Request the consumer stops reading messages from its queue. The
-        consumer is a :class:`~qpid.messaging.endpoints.Receiver`, and it is
-        closed using :meth:`~qpid.messaging.endpoints.Receiver.close`.
+        Request the consumer stop reading messages from its queue.
 
         This method also cleans up all lingering references of the consumer.
 
@@ -829,8 +814,7 @@ class Channel(base.StdChannel):
         """Change :class:`QoS` settings for this Channel.
 
         Set the number of un-acknowledged messages this Channel can fetch and
-        hold. The prefetch_value is also used as the capacity for any new
-        :class:`~qpid.messaging.endpoints.Receiver` objects.
+        hold.
 
         Currently, this value is hard coded to 1.
 
@@ -853,9 +837,8 @@ class Channel(base.StdChannel):
         :type priority: int
 
         :keyword content_type: The content_type the message body should be
-            treated as. If this is unset, the
-            :class:`qpid.messaging.endpoints.Sender` object tries to
-            autodetect the content_type from the body.
+            treated as. If unset, the content_type is autodetected from the
+            body.
         :type content_type: str
 
         :keyword content_encoding: The content_encoding the message body is
@@ -1033,11 +1016,9 @@ class Connection(object):
     one Connection.
 
     A Connection object maintains a reference to a
-    :class:`~qpid.messaging.endpoints.Connection` which can be accessed
-    through a bound getter method named :meth:`get_qpid_connection` method.
-    Each Channel uses a the Connection for each
-    :class:`~qpidtoollibs.BrokerAgent`, and the Transport maintains a session
-    for all senders and receivers.
+    :class:`~proton.utils.BlockingConnection` which can be accessed through a
+    bound getter method named :meth:`get_qpid_connection` method. Each Channel
+    uses the Connection for each :class:`qmf.client.BrokerAgent`.
 
     The Connection object is also responsible for maintaining the
     dictionary of references to callbacks that should be called when
@@ -1046,14 +1027,6 @@ class Connection(object):
     _callbacks are setup in :meth:`Channel.basic_consume`, removed in
     :meth:`Channel.basic_cancel`, and called in
     :meth:`Transport.drain_events`.
-
-    The following keys are expected to be passed in as keyword arguments
-    at a minimum:
-
-    All keyword arguments are collected into the connection_options dict
-    and passed directly through to
-    :meth:`qpid.messaging.endpoints.Connection.establish`.
-
     """
 
     # A class reference to the :class:`Channel` object
@@ -1109,6 +1082,13 @@ class ProtonMessaging(MessagingHandler):
         pydevd.settrace('localhost', port=29437, stdoutToServer=True,
                         stderrToServer=True)
         print 'on_connection_error'
+        pass
+
+    def on_transport_error(self, event):
+        import pydevd
+        pydevd.settrace('localhost', port=29437, stdoutToServer=True,
+                        stderrToServer=True)
+        print 'on_transport_error'
         pass
 
     def on_disconnected(self, event):
@@ -1216,7 +1196,7 @@ class ProtonThread(threading.Thread):
                                                     self.transport)
                 Container(messaging_handler).run()
             except Exception:
-                msg =_('ProtonThread encountered and exception.')
+                msg =_('ProtonThread encountered an exception.')
                 logger.exception(msg)
             time.sleep(10)
 
@@ -1275,14 +1255,12 @@ class Transport(base.Transport):
     # closed and re-established first.
     recoverable_connection_errors = (
         ConnectionException,
-        ConnectionError,
         select.error,
     )
 
     # Exceptions that can be automatically recovered from without
     # re-establishing the connection.
     recoverable_channel_errors = (
-        NotFound,
     )
 
     # Support the pre 3.0 Kombu exception labeling interface which treats
@@ -1309,8 +1287,8 @@ class Transport(base.Transport):
         Python3 or PyPi. The RuntimeError identifies this to the user up
         front along with suggesting Python 2.6+ be used instead.
 
-        This method also checks that the dependencies qpidtoollibs and
-        qpid.messaging are installed. If either one is not installed a
+        This method also checks that the dependencies 'qmf.client.BrokerAgent'
+        and 'proton' are installed. If either one is not installed a
         RuntimeError is raised.
 
         :raises: RuntimeError if the runtime environment is not acceptable.
@@ -1426,15 +1404,13 @@ class Transport(base.Transport):
         settings, timeout behaviors, authentication, and identity
         verification settings.
 
-        This method also creates and stores a
-        :class:`~qpid.messaging.endpoints.Session` using the
-        :class:`~qpid.messaging.endpoints.Connection` created by this
-        method. The Session is stored on self.
-
         :return: The created :class:`Connection` object is returned.
         :rtype: :class:`Connection`
 
         """
+        import pydevd
+        pydevd.settrace('localhost', port=29437, stdoutToServer=True,
+                        stderrToServer=True)
         conninfo = self.client
         for name, default_value in items(self.default_connection_params):
             if not getattr(conninfo, name, None):
@@ -1510,9 +1486,8 @@ class Transport(base.Transport):
     def drain_events(self, connection, timeout=0, **kwargs):
         """Handle and call callbacks for all ready Transport messages.
 
-        Drains all events that are ready from all
-        :class:`~qpid.messaging.endpoints.Receiver` that are asynchronously
-        fetching messages.
+        Drains all events that are ready from all receivers that are
+        asynchronously fetching messages.
 
         For each drained message, the message is called to the appropriate
         callback. Callbacks are organized by queue name.
