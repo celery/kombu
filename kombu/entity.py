@@ -98,7 +98,7 @@ class Exchange(MaybeChannelBound):
 
 
                 .. _`AMQP in 10 minutes: Part 4`:
-                    http://bit.ly/amqp-exchange-types
+                    https://bit.ly/2rcICv5
 
         channel (ChannelT): The channel the exchange is bound to (if bound).
 
