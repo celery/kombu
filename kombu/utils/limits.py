@@ -12,10 +12,10 @@ class TokenBucket(object):
     """Token Bucket Algorithm.
 
     See Also:
-        http://en.wikipedia.org/wiki/Token_Bucket
+        https://en.wikipedia.org/wiki/Token_Bucket
 
         Most of this code was stolen from an entry in the ASPN Python Cookbook:
-        http://code.activestate.com/recipes/511490/
+        https://code.activestate.com/recipes/511490/
 
     Warning:
         Thread Safety: This implementation is not thread safe.

@@ -56,12 +56,12 @@ Features
 For an introduction to AMQP you should read the article `Rabbits and warrens`_,
 and the `Wikipedia article about AMQP`_.
 
-.. _`RabbitMQ`: http://www.rabbitmq.com/
-.. _`AMQP`: http://amqp.org
-.. _`py-amqp`: http://pypi.python.org/pypi/amqp/
-.. _`qpid-python`: http://pypi.python.org/pypi/qpid-python/
-.. _`Redis`: http://code.google.com/p/redis/
-.. _`Amazon SQS`: http://aws.amazon.com/sqs/
+.. _`RabbitMQ`: https://www.rabbitmq.com/
+.. _`AMQP`: https://amqp.org
+.. _`py-amqp`: https://pypi.python.org/pypi/amqp/
+.. _`qpid-python`: https://pypi.python.org/pypi/qpid-python/
+.. _`Redis`: https://redis.io/
+.. _`Amazon SQS`: https://aws.amazon.com/sqs/
 .. _`Zookeeper`: https://zookeeper.apache.org/
 .. _`Rabbits and warrens`: http://blogs.digitar.com/jjww/2009/01/rabbits-and-warrens/
 .. _`amqplib`: http://barryp.org/software/py-amqplib/
