@@ -239,7 +239,7 @@ class Channel(virtual.Channel):
 
     def _parse_uri(self, scheme='mongodb://'):
         # See mongodb uri documentation:
-        # http://docs.mongodb.org/manual/reference/connection-string/
+        # https://docs.mongodb.org/manual/reference/connection-string/
         client = self.connection.client
         hostname = client.hostname
 

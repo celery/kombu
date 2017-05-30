@@ -9,7 +9,7 @@ task queue situations where tasks are small, idempotent and run very fast.
 
 SQS Features supported by this transport:
   Long Polling:
-    http://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/
+    https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/
       sqs-long-polling.html
 
     Long polling is enabled by setting the `wait_time_seconds` transport
@@ -17,7 +17,7 @@ SQS Features supported by this transport:
     enabled with 10 seconds by default.
 
   Batch API Actions:
-   http://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/
+   https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/
      sqs-batch-api.html
 
     The default behavior of the SQS Channel.drain_events() method is to

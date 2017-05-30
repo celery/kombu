@@ -1,6 +1,6 @@
 """Carrot compatibility interface.
 
-See http://packages.python.org/pypi/carrot for documentation.
+See https://pypi.python.org/pypi/carrot for documentation.
 """
 from __future__ import absolute_import, unicode_literals
 

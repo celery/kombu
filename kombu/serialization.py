@@ -358,7 +358,7 @@ def register_msgpack():
     """Register msgpack serializer.
 
     See Also:
-        http://msgpack.sourceforge.net/.
+        https://msgpack.org/.
     """
     pack = unpack = None
     try:

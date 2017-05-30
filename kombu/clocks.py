@@ -90,8 +90,8 @@ class LamportClock(object):
 
         * `Lamports distributed mutex`_
 
-    .. _`Lamport Timestamps`: http://en.wikipedia.org/wiki/Lamport_timestamps
-    .. _`Lamports distributed mutex`: http://bit.ly/p99ybE
+    .. _`Lamport Timestamps`: https://en.wikipedia.org/wiki/Lamport_timestamps
+    .. _`Lamports distributed mutex`: https://bit.ly/p99ybE
 
     *Usage*
 
