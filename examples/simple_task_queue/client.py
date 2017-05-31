@@ -8,6 +8,10 @@ priority_to_routing_key = {'high': 'hipri',
 
 
 def send_as_task(connection, fun, args=(), kwargs={}, priority='mid'):
+
+    """ send_as_task
+    """
+
     payload = {'fun': fun, 'args': args, 'kwargs': kwargs}
     routing_key = priority_to_routing_key[priority]
 
@@ -19,7 +23,9 @@ def send_as_task(connection, fun, args=(), kwargs={}, priority='mid'):
                          declare=[task_exchange],
                          routing_key=routing_key)
 
+
 if __name__ == '__main__':
+
     from kombu import Connection
     from .tasks import hello_task
 

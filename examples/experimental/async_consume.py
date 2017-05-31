@@ -17,6 +17,7 @@ def send_message(conn):
 def on_message(message):
     print('RECEIVED: %r' % (message.body, ))
     message.ack()
+    print "hub.stop"
     hub.stop()  # <-- exit after one message
 
 
