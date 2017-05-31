@@ -2,5 +2,6 @@ boto
 coverage>=3.0
 coveralls
 redis
+alauda-redis-py-cluster
 PyYAML
 msgpack-python>0.2.0  # 0.2.0 dropped 2.5 support

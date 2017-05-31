@@ -131,6 +131,7 @@ extras_require = extra['extras_require'] = {
     'msgpack': extras('msgpack.txt'),
     'yaml': extras('yaml.txt'),
     'redis': extras('redis.txt'),
+    'redis-cluster': extras('redis-cluster.txt'),
     'mongodb': extras('mongodb.txt'),
     'sqs': extras('sqs.txt'),
     'couchdb': extras('couchdb.txt'),
