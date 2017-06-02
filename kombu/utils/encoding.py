@@ -54,7 +54,7 @@ if is_py3k:  # pragma: no cover
     def bytes_to_str(s):
         """Convert bytes to str."""
         if isinstance(s, bytes):
-            return s.decode()
+            return s.decode(errors='replace')
         return s
 
     def from_utf8(s, *args, **kwargs):
