@@ -276,10 +276,12 @@ class Hub(object):
             for tick_callback in on_tick:
                 tick_callback()
 
-            while todo:
-                item = todo.pop()
-                if item:
-                    item()
+            if todo:
+                while todo:
+                    item = todo.pop()
+                    if item:
+                        item()
+                continue
 
             poll_timeout = fire_timers(propagate=propagate) if scheduled else 1
             #  print('[[[HUB]]]: %s' % (self.repr_active(),))
