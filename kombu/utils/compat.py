@@ -36,6 +36,7 @@ except ImportError:
 
 _environment = None
 
+
 def coro(gen):
     """Decorator to mark generator as co-routine."""
     @wraps(gen)
@@ -78,6 +79,7 @@ def detect_environment():
     if _environment is None:
         _environment = _detect_environment()
     return _environment
+
 
 def entrypoints(namespace):
     """Return setuptools entrypoints for namespace."""
