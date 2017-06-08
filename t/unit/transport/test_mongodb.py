@@ -81,6 +81,12 @@ class test_mongodb_uri_parsing:
         assert hostname == 'mongodb://foo:bar@localhost/dbname'
         assert dbname == 'dbname'
 
+    def test_correct_readpreference(self):
+        url = 'mongodb://localhost/dbname?readpreference=nearest'
+        channel = _create_mock_connection(url).default_channel
+        hostname, dbname, options = channel._parse_uri()
+        assert options['readpreference'] == 'nearest'
+
 
 class BaseMongoDBChannelCase:
 

@@ -4,6 +4,17 @@
  Change history
 ================
 
+.. _version-4.0.3:
+
+4.0.3
+=====
+:release-date: TBA
+:release-by: Ask Solem
+
+- MongoDB: Fixed problem with using readPreference option at pymongo 3.x.
+
+    Contributed by **Mikhail Elovskikh**.
+
 .. _version-4.0.2:
 
 4.0.2
