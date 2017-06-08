@@ -274,18 +274,21 @@ class Channel(virtual.Channel):
                                  if self.connect_timeout else None),
         }
         options.update(parsed['options'])
+        options = self._prepare_client_options(options)
 
         return hostname, dbname, options
 
     def _prepare_client_options(self, options):
         if pymongo.version_tuple >= (3,):
             options.pop('auto_start_request', None)
+            if isinstance(options.get('readpreference'), int):
+                modes = pymongo.read_preferences._MONGOS_MODES
+                options['readpreference'] = modes[options['readpreference']]
         return options
 
     def _open(self, scheme='mongodb://'):
-        hostname, dbname, options = self._parse_uri(scheme=scheme)
+        hostname, dbname, conf = self._parse_uri(scheme=scheme)
 
-        conf = self._prepare_client_options(options)
         conf['host'] = hostname
 
         env = _detect_environment()
