@@ -284,9 +284,9 @@ class Channel(virtual.Channel):
         if max_count:
             q_url = self._new_queue(queue)
             resp = self.sqs.receive_message(
-                QueueUrl=q_url, MaxNumberOfMessages=max_count)
-
-            if resp['Messages']:
+                QueueUrl=q_url, MaxNumberOfMessages=max_count,
+                WaitTimeSeconds=self.wait_time_seconds)
+            if resp.get('Messages'):
                 for m in resp['Messages']:
                     m['Body'] = AsyncMessage(body=m['Body']).decode()
                 for msg in self._messages_to_python(resp['Messages'], queue):
@@ -297,9 +297,10 @@ class Channel(virtual.Channel):
     def _get(self, queue):
         """Try to retrieve a single message off ``queue``."""
         q_url = self._new_queue(queue)
-        resp = self.sqs.receive_message(q_url)
-
-        if resp['Messages']:
+        resp = self.sqs.receive_message(
+            QueueUrl=q_url, MaxNumberOfMessages=1,
+            WaitTimeSeconds=self.wait_time_seconds)
+        if resp.get('Messages'):
             body = AsyncMessage(body=resp['Messages'][0]['Body']).decode()
             resp['Messages'][0]['Body'] = body
             return self._messages_to_python(resp['Messages'], queue)[0]
@@ -356,7 +357,6 @@ class Channel(virtual.Channel):
         Uses long polling and returns :class:`~vine.promises.promise`.
         """
         connection = connection if connection is not None else queue.connection
-        # url = self.get_queue
         return connection.receive_message(
             queue, number_messages=count,
             wait_time_seconds=self.wait_time_seconds,
