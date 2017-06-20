@@ -850,7 +850,7 @@ class Channel(base.StdChannel):
         except Empty:
             pass
 
-    def basic_ack(self, delivery_tag):
+    def basic_ack(self, delivery_tag, multiple=False):
         """Acknowledge a message by delivery_tag.
 
         Acknowledges a message referenced by delivery_tag. Messages can
@@ -864,8 +864,12 @@ class Channel(base.StdChannel):
         :param delivery_tag: The delivery tag associated with the message
             to be acknowledged.
         :type delivery_tag: uuid.UUID
+        :param multiple: not implemented. If set to True an AssertionError
+            is raised.
+        :type multiple: bool
 
         """
+        assert multiple is False
         self.qos.ack(delivery_tag)
 
     def basic_reject(self, delivery_tag, requeue=False):
