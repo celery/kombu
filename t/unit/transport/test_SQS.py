@@ -97,7 +97,7 @@ class SQSClientMock(object):
             if q.url == QueueUrl:
                 msgs = q.messages[:MaxNumberOfMessages]
                 q.messages = q.messages[MaxNumberOfMessages:]
-                return {'Messages': msgs}
+                return {'Messages': msgs} if msgs else {}
 
     def get_queue_attributes(self, QueueUrl=None, AttributeNames=None):
         if 'ApproximateNumberOfMessages' in AttributeNames:
