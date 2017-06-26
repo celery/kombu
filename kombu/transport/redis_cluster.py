@@ -139,7 +139,7 @@ def Mutex(client, name, expire):
                         pipe.watch(name)
                         pipe.multi(name)
                         pipe.delete(name)
-                        print pipe.execute()
+                        print(pipe.execute())
                         pipe.unwatch(name)
             except redis.WatchError:
                 pass
@@ -156,8 +156,8 @@ class QoS(virtual.QoS):
         delivery = message.delivery_info
         EX, RK = delivery['exchange'], delivery['routing_key']
         with self.pipe_or_acquire() as pipe:
-            print self.unacked_index_key, time(), delivery_tag
-            print self.unacked_key, delivery_tag, dumps([message._raw, EX, RK])
+            print(self.unacked_index_key, time(), delivery_tag)
+            print(self.unacked_key, delivery_tag, dumps([message._raw, EX, RK]))
 
             pipe.zadd(self.unacked_index_key, time(), delivery_tag) \
                 .hset(self.unacked_key, delivery_tag,
