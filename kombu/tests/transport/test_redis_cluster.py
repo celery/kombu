@@ -195,7 +195,7 @@ class Client(object):
             return conn
 
         def get_node_by_slot(self, key):
-            node = self.client.info().keys()[0]
+            node = list(self.client.info().keys())[0]
             host, port = node.split(':')
             return {
                 'host': host,
