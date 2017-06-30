@@ -1116,13 +1116,7 @@ class ProtonMessaging(MessagingHandler):
                     self.send_complete_events[sender.name] = command.send_complete
                     sender.send(command.message)
                 elif isinstance(command, StartConsumer):
-                    ## Start of PROTON-1466 workaround
-                    if command.queue.startswith('resource_manager'):
-                        if command.queue == 'resource_manager':
-                            event.container.create_receiver(self.conn, command.queue)
-                    else:
-                        event.container.create_receiver(self.conn, command.queue)
-                    ## End workaround and replace with the line above
+                    event.container.create_receiver(self.conn, command.queue)
                 elif isinstance(command, AckMessage):
                     self.accept(command.delivery)
                     command.ack_complete.set()
