@@ -357,8 +357,7 @@ class Channel(base.StdChannel):
     def __init__(self, connection, transport):
         self.connection = connection
         self.transport = transport
-        url = 'amqp://localhost:5672/'
-        self._broker = BrokerAgent.connect(url=url)
+        self._broker = connection.get_broker_agent()
         self.closed = False
         self._tag_to_queue = {}
         self._receivers = {}
@@ -660,9 +659,6 @@ class Channel(base.StdChannel):
         :rtype: :class:`~kombu.transport.virtual.Message`
 
         """
-        import pydevd
-        pydevd.settrace('localhost', port=29437, stdoutToServer=True,
-                        stderrToServer=True)
         try:
             return_queue = Queue.Queue()
             cmd = GetOneMessage(queue, return_queue)
@@ -1032,18 +1028,14 @@ class Connection(object):
     # A class reference to the :class:`Channel` object
     Channel = Channel
 
-    def __init__(self):
+    def __init__(self, conn_opts):
         self.channels = []
         self._callbacks = {}
+        self.conn_opts = conn_opts
+        self._broker_agent = BrokerAgent.connect(**conn_opts)
 
-    def close(self):
-        """Close the connection.
-
-        Closing the connection will close all associated session, senders, or
-        receivers used by the Connection.
-
-        """
-        self._qpid_conn.close()
+    def get_broker_agent(self):
+        return self._broker_agent
 
     def close_channel(self, channel):
         """Close a Channel.
@@ -1065,10 +1057,10 @@ class Connection(object):
 
 class ProtonMessaging(MessagingHandler):
 
-    def __init__(self, server_opts, w, main_thread_commands, recv_messages,
+    def __init__(self, conn_opts, w, main_thread_commands, recv_messages,
                  transport):
         super(ProtonMessaging, self).__init__(auto_accept=False)
-        self.server_opts = server_opts  # store connection options
+        self.conn_opts = conn_opts  # store connection options
         self.w = w
         self.main_thread_commands = main_thread_commands
         self.recv_messages = recv_messages  # async send messages to MainThread
@@ -1085,16 +1077,12 @@ class ProtonMessaging(MessagingHandler):
         pass
 
     def on_transport_error(self, event):
-        import pydevd
-        pydevd.settrace('localhost', port=29437, stdoutToServer=True,
-                        stderrToServer=True)
-        print 'on_transport_error'
-        pass
+        logger.warning('Proton raised %s' % event.type)
 
     def on_disconnected(self, event):
         self.transport.proton_error.append(ConnectionClosed(self.conn))
         os.write(self.w, 'e')
-        logger.warning('ProtonMessaging background thread disconnected')
+        logger.warning('Proton raised %s' % event.type)
 
     def on_link_error(self, event):
         import pydevd
@@ -1104,13 +1092,7 @@ class ProtonMessaging(MessagingHandler):
         pass
 
     def on_start(self, event):
-        url = '%s:%s' % (self.server_opts['host'], self.server_opts['port'])
-        kwargs = {
-            'sasl_enabled': True,
-            'allowed_mechs': self.server_opts['sasl_mechanisms']
-        }
-        self.conn = event.container.connect(url=url, reconnect=False,
-                                            **kwargs)
+        self.conn = event.container.connect(reconnect=False, **self.conn_opts)
         event.container.schedule(PROTON_PERIOD, self)
 
     def on_timer_task(self, event):
@@ -1129,6 +1111,8 @@ class ProtonMessaging(MessagingHandler):
                         sender = event.container.create_sender(self.conn,
                                                                command.target)
                         self.senders[command.target] = sender
+                    if sender.transport is None:
+                        command.send_complete.set()
                     self.send_complete_events[sender.name] = command.send_complete
                     sender.send(command.message)
                 elif isinstance(command, StartConsumer):
@@ -1179,18 +1163,18 @@ class ProtonMessaging(MessagingHandler):
 
 class ProtonThread(threading.Thread):
 
-    def __init__(self, w, main_thread_commands, recv_messages, opts, transport):
+    def __init__(self, w, main_thread_commands, recv_messages, conn_opts, transport):
         super(ProtonThread, self).__init__()
         self.main_thread_commands = main_thread_commands
         self.recv_messages = recv_messages
-        self.opts = opts
+        self.conn_opts = conn_opts
         self.w = w
         self.transport = transport
 
     def run(self):
         while True:
             try:
-                messaging_handler = ProtonMessaging(self.opts, self.w,
+                messaging_handler = ProtonMessaging(self.conn_opts, self.w,
                                                     self.main_thread_commands,
                                                     self.recv_messages,
                                                     self.transport)
@@ -1353,11 +1337,12 @@ class Transport(base.Transport):
         :param loop: The asynchronous loop object that contains epoll like
             functionality.
         :type loop: :class:`kombu.async.Hub`
-
         """
         os.read(self.r, 1)
         if len(self.proton_error) > 1:
-            raise self.proton_error.pop()
+            exc = self.proton_error.pop()
+            self.proton_error = []  # Reset the errors before raising one of them
+            raise exc
         try:
             self.drain_events(connection)
         except socket.timeout:
@@ -1408,27 +1393,36 @@ class Transport(base.Transport):
         :rtype: :class:`Connection`
 
         """
-        import pydevd
-        pydevd.settrace('localhost', port=29437, stdoutToServer=True,
-                        stderrToServer=True)
         conninfo = self.client
         for name, default_value in items(self.default_connection_params):
             if not getattr(conninfo, name, None):
                 setattr(conninfo, name, default_value)
+
+        hostname = conninfo.hostname
+        port = conninfo.port
+
+        protocol_handler = 'amqp://'
+
+        conn_opts = {}
+
         if conninfo.ssl:
-            conninfo.qpid_transport = 'ssl'
-            conninfo.transport_options['ssl_keyfile'] = conninfo.ssl[
-                'keyfile']
-            conninfo.transport_options['ssl_certfile'] = conninfo.ssl[
-                'certfile']
-            conninfo.transport_options['ssl_trustfile'] = conninfo.ssl[
-                'ca_certs']
-            if conninfo.ssl['cert_reqs'] == ssl.CERT_REQUIRED:
-                conninfo.transport_options['ssl_skip_hostname_check'] = False
-            else:
-                conninfo.transport_options['ssl_skip_hostname_check'] = True
-        else:
-            conninfo.qpid_transport = 'tcp'
+            ssl_domain = proton.SSLDomain(proton.SSLDomain.MODE_CLIENT)
+
+            protocol_handler = 'amqps://'
+
+            key_file = conninfo.ssl['keyfile']
+            cert_file = conninfo.ssl['certfile']
+            password = None
+
+            ssl_domain.set_credentials(cert_file, key_file, password)
+
+            ssl_domain.set_trusted_ca_db(conninfo.ssl['ca_certs'])
+
+            ssl_domain.set_peer_authentication(
+                proton.SSLDomain.VERIFY_PEER_NAME
+            )
+
+            conn_opts['ssl_domain'] = ssl_domain
 
         credentials = {}
         if conninfo.login_method is None:
@@ -1451,18 +1445,10 @@ class Transport(base.Transport):
             if conninfo.userid is not None:
                 credentials['username'] = conninfo.userid
 
-        conn_opts = {
-            'host': conninfo.hostname,
-            'port': conninfo.port,
-            'sasl_mechanisms': sasl_mech,
-            'timeout': conninfo.connect_timeout,
-            'transport': conninfo.qpid_transport
-        }
+        url = '%s%s:%s' % (protocol_handler, hostname, port)
+        conn_opts['url'] = url
 
-        conn_opts.update(credentials)
-        conn_opts.update(conninfo.transport_options)
-
-        conn =  self.Connection()
+        conn =  self.Connection(conn_opts)
         conn.client = self.client
 
         proton_thread = ProtonThread(
