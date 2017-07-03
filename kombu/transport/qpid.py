@@ -79,11 +79,11 @@ Celery, this can be accomplished by setting the
 from __future__ import absolute_import, unicode_literals
 
 from collections import namedtuple
+import copy
 from gettext import gettext as _
 import os
 import select
 import socket
-import ssl
 import sys
 import time
 import threading
@@ -1070,11 +1070,7 @@ class ProtonMessaging(MessagingHandler):
         self.get_one_queues = {}  # get_one send messages to MainThread
 
     def on_connection_error(self, event):
-        import pydevd
-        pydevd.settrace('localhost', port=29437, stdoutToServer=True,
-                        stderrToServer=True)
-        print 'on_connection_error'
-        pass
+        logger.warning('Proton raised %s' % event.type)
 
     def on_transport_error(self, event):
         logger.warning('Proton raised %s' % event.type)
@@ -1085,11 +1081,7 @@ class ProtonMessaging(MessagingHandler):
         logger.warning('Proton raised %s' % event.type)
 
     def on_link_error(self, event):
-        import pydevd
-        pydevd.settrace('localhost', port=29437, stdoutToServer=True,
-                        stderrToServer=True)
-        print 'on_link_error'
-        pass
+        logger.warning('Proton raised %s' % event.type)
 
     def on_start(self, event):
         self.conn = event.container.connect(reconnect=False, **self.conn_opts)
@@ -1418,13 +1410,13 @@ class Transport(base.Transport):
 
             conn_opts['ssl_domain'] = ssl_domain
 
-        credentials = {}
-        if conninfo.login_method is None:
-            if conninfo.userid is not None and conninfo.password is not None:
-                sasl_mech = 'PLAIN'
-                credentials['username'] = conninfo.userid
-                credentials['password'] = conninfo.password
-            elif conninfo.userid is None and conninfo.password is not None:
+        url = '%s%s:%s' % (protocol_handler, hostname, port)
+        conn_opts['url'] = url
+
+        qmf_conn_options = copy.copy(conn_opts)
+
+        if conninfo.login_method is not None or conninfo.userid is not None or conninfo.password is not None:
+            if conninfo.userid is None and conninfo.password is not None:
                 raise Exception(
                     'Password configured but no username. SASL PLAIN '
                     'requires a username when using a password.')
@@ -1432,17 +1424,28 @@ class Transport(base.Transport):
                 raise Exception(
                     'Username configured but no password. SASL PLAIN '
                     'requires a password when using a username.')
-            else:
-                sasl_mech = 'ANONYMOUS'
-        else:
-            sasl_mech = conninfo.login_method
+
+            if conninfo.login_method is None and (conninfo.userid is not None or conninfo.password is not None):
+                conninfo.login_method = 'PLAIN'
+
+            class SASL_obj(object):
+                pass
+
+            sasl = SASL_obj()
+            sasl.mechs = conninfo.login_method
+            conn_opts['allowed_mechs'] = conninfo.login_method
+
             if conninfo.userid is not None:
-                credentials['username'] = conninfo.userid
+                sasl.user = conninfo.userid
+                conn_opts['user'] = conninfo.userid
+            if conninfo.password is not None:
+                sasl.password = conninfo.password
+                conn_opts['password'] = conninfo.password
 
-        url = '%s%s:%s' % (protocol_handler, hostname, port)
-        conn_opts['url'] = url
+            qmf_conn_options['sasl'] = sasl
+            conn_opts['sasl_enabled'] = True
 
-        conn =  self.Connection(conn_opts)
+        conn =  self.Connection(qmf_conn_options)
         conn.client = self.client
 
         proton_thread = ProtonThread(
