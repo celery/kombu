@@ -659,20 +659,19 @@ class Channel(base.StdChannel):
         :rtype: :class:`~kombu.transport.virtual.Message`
 
         """
-        try:
-            return_queue = Queue.Queue()
-            cmd = GetOneMessage(queue, return_queue)
-            self.transport.main_thread_commands.put(cmd)
-            message_and_delivery = return_queue.get()
-            message = self._make_kombu_message_from_proton(
-                message_and_delivery.message)
-            delivery_tag = message.delivery_tag
-            self.qos.append(message_and_delivery.delivery, delivery_tag)
-            if no_ack:
-                self.qos.ack(delivery_tag)
-            return message
-        except Empty:
-            pass
+        return_queue = Queue.Queue()
+        cmd = GetOneMessage(queue, return_queue)
+        self.transport.main_thread_commands.put(cmd)
+        message_and_delivery = return_queue.get()
+        if message_and_delivery is None:
+            return
+        message = self._make_kombu_message_from_proton(
+            message_and_delivery.message)
+        delivery_tag = message.delivery_tag
+        self.qos.append(message_and_delivery.delivery, delivery_tag)
+        if not no_ack:
+            self.qos.ack(delivery_tag)
+        return message
 
     def basic_ack(self, delivery_tag, multiple=False):
         """Acknowledge a message by delivery_tag.
@@ -1013,7 +1012,7 @@ class Connection(object):
 
     A Connection object maintains a reference to a
     :class:`~proton.utils.BlockingConnection` which can be accessed through a
-    bound getter method named :meth:`get_qpid_connection` method. Each Channel
+    bound getter method named :meth:`get_broker_agent` method. Each Channel
     uses the Connection for each :class:`qmf.client.BrokerAgent`.
 
     The Connection object is also responsible for maintaining the
@@ -1089,7 +1088,13 @@ class ProtonMessaging(MessagingHandler):
 
     def on_timer_task(self, event):
         start_time = time.time()
-        elapsed_time = -1
+        elapsed_time = 0
+
+        # Handle any un-acked basic_get requests
+        for queue_name in self.get_one_queues.keys():
+            return_queue = self.get_one_queues.pop(queue_name)
+            return_queue.put(None)
+
         while elapsed_time < 1.0:
             try:
                 command = self.main_thread_commands.get(False)
@@ -1499,6 +1504,7 @@ class Transport(base.Transport):
                     connection._callbacks[proton_event.queue](proton_event)
                 except KeyError:
                     logger.error('Cannot determine which queue a message was received on. Something is wrong.')
+                    raise
             elapsed_time = time.time() - start_time
         raise socket.timeout()
 
