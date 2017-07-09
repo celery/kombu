@@ -269,13 +269,18 @@ class Hub(object):
         consolidate = self.consolidate
         consolidate_callback = self.consolidate_callback
         on_tick = self.on_tick
-        todo = self._ready
         propagate = self.propagate_errors
 
         while 1:
             for tick_callback in on_tick:
                 tick_callback()
-
+            
+            # To avoid infinite loop where one of the callables adds items to self._ready
+            # (via call_soon or otherwise), we copy the todo list aside and clear the _ready
+            # so items added don't affect this loop and instead they'll be taken care of on the
+            # next itermation of the parent-loop
+            todo = self._ready.copy()
+            self._ready.clear()
             while todo:
                 item = todo.pop()
                 if item:
