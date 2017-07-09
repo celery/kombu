@@ -278,7 +278,7 @@ class Hub(object):
             # To avoid infinite loop where one of the callables adds items to self._ready
             # (via call_soon or otherwise), we copy the todo list aside and clear the _ready
             # so items added don't affect this loop and instead they'll be taken care of on the
-            # next itermation of the parent-loop
+            # next iteration of the parent-loop
             todo = self._ready.copy()
             self._ready.clear()
             while todo:
