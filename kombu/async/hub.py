@@ -274,10 +274,11 @@ class Hub(object):
         while 1:
             for tick_callback in on_tick:
                 tick_callback()
-            
-            # To avoid infinite loop where one of the callables adds items to self._ready
-            # (via call_soon or otherwise), we copy the todo list aside and clear the _ready
-            # so items added don't affect this loop and instead they'll be taken care of on the
+
+            # To avoid infinite loop where one of the callables adds items
+            # to self._ready (via call_soon or otherwise), we copy the todo
+            # list aside and clear the _ready so items added don't affect
+            # this loop and instead they'll be taken care of on the
             # next iteration of the parent-loop
             todo = self._ready.copy()
             self._ready.clear()
