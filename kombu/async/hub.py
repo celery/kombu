@@ -269,19 +269,24 @@ class Hub(object):
         consolidate_callback = self.consolidate_callback
         on_tick = self.on_tick
         propagate = self.propagate_errors
+        todo = self._ready
 
         while 1:
             for tick_callback in on_tick:
                 tick_callback()
 
             # To avoid infinite loop where one of the callables adds items
-            # to self._ready (via call_soon or otherwise), we take a slice
-            # of the ready set that represents the current number of items
-            # on the set.
+            # to self._ready (via call_soon or otherwise), we take pop only
+            # N items from the ready set.
+            # N represents the current number of items on the set.
             # That way if a todo adds another one to the ready set,
             # we will break early and allow execution of readers and writers.
-            todo = itertools.islice(self._ready, len(self._ready))
-            for item in todo:
+            current_todos = len(todo)
+            for _ in itertools.repeat(None, current_todos):
+                if not todos:
+                    break
+
+                item = todo.pop()
                 if item:
                     item()
 
