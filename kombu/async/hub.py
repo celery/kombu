@@ -3,18 +3,17 @@
 from __future__ import absolute_import, unicode_literals
 
 import errno
-
+import itertools
 from contextlib import contextmanager
 from time import sleep
 from types import GeneratorType as generator  # noqa
 
-from vine import Thenable, promise
-
 from kombu.five import Empty, python_2_unicode_compatible, range
 from kombu.log import get_logger
 from kombu.utils.compat import fileno
-from kombu.utils.eventio import READ, WRITE, ERR, poll
+from kombu.utils.eventio import ERR, READ, WRITE, poll
 from kombu.utils.objects import cached_property
+from vine import Thenable, promise
 
 from .timer import Timer
 
@@ -270,19 +269,23 @@ class Hub(object):
         consolidate_callback = self.consolidate_callback
         on_tick = self.on_tick
         propagate = self.propagate_errors
+        todo = self._ready
 
         while 1:
             for tick_callback in on_tick:
                 tick_callback()
 
             # To avoid infinite loop where one of the callables adds items
-            # to self._ready (via call_soon or otherwise), we copy the todo
-            # list aside and clear the _ready so items added don't affect
-            # this loop and instead they'll be taken care of on the
-            # next iteration of the parent-loop
-            todo = self._ready.copy()
-            self._ready.clear()
-            while todo:
+            # to self._ready (via call_soon or otherwise), we take pop only
+            # N items from the ready set.
+            # N represents the current number of items on the set.
+            # That way if a todo adds another one to the ready set,
+            # we will break early and allow execution of readers and writers.
+            current_todos = len(todo)
+            for _ in itertools.repeat(None, current_todos):
+                if not todos:
+                    break
+
                 item = todo.pop()
                 if item:
                     item()
