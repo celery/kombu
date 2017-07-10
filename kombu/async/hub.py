@@ -283,7 +283,7 @@ class Hub(object):
             # we will break early and allow execution of readers and writers.
             current_todos = len(todo)
             for _ in itertools.repeat(None, current_todos):
-                if not todos:
+                if not todo:
                     break
 
                 item = todo.pop()
