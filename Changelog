@@ -15,6 +15,9 @@
 
     Contributed by **Mikhail Elovskikh**.
 
+- Async hub: Fixed potential infinite loop while performing todo tasks
+  (Issue celery/celery#3712).
+
 .. _version-4.0.2:
 
 4.0.2

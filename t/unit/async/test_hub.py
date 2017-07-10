@@ -501,7 +501,8 @@ class test_Hub:
 
     def test_loop__tick_callbacks(self):
         self.hub._ready = Mock(name='_ready')
-        self.hub._ready.pop.side_effect = RuntimeError()
+        self.hub._ready.__len__ = Mock(name="_ready.__len__")
+        self.hub._ready.__len__.side_effect = RuntimeError()
         ticks = [Mock(name='cb1'), Mock(name='cb2')]
         self.hub.on_tick = list(ticks)
 
