@@ -5,7 +5,6 @@ import pytest
 
 from case import Mock, call, patch
 from vine import promise
-from unittest.mock import MagicMock
 
 from kombu.async import hub as _hub
 from kombu.async import Hub, READ, WRITE, ERR
@@ -501,7 +500,8 @@ class test_Hub:
         assert list(hub.scheduler), [1, 2 == 3]
 
     def test_loop__tick_callbacks(self):
-        self.hub._ready = MagicMock(name='_ready')
+        self.hub._ready = Mock(name='_ready')
+        self.hub._ready.__len__ = Mock(name="_ready.__len__")
         self.hub._ready.__len__.side_effect = RuntimeError()
         ticks = [Mock(name='cb1'), Mock(name='cb2')]
         self.hub.on_tick = list(ticks)
