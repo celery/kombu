@@ -90,13 +90,14 @@ class SQSClientMock(object):
                                    'ReceiptHandle': handle})
                 break
 
-    def receive_message(self, QueueUrl=None, MaxNumberOfMessages=1):
+    def receive_message(self, QueueUrl=None, MaxNumberOfMessages=1,
+                        WaitTimeSeconds=10):
         self._receive_messages_calls += 1
         for q in self._queues.values():
             if q.url == QueueUrl:
                 msgs = q.messages[:MaxNumberOfMessages]
                 q.messages = q.messages[MaxNumberOfMessages:]
-                return {'Messages': msgs}
+                return {'Messages': msgs} if msgs else {}
 
     def get_queue_attributes(self, QueueUrl=None, AttributeNames=None):
         if 'ApproximateNumberOfMessages' in AttributeNames:
