@@ -4,19 +4,119 @@
  Change history
 ================
 
-.. _version-4.0.3:
+.. _version-4.1.0:
 
-4.0.3
+4.1.0
 =====
-:release-date: TBA
-:release-by: Ask Solem
+:release-date: 2017-07-17 04:45 P.M MST
+:release-by: Anthony Lukach
 
-- MongoDB: Fixed problem with using readPreference option at pymongo 3.x.
+*- SQS: Added support for long-polling on all supported queries. Fixed bug
+  causing error on parsing responses with no retrieved messages from SQS.
 
-    Contributed by **Mikhail Elovskikh**.
+    Contributed by **Anthony Lukach**.
 
 - Async hub: Fixed potential infinite loop while performing todo tasks
   (Issue celery/celery#3712).
+
+- Qpid: Fixed bug where messages could have duplicate ``delivery_tag``
+  (Issue #563).
+
+    Contributed by **bmbouter**.
+
+- MongoDB: Fixed problem with using ``readPreference`` option at pymongo 3.x.
+
+    Contributed by **Mikhail Elovskikh**.
+
+- Re-added support for :pypi:``SQLAlchemy``
+
+    Contributed by **Amin Ghadersohi**.
+
+- SQS: Fixed bug where hostname would default to ``localhost`` if not specified
+  in settings.
+
+    Contributed by **Anthony Lukach**.
+
+- Redis: Added support for reading password from transport URL (Issue #677).
+
+    Contributed by **George Psarakis**.
+
+- RabbitMQ: Ensured safer encoding of queue arguments.
+
+    Contributed by **Robert Kopaczewski**.
+
+- Added fallback to :func:``uuid.uuid5`` in :func:``generate_oid`` if
+  :func:``uuid.uuid3`` fails.
+
+    Contributed by **Bill Nottingham**.
+
+- Fixed race condition and innacurrate timeouts for
+  :class:``kombu.simple.SimpleBase` (Issue #720).
+
+    Contributed by **c-nichols**.
+
+- Zookeeper: Fixed last chroot character trimming
+
+    Contributed by **Dima Kurguzov**.
+
+- RabbitMQ: Fixed bug causing an exception when attempting to close an
+  already-closed connection (Issue #690).
+
+    Contributed by **eavictor**.
+
+- Removed deprecated use of StopIteration in generators and invalid regex
+  escape sequence.
+
+    Contributed by **Jon Dufresne**.
+
+- Added Python 3.6 to CI testing.
+
+    Contributed by **Jon Dufresne**.
+
+- SQS: Allowed endpoint URL to be specified in the boto3 connection.
+
+    Contributed by **georgepsarakis**.
+
+- SQS: Add support for Python 3.4.
+
+    Contributed by **Anthony Lukach**.
+
+- SQS: ``kombu[sqs]`` now depends on :pypi:`boto3` (no longer using
+  :pypi:`boto)`.
+
+    - Adds support for Python 3.4+
+    - Adds support for FIFO queues (Issue #678) and
+    (Issue celery/celery#3690)
+    - Avoids issues around a broken endpoints file (Issue celery/celery#3672)
+
+    Contributed by **Mischa Spiegelmock** and **Jerry Seutter**.
+
+- Zookeeper: Add support for delaying task with Python 3.
+
+    Contributed by **Dima Kurguzov**.
+
+- SQS: Fixed bug where :meth:`kombu.transport.SQS.drain_events` did not support
+  callback argument (Issue #694).
+
+    Contributed by **Michael Montgomery**.
+
+- Fixed bug around modifying dictionary size while iterating over it
+  (Issue #675).
+
+    Contributed by **Felix Yan**.
+
+- etcd: Adding handling for :exc:`EtcdException` exception rather than
+  :exc:`EtcdError`.
+
+    Contributed by **Stephen Milner**.
+
+- Documentation improvements by:
+
+    - **Mads Jensen**
+    - **Matias Insaurralde**
+    - **Omer Katz**
+    - **Dmitry Dygalo**
+    - **Christopher Hoskin**
 
 .. _version-4.0.2:
 
