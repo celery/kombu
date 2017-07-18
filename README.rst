@@ -4,7 +4,7 @@
 
 |build-status| |coverage| |license| |wheel| |pyversion| |pyimp|
 
-:Version: 4.0.2
+:Version: 4.1.0
 :Web: http://kombu.me/
 :Download: http://pypi.python.org/pypi/kombu/
 :Source: https://github.com/celery/kombu/
