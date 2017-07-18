@@ -1060,7 +1060,7 @@ class SentinelChannel(Channel):
     `Connection` object).
 
     You must provide at least one option in Transport options:
-     * `service_name` - name of the redis group to poll
+     * `master_name` - name of the redis group to poll
     """
 
     from_transport_options = Channel.from_transport_options + (
