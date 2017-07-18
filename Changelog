@@ -24,7 +24,7 @@
 
     Contributed by **bmbouter**.
 
-- MongoDB: Fixed problem with using readPreference option at pymongo 3.x.
+- MongoDB: Fixed problem with using ``readPreference`` option at pymongo 3.x.
 
     Contributed by **Mikhail Elovskikh**.
 
