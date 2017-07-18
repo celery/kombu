@@ -11,7 +11,7 @@
 :release-date: 2017-07-17 04:45 P.M MST
 :release-by: Anthony Lukach
 
-*- SQS: Added support for long-polling on all supported queries. Fixed bug
+- SQS: Added support for long-polling on all supported queries. Fixed bug
   causing error on parsing responses with no retrieved messages from SQS.
 
     Contributed by **Anthony Lukach**.
@@ -51,7 +51,7 @@
     Contributed by **Bill Nottingham**.
 
 - Fixed race condition and innacurrate timeouts for
-  :class:``kombu.simple.SimpleBase` (Issue #720).
+  :class:``kombu.simple.SimpleBase`` (Issue #720).
 
     Contributed by **c-nichols**.
 
@@ -77,7 +77,7 @@
 
     Contributed by **georgepsarakis**.
 
-- SQS: Add support for Python 3.4.
+- SQS: Added support for Python 3.4.
 
     Contributed by **Anthony Lukach**.
 
@@ -85,13 +85,12 @@
   :pypi:`boto)`.
 
     - Adds support for Python 3.4+
-    - Adds support for FIFO queues (Issue #678) and
-    (Issue celery/celery#3690)
+    - Adds support for FIFO queues (Issue #678) and (Issue celery/celery#3690)
     - Avoids issues around a broken endpoints file (Issue celery/celery#3672)
 
     Contributed by **Mischa Spiegelmock** and **Jerry Seutter**.
 
-- Zookeeper: Add support for delaying task with Python 3.
+- Zookeeper: Added support for delaying task with Python 3.
 
     Contributed by **Dima Kurguzov**.
 
@@ -105,7 +104,7 @@
 
     Contributed by **Felix Yan**.
 
-- etcd: Adding handling for :exc:`EtcdException` exception rather than
+- etcd: Added handling for :exc:`EtcdException` exception rather than
   :exc:`EtcdError`.
 
     Contributed by **Stephen Milner**.
