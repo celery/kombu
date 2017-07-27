@@ -41,7 +41,8 @@ def to_timestamp(d, default_timezone=utc, time=monotonic):
         if d.tzinfo is None:
             d = d.replace(tzinfo=default_timezone)
         diff = _time() - time()
-        return max((d - EPOCH).total_seconds() - diff, 0)
+        epoch = datetime.utcfromtimestamp(0).replace(tzinfo=default_timezone)
+        return max((d - epoch).total_seconds() - diff, 0)
     return d
 
 
