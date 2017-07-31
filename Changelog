@@ -4,12 +4,12 @@
  Change history
 ================
 
-.. _version-4.1.0:
+.. _version-4.1.1:
 
-4.1.0
+4.1.1
 =====
-:release-date: 2017-07-17 04:45 P.M MST
-:release-by: Anthony Lukach
+:release-date: TBD
+:release-by: TBD
 
 - Now passing ``max_retries``, ``interval_start``, ``interval_step``,
   ``interval_max`` parameters from broker ``transport_options`` to
@@ -17,6 +17,13 @@
   :meth:`~kombu.Connection.default_connection` (Issue #765).
 
     Contributed by **Anthony Lukach**.
+
+.. _version-4.1.0:
+
+4.1.0
+=====
+:release-date: 2017-07-17 04:45 P.M MST
+:release-by: Anthony Lukach
 
 - SQS: Added support for long-polling on all supported queries. Fixed bug
   causing error on parsing responses with no retrieved messages from SQS.

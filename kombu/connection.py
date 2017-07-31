@@ -815,14 +815,18 @@ class Connection(object):
             a connection is passed instead of a channel, to functions that
             require a channel.
         """
-        options = {
-            k: v for k, v in (self.transport_options or {}).items()
-            if k in [
-                'max_retries', 'interval_start',
-                'interval_step', 'interval_max']
-        }
+        ensure_connection_options = {}
+        if self.transport_options:
+            options_keys = [
+                'max_retries',
+                'interval_start', 'interval_step', 'interval_max',
+            ]
+            for k in options_keys:
+                if k in self.transport_options:
+                    ensure_connection_options[k] = self.transport_options[k]
+
         # make sure we're still connected, and if not refresh.
-        self.ensure_connection(**options)
+        self.ensure_connection(**ensure_connection_options)
         if self._default_channel is None:
             self._default_channel = self.channel()
         return self._default_channel
