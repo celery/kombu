@@ -4,6 +4,20 @@
  Change history
 ================
 
+.. _version-4.1.1:
+
+4.1.1
+=====
+:release-date: TBD
+:release-by: TBD
+
+- Now passing ``max_retries``, ``interval_start``, ``interval_step``,
+  ``interval_max`` parameters from broker ``transport_options`` to
+  :meth:`~kombu.Connection.ensure_connection` when returning
+  :meth:`~kombu.Connection.default_connection` (Issue #765).
+
+    Contributed by **Anthony Lukach**.
+
 .. _version-4.1.0:
 
 4.1.0
