@@ -229,11 +229,11 @@ class Channel(virtual.Channel):
                     'body': bytes_to_str(body),
                     'properties': properties,
                 })
-        # set delivery tag to SQS receipt handle
-        delivery_info.update({
-            'sqs_message': message, 'sqs_queue': queue,
-        })
-        properties['delivery_tag'] = message['ReceiptHandle']
+            # set delivery tag to SQS receipt handle
+            delivery_info.update({
+                'sqs_message': message, 'sqs_queue': queue,
+            })
+            properties['delivery_tag'] = message['ReceiptHandle']
         return payload
 
     def _messages_to_python(self, messages, queue):
