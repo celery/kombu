@@ -5,6 +5,7 @@ cache: pip
 env:
   global:
     PYTHONUNBUFFERED=yes
+    CLAY_CONFIG=./t/configs/test_cherami.yaml
 
 matrix:
   include:
