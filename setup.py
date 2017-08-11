@@ -147,6 +147,7 @@ setup(
         'slmq': extras('slmq.txt'),
         'qpid': extras('qpid.txt'),
         'consul': extras('consul.txt'),
+        'cherami': extras('cherami.txt'),
     },
     classifiers=[
         'Development Status :: 5 - Production/Stable',
