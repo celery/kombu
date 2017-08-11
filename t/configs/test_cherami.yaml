@@ -1,0 +1,3 @@
+application_identifier: test
+destination: /test/dest
+consumergroup: /test/cg
