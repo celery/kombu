@@ -26,7 +26,6 @@ class CheramiMessage():
 
 
 @skip.unless_module('cherami_client')
-@skip.unless_environ('CLAY_CONFIG')
 class test_CheramiChannel(unittest.TestCase):
 
     def setUp(self):
