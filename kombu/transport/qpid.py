@@ -427,7 +427,8 @@ class Channel(base.StdChannel):
             rx.close()
         return message
 
-    def _put(self, routing_key, message, exchange=None, **kwargs):
+    def _put(self, routing_key, message, exchange=None, durable=True,
+             **kwargs):
         """Synchronously send a single message onto a queue or exchange.
 
         An internal method which synchronously sends a single message onto
@@ -460,6 +461,9 @@ class Channel(base.StdChannel):
             should be sent on. If no exchange is specified, the message is
             sent directly to a queue specified by routing_key.
         :type exchange: str
+        :keyword durable: whether or not the message should persist or be
+            durable.
+        :type durable: bool
 
         """
         if not exchange:
@@ -472,6 +476,7 @@ class Channel(base.StdChannel):
             msg_subject = str(routing_key)
         sender = self.transport.session.sender(address)
         qpid_message = qpid.messaging.Message(content=message,
+                                              durable=durable,
                                               subject=msg_subject)
         try:
             sender.send(qpid_message, sync=True)

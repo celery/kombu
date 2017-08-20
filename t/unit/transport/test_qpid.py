@@ -521,7 +521,7 @@ class test_Channel_put(ChannelTestBase):
         )
         self.transport.session.sender.assert_called_with(address_str)
         mock_Message_cls.assert_called_with(
-            content=mock_message, subject=None,
+            content=mock_message, subject=None, durable=True
         )
         mock_sender = self.transport.session.sender.return_value
         mock_sender.send.assert_called_with(
@@ -543,7 +543,7 @@ class test_Channel_put(ChannelTestBase):
         )
         self.transport.session.sender.assert_called_with(addrstr)
         mock_Message_cls.assert_called_with(
-            content=mock_message, subject=mock_routing_key,
+            content=mock_message, subject=mock_routing_key, durable=True
         )
         mock_sender = self.transport.session.sender.return_value
         mock_sender.send.assert_called_with(
