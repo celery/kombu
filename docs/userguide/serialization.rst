@@ -28,7 +28,7 @@ The accept argument can also include MIME-types.
 
 .. _`JSON`: http://www.json.org/
 .. _`YAML`: http://yaml.org/
-.. _`msgpack`: http://msgpack.sourceforge.net/
+.. _`msgpack`: https://msgpack.org/
 
 Each option has its advantages and disadvantages.
 
