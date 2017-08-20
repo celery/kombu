@@ -6,7 +6,7 @@
 
 :Version: 4.1.0
 :Web: http://kombu.me/
-:Download: http://pypi.python.org/pypi/kombu/
+:Download: https://pypi.python.org/pypi/kombu/
 :Source: https://github.com/celery/kombu/
 :Keywords: messaging, amqp, rabbitmq, redis, mongodb, python, queue
 
