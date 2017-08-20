@@ -553,7 +553,7 @@ class test_Transport:
         self.transport = client().transport
 
     def test_custom_polling_interval(self):
-        x = client(transport_options=dict(polling_interval=32.3))
+        x = client(transport_options={'polling_interval': 32.3})
         assert x.transport.polling_interval == 32.3
 
     def test_close_connection(self):

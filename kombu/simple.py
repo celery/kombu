@@ -144,8 +144,8 @@ class SimpleBuffer(SimpleQueue):
     """Simple API for ephemeral queues."""
 
     no_ack = True
-    queue_opts = dict(durable=False,
-                      auto_delete=True)
-    exchange_opts = dict(durable=False,
-                         delivery_mode='transient',
-                         auto_delete=True)
+    queue_opts = {'durable': False,
+                  'auto_delete': True}
+    exchange_opts = {'durable': False,
+                     'delivery_mode': 'transient',
+                     'auto_delete': True}

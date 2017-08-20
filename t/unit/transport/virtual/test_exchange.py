@@ -145,12 +145,12 @@ class test_ExchangeType(ExchangeCase):
             'rFoo', None, 'qFoo',
         )
 
-    e1 = dict(
-        type='direct',
-        durable=True,
-        auto_delete=True,
-        arguments={},
-    )
+    e1 = {
+        'type': 'direct',
+        'durable': True,
+        'auto_delete': True,
+        'arguments': {},
+    }
     e2 = dict(e1, arguments={'expires': 3000})
 
     @pytest.mark.parametrize('ex,eq,name,type,durable,auto_delete,arguments', [
