@@ -11,6 +11,7 @@ from . import virtual
 
 
 DEFAULT_PORT = 4922
+DEFAULT_INTERVAL = 1
 
 logger = get_logger('kombu.transport.cherami')
 
@@ -33,7 +34,7 @@ class Channel(virtual.Channel):
 
     def basic_consume(self, queue, no_ack, *args, **kwargs):
         if self.hub:
-            self.hub.call_soon(self._get, queue)
+            self.hub.call_repeatedly(DEFAULT_INTERVAL, self._get, queue)
         return super(Channel, self).basic_consume(
             queue, no_ack, *args, **kwargs
         )
@@ -43,12 +44,11 @@ class Channel(virtual.Channel):
         self.publisher.publish(str(0), dumps(message))
 
     def _get(self, queue, callback=None):
-        while True:
-            try:
-                results = self.consumer.receive(num_msgs=self.default_message_batch_size)
-                self._on_message_ready(queue, results)
-            except Exception as e:
-                logger.info('Failed to receive messages: {0}'.format(e))
+        try:
+            results = self.consumer.receive(num_msgs=self.default_message_batch_size)
+            self._on_message_ready(queue, results)
+        except Exception as e:
+            logger.info('Failed to receive messages: {0}'.format(e))
 
     def _on_message_ready(self, queue, results):
         for res in results:
