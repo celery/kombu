@@ -211,7 +211,7 @@ class Connection(object):
             self.uri_prefix = uri_prefix
 
         # kwargs for cherami transport
-        self.kwargs = kwargs['cherami']
+        self.kwargs = kwargs
 
         self.declared_entities = set()
 
