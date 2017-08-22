@@ -210,6 +210,9 @@ class Connection(object):
         if uri_prefix:
             self.uri_prefix = uri_prefix
 
+        # kwargs for cherami transport
+        self.kwargs = kwargs['cherami']
+
         self.declared_entities = set()
 
     def switch(self, url):
@@ -573,7 +576,7 @@ class Connection(object):
         return self.ensure(revive, revive, **ensure_options)
 
     def create_transport(self):
-        return self.get_transport_cls()(client=self)
+        return self.get_transport_cls()(client=self, **self.kwargs)
 
     def get_transport_cls(self):
         """Get the currently used transport class."""
