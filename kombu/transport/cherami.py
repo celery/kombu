@@ -121,4 +121,5 @@ class Transport(virtual.Transport):
     def __init__(self, *args, **kwargs):
         super(Transport, self).__init__(*args, **kwargs)
 
+        # cherami-client instance kwargs
         self.kwargs = kwargs
