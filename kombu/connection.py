@@ -587,7 +587,8 @@ class Connection(object):
 
     def clone(self, **kwargs):
         """Create a copy of the connection with same settings."""
-        return self.__class__(**dict(self._info(resolve=False), **dict(self.kwargs, **kwargs)))
+        return self.__class__(**dict(self._info(resolve=False),
+                              **dict(self.kwargs, **kwargs)))
 
     def get_heartbeat_interval(self):
         return self.transport.get_heartbeat_interval(self.connection)
