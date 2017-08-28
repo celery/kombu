@@ -59,7 +59,6 @@ class Channel(virtual.Channel):
             message = res[1]
             try:
                 self._handle_message(queue, message.payload.data)
-                self.consumer.ack(delivery_token)
             except Exception as e:
                 self.consumer.nack(delivery_token)
                 logger.info('Failed to process a message:  {0}'.format(e))
