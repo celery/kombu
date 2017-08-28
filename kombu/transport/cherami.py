@@ -31,11 +31,15 @@ class Channel(virtual.Channel):
         # cherami-client instance kwargs
         self.kwargs = self.connection.kwargs
 
+        # delivery_tag(Kombu.Transport.QoS) -> delivery_token(cherami)
+        self.delivery_map = dict()
+
     def basic_consume(self, queue, no_ack, *args, **kwargs):
         if self.hub:
             self.hub.call_soon(self._get, queue)
+        # no_ack is True because cherami is in charge of message ack
         return super(Channel, self).basic_consume(
-            queue, no_ack, *args, **kwargs
+            queue, True, *args, **kwargs
         )
 
     def _put(self, queue, message, **kwargs):
@@ -64,9 +68,22 @@ class Channel(virtual.Channel):
 
     def _handle_message(self, queue, data):
         message = loads(data)
-        if message:
-            callback = self.connection._callbacks[queue]
-            callback(message)
+
+        # saves the mapping for ack
+        delivery_tag = message['properties']['delivery_tag']
+        self.delivery_map[delivery_tag] = delivery_token
+
+        self.connection._deliver(message, queue)
+
+    def basic_ack(self, delivery_tag, multiple=False):
+        # get the delivery_token for cherami ack
+        delivery_token = self.delivery_map[delivery_tag]
+        self.consumer.ack(delivery_token)
+
+        # removes the mapping
+        self.delivery_map.pop(delivery_tag, None)
+
+        super(Channel, self).basic_ack(delivery_tag)
 
     def close(self):
         super(Channel, self).close()
