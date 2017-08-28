@@ -17,10 +17,14 @@ logger = get_logger('kombu.transport.cherami')
 class Channel(virtual.Channel):
     """Cherami Channel."""
 
-    default_message_batch_size = 2  # No. of messages to fetch when get message is called
+    default_message_batch_size = 1  # No. of messages to fetch when get message is called
 
     _publisher = None
     _consumer = None
+
+    # message fetching limit
+    prefetch_limit = 0
+    prefetched = 0
 
     def __init__(self, *args, **kwargs):
         super(Channel, self).__init__(*args, **kwargs)
@@ -35,6 +39,9 @@ class Channel(virtual.Channel):
         self.delivery_map = dict()
 
     def basic_consume(self, queue, no_ack, *args, **kwargs):
+        # set the prefetch_limit specified by the celery configuration
+        self.prefetch_limit = self.qos.prefetch_count
+
         if self.hub:
             self.hub.call_soon(self._get, queue)
         # no_ack is True because cherami is in charge of message ack
@@ -47,11 +54,14 @@ class Channel(virtual.Channel):
         self.publisher.publish(str(0), dumps(message))
 
     def _get(self, queue, callback=None):
-        try:
-            results = self.consumer.receive(num_msgs=self.default_message_batch_size)
-            self._on_message_ready(queue, results)
-        except Exception as e:
-            logger.info('Failed to receive messages: {0}'.format(e))
+        if self.prefetched < self.prefetch_limit:
+            try:
+                results = self.consumer.receive(num_msgs=self.default_message_batch_size)
+                self._on_message_ready(queue, results)
+            except Exception as e:
+                logger.info('Failed to receive messages: {0}'.format(e))
+        else:
+            self.hub.call_soon(self._get, queue)
 
     def _on_message_ready(self, queue, results):
         for res in results:
@@ -72,6 +82,7 @@ class Channel(virtual.Channel):
         delivery_tag = message['properties']['delivery_tag']
         self.delivery_map[delivery_tag] = delivery_token
 
+        self.prefetched += 1
         self.connection._deliver(message, queue)
 
     def basic_ack(self, delivery_tag, multiple=False):
@@ -81,8 +92,7 @@ class Channel(virtual.Channel):
 
         # removes the mapping
         self.delivery_map.pop(delivery_tag, None)
-
-        super(Channel, self).basic_ack(delivery_tag)
+        self.prefetched -= 1
 
     def close(self):
         super(Channel, self).close()
