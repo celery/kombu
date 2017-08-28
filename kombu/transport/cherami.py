@@ -58,14 +58,14 @@ class Channel(virtual.Channel):
             delivery_token = res[0]
             message = res[1]
             try:
-                self._handle_message(queue, message.payload.data)
+                self._handle_message(queue, message.payload.data, delivery_token)
             except Exception as e:
                 self.consumer.nack(delivery_token)
                 logger.info('Failed to process a message:  {0}'.format(e))
         # done processing messages, consume again
         self.hub.call_soon(self._get, queue)
 
-    def _handle_message(self, queue, data):
+    def _handle_message(self, queue, data, delivery_token):
         message = loads(data)
 
         # saves the mapping for ack
