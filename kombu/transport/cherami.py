@@ -36,7 +36,7 @@ class Channel(virtual.Channel):
         self.kwargs = self.connection.kwargs
 
         # delivery_tag(Kombu.Transport.QoS) -> cherami_delivery_token(cherami)
-        self.delivery_map = dict()
+        self.delivery_map = {}
 
     def basic_consume(self, queue, no_ack, *args, **kwargs):
         # set the prefetch_limit specified by the celery configuration
@@ -94,9 +94,6 @@ class Channel(virtual.Channel):
         # removes the mapping
         self.delivery_map.pop(delivery_tag, None)
         self.prefetched -= 1
-
-    def close(self):
-        super(Channel, self).close()
 
     @property
     def publisher(self):
