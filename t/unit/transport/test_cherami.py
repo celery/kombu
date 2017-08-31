@@ -71,21 +71,23 @@ class test_CheramiChannel(unittest.TestCase):
         self.channel.prefetch_limit = 1
 
         self.channel._get(self.queue_name)
-        self.channel._consumer.receive.assert_called_once_with(num_msgs=self.channel.default_message_batch_size)
+        can_consume = self.channel.prefetch_limit - self.channel.prefetched
+        self.channel._consumer.receive.assert_called_once_with(num_msgs=can_consume)
         self.channel._on_message_ready.assert_called_once_with(self.queue_name, results)
 
         # test prefetched > prefetch_limit
         self.channel.prefetched = self.channel.prefetch_limit + 1
         self.channel._get(self.queue_name)
         # only called once like before because not allowed to consume
-        self.channel._consumer.receive.assert_called_once_with(num_msgs=self.channel.default_message_batch_size)
+        self.channel._consumer.receive.assert_called_once_with(num_msgs=can_consume)
         self.channel._on_message_ready.assert_called_once_with(self.queue_name, results)
 
     def test_on_message_ready(self):
         self.channel._get = Mock()
         self.channel._consumer.nack = Mock()
+        self.channel.prefetched = 0
 
-        # test regular message and ack
+        # test regular message
         delivery_token = '123456'
         message = CheramiMessage({'foo': 'bar'})
         results = [[delivery_token, message]]
@@ -93,6 +95,7 @@ class test_CheramiChannel(unittest.TestCase):
         self.channel._on_message_ready(self.queue_name, results)
         self.channel._handle_message.assert_called_with(self.queue_name, {'foo': 'bar'}, delivery_token)
         self.channel.hub.call_soon.assert_called_once_with(self.channel._get, self.queue_name)
+        assert self.channel.prefetched == 1
 
         # test handle message exception and nack
         delivery_token = '654321'
@@ -102,6 +105,7 @@ class test_CheramiChannel(unittest.TestCase):
         self.channel._on_message_ready(self.queue_name, results)
         self.channel._handle_message.assert_called_with(self.queue_name, {'bar': 'foo'}, delivery_token)
         self.channel._consumer.nack.assert_called_with(delivery_token)
+        assert self.channel.prefetched == 1
 
         # test bad message format exception and nack
         delivery_token = 000000
@@ -109,17 +113,16 @@ class test_CheramiChannel(unittest.TestCase):
         results = [[delivery_token, message]]
         self.channel._on_message_ready(self.queue_name, results)
         self.channel._consumer.nack.assert_called_with(delivery_token)
+        assert self.channel.prefetched == 1
 
     def test_handle_message(self):
         # make sure the callback is called
         message = dumps(dict({'foo': 'bar', 'properties': {'delivery_tag': '654321'}}))
         self.channel.connection._deliver = Mock()
-        self.channel.prefetched = 0
         delivery_token = '123456'
 
         self.channel._handle_message(self.queue_name, message, delivery_token)
         assert self.channel.delivery_map['654321'] == '123456'
-        assert self.channel.prefetched == 1
         self.channel.connection._deliver.assert_called_once_with(loads(message), self.queue_name)
 
     def test_basic_ack(self):
@@ -132,10 +135,3 @@ class test_CheramiChannel(unittest.TestCase):
         assert len(self.channel.delivery_map) == 0
         assert self.channel.prefetched == 0
 
-    def test_close(self):
-        self.channel._publisher.close = Mock()
-        self.channel._consumer.close = Mock()
-        self.channel.close()
-
-        self.channel._publisher.close.assert_called_once()
-        self.channel._consumer.close.assert_called_once()

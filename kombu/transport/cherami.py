@@ -71,6 +71,7 @@ class Channel(virtual.Channel):
             try:
                 self._handle_message(queue, message.payload.data, cherami_delivery_token)
             except Exception as e:
+                self.prefetched -= 1
                 self.consumer.nack(cherami_delivery_token)
                 logger.info('Failed to process a message:  {0}'.format(e))
         # done processing messages, consume again
