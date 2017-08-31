@@ -35,7 +35,7 @@ class Channel(virtual.Channel):
         # cherami-client instance kwargs
         self.kwargs = self.connection.kwargs
 
-        # delivery_tag(Kombu.Transport.QoS) -> delivery_token(cherami)
+        # delivery_tag(Kombu.Transport.QoS) -> cherami_delivery_token(cherami)
         self.delivery_map = dict()
 
     def basic_consume(self, queue, no_ack, *args, **kwargs):
@@ -44,7 +44,7 @@ class Channel(virtual.Channel):
 
         if self.hub:
             self.hub.call_soon(self._get, queue)
-        # no_ack is True because cherami is in charge of message ack
+        # no_ack is always True because cherami is in charge of message ack
         return super(Channel, self).basic_consume(
             queue, True, *args, **kwargs
         )
@@ -56,7 +56,7 @@ class Channel(virtual.Channel):
     def _get(self, queue, callback=None):
         if self.prefetched < self.prefetch_limit:
             try:
-                results = self.consumer.receive(num_msgs=self.default_message_batch_size)
+                results = self.consumer.receive(num_msgs=self.prefetch_limit - self.prefetched)
                 self._on_message_ready(queue, results)
             except Exception as e:
                 logger.info('Failed to receive messages: {0}'.format(e))
@@ -65,30 +65,30 @@ class Channel(virtual.Channel):
 
     def _on_message_ready(self, queue, results):
         for res in results:
-            delivery_token = res[0]
+            self.prefetched += 1
+            cherami_delivery_token = res[0]
             message = res[1]
             try:
-                self._handle_message(queue, message.payload.data, delivery_token)
+                self._handle_message(queue, message.payload.data, cherami_delivery_token)
             except Exception as e:
-                self.consumer.nack(delivery_token)
+                self.consumer.nack(cherami_delivery_token)
                 logger.info('Failed to process a message:  {0}'.format(e))
         # done processing messages, consume again
         self.hub.call_soon(self._get, queue)
 
-    def _handle_message(self, queue, data, delivery_token):
+    def _handle_message(self, queue, data, cherami_delivery_token):
         message = loads(data)
 
         # saves the mapping for ack
         delivery_tag = message['properties']['delivery_tag']
-        self.delivery_map[delivery_tag] = delivery_token
+        self.delivery_map[delivery_tag] = cherami_delivery_token
 
-        self.prefetched += 1
         self.connection._deliver(message, queue)
 
     def basic_ack(self, delivery_tag, multiple=False):
         # get the delivery_token for cherami ack
-        delivery_token = self.delivery_map[delivery_tag]
-        self.consumer.ack(delivery_token)
+        cherami_delivery_token = self.delivery_map[delivery_tag]
+        self.consumer.ack(cherami_delivery_token)
 
         # removes the mapping
         self.delivery_map.pop(delivery_tag, None)
@@ -96,17 +96,12 @@ class Channel(virtual.Channel):
 
     def close(self):
         super(Channel, self).close()
-        if self._consumer:
-            self._consumer.close()
-        if self._publisher:
-            self._publisher.close()
 
     @property
     def publisher(self):
         if self._publisher is None:
             if isinstance(self.kwargs['cherami_publisher'], Publisher):
                 self._publisher = self.kwargs['cherami_publisher']
-                self._publisher.open()
             else:
                 raise Exception('Invalid cherami publisher instance! ')
         return self._publisher
@@ -117,7 +112,6 @@ class Channel(virtual.Channel):
         if self._consumer is None:
             if isinstance(self.kwargs['cherami_consumer'], Consumer):
                 self._consumer = self.kwargs['cherami_consumer']
-                self._consumer.open()
             else:
                 raise Exception('Invalid cherami consumer instance! ')
         return self._consumer
