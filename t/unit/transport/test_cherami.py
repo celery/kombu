@@ -71,15 +71,14 @@ class test_CheramiChannel(unittest.TestCase):
         self.channel.prefetch_limit = 1
 
         self.channel._get(self.queue_name)
-        can_consume = self.channel.prefetch_limit - self.channel.prefetched
-        self.channel._consumer.receive.assert_called_once_with(num_msgs=can_consume)
+        self.channel._consumer.receive.assert_called_once_with(num_msgs=self.channel.default_message_batch_size)
         self.channel._on_message_ready.assert_called_once_with(self.queue_name, results)
 
         # test prefetched > prefetch_limit
         self.channel.prefetched = self.channel.prefetch_limit + 1
         self.channel._get(self.queue_name)
         # only called once like before because not allowed to consume
-        self.channel._consumer.receive.assert_called_once_with(num_msgs=can_consume)
+        self.channel._consumer.receive.assert_called_once_with(num_msgs=self.channel.default_message_batch_size)
         self.channel._on_message_ready.assert_called_once_with(self.queue_name, results)
 
     def test_on_message_ready(self):

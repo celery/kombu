@@ -56,7 +56,7 @@ class Channel(virtual.Channel):
     def _get(self, queue, callback=None):
         if self.prefetched < self.prefetch_limit:
             try:
-                results = self.consumer.receive(num_msgs=self.prefetch_limit - self.prefetched)
+                results = self.consumer.receive(num_msgs=self.default_message_batch_size)
                 self._on_message_ready(queue, results)
             except Exception as e:
                 logger.info('Failed to receive messages: {0}'.format(e))
