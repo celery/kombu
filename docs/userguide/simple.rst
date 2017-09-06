@@ -32,7 +32,7 @@ This is equivalent to:
 
 .. code-block:: pycon
 
-    >>> from kombu import SimpleQueue, SimpleBuffer
+    >>> from kombu.simple import SimpleQueue, SimpleBuffer
 
     >>> channel = connection.channel()
     >>> queue = SimpleBuffer(channel)
