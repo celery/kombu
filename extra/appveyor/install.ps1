@@ -85,7 +85,8 @@ function InstallMissingHeaders () {
     $include_dirs = @("C:\Program Files\Microsoft SDKs\Windows\v7.0\Include",
                       "C:\Program Files\Microsoft SDKs\Windows\v7.1\Include",
                       "C:\Program Files (x86)\Microsoft Visual Studio 9.0\VC\include",
-                      "C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\include")
+                      "C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\include",
+                      "C:\Users\appveyor\AppData\Local\Programs\Common\Microsoft\Visual C++ for Python\9.0\VC\include")
 
     Foreach ($include_dir in $include_dirs) {
     $urls = @(@("https://raw.githubusercontent.com/chemeris/msinttypes/master/stdint.h", "stdint.h"),
