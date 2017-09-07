@@ -13,7 +13,6 @@ from case import Mock, skip
 
 from kombu import Connection
 from kombu.utils.json import loads, dumps
-from kombu.transport import cherami
 
 
 class CheramiMessage():
@@ -29,6 +28,7 @@ class CheramiMessage():
 
 @skip.unless_module('cherami_client')
 class test_CheramiChannel(unittest.TestCase):
+    from kombu.transport import cherami
 
     def setUp(self):
 
