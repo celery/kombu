@@ -1,4 +1,5 @@
 """Cherami Transport."""
+from __future__ import absolute_import, unicode_literals
 
 from cherami_client.consumer import Consumer
 from cherami_client.publisher import Publisher
@@ -14,10 +15,12 @@ DEFAULT_PORT = 4922
 
 logger = get_logger('kombu.transport.cherami')
 
+
 class Channel(virtual.Channel):
     """Cherami Channel."""
 
-    default_message_batch_size = 1  # No. of messages to fetch when get message is called
+    # No. of messages to fetch when get message is called
+    default_message_batch_size = 1
 
     _publisher = None
     _consumer = None
@@ -35,7 +38,7 @@ class Channel(virtual.Channel):
         # cherami-client instance kwargs
         self.kwargs = self.connection.kwargs
 
-        # delivery_tag(Kombu.Transport.QoS) -> cherami_delivery_token(cherami)
+        # delivery_tag(Transport.QoS) -> cherami_delivery_token(cherami)
         self.delivery_map = {}
 
     def basic_consume(self, queue, no_ack, *args, **kwargs):
@@ -50,13 +53,15 @@ class Channel(virtual.Channel):
         )
 
     def _put(self, queue, message, **kwargs):
-        # the first argument is the message id, cherami doesn't care about this, just passes along
+        # the first argument is the message id,
+        # cherami doesn't care about this, just passes along
         self.publisher.publish(str(0), dumps(message))
 
     def _get(self, queue, callback=None):
         if self.prefetched < self.prefetch_limit:
             try:
-                results = self.consumer.receive(num_msgs=self.default_message_batch_size)
+                results = self.consumer.receive(
+                    num_msgs=self.default_message_batch_size)
                 self._on_message_ready(queue, results)
             except Exception as e:
                 logger.info('Failed to receive messages: {0}'.format(e))
@@ -69,7 +74,9 @@ class Channel(virtual.Channel):
             cherami_delivery_token = res[0]
             message = res[1]
             try:
-                self._handle_message(queue, message.payload.data, cherami_delivery_token)
+                self._handle_message(queue,
+                                     message.payload.data,
+                                     cherami_delivery_token)
             except Exception as e:
                 self.prefetched -= 1
                 self.consumer.nack(cherami_delivery_token)
@@ -104,7 +111,6 @@ class Channel(virtual.Channel):
                 raise Exception('Invalid cherami publisher instance! ')
         return self._publisher
 
-
     @property
     def consumer(self):
         if self._consumer is None:
@@ -113,7 +119,6 @@ class Channel(virtual.Channel):
             else:
                 raise Exception('Invalid cherami consumer instance! ')
         return self._consumer
-
 
 class Transport(virtual.Transport):
     """Cherami Transport"""
