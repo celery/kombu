@@ -25,7 +25,7 @@ matrix:
     - env: TOXENV=pydocstyle
     - env: TOXENV=cov
 
-install: travis_retry pip install -U tox==2.7.0
+install: travis_retry pip install -U tox
 script: tox -v -- -v
 after_success:
   - .tox/$TRAVIS_PYTHON_VERSION/bin/coverage xml
