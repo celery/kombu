@@ -27,6 +27,7 @@ class CheramiMessage():
 
 
 @skip.unless_module('cherami_client')
+@skip.if_python3(reason='cherami transport can only work with python 2.7')
 class test_CheramiChannel(unittest.TestCase):
 
     def setUp(self):

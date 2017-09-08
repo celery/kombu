@@ -120,8 +120,9 @@ class Channel(virtual.Channel):
                 raise Exception('Invalid cherami consumer instance! ')
         return self._consumer
 
+
 class Transport(virtual.Transport):
-    """Cherami Transport"""
+    """Cherami Transport."""
 
     Channel = Channel
 
