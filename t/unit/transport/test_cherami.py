@@ -26,7 +26,7 @@ class CheramiMessage():
             self.data = data
 
 
-@skip.unless_module('cherami_client')
+@skip.unless_module('cherami-client')
 class test_CheramiChannel(unittest.TestCase):
     from kombu.transport import cherami
 
