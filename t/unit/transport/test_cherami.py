@@ -28,9 +28,9 @@ class CheramiMessage():
 
 @skip.unless_module('cherami-client')
 class test_CheramiChannel(unittest.TestCase):
-    from kombu.transport import cherami
 
     def setUp(self):
+        from kombu.transport import cherami
 
         self.queue_name = 'unittest'
 
