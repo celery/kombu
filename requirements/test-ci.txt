@@ -6,4 +6,3 @@ msgpack-python>0.2.0
 -r extras/sqs.txt
 sqlalchemy
 cherami-client>1.0.2,<2.0.0
-tox<2.8.0

@@ -70,6 +70,7 @@ class Channel(virtual.Channel):
 
     def _on_message_ready(self, queue, results):
         for res in results:
+            # new message
             self.prefetched += 1
             cherami_delivery_token = res[0]
             message = res[1]
@@ -78,6 +79,7 @@ class Channel(virtual.Channel):
                                      message.payload.data,
                                      cherami_delivery_token)
             except Exception as e:
+                # message failed, remove from prefetched count
                 self.prefetched -= 1
                 self.consumer.nack(cherami_delivery_token)
                 logger.info('Failed to process a message:  {0}'.format(e))
@@ -91,9 +93,11 @@ class Channel(virtual.Channel):
         delivery_tag = message['properties']['delivery_tag']
         self.delivery_map[delivery_tag] = cherami_delivery_token
 
+        # send the task to one of the worker
         self.connection._deliver(message, queue)
 
     def basic_ack(self, delivery_tag, multiple=False):
+        # task finished successfully
         # get the delivery_token for cherami ack
         cherami_delivery_token = self.delivery_map[delivery_tag]
         self.consumer.ack(cherami_delivery_token)
