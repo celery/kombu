@@ -857,7 +857,7 @@ class Management(base.Management):
         self.channel = transport.client.channel()
 
     def get_bindings(self):
-        return [dict(destination=q, source=e, routing_key=r)
+        return [{'destination': q, 'source': e, 'routing_key': r}
                 for q, e, r in self.channel.list_bindings()]
 
     def close(self):

@@ -67,12 +67,12 @@ class Channel(base.StdChannel):
     def prepare_message(self, body, priority=0, content_type=None,
                         content_encoding=None, headers=None, properties={}):
         self._called('prepare_message')
-        return dict(body=body,
-                    headers=headers,
-                    properties=properties,
-                    priority=priority,
-                    content_type=content_type,
-                    content_encoding=content_encoding)
+        return {'body': body,
+                'headers': headers,
+                'properties': properties,
+                'priority': priority,
+                'content_type': content_type,
+                'content_encoding': content_encoding}
 
     def basic_publish(self, message, exchange='', routing_key='',
                       mandatory=False, immediate=False, **kwargs):

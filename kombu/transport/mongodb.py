@@ -381,15 +381,15 @@ class Channel(virtual.Channel):
 
     def _create_broadcast_cursor(self, exchange, routing_key, pattern, queue):
         if pymongo.version_tuple >= (3, ):
-            query = dict(
-                filter={'queue': exchange},
-                cursor_type=CursorType.TAILABLE
-            )
+            query = {
+                'filter': {'queue': exchange},
+                'cursor_type': CursorType.TAILABLE,
+            }
         else:
-            query = dict(
-                query={'queue': exchange},
-                tailable=True
-            )
+            query = {
+                'query': {'queue': exchange},
+                'tailable': True,
+            }
 
         cursor = self.broadcast.find(**query)
         ret = self._broadcast_cursors[queue] = BroadcastCursor(cursor)

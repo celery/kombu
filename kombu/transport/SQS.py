@@ -420,9 +420,9 @@ class Channel(virtual.Channel):
                 aws_secret_access_key=self.conninfo.password,
             )
             is_secure = self.is_secure if self.is_secure is not None else True
-            client_kwargs = dict(
-                use_ssl=is_secure
-            )
+            client_kwargs = {
+                'use_ssl': is_secure
+            }
             if self.endpoint_url is not None:
                 client_kwargs['endpoint_url'] = self.endpoint_url
             self._sqs = session.client('sqs', **client_kwargs)
