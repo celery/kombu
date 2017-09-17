@@ -85,7 +85,6 @@ class Consumer(messaging.Consumer):
     durable = True
     exclusive = False
     auto_delete = False
-    exchange_type = 'direct'
     _closed = False
 
     def __init__(self, connection, queue=None, exchange=None,

@@ -128,7 +128,6 @@ class SimpleQueue(SimpleBase):
             queue = entity.Queue(name, exchange, name, **queue_opts)
             routing_key = name
         else:
-            name = queue.name
             exchange = queue.exchange
             routing_key = queue.routing_key
         consumer = messaging.Consumer(channel, queue)

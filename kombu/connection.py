@@ -173,7 +173,7 @@ class Connection(object):
                 # e.g. sqla+mysql://root:masterkey@localhost/
                 params['transport'], params['hostname'] = \
                     hostname.split('+', 1)
-                transport = self.uri_prefix = params['transport']
+                self.uri_prefix = params['transport']
             else:
                 transport = transport or urlparse(hostname).scheme
                 if not get_transport_cls(transport).can_parse_url:

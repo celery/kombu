@@ -324,7 +324,6 @@ def retry_over_time(fun, catch, args=[], kwargs={}, errback=None,
         interval_max (float): Maximum number of seconds to sleep
             between retries.
     """
-    retries = 0
     interval_range = fxrange(interval_start,
                              interval_max + interval_start,
                              interval_step, repeatlast=True)
