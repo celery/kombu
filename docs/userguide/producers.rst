@@ -35,7 +35,7 @@ Having a producer instance you can publish messages:
     ...      {'hello': 'world'},  # message to send
     ...      exchange=exchange,   # destination exchange
     ...      routing_key='rk',    # destination routing key,
-    ...      decare=[exchange],   # make sure exchange is declared,
+    ...      declare=[exchange],  # make sure exchange is declared,
     ... )
 
 
