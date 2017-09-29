@@ -18,6 +18,7 @@ except ImportError:  # pragma: no cover
 
 try:
     import simplejson as json
+    from simplejson.decoder import JSONDecodeError as _DecodeError
     _json_extra_kwargs = {'use_decimal': False}
 except ImportError:                 # pragma: no cover
     import json                     # noqa
@@ -25,8 +26,6 @@ except ImportError:                 # pragma: no cover
 
     class _DecodeError(Exception):  # noqa
         pass
-else:
-    from simplejson.decoder import JSONDecodeError as _DecodeError
 
 IS_PY3 = sys.version_info[0] == 3
 
