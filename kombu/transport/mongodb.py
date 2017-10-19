@@ -341,7 +341,7 @@ class Channel(virtual.Channel):
                 [('expire_at', 1)], expireAfterSeconds=0)
 
     def _create_client(self):
-        """Actualy creates connection."""
+        """Actually creates connection."""
         database = self._open()
         self._create_broadcast(database)
         self._ensure_indexes(database)
