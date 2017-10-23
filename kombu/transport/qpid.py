@@ -99,9 +99,10 @@ except ImportError:
     fcntl = None  # noqa
 
 try:
-    from qmf.client import BrokerAgent
+    from qmf.client import BrokerAgent, ReconnectDelays
 except ImportError:  # pragma: no cover
     BrokerAgent = None     # noqa
+    ReconnectDelays = None  # noqa
 
 try:
     import qpid
@@ -160,6 +161,10 @@ def dependency_is_none(dependency):
 
 class AuthenticationFailure(Exception):
     """Cannot authenticate with Qpid."""
+
+
+class SASL_obj(object):
+    pass
 
 
 class QoS(object):
@@ -904,10 +909,15 @@ class Channel(base.StdChannel):
 
         proton_message = proton.Message(subject=routing_key, **message)
         send_complete = threading.Event()
+        send_complete.sending_error = None
         cmd = SendMessage(message=proton_message, target=exchange,
                           send_complete=send_complete)
         self.transport.main_thread_commands.put(cmd)
         send_complete.wait()
+        if send_complete.sending_error:
+            exc = send_complete.sending_error
+            send_complete.sending_error = None
+            raise exc
 
     def encode_body(self, body, encoding=None):
         """Encode a body using an optionally specified encoding.
@@ -1109,6 +1119,7 @@ class ProtonMessaging(MessagingHandler):
                                                                command.target)
                         self.senders[command.target] = sender
                     if sender.transport is None:
+                        command.send_complete.sending_error = ConnectionClosed(self.conn)
                         command.send_complete.set()
                     self.send_complete_events[sender.name] = command.send_complete
                     sender.send(command.message)
@@ -1421,20 +1432,18 @@ class Transport(base.Transport):
         qmf_conn_options = copy.copy(conn_opts)
 
         if conninfo.login_method is not None or conninfo.userid is not None or conninfo.password is not None:
-            if conninfo.userid is None and conninfo.password is not None:
-                raise Exception(
-                    'Password configured but no username. SASL PLAIN '
-                    'requires a username when using a password.')
-            elif conninfo.userid is not None and conninfo.password is None:
-                raise Exception(
-                    'Username configured but no password. SASL PLAIN '
-                    'requires a password when using a username.')
-
             if conninfo.login_method is None and (conninfo.userid is not None or conninfo.password is not None):
                 conninfo.login_method = 'PLAIN'
 
-            class SASL_obj(object):
-                pass
+            if conninfo.login_method == 'PLAIN':
+                if conninfo.userid is None and conninfo.password is not None:
+                    raise Exception(
+                        'Password configured but no username. SASL PLAIN '
+                        'requires a username when using a password.')
+                elif conninfo.userid is not None and conninfo.password is None:
+                    raise Exception(
+                        'Username configured but no password. SASL PLAIN '
+                        'requires a password when using a username.')
 
             sasl = SASL_obj()
             sasl.mechs = conninfo.login_method
@@ -1450,6 +1459,7 @@ class Transport(base.Transport):
             qmf_conn_options['sasl'] = sasl
             conn_opts['sasl_enabled'] = True
 
+        qmf_conn_options['reconnect_delays'] = ReconnectDelays(1, 10, True)
         conn =  self.Connection(qmf_conn_options)
         conn.client = self.client
 
