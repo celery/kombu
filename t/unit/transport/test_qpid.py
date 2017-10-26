@@ -605,11 +605,6 @@ class TestChannelQueueDelete(ChannelTestBase):
         self.patch_queue_purge.stop()
         super(TestChannelQueueDelete, self).tearDown()
 
-    def test_does_nothing_if_queue_does_not_exist(self):
-        self.mock_broker_agent.getQueue.return_value = None
-        self.channel.queue_delete(self.mock_queue)
-        self.mock_broker_agent.delQueue.assertFalse(self.mock_queue.called)
-
     def test_not_empty_and_if_empty_True_no_delete(self):
         self.mock__size.return_value = 1
         self.channel.queue_delete(self.mock_queue, if_empty=True)
@@ -1261,9 +1256,9 @@ class TestTransportEstablishConnection(Case):
         self.assertIs(self.mock_sasl_obj.return_value.mechs,
                       self.client.login_method)
 
-    @patch(QPID_MODULE + '.proton.SSLDomain')
+    @patch(QPID_MODULE + '.proton')
     def test_transport_establish_conn_with_ssl_with_hostname_check(self,
-                                                                   mock_ssl):
+                                                                   m_proton):
         self.client.ssl = {
             'keyfile': 'my_keyfile',
             'certfile': 'my_certfile',
@@ -1272,6 +1267,7 @@ class TestTransportEstablishConnection(Case):
         }
         self.transport.establish_connection()
         creds = [self.client.ssl['certfile'], self.client.ssl['keyfile'],None]
+        mock_ssl = m_proton.SSLDomain
         mock_ssl.return_value.set_credentials.assert_called_once_with(*creds)
 
         mock_ssl.return_value.set_trusted_ca_db.assert_called_once_with(

@@ -116,7 +116,7 @@ try:
     from proton.utils import ConnectionClosed, ConnectionException
 except ImportError:  # pragma: no cover
     proton = None
-    MessagingHandler = None
+    MessagingHandler = object
     Container = None
     ConnectionClosed = None
     ConnectionException = None
