@@ -3,7 +3,6 @@ from __future__ import absolute_import, unicode_literals
 import pytest
 import socket
 import types
-import unittest
 
 from collections import defaultdict
 from itertools import count
@@ -1277,7 +1276,7 @@ class test_Mutex:
 
 
 @skip.unless_module('redis.sentinel')
-class test_RedisSentinel(unittest.TestCase):
+class test_RedisSentinel:
 
     def test_method_called(self):
         from kombu.transport.redis import SentinelChannel
