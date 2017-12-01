@@ -1075,7 +1075,7 @@ class SentinelChannel(Channel):
 
         additional_params.pop('host', None)
         additional_params.pop('port', None)
-        connection_list = list()
+        connection_list = []
         for url in self.connection.client.alt:
             if url and 'sentinel://' in url:
                 connection_list.append(url.split('/')[2].split(':'))
