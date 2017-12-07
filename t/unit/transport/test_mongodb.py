@@ -359,6 +359,15 @@ class test_mongodb_channel(BaseMongoDBChannelCase):
                 filter={'queue': 'fanout_exchange1'},
             )
 
+    def test_open_rc_version(self):
+        import pymongo
+
+        def server_info(self):
+            return {'version': '3.6.0-rc'}
+
+        with patch.object(pymongo.MongoClient, 'server_info', server_info):
+            self.channel._open()
+
 
 @skip.unless_module('pymongo')
 class test_mongodb_channel_ttl(BaseMongoDBChannelCase):
