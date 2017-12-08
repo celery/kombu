@@ -25,14 +25,8 @@ def get_client(hub=None, **kwargs):
 
         return hub._current_http_client
     except AttributeError:
-        
-        # What should happen on error?
-        # It appears to impact the message.ack() going
-        # back to SQS for issues like:
-        # https://github.com/celery/kombu/issues/746
         if not hub:
             hub = Hub()
-            set_event_loop(hub)
 
         client = hub._current_http_client = Client(hub, **kwargs)
         set_event_loop(hub)
