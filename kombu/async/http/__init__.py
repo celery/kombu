@@ -20,10 +20,10 @@ def get_client(hub=None, **kwargs):
     try:
         if not hub:
             hub = Hub()
+            client = hub._current_http_client = Client(hub, **kwargs)
             set_event_loop(hub)
 
-        client = Client(hub, **kwargs)
-        return client
+        return hub._current_http_client
     except AttributeError:
         
         # What should happen on error?
@@ -34,5 +34,6 @@ def get_client(hub=None, **kwargs):
             hub = Hub()
             set_event_loop(hub)
 
-        client = Client(hub, **kwargs)
-        return client
+        client = hub._current_http_client = Client(hub, **kwargs)
+        set_event_loop(hub)
+        return hub._current_http_client
