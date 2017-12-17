@@ -18,24 +18,24 @@ from kombu.log import (
 class test_get_logger:
 
     def test_when_string(self):
-        l = get_logger('foo')
+        logger = get_logger('foo')
 
-        assert l is logging.getLogger('foo')
-        h1 = l.handlers[0]
+        assert logger is logging.getLogger('foo')
+        h1 = logger.handlers[0]
         assert isinstance(h1, logging.NullHandler)
 
     def test_when_logger(self):
-        l = get_logger(logging.getLogger('foo'))
-        h1 = l.handlers[0]
+        logger = get_logger(logging.getLogger('foo'))
+        h1 = logger.handlers[0]
         assert isinstance(h1, logging.NullHandler)
 
     def test_with_custom_handler(self):
-        l = logging.getLogger('bar')
+        logger = logging.getLogger('bar')
         handler = logging.NullHandler()
-        l.addHandler(handler)
+        logger.addHandler(handler)
 
-        l = get_logger('bar')
-        assert l.handlers[0] is handler
+        logger = get_logger('bar')
+        assert logger.handlers[0] is handler
 
     def test_get_loglevel(self):
         assert get_loglevel('DEBUG') == logging.DEBUG
