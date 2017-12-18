@@ -14,10 +14,10 @@ __all__ = ['setup_logging', 'Logwrapped']
 def setup_logging(loglevel=logging.DEBUG, loggers=['kombu.connection',
                                                    'kombu.channel']):
     """Setup logging to stdout."""
-    for logger in loggers:
-        l = get_logger(logger)
-        l.addHandler(logging.StreamHandler())
-        l.setLevel(loglevel)
+    for logger_name in loggers:
+        logger = get_logger(logger_name)
+        logger.addHandler(logging.StreamHandler())
+        logger.setLevel(loglevel)
 
 
 @python_2_unicode_compatible

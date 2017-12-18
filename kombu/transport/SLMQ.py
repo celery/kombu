@@ -119,12 +119,12 @@ class Channel(virtual.Channel):
         """Delete all current messages in a queue."""
         q = self._new_queue(queue)
         n = 0
-        l = q.pop(10)
-        while l['items']:
-            for m in l['items']:
+        results = q.pop(10)
+        while results['items']:
+            for m in results['items']:
                 self.delete_message(queue, m['id'])
                 n += 1
-            l = q.pop(10)
+            results = q.pop(10)
         return n
 
     def delete_message(self, queue, message_id):

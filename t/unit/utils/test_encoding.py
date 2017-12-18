@@ -97,9 +97,9 @@ class test_safe_str:
 
     def test_when_unrepresentable(self):
 
-        class O(object):
+        class UnrepresentableObject(object):
 
             def __repr__(self):
                 raise KeyError('foo')
 
-        assert '<Unrepresentable' in safe_str(O())
+        assert '<Unrepresentable' in safe_str(UnrepresentableObject())
