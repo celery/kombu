@@ -180,7 +180,7 @@ class Timer(object):
                  pop=heapq.heappop, push=heapq.heappush):
         """Iterate over schedule.
 
-        This iterator yields a tuple of ``(entry, wait_seconds)``,
+        This iterator yields a tuple of ``(wait_seconds, entry)``,
         where if entry is :const:`None` the caller should wait
         for ``wait_seconds`` until it polls the schedule again.
         """
