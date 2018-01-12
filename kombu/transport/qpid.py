@@ -135,13 +135,34 @@ OBJECT_ALREADY_EXISTS_STRING = 'object already exists'
 PROTON_PERIOD = 0.25 # The waiting period between ProtonThread check-ins
 
 
+# Objects used to send "commands" between MainThread and ProtonThread.
+
+# Start an asynchronous Proton consumer listening on 'queue'.
 StartConsumer = namedtuple('StartConsumer', ['queue'])
+
+# Get one message from 'queue' and return it via the 'return_queue'.
 GetOneMessage = namedtuple('GetOneMessage', ['queue', 'return_queue'])
+
+# Send 'message' to 'target'. When sending is complete MainThread is notified
+# via 'send_complete'.
 SendMessage = namedtuple('SendMessage',
                          ['message', 'target', 'send_complete'])
-ProtonEvent = namedtuple('ProtonEvent', ['message', 'delivery', 'queue'])
+
+# A message received from an asynchronous consumer started with
+# 'StartConsumer'. It stores the 'message', its 'delivery' string and the
+# 'queue' it was received from.
+ReceivedMessage = namedtuple('ReceivedMessage', ['message', 'delivery', 'queue'])
+
+# Acknowledge the message associated with 'delivery'. Notify MainThread via
+# 'ack_complete' when done.
 AckMessage = namedtuple('AckMessage', ['delivery', 'ack_complete'])
+
+# Reject the message associated with 'delivery'. Notify MainThread via
+# 'reject_complete' when done.
 RejectMessage = namedtuple('RejectMessage', ['delivery', 'reject_complete'])
+
+# Release the message associated with 'delivery'. Notify MainThread via
+# 'release_complete' when done.
 ReleaseMessage = namedtuple('ReleaseMessage',
                             ['delivery', 'release_complete'])
 
@@ -638,9 +659,6 @@ class Channel(base.StdChannel):
 
         :return: The number of messages requested to be purged.
         :rtype: int
-
-        :raises: ???
-
         """
         queue_to_purge = self._broker.getQueue(queue)
         if queue_to_purge is None:
@@ -761,10 +779,12 @@ class Channel(base.StdChannel):
         """
         self._tag_to_queue[consumer_tag] = queue
 
-        def _callback(proton_event):
-            msg = self._make_kombu_message_from_proton(proton_event.message)
+        def _callback(received_message):
+            msg = self._make_kombu_message_from_proton(
+                received_message.message
+            )
             delivery_tag = msg.delivery_tag
-            self.qos.append(proton_event.delivery, delivery_tag)
+            self.qos.append(received_message.delivery, delivery_tag)
             if no_ack:
                 # Celery will not ack this message later, so we should ack now
                 self.basic_ack(delivery_tag)
@@ -1151,12 +1171,12 @@ class ProtonMessaging(MessagingHandler):
         send_complete.set()
 
     def on_message(self, event):
-        proton_event = ProtonEvent(message=event.message,
-                                   delivery=event.delivery,
-                                   queue=event.link.source.address)
+        received_message = ReceivedMessage(message=event.message,
+                                           delivery=event.delivery,
+                                           queue=event.link.source.address)
         return_queue = self.get_one_queues.pop(event.receiver.name,
                                                self.recv_messages)
-        return_queue.put(proton_event)
+        return_queue.put(received_message)
         if return_queue is self.recv_messages:
             # We need to trigger this to cause Celery to call into
             # :meth:`drain_events`
@@ -1505,16 +1525,18 @@ class Transport(base.Transport):
         elapsed_time = -1
         while elapsed_time < timeout:
             try:
-                proton_event = self.recv_messages.get(block=True,
-                                                      timeout=timeout)
+                received_message = self.recv_messages.get(block=True,
+                                                          timeout=timeout)
             except Queue.Empty:
                 raise socket.timeout()
             else:
                 try:
-                    connection._callbacks[proton_event.queue](proton_event)
+                    callback = connection._callbacks[received_message.queue]
                 except KeyError:
                     logger.error('Cannot determine which queue a message was received on. Something is wrong.')
                     raise
+                else:
+                    callback(received_message)
             elapsed_time = time.time() - start_time
         raise socket.timeout()
 
