@@ -303,7 +303,7 @@ class Channel(virtual.Channel):
         database = mongoconn[dbname]
 
         version_str = mongoconn.server_info()['version']
-        version = tuple(map(int, version_str.split('.')))
+        version = tuple(map(int, version_str.split("-")[0].split('.')))
 
         if version < (1, 3):
             raise VersionMismatch(E_SERVER_VERSION.format(version_str))
