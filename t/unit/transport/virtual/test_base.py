@@ -4,6 +4,7 @@ import io
 import pytest
 import sys
 import warnings
+import socket
 
 from case import MagicMock, Mock, patch
 
@@ -12,6 +13,7 @@ from kombu.compression import compress
 from kombu.exceptions import ResourceError, ChannelError
 from kombu.transport import virtual
 from kombu.utils.uuid import uuid
+from kombu.five import monotonic
 
 PY3 = sys.version_info[0] == 3
 PRINT_FQDN = 'builtins.print' if PY3 else '__builtin__.print'
@@ -555,6 +557,13 @@ class test_Transport:
     def test_custom_polling_interval(self):
         x = client(transport_options={'polling_interval': 32.3})
         assert x.transport.polling_interval == 32.3
+
+    def test_timeout_over_polling_interval(self):
+        x = client(transport_options=dict(polling_interval=60))
+        start = monotonic()
+        with pytest.raises(socket.timeout):
+            x.transport.drain_events(x, timeout=.5)
+            assert monotonic() - start < 60
 
     def test_close_connection(self):
         c1 = self.transport.create_channel(self.transport)
