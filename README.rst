@@ -69,7 +69,7 @@ and the `Wikipedia article about AMQP`_.
 .. _`Redis`: https://redis.io
 .. _`Amazon SQS`: https://aws.amazon.com/sqs/
 .. _`Zookeeper`: https://zookeeper.apache.org/
-.. _`Rabbits and warrens`: http://blogs.digitar.com/jjww/2009/01/rabbits-and-warrens/
+.. _`Rabbits and warrens`: http://web.archive.org/web/20160323134044/http://blogs.digitar.com/jjww/2009/01/rabbits-and-warrens/
 .. _`amqplib`: https://barryp.org/software/py-amqplib/
 .. _`Wikipedia article about AMQP`: https://en.wikipedia.org/wiki/AMQP
 .. _`carrot`: https://pypi.python.org/pypi/carrot/
