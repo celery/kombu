@@ -1066,14 +1066,17 @@ class SentinelChannel(Channel):
     from_transport_options = Channel.from_transport_options + (
         'master_name',
         'min_other_sentinels',
-        'sentinel_kwargs')
+        'sentinel_kwargs',
+        'connection_kwargs')
 
     connection_class = sentinel.SentinelManagedConnection if sentinel else None
 
     def _sentinel_managed_pool(self, async=False):
         connparams = self._connparams(async)
 
-        additional_params = connparams.copy()
+        additional_params = getattr(self,
+                                    'connection_kwargs',
+                                    connparams.copy())
 
         additional_params.pop('host', None)
         additional_params.pop('port', None)
