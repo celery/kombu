@@ -78,7 +78,11 @@ Celery, this can be accomplished by setting the
 """
 from __future__ import absolute_import, unicode_literals
 
-from collections import namedtuple
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import object
+from collections import namedtuple, OrderedDict
 import copy
 from gettext import gettext as _
 import os
@@ -89,7 +93,7 @@ import time
 import threading
 import uuid
 
-import Queue
+import queue
 
 import amqp.protocol
 
@@ -405,7 +409,7 @@ class Channel(base.StdChannel):
                    'content-encoding': pm.content_encoding,
                    'content-type': pm.content_type,
                    'headers': pm.properties.pop('headers', {})}
-        return self.Message(self, payload)
+        return self.Message(payload, channel=self)
 
     def _size(self, queue):
         """Get the number of messages in a queue specified by name.
@@ -682,7 +686,7 @@ class Channel(base.StdChannel):
         :rtype: :class:`~kombu.transport.virtual.Message`
 
         """
-        return_queue = Queue.Queue()
+        return_queue = queue.Queue()
         cmd = GetOneMessage(queue, return_queue)
         self.transport.main_thread_commands.put(cmd)
         message_and_delivery = return_queue.get()
@@ -824,7 +828,7 @@ class Channel(base.StdChannel):
         """
         if not self.closed:
             self.closed = True
-            for consumer_tag in self._receivers.keys():
+            for consumer_tag in list(self._receivers.keys()):
                 self.basic_cancel(consumer_tag)
             if self.connection is not None:
                 self.connection.close_channel(self)
@@ -1106,7 +1110,7 @@ class ProtonMessaging(MessagingHandler):
 
     def on_disconnected(self, event):
         self.transport.proton_error.append(ConnectionClosed(self.conn))
-        os.write(self.w, 'e')
+        os.write(self.w, b'e')
         logger.warning('Proton raised %s' % event.type)
 
     def on_link_error(self, event):
@@ -1121,14 +1125,14 @@ class ProtonMessaging(MessagingHandler):
         elapsed_time = 0
 
         # Handle any un-acked basic_get requests
-        for queue_name in self.get_one_queues.keys():
+        for queue_name in list(self.get_one_queues.keys()):
             return_queue = self.get_one_queues.pop(queue_name)
             return_queue.put(None)
 
         while elapsed_time < 1.0:
             try:
                 command = self.main_thread_commands.get(False)
-            except Queue.Empty:
+            except queue.Empty:
                 break
             else:
                 if isinstance(command, SendMessage):
@@ -1180,7 +1184,7 @@ class ProtonMessaging(MessagingHandler):
         if return_queue is self.recv_messages:
             # We need to trigger this to cause Celery to call into
             # :meth:`drain_events`
-            os.write(self.w, '0')
+            os.write(self.w, b'0')
 
 
 class ProtonThread(threading.Thread):
@@ -1277,8 +1281,8 @@ class Transport(base.Transport):
 
     def __init__(self, *args, **kwargs):
         self.verify_runtime_environment()
-        self.main_thread_commands = Queue.Queue()
-        self.recv_messages = Queue.Queue()
+        self.main_thread_commands = queue.Queue()
+        self.recv_messages = queue.Queue()
         self.r, self._w = os.pipe()
         if fcntl is not None:
             fcntl.fcntl(self.r, fcntl.F_SETFL, os.O_NONBLOCK)
@@ -1317,8 +1321,8 @@ class Transport(base.Transport):
 
         This method clears a single message from the externally monitored
         file descriptor by issuing a read call to the self.r file descriptor
-        which removes a single '0' character that was placed into the pipe
-        by the Qpid session message callback handler. Once a '0' is read,
+        which removes a single b'0' character that was placed into the pipe
+        by the Qpid session message callback handler. Once a b'0' is read,
         all available events are drained through a call to
         :meth:`drain_events`.
 
@@ -1340,13 +1344,13 @@ class Transport(base.Transport):
         causes this behavior.
 
         One interesting behavior of note is where multiple messages are
-        ready, and this method removes a single '0' character from
+        ready, and this method removes a single b'0' character from
         self.r, but :meth:`drain_events` may handle an arbitrary amount of
-        messages. In that case, extra '0' characters may be left on self.r
-        to be read, where messages corresponding with those '0' characters
+        messages. In that case, extra b'0' characters may be left on self.r
+        to be read, where messages corresponding with those b'0' characters
         have already been handled. The external epoll loop will incorrectly
         think additional data is ready for reading, and will call
-        on_readable unnecessarily, once for each '0' to be read. Additional
+        on_readable unnecessarily, once for each b'0' to be read. Additional
         calls to :meth:`on_readable` produce no negative side effects,
         and will eventually clear out the symbols from the self.r file
         descriptor. If new messages show up during this draining period,
@@ -1527,7 +1531,7 @@ class Transport(base.Transport):
             try:
                 received_message = self.recv_messages.get(block=True,
                                                           timeout=timeout)
-            except Queue.Empty:
+            except queue.Empty:
                 raise socket.timeout()
             else:
                 try:
