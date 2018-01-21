@@ -154,10 +154,10 @@ class Channel(virtual.Channel):
         """Format AMQP queue name into a legal SQS queue name."""
         if name.endswith('.fifo'):
             partial = name.rstrip('.fifo')
-            partial = text_t(safe_str(partial.translate(table)))
+            partial = text_t(safe_str(partial)).translate(table)
             return partial + '.fifo'
         else:
-            return text_t(safe_str(name.translate(table)))
+            return text_t(safe_str(name)).translate(table)
 
     def canonical_queue_name(self, queue_name):
         return self.entity_name(self.queue_name_prefix + queue_name)
