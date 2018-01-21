@@ -122,11 +122,17 @@ if is_py3k:  # pragma: no cover
             return '<Unrepresentable {0!r}: {1!r} {2!r}>'.format(
                 type(s), exc, '\n'.join(traceback.format_stack()))
 else:
+    def ensure_str(s):
+        if isinstance(s, bytes):
+            return s.decode()
+        return s
+
+
     def _safe_str(s, errors='replace', file=None):  # noqa
         encoding = default_encoding(file)
         try:
             if isinstance(s, unicode):
-                return s.encode(encoding, errors)
+                return ensure_str(s.encode(encoding, errors))
             return unicode(s, encoding, errors)
         except Exception as exc:
             return '<Unrepresentable {0!r}: {1!r} {2!r}>'.format(
