@@ -82,13 +82,13 @@ class test_safe_str:
         assert default_encoding() == 'utf-8'
         s = 'The quiæk fåx jømps øver the lazy dåg'
         res = safe_str(s)
-        assert isinstance(res, str)
+        assert isinstance(res, string_t)
 
     def test_when_containing_high_chars(self):
         self._encoding.return_value = 'ascii'
         s = 'The quiæk fåx jømps øver the lazy dåg'
         res = safe_str(s)
-        assert isinstance(res, str)
+        assert isinstance(res, string_t)
         assert len(s) == len(res)
 
     def test_when_not_string(self):
