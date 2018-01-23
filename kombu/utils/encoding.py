@@ -132,7 +132,8 @@ else:
         encoding = default_encoding(file)
         try:
             if isinstance(s, unicode):
-                return _ensure_str(s.encode(encoding, errors), encoding, errors)
+                return _ensure_str(s.encode(encoding, errors),
+                                   encoding, errors)
             return unicode(s, encoding, errors)
         except Exception as exc:
             return '<Unrepresentable {0!r}: {1!r} {2!r}>'.format(
