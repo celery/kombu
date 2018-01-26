@@ -462,9 +462,9 @@ class Channel(AbstractChannel, base.StdChannel):
         self.closed = False
 
         # instantiate exchange types
-        self.exchange_types = dict(
-            (typ, cls(self)) for typ, cls in items(self.exchange_types)
-        )
+        self.exchange_types = {
+            typ: cls(self) for typ, cls in items(self.exchange_types)
+        }
 
         try:
             self.channel_id = self.connection._avail_channel_ids.pop()
