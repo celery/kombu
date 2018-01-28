@@ -7,7 +7,7 @@ from contextlib import contextmanager
 
 from case import patch, skip
 
-from kombu.five import bytes_t, string_t
+from kombu.five import bytes_t, string_t, string
 from kombu.utils.encoding import (
     get_default_encoding_file, safe_str,
     set_default_encoding_file, default_encoding,
@@ -65,6 +65,22 @@ def test_default_encode():
         assert e.default_encode(b'foo')
 
 
+class newbytes(bytes):
+    """Mock class to simulate python-future newbytes class"""
+    def __repr__(self):
+        return 'b' + super(newbytes, self).__repr__()
+
+    def __str__(self):
+        return 'b' + "'{0}'".format(super(newbytes, self).__str__())
+
+
+class newstr(string):
+    """Mock class to simulate python-future newstr class"""
+
+    def encode(self, encoding=None, errors=None):
+        return newbytes(super(newstr, self).encode(encoding, errors))
+
+
 class test_safe_str:
 
     def setup(self):
@@ -74,6 +90,10 @@ class test_safe_str:
     def test_when_bytes(self):
         assert safe_str('foo') == 'foo'
 
+    def test_when_newstr(self):
+        """Simulates using python-future package under 2.7"""
+        assert str(safe_str(newstr('foo'))) == 'foo'
+
     def test_when_unicode(self):
         assert isinstance(safe_str('foo'), string_t)
 
@@ -82,13 +102,13 @@ class test_safe_str:
         assert default_encoding() == 'utf-8'
         s = 'The quiæk fåx jømps øver the lazy dåg'
         res = safe_str(s)
-        assert isinstance(res, str)
+        assert isinstance(res, string_t)
 
     def test_when_containing_high_chars(self):
         self._encoding.return_value = 'ascii'
         s = 'The quiæk fåx jømps øver the lazy dåg'
         res = safe_str(s)
-        assert isinstance(res, str)
+        assert isinstance(res, string_t)
         assert len(s) == len(res)
 
     def test_when_not_string(self):
