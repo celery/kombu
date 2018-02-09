@@ -78,6 +78,14 @@ def maybe_int(x):
         return x
 
 
+class UnknownQueueException(Exception):
+    """We are using predefined queues and this one is not defined."""
+
+
+class PredefinedQueueException(Exception):
+    """We are using predefined queues, this one should not be deleted."""
+
+
 class Channel(virtual.Channel):
     """SQS Channel."""
 
@@ -104,6 +112,9 @@ class Channel(virtual.Channel):
         self.hub = kwargs.get('hub') or get_event_loop()
 
     def _update_queue_cache(self, queue_name_prefix):
+        if self.predefined_queue_urls:
+            self._queue_cache.update(self.predefined_queue_urls)
+            return
         resp = self.sqs.list_queues(QueueNamePrefix=queue_name_prefix)
         for url in resp.get('QueueUrls', []):
             queue_name = url.split('/')[-1]
@@ -170,12 +181,21 @@ class Channel(virtual.Channel):
         # _queue_cache population.
         queue = self.canonical_queue_name(queue)
 
+        # If we have the URL cached, return it
+        rv = self._queue_cache.get(queue, None)
+        if rv:
+            return rv
+
+        # If we don't have it cached, and are using predefined queue URLs,
+        # raise an error, don't try to create it.
+        if self.predefined_queue_urls:
+            raise UnknownQueueException
+
         # The SQS ListQueues method only returns 1000 queues.  When you have
         # so many queues, it's possible that the queue you are looking for is
         # not cached.  In this case, we could update the cache with the exact
         # queue name first.
-        if queue not in self._queue_cache:
-            self._update_queue_cache(queue)
+        self._update_queue_cache(queue)
         try:
             return self._queue_cache[queue]
         except KeyError:
@@ -190,6 +210,14 @@ class Channel(virtual.Channel):
 
     def _delete(self, queue, *args, **kwargs):
         """Delete queue by name."""
+        # If we are using predefined queue URLs,
+        # raise an error, don't try to delete it.
+        # At this time, the following doesn't actually
+        # try to delete it anwyway, but we won't rely on
+        # that behavior.
+        if self.predefined_queue_urls:
+            raise PredefinedQueueException
+
         super(Channel, self)._delete(queue)
         self._queue_cache.pop(queue, None)
 
@@ -449,6 +477,22 @@ class Channel(virtual.Channel):
     def visibility_timeout(self):
         return (self.transport_options.get('visibility_timeout') or
                 self.default_visibility_timeout)
+
+    @cached_property
+    def predefined_queue_urls(self):
+        """Map of queue_name to queue URL.
+
+        For example:
+        {"my-queue":
+         "https://ap-southeast-2.queue.amazonaws.com/1234567890/my-queue"}
+
+        This is useful when you have been supplied an already existing SQS
+        resource, but not permissions to create, delete, or list your own.
+
+        When set, this libary will not attempt to list SQS queues, nor will
+        it try to create or delete SQS queues.
+        """
+        return self.transport_options.get('predefined_queue_urls', None)
 
     @cached_property
     def queue_name_prefix(self):
