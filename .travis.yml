@@ -22,7 +22,6 @@ matrix:
     - env: TOXENV=flakeplus
     - env: TOXENV=apicheck
     - env: TOXENV=pydocstyle
-    - env: TOXENV=cov
 
 install:
     - pip install -U pip setuptools wheel | cat 
