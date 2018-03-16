@@ -5,8 +5,8 @@ import pytest
 
 from case import Mock
 
-from kombu.async.aws.sqs.message import AsyncMessage
-from kombu.async.aws.sqs.queue import AsyncQueue
+from kombu.asynchronous.aws.sqs.message import AsyncMessage
+from kombu.asynchronous.aws.sqs.queue import AsyncQueue
 
 from t.mocks import PromiseMock
 

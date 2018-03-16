@@ -139,7 +139,7 @@ class Timer(object):
         """Enter function into the scheduler.
 
         Arguments:
-            entry (~kombu.async.timer.Entry): Item to enter.
+            entry (~kombu.asynchronous.timer.Entry): Item to enter.
             eta (datetime.datetime): Scheduled time.
             priority (int): Unused.
         """

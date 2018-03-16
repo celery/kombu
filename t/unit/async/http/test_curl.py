@@ -5,7 +5,7 @@ import pytest
 
 from case import Mock, call, patch, skip
 
-from kombu.async.http.curl import READ, WRITE, CurlClient
+from kombu.asynchronous.http.curl import READ, WRITE, CurlClient
 
 
 @skip.if_pypy()
@@ -17,7 +17,7 @@ class test_CurlClient:
         Curl = Mock(name='Curl')
 
     def test_when_pycurl_missing(self, patching):
-        patching('kombu.async.http.curl.pycurl', None)
+        patching('kombu.asynchronous.http.curl.pycurl', None)
         with pytest.raises(ImportError):
             self.Client()
 
@@ -26,7 +26,7 @@ class test_CurlClient:
         assert x.max_clients == 303
 
     def test_init(self):
-        with patch('kombu.async.http.curl.pycurl') as _pycurl:
+        with patch('kombu.asynchronous.http.curl.pycurl') as _pycurl:
             x = self.Client()
             assert x._multi is not None
             assert x._pending is not None
@@ -42,7 +42,7 @@ class test_CurlClient:
             ])
 
     def test_close(self):
-        with patch('kombu.async.http.curl.pycurl'):
+        with patch('kombu.asynchronous.http.curl.pycurl'):
             x = self.Client()
             x._timeout_check_tref = Mock(name='timeout_check_tref')
             x.close()
@@ -52,7 +52,7 @@ class test_CurlClient:
             x._multi.close.assert_called_with()
 
     def test_add_request(self):
-        with patch('kombu.async.http.curl.pycurl'):
+        with patch('kombu.asynchronous.http.curl.pycurl'):
             x = self.Client()
             x._process_queue = Mock(name='_process_queue')
             x._set_timeout = Mock(name='_set_timeout')
@@ -63,7 +63,7 @@ class test_CurlClient:
             x._set_timeout.assert_called_with(0)
 
     def test_handle_socket(self):
-        with patch('kombu.async.http.curl.pycurl') as _pycurl:
+        with patch('kombu.asynchronous.http.curl.pycurl') as _pycurl:
             hub = Mock(name='hub')
             x = self.Client(hub)
             fd = Mock(name='fd1')
@@ -112,7 +112,7 @@ class test_CurlClient:
         x._set_timeout(100)
 
     def test_timeout_check(self):
-        with patch('kombu.async.http.curl.pycurl') as _pycurl:
+        with patch('kombu.asynchronous.http.curl.pycurl') as _pycurl:
             x = self.Client()
             x._process_pending_requests = Mock(name='process_pending')
             x._multi.socket_all.return_value = 333, 1
@@ -124,7 +124,7 @@ class test_CurlClient:
             x._timeout_check(_pycurl=_pycurl)
 
     def test_on_readable_on_writeable(self):
-        with patch('kombu.async.http.curl.pycurl') as _pycurl:
+        with patch('kombu.asynchronous.http.curl.pycurl') as _pycurl:
             x = self.Client()
             x._on_event = Mock(name='on_event')
             fd = Mock(name='fd')

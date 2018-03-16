@@ -6,7 +6,7 @@ from functools import partial
 from io import BytesIO
 from time import time
 
-from kombu.async.hub import READ, WRITE, get_event_loop
+from kombu.asynchronous.hub import READ, WRITE, get_event_loop
 from kombu.exceptions import HttpError
 from kombu.five import bytes_if_py2, items
 from kombu.utils.encoding import bytes_to_str

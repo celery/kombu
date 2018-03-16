@@ -871,7 +871,7 @@ class Channel(virtual.Channel):
                                socket_keepalive_options=None, **params):
         return params
 
-    def _connparams(self, async=False):
+    def _connparams(self, asynchronous=False):
         conninfo = self.connection.client
         connparams = {
             'host': conninfo.hostname or '127.0.0.1',
@@ -917,7 +917,7 @@ class Channel(virtual.Channel):
             self.connection_class
         )
 
-        if async:
+        if asynchronous:
             class Connection(connection_cls):
                 def disconnect(self):
                     super(Connection, self).disconnect()
@@ -928,13 +928,13 @@ class Channel(virtual.Channel):
 
         return connparams
 
-    def _create_client(self, async=False):
-        if async:
+    def _create_client(self, asynchronous=False):
+        if asynchronous:
             return self.Client(connection_pool=self.async_pool)
         return self.Client(connection_pool=self.pool)
 
-    def _get_pool(self, async=False):
-        params = self._connparams(async=async)
+    def _get_pool(self, asynchronous=False):
+        params = self._connparams(asynchronous=asynchronous)
         self.keyprefix_fanout = self.keyprefix_fanout.format(db=params['db'])
         return redis.ConnectionPool(**params)
 
@@ -961,18 +961,18 @@ class Channel(virtual.Channel):
     @property
     def async_pool(self):
         if self._async_pool is None:
-            self._async_pool = self._get_pool(async=True)
+            self._async_pool = self._get_pool(asynchronous=True)
         return self._async_pool
 
     @cached_property
     def client(self):
         """Client used to publish messages, BRPOP etc."""
-        return self._create_client(async=True)
+        return self._create_client(asynchronous=True)
 
     @cached_property
     def subclient(self):
         """Pub/Sub connection used to consume fanout queues."""
-        client = self._create_client(async=True)
+        client = self._create_client(asynchronous=True)
         return client.pubsub()
 
     def _update_queue_cycle(self):
@@ -1000,7 +1000,7 @@ class Transport(virtual.Transport):
     driver_name = 'redis'
 
     implements = virtual.Transport.implements.extend(
-        async=True,
+        asynchronous=True,
         exchange_type=frozenset(['direct', 'topic', 'fanout'])
     )
 
@@ -1070,8 +1070,8 @@ class SentinelChannel(Channel):
 
     connection_class = sentinel.SentinelManagedConnection if sentinel else None
 
-    def _sentinel_managed_pool(self, async=False):
-        connparams = self._connparams(async)
+    def _sentinel_managed_pool(self, asynchronous=False):
+        connparams = self._connparams(asynchronous)
 
         additional_params = connparams.copy()
 
@@ -1091,8 +1091,8 @@ class SentinelChannel(Channel):
             self.Client,
         ).connection_pool
 
-    def _get_pool(self, async=False):
-        return self._sentinel_managed_pool(async)
+    def _get_pool(self, asynchronous=False):
+        return self._sentinel_managed_pool(asynchronous)
 
 
 class SentinelTransport(Transport):

@@ -9,14 +9,14 @@ from vine.abstract import Thenable
 from kombu.exceptions import HttpError
 from kombu.five import WhateverIO
 
-from kombu.async import http
-from kombu.async.aws.connection import (
+from kombu.asynchronous import http
+from kombu.asynchronous.aws.connection import (
     AsyncHTTPSConnection,
     AsyncHTTPResponse,
     AsyncConnection,
     AsyncAWSQueryConnection,
 )
-from kombu.async.aws.ext import boto3
+from kombu.asynchronous.aws.ext import boto3
 
 from .case import AWSCase
 

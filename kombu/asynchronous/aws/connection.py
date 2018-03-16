@@ -4,9 +4,9 @@ from __future__ import absolute_import, unicode_literals
 
 from vine import promise, transform
 
-from kombu.async.aws.ext import AWSRequest, get_response
+from kombu.asynchronous.aws.ext import AWSRequest, get_response
 
-from kombu.async.http import Headers, Request, get_client
+from kombu.asynchronous.http import Headers, Request, get_client
 from kombu.five import items, python_2_unicode_compatible
 
 import io

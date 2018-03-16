@@ -6,7 +6,7 @@ from datetime import datetime
 
 from case import Mock, patch
 
-from kombu.async.timer import Entry, Timer, to_timestamp
+from kombu.asynchronous.timer import Entry, Timer, to_timestamp
 from kombu.five import bytes_if_py2
 
 
@@ -81,7 +81,7 @@ class test_Timer:
 
         s = Timer(on_error=on_error)
 
-        with patch('kombu.async.timer.to_timestamp') as tot:
+        with patch('kombu.asynchronous.timer.to_timestamp') as tot:
             tot.side_effect = OverflowError()
             s.enter_at(Entry(lambda: None, (), {}),
                        eta=datetime.now())
@@ -120,7 +120,7 @@ class test_Timer:
         finally:
             t.stop()
 
-    @patch('kombu.async.timer.logger')
+    @patch('kombu.asynchronous.timer.logger')
     def test_apply_entry_error_handled(self, logger):
         t = Timer()
         t.schedule.on_error = None

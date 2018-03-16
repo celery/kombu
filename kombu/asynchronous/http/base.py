@@ -49,7 +49,7 @@ class Request(object):
         method (str): The HTTP method to use (defaults to ``GET``).
 
     Keyword Arguments:
-        headers (Dict, ~kombu.async.http.Headers): Optional headers for
+        headers (Dict, ~kombu.asynchronous.http.Headers): Optional headers for
             this request
         body (str): Optional body for this request.
         connect_timeout (float): Connection timeout in float seconds
@@ -140,17 +140,19 @@ class Response(object):
     """HTTP Response.
 
     Arguments:
-        request (~kombu.async.http.Request): See :attr:`request`.
+        request (~kombu.asynchronous.http.Request): See :attr:`request`.
         code (int): See :attr:`code`.
-        headers (~kombu.async.http.Headers): See :attr:`headers`.
+        headers (~kombu.asynchronous.http.Headers): See :attr:`headers`.
         buffer (bytes): See :attr:`buffer`
         effective_url (str): See :attr:`effective_url`.
         status (str): See :attr:`status`.
 
     Attributes:
-        request (~kombu.async.http.Request): object used to get this response.
+        request (~kombu.asynchronous.http.Request): object used to
+            get this response.
         code (int): HTTP response code (e.g. 200, 404, or 500).
-        headers (~kombu.async.http.Headers): HTTP headers for this response.
+        headers (~kombu.asynchronous.http.Headers): HTTP headers
+            for this response.
         buffer (bytes): Socket read buffer.
         effective_url (str): The destination url for this request after
             following redirects.

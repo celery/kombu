@@ -1,11 +1,11 @@
 ==========================================================
- Async Amazon AWS Client - ``kombu.async.aws``
+ Async Amazon AWS Client - ``kombu.asynchronous.aws``
 ==========================================================
 
 .. contents::
     :local:
-.. currentmodule:: kombu.async.aws
+.. currentmodule:: kombu.asynchronous.aws
 
-.. automodule:: kombu.async.aws
+.. automodule:: kombu.asynchronous.aws
     :members:
     :undoc-members:

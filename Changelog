@@ -866,7 +866,7 @@ Deprecations and removals
 :release-date: 2014-09-04 03:00 P.M UTC
 :release-by: Ask Solem
 
-- kombu.async: Min. delay between waiting for timer was always increased to
+- kombu.asynchronous: Min. delay between waiting for timer was always increased to
   one second.
 
 - Fixed bug in itermessages where message is received after the with
@@ -937,7 +937,7 @@ Deprecations and removals
 :release-date: 2014-06-02 06:00 P.M UTC
 :release-by: Ask Solem
 
-- A typo introduced in 3.0.17 caused kombu.async.hub to crash (Issue #360).
+- A typo introduced in 3.0.17 caused kombu.asynchronous.hub to crash (Issue #360).
 
 .. _version-3.0.17:
 
@@ -1488,7 +1488,7 @@ Deprecations and removals
              same security implications as pickle, but Kombu uses the
              :func:`yaml.safe_load` function which is not known to be affected.
 
-- kombu.async: Experimental event loop implementation.
+- kombu.asynchronous: Experimental event loop implementation.
 
     This code was previously in Celery but was moved here
     to make it easier for async transport implementations.

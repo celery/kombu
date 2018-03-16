@@ -6,14 +6,14 @@ import pytest
 from case import Mock, call, patch
 from vine import promise
 
-from kombu.async import hub as _hub
-from kombu.async import Hub, READ, WRITE, ERR
-from kombu.async.debug import callback_for, repr_flag, _rcb
-from kombu.async.hub import (
+from kombu.asynchronous import hub as _hub
+from kombu.asynchronous import Hub, READ, WRITE, ERR
+from kombu.asynchronous.debug import callback_for, repr_flag, _rcb
+from kombu.asynchronous.hub import (
     Stop, get_event_loop, set_event_loop,
     _raise_stop_error, _dummy_context
 )
-from kombu.async.semaphore import DummyLock, LaxBoundedSemaphore
+from kombu.asynchronous.semaphore import DummyLock, LaxBoundedSemaphore
 
 
 class File(object):
@@ -183,7 +183,7 @@ class test_Hub:
         self.hub.stop()
         self.hub.call_soon.assert_called_with(_raise_stop_error)
 
-    @patch('kombu.async.hub.promise')
+    @patch('kombu.asynchronous.hub.promise')
     def test_call_soon(self, promise):
         callback = Mock(name='callback')
         ret = self.hub.call_soon(callback, 1, 2, 3)
@@ -229,7 +229,7 @@ class test_Hub:
         assert _rcb(f) == f.__name__
         assert _rcb('foo') == 'foo'
 
-    @patch('kombu.async.hub.poll')
+    @patch('kombu.asynchronous.hub.poll')
     def test_start_stop(self, poll):
         self.hub = Hub()
         poll.assert_called_with()
@@ -287,7 +287,7 @@ class test_Hub:
 
         eback.side_effect = ValueError('foo')
         self.hub.scheduler = iter([(0, eback)])
-        with patch('kombu.async.hub.logger') as logger:
+        with patch('kombu.asynchronous.hub.logger') as logger:
             with pytest.raises(StopIteration):
                 self.hub.fire_timers()
             logger.error.assert_called()
@@ -306,7 +306,7 @@ class test_Hub:
         eback.side_effect = OSError()
         eback.side_effect.errno = errno.ENOENT
         self.hub.scheduler = iter([(0, eback)])
-        with patch('kombu.async.hub.logger') as logger:
+        with patch('kombu.asynchronous.hub.logger') as logger:
             with pytest.raises(StopIteration):
                 self.hub.fire_timers()
             logger.error.assert_called()
@@ -353,7 +353,7 @@ class test_Hub:
         assert 2 in self.hub.consolidate
         assert self.hub.writers[2] is None
 
-    @patch('kombu.async.hub.logger')
+    @patch('kombu.asynchronous.hub.logger')
     def test_on_callback_error(self, logger):
         self.hub.on_callback_error(Mock(name='callback'), KeyError())
         logger.error.assert_called()

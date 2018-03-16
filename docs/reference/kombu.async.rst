@@ -1,11 +1,11 @@
 ==========================================================
- Event Loop - ``kombu.async``
+ Event Loop - ``kombu.asynchronous``
 ==========================================================
 
 .. contents::
     :local:
-.. currentmodule:: kombu.async
+.. currentmodule:: kombu.asynchronous
 
-.. automodule:: kombu.async
+.. automodule:: kombu.asynchronous
     :members:
     :undoc-members:

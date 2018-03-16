@@ -4,7 +4,7 @@ from __future__ import absolute_import, unicode_literals
 
 from vine import transform
 
-from kombu.async.aws.connection import AsyncAWSQueryConnection
+from kombu.asynchronous.aws.connection import AsyncAWSQueryConnection
 
 from .ext import boto3
 from .message import AsyncMessage

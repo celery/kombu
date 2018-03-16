@@ -1,11 +1,11 @@
 ==========================================================
- Semaphores - ``kombu.async.semaphore``
+ Semaphores - ``kombu.asynchronous.semaphore``
 ==========================================================
 
 .. contents::
     :local:
-.. currentmodule:: kombu.async.semaphore
+.. currentmodule:: kombu.asynchronous.semaphore
 
-.. automodule:: kombu.async.semaphore
+.. automodule:: kombu.asynchronous.semaphore
     :members:
     :undoc-members:

@@ -132,7 +132,7 @@ class Implements(dict):
 
 
 default_transport_capabilities = Implements(
-    async=False,
+    asynchronous=False,
     exchange_type=frozenset(['direct', 'topic', 'fanout', 'headers']),
     heartbeats=False,
 )
@@ -252,4 +252,4 @@ class Transport(object):
 
     @property
     def supports_ev(self):
-        return self.implements.async
+        return self.implements.asynchronous

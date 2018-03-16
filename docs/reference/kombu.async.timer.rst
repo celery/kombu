@@ -1,11 +1,11 @@
 ==========================================================
- Timer - ``kombu.async.timer``
+ Timer - ``kombu.asynchronous.timer``
 ==========================================================
 
 .. contents::
     :local:
-.. currentmodule:: kombu.async.timer
+.. currentmodule:: kombu.asynchronous.timer
 
-.. automodule:: kombu.async.timer
+.. automodule:: kombu.asynchronous.timer
     :members:
     :undoc-members:

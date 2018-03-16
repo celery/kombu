@@ -1,11 +1,11 @@
 ==========================================================
- SQS Connection - ``kombu.async.aws.sqs.connection``
+ SQS Connection - ``kombu.asynchronous.aws.sqs.connection``
 ==========================================================
 
 .. contents::
     :local:
-.. currentmodule:: kombu.async.aws.sqs.connection
+.. currentmodule:: kombu.asynchronous.aws.sqs.connection
 
-.. automodule:: kombu.async.aws.sqs.connection
+.. automodule:: kombu.asynchronous.aws.sqs.connection
     :members:
     :undoc-members:

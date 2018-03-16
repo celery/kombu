@@ -898,7 +898,7 @@ class Transport(base.Transport):
     channel_max = 65535
 
     implements = base.Transport.implements.extend(
-        async=False,
+        asynchronous=False,
         exchange_type=frozenset(['direct', 'topic']),
         heartbeats=False,
     )

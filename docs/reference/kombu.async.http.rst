@@ -1,11 +1,11 @@
 ==========================================================
- Async HTTP Client - ``kombu.async.http``
+ Async HTTP Client - ``kombu.asynchronous.http``
 ==========================================================
 
 .. contents::
     :local:
-.. currentmodule:: kombu.async.http
+.. currentmodule:: kombu.asynchronous.http
 
-.. automodule:: kombu.async.http
+.. automodule:: kombu.asynchronous.http
     :members:
     :undoc-members:

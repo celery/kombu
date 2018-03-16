@@ -1,11 +1,11 @@
 ==========================================================
- Async pyCurl HTTP Client - ``kombu.async.http.curl``
+ Async pyCurl HTTP Client - ``kombu.asynchronous.http.curl``
 ==========================================================
 
 .. contents::
     :local:
-.. currentmodule:: kombu.async.http.curl
+.. currentmodule:: kombu.asynchronous.http.curl
 
-.. automodule:: kombu.async.http.curl
+.. automodule:: kombu.asynchronous.http.curl
     :members:
     :undoc-members:

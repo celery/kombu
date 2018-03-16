@@ -22,8 +22,8 @@ globals().update(conf.build_config(
     apicheck_ignore_modules=[
         'kombu.entity',
         'kombu.messaging',
-        'kombu.async.aws.ext',
-        'kombu.async.aws.sqs.ext',
+        'kombu.asynchronous.aws.ext',
+        'kombu.asynchronous.aws.sqs.ext',
         'kombu.transport.qpid_patches',
         'kombu.utils',
         'kombu.transport.virtual.base',

@@ -57,7 +57,7 @@ class Hub(object):
     """Event loop object.
 
     Arguments:
-        timer (kombu.async.Timer): Specify custom timer instance.
+        timer (kombu.asynchronous.Timer): Specify custom timer instance.
     """
 
     #: Flag set if reading from an fd will not block.

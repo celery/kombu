@@ -3,7 +3,7 @@ from __future__ import absolute_import, unicode_literals
 
 from case import Mock
 
-from kombu.async.aws import connect_sqs
+from kombu.asynchronous.aws import connect_sqs
 
 from .case import AWSCase
 

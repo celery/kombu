@@ -3,12 +3,12 @@ from __future__ import absolute_import, unicode_literals
 
 from case import Mock, MagicMock
 
-from kombu.async.aws.sqs.connection import (
+from kombu.asynchronous.aws.sqs.connection import (
     AsyncSQSConnection
 )
-from kombu.async.aws.ext import boto3
-from kombu.async.aws.sqs.message import AsyncMessage
-from kombu.async.aws.sqs.queue import AsyncQueue
+from kombu.asynchronous.aws.ext import boto3
+from kombu.asynchronous.aws.sqs.message import AsyncMessage
+from kombu.asynchronous.aws.sqs.queue import AsyncQueue
 from kombu.utils.uuid import uuid
 
 from t.mocks import PromiseMock

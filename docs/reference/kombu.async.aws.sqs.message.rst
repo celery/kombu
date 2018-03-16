@@ -1,11 +1,11 @@
 ==========================================================
- SQS Messages - ``kombu.async.aws.sqs.message``
+ SQS Messages - ``kombu.asynchronous.aws.sqs.message``
 ==========================================================
 
 .. contents::
     :local:
-.. currentmodule:: kombu.async.aws.sqs.message
+.. currentmodule:: kombu.asynchronous.aws.sqs.message
 
-.. automodule:: kombu.async.aws.sqs.message
+.. automodule:: kombu.asynchronous.aws.sqs.message
     :members:
     :undoc-members:

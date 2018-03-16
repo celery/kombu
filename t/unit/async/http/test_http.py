@@ -8,8 +8,8 @@ from vine import promise
 
 from case import Mock, skip
 
-from kombu.async import http
-from kombu.async.http.base import BaseClient, normalize_header
+from kombu.asynchronous import http
+from kombu.asynchronous.http.base import BaseClient, normalize_header
 from kombu.exceptions import HttpError
 
 from t.mocks import PromiseMock

@@ -1,11 +1,11 @@
 ==========================================================
- SQS Queues - ``kombu.async.aws.sqs.queue``
+ SQS Queues - ``kombu.asynchronous.aws.sqs.queue``
 ==========================================================
 
 .. contents::
     :local:
-.. currentmodule:: kombu.async.aws.sqs.queue
+.. currentmodule:: kombu.asynchronous.aws.sqs.queue
 
-.. automodule:: kombu.async.aws.sqs.queue
+.. automodule:: kombu.asynchronous.aws.sqs.queue
     :members:
     :undoc-members:

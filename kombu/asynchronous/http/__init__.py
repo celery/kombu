@@ -1,6 +1,6 @@
 from __future__ import absolute_import, unicode_literals
 
-from kombu.async import get_event_loop
+from kombu.asynchronous import get_event_loop
 
 from .base import Request, Headers, Response
 
