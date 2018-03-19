@@ -92,7 +92,7 @@ class Transport(base.Transport):
     driver_name = 'librabbitmq'
 
     implements = base.Transport.implements.extend(
-        async=True,
+        asynchronous=True,
         heartbeats=False,
     )
 

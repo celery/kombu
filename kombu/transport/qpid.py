@@ -1530,7 +1530,7 @@ class Transport(base.Transport):
         :type connection: kombu.transport.qpid.Connection
         :param loop: The asynchronous loop object that contains epoll like
             functionality.
-        :type loop: kombu.async.Hub
+        :type loop: kombu.asynchronous.Hub
 
         """
         os.read(self.r, 1)
@@ -1562,7 +1562,7 @@ class Transport(base.Transport):
             this Transport.
         :type connection: kombu.transport.qpid.Connection
         :param loop: A reference to the external loop.
-        :type loop: kombu.async.hub.Hub
+        :type loop: kombu.asynchronous.hub.Hub
 
         """
         self.r, self._w = os.pipe()

@@ -237,7 +237,7 @@ class test_Channel:
             self.channel._get_bulk(self.queue_name)
 
     def test_messages_to_python(self):
-        from kombu.async.aws.sqs.message import Message
+        from kombu.asynchronous.aws.sqs.message import Message
 
         kombu_message_count = 3
         json_message_count = 3

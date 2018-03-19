@@ -242,7 +242,7 @@ class test_Connection:
 
     def test_is_evented(self):
         c = Connection(transport=Mock)
-        c.transport.implements.async = False
+        c.transport.implements.asynchronous = False
         assert not c.is_evented
 
     def test_register_with_event_loop(self):

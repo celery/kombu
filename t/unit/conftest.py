@@ -42,7 +42,7 @@ def test_cases_has_patching(request, patching):
 
 @pytest.fixture
 def hub(request):
-    from kombu.async import Hub, get_event_loop, set_event_loop
+    from kombu.asynchronous import Hub, get_event_loop, set_event_loop
     _prev_hub = get_event_loop()
     hub = Hub()
     set_event_loop(hub)

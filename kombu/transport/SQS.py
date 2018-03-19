@@ -44,10 +44,10 @@ import uuid
 
 from vine import transform, ensure_promise, promise
 
-from kombu.async import get_event_loop
-from kombu.async.aws.ext import boto3, exceptions
-from kombu.async.aws.sqs.connection import AsyncSQSConnection
-from kombu.async.aws.sqs.message import AsyncMessage
+from kombu.asynchronous import get_event_loop
+from kombu.asynchronous.aws.ext import boto3, exceptions
+from kombu.asynchronous.aws.sqs.connection import AsyncSQSConnection
+from kombu.asynchronous.aws.sqs.message import AsyncMessage
 from kombu.five import Empty, range, string_t, text_t
 from kombu.log import get_logger
 from kombu.utils import scheduling
@@ -513,7 +513,7 @@ class Transport(virtual.Transport):
     driver_name = 'sqs'
 
     implements = virtual.Transport.implements.extend(
-        async=True,
+        asynchronous=True,
         exchange_type=frozenset(['direct']),
     )
 

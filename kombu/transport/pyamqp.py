@@ -83,7 +83,7 @@ class Transport(base.Transport):
     driver_type = 'amqp'
 
     implements = base.Transport.implements.extend(
-        async=True,
+        asynchronous=True,
         heartbeats=True,
     )
 
