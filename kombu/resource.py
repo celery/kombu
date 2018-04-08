@@ -171,11 +171,11 @@ class Resource(object):
 
     def resize(self, limit, force=False, ignore_errors=False, reset=False):
         prev_limit = self._limit
-        if (self._dirty and limit < self._limit) and not ignore_errors:
+        if (self._dirty and 0 < limit < self._limit) and not ignore_errors:
             if not force:
                 raise RuntimeError(
                     "Can't shrink pool when in use: was={0} now={1}".format(
-                        limit, self._limit))
+                        self._limit, limit))
             reset = True
         self._limit = limit
         if reset:
@@ -185,14 +185,16 @@ class Resource(object):
                 pass
         self.setup()
         if limit < prev_limit:
-            self._shrink_down()
+            self._shrink_down(collect=limit > 0)
 
-    def _shrink_down(self):
+    def _shrink_down(self, collect=True):
         resource = self._resource
         # Items to the left are last recently used, so we remove those first.
         with resource.mutex:
             while len(resource.queue) > self.limit:
-                self.collect_resource(resource.queue.popleft())
+                R = resource.queue.popleft()
+                if collect:
+                    self.collect_resource(R)
 
     @property
     def limit(self):
