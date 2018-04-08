@@ -208,6 +208,13 @@ class test_PoolGroup:
 
         pools.set_limit(pools.get_limit())
 
+    def test_remove_limit(self):
+        conn = Connection('memory://')
+        pool = pools.connections[conn]
+        pool.limit = 10
+        with pool.acquire():
+            pool.limit = 0
+
 
 class test_fun_PoolGroup:
 
