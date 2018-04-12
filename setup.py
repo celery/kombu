@@ -132,6 +132,7 @@ setup(
     zip_safe=False,
     license='BSD',
     cmdclass={'test': pytest},
+    python_requires=">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*",
     install_requires=reqs('default.txt'),
     tests_require=reqs('test.txt'),
     extras_require={
