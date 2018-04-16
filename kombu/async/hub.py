@@ -261,6 +261,8 @@ class Hub(object):
                     Empty=Empty, StopIteration=StopIteration,
                     KeyError=KeyError, READ=READ, WRITE=WRITE, ERR=ERR):
         readers, writers = self.readers, self.writers
+        if not self.poller:
+            self._create_poller()
         poll = self.poller.poll
         fire_timers = self.fire_timers
         hub_remove = self.remove
