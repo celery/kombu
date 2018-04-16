@@ -4,9 +4,9 @@
  Change history
 ================
 
-.. _version-4.1.1:
+.. _version-4.2.0:
 
-4.1.1
+4.2.0
 =====
 :release-date: TBD
 :release-by: TBD
@@ -17,6 +17,58 @@
   :meth:`~kombu.Connection.default_connection` (Issue #765).
 
     Contributed by **Anthony Lukach**.
+    
+- Qpid: messages are now durable by default
+
+    Contributed by **David Davis**
+
+- Kombu now requires version 2.10.4 or greater of the redis library,
+  in line with Celery
+  
+    Contributed by **Colin Jeanne**
+
+- Fixed ImportError in some environments with outdated simplejson
+
+    Contributed by **Aaron Morris**
+
+- MongoDB: fixed failure on MongoDB versions with an "-rc" tag
+
+    Contributed by **dust8**
+
+- Ensure periodic polling frequency does not exceed timeout in
+  virtual transport
+
+    Contributed by **Arcadiy Ivanov**
+
+- Fixed string handling when using python-future module
+
+    Contributed by **John Koehl"
+
+- Replaced "async" with "asynchronous" in preparation for Python 3.7
+
+    Contributed by **Thomas Achtemichuk**
+
+- Allow removing pool size limit when in use
+
+    Contributed by **Alex Hill**
+
+- Codebase improvements and fixes by:
+
+    - **j2gg0s**
+    - **Jon Dufresne**
+    - **Jonas Lergell**
+    - **Mads Jensen**
+    - **Nicolas Delaby**
+    - **Omer Katz**
+
+- Documentation improvements by:
+
+    - **Felix Yan**
+    - **Harry Moreno**
+    - **Mads Jensen**
+    - **Omer Katz**
+    - **Radha Krishna. S.**
+    - **Wojciech Matyśkiewicz**
 
 .. _version-4.1.0:
 
