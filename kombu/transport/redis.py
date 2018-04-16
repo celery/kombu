@@ -280,6 +280,8 @@ class MultiChannelPoller(object):
         sock = client.connection._sock
         self._fd_to_chan[sock.fileno()] = (channel, type)
         self._chan_to_sock[(channel, client, type)] = sock
+        if not self.poller:
+            self.poller = poll()
         self.poller.register(sock, self.eventflags)
 
     def _unregister(self, channel, client, type):
