@@ -10,9 +10,8 @@ from __future__ import absolute_import, unicode_literals
 import sys
 import traceback
 
-from kombu.five import text_t
+from kombu.five import PY3, text_t
 
-is_py3k = sys.version_info >= (3, 0)
 
 #: safe_str takes encoding from this file by default.
 #: :func:`set_default_encoding_file` can used to set the
@@ -43,7 +42,7 @@ else:
         file = file or get_default_encoding_file()
         return getattr(file, 'encoding', None) or sys.getfilesystemencoding()
 
-if is_py3k:  # pragma: no cover
+if PY3:  # pragma: no cover
 
     def str_to_bytes(s):
         """Convert str to bytes."""
@@ -111,7 +110,7 @@ def safe_str(s, errors='replace'):
     return _safe_str(s, errors)
 
 
-if is_py3k:  # pragma: no cover
+if PY3:  # pragma: no cover
 
     def _safe_str(s, errors='replace', file=None):
         if isinstance(s, str):

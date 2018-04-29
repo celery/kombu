@@ -5,10 +5,9 @@ from __future__ import absolute_import, unicode_literals
 import datetime
 import decimal
 import json as stdjson
-import sys
 import uuid
 
-from kombu.five import buffer_t, text_t, bytes_t
+from kombu.five import PY3, buffer_t, text_t, bytes_t
 
 try:
     from django.utils.functional import Promise as DjangoPromise
@@ -27,7 +26,6 @@ except ImportError:                 # pragma: no cover
     class _DecodeError(Exception):  # noqa
         pass
 
-IS_PY3 = sys.version_info[0] == 3
 
 _encoder_cls = type(json._default_encoder)
 _default_encoder = None   # ... set to JSONEncoder below.
@@ -71,7 +69,7 @@ def dumps(s, _dumps=json.dumps, cls=None,
                   **dict(default_kwargs, **kwargs))
 
 
-def loads(s, _loads=json.loads, decode_bytes=IS_PY3):
+def loads(s, _loads=json.loads, decode_bytes=PY3):
     """Deserialize json from string."""
     # None of the json implementations supports decoding from
     # a buffer/memoryview, or even reading from a stream
