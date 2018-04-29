@@ -5,7 +5,6 @@ from __future__ import absolute_import, unicode_literals
 import datetime
 import decimal
 import json as stdjson
-import sys
 import uuid
 
 from kombu.five import PY3, buffer_t, text_t, bytes_t
