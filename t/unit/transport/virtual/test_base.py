@@ -2,7 +2,6 @@ from __future__ import absolute_import, unicode_literals
 
 import io
 import pytest
-import sys
 import warnings
 import socket
 
@@ -13,9 +12,8 @@ from kombu.compression import compress
 from kombu.exceptions import ResourceError, ChannelError
 from kombu.transport import virtual
 from kombu.utils.uuid import uuid
-from kombu.five import monotonic
+from kombu.five import PY3, monotonic
 
-PY3 = sys.version_info[0] == 3
 PRINT_FQDN = 'builtins.print' if PY3 else '__builtin__.print'
 
 
