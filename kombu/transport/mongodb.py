@@ -243,13 +243,15 @@ class Channel(virtual.Channel):
         client = self.connection.client
         hostname = client.hostname
 
-        if not hostname.startswith(scheme):
+        if '://' not in hostname:
             hostname = scheme + hostname
+        urischeme, rest = hostname.split('://', 1)
 
-        if not hostname[len(scheme):]:
+        # No hostname supplied
+        if not rest:
             hostname += self.default_hostname
 
-        if client.userid and '@' not in hostname:
+        elif client.userid and '@' not in hostname:
             head, tail = hostname.split('://')
 
             credentials = client.userid

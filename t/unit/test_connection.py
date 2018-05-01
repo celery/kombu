@@ -54,6 +54,11 @@ class test_connection_utils:
         x = Connection('mongodb://localhost')
         assert x.as_uri()
 
+    @skip.unless_module('pymongo')
+    def test_as_uri_when_mongodb_srv(self):
+        x = Connection('mongodb+srv://localhost')
+        assert x.as_uri()
+
     def test_bogus_scheme(self):
         with pytest.raises(KeyError):
             Connection('bogus://localhost:7421').transport

@@ -169,7 +169,8 @@ class Connection(object):
             if ';' in hostname:
                 alt.extend(hostname.split(';'))
                 hostname = alt[0]
-            if '+' in hostname[:hostname.index('://')]:
+            scheme = hostname[:hostname.index('://')]
+            if 'mongodb+srv' not in scheme and '+' in scheme:
                 # e.g. sqla+mysql://root:masterkey@localhost/
                 params['transport'], params['hostname'] = \
                     hostname.split('+', 1)

@@ -87,6 +87,50 @@ class test_mongodb_uri_parsing:
         hostname, dbname, options = channel._parse_uri()
         assert options['readpreference'] == 'nearest'
 
+    def test_srv_database_uri(self):
+        url = 'mongodb+srv://mongo.example.com/dbname?ssl=false'
+
+        import pymongo.uri_parser
+        channel = _create_mock_connection(url).default_channel
+
+
+        default_parser = pymongo.uri_parser.parse_uri
+
+        def parse_uri(hostname, port):
+            """Fake a parse_uri as if the proper SRV TXT and A records all
+            exist
+
+            Assumes a SRV record that points to mongo1 and mongo2.example.com
+            at port 27017, a TXT record that sets the replicaSet to
+            kombu-replica, and A records for both mongo1 and mongo2.
+
+            This output is correct as of 5/1/2018 using pymongo 3.6.x. Mocked
+            because the real parse_uri makes real DNS queries.
+
+            """
+            #The parse_uri method calls out to DNS, so mock it.
+
+            return {
+                'username': None,
+                'nodelist': [
+                    ('mongo1.example.com', 27017),
+                    ('mongo2.example.com', 27017)
+                ],
+                'database': 'dbname',
+                'collection': None,
+                'password': None,
+                'options': {
+                    'ssl': False,
+                    'replicaset': u'kombu-replica'
+                }
+            }
+
+        with patch.object(pymongo.uri_parser, 'parse_uri', parse_uri):
+            hostname, dbname, options = channel._parse_uri()
+        assert hostname == url
+        assert dbname == 'dbname'
+        assert options.get('ssl', None) == False
+
 
 class BaseMongoDBChannelCase:
 
