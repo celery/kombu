@@ -93,9 +93,6 @@ class test_mongodb_uri_parsing:
         import pymongo.uri_parser
         channel = _create_mock_connection(url).default_channel
 
-
-        default_parser = pymongo.uri_parser.parse_uri
-
         def parse_uri(hostname, port):
             """Fake a parse_uri as if the proper SRV TXT and A records all
             exist
@@ -108,7 +105,6 @@ class test_mongodb_uri_parsing:
             because the real parse_uri makes real DNS queries.
 
             """
-            #The parse_uri method calls out to DNS, so mock it.
 
             return {
                 'username': None,
@@ -129,7 +125,7 @@ class test_mongodb_uri_parsing:
             hostname, dbname, options = channel._parse_uri()
         assert hostname == url
         assert dbname == 'dbname'
-        assert options.get('ssl', None) == False
+        assert options.get('ssl', None) is False
 
 
 class BaseMongoDBChannelCase:
