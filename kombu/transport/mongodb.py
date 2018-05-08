@@ -245,7 +245,7 @@ class Channel(virtual.Channel):
 
         if '://' not in hostname:
             hostname = scheme + hostname
-        urischeme, rest = hostname.split('://', 1)
+        _, _, rest = hostname.partition('://')
 
         # No hostname supplied
         if not rest:
