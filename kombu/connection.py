@@ -169,8 +169,7 @@ class Connection(object):
             if ';' in hostname:
                 alt.extend(hostname.split(';'))
                 hostname = alt[0]
-            scheme = hostname[:hostname.index('://')]
-            if '+' in scheme:
+            if '+' in hostname[:hostname.index('://')]
                 tran, _, host = hostname.partition('+')
                 # Override the parsed transport with any provided
                 if transport and not isinstance(transport, string_t):
