@@ -601,8 +601,7 @@ class Channel(base.StdChannel):
         transient queue. Default is False.
 
         If exclusive is True, the queue will be exclusive. Exclusive queues
-        may only be consumed by the current connection. Setting the
-        'exclusive' flag always implies 'auto-delete'. Default is False.
+        may only be consumed by the current connection. Default is False.
 
         If auto_delete is True,  the queue is deleted when all consumers
         have finished using it. The last consumer can be cancelled either

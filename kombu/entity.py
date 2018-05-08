@@ -437,8 +437,7 @@ class Queue(MaybeChannelBound):
             Default is :const:`True`.
 
         exclusive (bool): Exclusive queues may only be consumed from by the
-            current connection. Setting the 'exclusive' flag
-            always implies 'auto-delete'.
+            current connection.
 
             Default is :const:`False`.
 
