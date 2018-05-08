@@ -579,9 +579,6 @@ class Queue(MaybeChannelBound):
         if self.bindings:
             self.exchange = None
 
-        # exclusive implies auto-delete.
-        if self.exclusive:
-            self.auto_delete = True
         self.maybe_bind(channel)
 
     def bind(self, channel):
