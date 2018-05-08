@@ -329,9 +329,6 @@ class test_Queue:
         q3 = Queue('yyy', Exchange('xxx', 'direct'), 'xxx')
         assert q1 != q3
 
-    def test_exclusive_implies_auto_delete(self):
-        assert Queue('foo', self.exchange, exclusive=True).auto_delete
-
     def test_binds_at_instantiation(self):
         assert Queue('foo', self.exchange,
                      channel=get_conn().channel()).is_bound
