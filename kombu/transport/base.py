@@ -150,6 +150,11 @@ class Transport(object):
     #: unmodified.
     can_parse_url = False
 
+    #: Set to True if you want the leading part of the URL stripped off. For
+    #: example, sqla+postgresql+psycopg2://... becomes postgresql+psycopg2://
+    #: when the initial parameters are sent to this class
+    expects_url_munging = True
+
     #: Default port used when no port has been specified.
     default_port = None
 

@@ -446,6 +446,7 @@ class Transport(virtual.Transport):
     Channel = Channel
 
     can_parse_url = True
+    expects_url_munging = False
     polling_interval = 1
     default_port = Channel.default_port
     connection_errors = (

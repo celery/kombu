@@ -88,12 +88,10 @@ class test_mongodb_uri_parsing:
         assert options['readpreference'] == 'nearest'
 
     def test_srv_database_uri(self):
+        import pymongo.uri_parser
         url = 'mongodb+srv://mongo.example.com/dbname?ssl=false'
 
-        import pymongo.uri_parser
-        channel = _create_mock_connection(url).default_channel
-
-        def parse_uri(hostname, port):
+        def parse_uri(*a, **kw):
             """Fake a parse_uri as if the proper SRV TXT and A records all
             exist
 
@@ -122,6 +120,7 @@ class test_mongodb_uri_parsing:
             }
 
         with patch.object(pymongo.uri_parser, 'parse_uri', parse_uri):
+            channel = _create_mock_connection(url).default_channel
             hostname, dbname, options = channel._parse_uri()
         assert hostname == url
         assert dbname == 'dbname'

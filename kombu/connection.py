@@ -170,11 +170,23 @@ class Connection(object):
                 alt.extend(hostname.split(';'))
                 hostname = alt[0]
             scheme = hostname[:hostname.index('://')]
-            if 'mongodb+srv' not in scheme and '+' in scheme:
-                # e.g. sqla+mysql://root:masterkey@localhost/
-                params['transport'], params['hostname'] = \
-                    hostname.split('+', 1)
-                self.uri_prefix = params['transport']
+            if '+' in scheme:
+                tran, _, host = hostname.partition('+')
+                # Override the parsed transport with any provided
+                if transport and not isinstance(transport, string_t):
+                    params['transport'] = transport
+                    cls = transport
+                else:
+                    params['transport'] = tran
+                    cls = get_transport_cls(tran)
+                if getattr(cls, 'expects_url_munging', True):
+                    # e.g. sqla+mysql://root:masterkey@localhost/
+                    params['hostname'] = host
+                    self.uri_prefix = tran
+                else:
+                    # e.g., mongodb+srv://user:pass@host/db?params
+                    # Use the original value
+                    params['hostname'] = hostname
             else:
                 transport = transport or urlparse(hostname).scheme
                 if not get_transport_cls(transport).can_parse_url:
