@@ -105,6 +105,10 @@ class Hub(object):
             self._create_poller()
         return self._poller
 
+    @poller.setter
+    def poller(self, value):
+        self._poller = value
+
     def reset(self):
         self.close()
         self._create_poller()
