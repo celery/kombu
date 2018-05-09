@@ -176,7 +176,7 @@ class test_Hub:
         poller = self.hub.poller = Mock(name='poller')
         self.hub._close_poller()
         poller.close.assert_called_with()
-        assert self.hub.poller is None
+        assert self.hub._poller is None
 
     def test_stop(self):
         self.hub.call_soon = Mock(name='call_soon')
