@@ -57,7 +57,7 @@ class test_connection_utils:
     @skip.unless_module('pymongo')
     def test_as_uri_when_mongodb_srv(self):
         x = Connection('mongodb+srv://localhost')
-        assert x.as_uri()
+        assert x.as_uri() == 'mongodb+srv://localhost'
 
     def test_bogus_scheme(self):
         with pytest.raises(KeyError):
