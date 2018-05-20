@@ -116,7 +116,7 @@ except ImportError:  # pragma: no cover
     qpid = None
 
 
-from kombu.five import Empty, items, monotonic
+from kombu.five import Empty, items, monotonic, PY3
 from kombu.log import get_logger
 from kombu.transport.virtual import Base64, Message
 from kombu.transport import base
@@ -129,8 +129,6 @@ OBJECT_ALREADY_EXISTS_STRING = 'object already exists'
 
 VERSION = (1, 0, 0)
 __version__ = '.'.join(map(str, VERSION))
-
-PY3 = sys.version_info[0] == 3
 
 
 def dependency_is_none(dependency):
