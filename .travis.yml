@@ -19,12 +19,16 @@ matrix:
     - python: pypy
       env: TOXENV=pypy
     - env: TOXENV=flake8
+      stage: lint
     - env: TOXENV=flakeplus
+      stage: lint
     - env: TOXENV=apicheck
+      stage: lint
     - env: TOXENV=pydocstyle
+      stage: lint
 
 install:
-    - pip install -U pip setuptools wheel | cat 
+    - pip install -U pip setuptools wheel | cat
     - pip install -U tox | cat
 script: tox -v -- -v
 after_success:
