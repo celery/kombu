@@ -8,8 +8,8 @@
 
 4.2.0
 =====
-:release-date: TBD
-:release-by: TBD
+:release-date: 2018-05-21 09:00 A.M IST
+:release-by: Omer Katz
 
 - Now passing ``max_retries``, ``interval_start``, ``interval_step``,
   ``interval_max`` parameters from broker ``transport_options`` to
@@ -17,14 +17,14 @@
   :meth:`~kombu.Connection.default_connection` (Issue #765).
 
     Contributed by **Anthony Lukach**.
-    
+
 - Qpid: messages are now durable by default
 
     Contributed by **David Davis**
 
 - Kombu now requires version 2.10.4 or greater of the redis library,
   in line with Celery
-  
+
     Contributed by **Colin Jeanne**
 
 - Fixed ImportError in some environments with outdated simplejson
