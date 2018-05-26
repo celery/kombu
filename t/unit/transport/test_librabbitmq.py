@@ -133,6 +133,7 @@ class test_Transport(lrmqCase):
             conn.fileno.side_effect = ValueError("Socket not connected")
             self.T._collect(conn)
             close.assert_not_called()
+        conn.fileno.assert_called_with()
         assert self.client.drain_events is None
         assert self.T.client is None
 
