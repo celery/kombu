@@ -133,6 +133,8 @@ class test_Transport(lrmqCase):
             conn.fileno.side_effect = ValueError("Socket not connected")
             self.T._collect(conn)
             close.assert_not_called()
+        assert self.client.drain_events is None
+        assert self.T.client is None
 
     def test_register_with_event_loop(self):
         conn = Mock(name='conn')
