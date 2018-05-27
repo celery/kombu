@@ -1,6 +1,7 @@
 from __future__ import absolute_import, unicode_literals
 
 import pickle
+
 import pytest
 
 from itertools import count
@@ -208,6 +209,22 @@ class test_retry_over_time:
             cb.assert_called_with()
         finally:
             utils.count = prev_count
+
+    def test_retry_timeout(self):
+
+        with pytest.raises(self.Predicate):
+            retry_over_time(
+                self.myfun, self.Predicate,
+                errback=self.errback, interval_max=14, timeout=1
+            )
+        assert self.index == 1
+
+        # no errback
+        with pytest.raises(self.Predicate):
+            retry_over_time(
+                self.myfun, self.Predicate,
+                errback=None, timeout=1,
+            )
 
     @mock.sleepdeprived(module=utils)
     def test_retry_once(self):

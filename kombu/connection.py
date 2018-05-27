@@ -360,7 +360,8 @@ class Connection(object):
 
     def ensure_connection(self, errback=None, max_retries=None,
                           interval_start=2, interval_step=2, interval_max=30,
-                          callback=None, reraise_as_library_errors=True):
+                          callback=None, reraise_as_library_errors=True,
+                          timeout=None):
         """Ensure we have a connection to the server.
 
         If not retry establishing the connection with the settings
@@ -384,6 +385,8 @@ class Connection(object):
                 each retry.
             callback (Callable): Optional callback that is called for every
                 internal iteration (1 s).
+            timeout (int): Maximum amount of time in seconds to spend
+                waiting for connection
         """
         def on_error(exc, intervals, retries, interval=0):
             round = self.completes_cycle(retries)
@@ -402,7 +405,7 @@ class Connection(object):
             retry_over_time(self.connect, self.recoverable_connection_errors,
                             (), {}, on_error, max_retries,
                             interval_start, interval_step, interval_max,
-                            callback)
+                            callback, timeout=timeout)
         return self
 
     @contextmanager
