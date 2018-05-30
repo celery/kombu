@@ -4,6 +4,22 @@
  Change history
 ================
 
+.. _version-4.2.1:
+
+4.2.1
+=====
+:release-date: 2018-05-21 09:00 A.M IST
+:release-by: Omer Katz
+
+.. .. note::
+
+  The 4.2.0 release contained remains of the ``async`` module by accident.
+  This is now fixed.
+
+- Handle librabbitmq fileno raising a ValueError when socket is not connected.
+
+  Contributed by **Bryan Shelton**
+
 .. _version-4.2.0:
 
 4.2.0
