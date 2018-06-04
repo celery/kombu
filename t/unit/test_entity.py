@@ -319,6 +319,9 @@ class test_Queue:
     def test_can_cache_declaration(self):
         assert Queue('a', durable=True).can_cache_declaration
         assert Queue('a', durable=False).can_cache_declaration
+        assert not Queue(
+            'a', queue_arguments={'x-expires': 100}
+        ).can_cache_declaration
 
     def test_eq(self):
         q1 = Queue('xxx', Exchange('xxx', 'direct'), 'xxx')
