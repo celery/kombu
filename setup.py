@@ -66,7 +66,7 @@ for scheme in list(INSTALL_SCHEMES.values()):
 if os.path.exists('README.rst'):
     long_description = codecs.open('README.rst', 'r', 'utf-8').read()
 else:
-    long_description = 'See https://pypi.python.org/pypi/kombu'
+    long_description = 'See https://pypi.org/project/kombu/'
 
 # -*- Installation Requires -*-
 py_version = sys.version_info
