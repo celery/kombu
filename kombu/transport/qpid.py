@@ -24,8 +24,8 @@ or to install the requirements manually:
     tested and works with with Python 2.7.
 
 .. _`Qpid`: https://qpid.apache.org/
-.. _`qpid-python`: https://pypi.python.org/pypi/qpid-python/
-.. _`qpid-tools`: https://pypi.python.org/pypi/qpid-tools/
+.. _`qpid-python`: https://pypi.org/project/qpid-python/
+.. _`qpid-tools`: https://pypi.org/project/qpid-tools/
 
 Authentication
 ==============
