@@ -155,7 +155,7 @@ class Channel(virtual.Channel):
         if name.endswith('.fifo'):
             # SQS allows no dots in queue names except FIFO queues.
             # For FIFO queues only one dot is allowed in '.fifo' suffix
-            partial = name.split('.')[:1][0]
+            partial = name.split('.')[0]
             partial = text_t(safe_str(partial)).translate(table)
             return partial + '.fifo'
         else:
