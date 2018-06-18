@@ -35,7 +35,8 @@ Features
 
     * Virtual transports makes it really easy to add support for non-AMQP
       transports. There is already built-in support for `Redis`_,
-      `Amazon SQS`_, `ZooKeeper`_, `SoftLayer MQ`_ and `Pyro`_.
+      `Amazon SQS`_, `Azure Storage Queues`_, `Azure Service Bus`_,
+      `ZooKeeper`_, `SoftLayer MQ`_ and `Pyro`_.
 
     * In-memory transport for unit testing.
 
@@ -62,6 +63,8 @@ and the `Wikipedia article about AMQP`_.
 .. _`qpid-python`: https://pypi.org/project/qpid-python/
 .. _`Redis`: https://redis.io/
 .. _`Amazon SQS`: https://aws.amazon.com/sqs/
+.. _`Azure Storage Queues`: https://azure.microsoft.com/en-us/services/storage/queues/
+.. _`Azure Service Bus`: https://azure.microsoft.com/en-us/services/service-bus/
 .. _`Zookeeper`: https://zookeeper.apache.org/
 .. _`Rabbits and warrens`: http://web.archive.org/web/20160323134044/http://blogs.digitar.com/jjww/2009/01/rabbits-and-warrens/
 .. _`amqplib`: http://barryp.org/software/py-amqplib/

@@ -130,6 +130,8 @@ setup(
         'librabbitmq': extras('librabbitmq.txt'),
         'pyro': extras('pyro.txt'),
         'slmq': extras('slmq.txt'),
+        'azurestoragequeues': extras('azurestoragequeues.txt'),
+        'azureservicebus': extras('azureservicebus.txt'),
         'qpid': extras('qpid.txt'),
         'consul': extras('consul.txt'),
     },
