@@ -1,6 +1,6 @@
 """`librabbitmq`_ transport.
 
-.. _`librabbitmq`: https://pypi.python.org/pypi/librabbitmq/
+.. _`librabbitmq`: https://pypi.org/project/librabbitmq/
 """
 from __future__ import absolute_import, unicode_literals
 
