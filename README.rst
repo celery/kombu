@@ -74,7 +74,7 @@ and the `Wikipedia article about AMQP`_.
 .. _`Wikipedia article about AMQP`: https://en.wikipedia.org/wiki/AMQP
 .. _`carrot`: https://pypi.org/project/carrot/
 .. _`librabbitmq`: https://pypi.org/project/librabbitmq/
-.. _`Pyro`: https://pythonhosting.org/Pyro4
+.. _`Pyro`: https://pyro4.readthedocs.io/
 .. _`SoftLayer MQ`: https://sldn.softlayer.com/reference/messagequeueapi
 
 .. _transport-comparison:
@@ -100,6 +100,8 @@ Transport Comparison
 | *in-memory*   | Virtual  | Yes        | Yes [#f1]_ | No            | No           | No                    |
 +---------------+----------+------------+------------+---------------+--------------+-----------------------+
 | *SLMQ*        | Virtual  | Yes        | Yes [#f1]_ | No            | No           | No                    |
++---------------+----------+------------+------------+---------------+--------------+-----------------------+
+| *Pyro*        | Virtual  | Yes        | Yes [#f1]_ | No            | No           | No                    |
 +---------------+----------+------------+------------+---------------+--------------+-----------------------+
 
 

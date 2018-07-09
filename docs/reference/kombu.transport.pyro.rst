@@ -22,3 +22,10 @@
     .. autoclass:: Channel
         :members:
         :undoc-members:
+
+
+    KombuBroker
+    -----------
+
+    .. autoclass:: KombuBroker
+        :members:
