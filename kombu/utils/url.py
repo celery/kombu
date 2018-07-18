@@ -32,9 +32,11 @@ def parse_url(url):
     # type: (str) -> Dict
     """Parse URL into mapping of components."""
     scheme, host, port, user, password, path, query = _parse_url(url)
-    return dict(transport=scheme, hostname=host,
+    _result = dict(transport=scheme, hostname=host,
                 port=port, userid=user,
-                password=password, virtual_host=path, **query)
+                password=password, virtual_host=path)
+    _result.update(query)
+    return _result
 
 
 def url_to_parts(url):
