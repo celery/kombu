@@ -40,7 +40,7 @@ class Channel(virtual.Channel):
     """Azure Storage Queues channel."""
 
     domain_format = 'kombu%(vhost)s'
-    _azq = None
+    _queue_service = None
     _queue_name_cache = {}
     no_ack = True
     _noack_queues = set()
@@ -52,7 +52,7 @@ class Channel(virtual.Channel):
 
         super(Channel, self).__init__(*args, **kwargs)
 
-        for queue_name in self.azq.list_queues():
+        for queue_name in self.queue_service.list_queues():
             self._queue_name_cache[queue_name] = queue_name
 
     def basic_consume(self, queue, no_ack, *args, **kwargs):
@@ -72,7 +72,7 @@ class Channel(virtual.Channel):
         try:
             return self._queue_name_cache[queue]
         except KeyError:
-            self.azq.create_queue(queue, fail_on_exist=False)
+            self.queue_service.create_queue(queue, fail_on_exist=False)
             q = self._queue_name_cache[queue] = queue
             return q
 
@@ -80,52 +80,53 @@ class Channel(virtual.Channel):
         """Delete queue by name."""
         queue_name = self.entity_name(queue)
         self._queue_name_cache.pop(queue_name, None)
-        self.azq.delete_queue(queue_name)
+        self.queue_service.delete_queue(queue_name)
         super(Channel, self)._delete(queue_name)
 
     def _put(self, queue, message, **kwargs):
         """Put message onto queue."""
         q = self._ensure_queue(queue)
         encoded_message = dumps(message)
-        self.azq.put_message(q, encoded_message)
+        self.queue_service.put_message(q, encoded_message)
 
     def _get(self, queue, timeout=None):
         """Try to retrieve a single message off ``queue``."""
         q = self._ensure_queue(queue)
 
-        messages = self.azq.get_messages(q, num_messages=1, timeout=timeout)
+        messages = self.queue_service.get_messages(q, num_messages=1,
+                                                   timeout=timeout)
         if not messages:
             raise Empty()
 
         message = messages[0]
-        raw_content = self.azq.decode_function(message.content)
+        raw_content = self.queue_service.decode_function(message.content)
         content = loads(raw_content)
 
-        self.azq.delete_message(q, message.id, message.pop_receipt)
+        self.queue_service.delete_message(q, message.id, message.pop_receipt)
 
         return content
 
     def _size(self, queue):
         """Return the number of messages in a queue."""
         q = self._ensure_queue(queue)
-        metadata = self.azq.get_queue_metadata(q)
+        metadata = self.queue_service.get_queue_metadata(q)
         return metadata.approximate_message_count
 
     def _purge(self, queue):
         """Delete all current messages in a queue."""
         q = self._ensure_queue(queue)
         n = self._size(q)
-        self.azq.clear_messages(q)
+        self.queue_service.clear_messages(q)
         return n
 
     @property
-    def azq(self):
-        if self._azq is None:
-            self._azq = QueueService(
+    def queue_service(self):
+        if self._queue_service is None:
+            self._queue_service = QueueService(
                 account_name=self.conninfo.hostname,
                 account_key=self.conninfo.password)
 
-        return self._azq
+        return self._queue_service
 
     @property
     def conninfo(self):

@@ -44,7 +44,7 @@ class Channel(virtual.Channel):
 
     default_visibility_timeout = 1800  # 30 minutes.
     domain_format = 'kombu%(vhost)s'
-    _sbq = None
+    _queue_service = None
     _queue_cache = {}
 
     def __init__(self, *args, **kwargs):
@@ -54,7 +54,7 @@ class Channel(virtual.Channel):
 
         super(Channel, self).__init__(*args, **kwargs)
 
-        for queue in self.sbq.list_queues():
+        for queue in self.queue_service.list_queues():
             self._queue_cache[queue] = queue
 
     def entity_name(self, name, table=CHARS_REPLACE_TABLE):
@@ -67,27 +67,26 @@ class Channel(virtual.Channel):
         try:
             return self._queue_cache[queue]
         except KeyError:
-            self.sbq.create_queue(queue, fail_on_exist=False)
-            q = self._queue_cache[queue] = self.sbq.get_queue(queue)
+            self.queue_service.create_queue(queue, fail_on_exist=False)
+            q = self._queue_cache[queue] = self.queue_service.get_queue(queue)
             return q
 
     def _delete(self, queue, *args, **kwargs):
         """Delete queue by name."""
         queue_name = self.entity_name(queue)
         self._queue_cache.pop(queue_name, None)
-        self.sbq.delete_queue(queue_name)
+        self.queue_service.delete_queue(queue_name)
         super(Channel, self)._delete(queue_name)
 
     def _put(self, queue, message, **kwargs):
         """Put message onto queue."""
         msg = Message(dumps(message))
-        self.sbq.send_queue_message(self.entity_name(queue), msg)
+        self.queue_service.send_queue_message(self.entity_name(queue), msg)
 
     def _get(self, queue, timeout=None):
         """Try to retrieve a single message off ``queue``."""
-        message = self.sbq.receive_queue_message(self.entity_name(queue),
-                                                 timeout=timeout,
-                                                 peek_lock=False)
+        message = self.queue_service.receive_queue_message(
+            self.entity_name(queue), timeout=timeout, peek_lock=False)
 
         if message.body is None:
             raise Empty()
@@ -103,7 +102,7 @@ class Channel(virtual.Channel):
         n = 0
 
         while True:
-            message = self.sbq.read_delete_queue_message(
+            message = self.queue_service.read_delete_queue_message(
                 self.entity_name(queue), timeout=0.1)
 
             if not message.body:
@@ -114,14 +113,14 @@ class Channel(virtual.Channel):
         return n
 
     @property
-    def sbq(self):
-        if self._sbq is None:
-            self._sbq = ServiceBusService(
+    def queue_service(self):
+        if self._queue_service is None:
+            self._queue_service = ServiceBusService(
                 service_namespace=self.conninfo.hostname,
                 shared_access_key_name=self.conninfo.userid,
                 shared_access_key_value=self.conninfo.password)
 
-        return self._sbq
+        return self._queue_service
 
     @property
     def conninfo(self):
