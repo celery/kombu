@@ -5,9 +5,7 @@ from t.integration import transport
 from case import skip
 
 
-@skip.unless_environ('AZURE_SERVICEBUS_ACCOUNT')
-@skip.unless_environ('AZURE_SERVICEBUS_KEY_NAME')
-@skip.unless_environ('AZURE_SERVICEBUS_KEY_VALUE')
+@skip.unless_module('azure.servicebus')
 class test_azureservicebus(transport.TransportCase):
     transport = 'azureservicebus'
     prefix = 'azureservicebus'

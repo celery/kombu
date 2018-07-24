@@ -5,8 +5,7 @@ from t.integration import transport
 from case import skip
 
 
-@skip.unless_environ('AZURE_STORAGE_ACCOUNT')
-@skip.unless_environ('AZURE_STORAGE_ACCESS_KEY')
+@skip.unless_module('azure.storage.queue')
 class test_azurestoragequeues(transport.TransportCase):
     transport = 'azurestoragequeues'
     prefix = 'azurestoragequeues'

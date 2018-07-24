@@ -19,7 +19,6 @@ https://azure.microsoft.com/en-us/services/service-bus/
 """
 from __future__ import absolute_import, unicode_literals
 
-from os import getenv
 import string
 
 from kombu.five import Empty, text_t
@@ -118,12 +117,9 @@ class Channel(virtual.Channel):
     def sbq(self):
         if self._sbq is None:
             self._sbq = ServiceBusService(
-                service_namespace=getenv('AZURE_SERVICEBUS_ACCOUNT',
-                                         self.conninfo.hostname),
-                shared_access_key_name=getenv('AZURE_SERVICEBUS_KEY_NAME',
-                                              self.conninfo.userid),
-                shared_access_key_value=getenv('AZURE_SERVICEBUS_KEY_VALUE',
-                                               self.conninfo.password))
+                service_namespace=self.conninfo.hostname,
+                shared_access_key_name=self.conninfo.userid,
+                shared_access_key_value=self.conninfo.password)
 
         return self._sbq
 

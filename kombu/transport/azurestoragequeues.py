@@ -15,7 +15,6 @@ https://azure.microsoft.com/en-us/services/storage/queues/
 """
 from __future__ import absolute_import, unicode_literals
 
-from os import getenv
 import string
 
 from kombu.five import Empty, text_t
@@ -123,10 +122,8 @@ class Channel(virtual.Channel):
     def azq(self):
         if self._azq is None:
             self._azq = QueueService(
-                account_name=getenv('AZURE_STORAGE_ACCOUNT',
-                                    self.conninfo.hostname),
-                account_key=getenv('AZURE_STORAGE_ACCESS_KEY',
-                                   self.conninfo.password))
+                account_name=self.conninfo.hostname,
+                account_key=self.conninfo.password)
 
         return self._azq
 
