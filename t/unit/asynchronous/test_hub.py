@@ -239,6 +239,14 @@ class test_Hub:
         self.hub.close()
         poller.close.assert_called_with()
 
+    def test_poller_regeneration_on_access(self):
+        self.hub = Hub()
+        assert self.hub.poller
+        self.hub.stop()
+        self.hub.close()
+        assert self.hub._poller is None
+        assert self.hub.poller, 'It should be regenerated automatically!'
+
     def test_fire_timers(self):
         self.hub.timer = Mock()
         self.hub.timer._queue = []
