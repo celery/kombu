@@ -43,9 +43,9 @@
 
     .. autodata:: registry
 
-.. _`cjson`: https://pypi.python.org/pypi/python-cjson/
+.. _`cjson`: https://pypi.org/project/python-cjson/
 .. _`simplejson`: https://github.com/simplejson/simplejson
 .. _`Python 2.7+`: https://docs.python.org/library/json.html
 .. _`PyYAML`: https://pyyaml.org/
 .. _`msgpack`: https://msgpack.org/
-.. _`msgpack-python`: https://pypi.python.org/pypi/msgpack-python/
+.. _`msgpack-python`: https://pypi.org/project/msgpack-python/

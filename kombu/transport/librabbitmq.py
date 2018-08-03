@@ -1,6 +1,6 @@
 """`librabbitmq`_ transport.
 
-.. _`librabbitmq`: https://pypi.python.org/librabbitmq/
+.. _`librabbitmq`: https://pypi.org/project/librabbitmq/
 """
 from __future__ import absolute_import, unicode_literals
 
@@ -146,7 +146,7 @@ class Transport(base.Transport):
                 channel.connection = None
             try:
                 os.close(connection.fileno())
-            except OSError:
+            except (OSError, ValueError):
                 pass
             connection.channels.clear()
             connection.callbacks.clear()

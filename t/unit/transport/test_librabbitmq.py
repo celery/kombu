@@ -125,6 +125,18 @@ class test_Transport(lrmqCase):
             self.T._collect(conn)
             close.assert_called_with(conn.fileno())
 
+    def test_collect__with_fileno_raising_value_error(self):
+        conn = Mock(name='connection')
+        conn.channels = {1: Mock(name='chan1'), 2: Mock(name='chan2')}
+        with patch('os.close') as close:
+            self.T.client = self.client
+            conn.fileno.side_effect = ValueError("Socket not connected")
+            self.T._collect(conn)
+            close.assert_not_called()
+        conn.fileno.assert_called_with()
+        assert self.client.drain_events is None
+        assert self.T.client is None
+
     def test_register_with_event_loop(self):
         conn = Mock(name='conn')
         loop = Mock(name='loop')

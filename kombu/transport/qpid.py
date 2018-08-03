@@ -24,8 +24,8 @@ or to install the requirements manually:
     tested and works with with Python 2.7.
 
 .. _`Qpid`: https://qpid.apache.org/
-.. _`qpid-python`: https://pypi.python.org/pypi/qpid-python/
-.. _`qpid-tools`: https://pypi.python.org/pypi/qpid-tools/
+.. _`qpid-python`: https://pypi.org/project/qpid-python/
+.. _`qpid-tools`: https://pypi.org/project/qpid-tools/
 
 Authentication
 ==============
@@ -116,7 +116,7 @@ except ImportError:  # pragma: no cover
     qpid = None
 
 
-from kombu.five import Empty, items, monotonic
+from kombu.five import Empty, items, monotonic, PY3
 from kombu.log import get_logger
 from kombu.transport.virtual import Base64, Message
 from kombu.transport import base
@@ -129,8 +129,6 @@ OBJECT_ALREADY_EXISTS_STRING = 'object already exists'
 
 VERSION = (1, 0, 0)
 __version__ = '.'.join(map(str, VERSION))
-
-PY3 = sys.version_info[0] == 3
 
 
 def dependency_is_none(dependency):

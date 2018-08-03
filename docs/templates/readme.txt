@@ -23,13 +23,13 @@
 
 .. |wheel| image:: https://img.shields.io/pypi/wheel/kombu.svg
     :alt: Kombu can be installed via wheel
-    :target: http://pypi.python.org/pypi/kombu/
+    :target: https://pypi.org/project/kombu/
 
 .. |pyversion| image:: https://img.shields.io/pypi/pyversions/kombu.svg
     :alt: Supported Python versions.
-    :target: http://pypi.python.org/pypi/kombu/
+    :target: https://pypi.org/project/kombu/
 
 .. |pyimp| image:: https://img.shields.io/pypi/implementation/kombu.svg
     :alt: Support Python implementations.
-    :target: http://pypi.python.org/pypi/kombu/
+    :target: https://pypi.org/project/kombu/
 --

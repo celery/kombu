@@ -31,6 +31,7 @@ def add_default(m):
 def add_doc(m):
     return (('doc', m.groups()[0]),)
 
+
 pats = {re_meta: add_default, re_doc: add_doc}
 here = os.path.abspath(os.path.dirname(__file__))
 meta_fh = open(os.path.join(here, 'kombu/__init__.py'))
@@ -47,12 +48,6 @@ finally:
     meta_fh.close()
 # --
 
-data_files = []
-root_dir = os.path.dirname(__file__)
-if root_dir != '':
-    os.chdir(root_dir)
-src_dir = 'kombu'
-
 
 def fullsplit(path, result=None):
     if result is None:
@@ -68,21 +63,10 @@ def fullsplit(path, result=None):
 for scheme in list(INSTALL_SCHEMES.values()):
     scheme['data'] = scheme['purelib']
 
-for dirpath, dirnames, filenames in os.walk(src_dir):
-    # Ignore dirnames that start with '.'
-    for i, dirname in enumerate(dirnames):
-        if dirname.startswith('.'):
-            del dirnames[i]
-    for filename in filenames:
-        if not filename.endswith('.py'):
-            data_files.append(
-                [dirpath, [os.path.join(dirpath, f) for f in filenames]],
-            )
-
 if os.path.exists('README.rst'):
     long_description = codecs.open('README.rst', 'r', 'utf-8').read()
 else:
-    long_description = 'See https://pypi.python.org/pypi/kombu'
+    long_description = 'See https://pypi.org/project/kombu/'
 
 # -*- Installation Requires -*-
 py_version = sys.version_info
@@ -117,6 +101,7 @@ class pytest(setuptools.command.test.test):
         import pytest
         sys.exit(pytest.main(self.pytest_args))
 
+
 setup(
     name='kombu',
     packages=setuptools.find_packages(exclude=['t', 't.*']),
@@ -128,7 +113,6 @@ setup(
     author_email=meta['contact'],
     url=meta['homepage'],
     platforms=['any'],
-    data_files=data_files,
     zip_safe=False,
     license='BSD',
     cmdclass={'test': pytest},
@@ -158,6 +142,7 @@ setup(
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: Implementation :: CPython',

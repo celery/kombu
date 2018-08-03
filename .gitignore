@@ -27,6 +27,7 @@ kombu/tests/coverage.xml
 dump.rdb
 .idea/
 .cache/
+.pytest_cache/
 htmlcov/
 test.db
 coverage.xml
