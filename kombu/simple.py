@@ -127,7 +127,7 @@ class SimpleQueue(SimpleBase):
             no_ack = self.no_ack
         if not isinstance(queue, entity.Queue):
             exchange = entity.Exchange(name, **exchange_opts)
-            queue = entity.Queue(name, exchange, name, 
+            queue = entity.Queue(name, exchange, name,
                                  queue_arguments=queue_args,
                                  **queue_opts)
             routing_key = name
