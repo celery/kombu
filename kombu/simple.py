@@ -129,7 +129,7 @@ class SimpleQueue(SimpleBase):
             exchange = entity.Exchange(name, **exchange_opts)
             queue = entity.Queue(name, exchange, name, 
                                  queue_arguments=queue_args,
-                                **queue_opts)
+                                 **queue_opts)
             routing_key = name
         else:
             exchange = queue.exchange
