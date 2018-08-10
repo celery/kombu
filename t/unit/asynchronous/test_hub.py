@@ -176,7 +176,7 @@ class test_Hub:
         poller = self.hub.poller = Mock(name='poller')
         self.hub._close_poller()
         poller.close.assert_called_with()
-        assert self.hub.poller is None
+        assert self.hub._poller is None
 
     def test_stop(self):
         self.hub.call_soon = Mock(name='call_soon')
@@ -238,6 +238,14 @@ class test_Hub:
         self.hub.stop()
         self.hub.close()
         poller.close.assert_called_with()
+
+    def test_poller_regeneration_on_access(self):
+        self.hub = Hub()
+        assert self.hub.poller
+        self.hub.stop()
+        self.hub.close()
+        assert self.hub._poller is None
+        assert self.hub.poller, 'It should be regenerated automatically!'
 
     def test_fire_timers(self):
         self.hub.timer = Mock()

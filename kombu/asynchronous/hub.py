@@ -99,19 +99,29 @@ class Hub(object):
 
         self._create_poller()
 
+    @property
+    def poller(self):
+        if not self._poller:
+            self._create_poller()
+        return self._poller
+
+    @poller.setter
+    def poller(self, value):
+        self._poller = value
+
     def reset(self):
         self.close()
         self._create_poller()
 
     def _create_poller(self):
-        self.poller = poll()
-        self._register_fd = self.poller.register
-        self._unregister_fd = self.poller.unregister
+        self._poller = poll()
+        self._register_fd = self._poller.register
+        self._unregister_fd = self._poller.unregister
 
     def _close_poller(self):
-        if self.poller is not None:
-            self.poller.close()
-            self.poller = None
+        if self._poller is not None:
+            self._poller.close()
+            self._poller = None
             self._register_fd = None
             self._unregister_fd = None
 
