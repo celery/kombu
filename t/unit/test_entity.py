@@ -214,6 +214,20 @@ class test_Queue:
     def setup(self):
         self.exchange = Exchange('foo', 'direct')
 
+    def test_constructor_with_actual_exchange(self):
+        exchange = Exchange('exchange_name', 'direct')
+        queue = Queue(name='queue_name', exchange=exchange)
+        assert queue.exchange == exchange
+
+    def test_constructor_with_string_exchange(self):
+        exchange_name = str('exchange_name')
+        queue = Queue(name='queue_name', exchange=exchange_name)
+        assert queue.exchange == Exchange(exchange_name)
+
+    def test_constructor_with_default_exchange(self):
+        queue = Queue(name='queue_name')
+        assert queue.exchange == Exchange('')
+
     def test_hash(self):
         assert hash(Queue('a')) == hash(Queue('a'))
         assert hash(Queue('a')) != hash(Queue('b'))

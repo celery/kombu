@@ -568,7 +568,10 @@ class Queue(MaybeChannelBound):
                  **kwargs):
         super(Queue, self).__init__(**kwargs)
         self.name = name or self.name
-        self.exchange = exchange or self.exchange
+        if isinstance(exchange, str):
+            self.exchange = Exchange(exchange)
+        elif isinstance(exchange, Exchange):
+            self.exchange = exchange
         self.routing_key = routing_key or self.routing_key
         self.bindings = set(bindings or [])
         self.on_declared = on_declared
