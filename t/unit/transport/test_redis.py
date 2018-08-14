@@ -1043,10 +1043,9 @@ class test_MultiChannelPoller:
                 qos = redis.QoS(chan1)
                 qos.visibility_timeout = timeout
                 qos.restore_visible()
-                redis_client_mock.zrevrangebyscore.assert_called_with(chan1.unacked_index_key,
-                                                                      timeout,
-                                                                      0, start=0, num=10,
-                                                                      withscores=True)
+                redis_client_mock.zrevrangebyscore\
+                    .assert_called_with(chan1.unacked_index_key, timeout, 0,
+                                        start=0,num=10, withscores=True)
 
     def test_handle_event(self):
         p = self.Poller()
