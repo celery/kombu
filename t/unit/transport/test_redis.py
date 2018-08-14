@@ -1,7 +1,5 @@
 from __future__ import absolute_import, unicode_literals
 
-import sys
-
 import pytest
 import socket
 import types
@@ -1045,7 +1043,7 @@ class test_MultiChannelPoller:
                 qos.restore_visible()
                 redis_client_mock.zrevrangebyscore\
                     .assert_called_with(chan1.unacked_index_key, timeout, 0,
-                                        start=0,num=10, withscores=True)
+                                        start=0, num=10, withscores=True)
 
     def test_handle_event(self):
         p = self.Poller()
