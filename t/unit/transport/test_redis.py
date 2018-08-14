@@ -1028,7 +1028,7 @@ class test_MultiChannelPoller:
             num=chan1.unacked_restore_limit,
         )
 
-    def test_on_poll_init_with_gevent(self):
+    def test_visibility_timeout_with_gevent(self):
         with patch('kombu.transport.redis.time') as time:
             with patch('kombu.transport.redis._detect_environment') as env:
                 timeout = 3600
