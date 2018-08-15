@@ -80,11 +80,11 @@ class test_Broadcast:
         assert q.exchange.type == 'fanout'
 
         q = Broadcast('test_Broadcast', 'explicit_queue_name')
-        assert q.name == 'explicit_queue_name'
+        assert q.name.startswith('explicit_queue_name.')
         assert q.exchange.name == 'test_Broadcast'
 
         q2 = q(Mock())
-        assert q2.name == q.name
+        assert q2.name.split('.')[0] == q.name.split('.')[0]
 
 
 class test_maybe_declare:
