@@ -713,6 +713,7 @@ class Connection(object):
         return Consumer(channel or self, queues, *args, **kwargs)
 
     def SimpleQueue(self, name, no_ack=None, queue_opts=None,
+                    queue_args=None,
                     exchange_opts=None, channel=None, **kwargs):
         """Simple persistent queue API.
 
@@ -728,6 +729,9 @@ class Connection(object):
             no_ack (bool): Disable acknowledgments. Default is false.
             queue_opts (Dict): Additional keyword arguments passed to the
                 constructor of the automatically created :class:`~kombu.Queue`.
+            queue_args (Dict): Additional keyword arguments passed to the
+                constructor of the automatically created :class:`~kombu.Queue`
+                for setting implementation extensions (e.g., in RabbitMQ).
             exchange_opts (Dict): Additional keyword arguments passed to the
                 constructor of the automatically created
                 :class:`~kombu.Exchange`.
@@ -736,6 +740,7 @@ class Connection(object):
         """
         from .simple import SimpleQueue
         return SimpleQueue(channel or self, name, no_ack, queue_opts,
+                           queue_args,
                            exchange_opts, **kwargs)
 
     def SimpleBuffer(self, name, no_ack=None, queue_opts=None,
