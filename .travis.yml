@@ -20,6 +20,11 @@ matrix:
       env: TOXENV=3.5
     - python: 3.6
       env: TOXENV=3.6
+    - python: 3.7
+      env: TOXENV=3.7
+      sudo: true
+      dist: xenial
+      before_install: sudo apt-get update && sudo apt-get install libgnutls-dev
     - python: pypy
       env: TOXENV=pypy
     - env: TOXENV=flake8

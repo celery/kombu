@@ -4,4 +4,7 @@ redis
 PyYAML
 msgpack-python>0.2.0
 -r extras/sqs.txt
+-r extras/consul.txt
+-r extras/librabbitmq.txt
+-r extras/zookeeper.txt
 sqlalchemy
