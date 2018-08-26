@@ -819,6 +819,15 @@ class test_Channel:
                     redis.redis.SSLConnection,
                 )
 
+    def test_rediss_connection(self):
+        with patch('kombu.transport.redis.Channel._create_client'):
+            with Connection('rediss://') as conn:
+                connparams = conn.default_channel._connparams()
+                assert issubclass(
+                    connparams['connection_class'],
+                    redis.redis.SSLConnection,
+                )
+
 
 @skip.unless_module('redis')
 class test_Redis:
