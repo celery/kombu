@@ -24,6 +24,7 @@ TRANSPORT_ALIASES = {
     'librabbitmq': 'kombu.transport.librabbitmq:Transport',
     'memory': 'kombu.transport.memory:Transport',
     'redis': 'kombu.transport.redis:Transport',
+    'rediss': 'kombu.transport.redis:Transport',
     'SQS': 'kombu.transport.SQS:Transport',
     'sqs': 'kombu.transport.SQS:Transport',
     'mongodb': 'kombu.transport.mongodb:Transport',

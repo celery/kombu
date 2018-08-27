@@ -10,6 +10,14 @@ from contextlib import contextmanager
 from itertools import count, cycle
 from operator import itemgetter
 
+
+try:
+    from ssl import CERT_NONE
+    ssl_available = True
+except ImportError:  # pragma: no cover
+    CERT_NONE = None
+    ssl_available = False
+
 # jython breaks on relative import for .exceptions for some reason
 # (Issue #112)
 from kombu import exceptions
@@ -234,6 +242,10 @@ class Connection(object):
         transport = transport or 'amqp'
         if transport == 'amqp' and supports_librabbitmq():
             transport = 'librabbitmq'
+        if transport == 'rediss' and ssl_available and not ssl:
+            logger.warn('Secure redis scheme specified (rediss) with no ssl '
+                        'options, defaulting to insecure SSL behaviour.')
+            ssl = {'ssl_cert_reqs': CERT_NONE}
         self.hostname = hostname
         self.userid = userid
         self.password = password
