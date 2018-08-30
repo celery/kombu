@@ -828,6 +828,17 @@ class test_Channel:
                     redis.redis.SSLConnection,
                 )
 
+    def test_global_key_prefix(self):
+        conn = Connection(transport=Transport, transport_options={
+            'global_key_prefix': 'foo',
+        })
+        chan = conn.channel()
+        c = chan._create_client = Mock()
+
+        body = {'hello': 'world'}
+        chan._put_fanout('exchange', body, '')
+        c().publish.assert_called_with('foo/{db}.exchange', dumps(body))
+
 
 @skip.unless_module('redis')
 class test_Redis:
