@@ -426,6 +426,11 @@ class Channel(virtual.Channel):
     #: Disable for backwards compatibility with Kombu 3.x.
     fanout_patterns = True
 
+    #: The global key prefix will be prepended to all keys used
+    #: by Kombu, which can be useful when a redis database is shared
+    #: by different users. By default, no prefix is prepended.
+    global_key_prefix = ''
+
     #: Order in which we consume from queues.
     #:
     #: Can be either string alias, or a cycle strategy class
@@ -466,6 +471,7 @@ class Channel(virtual.Channel):
          'unacked_restore_limit',
          'fanout_prefix',
          'fanout_patterns',
+         'global_key_prefix',
          'socket_timeout',
          'socket_connect_timeout',
          'socket_keepalive',
@@ -499,6 +505,10 @@ class Channel(virtual.Channel):
             # previous versions did not set a fanout, so cannot enable
             # by default.
             self.keyprefix_fanout = ''
+
+        # Prepend the global key prefix to the two key prefixes in use
+        self.keyprefix_fanout = self.global_key_prefix + self.keyprefix_fanout
+        self.keyprefix_queue = self.global_key_prefix + self.keyprefix_queue
 
         # Evaluate connection.
         try:
