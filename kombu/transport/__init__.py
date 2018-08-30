@@ -38,6 +38,8 @@ TRANSPORT_ALIASES = {
     'sentinel': 'kombu.transport.redis:SentinelTransport',
     'consul': 'kombu.transport.consul:Transport',
     'etcd': 'kombu.transport.etcd:Transport',
+    'azurestoragequeues': 'kombu.transport.azurestoragequeues:Transport',
+    'azureservicebus': 'kombu.transport.azureservicebus:Transport'
 }
 
 _transport_cache = {}
