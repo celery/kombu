@@ -926,6 +926,29 @@ class test_Channel:
                 ('celery', '', 'celery'),
             ]
 
+    def test_global_keyprefix(self):
+        with Connection(transport=Transport, transport_options={
+            'global_keyprefix': 'foo',
+        }) as conn:
+            channel = conn.channel()
+            c = channel._create_client = Mock()
+
+            body = {'hello': 'world'}
+            channel._put_fanout('exchange', body, '')
+            c().publish.assert_called_with('foo/{db}.exchange', dumps(body))
+
+    def test_global_keyprefix_queue_bind(self):
+        with Connection(transport=Transport, transport_options={
+            'global_keyprefix': 'foo',
+        }) as conn:
+            channel = conn.channel()
+            c = channel._create_client = Mock()
+            channel._queue_bind('default', '', None, 'queue')
+            c().sadd.assert_called_with(
+                'foo_kombu.binding.default',
+                '\x06\x16\x06\x16fooqueue'
+            )
+
 
 class test_Redis:
 

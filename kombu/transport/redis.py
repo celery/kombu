@@ -38,6 +38,7 @@ Transport Options
 * ``unacked_restore_limit``
 * ``fanout_prefix``
 * ``fanout_patterns``
+* ``global_keyprefix``: (str) The global key prefix to be prepended to all keys used by Kombu
 * ``socket_timeout``
 * ``socket_connect_timeout``
 * ``socket_keepalive``
@@ -485,6 +486,11 @@ class Channel(virtual.Channel):
     #: Disable for backwards compatibility with Kombu 3.x.
     fanout_patterns = True
 
+    #: The global key prefix will be prepended to all keys used
+    #: by Kombu, which can be useful when a redis database is shared
+    #: by different users. By default, no prefix is prepended.
+    global_keyprefix = ''
+
     #: Order in which we consume from queues.
     #:
     #: Can be either string alias, or a cycle strategy class
@@ -526,6 +532,7 @@ class Channel(virtual.Channel):
          'unacked_restore_limit',
          'fanout_prefix',
          'fanout_patterns',
+         'global_keyprefix',
          'socket_timeout',
          'socket_connect_timeout',
          'socket_keepalive',
@@ -562,6 +569,23 @@ class Channel(virtual.Channel):
             # by default.
             self.keyprefix_fanout = ''
 
+        # Prepend the global key prefix
+        self.unacked_key = self._queue_with_prefix(self.unacked_key)
+        self.unacked_index_key = self._queue_with_prefix(
+            self.unacked_index_key
+        )
+        self.unacked_mutex_key = self._queue_with_prefix(
+            self.unacked_mutex_key
+        )
+
+        # The default `keyprefix_queue` starts with an underscore, therefore
+        # adding a prefix ending an undescore will result in double
+        # underscores. Since both `keyprefix_queue` and `global_keyprefix`
+        # can be set by the user, this behavior is better than manipulating
+        # `keyprefix_queue` here.
+        self.keyprefix_queue = self._queue_with_prefix(self.keyprefix_queue)
+        self.keyprefix_fanout = self._queue_with_prefix(self.keyprefix_fanout)
+
         # Evaluate connection.
         try:
             self.client.ping()
@@ -576,6 +600,10 @@ class Channel(virtual.Channel):
 
         if register_after_fork is not None:
             register_after_fork(self, _after_fork_cleanup_channel)
+
+    def _queue_with_prefix(self, queue):
+        """Return the queue name prefixed with `global_keyprefix` if set."""
+        return self.global_keyprefix + queue
 
     def _after_fork(self):
         self._disconnect_pools()
@@ -632,6 +660,7 @@ class Channel(virtual.Channel):
         return self._restore(message, leftmost=True)
 
     def basic_consume(self, queue, *args, **kwargs):
+        queue = self._queue_with_prefix(queue)
         if queue in self._fanout_queues:
             exchange, _ = self._fanout_queues[queue]
             self.active_fanout_queues.add(queue)
@@ -846,6 +875,7 @@ class Channel(virtual.Channel):
             self.auto_delete_queues.add(queue)
 
     def _queue_bind(self, exchange, routing_key, pattern, queue):
+        queue = self._queue_with_prefix(queue)
         if self.typeof(exchange).type == 'fanout':
             # Mark exchange as fanout.
             self._fanout_queues[queue] = (
