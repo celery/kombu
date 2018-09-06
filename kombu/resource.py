@@ -188,9 +188,16 @@ class Resource(object):
             self._shrink_down(collect=limit > 0)
 
     def _shrink_down(self, collect=True):
+        class Noop:
+            def __enter__(self):
+                pass
+
+            def __exit__(self, type, value, traceback):
+                pass
+
         resource = self._resource
         # Items to the left are last recently used, so we remove those first.
-        with resource.mutex:
+        with getattr(resource, 'mutex', Noop()):
             while len(resource.queue) > self.limit:
                 R = resource.queue.popleft()
                 if collect:
