@@ -1440,8 +1440,8 @@ class Transport(base.Transport):
         """Verify that the runtime environment is acceptable.
 
         This method is called as part of __init__ and raises a RuntimeError
-        in Python3 or PyPi environments. This module is not compatible with
-        Python3 or PyPi. The RuntimeError identifies this to the user up
+        in Python3 or PyPI environments. This module is not compatible with
+        Python3 or PyPI. The RuntimeError identifies this to the user up
         front along with suggesting Python 2.6+ be used instead.
 
         This method also checks that the dependencies qpidtoollibs and
