@@ -508,30 +508,27 @@ class test_Hub:
         assert list(hub.scheduler), [1, 2 == 3]
 
     def test_loop__tick_callbacks(self):
-        self.hub._ready = Mock(name='_ready')
-        self.hub._ready.__len__ = Mock(name="_ready.__len__")
-        self.hub._ready.__len__.side_effect = RuntimeError()
         ticks = [Mock(name='cb1'), Mock(name='cb2')]
         self.hub.on_tick = list(ticks)
 
-        with pytest.raises(RuntimeError):
-            next(self.hub.loop)
+        next(self.hub.loop)
 
         ticks[0].assert_called_once_with()
         ticks[1].assert_called_once_with()
 
     def test_loop__todo(self):
-        self.hub.fire_timers = Mock(name='fire_timers')
-        self.hub.fire_timers.side_effect = RuntimeError()
-        self.hub.timer = Mock(name='timer')
+        deferred = Mock(name='cb_deferred')
 
-        callbacks = [Mock(name='cb1'), Mock(name='cb2')]
+        def defer():
+            self.hub.call_soon(deferred)
+
+        callbacks = [Mock(name='cb1', wraps=defer), Mock(name='cb2')]
         for cb in callbacks:
             self.hub.call_soon(cb)
         self.hub._ready.add(None)
 
-        with pytest.raises(RuntimeError):
-            next(self.hub.loop)
+        next(self.hub.loop)
 
         callbacks[0].assert_called_once_with()
         callbacks[1].assert_called_once_with()
+        deferred.assert_not_called()

@@ -3,7 +3,6 @@
 from __future__ import absolute_import, unicode_literals
 
 import errno
-import itertools
 from contextlib import contextmanager
 from time import sleep
 from types import GeneratorType as generator  # noqa
@@ -279,24 +278,15 @@ class Hub(object):
         consolidate_callback = self.consolidate_callback
         on_tick = self.on_tick
         propagate = self.propagate_errors
-        todo = self._ready
 
         while 1:
+            todo = self._ready
+            self._ready = set()
+
             for tick_callback in on_tick:
                 tick_callback()
 
-            # To avoid infinite loop where one of the callables adds items
-            # to self._ready (via call_soon or otherwise), we take pop only
-            # N items from the ready set.
-            # N represents the current number of items on the set.
-            # That way if a todo adds another one to the ready set,
-            # we will break early and allow execution of readers and writers.
-            current_todos = len(todo)
-            for _ in itertools.repeat(None, current_todos):
-                if not todo:
-                    break
-
-                item = todo.pop()
+            for item in todo:
                 if item:
                     item()
 
