@@ -261,7 +261,7 @@ class Mailbox(object):
                     reply, exchange=exchange, routing_key=routing_key,
                     declare=[exchange], headers={
                         'ticket': ticket, 'clock': self.clock.forward(),
-                    },
+                    }, retry=True,
                     **opts
                 )
             except InconsistencyError:
@@ -287,7 +287,7 @@ class Mailbox(object):
                 message, exchange=exchange.name, declare=[exchange],
                 headers={'clock': self.clock.forward(),
                          'expires': time() + timeout if timeout else 0},
-                serializer=serializer,
+                serializer=serializer, retry=True,
             )
 
     def _broadcast(self, command, arguments=None, destination=None,
