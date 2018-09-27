@@ -267,5 +267,5 @@ class Transport(virtual.Transport):
                 if x.startswith('python-etcd'):
                     return x.split('==')[1]
         except (ImportError, IndexError):
-            logger.warn('Unable to find the python-etcd version.')
+            logger.warning('Unable to find the python-etcd version.')
             return 'Unknown'

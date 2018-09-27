@@ -243,8 +243,10 @@ class Connection(object):
         if transport == 'amqp' and supports_librabbitmq():
             transport = 'librabbitmq'
         if transport == 'rediss' and ssl_available and not ssl:
-            logger.warn('Secure redis scheme specified (rediss) with no ssl '
-                        'options, defaulting to insecure SSL behaviour.')
+            logger.warning(
+                'Secure redis scheme specified (rediss) with no ssl '
+                'options, defaulting to insecure SSL behaviour.'
+            )
             ssl = {'ssl_cert_reqs': CERT_NONE}
         self.hostname = hostname
         self.userid = userid
