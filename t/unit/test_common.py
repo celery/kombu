@@ -337,7 +337,7 @@ class test_QoS:
             # cannot use 2 ** 32 because of a bug on macOS Py2.5:
             # https://jira.mongodb.org/browse/PYTHON-389
             qos.set(4294967296)
-            logger.warn.assert_called()
+            logger.warning.assert_called()
             callback.assert_called_with(prefetch_count=0)
 
     def test_qos_increment_decrement(self):
