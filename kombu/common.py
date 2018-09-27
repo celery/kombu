@@ -403,8 +403,8 @@ class QoS(object):
         if pcount != self.prev:
             new_value = pcount
             if pcount > PREFETCH_COUNT_MAX:
-                logger.warn('QoS: Disabled: prefetch_count exceeds %r',
-                            PREFETCH_COUNT_MAX)
+                logger.warning('QoS: Disabled: prefetch_count exceeds %r',
+                               PREFETCH_COUNT_MAX)
                 new_value = 0
             logger.debug('basic.qos: prefetch_count->%s', new_value)
             self.callback(prefetch_count=new_value)
