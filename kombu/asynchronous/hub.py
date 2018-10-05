@@ -245,6 +245,8 @@ class Hub(object):
             pass
 
     def close(self, *args):
+        for item in filter(None, self._ready):
+            item()
         [self._unregister(fd) for fd in self.readers]
         self.readers.clear()
         [self._unregister(fd) for fd in self.writers]
