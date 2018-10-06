@@ -209,7 +209,14 @@ class Channel(virtual.Channel):
                     message['properties']['MessageDeduplicationId']
             else:
                 kwargs['MessageDeduplicationId'] = str(uuid.uuid4())
-        self.sqs.send_message(**kwargs)
+        if message.get('redelivered'):
+            self.sqs.change_message_visibility(
+                QueueUrl=q_url,
+                ReceiptHandle=message['properties']['delivery_tag'],
+                VisibilityTimeout=0
+            )
+        else:
+            self.sqs.send_message(**kwargs)
 
     def _message_to_python(self, message, queue_name, queue):
         body = base64.b64decode(message['Body'].encode())
