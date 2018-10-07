@@ -845,10 +845,9 @@ class test_Channel:
         })
         chan = conn.channel()
         c = chan._create_client = Mock()
-        message = {'hello':'world'}
+        message = {'hello': 'world'}
         chan._put('queue', message)
         c().lpush.assert_called_with('fooqueue', dumps(message))
-
 
 
 @skip.unless_module('redis')
