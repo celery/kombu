@@ -236,6 +236,7 @@ class test_Hub:
 
         poller = self.hub.poller
         self.hub.stop()
+        self.hub._ready = set()
         self.hub.close()
         poller.close.assert_called_with()
 
