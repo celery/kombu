@@ -384,8 +384,8 @@ class Channel(virtual.Channel):
         except KeyError:
             pass
         else:
-            self.asynsqs.delete_message(message['sqs_queue'],
-                                        sqs_message['ReceiptHandle'])
+            self.sqs.delete_message(QueueUrl=message['sqs_queue'],
+                                    ReceiptHandle=sqs_message['ReceiptHandle'])
         super(Channel, self).basic_ack(delivery_tag)
 
     def _size(self, queue):
