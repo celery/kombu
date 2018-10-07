@@ -254,7 +254,7 @@ class Hub(object):
         for callback in self.on_close:
             callback(self)
 
-        # Complete remaining todo befor Hub close
+        # Complete remaining todo before Hub close
         # Eg: Acknowledge message
         # To avoid infinite loop where one of the callables adds items
         # to self._ready (via call_soon or otherwise), we take pop only
