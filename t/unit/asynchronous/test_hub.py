@@ -244,6 +244,7 @@ class test_Hub:
         self.hub = Hub()
         assert self.hub.poller
         self.hub.stop()
+        self.hub._ready = set()
         self.hub.close()
         assert self.hub._poller is None
         assert self.hub.poller, 'It should be regenerated automatically!'
