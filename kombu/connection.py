@@ -10,6 +10,14 @@ from contextlib import contextmanager
 from itertools import count, cycle
 from operator import itemgetter
 
+
+try:
+    from ssl import CERT_NONE
+    ssl_available = True
+except ImportError:  # pragma: no cover
+    CERT_NONE = None
+    ssl_available = False
+
 # jython breaks on relative import for .exceptions for some reason
 # (Issue #112)
 from kombu import exceptions
@@ -234,6 +242,12 @@ class Connection(object):
         transport = transport or 'amqp'
         if transport == 'amqp' and supports_librabbitmq():
             transport = 'librabbitmq'
+        if transport == 'rediss' and ssl_available and not ssl:
+            logger.warning(
+                'Secure redis scheme specified (rediss) with no ssl '
+                'options, defaulting to insecure SSL behaviour.'
+            )
+            ssl = {'ssl_cert_reqs': CERT_NONE}
         self.hostname = hostname
         self.userid = userid
         self.password = password
@@ -360,7 +374,8 @@ class Connection(object):
 
     def ensure_connection(self, errback=None, max_retries=None,
                           interval_start=2, interval_step=2, interval_max=30,
-                          callback=None, reraise_as_library_errors=True):
+                          callback=None, reraise_as_library_errors=True,
+                          timeout=None):
         """Ensure we have a connection to the server.
 
         If not retry establishing the connection with the settings
@@ -384,6 +399,8 @@ class Connection(object):
                 each retry.
             callback (Callable): Optional callback that is called for every
                 internal iteration (1 s).
+            timeout (int): Maximum amount of time in seconds to spend
+                waiting for connection
         """
         def on_error(exc, intervals, retries, interval=0):
             round = self.completes_cycle(retries)
@@ -402,7 +419,7 @@ class Connection(object):
             retry_over_time(self.connect, self.recoverable_connection_errors,
                             (), {}, on_error, max_retries,
                             interval_start, interval_step, interval_max,
-                            callback)
+                            callback, timeout=timeout)
         return self
 
     @contextmanager
@@ -710,6 +727,7 @@ class Connection(object):
         return Consumer(channel or self, queues, *args, **kwargs)
 
     def SimpleQueue(self, name, no_ack=None, queue_opts=None,
+                    queue_args=None,
                     exchange_opts=None, channel=None, **kwargs):
         """Simple persistent queue API.
 
@@ -725,6 +743,9 @@ class Connection(object):
             no_ack (bool): Disable acknowledgments. Default is false.
             queue_opts (Dict): Additional keyword arguments passed to the
                 constructor of the automatically created :class:`~kombu.Queue`.
+            queue_args (Dict): Additional keyword arguments passed to the
+                constructor of the automatically created :class:`~kombu.Queue`
+                for setting implementation extensions (e.g., in RabbitMQ).
             exchange_opts (Dict): Additional keyword arguments passed to the
                 constructor of the automatically created
                 :class:`~kombu.Exchange`.
@@ -733,6 +754,7 @@ class Connection(object):
         """
         from .simple import SimpleQueue
         return SimpleQueue(channel or self, name, no_ack, queue_opts,
+                           queue_args,
                            exchange_opts, **kwargs)
 
     def SimpleBuffer(self, name, no_ack=None, queue_opts=None,

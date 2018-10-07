@@ -80,11 +80,11 @@ class test_Broadcast:
         assert q.exchange.type == 'fanout'
 
         q = Broadcast('test_Broadcast', 'explicit_queue_name')
-        assert q.name == 'explicit_queue_name'
+        assert q.name.startswith('explicit_queue_name.')
         assert q.exchange.name == 'test_Broadcast'
 
         q2 = q(Mock())
-        assert q2.name == q.name
+        assert q2.name.split('.')[0] == q.name.split('.')[0]
 
 
 class test_maybe_declare:
@@ -337,7 +337,7 @@ class test_QoS:
             # cannot use 2 ** 32 because of a bug on macOS Py2.5:
             # https://jira.mongodb.org/browse/PYTHON-389
             qos.set(4294967296)
-            logger.warn.assert_called()
+            logger.warning.assert_called()
             callback.assert_called_with(prefetch_count=0)
 
     def test_qos_increment_decrement(self):

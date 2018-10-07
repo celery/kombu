@@ -87,7 +87,7 @@ class Broadcast(Queue):
 
     def __init__(self, name=None, queue=None, auto_delete=True,
                  exchange=None, alias=None, **kwargs):
-        queue = queue or 'bcast.{0}'.format(uuid())
+        queue = '{0}.{1}'.format(queue or 'bcast', uuid())
         return super(Broadcast, self).__init__(
             alias=alias or name,
             queue=queue,
@@ -403,8 +403,8 @@ class QoS(object):
         if pcount != self.prev:
             new_value = pcount
             if pcount > PREFETCH_COUNT_MAX:
-                logger.warn('QoS: Disabled: prefetch_count exceeds %r',
-                            PREFETCH_COUNT_MAX)
+                logger.warning('QoS: Disabled: prefetch_count exceeds %r',
+                               PREFETCH_COUNT_MAX)
                 new_value = 0
             logger.debug('basic.qos: prefetch_count->%s', new_value)
             self.callback(prefetch_count=new_value)

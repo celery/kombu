@@ -159,6 +159,20 @@ class test_Connection:
         assert connection._transport is None
         assert connection._connection is None
 
+    def test_prefer_librabbitmq_over_amqp_when_available(self):
+        with patch('kombu.connection.supports_librabbitmq',
+                   return_value=True):
+            connection = Connection('amqp://')
+
+        assert connection.transport_cls == 'librabbitmq'
+
+    def test_select_amqp_when_librabbitmq_is_not_available(self):
+        with patch('kombu.connection.supports_librabbitmq',
+                   return_value=False):
+            connection = Connection('amqp://')
+
+        assert connection.transport_cls == 'amqp'
+
     def test_collect_no_transport(self):
         connection = Connection('memory://')
         connection._transport = None

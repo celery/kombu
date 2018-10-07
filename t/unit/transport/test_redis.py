@@ -819,6 +819,15 @@ class test_Channel:
                     redis.redis.SSLConnection,
                 )
 
+    def test_rediss_connection(self):
+        with patch('kombu.transport.redis.Channel._create_client'):
+            with Connection('rediss://') as conn:
+                connparams = conn.default_channel._connparams()
+                assert issubclass(
+                    connparams['connection_class'],
+                    redis.redis.SSLConnection,
+                )
+
 
 @skip.unless_module('redis')
 class test_Redis:
@@ -1025,6 +1034,25 @@ class test_MultiChannelPoller:
         chan1.qos.restore_visible.assert_called_with(
             num=chan1.unacked_restore_limit,
         )
+
+    def test_restore_visible_with_gevent(self):
+        with patch('kombu.transport.redis.time') as time:
+            with patch('kombu.transport.redis._detect_environment') as env:
+                timeout = 3600
+                time.return_value = timeout
+                env.return_value = 'gevent'
+                chan1 = Mock(name='chan1')
+                redis_ctx_mock = Mock()
+                redis_client_mock = Mock(name='redis_client_mock')
+                redis_ctx_mock.__exit__ = Mock()
+                redis_ctx_mock.__enter__ = Mock(return_value=redis_client_mock)
+                chan1.conn_or_acquire.return_value = redis_ctx_mock
+                qos = redis.QoS(chan1)
+                qos.visibility_timeout = timeout
+                qos.restore_visible()
+                redis_client_mock.zrevrangebyscore\
+                    .assert_called_with(chan1.unacked_index_key, timeout, 0,
+                                        start=0, num=10, withscores=True)
 
     def test_handle_event(self):
         p = self.Poller()

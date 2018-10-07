@@ -568,7 +568,10 @@ class Queue(MaybeChannelBound):
                  **kwargs):
         super(Queue, self).__init__(**kwargs)
         self.name = name or self.name
-        self.exchange = exchange or self.exchange
+        if isinstance(exchange, str):
+            self.exchange = Exchange(exchange)
+        elif isinstance(exchange, Exchange):
+            self.exchange = exchange
         self.routing_key = routing_key or self.routing_key
         self.bindings = set(bindings or [])
         self.on_declared = on_declared
@@ -804,7 +807,11 @@ class Queue(MaybeChannelBound):
 
     @property
     def can_cache_declaration(self):
-        return not self.auto_delete
+        if self.queue_arguments:
+            expiring_queue = "x-expires" in self.queue_arguments
+        else:
+            expiring_queue = False
+        return not expiring_queue and not self.auto_delete
 
     @classmethod
     def from_dict(cls, queue, **options):

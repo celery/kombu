@@ -7,7 +7,7 @@ import threading
 
 from collections import Iterable, Mapping, OrderedDict
 from itertools import count, repeat
-from time import sleep
+from time import sleep, time
 
 from vine.utils import wraps
 
@@ -295,7 +295,7 @@ def fxrangemax(start=1.0, stop=None, step=1.0, max=100.0):
 
 def retry_over_time(fun, catch, args=[], kwargs={}, errback=None,
                     max_retries=None, interval_start=2, interval_step=2,
-                    interval_max=30, callback=None):
+                    interval_max=30, callback=None, timeout=None):
     """Retry the function over and over until max retries is exceeded.
 
     For each retry we sleep a for a while before we try again, this interval
@@ -316,22 +316,27 @@ def retry_over_time(fun, catch, args=[], kwargs={}, errback=None,
             which return the time in seconds to sleep next, and ``retries``
             is the number of previous retries.
         max_retries (int): Maximum number of retries before we give up.
-            If this is not set, we will retry forever.
+            If neither of this and timeout is set, we will retry forever.
+            If one of this and timeout is reached, stop.
         interval_start (float): How long (in seconds) we start sleeping
             between retries.
         interval_step (float): By how much the interval is increased for
             each retry.
         interval_max (float): Maximum number of seconds to sleep
             between retries.
+        timeout (int): Maximum seconds waiting before we give up.
     """
     interval_range = fxrange(interval_start,
                              interval_max + interval_start,
                              interval_step, repeatlast=True)
+    end = time() + timeout if timeout else None
     for retries in count():
         try:
             return fun(*args, **kwargs)
         except catch as exc:
             if max_retries and retries >= max_retries:
+                raise
+            if end and time() > end:
                 raise
             if callback:
                 callback()

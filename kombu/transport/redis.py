@@ -22,6 +22,7 @@ from kombu.utils.objects import cached_property
 from kombu.utils.scheduling import cycle_by_name
 from kombu.utils.url import _parse_url
 from kombu.utils.uuid import uuid
+from kombu.utils.compat import _detect_environment
 
 from . import virtual
 
@@ -189,6 +190,9 @@ class QoS(virtual.QoS):
             try:
                 with Mutex(client, self.unacked_mutex_key,
                            self.unacked_mutex_expire):
+                    env = _detect_environment()
+                    if env == 'gevent':
+                        ceil = time()
                     visible = client.zrevrangebyscore(
                         self.unacked_index_key, ceil, 0,
                         start=num and start, num=num, withscores=True)

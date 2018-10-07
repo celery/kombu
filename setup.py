@@ -66,11 +66,10 @@ for scheme in list(INSTALL_SCHEMES.values()):
 if os.path.exists('README.rst'):
     long_description = codecs.open('README.rst', 'r', 'utf-8').read()
 else:
-    long_description = 'See https://pypi.python.org/pypi/kombu'
+    long_description = 'See https://pypi.org/project/kombu/'
 
 # -*- Installation Requires -*-
 py_version = sys.version_info
-is_jython = sys.platform.startswith('java')
 is_pypy = hasattr(sys, 'pypy_version_info')
 
 
@@ -130,6 +129,8 @@ setup(
         'librabbitmq': extras('librabbitmq.txt'),
         'pyro': extras('pyro.txt'),
         'slmq': extras('slmq.txt'),
+        'azurestoragequeues': extras('azurestoragequeues.txt'),
+        'azureservicebus': extras('azureservicebus.txt'),
         'qpid': extras('qpid.txt'),
         'consul': extras('consul.txt'),
     },
@@ -142,11 +143,11 @@ setup(
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: Implementation :: CPython',
         'Programming Language :: Python :: Implementation :: PyPy',
-        'Programming Language :: Python :: Implementation :: Jython',
         'Intended Audience :: Developers',
         'Topic :: Communications',
         'Topic :: System :: Distributed Computing',
