@@ -245,6 +245,22 @@ class Hub(object):
         for callback in self.on_close:
             callback(self)
 
+        # Complete remaining todo befor Hub close
+        # Eg: Acknowledge message
+        # To avoid infinite loop where one of the callables adds items
+        # to self._ready (via call_soon or otherwise), we take pop only
+        # N items from the ready set.
+        # N represents the current number of items on the set.
+        # That way if a todo adds another one to the ready set
+        todo = self._ready
+        current_todos = len(todo)
+        for _ in itertools.repeat(None, current_todos):
+            if not todo:
+                break
+            item = todo.pop()
+            if item:
+                item()
+
     def _discard(self, fd):
         fd = fileno(fd)
         self.readers.pop(fd, None)
