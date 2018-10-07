@@ -828,7 +828,7 @@ class test_Channel:
                     redis.redis.SSLConnection,
                 )
 
-    def test_global_key_prefix(self):
+    def test_global_key_prefix_fanout(self):
         conn = Connection(transport=Transport, transport_options={
             'global_key_prefix': 'foo',
         })
@@ -838,6 +838,17 @@ class test_Channel:
         body = {'hello': 'world'}
         chan._put_fanout('exchange', body, '')
         c().publish.assert_called_with('foo/{db}.exchange', dumps(body))
+
+    def test_global_key_prefix_put(self):
+        conn = Connection(transport=Transport, transport_options={
+            'global_key_prefix': 'foo',
+        })
+        chan = conn.channel()
+        c = chan._create_client = Mock()
+        message = {'hello':'world'}
+        chan._put('queue', message)
+        c().lpush.assert_called_with('fooqueue', dumps(message))
+
 
 
 @skip.unless_module('redis')
