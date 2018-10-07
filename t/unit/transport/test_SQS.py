@@ -291,8 +291,12 @@ class test_Channel:
         assert message == results
 
     def test_redelivered(self):
-        self.channel.sqs.change_message_visibility = Mock(name='change_message_visibility')
-        message = {'foo': 'bar', 'redelivered': True, 'properties': {'delivery_tag': 'test_message_id'}}
+        self.channel.sqs.change_message_visibility = \
+            Mock(name='change_message_visibility')
+        message = {
+            'redelivered': True,
+            'properties': {'delivery_tag': 'test_message_id'}
+        }
         self.channel._put(self.producer.routing_key, message)
         self.sqs_conn_mock.change_message_visibility.assert_called_once()
 
