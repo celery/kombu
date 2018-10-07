@@ -290,6 +290,12 @@ class test_Channel:
         results = self.queue(self.channel).get().payload
         assert message == results
 
+    def test_redelivered(self):
+        self.channel.sqs.change_message_visibility = Mock(name='change_message_visibility')
+        message = {'foo': 'bar', 'redelivered': True, 'properties': {'delivery_tag': 'test_message_id'}}
+        self.channel._put(self.producer.routing_key, message)
+        self.sqs_conn_mock.change_message_visibility.assert_called_once()
+
     def test_put_and_get_bulk(self):
         # With QoS.prefetch_count = 0
         message = 'my test message'
