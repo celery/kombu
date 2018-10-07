@@ -370,7 +370,7 @@ def register_msgpack():
                 return packb(s, use_bin_type=True)
 
             def unpack(s):
-                return unpackb(s, encoding='utf-8')
+                return unpackb(s, raw=False)
         else:
             def version_mismatch(*args, **kwargs):
                 raise SerializerNotInstalled(
