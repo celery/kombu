@@ -254,7 +254,7 @@ class Hub(object):
         # That way if a todo adds another one to the ready set
         todo = self._ready
         current_todos = len(todo)
-        for _ in itertools.repeat(None, current_todos):
+        for _ in range(0, current_todos):
             if not todo:
                 break
             item = todo.pop()
