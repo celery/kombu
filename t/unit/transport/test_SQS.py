@@ -409,3 +409,21 @@ class test_Channel:
         # called?
         assert (expected_receive_messages_count ==
                 self.sqs_conn_mock._receive_messages_calls)
+
+    def test_basic_ack(self, ):
+        """Test that basic_ack calls the delete_message properly"""
+        message = {
+            'sqs_message': {
+                'ReceiptHandle': '1'
+            },
+            'sqs_queue': 'testing_queue'
+        }
+        mock_messages = Mock()
+        mock_messages.delivery_info = message
+        self.channel.qos.append(mock_messages, 1)
+        self.channel.sqs.delete_message = Mock()
+        self.channel.basic_ack(1)
+        self.sqs_conn_mock.delete_message.assert_called_with(
+            QueueUrl=message['sqs_queue'],
+            ReceiptHandle=message['sqs_message']['ReceiptHandle']
+        )
