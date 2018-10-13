@@ -290,6 +290,16 @@ class test_Channel:
         results = self.queue(self.channel).get().payload
         assert message == results
 
+    def test_redelivered(self):
+        self.channel.sqs.change_message_visibility = \
+            Mock(name='change_message_visibility')
+        message = {
+            'redelivered': True,
+            'properties': {'delivery_tag': 'test_message_id'}
+        }
+        self.channel._put(self.producer.routing_key, message)
+        self.sqs_conn_mock.change_message_visibility.assert_called_once()
+
     def test_put_and_get_bulk(self):
         # With QoS.prefetch_count = 0
         message = 'my test message'
@@ -399,3 +409,21 @@ class test_Channel:
         # called?
         assert (expected_receive_messages_count ==
                 self.sqs_conn_mock._receive_messages_calls)
+
+    def test_basic_ack(self, ):
+        """Test that basic_ack calls the delete_message properly"""
+        message = {
+            'sqs_message': {
+                'ReceiptHandle': '1'
+            },
+            'sqs_queue': 'testing_queue'
+        }
+        mock_messages = Mock()
+        mock_messages.delivery_info = message
+        self.channel.qos.append(mock_messages, 1)
+        self.channel.sqs.delete_message = Mock()
+        self.channel.basic_ack(1)
+        self.sqs_conn_mock.delete_message.assert_called_with(
+            QueueUrl=message['sqs_queue'],
+            ReceiptHandle=message['sqs_message']['ReceiptHandle']
+        )
