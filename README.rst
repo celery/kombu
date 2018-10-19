@@ -5,7 +5,7 @@
 |build-status| |coverage| |license| |wheel| |pyversion| |pyimp|
 
 :Version: 4.2.1
-:Web: http://kombu.me/
+:Documentation: https://kombu.readthedocs.io/
 :Download: https://pypi.org/project/kombu/
 :Source: https://github.com/celery/kombu/
 :Keywords: messaging, amqp, rabbitmq, redis, mongodb, python, queue
