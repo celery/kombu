@@ -219,7 +219,10 @@ class Channel(virtual.Channel):
             self.sqs.send_message(**kwargs)
 
     def _message_to_python(self, message, queue_name, queue):
-        body = base64.b64decode(message['Body'].encode())
+        try:
+            body = base64.b64decode(message['Body'].encode())
+        except:
+            body = message['Body'].encode()
         payload = loads(bytes_to_str(body))
         if queue_name in self._noack_queues:
             queue = self._new_queue(queue_name)
