@@ -3,6 +3,7 @@ from __future__ import absolute_import, unicode_literals
 
 from kombu.utils.encoding import ensure_bytes
 
+import bz2
 import zlib
 
 _aliases = {}
@@ -70,11 +71,7 @@ def decompress(body, content_type):
 register(zlib.compress,
          zlib.decompress,
          'application/x-gzip', aliases=['gzip', 'zlib'])
-try:
-    import bz2
-except ImportError:
-    pass  # Jython?
-else:
-    register(bz2.compress,
-             bz2.decompress,
-             'application/x-bz2', aliases=['bzip2', 'bzip'])
+
+register(bz2.compress,
+         bz2.decompress,
+         'application/x-bz2', aliases=['bzip2', 'bzip'])
