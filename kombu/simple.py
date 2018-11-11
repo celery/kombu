@@ -10,7 +10,7 @@ from . import messaging
 from .connection import maybe_channel
 from .five import Empty, monotonic
 
-__all__ = ['SimpleQueue', 'SimpleBuffer']
+__all__ = ('SimpleQueue', 'SimpleBuffer')
 
 
 class SimpleBase(object):

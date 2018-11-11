@@ -8,7 +8,7 @@ from vine.utils import wraps
 from kombu.five import items, python_2_unicode_compatible
 from kombu.log import get_logger
 
-__all__ = ['setup_logging', 'Logwrapped']
+__all__ = ('setup_logging', 'Logwrapped')
 
 
 def setup_logging(loglevel=logging.DEBUG, loggers=['kombu.connection',

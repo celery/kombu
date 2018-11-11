@@ -17,10 +17,10 @@ from kombu.five import (
 
 from .encoding import safe_repr as _safe_repr
 
-__all__ = [
+__all__ = (
     'LRUCache', 'memoize', 'lazy', 'maybe_evaluate',
     'is_list', 'maybe_list', 'dictfilter',
-]
+)
 
 KEYWORD_MARK = object()
 
