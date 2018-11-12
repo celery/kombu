@@ -11,10 +11,10 @@ from .imports import symbol_by_name
 from .objects import cached_property
 from .uuid import uuid
 
-__all__ = [
+__all__ = (
     'EqualityDict', 'uuid', 'maybe_list',
     'fxrange', 'fxrangemax', 'retry_over_time',
     'emergency_dump_state', 'cached_property',
     'register_after_fork', 'reprkwargs', 'reprcall',
     'symbol_by_name', 'nested', 'fileno', 'maybe_fileno',
-]
+)

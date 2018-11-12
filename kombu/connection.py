@@ -33,7 +33,7 @@ from .utils.functional import dictfilter, lazy, retry_over_time, shufflecycle
 from .utils.objects import cached_property
 from .utils.url import as_url, parse_url, quote, urlparse
 
-__all__ = ['Connection', 'ConnectionPool', 'ChannelPool']
+__all__ = ('Connection', 'ConnectionPool', 'ChannelPool')
 
 logger = get_logger(__name__)
 

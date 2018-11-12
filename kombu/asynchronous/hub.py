@@ -16,7 +16,7 @@ from vine import Thenable, promise
 
 from .timer import Timer
 
-__all__ = ['Hub', 'get_event_loop', 'set_event_loop']
+__all__ = ('Hub', 'get_event_loop', 'set_event_loop')
 logger = get_logger(__name__)
 
 _current_loop = None

@@ -7,7 +7,7 @@ from operator import itemgetter
 
 from .five import python_2_unicode_compatible, zip
 
-__all__ = ['LamportClock', 'timetuple']
+__all__ = ('LamportClock', 'timetuple')
 
 R_CLOCK = '_lamport(clock={0}, timestamp={1}, id={2} {3!r})'
 

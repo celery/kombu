@@ -21,6 +21,6 @@ except ImportError:
     get_response = _void()
 
 
-__all__ = [
+__all__ = (
     'exceptions', 'AWSRequest', 'get_response'
-]
+)

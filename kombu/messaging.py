@@ -12,7 +12,7 @@ from .five import items, python_2_unicode_compatible, text_t, values
 from .serialization import dumps, prepare_accept_content
 from .utils.functional import ChannelPromise, maybe_list
 
-__all__ = ['Exchange', 'Queue', 'Producer', 'Consumer']
+__all__ = ('Exchange', 'Queue', 'Producer', 'Consumer')
 
 
 @python_2_unicode_compatible

@@ -29,7 +29,7 @@ Or if you meant to start multiple nodes on the same host please make sure
 you give each node a unique node name!
 """
 
-__all__ = ['Node', 'Mailbox']
+__all__ = ('Node', 'Mailbox')
 logger = get_logger(__name__)
 debug, error = logger.debug, logger.error
 

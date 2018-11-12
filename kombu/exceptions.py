@@ -7,7 +7,7 @@ from amqp import ChannelError, ConnectionError, ResourceError
 
 from kombu.five import python_2_unicode_compatible
 
-__all__ = [
+__all__ = (
     'KombuError', 'OperationalError',
     'NotBoundError', 'MessageStateError', 'TimeoutError',
     'LimitExceeded', 'ConnectionLimitExceeded',
@@ -15,7 +15,7 @@ __all__ = [
     'VersionMismatch', 'SerializerNotInstalled', 'ResourceError',
     'SerializationError', 'EncodeError', 'DecodeError', 'HttpError',
     'InconsistencyError',
-]
+)
 
 
 class KombuError(Exception):

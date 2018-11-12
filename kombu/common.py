@@ -27,10 +27,10 @@ except ImportError:                             # pragma: no cover
     except ImportError:                         # pragma: no cover
         from dummy_thread import get_ident      # noqa
 
-__all__ = ['Broadcast', 'maybe_declare', 'uuid',
+__all__ = ('Broadcast', 'maybe_declare', 'uuid',
            'itermessages', 'send_reply',
            'collect_replies', 'insured', 'drain_consumer',
-           'eventloop']
+           'eventloop')
 
 #: Prefetch count can't exceed short.
 PREFETCH_COUNT_MAX = 0xFFFF

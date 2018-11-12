@@ -13,7 +13,7 @@ PERSISTENT_DELIVERY_MODE = 2
 DELIVERY_MODES = {'transient': TRANSIENT_DELIVERY_MODE,
                   'persistent': PERSISTENT_DELIVERY_MODE}
 
-__all__ = ['Exchange', 'Queue', 'binding', 'maybe_delivery_mode']
+__all__ = ('Exchange', 'Queue', 'binding', 'maybe_delivery_mode')
 
 INTERNAL_EXCHANGE_PREFIX = ('amq.',)
 

@@ -29,9 +29,9 @@ except ImportError:  # pragma: no cover
             b'{0}: {1}'.format(*h) for h in hdr
         ))
 
-__all__ = [
+__all__ = (
     'AsyncHTTPSConnection', 'AsyncConnection',
-]
+)
 
 
 @python_2_unicode_compatible

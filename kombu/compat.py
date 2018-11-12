@@ -10,7 +10,7 @@ from . import messaging
 from .entity import Exchange, Queue
 from .five import items
 
-__all__ = ['Publisher', 'Consumer']
+__all__ = ('Publisher', 'Consumer')
 
 # XXX compat attribute
 entry_to_queue = Queue.from_dict

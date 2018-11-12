@@ -13,7 +13,7 @@ from .utils.encoding import safe_repr, safe_str
 from .utils.functional import maybe_evaluate
 from .utils.objects import cached_property
 
-__all__ = ['LogMixin', 'LOG_LEVELS', 'get_loglevel', 'setup_logging']
+__all__ = ('LogMixin', 'LOG_LEVELS', 'get_loglevel', 'setup_logging')
 
 try:
     LOG_LEVELS = dict(logging._nameToLevel)
