@@ -7,7 +7,6 @@ slightly.
 
 from __future__ import absolute_import, unicode_literals
 
-import boto3
 import os
 import pytest
 import random
@@ -176,6 +175,7 @@ class test_Channel:
         assert self.queue_name in self.channel._queue_cache
 
     def test_region(self):
+        import boto3
         _environ = dict(os.environ)
 
         # when the region is unspecified
