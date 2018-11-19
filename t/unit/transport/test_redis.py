@@ -75,8 +75,15 @@ class Client(object):
     def sadd(self, key, member, *args):
         self.sets[key].add(member)
 
-    def zadd(self, key, score1, member1, *args):
-        self.sets[key].add(member1)
+    def zadd(self, key, *args):
+        if redis.redis.VERSION[0] >= 3:
+            (mapping,) = args
+            for item in mapping:
+                self.sets[key].add(item)
+        else:
+            # TODO: remove me when we drop support for Redis-py v2
+            (score1, member1) = args
+            self.sets[key].add(member1)
 
     def smembers(self, key):
         return self.sets.get(key, set())
@@ -840,7 +847,21 @@ class test_Redis:
     def teardown(self):
         self.connection.close()
 
-    def test_publish__get(self):
+    @mock.replace_module_value(redis.redis, 'VERSION', [3, 0, 0])
+    def test_publish__get_redispyv3(self):
+        channel = self.connection.channel()
+        producer = Producer(channel, self.exchange, routing_key='test_Redis')
+        self.queue(channel).declare()
+
+        producer.publish({'hello': 'world'})
+
+        assert self.queue(channel).get().payload == {'hello': 'world'}
+        assert self.queue(channel).get() is None
+        assert self.queue(channel).get() is None
+        assert self.queue(channel).get() is None
+
+    @mock.replace_module_value(redis.redis, 'VERSION', [2, 5, 10])
+    def test_publish__get_redispyv2(self):
         channel = self.connection.channel()
         producer = Producer(channel, self.exchange, routing_key='test_Redis')
         self.queue(channel).declare()

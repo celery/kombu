@@ -146,8 +146,15 @@ class QoS(virtual.QoS):
     def append(self, message, delivery_tag):
         delivery = message.delivery_info
         EX, RK = delivery['exchange'], delivery['routing_key']
+        # TODO: Remove this once we soley on Redis-py 3.0.0+
+        if redis.VERSION[0] >= 3:
+            # Redis-py changed the format of zadd args in v3.0.0
+            zadd_args = [{time(): delivery_tag}]
+        else:
+            zadd_args = [time(), delivery_tag]
+
         with self.pipe_or_acquire() as pipe:
-            pipe.zadd(self.unacked_index_key, time(), delivery_tag) \
+            pipe.zadd(self.unacked_index_key, *zadd_args) \
                 .hset(self.unacked_key, delivery_tag,
                       dumps([message._raw, EX, RK])) \
                 .execute()
