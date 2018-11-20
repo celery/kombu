@@ -149,7 +149,7 @@ class QoS(virtual.QoS):
         # TODO: Remove this once we soley on Redis-py 3.0.0+
         if redis.VERSION[0] >= 3:
             # Redis-py changed the format of zadd args in v3.0.0
-            zadd_args = [{time(): delivery_tag}]
+            zadd_args = [{delivery_tag: time()}]
         else:
             zadd_args = [time(), delivery_tag]
 
