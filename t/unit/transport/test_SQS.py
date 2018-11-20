@@ -7,6 +7,7 @@ slightly.
 
 from __future__ import absolute_import, unicode_literals
 
+import os
 import pytest
 import random
 import string
@@ -172,6 +173,37 @@ class test_Channel:
     def test_init(self):
         """kombu.SQS.Channel instantiates correctly with mocked queues"""
         assert self.queue_name in self.channel._queue_cache
+
+    def test_region(self):
+        import boto3
+        _environ = dict(os.environ)
+
+        # when the region is unspecified
+        connection = Connection(transport=SQS.Transport)
+        channel = connection.channel()
+        assert channel.transport_options.get('region') is None
+        # the default region is us-east-1
+        assert channel.region == 'us-east-1'
+
+        # when boto3 picks a region
+        os.environ['AWS_DEFAULT_REGION'] = 'us-east-2'
+        assert boto3.Session().region_name == 'us-east-2'
+        # the default region should match
+        connection = Connection(transport=SQS.Transport)
+        channel = connection.channel()
+        assert channel.region == 'us-east-2'
+
+        # when transport_options are provided
+        connection = Connection(transport=SQS.Transport, transport_options={
+            'region': 'us-west-2'
+        })
+        channel = connection.channel()
+        assert channel.transport_options.get('region') == 'us-west-2'
+        # the specified region should be used
+        assert connection.channel().region == 'us-west-2'
+
+        os.environ.clear()
+        os.environ.update(_environ)
 
     def test_endpoint_url(self):
         url = 'sqs://@localhost:5493'

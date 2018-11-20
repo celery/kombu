@@ -467,7 +467,9 @@ class Channel(virtual.Channel):
 
     @cached_property
     def region(self):
-        return self.transport_options.get('region') or self.default_region
+        return (self.transport_options.get('region') or
+                boto3.Session().region_name or
+                self.default_region)
 
     @cached_property
     def regioninfo(self):
