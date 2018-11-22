@@ -44,6 +44,7 @@ after_success:
   - .tox/$TRAVIS_PYTHON_VERSION/bin/coverage xml
   - .tox/$TRAVIS_PYTHON_VERSION/bin/codecov -e TOXENV
 notifications:
+  email: false
   irc:
     channels:
       - "chat.freenode.net#celery"
