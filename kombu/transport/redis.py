@@ -931,8 +931,22 @@ class Channel(virtual.Channel):
         if asynchronous:
             class Connection(connection_cls):
                 def disconnect(self):
-                    super(Connection, self).disconnect()
+                    # NOTE: see celery issue #3898
+                    # redis-py Connection shutdown()s the socket
+                    # which causes all copies of file descriptor
+                    # to become unusable, however close() only
+                    # affect process-local copies of fds.
+                    # So we just override Connection's disconnect method.
+                    self._parser.on_disconnect()
                     channel._on_connection_disconnect(self)
+                    if self._sock is None:
+                        return
+                    try:
+                        # self._sock.shutdown(socket.SHUT_RDWR)
+                        self._sock.close()
+                    except socket.error:
+                        pass
+                    self._sock = None
             connection_cls = Connection
 
         connparams['connection_class'] = connection_cls
