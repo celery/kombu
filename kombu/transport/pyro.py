@@ -15,9 +15,9 @@ from __future__ import absolute_import, unicode_literals
 
 import sys
 
-from ..five import reraise, Queue, Empty
-from ..utils.objects import cached_property
-from ..log import get_logger
+from kombu.five import reraise, Queue, Empty
+from kombu.utils.objects import cached_property
+from kombu.log import get_logger
 from . import virtual
 
 try:
