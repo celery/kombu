@@ -4,6 +4,13 @@
  Change history
 ================
 
+- the `Pyro`_ transport (:mod:`kombu.transport.pyro`) now works with
+  recent Pyro versions. Also added a Pyro Kombu Broker that this transport
+  needs for its queues.
+
+  Contributed by **Irmen de Jong**
+
+
 .. _version-4.2.1:
 
 4.2.1
