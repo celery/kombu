@@ -183,10 +183,23 @@ class Channel(virtual.Channel):
             if queue.endswith('.fifo'):
                 attributes['FifoQueue'] = 'true'
 
-            resp = self._queue_cache[queue] = self.sqs.create_queue(
-                QueueName=queue, Attributes=attributes)
+            resp = self._create_queue(queue, attributes)
             self._queue_cache[queue] = resp['QueueUrl']
             return resp['QueueUrl']
+
+    def _create_queue(self, queue_name, attributes):
+        """Create an SQS queue with a given name and nominal attributes"""
+        # Allow specifying additional boto create_queue Attributes
+        # via transport options
+        creation_attributes = (
+            self.transport_options.get('sqs-creation-attributes') or {}
+        ).copy()
+
+        creation_attributes.update(attributes)
+        return self.sqs.create_queue(
+            QueueName=queue_name,
+            Attributes=creation_attributes,
+        )
 
     def _delete(self, queue, *args, **kwargs):
         """Delete queue by name."""
