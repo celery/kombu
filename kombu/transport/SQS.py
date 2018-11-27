@@ -221,7 +221,7 @@ class Channel(virtual.Channel):
     def _message_to_python(self, message, queue_name, queue):
         try:
             body = base64.b64decode(message['Body'].encode())
-        except:
+        except KeyError:
             body = message['Body'].encode()
         payload = loads(bytes_to_str(body))
         if queue_name in self._noack_queues:
