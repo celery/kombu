@@ -1076,9 +1076,7 @@ class SentinelChannel(Channel):
 
     sentinel://0.0.0.0:26379;sentinel://0.0.0.0:26380/...
 
-    where each sentinel is separated by a `;`.  Multiple sentinels are handled
-    by :class:`kombu.Connection` constructor, and placed in the alternative
-    list of servers to connect to in case of connection failure.
+    where each sentinel is separated by a `;`.
 
     Other arguments for the sentinel should come from the transport options
     (see :method:`Celery.connection` which is in charge of creating the
@@ -1102,11 +1100,14 @@ class SentinelChannel(Channel):
 
         additional_params.pop('host', None)
         additional_params.pop('port', None)
-
+        connection_list = []
+        for url in self.connection.client.alt:
+            if url and 'sentinel://' in url:
+                connection_list.append(url.split('/')[2].split(':'))
         sentinel_inst = sentinel.Sentinel(
-            [(connparams['host'], connparams['port'])],
+            connection_list,
             min_other_sentinels=getattr(self, 'min_other_sentinels', 0),
-            sentinel_kwargs=getattr(self, 'sentinel_kwargs', {}),
+            sentinel_kwargs=getattr(self, 'sentinel_kwargs',None),
             **additional_params)
 
         master_name = getattr(self, 'master_name', None)
