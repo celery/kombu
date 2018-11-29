@@ -9,16 +9,14 @@ task queue situations where tasks are small, idempotent and run very fast.
 
 SQS Features supported by this transport:
   Long Polling:
-    https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/
-      sqs-long-polling.html
+    https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-long-polling.html
 
     Long polling is enabled by setting the `wait_time_seconds` transport
     option to a number > 1.  Amazon supports up to 20 seconds.  This is
     enabled with 10 seconds by default.
 
   Batch API Actions:
-   https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/
-     sqs-batch-api.html
+   https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-batch-api.html
 
     The default behavior of the SQS Channel.drain_events() method is to
     request up to the 'prefetch_count' messages on every request to SQS.
@@ -33,7 +31,7 @@ SQS Features supported by this transport:
     up to 'prefetch_count' messages from queueA and work on them all before
     moving on to queueB.  If queueB is empty, it will wait up until
     'polling_interval' expires before moving back and checking on queueA.
-"""
+"""  # noqa: E501
 
 from __future__ import absolute_import, unicode_literals
 
@@ -516,7 +514,34 @@ class Channel(virtual.Channel):
 
 
 class Transport(virtual.Transport):
-    """SQS Transport."""
+    """SQS Transport.
+
+    Additional queue attributes can be supplied to SQS during queue
+    creation by passing an ``sqs-creation-attributes`` key in
+    transport_options. ``sqs-creation-attributes`` must be a dict whose
+    key-value pairs correspond with Attributes in the
+    `CreateQueue SQS API`_.
+
+    For example, to have SQS queues created with server-side encryption
+    enabled using the default Amazon Managed Customer Master Key, you
+    can set ``KmsMasterKeyId`` Attribute. When the queue is initially
+    created by Kombu, encryption will be enabled.
+
+    .. code-block:: python
+
+        from kombu.transport.SQS import Transport
+
+        transport = Transport(
+            ...,
+            transport_options={
+                'sqs-creation-attributes': {
+                    'KmsMasterKeyId': 'alias/aws/sqs',
+                },
+            }
+        )
+
+    .. _CreateQueue SQS API: https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_CreateQueue.html#API_CreateQueue_RequestParameters
+    """  # noqa: E501
 
     Channel = Channel
 
