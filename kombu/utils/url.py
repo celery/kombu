@@ -7,8 +7,18 @@ from functools import partial
 try:
     from urllib.parse import parse_qsl, quote, unquote, urlparse
 except ImportError:
-    from urllib import quote, unquote                  # noqa
-    from urlparse import urlparse, parse_qsl    # noqa
+    import urlparse
+    def _splitnetloc_(url, start=0):
+        delim = len(url)
+        netloc_delim = url.find("@", start)
+        for c in '/?#':
+            wdelim = url.find(c, start)
+            if wdelim >= 0 and netloc_delim < wdelim:
+                delim = min(delim, wdelim)
+        return url[start:delim], url[delim:]
+    urlparse._splitnetloc = _splitnetloc_
+    from urllib import quote, unquote # noqa
+    from urlparse import urlparse, parse_qsl # noqa
 
 from kombu.five import bytes_if_py2, string_t
 

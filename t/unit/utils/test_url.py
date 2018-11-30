@@ -37,3 +37,11 @@ def test_maybe_sanitize_url(url, expected):
     assert maybe_sanitize_url(url) == expected
     assert (maybe_sanitize_url('http://u:p@e.com//foo') ==
             'http://u:**@e.com//foo')
+
+@pytest.mark.parametrize('possible_url,expected', [
+    ('amqp://user:pass#@localhost:5672/my/vhost', {'password': 'pass#', 'virtual_host': 'my/vhost', 'hostname': 'localhost', 'userid': 'user', 'port': 5672, 'transport': 'amqp'}),
+    ('sqs://access_key:secret/key@', {'password': 'secret/key', 'virtual_host': None, 'hostname': None, 'userid': 'access_key', 'port': None, 'transport': 'sqs'}),
+    ('amqp://mocspi:J_wPHlx8HZnr5a-v3quwMR1gtRdT@test.test.test.com/@mocsknpi', {'password': 'J_wPHlx8HZnr5a-v3quwMR1gtRdT', 'virtual_host': '@mocsknpi', 'hostname': 'test.test.test.com', 'userid': 'mocspi', 'port': None, 'transport': 'amqp'}),
+])
+def test_parse_possible_urls(possible_url, expected):
+    assert parse_url(possible_url) == expected
