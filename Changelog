@@ -4,12 +4,15 @@
  Change history
 ================
 
-- the `Pyro`_ transport (:mod:`kombu.transport.pyro`) now works with
-  recent Pyro versions. Also added a Pyro Kombu Broker that this transport
-  needs for its queues.
+.. _version-4.2.2:
 
-  Contributed by **Irmen de Jong**
+4.2.2
+=====
+:release-date: 2018-12-06 04:30 P.M IST
 
+- Support both Redis client version 2.x and version 3.x.
+
+  Contributed by **Ash Berlin-Taylor** and **Jeppe Fihl-Pearson**
 
 .. _version-4.2.1:
 
