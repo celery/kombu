@@ -4,7 +4,7 @@
 
 |build-status| |coverage| |license| |wheel| |pyversion| |pyimp|
 
-:Version: 4.2.1
+:Version: 4.2.2
 :Documentation: https://kombu.readthedocs.io/
 :Download: https://pypi.org/project/kombu/
 :Source: https://github.com/celery/kombu/
@@ -358,4 +358,3 @@ file in the top distribution directory for the full license text.
     :alt: Support Python implementations.
     :target: https://pypi.org/project/kombu/
 --
-
