@@ -185,7 +185,7 @@ class Resource(object):
                 pass
         self.setup()
         if limit < prev_limit:
-            self._shrink_down(collect=limit > 0)
+            self._shrink_down(collect=prev_limit > 0)
 
     def _shrink_down(self, collect=True):
         resource = self._resource
