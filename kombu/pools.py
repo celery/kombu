@@ -13,7 +13,7 @@ from .utils.compat import register_after_fork
 from .utils.functional import lazy
 
 __all__ = ('ProducerPool', 'PoolGroup', 'register_group',
-           'connections', 'producers', 'get_limit', 'set_limit', 'reset')
+           'connections', 'producers', 'get_limit', 'set_limit', 'reset', 'set_forced_resize')
 _limit = [10]
 _groups = []
 use_global_limit = object()
@@ -51,7 +51,8 @@ class ProducerPool(Resource):
 
     def setup(self):
         if self.limit:
-            for _ in range(self.limit):
+            in_pool = len(self._resource.queue) + len(self._dirty)
+            for _ in range(self.limit - in_pool):
                 self._resource.put_nowait(self.new())
 
     def close_resource(self, resource):
@@ -147,3 +148,10 @@ def reset(*args, **kwargs):
             pass
     for group in _groups:
         group.clear()
+
+
+def set_forced_resize(value):
+    """Set forced-resize to force pool resizing even when in use."""
+    for p in _all_pools():
+        p.forced_resize = value
+
