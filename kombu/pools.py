@@ -13,7 +13,8 @@ from .utils.compat import register_after_fork
 from .utils.functional import lazy
 
 __all__ = ('ProducerPool', 'PoolGroup', 'register_group',
-           'connections', 'producers', 'get_limit', 'set_limit', 'reset', 'set_forced_resize')
+           'connections', 'producers', 'get_limit', 'set_limit', 'reset',
+           'set_forced_resize')
 _limit = [10]
 _groups = []
 use_global_limit = object()
@@ -154,4 +155,3 @@ def set_forced_resize(value):
     """Set forced-resize to force pool resizing even when in use."""
     for p in _all_pools():
         p.forced_resize = value
-

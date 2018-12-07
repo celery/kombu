@@ -186,7 +186,7 @@ class Resource(object):
         if reset:
             try:
                 self.force_close_all()
-            except Exception, e:
+            except Exception:
                 pass
         self.setup()
         if limit < prev_limit:

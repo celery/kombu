@@ -255,7 +255,10 @@ class test_fun_PoolGroup:
     def test_resource_resizing(self):
         p = pools.producers[Connection('memory://localhost:777')]
         c = pools.connections[Connection('memory//localhost:678')]
-        in_use = lambda pool: len(pool._resource.queue) + len(pool._dirty)
+
+        def in_use(pool):
+            return len(pool._resource.queue) + len(pool._dirty)
+
         pools.set_forced_resize(True)
         assert p.forced_resize is True
         pools.set_limit(10)
