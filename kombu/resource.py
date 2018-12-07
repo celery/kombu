@@ -32,15 +32,16 @@ class Resource(object):
 
     close_after_fork = False
 
-    def __init__(self, limit=None, preload=None, close_after_fork=None):
+    def __init__(self, limit=None, preload=None, close_after_fork=None,
+                 forced_resize=False):
         self._limit = limit
         self.preload = preload or 0
         self._closed = False
+        self.forced_resize = forced_resize
         self.close_after_fork = (
             close_after_fork
             if close_after_fork is not None else self.close_after_fork
         )
-
         self._resource = LifoQueue()
         self._dirty = set()
         if self.close_after_fork and register_after_fork is not None:
@@ -170,9 +171,13 @@ class Resource(object):
                 pass  # Issue #78
 
     def resize(self, limit, force=False, ignore_errors=False, reset=False):
+
         prev_limit = self._limit
-        if (self._dirty and 0 < limit < self._limit) and not ignore_errors:
-            if not force:
+        if (self._dirty and limit < self._limit) and not ignore_errors:
+            # for backwards compat
+            if force:
+                self.forced_resize = force
+            if not self.forced_resize:
                 raise RuntimeError(
                     "Can't shrink pool when in use: was={0} now={1}".format(
                         self._limit, limit))
@@ -181,7 +186,7 @@ class Resource(object):
         if reset:
             try:
                 self.force_close_all()
-            except Exception:
+            except Exception, e:
                 pass
         self.setup()
         if limit < prev_limit:

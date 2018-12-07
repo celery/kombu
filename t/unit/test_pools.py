@@ -209,11 +209,17 @@ class test_PoolGroup:
         pools.set_limit(pools.get_limit())
 
     def test_remove_limit(self):
+        pools.set_forced_resize(True)
         conn = Connection('memory://')
         pool = pools.connections[conn]
         pool.limit = 10
         with pool.acquire():
             pool.limit = 0
+
+    def test_set_forced_resize(self):
+        pools.set_forced_resize(True)
+        for p in pools._all_pools():
+            assert p.forced_resize is True
 
 
 class test_fun_PoolGroup:
@@ -245,3 +251,29 @@ class test_fun_PoolGroup:
         r1.release()
         assert not p1._dirty
         assert not p3._dirty
+
+    def test_resource_resizing(self):
+        p = pools.producers[Connection('memory://localhost:777')]
+        c = pools.connections[Connection('memory//localhost:678')]
+        in_use = lambda pool: len(pool._resource.queue) + len(pool._dirty)
+        pools.set_forced_resize(True)
+        assert p.forced_resize is True
+        pools.set_limit(10)
+        assert in_use(p) == 10
+        assert in_use(p) == 10
+        assert p.limit == 10
+        assert c.limit == 10
+        assert p.forced_resize is True
+        pools.set_limit(1)
+        assert p.forced_resize is True
+        assert in_use(p) == 1
+        pools.set_limit(10)
+        assert in_use(p) == 10
+        pools.set_limit(1)
+        pools.set_limit(0)
+        assert in_use(p) == 0
+        with p.acquire():
+            pools.set_limit(5)
+        pools.set_limit(0)
+        with c.acquire():
+            pools.set_limit(20)
