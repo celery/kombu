@@ -112,6 +112,10 @@ def maybe_declare(entity, channel=None, retry=False, **retry_policy):
         assert channel
         entity = entity.bind(channel)
 
+    if not is_bound:
+        assert channel
+        entity = entity.bind(channel)
+
     if channel is None:
         assert is_bound
         channel = entity.channel
