@@ -35,8 +35,10 @@ class SQSMessageMock(object):
 class QueueMock(object):
     """ Hold information about a queue. """
 
-    def __init__(self, url):
+    def __init__(self, url, creation_attributes=None):
         self.url = url
+        # arguments of boto3.sqs.create_queue
+        self.creation_attributes = creation_attributes
         self.attributes = {'ApproximateNumberOfMessages': '0'}
 
         self.messages = []
@@ -70,7 +72,10 @@ class SQSClientMock(object):
         raise Exception("Queue url {} not found".format(url))
 
     def create_queue(self, QueueName=None, Attributes=None):
-        q = self._queues[QueueName] = QueueMock('sqs://' + QueueName)
+        q = self._queues[QueueName] = QueueMock(
+            'sqs://' + QueueName,
+            Attributes,
+        )
         return {'QueueUrl': q.url}
 
     def list_queues(self, QueueNamePrefix=None):
@@ -223,6 +228,22 @@ class test_Channel:
         queue_name = 'new_unittest_queue'
         self.channel._new_queue(queue_name)
         assert queue_name in self.sqs_conn_mock._queues.keys()
+        # For cleanup purposes, delete the queue and the queue file
+        self.channel._delete(queue_name)
+
+    def test_new_queue_custom_creation_attributes(self):
+        self.connection.transport_options['sqs-creation-attributes'] = {
+            'KmsMasterKeyId': 'alias/aws/sqs',
+        }
+        queue_name = 'new_custom_attribute_queue'
+        self.channel._new_queue(queue_name)
+
+        assert queue_name in self.sqs_conn_mock._queues.keys()
+        queue = self.sqs_conn_mock._queues[queue_name]
+
+        assert 'KmsMasterKeyId' in queue.creation_attributes
+        assert queue.creation_attributes['KmsMasterKeyId'] == 'alias/aws/sqs'
+
         # For cleanup purposes, delete the queue and the queue file
         self.channel._delete(queue_name)
 
