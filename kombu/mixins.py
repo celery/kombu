@@ -264,7 +264,7 @@ class ConsumerProducerMixin(ConsumerMixin):
                 def get_consumers(self, Consumer, channel):
                     return [Consumer(queues=Queue('foo'),
                                      on_message=self.handle_message,
-                                     accept='application/json',
+                                     accept=['application/json'],
                                      prefetch_count=10)]
 
                 def handle_message(self, message):
