@@ -32,10 +32,12 @@ class Resource(object):
 
     close_after_fork = False
 
-    def __init__(self, limit=None, preload=None, close_after_fork=None):
+    def __init__(self, limit=None, preload=None, close_after_fork=None,
+                 forced_resize=False):
         self._limit = limit
         self.preload = preload or 0
         self._closed = False
+        self.forced_resize = forced_resize
         self.close_after_fork = (
             close_after_fork
             if close_after_fork is not None else self.close_after_fork
@@ -171,8 +173,11 @@ class Resource(object):
 
     def resize(self, limit, force=False, ignore_errors=False, reset=False):
         prev_limit = self._limit
-        if (self._dirty and 0 < limit < self._limit) and not ignore_errors:
-            if not force:
+        if (self._dirty and limit < self._limit) and not ignore_errors:
+            # for backwards compat
+            if force:
+                self.forced_resize = force
+            if not self.forced_resize:
                 raise RuntimeError(
                     "Can't shrink pool when in use: was={0} now={1}".format(
                         self._limit, limit))
@@ -185,7 +190,7 @@ class Resource(object):
                 pass
         self.setup()
         if limit < prev_limit:
-            self._shrink_down(collect=limit > 0)
+            self._shrink_down(collect=limit >= 0)
 
     def _shrink_down(self, collect=True):
         resource = self._resource
