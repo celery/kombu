@@ -1107,7 +1107,7 @@ class SentinelChannel(Channel):
         sentinel_inst = sentinel.Sentinel(
             connection_list,
             min_other_sentinels=getattr(self, 'min_other_sentinels', 0),
-            sentinel_kwargs=getattr(self, 'sentinel_kwargs',None),
+            sentinel_kwargs=getattr(self, 'sentinel_kwargs', None),
             **additional_params)
 
         master_name = getattr(self, 'master_name', None)
