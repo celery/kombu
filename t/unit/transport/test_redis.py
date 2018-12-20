@@ -1344,7 +1344,7 @@ class test_RedisSentinel:
     def test_getting_master_from_sentinel(self):
         with patch('redis.sentinel.Sentinel') as patched:
             connection = Connection(
-                'sentinel://localhost:65534/;sentinel://localhost:65535/;sentinel://localhost:65536/;',
+                'sentinel://localhost:65534/;sentinel://localhost:65535/;sentinel://localhost:65536/;', # noqa: E501
                 transport_options={
                     'master_name': 'not_important',
                 },
@@ -1352,7 +1352,11 @@ class test_RedisSentinel:
 
             connection.channel()
             patched.assert_called_once_with(
-                [[u'localhost', u'65534'], [u'localhost', u'65535'], [u'localhost', u'65536']],
+                [
+                    [u'localhost', u'65534'],
+                    [u'localhost', u'65535'],
+                    [u'localhost', u'65536']
+                ],
                 connection_class=mock.ANY, db=0, max_connections=10,
                 min_other_sentinels=0, password=None, sentinel_kwargs=None,
                 socket_connect_timeout=None, socket_keepalive=None,
