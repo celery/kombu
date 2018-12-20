@@ -1344,7 +1344,7 @@ class test_RedisSentinel:
     def test_getting_master_from_sentinel(self):
         with patch('redis.sentinel.Sentinel') as patched:
             connection = Connection(
-                'sentinel://localhost:65534/;sentinel://localhost:65535/;sentinel://localhost:65536/;', # noqa: E501
+                'sentinel://localhost:65534/;sentinel://localhost:65535/;sentinel://localhost:65536/;',  # noqa: E501
                 transport_options={
                     'master_name': 'not_important',
                 },
