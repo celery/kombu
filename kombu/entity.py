@@ -519,7 +519,7 @@ class Queue(MaybeChannelBound):
 
         alias (str): Unused in Kombu, but applications can take advantage
             of this,  for example to give alternate names to queues with
-            utomatically generated queue names.
+            automatically generated queue names.
 
         on_declared (Callable): Optional callback to be applied when the
             queue has been declared (the ``queue_declare`` operation is
