@@ -305,8 +305,8 @@ class Hub(object):
                 try:
                     events = poll(poll_timeout)
                     #  print('[EVENTS]: %s' % (self.repr_events(events),))
-                except ValueError:  # Issue 882
-                    raise StopIteration()
+                except ValueError:  # Issue celery/#882
+                    return
 
                 for fd, event in events or ():
                     general_error = False
