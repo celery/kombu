@@ -467,6 +467,7 @@ class Connection(object):
         the function.
 
         Arguments:
+            obj: The object to ensure an action on.
             fun (Callable): Method to apply.
 
             errback (Callable): Optional callback called each time the
@@ -484,6 +485,7 @@ class Connection(object):
                 for each retry.
             interval_max (float): Maximum number of seconds to sleep between
                 each retry.
+            on_revive (Callable): Optional callback called whenever revival completes successfully
 
         Examples:
             >>> from kombu import Connection, Producer
