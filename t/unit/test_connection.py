@@ -218,12 +218,6 @@ class test_Connection:
         c = Connection('pyamqp+sqlite://some_host')
         assert c.as_uri().startswith('pyamqp+')
 
-    def test_default_ensure_callback(self):
-        with patch('kombu.connection.logger') as logger:
-            c = Connection(transport=Mock)
-            c._default_ensure_callback(KeyError(), 3)
-            logger.error.assert_called()
-
     def test_ensure_connection_on_error(self):
         c = Connection('amqp://A;amqp://B')
         with patch('kombu.connection.retry_over_time') as rot:

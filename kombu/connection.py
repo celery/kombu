@@ -452,10 +452,6 @@ class Connection(object):
             self.maybe_close_channel(self._default_channel)
             self._default_channel = None
 
-    def _default_ensure_callback(self, exc, interval):
-        logger.error("Ensure: Operation error: %r. Retry in %ss",
-                     exc, interval, exc_info=True)
-
     def ensure(self, obj, fun, errback=None, max_retries=None,
                interval_start=1, interval_step=1, interval_max=1,
                on_revive=None):
