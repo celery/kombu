@@ -105,6 +105,12 @@ def declaration_cached(entity, channel):
 
 def maybe_declare(entity, channel=None, retry=False, **retry_policy):
     """Declare entity (cached)."""
+    if retry:
+        return _imaybe_declare(entity, channel, **retry_policy)
+    return _maybe_declare(entity, channel)
+
+
+def _maybe_declare(entity, channel):
     is_bound = entity.is_bound
     orig = entity
 
@@ -123,13 +129,6 @@ def maybe_declare(entity, channel=None, retry=False, **retry_policy):
         if ident in declared:
             return False
 
-    if retry:
-        return _imaybe_declare(entity, declared, ident,
-                               channel, orig, **retry_policy)
-    return _maybe_declare(entity, declared, ident, channel, orig)
-
-
-def _maybe_declare(entity, declared, ident, channel, orig=None):
     if not channel.connection:
         raise RecoverableConnectionError('channel disconnected')
     entity.declare(channel=channel)
@@ -140,11 +139,9 @@ def _maybe_declare(entity, declared, ident, channel, orig=None):
     return True
 
 
-def _imaybe_declare(entity, declared, ident, channel,
-                    orig=None, **retry_policy):
+def _imaybe_declare(entity, channel, **retry_policy):
     return entity.channel.connection.client.ensure(
-        entity, _maybe_declare, **retry_policy)(
-            entity, declared, ident, channel, orig)
+        entity, _maybe_declare, **retry_policy)(entity, channel)
 
 
 def drain_consumer(consumer, limit=1, timeout=None, callbacks=None):
