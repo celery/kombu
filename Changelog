@@ -4,11 +4,26 @@
  Change history
 ================
 
+.. _version-4.2.2-post1:
+
+4.2.2-post1
+===========
+:release-date: 2019-01-01 04:00 P.M IST
+:release-by: Omer Katz
+
+.. note::
+  The previous release contained code from master.
+  It is now deleted from PyPi.
+  Please use this release instead.
+
+- No changes since previous release.
+
 .. _version-4.2.2:
 
 4.2.2
 =====
 :release-date: 2018-12-06 04:30 P.M IST
+:release-by: Omer Katz
 
 - Support both Redis client version 2.x and version 3.x.
 
@@ -21,7 +36,7 @@
 :release-date: 2018-05-21 09:00 A.M IST
 :release-by: Omer Katz
 
-.. .. note::
+.. note::
 
   The 4.2.0 release contained remains of the ``async`` module by accident.
   This is now fixed.
