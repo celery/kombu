@@ -30,9 +30,9 @@
     Serialization
     -------------
 
-    .. autofunction:: encode
+    .. autofunction:: dumps
 
-    .. autofunction:: decode
+    .. autofunction:: loads
 
     .. autofunction:: raw_encode
 
@@ -40,6 +40,7 @@
     --------
 
     .. autofunction:: register
+    .. autofunction:: unregister
 
     .. autodata:: registry
 
