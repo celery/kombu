@@ -151,7 +151,7 @@ class Channel(virtual.Channel):
     def entity_name(self, name, table=CHARS_REPLACE_TABLE):
         """Format AMQP queue name into a legal SQS queue name."""
         if name.endswith('.fifo'):
-            partial = name.rstrip('.fifo')
+            partial = name[:-len('.fifo')]
             partial = text_t(safe_str(partial)).translate(table)
             return partial + '.fifo'
         else:
