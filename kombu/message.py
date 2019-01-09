@@ -9,7 +9,7 @@ from .five import python_2_unicode_compatible, reraise, text_t
 from .serialization import loads
 from .utils.functional import dictfilter
 
-__all__ = ('Message')
+__all__ = ('Message',)
 
 ACK_STATES = {'ACK', 'REJECTED', 'REQUEUED'}
 IS_PYPY = hasattr(sys, 'pypy_version_info')
