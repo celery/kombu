@@ -16,8 +16,8 @@ def Client(hub=None, **kwargs):
 def get_client(hub=None, **kwargs):
     """Get or create HTTP client bound to the current event loop."""
     hub = hub or get_event_loop()
-    try:
-        return hub._current_http_client
-    except AttributeError:
+    assert hub is not None
+    client = getattr(hub, '_current_http_client', None)
+    if not client:
         client = hub._current_http_client = Client(hub, **kwargs)
-        return client
+    return client
