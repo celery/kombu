@@ -14,7 +14,7 @@ __all__ = ('register', 'encoders', 'get_encoder',
            'get_decoder', 'compress', 'decompress')
 
 
-def register(encoder, decoder, content_type, aliases=[]):
+def register(encoder, decoder, content_type, aliases=None):
     """Register new compression method.
 
     Arguments:
@@ -28,7 +28,8 @@ def register(encoder, decoder, content_type, aliases=[]):
     """
     _encoders[content_type] = encoder
     _decoders[content_type] = decoder
-    _aliases.update((alias, content_type) for alias in aliases)
+    if aliases:
+        _aliases.update((alias, content_type) for alias in aliases)
 
 
 def encoders():
