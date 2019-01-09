@@ -226,7 +226,8 @@ class test_Channel:
 
     def test_entity_name(self):
         assert self.channel.entity_name('foo') == 'foo'
-        assert self.channel.entity_name('foo.bar-baz*qux_quux') == 'foo-bar-baz_qux_quux'
+        assert self.channel.entity_name('foo.bar-baz*qux_quux') == \
+            'foo-bar-baz_qux_quux'
         assert self.channel.entity_name('abcdef.fifo') == 'abcdef.fifo'
 
     def test_new_queue(self):
