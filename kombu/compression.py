@@ -100,3 +100,20 @@ if lzma:  # pragma: no cover
     register(lzma.compress,
              lzma.decompress,
              'application/x-lzma', aliases=['lzma', 'xz'])
+
+try:
+    import zstandard as zstd
+except ImportError:  # pragma: no cover
+    pass
+else:
+    def zstd_compress(body):
+        c = zstd.ZstdCompressor()
+        return c.compress(body)
+
+    def zstd_decompress(body):
+        d = zstd.ZstdDecompressor()
+        return d.decompress(body)
+
+    register(zstd_compress,
+             zstd_decompress,
+             'application/zstd', aliases=['zstd', 'zstandard'])
