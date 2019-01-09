@@ -57,7 +57,7 @@ from . import virtual
 
 logger = get_logger(__name__)
 
-# dots are replaced by dash, all other punctuation
+# dots are replaced by dash, dash remains dash, all other punctuation
 # replaced by underscore.
 CHARS_REPLACE_TABLE = {
     ord(c): 0x5f for c in string.punctuation if c not in '-_.'
