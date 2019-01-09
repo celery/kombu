@@ -96,7 +96,7 @@ else:
              'application/x-brotli', aliases=['brotli'])
 
 # TODO: Drop condition once we drop Python 2.7 support
-if lzma:
+if lzma:  # pragma: no cover
     register(lzma.compress,
              lzma.decompress,
              'application/x-lzma', aliases=['lzma', 'xz'])
