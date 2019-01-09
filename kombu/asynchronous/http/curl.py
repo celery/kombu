@@ -6,7 +6,7 @@ from functools import partial
 from io import BytesIO
 from time import time
 
-from kombu.asynchronous.hub import READ, WRITE, get_event_loop
+from kombu.asynchronous.hub import READ, WRITE, must_get_event_loop
 from kombu.exceptions import HttpError
 from kombu.five import bytes_if_py2, items
 from kombu.utils.encoding import bytes_to_str
@@ -41,7 +41,7 @@ class CurlClient(BaseClient):
     def __init__(self, hub=None, max_clients=10):
         if pycurl is None:
             raise ImportError('The curl client requires the pycurl library.')
-        hub = hub or get_event_loop()
+        hub = hub or must_get_event_loop()
         super(CurlClient, self).__init__(hub)
         self.max_clients = max_clients
 

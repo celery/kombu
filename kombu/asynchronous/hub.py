@@ -30,6 +30,10 @@ class Stop(BaseException):
     """Stops the event loop."""
 
 
+class NoEventLoopError(Exception):
+    pass
+
+
 def _raise_stop_error():
     raise Stop()
 
@@ -41,6 +45,13 @@ def _dummy_context(*args, **kwargs):
 
 def get_event_loop():
     """Get current event loop object."""
+    return _current_loop
+
+
+def must_get_event_loop():
+    """Get current event loop object or raise an  exception. Use this to fail early."""
+    if _current_loop is None:
+        raise NoEventLoopError
     return _current_loop
 
 
