@@ -481,7 +481,8 @@ class Connection(object):
                 for each retry.
             interval_max (float): Maximum number of seconds to sleep between
                 each retry.
-            on_revive (Callable): Optional callback called whenever revival completes successfully
+            on_revive (Callable): Optional callback called whenever
+                revival completes successfully
 
         Examples:
             >>> from kombu import Connection, Producer
