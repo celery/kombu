@@ -76,3 +76,12 @@ register(zlib.compress,
 register(bz2.compress,
          bz2.decompress,
          'application/x-bz2', aliases=['bzip2', 'bzip'])
+
+try:
+    import brotli
+except ImportError:  # pragma: no cover
+    pass
+else:
+    register(brotli.compress,
+             brotli.decompress,
+             'application/x-brotli', aliases=['brotli'])
