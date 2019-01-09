@@ -79,7 +79,7 @@ register(bz2.compress,
 
 try:
     import brotli
-except ImportError:
+except ImportError:  # pragma: no cover
     pass
 else:
     register(brotli.compress,
