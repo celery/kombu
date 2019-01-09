@@ -11,7 +11,7 @@ from kombu.five import string_t
 def escape_regex(p, white=''):
     # type: (str, str) -> str
     """Escape string for use within a regular expression."""
-    # what's up with re.escape? that code must be neglected or someting
+    # what's up with re.escape? that code must be neglected or something
     return ''.join(c if c.isalnum() or c in white
                    else ('\\000' if c == '\000' else '\\' + c)
                    for c in p)
