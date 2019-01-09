@@ -18,6 +18,6 @@ def get_client(hub=None, **kwargs):
     hub = hub or get_event_loop()
     assert hub is not None
     client = getattr(hub, '_current_http_client', None)
-    if not client:
+    if client is None:
         client = hub._current_http_client = Client(hub, **kwargs)
     return client
