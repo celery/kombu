@@ -27,11 +27,8 @@ matrix:
       before_install: sudo apt-get update && sudo apt-get install libgnutls-dev
     - python: pypy
       env: TOXENV=pypy
-    - python: 3.7
-      env: TOXENV=flake8
+    - env: TOXENV=flake8
       stage: lint
-      dist: xenial
-      before_install: sudo apt-get update && sudo apt-get install libgnutls-dev
     - env: TOXENV=flakeplus
       stage: lint
     - env: TOXENV=apicheck
