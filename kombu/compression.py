@@ -6,6 +6,15 @@ from kombu.utils.encoding import ensure_bytes
 import bz2
 import zlib
 
+try:
+    import lzma
+except ImportError:  # pragma: no cover
+    # TODO: Drop fallback to backports once we drop Python 2.7 support
+    try:
+        from backports import lzma
+    except ImportError:  # pragma: no cover
+        lzma = None
+
 _aliases = {}
 _encoders = {}
 _decoders = {}
@@ -85,3 +94,9 @@ else:
     register(brotli.compress,
              brotli.decompress,
              'application/x-brotli', aliases=['brotli'])
+
+# TODO: Drop condition once we drop Python 2.7 support
+if lzma:  # pragma: no cover
+    register(lzma.compress,
+             lzma.decompress,
+             'application/x-lzma', aliases=['lzma', 'xz'])

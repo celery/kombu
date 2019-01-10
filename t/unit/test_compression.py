@@ -18,6 +18,16 @@ class test_compression:
 
         assert 'application/x-brotli' in compression.encoders()
 
+    def test_encoders__lzma(self):
+        pytest.importorskip('lzma')
+
+        assert 'application/x-lzma' in compression.encoders()
+
+    def test_encoders__backports_lzma(self):
+        pytest.importorskip('backports.lzma')
+
+        assert 'application/x-lzma' in compression.encoders()
+
     def test_compress__decompress__zlib(self):
         text = b'The Quick Brown Fox Jumps Over The Lazy Dog'
         c, ctype = compression.compress(text, 'zlib')
@@ -37,6 +47,21 @@ class test_compression:
 
         text = b'The Brown Quick Fox Over The Lazy Dog Jumps'
         c, ctype = compression.compress(text, 'brotli')
+
+    def test_compress__decompress__lzma(self):
+        pytest.importorskip('lzma')
+
+        text = b'The Brown Quick Fox Over The Lazy Dog Jumps'
+        c, ctype = compression.compress(text, 'lzma')
+        assert text != c
+        d = compression.decompress(c, ctype)
+        assert d == text
+
+    def test_compress__decompress__backports_lzma(self):
+        pytest.importorskip('backports.lzma')
+
+        text = b'The Brown Quick Fox Over The Lazy Dog Jumps'
+        c, ctype = compression.compress(text, 'lzma')
         assert text != c
         d = compression.decompress(c, ctype)
         assert d == text
