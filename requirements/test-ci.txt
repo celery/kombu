@@ -10,4 +10,5 @@ msgpack-python>0.2.0
 -r extras/librabbitmq.txt
 -r extras/zookeeper.txt
 -r extras/brotli.txt
+-r extras/zstd.txt
 sqlalchemy

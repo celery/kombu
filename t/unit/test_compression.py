@@ -28,6 +28,11 @@ class test_compression:
 
         assert 'application/x-lzma' in compression.encoders()
 
+    def test_encoders__zstd(self):
+        pytest.importorskip('zstandard')
+
+        assert 'application/zstd' in compression.encoders()
+
     def test_compress__decompress__zlib(self):
         text = b'The Quick Brown Fox Jumps Over The Lazy Dog'
         c, ctype = compression.compress(text, 'zlib')
@@ -62,6 +67,15 @@ class test_compression:
 
         text = b'The Brown Quick Fox Over The Lazy Dog Jumps'
         c, ctype = compression.compress(text, 'lzma')
+        assert text != c
+        d = compression.decompress(c, ctype)
+        assert d == text
+
+    def test_compress__decompress__zstd(self):
+        pytest.importorskip('zstandard')
+
+        text = b'The Brown Quick Fox Over The Lazy Dog Jumps'
+        c, ctype = compression.compress(text, 'zstd')
         assert text != c
         d = compression.decompress(c, ctype)
         assert d == text
