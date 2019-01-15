@@ -1,6 +1,4 @@
 """Exceptions."""
-from __future__ import absolute_import, unicode_literals
-
 from socket import timeout as TimeoutError  # noqa
 
 from amqp import ChannelError, ConnectionError, ResourceError

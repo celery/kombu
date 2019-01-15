@@ -21,8 +21,6 @@ This queue does not offer reliable consumption.  An entry is removed from
 the queue prior to being processed.  So if an error occurs, the consumer
 has to re-queue the item or it will be lost.
 """
-from __future__ import absolute_import, unicode_literals
-
 import os
 import socket
 

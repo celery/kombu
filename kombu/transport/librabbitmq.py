@@ -2,8 +2,6 @@
 
 .. _`librabbitmq`: https://pypi.org/project/librabbitmq/
 """
-from __future__ import absolute_import, unicode_literals
-
 import os
 import socket
 import warnings

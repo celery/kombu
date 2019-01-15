@@ -1,7 +1,4 @@
-# -*- coding: utf-8 -*-
 """Mixins."""
-from __future__ import absolute_import, unicode_literals
-
 import socket
 
 from contextlib import contextmanager

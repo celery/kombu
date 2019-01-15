@@ -1,6 +1,4 @@
 """Kombu transport using SQLAlchemy as the message store."""
-from __future__ import absolute_import, unicode_literals
-
 import datetime
 
 from sqlalchemy import (Column, Integer, String, Text, DateTime,

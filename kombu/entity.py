@@ -1,6 +1,4 @@
 """Exchange and Queue declarations."""
-from __future__ import absolute_import, unicode_literals
-
 import numbers
 
 from .abstract import MaybeChannelBound, Object

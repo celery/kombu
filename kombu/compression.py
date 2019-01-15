@@ -1,6 +1,4 @@
 """Compression utilities."""
-from __future__ import absolute_import, unicode_literals
-
 from kombu.utils.encoding import ensure_bytes
 
 import bz2

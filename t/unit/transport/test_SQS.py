@@ -4,9 +4,6 @@ NOTE: The SQSQueueMock and SQSConnectionMock classes originally come from
 http://github.com/pcsforeducation/sqs-mock-python. They have been patched
 slightly.
 """
-
-from __future__ import absolute_import, unicode_literals
-
 import os
 import pytest
 import random

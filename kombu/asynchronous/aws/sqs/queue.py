@@ -1,7 +1,4 @@
-# -*- coding: utf-8 -*-
 """Amazon SQS queue implementation."""
-from __future__ import absolute_import, unicode_literals
-
 from vine import transform
 
 from .message import AsyncMessage

@@ -76,8 +76,6 @@ options override and replace any other default or specified values. If using
 Celery, this can be accomplished by setting the
 *BROKER_TRANSPORT_OPTIONS* Celery option.
 """
-from __future__ import absolute_import, unicode_literals
-
 from collections import OrderedDict
 import os
 import select

@@ -1,6 +1,4 @@
-# -*- coding: utf-8 -*-
 """Text Utilities."""
-from __future__ import absolute_import, unicode_literals
 
 from difflib import SequenceMatcher
 

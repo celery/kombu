@@ -1,6 +1,4 @@
 """Built-in transports."""
-from __future__ import absolute_import, unicode_literals
-
 from kombu.five import string_t
 from kombu.utils.compat import _detect_environment
 from kombu.utils.imports import symbol_by_name

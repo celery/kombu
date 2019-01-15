@@ -4,8 +4,6 @@ It uses Etcd as a store to transport messages in Queues
 
 It uses python-etcd for talking to Etcd's HTTP API
 """
-from __future__ import absolute_import, unicode_literals
-
 import os
 import socket
 

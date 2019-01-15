@@ -1,7 +1,4 @@
-# -*- coding: utf-8 -*-
 """Amazon boto3 interface."""
-from __future__ import absolute_import, unicode_literals
-
 try:
     import boto3
     from botocore import exceptions

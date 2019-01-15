@@ -1,6 +1,4 @@
 """Base async HTTP client implementation."""
-from __future__ import absolute_import, unicode_literals
-
 import sys
 
 from vine import Thenable, promise, maybe_promise

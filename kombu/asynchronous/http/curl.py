@@ -1,6 +1,4 @@
 """HTTP Client using pyCurl."""
-from __future__ import absolute_import, unicode_literals
-
 from collections import deque
 from functools import partial
 from io import BytesIO

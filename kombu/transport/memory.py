@@ -1,6 +1,4 @@
 """In-memory transport."""
-from __future__ import absolute_import, unicode_literals
-
 from kombu.five import Queue, values
 
 from . import base

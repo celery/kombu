@@ -1,7 +1,4 @@
-# -*- coding: utf-8 -*-
 """Semaphores and concurrency primitives."""
-from __future__ import absolute_import, unicode_literals
-
 from collections import deque
 
 from kombu.five import python_2_unicode_compatible

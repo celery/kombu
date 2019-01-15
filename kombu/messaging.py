@@ -1,6 +1,4 @@
 """Sending and receiving messages."""
-from __future__ import absolute_import, unicode_literals
-
 from itertools import count
 
 from .common import maybe_declare

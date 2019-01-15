@@ -1,7 +1,4 @@
-# * coding: utf8 *
 """Amazon AWS Connection."""
-from __future__ import absolute_import, unicode_literals
-
 from vine import promise, transform
 
 from kombu.asynchronous.aws.ext import AWSRequest, get_response

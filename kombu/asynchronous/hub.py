@@ -1,7 +1,4 @@
-# -*- coding: utf-8 -*-
 """Event loop implementation."""
-from __future__ import absolute_import, unicode_literals
-
 import errno
 from contextlib import contextmanager
 from time import sleep

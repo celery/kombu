@@ -1,5 +1,4 @@
 """Div. Utilities."""
-from __future__ import absolute_import, unicode_literals, print_function
 
 from .encoding import default_encode
 

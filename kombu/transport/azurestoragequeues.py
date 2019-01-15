@@ -13,8 +13,6 @@ More information about Azure Storage Queues:
 https://azure.microsoft.com/en-us/services/storage/queues/
 
 """
-from __future__ import absolute_import, unicode_literals
-
 import string
 
 from kombu.five import Empty, text_t

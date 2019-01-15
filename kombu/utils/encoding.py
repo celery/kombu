@@ -1,11 +1,9 @@
-# -*- coding: utf-8 -*-
 """Text encoding utilities.
 
 Utilities to encode text, and to safely emit text from running
 applications without crashing from the infamous
 :exc:`UnicodeDecodeError` exception.
 """
-from __future__ import absolute_import, unicode_literals
 
 import sys
 import traceback

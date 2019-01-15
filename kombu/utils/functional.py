@@ -1,6 +1,4 @@
 """Functional Utilities."""
-from __future__ import absolute_import, unicode_literals
-
 import random
 import sys
 import threading

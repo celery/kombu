@@ -3,8 +3,6 @@
 Implementations of the standard exchanges defined
 by the AMQ protocol  (excluding the `headers` exchange).
 """
-from __future__ import absolute_import, unicode_literals
-
 import re
 
 from kombu.utils.text import escape_regex

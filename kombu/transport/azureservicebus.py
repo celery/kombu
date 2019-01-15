@@ -17,8 +17,6 @@ More information about Azure Service Bus:
 https://azure.microsoft.com/en-us/services/service-bus/
 
 """
-from __future__ import absolute_import, unicode_literals
-
 import string
 
 from kombu.five import Empty, text_t

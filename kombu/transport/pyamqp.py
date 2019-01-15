@@ -1,6 +1,4 @@
 """Pure-Python amqp transport."""
-from __future__ import absolute_import, unicode_literals
-
 import amqp
 
 from kombu.five import items

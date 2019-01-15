@@ -10,9 +10,6 @@ which is used in turn to locate the kombu.broker Pyro service.
 This broker can be launched by simply executing this transport module directly,
 with the command: ``python -m kombu.transport.pyro``
 """
-
-from __future__ import absolute_import, unicode_literals
-
 import sys
 
 from kombu.five import reraise, Queue, Empty

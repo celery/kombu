@@ -2,8 +2,6 @@
 
 Emulates the AMQ API for non-AMQ transports.
 """
-from __future__ import absolute_import, print_function, unicode_literals
-
 import base64
 import socket
 import sys
