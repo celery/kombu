@@ -16,6 +16,11 @@ def test_parse_url():
     }
 
 
+def test_can_extract_virtual_host_from_query():
+    parsed = parse_url('amqp://user:pass@localhost:5672/?virtual_host=my/vhost')
+    assert "my/vhost" == parsed["virtual_host"]
+
+
 @pytest.mark.parametrize('urltuple,expected', [
     (('https',), 'https:///'),
     (('https', 'e.com'), 'https://e.com/'),
