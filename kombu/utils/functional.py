@@ -6,7 +6,12 @@ import sys
 import threading
 
 from collections import OrderedDict
-from collections.abc import Iterable, Mapping
+
+try:
+    from collections.abc import Iterable, Mapping
+except ImportError:
+    from collections import Iterable, Mapping
+
 from itertools import count, repeat
 from time import sleep, time
 
