@@ -8,7 +8,8 @@ import sys
 import time
 import uuid
 
-from collections import Callable, OrderedDict
+from collections import OrderedDict
+from collections.abc import Callable
 from itertools import count
 
 from case import Mock, call, patch, skip

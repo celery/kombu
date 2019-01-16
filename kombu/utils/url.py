@@ -1,7 +1,7 @@
 """URL Utilities."""
 from __future__ import absolute_import, unicode_literals
 
-from collections import Mapping
+from collections.abc import Mapping
 from functools import partial
 
 try:
