@@ -3,17 +3,27 @@ from __future__ import absolute_import, unicode_literals
 
 from kombu.utils.encoding import ensure_bytes
 
+import bz2
 import zlib
+
+try:
+    import lzma
+except ImportError:  # pragma: no cover
+    # TODO: Drop fallback to backports once we drop Python 2.7 support
+    try:
+        from backports import lzma
+    except ImportError:  # pragma: no cover
+        lzma = None
 
 _aliases = {}
 _encoders = {}
 _decoders = {}
 
-__all__ = ['register', 'encoders', 'get_encoder',
-           'get_decoder', 'compress', 'decompress']
+__all__ = ('register', 'encoders', 'get_encoder',
+           'get_decoder', 'compress', 'decompress')
 
 
-def register(encoder, decoder, content_type, aliases=[]):
+def register(encoder, decoder, content_type, aliases=None):
     """Register new compression method.
 
     Arguments:
@@ -27,7 +37,8 @@ def register(encoder, decoder, content_type, aliases=[]):
     """
     _encoders[content_type] = encoder
     _decoders[content_type] = decoder
-    _aliases.update((alias, content_type) for alias in aliases)
+    if aliases:
+        _aliases.update((alias, content_type) for alias in aliases)
 
 
 def encoders():
@@ -70,11 +81,39 @@ def decompress(body, content_type):
 register(zlib.compress,
          zlib.decompress,
          'application/x-gzip', aliases=['gzip', 'zlib'])
+
+register(bz2.compress,
+         bz2.decompress,
+         'application/x-bz2', aliases=['bzip2', 'bzip'])
+
 try:
-    import bz2
-except ImportError:
-    pass  # Jython?
+    import brotli
+except ImportError:  # pragma: no cover
+    pass
 else:
-    register(bz2.compress,
-             bz2.decompress,
-             'application/x-bz2', aliases=['bzip2', 'bzip'])
+    register(brotli.compress,
+             brotli.decompress,
+             'application/x-brotli', aliases=['brotli'])
+
+# TODO: Drop condition once we drop Python 2.7 support
+if lzma:  # pragma: no cover
+    register(lzma.compress,
+             lzma.decompress,
+             'application/x-lzma', aliases=['lzma', 'xz'])
+
+try:
+    import zstandard as zstd
+except ImportError:  # pragma: no cover
+    pass
+else:
+    def zstd_compress(body):
+        c = zstd.ZstdCompressor()
+        return c.compress(body)
+
+    def zstd_decompress(body):
+        d = zstd.ZstdDecompressor()
+        return d.decompress(body)
+
+    register(zstd_compress,
+             zstd_decompress,
+             'application/zstd', aliases=['zstd', 'zstandard'])

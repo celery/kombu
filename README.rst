@@ -4,8 +4,8 @@
 
 |build-status| |coverage| |license| |wheel| |pyversion| |pyimp|
 
-:Version: 4.2.1
-:Web: http://kombu.me/
+:Version: 4.2.2
+:Documentation: https://kombu.readthedocs.io/
 :Download: https://pypi.org/project/kombu/
 :Source: https://github.com/celery/kombu/
 :Keywords: messaging, amqp, rabbitmq, redis, mongodb, python, queue
@@ -74,7 +74,7 @@ and the `Wikipedia article about AMQP`_.
 .. _`Wikipedia article about AMQP`: https://en.wikipedia.org/wiki/AMQP
 .. _`carrot`: https://pypi.org/project/carrot/
 .. _`librabbitmq`: https://pypi.org/project/librabbitmq/
-.. _`Pyro`: https://pythonhosting.org/Pyro4
+.. _`Pyro`: https://pyro4.readthedocs.io/
 .. _`SoftLayer MQ`: https://sldn.softlayer.com/reference/messagequeueapi
 
 .. _transport-comparison:
@@ -100,6 +100,8 @@ Transport Comparison
 | *in-memory*   | Virtual  | Yes        | Yes [#f1]_ | No            | No           | No                    |
 +---------------+----------+------------+------------+---------------+--------------+-----------------------+
 | *SLMQ*        | Virtual  | Yes        | Yes [#f1]_ | No            | No           | No                    |
++---------------+----------+------------+------------+---------------+--------------+-----------------------+
+| *Pyro*        | Virtual  | Yes        | Yes [#f1]_ | No            | No           | No                    |
 +---------------+----------+------------+------------+---------------+--------------+-----------------------+
 
 
@@ -356,4 +358,3 @@ file in the top distribution directory for the full license text.
     :alt: Support Python implementations.
     :target: https://pypi.org/project/kombu/
 --
-

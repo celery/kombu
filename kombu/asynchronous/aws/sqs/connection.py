@@ -11,7 +11,7 @@ from .message import AsyncMessage
 from .queue import AsyncQueue
 
 
-__all__ = ['AsyncSQSConnection']
+__all__ = ('AsyncSQSConnection',)
 
 
 class AsyncSQSConnection(AsyncAWSQueryConnection):

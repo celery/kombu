@@ -12,7 +12,7 @@ from numbers import Integral
 from . import fileno
 from .compat import detect_environment
 
-__all__ = ['poll']
+__all__ = ('poll',)
 
 _selectf = __select__.select
 _selecterr = __select__.error

@@ -7,9 +7,9 @@ from kombu.five import python_2_unicode_compatible
 
 from .imports import symbol_by_name
 
-__all__ = [
+__all__ = (
     'FairCycle', 'priority_cycle', 'round_robin_cycle', 'sorted_cycle',
-]
+)
 
 CYCLE_ALIASES = {
     'priority': 'kombu.utils.scheduling:priority_cycle',

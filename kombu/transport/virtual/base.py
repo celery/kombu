@@ -977,7 +977,7 @@ class Transport(base.Transport):
         try:
             callback = self._callbacks[queue]
         except KeyError:
-            logger.warn(W_NO_CONSUMERS, queue)
+            logger.warning(W_NO_CONSUMERS, queue)
             self._reject_inbound_message(message)
         else:
             callback(message)

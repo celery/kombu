@@ -98,6 +98,10 @@ All of these are valid URLs:
     # Using virtual host 'foo'
     amqp://localhost/foo
 
+    # Using Pyro with name server running on 'localhost'
+    pyro://localhost/kombu.broker
+
+
 The query part of the URL can also be used to set options, e.g.:
 
 .. code-block:: text

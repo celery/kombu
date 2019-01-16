@@ -22,6 +22,7 @@ from kombu.utils.objects import cached_property
 from kombu.utils.scheduling import cycle_by_name
 from kombu.utils.url import _parse_url
 from kombu.utils.uuid import uuid
+from kombu.utils.compat import _detect_environment
 
 from . import virtual
 
@@ -145,8 +146,15 @@ class QoS(virtual.QoS):
     def append(self, message, delivery_tag):
         delivery = message.delivery_info
         EX, RK = delivery['exchange'], delivery['routing_key']
+        # TODO: Remove this once we soley on Redis-py 3.0.0+
+        if redis.VERSION[0] >= 3:
+            # Redis-py changed the format of zadd args in v3.0.0
+            zadd_args = [{delivery_tag: time()}]
+        else:
+            zadd_args = [time(), delivery_tag]
+
         with self.pipe_or_acquire() as pipe:
-            pipe.zadd(self.unacked_index_key, time(), delivery_tag) \
+            pipe.zadd(self.unacked_index_key, *zadd_args) \
                 .hset(self.unacked_key, delivery_tag,
                       dumps([message._raw, EX, RK])) \
                 .execute()
@@ -189,6 +197,9 @@ class QoS(virtual.QoS):
             try:
                 with Mutex(client, self.unacked_mutex_key,
                            self.unacked_mutex_expire):
+                    env = _detect_environment()
+                    if env == 'gevent':
+                        ceil = time()
                     visible = client.zrevrangebyscore(
                         self.unacked_index_key, ceil, 0,
                         start=num and start, num=num, withscores=True)
@@ -920,8 +931,22 @@ class Channel(virtual.Channel):
         if asynchronous:
             class Connection(connection_cls):
                 def disconnect(self):
-                    super(Connection, self).disconnect()
+                    # NOTE: see celery issue #3898
+                    # redis-py Connection shutdown()s the socket
+                    # which causes all copies of file descriptor
+                    # to become unusable, however close() only
+                    # affect process-local copies of fds.
+                    # So we just override Connection's disconnect method.
+                    self._parser.on_disconnect()
                     channel._on_connection_disconnect(self)
+                    if self._sock is None:
+                        return
+                    try:
+                        # self._sock.shutdown(socket.SHUT_RDWR)
+                        self._sock.close()
+                    except socket.error:
+                        pass
+                    self._sock = None
             connection_cls = Connection
 
         connparams['connection_class'] = connection_cls
@@ -1051,9 +1076,7 @@ class SentinelChannel(Channel):
 
     sentinel://0.0.0.0:26379;sentinel://0.0.0.0:26380/...
 
-    where each sentinel is separated by a `;`.  Multiple sentinels are handled
-    by :class:`kombu.Connection` constructor, and placed in the alternative
-    list of servers to connect to in case of connection failure.
+    where each sentinel is separated by a `;`.
 
     Other arguments for the sentinel should come from the transport options
     (see :method:`Celery.connection` which is in charge of creating the
@@ -1077,11 +1100,14 @@ class SentinelChannel(Channel):
 
         additional_params.pop('host', None)
         additional_params.pop('port', None)
-
+        connection_list = []
+        for url in self.connection.client.alt:
+            if url and 'sentinel://' in url:
+                connection_list.append(url.split('/')[2].split(':'))
         sentinel_inst = sentinel.Sentinel(
-            [(connparams['host'], connparams['port'])],
+            connection_list,
             min_other_sentinels=getattr(self, 'min_other_sentinels', 0),
-            sentinel_kwargs=getattr(self, 'sentinel_kwargs', {}),
+            sentinel_kwargs=getattr(self, 'sentinel_kwargs', None),
             **additional_params)
 
         master_name = getattr(self, 'master_name', None)

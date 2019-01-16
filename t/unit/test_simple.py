@@ -107,6 +107,11 @@ class test_SimpleQueue(SimpleBase):
         q = self.Queue('test_is_no_ack')
         assert not q.no_ack
 
+    def test_queue_args(self):
+        q = self.connection.SimpleQueue('test_queue_args',
+                                        queue_args={'x-queue-mode': 'lazy'})
+        assert q.queue.queue_arguments['x-queue-mode'] == 'lazy'
+
 
 class test_SimpleBuffer(SimpleBase):
 

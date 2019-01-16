@@ -8,7 +8,7 @@ from .exceptions import NotBoundError
 from .five import python_2_unicode_compatible
 from .utils.functional import ChannelPromise
 
-__all__ = ['Object', 'MaybeChannelBound']
+__all__ = ('Object', 'MaybeChannelBound')
 
 
 def unpickle_dict(cls, kwargs):

@@ -22,7 +22,7 @@ from .five import reraise, text_t
 from .utils.compat import entrypoints
 from .utils.encoding import bytes_to_str, str_to_bytes, bytes_t
 
-__all__ = ['pickle', 'loads', 'dumps', 'register', 'unregister']
+__all__ = ('pickle', 'loads', 'dumps', 'register', 'unregister')
 SKIP_DECODE = frozenset(['binary', 'ascii-8bit'])
 TRUSTED_CONTENT = frozenset(['application/data', 'application/text'])
 
@@ -370,7 +370,7 @@ def register_msgpack():
                 return packb(s, use_bin_type=True)
 
             def unpack(s):
-                return unpackb(s, encoding='utf-8')
+                return unpackb(s, raw=False)
         else:
             def version_mismatch(*args, **kwargs):
                 raise SerializerNotInstalled(

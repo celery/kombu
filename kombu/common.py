@@ -27,10 +27,10 @@ except ImportError:                             # pragma: no cover
     except ImportError:                         # pragma: no cover
         from dummy_thread import get_ident      # noqa
 
-__all__ = ['Broadcast', 'maybe_declare', 'uuid',
+__all__ = ('Broadcast', 'maybe_declare', 'uuid',
            'itermessages', 'send_reply',
            'collect_replies', 'insured', 'drain_consumer',
-           'eventloop']
+           'eventloop')
 
 #: Prefetch count can't exceed short.
 PREFETCH_COUNT_MAX = 0xFFFF
@@ -87,7 +87,7 @@ class Broadcast(Queue):
 
     def __init__(self, name=None, queue=None, auto_delete=True,
                  exchange=None, alias=None, **kwargs):
-        queue = queue or 'bcast.{0}'.format(uuid())
+        queue = '{0}.{1}'.format(queue or 'bcast', uuid())
         return super(Broadcast, self).__init__(
             alias=alias or name,
             queue=queue,
@@ -105,6 +105,12 @@ def declaration_cached(entity, channel):
 
 def maybe_declare(entity, channel=None, retry=False, **retry_policy):
     """Declare entity (cached)."""
+    if retry:
+        return _imaybe_declare(entity, channel, **retry_policy)
+    return _maybe_declare(entity, channel)
+
+
+def _maybe_declare(entity, channel):
     is_bound = entity.is_bound
     orig = entity
 
@@ -123,13 +129,6 @@ def maybe_declare(entity, channel=None, retry=False, **retry_policy):
         if ident in declared:
             return False
 
-    if retry:
-        return _imaybe_declare(entity, declared, ident,
-                               channel, orig, **retry_policy)
-    return _maybe_declare(entity, declared, ident, channel, orig)
-
-
-def _maybe_declare(entity, declared, ident, channel, orig=None):
     if not channel.connection:
         raise RecoverableConnectionError('channel disconnected')
     entity.declare(channel=channel)
@@ -140,11 +139,9 @@ def _maybe_declare(entity, declared, ident, channel, orig=None):
     return True
 
 
-def _imaybe_declare(entity, declared, ident, channel,
-                    orig=None, **retry_policy):
+def _imaybe_declare(entity, channel, **retry_policy):
     return entity.channel.connection.client.ensure(
-        entity, _maybe_declare, **retry_policy)(
-            entity, declared, ident, channel, orig)
+        entity, _maybe_declare, **retry_policy)(entity, channel)
 
 
 def drain_consumer(consumer, limit=1, timeout=None, callbacks=None):
@@ -403,8 +400,8 @@ class QoS(object):
         if pcount != self.prev:
             new_value = pcount
             if pcount > PREFETCH_COUNT_MAX:
-                logger.warn('QoS: Disabled: prefetch_count exceeds %r',
-                            PREFETCH_COUNT_MAX)
+                logger.warning('QoS: Disabled: prefetch_count exceeds %r',
+                               PREFETCH_COUNT_MAX)
                 new_value = 0
             logger.debug('basic.qos: prefetch_count->%s', new_value)
             self.callback(prefetch_count=new_value)

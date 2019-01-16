@@ -12,8 +12,8 @@ from .utils.collections import EqualityDict
 from .utils.compat import register_after_fork
 from .utils.functional import lazy
 
-__all__ = ['ProducerPool', 'PoolGroup', 'register_group',
-           'connections', 'producers', 'get_limit', 'set_limit', 'reset']
+__all__ = ('ProducerPool', 'PoolGroup', 'register_group',
+           'connections', 'producers', 'get_limit', 'set_limit', 'reset')
 _limit = [10]
 _groups = []
 use_global_limit = object()

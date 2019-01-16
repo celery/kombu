@@ -16,7 +16,7 @@ try:  # pragma: no cover
 except ImportError:
     from httplib import responses  # noqa
 
-__all__ = ['Headers', 'Response', 'Request']
+__all__ = ('Headers', 'Response', 'Request')
 
 PYPY = hasattr(sys, 'pypy_version_info')
 

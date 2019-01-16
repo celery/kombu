@@ -27,7 +27,7 @@ else:
         'HEAD': pycurl.NOBODY,
     }
 
-__all__ = ['CurlClient']
+__all__ = ('CurlClient',)
 
 DEFAULT_USER_AGENT = bytes_if_py2('Mozilla/5.0 (compatible; pycurl)')
 EXTRA_METHODS = frozenset(['DELETE', 'OPTIONS', 'PATCH'])

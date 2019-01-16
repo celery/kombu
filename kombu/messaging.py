@@ -12,7 +12,7 @@ from .five import items, python_2_unicode_compatible, text_t, values
 from .serialization import dumps, prepare_accept_content
 from .utils.functional import ChannelPromise, maybe_list
 
-__all__ = ['Exchange', 'Queue', 'Producer', 'Consumer']
+__all__ = ('Exchange', 'Queue', 'Producer', 'Consumer')
 
 
 @python_2_unicode_compatible
@@ -21,7 +21,7 @@ class Producer(object):
 
     Arguments:
         channel (kombu.Connection, ChannelT): Connection or channel.
-        exchange (Exchange, str): Optional default exchange.
+        exchange (kombu.entity.Exchange, str): Optional default exchange.
         routing_key (str): Optional default routing key.
         serializer (str): Default serializer. Default is `"json"`.
         compression (str): Default compression method.
@@ -135,7 +135,7 @@ class Producer(object):
             compression (str): Compression method to use.  Default is none.
             headers (Dict): Mapping of arbitrary headers to pass along
                 with the message body.
-            exchange (Exchange, str): Override the exchange.
+            exchange (kombu.entity.Exchange, str): Override the exchange.
                 Note that this exchange must have been declared.
             declare (Sequence[EntityT]): Optional list of required entities
                 that must have been declared before publishing the message.

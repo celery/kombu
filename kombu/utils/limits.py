@@ -5,7 +5,7 @@ from collections import deque
 
 from kombu.five import monotonic
 
-__all__ = ['TokenBucket']
+__all__ = ('TokenBucket',)
 
 
 class TokenBucket(object):

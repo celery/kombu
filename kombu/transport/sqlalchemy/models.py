@@ -4,7 +4,7 @@ from __future__ import absolute_import, unicode_literals
 import datetime
 
 from sqlalchemy import (Column, Integer, String, Text, DateTime,
-                        Sequence, Boolean, ForeignKey, SmallInteger)
+                        Sequence, Boolean, ForeignKey, SmallInteger, Index)
 from sqlalchemy.ext.declarative import declarative_base, declared_attr
 from sqlalchemy.orm import relation
 from sqlalchemy.schema import MetaData
@@ -37,7 +37,10 @@ class Queue(object):
 class Message(object):
     """The message class."""
 
-    __table_args__ = {'sqlite_autoincrement': True, 'mysql_engine': 'InnoDB'}
+    __table_args__ = (
+        Index('ix_kombu_message_timestamp_id', 'timestamp', 'id'),
+        {'sqlite_autoincrement': True, 'mysql_engine': 'InnoDB'}
+    )
 
     id = Column(Integer, Sequence('message_id_sequence'),
                 primary_key=True, autoincrement=True)

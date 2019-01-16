@@ -10,7 +10,7 @@ from . import messaging
 from .connection import maybe_channel
 from .five import Empty, monotonic
 
-__all__ = ['SimpleQueue', 'SimpleBuffer']
+__all__ = ('SimpleQueue', 'SimpleBuffer')
 
 
 class SimpleBase(object):
@@ -113,19 +113,23 @@ class SimpleQueue(SimpleBase):
 
     no_ack = False
     queue_opts = {}
+    queue_args = {}
     exchange_opts = {'type': 'direct'}
 
     def __init__(self, channel, name, no_ack=None, queue_opts=None,
-                 exchange_opts=None, serializer=None,
+                 queue_args=None, exchange_opts=None, serializer=None,
                  compression=None, **kwargs):
         queue = name
         queue_opts = dict(self.queue_opts, **queue_opts or {})
+        queue_args = dict(self.queue_args, **queue_args or {})
         exchange_opts = dict(self.exchange_opts, **exchange_opts or {})
         if no_ack is None:
             no_ack = self.no_ack
         if not isinstance(queue, entity.Queue):
             exchange = entity.Exchange(name, **exchange_opts)
-            queue = entity.Queue(name, exchange, name, **queue_opts)
+            queue = entity.Queue(name, exchange, name,
+                                 queue_arguments=queue_args,
+                                 **queue_opts)
             routing_key = name
         else:
             exchange = queue.exchange

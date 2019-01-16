@@ -6,7 +6,7 @@ from collections import deque
 
 from kombu.five import python_2_unicode_compatible
 
-__all__ = ['DummyLock', 'LaxBoundedSemaphore']
+__all__ = ('DummyLock', 'LaxBoundedSemaphore')
 
 
 @python_2_unicode_compatible

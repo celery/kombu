@@ -111,7 +111,7 @@ to the ``news`` exchange:
     with producers[connection].acquire(block=True) as producer:
         producer.publish(
             article,
-            exchange=new_exchange,
+            exchange=news_exchange,
             routing_key='domestic',
             declare=[news_exchange],
             serializer='json',

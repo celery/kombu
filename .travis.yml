@@ -20,8 +20,19 @@ matrix:
       env: TOXENV=3.5
     - python: 3.6
       env: TOXENV=3.6
-    - python: pypy
+    - python: 3.7
+      env: TOXENV=3.7
+      sudo: true
+      dist: xenial
+      before_install: sudo apt-get update && sudo apt-get install libgnutls-dev
+    - python: pypy2.7-6.0
       env: TOXENV=pypy
+      dist: xenial
+      before_install: sudo apt-get update && sudo apt-get install libgnutls-dev
+    - python: pypy3.5-6.0
+      env: TOXENV=pypy3
+      dist: xenial
+      before_install: sudo apt-get update && sudo apt-get install libgnutls-dev
     - env: TOXENV=flake8
       stage: lint
     - env: TOXENV=flakeplus
@@ -39,6 +50,7 @@ after_success:
   - .tox/$TRAVIS_PYTHON_VERSION/bin/coverage xml
   - .tox/$TRAVIS_PYTHON_VERSION/bin/codecov -e TOXENV
 notifications:
+  email: false
   irc:
     channels:
       - "chat.freenode.net#celery"

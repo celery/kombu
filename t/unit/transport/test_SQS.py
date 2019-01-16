@@ -7,6 +7,7 @@ slightly.
 
 from __future__ import absolute_import, unicode_literals
 
+import os
 import pytest
 import random
 import string
@@ -34,8 +35,10 @@ class SQSMessageMock(object):
 class QueueMock(object):
     """ Hold information about a queue. """
 
-    def __init__(self, url):
+    def __init__(self, url, creation_attributes=None):
         self.url = url
+        # arguments of boto3.sqs.create_queue
+        self.creation_attributes = creation_attributes
         self.attributes = {'ApproximateNumberOfMessages': '0'}
 
         self.messages = []
@@ -69,7 +72,10 @@ class SQSClientMock(object):
         raise Exception("Queue url {} not found".format(url))
 
     def create_queue(self, QueueName=None, Attributes=None):
-        q = self._queues[QueueName] = QueueMock('sqs://' + QueueName)
+        q = self._queues[QueueName] = QueueMock(
+            'sqs://' + QueueName,
+            Attributes,
+        )
         return {'QueueUrl': q.url}
 
     def list_queues(self, QueueNamePrefix=None):
@@ -173,6 +179,37 @@ class test_Channel:
         """kombu.SQS.Channel instantiates correctly with mocked queues"""
         assert self.queue_name in self.channel._queue_cache
 
+    def test_region(self):
+        import boto3
+        _environ = dict(os.environ)
+
+        # when the region is unspecified
+        connection = Connection(transport=SQS.Transport)
+        channel = connection.channel()
+        assert channel.transport_options.get('region') is None
+        # the default region is us-east-1
+        assert channel.region == 'us-east-1'
+
+        # when boto3 picks a region
+        os.environ['AWS_DEFAULT_REGION'] = 'us-east-2'
+        assert boto3.Session().region_name == 'us-east-2'
+        # the default region should match
+        connection = Connection(transport=SQS.Transport)
+        channel = connection.channel()
+        assert channel.region == 'us-east-2'
+
+        # when transport_options are provided
+        connection = Connection(transport=SQS.Transport, transport_options={
+            'region': 'us-west-2'
+        })
+        channel = connection.channel()
+        assert channel.transport_options.get('region') == 'us-west-2'
+        # the specified region should be used
+        assert connection.channel().region == 'us-west-2'
+
+        os.environ.clear()
+        os.environ.update(_environ)
+
     def test_endpoint_url(self):
         url = 'sqs://@localhost:5493'
         self.connection = Connection(hostname=url, transport=SQS.Transport)
@@ -187,10 +224,32 @@ class test_Channel:
         conn = Connection(hostname=None, transport=SQS.Transport)
         assert conn.hostname == conn.clone().hostname
 
+    def test_entity_name(self):
+        assert self.channel.entity_name('foo') == 'foo'
+        assert self.channel.entity_name('foo.bar-baz*qux_quux') == \
+            'foo-bar-baz_qux_quux'
+        assert self.channel.entity_name('abcdef.fifo') == 'abcdef.fifo'
+
     def test_new_queue(self):
         queue_name = 'new_unittest_queue'
         self.channel._new_queue(queue_name)
         assert queue_name in self.sqs_conn_mock._queues.keys()
+        # For cleanup purposes, delete the queue and the queue file
+        self.channel._delete(queue_name)
+
+    def test_new_queue_custom_creation_attributes(self):
+        self.connection.transport_options['sqs-creation-attributes'] = {
+            'KmsMasterKeyId': 'alias/aws/sqs',
+        }
+        queue_name = 'new_custom_attribute_queue'
+        self.channel._new_queue(queue_name)
+
+        assert queue_name in self.sqs_conn_mock._queues.keys()
+        queue = self.sqs_conn_mock._queues[queue_name]
+
+        assert 'KmsMasterKeyId' in queue.creation_attributes
+        assert queue.creation_attributes['KmsMasterKeyId'] == 'alias/aws/sqs'
+
         # For cleanup purposes, delete the queue and the queue file
         self.channel._delete(queue_name)
 
@@ -289,6 +348,16 @@ class test_Channel:
         self.producer.publish(message)
         results = self.queue(self.channel).get().payload
         assert message == results
+
+    def test_redelivered(self):
+        self.channel.sqs.change_message_visibility = \
+            Mock(name='change_message_visibility')
+        message = {
+            'redelivered': True,
+            'properties': {'delivery_tag': 'test_message_id'}
+        }
+        self.channel._put(self.producer.routing_key, message)
+        self.sqs_conn_mock.change_message_visibility.assert_called_once()
 
     def test_put_and_get_bulk(self):
         # With QoS.prefetch_count = 0
@@ -399,3 +468,21 @@ class test_Channel:
         # called?
         assert (expected_receive_messages_count ==
                 self.sqs_conn_mock._receive_messages_calls)
+
+    def test_basic_ack(self, ):
+        """Test that basic_ack calls the delete_message properly"""
+        message = {
+            'sqs_message': {
+                'ReceiptHandle': '1'
+            },
+            'sqs_queue': 'testing_queue'
+        }
+        mock_messages = Mock()
+        mock_messages.delivery_info = message
+        self.channel.qos.append(mock_messages, 1)
+        self.channel.sqs.delete_message = Mock()
+        self.channel.basic_ack(1)
+        self.sqs_conn_mock.delete_message.assert_called_with(
+            QueueUrl=message['sqs_queue'],
+            ReceiptHandle=message['sqs_message']['ReceiptHandle']
+        )

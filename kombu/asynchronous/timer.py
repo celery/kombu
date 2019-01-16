@@ -21,7 +21,7 @@ try:
 except ImportError:  # pragma: no cover
     utc = None
 
-__all__ = ['Entry', 'Timer', 'to_timestamp']
+__all__ = ('Entry', 'Timer', 'to_timestamp')
 
 logger = get_logger(__name__)
 
