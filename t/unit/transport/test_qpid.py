@@ -8,7 +8,13 @@ import sys
 import time
 import uuid
 
-from collections import Callable, OrderedDict
+from collections import OrderedDict
+
+try:
+    from collections.abc import Callable
+except ImportError:
+    from collections import Callable
+
 from itertools import count
 
 from case import Mock, call, patch, skip

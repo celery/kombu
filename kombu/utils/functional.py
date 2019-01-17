@@ -5,7 +5,13 @@ import random
 import sys
 import threading
 
-from collections import Iterable, Mapping, OrderedDict
+from collections import OrderedDict
+
+try:
+    from collections.abc import Iterable, Mapping
+except ImportError:
+    from collections import Iterable, Mapping
+
 from itertools import count, repeat
 from time import sleep, time
 
