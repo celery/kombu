@@ -1,35 +1,35 @@
-"""
-kombu.matcher
-~~~~~~~~~~~~~
-
-Pattern matching registry.
-
-"""
-from __future__ import absolute_import
+"""Pattern matching registry."""
+from __future__ import absolute_import, unicode_literals
 
 from re import match as rematch
 from fnmatch import fnmatch
 
-from .utils import entrypoints
+from .utils.compat import entrypoints
 from .utils.encoding import bytes_to_str
 
 
 class MatcherNotInstalled(Exception):
+    """Matcher not installed/found."""
+
     pass
 
 
 class MatcherRegistry(object):
+    """Pattern matching function registry."""
 
     MatcherNotInstalled = MatcherNotInstalled
+    matcher_pattern_first = ["pcre", ]
 
     def __init__(self):
         self._matchers = {}
         self._default_matcher = None
 
     def register(self, name, matcher):
+        """Add matcher by name to the registry."""
         self._matchers[name] = matcher
 
     def unregister(self, name):
+        """Remove matcher by name from the registry."""
         try:
             self._matchers.pop(name)
         except KeyError:
@@ -55,13 +55,19 @@ class MatcherRegistry(object):
             )
 
     def match(self, data, pattern, matcher=None, matcher_kwargs=None):
+        """Call the matcher."""
         if matcher and not self._matchers.get(matcher):
             raise self.MatcherNotInstalled(
                 'No matcher installed for {}'.format(matcher)
             )
-        return self._matchers[matcher or 'glob'](
-            bytes_to_str(data), bytes_to_str(pattern), **matcher_kwargs or {}
-        )
+        match_func = self._matchers[matcher or 'glob']
+        if matcher in self.matcher_pattern_first:
+            first_arg = bytes_to_str(pattern)
+            second_arg = bytes_to_str(data)
+        else:
+            first_arg = bytes_to_str(data)
+            second_arg = bytes_to_str(pattern)
+        return match_func(first_arg, second_arg, **matcher_kwargs or {})
 
 
 #: Global registry of matchers.
@@ -108,14 +114,16 @@ register = registry.register
 
     :param name: Registered matching method name.
 """
-unregister = registry,unregister
+unregister = registry.unregister
 
 
 def register_glob():
+    """Register glob into default registry."""
     registry.register('glob', fnmatch)
 
 
 def register_pcre():
+    """Register pcre into default registry."""
     registry.register('pcre', rematch)
 
 

@@ -131,8 +131,16 @@ class Node(object):
         if message:
             self.adjust_clock(message.headers.get('clock') or 0)
         hostname = self.hostname
-        if ((not destination or hostname in destination) or
-                (not pattern or match(hostname, pattern, matcher))):
+        run_dispatch = False
+        if destination:
+            if hostname in destination:
+                run_dispatch = True
+        elif pattern and matcher:
+            if match(hostname, pattern, matcher):
+                run_dispatch = True
+        else:
+            run_dispatch = True
+        if run_dispatch:
             return self.dispatch(**body)
     dispatch_from_message = handle_message
 
@@ -311,8 +319,8 @@ class Mailbox(object):
         if (pattern is not None and not isinstance(pattern, string_t) and
                 matcher is not None and not isinstance(matcher, string_t)):
             raise ValueError(
-                'pattern and matcher must be strings not {}, {}'.format(
-                type(pattern), type(matcher))
+                'pattern and matcher must be '
+                'strings not {}, {}'.format(type(pattern), type(matcher))
             )
 
         arguments = arguments or {}
