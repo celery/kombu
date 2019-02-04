@@ -29,9 +29,15 @@ from kombu.utils.objects import cached_property
 from . import virtual
 
 try:
+    # azure-servicebus version <= 0.21.1
     from azure.servicebus import ServiceBusService, Message, Queue
 except ImportError:
-    ServiceBusService = Message = Queue = None
+    try:
+        # azure-servicebus version >= 0.50.0
+        from azure.servicebus.control_client import \
+            ServiceBusService, Message, Queue
+    except ImportError:
+        ServiceBusService = Message = Queue = None
 
 # dots are replaced by dash, all other punctuation replaced by underscore.
 CHARS_REPLACE_TABLE = {
