@@ -11,19 +11,6 @@
 :release-date: 2019-01-14 7:00 P.M UTC+2:00
 :release-by: Omer Katz
 
-- When using the librabbitmq transport attempting to close
-  an already closed socket may result in a :class:``ValueError``
-  which we now handle.
-
-  Contributed by **Bryan Shelton**
-
-- Remove inclusion of data files in package.
-
-  This caused a serious packaging issue in 4.2.0 due to the fact that *.pyc
-  files were included.
-
-  Contributed by **Sławomir Ehlert**
-
 - Added Python 3.7 support.
 
   Contributed by **Omer Katz**, **Mads Jensen** and **Asif Saif Uddin**
@@ -82,9 +69,9 @@
 
   Contributed by **Gal Cohen**
 
-- Allow :class:``SimpleQueue`` to pass queue_arguments to Queue object.
+- Allow :class:``kombu.simple.SimpleQueue`` to pass queue_arguments to Queue object.
 
-  This allows :class:``SimpleQueue`` to connect to RabbitMQ queues with
+  This allows :class:``kombu.simple.SimpleQueue`` to connect to RabbitMQ queues with
   custom arguments like 'x-queue-mode'='lazy'.
 
   Contributed by **C Blue Neeh**
@@ -124,7 +111,86 @@
 
   Contributed by **Asif Saif Uddin** and **Mads Jensen**
 
--
+- When publishing messages to the Pidbox, retry if an error occurs.
+
+  Contributed by **Asif Saif Uddin**
+
+- Fix infinite loop in :method:``kombu.asynchronous.hub.Hub.create_loop``.
+
+  Previous attempt to fix the problem (PR kombu/760) did not consider
+  an edge case. It is now fixed.
+
+  Contributed by **Vsevolod Strukchinsky**
+
+- Worker shutdown no longer duplicates messages when using the SQS broker.
+
+  Contributed by **Mintu Kumar Sah**
+
+- When using the SQS broker, prefer boto's default region before our hardcoded default.
+
+  Contributed by **Victor Villas**
+
+- Fixed closing of shared redis sockets which previously caused Celery to hang.
+
+  Contributed by **Alexey Popravka**
+
+- the `Pyro`_ transport (:mod:`kombu.transport.pyro`) now works with
+  recent Pyro versions. Also added a Pyro Kombu Broker that this transport
+  needs for its queues.
+
+  Contributed by **Irmen de Jong**
+
+- Handle non-base64-encoded SQS messages.
+
+  Fix contributed by **Tim Li**, **Asif Saif Uddin** and **Omer Katz**.
+
+- Move the handling of Sentinel failures to the redis library itself.
+
+  Previously, Redis Sentinel worked only if the first node's sentinel
+  service in the URI was up. A server outage would have caused downtime.
+
+  Contributed by **Brian Price**
+
+- When using Celery and the pickle serializer with binary data as part of the
+  payload, `UnicodeDecodeError` would be raised as the content was not utf-8.
+  We now replace on errors.
+
+  Contributed by **Jian Dai**
+
+- Allow setting :method:``boto3.sqs.create_queue`` Attributes via transport_options.
+
+  Contributed by **Hunter Fernandes**
+
+- Fixed infinite loop when entity.channel is replaced by revive() on connection
+  drop.
+
+  Contributed by **Tzach Yarimi**
+
+- Added optional support for Brotli compression.
+
+  Contributed by **Omer Katz**
+
+- When using the SQS broker, FIFO queues with names that ended with the 'f' letter
+  were incorrectly parsed. This is now fixed.
+
+  Contributed by **Alex Vishnya** and **Ilya Konstantinov**
+
+-  Added optional support for LZMA compression.
+
+  Contributed by **Omer Katz**
+
+- Added optional support for ZStandard compression.
+
+  Contributed by **Omer Katz**
+
+- Require py-amqp 2.4.0 as the minimum version.
+
+  Contributed by **Asif Saif Uddin**
+
+- The value of DISABLE_TRACEBACKS environment variable is now respected on debug, info
+  and warning logger level.
+
+  Contributed by **Ludovic Rivallain**
 
 .. _version-4.2.2-post1:
 
