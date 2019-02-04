@@ -4,6 +4,128 @@
  Change history
 ================
 
+.. _version-4.3.0:
+
+4.3.0
+=====
+:release-date: 2019-01-14 7:00 P.M UTC+2:00
+:release-by: Omer Katz
+
+- When using the librabbitmq transport attempting to close
+  an already closed socket may result in a :class:``ValueError``
+  which we now handle.
+
+  Contributed by **Bryan Shelton**
+
+- Remove inclusion of data files in package.
+
+  This caused a serious packaging issue in 4.2.0 due to the fact that *.pyc
+  files were included.
+
+  Contributed by **Sławomir Ehlert**
+
+- Added Python 3.7 support.
+
+  Contributed by **Omer Katz**, **Mads Jensen** and **Asif Saif Uddin**
+
+- Avoid caching queues which are declared with a TTL.
+
+  Queues that are declared with a TTL are now also be excluded from the
+  in-memory cache in case they expire between publishes on the same channel.
+
+  Contributed by **Matt Yule-Bennett**
+
+- Added an index to the Message table for the SQLAlchemy transport.
+
+  The index allows to effectively sorting the table by the message's timestamp.
+
+  .. note::
+
+    We do not provide migrations for this model yet.
+    You will need to add the index manually if you are already
+    using the SQLAlchemy transport.
+
+    The syntax may vary between databases.
+    Please refer to your database's documentation for instructions.
+
+  Contributed by **Mikhail Shcherbinin**
+
+- Added a timeout that limits the amount of time we retry
+  to reconnect to a transport.
+
+  Contributed by **:github_user:`tothegump`**
+
+- :class:``celery.asynchronous.hub.Hub`` is now reentrant.
+
+  This allows calling :func:`celery.bin.celery.main` to revive a worker in
+  the same process after rescuing from shutdown (:class:``SystemExit``).
+
+  Contributed by **Alan Justino da Silva**
+
+- Queues now accept string exchange names as arguments as documented.
+
+  Tests were added to avoid further regressions.
+
+  Contributed by **Antonio Gutierrez**
+
+- Specifying names for broadcast queues now work as expected.
+
+  Previously, named broadcast queues did not create multiple queues per worker.
+  They incorrectly declared the named queue which resulted in one queue per
+  fanout exchange, thus missing the entire point of a fanout exchange.
+  The behavior is now matched to unnamed broadcast queues.
+
+  Contributed by **Kuan Hsuan-Tso**
+
+- When initializing the Redis transport in conjunction with gevent
+  restore all unacknowledged messages to queue.
+
+  Contributed by **Gal Cohen**
+
+- Allow :class:``SimpleQueue`` to pass queue_arguments to Queue object.
+
+  This allows :class:``SimpleQueue`` to connect to RabbitMQ queues with
+  custom arguments like 'x-queue-mode'='lazy'.
+
+  Contributed by **C Blue Neeh**
+
+- Add support for 'rediss' scheme for secure Redis connections.
+
+  The rediss scheme defaults to the least secure form, as
+  there is no suitable default location for `ca_certs`. The recommendation
+  would still be to follow the documentation and specify `broker_use_ssl` if
+  coming from celery.
+
+  Contributed by **Daniel Blair**
+
+- Added the Azure Storage Queues transport.
+
+  The transport is implemented on top of Azure Storage
+  Queues. This offers a simple but scalable and low-cost PaaS
+  transport for Celery users in Azure. The transport is intended to be
+  used in conjunction with the Azure Block Blob Storage backend.
+
+  Contributed by **Clemens Wolff**, **:github_user:`@ankurokok`**,
+  **Denis Kisselev**, **Evandro de Paula**, **Martin Peck**
+  and **:github_user:`@michaelperel`**
+
+- Added the Azure Service Bus transport.
+
+  The transport is implemented on top of Azure Service Bus and
+  offers PaaS support for more demanding Celery workloads in Azure.
+  The transport is intended to be used in conjunction with the Azure
+  CosmosDB backend.
+
+  Contributed by **Clemens Wolff**, **:github_user:`@ankurokok`**,
+  **Denis Kisselev**, **Evandro de Paula**, **Martin Peck**
+  and **:github_user:`@michaelperel`**
+
+- Drop remaining mentions of Jython support completely.
+
+  Contributed by **Asif Saif Uddin** and **Mads Jensen**
+
+-
+
 .. _version-4.2.2-post1:
 
 4.2.2-post1
@@ -12,6 +134,7 @@
 :release-by: Omer Katz
 
 .. note::
+
   The previous release contained code from master.
   It is now deleted from PyPi.
   Please use this release instead.
