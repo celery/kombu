@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 """Text Utilities."""
+# flake8: noqa
+
 from __future__ import absolute_import, unicode_literals
 
 from difflib import SequenceMatcher
