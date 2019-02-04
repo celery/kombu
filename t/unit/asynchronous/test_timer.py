@@ -13,7 +13,7 @@ from kombu.five import bytes_if_py2
 class test_to_timestamp:
 
     def test_timestamp(self):
-        assert to_timestamp(3.13) is 3.13
+        assert to_timestamp(3.13) == 3.13
 
     def test_datetime(self):
         assert to_timestamp(datetime.utcnow())
