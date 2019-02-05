@@ -19,7 +19,7 @@ from itertools import count
 
 from case import Mock, call, patch, skip
 
-from kombu.five import Empty, keys, range, monotonic
+from kombu.five import Empty, range, monotonic
 from kombu.transport.qpid import (AuthenticationFailure, Channel, Connection,
                                   ConnectionError, Message, NotFound, QoS,
                                   Transport)
@@ -34,31 +34,6 @@ def disable_runtime_dependency_check(patching):
     mock_dependency_is_none = patching(QPID_MODULE + '.dependency_is_none')
     mock_dependency_is_none.return_value = False
     return mock_dependency_is_none
-
-
-class ExtraAssertionsMixin(object):
-    """A mixin class adding assertDictEqual and assertDictContainsSubset"""
-
-    def assertDictEqual(self, a, b, msg=None):
-        """
-        Test that two dictionaries are equal.
-
-        Implemented here because this method was not available until Python
-        2.6. This asserts that the unique set of keys are the same in a and b.
-        Also asserts that the value of each key is the same in a and b using
-        the is operator.
-        """
-        assert set(keys(a)) == set(keys(b))
-        for key in keys(a):
-            assert a[key] == b[key]
-
-    def assertDictContainsSubset(self, a, b, msg=None):
-        """
-        Assert that all the key/value pairs in a exist in b.
-        """
-        for key in keys(a):
-            assert key in b
-            assert a[key] == b[key]
 
 
 class QpidException(Exception):
@@ -280,15 +255,13 @@ class ConnectionTestBase(object):
 
 @skip.if_python3()
 @skip.if_pypy()
-class test_Connection__init__(ExtraAssertionsMixin, ConnectionTestBase):
+class test_Connection__init__(ConnectionTestBase):
 
     def test_stores_connection_options(self):
         # ensure that only one mech was passed into connection. The other
         # options should all be passed through as-is
         modified_conn_opts = self.connection_options
-        self.assertDictEqual(
-            modified_conn_opts, self.conn.connection_options,
-        )
+        assert modified_conn_opts == self.conn.connection_options
 
     def test_class_variables(self):
         assert isinstance(self.conn.channels, list)
@@ -718,7 +691,7 @@ class test_Channel_basic_cancel(ChannelTestBase):
 
 @skip.if_python3()
 @skip.if_pypy()
-class test_Channel__init__(ChannelTestBase, ExtraAssertionsMixin):
+class test_Channel__init__(ChannelTestBase):
 
     def test_channel___init__sets_variables_as_expected(self):
         assert self.conn is self.channel.connection
@@ -727,14 +700,14 @@ class test_Channel__init__(ChannelTestBase, ExtraAssertionsMixin):
         self.conn.get_qpid_connection.assert_called_once_with()
         expected_broker_agent = self.mock_broker_agent.return_value
         assert self.channel._broker is expected_broker_agent
-        self.assertDictEqual(self.channel._tag_to_queue, {})
-        self.assertDictEqual(self.channel._receivers, {})
+        assert self.channel._tag_to_queue == {}
+        assert self.channel._receivers == {}
         assert self.channel._qos is None
 
 
 @skip.if_python3()
 @skip.if_pypy()
-class test_Channel_basic_consume(ChannelTestBase, ExtraAssertionsMixin):
+class test_Channel_basic_consume(ChannelTestBase):
 
     @pytest.fixture(autouse=True)
     def setup_callbacks(self, setup_channel):
@@ -745,7 +718,7 @@ class test_Channel_basic_consume(ChannelTestBase, ExtraAssertionsMixin):
         mock_queue = Mock()
         self.channel.basic_consume(mock_queue, Mock(), Mock(), mock_tag)
         expected_dict = {mock_tag: mock_queue}
-        self.assertDictEqual(expected_dict, self.channel._tag_to_queue)
+        assert expected_dict == self.channel._tag_to_queue
 
     def test_channel_basic_consume_adds_entry_to_connection__callbacks(self):
         mock_queue = Mock()
@@ -763,7 +736,7 @@ class test_Channel_basic_consume(ChannelTestBase, ExtraAssertionsMixin):
         self.channel.basic_consume(Mock(), Mock(), Mock(), mock_tag)
         new_mock_receiver = self.transport.session.receiver.return_value
         expected_dict = {mock_tag: new_mock_receiver}
-        self.assertDictEqual(expected_dict, self.channel._receivers)
+        assert expected_dict == self.channel._receivers
 
     def test_channel_basic_consume_sets_capacity_on_new_receiver(self):
         mock_prefetch_count = Mock()
@@ -871,7 +844,7 @@ class test_Channel_queue_delete(ChannelTestBase):
 
 @skip.if_python3()
 @skip.if_pypy()
-class test_Channel(ExtraAssertionsMixin):
+class test_Channel(object):
 
     @patch(QPID_MODULE + '.qpidtoollibs')
     def setup(self, mock_qpidtoollibs):
@@ -1253,8 +1226,8 @@ class test_Channel(ExtraAssertionsMixin):
         assert mock_body is result['body']
         assert mock_content_encoding is result['content-encoding']
         assert mock_content_type is result['content-type']
-        self.assertDictEqual(headers, result['headers'])
-        self.assertDictContainsSubset(properties, result['properties'])
+        assert headers == result['headers']
+        assert properties == result['properties']
         assert (mock_priority is
                 result['properties']['delivery_info']['priority'])
 
@@ -1840,7 +1813,7 @@ class test_Transport_verify_runtime_environment(object):
 @skip.if_python3()
 @skip.if_pypy()
 @pytest.mark.usefixtures('disable_runtime_dependency_check')
-class test_Transport(ExtraAssertionsMixin):
+class test_Transport(object):
 
     def setup(self):
         """Creates a mock_client to be used in testing."""
@@ -1861,7 +1834,7 @@ class test_Transport(ExtraAssertionsMixin):
         }
         my_transport = Transport(self.mock_client)
         result_params = my_transport.default_connection_params
-        self.assertDictEqual(correct_params, result_params)
+        assert correct_params == result_params
 
     @patch(QPID_MODULE + '.os.close')
     def test_del_sync(self, close):
