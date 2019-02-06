@@ -15,10 +15,16 @@ try:
 except ImportError:
     from urllib import quote, unquote                  # noqa
     from urlparse import urlparse, parse_qsl    # noqa
+try:
+    import ssl
+    ssl_available = True
+except ImportError:  # pragma: no cover
+    ssl_available = False
 
 from kombu.five import bytes_if_py2, string_t
 
 from .compat import NamedTuple
+from ..log import get_logger
 
 safequote = partial(quote, safe=bytes_if_py2(''))
 
@@ -38,6 +44,24 @@ def parse_url(url):
     # type: (str) -> Dict
     """Parse URL into mapping of components."""
     scheme, host, port, user, password, path, query = _parse_url(url)
+    if query:
+        keys = list(query.keys())
+        for key in keys:
+            if key.startswith('ssl_'):
+                if key == 'ssl_cert_reqs':
+                    if ssl_available:
+                        query[key] = getattr(ssl, query[key])
+
+                    else:
+                        query[key] = None
+                        logger.warn('Defaulting to insecure SSL behaviour.')
+
+                if 'ssl' not in query:
+                    query['ssl'] = {}
+
+                query['ssl'][key] = query[key]
+                del query[key]
+
     return dict(transport=scheme, hostname=host,
                 port=port, userid=user,
                 password=password, virtual_host=path, **query)
