@@ -12,6 +12,7 @@ try:
 except ImportError:  # pragma: no cover
     ssl_available = False
 
+from case import mock
 import pytest
 
 from kombu.utils.url import as_url, parse_url, maybe_sanitize_url
@@ -61,11 +62,20 @@ def test_ssl_parameters():
     })
     kwargs = parse_url(url + querystring)
     assert kwargs['transport'] == 'rediss'
-    if ssl_available:
-        assert kwargs['ssl']['ssl_cert_reqs'] == ssl.CERT_REQUIRED
-        assert kwargs['ssl']['ssl_ca_certs'] == '/var/ssl/myca.pem'
-        assert kwargs['ssl']['ssl_certfile'] == '/var/ssl/server-cert.pem'
-        assert kwargs['ssl']['ssl_keyfile'] == '/var/ssl/priv/worker-key.pem'
+    assert kwargs['ssl']['ssl_cert_reqs'] == ssl.CERT_REQUIRED
+    assert kwargs['ssl']['ssl_ca_certs'] == '/var/ssl/myca.pem'
+    assert kwargs['ssl']['ssl_certfile'] == '/var/ssl/server-cert.pem'
+    assert kwargs['ssl']['ssl_keyfile'] == '/var/ssl/priv/worker-key.pem'
 
-    else:
-        assert kwargs['ssl']['ssl_cert_reqs'] is None
+
+@mock.mask_modules('ssl')
+def test_ssl_parameters_no_ssl_module():
+    url = 'rediss://user:password@host:6379/0?'
+    querystring = urlencode({
+        'ssl_cert_reqs': 'CERT_REQUIRED',
+        'ssl_ca_certs': '/var/ssl/myca.pem',
+        'ssl_certfile': '/var/ssl/server-cert.pem',
+        'ssl_keyfile': '/var/ssl/priv/worker-key.pem',
+    })
+    kwargs = parse_url(url + querystring)
+    assert kwargs['ssl']['ssl_cert_reqs'] is None
