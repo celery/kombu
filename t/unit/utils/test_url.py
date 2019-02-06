@@ -64,8 +64,8 @@ def test_ssl_parameters():
     if ssl_available:
         assert kwargs['ssl']['ssl_cert_reqs'] == ssl.CERT_REQUIRED
         assert kwargs['ssl']['ssl_ca_certs'] == '/var/ssl/myca.pem'
-        assert kwargs['ssl']['ssl_certfile'] == '/var/ssl/redis-server-cert.pem'
-        assert kwargs['ssl']['ssl_keyfile'] == '/var/ssl/private/worker-key.pem'
+        assert kwargs['ssl']['ssl_certfile'] == '/var/ssl/server-cert.pem'
+        assert kwargs['ssl']['ssl_keyfile'] == '/var/ssl/priv/worker-key.pem'
 
     else:
         assert kwargs['ssl']['ssl_cert_reqs'] is None
