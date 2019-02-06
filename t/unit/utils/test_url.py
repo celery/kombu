@@ -6,6 +6,8 @@ try:
 except ImportError:
     from urllib import urlencode
 
+import ssl
+
 from case import mock
 import pytest
 
