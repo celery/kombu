@@ -6,12 +6,6 @@ try:
 except ImportError:
     from urllib import urlencode
 
-try:
-    import ssl
-    ssl_available = True
-except ImportError:  # pragma: no cover
-    ssl_available = False
-
 from case import mock
 import pytest
 
@@ -70,6 +64,7 @@ def test_ssl_parameters():
 
 @mock.mask_modules('ssl')
 def test_ssl_parameters_no_ssl_module():
+    from kombu.utils.url import parse_url
     url = 'rediss://user:password@host:6379/0?'
     querystring = urlencode({
         'ssl_cert_reqs': 'CERT_REQUIRED',
