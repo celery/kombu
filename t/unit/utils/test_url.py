@@ -56,8 +56,8 @@ def test_ssl_parameters():
     querystring = urlencode({
         'ssl_cert_reqs': 'CERT_REQUIRED',
         'ssl_ca_certs': '/var/ssl/myca.pem',
-        'ssl_certfile': '/var/ssl/redis-server-cert.pem',
-        'ssl_keyfile': '/var/ssl/private/worker-key.pem',
+        'ssl_certfile': '/var/ssl/server-cert.pem',
+        'ssl_keyfile': '/var/ssl/priv/worker-key.pem',
     })
     kwargs = parse_url(url + querystring)
     assert kwargs['transport'] == 'rediss'
