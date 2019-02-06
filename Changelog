@@ -192,6 +192,32 @@
 
   Contributed by **Ludovic Rivallain**
 
+- As documented in kombu/#741 and eventlet/eventlet#415
+  there is a mismatch between the monkey-patched eventlet queue
+  and the interface Kombu is expecting.
+  This causes Celery to crash when the `broker_pool_limit`
+  configuration option is set
+  eventlet/eventlet#415 suggests that the mutex can be a noop.
+  This is now the case.
+
+  Contributed by **Josh Morrow**
+
+- Codebase improvements and fixes by:
+
+  - **Omer Katz**
+  - **Mads Jensen**
+  - **Asif Saif Uddin**
+  - **Lars Rinn**
+
+- Documentation improvements by:
+
+  - **Jon Dufresne**
+  - **Fay Cheng**
+  - **Asif Saif Uddin**
+  - **Kyle Verhoog**
+  - **Noah Hall**
+  - **:github_user:`brabiega`**
+
 .. _version-4.2.2-post1:
 
 4.2.2-post1
@@ -464,7 +490,7 @@
 
 - Safe argument to ``urllib.quote`` must be bytes on Python 2.x (Issue #645).
 
-- Documentation improvments by:
+- Documentation improvements by:
 
     - **Carlos Edo**
     - **Cemre Mengu**
