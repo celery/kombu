@@ -8,9 +8,9 @@ except ImportError:
 
 import ssl
 
-from case import mock
 import pytest
 
+import kombu.utils.url
 from kombu.utils.url import as_url, parse_url, maybe_sanitize_url
 
 
@@ -63,16 +63,9 @@ def test_ssl_parameters():
     assert kwargs['ssl']['ssl_certfile'] == '/var/ssl/server-cert.pem'
     assert kwargs['ssl']['ssl_keyfile'] == '/var/ssl/priv/worker-key.pem'
 
+    kombu.utils.url.ssl_available = False
 
-@mock.mask_modules('ssl')
-def test_ssl_parameters_no_ssl_module():
-    from kombu.utils.url import parse_url
-    url = 'rediss://user:password@host:6379/0?'
-    querystring = urlencode({
-        'ssl_cert_reqs': 'CERT_REQUIRED',
-        'ssl_ca_certs': '/var/ssl/myca.pem',
-        'ssl_certfile': '/var/ssl/server-cert.pem',
-        'ssl_keyfile': '/var/ssl/priv/worker-key.pem',
-    })
     kwargs = parse_url(url + querystring)
     assert kwargs['ssl']['ssl_cert_reqs'] is None
+
+    kombu.utils.url.ssl_available = True
