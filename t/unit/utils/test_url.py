@@ -6,6 +6,12 @@ try:
 except ImportError:
     from urllib import urlencode
 
+try:
+    import ssl
+    ssl_available = True
+except ImportError:  # pragma: no cover
+    ssl_available = False
+
 import pytest
 
 from kombu.utils.url import as_url, parse_url, maybe_sanitize_url
@@ -55,7 +61,11 @@ def test_ssl_parameters():
     })
     kwargs = parse_url(url + querystring)
     assert kwargs['transport'] == 'rediss'
-    assert kwargs['ssl']['ssl_cert_reqs'].value == 2
-    assert kwargs['ssl']['ssl_ca_certs'] == '/var/ssl/myca.pem'
-    assert kwargs['ssl']['ssl_certfile'] == '/var/ssl/redis-server-cert.pem'
-    assert kwargs['ssl']['ssl_keyfile'] == '/var/ssl/private/worker-key.pem'
+    if ssl_available:
+        assert kwargs['ssl']['ssl_cert_reqs'].value == 2
+        assert kwargs['ssl']['ssl_ca_certs'] == '/var/ssl/myca.pem'
+        assert kwargs['ssl']['ssl_certfile'] == '/var/ssl/redis-server-cert.pem'
+        assert kwargs['ssl']['ssl_keyfile'] == '/var/ssl/private/worker-key.pem'
+
+    else:
+        assert kwargs['ssl']['ssl_cert_reqs'] is None
