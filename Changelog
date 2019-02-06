@@ -4,6 +4,220 @@
  Change history
 ================
 
+.. _version-4.3.0:
+
+4.3.0
+=====
+:release-date: 2019-01-14 7:00 P.M UTC+2:00
+:release-by: Omer Katz
+
+- Added Python 3.7 support.
+
+  Contributed by **Omer Katz**, **Mads Jensen** and **Asif Saif Uddin**
+
+- Avoid caching queues which are declared with a TTL.
+
+  Queues that are declared with a TTL are now also be excluded from the
+  in-memory cache in case they expire between publishes on the same channel.
+
+  Contributed by **Matt Yule-Bennett**
+
+- Added an index to the Message table for the SQLAlchemy transport.
+
+  The index allows to effectively sorting the table by the message's timestamp.
+
+  .. note::
+
+    We do not provide migrations for this model yet.
+    You will need to add the index manually if you are already
+    using the SQLAlchemy transport.
+
+    The syntax may vary between databases.
+    Please refer to your database's documentation for instructions.
+
+  Contributed by **Mikhail Shcherbinin**
+
+- Added a timeout that limits the amount of time we retry
+  to reconnect to a transport.
+
+  Contributed by **:github_user:`tothegump`**
+
+- :class:``celery.asynchronous.hub.Hub`` is now reentrant.
+
+  This allows calling :func:`celery.bin.celery.main` to revive a worker in
+  the same process after rescuing from shutdown (:class:``SystemExit``).
+
+  Contributed by **Alan Justino da Silva**
+
+- Queues now accept string exchange names as arguments as documented.
+
+  Tests were added to avoid further regressions.
+
+  Contributed by **Antonio Gutierrez**
+
+- Specifying names for broadcast queues now work as expected.
+
+  Previously, named broadcast queues did not create multiple queues per worker.
+  They incorrectly declared the named queue which resulted in one queue per
+  fanout exchange, thus missing the entire point of a fanout exchange.
+  The behavior is now matched to unnamed broadcast queues.
+
+  Contributed by **Kuan Hsuan-Tso**
+
+- When initializing the Redis transport in conjunction with gevent
+  restore all unacknowledged messages to queue.
+
+  Contributed by **Gal Cohen**
+
+- Allow :class:``kombu.simple.SimpleQueue`` to pass queue_arguments to Queue object.
+
+  This allows :class:``kombu.simple.SimpleQueue`` to connect to RabbitMQ queues with
+  custom arguments like 'x-queue-mode'='lazy'.
+
+  Contributed by **C Blue Neeh**
+
+- Add support for 'rediss' scheme for secure Redis connections.
+
+  The rediss scheme defaults to the least secure form, as
+  there is no suitable default location for `ca_certs`. The recommendation
+  would still be to follow the documentation and specify `broker_use_ssl` if
+  coming from celery.
+
+  Contributed by **Daniel Blair**
+
+- Added the Azure Storage Queues transport.
+
+  The transport is implemented on top of Azure Storage
+  Queues. This offers a simple but scalable and low-cost PaaS
+  transport for Celery users in Azure. The transport is intended to be
+  used in conjunction with the Azure Block Blob Storage backend.
+
+  Contributed by **Clemens Wolff**, **:github_user:`@ankurokok`**,
+  **Denis Kisselev**, **Evandro de Paula**, **Martin Peck**
+  and **:github_user:`@michaelperel`**
+
+- Added the Azure Service Bus transport.
+
+  The transport is implemented on top of Azure Service Bus and
+  offers PaaS support for more demanding Celery workloads in Azure.
+  The transport is intended to be used in conjunction with the Azure
+  CosmosDB backend.
+
+  Contributed by **Clemens Wolff**, **:github_user:`@ankurokok`**,
+  **Denis Kisselev**, **Evandro de Paula**, **Martin Peck**
+  and **:github_user:`@michaelperel`**
+
+- Drop remaining mentions of Jython support completely.
+
+  Contributed by **Asif Saif Uddin** and **Mads Jensen**
+
+- When publishing messages to the Pidbox, retry if an error occurs.
+
+  Contributed by **Asif Saif Uddin**
+
+- Fix infinite loop in :method:``kombu.asynchronous.hub.Hub.create_loop``.
+
+  Previous attempt to fix the problem (PR kombu/760) did not consider
+  an edge case. It is now fixed.
+
+  Contributed by **Vsevolod Strukchinsky**
+
+- Worker shutdown no longer duplicates messages when using the SQS broker.
+
+  Contributed by **Mintu Kumar Sah**
+
+- When using the SQS broker, prefer boto's default region before our hardcoded default.
+
+  Contributed by **Victor Villas**
+
+- Fixed closing of shared redis sockets which previously caused Celery to hang.
+
+  Contributed by **Alexey Popravka**
+
+- the `Pyro`_ transport (:mod:`kombu.transport.pyro`) now works with
+  recent Pyro versions. Also added a Pyro Kombu Broker that this transport
+  needs for its queues.
+
+  Contributed by **Irmen de Jong**
+
+- Handle non-base64-encoded SQS messages.
+
+  Fix contributed by **Tim Li**, **Asif Saif Uddin** and **Omer Katz**.
+
+- Move the handling of Sentinel failures to the redis library itself.
+
+  Previously, Redis Sentinel worked only if the first node's sentinel
+  service in the URI was up. A server outage would have caused downtime.
+
+  Contributed by **Brian Price**
+
+- When using Celery and the pickle serializer with binary data as part of the
+  payload, `UnicodeDecodeError` would be raised as the content was not utf-8.
+  We now replace on errors.
+
+  Contributed by **Jian Dai**
+
+- Allow setting :method:``boto3.sqs.create_queue`` Attributes via transport_options.
+
+  Contributed by **Hunter Fernandes**
+
+- Fixed infinite loop when entity.channel is replaced by revive() on connection
+  drop.
+
+  Contributed by **Tzach Yarimi**
+
+- Added optional support for Brotli compression.
+
+  Contributed by **Omer Katz**
+
+- When using the SQS broker, FIFO queues with names that ended with the 'f' letter
+  were incorrectly parsed. This is now fixed.
+
+  Contributed by **Alex Vishnya** and **Ilya Konstantinov**
+
+-  Added optional support for LZMA compression.
+
+  Contributed by **Omer Katz**
+
+- Added optional support for ZStandard compression.
+
+  Contributed by **Omer Katz**
+
+- Require py-amqp 2.4.0 as the minimum version.
+
+  Contributed by **Asif Saif Uddin**
+
+- The value of DISABLE_TRACEBACKS environment variable is now respected on debug, info
+  and warning logger level.
+
+  Contributed by **Ludovic Rivallain**
+
+- As documented in kombu/#741 and eventlet/eventlet#415
+  there is a mismatch between the monkey-patched eventlet queue
+  and the interface Kombu is expecting.
+  This causes Celery to crash when the `broker_pool_limit`
+  configuration option is set
+  eventlet/eventlet#415 suggests that the mutex can be a noop.
+  This is now the case.
+
+  Contributed by **Josh Morrow**
+
+- Codebase improvements and fixes by:
+
+  - **Omer Katz**
+  - **Mads Jensen**
+  - **Asif Saif Uddin**
+  - **Lars Rinn**
+
+- Documentation improvements by:
+
+  - **Jon Dufresne**
+  - **Fay Cheng**
+  - **Asif Saif Uddin**
+  - **Kyle Verhoog**
+  - **Noah Hall**
+  - **:github_user:`brabiega`**
+
 .. _version-4.2.2-post1:
 
 4.2.2-post1
@@ -12,6 +226,7 @@
 :release-by: Omer Katz
 
 .. note::
+
   The previous release contained code from master.
   It is now deleted from PyPi.
   Please use this release instead.
@@ -275,7 +490,7 @@
 
 - Safe argument to ``urllib.quote`` must be bytes on Python 2.x (Issue #645).
 
-- Documentation improvments by:
+- Documentation improvements by:
 
     - **Carlos Edo**
     - **Cemre Mengu**
