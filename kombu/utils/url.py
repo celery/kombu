@@ -27,6 +27,7 @@ from .compat import NamedTuple
 from ..log import get_logger
 
 safequote = partial(quote, safe=bytes_if_py2(''))
+logger = get_logger(__name__)
 
 
 urlparts = NamedTuple('urlparts', [
