@@ -45,21 +45,20 @@ def parse_url(url):
     """Parse URL into mapping of components."""
     scheme, host, port, user, password, path, query = _parse_url(url)
     if query:
-        keys = list(query.keys())
+        keys = [key for key in query.keys() if key.startswith('ssl_')]
         for key in keys:
-            if key.startswith('ssl_'):
-                if key == 'ssl_cert_reqs':
-                    if ssl_available:
-                        query[key] = getattr(ssl, query[key])
-                    else:
-                        query[key] = None
-                        logger.warn('Defaulting to insecure SSL behaviour.')
+            if key == 'ssl_cert_reqs':
+                if ssl_available:
+                    query[key] = getattr(ssl, query[key])
+                else:
+                    query[key] = None
+                    logger.warn('Defaulting to insecure SSL behaviour.')
 
-                if 'ssl' not in query:
-                    query['ssl'] = {}
+            if 'ssl' not in query:
+                query['ssl'] = {}
 
-                query['ssl'][key] = query[key]
-                del query[key]
+            query['ssl'][key] = query[key]
+            del query[key]
 
     return dict(transport=scheme, hostname=host,
                 port=port, userid=user,
