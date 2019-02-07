@@ -1,5 +1,4 @@
 """Text Utilities."""
-
 from difflib import SequenceMatcher
 
 from kombu import version_info_t
