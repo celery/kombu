@@ -25,13 +25,14 @@ matrix:
       env: TOXENV=pypy3
       dist: xenial
       before_install: sudo apt-get update && sudo apt-get install libgnutls-dev
-    - env: TOXENV=flake8
+    - python: '3.6'
+      env: TOXENV=flake8
       stage: lint
-    - env: TOXENV=flakeplus
+    - python: '3.6'
+      env: TOXENV=apicheck
       stage: lint
-    - env: TOXENV=apicheck
-      stage: lint
-    - env: TOXENV=pydocstyle
+    - python: '3.6'
+      env: TOXENV=pydocstyle
       stage: lint
 
 install:
