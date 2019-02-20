@@ -1100,13 +1100,19 @@ class SentinelChannel(Channel):
 
         additional_params.pop('host', None)
         additional_params.pop('port', None)
-        connection_list = []
+
+        sentinels = []
         for url in self.connection.client.alt:
             url = _parse_url(url)
             if url.scheme == 'sentinel':
-                connection_list.append([url.hostname, str(url.port)])
+                sentinels.append((url.hostname, url.port))
+
+        # Fallback for when only one sentinel is provided.
+        if not sentinels:
+            sentinels.append((connparams['host'], connparams['port']))
+
         sentinel_inst = sentinel.Sentinel(
-            connection_list,
+            sentinels,
             min_other_sentinels=getattr(self, 'min_other_sentinels', 0),
             sentinel_kwargs=getattr(self, 'sentinel_kwargs', None),
             **additional_params)
