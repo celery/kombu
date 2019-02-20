@@ -1102,8 +1102,9 @@ class SentinelChannel(Channel):
         additional_params.pop('port', None)
         connection_list = []
         for url in self.connection.client.alt:
-            if url and 'sentinel://' in url:
-                connection_list.append(url.split('/')[2].split(':'))
+            url = _parse_url(url)
+            if url.scheme == 'sentinel':
+                connection_list.append([url.hostname, str(url.port)])
         sentinel_inst = sentinel.Sentinel(
             connection_list,
             min_other_sentinels=getattr(self, 'min_other_sentinels', 0),
