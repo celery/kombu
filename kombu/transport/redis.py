@@ -938,6 +938,11 @@ class Channel(virtual.Channel):
                     # to become unusable, however close() only
                     # affect process-local copies of fds.
                     # So we just override Connection's disconnect method.
+                    #
+                    # TODO: The above note has been fixed in redis-py v3.2.0
+                    # and can be removed when support for versions older than
+                    # v3.2 has been dropped and be replaced with a call to
+                    # 'super().disconnect()'.
                     self._parser.on_disconnect()
                     channel._on_connection_disconnect(self)
                     if self._sock is None:
