@@ -8,6 +8,7 @@ import socket
 from bisect import bisect
 from collections import namedtuple
 from contextlib import contextmanager
+from itertools import chain
 from time import time
 
 from vine import promise
@@ -532,11 +533,25 @@ class Channel(virtual.Channel):
 
         self._async_pool = self._pool = None
 
+        # TODO: Remove when support for redis-py versions older than v3.2
+        # is dropped. And instead call 'disconnect()' directly on the
+        # pool/async_pool instance instead, i.e. 'pool.disconnect()' and
+        # 'async_pool.disconnect()'.
+        #
+        # This is a fix for issue #1006 and copied from redis.ConnectionPool to
+        # prevent bumping the required version of redis-py.
+        def disconnect(self):
+            self._checkpid()
+            all_conns = chain(self._available_connections,
+                              self._in_use_connections)
+            for connection in all_conns:
+                connection.disconnect()
+
         if pool is not None:
-            pool.disconnect()
+            disconnect(pool)
 
         if async_pool is not None:
-            async_pool.disconnect()
+            disconnect(async_pool)
 
     def _on_connection_disconnect(self, connection):
         if self._in_poll is connection:
