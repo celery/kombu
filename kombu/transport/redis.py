@@ -2,6 +2,7 @@
 from __future__ import absolute_import, unicode_literals
 
 import numbers
+import os
 import socket
 
 from bisect import bisect
@@ -942,7 +943,8 @@ class Channel(virtual.Channel):
                     if self._sock is None:
                         return
                     try:
-                        # self._sock.shutdown(socket.SHUT_RDWR)
+                        if os.getpid() == self.pid:
+                            self._sock.shutdown(socket.SHUT_RDWR)
                         self._sock.close()
                     except socket.error:
                         pass
