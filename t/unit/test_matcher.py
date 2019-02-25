@@ -2,7 +2,10 @@ from __future__ import absolute_import, unicode_literals
 
 from kombu.matcher import (
     match, register, registry, unregister, fnmatch, rematch,
+    MatcherNotInstalled
 )
+
+import pytest
 
 
 class test_Matcher(object):
@@ -19,3 +22,11 @@ class test_Matcher(object):
         assert "test_matcher" not in registry._matchers
         registry._set_default_matcher("glob")
         assert registry._default_matcher == fnmatch
+
+    def test_unregister_matcher_not_registered(self):
+        with pytest.raises(MatcherNotInstalled):
+            unregister('notinstalled')
+
+    def test_match_using_unregistered_matcher(self):
+        with pytest.raises(MatcherNotInstalled):
+            match("data", r"d.*", "notinstalled")
