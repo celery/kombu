@@ -10,6 +10,7 @@
 
     kombu
     kombu.common
+    kombu.matcher
     kombu.mixins
     kombu.simple
     kombu.clocks

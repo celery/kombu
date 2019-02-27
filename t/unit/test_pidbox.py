@@ -43,6 +43,11 @@ class test_Mailbox:
     def _handler(self, state):
         return self.stats['var']
 
+    def test_broadcast_matcher_pattern_string_type(self):
+        mailbox = pidbox.Mailbox("test_matcher_str")(self.connection)
+        with pytest.raises(ValueError):
+            mailbox._broadcast("ping", pattern=1, matcher=2)
+
     def test_publish_reply_ignores_InconsistencyError(self):
         mailbox = pidbox.Mailbox('test_reply__collect')(self.connection)
         with patch('kombu.pidbox.Producer') as Producer:
@@ -232,6 +237,19 @@ class test_Mailbox:
         # message not for me should not be processed.
         body['destination'] = ['some_other_node']
         assert node.handle_message(body, None) is None
+
+        # message for me should be processed.
+        body['destination'] = ['test_dispatch_from_message']
+        assert node.handle_message(body, None) is not None
+
+        # message not for me should not be processed.
+        body.pop("destination")
+        body['matcher'] = 'glob'
+        body["pattern"] = "something*"
+        assert node.handle_message(body, None) is None
+
+        body["pattern"] = "test*"
+        assert node.handle_message(body, None) is not None
 
     def test_handle_message_adjusts_clock(self):
         node = self.bound.Node('test_adjusts_clock')
