@@ -464,7 +464,8 @@ class Channel(virtual.Channel):
 
     from_transport_options = (
         virtual.Channel.from_transport_options +
-        ('ack_emulation',
+        ('sep',
+         'ack_emulation',
          'unacked_key',
          'unacked_index_key',
          'unacked_mutex_key',
