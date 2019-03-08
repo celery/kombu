@@ -21,7 +21,7 @@ try:  # pragma: no cover
         return message_from_bytes(bs.encode())
 
 except ImportError:  # pragma: no cover
-    from mimetools import Message as MIMEMessage   # noqa
+    from mimetools import Message as MIMEMessage  # noqa
 
     # py2
     def message_from_headers(hdr):  # noqa
@@ -173,7 +173,10 @@ class AsyncAWSQueryConnection(AsyncConnection):
     STATUS_CODE_OK = 200
     STATUS_CODE_REQUEST_TIMEOUT = 408
     STATUS_CODE_NETWORK_CONNECT_TIMEOUT_ERROR = 599
-    STATUS_CODES_TIMEOUT = (STATUS_CODE_REQUEST_TIMEOUT, STATUS_CODE_NETWORK_CONNECT_TIMEOUT_ERROR)
+    STATUS_CODES_TIMEOUT = (
+        STATUS_CODE_REQUEST_TIMEOUT,
+        STATUS_CODE_NETWORK_CONNECT_TIMEOUT_ERROR
+    )
 
     def __init__(self, sqs_connection, http_client=None,
                  http_client_params=None, **kwargs):
@@ -235,8 +238,8 @@ class AsyncAWSQueryConnection(AsyncConnection):
             )
             return parsed
         elif response.status in self.STATUS_CODES_TIMEOUT:
-            # When the server returns a timeout, the response is interpreted as an empty list.
-            # This prevents hanging the Celery worker.
+            # When the server returns a timeout, the response is interpreted
+            # as an empty list. This prevents hanging the Celery worker.
             return []
         else:
             raise self._for_status(response, response.read())
