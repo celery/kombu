@@ -835,6 +835,18 @@ class test_Channel:
                     redis.redis.SSLConnection,
                 )
 
+    def test_sep_transport_option(self):
+        with Connection(transport=Transport, transport_options={
+            'sep': ':',
+        }) as conn:
+            key = conn.default_channel.keyprefix_queue % 'celery'
+            conn.default_channel.client.sadd(key, 'celery::celery')
+
+            assert conn.default_channel.sep == ':'
+            assert conn.default_channel.get_table('celery') == [
+                ('celery', '', 'celery'),
+            ]
+
 
 @skip.unless_module('redis')
 class test_Redis:
