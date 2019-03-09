@@ -4,6 +4,44 @@
  Change history
 ================
 
+.. _version 4.4.0:
+
+4.4.0
+=====
+:release-date: 2019-03-3 9:00 P.M UTC+2:00
+:release-by: Omer Katz
+
+- Restore bz2 import checks in compression module.
+
+  The checks were removed in `celery/kombu#938 <https://github.com/celery/kombu/pull/938>`_ due to assumption that it only affected Jython.
+  However, bz2 support can be missing in Pythons built without bz2 support.
+
+  Contributed by **Patrick Woods**
+
+- Fix regression that occurred in 4.3.0
+  when parsing  Redis Sentinel master URI containing password.
+
+  Contributed by **Peter Lithammer**
+
+- Handle the case when only one Redis Sentinel node is provided.
+
+  Contributed by **Peter Lithammer**
+
+- Support SSL URL parameters correctly for `rediss://`` URIs.
+
+  Contributed by **Paul Bailey**
+
+- Revert `celery/kombu#954 <https://github.com/celery/kombu/pull/954>`_.
+  Instead bump the required redis-py dependency to 3.2.0
+  to include this fix `andymccurdy/redis-py@4e1e748 <https://github.com/andymccurdy/redis-py/commit/4e1e74809235edc19e03edb79c97c80a3e4e9eca>`_.
+
+  Contributed by **Peter Lithammer**
+
+- Added support for broadcasting using a regular expression pattern
+  or a glob pattern to multiple Pidboxes.
+
+  Contributed by **Jason Held**
+
 .. _version-4.3.0:
 
 4.3.0

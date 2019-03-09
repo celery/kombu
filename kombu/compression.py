@@ -1,7 +1,6 @@
 """Compression utilities."""
 from kombu.utils.encoding import ensure_bytes
 
-import bz2
 import zlib
 
 try:
@@ -80,9 +79,14 @@ register(zlib.compress,
          zlib.decompress,
          'application/x-gzip', aliases=['gzip', 'zlib'])
 
-register(bz2.compress,
-         bz2.decompress,
-         'application/x-bz2', aliases=['bzip2', 'bzip'])
+try:
+    import bz2
+except ImportError:
+    pass  # No bz2 support
+else:
+    register(bz2.compress,
+             bz2.decompress,
+             'application/x-bz2', aliases=['bzip2', 'bzip'])
 
 try:
     import brotli

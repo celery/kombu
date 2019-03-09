@@ -462,7 +462,8 @@ class Channel(virtual.Channel):
 
     from_transport_options = (
         virtual.Channel.from_transport_options +
-        ('ack_emulation',
+        ('sep',
+         'ack_emulation',
          'unacked_key',
          'unacked_index_key',
          'unacked_mutex_key',
@@ -929,22 +930,8 @@ class Channel(virtual.Channel):
         if asynchronous:
             class Connection(connection_cls):
                 def disconnect(self):
-                    # NOTE: see celery issue #3898
-                    # redis-py Connection shutdown()s the socket
-                    # which causes all copies of file descriptor
-                    # to become unusable, however close() only
-                    # affect process-local copies of fds.
-                    # So we just override Connection's disconnect method.
-                    self._parser.on_disconnect()
+                    super(Connection, self).disconnect()
                     channel._on_connection_disconnect(self)
-                    if self._sock is None:
-                        return
-                    try:
-                        # self._sock.shutdown(socket.SHUT_RDWR)
-                        self._sock.close()
-                    except socket.error:
-                        pass
-                    self._sock = None
             connection_cls = Connection
 
         connparams['connection_class'] = connection_cls
@@ -962,9 +949,9 @@ class Channel(virtual.Channel):
         return redis.ConnectionPool(**params)
 
     def _get_client(self):
-        if redis.VERSION < (2, 10, 5):
+        if redis.VERSION < (3, 2, 0):
             raise VersionMismatch(
-                'Redis transport requires redis-py versions 2.10.5 or later. '
+                'Redis transport requires redis-py versions 3.2.0 or later. '
                 'You have {0.__version__}'.format(redis))
         return redis.StrictRedis
 
@@ -1098,12 +1085,19 @@ class SentinelChannel(Channel):
 
         additional_params.pop('host', None)
         additional_params.pop('port', None)
-        connection_list = []
+
+        sentinels = []
         for url in self.connection.client.alt:
-            if url and 'sentinel://' in url:
-                connection_list.append(url.split('/')[2].split(':'))
+            url = _parse_url(url)
+            if url.scheme == 'sentinel':
+                sentinels.append((url.hostname, url.port))
+
+        # Fallback for when only one sentinel is provided.
+        if not sentinels:
+            sentinels.append((connparams['host'], connparams['port']))
+
         sentinel_inst = sentinel.Sentinel(
-            connection_list,
+            sentinels,
             min_other_sentinels=getattr(self, 'min_other_sentinels', 0),
             sentinel_kwargs=getattr(self, 'sentinel_kwargs', None),
             **additional_params)

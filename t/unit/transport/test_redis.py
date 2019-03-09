@@ -833,6 +833,18 @@ class test_Channel:
                     redis.redis.SSLConnection,
                 )
 
+    def test_sep_transport_option(self):
+        with Connection(transport=Transport, transport_options={
+            'sep': ':',
+        }) as conn:
+            key = conn.default_channel.keyprefix_queue % 'celery'
+            conn.default_channel.client.sadd(key, 'celery::celery')
+
+            assert conn.default_channel.sep == ':'
+            assert conn.default_channel.get_table('celery') == [
+                ('celery', '', 'celery'),
+            ]
+
 
 @skip.unless_module('redis')
 class test_Redis:
@@ -1342,7 +1354,10 @@ class test_RedisSentinel:
     def test_getting_master_from_sentinel(self):
         with patch('redis.sentinel.Sentinel') as patched:
             connection = Connection(
-                'sentinel://localhost:65534/;sentinel://localhost:65535/;sentinel://localhost:65536/;',  # noqa: E501
+                'sentinel://localhost:65532/;'
+                'sentinel://user@localhost:65533/;'
+                'sentinel://:password@localhost:65534/;'
+                'sentinel://user:password@localhost:65535/;',
                 transport_options={
                     'master_name': 'not_important',
                 },
@@ -1351,10 +1366,33 @@ class test_RedisSentinel:
             connection.channel()
             patched.assert_called_once_with(
                 [
-                    [u'localhost', u'65534'],
-                    [u'localhost', u'65535'],
-                    [u'localhost', u'65536']
+                    (u'localhost', 65532),
+                    (u'localhost', 65533),
+                    (u'localhost', 65534),
+                    (u'localhost', 65535),
                 ],
+                connection_class=mock.ANY, db=0, max_connections=10,
+                min_other_sentinels=0, password=None, sentinel_kwargs=None,
+                socket_connect_timeout=None, socket_keepalive=None,
+                socket_keepalive_options=None, socket_timeout=None)
+
+            master_for = patched.return_value.master_for
+            master_for.assert_called()
+            master_for.assert_called_with('not_important', ANY)
+            master_for().connection_pool.get_connection.assert_called()
+
+    def test_getting_master_from_sentinel_single_node(self):
+        with patch('redis.sentinel.Sentinel') as patched:
+            connection = Connection(
+                'sentinel://localhost:65532/',
+                transport_options={
+                    'master_name': 'not_important',
+                },
+            )
+
+            connection.channel()
+            patched.assert_called_once_with(
+                [(u'localhost', 65532)],
                 connection_class=mock.ANY, db=0, max_connections=10,
                 min_other_sentinels=0, password=None, sentinel_kwargs=None,
                 socket_connect_timeout=None, socket_keepalive=None,
