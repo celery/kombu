@@ -1,6 +1,4 @@
 """Pattern matching registry."""
-from __future__ import absolute_import, unicode_literals
-
 from re import match as rematch
 from fnmatch import fnmatch
 
@@ -14,7 +12,7 @@ class MatcherNotInstalled(Exception):
     pass
 
 
-class MatcherRegistry(object):
+class MatcherRegistry:
     """Pattern matching function registry."""
 
     MatcherNotInstalled = MatcherNotInstalled

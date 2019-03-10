@@ -7,7 +7,7 @@ from kombu.five import monotonic
 __all__ = ('TokenBucket',)
 
 
-class TokenBucket(object):
+class TokenBucket:
     """Token Bucket Algorithm.
 
     See Also:

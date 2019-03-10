@@ -1,8 +1,6 @@
 """Scheduling Utilities."""
 from itertools import count
 
-from kombu.five import python_2_unicode_compatible
-
 from .imports import symbol_by_name
 
 __all__ = (
@@ -16,8 +14,7 @@ CYCLE_ALIASES = {
 }
 
 
-@python_2_unicode_compatible
-class FairCycle(object):
+class FairCycle:
     """Cycle between resources.
 
     Consume from a set of resources, where each resource gets
@@ -67,7 +64,7 @@ class FairCycle(object):
             self=self, size=len(self.resources))
 
 
-class round_robin_cycle(object):
+class round_robin_cycle:
     """Iterator that cycles between items in round-robin."""
 
     def __init__(self, it=None):

@@ -3,7 +3,7 @@ import numbers
 
 from .abstract import MaybeChannelBound, Object
 from .exceptions import ContentDisallowed
-from .five import python_2_unicode_compatible, string_t
+from .five import string_t
 from .serialization import prepare_accept_content
 
 TRANSIENT_DELIVERY_MODE = 1
@@ -314,8 +314,7 @@ class Exchange(MaybeChannelBound):
         return not self.auto_delete
 
 
-@python_2_unicode_compatible
-class binding(Object):
+class binding:
     """Represents a queue or exchange binding.
 
     Arguments:

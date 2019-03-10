@@ -35,7 +35,7 @@ logger = get_logger(__name__)
 debug, error = logger.debug, logger.error
 
 
-class Node(object):
+class Node:
     """Mailbox node."""
 
     #: hostname of the node.
@@ -148,7 +148,7 @@ class Node(object):
                                     serializer=self.mailbox.serializer)
 
 
-class Mailbox(object):
+class Mailbox:
     """Process Mailbox."""
 
     node_cls = Node

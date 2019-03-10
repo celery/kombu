@@ -53,7 +53,7 @@ def safeify_format(fmt, args,
         yield filt(args[index]) if filt else args[index]
 
 
-class LogMixin(object):
+class LogMixin:
     """Mixin that adds severity methods to any class."""
 
     def debug(self, *args, **kwargs):

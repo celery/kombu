@@ -7,11 +7,7 @@ import uuid
 
 from kombu.five import PY3, buffer_t, text_t, bytes_t
 
-try:
-    from django.utils.functional import Promise as DjangoPromise
-except ImportError:  # pragma: no cover
-    class DjangoPromise(object):  # noqa
-        """Dummy object."""
+from django.utils.functional import Promise as DjangoPromise
 
 try:
     import simplejson as json

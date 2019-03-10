@@ -1,12 +1,11 @@
 """Messaging library for Python."""
-from __future__ import absolute_import, unicode_literals
 
 import os
 import re
 import sys
 
-if sys.version_info < (2, 7):  # pragma: no cover
-    raise Exception('Kombu 4.0 requires Python versions 2.7 or later.')
+if sys.version_info < (3, 5):  # pragma: no cover
+    raise Exception('Kombu 5.0 requires Python versions 3.5 or later.')
 
 from collections import namedtuple  # noqa
 

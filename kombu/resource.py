@@ -23,7 +23,7 @@ class LifoQueue(_LifoQueue):
         self.queue = deque()
 
 
-class Resource(object):
+class Resource:
     """Pool of resources."""
 
     LimitExceeded = exceptions.LimitExceeded

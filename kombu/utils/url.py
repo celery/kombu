@@ -1,8 +1,5 @@
 """URL Utilities."""
-try:
-    from collections.abc import Mapping
-except ImportError:
-    from collections import Mapping
+from collections.abc import Mapping
 
 from functools import partial
 

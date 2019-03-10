@@ -4,7 +4,7 @@ import logging
 
 from vine.utils import wraps
 
-from kombu.five import items, python_2_unicode_compatible
+from kombu.five import items
 from kombu.log import get_logger
 
 __all__ = ('setup_logging', 'Logwrapped')
@@ -19,8 +19,7 @@ def setup_logging(loglevel=logging.DEBUG, loggers=['kombu.connection',
         logger.setLevel(loglevel)
 
 
-@python_2_unicode_compatible
-class Logwrapped(object):
+class Logwrapped:
     """Wrap all object methods, to log on call."""
 
     __ignore = ('__enter__', '__exit__')

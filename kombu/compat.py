@@ -2,8 +2,6 @@
 
 See https://pypi.org/project/carrot/ for documentation.
 """
-from __future__ import absolute_import, unicode_literals
-
 from itertools import count
 
 from . import messaging

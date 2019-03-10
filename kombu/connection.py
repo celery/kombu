@@ -21,7 +21,7 @@ except ImportError:  # pragma: no cover
 from kombu import exceptions
 
 from .five import (
-    bytes_if_py2, python_2_unicode_compatible, reraise, string_t, text_t,
+    bytes_if_py2, reraise, string_t, text_t,
 )
 from .log import get_logger
 from .resource import Resource
@@ -51,8 +51,7 @@ _log_connection = os.environ.get('KOMBU_LOG_CONNECTION', False)
 _log_channel = os.environ.get('KOMBU_LOG_CHANNEL', False)
 
 
-@python_2_unicode_compatible
-class Connection(object):
+class Connection:
     """A connection to the broker.
 
     Example:
@@ -567,7 +566,7 @@ class Connection(object):
         """
         channels = [channel]
 
-        class Revival(object):
+        class Revival:
             __name__ = getattr(fun, '__name__', None)
             __module__ = getattr(fun, '__module__', None)
             __doc__ = getattr(fun, '__doc__', None)

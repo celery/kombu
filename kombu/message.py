@@ -3,7 +3,7 @@ import sys
 
 from .compression import decompress
 from .exceptions import MessageStateError
-from .five import python_2_unicode_compatible, reraise, text_t
+from .five import reraise, text_t
 from .serialization import loads
 from .utils.functional import dictfilter
 
@@ -13,8 +13,7 @@ ACK_STATES = {'ACK', 'REJECTED', 'REQUEUED'}
 IS_PYPY = hasattr(sys, 'pypy_version_info')
 
 
-@python_2_unicode_compatible
-class Message(object):
+class Message:
     """Base class for received messages.
 
     Keyword Arguments:

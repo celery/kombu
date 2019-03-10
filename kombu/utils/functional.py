@@ -5,10 +5,7 @@ import threading
 
 from collections import OrderedDict
 
-try:
-    from collections.abc import Iterable, Mapping
-except ImportError:
-    from collections import Iterable, Mapping
+from collections.abc import Iterable, Mapping
 
 from itertools import count, repeat
 from time import sleep, time
@@ -16,7 +13,7 @@ from time import sleep, time
 from vine.utils import wraps
 
 from kombu.five import (
-    UserDict, items, keys, python_2_unicode_compatible, string_t,
+    UserDict, items, keys, string_t,
 )
 
 from .encoding import safe_repr as _safe_repr
@@ -29,8 +26,7 @@ __all__ = (
 KEYWORD_MARK = object()
 
 
-@python_2_unicode_compatible
-class ChannelPromise(object):
+class ChannelPromise:
 
     def __init__(self, contract):
         self.__contract__ = contract
@@ -187,7 +183,6 @@ def memoize(maxsize=None, keyfun=None, Cache=LRUCache):
     return _memoize
 
 
-@python_2_unicode_compatible
 class lazy(object):
     """Holds lazy evaluation.
 
