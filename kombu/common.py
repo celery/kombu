@@ -87,7 +87,8 @@ class Broadcast(Queue):
 
     def __init__(self, name=None, queue=None, auto_delete=True,
                  exchange=None, alias=None, **kwargs):
-        queue = '{0}.{1}'.format(queue or 'bcast', uuid())
+        if queue is None:
+            queue = '{0}.{1}'.format(name or 'bcast', uuid())
         return super(Broadcast, self).__init__(
             alias=alias or name,
             queue=queue,
