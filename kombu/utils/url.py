@@ -53,7 +53,7 @@ def parse_url(url):
                     query[key] = getattr(ssl, query[key])
                 else:
                     query[key] = None
-                    logger.warn('Defaulting to insecure SSL behaviour.')
+                    logger.warning('Defaulting to insecure SSL behaviour.')
 
             if 'ssl' not in query:
                 query['ssl'] = {}
