@@ -173,13 +173,42 @@ class Producer(object):
                 # XXX declare should be a Set.
                 declare.append(self.exchange)
 
+        old_transport_opts = None
         if retry:
             _publish = self.connection.ensure(self, _publish, **retry_policy)
-        return _publish(
+
+            # If transport options are not provided for the connection
+            # override them with the retry policy provided for the publisher.
+            # This is done in order to workaround the fact that
+            # the default channel ensures that the connection exists
+            # to allow broker failover.
+            # This operation uses the retry policy of the connection instead
+            # of the publisher.
+            # See https://github.com/celery/kombu/commit/816e3dc.
+            old_transport_opts = self.connection.transport_options or {}
+            # Since we don't want these defaults to last we copy the dictionary
+            temp_transport_opts = self.connection.transport_options.copy()
+            temp_transport_opts.setdefault('max_retries',
+                                           retry_policy.get('max_retries'))
+            temp_transport_opts.setdefault('interval_start',
+                                           retry_policy.get('interval_start'))
+            temp_transport_opts.setdefault('interval_step',
+                                           retry_policy.get('interval_step'))
+            temp_transport_opts.setdefault('interval_max',
+                                           retry_policy.get('interval_max'))
+            self.connection.transport_options = temp_transport_opts
+
+        result = _publish(
             body, priority, content_type, content_encoding,
             headers, properties, routing_key, mandatory, immediate,
             exchange_name, declare,
         )
+
+        if old_transport_opts is not None:
+            # Restore the old transport options
+            self.connection.transport_options = old_transport_opts
+
+        return result
 
     def _publish(self, body, priority, content_type, content_encoding,
                  headers, properties, routing_key, mandatory,
