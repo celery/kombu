@@ -119,7 +119,7 @@ except ImportError:  # pragma: no cover
 from kombu.five import Empty, items, monotonic, PY3
 from kombu.log import get_logger
 from kombu.transport.virtual import Base64, Message
-from kombu.transport import base
+from kombu.transport import base, virtual
 
 
 logger = get_logger(__name__)
@@ -1406,7 +1406,9 @@ class Transport(base.Transport):
     polling_interval = None
 
     # This Transport does support the Celery asynchronous event model.
-    supports_ev = True
+    implements = virtual.Transport.implements.extend(
+        asynchronous=True,
+    )
 
     # The driver type and name for identification purposes.
     driver_type = 'qpid'

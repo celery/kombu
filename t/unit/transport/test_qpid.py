@@ -1663,9 +1663,6 @@ class test_Transport_class_attributes(object):
     def test_verify_polling_disabled(self):
         assert Transport.polling_interval is None
 
-    def test_transport_verify_supports_asynchronous_events(self):
-        assert Transport.supports_ev
-
     def test_verify_driver_type_and_name(self):
         assert Transport.driver_type == 'qpid'
         assert Transport.driver_name == 'qpid'
@@ -1818,6 +1815,10 @@ class test_Transport(object):
     def setup(self):
         """Creates a mock_client to be used in testing."""
         self.mock_client = Mock()
+
+    def test_supports_ev(self):
+        """Test that the transport claims to support async event loop"""
+        assert Transport(self.mock_client).supports_ev
 
     def test_close_connection(self):
         """Test that close_connection calls close on the connection."""
