@@ -21,7 +21,7 @@ try:  # pragma: no cover
         return message_from_bytes(bs.encode())
 
 except ImportError:  # pragma: no cover
-    from mimetools import Message as MIMEMessage   # noqa
+    from mimetools import Message as MIMEMessage  # noqa
 
     # py2
     def message_from_headers(hdr):  # noqa
@@ -170,6 +170,14 @@ class AsyncConnection(object):
 class AsyncAWSQueryConnection(AsyncConnection):
     """Async AWS Query Connection."""
 
+    STATUS_CODE_OK = 200
+    STATUS_CODE_REQUEST_TIMEOUT = 408
+    STATUS_CODE_NETWORK_CONNECT_TIMEOUT_ERROR = 599
+    STATUS_CODES_TIMEOUT = (
+        STATUS_CODE_REQUEST_TIMEOUT,
+        STATUS_CODE_NETWORK_CONNECT_TIMEOUT_ERROR
+    )
+
     def __init__(self, sqs_connection, http_client=None,
                  http_client_params=None, **kwargs):
         if not http_client_params:
@@ -224,17 +232,21 @@ class AsyncAWSQueryConnection(AsyncConnection):
 
     def _on_list_ready(self, parent, markers, operation, response):  # noqa
         service_model = self.sqs_connection.meta.service_model
-        if response.status == 200:
+        if response.status == self.STATUS_CODE_OK:
             _, parsed = get_response(
                 service_model.operation_model(operation), response.response
             )
             return parsed
+        elif response.status in self.STATUS_CODES_TIMEOUT:
+            # When the server returns a timeout, the response is interpreted
+            # as an empty list. This prevents hanging the Celery worker.
+            return []
         else:
             raise self._for_status(response, response.read())
 
     def _on_obj_ready(self, parent, operation, response):  # noqa
         service_model = self.sqs_connection.meta.service_model
-        if response.status == 200:
+        if response.status == self.STATUS_CODE_OK:
             _, parsed = get_response(
                 service_model.operation_model(operation), response.response
             )
@@ -244,7 +256,7 @@ class AsyncAWSQueryConnection(AsyncConnection):
 
     def _on_status_ready(self, parent, operation, response):  # noqa
         service_model = self.sqs_connection.meta.service_model
-        if response.status == 200:
+        if response.status == self.STATUS_CODE_OK:
             httpres, _ = get_response(
                 service_model.operation_model(operation), response.response
             )
