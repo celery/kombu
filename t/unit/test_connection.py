@@ -299,6 +299,16 @@ class test_Connection:
         assert c.hostname == 'foo'
         assert c.transport_cls, ('librabbitmq', 'pyamqp' in 'amqp')
 
+    def test_switch_without_uri_identifier(self):
+        c = Connection('amqp://foo')
+        assert c.hostname == 'foo'
+        assert c.transport_cls, ('librabbitmq', 'pyamqp' in 'amqp')
+        c._closed = True
+        c.switch('example.com')
+        assert not c._closed
+        assert c.hostname == 'example.com'
+        assert c.transport_cls, ('librabbitmq', 'pyamqp' in 'amqp')
+
     def test_heartbeat_check(self):
         c = Connection(transport=Transport)
         c.transport.heartbeat_check = Mock()
