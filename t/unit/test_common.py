@@ -72,12 +72,15 @@ class test_declaration_cached:
 class test_Broadcast:
 
     def test_arguments(self):
-        q = Broadcast(name='test_Broadcast')
-        assert q.name.startswith('bcast.')
-        assert q.alias == 'test_Broadcast'
-        assert q.auto_delete
-        assert q.exchange.name == 'test_Broadcast'
-        assert q.exchange.type == 'fanout'
+        with patch('kombu.common.uuid',
+                   return_value='test') as uuid_mock:
+            q = Broadcast(name='test_Broadcast')
+            uuid_mock.assert_called_with()
+            assert q.name == 'bcast.test'
+            assert q.alias == 'test_Broadcast'
+            assert q.auto_delete
+            assert q.exchange.name == 'test_Broadcast'
+            assert q.exchange.type == 'fanout'
 
         q = Broadcast('test_Broadcast', 'explicit_queue_name')
         assert q.name == 'explicit_queue_name'
@@ -85,6 +88,17 @@ class test_Broadcast:
 
         q2 = q(Mock())
         assert q2.name == q.name
+
+        with patch('kombu.common.uuid',
+                   return_value='test') as uuid_mock:
+            q = Broadcast('test_Broadcast',
+                          'explicit_queue_name',
+                          unique=True)
+            uuid_mock.assert_called_with()
+            assert q.name == 'explicit_queue_name.test'
+
+            q2 = q(Mock())
+            assert q2.name.split('.')[0] == q.name.split('.')[0]
 
 
 class test_maybe_declare:

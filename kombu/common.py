@@ -79,15 +79,26 @@ class Broadcast(Queue):
         queue (str): By default a unique id is used for the queue
             name for every consumer.  You can specify a custom
             queue name here.
+        unique (bool): Always create a unique queue
+            even if a queue name is supplied.
         **kwargs (Any): See :class:`~kombu.Queue` for a list
             of additional keyword arguments supported.
     """
 
     attrs = Queue.attrs + (('queue', None),)
 
-    def __init__(self, name=None, queue=None, auto_delete=True,
-                 exchange=None, alias=None, **kwargs):
-        queue = queue or 'bcast.{0}'.format(uuid())
+    def __init__(self,
+                 name=None,
+                 queue=None,
+                 unique=False,
+                 auto_delete=True,
+                 exchange=None,
+                 alias=None,
+                 **kwargs):
+        if unique:
+            queue = '{0}.{1}'.format(queue or 'bcast', uuid())
+        else:
+            queue = queue or 'bcast.{0}'.format(uuid())
         return super(Broadcast, self).__init__(
             alias=alias or name,
             queue=queue,
