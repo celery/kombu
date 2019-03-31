@@ -4,7 +4,65 @@
  Change history
 ================
 
-.. _version 4.4.0:
+.. _version-4.5.0:
+
+4.5.0
+=====
+:release-date: 2019-03-3 18:30 P.M UTC+3:00
+:release-by: Omer Katz
+
+- The Redis transport now supports a custom separator for keys.
+
+  Previously when storing a key in Redis which represents a queue
+  we used the hardcored value ``\x06\x16`` separator to store
+  different attributes of the queue in the queue's name.
+
+  The separator is now configurable using the sep
+  transport option:
+
+  .. code-block:: python
+
+    with Connection('redis://', transport_options={
+            'sep': ':',
+        }):
+        # ...
+        pass
+
+  Contributed by **Joris Beckers**
+
+- When the SQS server returns a timeout we ignore it and keep trying
+  instead of raising an error.
+
+  This will prevent Celery from raising an error and hanging.
+
+  Contributed by **Erwin Rossen**
+
+- Properly declare async support for the Qpid transport.
+
+  If you are using this transport we strongly urge you to upgrade.
+
+  Contributed by **Rohan McGovern**
+
+- Revert `celery/kombu#906 <https://github.com/celery/kombu/pull/906>`_ and
+  introduce unique broadcast queue names as an optional keyword argument.
+
+  If you want each broadcast queue to have a unique name specify `unique=True`:
+
+  .. code-block:: pycon
+
+    >>> from kombu.common import Broadcast
+    >>> q = Broadcast(queue='foo', unique=True)
+    >>> q.name
+    'foo.7ee1ac20-cda3-4966-aaf8-e7a3bb548688'
+    >>> q = Broadcast(queue='foo')
+    >>> q.name
+    'foo'
+
+- Codebase improvements and fixes by:
+
+  - **Omer Katz**
+
+.. _version-4.4.0:
 
 4.4.0
 =====
