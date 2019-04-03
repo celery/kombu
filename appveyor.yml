@@ -1,34 +1,65 @@
 environment:
+  global:
+      # SDK v7.0 MSVC Express 2008's SetEnv.cmd script will fail if the
+      # /E:ON and /V:ON options are not enabled in the batch script intepreter
+      # See: http://stackoverflow.com/a/13751649/163740
+      WITH_COMPILER: "cmd /E:ON /V:ON /C .\\extra\\appveyor\\run_with_compiler.cmd"
+
   matrix:
-    - TOXENV: "2.7"
+    - TOXENV: "2.7-unit"
       TOX_APPVEYOR_X64: 0
+      PYTHON_VERSION: "2.7.x"
+      PYTHON_ARCH: "32"
 
-    - TOXENV: "3.4"
+    - TOXENV: "3.4-unit"
       TOX_APPVEYOR_X64: 0
+      PYTHON_VERSION: "3.4.x"
+      PYTHON_ARCH: "32"
 
-    - TOXENV: "3.5"
+    - TOXENV: "3.5-unit"
       TOX_APPVEYOR_X64: 0
+      PYTHON_VERSION: "3.5.x"
+      PYTHON_ARCH: "32"
 
-    - TOXENV: "3.6"
+    - TOXENV: "3.6-unit"
       TOX_APPVEYOR_X64: 0
+      PYTHON_VERSION: "3.6.x"
+      PYTHON_ARCH: "32"
 
-    - TOXENV: "3.7"
+    - TOXENV: "3.7-unit"
       TOX_APPVEYOR_X64: 0
+      PYTHON_VERSION: "3.7.x"
+      PYTHON_ARCH: "32"
 
-    - TOXENV: "2.7"
+    - TOXENV: "2.7-unit"
       TOX_APPVEYOR_X64: 1
+      PYTHON_VERSION: "2.7.x"
+      PYTHON_ARCH: "64"
+      WINDOWS_SDK_VERSION: "v7.0"
 
-    - TOXENV: "3.4"
+    - TOXENV: "3.4-unit"
       TOX_APPVEYOR_X64: 1
+      PYTHON_VERSION: "3.4.x"
+      PYTHON_ARCH: "64"
+      WINDOWS_SDK_VERSION: "v7.1"
 
-    - TOXENV: "3.5"
+    - TOXENV: "3.5-unit"
       TOX_APPVEYOR_X64: 1
+      PYTHON_VERSION: "3.5.x"
+      PYTHON_ARCH: "64"
+      WINDOWS_SDK_VERSION: "v7.1"
 
-    - TOXENV: "3.6"
+    - TOXENV: "3.6-unit"
       TOX_APPVEYOR_X64: 1
+      PYTHON_VERSION: "3.6.x"
+      PYTHON_ARCH: "64"
+      WINDOWS_SDK_VERSION: "v7.1"
 
-    - TOXENV: "3.7"
+    - TOXENV: "3.7-unit"
       TOX_APPVEYOR_X64: 1
+      PYTHON_VERSION: "3.7.x"
+      PYTHON_ARCH: "64"
+      WINDOWS_SDK_VERSION: "v7.1"
 
 build: off
 
@@ -36,7 +67,7 @@ install:
   - "py -3.7 -m pip install -U pip setuptools wheel tox tox-appveyor"
 
 test_script:
-  - "py -3.7 -m tox"
+  - "%WITH_COMPILER% py -3.7 -m tox"
 
 cache:
 - '%LOCALAPPDATA%\pip\Cache'
