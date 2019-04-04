@@ -57,8 +57,12 @@ class Channel(amqp.Channel, base.StdChannel):
         properties = properties if properties is not None else {}
         properties.update({'content_type': content_type,
                            'content_encoding': content_encoding,
-                           'headers': headers,
-                           'priority': priority})
+                           'headers': headers})
+        # Don't include priority if it's not an integer.
+        # If that's the case librabbitmq will fail
+        # and raise an exception.
+        if priority is not None:
+            properties['priority'] = priority
         return body, properties
 
     def prepare_queue_arguments(self, arguments, **kwargs):
