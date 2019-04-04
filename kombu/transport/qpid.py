@@ -1408,6 +1408,7 @@ class Transport(base.Transport):
     # This Transport does support the Celery asynchronous event model.
     implements = virtual.Transport.implements.extend(
         asynchronous=True,
+        exchange_type=frozenset(['direct', 'topic', 'fanout']),
     )
 
     # The driver type and name for identification purposes.

@@ -1667,6 +1667,12 @@ class test_Transport_class_attributes(object):
         assert Transport.driver_type == 'qpid'
         assert Transport.driver_name == 'qpid'
 
+    def test_verify_implements_exchange_types(self):
+        assert 'fanout' in Transport.implements.exchange_type
+        assert 'direct' in Transport.implements.exchange_type
+        assert 'topic' in Transport.implements.exchange_type
+        assert 'frobnitz' not in Transport.implements.exchange_type
+
     def test_transport_verify_recoverable_connection_errors(self):
         connection_errors = Transport.recoverable_connection_errors
         assert ConnectionError in connection_errors
