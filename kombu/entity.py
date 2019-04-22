@@ -30,8 +30,9 @@ def pretty_bindings(bindings):
 
 
 def maybe_delivery_mode(
-        v, modes=DELIVERY_MODES, default=PERSISTENT_DELIVERY_MODE):
+        v, modes=None, default=PERSISTENT_DELIVERY_MODE):
     """Get delivery mode by name (or none if undefined)."""
+    modes = DELIVERY_MODES if not modes else modes
     if v:
         return v if isinstance(v, numbers.Integral) else modes[v]
     return default

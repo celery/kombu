@@ -7,7 +7,7 @@ import sys
 from kombu.five import reraise, string_t
 
 
-def symbol_by_name(name, aliases={}, imp=None, package=None,
+def symbol_by_name(name, aliases=None, imp=None, package=None,
                    sep='.', default=None, **kwargs):
     """Get symbol by qualified name.
 
@@ -40,6 +40,7 @@ def symbol_by_name(name, aliases={}, imp=None, package=None,
         >>> symbol_by_name(TaskPool) is TaskPool
         True
     """
+    aliases = {} if not aliases else aliases
     if imp is None:
         imp = importlib.import_module
 

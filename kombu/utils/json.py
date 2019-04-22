@@ -62,9 +62,9 @@ class JSONEncoder(_encoder_cls):
 _default_encoder = JSONEncoder
 
 
-def dumps(s, _dumps=json.dumps, cls=None,
-          default_kwargs=_json_extra_kwargs, **kwargs):
+def dumps(s, _dumps=json.dumps, cls=None, default_kwargs=None, **kwargs):
     """Serialize object to json string."""
+    default_kwargs = _json_extra_kwargs if not default_kwargs else default_kwargs
     return _dumps(s, cls=cls or _default_encoder,
                   **dict(default_kwargs, **kwargs))
 

@@ -299,7 +299,7 @@ def fxrangemax(start=1.0, stop=None, step=1.0, max=100.0):
         sum_ += cur
 
 
-def retry_over_time(fun, catch, args=[], kwargs={}, errback=None,
+def retry_over_time(fun, catch, args=None, kwargs=None, errback=None,
                     max_retries=None, interval_start=2, interval_step=2,
                     interval_max=30, callback=None, timeout=None):
     """Retry the function over and over until max retries is exceeded.
@@ -332,6 +332,8 @@ def retry_over_time(fun, catch, args=[], kwargs={}, errback=None,
             between retries.
         timeout (int): Maximum seconds waiting before we give up.
     """
+    kwargs = {} if not kwargs else kwargs
+    args = [] if not args else args
     interval_range = fxrange(interval_start,
                              interval_max + interval_start,
                              interval_step, repeatlast=True)
@@ -361,7 +363,8 @@ def reprkwargs(kwargs, sep=', ', fmt='{0}={1}'):
     return sep.join(fmt.format(k, _safe_repr(v)) for k, v in items(kwargs))
 
 
-def reprcall(name, args=(), kwargs={}, sep=', '):
+def reprcall(name, args=(), kwargs=None, sep=', '):
+    kwargs = {} if not kwargs else kwargs
     return '{0}({1}{2}{3})'.format(
         name, sep.join(map(_safe_repr, args or ())),
         (args and kwargs) and sep or '',

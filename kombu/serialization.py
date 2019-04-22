@@ -411,7 +411,7 @@ _setupfuns = {
 }
 
 
-def enable_insecure_serializers(choices=['pickle', 'yaml', 'msgpack']):
+def enable_insecure_serializers(choices=None):
     """Enable serializers that are considered to be unsafe.
 
     Note:
@@ -419,6 +419,7 @@ def enable_insecure_serializers(choices=['pickle', 'yaml', 'msgpack']):
         can also specify a list of serializers (by name or content type)
         to enable.
     """
+    choices = ['pickle', 'yaml', 'msgpack'] if not choices else choices
     for choice in choices:
         try:
             registry.enable(choice)
@@ -426,7 +427,7 @@ def enable_insecure_serializers(choices=['pickle', 'yaml', 'msgpack']):
             pass
 
 
-def disable_insecure_serializers(allowed=['json']):
+def disable_insecure_serializers(allowed=None):
     """Disable untrusted serializers.
 
     Will disable all serializers except ``json``
@@ -437,6 +438,7 @@ def disable_insecure_serializers(allowed=['json']):
         in these formats, but consumers will not accept
         incoming data using the untrusted content types.
     """
+    allowed = ['json'] if not allowed else allowed
     for name in registry._decoders:
         registry.disable(name)
     if allowed is not None:
@@ -452,7 +454,8 @@ for ep, args in entrypoints('kombu.serializers'):  # pragma: no cover
     register(ep.name, *args)
 
 
-def prepare_accept_content(l, name_to_type=registry.name_to_type):
+def prepare_accept_content(l, name_to_type=None):
+    name_to_type = registry.name_to_type if not name_to_type else name_to_type
     if l is not None:
         return {n if '/' in n else name_to_type[n] for n in l}
     return l
