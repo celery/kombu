@@ -61,9 +61,10 @@ class Message(object):
         )
 
     def __init__(self, body=None, delivery_tag=None,
-                 content_type=None, content_encoding=None, delivery_info={},
+                 content_type=None, content_encoding=None, delivery_info=None,
                  properties=None, headers=None, postencode=None,
                  accept=None, channel=None, **kwargs):
+        delivery_info = {} if not delivery_info else delivery_info
         self.errors = [] if self.errors is None else self.errors
         self.channel = channel
         self.delivery_tag = delivery_tag

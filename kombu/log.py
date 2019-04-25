@@ -47,9 +47,8 @@ def naive_format_parts(fmt):
         yield None if not e or not parts[i - 1] else e[0]
 
 
-def safeify_format(fmt, args,
-                   filters={'s': safe_str,
-                            'r': safe_repr}):
+def safeify_format(fmt, args, filters=None):
+    filters = {'s': safe_str, 'r': safe_repr} if not filters else filters
     for index, type in enumerate(naive_format_parts(fmt)):
         filt = filters.get(type)
         yield filt(args[index]) if filt else args[index]

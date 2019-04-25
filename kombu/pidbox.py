@@ -115,7 +115,8 @@ class Node(object):
                        ticket=ticket)
         return reply
 
-    def handle(self, method, arguments={}):
+    def handle(self, method, arguments=None):
+        arguments = {} if not arguments else arguments
         return self.handlers[method](self.state, **arguments)
 
     def handle_call(self, method, arguments):
@@ -208,21 +209,25 @@ class Mailbox(object):
         hostname = hostname or socket.gethostname()
         return self.node_cls(hostname, state, channel, handlers, mailbox=self)
 
-    def call(self, destination, command, kwargs={},
+    def call(self, destination, command, kwargs=None,
              timeout=None, callback=None, channel=None):
+        kwargs = {} if not kwargs else kwargs
         return self._broadcast(command, kwargs, destination,
                                reply=True, timeout=timeout,
                                callback=callback,
                                channel=channel)
 
-    def cast(self, destination, command, kwargs={}):
+    def cast(self, destination, command, kwargs=None):
+        kwargs = {} if not kwargs else kwargs
         return self._broadcast(command, kwargs, destination, reply=False)
 
-    def abcast(self, command, kwargs={}):
+    def abcast(self, command, kwargs=None):
+        kwargs = {} if not kwargs else kwargs
         return self._broadcast(command, kwargs, reply=False)
 
-    def multi_call(self, command, kwargs={}, timeout=1,
+    def multi_call(self, command, kwargs=None, timeout=1,
                    limit=None, callback=None, channel=None):
+        kwargs = {} if not kwargs else kwargs
         return self._broadcast(command, kwargs, reply=True,
                                timeout=timeout, limit=limit,
                                callback=callback,
