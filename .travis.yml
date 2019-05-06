@@ -14,8 +14,6 @@ matrix:
   include:
     - python: 2.7
       env: TOXENV=2.7
-    - python: 3.4
-      env: TOXENV=3.4
     - python: 3.5
       env: TOXENV=3.5
     - python: 3.6
