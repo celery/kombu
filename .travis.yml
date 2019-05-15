@@ -19,7 +19,7 @@ matrix:
     - python: 3.6
       env: TOXENV=3.6
     - python: 3.7
-      env: TOXENV=3.7
+      env: TOXENV=3.7-linux
       sudo: true
       dist: xenial
       before_install: sudo apt-get update && sudo apt-get install libgnutls-dev
