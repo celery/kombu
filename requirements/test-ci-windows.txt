@@ -1,0 +1,14 @@
+pytest-cov
+pytest-travis-fold
+codecov
+-r extras/redis.txt
+-r extras/yaml.txt
+-r extras/msgpack.txt
+-r extras/azureservicebus.txt
+-r extras/azurestoragequeues.txt
+-r extras/consul.txt
+-r extras/librabbitmq.txt
+-r extras/zookeeper.txt
+-r extras/brotli.txt
+-r extras/zstd.txt
+-r extras/sqlalchemy.txt
