@@ -1,9 +1,9 @@
 pytest-cov
 pytest-travis-fold
 codecov
-redis
-PyYAML
-msgpack-python>0.2.0
+-r extras/redis.txt
+-r extras/yaml.txt
+-r extras/msgpack.txt
 -r extras/azureservicebus.txt
 -r extras/azurestoragequeues.txt
 -r extras/sqs.txt
@@ -12,4 +12,4 @@ msgpack-python>0.2.0
 -r extras/zookeeper.txt
 -r extras/brotli.txt
 -r extras/zstd.txt
-sqlalchemy
+-r extras/sqlalchemy.txt
