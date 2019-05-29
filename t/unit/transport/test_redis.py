@@ -88,6 +88,9 @@ class Client(object):
     def smembers(self, key):
         return self.sets.get(key, set())
 
+    def sismember(self, name, value):
+        return value in self.sets.get(name, set())
+
     def ping(self, *args, **kwargs):
         return True
 
