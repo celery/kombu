@@ -7,8 +7,9 @@ env:
     PYTHONUNBUFFERED=yes
 
 stages:
-  - test
   - lint
+  - test
+  
 
 matrix:
   include:
