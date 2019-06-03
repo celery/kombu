@@ -171,4 +171,14 @@ class test_MemoryTransport:
             pass
         channel = self.c.channel()
         producer = Producer(channel, on_return=on_return)
-        producer.publish({"foo": "bar"})
+        consumer = self.c.Consumer([self.q3])
+
+        producer.publish(
+            {'hello': 'on return'},
+            declare=consumer.queues,
+            exchange=self.fanout,
+        )
+
+        assert self.q3(self.c).get().payload == {'hello': 'on return'}
+        assert self.q3(self.c).get() is None
+
