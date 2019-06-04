@@ -5,11 +5,13 @@ from kombu.five import Queue, values
 
 from . import base
 from . import virtual
+from collections import defaultdict
 
 
 class Channel(virtual.Channel):
     """In-memory Channel."""
 
+    events = defaultdict(set)
     queues = {}
     do_restore = False
     supports_fanout = True

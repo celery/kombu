@@ -163,3 +163,21 @@ class test_MemoryTransport:
         x = chan._queue_for('foo')
         assert x
         assert chan._queue_for('foo') is x
+
+    # see the issue
+    # https://github.com/celery/kombu/issues/1050
+    def test_producer_on_return(self):
+        def on_return(_exception, _exchange, _routing_key, _message):
+            pass
+        channel = self.c.channel()
+        producer = Producer(channel, on_return=on_return)
+        consumer = self.c.Consumer([self.q3])
+
+        producer.publish(
+            {'hello': 'on return'},
+            declare=consumer.queues,
+            exchange=self.fanout,
+        )
+
+        assert self.q3(self.c).get().payload == {'hello': 'on return'}
+        assert self.q3(self.c).get() is None
