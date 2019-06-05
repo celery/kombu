@@ -410,8 +410,10 @@ _setupfuns = {
     'application/x-msgpack': register_msgpack,
 }
 
+NOTSET = object()
 
-def enable_insecure_serializers(choices=None):
+
+def enable_insecure_serializers(choices=NOTSET):
     """Enable serializers that are considered to be unsafe.
 
     Note:
@@ -419,7 +421,7 @@ def enable_insecure_serializers(choices=None):
         can also specify a list of serializers (by name or content type)
         to enable.
     """
-    choices = ['pickle', 'yaml', 'msgpack'] if not choices else choices
+    choices = ['pickle', 'yaml', 'msgpack'] if choices is NOTSET else choices
     for choice in choices:
         try:
             registry.enable(choice)
@@ -427,7 +429,7 @@ def enable_insecure_serializers(choices=None):
             pass
 
 
-def disable_insecure_serializers(allowed=None):
+def disable_insecure_serializers(allowed=NOTSET):
     """Disable untrusted serializers.
 
     Will disable all serializers except ``json``
@@ -438,7 +440,7 @@ def disable_insecure_serializers(allowed=None):
         in these formats, but consumers will not accept
         incoming data using the untrusted content types.
     """
-    allowed = ['json'] if not allowed else allowed
+    allowed = ['json'] if allowed is NOTSET else allowed
     for name in registry._decoders:
         registry.disable(name)
     if allowed is not None:
