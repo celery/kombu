@@ -3,7 +3,6 @@
 import os
 import re
 import sys
-import codecs
 
 import setuptools
 import setuptools.command.test
@@ -63,9 +62,9 @@ def fullsplit(path, result=None):
 for scheme in list(INSTALL_SCHEMES.values()):
     scheme['data'] = scheme['purelib']
 
-#if os.path.exists('README.rst'):
+# if os.path.exists('README.rst'):
 #    long_description = codecs.open('README.rst', 'r', 'utf-8').read()
-#else:
+# else:
 #    long_description = 'See https://pypi.org/project/kombu/'
 
 # -*- Installation Requires -*-
