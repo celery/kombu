@@ -415,18 +415,18 @@ NOTSET = object()
 
 def enable_insecure_serializers(choices=NOTSET):
     """Enable serializers that are considered to be unsafe.
-
     Note:
         Will enable ``pickle``, ``yaml`` and ``msgpack`` by default, but you
         can also specify a list of serializers (by name or content type)
         to enable.
     """
     choices = ['pickle', 'yaml', 'msgpack'] if choices is NOTSET else choices
-    for choice in choices:
-        try:
-            registry.enable(choice)
-        except KeyError:
-            pass
+    if choices is not None:
+        for choice in choices:
+            try:
+                registry.enable(choice)
+            except KeyError:
+                pass
 
 
 def disable_insecure_serializers(allowed=NOTSET):
