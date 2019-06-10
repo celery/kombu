@@ -38,15 +38,19 @@ matrix:
     - env: TOXENV=flake8
       stage: lint
       dist: xenial
+      python: 3.7
     - env: TOXENV=flakeplus
       stage: lint
       dist: xenial
+      python: 2.7
     - env: TOXENV=apicheck
       stage: lint
       dist: xenial
+      python: 3.7
     - env: TOXENV=pydocstyle
       stage: lint
       dist: xenial
+      python: 3.7
 
 install:
     - pip --disable-pip-version-check install -U pip setuptools wheel | cat
