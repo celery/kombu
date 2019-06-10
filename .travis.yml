@@ -9,16 +9,19 @@ env:
 stages:
   - test
   - lint
-  
+
 
 matrix:
   include:
     - python: 2.7
       env: TOXENV=2.7
+      dist: xenial
     - python: 3.5
       env: TOXENV=3.5
+      dist: xenial
     - python: 3.6
       env: TOXENV=3.6
+      dist: xenial
     - python: 3.7
       env: TOXENV=3.7-linux
       sudo: true
@@ -34,12 +37,16 @@ matrix:
       before_install: sudo apt-get update && sudo apt-get install libgnutls-dev
     - env: TOXENV=flake8
       stage: lint
+      dist: xenial
     - env: TOXENV=flakeplus
       stage: lint
+      dist: xenial
     - env: TOXENV=apicheck
       stage: lint
+      dist: xenial
     - env: TOXENV=pydocstyle
       stage: lint
+      dist: xenial
 
 install:
     - pip --disable-pip-version-check install -U pip setuptools wheel | cat
