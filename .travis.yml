@@ -52,6 +52,8 @@ matrix:
       dist: xenial
       python: 3.7
 
+before_install:
+  - sudo apt install libcurl4-openssl-dev libssl-dev gnutls-dev
 install:
     - pip --disable-pip-version-check install -U pip setuptools wheel | cat
     - pip --disable-pip-version-check install -U tox | cat
