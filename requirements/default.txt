@@ -1,1 +1,2 @@
 amqp>=2.5.0,<3.0
+fastuuid;platform_python_implementation=="CPython" and python_version>="3.5" and sys_platform=="linux"
