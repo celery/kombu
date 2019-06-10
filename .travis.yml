@@ -57,7 +57,7 @@ before_install:
   - sudo apt install libcurl4-openssl-dev libssl-dev gnutls-dev
 install:
     - pip --disable-pip-version-check install -U pip setuptools wheel | cat
-    - pip --disable-pip-version-check install -U tox | cat
+    - pip --disable-pip-version-check install --upgrade-strategy eager -U tox | cat
 script: tox -v -- -v
 after_success:
   - .tox/$TRAVIS_PYTHON_VERSION/bin/coverage xml
