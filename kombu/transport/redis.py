@@ -829,24 +829,6 @@ class Channel(virtual.Channel):
                 raise InconsistencyError(NO_ROUTE_ERROR.format(exchange, key))
             return [tuple(bytes_to_str(val).split(self.sep)) for val in values]
 
-    def _lookup_direct(self, exchange, routing_key):
-        if not exchange:
-            return [routing_key]
-
-        key = self.keyprefix_queue % exchange
-        pattern = ''
-        queue = routing_key
-        queue_bind = self.sep.join([
-            routing_key or '',
-            pattern,
-            queue or '',
-        ])
-        with self.conn_or_acquire() as client:
-            if client.sismember(key, queue_bind):
-                return [queue]
-
-        return []
-
     def _purge(self, queue):
         with self.conn_or_acquire() as client:
             with client.pipeline() as pipe:
