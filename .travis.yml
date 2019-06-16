@@ -39,7 +39,8 @@ matrix:
     - python: '3.6'
       env: TOXENV=apicheck
       stage: lint
-    - env: TOXENV=pydocstyle
+    - python: '3.6'
+      env: TOXENV=pydocstyle
       stage: lint
 
 install:
