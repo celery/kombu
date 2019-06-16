@@ -36,9 +36,11 @@ matrix:
       stage: lint
     - env: TOXENV=flakeplus
       stage: lint
-    - env: TOXENV=apicheck
+    - python: '3.6'
+      env: TOXENV=apicheck
       stage: lint
-    - env: TOXENV=pydocstyle
+    - python: '3.6'
+      env: TOXENV=pydocstyle
       stage: lint
 
 install:
