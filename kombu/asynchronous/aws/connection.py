@@ -174,6 +174,13 @@ class AsyncAWSQueryConnection(AsyncConnection):
     STATUS_CODE_REQUEST_TIMEOUT = 408
     STATUS_CODE_NETWORK_CONNECT_TIMEOUT_ERROR = 599
     STATUS_CODE_INTERNAL_ERROR = 500
+    STATUS_CODE_SERVICE_UNAVAILABLE_ERROR = 503
+
+    STATUS_CODES_SERVER_ERRORS = (
+        STATUS_CODE_INTERNAL_ERROR,
+        STATUS_CODE_SERVICE_UNAVAILABLE_ERROR
+    )
+
     STATUS_CODES_TIMEOUT = (
         STATUS_CODE_REQUEST_TIMEOUT,
         STATUS_CODE_NETWORK_CONNECT_TIMEOUT_ERROR
@@ -240,9 +247,9 @@ class AsyncAWSQueryConnection(AsyncConnection):
             return parsed
         elif (
             response.status in self.STATUS_CODES_TIMEOUT or
-            response.status == self.STATUS_CODE_INTERNAL_ERROR
+            response.status in self.STATUS_CODES_SERVER_ERRORS
         ):
-            # When the server returns a timeout or internal error,
+            # When the server returns a timeout or 50X server error,
             # the response is interpreted as an empty list.
             # This prevents hanging the Celery worker.
             return []

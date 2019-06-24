@@ -251,7 +251,8 @@ class test_AsyncAWSQueryConnection(AWSCase):
     @pytest.mark.parametrize('error_status_code', [
         AsyncAWSQueryConnection.STATUS_CODE_REQUEST_TIMEOUT,
         AsyncAWSQueryConnection.STATUS_CODE_NETWORK_CONNECT_TIMEOUT_ERROR,
-        AsyncAWSQueryConnection.STATUS_CODE_INTERNAL_ERROR
+        AsyncAWSQueryConnection.STATUS_CODE_INTERNAL_ERROR,
+        AsyncAWSQueryConnection.STATUS_CODE_SERVICE_UNAVAILABLE_ERROR
     ])
     def test_on_list_ready_error_response(self, error_status_code):
         mocked_response_error = self.Response(
