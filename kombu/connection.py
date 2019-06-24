@@ -220,16 +220,22 @@ class Connection(object):
 
         self.declared_entities = set()
 
-    def switch(self, url):
-        """Switch connection parameters to use a new URL.
+    def switch(self, conn_str):
+        """Switch connection parameters to use a new URL or hostname.
 
         Note:
             Does not reconnect!
+
+        Arguments:
+            conn_str (str): either a hostname or URL.
         """
         self.close()
         self.declared_entities.clear()
         self._closed = False
-        self._init_params(**dict(self._initial_params, **parse_url(url)))
+        conn_params = (
+            parse_url(conn_str) if "://" in conn_str else {"hostname": conn_str}
+        )
+        self._init_params(**dict(self._initial_params, **conn_params))
 
     def maybe_switch_next(self):
         """Switch to next URL given by the current failover strategy."""
