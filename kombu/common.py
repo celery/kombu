@@ -99,7 +99,7 @@ class Broadcast(Queue):
             queue = '{0}.{1}'.format(queue or 'bcast', uuid())
         else:
             queue = queue or 'bcast.{0}'.format(uuid())
-        return super(Broadcast, self).__init__(
+        super(Broadcast, self).__init__(
             alias=alias or name,
             queue=queue,
             name=queue,
