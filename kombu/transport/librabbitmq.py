@@ -4,17 +4,15 @@
 """
 from __future__ import absolute_import, unicode_literals
 
+import librabbitmq as amqp
 import os
 import socket
 import warnings
-
-import librabbitmq as amqp
 from librabbitmq import ChannelError, ConnectionError
 
 from kombu.five import items, values
 from kombu.utils.amq_manager import get_manager
 from kombu.utils.text import version_string_as_tuple
-
 from . import base
 from .base import to_rabbitmq_queue_arguments
 
@@ -26,7 +24,7 @@ DEFAULT_PORT = 5672
 DEFAULT_SSL_PORT = 5671
 
 NO_SSL_ERROR = """\
-ssl not supported by librabbitmq, please use pyamqp:// or stunnel\
+advanced ssl opts not supported by librabbitmq, please use pyamqp:// or stunnel\
 """
 
 
@@ -87,7 +85,7 @@ class Transport(base.Transport):
 
     connection_errors = (
         base.Transport.connection_errors + (
-            ConnectionError, socket.error, IOError, OSError)
+        ConnectionError, socket.error, IOError, OSError)
     )
     channel_errors = (
         base.Transport.channel_errors + (ChannelError,)
@@ -122,7 +120,7 @@ class Transport(base.Transport):
         for name, default_value in items(self.default_connection_params):
             if not getattr(conninfo, name, None):
                 setattr(conninfo, name, default_value)
-        if conninfo.ssl:
+        if not isinstance(conninfo.ssl, bool):
             raise NotImplementedError(NO_SSL_ERROR)
         opts = dict({
             'host': conninfo.host,
