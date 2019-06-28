@@ -122,7 +122,8 @@ def maybe_declare(entity, channel=None, retry=False, **retry_policy):
 
 
 def _ensure_channel_is_bound(entity, channel):
-    """Make sure the channel is bound to the entity
+    """Make sure the channel is bound to the entity.
+
     :param entity: generic kombu nomenclature, generally an exchange or queue
     :param channel: channel to bind to the entity
     :return: the updated entity
