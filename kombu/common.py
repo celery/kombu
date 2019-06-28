@@ -140,7 +140,7 @@ def _maybe_declare(entity, channel):
     # _maybe_declare sets name on original for autogen queues
     orig = entity
 
-    entity = _ensure_channel_is_bound(entity, channel)
+    _ensure_channel_is_bound(entity, channel)
 
     if channel is None:
         if not entity.is_bound:
