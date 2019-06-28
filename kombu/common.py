@@ -11,7 +11,7 @@ from functools import partial
 from itertools import count
 from uuid import uuid5, uuid4, uuid3, NAMESPACE_OID
 
-from amqp import RecoverableConnectionError
+from amqp import ChannelError, RecoverableConnectionError
 
 from .entity import Exchange, Queue
 from .five import bytes_if_py2, range
@@ -121,16 +121,28 @@ def maybe_declare(entity, channel=None, retry=False, **retry_policy):
     return _maybe_declare(entity, channel)
 
 
-def _maybe_declare(entity, channel):
+def _ensure_channel_is_bound(entity, channel):
+    """Make sure the channel is bound to the entity
+    :param entity: generic kombu nomenclature, generally an exchange or queue
+    :param channel: channel to bind to the entity
+    :return: the updated entity
+    """
     is_bound = entity.is_bound
+    if not is_bound:
+        if not channel:
+            raise ChannelError("Cannot bind channel {} to entity {}".format(channel, entity))
+        entity = entity.bind(channel)
+        return entity
+
+
+def _maybe_declare(entity, channel):
+    # _maybe_declare sets name on original for autogen queues
     orig = entity
 
-    if not is_bound:
-        assert channel
-        entity = entity.bind(channel)
+    entity = _ensure_channel_is_bound(entity, channel)
 
     if channel is None:
-        assert is_bound
+        assert entity.is_bound
         channel = entity.channel
 
     declared = ident = None
@@ -151,6 +163,7 @@ def _maybe_declare(entity, channel):
 
 
 def _imaybe_declare(entity, channel, **retry_policy):
+    _ensure_channel_is_bound(entity, channel)
     return entity.channel.connection.client.ensure(
         entity, _maybe_declare, **retry_policy)(entity, channel)
 
