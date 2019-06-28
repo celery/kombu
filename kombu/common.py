@@ -130,7 +130,8 @@ def _ensure_channel_is_bound(entity, channel):
     is_bound = entity.is_bound
     if not is_bound:
         if not channel:
-            raise ChannelError("Cannot bind channel {} to entity {}".format(channel, entity))
+            raise ChannelError(
+                "Cannot bind channel {} to entity {}".format(channel, entity))
         entity = entity.bind(channel)
         return entity
 
@@ -142,7 +143,9 @@ def _maybe_declare(entity, channel):
     entity = _ensure_channel_is_bound(entity, channel)
 
     if channel is None:
-        assert entity.is_bound
+        if not entity.is_bound:
+            raise ChannelError(
+                "channel is None and entity {} not bound.".format(entity))
         channel = entity.channel
 
     declared = ident = None
