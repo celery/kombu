@@ -176,7 +176,7 @@ class test_maybe_declare:
             'interval_max': 1,
             'max_retries': 3,
             'interval_step': 0.2,
-            'errback': lambda x: print("Called test errback retry policy"),
+            'errback': lambda x: "Called test errback retry policy",
         }
 
         # When: calling maybe_declare with retry enabled
