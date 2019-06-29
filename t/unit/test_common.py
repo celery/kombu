@@ -110,7 +110,7 @@ class test_maybe_declare:
         return channel
 
     def _get_mock_entity(self, is_bound=False, can_cache_declaration=True):
-        # Given: A mock Entity that is not bound but will be to the channel when its called
+        # Given: Unbound mock Entity (will bind to channel when bind called
         entity = Mock()
         entity.can_cache_declaration = can_cache_declaration
         entity.is_bound = is_bound
