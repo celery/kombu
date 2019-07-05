@@ -11,21 +11,17 @@ from kombu.utils import compat
 from kombu.utils.compat import entrypoints, maybe_fileno
 
 
-class test_entrypoints:
+def test_entrypoints():
+    with patch(
+        'kombu.utils.compat.importlib_metadata.entry_points', create=True
+    ) as iterep:
+        eps = [Mock(), Mock()]
+        iterep.return_value = {'kombu.test': eps}
 
-    @mock.mask_modules('pkg_resources')
-    def test_without_pkg_resources(self):
-        assert list(entrypoints('kombu.test')) == []
-
-    @mock.module_exists('pkg_resources')
-    def test_with_pkg_resources(self):
-        with patch('pkg_resources.iter_entry_points', create=True) as iterep:
-            eps = iterep.return_value = [Mock(), Mock()]
-
-            assert list(entrypoints('kombu.test'))
-            iterep.assert_called_with('kombu.test')
-            eps[0].load.assert_called_with()
-            eps[1].load.assert_called_with()
+        assert list(entrypoints('kombu.test'))
+        iterep.assert_called_with()
+        eps[0].load.assert_called_with()
+        eps[1].load.assert_called_with()
 
 
 def test_maybe_fileno():

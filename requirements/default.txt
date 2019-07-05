@@ -1,1 +1,2 @@
 amqp>=2.5.0,<3.0
+importlib-metadata>=0.18
