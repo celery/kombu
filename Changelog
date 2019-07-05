@@ -4,6 +4,11 @@
  Change history
 ================
 
+Unreleased
+==========
+
+- Use importlib-metadata instead of pkg_resources for better performance
+
 .. _version-4.6.3:
 
 4.6.3
