@@ -53,7 +53,7 @@ environment:
 build: off
 
 install:
-  - set PATH=C:\Program Files\Git\mingw64\bin;%PATH%
+  - ps: $Env:PATH += ';C:\msys64\mingw64\bin;C:\Program Files\Git\mingw64\bin'
   - cmd: "py -3.7 -m pip install -U pip setuptools"
   - cmd: "py -3.7 -m pip install pycurl"
   - cmd: "py -3.7 -m pip install wheel tox tox-appveyor"
