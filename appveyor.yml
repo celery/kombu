@@ -54,7 +54,7 @@ build: off
 
 install:
   - cmd: "py -3.7 -m pip install -U pip setuptools"
-  - cmd: "py -3.7 -m pip install libcurl --curl-dir=C:\Program Files\Git\mingw64\bin\libcurl"
+  - cmd: "py -3.7 -m pip install libcurl --curl-dir=C:\\Program Files\\Git\mingw64\\bin\\libcurl"
   - cmd: "py -3.7 -m pip install wheel tox tox-appveyor"
 
 test_script:
