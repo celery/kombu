@@ -53,8 +53,7 @@ environment:
 build: off
 
 install:
-  - set PATH=C:\Program Files\Git\mingw64\bin;%PATH%
-  - "py -3.7 -m pip install -U pip setuptools wheel tox tox-appveyor"
+  - "py -3.7 -m pip install -U pip setuptools wheel tox tox-appveyor --curl-dir=C:\Program Files\Git\mingw64\bin\libcurl"
 
 test_script:
   - "%WITH_COMPILER% py -3.7 -m tox"
