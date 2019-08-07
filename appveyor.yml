@@ -53,6 +53,7 @@ environment:
 build: off
 
 install:
+  - set PATH=C:\Program Files\Git\mingw64\bin;%PATH%
   - "py -3.7 -m pip install -U pip setuptools wheel tox tox-appveyor"
 
 test_script:
