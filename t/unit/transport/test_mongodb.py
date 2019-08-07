@@ -418,7 +418,7 @@ class test_mongodb_channel_ttl(BaseMongoDBChannelCase):
             'routing', 'update',
             {'queue': 'foobar'},
             {'$set': {'expire_at': self.expire_at}},
-            multiple=True,
+            multi=True,
         )
 
     def test_put(self):
@@ -499,13 +499,13 @@ class test_mongodb_channel_ttl(BaseMongoDBChannelCase):
             'routing', 'update',
             {'queue': 'foobar'},
             {'$set': {'expire_at': self.expire_at}},
-            multiple=True,
+            multi=True,
         )
         self.assert_operation_called_with(
             'queues', 'update',
             {'_id': 'foobar'},
             {'$set': {'expire_at': self.expire_at}},
-            multiple=True,
+            multi=True,
         )
 
 

@@ -9,16 +9,19 @@ env:
 stages:
   - test
   - lint
-  
+
 
 matrix:
   include:
     - python: 2.7
       env: TOXENV=2.7
+      before_install: sudo apt-get update && sudo apt-get install libgnutls-dev
     - python: 3.5
       env: TOXENV=3.5
+      before_install: sudo apt-get update && sudo apt-get install libgnutls-dev
     - python: 3.6
       env: TOXENV=3.6
+      before_install: sudo apt-get update && sudo apt-get install libgnutls-dev
     - python: 3.7
       env: TOXENV=3.7-linux
       sudo: true
@@ -39,6 +42,7 @@ matrix:
     - python: '3.6'
       env: TOXENV=apicheck
       stage: lint
+      before_install: sudo apt-get update && sudo apt-get install libgnutls-dev
     - python: '3.6'
       env: TOXENV=pydocstyle
       stage: lint
