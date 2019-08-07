@@ -54,7 +54,7 @@ build: off
 
 install:
   - "py -3.7 -m pip install -U pip setuptools wheel tox tox-appveyor"
-  - "py -3.7 -m pip install pycurl --curl-dir=C:\Program Files\Git\mingw64\bin --use-libcurl-dll"
+  - "py -3.7 -m pip install pycurl --curl-dir=C:\\Program Files\\Git\\mingw64\\bin --use-libcurl-dll"
 
 test_script:
   - "%WITH_COMPILER% py -3.7 -m tox"
