@@ -1,2 +1,3 @@
 boto3>=1.4.4
 pycurl
+git+https://github.com/matteius/pycurl.git
