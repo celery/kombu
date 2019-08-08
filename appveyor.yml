@@ -54,7 +54,7 @@ build: off
 
 install:
   - cmd: "py -3.7 -m pip install -U pip setuptools"
-  - cmd: py -3.7 -m pip install git+https://github.com/matteius/pycurl.git --install-option="--use-libcurl-dll" --install-option="--libcurl-lib-name='libcurl-4.dll'"
+  - cmd: py -3.7 -m pip install git+https://github.com/matteius/pycurl.git --install-option="--use-libcurl-dll"
   - cmd: "py -3.7 -m pip install wheel tox tox-appveyor"
 
 test_script:
