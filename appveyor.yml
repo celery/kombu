@@ -62,4 +62,3 @@ test_script:
 
 cache:
 - '%LOCALAPPDATA%\pip\Cache'
-
