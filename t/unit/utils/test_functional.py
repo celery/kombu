@@ -261,7 +261,7 @@ class test_retry_over_time:
 
         assert retry_over_time(
             fun, self.Predicate,
-            max_retries=0, errback=None, interval_max=14) == 42
+            max_retries=None, errback=None, interval_max=14) == 42
         assert fun.calls == 11
 
 
