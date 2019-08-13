@@ -342,7 +342,7 @@ def retry_over_time(fun, catch, args=None, kwargs=None, errback=None,
         try:
             return fun(*args, **kwargs)
         except catch as exc:
-            if max_retries and retries >= max_retries:
+            if max_retries is not None and retries >= max_retries:
                 raise
             if end and time() > end:
                 raise

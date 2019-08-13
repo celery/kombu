@@ -227,6 +227,21 @@ class test_retry_over_time:
             )
 
     @mock.sleepdeprived(module=utils)
+    def test_retry_zero(self):
+        with pytest.raises(self.Predicate):
+            retry_over_time(
+                self.myfun, self.Predicate,
+                max_retries=0, errback=self.errback, interval_max=14,
+            )
+        assert self.index == 0
+        # no errback
+        with pytest.raises(self.Predicate):
+            retry_over_time(
+                self.myfun, self.Predicate,
+                max_retries=0, errback=None, interval_max=14,
+            )
+
+    @mock.sleepdeprived(module=utils)
     def test_retry_once(self):
         with pytest.raises(self.Predicate):
             retry_over_time(
@@ -261,7 +276,7 @@ class test_retry_over_time:
 
         assert retry_over_time(
             fun, self.Predicate,
-            max_retries=0, errback=None, interval_max=14) == 42
+            max_retries=None, errback=None, interval_max=14) == 42
         assert fun.calls == 11
 
 
