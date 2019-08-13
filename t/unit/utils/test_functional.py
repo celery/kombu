@@ -240,7 +240,7 @@ class test_retry_over_time:
                 self.myfun, self.Predicate,
                 max_retries=0, errback=None, interval_max=14,
             )
-            
+
     @mock.sleepdeprived(module=utils)
     def test_retry_once(self):
         with pytest.raises(self.Predicate):
