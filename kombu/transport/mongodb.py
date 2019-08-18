@@ -20,6 +20,8 @@ from kombu.utils.json import loads, dumps
 from kombu.utils.objects import cached_property
 
 from . import virtual
+from .base import to_rabbitmq_queue_arguments
+
 
 E_SERVER_VERSION = """\
 Kombu requires MongoDB version 1.3+ (server is {0})\
@@ -286,6 +288,9 @@ class Channel(virtual.Channel):
                 options['readpreference'] = modes[options['readpreference']]
         return options
 
+    def prepare_queue_arguments(self, arguments, **kwargs):
+        return to_rabbitmq_queue_arguments(arguments, **kwargs)
+
     def _open(self, scheme='mongodb://'):
         hostname, dbname, conf = self._parse_uri(scheme=scheme)
 
@@ -427,11 +432,9 @@ class Channel(virtual.Channel):
             return
 
         self.routing.update(
-            {'queue': queue}, {'$set': {'expire_at': expire_at}},
-            multiple=True)
+            {'queue': queue}, {'$set': {'expire_at': expire_at}}, multi=True)
         self.queues.update(
-            {'_id': queue}, {'$set': {'expire_at': expire_at}},
-            multiple=True)
+            {'_id': queue}, {'$set': {'expire_at': expire_at}}, multi=True)
 
     def get_now(self):
         """Return current time in UTC."""

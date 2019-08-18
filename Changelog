@@ -4,10 +4,22 @@
  Change history
 ================
 
-Unreleased
-==========
+.. _version-4.6.4:
+
+4.6.4
+=====
+:release-date: 2019-08-14 22:45 P.M UTC+6:00
+:release-by: Asif Saif Uddin
 
 - Use importlib-metadata instead of pkg_resources for better performance
+- Allow users to switch URLs while omitting the resource identifier (#1032)
+- Don't stop receiving tasks on 503 SQS error. (#1064) 
+- Fix maybe declare (#1066)
+- Revert "Revert "Use SIMEMBERS instead of SMEMBERS to check for queue (Redis Broker)
+- Fix MongoDB backend to work properly with TTL (#1076)
+- Make sure that max_retries=0 is treated differently than None (#1080)
+- Bump py-amqp to 2.5.1 
+
 
 .. _version-4.6.3:
 
