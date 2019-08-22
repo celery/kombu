@@ -1,2 +1,2 @@
 boto3>=1.4.4
-pycurl
+pycurl==7.43.0.2  # Latest build with wheels provided
