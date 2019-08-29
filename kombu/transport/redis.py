@@ -3,12 +3,12 @@ from __future__ import absolute_import, unicode_literals
 
 import numbers
 import socket
+import warnings
 
 from bisect import bisect
 from collections import namedtuple
 from contextlib import contextmanager
 from time import time
-
 from vine import promise
 
 from kombu.exceptions import InconsistencyError, VersionMismatch
@@ -25,6 +25,7 @@ from kombu.utils.uuid import uuid
 from kombu.utils.compat import _detect_environment
 
 from . import virtual
+from .virtual.base import UndeliverableWarning, UNDELIVERABLE_FMT
 
 try:
     import redis
@@ -146,12 +147,8 @@ class QoS(virtual.QoS):
     def append(self, message, delivery_tag):
         delivery = message.delivery_info
         EX, RK = delivery['exchange'], delivery['routing_key']
-        # TODO: Remove this once we soley on Redis-py 3.0.0+
-        if redis.VERSION[0] >= 3:
-            # Redis-py changed the format of zadd args in v3.0.0
-            zadd_args = [{delivery_tag: time()}]
-        else:
-            zadd_args = [time(), delivery_tag]
+        # Redis-py changed the format of zadd args in v3.0.0 to be like this
+        zadd_args = [{delivery_tag: time()}]
 
         with self.pipe_or_acquire() as pipe:
             pipe.zadd(self.unacked_index_key, *zadd_args) \
@@ -713,7 +710,8 @@ class Channel(virtual.Channel):
         queues = self._queue_cycle.consume(len(self.active_queues))
         if not queues:
             return
-        keys = [self._q_for_pri(queue, pri) for pri in self.priority_steps
+        _q_for_pri = self._queue_for_priority
+        keys = [_q_for_pri(queue, pri) for pri in self.priority_steps
                 for queue in queues] + [timeout or 0]
         self._in_poll = self.client.connection
         self.client.connection.send_command('BRPOP', *keys)
@@ -749,7 +747,8 @@ class Channel(virtual.Channel):
     def _get(self, queue):
         with self.conn_or_acquire() as client:
             for pri in self.priority_steps:
-                item = client.rpop(self._q_for_pri(queue, pri))
+                queue_name = self._queue_for_priority(queue, pri)
+                item = client.rpop(queue_name)
                 if item:
                     return loads(bytes_to_str(item))
             raise Empty()
@@ -758,14 +757,21 @@ class Channel(virtual.Channel):
         with self.conn_or_acquire() as client:
             with client.pipeline() as pipe:
                 for pri in self.priority_steps:
-                    pipe = pipe.llen(self._q_for_pri(queue, pri))
+                    queue_name = self._queue_for_priority(queue, pri)
+                    pipe = pipe.llen(queue_name)
                 sizes = pipe.execute()
-                return sum(size for size in sizes
+                size = sum(size for size in sizes
                            if isinstance(size, numbers.Integral))
+                return size
 
-    def _q_for_pri(self, queue, pri):
+    def _queue_for_priority(self, queue, pri):
         pri = self.priority(pri)
-        return '%s%s%s' % ((queue, self.sep, pri) if pri else (queue, '', ''))
+        if pri:
+            queue_args = (queue, self.sep, pri)
+        else:
+            queue_args = (queue, '', '')
+        priority_queue_name = '%s%s%s' % queue_args
+        return priority_queue_name
 
     def priority(self, n):
         steps = self.priority_steps
@@ -776,7 +782,7 @@ class Channel(virtual.Channel):
         pri = self._get_message_priority(message, reverse=False)
 
         with self.conn_or_acquire() as client:
-            client.lpush(self._q_for_pri(queue, pri), dumps(message))
+            client.lpush(self._queue_for_priority(queue, pri), dumps(message))
 
     def _put_fanout(self, exchange, message, routing_key, **kwargs):
         """Deliver fanout message."""
@@ -811,14 +817,14 @@ class Channel(virtual.Channel):
                                        queue or '']))
             with client.pipeline() as pipe:
                 for pri in self.priority_steps:
-                    pipe = pipe.delete(self._q_for_pri(queue, pri))
+                    pipe = pipe.delete(self._queue_for_priority(queue, pri))
                 pipe.execute()
 
     def _has_queue(self, queue, **kwargs):
         with self.conn_or_acquire() as client:
             with client.pipeline() as pipe:
                 for pri in self.priority_steps:
-                    pipe = pipe.exists(self._q_for_pri(queue, pri))
+                    pipe = pipe.exists(self._queue_for_priority(queue, pri))
                 return any(pipe.execute())
 
     def get_table(self, exchange):
@@ -829,30 +835,55 @@ class Channel(virtual.Channel):
                 raise InconsistencyError(NO_ROUTE_ERROR.format(exchange, key))
             return [tuple(bytes_to_str(val).split(self.sep)) for val in values]
 
-    def _lookup_direct(self, exchange, routing_key):
-        if not exchange:
-            return [routing_key]
+    def _lookup(self, exchange, routing_key, default=None):
+        """Find all queues matching `routing_key` for the given `exchange`.
 
-        key = self.keyprefix_queue % exchange
+        Returns:
+            str: queue name -- must return the string `default`
+                if no queues matched.
+        """
         pattern = ''
-        queue = routing_key
-        queue_bind = self.sep.join([
-            routing_key or '',
-            pattern,
-            queue or '',
-        ])
-        with self.conn_or_acquire() as client:
-            if client.sismember(key, queue_bind):
-                return [queue]
+        result = []
+        if default is None:
+            default = self.deadletter_queue
+        if not exchange:  # anon exchange
+            return [routing_key or default]
 
-        return []
+        queue = routing_key
+        redis_key = self.keyprefix_queue % exchange
+        try:
+            queue_bind = self.sep.join([
+                routing_key or '',
+                pattern,
+                queue or '',
+            ])
+            with self.conn_or_acquire() as client:
+                if not client.scard(redis_key):
+                    pass  # Do not check if its a member because set is empty
+                elif client.sismember(redis_key, queue_bind):
+                    result = [queue]
+        except KeyError:
+            pass
+
+        if not result:
+            if default is not None:
+                warnings.warn(UndeliverableWarning(UNDELIVERABLE_FMT.format(
+                    exchange=exchange, routing_key=routing_key)),
+                )
+                self._new_queue(default)
+                result = [default]
+            else:
+                raise InconsistencyError(NO_ROUTE_ERROR.format(
+                    exchange, redis_key))
+
+        return result
 
     def _purge(self, queue):
         with self.conn_or_acquire() as client:
             with client.pipeline() as pipe:
                 for pri in self.priority_steps:
-                    priq = self._q_for_pri(queue, pri)
-                    pipe = pipe.llen(priq).delete(priq)
+                    priority_queue = self._queue_for_priority(queue, pri)
+                    pipe = pipe.llen(priority_queue).delete(priority_queue)
                 sizes = pipe.execute()
                 return sum(sizes[::2])
 
