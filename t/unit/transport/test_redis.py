@@ -4,13 +4,15 @@ import fakeredis
 import pytest
 import redis
 import unittest
+import socket
 
 from array import array
 from case import ANY, ContextMock, Mock, call, mock, skip, patch
+from collections import defaultdict
 from contextlib import contextmanager
 from itertools import count
 
-from kombu import Connection, Exchange, Queue, Producer
+from kombu import Connection, Exchange, Queue, Consumer, Producer
 from kombu.exceptions import InconsistencyError, VersionMismatch
 from kombu.five import Empty, Queue as _Queue
 from kombu.transport import virtual
@@ -201,6 +203,132 @@ class FakeRedisClient(fakeredis.FakeStrictRedis):
         self.queues.pop(key, None)
 
 
+class FakeRedisClientLite(object):
+    """The original FakeRedis client from Kombu to support the
+    Producer/Consumer TestCases, preferred to use FakeRedisClient."""
+    queues = {}
+    sets = defaultdict(set)
+    hashes = defaultdict(dict)
+    shard_hint = None
+
+    def __init__(self, db=None, port=None, connection_pool=None, **kwargs):
+        self._called = []
+        self._connection = None
+        self.bgsave_raises_ResponseError = False
+        self.connection = self._sconnection(self)
+
+    def exists(self, key):
+        return key in self.queues or key in self.sets
+
+    def hset(self, key, k, v):
+        self.hashes[key][k] = v
+
+    def hget(self, key, k):
+        return self.hashes[key].get(k)
+
+    def hdel(self, key, k):
+        self.hashes[key].pop(k, None)
+
+    def sadd(self, key, member, *args):
+        self.sets[key].add(member)
+
+    def zadd(self, key, *args):
+        (mapping,) = args
+        for item in mapping:
+            self.sets[key].add(item)
+
+    def smembers(self, key):
+        return self.sets.get(key, set())
+
+    def sismember(self, name, value):
+        return value in self.sets.get(name, set())
+
+    def scard(self, key):
+        return len(self.sets.get(key, set()))
+
+    def ping(self, *args, **kwargs):
+        return True
+
+    def srem(self, key, *args):
+        self.sets.pop(key, None)
+    zrem = srem
+
+    def llen(self, key):
+        try:
+            return self.queues[key].qsize()
+        except KeyError:
+            return 0
+
+    def lpush(self, key, value):
+        self.queues[key].put_nowait(value)
+
+    def parse_response(self, connection, type, **options):
+        cmd, queues = self.connection._sock.data.pop()
+        queues = list(queues)
+        assert cmd == type
+        self.connection._sock.data = []
+        if type == 'BRPOP':
+            timeout = queues.pop()
+            item = self.brpop(queues, timeout)
+            if item:
+                return item
+            raise Empty()
+
+    def brpop(self, keys, timeout=None):
+        for key in keys:
+            try:
+                item = self.queues[key].get_nowait()
+            except Empty:
+                pass
+            else:
+                return key, item
+
+    def rpop(self, key):
+        try:
+            return self.queues[key].get_nowait()
+        except (KeyError, Empty):
+            pass
+
+    def __contains__(self, k):
+        return k in self._called
+
+    def pipeline(self):
+        return FakePipelineLite(self)
+
+    def encode(self, value):
+        return str(value)
+
+    def _new_queue(self, key):
+        self.queues[key] = _Queue()
+
+    class _sconnection(object):
+        disconnected = False
+
+        class _socket(object):
+            blocking = True
+            filenos = count(30)
+
+            def __init__(self, *args):
+                self._fileno = next(self.filenos)
+                self.data = []
+
+            def fileno(self):
+                return self._fileno
+
+            def setblocking(self, blocking):
+                self.blocking = blocking
+
+        def __init__(self, client):
+            self.client = client
+            self._sock = self._socket()
+
+        def disconnect(self):
+            self.disconnected = True
+
+        def send_command(self, cmd, *args):
+            self._sock.data.append((cmd, args))
+
+
 class FakePipelineLite(object):
 
     def __init__(self, client):
@@ -303,6 +431,25 @@ class FakePipeline(redis.client.Pipeline):
         return results
 
 
+class FakeRedisKombuChannelLite(kombu_redis.Channel):
+
+    def _get_client(self):
+        return FakeRedisClientLite
+
+    def _get_pool(self, asynchronous=False):
+        return Mock()
+
+    def _get_response_error(self):
+        return ResponseError
+
+    def _new_queue(self, queue, **kwargs):
+        for pri in self.priority_steps:
+            self.client._new_queue(self._queue_for_priority(queue, pri))
+
+    def pipeline(self):
+        return FakePipelineLite(FakeRedisClientLite())
+
+
 class FakeRedisKombuChannel(kombu_redis.Channel):
     _fanout_queues = {}
 
@@ -346,14 +493,18 @@ class FakeRedisKombuChannel(kombu_redis.Channel):
         return self._put(routing_key, message, **kwargs)
 
 
-class FakeRedisKombuTransport(kombu_redis.Transport):
-    Channel = FakeRedisKombuChannel
+class FakeRedisKombuTransportLite(kombu_redis.Transport):
+    Channel = FakeRedisKombuChannelLite
 
     def __init__(self, *args, **kwargs):
-        super(FakeRedisKombuTransport, self).__init__(*args, **kwargs)
+        super(FakeRedisKombuTransportLite, self).__init__(*args, **kwargs)
 
     def _get_errors(self):
         return ((KeyError,), (IndexError,))
+
+
+class FakeRedisKombuTransport(FakeRedisKombuTransportLite):
+    Channel = FakeRedisKombuChannel
 
 
 @skip.unless_module('redis')
@@ -993,45 +1144,6 @@ class TestRedisConnections(unittest.TestCase):
         kwargs.setdefault('transport_options', {'fanout_patterns': True})
         return Connection(transport=FakeRedisKombuTransport, **kwargs)
 
-    # @skip("This test is currently broken")
-    # def test_publish__get(self):
-    #     channel = self.connection.channel()
-    #     producer = Producer(channel, self.exchange, routing_key='test_Redis')
-    #     self.queue(channel).declare()
-    #
-    #     producer.publish({'hello': 'world'})
-    #
-    #     assert self.queue(channel).get().payload == {'hello': 'world'}
-    #     assert self.queue(channel).get() is None
-    #     assert self.queue(channel).get() is None
-    #     assert self.queue(channel).get() is None
-
-    # @skip("This test is currently broken")
-    # def test_publish__consume(self):
-    #     connection = self.create_connection()
-    #     channel = connection.default_channel
-    #     producer = Producer(channel, self.exchange, routing_key='test_Redis')
-    #     consumer = Consumer(channel, queues=[self.queue])
-    #
-    #     producer.publish({'hello2': 'world2'})
-    #     _received = []
-    #
-    #     def callback(message_data, message):
-    #         _received.append(message_data)
-    #         message.ack()
-    #
-    #     consumer.register_callback(callback)
-    #     consumer.consume()
-    #
-    #     assert channel in channel.connection.cycle._channels
-    #     try:
-    #         connection.drain_events(timeout=1)
-    #         assert _received
-    #         with pytest.raises(socket.timeout):
-    #             connection.drain_events(timeout=0.01)
-    #     finally:
-    #         channel.close()
-
     def test_purge(self):
         channel = self.connection.default_channel
         producer = Producer(channel, self.exchange, routing_key='test_Redis')
@@ -1526,6 +1638,63 @@ class TestKombuRedisMutex(unittest.TestCase):
             with kombu_redis.Mutex(client, 'foo1', 100):
                 held = True
             assert held
+
+
+class TestRedisProducerConsumer(unittest.TestCase):
+    def setUp(self):
+        self.connection = self.create_connection()
+        self.channel = self.connection.default_channel
+        self.routing_key = routing_key = 'test_redis_producer'
+        self.exchange_name = exchange_name = 'test_redis_producer'
+        self.exchange = Exchange(exchange_name, type='direct')
+        self.queue = Queue(routing_key, self.exchange, routing_key)
+
+        self.queue(self.connection.default_channel).declare()
+        self.channel.queue_bind(routing_key, self.exchange_name, routing_key)
+
+    def create_connection(self, **kwargs):
+        kwargs.setdefault('transport_options', {'fanout_patterns': True})
+        return Connection(transport=FakeRedisKombuTransportLite, **kwargs)
+
+    def teardown(self):
+        self.connection.close()
+
+    def test_publish__get(self):
+        channel = self.connection.channel()
+        producer = Producer(channel, self.exchange, routing_key=self.routing_key)
+        self.queue(channel).declare()
+
+        producer.publish({'hello': 'world'})
+
+        assert self.queue(channel).get().payload == {'hello': 'world'}
+        assert self.queue(channel).get() is None
+        assert self.queue(channel).get() is None
+        assert self.queue(channel).get() is None
+
+    def test_publish__consume(self):
+        connection = self.create_connection()
+        channel = connection.default_channel
+        producer = Producer(channel, self.exchange, routing_key=self.routing_key)
+        consumer = Consumer(channel, queues=[self.queue])
+
+        producer.publish({'hello2': 'world2'})
+        _received = []
+
+        def callback(message_data, message):
+            _received.append(message_data)
+            message.ack()
+
+        consumer.register_callback(callback)
+        consumer.consume()
+
+        assert channel in channel.connection.cycle._channels
+        try:
+            connection.drain_events(timeout=1)
+            assert _received
+            with pytest.raises(socket.timeout):
+                connection.drain_events(timeout=0.01)
+        finally:
+            channel.close()
 
 
 @skip.unless_module('redis.sentinel')
