@@ -1661,7 +1661,8 @@ class TestRedisProducerConsumer(unittest.TestCase):
 
     def test_publish__get(self):
         channel = self.connection.channel()
-        producer = Producer(channel, self.exchange, routing_key=self.routing_key)
+        producer = Producer(channel, self.exchange,
+                            routing_key=self.routing_key)
         self.queue(channel).declare()
 
         producer.publish({'hello': 'world'})
@@ -1674,7 +1675,8 @@ class TestRedisProducerConsumer(unittest.TestCase):
     def test_publish__consume(self):
         connection = self.create_connection()
         channel = connection.default_channel
-        producer = Producer(channel, self.exchange, routing_key=self.routing_key)
+        producer = Producer(channel, self.exchange,
+                            routing_key=self.routing_key)
         consumer = Consumer(channel, queues=[self.queue])
 
         producer.publish({'hello2': 'world2'})
