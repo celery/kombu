@@ -2,5 +2,6 @@ pytz>dev
 case>=1.5.2
 pytest
 pytest-sugar
+pytest-timeout
 Pyro4
 fakeredis==1.0.4
