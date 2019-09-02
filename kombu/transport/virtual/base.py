@@ -710,36 +710,20 @@ class Channel(AbstractChannel, base.StdChannel):
             return [routing_key or default]
 
         try:
-            R = self.typeof(exchange).lookup(
+            result = self.typeof(exchange).lookup(
                 self.get_table(exchange),
                 exchange, routing_key, default,
             )
         except KeyError:
-            R = []
+            result = []
 
-        if not R and default is not None:
+        if not result and default is not None:
             warnings.warn(UndeliverableWarning(UNDELIVERABLE_FMT.format(
                 exchange=exchange, routing_key=routing_key)),
             )
             self._new_queue(default)
-            R = [default]
-        return R
-
-    def _lookup_direct(self, exchange, routing_key):
-        """Find queue matching `routing_key` for given direct `exchange`.
-
-        Returns:
-            str: queue name
-        """
-        if not exchange:
-            return [routing_key]
-
-        return self.exchange_types['direct'].lookup(
-            table=self.get_table(exchange),
-            exchange=exchange,
-            routing_key=routing_key,
-            default=None,
-        )
+            result = [default]
+        return result
 
     def _restore(self, message):
         """Redeliver message to its original destination."""
