@@ -20,13 +20,15 @@ from vine.utils import wraps
 from kombu.five import (
     UserDict, items, keys, python_2_unicode_compatible, string_t,
 )
-
+from kombu.log import get_logger
 from .encoding import safe_repr as _safe_repr
 
 __all__ = (
     'LRUCache', 'memoize', 'lazy', 'maybe_evaluate',
     'is_list', 'maybe_list', 'dictfilter',
 )
+
+logger = get_logger(__name__)
 
 KEYWORD_MARK = object()
 
@@ -338,17 +340,19 @@ def retry_over_time(fun, catch, args=None, kwargs=None, errback=None,
                              interval_max + interval_start,
                              interval_step, repeatlast=True)
     end = time() + timeout if timeout else None
-    for retries in count():
+    for retry_attempt in count():
+        if retry_attempt > 1:
+            logger.info('retry_over_time is on attempt (retry_attempt).')
         try:
             return fun(*args, **kwargs)
         except catch as exc:
-            if max_retries is not None and retries >= max_retries:
+            if max_retries is not None and retry_attempt >= max_retries:
                 raise
             if end and time() > end:
                 raise
             if callback:
                 callback()
-            tts = float(errback(exc, interval_range, retries) if errback
+            tts = float(errback(exc, interval_range, retry_attempt) if errback
                         else next(interval_range))
             if tts:
                 for _ in range(int(tts)):

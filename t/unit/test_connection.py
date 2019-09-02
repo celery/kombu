@@ -472,7 +472,7 @@ class test_Connection:
 
         myfun.assert_called()
 
-    @pytest.mark.timeout(16)
+    @pytest.mark.timeout(30)
     def test_retry_policy(self):
         with pytest.raises(OperationalError):
             conn = Connection('pyamqp://localhost:8000')
