@@ -1,6 +1,7 @@
 """Functional Utilities."""
 from __future__ import absolute_import, unicode_literals
 
+import logging
 import random
 import sys
 import threading
@@ -20,7 +21,6 @@ from vine.utils import wraps
 from kombu.five import (
     UserDict, items, keys, python_2_unicode_compatible, string_t,
 )
-from kombu.log import get_logger
 from .encoding import safe_repr as _safe_repr
 
 __all__ = (
@@ -28,7 +28,7 @@ __all__ = (
     'is_list', 'maybe_list', 'dictfilter',
 )
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 KEYWORD_MARK = object()
 
