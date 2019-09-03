@@ -116,7 +116,7 @@ class test_connection_utils:
         conn = Connection(self.url, alternates=['amqp://host'])
         clone = deepcopy(conn)
         assert clone.alt == ['amqp://host']
-    
+
     def test_parse_generated_as_uri_pg(self):
         conn = Connection(self.pg_url)
         assert conn.as_uri() == self.pg_nopass
