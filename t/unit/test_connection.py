@@ -30,6 +30,8 @@ class test_connection_utils:
             'port': 5672,
             'virtual_host': 'my/vhost',
         }
+        self.pg_url = 'sqla+postgresql://test:password@yms-pg/yms'
+        self.pg_nopass = 'sqla+postgresql://test:**@yms-pg/yms'
 
     def test_parse_url(self):
         result = parse_url(self.url)
@@ -114,6 +116,11 @@ class test_connection_utils:
         conn = Connection(self.url, alternates=['amqp://host'])
         clone = deepcopy(conn)
         assert clone.alt == ['amqp://host']
+
+    def test_parse_generated_as_uri_pg(self):
+        conn = Connection(self.pg_url)
+        assert conn.as_uri() == self.pg_nopass
+        assert conn.as_uri(include_password=True) == self.pg_url
 
 
 class test_Connection:

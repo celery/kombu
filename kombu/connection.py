@@ -31,7 +31,7 @@ from .transport import get_transport_cls, supports_librabbitmq
 from .utils.collections import HashedSeq
 from .utils.functional import dictfilter, lazy, retry_over_time, shufflecycle
 from .utils.objects import cached_property
-from .utils.url import as_url, parse_url, quote, urlparse
+from .utils.url import as_url, parse_url, quote, urlparse, maybe_sanitize_url
 
 __all__ = ('Connection', 'ConnectionPool', 'ChannelPool')
 
@@ -656,11 +656,17 @@ class Connection(object):
         """Convert connection parameters to URL form."""
         hostname = self.hostname or 'localhost'
         if self.transport.can_parse_url:
+            connection_as_uri = self.hostname
             if self.uri_prefix:
-                return '%s+%s' % (self.uri_prefix, hostname)
-            return self.hostname
+                connection_as_uri = '%s+%s' % (self.uri_prefix, hostname)
+            if not include_password:
+                connection_as_uri = maybe_sanitize_url(connection_as_uri)
+            return connection_as_uri
         if self.uri_prefix:
-            return '%s+%s' % (self.uri_prefix, hostname)
+            connection_as_uri = '%s+%s' % (self.uri_prefix, hostname)
+            if not include_password:
+                connection_as_uri = maybe_sanitize_url(connection_as_uri)
+            return connection_as_uri
         fields = self.info()
         port, userid, password, vhost, transport = getfields(fields)
 
