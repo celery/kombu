@@ -173,16 +173,18 @@ class Connection(object):
         if hostname and not isinstance(hostname, string_t):
             alt.extend(hostname)
             hostname = alt[0]
-        if hostname and '://' in hostname:
+            params.update(hostname=hostname)
+        if hostname:
             if ';' in hostname:
-                alt.extend(hostname.split(';'))
+                alt = hostname.split(';') + alt
                 hostname = alt[0]
-            if '+' in hostname[:hostname.index('://')]:
+                params.update(hostname=hostname)
+            if '://' in hostname and '+' in hostname[:hostname.index('://')]:
                 # e.g. sqla+mysql://root:masterkey@localhost/
                 params['transport'], params['hostname'] = \
                     hostname.split('+', 1)
                 self.uri_prefix = params['transport']
-            else:
+            elif '://' in hostname:
                 transport = transport or urlparse(hostname).scheme
                 if not get_transport_cls(transport).can_parse_url:
                     # we must parse the URL

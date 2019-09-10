@@ -530,6 +530,14 @@ class test_Connection:
         conn = Connection(transport=MyTransport)
         assert conn.connection_errors == (KeyError, ValueError)
 
+    def test_multiple_urls_hostname(self):
+        conn = Connection(['example.com;amqp://example.com'])
+        assert conn.as_uri() == 'amqp://guest:**@example.com:5672//'
+        conn = Connection(['example.com', 'amqp://example.com'])
+        assert conn.as_uri() == 'amqp://guest:**@example.com:5672//'
+        conn = Connection('example.com;example.com;')
+        assert conn.as_uri() == 'amqp://guest:**@example.com:5672//'
+
 
 class test_Connection_with_transport_options:
 
