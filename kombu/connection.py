@@ -173,12 +173,12 @@ class Connection(object):
         if hostname and not isinstance(hostname, string_t):
             alt.extend(hostname)
             hostname = alt[0]
-            params.update(hostname = hostname)
+            params.update(hostname=hostname)
         if hostname:
             if ';' in hostname:
                 alt = hostname.split(';') + alt
                 hostname = alt[0]
-                params.update(hostname = hostname)
+                params.update(hostname=hostname)
             if '://' in hostname and '+' in hostname[:hostname.index('://')]:
                 # e.g. sqla+mysql://root:masterkey@localhost/
                 params['transport'], params['hostname'] = \

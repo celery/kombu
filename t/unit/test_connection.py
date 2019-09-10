@@ -122,11 +122,6 @@ class test_connection_utils:
         assert conn.as_uri() == self.pg_nopass
         assert conn.as_uri(include_password=True) == self.pg_url
 
-    def test_parse_generated_as_uri_pg(self):
-        conn = Connection(self.pg_url)
-        assert conn.as_uri() == self.pg_nopass
-        assert conn.as_uri(include_password=True) == self.pg_url
-
 
 class test_Connection:
 
@@ -538,10 +533,11 @@ class test_Connection:
     def test_multiple_urls_hostname(self):
         conn = Connection(['example.com;amqp://example.com'])
         assert conn.as_uri() == 'amqp://guest:**@example.com:5672//'
-        conn = Connection(['example.com','amqp://example.com'])
+        conn = Connection(['example.com', 'amqp://example.com'])
         assert conn.as_uri() == 'amqp://guest:**@example.com:5672//'
         conn = Connection('example.com;example.com;')
         assert conn.as_uri() == 'amqp://guest:**@example.com:5672//'
+
 
 class test_Connection_with_transport_options:
 
