@@ -1,23 +1,33 @@
 language: python
-python:
-    - 2.6
-    - 2.7
-    - 3.3
-    - 3.4
-    - pypy
-before_install:
-    - |
-      deactivate
-      if python --version |& grep PyPy; then
-        sudo apt-add-repository --yes ppa:pypy/ppa
-        sudo apt-get update
-        sudo apt-get install pypy
-        source ~/virtualenv/pypy/bin/activate
-      fi
-      python --version
-      uname -a
-      lsb_release -a
-      sudo pip install tox
-script: tox -v -e $TRAVIS_PYTHON_VERSION -- -v
+sudo: false
+cache: pip
+
+matrix:
+  include:
+    - python: 2.6
+      env: TOXENV=py26 TOX_VERSION="<3" TOX_DEPS="pluggy<0.6.0" # Latest supported version
+      dist: trusty
+    - python: 2.7
+      env: TOXENV=py27
+    - python: 3.3
+      env: TOXENV=py33 TOX_VERSION="<3" TOX_DEPS="pluggy<0.6.0 virtualenv<15.2.0" # Latest supported version
+      dist: trusty
+    - python: 3.4
+      env: TOXENV=py34
+      dist: xenial
+    - python: 3.5
+      env: TOXENV=py35
+    - python: 3.6
+      env: TOXENV=py36
+    - python: 3.7
+      env: TOXENV=py37
+    - python: pypy
+      env: TOXENV=pypy
+    - python: pypy3
+      env: TOXENV=pypy3
+
+install:
+    - pip --disable-pip-version-check install -U "tox${TOX_VERSION}" ${TOX_DEPS} | cat
+script: tox -v -- -v
 after_success:
     - .tox/$TRAVIS_PYTHON_VERSION/bin/coveralls

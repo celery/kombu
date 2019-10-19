@@ -1,0 +1,5 @@
+coverage>=3.0
+coveralls<1.4.0  # 1.4.0 dropped 3.3 support
+redis
+PyYAML<4  # 4.x dropped 3.3 support
+msgpack-python>0.2.0  # 0.2.0 dropped 2.5 support
