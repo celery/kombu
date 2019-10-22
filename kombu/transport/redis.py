@@ -341,9 +341,11 @@ class MultiChannelPoller(object):
 
     def maybe_check_subclient_health(self):
         for channel in self._channels:
-            client = channel.__dict__.get('subclient')  # only if property cached
-            if client is not None and callable(getattr(client, "check_health", None)):
-                client.check_health()
+            # only if subclient property is cached
+            client = channel.__dict__.get('subclient')
+            if client is not None:
+                if callable(getattr(client, "check_health", None)):
+                    client.check_health()
 
     def on_readable(self, fileno):
         chan, type = self._fd_to_chan[fileno]
