@@ -49,7 +49,7 @@ class Channel(virtual.Channel):
     """Azure Service Bus channel."""
 
     default_visibility_timeout = 1800  # 30 minutes.
-    default_wait_time_seconds = 10  # 10 seconds
+    default_wait_time_seconds = 5  # in seconds
     domain_format = 'kombu%(vhost)s'
     _queue_service = None
     _queue_cache = {}

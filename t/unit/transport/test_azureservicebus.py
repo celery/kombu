@@ -2,7 +2,7 @@ from __future__ import absolute_import, unicode_literals
 
 import pytest
 
-from case import skip
+from case import skip, patch
 from kombu import messaging
 from kombu import Connection, Exchange, Queue
 from kombu.five import Empty
@@ -10,13 +10,13 @@ from kombu.transport import azureservicebus
 
 try:
     # azure-servicebus version >= 0.50.0
-    from azure.servicebus.control_client import Message
+    from azure.servicebus.control_client import Message, ServiceBusService
 except ImportError:
     try:
         # azure-servicebus version <= 0.21.1
-        from azure.servicebus import Message
+        from azure.servicebus import Message, ServiceBusService
     except ImportError:
-        Message = None
+        ServiceBusService = Message = None
 
 
 class QueueMock(object):
@@ -36,20 +36,16 @@ def _create_mock_connection(url='', **kwargs):
     class _Channel(azureservicebus.Channel):
         # reset _fanout_queues for each instance
         queues = []
-        _service_queue = None
+        _queue_service = None
 
         def list_queues(self):
             return self.queues
 
         @property
         def queue_service(self):
-            if self._service_queue is None:
-                self._service_queue = AzureServiceBusClientMock()
-            return self._service_queue
-
-        @property
-        def transport_options(self):
-            return {'wait_time_seconds': 0.1}
+            if self._queue_service is None:
+                self._queue_service = AzureServiceBusClientMock()
+            return self._queue_service
 
     class Transport(azureservicebus.Transport):
         Channel = _Channel
@@ -94,6 +90,14 @@ class AzureServiceBusClientMock(object):
             except IndexError:
                 return Message()
 
+    def read_delete_queue_message(self, queue_name, timeout='60'):
+        return self.receive_queue_message(queue_name)
+
+    def delete_queue(self, queue_name=None):
+        queue = self.get_queue(queue_name)
+        if queue:
+            del queue
+
 
 @skip.unless_module('azure.servicebus')
 class test_Channel:
@@ -131,6 +135,59 @@ class test_Channel:
                 qos._dirty.clear()
                 qos._delivered.clear()
 
+    def test_queue_service(self):
+        # Test gettings queue service without credentials
+        conn = Connection(self.url, transport=azureservicebus.Transport)
+        with pytest.raises(ValueError) as exc:
+            conn.channel()
+            assert exc == 'You need to provide servicebus namespace'
+
+        # Test getting queue service when queue_service is not setted
+        with patch('kombu.transport.azureservicebus.ServiceBusService') as m:
+            channel = conn.channel()
+
+            # Remove queue service to get from service bus again
+            channel._queue_service = None
+            channel.queue_service
+
+            assert m.call_count == 2
+
+            # Calling queue_service again needs to reuse ServiceBus instance
+            channel.queue_service
+            assert m.call_count == 2
+
+    def test_conninfo(self):
+        conninfo = self.channel.conninfo
+        assert conninfo is self.connection
+
+    def test_transport_type(self):
+        transport_options = self.channel.transport_options
+        assert transport_options == {}
+
+    def test_visibility_timeout(self):
+        # Test getting default visibility timeout
+        assert (
+            self.channel.visibility_timeout ==
+            azureservicebus.Channel.default_visibility_timeout
+        )
+
+        # Test getting value setted in transport options
+        del self.channel.visibility_timeout
+        self.channel.transport_options['visibility_timeout'] = 10
+        assert self.channel.visibility_timeout == 10
+
+    def test_wait_timeout_seconds(self):
+        # Test getting default wait timeout seconds
+        assert (
+            self.channel.wait_time_seconds ==
+            azureservicebus.Channel.default_wait_time_seconds
+        )
+
+        # Test getting value setted in transport options
+        del self.channel.wait_time_seconds
+        self.channel.transport_options['wait_time_seconds'] = 10
+        assert self.channel.wait_time_seconds == 10
+
     def test_get_from_azure(self):
         # Test getting a single message
         message = 'my test message'
@@ -160,3 +217,16 @@ class test_Channel:
         self.producer.publish(message)
         results = self.queue(self.channel).get().payload
         assert message == results
+
+    def test_delete_queue(self):
+        # Test deleting queue without message
+        queue_name = 'new_unittest_queue'
+        self.channel._new_queue(queue_name)
+        self.channel._delete(queue_name)
+        assert queue_name not in self.channel._queue_cache
+
+        # Test deleting queue with message
+        message = 'my test message'
+        self.producer.publish(message)
+        self.channel._delete(self.queue_name)
+        assert queue_name not in self.channel._queue_cache
