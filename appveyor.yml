@@ -50,6 +50,12 @@ environment:
       PYTHON_ARCH: "64"
       WINDOWS_SDK_VERSION: "v7.1"
 
+    - TOXENV: "3.8-windows"
+      TOX_APPVEYOR_X64: 1
+      PYTHON_VERSION: "3.8"
+      PYTHON_ARCH: "64"
+      WINDOWS_SDK_VERSION: "v7.1"
+
 build: off
 
 install:
