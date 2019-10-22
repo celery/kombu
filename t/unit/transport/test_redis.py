@@ -1006,9 +1006,10 @@ class TestRedisChannel(unittest.TestCase):
         loop = Mock(name='loop')
         kombu_redis.Transport.register_with_event_loop(transport, conn, loop)
         transport.cycle.on_poll_init.assert_called_with(loop.poller)
-        loop.call_repeatedly.assert_called_with(
-            10, transport.cycle.maybe_restore_messages,
-        )
+        loop.call_repeatedly.assert_has_calls([
+            call(10, transport.cycle.maybe_restore_messages),
+            call(30, transport.cycle.maybe_check_subclient_health),
+        ])
         loop.on_tick.add.assert_called()
         on_poll_start = loop.on_tick.add.call_args[0][0]
 
