@@ -1,6 +1,0 @@
-boto
-coverage>=3.0
-coveralls<1.2.0  # 1.2.0 dropped 2.6 support
-redis
-PyYAML<4  # 4.x dropped 2.6 support
-msgpack-python<0.5.0  # 0.5.0 dropped 2.6 support
