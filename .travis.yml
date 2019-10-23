@@ -2,10 +2,6 @@ language: python
 sudo: false
 cache: pip
 
-env:
-  global:
-    PYTHONUNBUFFERED=yes
-
 matrix:
   include:
     - python: 2.7

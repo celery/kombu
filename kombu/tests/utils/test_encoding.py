@@ -59,12 +59,9 @@ class test_encoding_utils(Case):
 class test_safe_str(Case):
 
     def setUp(self):
-        self._cencoding = patch('sys.getfilesystemencoding')
-        self._encoding = self._cencoding.__enter__()
-        self._encoding.return_value = 'ascii'
-
-    def tearDown(self):
-        self._cencoding.__exit__()
+        self._cencoding = patch('sys.getfilesystemencoding', return_value='ascii')
+        self.addCleanup(self._cencoding.stop)
+        self._cencoding.start()
 
     def test_when_bytes(self):
         self.assertEqual(safe_str('foo'), 'foo')
