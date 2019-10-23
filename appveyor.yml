@@ -12,38 +12,46 @@ environment:
     # a later point release.
     # See: http://www.appveyor.com/docs/installed-software#python
 
-    - PYTHON: "C:\\Python27"
+    - TOXENV: "py27"
+      TOX_APPVEYOR_X64: 0
       PYTHON_VERSION: "2.7.x"
       PYTHON_ARCH: "32"
 
-    - PYTHON: "C:\\Python35"
+    - TOXENV: "py35"
+      TOX_APPVEYOR_X64: 0
       PYTHON_VERSION: "3.5.x"
       PYTHON_ARCH: "32"
 
-    - PYTHON: "C:\\Python36"
+    - TOXENV: "py36"
+      TOX_APPVEYOR_X64: 0
       PYTHON_VERSION: "3.6.x"
       PYTHON_ARCH: "32"
 
-    - PYTHON: "C:\\Python37"
+    - TOXENV: "py37"
+      TOX_APPVEYOR_X64: 0
       PYTHON_VERSION: "3.7.x"
       PYTHON_ARCH: "32"
 
-    - PYTHON: "C:\\Python27-x64"
+    - TOXENV: "py27"
+      TOX_APPVEYOR_X64: 1
       PYTHON_VERSION: "2.7.x"
       PYTHON_ARCH: "64"
       WINDOWS_SDK_VERSION: "v7.0"
 
-    - PYTHON: "C:\\Python35-x64"
+    - TOXENV: "py35"
+      TOX_APPVEYOR_X64: 1
       PYTHON_VERSION: "3.5.x"
       PYTHON_ARCH: "64"
       WINDOWS_SDK_VERSION: "v7.1"
 
-    - PYTHON: "C:\\Python36-x64"
+    - TOXENV: "py36"
+      TOX_APPVEYOR_X64: 1
       PYTHON_VERSION: "3.6.x"
       PYTHON_ARCH: "64"
       WINDOWS_SDK_VERSION: "v7.1"
 
-    - PYTHON: "C:\\Python37-x64"
+    - TOXENV: "py37"
+      TOX_APPVEYOR_X64: 1
       PYTHON_VERSION: "3.7.x"
       PYTHON_ARCH: "64"
       WINDOWS_SDK_VERSION: "v7.1"
@@ -52,21 +60,13 @@ environment:
 init:
   - "ECHO %PYTHON% %PYTHON_VERSION% %PYTHON_ARCH%"
 
-install:
-  - "powershell extra\\appveyor\\install.ps1"
-  - "%PYTHON%/Scripts/pip.exe install -U setuptools"
-  - "%PYTHON%/Scripts/pip.exe install -r requirements/dev.txt"
-
 build: off
 
+install:
+  - "py -3.7 -m pip install -U pip setuptools wheel tox tox-appveyor"
+
 test_script:
-  - "%WITH_COMPILER% %PYTHON%/python setup.py test"
+  - "%WITH_COMPILER% py -3.7 -m tox"
 
-after_test:
-  - "%WITH_COMPILER% %PYTHON%/python setup.py bdist_wheel"
-
-artifacts:
-  - path: dist\*
-
-#on_success:
-#  - TODO: upload the content of dist/*.whl to a public wheelhouse
+cache:
+  - '%LOCALAPPDATA%\pip\Cache'
