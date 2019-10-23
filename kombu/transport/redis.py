@@ -339,6 +339,14 @@ class MultiChannelPoller(object):
                     num=channel.unacked_restore_limit,
                 )
 
+    def maybe_check_subclient_health(self):
+        for channel in self._channels:
+            # only if subclient property is cached
+            client = channel.__dict__.get('subclient')
+            if client is not None:
+                if callable(getattr(client, "check_health", None)):
+                    client.check_health()
+
     def on_readable(self, fileno):
         chan, type = self._fd_to_chan[fileno]
         if chan.qos.can_consume():
@@ -1095,6 +1103,7 @@ class Transport(virtual.Transport):
             [add_reader(fd, on_readable, fd) for fd in cycle.fds]
         loop.on_tick.add(on_poll_start)
         loop.call_repeatedly(10, cycle.maybe_restore_messages)
+        loop.call_repeatedly(30, cycle.maybe_check_subclient_health)
 
     def on_readable(self, fileno):
         """Handle AIO event for one of our file descriptors."""
