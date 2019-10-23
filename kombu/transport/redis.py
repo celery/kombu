@@ -684,9 +684,8 @@ class Channel(virtual.Channel):
             ret.append(self._receive_one(c))
         except Empty:
             pass
-        if c.connection is not None:
-            while c.connection.can_read(timeout=0):
-                ret.append(self._receive_one(c))
+        while c.connection is not None and c.connection.can_read(timeout=0):
+            ret.append(self._receive_one(c))
         return any(ret)
 
     def _receive_one(self, c):

@@ -807,6 +807,18 @@ class TestRedisChannel(unittest.TestCase):
 
         assert self.channel._receive_one(self.channel.subclient) is None
 
+    def test_receive_connection_has_gone(self):
+        def _receive_one(c):
+            c.connection = None
+            _receive_one.called = True
+            return True
+
+        _receive_one.called = False
+        self.channel._receive_one = _receive_one
+
+        assert self.channel._receive()
+        assert _receive_one.called
+
     def test_brpop_read_raises(self):
         c = self.channel.client = Mock()
         c.parse_response.side_effect = KeyError('foo')
