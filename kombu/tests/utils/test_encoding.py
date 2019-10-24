@@ -3,6 +3,7 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import codecs
+from encodings.aliases import aliases
 import sys
 
 from contextlib import contextmanager
@@ -66,6 +67,12 @@ class test_safe_str(Case):
 
     def test_ascii_codec_is_registered(self):
         self.assertIsNotNone(codecs.lookup('ascii'))
+
+    def test_ascii_codec_is_in_encoding_aliases(self):
+        self.assertTrue(
+            ('ascii' in aliases or 'ascii' in aliases.values()),
+            aliases,
+        )
 
     def test_when_bytes(self):
         self.assertEqual(safe_str('foo'), 'foo')
