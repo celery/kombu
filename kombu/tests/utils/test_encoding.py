@@ -27,7 +27,7 @@ class test_default_encoding(Case):
 
     @patch('sys.getfilesystemencoding')
     def test_default(self, getdefaultencoding):
-        getdefaultencoding.return_value = 'ascii'
+        getdefaultencoding.return_value = str('ascii')
         with clean_encoding() as encoding:
             enc = encoding.default_encoding()
             if sys.platform.startswith('java'):
@@ -59,7 +59,7 @@ class test_encoding_utils(Case):
 class test_safe_str(Case):
 
     def setUp(self):
-        self._cencoding = patch('sys.getfilesystemencoding', return_value='ascii')
+        self._cencoding = patch('sys.getfilesystemencoding', return_value=str('ascii'))
         self.addCleanup(self._cencoding.stop)
         self._cencoding.start()
 
@@ -78,12 +78,10 @@ class test_safe_str(Case):
             self.assertIsInstance(res, str)
 
     def test_when_containing_high_chars(self):
-        with patch('sys.getfilesystemencoding') as encoding:
-            encoding.return_value = 'ascii'
-            s = 'The quiæk fåx jømps øver the lazy dåg'
-            res = safe_str(s)
-            self.assertIsInstance(res, str)
-            self.assertEqual(len(s), len(res))
+        s = 'The quiæk fåx jømps øver the lazy dåg'
+        res = safe_str(s)
+        self.assertIsInstance(res, str)
+        self.assertEqual(len(s), len(res))
 
     def test_when_not_string(self):
         o = object()
