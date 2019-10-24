@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import codecs
 import sys
 
 from contextlib import contextmanager
@@ -27,7 +28,7 @@ class test_default_encoding(Case):
 
     @patch('sys.getfilesystemencoding')
     def test_default(self, getdefaultencoding):
-        getdefaultencoding.return_value = str('ascii')
+        getdefaultencoding.return_value = 'ascii'
         with clean_encoding() as encoding:
             enc = encoding.default_encoding()
             if sys.platform.startswith('java'):
@@ -59,9 +60,12 @@ class test_encoding_utils(Case):
 class test_safe_str(Case):
 
     def setUp(self):
-        self._cencoding = patch('sys.getfilesystemencoding', return_value=str('ascii'))
+        self._cencoding = patch('sys.getfilesystemencoding', return_value='ascii')
         self.addCleanup(self._cencoding.stop)
         self._cencoding.start()
+
+    def test_ascii_codec_is_registered(self):
+        self.assertIsNotNone(codecs.lookup('ascii'))
 
     def test_when_bytes(self):
         self.assertEqual(safe_str('foo'), 'foo')
