@@ -1,2 +1,2 @@
-amqp==2.5.2
+amqp>=2.5.2,<2.6
 importlib-metadata>=0.18
