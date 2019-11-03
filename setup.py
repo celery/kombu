@@ -116,8 +116,6 @@ def reqs(*f):
         ) if r]
 
 install_requires = reqs('default.txt')
-if py_version[0:2] == (2, 6):
-    install_requires.extend(reqs('py26.txt'))
 
 # -*- Tests Requires -*-
 
@@ -144,8 +142,6 @@ extras_require = extra['extras_require'] = {
     'qpid': extras('qpid.txt'),
 }
 
-extras_require[':python_version=="2.6"'] = reqs('py26.txt')
-
 setup(
     name='kombu',
     version=meta['VERSION'],
@@ -166,10 +162,10 @@ setup(
         'Operating System :: OS Independent',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.4',
-        'Programming Language :: Python :: 3.3',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 2.6',
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: Implementation :: CPython',
         'Programming Language :: Python :: Implementation :: PyPy',

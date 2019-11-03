@@ -1,23 +1,26 @@
 language: python
-python:
-    - 2.6
-    - 2.7
-    - 3.3
-    - 3.4
-    - pypy
-before_install:
-    - |
-      deactivate
-      if python --version |& grep PyPy; then
-        sudo apt-add-repository --yes ppa:pypy/ppa
-        sudo apt-get update
-        sudo apt-get install pypy
-        source ~/virtualenv/pypy/bin/activate
-      fi
-      python --version
-      uname -a
-      lsb_release -a
-      sudo pip install tox
-script: tox -v -e $TRAVIS_PYTHON_VERSION -- -v
+sudo: false
+cache: pip
+
+matrix:
+  include:
+    - python: 2.7
+      env: TOXENV=py27
+    - python: 3.5
+      env: TOXENV=py35
+    - python: 3.6
+      env: TOXENV=py36
+    - python: 3.7
+      env: TOXENV=py37
+    - python: 3.8
+      env: TOXENV=py38
+    - python: pypy2.7-7.1.1
+      env: TOXENV=pypy
+    - python: pypy3.5-7.0
+      env: TOXENV=pypy3
+
+install:
+    - pip --disable-pip-version-check install -U tox | cat
+script: tox -v -- -v
 after_success:
     - .tox/$TRAVIS_PYTHON_VERSION/bin/coveralls
