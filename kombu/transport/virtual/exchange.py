@@ -65,7 +65,7 @@ class DirectExchange(ExchangeType):
         }
 
     def deliver(self, message, exchange, routing_key, **kwargs):
-        _lookup = self.channel._lookup_direct
+        _lookup = self.channel._lookup
         _put = self.channel._put
         for queue in _lookup(exchange, routing_key):
             _put(queue, message, **kwargs)

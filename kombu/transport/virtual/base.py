@@ -725,22 +725,6 @@ class Channel(AbstractChannel, base.StdChannel):
             R = [default]
         return R
 
-    def _lookup_direct(self, exchange, routing_key):
-        """Find queue matching `routing_key` for given direct `exchange`.
-
-        Returns:
-            str: queue name
-        """
-        if not exchange:
-            return [routing_key]
-
-        return self.exchange_types['direct'].lookup(
-            table=self.get_table(exchange),
-            exchange=exchange,
-            routing_key=routing_key,
-            default=None,
-        )
-
     def _restore(self, message):
         """Redeliver message to its original destination."""
         delivery_info = message.delivery_info
