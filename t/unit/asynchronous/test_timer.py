@@ -1,12 +1,13 @@
 from __future__ import absolute_import, unicode_literals
 
 import pytest
+import redis
 
 from datetime import datetime
 
 from case import Mock, patch
 
-from kombu.asynchronous.timer import Entry, Timer, to_timestamp
+from kombu.asynchronous.timer import Entry, Timer, to_timestamp, RedisTimer
 from kombu.five import bytes_if_py2
 
 
@@ -156,3 +157,24 @@ class test_Timer:
         tref = Mock()
         t.cancel(tref)
         tref.cancel.assert_called_with()
+
+    def test_redis_timer_enter(self):
+        r = redis.StrictRedis()
+        rt = RedisTimer(r)
+        fun = Mock(name="fun")
+        entry = Entry(fun)
+        assert entry is rt._enter(10, 1, entry)
+
+    def test_redis_timer_queue(self):
+        r = redis.StrictRedis()
+        rt = RedisTimer(r)
+        assert rt.queue == []
+
+    def etst_redis_timer_clear(self):
+        r = redis.StrictRedis()
+        rt = RedisTimer(r)
+        fun = Mock(name="fun")
+        entry = Entry(fun)
+        rt._enter(10, 1, entry)
+        rt.clear()
+        assert rt.queue == []

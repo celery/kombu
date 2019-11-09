@@ -1,11 +1,22 @@
 from __future__ import absolute_import, unicode_literals
 
 import atexit
+import errno
 import os
 import pytest
 import sys
 
 from kombu.exceptions import VersionMismatch
+
+
+try:
+    __import__("pytest_xprocess")
+    from xprocess import ProcessStarter
+except ImportError:
+
+    @pytest.fixture(scope="session")
+    def xprocess():
+        pytest.skip("pytest-xprocess not installed.")
 
 
 @pytest.fixture(scope='session')
@@ -89,3 +100,27 @@ def cover_all_modules():
     # so coverage sees all our modules.
     if is_in_coverage():
         import_all_modules()
+
+
+@pytest.fixture(scope="class")
+def redis_server(xprocess):
+    try:
+        import redis  # noqa
+    except ImportError:
+        pytest.skip("Python package 'redis' is not installed.")
+
+    class Starter(ProcessStarter):
+        pattern = "[Rr]eady to accept connections"
+        args = ["redis-server"]
+
+    try:
+        xprocess.ensure("redis_server", Starter)
+    except IOError as e:
+        # xprocess raises FileNotFoundError
+        if e.errno == errno.ENOENT:
+            pytest.skip("Redis is not installed.")
+        else:
+            raise
+
+    yield
+    xprocess.getinfo("redis_server").terminate()
