@@ -7,7 +7,7 @@ import sys
 
 from collections import namedtuple
 from datetime import datetime
-from functools import total_ordering
+from functools import total_ordering, partial
 from weakref import proxy as weakrefproxy
 
 from vine.utils import wraps
@@ -20,6 +20,17 @@ try:
     from pytz import utc
 except ImportError:  # pragma: no cover
     utc = None
+
+
+try:
+    import cPickle as pickle
+except ImportError:  # noqa  # pragma: no cover
+    import pickle
+
+
+dumps = partial(pickle.dumps, protocol=pickle.HIGHEST_PROTOCOL)
+loads = pickle.loads
+
 
 __all__ = ('Entry', 'Timer', 'to_timestamp')
 
@@ -231,3 +242,57 @@ class Timer(object):
     @property
     def schedule(self):
         return self
+
+
+class RedisTimer(Timer):
+    """
+        Use the `zset` of redis to store the scheduled task
+    """
+    def __init__(self,
+                 redis_client,
+                 queue_key="celery_timer_zset",
+                 size_per_time=1000,
+                 max_interval=None, on_error=None, **kwargs):
+
+        assert redis_client is not None, "Redis client must be set."
+
+        self.max_interval = float(max_interval or DEFAULT_MAX_INTERVAL)
+        self.on_error = on_error or self.on_error
+        self._client = redis_client
+        self._size_per_time = size_per_time
+        self._queue_key = queue_key
+
+    @property
+    def _queue(self):
+        return [
+            loads(x) for x in self._client.zrange(
+                self._queue_key, 0, self._size_per_time)
+        ]
+
+    def _enter(self, eta, priority, entry):
+        self._client.zadd(
+            self._queue_key, eta, dumps(scheduled(eta, priority, entry)))
+        return entry
+
+    def __iter__(self, min=min, nowfun=monotonic):
+        max_interval = self.max_interval
+        queue = self._queue[:]
+
+        while 1:
+            if self._queue:
+                eventA = queue[0]
+                now, eta = nowfun(), eventA[0]
+
+                if now < eta:
+                    yield min(eta - now, max_interval), None
+                else:
+                    yield None, eventA[2]
+            else:
+                yield None, None
+
+    def clear(self):
+        self._client.delete(self._queue_key)
+
+    @property
+    def queue(self):
+        return list(self._queue)
