@@ -50,6 +50,7 @@ class Channel(virtual.Channel):
 
     default_visibility_timeout = 1800  # 30 minutes.
     default_wait_time_seconds = 5  # in seconds
+    default_peek_lock = False
     domain_format = 'kombu%(vhost)s'
     _queue_service = None
     _queue_cache = {}
@@ -95,7 +96,7 @@ class Channel(virtual.Channel):
         message = self.queue_service.receive_queue_message(
             self.entity_name(queue),
             timeout=timeout or self.wait_time_seconds,
-            peek_lock=False
+            peek_lock=self.peek_lock
         )
 
         if message.body is None:
@@ -153,6 +154,11 @@ class Channel(virtual.Channel):
     def wait_time_seconds(self):
         return self.transport_options.get('wait_time_seconds',
                                           self.default_wait_time_seconds)
+
+    @cached_property
+    def peek_lock(self):
+        return self.transport_options.get('peek_lock',
+                                          self.default_peek_lock)
 
 
 class Transport(virtual.Transport):

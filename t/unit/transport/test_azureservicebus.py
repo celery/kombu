@@ -25,7 +25,7 @@ class QueueMock(object):
     def __init__(self, name):
         self.name = name
         self.messages = []
-        self.message_count = 0
+        self.message_count = len(self.messages)
 
     def __repr__(self):
         return 'QueueMock: {} messages'.format(len(self.messages))
@@ -84,14 +84,12 @@ class AzureServiceBusClientMock(object):
 
     def receive_queue_message(self, queue_name, peek_lock=True, timeout=60):
         queue = self.get_queue(queue_name)
-        if queue:
-            try:
-                return queue.messages.pop(0)
-            except IndexError:
-                return Message()
+        if queue and len(queue.messages):
+            return queue.messages.pop(0)
+        return Message()
 
     def read_delete_queue_message(self, queue_name, timeout='60'):
-        return self.receive_queue_message(queue_name)
+        return self.receive_queue_message(queue_name, timeout=timeout)
 
     def delete_queue(self, queue_name=None):
         queue = self.get_queue(queue_name)
@@ -188,6 +186,18 @@ class test_Channel:
         self.channel.transport_options['wait_time_seconds'] = 10
         assert self.channel.wait_time_seconds == 10
 
+    def test_peek_lock(self):
+        # Test getting default peek lock
+        assert (
+            self.channel.peek_lock ==
+            azureservicebus.Channel.default_peek_lock
+        )
+
+        # Test getting value setted in transport options
+        del self.channel.peek_lock
+        self.channel.transport_options['peek_lock'] = True
+        assert self.channel.peek_lock is True
+
     def test_get_from_azure(self):
         # Test getting a single message
         message = 'my test message'
@@ -222,6 +232,8 @@ class test_Channel:
         # Test deleting queue without message
         queue_name = 'new_unittest_queue'
         self.channel._new_queue(queue_name)
+
+        assert queue_name in self.channel._queue_cache
         self.channel._delete(queue_name)
         assert queue_name not in self.channel._queue_cache
 
