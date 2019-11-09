@@ -245,8 +245,7 @@ class Timer(object):
 
 
 class RedisTimer(Timer):
-    """
-        Use the `zset` of redis to store the scheduled task
+    """Use the `zset` of redis to store the scheduled task
     """
     def __init__(self,
                  redis_client,
