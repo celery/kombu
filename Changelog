@@ -4,6 +4,20 @@
  Change history
 ================
 
+.. _version-4.6.6:
+
+4.6.6
+=====
+:release-date: 2019-11-11 00:15 A.M UTC+6:00
+:release-by: Asif Saif Uddin
+
+- Revert _lookup_direct and related changes of redis. 
+- Python 3.8 support
+- Fix 'NoneType' object has no attribute 'can_read' bug of redis transport
+- Issue #1019 Fix redis transport socket timeout 
+- Add wait timeout settings to receive queue message (#1110)
+- Bump py-amqp to 2.5.2 
+
 .. _version-4.6.5:
 
 4.6.5
