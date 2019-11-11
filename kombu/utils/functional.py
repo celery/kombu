@@ -4,6 +4,7 @@ from __future__ import absolute_import, unicode_literals
 import random
 import sys
 import threading
+import inspect
 
 from collections import OrderedDict
 
@@ -18,7 +19,7 @@ from time import sleep, time
 from vine.utils import wraps
 
 from kombu.five import (
-    UserDict, items, keys, python_2_unicode_compatible, string_t,
+    UserDict, items, keys, python_2_unicode_compatible, string_t, PY3,
 )
 
 from .encoding import safe_repr as _safe_repr
@@ -370,6 +371,19 @@ def reprcall(name, args=(), kwargs=None, sep=', '):
         (args and kwargs) and sep or '',
         reprkwargs(kwargs, sep),
     )
+
+
+def accepts_argument(func, argument_name):
+    if PY3:
+        argument_spec = inspect.getfullargspec(func)
+        return (
+            argument_name in argument_spec.args or
+            argument_name in argument_spec.kwonlyargs
+        )
+
+    argument_spec = inspect.getargspec(func)
+    argument_names = argument_spec.args
+    return argument_name in argument_names
 
 
 # Compat names (before kombu 3.0)
