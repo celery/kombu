@@ -771,6 +771,7 @@ class Connection(object):
                            exchange_opts, **kwargs)
 
     def SimpleBuffer(self, name, no_ack=None, queue_opts=None,
+                     queue_args=None,
                      exchange_opts=None, channel=None, **kwargs):
         """Simple ephemeral queue API.
 
@@ -785,6 +786,7 @@ class Connection(object):
         """
         from .simple import SimpleBuffer
         return SimpleBuffer(channel or self, name, no_ack, queue_opts,
+                            queue_args,
                             exchange_opts, **kwargs)
 
     def _establish_connection(self):
