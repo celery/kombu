@@ -495,6 +495,37 @@ class test_Connection:
         q2 = conn.SimpleBuffer('foo', channel=chan)
         assert q2.channel is chan
 
+    def test_SimpleQueue_with_parameters(self):
+        conn = self.conn
+        q = conn.SimpleQueue(
+            'foo', True, {'durable': True}, {'x-queue-mode': 'lazy'},
+            {'durable': True, 'type': 'fanout', 'delivery_mode': 'persistent'})
+
+        assert q.queue.exchange.type == 'fanout'
+        assert q.queue.exchange.durable
+        assert not q.queue.exchange.auto_delete
+        delivery_mode_code = q.queue.exchange.PERSISTENT_DELIVERY_MODE
+        assert q.queue.exchange.delivery_mode == delivery_mode_code
+
+        assert q.queue.queue_arguments['x-queue-mode'] == 'lazy'
+
+        assert q.queue.durable
+        assert not q.queue.auto_delete
+
+    def test_SimpleBuffer_with_parameters(self):
+        conn = self.conn
+        q = conn.SimpleBuffer(
+            'foo', True, {'durable': True}, {'x-queue-mode': 'lazy'},
+            {'durable': True, 'type': 'fanout', 'delivery_mode': 'persistent'})
+        assert q.queue.exchange.type == 'fanout'
+        assert q.queue.exchange.durable
+        assert q.queue.exchange.auto_delete
+        delivery_mode_code = q.queue.exchange.PERSISTENT_DELIVERY_MODE
+        assert q.queue.exchange.delivery_mode == delivery_mode_code
+        assert q.queue.queue_arguments['x-queue-mode'] == 'lazy'
+        assert q.queue.durable
+        assert q.queue.auto_delete
+
     def test_Producer(self):
         conn = self.conn
         assert isinstance(conn.Producer(), Producer)
