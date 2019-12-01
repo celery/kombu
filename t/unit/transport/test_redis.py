@@ -738,7 +738,7 @@ class test_Channel:
         transport.cycle.on_poll_init.assert_called_with(loop.poller)
         loop.call_repeatedly.assert_has_calls([
             call(10, transport.cycle.maybe_restore_messages),
-            call(30, transport.cycle.maybe_check_subclient_health),
+            call(25, transport.cycle.maybe_check_subclient_health),
         ])
         loop.on_tick.add.assert_called()
         on_poll_start = loop.on_tick.add.call_args[0][0]

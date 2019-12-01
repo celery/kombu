@@ -23,6 +23,7 @@ from kombu.utils.scheduling import cycle_by_name
 from kombu.utils.url import _parse_url
 from kombu.utils.uuid import uuid
 from kombu.utils.compat import _detect_environment
+from kombu.utils.functional import accepts_argument
 
 from . import virtual
 
@@ -42,6 +43,8 @@ crit, warn = logger.critical, logger.warn
 
 DEFAULT_PORT = 6379
 DEFAULT_DB = 0
+
+DEFAULT_HEALTH_CHECK_INTERVAL = 25
 
 PRIORITY_STEPS = [0, 3, 6, 9]
 
@@ -903,6 +906,14 @@ class Channel(virtual.Channel):
             'socket_keepalive': self.socket_keepalive,
             'socket_keepalive_options': self.socket_keepalive_options,
         }
+
+        conn_class = self.connection_class
+        if (
+            hasattr(conn_class, '__init__') and
+            accepts_argument(conn_class.__init__, 'health_check_interval')
+        ):
+            connparams['health_check_interval'] = DEFAULT_HEALTH_CHECK_INTERVAL
+
         if conninfo.ssl:
             # Connection(ssl={}) must be a dict containing the keys:
             # 'ssl_cert_reqs', 'ssl_ca_certs', 'ssl_certfile', 'ssl_keyfile'
@@ -1053,7 +1064,10 @@ class Transport(virtual.Transport):
             [add_reader(fd, on_readable, fd) for fd in cycle.fds]
         loop.on_tick.add(on_poll_start)
         loop.call_repeatedly(10, cycle.maybe_restore_messages)
-        loop.call_repeatedly(30, cycle.maybe_check_subclient_health)
+        loop.call_repeatedly(
+            DEFAULT_HEALTH_CHECK_INTERVAL,
+            cycle.maybe_check_subclient_health
+        )
 
     def on_readable(self, fileno):
         """Handle AIO event for one of our file descriptors."""
