@@ -259,7 +259,9 @@ class Hub(object):
         # To avoid infinite loop where one of the callables adds items
         # to self._ready (via call_soon or otherwise).
         # we create new list with current self._ready
-        for item in list(self._ready):
+        todos = list(self._ready)
+        self._ready = set()
+        for item in todos:
             item()
 
     def _discard(self, fd):
