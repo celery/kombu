@@ -23,6 +23,7 @@ from kombu.utils.scheduling import cycle_by_name
 from kombu.utils.url import _parse_url
 from kombu.utils.uuid import uuid
 from kombu.utils.compat import _detect_environment
+from kombu.utils.functional import accepts_argument
 
 from . import virtual
 
@@ -42,6 +43,8 @@ crit, warn = logger.critical, logger.warn
 
 DEFAULT_PORT = 6379
 DEFAULT_DB = 0
+
+DEFAULT_HEALTH_CHECK_INTERVAL = 25
 
 PRIORITY_STEPS = [0, 3, 6, 9]
 
@@ -341,6 +344,14 @@ class MultiChannelPoller(object):
                 return channel.qos.restore_visible(
                     num=channel.unacked_restore_limit,
                 )
+
+    def maybe_check_subclient_health(self):
+        for channel in self._channels:
+            # only if subclient property is cached
+            client = channel.__dict__.get('subclient')
+            if client is not None:
+                if callable(getattr(client, "check_health", None)):
+                    client.check_health()
 
     def on_readable(self, fileno):
         chan, type = self._fd_to_chan[fileno]
@@ -679,9 +690,8 @@ class Channel(virtual.Channel):
             ret.append(self._receive_one(c))
         except Empty:
             pass
-        if c.connection is not None:
-            while c.connection.can_read(timeout=0):
-                ret.append(self._receive_one(c))
+        while c.connection is not None and c.connection.can_read(timeout=0):
+            ret.append(self._receive_one(c))
         return any(ret)
 
     def _receive_one(self, c):
@@ -829,24 +839,6 @@ class Channel(virtual.Channel):
                 raise InconsistencyError(NO_ROUTE_ERROR.format(exchange, key))
             return [tuple(bytes_to_str(val).split(self.sep)) for val in values]
 
-    def _lookup_direct(self, exchange, routing_key):
-        if not exchange:
-            return [routing_key]
-
-        key = self.keyprefix_queue % exchange
-        pattern = ''
-        queue = routing_key
-        queue_bind = self.sep.join([
-            routing_key or '',
-            pattern,
-            queue or '',
-        ])
-        with self.conn_or_acquire() as client:
-            if client.sismember(key, queue_bind):
-                return [queue]
-
-        return []
-
     def _purge(self, queue):
         with self.conn_or_acquire() as client:
             with client.pipeline() as pipe:
@@ -914,6 +906,14 @@ class Channel(virtual.Channel):
             'socket_keepalive': self.socket_keepalive,
             'socket_keepalive_options': self.socket_keepalive_options,
         }
+
+        conn_class = self.connection_class
+        if (
+            hasattr(conn_class, '__init__') and
+            accepts_argument(conn_class.__init__, 'health_check_interval')
+        ):
+            connparams['health_check_interval'] = DEFAULT_HEALTH_CHECK_INTERVAL
+
         if conninfo.ssl:
             # Connection(ssl={}) must be a dict containing the keys:
             # 'ssl_cert_reqs', 'ssl_ca_certs', 'ssl_certfile', 'ssl_keyfile'
@@ -1064,6 +1064,10 @@ class Transport(virtual.Transport):
             [add_reader(fd, on_readable, fd) for fd in cycle.fds]
         loop.on_tick.add(on_poll_start)
         loop.call_repeatedly(10, cycle.maybe_restore_messages)
+        loop.call_repeatedly(
+            DEFAULT_HEALTH_CHECK_INTERVAL,
+            cycle.maybe_check_subclient_health
+        )
 
     def on_readable(self, fileno):
         """Handle AIO event for one of our file descriptors."""

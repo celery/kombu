@@ -88,9 +88,6 @@ class Client(object):
     def smembers(self, key):
         return self.sets.get(key, set())
 
-    def sismember(self, name, value):
-        return value in self.sets.get(name, set())
-
     def ping(self, *args, **kwargs):
         return True
 
@@ -531,6 +528,18 @@ class test_Channel:
 
         assert self.channel._receive_one(self.channel.subclient) is None
 
+    def test_receive_connection_has_gone(self):
+        def _receive_one(c):
+            c.connection = None
+            _receive_one.called = True
+            return True
+
+        _receive_one.called = False
+        self.channel._receive_one = _receive_one
+
+        assert self.channel._receive()
+        assert _receive_one.called
+
     def test_brpop_read_raises(self):
         c = self.channel.client = Mock()
         c.parse_response.side_effect = KeyError('foo')
@@ -727,9 +736,10 @@ class test_Channel:
         loop = Mock(name='loop')
         redis.Transport.register_with_event_loop(transport, conn, loop)
         transport.cycle.on_poll_init.assert_called_with(loop.poller)
-        loop.call_repeatedly.assert_called_with(
-            10, transport.cycle.maybe_restore_messages,
-        )
+        loop.call_repeatedly.assert_has_calls([
+            call(10, transport.cycle.maybe_restore_messages),
+            call(25, transport.cycle.maybe_check_subclient_health),
+        ])
         loop.on_tick.add.assert_called()
         on_poll_start = loop.on_tick.add.call_args[0][0]
 

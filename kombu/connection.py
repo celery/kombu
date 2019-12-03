@@ -31,7 +31,7 @@ from .transport import get_transport_cls, supports_librabbitmq
 from .utils.collections import HashedSeq
 from .utils.functional import dictfilter, lazy, retry_over_time, shufflecycle
 from .utils.objects import cached_property
-from .utils.url import as_url, parse_url, quote, urlparse
+from .utils.url import as_url, parse_url, quote, urlparse, maybe_sanitize_url
 
 __all__ = ('Connection', 'ConnectionPool', 'ChannelPool')
 
@@ -173,16 +173,18 @@ class Connection(object):
         if hostname and not isinstance(hostname, string_t):
             alt.extend(hostname)
             hostname = alt[0]
-        if hostname and '://' in hostname:
+            params.update(hostname=hostname)
+        if hostname:
             if ';' in hostname:
-                alt.extend(hostname.split(';'))
+                alt = hostname.split(';') + alt
                 hostname = alt[0]
-            if '+' in hostname[:hostname.index('://')]:
+                params.update(hostname=hostname)
+            if '://' in hostname and '+' in hostname[:hostname.index('://')]:
                 # e.g. sqla+mysql://root:masterkey@localhost/
                 params['transport'], params['hostname'] = \
                     hostname.split('+', 1)
                 self.uri_prefix = params['transport']
-            else:
+            elif '://' in hostname:
                 transport = transport or urlparse(hostname).scheme
                 if not get_transport_cls(transport).can_parse_url:
                     # we must parse the URL
@@ -656,11 +658,17 @@ class Connection(object):
         """Convert connection parameters to URL form."""
         hostname = self.hostname or 'localhost'
         if self.transport.can_parse_url:
+            connection_as_uri = self.hostname
             if self.uri_prefix:
-                return '%s+%s' % (self.uri_prefix, hostname)
-            return self.hostname
+                connection_as_uri = '%s+%s' % (self.uri_prefix, hostname)
+            if not include_password:
+                connection_as_uri = maybe_sanitize_url(connection_as_uri)
+            return connection_as_uri
         if self.uri_prefix:
-            return '%s+%s' % (self.uri_prefix, hostname)
+            connection_as_uri = '%s+%s' % (self.uri_prefix, hostname)
+            if not include_password:
+                connection_as_uri = maybe_sanitize_url(connection_as_uri)
+            return connection_as_uri
         fields = self.info()
         port, userid, password, vhost, transport = getfields(fields)
 
@@ -763,6 +771,7 @@ class Connection(object):
                            exchange_opts, **kwargs)
 
     def SimpleBuffer(self, name, no_ack=None, queue_opts=None,
+                     queue_args=None,
                      exchange_opts=None, channel=None, **kwargs):
         """Simple ephemeral queue API.
 
@@ -777,6 +786,7 @@ class Connection(object):
         """
         from .simple import SimpleBuffer
         return SimpleBuffer(channel or self, name, no_ack, queue_opts,
+                            queue_args,
                             exchange_opts, **kwargs)
 
     def _establish_connection(self):
