@@ -4,6 +4,19 @@
  Change history
 ================
 
+.. _version-4.6.7:
+
+4.6.7
+=====
+:release-date: 2019-12-07 20:45 A.M UTC+6:00
+:release-by: Asif Saif Uddin
+
+- Use importlib.metadata from the standard library on Python 3.8+ (#1086).
+- Add peek lock settings to be changed using transport options (#1119).
+- Fix redis health checks (#1122).
+- Reset ready before execute callback (#1126).
+- Add missing parameter queue_args in kombu.connection.SimpleBuffer (#1128) 
+
 .. _version-4.6.6:
 
 4.6.6
