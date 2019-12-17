@@ -1230,34 +1230,6 @@ class TestRedisConnections(unittest.TestCase):
             chan = connection.channel()
             chan._size('some_queue')
 
-    def test_redis_queue_lookup_happy_path(self):
-        fake_redis_client = _get_fake_redis_client()
-        redis_channel = self.connection.default_channel
-        routing_key = redis_channel.keyprefix_queue % self.exchange_name
-        redis_channel.queue_bind(routing_key, self.exchange_name, routing_key)
-        fake_redis_client.sadd(routing_key, routing_key)
-        lookup_queue_result = redis_channel._lookup(
-            exchange=self.exchange_name,
-            routing_key=routing_key,
-            default='default_queue')
-        assert lookup_queue_result == [routing_key]
-
-    def test_redis_queue_lookup_gets_default_when_queue_doesnot_exist(self):
-        # Given:  A test redis client and channel
-        fake_redis_client = _get_fake_redis_client()
-        redis_channel = self.connection.default_channel
-        # Given: The default queue is set:
-        default_queue = 'default_queue'
-        redis_channel.deadletter_queue = default_queue
-        # Determine the routing key
-        routing_key = redis_channel.keyprefix_queue % self.exchange
-        fake_redis_client.sadd(routing_key, "DoesNotExist")
-        lookup_queue_result = redis_channel._lookup(
-            exchange=self.exchange_name,
-            routing_key=routing_key,
-            default=default_queue)
-        assert lookup_queue_result == [redis_channel.deadletter_queue]
-
     def test_redis_queue_lookup_gets_queue_when_exchange_doesnot_exist(self):
         # Given:  A test redis client and channel
         fake_redis_client = _get_fake_redis_client()
@@ -1290,27 +1262,9 @@ class TestRedisConnections(unittest.TestCase):
             default=None)
         assert lookup_queue_result == [default_queue]
 
-    def test_redis_queue_lookup_raises_inconsistency_error(self):
-        connection = Mock(client=Mock(
-            hostname='127.0.0.1',
-            virtual_host='/', port=6379,
-            transport_options={},
-        ))
-        redis_channel = FakeRedisKombuChannel(connection)
-        exchange = Mock(name='Exchange')
-        try:
-            redis_channel._lookup(
-                exchange=exchange.name,
-                routing_key='routing_key',
-                default=None)
-        except kombu_redis.InconsistencyError:
-            pass  # This is expected
-        else:
-            raise("Redis test did not raise expected InconsistencyError!")
-
     def test_redis_queue_lookup_client_raises_key_error_gets_default(self):
         fake_redis_client = _get_fake_redis_client()
-        fake_redis_client.scard = Mock(side_effect=KeyError)
+        fake_redis_client.smembers = Mock(side_effect=KeyError)
         redis_channel = self.connection.default_channel
         routing_key = redis_channel.keyprefix_queue % self.exchange
         redis_channel.queue_bind(routing_key, self.exchange_name, routing_key)
@@ -1324,7 +1278,7 @@ class TestRedisConnections(unittest.TestCase):
 
     def test_redis_queue_lookup_client_raises_key_error_gets_deadletter(self):
         fake_redis_client = _get_fake_redis_client()
-        fake_redis_client.scard = Mock(side_effect=KeyError)
+        fake_redis_client.smembers = Mock(side_effect=KeyError)
         redis_channel = self.connection.default_channel
         routing_key = redis_channel.keyprefix_queue % self.exchange
         redis_channel.queue_bind(routing_key, self.exchange_name, routing_key)
