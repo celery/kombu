@@ -3,12 +3,12 @@ from __future__ import absolute_import, unicode_literals
 
 import numbers
 import socket
-import warnings
 
 from bisect import bisect
 from collections import namedtuple
 from contextlib import contextmanager
 from time import time
+
 from vine import promise
 
 from kombu.exceptions import InconsistencyError, VersionMismatch
@@ -23,9 +23,9 @@ from kombu.utils.scheduling import cycle_by_name
 from kombu.utils.url import _parse_url
 from kombu.utils.uuid import uuid
 from kombu.utils.compat import _detect_environment
+from kombu.utils.functional import accepts_argument
 
 from . import virtual
-from .virtual.base import UndeliverableWarning, UNDELIVERABLE_FMT
 
 try:
     import redis
@@ -43,6 +43,8 @@ crit, warn = logger.critical, logger.warn
 
 DEFAULT_PORT = 6379
 DEFAULT_DB = 0
+
+DEFAULT_HEALTH_CHECK_INTERVAL = 25
 
 PRIORITY_STEPS = [0, 3, 6, 9]
 
@@ -147,8 +149,12 @@ class QoS(virtual.QoS):
     def append(self, message, delivery_tag):
         delivery = message.delivery_info
         EX, RK = delivery['exchange'], delivery['routing_key']
-        # Redis-py changed the format of zadd args in v3.0.0 to be like this
-        zadd_args = [{delivery_tag: time()}]
+        # TODO: Remove this once we soley on Redis-py 3.0.0+
+        if redis.VERSION[0] >= 3:
+            # Redis-py changed the format of zadd args in v3.0.0
+            zadd_args = [{delivery_tag: time()}]
+        else:
+            zadd_args = [time(), delivery_tag]
 
         with self.pipe_or_acquire() as pipe:
             pipe.zadd(self.unacked_index_key, *zadd_args) \
@@ -338,6 +344,14 @@ class MultiChannelPoller(object):
                 return channel.qos.restore_visible(
                     num=channel.unacked_restore_limit,
                 )
+
+    def maybe_check_subclient_health(self):
+        for channel in self._channels:
+            # only if subclient property is cached
+            client = channel.__dict__.get('subclient')
+            if client is not None:
+                if callable(getattr(client, "check_health", None)):
+                    client.check_health()
 
     def on_readable(self, fileno):
         chan, type = self._fd_to_chan[fileno]
@@ -676,9 +690,8 @@ class Channel(virtual.Channel):
             ret.append(self._receive_one(c))
         except Empty:
             pass
-        if c.connection is not None:
-            while c.connection.can_read(timeout=0):
-                ret.append(self._receive_one(c))
+        while c.connection is not None and c.connection.can_read(timeout=0):
+            ret.append(self._receive_one(c))
         return any(ret)
 
     def _receive_one(self, c):
@@ -710,8 +723,7 @@ class Channel(virtual.Channel):
         queues = self._queue_cycle.consume(len(self.active_queues))
         if not queues:
             return
-        _q_for_pri = self._queue_for_priority
-        keys = [_q_for_pri(queue, pri) for pri in self.priority_steps
+        keys = [self._q_for_pri(queue, pri) for pri in self.priority_steps
                 for queue in queues] + [timeout or 0]
         self._in_poll = self.client.connection
         self.client.connection.send_command('BRPOP', *keys)
@@ -747,8 +759,7 @@ class Channel(virtual.Channel):
     def _get(self, queue):
         with self.conn_or_acquire() as client:
             for pri in self.priority_steps:
-                queue_name = self._queue_for_priority(queue, pri)
-                item = client.rpop(queue_name)
+                item = client.rpop(self._q_for_pri(queue, pri))
                 if item:
                     return loads(bytes_to_str(item))
             raise Empty()
@@ -757,21 +768,14 @@ class Channel(virtual.Channel):
         with self.conn_or_acquire() as client:
             with client.pipeline() as pipe:
                 for pri in self.priority_steps:
-                    queue_name = self._queue_for_priority(queue, pri)
-                    pipe = pipe.llen(queue_name)
+                    pipe = pipe.llen(self._q_for_pri(queue, pri))
                 sizes = pipe.execute()
-                size = sum(size for size in sizes
+                return sum(size for size in sizes
                            if isinstance(size, numbers.Integral))
-                return size
 
-    def _queue_for_priority(self, queue, pri):
+    def _q_for_pri(self, queue, pri):
         pri = self.priority(pri)
-        if pri:
-            queue_args = (queue, self.sep, pri)
-        else:
-            queue_args = (queue, '', '')
-        priority_queue_name = '%s%s%s' % queue_args
-        return priority_queue_name
+        return '%s%s%s' % ((queue, self.sep, pri) if pri else (queue, '', ''))
 
     def priority(self, n):
         steps = self.priority_steps
@@ -782,7 +786,7 @@ class Channel(virtual.Channel):
         pri = self._get_message_priority(message, reverse=False)
 
         with self.conn_or_acquire() as client:
-            client.lpush(self._queue_for_priority(queue, pri), dumps(message))
+            client.lpush(self._q_for_pri(queue, pri), dumps(message))
 
     def _put_fanout(self, exchange, message, routing_key, **kwargs):
         """Deliver fanout message."""
@@ -817,14 +821,14 @@ class Channel(virtual.Channel):
                                        queue or '']))
             with client.pipeline() as pipe:
                 for pri in self.priority_steps:
-                    pipe = pipe.delete(self._queue_for_priority(queue, pri))
+                    pipe = pipe.delete(self._q_for_pri(queue, pri))
                 pipe.execute()
 
     def _has_queue(self, queue, **kwargs):
         with self.conn_or_acquire() as client:
             with client.pipeline() as pipe:
                 for pri in self.priority_steps:
-                    pipe = pipe.exists(self._queue_for_priority(queue, pri))
+                    pipe = pipe.exists(self._q_for_pri(queue, pri))
                 return any(pipe.execute())
 
     def get_table(self, exchange):
@@ -835,55 +839,12 @@ class Channel(virtual.Channel):
                 raise InconsistencyError(NO_ROUTE_ERROR.format(exchange, key))
             return [tuple(bytes_to_str(val).split(self.sep)) for val in values]
 
-    def _lookup(self, exchange, routing_key, default=None):
-        """Find all queues matching `routing_key` for the given `exchange`.
-
-        Returns:
-            str: queue name -- must return the string `default`
-                if no queues matched.
-        """
-        pattern = ''
-        result = []
-        if default is None:
-            default = self.deadletter_queue
-        if not exchange:  # anon exchange
-            return [routing_key or default]
-
-        queue = routing_key
-        redis_key = self.keyprefix_queue % exchange
-        try:
-            queue_bind = self.sep.join([
-                routing_key or '',
-                pattern,
-                queue or '',
-            ])
-            with self.conn_or_acquire() as client:
-                if not client.scard(redis_key):
-                    pass  # Do not check if its a member because set is empty
-                elif client.sismember(redis_key, queue_bind):
-                    result = [queue]
-        except KeyError:
-            pass
-
-        if not result:
-            if default is not None:
-                warnings.warn(UndeliverableWarning(UNDELIVERABLE_FMT.format(
-                    exchange=exchange, routing_key=routing_key)),
-                )
-                self._new_queue(default)
-                result = [default]
-            else:
-                raise InconsistencyError(NO_ROUTE_ERROR.format(
-                    exchange, redis_key))
-
-        return result
-
     def _purge(self, queue):
         with self.conn_or_acquire() as client:
             with client.pipeline() as pipe:
                 for pri in self.priority_steps:
-                    priority_queue = self._queue_for_priority(queue, pri)
-                    pipe = pipe.llen(priority_queue).delete(priority_queue)
+                    priq = self._q_for_pri(queue, pri)
+                    pipe = pipe.llen(priq).delete(priq)
                 sizes = pipe.execute()
                 return sum(sizes[::2])
 
@@ -945,6 +906,14 @@ class Channel(virtual.Channel):
             'socket_keepalive': self.socket_keepalive,
             'socket_keepalive_options': self.socket_keepalive_options,
         }
+
+        conn_class = self.connection_class
+        if (
+            hasattr(conn_class, '__init__') and
+            accepts_argument(conn_class.__init__, 'health_check_interval')
+        ):
+            connparams['health_check_interval'] = DEFAULT_HEALTH_CHECK_INTERVAL
+
         if conninfo.ssl:
             # Connection(ssl={}) must be a dict containing the keys:
             # 'ssl_cert_reqs', 'ssl_ca_certs', 'ssl_certfile', 'ssl_keyfile'
@@ -1095,6 +1064,10 @@ class Transport(virtual.Transport):
             [add_reader(fd, on_readable, fd) for fd in cycle.fds]
         loop.on_tick.add(on_poll_start)
         loop.call_repeatedly(10, cycle.maybe_restore_messages)
+        loop.call_repeatedly(
+            DEFAULT_HEALTH_CHECK_INTERVAL,
+            cycle.maybe_check_subclient_health
+        )
 
     def on_readable(self, fileno):
         """Handle AIO event for one of our file descriptors."""

@@ -7,7 +7,11 @@ import sys
 from functools import wraps
 
 from contextlib import contextmanager
-import importlib_metadata
+
+try:
+    from importlib import metadata as importlib_metadata
+except ImportError:
+    import importlib_metadata
 
 from kombu.five import reraise
 

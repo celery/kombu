@@ -44,7 +44,7 @@ def fmatch_best(needle, haystack, min_ratio=0.6):
 
 
 def version_string_as_tuple(s):
-    # type (str) -> version_info_t
+    # type: (str) -> version_info_t
     """Convert version string to version info tuple."""
     v = _unpack_version(*s.split('.'))
     # X.Y.3a1 -> (X, Y, 3, 'a1')

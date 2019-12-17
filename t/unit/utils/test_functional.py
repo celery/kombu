@@ -8,11 +8,14 @@ from itertools import count
 
 from case import Mock, mock, skip
 
-from kombu.five import items
+from kombu.five import (
+    items, PY3,
+)
 from kombu.utils import functional as utils
 from kombu.utils.functional import (
     ChannelPromise, LRUCache, fxrange, fxrangemax, memoize, lazy,
     maybe_evaluate, maybe_list, reprcall, reprkwargs, retry_over_time,
+    accepts_argument,
 )
 
 
@@ -310,3 +313,26 @@ def test_reprkwargs():
 
 def test_reprcall():
     assert reprcall('add', (2, 2), {'copy': True})
+
+
+class test_accepts_arg:
+    def function(self, foo, bar, baz="baz"):
+        pass
+
+    def test_valid_argument(self):
+        assert accepts_argument(self.function, 'self')
+        assert accepts_argument(self.function, 'foo')
+        assert accepts_argument(self.function, 'baz')
+
+    def test_invalid_argument(self):
+        assert not accepts_argument(self.function, 'random_argument')
+        if PY3:
+            assert not accepts_argument(test_accepts_arg, 'foo')
+
+    def test_raise_exception(self):
+        with pytest.raises(Exception):
+            accepts_argument(None, 'foo')
+
+        if not PY3:
+            with pytest.raises(Exception):
+                accepts_argument(test_accepts_arg, 'foo')

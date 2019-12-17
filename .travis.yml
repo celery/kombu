@@ -27,6 +27,11 @@ matrix:
       sudo: true
       dist: xenial
       before_install: sudo apt-get update && sudo apt-get install libgnutls-dev
+    - python: 3.8
+      env: TOXENV=3.8-linux
+      sudo: true
+      dist: xenial
+      before_install: sudo apt-get update && sudo apt-get install libgnutls-dev
     - python: pypy2.7-7.1.1
       env: TOXENV=pypy
       dist: xenial

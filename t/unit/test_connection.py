@@ -30,6 +30,8 @@ class test_connection_utils:
             'port': 5672,
             'virtual_host': 'my/vhost',
         }
+        self.pg_url = 'sqla+postgresql://test:password@yms-pg/yms'
+        self.pg_nopass = 'sqla+postgresql://test:**@yms-pg/yms'
 
     def test_parse_url(self):
         result = parse_url(self.url)
@@ -114,6 +116,11 @@ class test_connection_utils:
         conn = Connection(self.url, alternates=['amqp://host'])
         clone = deepcopy(conn)
         assert clone.alt == ['amqp://host']
+
+    def test_parse_generated_as_uri_pg(self):
+        conn = Connection(self.pg_url)
+        assert conn.as_uri() == self.pg_nopass
+        assert conn.as_uri(include_password=True) == self.pg_url
 
 
 class test_Connection:
@@ -488,6 +495,37 @@ class test_Connection:
         q2 = conn.SimpleBuffer('foo', channel=chan)
         assert q2.channel is chan
 
+    def test_SimpleQueue_with_parameters(self):
+        conn = self.conn
+        q = conn.SimpleQueue(
+            'foo', True, {'durable': True}, {'x-queue-mode': 'lazy'},
+            {'durable': True, 'type': 'fanout', 'delivery_mode': 'persistent'})
+
+        assert q.queue.exchange.type == 'fanout'
+        assert q.queue.exchange.durable
+        assert not q.queue.exchange.auto_delete
+        delivery_mode_code = q.queue.exchange.PERSISTENT_DELIVERY_MODE
+        assert q.queue.exchange.delivery_mode == delivery_mode_code
+
+        assert q.queue.queue_arguments['x-queue-mode'] == 'lazy'
+
+        assert q.queue.durable
+        assert not q.queue.auto_delete
+
+    def test_SimpleBuffer_with_parameters(self):
+        conn = self.conn
+        q = conn.SimpleBuffer(
+            'foo', True, {'durable': True}, {'x-queue-mode': 'lazy'},
+            {'durable': True, 'type': 'fanout', 'delivery_mode': 'persistent'})
+        assert q.queue.exchange.type == 'fanout'
+        assert q.queue.exchange.durable
+        assert q.queue.exchange.auto_delete
+        delivery_mode_code = q.queue.exchange.PERSISTENT_DELIVERY_MODE
+        assert q.queue.exchange.delivery_mode == delivery_mode_code
+        assert q.queue.queue_arguments['x-queue-mode'] == 'lazy'
+        assert q.queue.durable
+        assert q.queue.auto_delete
+
     def test_Producer(self):
         conn = self.conn
         assert isinstance(conn.Producer(), Producer)
@@ -522,6 +560,14 @@ class test_Connection:
 
         conn = Connection(transport=MyTransport)
         assert conn.connection_errors == (KeyError, ValueError)
+
+    def test_multiple_urls_hostname(self):
+        conn = Connection(['example.com;amqp://example.com'])
+        assert conn.as_uri() == 'amqp://guest:**@example.com:5672//'
+        conn = Connection(['example.com', 'amqp://example.com'])
+        assert conn.as_uri() == 'amqp://guest:**@example.com:5672//'
+        conn = Connection('example.com;example.com;')
+        assert conn.as_uri() == 'amqp://guest:**@example.com:5672//'
 
 
 class test_Connection_with_transport_options:

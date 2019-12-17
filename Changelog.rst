@@ -4,6 +4,50 @@
  Change history
 ================
 
+.. _version-4.6.7:
+
+4.6.7
+=====
+:release-date: 2019-12-07 20:45 A.M UTC+6:00
+:release-by: Asif Saif Uddin
+
+- Use importlib.metadata from the standard library on Python 3.8+ (#1086).
+- Add peek lock settings to be changed using transport options (#1119).
+- Fix redis health checks (#1122).
+- Reset ready before execute callback (#1126).
+- Add missing parameter queue_args in kombu.connection.SimpleBuffer (#1128) 
+
+.. _version-4.6.6:
+
+4.6.6
+=====
+:release-date: 2019-11-11 00:15 A.M UTC+6:00
+:release-by: Asif Saif Uddin
+
+- Revert _lookup_direct and related changes of redis. 
+- Python 3.8 support
+- Fix 'NoneType' object has no attribute 'can_read' bug of redis transport
+- Issue #1019 Fix redis transport socket timeout 
+- Add wait timeout settings to receive queue message (#1110)
+- Bump py-amqp to 2.5.2 
+
+.. _version-4.6.5:
+
+4.6.5
+=====
+:release-date: 2019-09-30 19:30 P.M UTC+6:00
+:release-by: Asif Saif Uddin
+
+- Revert _lookup api and correct redis implemetnation. 
+- Major overhaul of redis test cases by adding more full featured fakeredis module.
+- Add more test cases to boost coverage of kombu redis transport.
+- Refactor the producer consumer test cases to be based on original mocks and be passing
+- Fix lingering line length issue in test.
+- Sanitise url when include_password is false
+- Pinned pycurl to 7.43.0.2 as it is the latest build with wheels provided
+- Bump py-amqp to 2.5.2 
+
+
 .. _version-4.6.4:
 
 4.6.4
