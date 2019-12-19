@@ -1,1 +1,1 @@
-zstandard
+zstandard;python_version<"3.8"
