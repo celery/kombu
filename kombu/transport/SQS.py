@@ -498,6 +498,9 @@ class Channel(virtual.Channel):
 
     @cached_property
     def endpoint_url(self):
+        _sqs_endpoint_url = self.transport_options.get('sqs_endpoint_url')
+        if _sqs_endpoint_url:
+            return _sqs_endpoint_url
         if self.conninfo.hostname is not None:
             scheme = 'https' if self.is_secure else 'http'
             if self.conninfo.port is not None:
