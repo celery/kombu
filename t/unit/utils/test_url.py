@@ -2,7 +2,6 @@ from __future__ import absolute_import, unicode_literals
 
 try:
     from urllib.parse import urlencode
-
 except ImportError:
     from urllib import urlencode
 
@@ -11,7 +10,8 @@ import ssl
 import pytest
 
 import kombu.utils.url
-from kombu.utils.url import as_url, parse_url, maybe_sanitize_url, parse_ssl_cert_reqs
+from kombu.utils.url import as_url, parse_url, maybe_sanitize_url
+from kombu.utils.url import parse_ssl_cert_reqs
 
 
 def test_parse_url():
