@@ -816,13 +816,13 @@ class Channel(virtual.Channel):
                     queue_name = self._queue_for_priority(queue, pri)
                     pipe = pipe.llen(queue_name)
                 sizes = pipe.execute()
-                size = sum(size for size in sizes
-                           if isinstance(size, numbers.Integral))
+                size = sum(s for s in sizes
+                           if isinstance(s, numbers.Integral))
                 return size
 
     def _queue_for_priority(self, queue, pri):
-        pri = self.priority(pri)
-        if pri:
+        queue_priority = self.priority(pri)
+        if queue_priority:
             return f"{queue}{self.sep}{pri}"
         return queue
 
