@@ -124,7 +124,7 @@ def Mutex(client, name, expire):
             try:
                 with client.pipeline(True) as pipe:
                     pipe.watch(name)
-                    if pipe.get(name) == lock_id:
+                    if bytes_to_str(pipe.get(name)) == lock_id:
                         pipe.multi()
                         pipe.delete(name)
                         pipe.execute()
