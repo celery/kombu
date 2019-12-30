@@ -340,17 +340,17 @@ def retry_over_time(fun, catch, args=None, kwargs=None, errback=None,
                              interval_max + interval_start,
                              interval_step, repeatlast=True)
     end = time() + timeout if timeout else None
-    for retry_attempt in count():
+    for attempt in count():
         try:
             return fun(*args, **kwargs)
         except catch as exc:
-            if max_retries is not None and retry_attempt >= max_retries:
+            if max_retries is not None and attempt >= max_retries:
                 raise
             if end and time() > end:
                 raise
             if callback:
                 callback()
-            tts = float(errback(exc, interval_range, retry_attempt) if errback
+            tts = float(errback(exc, interval_range, attempt) if errback
                         else next(interval_range))
             if tts:
                 for _ in range(int(tts)):
