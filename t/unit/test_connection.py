@@ -482,8 +482,20 @@ class test_Connection:
     @pytest.mark.timeout(30)
     def test_retry_policy(self):
         with pytest.raises(OperationalError):
-            conn = Connection('pyamqp://localhost:8000')
+            # ensure_connection call uses the transport_options of the connection
+            conn = Connection(
+                'pyamqp://localhost:8000',
+                transport_options={
+                    'retry_policy': {
+                        'interval_start': 0,
+                        'interval_step': 1,
+                        'interval_max': 5,
+                        'max_retries': 3,
+                    }
+                }
+            )
             producer = conn.Producer(serializer='json')
+            # This retry policy is not utilized (its the one on the connection)
             producer.publish(
                 'Hello world!', retry=True, retry_policy={
                     'interval_start': 0,
