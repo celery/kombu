@@ -92,6 +92,7 @@ import os
 import shutil
 import tempfile
 import uuid
+from contextlib import contextmanager
 from queue import Empty
 from time import monotonic
 
@@ -118,28 +119,33 @@ if os.name == 'nt':
     LOCK_NB = win32con.LOCKFILE_FAIL_IMMEDIATELY
     __overlapped = pywintypes.OVERLAPPED()
 
-    def lock(file, flags):
-        """Create file lock."""
-        hfile = win32file._get_osfhandle(file.fileno())
-        win32file.LockFileEx(hfile, flags, 0, 0xffff0000, __overlapped)
-
-    def unlock(file):
-        """Remove file lock."""
-        hfile = win32file._get_osfhandle(file.fileno())
-        win32file.UnlockFileEx(hfile, 0, 0xffff0000, __overlapped)
+    @contextmanager
+    def flock(file, flags):  # noqa
+        try:
+            """Create file lock."""
+            hfile = win32file._get_osfhandle(file.fileno())
+            win32file.LockFileEx(hfile, flags, 0, 0xffff0000, __overlapped)
+            yield
+        finally:
+            """Remove file lock."""
+            hfile = win32file._get_osfhandle(file.fileno())
+            win32file.UnlockFileEx(hfile, 0, 0xffff0000, __overlapped)
 
 elif os.name == 'posix':
 
     import fcntl
     from fcntl import LOCK_EX, LOCK_NB, LOCK_SH  # noqa
 
-    def lock(file, flags):
-        """Create file lock."""
-        fcntl.flock(file.fileno(), flags)
+    @contextmanager
+    def flock(file, flags):  # noqa
+        try:
+            """Create file lock."""
+            fcntl.flock(file.fileno(), flags)
+            yield
+        finally:
+            """Remove file lock."""
+            fcntl.flock(file.fileno(), fcntl.LOCK_UN)
 
-    def unlock(file):
-        """Remove file lock."""
-        fcntl.flock(file.fileno(), fcntl.LOCK_UN)
 else:
     raise RuntimeError(
         'Filesystem plugin only defined for NT and POSIX platforms')
@@ -155,15 +161,11 @@ class Channel(virtual.Channel):
         filename = os.path.join(self.data_folder_out, filename)
 
         try:
-            f = open(filename, 'wb')
-            lock(f, LOCK_EX)
-            f.write(str_to_bytes(dumps(payload)))
-        except OSError:
+            with open(filename, 'wb') as f, flock(f, LOCK_EX):
+                f.write(str_to_bytes(dumps(payload)))
+        except (IOError, OSError):
             raise ChannelError(
-                f'Cannot add file {filename!r} to directory')
-        finally:
-            unlock(f)
-            f.close()
+                'Cannot add file {0!r} to directory'.format(filename))
 
     def _get(self, queue):
         """Get next message from `queue`."""
@@ -191,9 +193,8 @@ class Channel(virtual.Channel):
 
             filename = os.path.join(processed_folder, filename)
             try:
-                f = open(filename, 'rb')
-                payload = f.read()
-                f.close()
+                with open(filename, 'rb') as f:
+                    payload = f.read()
                 if not self.store_processed:
                     os.remove(filename)
             except OSError:
