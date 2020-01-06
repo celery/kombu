@@ -917,7 +917,7 @@ class Channel(virtual.Channel):
             hasattr(conn_class, '__init__') and
             not accepts_argument(conn_class.__init__, 'health_check_interval')
         ):
-            connparams.pop('health_check_interval', None)
+            connparams.pop('health_check_interval')
 
         if conninfo.ssl:
             # Connection(ssl={}) must be a dict containing the keys:
