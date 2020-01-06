@@ -696,6 +696,19 @@ class test_Channel:
         path = connection_parameters['path']
         assert (password, path) == (None, '/var/run/redis.sock')
 
+    def test_connparams_health_check_interval_not_supported_by_connection(self):
+        with patch('kombu.transport.redis.Channel._create_client'):
+            with Connection('redis+socket:///tmp/redis.sock') as conn:
+                conn.default_channel.connection_class = Mock(name='connection_class')
+                connparams = conn.default_channel._connparams()
+                assert 'health_check_interval' not in connparams
+
+    def test_connparams_health_check_interval_supported_by_connection(self):
+        with patch('kombu.transport.redis.Channel._create_client'):
+            with Connection('redis+socket:///tmp/redis.sock') as conn:
+                connparams = conn.default_channel._connparams()
+                assert connparams['health_check_interval'] == 25
+
     def test_rotate_cycle_ValueError(self):
         cycle = self.channel._queue_cycle
         cycle.update(['kramer', 'jerry'])
