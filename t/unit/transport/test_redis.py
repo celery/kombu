@@ -733,6 +733,29 @@ class test_Channel:
         transport.cycle = Mock(name='cycle')
         transport.cycle.fds = {12: 'LISTEN', 13: 'BRPOP'}
         conn = Mock(name='conn')
+        conn.client = Mock(name='client', transport_options={})
+        loop = Mock(name='loop')
+        redis.Transport.register_with_event_loop(transport, conn, loop)
+        transport.cycle.on_poll_init.assert_called_with(loop.poller)
+        loop.call_repeatedly.assert_has_calls([
+            call(10, transport.cycle.maybe_restore_messages),
+            call(25, transport.cycle.maybe_check_subclient_health),
+        ])
+        loop.on_tick.add.assert_called()
+        on_poll_start = loop.on_tick.add.call_args[0][0]
+
+        on_poll_start()
+        transport.cycle.on_poll_start.assert_called_with()
+        loop.add_reader.assert_has_calls([
+            call(12, transport.on_readable, 12),
+            call(13, transport.on_readable, 13),
+        ])
+
+    def test_configurable_health_check(self):
+        transport = self.connection.transport
+        transport.cycle = Mock(name='cycle')
+        transport.cycle.fds = {12: 'LISTEN', 13: 'BRPOP'}
+        conn = Mock(name='conn')
         conn.client = Mock(name='client', transport_options={
             'health_check_interval': 15,
         })
