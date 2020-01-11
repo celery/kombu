@@ -349,9 +349,9 @@ class MultiChannelPoller(object):
         for channel in self._channels:
             # only if subclient property is cached
             client = channel.__dict__.get('subclient')
-            if client is not None:
-                if callable(getattr(client, "check_health", None)):
-                    client.check_health()
+            if client is not None \
+                    and callable(getattr(client, 'check_health', None)):
+                client.check_health()
 
     def on_readable(self, fileno):
         chan, type = self._fd_to_chan[fileno]
@@ -428,6 +428,7 @@ class Channel(virtual.Channel):
     socket_keepalive = None
     socket_keepalive_options = None
     max_connections = 10
+    health_check_interval = DEFAULT_HEALTH_CHECK_INTERVAL
     #: Transport option to disable fanout keyprefix.
     #: Can also be string, in which case it changes the default
     #: prefix ('/{db}.') into to something else.  The prefix must
@@ -491,14 +492,14 @@ class Channel(virtual.Channel):
          'socket_keepalive_options',
          'queue_order_strategy',
          'max_connections',
+         'health_check_interval',
          'priority_steps')  # <-- do not add comma here!
     )
 
     connection_class = redis.Connection if redis else None
 
     def __init__(self, *args, **kwargs):
-        super_ = super(Channel, self)
-        super_.__init__(*args, **kwargs)
+        super(Channel, self).__init__(*args, **kwargs)
 
         if not self.ack_emulation:  # disable visibility timeout
             self.QoS = virtual.QoS
@@ -905,14 +906,18 @@ class Channel(virtual.Channel):
             'socket_connect_timeout': self.socket_connect_timeout,
             'socket_keepalive': self.socket_keepalive,
             'socket_keepalive_options': self.socket_keepalive_options,
+            'health_check_interval': self.health_check_interval,
         }
 
         conn_class = self.connection_class
+
+        # If the connection class does not support the `health_check_interval`
+        # argument then remove it.
         if (
             hasattr(conn_class, '__init__') and
-            accepts_argument(conn_class.__init__, 'health_check_interval')
+            not accepts_argument(conn_class.__init__, 'health_check_interval')
         ):
-            connparams['health_check_interval'] = DEFAULT_HEALTH_CHECK_INTERVAL
+            connparams.pop('health_check_interval')
 
         if conninfo.ssl:
             # Connection(ssl={}) must be a dict containing the keys:
@@ -1064,8 +1069,12 @@ class Transport(virtual.Transport):
             [add_reader(fd, on_readable, fd) for fd in cycle.fds]
         loop.on_tick.add(on_poll_start)
         loop.call_repeatedly(10, cycle.maybe_restore_messages)
+        health_check_interval = connection.client.transport_options.get(
+            'health_check_interval',
+            DEFAULT_HEALTH_CHECK_INTERVAL
+        )
         loop.call_repeatedly(
-            DEFAULT_HEALTH_CHECK_INTERVAL,
+            health_check_interval,
             cycle.maybe_check_subclient_health
         )
 

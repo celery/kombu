@@ -311,6 +311,18 @@ class test_Channel:
             conn.channel()
         pool.disconnect.assert_not_called()
 
+    def test_get_redis_ConnectionError(self):
+        from redis.exceptions import ConnectionError
+        from kombu.transport.redis import get_redis_ConnectionError
+        connection_error = get_redis_ConnectionError()
+        assert connection_error == ConnectionError
+
+    def test_after_fork_cleanup_channel(self):
+        from kombu.transport.redis import _after_fork_cleanup_channel
+        channel = Mock()
+        _after_fork_cleanup_channel(channel)
+        channel._after_fork.assert_called_once()
+
     def test_after_fork(self):
         self.channel._pool = None
         self.channel._after_fork()
@@ -696,6 +708,20 @@ class test_Channel:
         path = connection_parameters['path']
         assert (password, path) == (None, '/var/run/redis.sock')
 
+    def test_connparams_health_check_interval_not_supported(self):
+        with patch('kombu.transport.redis.Channel._create_client'):
+            with Connection('redis+socket:///tmp/redis.sock') as conn:
+                conn.default_channel.connection_class = \
+                    Mock(name='connection_class')
+                connparams = conn.default_channel._connparams()
+                assert 'health_check_interval' not in connparams
+
+    def test_connparams_health_check_interval_supported(self):
+        with patch('kombu.transport.redis.Channel._create_client'):
+            with Connection('redis+socket:///tmp/redis.sock') as conn:
+                connparams = conn.default_channel._connparams()
+                assert connparams['health_check_interval'] == 25
+
     def test_rotate_cycle_ValueError(self):
         cycle = self.channel._queue_cycle
         cycle.update(['kramer', 'jerry'])
@@ -733,12 +759,38 @@ class test_Channel:
         transport.cycle = Mock(name='cycle')
         transport.cycle.fds = {12: 'LISTEN', 13: 'BRPOP'}
         conn = Mock(name='conn')
+        conn.client = Mock(name='client', transport_options={})
         loop = Mock(name='loop')
         redis.Transport.register_with_event_loop(transport, conn, loop)
         transport.cycle.on_poll_init.assert_called_with(loop.poller)
         loop.call_repeatedly.assert_has_calls([
             call(10, transport.cycle.maybe_restore_messages),
             call(25, transport.cycle.maybe_check_subclient_health),
+        ])
+        loop.on_tick.add.assert_called()
+        on_poll_start = loop.on_tick.add.call_args[0][0]
+
+        on_poll_start()
+        transport.cycle.on_poll_start.assert_called_with()
+        loop.add_reader.assert_has_calls([
+            call(12, transport.on_readable, 12),
+            call(13, transport.on_readable, 13),
+        ])
+
+    def test_configurable_health_check(self):
+        transport = self.connection.transport
+        transport.cycle = Mock(name='cycle')
+        transport.cycle.fds = {12: 'LISTEN', 13: 'BRPOP'}
+        conn = Mock(name='conn')
+        conn.client = Mock(name='client', transport_options={
+            'health_check_interval': 15,
+        })
+        loop = Mock(name='loop')
+        redis.Transport.register_with_event_loop(transport, conn, loop)
+        transport.cycle.on_poll_init.assert_called_with(loop.poller)
+        loop.call_repeatedly.assert_has_calls([
+            call(10, transport.cycle.maybe_restore_messages),
+            call(15, transport.cycle.maybe_check_subclient_health),
         ])
         loop.on_tick.add.assert_called()
         on_poll_start = loop.on_tick.add.call_args[0][0]
