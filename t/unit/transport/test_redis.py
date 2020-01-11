@@ -13,7 +13,6 @@ from kombu import Connection, Exchange, Queue, Consumer, Producer
 from kombu.exceptions import InconsistencyError, VersionMismatch
 from kombu.five import Empty, Queue as _Queue, bytes_if_py2
 from kombu.transport import virtual
-from kombu.transport.redis import get_redis_ConnectionError, _after_fork_cleanup_channel
 from kombu.utils import eventio  # patch poll
 from kombu.utils.json import dumps
 
@@ -314,10 +313,12 @@ class test_Channel:
 
     def test_get_redis_ConnectionError(self):
         from redis.exceptions import ConnectionError
+        from kombu.transport.redis import get_redis_ConnectionError
         connection_error = get_redis_ConnectionError()
         assert connection_error == ConnectionError
 
     def test_after_fork_cleanup_channel(self):
+        from kombu.transport.redis import _after_fork_cleanup_channel
         channel = Mock()
         _after_fork_cleanup_channel(channel)
         channel._after_fork.assert_called_once()
