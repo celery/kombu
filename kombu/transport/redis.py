@@ -427,6 +427,7 @@ class Channel(virtual.Channel):
     socket_connect_timeout = None
     socket_keepalive = None
     socket_keepalive_options = None
+    retry_on_timeout = None
     max_connections = 10
     health_check_interval = DEFAULT_HEALTH_CHECK_INTERVAL
     #: Transport option to disable fanout keyprefix.
@@ -493,6 +494,7 @@ class Channel(virtual.Channel):
          'queue_order_strategy',
          'max_connections',
          'health_check_interval',
+         'retry_on_timeout',
          'priority_steps')  # <-- do not add comma here!
     )
 
@@ -907,6 +909,7 @@ class Channel(virtual.Channel):
             'socket_keepalive': self.socket_keepalive,
             'socket_keepalive_options': self.socket_keepalive_options,
             'health_check_interval': self.health_check_interval,
+            'retry_on_timeout': self.retry_on_timeout,
         }
 
         conn_class = self.connection_class
