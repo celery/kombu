@@ -1441,7 +1441,8 @@ class test_RedisSentinel:
                 connection_class=mock.ANY, db=0, max_connections=10,
                 min_other_sentinels=0, password=None, sentinel_kwargs=None,
                 socket_connect_timeout=None, socket_keepalive=None,
-                socket_keepalive_options=None, socket_timeout=None)
+                socket_keepalive_options=None, socket_timeout=None,
+                retry_on_timeout=None)
 
             master_for = patched.return_value.master_for
             master_for.assert_called()
@@ -1463,7 +1464,8 @@ class test_RedisSentinel:
                 connection_class=mock.ANY, db=0, max_connections=10,
                 min_other_sentinels=0, password=None, sentinel_kwargs=None,
                 socket_connect_timeout=None, socket_keepalive=None,
-                socket_keepalive_options=None, socket_timeout=None)
+                socket_keepalive_options=None, socket_timeout=None,
+                retry_on_timeout=None)
 
             master_for = patched.return_value.master_for
             master_for.assert_called()
