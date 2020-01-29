@@ -2,4 +2,4 @@ pytz>dev
 case>=1.5.2
 pytest
 pytest-sugar
-https://github.com/irmen/Pyro4/zipball/master
+Pyro4
