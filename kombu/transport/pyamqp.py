@@ -176,4 +176,5 @@ class SSLTransport(Transport):
         super(SSLTransport, self).__init__(*args, **kwargs)
 
         # ugh, not exactly pure, but hey, it's python.
-        self.client.ssl = True
+        if not self.client.ssl: # not dict or False
+            self.client.ssl = True
