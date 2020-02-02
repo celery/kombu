@@ -14,6 +14,7 @@ from kombu.exceptions import InconsistencyError, VersionMismatch
 from kombu.five import Empty, Queue as _Queue, bytes_if_py2
 from kombu.transport import virtual
 from kombu.utils import eventio  # patch poll
+from kombu.utils.encoding import str_to_bytes
 from kombu.utils.json import dumps
 
 
@@ -1363,13 +1364,13 @@ class test_Mutex:
             client.setnx.return_value = True
             client.pipeline = ContextMock()
             pipe = client.pipeline.return_value
-            pipe.get.return_value = lock_id
+            pipe.get.return_value = str_to_bytes(lock_id)  # redis gives bytes
             held = False
             with redis.Mutex(client, 'foo1', 100):
                 held = True
             assert held
             client.setnx.assert_called_with('foo1', lock_id)
-            pipe.get.return_value = 'yyy'
+            pipe.get.return_value = b'yyy'
             held = False
             with redis.Mutex(client, 'foo1', 100):
                 held = True
@@ -1377,7 +1378,7 @@ class test_Mutex:
 
             # Did not win
             client.expire.reset_mock()
-            pipe.get.return_value = lock_id
+            pipe.get.return_value = str_to_bytes(lock_id)
             client.setnx.return_value = False
             with pytest.raises(redis.MutexHeld):
                 held = False
