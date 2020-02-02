@@ -49,10 +49,8 @@ def parse_url(url):
         keys = [key for key in query.keys() if key.startswith('ssl_')]
         for key in keys:
             if key == 'ssl_cert_reqs':
-                if ssl_available:
-                    query[key] = getattr(ssl, query[key])
-                else:
-                    query[key] = None
+                query[key] = parse_ssl_cert_reqs(query[key])
+                if query[key] is None:
                     logger.warning('Defaulting to insecure SSL behaviour.')
 
             if 'ssl' not in query:
@@ -120,3 +118,20 @@ def maybe_sanitize_url(url, mask='**'):
     if isinstance(url, string_t) and '://' in url:
         return sanitize_url(url, mask)
     return url
+
+
+def parse_ssl_cert_reqs(query_value):
+    # type: (str) -> Any
+    """Given the query parameter for ssl_cert_reqs, return the SSL constant or None."""
+    if ssl_available:
+        query_value_to_constant = {
+            'CERT_REQUIRED': ssl.CERT_REQUIRED,
+            'CERT_OPTIONAL': ssl.CERT_OPTIONAL,
+            'CERT_NONE': ssl.CERT_NONE,
+            'required': ssl.CERT_REQUIRED,
+            'optional': ssl.CERT_OPTIONAL,
+            'none': ssl.CERT_NONE,
+        }
+        return query_value_to_constant[query_value]
+    else:
+        return None

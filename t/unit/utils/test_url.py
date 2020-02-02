@@ -2,7 +2,6 @@ from __future__ import absolute_import, unicode_literals
 
 try:
     from urllib.parse import urlencode
-
 except ImportError:
     from urllib import urlencode
 
@@ -12,6 +11,7 @@ import pytest
 
 import kombu.utils.url
 from kombu.utils.url import as_url, parse_url, maybe_sanitize_url
+from kombu.utils.url import parse_ssl_cert_reqs
 
 
 def test_parse_url():
@@ -51,7 +51,7 @@ def test_maybe_sanitize_url(url, expected):
 def test_ssl_parameters():
     url = 'rediss://user:password@host:6379/0?'
     querystring = urlencode({
-        'ssl_cert_reqs': 'CERT_REQUIRED',
+        'ssl_cert_reqs': 'required',
         'ssl_ca_certs': '/var/ssl/myca.pem',
         'ssl_certfile': '/var/ssl/server-cert.pem',
         'ssl_keyfile': '/var/ssl/priv/worker-key.pem',
@@ -69,3 +69,24 @@ def test_ssl_parameters():
     assert kwargs['ssl']['ssl_cert_reqs'] is None
 
     kombu.utils.url.ssl_available = True
+
+
+@pytest.mark.parametrize('query_param,ssl_available,expected', [
+    ('CERT_REQUIRED', True, ssl.CERT_REQUIRED),
+    ('CERT_OPTIONAL', True, ssl.CERT_OPTIONAL),
+    ('CERT_NONE', True, ssl.CERT_NONE),
+    ('required', True, ssl.CERT_REQUIRED),
+    ('optional', True, ssl.CERT_OPTIONAL),
+    ('none', True, ssl.CERT_NONE),
+    ('CERT_REQUIRED', None, None),
+])
+def test_parse_ssl_cert_reqs(query_param, ssl_available, expected):
+    kombu.utils.url.ssl_available = ssl_available
+    result = parse_ssl_cert_reqs(query_param)
+    kombu.utils.url.ssl_available = True
+    assert result == expected
+
+
+def test_parse_ssl_cert_reqs_bad_value():
+    with pytest.raises(KeyError):
+        parse_ssl_cert_reqs('badvalue')
