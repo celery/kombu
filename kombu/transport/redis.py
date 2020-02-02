@@ -401,6 +401,7 @@ class Channel(virtual.Channel):
     socket_connect_timeout = None
     socket_keepalive = None
     socket_keepalive_options = None
+    retry_on_timeout = None
     max_connections = 10
     #: Transport option to enable disable fanout keyprefix.
     #: Should be enabled by default, but that is not
@@ -435,6 +436,7 @@ class Channel(virtual.Channel):
          'socket_keepalive_options',
          'queue_order_strategy',
          'max_connections',
+         'retry_on_timeout',
          'priority_steps')  # <-- do not add comma here!
     )
 
@@ -831,6 +833,7 @@ class Channel(virtual.Channel):
             'socket_connect_timeout': self.socket_connect_timeout,
             'socket_keepalive': self.socket_keepalive,
             'socket_keepalive_options': self.socket_keepalive_options,
+            'retry_on_timeout': self.retry_on_timeout,
         }
         if redis.VERSION < (2, 10):
             for param in _r210_options:
