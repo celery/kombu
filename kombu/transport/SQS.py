@@ -31,6 +31,33 @@ SQS Features supported by this transport:
     up to 'prefetch_count' messages from queueA and work on them all before
     moving on to queueB.  If queueB is empty, it will wait up until
     'polling_interval' expires before moving back and checking on queueA.
+
+Other Features supported by this transport:
+  Predefined Queues:
+    The default behavior of this transport is to use a single AWS credential
+    pair in order to manage all SQS queues (e.g. listing queues, creating
+    queues, polling queues, deleting messages).
+
+    If it is preferable for your environment to use a single AWS credential, you
+    can use the 'predefined_queues' setting inside the  'transport_options' map.
+    This setting allows you to specify the SQS queue URL and AWS credentials for
+    each of your queues. For example, if you have two queues which both already
+    exist in AWS) you can tell this transport about them as follows:
+
+    transport_options = {
+      'predefined_queues': {
+        'queue-1': {
+          'url': 'https://sqs.us-east-1.amazonaws.com/xxx/aaa',
+          'access_key_id': 'a',
+          'secret_access_key': 'b',
+        },
+        'queue-2': {
+          'url': 'https://sqs.us-east-1.amazonaws.com/xxx/bbb',
+          'access_key_id': 'c',
+          'secret_access_key': 'd',
+        },
+      }
+    }
 """  # noqa: E501
 
 from __future__ import absolute_import, unicode_literals
@@ -76,6 +103,10 @@ def maybe_int(x):
         return x
 
 
+class UndefinedQueueException(Exception):
+    """Predefined queues are being used and an undefined queue was used."""
+
+
 class Channel(virtual.Channel):
     """SQS Channel."""
 
@@ -84,7 +115,9 @@ class Channel(virtual.Channel):
     default_wait_time_seconds = 10  # up to 20 seconds max
     domain_format = 'kombu%(vhost)s'
     _asynsqs = None
+    _predefined_queue_async_clients = {}  # A client for each predefined queue
     _sqs = None
+    _predefined_queue_clients = {}  # A client for each predefined queue
     _queue_cache = {}
     _noack_queues = set()
 
@@ -102,7 +135,12 @@ class Channel(virtual.Channel):
         self.hub = kwargs.get('hub') or get_event_loop()
 
     def _update_queue_cache(self, queue_name_prefix):
-        resp = self.sqs.list_queues(QueueNamePrefix=queue_name_prefix)
+        if self.predefined_queues:
+            for queue_name, q in self.predefined_queues.items():
+                self._queue_cache[queue_name] = q['url']
+            return
+
+        resp = self.sqs().list_queues(QueueNamePrefix=queue_name_prefix)
         for url in resp.get('QueueUrls', []):
             queue_name = url.split('/')[-1]
             self._queue_cache[queue_name] = url
@@ -177,6 +215,12 @@ class Channel(virtual.Channel):
         try:
             return self._queue_cache[queue]
         except KeyError:
+            if self.predefined_queues:
+                raise UndefinedQueueException((
+                    "Queue with name '{}' must be "
+                    "defined in 'predefined_queues'."
+                ).format(queue))
+
             attributes = {'VisibilityTimeout': str(self.visibility_timeout)}
             if queue.endswith('.fifo'):
                 attributes['FifoQueue'] = 'true'
@@ -189,17 +233,22 @@ class Channel(virtual.Channel):
         """Create an SQS queue with a given name and nominal attributes."""
         # Allow specifying additional boto create_queue Attributes
         # via transport options
+        if self.predefined_queues:
+            return None
+
         attributes.update(
             self.transport_options.get('sqs-creation-attributes') or {},
         )
 
-        return self.sqs.create_queue(
+        return self.sqs(queue=queue_name).create_queue(
             QueueName=queue_name,
             Attributes=attributes,
         )
 
     def _delete(self, queue, *args, **kwargs):
         """Delete queue by name."""
+        if self.predefined_queues:
+            return
         super(Channel, self)._delete(queue)
         self._queue_cache.pop(queue, None)
 
@@ -219,14 +268,16 @@ class Channel(virtual.Channel):
                     message['properties']['MessageDeduplicationId']
             else:
                 kwargs['MessageDeduplicationId'] = str(uuid.uuid4())
+
+        c = self.sqs(queue=self.canonical_queue_name(queue))
         if message.get('redelivered'):
-            self.sqs.change_message_visibility(
+            c.change_message_visibility(
                 QueueUrl=q_url,
                 ReceiptHandle=message['properties']['delivery_tag'],
                 VisibilityTimeout=0
             )
         else:
-            self.sqs.send_message(**kwargs)
+            c.send_message(**kwargs)
 
     def _message_to_python(self, message, queue_name, queue):
         try:
@@ -236,7 +287,10 @@ class Channel(virtual.Channel):
         payload = loads(bytes_to_str(body))
         if queue_name in self._noack_queues:
             queue = self._new_queue(queue_name)
-            self.asynsqs.delete_message(queue, message['ReceiptHandle'])
+            self.asynsqs(queue=queue_name).delete_message(
+                queue,
+                message['ReceiptHandle'],
+            )
         else:
             try:
                 properties = payload['properties']
@@ -303,7 +357,7 @@ class Channel(virtual.Channel):
         max_count = self._get_message_estimate()
         if max_count:
             q_url = self._new_queue(queue)
-            resp = self.sqs.receive_message(
+            resp = self.sqs(queue=queue).receive_message(
                 QueueUrl=q_url, MaxNumberOfMessages=max_count,
                 WaitTimeSeconds=self.wait_time_seconds)
             if resp.get('Messages'):
@@ -317,7 +371,7 @@ class Channel(virtual.Channel):
     def _get(self, queue):
         """Try to retrieve a single message off ``queue``."""
         q_url = self._new_queue(queue)
-        resp = self.sqs.receive_message(
+        resp = self.sqs(queue=queue).receive_message(
             QueueUrl=q_url, MaxNumberOfMessages=1,
             WaitTimeSeconds=self.wait_time_seconds)
         if resp.get('Messages'):
@@ -359,7 +413,7 @@ class Channel(virtual.Channel):
         q = self._new_queue(queue)
         qname = self.canonical_queue_name(queue)
         return self._get_from_sqs(
-            qname, count=count, connection=self.asynsqs,
+            qname, count=count, connection=self.asynsqs(queue=qname),
             callback=transform(self._on_messages_ready, callback, q, queue),
         )
 
@@ -377,8 +431,17 @@ class Channel(virtual.Channel):
         Uses long polling and returns :class:`~vine.promises.promise`.
         """
         connection = connection if connection is not None else queue.connection
+        if self.predefined_queues:
+            if queue not in self._queue_cache:
+                raise UndefinedQueueException((
+                    "Queue with name '{}' must be defined in "
+                    "'predefined_queues'."
+                ).format(queue))
+            queue_url = self._queue_cache[queue]
+        else:
+            queue_url = connection.get_queue_url(queue)
         return connection.receive_message(
-            queue, number_messages=count,
+            queue, queue_url, number_messages=count,
             wait_time_seconds=self.wait_time_seconds,
             callback=callback,
         )
@@ -397,14 +460,21 @@ class Channel(virtual.Channel):
         except KeyError:
             pass
         else:
-            self.sqs.delete_message(QueueUrl=message['sqs_queue'],
-                                    ReceiptHandle=sqs_message['ReceiptHandle'])
+            queue = None
+            if 'routing_key' in message:
+                queue = self.canonical_queue_name(message['routing_key'])
+
+            self.sqs(queue=queue).delete_message(
+                QueueUrl=message['sqs_queue'],
+                ReceiptHandle=sqs_message['ReceiptHandle'],
+            )
         super(Channel, self).basic_ack(delivery_tag)
 
     def _size(self, queue):
         """Return the number of messages in a queue."""
         url = self._new_queue(queue)
-        resp = self.sqs.get_queue_attributes(
+        c = self.sqs(queue=self.canonical_queue_name(queue))
+        resp = c.get_queue_attributes(
             QueueUrl=url,
             AttributeNames=['ApproximateNumberOfMessages'])
         return int(resp['Attributes']['ApproximateNumberOfMessages'])
@@ -419,43 +489,83 @@ class Channel(virtual.Channel):
             size += int(self._size(queue))
             if not size:
                 break
-        self.sqs.purge_queue(QueueUrl=q)
+        self.sqs(queue=queue).purge_queue(QueueUrl=q)
         return size
 
     def close(self):
         super(Channel, self).close()
         # if self._asynsqs:
         #     try:
-        #         self.asynsqs.close()
+        #         self.asynsqs().close()
         #     except AttributeError as exc:  # FIXME ???
         #         if "can't set attribute" not in str(exc):
         #             raise
 
-    @property
-    def sqs(self):
-        if self._sqs is None:
-            session = boto3.session.Session(
-                region_name=self.region,
-                aws_access_key_id=self.conninfo.userid,
-                aws_secret_access_key=self.conninfo.password,
-            )
-            is_secure = self.is_secure if self.is_secure is not None else True
-            client_kwargs = {
-                'use_ssl': is_secure
-            }
-            if self.endpoint_url is not None:
-                client_kwargs['endpoint_url'] = self.endpoint_url
-            self._sqs = session.client('sqs', **client_kwargs)
-        return self._sqs
+    def new_sqs_client(self, region, access_key_id, secret_access_key):
+        session = boto3.session.Session(
+            region_name=region,
+            aws_access_key_id=access_key_id,
+            aws_secret_access_key=secret_access_key,
+        )
+        is_secure = self.is_secure if self.is_secure is not None else True
+        client_kwargs = {
+            'use_ssl': is_secure
+        }
+        if self.endpoint_url is not None:
+            client_kwargs['endpoint_url'] = self.endpoint_url
+        return session.client('sqs', **client_kwargs)
 
-    @property
-    def asynsqs(self):
-        if self._asynsqs is None:
-            self._asynsqs = AsyncSQSConnection(
-                sqs_connection=self.sqs,
-                region=self.region
+    def sqs(self, queue=None):
+        if queue is not None and self.predefined_queues:
+            if queue in self._predefined_queue_clients:
+                return self._predefined_queue_clients[queue]
+            if queue not in self.predefined_queues:
+                raise UndefinedQueueException((
+                    "Queue with name '{}' must be defined in "
+                    "'predefined_queues'."
+                ).format(queue))
+            q = self.predefined_queues[queue]
+            c = self._predefined_queue_clients[queue] = self.new_sqs_client(
+                region=q.get('region', self.region),
+                access_key_id=q['access_key_id'] or self.conninfo.userid,
+                secret_access_key=q['secret_access_key'] or self.conninfo.password,  # noqa: E501
             )
-        return self._asynsqs
+            return c
+
+        if self._sqs is not None:
+            return self._sqs
+
+        c = self._sqs = self.new_sqs_client(
+            region=self.region,
+            access_key_id=self.conninfo.userid,
+            secret_access_key=self.conninfo.password,
+        )
+        return c
+
+    def asynsqs(self, queue=None):
+        if queue is not None and self.predefined_queues:
+            if queue in self._predefined_queue_async_clients:
+                return self._predefined_queue_async_clients[queue]
+            if queue not in self.predefined_queues:
+                raise UndefinedQueueException((
+                    "Queue with name '{}' must be defined in "
+                    "'predefined_queues'."
+                ).format(queue))
+            q = self.predefined_queues[queue]
+            c = self._predefined_queue_async_clients[queue] = AsyncSQSConnection(  # noqa: E501
+                sqs_connection=self.sqs(queue=queue),
+                region=q.get('region', self.region)
+            )
+            return c
+
+        if self._asynsqs is not None:
+            return self._asynsqs
+
+        c = self._asynsqs = AsyncSQSConnection(
+            sqs_connection=self.sqs(queue=queue),
+            region=self.region
+        )
+        return c
 
     @property
     def conninfo(self):
@@ -469,6 +579,11 @@ class Channel(virtual.Channel):
     def visibility_timeout(self):
         return (self.transport_options.get('visibility_timeout') or
                 self.default_visibility_timeout)
+
+    @cached_property
+    def predefined_queues(self):
+        """Map of queue_name to predefined queue settings."""
+        return self.transport_options.get('predefined_queues', None)
 
     @cached_property
     def queue_name_prefix(self):

@@ -58,7 +58,7 @@ class AsyncSQSConnection(AsyncAWSQueryConnection):
             queue.id, callback=callback,
         )
 
-    def receive_message(self, queue,
+    def receive_message(self, queue, queue_url,
                         number_messages=1, visibility_timeout=None,
                         attributes=None, wait_time_seconds=None,
                         callback=None):
@@ -72,7 +72,6 @@ class AsyncSQSConnection(AsyncAWSQueryConnection):
             params.update(attrs)
         if wait_time_seconds is not None:
             params['WaitTimeSeconds'] = wait_time_seconds
-        queue_url = self.get_queue_url(queue)
         return self.get_list(
             'ReceiveMessage', params, [('Message', AsyncMessage)],
             queue_url, callback=callback, parent=queue,
