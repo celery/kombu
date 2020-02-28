@@ -91,6 +91,15 @@ class test_Transport:
         self.transport.create_channel(connection)
         connection.channel.assert_called_with()
 
+    def test_ssl_cert_passed(self):
+        ssl_dict={
+            'ca_certs': '/etc/pki/tls/certs/something.crt',
+            'cert_reqs': "ssl.CERT_REQUIRED",
+        }
+        ssl_dict_copy = {k: ssl_dict[k] for k in ssl_dict}
+        connection = Connection('amqps://', ssl=ssl_dict_copy)
+        assert connection.transport.client.ssl == ssl_dict
+
     def test_driver_version(self):
         assert self.transport.driver_version()
 
