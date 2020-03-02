@@ -6,11 +6,11 @@ import re
 import sys
 
 if sys.version_info < (2, 7):  # pragma: no cover
-    raise Exception('Kombu 4.0 requires Python versions 2.7 or later.')
+    raise Exception('Kombu 4.6 requires Python versions 2.7 or later.')
 
 from collections import namedtuple  # noqa
 
-__version__ = '4.6.7'
+__version__ = '4.6.8'
 __author__ = 'Ask Solem'
 __contact__ = 'auvipy@gmail.com, ask@celeryproject.org'
 __homepage__ = 'https://kombu.readthedocs.io'
