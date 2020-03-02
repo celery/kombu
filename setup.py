@@ -100,12 +100,17 @@ class pytest(setuptools.command.test.test):
         sys.exit(pytest.main(self.pytest_args))
 
 
+def readme():
+    with open('README.rst') as f:
+        return f.read()
+
+
 setup(
     name='kombu',
     packages=setuptools.find_packages(exclude=['t', 't.*']),
     version=meta['version'],
     description=meta['doc'],
-    # long_description=long_description,
+    long_description=readme(),
     keywords='messaging message amqp rabbitmq redis actor producer consumer',
     author=meta['author'],
     author_email=meta['contact'],
