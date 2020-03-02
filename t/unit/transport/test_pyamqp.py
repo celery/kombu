@@ -92,7 +92,7 @@ class test_Transport:
         connection.channel.assert_called_with()
 
     def test_ssl_cert_passed(self):
-        ssl_dict={
+        ssl_dict = {
             'ca_certs': '/etc/pki/tls/certs/something.crt',
             'cert_reqs': "ssl.CERT_REQUIRED",
         }
