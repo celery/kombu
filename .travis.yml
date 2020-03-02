@@ -1,6 +1,12 @@
+os: linux
 language: python
-sudo: false
 cache: pip
+
+addons:
+  apt:
+    update: true
+    packages:
+      - libgnutls-dev
 
 env:
   global:
@@ -10,36 +16,24 @@ stages:
   - test
   - lint
 
-
-matrix:
+jobs:
   include:
     - python: 2.7
       env: TOXENV=2.7
-      before_install: sudo apt-get update && sudo apt-get install libgnutls-dev
     - python: 3.5
       env: TOXENV=3.5
-      before_install: sudo apt-get update && sudo apt-get install libgnutls-dev
     - python: 3.6
       env: TOXENV=3.6
-      before_install: sudo apt-get update && sudo apt-get install libgnutls-dev
     - python: 3.7
       env: TOXENV=3.7-linux
-      sudo: true
-      dist: xenial
-      before_install: sudo apt-get update && sudo apt-get install libgnutls-dev
     - python: 3.8
       env: TOXENV=3.8-linux
-      sudo: true
-      dist: xenial
-      before_install: sudo apt-get update && sudo apt-get install libgnutls-dev
     - python: pypy2.7-7.1.1
       env: TOXENV=pypy
       dist: xenial
-      before_install: sudo apt-get update && sudo apt-get install libgnutls-dev
     - python: pypy3.5-7.0
       env: TOXENV=pypy3
       dist: xenial
-      before_install: sudo apt-get update && sudo apt-get install libgnutls-dev
     - env: TOXENV=flake8
       stage: lint
     - env: TOXENV=flakeplus
@@ -47,7 +41,6 @@ matrix:
     - python: '3.6'
       env: TOXENV=apicheck
       stage: lint
-      before_install: sudo apt-get update && sudo apt-get install libgnutls-dev
     - python: '3.6'
       env: TOXENV=pydocstyle
       stage: lint
