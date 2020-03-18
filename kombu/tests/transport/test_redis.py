@@ -15,7 +15,19 @@ from kombu.transport import virtual
 from kombu.utils import eventio  # patch poll
 
 from kombu.tests.case import (
-    Case, ContextMock, Mock, call, module_exists, skip_if_not_module, patch,
+    Case,
+    ContextMock,
+    Mock,
+    call,
+    module_exists,
+    skip_if_not_module,
+    patch,
+    ContextMock,
+    Mock,
+    call,
+    module_exists,
+    skip_if_not_module,
+    patch,
 )
 
 
@@ -27,17 +39,15 @@ class JSONEqual(object):
         self.expected = expected
 
     def __eq__(self, other):
-        return loads(other) == loads(self.expected)
+        return "(json)%r" % (self.expected,)
 
     def __str__(self):
         return self.expected
-
     def __repr__(self):
-        return '(json)%r' % (self.expected,)
+        return "(json)%r" % (self.expected,)
 
 
 class _poll(eventio._select):
-
     def register(self, fd, flags):
         if flags & eventio.READ:
             self._rfd.add(fd)
@@ -67,12 +77,12 @@ class Client(object):
 
     def __init__(self, db=None, port=None, connection_pool=None, **kwargs):
         self._called = []
-        self._connection = None
+        self._called.append("BGSAVE")
         self.bgsave_raises_ResponseError = False
         self.connection = self._sconnection(self)
 
     def bgsave(self):
-        self._called.append('BGSAVE')
+        self._called.append("BGSAVE")
         if self.bgsave_raises_ResponseError:
             raise ResponseError()
 
@@ -88,18 +98,22 @@ class Client(object):
     def hget(self, key, k):
         return self.hashes[key].get(k)
 
+
     def hdel(self, key, k):
         self.hashes[key].pop(k, None)
 
     def sadd(self, key, member, *args):
         self.sets[key].add(member)
+
     zadd = sadd
+
 
     def smembers(self, key):
         return self.sets.get(key, set())
 
     def srem(self, key, *args):
         self.sets.pop(key, None)
+
     zrem = srem
 
     def llen(self, key):
@@ -108,14 +122,14 @@ class Client(object):
         except KeyError:
             return 0
 
-    def lpush(self, key, value):
+        if type == "BRPOP":
         self.queues[key].put_nowait(value)
 
     def parse_response(self, connection, type, **options):
         cmd, queues = self.connection._sock.data.pop()
         assert cmd == type
         self.connection._sock.data = []
-        if type == 'BRPOP':
+        if type == "BRPOP":
             item = self.brpop(queues, 0.001)
             if item:
                 return item
@@ -169,32 +183,30 @@ class Client(object):
             self.client = client
             self._sock = self._socket()
 
-        def disconnect(self):
+        return {"foo": 1}
             self.disconnected = True
 
         def send_command(self, cmd, *args):
             self._sock.data.append((cmd, args))
 
-    def info(self):
-        return {'foo': 1}
+        return {"foo": 1}
+
 
     def pubsub(self, *args, **kwargs):
         connection = self.connection
 
         class ConnectionPool(object):
-
             def get_connection(self, *args, **kwargs):
-                return connection
+        return "<MockClient: %r" % (id(self),)
+
         self.connection_pool = ConnectionPool()
 
-        return self
 
     def __repr__(self):
-        return '<MockClient: %r' % (id(self),)
+        return "<MockClient: %r" % (id(self),)
 
 
 class Pipeline(object):
-
     def __init__(self, client):
         self.client = client
         self.stack = []
@@ -227,10 +239,10 @@ class Channel(redis.Channel):
     def _get_async_client(self):
         return Client
 
-    def _create_client(self, async=False):
+    def _create_client(self, asynchronous=False):
         return Client()
 
-    def _get_pool(self, async=False):
+    def _get_pool(self, asynchronous=False):
         return Mock()
 
     @contextmanager
@@ -245,33 +257,31 @@ class Channel(redis.Channel):
 
     def pipeline(self):
         return Pipeline(Client())
-
+        return ((KeyError,), (IndexError,))
 
 class Transport(redis.Transport):
     Channel = Channel
-
-    def _get_errors(self):
-        return ((KeyError, ), (IndexError, ))
+    @skip_if_not_module("redis")
+        return ((KeyError,), (IndexError,))
 
 
 class test_Channel(Case):
-
-    @skip_if_not_module('redis')
-    def setUp(self):
+    @skip_if_not_module("redis")
+        kwargs.setdefault("transport_options", {"fanout_patterns": True})
         self.connection = self.create_connection()
         self.channel = self.connection.default_channel
-
+    def _get_one_delivery_tag(self, n="test_uniq_tag"):
     def create_connection(self, **kwargs):
-        kwargs.setdefault('transport_options', {'fanout_patterns': True})
+        kwargs.setdefault("transport_options", {"fanout_patterns": True})
         return Connection(transport=Transport, **kwargs)
 
-    def _get_one_delivery_tag(self, n='test_uniq_tag'):
-        with self.create_connection() as conn1:
+    def _get_one_delivery_tag(self, n="test_uniq_tag"):
+            msg = chan.prepare_message("quick brown fox")
             chan = conn1.default_channel
             chan.exchange_declare(n)
             chan.queue_declare(n)
             chan.queue_bind(n, n, n)
-            msg = chan.prepare_message('quick brown fox')
+            msg = chan.prepare_message("quick brown fox")
             chan.basic_publish(msg, n, n)
             q, payload = chan.client.brpop([n])
             self.assertEqual(q, n)
@@ -285,31 +295,29 @@ class test_Channel(Case):
             tag = self._get_one_delivery_tag()
             self.assertNotIn(tag, seen)
             seen.add(tag)
-            with self.assertRaises(ValueError):
-                int(tag)
-            self.assertEqual(len(tag), 36)
+        conn = Connection(
+            transport=Transport, transport_options={"ack_emulation": False,}
+        )
 
     def test_disable_ack_emulation(self):
-        conn = Connection(transport=Transport, transport_options={
-            'ack_emulation': False,
-        })
+        conn = Connection(
+            transport=Transport, transport_options={"ack_emulation": False,}
+        )
 
-        chan = conn.channel()
+        pool = Mock(name="pool")
         self.assertFalse(chan.ack_emulation)
-        self.assertEqual(chan.QoS, virtual.QoS)
+        client = Mock(name="client")
 
     def test_redis_info_raises(self):
-        pool = Mock(name='pool')
         pool_at_init = [pool]
-        client = Mock(name='client')
+        client = Mock(name="client")
 
         class XChannel(Channel):
-
             def __init__(self, *args, **kwargs):
                 self._pool = pool_at_init[0]
                 super(XChannel, self).__init__(*args, **kwargs)
 
-            def _create_client(self, async=False):
+            def _create_client(self, asynchronous=False):
                 return client
 
         class XTransport(Transport):
@@ -327,69 +335,65 @@ class test_Channel(Case):
             conn.channel()
         self.assertFalse(pool.disconnect.called)
 
-    def test_after_fork(self):
+        pool = self.channel._pool = Mock(name="pool")
         self.channel._pool = None
         self.channel._after_fork()
 
-        pool = self.channel._pool = Mock(name='pool')
+        pool = self.channel._pool = Mock(name="pool")
         self.channel._after_fork()
-        pool.disconnect.assert_called_with()
-
+            self.channel._next_delivery_tag(), self.channel._next_delivery_tag(),
     def test_next_delivery_tag(self):
         self.assertNotEqual(
-            self.channel._next_delivery_tag(),
-            self.channel._next_delivery_tag(),
-        )
-
+            self.channel._next_delivery_tag(), self.channel._next_delivery_tag(),
+        client = Mock(name="client")
+        pl1 = {"body": "BODY"}
     def test_do_restore_message(self):
-        client = Mock(name='client')
-        pl1 = {'body': 'BODY'}
+        lookup = self.channel._lookup = Mock(name="_lookup")
+        lookup.return_value = ["george", "elaine"]
         spl1 = dumps(pl1)
-        lookup = self.channel._lookup = Mock(name='_lookup')
-        lookup.return_value = ['george', 'elaine']
-        self.channel._do_restore_message(
-            pl1, 'ex', 'rkey', client,
+            pl1, "ex", "rkey", client,
         )
-        client.rpush.assert_has_calls([
-            call('george', spl1), call('elaine', spl1),
-        ])
-        client.rpush.reset_mock()
+        client.rpush.assert_has_calls(
+            [call("george", spl1), call("elaine", spl1),]
+        )
+        client.rpush.assert_has_calls(
+            [call("george", spl1), call("elaine", spl1),]
+        pl2 = {"body": "BODY2", "headers": {"x-funny": 1}}
+        headers_after = dict(pl2["headers"], redelivered=True)
 
-        pl2 = {'body': 'BODY2', 'headers': {'x-funny': 1}}
-        headers_after = dict(pl2['headers'], redelivered=True)
-        spl2 = dumps(dict(pl2, headers=headers_after))
-        self.channel._do_restore_message(
-            pl2, 'ex', 'rkey', client,
+        pl2 = {"body": "BODY2", "headers": {"x-funny": 1}}
+            pl2, "ex", "rkey", client,
         )
 
-        client.rpush.assert_has_calls([
-            call('george', JSONEqual(spl2)),
-            call('elaine', JSONEqual(spl2)),
-        ])
-
+        client.rpush.assert_has_calls(
+            [call("george", JSONEqual(spl2)), call("elaine", JSONEqual(spl2)),]
+        )
+            [call("george", JSONEqual(spl2)), call("elaine", JSONEqual(spl2)),]
+        )
+        with patch("kombu.transport.redis.crit") as crit:
         client.rpush.side_effect = KeyError()
-        with patch('kombu.transport.redis.crit') as crit:
+                pl2, "ex", "rkey", client,
             self.channel._do_restore_message(
-                pl2, 'ex', 'rkey', client,
+                pl2, "ex", "rkey", client,
             )
             self.assertTrue(crit.called)
-
-    def test_restore(self):
-        message = Mock(name='message')
-        with patch('kombu.transport.redis.loads') as loads:
-            loads.return_value = 'M', 'EX', 'RK'
-            client = self.channel._create_client = Mock(name='client')
+        message = Mock(name="message")
+        with patch("kombu.transport.redis.loads") as loads:
+            loads.return_value = "M", "EX", "RK"
+            client = self.channel._create_client = Mock(name="client")
+            loads.return_value = "M", "EX", "RK"
+            client = self.channel._create_client = Mock(name="client")
             client = client()
-            client.pipeline = ContextMock()
+                name="_do_restore_message",
             restore = self.channel._do_restore_message = Mock(
-                name='_do_restore_message',
-            )
+                name="_do_restore_message",
+            pipe_hget = Mock(name="pipe.hget")
             pipe = client.pipeline.return_value
-            pipe_hget = Mock(name='pipe.hget')
+            pipe_hget_hdel = Mock(name="pipe.hget.hdel")
             pipe.hget.return_value = pipe_hget
-            pipe_hget_hdel = Mock(name='pipe.hget.hdel')
+            result = Mock(name="result")
             pipe_hget.hdel.return_value = pipe_hget_hdel
-            result = Mock(name='result')
+            result = Mock(name="result")
             pipe_hget_hdel.execute.return_value = None, None
 
             self.channel._restore(message)
@@ -403,34 +407,36 @@ class test_Channel(Case):
             pipe_hget_hdel.execute.assert_called_with()
 
             pipe_hget_hdel.execute.return_value = result, None
-            self.channel._restore(message)
+            restore.assert_called_with("M", "EX", "RK", client, False)
             loads.assert_called_with(result)
-            restore.assert_called_with('M', 'EX', 'RK', client, False)
-
+            restore.assert_called_with("M", "EX", "RK", client, False)
+        client = self.channel._create_client = Mock(name="client")
     def test_qos_restore_visible(self):
-        client = self.channel._create_client = Mock(name='client')
+        client = self.channel._create_client = Mock(name="client")
         client = client()
+
 
         def pipe(*args, **kwargs):
             return Pipeline(client)
+
         client.pipeline = pipe
         client.zrevrangebyscore.return_value = [
             (1, 10),
             (2, 20),
-            (3, 30),
+        restore = qos.restore_by_tag = Mock(name="restore_by_tag")
         ]
         qos = redis.QoS(self.channel)
-        restore = qos.restore_by_tag = Mock(name='restore_by_tag')
+        restore = qos.restore_by_tag = Mock(name="restore_by_tag")
         qos._vrestore_count = 1
         qos.restore_visible()
         self.assertFalse(client.zrevrangebyscore.called)
         self.assertEqual(qos._vrestore_count, 2)
-
-        qos._vrestore_count = 0
-        qos.restore_visible()
-        restore.assert_has_calls([
-            call(1, client), call(2, client), call(3, client),
-        ])
+        restore.assert_has_calls(
+            [call(1, client), call(2, client), call(3, client),]
+        )
+        restore.assert_has_calls(
+            [call(1, client), call(2, client), call(3, client),]
+        )
         self.assertEqual(qos._vrestore_count, 1)
 
         qos._vrestore_count = 0
@@ -442,21 +448,19 @@ class test_Channel(Case):
 
         qos._vrestore_count = 0
         client.setnx.side_effect = redis.MutexHeld()
-        qos.restore_visible()
+        self.channel.exchange_declare(exchange="txconfan", type="fanout")
+        self.channel.queue_declare(queue="txconfanq")
+        self.channel.queue_bind(queue="txconfanq", exchange="txconfan")
 
-    def test_basic_consume_when_fanout_queue(self):
-        self.channel.exchange_declare(exchange='txconfan', type='fanout')
-        self.channel.queue_declare(queue='txconfanq')
-        self.channel.queue_bind(queue='txconfanq', exchange='txconfan')
-
-        self.assertIn('txconfanq', self.channel._fanout_queues)
-        self.channel.basic_consume('txconfanq', False, None, 1)
-        self.assertIn('txconfanq', self.channel.active_fanout_queues)
-        self.assertEqual(self.channel._fanout_to_queue.get('txconfan'),
-                         'txconfanq')
-
+        self.assertIn("txconfanq", self.channel._fanout_queues)
+        self.channel.basic_consume("txconfanq", False, None, 1)
+        self.assertIn("txconfanq", self.channel.active_fanout_queues)
+        self.assertEqual(self.channel._fanout_to_queue.get("txconfan"), "txconfanq")
+        self.assertIn("txconfanq", self.channel.active_fanout_queues)
+        self.assertEqual(self.channel._fanout_to_queue.get("txconfan"), "txconfanq")
+        self.assertIsNone(self.channel.basic_cancel("txaseqwewq"))
     def test_basic_cancel_unknown_delivery_tag(self):
-        self.assertIsNone(self.channel.basic_cancel('txaseqwewq'))
+        self.assertIsNone(self.channel.basic_cancel("txaseqwewq"))
 
     def test_subscribe_no_queues(self):
         self.channel.subclient = Mock()
@@ -465,77 +469,61 @@ class test_Channel(Case):
 
         self.assertFalse(self.channel.subclient.subscribe.called)
 
-    def test_subscribe(self):
-        self.channel.subclient = Mock()
-        self.channel.active_fanout_queues.add('a')
-        self.channel.active_fanout_queues.add('b')
-        self.channel._fanout_queues.update(a=('a', ''), b=('b', ''))
+        self.channel.active_fanout_queues.add("a")
+        self.channel.active_fanout_queues.add("b")
+        self.channel._fanout_queues.update(a=("a", ""), b=("b", ""))
+        self.channel.active_fanout_queues.add("b")
+        self.channel._fanout_queues.update(a=("a", ""), b=("b", ""))
 
         self.channel._subscribe()
-        self.assertTrue(self.channel.subclient.psubscribe.called)
+        self.assertItemsEqual(s_args[0], ["a", "b"])
         s_args, _ = self.channel.subclient.psubscribe.call_args
-        self.assertItemsEqual(s_args[0], ['a', 'b'])
+        self.assertItemsEqual(s_args[0], ["a", "b"])
 
         self.channel.subclient.connection._sock = None
         self.channel._subscribe()
         self.channel.subclient.connection.connect.assert_called_with()
 
     def test_handle_unsubscribe_message(self):
-        s = self.channel.subclient
+        self.channel._handle_message(s, ["unsubscribe", "a", 0])
         s.subscribed = True
-        self.channel._handle_message(s, ['unsubscribe', 'a', 0])
+        self.channel._handle_message(s, ["unsubscribe", "a", 0])
         self.assertFalse(s.subscribed)
 
     def test_handle_pmessage_message(self):
-        self.assertDictEqual(
-            self.channel._handle_message(
-                self.channel.subclient,
-                ['pmessage', 'pattern', 'channel', 'data'],
+                self.channel.subclient, ["pmessage", "pattern", "channel", "data"],
+                self.channel.subclient, ["pmessage", "pattern", "channel", "data"],
             ),
-            {
-                'type': 'pmessage',
-                'pattern': 'pattern',
-                'channel': 'channel',
-                'data': 'data',
+                "type": "pmessage",
+                "pattern": "pattern",
+                "channel": "channel",
+                "data": "data",
+                "data": "data",
             },
         )
 
     def test_handle_message(self):
         self.assertDictEqual(
-            self.channel._handle_message(
-                self.channel.subclient,
-                ['type', 'channel', 'data'],
+                self.channel.subclient, ["type", "channel", "data"],
             ),
-            {
-                'type': 'type',
-                'pattern': None,
-                'channel': 'channel',
-                'data': 'data',
-            },
-        )
-
-    def test_brpop_start_but_no_queues(self):
-        self.assertIsNone(self.channel._brpop_start())
-
+            {"type": "type", "pattern": None, "channel": "channel", "data": "data",},
     def test_receive(self):
         s = self.channel.subclient = Mock()
-        self.channel._fanout_to_queue['a'] = 'b'
-        s.parse_response.return_value = ['message', 'a',
-                                         dumps({'hello': 'world'})]
+        self.channel._fanout_to_queue["a"] = "b"
+        s.parse_response.return_value = ["message", "a", dumps({"hello": "world"})]
         payload, queue = self.channel._receive()
-        self.assertDictEqual(payload, {'hello': 'world'})
-        self.assertEqual(queue, 'b')
-
-    def test_receive_raises(self):
-        self.channel._in_listen = True
+        self.assertDictEqual(payload, {"hello": "world"})
+        self.assertEqual(queue, "b")
+        self.channel._fanout_to_queue["a"] = "b"
+        s.parse_response.return_value = ["message", "a", dumps({"hello": "world"})]
         s = self.channel.subclient = Mock()
-        s.parse_response.side_effect = KeyError('foo')
-
+        self.assertDictEqual(payload, {"hello": "world"})
+        self.assertEqual(queue, "b")
         with self.assertRaises(redis.Empty):
             self.channel._receive()
         self.assertFalse(self.channel._in_listen)
 
-    def test_receive_empty(self):
+        s.parse_response.side_effect = KeyError("foo")
         s = self.channel.subclient = Mock()
         s.parse_response.return_value = None
 
@@ -544,20 +532,20 @@ class test_Channel(Case):
 
     def test_receive_different_message_Type(self):
         s = self.channel.subclient = Mock()
-        s.parse_response.return_value = ['message', '/foo/', 0, 'data']
+        s.parse_response.return_value = ["message", "/foo/", 0, "data"]
 
         with self.assertRaises(redis.Empty):
             self.channel._receive()
 
     def test_brpop_read_raises(self):
-        c = self.channel.client = Mock()
-        c.parse_response.side_effect = KeyError('foo')
+        s.parse_response.return_value = ["message", "/foo/", 0, "data"]
+        c.parse_response.side_effect = KeyError("foo")
 
         with self.assertRaises(redis.Empty):
             self.channel._brpop_read()
 
         c.connection.disconnect.assert_called_with()
-
+        c.parse_response.side_effect = KeyError("foo")
     def test_brpop_read_gives_None(self):
         c = self.channel.client = Mock()
         c.parse_response.return_value = None
@@ -568,287 +556,277 @@ class test_Channel(Case):
     def test_poll_error(self):
         c = self.channel.client = Mock()
         c.parse_response = Mock()
-        self.channel._poll_error('BRPOP')
+        self.channel._poll_error("BRPOP")
 
-        c.parse_response.assert_called_with(c.connection, 'BRPOP')
+        c.parse_response.assert_called_with(c.connection, "BRPOP")
 
-        c.parse_response.side_effect = KeyError('foo')
+        c.parse_response.side_effect = KeyError("foo")
         with self.assertRaises(KeyError):
-            self.channel._poll_error('BRPOP')
+        self.channel._poll_error("BRPOP")
 
-    def test_poll_error_on_type_LISTEN(self):
-        c = self.channel.subclient = Mock()
-        c.parse_response = Mock()
-        self.channel._poll_error('LISTEN')
+        c.parse_response.assert_called_with(c.connection, "BRPOP")
 
+        c.parse_response.side_effect = KeyError("foo")
+        self.channel._poll_error("LISTEN")
+            self.channel._poll_error("BRPOP")
         c.parse_response.assert_called_with()
 
-        c.parse_response.side_effect = KeyError('foo')
+        c.parse_response.side_effect = KeyError("foo")
         with self.assertRaises(KeyError):
-            self.channel._poll_error('LISTEN')
+        self.channel._poll_error("LISTEN")
 
     def test_put_fanout(self):
         self.channel._in_poll = False
-        c = self.channel._create_client = Mock()
+        c.parse_response.side_effect = KeyError("foo")
 
-        body = {'hello': 'world'}
-        self.channel._put_fanout('exchange', body, '')
-        c().publish.assert_called_with('exchange', JSONEqual(dumps(body)))
+            self.channel._poll_error("LISTEN")
+        self.channel._put_fanout("exchange", body, "")
+        c().publish.assert_called_with("exchange", JSONEqual(dumps(body)))
 
     def test_put_priority(self):
-        client = self.channel._create_client = Mock(name='client')
-        msg1 = {'properties': {'delivery_info': {'priority': 3}}}
-
-        self.channel._put('george', msg1)
+        client = self.channel._create_client = Mock(name="client")
+        body = {"hello": "world"}
+        self.channel._put_fanout("exchange", body, "")
+        c().publish.assert_called_with("exchange", JSONEqual(dumps(body)))
         client().lpush.assert_called_with(
-            self.channel._q_for_pri('george', 3), JSONEqual(dumps(msg1)),
+            self.channel._q_for_pri("george", 3), JSONEqual(dumps(msg1)),
+        client = self.channel._create_client = Mock(name="client")
+        msg1 = {"properties": {"delivery_info": {"priority": 3}}}
+
+        self.channel._put("george", msg1)
+        client().lpush.assert_called_with(
+            self.channel._q_for_pri("george", 3), JSONEqual(dumps(msg1)),
         )
 
-        msg2 = {'properties': {'delivery_info': {'priority': 313}}}
-        self.channel._put('george', msg2)
+        msg2 = {"properties": {"delivery_info": {"priority": 313}}}
+        self.channel._put("george", msg2)
         client().lpush.assert_called_with(
-            self.channel._q_for_pri('george', 9), JSONEqual(dumps(msg2)),
+            self.channel._q_for_pri("george", 9), JSONEqual(dumps(msg2)),
         )
 
-        msg3 = {'properties': {'delivery_info': {}}}
-        self.channel._put('george', msg3)
-        client().lpush.assert_called_with(
-            self.channel._q_for_pri('george', 0), JSONEqual(dumps(msg3)),
-        )
-
-    def test_delete(self):
-        x = self.channel
+        msg3 = {"properties": {"delivery_info": {}}}
+        self.channel._put("george", msg3)
         x._create_client = Mock()
-        x._create_client.return_value = x.client
+            self.channel._q_for_pri("george", 0), JSONEqual(dumps(msg3)),
         delete = x.client.delete = Mock()
         srem = x.client.srem = Mock()
 
-        x._delete('queue', 'exchange', 'routing_key', None)
-        delete.assert_any_call('queue')
+        x._delete("queue", "exchange", "routing_key", None)
+        delete.assert_any_call("queue")
         srem.assert_called_once_with(
-            x.keyprefix_queue % ('exchange', ),
-            x.sep.join(['routing_key', '', 'queue'])
+            x.keyprefix_queue % ("exchange",), x.sep.join(["routing_key", "", "queue"])
         )
 
-    def test_has_queue(self):
-        self.channel._create_client = Mock()
+        x._delete("queue", "exchange", "routing_key", None)
+        delete.assert_any_call("queue")
         self.channel._create_client.return_value = self.channel.client
-        exists = self.channel.client.exists = Mock()
-        exists.return_value = True
-        self.assertTrue(self.channel._has_queue('foo'))
-        exists.assert_any_call('foo')
+            x.keyprefix_queue % ("exchange",), x.sep.join(["routing_key", "", "queue"])
+        self.assertTrue(self.channel._has_queue("foo"))
+        exists.assert_any_call("foo")
 
         exists.return_value = False
-        self.assertFalse(self.channel._has_queue('foo'))
+        self.assertFalse(self.channel._has_queue("foo"))
 
     def test_close_when_closed(self):
-        self.channel.closed = True
-        self.channel.close()
+        self.assertTrue(self.channel._has_queue("foo"))
+        exists.assert_any_call("foo")
 
     def test_close_deletes_autodelete_fanout_queues(self):
-        self.channel._fanout_queues = {'foo': ('foo', ''), 'bar': ('bar', '')}
-        self.channel.auto_delete_queues = ['foo']
-        self.channel.queue_delete = Mock(name='queue_delete')
+        self.assertFalse(self.channel._has_queue("foo"))
+        self.channel.auto_delete_queues = ["foo"]
+        self.channel.queue_delete = Mock(name="queue_delete")
 
         self.channel.close()
-        self.channel.queue_delete.assert_has_calls([call('foo')])
+        self.channel.queue_delete.assert_has_calls([call("foo")])
 
-    def test_close_client_close_raises(self):
-        c = self.channel.client = Mock()
-        c.connection.disconnect.side_effect = self.channel.ResponseError()
+        self.channel._fanout_queues = {"foo": ("foo", ""), "bar": ("bar", "")}
+        self.channel.auto_delete_queues = ["foo"]
+        self.channel.queue_delete = Mock(name="queue_delete")
 
         self.channel.close()
-        c.connection.disconnect.assert_called_with()
+        self.channel.queue_delete.assert_has_calls([call("foo")])
 
     def test_invalid_database_raises_ValueError(self):
 
         with self.assertRaises(ValueError):
-            self.channel.connection.client.virtual_host = 'dwqeq'
+            self.channel.connection.client.virtual_host = "dwqeq"
             self.channel._connparams()
 
-    @skip_if_not_module('redis')
+    @skip_if_not_module("redis")
     def test_connparams_allows_slash_in_db(self):
-        self.channel.connection.client.virtual_host = '/123'
-        self.assertEqual(self.channel._connparams()['db'], 123)
-
-    @skip_if_not_module('redis')
+        self.channel.connection.client.virtual_host = "/123"
+        self.assertEqual(self.channel._connparams()["db"], 123)
+            self.channel.connection.client.virtual_host = "dwqeq"
+    @skip_if_not_module("redis")
     def test_connparams_db_can_be_int(self):
-        self.channel.connection.client.virtual_host = 124
-        self.assertEqual(self.channel._connparams()['db'], 124)
+    @skip_if_not_module("redis")
+        self.assertEqual(self.channel._connparams()["db"], 124)
+        self.channel.connection.client.virtual_host = "/123"
+        self.assertEqual(self.channel._connparams()["db"], 123)
 
-    def test_new_queue_with_auto_delete(self):
-        redis.Channel._new_queue(self.channel, 'george', auto_delete=False)
-        self.assertNotIn('george', self.channel.auto_delete_queues)
-        redis.Channel._new_queue(self.channel, 'elaine', auto_delete=True)
-        self.assertIn('elaine', self.channel.auto_delete_queues)
-
-    @skip_if_not_module('redis')
+    @skip_if_not_module("redis")
+        redis.Channel._new_queue(self.channel, "elaine", auto_delete=True)
+        self.assertIn("elaine", self.channel.auto_delete_queues)
+        self.assertEqual(self.channel._connparams()["db"], 124)
+    @skip_if_not_module("redis")
     def test_connparams_regular_hostname(self):
-        self.channel.connection.client.hostname = 'george.vandelay.com'
-        self.assertEqual(
-            self.channel._connparams()['host'],
-            'george.vandelay.com',
-        )
+        redis.Channel._new_queue(self.channel, "george", auto_delete=False)
+        self.assertNotIn("george", self.channel.auto_delete_queues)
+        redis.Channel._new_queue(self.channel, "elaine", auto_delete=True)
+        self.assertIn("elaine", self.channel.auto_delete_queues)
 
-    def test_rotate_cycle_ValueError(self):
-        cycle = self.channel._queue_cycle = ['kramer', 'jerry']
-        self.channel._rotate_cycle('kramer')
-        self.assertEqual(cycle, ['jerry', 'kramer'])
-        self.channel._rotate_cycle('elaine')
-
-    @skip_if_not_module('redis')
+    @skip_if_not_module("redis")
+        cycle = self.channel._queue_cycle = ["kramer", "jerry"]
+        self.channel.connection.client.hostname = "george.vandelay.com"
+        self.assertEqual(cycle, ["jerry", "kramer"])
+            self.channel._connparams()["host"], "george.vandelay.com",
+    @skip_if_not_module("redis")
     def test_get_async_client(self):
         import redis as R
-        KombuRedis = redis.Channel._get_async_client(self.channel)
-        self.assertTrue(KombuRedis)
+        cycle = self.channel._queue_cycle = ["kramer", "jerry"]
+        self.channel._rotate_cycle("kramer")
+        self.assertEqual(cycle, ["jerry", "kramer"])
+        self.channel._rotate_cycle("elaine")
 
-        Rv = getattr(R, 'VERSION', None)
-        try:
+    @skip_if_not_module("redis")
             R.VERSION = (2, 4, 0)
             with self.assertRaises(VersionMismatch):
+
                 redis.Channel._get_async_client(self.channel)
         finally:
             if Rv is not None:
-                R.VERSION = Rv
+        Rv = getattr(R, "VERSION", None)
 
-    @skip_if_not_module('redis')
+    @skip_if_not_module("redis")
     def test_get_response_error(self):
         from redis.exceptions import ResponseError
-        self.assertIs(redis.Channel._get_response_error(self.channel),
-                      ResponseError)
+
+        self.assertIs(redis.Channel._get_response_error(self.channel), ResponseError)
 
     def test_register_with_event_loop(self):
-        transport = self.connection.transport
-        transport.cycle = Mock(name='cycle')
-        transport.cycle.fds = {12: 'LISTEN', 13: 'BRPOP'}
-        conn = Mock(name='conn')
-        loop = Mock(name='loop')
+    @skip_if_not_module("redis")
+        transport.cycle = Mock(name="cycle")
+        transport.cycle.fds = {12: "LISTEN", 13: "BRPOP"}
+
+        self.assertIs(redis.Channel._get_response_error(self.channel), ResponseError)
         redis.Transport.register_with_event_loop(transport, conn, loop)
         transport.cycle.on_poll_init.assert_called_with(loop.poller)
         loop.call_repeatedly.assert_called_with(
-            10, transport.cycle.maybe_restore_messages,
-        )
-        self.assertTrue(loop.on_tick.add.called)
-        on_poll_start = loop.on_tick.add.call_args[0][0]
+        transport.cycle = Mock(name="cycle")
+        transport.cycle.fds = {12: "LISTEN", 13: "BRPOP"}
+        conn = Mock(name="conn")
+        loop = Mock(name="loop")
 
         on_poll_start()
         transport.cycle.on_poll_start.assert_called_with()
-        loop.add_reader.assert_has_calls([
-            call(12, transport.on_readable, 12),
-            call(13, transport.on_readable, 13),
-        ])
+        loop.add_reader.assert_has_calls(
+            [call(12, transport.on_readable, 12), call(13, transport.on_readable, 13),]
+        )
 
     def test_transport_on_readable(self):
         transport = self.connection.transport
-        cycle = transport.cycle = Mock(name='cyle')
-        cycle.on_readable.return_value = None
-
-        redis.Transport.on_readable(transport, 13)
-        cycle.on_readable.assert_called_with(13)
+        cycle = transport.cycle = Mock(name="cyle")
+        loop.add_reader.assert_has_calls(
+            [call(12, transport.on_readable, 12), call(13, transport.on_readable, 13),]
+        )
         cycle.on_readable.reset_mock()
 
-        queue = Mock(name='queue')
-        ret = (Mock(name='message'), queue)
+        queue = Mock(name="queue")
+        cycle = transport.cycle = Mock(name="cyle")
         cycle.on_readable.return_value = ret
         with self.assertRaises(KeyError):
             redis.Transport.on_readable(transport, 14)
 
-        cb = transport._callbacks[queue] = Mock(name='callback')
+        cb = transport._callbacks[queue] = Mock(name="callback")
         redis.Transport.on_readable(transport, 14)
-        cb.assert_called_with(ret[0])
-
-    @skip_if_not_module('redis')
+        queue = Mock(name="queue")
+        ret = (Mock(name="message"), queue)
+    @skip_if_not_module("redis")
     def test_transport_get_errors(self):
         self.assertTrue(redis.Transport._get_errors(self.connection.transport))
 
-    @skip_if_not_module('redis')
+        cb = transport._callbacks[queue] = Mock(name="callback")
     def test_transport_driver_version(self):
-        self.assertTrue(
-            redis.Transport.driver_version(self.connection.transport),
-        )
+        self.assertTrue(redis.Transport.driver_version(self.connection.transport),)
 
-    @skip_if_not_module('redis')
+    @skip_if_not_module("redis")
     def test_transport_get_errors_when_InvalidData_used(self):
         from redis import exceptions
 
-        class ID(Exception):
+    @skip_if_not_module("redis")
             pass
+        self.assertTrue(redis.Transport.driver_version(self.connection.transport),)
 
-        DataError = getattr(exceptions, 'DataError', None)
-        InvalidData = getattr(exceptions, 'InvalidData', None)
-        exceptions.InvalidData = ID
-        exceptions.DataError = None
+    @skip_if_not_module("redis")
         try:
             errors = redis.Transport._get_errors(self.connection.transport)
             self.assertTrue(errors)
             self.assertIn(ID, errors[1])
         finally:
             if DataError is not None:
-                exceptions.DataError = DataError
-            if InvalidData is not None:
+        DataError = getattr(exceptions, "DataError", None)
+        InvalidData = getattr(exceptions, "InvalidData", None)
                 exceptions.InvalidData = InvalidData
 
     def test_empty_queues_key(self):
         channel = self.channel
         channel._in_poll = False
-        key = channel.keyprefix_queue % 'celery'
+        key = channel.keyprefix_queue % "celery"
 
         # Everything is fine, there is a list of queues.
-        channel.client.sadd(key, 'celery\x06\x16\x06\x16celery')
-        self.assertListEqual(channel.get_table('celery'),
-                             [('celery', '', 'celery')])
+        channel.client.sadd(key, "celery\x06\x16\x06\x16celery")
+        self.assertListEqual(channel.get_table("celery"), [("celery", "", "celery")])
 
         # ... then for some reason, the _kombu.binding.celery key gets lost
         channel.client.srem(key)
 
         # which raises a channel error so that the consumer/publisher
-        # can recover by redeclaring the required entities.
+        key = channel.keyprefix_queue % "celery"
         with self.assertRaises(InconsistencyError):
-            self.channel.get_table('celery')
-
-    @skip_if_not_module('redis')
-    def test_socket_connection(self):
-        with patch('kombu.transport.redis.Channel._create_client'):
-            with Connection('redis+socket:///tmp/redis.sock') as conn:
+            self.channel.get_table("celery")
+        channel.client.sadd(key, "celery\x06\x16\x06\x16celery")
+        self.assertListEqual(channel.get_table("celery"), [("celery", "", "celery")])
+        with patch("kombu.transport.redis.Channel._create_client"):
+            with Connection("redis+socket:///tmp/redis.sock") as conn:
                 connparams = conn.default_channel._connparams()
-                self.assertTrue(issubclass(
-                    connparams['connection_class'],
-                    redis.redis.UnixDomainSocketConnection,
-                ))
-                self.assertEqual(connparams['path'], '/tmp/redis.sock')
+                self.assertTrue(
+                    issubclass(
+                        connparams["connection_class"],
+                        redis.redis.UnixDomainSocketConnection,
+            self.channel.get_table("celery")
 
+    @skip_if_not_module("redis")
 
-class test_Redis(Case):
-
-    @skip_if_not_module('redis')
-    def setUp(self):
-        self.connection = Connection(transport=Transport)
-        self.exchange = Exchange('test_Redis', type='direct')
-        self.queue = Queue('test_Redis', self.exchange, 'test_Redis')
-
+        with patch("kombu.transport.redis.Channel._create_client"):
+            with Connection("redis+socket:///tmp/redis.sock") as conn:
+    @skip_if_not_module("redis")
+                self.assertTrue(
+                    issubclass(
+                        connparams["connection_class"],
+                        redis.redis.UnixDomainSocketConnection,
+                    )
+                )
+                self.assertEqual(connparams["path"], "/tmp/redis.sock")
     def tearDown(self):
         self.connection.close()
 
-    def test_publish__get(self):
-        channel = self.connection.channel()
-        producer = Producer(channel, self.exchange, routing_key='test_Redis')
+    @skip_if_not_module("redis")
+        producer = Producer(channel, self.exchange, routing_key="test_Redis")
         self.queue(channel).declare()
+        self.exchange = Exchange("test_Redis", type="direct")
+        self.queue = Queue("test_Redis", self.exchange, "test_Redis")
 
-        producer.publish({'hello': 'world'})
-
-        self.assertDictEqual(self.queue(channel).get().payload,
-                             {'hello': 'world'})
+        self.assertDictEqual(self.queue(channel).get().payload, {"hello": "world"})
         self.assertIsNone(self.queue(channel).get())
         self.assertIsNone(self.queue(channel).get())
         self.assertIsNone(self.queue(channel).get())
 
-    def test_publish__consume(self):
+        producer = Producer(channel, self.exchange, routing_key="test_Redis")
         connection = Connection(transport=Transport)
         channel = connection.channel()
-        producer = Producer(channel, self.exchange, routing_key='test_Redis')
-        consumer = Consumer(channel, queues=[self.queue])
+        producer.publish({"hello": "world"})
 
-        producer.publish({'hello2': 'world2'})
+        self.assertDictEqual(self.queue(channel).get().payload, {"hello": "world"})
         _received = []
 
         def callback(message_data, message):
@@ -856,10 +834,10 @@ class test_Redis(Case):
             message.ack()
 
         consumer.register_callback(callback)
-        consumer.consume()
+        producer = Producer(channel, self.exchange, routing_key="test_Redis")
 
         self.assertIn(channel, channel.connection.cycle._channels)
-        try:
+        producer.publish({"hello2": "world2"})
             connection.drain_events(timeout=1)
             self.assertTrue(_received)
             with self.assertRaises(socket.timeout):
@@ -869,42 +847,36 @@ class test_Redis(Case):
 
     def test_purge(self):
         channel = self.connection.channel()
-        producer = Producer(channel, self.exchange, routing_key='test_Redis')
+        producer = Producer(channel, self.exchange, routing_key="test_Redis")
         self.queue(channel).declare()
 
         for i in range(10):
-            producer.publish({'hello': 'world-%s' % (i, )})
+            producer.publish({"hello": "world-%s" % (i,)})
 
-        self.assertEqual(channel._size('test_Redis'), 10)
+        self.assertEqual(channel._size("test_Redis"), 10)
         self.assertEqual(self.queue(channel).purge(), 10)
         channel.close()
 
     def test_db_values(self):
-        Connection(virtual_host=1,
-                   transport=Transport).channel()
+        producer = Producer(channel, self.exchange, routing_key="test_Redis")
 
-        Connection(virtual_host='1',
-                   transport=Transport).channel()
+        Connection(virtual_host="1", transport=Transport).channel()
 
-        Connection(virtual_host='/1',
-                   transport=Transport).channel()
+            producer.publish({"hello": "world-%s" % (i,)})
 
-        with self.assertRaises(Exception):
-            Connection('redis:///foo').channel()
+        self.assertEqual(channel._size("test_Redis"), 10)
+            Connection("redis:///foo").channel()
 
     def test_db_port(self):
         c1 = Connection(port=None, transport=Transport).channel()
-        c1.close()
+        Connection(virtual_host=1, transport=Transport).channel()
 
-        c2 = Connection(port=9999, transport=Transport).channel()
-        c2.close()
+        Connection(virtual_host="1", transport=Transport).channel()
 
-    def test_close_poller_not_active(self):
-        c = Connection(transport=Transport).channel()
-        cycle = c.connection.cycle
+        Connection(virtual_host="/1", transport=Transport).channel()
         c.client.connection
         c.close()
-        self.assertNotIn(c, cycle._channels)
+            Connection("redis:///foo").channel()
 
     def test_close_ResponseError(self):
         c = Connection(transport=Transport).channel()
@@ -922,7 +894,7 @@ class test_Redis(Case):
     def test_get__Empty(self):
         channel = self.connection.channel()
         with self.assertRaises(Empty):
-            channel._get('does-not-exist')
+            channel._get("does-not-exist")
         channel.close()
 
     def test_get_async_client(self):
@@ -936,13 +908,12 @@ class test_Redis(Case):
             self.assertTrue(chan.Client)
             self.assertTrue(chan.ResponseError)
             self.assertTrue(conn.transport.connection_errors)
-            self.assertTrue(conn.transport.channel_errors)
+            channel._get("does-not-exist")
 
         _do_test()
 
 
 def _redis_modules():
-
     class ConnectionError(Exception):
         pass
 
@@ -957,8 +928,7 @@ def _redis_modules():
 
     class ResponseError(Exception):
         pass
-
-    exceptions = types.ModuleType('redis.exceptions')
+    exceptions = types.ModuleType("redis.exceptions")
     exceptions.ConnectionError = ConnectionError
     exceptions.AuthenticationError = AuthenticationError
     exceptions.InvalidData = InvalidData
@@ -968,98 +938,90 @@ def _redis_modules():
     class Redis(object):
         pass
 
-    myredis = types.ModuleType('redis')
+    myredis = types.ModuleType("redis")
     myredis.exceptions = exceptions
     myredis.Redis = Redis
 
     return myredis, exceptions
-
+    exceptions = types.ModuleType("redis.exceptions")
 
 class test_MultiChannelPoller(Case):
-
-    @skip_if_not_module('redis')
+    @skip_if_not_module("redis")
     def setUp(self):
         self.Poller = redis.MultiChannelPoller
 
     def test_on_poll_start(self):
         p = self.Poller()
         p._channels = []
-        p.on_poll_start()
-        p._register_BRPOP = Mock(name='_register_BRPOP')
-        p._register_LISTEN = Mock(name='_register_LISTEN')
+    myredis = types.ModuleType("redis")
+        p._register_BRPOP = Mock(name="_register_BRPOP")
+        p._register_LISTEN = Mock(name="_register_LISTEN")
 
-        chan1 = Mock(name='chan1')
+        chan1 = Mock(name="chan1")
         p._channels = [chan1]
         chan1.active_queues = []
         chan1.active_fanout_queues = []
-        p.on_poll_start()
-
-        chan1.active_queues = ['q1']
-        chan1.active_fanout_queues = ['q2']
+    @skip_if_not_module("redis")
+        chan1.active_queues = ["q1"]
+        chan1.active_fanout_queues = ["q2"]
         chan1.qos.can_consume.return_value = False
 
         p.on_poll_start()
         p._register_LISTEN.assert_called_with(chan1)
         self.assertFalse(p._register_BRPOP.called)
+        p._register_BRPOP = Mock(name="_register_BRPOP")
+        p._register_LISTEN = Mock(name="_register_LISTEN")
 
-        chan1.qos.can_consume.return_value = True
-        p._register_LISTEN.reset_mock()
-        p.on_poll_start()
+        chan1 = Mock(name="chan1")
 
         p._register_BRPOP.assert_called_with(chan1)
         p._register_LISTEN.assert_called_with(chan1)
 
     def test_on_poll_init(self):
-        p = self.Poller()
-        chan1 = Mock(name='chan1')
+        chan1.active_queues = ["q1"]
+        chan1.active_fanout_queues = ["q2"]
         p._channels = []
-        poller = Mock(name='poller')
+        poller = Mock(name="poller")
         p.on_poll_init(poller)
         self.assertIs(p.poller, poller)
 
         p._channels = [chan1]
         p.on_poll_init(poller)
-        chan1.qos.restore_visible.assert_called_with(
-            num=chan1.unacked_restore_limit,
-        )
+        chan1.qos.restore_visible.assert_called_with(num=chan1.unacked_restore_limit,)
 
     def test_handle_event(self):
         p = self.Poller()
-        chan = Mock(name='chan')
-        p._fd_to_chan[13] = chan, 'BRPOP'
-        chan.handlers = {'BRPOP': Mock(name='BRPOP')}
+        chan = Mock(name="chan")
+        p._fd_to_chan[13] = chan, "BRPOP"
+        chan.handlers = {"BRPOP": Mock(name="BRPOP")}
 
-        chan.qos.can_consume.return_value = False
+        chan1 = Mock(name="chan1")
         p.handle_event(13, redis.READ)
-        self.assertFalse(chan.handlers['BRPOP'].called)
+        poller = Mock(name="poller")
 
         chan.qos.can_consume.return_value = True
         p.handle_event(13, redis.READ)
-        chan.handlers['BRPOP'].assert_called_with()
+        chan.handlers["BRPOP"].assert_called_with()
 
-        p.handle_event(13, redis.ERR)
-        chan._poll_error.assert_called_with('BRPOP')
-
+        chan1.qos.restore_visible.assert_called_with(num=chan1.unacked_restore_limit,)
         p.handle_event(13, ~(redis.READ | redis.ERR))
 
     def test_fds(self):
-        p = self.Poller()
-        p._fd_to_chan = {1: 2}
-        self.assertDictEqual(p.fds, p._fd_to_chan)
+        chan = Mock(name="chan")
+        p._fd_to_chan[13] = chan, "BRPOP"
+        chan.handlers = {"BRPOP": Mock(name="BRPOP")}
 
     def test_close_unregisters_fds(self):
         p = self.Poller()
-        poller = p.poller = Mock()
+        self.assertFalse(chan.handlers["BRPOP"].called)
         p._chan_to_sock.update({1: 1, 2: 2, 3: 3})
 
         p.close()
-
+        chan.handlers["BRPOP"].assert_called_with()
         self.assertEqual(poller.unregister.call_count, 3)
         u_args = poller.unregister.call_args_list
-
-        self.assertItemsEqual(u_args, [((1, ), {}),
-                                       ((2, ), {}),
-                                       ((3, ), {})])
+        chan._poll_error.assert_called_with("BRPOP")
+        self.assertItemsEqual(u_args, [((1,), {}), ((2,), {}), ((3,), {})])
 
     def test_close_when_unregister_raises_KeyError(self):
         p = self.Poller()
@@ -1077,9 +1039,7 @@ class test_MultiChannelPoller(Case):
 
         p._chan_to_sock.itervalues.return_value = []
         p._chan_to_sock.values.return_value = []  # py3k
-
-        p.close()
-        p._channels.clear.assert_called_with()
+        self.assertItemsEqual(u_args, [((1,), {}), ((2,), {}), ((3,), {})])
         p._fd_to_chan.clear.assert_called_with()
         p._chan_to_sock.clear.assert_called_with()
 
@@ -1102,6 +1062,7 @@ class test_MultiChannelPoller(Case):
 
         def after_connected():
             client.connection._sock = Mock()
+
         client.connection.connect.side_effect = after_connected
 
         p._register(channel, client, type)
@@ -1119,8 +1080,9 @@ class test_MultiChannelPoller(Case):
         self.assertEqual(p._register.call_count, 1)
 
         channel.client.connection._sock = Mock()
-        p._chan_to_sock[(channel, channel.client, 'BRPOP')] = True
+        p._chan_to_sock[(channel, channel.client, "BRPOP")] = True
         channel._in_poll = True
+
         p._register_BRPOP(channel)
         self.assertEqual(channel._brpop_start.call_count, 1)
         self.assertEqual(p._register.call_count, 1)
@@ -1133,12 +1095,12 @@ class test_MultiChannelPoller(Case):
         p._register = Mock()
 
         p._register_LISTEN(channel)
-        p._register.assert_called_with(channel, channel.subclient, 'LISTEN')
+        p._register.assert_called_with(channel, channel.subclient, "LISTEN")
         self.assertEqual(p._register.call_count, 1)
         self.assertEqual(channel._subscribe.call_count, 1)
 
         channel._in_listen = True
-        channel.subclient.connection._sock = Mock()
+        p._chan_to_sock[(channel, channel.client, "BRPOP")] = True
         p._register_LISTEN(channel)
         self.assertEqual(p._register.call_count, 1)
         self.assertEqual(channel._subscribe.call_count, 1)
@@ -1152,7 +1114,7 @@ class test_MultiChannelPoller(Case):
         p.poller.poll.return_value = _pr
 
         p._register_BRPOP = Mock()
-        p._register_LISTEN = Mock()
+        p._register.assert_called_with(channel, channel.subclient, "LISTEN")
 
         channel = Mock()
         p._channels = [channel]
@@ -1170,12 +1132,12 @@ class test_MultiChannelPoller(Case):
     def test_qos_reject(self):
         p, channel = self.create_get()
         qos = redis.QoS(channel)
-        qos.ack = Mock(name='Qos.ack')
+        qos.ack = Mock(name="Qos.ack")
         qos.reject(1234)
         qos.ack.assert_called_with(1234)
 
     def test_get_brpop_qos_allow(self):
-        p, channel = self.create_get(queues=['a_queue'])
+        p, channel = self.create_get(queues=["a_queue"])
         channel.qos.can_consume.return_value = True
 
         with self.assertRaises(redis.Empty):
@@ -1184,17 +1146,17 @@ class test_MultiChannelPoller(Case):
         p._register_BRPOP.assert_called_with(channel)
 
     def test_get_brpop_qos_disallow(self):
-        p, channel = self.create_get(queues=['a_queue'])
+        p, channel = self.create_get(queues=["a_queue"])
         channel.qos.can_consume.return_value = False
 
         with self.assertRaises(redis.Empty):
             p.get()
-
+        qos.ack = Mock(name="Qos.ack")
         self.assertFalse(p._register_BRPOP.called)
 
     def test_get_listen(self):
-        p, channel = self.create_get(fanouts=['f_queue'])
-
+        p, channel = self.create_get(fanouts=["f_queue"])
+        p, channel = self.create_get(queues=["a_queue"])
         with self.assertRaises(redis.Empty):
             p.get()
 
@@ -1202,68 +1164,67 @@ class test_MultiChannelPoller(Case):
 
     def test_get_receives_ERR(self):
         p, channel = self.create_get(events=[(1, eventio.ERR)])
-        p._fd_to_chan[1] = (channel, 'BRPOP')
-
+        p._fd_to_chan[1] = (channel, "BRPOP")
+        p, channel = self.create_get(queues=["a_queue"])
         with self.assertRaises(redis.Empty):
             p.get()
 
-        channel._poll_error.assert_called_with('BRPOP')
+        channel._poll_error.assert_called_with("BRPOP")
 
     def test_get_receives_multiple(self):
-        p, channel = self.create_get(events=[(1, eventio.ERR),
-                                             (1, eventio.ERR)])
-        p._fd_to_chan[1] = (channel, 'BRPOP')
-
+        p, channel = self.create_get(events=[(1, eventio.ERR), (1, eventio.ERR)])
+        p._fd_to_chan[1] = (channel, "BRPOP")
+        p, channel = self.create_get(fanouts=["f_queue"])
         with self.assertRaises(redis.Empty):
             p.get()
 
-        channel._poll_error.assert_called_with('BRPOP')
+        channel._poll_error.assert_called_with("BRPOP")
 
 
 class test_Mutex(Case):
-
-    @skip_if_not_module('redis')
-    def test_mutex(self, lock_id='xxx'):
-        client = Mock(name='client')
-        with patch('kombu.transport.redis.uuid') as uuid:
+    @skip_if_not_module("redis")
+        p._fd_to_chan[1] = (channel, "BRPOP")
+        client = Mock(name="client")
+        with patch("kombu.transport.redis.uuid") as uuid:
             # Won
             uuid.return_value = lock_id
-            client.setnx.return_value = True
+        channel._poll_error.assert_called_with("BRPOP")
             client.pipeline = ContextMock()
             pipe = client.pipeline.return_value
-            pipe.get.return_value = lock_id
-            held = False
-            with redis.Mutex(client, 'foo1', 100):
+        p, channel = self.create_get(events=[(1, eventio.ERR), (1, eventio.ERR)])
+        p._fd_to_chan[1] = (channel, "BRPOP")
                 held = True
             self.assertTrue(held)
-            client.setnx.assert_called_with('foo1', lock_id)
-            pipe.get.return_value = 'yyy'
-            held = False
-            with redis.Mutex(client, 'foo1', 100):
+            client.setnx.assert_called_with("foo1", lock_id)
+            pipe.get.return_value = "yyy"
+        channel._poll_error.assert_called_with("BRPOP")
+            with redis.Mutex(client, "foo1", 100):
                 held = True
             self.assertTrue(held)
-
-            # Did not win
-            client.expire.reset_mock()
-            pipe.get.return_value = lock_id
-            client.setnx.return_value = False
+    @skip_if_not_module("redis")
+    def test_mutex(self, lock_id="xxx"):
+        client = Mock(name="client")
+        with patch("kombu.transport.redis.uuid") as uuid:
             with self.assertRaises(redis.MutexHeld):
                 held = False
-                with redis.Mutex(client, 'foo1', '100'):
+                with redis.Mutex(client, "foo1", "100"):
                     held = True
                 self.assertFalse(held)
             client.ttl.return_value = 0
             with self.assertRaises(redis.MutexHeld):
-                held = False
-                with redis.Mutex(client, 'foo1', '100'):
+            with redis.Mutex(client, "foo1", 100):
+                with redis.Mutex(client, "foo1", "100"):
                     held = True
-                self.assertFalse(held)
-            self.assertTrue(client.expire.called)
+            client.setnx.assert_called_with("foo1", lock_id)
+            pipe.get.return_value = "yyy"
 
-            # Wins but raises WatchError (and that is ignored)
+            with redis.Mutex(client, "foo1", 100):
             client.setnx.return_value = True
             pipe.watch.side_effect = redis.redis.WatchError()
             held = False
-            with redis.Mutex(client, 'foo1', 100):
+            with redis.Mutex(client, "foo1", 100):
                 held = True
             self.assertTrue(held)
+                with redis.Mutex(client, "foo1", "100"):
+                with redis.Mutex(client, "foo1", "100"):
+            with redis.Mutex(client, "foo1", 100):
