@@ -101,7 +101,40 @@
 :release-date: 2019-05-30 15:30 P.M UTC+6:00
 :release-by: Asif Saif Uddin
 
--
+- Dropped python 3.4
+
+- Bump py-amqp to 2.5.0
+
+- Use SIMEMBERS instead of SMEMBERS to check for queue (redis broker)
+
+  * Add `_lookup_direct` method to virtual channel. (#994)
+
+  Add possibility to optimize lookup for queue in direct
+  exchange set.
+
+  * Add `_lookup_direct` method to redis virtual channel. (#994)
+
+  Use `SISMEMBER` instead of `SMEMBERS` command to check if queue
+  exists in a set. Time complexity is increased from O(N) to O(1)
+  where N is the set cardinality.
+
+  Contributed by **Stevan Milic** and **Asif Saif Uddin**
+
+- Include priority in properties only if it's not None.
+  Since we attempt to serialize the priority property if it exists
+  in the dictionary it must be an integer.
+
+  Contributed by **Omer Katz**
+
+- Removed dangerous default mutable arguments from function
+  definitions where appropriate.
+
+  Contributed by **Todd Cook**
+
+- Codebase improvements and fixes by:
+
+  - **Omer Katz**
+  - **Asif Saif Uddin**
 
 .. _version-4.5.0:
 
