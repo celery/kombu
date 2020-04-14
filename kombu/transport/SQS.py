@@ -527,8 +527,8 @@ class Channel(virtual.Channel):
             q = self.predefined_queues[queue]
             c = self._predefined_queue_clients[queue] = self.new_sqs_client(
                 region=q.get('region', self.region),
-                access_key_id=q['access_key_id'] or self.conninfo.userid,
-                secret_access_key=q['secret_access_key'] or self.conninfo.password,  # noqa: E501
+                access_key_id=q.get('access_key_id', self.conninfo.userid),
+                secret_access_key=q.get('secret_access_key', self.conninfo.password),  # noqa: E501
             )
             return c
 
