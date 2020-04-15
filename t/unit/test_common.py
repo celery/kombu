@@ -198,6 +198,21 @@ class test_maybe_declare:
         # Then: the connection client used ensure to ensure the retry policy
         assert channel.connection.client.ensure.call_count
 
+    def test_with_retry_dropped_connection(self):
+        # Given: A mock Channel and mock entity
+        channel = self._get_mock_channel()
+        # Given: A mock Entity that is already bound
+        entity = self._get_mock_entity(
+            is_bound=True, can_cache_declaration=True)
+        entity.channel = channel
+        assert entity.is_bound, "Expected entity is bound to begin this test."
+        # When: Entity channel connection has gone away
+        entity.channel.connection = None
+        # When: calling maybe_declare with retry
+        # Then: the RecoverableConnectionError should be raised
+        with pytest.raises(RecoverableConnectionError):
+            maybe_declare(entity, channel, retry=True)
+
 
 class test_replies:
 
