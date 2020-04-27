@@ -11,28 +11,38 @@ addons:
 env:
   global:
     PYTHONUNBUFFERED=yes
+  matrix:
+    - MATRIX_TOXENV=unit
 
 stages:
   - test
+  - integration
   - lint
+
+_integration_job_py_amqp: &integration_job_py_amqp
+    script:
+        - tox -v -- -v
+    services:
+      - docker
+    stage: integration
 
 jobs:
   include:
     - python: 2.7
-      env: TOXENV=2.7
+      env: TOXENV=2.7-unit
     - python: 3.5
-      env: TOXENV=3.5
+      env: TOXENV=3.5-unit
     - python: 3.6
-      env: TOXENV=3.6
+      env: TOXENV=3.6-unit
     - python: 3.7
-      env: TOXENV=3.7-linux
+      env: TOXENV=3.7-linux-unit
     - python: 3.8
-      env: TOXENV=3.8-linux
+      env: TOXENV=3.8-linux-unit
     - python: pypy2.7-7.1.1
-      env: TOXENV=pypy
+      env: TOXENV=pypy-unit
       dist: xenial
     - python: pypy3.5-7.0
-      env: TOXENV=pypy3
+      env: TOXENV=pypy3-unit
       dist: xenial
     - env: TOXENV=flake8
       stage: lint
@@ -44,10 +54,13 @@ jobs:
     - python: '3.6'
       env: TOXENV=pydocstyle
       stage: lint
+    - python: 2.7
+      <<: *integration_job_py_amqp
+      env: TOXENV=2.7-integration-py-amqp
 
 install:
     - pip --disable-pip-version-check install -U pip setuptools wheel | cat
-    - pip --disable-pip-version-check install -U tox | cat
+    - pip --disable-pip-version-check install -U tox tox-docker | cat
 script: tox -v -- -v
 after_success:
   - .tox/$TRAVIS_PYTHON_VERSION/bin/coverage xml
