@@ -75,6 +75,27 @@ jobs:
     - python: pypy3.5-7.0
       <<: *integration_job
       env: TOXENV=pypy3-integration-py-amqp
+    - python: 2.7
+      <<: *integration_job
+      env: TOXENV=2.7-integration-redis
+    - python: 3.5
+      <<: *integration_job
+      env: TOXENV=3.5-integration-redis
+    - python: 3.6
+      <<: *integration_job
+      env: TOXENV=3.6-integration-redis
+    - python: 3.7
+      <<: *integration_job
+      env: TOXENV=3.7-linux-integration-redis
+    - python: 3.8
+      <<: *integration_job
+      env: TOXENV=3.8-linux-integration-redis
+    - python: pypy2.7-7.1.1
+      <<: *integration_job
+      env: TOXENV=pypy-integration-redis
+    - python: pypy3.5-7.0
+      <<: *integration_job
+      env: TOXENV=pypy3-integration-redis
 
 install:
     - pip --disable-pip-version-check install -U pip setuptools wheel | cat
