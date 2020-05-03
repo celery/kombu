@@ -41,11 +41,22 @@ class BasicFunctionality(object):
                 with consumer:
                     conn.drain_events(timeout=1)
 
-    def test_simple_publish_consume(self, connection):
+    def test_simple_queue_publish_consume(self, connection):
         with connection as conn:
-            with closing(conn.SimpleQueue('simple_test')) as queue:
+            with closing(conn.SimpleQueue('simple_queue_test')) as queue:
                 queue.put({'Hello': 'World'}, headers={'k1': 'v1'})
                 message = queue.get(timeout=1)
+                assert message.payload == {'Hello': 'World'}
+                assert message.content_type == 'application/json'
+                assert message.content_encoding == 'utf-8'
+                assert message.headers == {'k1': 'v1'}
+                message.ack()
+
+    def test_simple_buffer_publish_consume(self, connection):
+        with connection as conn:
+            with closing(conn.SimpleBuffer('simple_buffer_test')) as buf:
+                buf.put({'Hello': 'World'}, headers={'k1': 'v1'})
+                message = buf.get(timeout=1)
                 assert message.payload == {'Hello': 'World'}
                 assert message.content_type == 'application/json'
                 assert message.content_encoding == 'utf-8'
