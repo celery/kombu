@@ -99,7 +99,7 @@ class Channel(virtual.Channel):
             self.session.execute('BEGIN IMMEDIATE TRANSACTION')
         try:
             msg = self.session.query(self.message_cls) \
-                .with_lockmode('update') \
+                .with_for_update() \
                 .filter(self.message_cls.queue_id == obj.id) \
                 .filter(self.message_cls.visible != False) \
                 .order_by(self.message_cls.sent_at) \
