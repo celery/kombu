@@ -27,5 +27,5 @@ def connection(request):
 
 @pytest.mark.env('redis')
 @pytest.mark.flaky(reruns=5, reruns_delay=2)
-class test_BasicFunctionality(BasicFunctionality):
+class test_RedisBasicFunctionality(BasicFunctionality):
     pass
