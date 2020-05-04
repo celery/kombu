@@ -1,7 +1,9 @@
 from __future__ import absolute_import, unicode_literals
 
+import socket
 from contextlib import closing
 
+import pytest
 import kombu
 
 
@@ -62,3 +64,91 @@ class BasicFunctionality(object):
                 assert message.content_encoding == 'utf-8'
                 assert message.headers == {'k1': 'v1'}
                 message.ack()
+
+
+class BaseExchangeTypes(object):
+
+    def _callback(self, body, message):
+        message.ack()
+        assert body == {'hello': 'world'}
+        assert message.content_type == 'application/x-python-serialize'
+        message.delivery_info['routing_key'] == 'test'
+        message.delivery_info['exchange'] == ''
+        assert message.payload == body
+
+    def _consume(self, connection, queue):
+        consumer = kombu.Consumer(
+            connection, [queue], accept=['pickle']
+        )
+        consumer.register_callback(self._callback)
+        with consumer:
+            connection.drain_events(timeout=1)
+
+    def _publish(self, channel, exchange, queues, routing_key=None):
+        producer = kombu.Producer(channel, exchange=exchange)
+        if routing_key:
+            producer.publish(
+                {'hello': 'world'},
+                declare=list(queues),
+                serializer='pickle',
+                routing_key=routing_key
+            )
+        else:
+            producer.publish(
+                {'hello': 'world'},
+                declare=list(queues),
+                serializer='pickle'
+            )
+
+    def test_direct(self, connection):
+        ex = kombu.Exchange('test_direct', type='direct')
+        test_queue = kombu.Queue('direct1', exchange=ex)
+
+        with connection as conn:
+            with conn.channel() as channel:
+                self._publish(channel, ex, [test_queue])
+                self._consume(conn, test_queue)
+
+    def test_direct_routing_keys(self, connection):
+        ex = kombu.Exchange('test_rk_direct', type='direct')
+        test_queue1 = kombu.Queue('rk_direct1', exchange=ex, routing_key='d1')
+        test_queue2 = kombu.Queue('rk_direct2', exchange=ex, routing_key='d2')
+
+        with connection as conn:
+            with conn.channel() as channel:
+                self._publish(channel, ex, [test_queue1, test_queue2], 'd1')
+                self._consume(conn, test_queue1)
+                # direct2 queue should not have data
+                with pytest.raises(socket.timeout):
+                    self._consume(conn, test_queue2)
+
+    def test_fanout(self, connection):
+        ex = kombu.Exchange('test_fanout', type='fanout')
+        test_queue1 = kombu.Queue('fanout1', exchange=ex)
+        test_queue2 = kombu.Queue('fanout2', exchange=ex)
+
+        with connection as conn:
+            with conn.channel() as channel:
+                self._publish(channel, ex, [test_queue1, test_queue2])
+
+                self._consume(conn, test_queue1)
+                self._consume(conn, test_queue2)
+
+    def test_topic(self, connection):
+        ex = kombu.Exchange('test_topic', type='topic')
+        test_queue1 = kombu.Queue('topic1', exchange=ex, routing_key='t.*')
+        test_queue2 = kombu.Queue('topic2', exchange=ex, routing_key='t.*')
+        test_queue3 = kombu.Queue('topic3', exchange=ex, routing_key='t')
+
+        with connection as conn:
+            with conn.channel() as channel:
+                self._publish(
+                    channel, ex, [test_queue1, test_queue2, test_queue3],
+                    routing_key='t.1'
+                )
+
+                self._consume(conn, test_queue1)
+                self._consume(conn, test_queue2)
+                with pytest.raises(socket.timeout):
+                    # topic3 queue should not have data
+                    self._consume(conn, test_queue3)
