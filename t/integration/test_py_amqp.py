@@ -10,7 +10,7 @@ from .common import BasicFunctionality
 
 def get_connection(
         hostname, port, vhost):
-    return kombu.Connection('amqp://{}:{}'.format(hostname, port))
+    return kombu.Connection('pyamqp://{}:{}'.format(hostname, port))
 
 
 @pytest.fixture()
