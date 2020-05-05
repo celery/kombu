@@ -25,6 +25,7 @@ except ImportError:
 from kombu.five import items, reraise, string_t
 
 from .encoding import default_encode, safe_repr as _safe_repr
+from .time import maybe_s_to_ms
 
 try:
     import ctypes
@@ -42,7 +43,8 @@ except ImportError:  # pragma: no cover
 __all__ = ['EqualityDict', 'say', 'uuid', 'kwdict', 'maybe_list',
            'fxrange', 'fxrangemax', 'retry_over_time',
            'emergency_dump_state', 'cached_property',
-           'reprkwargs', 'reprcall', 'nested', 'fileno', 'maybe_fileno']
+           'reprkwargs', 'reprcall', 'nested', 'fileno', 'maybe_fileno',
+           'maybe_s_to_ms']
 
 
 def symbol_by_name(name, aliases={}, imp=None, package=None,
