@@ -779,7 +779,7 @@ class Channel(virtual.Channel):
     def _q_for_pri(self, queue, pri):
         pri = self.priority(pri)
         if pri:
-            return "{{{}}}{}{}".format(queue, self.sep, pri)
+            return "{}{}{}".format(queue, self.sep, pri)
         return queue
 
     def priority(self, n):
