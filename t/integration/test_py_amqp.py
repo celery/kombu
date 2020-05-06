@@ -5,7 +5,7 @@ import os
 import pytest
 import kombu
 
-from .common import BasicFunctionality, BaseExchangeTypes
+from .common import BasicFunctionality, BaseExchangeTypes, BaseTimeToLive
 
 
 def get_connection(
@@ -34,4 +34,10 @@ class test_PyAMQPBasicFunctionality(BasicFunctionality):
 @pytest.mark.env('py-amqp')
 @pytest.mark.flaky(reruns=5, reruns_delay=2)
 class test_PyAMQPBaseExchangeTypes(BaseExchangeTypes):
+    pass
+
+
+@pytest.mark.env('py-amqp')
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
+class test_PyAMQPTimeToLive(BaseTimeToLive):
     pass

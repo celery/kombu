@@ -2,6 +2,7 @@ from __future__ import absolute_import, unicode_literals
 
 import socket
 from contextlib import closing
+from time import sleep
 
 import pytest
 import kombu
@@ -152,3 +153,51 @@ class BaseExchangeTypes(object):
                 with pytest.raises(socket.timeout):
                     # topic3 queue should not have data
                     self._consume(conn, test_queue3)
+
+
+class BaseTimeToLive(object):
+    def test_publish_consume(self, connection):
+        test_queue = kombu.Queue('ttl_test', routing_key='ttl_test')
+
+        def callback(body, message):
+            message.ack()
+
+        with connection as conn:
+            with conn.channel() as channel:
+                producer = kombu.Producer(channel)
+                producer.publish(
+                    {'hello': 'world'},
+                    retry=True,
+                    exchange=test_queue.exchange,
+                    routing_key=test_queue.routing_key,
+                    declare=[test_queue],
+                    serializer='pickle',
+                    expiration=2
+                )
+
+                consumer = kombu.Consumer(
+                    conn, [test_queue], accept=['pickle']
+                )
+                consumer.register_callback(callback)
+                sleep(3)
+                with consumer:
+                    with pytest.raises(socket.timeout):
+                        conn.drain_events(timeout=1)
+
+    def test_simple_queue_publish_consume(self, connection):
+        with connection as conn:
+            with closing(conn.SimpleQueue('ttl_simple_queue_test')) as queue:
+                queue.put(
+                    {'Hello': 'World'}, headers={'k1': 'v1'}, expiration=2
+                )
+                sleep(3)
+                with pytest.raises(queue.Empty):
+                    queue.get(timeout=1)
+
+    def test_simple_buffer_publish_consume(self, connection):
+        with connection as conn:
+            with closing(conn.SimpleBuffer('ttl_simple_buffer_test')) as buf:
+                buf.put({'Hello': 'World'}, headers={'k1': 'v1'}, expiration=2)
+                sleep(3)
+                with pytest.raises(buf.Empty):
+                    buf.get(timeout=1)
