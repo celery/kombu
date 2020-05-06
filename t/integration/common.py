@@ -201,3 +201,84 @@ class BaseTimeToLive(object):
                 sleep(3)
                 with pytest.raises(buf.Empty):
                     buf.get(timeout=1)
+
+
+class BasePriority(object):
+    def test_publish_consume(self, connection):
+        test_queue = kombu.Queue(
+            'priority_test', routing_key='priority_test', max_priority=10
+        )
+
+        received_messages = []
+
+        def callback(body, message):
+            received_messages.append(body)
+            message.ack()
+
+        with connection as conn:
+            with conn.channel() as channel:
+                producer = kombu.Producer(channel)
+                for msg, prio in [
+                    [{'msg': 'first'}, 3],
+                    [{'msg': 'second'}, 6]
+                ]:
+                    producer.publish(
+                        msg,
+                        retry=True,
+                        exchange=test_queue.exchange,
+                        routing_key=test_queue.routing_key,
+                        declare=[test_queue],
+                        serializer='pickle',
+                        priority=prio
+                    )
+                # Sleep to make sure that queue sorted based on priority
+                sleep(0.5)
+                consumer = kombu.Consumer(
+                    conn, [test_queue], accept=['pickle']
+                )
+                consumer.register_callback(callback)
+                with consumer:
+                    conn.drain_events(timeout=1)
+                # Second message must be received first
+                assert received_messages[0] == {'msg': 'second'}
+                assert received_messages[1] == {'msg': 'first'}
+
+    def test_simple_queue_publish_consume(self, connection):
+        with connection as conn:
+            with closing(
+                conn.SimpleQueue(
+                    'priority_simple_queue_test',
+                    queue_opts={'max_priority': 10}
+                )
+            ) as queue:
+                queue.put({'msg': 'first'}, headers={'k1': 'v1'}, priority=3)
+                queue.put({'msg': 'second'}, headers={'k1': 'v1'}, priority=6)
+                # Sleep to make sure that queue sorted based on priority
+                sleep(0.5)
+                # Second message must be received first
+                msg = queue.get(timeout=1)
+                msg.ack()
+                assert msg.payload == {'msg': 'second'}
+                msg = queue.get(timeout=1)
+                msg.ack()
+                assert msg.payload == {'msg': 'first'}
+
+    def test_simple_buffer_publish_consume(self, connection):
+        with connection as conn:
+            with closing(
+                conn.SimpleBuffer(
+                    'priority_simple_buffer_test',
+                    queue_opts={'max_priority': 10}
+                )
+            ) as buf:
+                buf.put({'msg': 'first'}, headers={'k1': 'v1'}, priority=2)
+                buf.put({'msg': 'second'}, headers={'k1': 'v1'}, priority=6)
+                # Sleep to make sure that queue sorted based on priority
+                sleep(0.5)
+                # Second message must be received first
+                msg = buf.get(timeout=1)
+                msg.ack()
+                assert msg.payload == {'msg': 'second'}
+                msg = buf.get(timeout=1)
+                msg.ack()
+                assert msg.payload == {'msg': 'first'}
