@@ -204,7 +204,20 @@ class BaseTimeToLive(object):
 
 
 class BasePriority(object):
+
+    PRIORITY_ORDER = 'asc'
+
     def test_publish_consume(self, connection):
+
+        # py-amqp transport has higher numbers higher priority
+        # redis transport has lower numbers higher priority
+        if self.PRIORITY_ORDER == 'asc':
+            prio_high = 6
+            prio_low = 3
+        else:
+            prio_high = 3
+            prio_low = 6
+
         test_queue = kombu.Queue(
             'priority_test', routing_key='priority_test', max_priority=10
         )
@@ -219,8 +232,8 @@ class BasePriority(object):
             with conn.channel() as channel:
                 producer = kombu.Producer(channel)
                 for msg, prio in [
-                    [{'msg': 'first'}, 3],
-                    [{'msg': 'second'}, 6]
+                    [{'msg': 'first'}, prio_low],
+                    [{'msg': 'second'}, prio_high]
                 ]:
                     producer.publish(
                         msg,
@@ -244,6 +257,12 @@ class BasePriority(object):
                 assert received_messages[1] == {'msg': 'first'}
 
     def test_simple_queue_publish_consume(self, connection):
+        if self.PRIORITY_ORDER == 'asc':
+            prio_high = 7
+            prio_low = 1
+        else:
+            prio_high = 1
+            prio_low = 7
         with connection as conn:
             with closing(
                 conn.SimpleQueue(
@@ -251,8 +270,12 @@ class BasePriority(object):
                     queue_opts={'max_priority': 10}
                 )
             ) as queue:
-                queue.put({'msg': 'first'}, headers={'k1': 'v1'}, priority=3)
-                queue.put({'msg': 'second'}, headers={'k1': 'v1'}, priority=6)
+                queue.put(
+                    {'msg': 'first'}, headers={'k1': 'v1'}, priority=prio_low
+                )
+                queue.put(
+                    {'msg': 'second'}, headers={'k1': 'v1'}, priority=prio_high
+                )
                 # Sleep to make sure that queue sorted based on priority
                 sleep(0.5)
                 # Second message must be received first
@@ -264,6 +287,12 @@ class BasePriority(object):
                 assert msg.payload == {'msg': 'first'}
 
     def test_simple_buffer_publish_consume(self, connection):
+        if self.PRIORITY_ORDER == 'asc':
+            prio_high = 6
+            prio_low = 2
+        else:
+            prio_high = 2
+            prio_low = 6
         with connection as conn:
             with closing(
                 conn.SimpleBuffer(
@@ -271,8 +300,12 @@ class BasePriority(object):
                     queue_opts={'max_priority': 10}
                 )
             ) as buf:
-                buf.put({'msg': 'first'}, headers={'k1': 'v1'}, priority=2)
-                buf.put({'msg': 'second'}, headers={'k1': 'v1'}, priority=6)
+                buf.put(
+                    {'msg': 'first'}, headers={'k1': 'v1'}, priority=prio_low
+                )
+                buf.put(
+                    {'msg': 'second'}, headers={'k1': 'v1'}, priority=prio_high
+                )
                 # Sleep to make sure that queue sorted based on priority
                 sleep(0.5)
                 # Second message must be received first
