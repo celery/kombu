@@ -64,48 +64,35 @@ class test_CurlClient:
 
     def test_handle_socket(self):
         with patch('kombu.asynchronous.http.curl.pycurl') as _pycurl:
-            hub = Mock(name='hub')
-            x = self.Client(hub)
+            x = self.Client()
             fd = Mock(name='fd1')
 
             # POLL_REMOVE
             x._fds[fd] = fd
             x._handle_socket(_pycurl.POLL_REMOVE, fd, x._multi, None, _pycurl)
-            hub.remove.assert_called_with(fd)
             assert fd not in x._fds
             x._handle_socket(_pycurl.POLL_REMOVE, fd, x._multi, None, _pycurl)
 
             # POLL_IN
-            hub = x.hub = Mock(name='hub')
             fds = [fd, Mock(name='fd2'), Mock(name='fd3')]
             x._fds = {f: f for f in fds}
             x._handle_socket(_pycurl.POLL_IN, fd, x._multi, None, _pycurl)
-            hub.remove.assert_has_calls([call(fd)])
-            hub.add_reader.assert_called_with(fd, x.on_readable, fd)
             assert x._fds[fd] == READ
 
             # POLL_OUT
-            hub = x.hub = Mock(name='hub')
             x._handle_socket(_pycurl.POLL_OUT, fd, x._multi, None, _pycurl)
-            hub.add_writer.assert_called_with(fd, x.on_writable, fd)
             assert x._fds[fd] == WRITE
 
             # POLL_INOUT
-            hub = x.hub = Mock(name='hub')
             x._handle_socket(_pycurl.POLL_INOUT, fd, x._multi, None, _pycurl)
-            hub.add_reader.assert_called_with(fd, x.on_readable, fd)
-            hub.add_writer.assert_called_with(fd, x.on_writable, fd)
             assert x._fds[fd] == READ | WRITE
 
             # UNKNOWN EVENT
-            hub = x.hub = Mock(name='hub')
             x._handle_socket(0xff3f, fd, x._multi, None, _pycurl)
 
             # FD NOT IN FDS
-            hub = x.hub = Mock(name='hub')
             x._fds.clear()
             x._handle_socket(0xff3f, fd, x._multi, None, _pycurl)
-            hub.remove.assert_not_called()
 
     def test_set_timeout(self):
         x = self.Client()
@@ -113,11 +100,22 @@ class test_CurlClient:
 
     def test_timeout_check(self):
         with patch('kombu.asynchronous.http.curl.pycurl') as _pycurl:
-            x = self.Client()
+            hub = Mock(name='hub')
+            x = self.Client(hub)
+            fd1, fd2 = Mock(name='fd1'), Mock(name='fd2')
+            x._fds = {fd1: READ}
             x._process_pending_requests = Mock(name='process_pending')
-            x._multi.socket_all.return_value = 333, 1
+
+            def _side_effect():
+                x._fds = {fd2: WRITE}
+                return 333, 1
+
+            x._multi.socket_all.side_effect = _side_effect
             _pycurl.error = KeyError
+
             x._timeout_check(_pycurl=_pycurl)
+            hub.remove.assert_called_with(fd1)
+            hub.add_writer.assert_called_with(fd2, x.on_writable, fd2)
 
             x._multi.socket_all.return_value = None
             x._multi.socket_all.side_effect = _pycurl.error(333)
