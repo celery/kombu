@@ -66,7 +66,8 @@ class test_RedisPriority(BasePriority):
                 producer = kombu.Producer(channel)
                 for msg, prio in [
                     [{'msg': 'first'}, 6],
-                    [{'msg': 'second'}, 3]
+                    [{'msg': 'second'}, 3],
+                    [{'msg': 'third'}, 6],
                 ]:
                     producer.publish(
                         msg,
@@ -88,6 +89,8 @@ class test_RedisPriority(BasePriority):
                     # Virtual transports
                     conn.drain_events(timeout=1)
                     conn.drain_events(timeout=1)
+                    conn.drain_events(timeout=1)
                 # Second message must be received first
                 assert received_messages[0] == {'msg': 'second'}
                 assert received_messages[1] == {'msg': 'first'}
+                assert received_messages[2] == {'msg': 'third'}

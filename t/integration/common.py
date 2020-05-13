@@ -233,7 +233,8 @@ class BasePriority(object):
                 producer = kombu.Producer(channel)
                 for msg, prio in [
                     [{'msg': 'first'}, prio_low],
-                    [{'msg': 'second'}, prio_high]
+                    [{'msg': 'second'}, prio_high],
+                    [{'msg': 'third'}, prio_low],
                 ]:
                     producer.publish(
                         msg,
@@ -255,6 +256,7 @@ class BasePriority(object):
                 # Second message must be received first
                 assert received_messages[0] == {'msg': 'second'}
                 assert received_messages[1] == {'msg': 'first'}
+                assert received_messages[2] == {'msg': 'third'}
 
     def test_simple_queue_publish_consume(self, connection):
         if self.PRIORITY_ORDER == 'asc':
@@ -270,21 +272,23 @@ class BasePriority(object):
                     queue_opts={'max_priority': 10}
                 )
             ) as queue:
-                queue.put(
-                    {'msg': 'first'}, headers={'k1': 'v1'}, priority=prio_low
-                )
-                queue.put(
-                    {'msg': 'second'}, headers={'k1': 'v1'}, priority=prio_high
-                )
+                for msg, prio in [
+                    [{'msg': 'first'}, prio_low],
+                    [{'msg': 'second'}, prio_high],
+                    [{'msg': 'third'}, prio_low],
+                ]:
+                    queue.put(
+                        msg, headers={'k1': 'v1'}, priority=prio
+                    )
                 # Sleep to make sure that queue sorted based on priority
                 sleep(0.5)
                 # Second message must be received first
-                msg = queue.get(timeout=1)
-                msg.ack()
-                assert msg.payload == {'msg': 'second'}
-                msg = queue.get(timeout=1)
-                msg.ack()
-                assert msg.payload == {'msg': 'first'}
+                for data in [
+                    {'msg': 'second'}, {'msg': 'first'}, {'msg': 'third'},
+                ]:
+                    msg = queue.get(timeout=1)
+                    msg.ack()
+                    assert msg.payload == data
 
     def test_simple_buffer_publish_consume(self, connection):
         if self.PRIORITY_ORDER == 'asc':
@@ -300,18 +304,20 @@ class BasePriority(object):
                     queue_opts={'max_priority': 10}
                 )
             ) as buf:
-                buf.put(
-                    {'msg': 'first'}, headers={'k1': 'v1'}, priority=prio_low
-                )
-                buf.put(
-                    {'msg': 'second'}, headers={'k1': 'v1'}, priority=prio_high
-                )
+                for msg, prio in [
+                    [{'msg': 'first'}, prio_low],
+                    [{'msg': 'second'}, prio_high],
+                    [{'msg': 'third'}, prio_low],
+                ]:
+                    buf.put(
+                        msg, headers={'k1': 'v1'}, priority=prio
+                    )
                 # Sleep to make sure that queue sorted based on priority
                 sleep(0.5)
                 # Second message must be received first
-                msg = buf.get(timeout=1)
-                msg.ack()
-                assert msg.payload == {'msg': 'second'}
-                msg = buf.get(timeout=1)
-                msg.ack()
-                assert msg.payload == {'msg': 'first'}
+                for data in [
+                    {'msg': 'second'}, {'msg': 'first'}, {'msg': 'third'},
+                ]:
+                    msg = buf.get(timeout=1)
+                    msg.ack()
+                    assert msg.payload == data
