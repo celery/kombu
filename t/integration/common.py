@@ -51,7 +51,7 @@ class BasicFunctionality(object):
 
         test_queue = kombu.Queue('test_empty', routing_key='test_empty')
         with connection as conn:
-            with conn.channel() as channel:
+            with conn.channel():
                 consumer = kombu.Consumer(
                     conn, [test_queue], accept=['pickle']
                 )
