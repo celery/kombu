@@ -44,6 +44,22 @@ class BasicFunctionality(object):
                 with consumer:
                     conn.drain_events(timeout=1)
 
+    def test_consume_empty_queue(self, connection):
+
+        def callback(body, message):
+            assert False, 'Callback should not be called'
+
+        test_queue = kombu.Queue('test_empty', routing_key='test_empty')
+        with connection as conn:
+            with conn.channel() as channel:
+                consumer = kombu.Consumer(
+                    conn, [test_queue], accept=['pickle']
+                )
+                consumer.register_callback(callback)
+                with consumer:
+                    with pytest.raises(socket.timeout):
+                        conn.drain_events(timeout=1)
+
     def test_simple_queue_publish_consume(self, connection):
         with connection as conn:
             with closing(conn.SimpleQueue('simple_queue_test')) as queue:
@@ -160,7 +176,7 @@ class BaseTimeToLive(object):
         test_queue = kombu.Queue('ttl_test', routing_key='ttl_test')
 
         def callback(body, message):
-            message.ack()
+            assert False, 'Callback should not be called'
 
         with connection as conn:
             with conn.channel() as channel:
