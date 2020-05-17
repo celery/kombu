@@ -142,6 +142,32 @@ class test_Connection:
         assert not _connection.connected
         assert isinstance(conn.transport, Transport)
 
+    def test_connect_no_transport_options(self):
+        conn = self.conn
+        conn.ensure_connection = Mock()
+
+        conn.connect()
+        conn.ensure_connection.assert_called_with()
+
+    def test_connect_transport_options(self):
+        conn = self.conn
+        conn.transport_options = options = {
+            'max_retries': 1,
+            'interval_start': 2,
+            'interval_step': 3,
+            'interval_max': 4,
+            'ignore_this': True
+        }
+        conn.ensure_connection = Mock()
+
+        conn.connect()
+        conn.ensure_connection.assert_called_with(**{
+            k: v for k, v in options.items()
+            if k in ['max_retries',
+                     'interval_start',
+                     'interval_step',
+                     'interval_max']})
+
     def test_multiple_urls(self):
         conn1 = Connection('amqp://foo;amqp://bar')
         assert conn1.hostname == 'foo'
@@ -405,32 +431,6 @@ class test_Connection:
 
         defchan.close.assert_called_with()
         assert conn._default_channel is None
-
-    def test_default_channel_no_transport_options(self):
-        conn = self.conn
-        conn.ensure_connection = Mock()
-
-        assert conn.default_channel
-        conn.ensure_connection.assert_called_with()
-
-    def test_default_channel_transport_options(self):
-        conn = self.conn
-        conn.transport_options = options = {
-            'max_retries': 1,
-            'interval_start': 2,
-            'interval_step': 3,
-            'interval_max': 4,
-            'ignore_this': True
-        }
-        conn.ensure_connection = Mock()
-
-        assert conn.default_channel
-        conn.ensure_connection.assert_called_with(**{
-            k: v for k, v in options.items()
-            if k in ['max_retries',
-                     'interval_start',
-                     'interval_step',
-                     'interval_max']})
 
     def test_ensure_connection(self):
         assert self.conn.ensure_connection()

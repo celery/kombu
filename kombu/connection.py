@@ -279,8 +279,8 @@ class Connection(object):
 
     def connect(self):
         """Establish connection to server immediately."""
-        self._closed = False
-        return self.connection
+        conn_opts = self._extract_failover_opts()
+        return self.ensure_connection(**conn_opts)
 
     def channel(self):
         """Create and return a new channel."""
@@ -424,11 +424,12 @@ class Connection(object):
         if not reraise_as_library_errors:
             ctx = self._dummy_context
         with ctx():
-            retry_over_time(self.connect, self.recoverable_connection_errors,
-                            (), {}, on_error, max_retries,
-                            interval_start, interval_step, interval_max,
-                            callback, timeout=timeout)
-        return self
+            return retry_over_time(
+                self._connection_factory, self.recoverable_connection_errors,
+                (), {}, on_error, max_retries,
+                interval_start, interval_step, interval_max,
+                callback, timeout=timeout
+            )
 
     @contextmanager
     def _reraise_as_library_errors(
@@ -817,6 +818,20 @@ class Connection(object):
     def qos_semantics_matches_spec(self):
         return self.transport.qos_semantics_matches_spec(self.connection)
 
+    def _extract_failover_opts(self):
+        conn_opts = {}
+        transport_opts = self.transport_options
+        if transport_opts:
+            if 'max_retries' in transport_opts:
+                conn_opts['max_retries'] = transport_opts['max_retries']
+            if 'interval_start' in transport_opts:
+                conn_opts['interval_start'] = transport_opts['interval_start']
+            if 'interval_step' in transport_opts:
+                conn_opts['interval_step'] = transport_opts['interval_step']
+            if 'interval_max' in transport_opts:
+                conn_opts['interval_max'] = transport_opts['interval_max']
+        return conn_opts
+
     @property
     def connected(self):
         """Return true if the connection has been established."""
@@ -834,11 +849,16 @@ class Connection(object):
         """
         if not self._closed:
             if not self.connected:
-                self.declared_entities.clear()
-                self._default_channel = None
-                self._connection = self._establish_connection()
-                self._closed = False
+                conn_opts = self._extract_failover_opts()
+                self._connection = self.ensure_connection(**conn_opts)
             return self._connection
+
+    def _connection_factory(self):
+        self.declared_entities.clear()
+        self._default_channel = None
+        connection = self._establish_connection()
+        self._closed = False
+        return connection
 
     @property
     def default_channel(self):
@@ -852,20 +872,6 @@ class Connection(object):
             a connection is passed instead of a channel, to functions that
             require a channel.
         """
-        conn_opts = {}
-        transport_opts = self.transport_options
-        if transport_opts:
-            if 'max_retries' in transport_opts:
-                conn_opts['max_retries'] = transport_opts['max_retries']
-            if 'interval_start' in transport_opts:
-                conn_opts['interval_start'] = transport_opts['interval_start']
-            if 'interval_step' in transport_opts:
-                conn_opts['interval_step'] = transport_opts['interval_step']
-            if 'interval_max' in transport_opts:
-                conn_opts['interval_max'] = transport_opts['interval_max']
-
-        # make sure we're still connected, and if not refresh.
-        self.ensure_connection(**conn_opts)
         if self._default_channel is None:
             self._default_channel = self.channel()
         return self._default_channel

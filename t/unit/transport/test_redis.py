@@ -10,7 +10,9 @@ from itertools import count
 from case import ANY, ContextMock, Mock, call, mock, skip, patch
 
 from kombu import Connection, Exchange, Queue, Consumer, Producer
-from kombu.exceptions import InconsistencyError, VersionMismatch
+from kombu.exceptions import (
+    InconsistencyError, VersionMismatch, OperationalError
+)
 from kombu.five import Empty, Queue as _Queue, bytes_if_py2
 from kombu.transport import virtual
 from kombu.utils import eventio  # patch poll
@@ -1043,10 +1045,11 @@ class test_Redis:
             assert conn.transport.channel_errors
 
     def test_check_at_least_we_try_to_connect_and_fail(self):
-        import redis
-        connection = Connection('redis://localhost:65534/')
+        connection = Connection(
+            'redis://localhost:65534/', transport_options={'max_retries': 1}
+        )
 
-        with pytest.raises(redis.exceptions.ConnectionError):
+        with pytest.raises(OperationalError):
             chan = connection.channel()
             chan._size('some_queue')
 
@@ -1465,13 +1468,12 @@ class test_RedisSentinel:
             master_for().connection_pool.get_connection.assert_called()
 
     def test_can_create_connection(self):
-        from redis.exceptions import ConnectionError
-
         connection = Connection(
             'sentinel://localhost:65534/',
             transport_options={
                 'master_name': 'not_important',
+                'max_retries': 1
             },
         )
-        with pytest.raises(ConnectionError):
+        with pytest.raises(OperationalError):
             connection.channel()
