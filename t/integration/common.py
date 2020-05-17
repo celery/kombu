@@ -337,3 +337,20 @@ class BasePriority(object):
                     msg = buf.get(timeout=1)
                     msg.ack()
                     assert msg.payload == data
+
+
+class BaseFailover(BasicFunctionality):
+
+    def test_connect(self, failover_connection):
+        super(BaseFailover, self).test_connect(failover_connection)
+
+    def test_publish_consume(self, failover_connection):
+        super(BaseFailover, self).test_publish_consume(failover_connection)
+
+    def test_consume_empty_queue(self, failover_connection):
+        super(BaseFailover, self).test_consume_empty_queue(failover_connection)
+
+    def test_simple_buffer_publish_consume(self, failover_connection):
+        super(BaseFailover, self).test_simple_buffer_publish_consume(
+            failover_connection
+        )
