@@ -280,7 +280,7 @@ class Connection(object):
     def connect(self):
         """Establish connection to server immediately."""
         conn_opts = self._extract_failover_opts()
-        return self.ensure_connection(**conn_opts)
+        return self._ensure_connection(**conn_opts)
 
     def channel(self):
         """Create and return a new channel."""
@@ -380,10 +380,20 @@ class Connection(object):
         self._close()
     close = release
 
-    def ensure_connection(self, errback=None, max_retries=None,
-                          interval_start=2, interval_step=2, interval_max=30,
-                          callback=None, reraise_as_library_errors=True,
-                          timeout=None):
+    def ensure_connection(self, *args, **kwargs):
+        """Public interface of _ensure_connection for retro-compatibility.
+
+        Returns kombu.Connection instance.
+        """
+        self._ensure_connection(*args, **kwargs)
+        return self
+
+    def _ensure_connection(
+        self, errback=None, max_retries=None,
+        interval_start=2, interval_step=2, interval_max=30,
+        callback=None, reraise_as_library_errors=True,
+        timeout=None
+    ):
         """Ensure we have a connection to the server.
 
         If not retry establishing the connection with the settings
@@ -533,7 +543,7 @@ class Connection(object):
                         remaining_retries = None
                         if max_retries is not None:
                             remaining_retries = max(max_retries - retries, 1)
-                        self.ensure_connection(
+                        self._ensure_connection(
                             errback,
                             remaining_retries,
                             interval_start, interval_step, interval_max,
@@ -850,7 +860,7 @@ class Connection(object):
         if not self._closed:
             if not self.connected:
                 conn_opts = self._extract_failover_opts()
-                self._connection = self.ensure_connection(**conn_opts)
+                self._connection = self._ensure_connection(**conn_opts)
             return self._connection
 
     def _connection_factory(self):

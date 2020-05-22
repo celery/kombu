@@ -144,10 +144,10 @@ class test_Connection:
 
     def test_connect_no_transport_options(self):
         conn = self.conn
-        conn.ensure_connection = Mock()
+        conn._ensure_connection = Mock()
 
         conn.connect()
-        conn.ensure_connection.assert_called_with()
+        conn._ensure_connection.assert_called_with()
 
     def test_connect_transport_options(self):
         conn = self.conn
@@ -158,10 +158,10 @@ class test_Connection:
             'interval_max': 4,
             'ignore_this': True
         }
-        conn.ensure_connection = Mock()
+        conn._ensure_connection = Mock()
 
         conn.connect()
-        conn.ensure_connection.assert_called_with(**{
+        conn._ensure_connection.assert_called_with(**{
             k: v for k, v in options.items()
             if k in ['max_retries',
                      'interval_start',
