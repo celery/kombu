@@ -168,10 +168,6 @@ def _maybe_declare(entity, channel):
 
 def _imaybe_declare(entity, channel, **retry_policy):
     _ensure_channel_is_bound(entity, channel)
-
-    if not channel.connection:
-        raise RecoverableConnectionError('channel disconnected')
-
     return entity.channel.connection.client.ensure(
         entity, _maybe_declare, **retry_policy)(entity, channel)
 
