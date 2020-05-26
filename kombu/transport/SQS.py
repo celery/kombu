@@ -458,17 +458,19 @@ class Channel(virtual.Channel):
             message = self.qos.get(delivery_tag).delivery_info
             sqs_message = message['sqs_message']
         except KeyError:
-            pass
+            super(Channel, self).basic_ack(delivery_tag)
         else:
             queue = None
             if 'routing_key' in message:
                 queue = self.canonical_queue_name(message['routing_key'])
 
-            self.sqs(queue=queue).delete_message(
-                QueueUrl=message['sqs_queue'],
-                ReceiptHandle=sqs_message['ReceiptHandle'],
-            )
-        super(Channel, self).basic_ack(delivery_tag)
+            try:
+                self.sqs(queue=queue).delete_message(QueueUrl=message['sqs_queue'],
+                                                     ReceiptHandle=sqs_message['ReceiptHandle'])
+            except ClientError as ex:
+                super(Channel, self).basic_reject(delivery_tag)
+            else:
+                super(Channel, self).basic_ack(delivery_tag)
 
     def _size(self, queue):
         """Return the number of messages in a queue."""
