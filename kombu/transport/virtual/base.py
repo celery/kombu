@@ -943,10 +943,10 @@ class Transport(base.Transport):
 
     def close_connection(self, connection):
         self.cycle.close()
-        for l in self._avail_channels, self.channels:
-            while l:
+        for chan_list in self._avail_channels, self.channels:
+            while chan_list:
                 try:
-                    channel = l.pop()
+                    channel = chan_list.pop()
                 except LookupError:  # pragma: no cover
                     pass
                 else:
