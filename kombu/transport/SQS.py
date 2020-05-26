@@ -67,6 +67,7 @@ import socket
 import string
 import uuid
 
+from botocore.exceptions import ClientError
 from vine import transform, ensure_promise, promise
 
 from kombu.asynchronous import get_event_loop
@@ -465,9 +466,11 @@ class Channel(virtual.Channel):
                 queue = self.canonical_queue_name(message['routing_key'])
 
             try:
-                self.sqs(queue=queue).delete_message(QueueUrl=message['sqs_queue'],
-                                                     ReceiptHandle=sqs_message['ReceiptHandle'])
-            except ClientError as ex:
+                self.sqs(queue=queue).delete_message(
+                    QueueUrl=message['sqs_queue'],
+                    ReceiptHandle=sqs_message['ReceiptHandle']
+                )
+            except ClientError:
                 super(Channel, self).basic_reject(delivery_tag)
             else:
                 super(Channel, self).basic_ack(delivery_tag)
