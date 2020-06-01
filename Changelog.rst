@@ -8,7 +8,7 @@
 
 4.6.9
 =====
-:release-date: 2020-06-01 20:45 A.M UTC+6:00
+:release-date: 2020-06-01 14.00 P.M UTC+6:00
 :release-by: Asif Saif Uddin
 
 - Prevent failure if AWS creds are not explicitly defined on predefined.
