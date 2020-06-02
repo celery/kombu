@@ -144,6 +144,10 @@ class test_Connection:
         assert not _connection.connected
         assert isinstance(conn.transport, Transport)
 
+    def test_reuse_connection(self):
+        conn = self.conn
+        assert conn.connect() is conn.connection is conn.connect()
+
     def test_connect_no_transport_options(self):
         conn = self.conn
         conn._ensure_connection = Mock()
