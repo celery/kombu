@@ -434,7 +434,7 @@ class Connection(object):
         if not reraise_as_library_errors:
             ctx = self._dummy_context
         with ctx():
-            self._connection = retry_over_time(
+            self._connection = self._connection or retry_over_time(
                 self._connection_factory, self.recoverable_connection_errors,
                 (), {}, on_error, max_retries,
                 interval_start, interval_step, interval_max,
