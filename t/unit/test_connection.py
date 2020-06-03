@@ -131,7 +131,9 @@ class test_Connection:
 
     def test_establish_connection(self):
         conn = self.conn
+        assert not conn.connected
         conn.connect()
+        assert conn.connected
         assert conn.connection.connected
         assert conn.host == 'localhost:5672'
         channel = conn.channel()
@@ -141,6 +143,10 @@ class test_Connection:
         conn.close()
         assert not _connection.connected
         assert isinstance(conn.transport, Transport)
+
+    def test_reuse_connection(self):
+        conn = self.conn
+        assert conn.connect() is conn.connection is conn.connect()
 
     def test_connect_no_transport_options(self):
         conn = self.conn
