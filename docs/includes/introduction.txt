@@ -1,4 +1,4 @@
-:Version: 4.6.9
+:Version: 4.6.10
 :Web: https://kombu.readthedocs.io/
 :Download: https://pypi.org/project/kombu/
 :Source: https://github.com/celery/kombu/
