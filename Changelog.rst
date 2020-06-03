@@ -4,6 +4,19 @@
  Change history
 ================
 
+. _version-4.6.10:
+
+4.6.10
+======
+:release-date: 2020-06-03 10.45 A.M UTC+6:00
+:release-by: Asif Saif Uddin
+
+- Doc improvement.
+- set _connection in _ensure_connection (#1205)
+- Fix for the issue #1172 
+- reuse connection [bug fix]
+
+
 .. _version-4.6.9:
 
 4.6.9
