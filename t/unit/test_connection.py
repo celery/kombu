@@ -415,6 +415,18 @@ class test_Connection:
         conn._close()
         conn._default_channel.close.assert_called_with()
 
+    def test_auto_reconnect_default_channel(self):
+        # tests GH issue: #1208
+        # Tests that default_channel automatically reconnects when connection
+        # closed
+        c = Connection('memory://')
+        c._closed = True
+        with patch.object(
+            c, '_connection_factory', side_effect=c._connection_factory
+        ) as cf_mock:
+            c.default_channel
+            cf_mock.assert_called_once_with()
+
     def test_close_when_default_channel_close_raises(self):
 
         class Conn(Connection):
