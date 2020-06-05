@@ -883,6 +883,8 @@ class Connection(object):
             a connection is passed instead of a channel, to functions that
             require a channel.
         """
+        # make sure we're still connected, and if not refresh.
+        self.connect()
         if self._default_channel is None:
             self._default_channel = self.channel()
         return self._default_channel

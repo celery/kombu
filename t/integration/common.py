@@ -14,6 +14,11 @@ class BasicFunctionality(object):
         connection.connect()
         connection.close()
 
+    def test_default_channel_autoconnect(self, connection):
+        connection.connect()
+        connection.close()
+        connection.default_channel
+
     def test_publish_consume(self, connection):
         test_queue = kombu.Queue('test', routing_key='test')
 
