@@ -1,23 +1,64 @@
 from __future__ import absolute_import, unicode_literals
 
 import socket
+from collections import namedtuple
 from contextlib import closing
 from time import sleep
 
 import pytest
 import kombu
 
+InvalidConnectionFixture = namedtuple(
+    'InvalidConnectionFixture', ('connection', 'expected_exception')
+)
+
 
 class BasicFunctionality(object):
 
     def test_connect(self, connection):
-        connection.connect()
+        assert connection.connect()
+        assert connection.connection
         connection.close()
+        assert connection.connection is None
+        assert connection.connect()
+        assert connection.connection
+        connection.close()
+
+    def test_failed_connect(self, invalid_connection_fixture):
+        with pytest.raises(invalid_connection_fixture.expected_exception):
+            invalid_connection_fixture.connection.connect()
+
+    def test_failed_connection(self, invalid_connection_fixture):
+        with pytest.raises(invalid_connection_fixture.expected_exception):
+            invalid_connection_fixture.connection.connection
+
+    def test_failed_channel(self, invalid_connection_fixture):
+        with pytest.raises(invalid_connection_fixture.expected_exception):
+            invalid_connection_fixture.connection.channel()
+
+    def test_failed_default_channel(self, invalid_connection_fixture):
+        conn = invalid_connection_fixture.connection
+        conn.transport_options = {'max_retries': 1}
+        with pytest.raises(kombu.exceptions.OperationalError):
+            conn.default_channel
 
     def test_default_channel_autoconnect(self, connection):
         connection.connect()
         connection.close()
-        connection.default_channel
+        assert connection.connection is None
+        assert connection.default_channel
+        assert connection.connection
+        connection.close()
+
+    def test_channel(self, connection):
+        chan = connection.channel()
+        assert chan
+        assert connection.connection
+
+    def test_default_channel(self, connection):
+        chan = connection.default_channel
+        assert chan
+        assert connection.connection
 
     def test_publish_consume(self, connection):
         test_queue = kombu.Queue('test', routing_key='test')

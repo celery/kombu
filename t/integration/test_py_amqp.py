@@ -7,7 +7,7 @@ import kombu
 
 from .common import (
     BasicFunctionality, BaseExchangeTypes,
-    BaseTimeToLive, BasePriority, BaseFailover
+    BaseTimeToLive, BasePriority, BaseFailover, InvalidConnectionFixture
 )
 
 
@@ -18,6 +18,14 @@ def get_connection(hostname, port, vhost):
 def get_failover_connection(hostname, port, vhost):
     return kombu.Connection(
         'pyamqp://localhost:12345;pyamqp://{}:{}'.format(hostname, port)
+    )
+
+
+@pytest.fixture()
+def invalid_connection_fixture():
+    return InvalidConnectionFixture(
+        connection=kombu.Connection('pyamqp://localhost:12345'),
+        expected_exception=ConnectionRefusedError
     )
 
 

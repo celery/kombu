@@ -3,15 +3,22 @@ from __future__ import absolute_import, unicode_literals
 import os
 
 import pytest
+import redis
 import kombu
 from time import sleep
 
-from .common import BasicFunctionality, BaseExchangeTypes, BasePriority
+from .common import ( BasicFunctionality, BaseExchangeTypes, BasePriority,
+    BaseFailover, InvalidConnectionFixture
+)
 
 
 def get_connection(
         hostname, port, vhost):
     return kombu.Connection('redis://{}:{}'.format(hostname, port))
+
+def get_failover_connection(
+        hostname, port, vhost):
+    return kombu.Connection('redis://localhost:12345;redis://{}:{}'.format(hostname, port))
 
 
 @pytest.fixture()
@@ -23,6 +30,25 @@ def connection(request):
         vhost=getattr(
             request.config, "slaveinput", {}
         ).get("slaveid", None),
+    )
+
+
+@pytest.fixture()
+def failover_connection(request):
+    return get_failover_connection(
+        hostname=os.environ.get('RABBITMQ_HOST', 'localhost'),
+        port=os.environ.get('RABBITMQ_5672_TCP', '5672'),
+        vhost=getattr(
+            request.config, "slaveinput", {}
+        ).get("slaveid", None),
+    )
+
+
+@pytest.fixture()
+def invalid_connection_fixture():
+    return InvalidConnectionFixture(
+        connection=kombu.Connection('redis://localhost:12345'),
+        expected_exception=redis.exceptions.ConnectionError
     )
 
 
