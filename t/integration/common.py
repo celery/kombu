@@ -1,16 +1,11 @@
 from __future__ import absolute_import, unicode_literals
 
 import socket
-from collections import namedtuple
 from contextlib import closing
 from time import sleep
 
 import pytest
 import kombu
-
-InvalidConnectionFixture = namedtuple(
-    'InvalidConnectionFixture', ('connection', 'expected_exception')
-)
 
 
 class BasicFunctionality(object):
@@ -24,23 +19,26 @@ class BasicFunctionality(object):
         assert connection.connection
         connection.close()
 
-    def test_failed_connect(self, invalid_connection_fixture):
-        with pytest.raises(invalid_connection_fixture.expected_exception):
-            invalid_connection_fixture.connection.connect()
+    def test_failed_connect(self, invalid_connection):
+        # method raises transport exception
+        with pytest.raises(Exception):
+            invalid_connection.connect()
 
-    def test_failed_connection(self, invalid_connection_fixture):
-        with pytest.raises(invalid_connection_fixture.expected_exception):
-            invalid_connection_fixture.connection.connection
+    def test_failed_connection(self, invalid_connection):
+        # method raises transport exception
+        with pytest.raises(Exception):
+            invalid_connection.connection
 
-    def test_failed_channel(self, invalid_connection_fixture):
-        with pytest.raises(invalid_connection_fixture.expected_exception):
-            invalid_connection_fixture.connection.channel()
+    def test_failed_channel(self, invalid_connection):
+        # method raises transport exception
+        with pytest.raises(Exception):
+            invalid_connection.channel()
 
-    def test_failed_default_channel(self, invalid_connection_fixture):
-        conn = invalid_connection_fixture.connection
-        conn.transport_options = {'max_retries': 1}
-        with pytest.raises(kombu.exceptions.OperationalError):
-            conn.default_channel
+    def test_failed_default_channel(self, invalid_connection):
+        invalid_connection.transport_options = {'max_retries': 1}
+        # method raises transport exception
+        with pytest.raises(Exception):
+            invalid_connection.default_channel
 
     def test_default_channel_autoconnect(self, connection):
         connection.connect()

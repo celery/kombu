@@ -153,12 +153,15 @@ class test_Connection:
         conn._ensure_connection = Mock()
 
         conn.connect()
-        # ensure_connection must be called to return immidiately and fail with transport exception
-        conn._ensure_connection.assert_called_with(max_retries=1, reraise_as_library_errors=False)
+        # ensure_connection must be called to return immidiately
+        # and fail with transport exception
+        conn._ensure_connection.assert_called_with(
+            max_retries=1, reraise_as_library_errors=False
+        )
 
     def test_connect_transport_options(self):
         conn = self.conn
-        conn.transport_options = options = {
+        conn.transport_options = {
             'max_retries': 1,
             'interval_start': 2,
             'interval_step': 3,
@@ -169,8 +172,11 @@ class test_Connection:
 
         conn.connect()
         # connect() is ignoring transport options
-        # ensure_connection must be called to return immidiately and fail with transport exception
-        conn._ensure_connection.assert_called_with(max_retries=1, reraise_as_library_errors=False)
+        # ensure_connection must be called to return immidiately
+        # and fail with transport exception
+        conn._ensure_connection.assert_called_with(
+            max_retries=1, reraise_as_library_errors=False
+        )
 
     def test_multiple_urls(self):
         conn1 = Connection('amqp://foo;amqp://bar')
