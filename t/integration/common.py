@@ -11,13 +11,52 @@ import kombu
 class BasicFunctionality(object):
 
     def test_connect(self, connection):
-        connection.connect()
+        assert connection.connect()
+        assert connection.connection
         connection.close()
+        assert connection.connection is None
+        assert connection.connect()
+        assert connection.connection
+        connection.close()
+
+    def test_failed_connect(self, invalid_connection):
+        # method raises transport exception
+        with pytest.raises(Exception):
+            invalid_connection.connect()
+
+    def test_failed_connection(self, invalid_connection):
+        # method raises transport exception
+        with pytest.raises(Exception):
+            invalid_connection.connection
+
+    def test_failed_channel(self, invalid_connection):
+        # method raises transport exception
+        with pytest.raises(Exception):
+            invalid_connection.channel()
+
+    def test_failed_default_channel(self, invalid_connection):
+        invalid_connection.transport_options = {'max_retries': 1}
+        # method raises transport exception
+        with pytest.raises(Exception):
+            invalid_connection.default_channel
 
     def test_default_channel_autoconnect(self, connection):
         connection.connect()
         connection.close()
-        connection.default_channel
+        assert connection.connection is None
+        assert connection.default_channel
+        assert connection.connection
+        connection.close()
+
+    def test_channel(self, connection):
+        chan = connection.channel()
+        assert chan
+        assert connection.connection
+
+    def test_default_channel(self, connection):
+        chan = connection.default_channel
+        assert chan
+        assert connection.connection
 
     def test_publish_consume(self, connection):
         test_queue = kombu.Queue('test', routing_key='test')

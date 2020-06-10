@@ -6,7 +6,9 @@ import pytest
 import kombu
 from time import sleep
 
-from .common import BasicFunctionality, BaseExchangeTypes, BasePriority
+from .common import (
+    BasicFunctionality, BaseExchangeTypes, BasePriority
+)
 
 
 def get_connection(
@@ -24,6 +26,11 @@ def connection(request):
             request.config, "slaveinput", {}
         ).get("slaveid", None),
     )
+
+
+@pytest.fixture()
+def invalid_connection():
+    return kombu.Connection('redis://localhost:12345')
 
 
 @pytest.mark.env('redis')

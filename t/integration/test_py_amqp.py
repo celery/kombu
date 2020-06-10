@@ -22,6 +22,11 @@ def get_failover_connection(hostname, port, vhost):
 
 
 @pytest.fixture()
+def invalid_connection():
+    return kombu.Connection('pyamqp://localhost:12345')
+
+
+@pytest.fixture()
 def connection(request):
     return get_connection(
         hostname=os.environ.get('RABBITMQ_HOST', 'localhost'),

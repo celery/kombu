@@ -279,8 +279,9 @@ class Connection(object):
 
     def connect(self):
         """Establish connection to server immediately."""
-        conn_opts = self._extract_failover_opts()
-        return self._ensure_connection(**conn_opts)
+        return self._ensure_connection(
+            max_retries=1, reraise_as_library_errors=False
+        )
 
     def channel(self):
         """Create and return a new channel."""
@@ -420,6 +421,9 @@ class Connection(object):
             timeout (int): Maximum amount of time in seconds to spend
                 waiting for connection
         """
+        if self.connected:
+            return self._connection
+
         def on_error(exc, intervals, retries, interval=0):
             round = self.completes_cycle(retries)
             if round:
@@ -434,13 +438,12 @@ class Connection(object):
         if not reraise_as_library_errors:
             ctx = self._dummy_context
         with ctx():
-            self._connection = self._connection or retry_over_time(
+            return retry_over_time(
                 self._connection_factory, self.recoverable_connection_errors,
                 (), {}, on_error, max_retries,
                 interval_start, interval_step, interval_max,
                 callback, timeout=timeout
             )
-            return self._connection
 
     @contextmanager
     def _reraise_as_library_errors(
@@ -860,16 +863,17 @@ class Connection(object):
         """
         if not self._closed:
             if not self.connected:
-                conn_opts = self._extract_failover_opts()
-                self._ensure_connection(**conn_opts)
+                return self._ensure_connection(
+                    max_retries=1, reraise_as_library_errors=False
+                )
             return self._connection
 
     def _connection_factory(self):
         self.declared_entities.clear()
         self._default_channel = None
-        connection = self._establish_connection()
+        self._connection = self._establish_connection()
         self._closed = False
-        return connection
+        return self._connection
 
     @property
     def default_channel(self):
@@ -884,7 +888,9 @@ class Connection(object):
             require a channel.
         """
         # make sure we're still connected, and if not refresh.
-        self.connect()
+        conn_opts = self._extract_failover_opts()
+        self._ensure_connection(**conn_opts)
+
         if self._default_channel is None:
             self._default_channel = self.channel()
         return self._default_channel
