@@ -284,6 +284,8 @@ class Channel(virtual.Channel):
             body = base64.b64decode(message['Body'].encode())
         except TypeError:
             body = message['Body'].encode()
+        except base64.binascii.Error:
+            body = base64.b64decode(base64.b64encode(message['Body'].encode()))
         payload = loads(bytes_to_str(body))
         if queue_name in self._noack_queues:
             queue = self._new_queue(queue_name)
