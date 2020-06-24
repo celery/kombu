@@ -4,7 +4,18 @@
  Change history
 ================
 
-. _version-4.6.10:
+.. _version-4.6.11:
+
+4.6.11
+=======
+:release-date: 2020-06-24 1.15 P.M UTC+6:00
+:release-by: Asif Saif Uddin
+
+- Revert incompatible changes in #1193 and additional improvements (#1211) 
+- Default_channel should reconnect automatically (#1209) 
+
+
+.. _version-4.6.10:
 
 4.6.10
 ======
