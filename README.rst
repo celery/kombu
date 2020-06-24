@@ -4,7 +4,7 @@
 
 |build-status| |coverage| |license| |wheel| |pyversion| |pyimp| |[![Downloads](https://pepy.tech/badge/kombu)](https://pepy.tech/project/kombu)|
 
-:Version: 4.6.10
+:Version: 4.6.11
 :Documentation: https://kombu.readthedocs.io/
 :Download: https://pypi.org/project/kombu/
 :Source: https://github.com/celery/kombu/
