@@ -124,6 +124,11 @@ from kombu.transport import base, virtual
 
 logger = get_logger(__name__)
 
+try:
+    buffer
+except NameError:
+    buffer = bytes
+
 
 OBJECT_ALREADY_EXISTS_STRING = 'object already exists'
 
@@ -1123,7 +1128,7 @@ class Channel(base.StdChannel):
         message['body'], body_encoding = self.encode_body(
             message['body'], self.body_encoding,
         )
-        message['body'] = memoryview(message['body'])
+        message['body'] = buffer(message['body'])
         props = message['properties']
         props.update(
             body_encoding=body_encoding,
