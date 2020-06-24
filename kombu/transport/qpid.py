@@ -1123,7 +1123,7 @@ class Channel(base.StdChannel):
         message['body'], body_encoding = self.encode_body(
             message['body'], self.body_encoding,
         )
-        message['body'] = buffer(message['body'])
+        message['body'] = memoryview(message['body'])
         props = message['properties']
         props.update(
             body_encoding=body_encoding,
