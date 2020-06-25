@@ -58,6 +58,19 @@ Other Features supported by this transport:
         },
       }
     }
+
+  Client config:
+    In some cases you may need to override the botocore config. You can do it
+    as follows:
+
+    transport_option = {
+      'client-config': {
+          'connect_timeout': 5,
+       },
+    }
+
+    For a complete list of settings you can adjust using this option see
+    https://botocore.amazonaws.com/v1/documentation/api/latest/reference/config.html
 """  # noqa: E501
 
 from __future__ import absolute_import, unicode_literals
@@ -67,6 +80,7 @@ import socket
 import string
 import uuid
 
+from botocore.client import Config
 from botocore.exceptions import ClientError
 from vine import transform, ensure_promise, promise
 
@@ -518,7 +532,9 @@ class Channel(virtual.Channel):
         }
         if self.endpoint_url is not None:
             client_kwargs['endpoint_url'] = self.endpoint_url
-        return session.client('sqs', **client_kwargs)
+        client_config = self.transport_options.get('client-config') or {}
+        config = Config(**client_config)
+        return session.client('sqs', config=config, **client_kwargs)
 
     def sqs(self, queue=None):
         if queue is not None and self.predefined_queues:
