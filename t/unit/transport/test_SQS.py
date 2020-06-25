@@ -275,6 +275,19 @@ class test_Channel:
         # For cleanup purposes, delete the queue and the queue file
         self.channel._delete(queue_name)
 
+    def test_botocore_config_override(self):
+        expected_connect_timeout = 5
+        client_config = {'connect_timeout': expected_connect_timeout}
+        self.connection = Connection(
+            transport=SQS.Transport,
+            transport_options={'client-config': client_config},
+        )
+        self.channel = self.connection.channel()
+        self.channel._sqs = None
+        boto3_sqs = SQS_Channel_sqs.__get__(self.channel, SQS.Channel)
+        botocore_config = boto3_sqs()._client_config
+        assert botocore_config.connect_timeout == expected_connect_timeout
+
     def test_dont_create_duplicate_new_queue(self):
         # All queue names start with "q", except "unittest_queue".
         # which is definitely out of cache when get_all_queues returns the
