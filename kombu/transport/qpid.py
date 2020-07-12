@@ -116,7 +116,7 @@ except ImportError:  # pragma: no cover
     qpid = None
 
 
-from kombu.five import buffer, Empty, items, monotonic, PY3
+from kombu.five import buffer_t, Empty, items, monotonic, PY3
 from kombu.log import get_logger
 from kombu.transport.virtual import Base64, Message
 from kombu.transport import base, virtual
@@ -1096,7 +1096,7 @@ class Channel(base.StdChannel):
         following ways before sending:
 
         - encodes the body using :meth:`encode_body`
-        - wraps the body as a buffer object, so that
+        - wraps the body as a buffer_t object, so that
             :class:`qpid.messaging.endpoints.Sender` uses a content type
             that can support arbitrarily large messages.
         - sets delivery_tag to a random uuid.UUID
@@ -1122,7 +1122,7 @@ class Channel(base.StdChannel):
         message['body'], body_encoding = self.encode_body(
             message['body'], self.body_encoding,
         )
-        message['body'] = buffer(message['body'])
+        message['body'] = buffer_t(message['body'])
         props = message['properties']
         props.update(
             body_encoding=body_encoding,
