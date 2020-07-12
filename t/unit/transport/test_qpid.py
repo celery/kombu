@@ -19,7 +19,7 @@ from itertools import count
 
 from case import Mock, call, patch, skip
 
-from kombu.five import Empty, range, monotonic
+from kombu.five import buffer_t, Empty, range, monotonic
 from kombu.transport.qpid import (AuthenticationFailure, Channel, Connection,
                                   ConnectionError, Message, NotFound, QoS,
                                   Transport)
@@ -1231,7 +1231,7 @@ class test_Channel(object):
         assert (mock_priority is
                 result['properties']['delivery_info']['priority'])
 
-    @patch('__builtin__.buffer')
+    @patch('buffer_t')
     @patch(QPID_MODULE + '.Channel.body_encoding')
     @patch(QPID_MODULE + '.Channel.encode_body')
     @patch(QPID_MODULE + '.Channel._put')
