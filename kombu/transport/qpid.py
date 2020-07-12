@@ -116,19 +116,13 @@ except ImportError:  # pragma: no cover
     qpid = None
 
 
-from kombu.five import Empty, items, monotonic, PY3
+from kombu.five import buffer, Empty, items, monotonic, PY3
 from kombu.log import get_logger
 from kombu.transport.virtual import Base64, Message
 from kombu.transport import base, virtual
 
 
 logger = get_logger(__name__)
-
-try:
-    buffer
-except NameError:
-    buffer = bytes
-
 
 OBJECT_ALREADY_EXISTS_STRING = 'object already exists'
 
