@@ -1,5 +1,4 @@
 """Client (Connection)."""
-from __future__ import absolute_import, unicode_literals
 
 import os
 import socket
@@ -54,7 +53,7 @@ _log_channel = os.environ.get('KOMBU_LOG_CHANNEL', False)
 
 
 @python_2_unicode_compatible
-class Connection(object):
+class Connection:
     """A connection to the broker.
 
     Example:
@@ -564,7 +563,7 @@ class Connection(object):
                         self._debug('ensure channel error: %r',
                                     exc, exc_info=1)
                         errback and errback(exc, 0)
-        _ensured.__name__ = bytes_if_py2('{0}(ensured)'.format(fun.__name__))
+        _ensured.__name__ = bytes_if_py2(f'{fun.__name__}(ensured)')
         _ensured.__doc__ = fun.__doc__
         _ensured.__module__ = fun.__module__
         return _ensured
@@ -592,7 +591,7 @@ class Connection(object):
         """
         channels = [channel]
 
-        class Revival(object):
+        class Revival:
             __name__ = getattr(fun, '__name__', None)
             __module__ = getattr(fun, '__module__', None)
             __doc__ = getattr(fun, '__doc__', None)
@@ -637,7 +636,7 @@ class Connection(object):
 
         hostname = self.hostname or D.get('hostname')
         if self.uri_prefix:
-            hostname = '%s+%s' % (self.uri_prefix, hostname)
+            hostname = f'{self.uri_prefix}+{hostname}'
 
         info = (
             ('hostname', hostname),
@@ -675,12 +674,12 @@ class Connection(object):
         if self.transport.can_parse_url:
             connection_as_uri = self.hostname
             if self.uri_prefix:
-                connection_as_uri = '%s+%s' % (self.uri_prefix, hostname)
+                connection_as_uri = f'{self.uri_prefix}+{hostname}'
             if not include_password:
                 connection_as_uri = maybe_sanitize_url(connection_as_uri)
             return connection_as_uri
         if self.uri_prefix:
-            connection_as_uri = '%s+%s' % (self.uri_prefix, hostname)
+            connection_as_uri = f'{self.uri_prefix}+{hostname}'
             if not include_password:
                 connection_as_uri = maybe_sanitize_url(connection_as_uri)
             return connection_as_uri
@@ -814,7 +813,7 @@ class Connection(object):
         return exchange_type in self.transport.implements.exchange_type
 
     def __repr__(self):
-        return '<Connection: {0} at {1:#x}>'.format(self.as_uri(), id(self))
+        return '<Connection: {} at {:#x}>'.format(self.as_uri(), id(self))
 
     def __copy__(self):
         return self.clone()
@@ -976,7 +975,7 @@ class ConnectionPool(Resource):
 
     def __init__(self, connection, limit=None, **kwargs):
         self.connection = connection
-        super(ConnectionPool, self).__init__(limit=limit)
+        super().__init__(limit=limit)
 
     def new(self):
         return self.connection.clone()
@@ -1019,7 +1018,7 @@ class ChannelPool(Resource):
 
     def __init__(self, connection, limit=None, **kwargs):
         self.connection = connection
-        super(ChannelPool, self).__init__(limit=limit)
+        super().__init__(limit=limit)
 
     def new(self):
         return lazy(self.connection.channel)

@@ -1,5 +1,3 @@
-from __future__ import absolute_import, unicode_literals
-
 import pytest
 
 from case import Mock
@@ -14,7 +12,7 @@ class SimpleBase:
         if not isinstance(q, Queue):
             q = self.__class__.__name__
             if name:
-                q = '%s.%s' % (q, name)
+                q = f'{q}.{name}'
         return self._Queue(q, *args, **kwargs)
 
     def _Queue(self, *args, **kwargs):
@@ -84,8 +82,8 @@ class SimpleBase:
 
     def test_custom_Queue(self):
         n = self.__class__.__name__
-        exchange = Exchange('%s-test.custom.Queue' % (n,))
-        queue = Queue('%s-test.custom.Queue' % (n,),
+        exchange = Exchange(f'{n}-test.custom.Queue')
+        queue = Queue(f'{n}-test.custom.Queue',
                       exchange,
                       'my.routing.key')
 

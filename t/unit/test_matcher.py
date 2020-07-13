@@ -1,5 +1,3 @@
-from __future__ import absolute_import, unicode_literals
-
 from kombu.matcher import (
     match, register, registry, unregister, fnmatch, rematch,
     MatcherNotInstalled
@@ -8,7 +6,7 @@ from kombu.matcher import (
 import pytest
 
 
-class test_Matcher(object):
+class test_Matcher:
 
     def test_register_match_unregister_matcher(self):
         register("test_matcher", rematch)

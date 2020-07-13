@@ -1,6 +1,4 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
-from __future__ import absolute_import, unicode_literals
 
 import pytest
 import sys
@@ -299,8 +297,8 @@ class test_Serialization:
                      accept=['application/x-doomsday'])
 
     def test_raw_encode(self):
-        assert raw_encode('foo'.encode('utf-8')) == (
-            'application/data', 'binary', 'foo'.encode('utf-8'),
+        assert raw_encode(b'foo') == (
+            'application/data', 'binary', b'foo',
         )
 
     @mock.mask_modules('yaml')

@@ -1,5 +1,4 @@
 """Built-in transports."""
-from __future__ import absolute_import, unicode_literals
 
 from kombu.five import string_t
 from kombu.utils.compat import _detect_environment
@@ -63,9 +62,9 @@ def resolve_transport(transport=None):
                 alt = fmatch_best(transport, TRANSPORT_ALIASES)
                 if alt:
                     raise KeyError(
-                        'No such transport: {0}.  Did you mean {1}?'.format(
+                        'No such transport: {}.  Did you mean {}?'.format(
                             transport, alt))
-                raise KeyError('No such transport: {0}'.format(transport))
+                raise KeyError(f'No such transport: {transport}')
         else:
             if callable(transport):
                 transport = transport()

@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-from __future__ import absolute_import, unicode_literals
-
 import pytest
 
 from case import Mock
@@ -89,7 +86,7 @@ class test_AsyncQueue(AWSCase):
         self.callback.assert_called_with(messages[0])
 
     def MockMessage(self, id, md5):
-        m = Mock(name='Message-{0}'.format(id))
+        m = Mock(name=f'Message-{id}')
         m.id = id
         m.md5 = md5
         return m

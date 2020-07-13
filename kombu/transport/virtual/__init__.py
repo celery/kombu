@@ -1,5 +1,3 @@
-from __future__ import absolute_import, unicode_literals
-
 from .base import (
     Base64, NotEquivalentError, UndeliverableWarning, BrokerState,
     QoS, Message, AbstractChannel, Channel, Management, Transport,

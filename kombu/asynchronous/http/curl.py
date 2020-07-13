@@ -1,5 +1,4 @@
 """HTTP Client using pyCurl."""
-from __future__ import absolute_import, unicode_literals
 
 from collections import deque
 from functools import partial
@@ -42,7 +41,7 @@ class CurlClient(BaseClient):
         if pycurl is None:
             raise ImportError('The curl client requires the pycurl library.')
         hub = hub or get_event_loop()
-        super(CurlClient, self).__init__(hub)
+        super().__init__(hub)
         self.max_clients = max_clients
 
         self._multi = pycurl.CurlMulti()
@@ -203,7 +202,7 @@ class CurlClient(BaseClient):
 
         setopt(
             _pycurl.HTTPHEADER,
-            ['{0}: {1}'.format(*h) for h in items(request.headers)],
+            ['{}: {}'.format(*h) for h in items(request.headers)],
         )
 
         setopt(
@@ -231,7 +230,7 @@ class CurlClient(BaseClient):
             setopt(_pycurl.PROXY, request.proxy_host)
             setopt(_pycurl.PROXYPORT, request.proxy_port)
             if request.proxy_username:
-                setopt(_pycurl.PROXYUSERPWD, '{0}:{1}'.format(
+                setopt(_pycurl.PROXYUSERPWD, '{}:{}'.format(
                     request.proxy_username, request.proxy_password or ''))
         else:
             setopt(_pycurl.PROXY, '')
@@ -276,7 +275,7 @@ class CurlClient(BaseClient):
                 'digest': _pycurl.HTTPAUTH_DIGEST
             }[request.auth_mode or 'basic']
             setopt(_pycurl.HTTPAUTH, auth_mode)
-            userpwd = '{0}:{1}'.format(
+            userpwd = '{}:{}'.format(
                 request.auth_username, request.auth_password or '',
             )
             setopt(_pycurl.USERPWD, userpwd)

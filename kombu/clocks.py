@@ -1,5 +1,4 @@
 """Logical Clocks and Synchronization."""
-from __future__ import absolute_import, unicode_literals
 
 from threading import Lock
 from itertools import islice
@@ -65,7 +64,7 @@ class timetuple(tuple):
 
 
 @python_2_unicode_compatible
-class LamportClock(object):
+class LamportClock:
     """Lamport's logical clock.
 
     From Wikipedia:
@@ -149,4 +148,4 @@ class LamportClock(object):
         return str(self.value)
 
     def __repr__(self):
-        return '<LamportClock: {0.value}>'.format(self)
+        return f'<LamportClock: {self.value}>'

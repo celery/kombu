@@ -1,7 +1,6 @@
 """Time Utilities."""
 # flake8: noqa
 
-from __future__ import absolute_import, unicode_literals
 
 __all__ = ('maybe_s_to_ms',)
 

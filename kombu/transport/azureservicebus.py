@@ -17,7 +17,6 @@ More information about Azure Service Bus:
 https://azure.microsoft.com/en-us/services/service-bus/
 
 """
-from __future__ import absolute_import, unicode_literals
 
 import string
 
@@ -60,7 +59,7 @@ class Channel(virtual.Channel):
             raise ImportError('Azure Service Bus transport requires the '
                               'azure-servicebus library')
 
-        super(Channel, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         for queue in self.queue_service.list_queues():
             self._queue_cache[queue] = queue
@@ -84,7 +83,7 @@ class Channel(virtual.Channel):
         queue_name = self.entity_name(queue)
         self._queue_cache.pop(queue_name, None)
         self.queue_service.delete_queue(queue_name)
-        super(Channel, self)._delete(queue_name)
+        super()._delete(queue_name)
 
     def _put(self, queue, message, **kwargs):
         """Put message onto queue."""

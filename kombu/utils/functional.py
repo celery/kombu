@@ -1,5 +1,4 @@
 """Functional Utilities."""
-from __future__ import absolute_import, unicode_literals
 
 import random
 import sys
@@ -33,7 +32,7 @@ KEYWORD_MARK = object()
 
 
 @python_2_unicode_compatible
-class ChannelPromise(object):
+class ChannelPromise:
 
     def __init__(self, contract):
         self.__contract__ = contract
@@ -49,7 +48,7 @@ class ChannelPromise(object):
         try:
             return repr(self.__value__)
         except AttributeError:
-            return '<promise: 0x{0:x}>'.format(id(self.__contract__))
+            return '<promise: 0x{:x}>'.format(id(self.__contract__))
 
 
 class LRUCache(UserDict):
@@ -191,7 +190,7 @@ def memoize(maxsize=None, keyfun=None, Cache=LRUCache):
 
 
 @python_2_unicode_compatible
-class lazy(object):
+class lazy:
     """Holds lazy evaluation.
 
     Evaluated when called or if the :meth:`evaluate` method is called.
@@ -366,7 +365,7 @@ def reprkwargs(kwargs, sep=', ', fmt='{0}={1}'):
 
 def reprcall(name, args=(), kwargs=None, sep=', '):
     kwargs = {} if not kwargs else kwargs
-    return '{0}({1}{2}{3})'.format(
+    return '{}({}{}{})'.format(
         name, sep.join(map(_safe_repr, args or ())),
         (args and kwargs) and sep or '',
         reprkwargs(kwargs, sep),

@@ -1,5 +1,4 @@
 """Logging Utilities."""
-from __future__ import absolute_import, unicode_literals
 
 import logging
 import numbers
@@ -54,7 +53,7 @@ def safeify_format(fmt, args, filters=None):
         yield filt(args[index]) if filt else args[index]
 
 
-class LogMixin(object):
+class LogMixin:
     """Mixin that adds severity methods to any class."""
 
     def debug(self, *args, **kwargs):
@@ -75,7 +74,7 @@ class LogMixin(object):
         return self.log(logging.CRITICAL, *args, **kwargs)
 
     def annotate(self, text):
-        return '%s - %s' % (self.logger_name, text)
+        return f'{self.logger_name} - {text}'
 
     def log(self, severity, *args, **kwargs):
         if DISABLE_TRACEBACKS:

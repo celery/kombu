@@ -1,5 +1,4 @@
 """Import related utilities."""
-from __future__ import absolute_import, unicode_literals
 
 import importlib
 import sys
@@ -57,7 +56,7 @@ def symbol_by_name(name, aliases=None, imp=None, package=None,
             module = imp(module_name, package=package, **kwargs)
         except ValueError as exc:
             reraise(ValueError,
-                    ValueError("Couldn't import {0!r}: {1}".format(name, exc)),
+                    ValueError(f"Couldn't import {name!r}: {exc}"),
                     sys.exc_info()[2])
         return getattr(module, cls_name) if cls_name else module
     except (ImportError, AttributeError):

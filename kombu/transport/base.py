@@ -1,7 +1,6 @@
 """Base transport interface."""
 # flake8: noqa
 
-from __future__ import absolute_import, unicode_literals
 
 import errno
 import socket
@@ -72,7 +71,7 @@ def _LeftBlank(obj, method):
             obj.__class__, method))
 
 
-class StdChannel(object):
+class StdChannel:
     """Standard channel base class."""
 
     no_ack_consumers = None
@@ -107,7 +106,7 @@ class StdChannel(object):
         self.close()
 
 
-class Management(object):
+class Management:
     """AMQP Management API (incomplete)."""
 
     def __init__(self, transport):
@@ -140,7 +139,7 @@ default_transport_capabilities = Implements(
 )
 
 
-class Transport(object):
+class Transport:
     """Base class for transports."""
 
     Management = Management

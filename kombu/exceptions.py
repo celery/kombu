@@ -1,5 +1,4 @@
 """Exceptions."""
-from __future__ import absolute_import, unicode_literals
 
 from socket import timeout as TimeoutError  # noqa
 
@@ -85,7 +84,7 @@ class HttpError(Exception):
         self.code = code
         self.message = message
         self.response = response
-        super(HttpError, self).__init__(code, message, response)
+        super().__init__(code, message, response)
 
     def __str__(self):
         return 'HTTP {0.code}: {0.message}'.format(self)

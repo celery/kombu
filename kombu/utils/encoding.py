@@ -1,11 +1,9 @@
-# -*- coding: utf-8 -*-
 """Text encoding utilities.
 
 Utilities to encode text, and to safely emit text from running
 applications without crashing from the infamous
 :exc:`UnicodeDecodeError` exception.
 """
-from __future__ import absolute_import, unicode_literals
 
 import sys
 import traceback
@@ -118,7 +116,7 @@ if PY3:  # pragma: no cover
         try:
             return str(s)
         except Exception as exc:
-            return '<Unrepresentable {0!r}: {1!r} {2!r}>'.format(
+            return '<Unrepresentable {!r}: {!r} {!r}>'.format(
                 type(s), exc, '\n'.join(traceback.format_stack()))
 else:
     def _ensure_str(s, encoding, errors):
@@ -135,7 +133,7 @@ else:
                                    encoding, errors)
             return unicode(s, encoding, errors)
         except Exception as exc:
-            return '<Unrepresentable {0!r}: {1!r} {2!r}>'.format(
+            return '<Unrepresentable {!r}: {!r} {!r}>'.format(
                 type(s), exc, '\n'.join(traceback.format_stack()))
 
 

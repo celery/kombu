@@ -1,6 +1,4 @@
-# * coding: utf8 *
 """Amazon AWS Connection."""
-from __future__ import absolute_import, unicode_literals
 
 from vine import promise, transform
 
@@ -26,7 +24,7 @@ except ImportError:  # pragma: no cover
     # py2
     def message_from_headers(hdr):  # noqa
         return io.BytesIO(b'\r\n'.join(
-            b'{0}: {1}'.format(*h) for h in hdr
+            b'{}: {}'.format(*h) for h in hdr
         ))
 
 __all__ = (
@@ -35,7 +33,7 @@ __all__ = (
 
 
 @python_2_unicode_compatible
-class AsyncHTTPResponse(object):
+class AsyncHTTPResponse:
     """Async HTTP Response."""
 
     def __init__(self, response):
@@ -73,7 +71,7 @@ class AsyncHTTPResponse(object):
 
 
 @python_2_unicode_compatible
-class AsyncHTTPSConnection(object):
+class AsyncHTTPSConnection:
     """Async HTTP Connection."""
 
     Request = Request
@@ -140,10 +138,10 @@ class AsyncHTTPSConnection(object):
             self.body = data
 
     def __repr__(self):
-        return '<AsyncHTTPConnection: {0!r}>'.format(self.getrequest())
+        return f'<AsyncHTTPConnection: {self.getrequest()!r}>'
 
 
-class AsyncConnection(object):
+class AsyncConnection:
     """Async AWS Connection."""
 
     def __init__(self, sqs_connection, http_client=None, **kwargs):  # noqa

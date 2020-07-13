@@ -1,5 +1,3 @@
-from __future__ import absolute_import, unicode_literals
-
 import pytest
 import socket
 
@@ -71,7 +69,7 @@ class test_ConsumerMixin:
 
         def se2(*args, **kwargs):
             c.should_stop = True
-            raise socket.error()
+            raise OSError()
         c.connection.drain_events.side_effect = se2
         it = c.consume(no_ack=True)
         with pytest.raises(StopIteration):

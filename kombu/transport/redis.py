@@ -1,5 +1,4 @@
 """Redis transport."""
-from __future__ import absolute_import, unicode_literals
 
 import numbers
 import socket
@@ -138,7 +137,7 @@ class QoS(virtual.QoS):
     restore_at_shutdown = True
 
     def __init__(self, *args, **kwargs):
-        super(QoS, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._vrestore_count = 0
 
     def append(self, message, delivery_tag):
@@ -156,7 +155,7 @@ class QoS(virtual.QoS):
                 .hset(self.unacked_key, delivery_tag,
                       dumps([message._raw, EX, RK])) \
                 .execute()
-            super(QoS, self).append(message, delivery_tag)
+            super().append(message, delivery_tag)
 
     def restore_unacked(self, client=None):
         with self.channel.conn_or_acquire(client) as client:
@@ -166,7 +165,7 @@ class QoS(virtual.QoS):
 
     def ack(self, delivery_tag):
         self._remove_from_indices(delivery_tag).execute()
-        super(QoS, self).ack(delivery_tag)
+        super().ack(delivery_tag)
 
     def reject(self, delivery_tag, requeue=False):
         if requeue:
@@ -236,7 +235,7 @@ class QoS(virtual.QoS):
         return self.channel.visibility_timeout
 
 
-class MultiChannelPoller(object):
+class MultiChannelPoller:
     """Async I/O poller for Redis transport."""
 
     eventflags = READ | ERR
@@ -496,7 +495,7 @@ class Channel(virtual.Channel):
     connection_class = redis.Connection if redis else None
 
     def __init__(self, *args, **kwargs):
-        super(Channel, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         if not self.ack_emulation:  # disable visibility timeout
             self.QoS = virtual.QoS
@@ -572,7 +571,7 @@ class Channel(virtual.Channel):
 
     def _restore(self, message, leftmost=False):
         if not self.ack_emulation:
-            return super(Channel, self)._restore(message)
+            return super()._restore(message)
         tag = message.delivery_tag
         with self.conn_or_acquire() as client:
             with client.pipeline() as pipe:
@@ -591,7 +590,7 @@ class Channel(virtual.Channel):
             exchange, _ = self._fanout_queues[queue]
             self.active_fanout_queues.add(queue)
             self._fanout_to_queue[exchange] = queue
-        ret = super(Channel, self).basic_consume(queue, *args, **kwargs)
+        ret = super().basic_consume(queue, *args, **kwargs)
 
         # Update fair cycle between queues.
         #
@@ -635,7 +634,7 @@ class Channel(virtual.Channel):
             self._fanout_to_queue.pop(exchange)
         except KeyError:
             pass
-        ret = super(Channel, self).basic_cancel(consumer_tag)
+        ret = super().basic_cancel(consumer_tag)
         self._update_queue_cycle()
         return ret
 
@@ -774,7 +773,7 @@ class Channel(virtual.Channel):
     def _q_for_pri(self, queue, pri):
         pri = self.priority(pri)
         if pri:
-            return "{}{}{}".format(queue, self.sep, pri)
+            return f"{queue}{self.sep}{pri}"
         return queue
 
     def priority(self, n):
@@ -862,7 +861,7 @@ class Channel(virtual.Channel):
                         self.queue_delete(queue, client=client)
             self._disconnect_pools()
             self._close_clients()
-        super(Channel, self).close()
+        super().close()
 
     def _close_clients(self):
         # Close connections
@@ -884,7 +883,7 @@ class Channel(virtual.Channel):
                 vhost = int(vhost)
             except ValueError:
                 raise ValueError(
-                    'Database is int between 0 and limit - 1, not {0}'.format(
+                    'Database is int between 0 and limit - 1, not {}'.format(
                         vhost,
                     ))
         return vhost
@@ -955,7 +954,7 @@ class Channel(virtual.Channel):
         if asynchronous:
             class Connection(connection_cls):
                 def disconnect(self):
-                    super(Connection, self).disconnect()
+                    super().disconnect()
                     channel._on_connection_disconnect(self)
             connection_cls = Connection
 
@@ -1042,7 +1041,7 @@ class Transport(virtual.Transport):
     def __init__(self, *args, **kwargs):
         if redis is None:
             raise ImportError('Missing redis library (pip install redis)')
-        super(Transport, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         # Get redis-py exceptions.
         self.connection_errors, self.channel_errors = self._get_errors()

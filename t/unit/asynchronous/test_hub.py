@@ -1,5 +1,3 @@
-from __future__ import absolute_import, unicode_literals
-
 import errno
 import pytest
 
@@ -16,7 +14,7 @@ from kombu.asynchronous.hub import (
 from kombu.asynchronous.semaphore import DummyLock, LaxBoundedSemaphore
 
 
-class File(object):
+class File:
 
     def __init__(self, fd):
         self.fd = fd
@@ -237,7 +235,7 @@ class test_Hub:
         poller = self.hub.poller
         self.hub.stop()
         mock_callback = Mock()
-        self.hub._ready = set([mock_callback])
+        self.hub._ready = {mock_callback}
         self.hub.close()
         poller.close.assert_called_with()
         mock_callback.assert_called_once_with()

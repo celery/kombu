@@ -1,7 +1,6 @@
 """URL Utilities."""
 # flake8: noqa
 
-from __future__ import absolute_import, unicode_literals
 
 try:
     from collections.abc import Mapping
@@ -89,7 +88,7 @@ def as_url(scheme, host=None, port=None, user=None, password=None,
            path=None, query=None, sanitize=False, mask='**'):
     # type: (str, str, int, str, str, str, str, bool, str) -> str
     """Generate URL from component parts."""
-    parts = ['{0}://'.format(scheme)]
+    parts = [f'{scheme}://']
     if user or password:
         if user:
             parts.append(safequote(user))

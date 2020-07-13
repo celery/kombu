@@ -1,5 +1,4 @@
 """Simple messaging interface."""
-from __future__ import absolute_import, unicode_literals
 
 import socket
 
@@ -13,7 +12,7 @@ from .five import Empty, monotonic
 __all__ = ('SimpleQueue', 'SimpleBuffer')
 
 
-class SimpleBase(object):
+class SimpleBase:
     Empty = Empty
     _consuming = False
 
@@ -139,7 +138,7 @@ class SimpleQueue(SimpleBase):
                                       serializer=serializer,
                                       routing_key=routing_key,
                                       compression=compression)
-        super(SimpleQueue, self).__init__(channel, producer,
+        super().__init__(channel, producer,
                                           consumer, no_ack, **kwargs)
 
 

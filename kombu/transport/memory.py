@@ -1,5 +1,4 @@
 """In-memory transport."""
-from __future__ import absolute_import, unicode_literals
 
 from kombu.five import Queue, values
 
@@ -54,7 +53,7 @@ class Channel(virtual.Channel):
         return size
 
     def close(self):
-        super(Channel, self).close()
+        super().close()
         for queue in values(self.queues):
             queue.empty()
         self.queues = {}

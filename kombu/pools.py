@@ -1,5 +1,4 @@
 """Public resource pools."""
-from __future__ import absolute_import, unicode_literals
 
 import os
 
@@ -33,7 +32,7 @@ class ProducerPool(Resource):
     def __init__(self, connections, *args, **kwargs):
         self.connections = connections
         self.Producer = kwargs.pop('Producer', None) or self.Producer
-        super(ProducerPool, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def _acquire_connection(self):
         return self.connections.acquire(block=True)
@@ -73,7 +72,7 @@ class ProducerPool(Resource):
         if resource.__connection__:
             resource.__connection__.release()
         resource.channel = None
-        super(ProducerPool, self).release(resource)
+        super().release(resource)
 
 
 class PoolGroup(EqualityDict):

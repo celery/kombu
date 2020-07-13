@@ -2,7 +2,6 @@
 
 .. _`librabbitmq`: https://pypi.org/project/librabbitmq/
 """
-from __future__ import absolute_import, unicode_literals
 
 import os
 import socket
@@ -34,7 +33,7 @@ class Message(base.Message):
     """AMQP Message (librabbitmq)."""
 
     def __init__(self, channel, props, info, body):
-        super(Message, self).__init__(
+        super().__init__(
             channel=channel,
             body=body,
             delivery_info=info,

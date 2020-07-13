@@ -1,5 +1,4 @@
 """Message class."""
-from __future__ import absolute_import, unicode_literals
 
 import sys
 
@@ -16,7 +15,7 @@ IS_PYPY = hasattr(sys, 'pypy_version_info')
 
 
 @python_2_unicode_compatible
-class Message(object):
+class Message:
     """Base class for received messages.
 
     Keyword Arguments:
@@ -208,7 +207,7 @@ class Message(object):
         return self._decoded_cache if self._decoded_cache else self.decode()
 
     def __repr__(self):
-        return '<{0} object at {1:#x} with details {2!r}>'.format(
+        return '<{} object at {:#x} with details {!r}>'.format(
             type(self).__name__, id(self), dictfilter(
                 state=self._state,
                 content_type=self.content_type,

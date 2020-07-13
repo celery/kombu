@@ -1,5 +1,3 @@
-from __future__ import absolute_import, unicode_literals
-
 import pytest
 import socket
 import types
@@ -40,7 +38,7 @@ class ResponseError(Exception):
     pass
 
 
-class Client(object):
+class Client:
     queues = {}
     sets = defaultdict(set)
     hashes = defaultdict(dict)
@@ -143,10 +141,10 @@ class Client(object):
     def _new_queue(self, key):
         self.queues[key] = _Queue()
 
-    class _sconnection(object):
+    class _sconnection:
         disconnected = False
 
-        class _socket(object):
+        class _socket:
             blocking = True
             filenos = count(30)
 
@@ -176,7 +174,7 @@ class Client(object):
     def pubsub(self, *args, **kwargs):
         connection = self.connection
 
-        class ConnectionPool(object):
+        class ConnectionPool:
 
             def get_connection(self, *args, **kwargs):
                 return connection
@@ -185,7 +183,7 @@ class Client(object):
         return self
 
 
-class Pipeline(object):
+class Pipeline:
 
     def __init__(self, client):
         self.client = client
@@ -291,7 +289,7 @@ class test_Channel:
 
             def __init__(self, *args, **kwargs):
                 self._pool = pool_at_init[0]
-                super(XChannel, self).__init__(*args, **kwargs)
+                super().__init__(*args, **kwargs)
 
             def _get_client(self):
                 return lambda *_, **__: client
@@ -981,7 +979,7 @@ class test_Redis:
         self.queue(channel).declare()
 
         for i in range(10):
-            producer.publish({'hello': 'world-%s' % (i,)})
+            producer.publish({'hello': f'world-{i}'})
 
         assert channel._size('test_Redis') == 10
         assert self.queue(channel).purge() == 10
@@ -1075,7 +1073,7 @@ def _redis_modules():
     exceptions.InvalidResponse = InvalidResponse
     exceptions.ResponseError = ResponseError
 
-    class Redis(object):
+    class Redis:
         pass
 
     myredis = types.ModuleType(bytes_if_py2('redis'))
@@ -1425,10 +1423,10 @@ class test_RedisSentinel:
             connection.channel()
             patched.assert_called_once_with(
                 [
-                    (u'localhost', 65532),
-                    (u'localhost', 65533),
-                    (u'localhost', 65534),
-                    (u'localhost', 65535),
+                    ('localhost', 65532),
+                    ('localhost', 65533),
+                    ('localhost', 65534),
+                    ('localhost', 65535),
                 ],
                 connection_class=mock.ANY, db=0, max_connections=10,
                 min_other_sentinels=0, password=None, sentinel_kwargs=None,
@@ -1452,7 +1450,7 @@ class test_RedisSentinel:
 
             connection.channel()
             patched.assert_called_once_with(
-                [(u'localhost', 65532)],
+                [('localhost', 65532)],
                 connection_class=mock.ANY, db=0, max_connections=10,
                 min_other_sentinels=0, password=None, sentinel_kwargs=None,
                 socket_connect_timeout=None, socket_keepalive=None,

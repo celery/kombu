@@ -1,5 +1,4 @@
 """Generic process mailbox."""
-from __future__ import absolute_import, unicode_literals
 
 import socket
 import warnings
@@ -37,7 +36,7 @@ logger = get_logger(__name__)
 debug, error = logger.debug, logger.error
 
 
-class Node(object):
+class Node:
     """Mailbox node."""
 
     #: hostname of the node.
@@ -151,7 +150,7 @@ class Node(object):
                                     serializer=self.mailbox.serializer)
 
 
-class Mailbox(object):
+class Mailbox:
     """Process Mailbox."""
 
     node_cls = Node
@@ -236,7 +235,7 @@ class Mailbox(object):
     def get_reply_queue(self):
         oid = self.oid
         return Queue(
-            '%s.%s' % (oid, self.reply_exchange.name),
+            f'{oid}.{self.reply_exchange.name}',
             exchange=self.reply_exchange,
             routing_key=oid,
             durable=False,
@@ -251,7 +250,7 @@ class Mailbox(object):
 
     def get_queue(self, hostname):
         return Queue(
-            '%s.%s.pidbox' % (hostname, self.namespace),
+            f'{hostname}.{self.namespace}.pidbox',
             exchange=self.exchange,
             durable=False,
             auto_delete=True,
@@ -319,7 +318,7 @@ class Mailbox(object):
         if destination is not None and \
                 not isinstance(destination, (list, tuple)):
             raise ValueError(
-                'destination must be a list/tuple not {0}'.format(
+                'destination must be a list/tuple not {}'.format(
                     type(destination)))
         if (pattern is not None and not isinstance(pattern, string_t) and
                 matcher is not None and not isinstance(matcher, string_t)):

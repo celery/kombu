@@ -1,5 +1,3 @@
-from __future__ import absolute_import, unicode_literals
-
 import pytest
 
 from case import Mock, patch
@@ -14,14 +12,14 @@ class test_misc:
 
     def test_iterconsume(self):
 
-        class MyConnection(object):
+        class MyConnection:
             drained = 0
 
             def drain_events(self, *args, **kwargs):
                 self.drained += 1
                 return self.drained
 
-        class Consumer(object):
+        class Consumer:
             active = False
 
             def consume(self, *args, **kwargs):
@@ -238,8 +236,7 @@ class test_Consumer:
         class C(compat.Consumer):
 
             def iterconsume(self, limit=None):
-                for i in range(limit):
-                    yield i
+                yield from range(limit)
 
         c = C(self.connection,
               queue=n, exchange=n, routing_key='rkey')

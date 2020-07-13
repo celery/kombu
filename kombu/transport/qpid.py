@@ -76,7 +76,6 @@ options override and replace any other default or specified values. If using
 Celery, this can be accomplished by setting the
 *BROKER_TRANSPORT_OPTIONS* Celery option.
 """
-from __future__ import absolute_import, unicode_literals
 
 from collections import OrderedDict
 import os
@@ -148,7 +147,7 @@ class AuthenticationFailure(Exception):
     """Cannot authenticate with Qpid."""
 
 
-class QoS(object):
+class QoS:
     """A helper object for message prefetch and ACKing purposes.
 
     :keyword prefetch_count: Initial prefetch count, hard set to 1.
@@ -465,11 +464,11 @@ class Channel(base.StdChannel):
 
         """
         if not exchange:
-            address = '%s; {assert: always, node: {type: queue}}' % (
-                routing_key,)
+            address = '{}; {{assert: always, node: {{type: queue}}}}'.format(
+                routing_key)
             msg_subject = None
         else:
-            address = '%s/%s; {assert: always, node: {type: topic}}' % (
+            address = '{}/{}; {{assert: always, node: {{type: topic}}}}'.format(
                 exchange, routing_key)
             msg_subject = str(routing_key)
         sender = self.transport.session.sender(address)
@@ -517,7 +516,7 @@ class Channel(base.StdChannel):
         """
         queue_to_purge = self._broker.getQueue(queue)
         if queue_to_purge is None:
-            error_text = "NOT_FOUND - no queue '{0}'".format(queue)
+            error_text = f"NOT_FOUND - no queue '{queue}'"
             raise NotFound(code=404, text=error_text)
         message_count = queue_to_purge.values['msgDepth']
         if message_count > 0:
@@ -1212,7 +1211,7 @@ class Channel(base.StdChannel):
             return default
 
 
-class Connection(object):
+class Connection:
     """Qpid Connection.
 
     Encapsulate a connection object for the
@@ -1436,7 +1435,7 @@ class Transport(base.Transport):
 
     def __init__(self, *args, **kwargs):
         self.verify_runtime_environment()
-        super(Transport, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.use_async_interface = False
 
     def verify_runtime_environment(self):

@@ -1,5 +1,4 @@
 """Pure-Python amqp transport."""
-from __future__ import absolute_import, unicode_literals
 
 import amqp
 
@@ -19,7 +18,7 @@ class Message(base.Message):
 
     def __init__(self, msg, channel=None, **kwargs):
         props = msg.properties
-        super(Message, self).__init__(
+        super().__init__(
             body=msg.body,
             channel=channel,
             delivery_tag=msg.delivery_tag,
@@ -173,7 +172,7 @@ class SSLTransport(Transport):
     """AMQP SSL Transport."""
 
     def __init__(self, *args, **kwargs):
-        super(SSLTransport, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         # ugh, not exactly pure, but hey, it's python.
         if not self.client.ssl:  # not dict or False

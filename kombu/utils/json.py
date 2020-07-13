@@ -1,6 +1,4 @@
-# -*- coding: utf-8 -*-
 """JSON Serialization Utilities."""
-from __future__ import absolute_import, unicode_literals
 
 import datetime
 import decimal
@@ -12,7 +10,7 @@ from kombu.five import PY3, buffer_t, text_t, bytes_t
 try:
     from django.utils.functional import Promise as DjangoPromise
 except ImportError:  # pragma: no cover
-    class DjangoPromise(object):  # noqa
+    class DjangoPromise:  # noqa
         """Dummy object."""
 
 try:
@@ -56,7 +54,7 @@ class JSONEncoder(_encoder_cls):
                 return o.isoformat()
             elif isinstance(o, textual):
                 return text_t(o)
-            return super(JSONEncoder, self).default(o)
+            return super().default(o)
 
 
 _default_encoder = JSONEncoder

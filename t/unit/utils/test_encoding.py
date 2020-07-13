@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-from __future__ import absolute_import, unicode_literals
-
 import sys
 
 from contextlib import contextmanager
@@ -68,17 +65,17 @@ def test_default_encode():
 class newbytes(bytes):
     """Mock class to simulate python-future newbytes class"""
     def __repr__(self):
-        return 'b' + super(newbytes, self).__repr__()
+        return 'b' + super().__repr__()
 
     def __str__(self):
-        return 'b' + "'{0}'".format(super(newbytes, self).__str__())
+        return 'b' + f"'{super().__str__()}'"
 
 
 class newstr(string):
     """Mock class to simulate python-future newstr class"""
 
     def encode(self, encoding=None, errors=None):
-        return newbytes(super(newstr, self).encode(encoding, errors))
+        return newbytes(super().encode(encoding, errors))
 
 
 class test_safe_str:
@@ -117,7 +114,7 @@ class test_safe_str:
 
     def test_when_unrepresentable(self):
 
-        class UnrepresentableObject(object):
+        class UnrepresentableObject:
 
             def __repr__(self):
                 raise KeyError('foo')

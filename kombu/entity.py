@@ -1,5 +1,4 @@
 """Exchange and Queue declarations."""
-from __future__ import absolute_import, unicode_literals
 
 import numbers
 
@@ -26,7 +25,7 @@ def _reprstr(s):
 
 
 def pretty_bindings(bindings):
-    return '[{0}]'.format(', '.join(map(str, bindings)))
+    return '[{}]'.format(', '.join(map(str, bindings)))
 
 
 def maybe_delivery_mode(
@@ -155,13 +154,13 @@ class Exchange(MaybeChannelBound):
     )
 
     def __init__(self, name='', type='', channel=None, **kwargs):
-        super(Exchange, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.name = name or self.name
         self.type = type or self.type
         self.maybe_bind(channel)
 
     def __hash__(self):
-        return hash('E|%s' % (self.name,))
+        return hash(f'E|{self.name}')
 
     def _can_declare(self):
         return not self.no_declare and (
@@ -310,7 +309,7 @@ class Exchange(MaybeChannelBound):
         return self._repr_entity(self)
 
     def __str__(self):
-        return 'Exchange {0}({1})'.format(
+        return 'Exchange {}({})'.format(
             _reprstr(self.name) or repr(''), self.type,
         )
 
@@ -366,10 +365,10 @@ class binding(Object):
                            channel=channel)
 
     def __repr__(self):
-        return '<binding: {0}>'.format(self)
+        return f'<binding: {self}>'
 
     def __str__(self):
-        return '{0}->{1}'.format(
+        return '{}->{}'.format(
             _reprstr(self.exchange.name), _reprstr(self.routing_key),
         )
 
@@ -569,7 +568,7 @@ class Queue(MaybeChannelBound):
     def __init__(self, name='', exchange=None, routing_key='',
                  channel=None, bindings=None, on_declared=None,
                  **kwargs):
-        super(Queue, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.name = name or self.name
         if isinstance(exchange, str):
             self.exchange = Exchange(exchange)
@@ -592,12 +591,12 @@ class Queue(MaybeChannelBound):
 
     def bind(self, channel):
         on_declared = self.on_declared
-        bound = super(Queue, self).bind(channel)
+        bound = super().bind(channel)
         bound.on_declared = on_declared
         return bound
 
     def __hash__(self):
-        return hash('Q|%s' % (self.name,))
+        return hash(f'Q|{self.name}')
 
     def when_bound(self):
         if self.exchange:
@@ -862,7 +861,7 @@ class Queue(MaybeChannelBound):
                      bindings=bindings)
 
     def as_dict(self, recurse=False):
-        res = super(Queue, self).as_dict(recurse)
+        res = super().as_dict(recurse)
         if not recurse:
             return res
         bindings = res.get('bindings')

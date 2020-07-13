@@ -1,5 +1,3 @@
-from __future__ import absolute_import, unicode_literals
-
 import pytest
 import pytz
 
@@ -14,7 +12,7 @@ from kombu.utils.encoding import str_to_bytes
 from kombu.utils.json import _DecodeError, dumps, loads
 
 
-class Custom(object):
+class Custom:
 
     def __init__(self, data):
         self.data = data
@@ -37,7 +35,7 @@ class test_JSONEncoder:
         ))
         assert serialized == {
             'datetime': now.isoformat(),
-            'tz': '{0}Z'.format(now_utc.isoformat().split('+', 1)[0]),
+            'tz': '{}Z'.format(now_utc.isoformat().split('+', 1)[0]),
             'time': now.time().isoformat(),
             'date': stripped.isoformat(),
         }

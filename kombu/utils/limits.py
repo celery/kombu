@@ -1,5 +1,4 @@
 """Token bucket implementation for rate limiting."""
-from __future__ import absolute_import, unicode_literals
 
 from collections import deque
 
@@ -8,7 +7,7 @@ from kombu.five import monotonic
 __all__ = ('TokenBucket',)
 
 
-class TokenBucket(object):
+class TokenBucket:
     """Token Bucket Algorithm.
 
     See Also:

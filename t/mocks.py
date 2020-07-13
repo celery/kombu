@@ -1,5 +1,3 @@
-from __future__ import absolute_import, unicode_literals
-
 from itertools import count
 
 from case import ContextMock, Mock
@@ -21,7 +19,7 @@ def PromiseMock(*args, **kwargs):
     return m
 
 
-class MockPool(object):
+class MockPool:
 
     def __init__(self, value=None):
         self.value = value or ContextMock()
@@ -34,12 +32,12 @@ class Message(base.Message):
 
     def __init__(self, *args, **kwargs):
         self.throw_decode_error = kwargs.get('throw_decode_error', False)
-        super(Message, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def decode(self):
         if self.throw_decode_error:
             raise ValueError("can't decode message")
-        return super(Message, self).decode()
+        return super().decode()
 
 
 class Channel(base.StdChannel):
@@ -147,7 +145,7 @@ class Channel(base.StdChannel):
         self._called('basic_qos')
 
 
-class Connection(object):
+class Connection:
     connected = True
 
     def __init__(self, client):

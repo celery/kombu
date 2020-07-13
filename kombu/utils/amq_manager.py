@@ -1,5 +1,4 @@
 """AMQP Management API utilities."""
-from __future__ import absolute_import, unicode_literals
 
 
 def get_manager(client, hostname=None, port=None, userid=None,
@@ -17,4 +16,4 @@ def get_manager(client, hostname=None, port=None, userid=None,
     port = port if port is not None else opt('manager_port', 15672)
     userid = get('userid', userid, 'guest')
     password = get('password', password, 'guest')
-    return pyrabbit.Client('%s:%s' % (host, port), userid, password)
+    return pyrabbit.Client(f'{host}:{port}', userid, password)

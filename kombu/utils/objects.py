@@ -1,8 +1,7 @@
 """Object Utilities."""
-from __future__ import absolute_import, unicode_literals
 
 
-class cached_property(object):
+class cached_property:
     """Cached property descriptor.
 
     Caches the return value of the get method on first call.

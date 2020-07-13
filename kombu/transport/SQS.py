@@ -73,7 +73,6 @@ Other Features supported by this transport:
     https://botocore.amazonaws.com/v1/documentation/api/latest/reference/config.html
 """  # noqa: E501
 
-from __future__ import absolute_import, unicode_literals
 
 import base64
 import socket
@@ -139,7 +138,7 @@ class Channel(virtual.Channel):
     def __init__(self, *args, **kwargs):
         if boto3 is None:
             raise ImportError('boto3 is not installed')
-        super(Channel, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         # SQS blows up if you try to create a new queue when one already
         # exists but with a different visibility_timeout.  This prepopulates
@@ -165,7 +164,7 @@ class Channel(virtual.Channel):
             self._noack_queues.add(queue)
         if self.hub:
             self._loop1(queue)
-        return super(Channel, self).basic_consume(
+        return super().basic_consume(
             queue, no_ack, *args, **kwargs
         )
 
@@ -173,7 +172,7 @@ class Channel(virtual.Channel):
         if consumer_tag in self._consumers:
             queue = self._tag_to_queue[consumer_tag]
             self._noack_queues.discard(queue)
-        return super(Channel, self).basic_cancel(consumer_tag)
+        return super().basic_cancel(consumer_tag)
 
     def drain_events(self, timeout=None, callback=None, **kwargs):
         """Return a single payload message from one of our queues.
@@ -264,7 +263,7 @@ class Channel(virtual.Channel):
         """Delete queue by name."""
         if self.predefined_queues:
             return
-        super(Channel, self)._delete(queue)
+        super()._delete(queue)
         self._queue_cache.pop(queue, None)
 
     def _put(self, queue, message, **kwargs):
@@ -466,14 +465,14 @@ class Channel(virtual.Channel):
         for unwanted_key in unwanted_delivery_info:
             # Remove objects that aren't JSON serializable (Issue #1108).
             message.delivery_info.pop(unwanted_key, None)
-        return super(Channel, self)._restore(message)
+        return super()._restore(message)
 
     def basic_ack(self, delivery_tag, multiple=False):
         try:
             message = self.qos.get(delivery_tag).delivery_info
             sqs_message = message['sqs_message']
         except KeyError:
-            super(Channel, self).basic_ack(delivery_tag)
+            super().basic_ack(delivery_tag)
         else:
             queue = None
             if 'routing_key' in message:
@@ -485,9 +484,9 @@ class Channel(virtual.Channel):
                     ReceiptHandle=sqs_message['ReceiptHandle']
                 )
             except ClientError:
-                super(Channel, self).basic_reject(delivery_tag)
+                super().basic_reject(delivery_tag)
             else:
-                super(Channel, self).basic_ack(delivery_tag)
+                super().basic_ack(delivery_tag)
 
     def _size(self, queue):
         """Return the number of messages in a queue."""
@@ -512,7 +511,7 @@ class Channel(virtual.Channel):
         return size
 
     def close(self):
-        super(Channel, self).close()
+        super().close()
         # if self._asynsqs:
         #     try:
         #         self.asynsqs().close()
@@ -637,7 +636,7 @@ class Channel(virtual.Channel):
         if self.conninfo.hostname is not None:
             scheme = 'https' if self.is_secure else 'http'
             if self.conninfo.port is not None:
-                port = ':{}'.format(self.conninfo.port)
+                port = f':{self.conninfo.port}'
             else:
                 port = ''
             return '{}://{}{}'.format(

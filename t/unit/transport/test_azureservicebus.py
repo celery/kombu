@@ -1,5 +1,3 @@
-from __future__ import absolute_import, unicode_literals
-
 import pytest
 
 from case import skip, patch
@@ -19,7 +17,7 @@ except ImportError:
         ServiceBusService = Message = None
 
 
-class QueueMock(object):
+class QueueMock:
     """ Hold information about a queue. """
 
     def __init__(self, name):
@@ -53,7 +51,7 @@ def _create_mock_connection(url='', **kwargs):
     return Connection(url, transport=Transport, **kwargs)
 
 
-class AzureServiceBusClientMock(object):
+class AzureServiceBusClientMock:
 
     def __init__(self):
         """
@@ -207,7 +205,7 @@ class test_Channel:
 
         # Test getting multiple messages
         for i in range(3):
-            message = 'message: {0}'.format(i)
+            message = f'message: {i}'
             self.producer.publish(message)
 
         queue_service = self.channel.queue_service

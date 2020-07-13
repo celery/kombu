@@ -1,5 +1,4 @@
 """Pattern matching registry."""
-from __future__ import absolute_import, unicode_literals
 
 from re import match as rematch
 from fnmatch import fnmatch
@@ -14,7 +13,7 @@ class MatcherNotInstalled(Exception):
     pass
 
 
-class MatcherRegistry(object):
+class MatcherRegistry:
     """Pattern matching function registry."""
 
     MatcherNotInstalled = MatcherNotInstalled
@@ -34,7 +33,7 @@ class MatcherRegistry(object):
             self._matchers.pop(name)
         except KeyError:
             raise self.MatcherNotInstalled(
-                'No matcher installed for {}'.format(name)
+                f'No matcher installed for {name}'
             )
 
     def _set_default_matcher(self, name):
@@ -51,14 +50,14 @@ class MatcherRegistry(object):
             self._default_matcher = self._matchers[name]
         except KeyError:
             raise self.MatcherNotInstalled(
-                'No matcher installed for {}'.format(name)
+                f'No matcher installed for {name}'
             )
 
     def match(self, data, pattern, matcher=None, matcher_kwargs=None):
         """Call the matcher."""
         if matcher and not self._matchers.get(matcher):
             raise self.MatcherNotInstalled(
-                'No matcher installed for {}'.format(matcher)
+                f'No matcher installed for {matcher}'
             )
         match_func = self._matchers[matcher or 'glob']
         if matcher in self.matcher_pattern_first:

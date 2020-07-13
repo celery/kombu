@@ -1,6 +1,4 @@
-# -*- coding: utf-8 -*-
 """Amazon SQS Connection."""
-from __future__ import absolute_import, unicode_literals
 
 from vine import transform
 
@@ -85,10 +83,10 @@ class AsyncSQSConnection(AsyncAWSQueryConnection):
     def delete_message_batch(self, queue, messages, callback=None):
         params = {}
         for i, m in enumerate(messages):
-            prefix = 'DeleteMessageBatchRequestEntry.{0}'.format(i + 1)
+            prefix = 'DeleteMessageBatchRequestEntry.{}'.format(i + 1)
             params.update({
-                '{0}.Id'.format(prefix): m.id,
-                '{0}.ReceiptHandle'.format(prefix): m.receipt_handle,
+                f'{prefix}.Id': m.id,
+                f'{prefix}.ReceiptHandle': m.receipt_handle,
             })
         return self.get_object(
             'DeleteMessageBatch', params, queue.id,
@@ -115,11 +113,11 @@ class AsyncSQSConnection(AsyncAWSQueryConnection):
     def send_message_batch(self, queue, messages, callback=None):
         params = {}
         for i, msg in enumerate(messages):
-            prefix = 'SendMessageBatchRequestEntry.{0}'.format(i + 1)
+            prefix = 'SendMessageBatchRequestEntry.{}'.format(i + 1)
             params.update({
-                '{0}.Id'.format(prefix): msg[0],
-                '{0}.MessageBody'.format(prefix): msg[1],
-                '{0}.DelaySeconds'.format(prefix): msg[2],
+                f'{prefix}.Id': msg[0],
+                f'{prefix}.MessageBody': msg[1],
+                f'{prefix}.DelaySeconds': msg[2],
             })
         return self.get_object(
             'SendMessageBatch', params, queue.id,
@@ -138,11 +136,11 @@ class AsyncSQSConnection(AsyncAWSQueryConnection):
     def change_message_visibility_batch(self, queue, messages, callback=None):
         params = {}
         for i, t in enumerate(messages):
-            pre = 'ChangeMessageVisibilityBatchRequestEntry.{0}'.format(i + 1)
+            pre = 'ChangeMessageVisibilityBatchRequestEntry.{}'.format(i + 1)
             params.update({
-                '{0}.Id'.format(pre): t[0].id,
-                '{0}.ReceiptHandle'.format(pre): t[0].receipt_handle,
-                '{0}.VisibilityTimeout'.format(pre): t[1],
+                f'{pre}.Id': t[0].id,
+                f'{pre}.ReceiptHandle': t[0].receipt_handle,
+                f'{pre}.VisibilityTimeout': t[1],
             })
         return self.get_object(
             'ChangeMessageVisibilityBatch', params, queue.id,

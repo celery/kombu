@@ -1,5 +1,3 @@
-from __future__ import absolute_import, unicode_literals
-
 import pytest
 import select
 import ssl
@@ -53,7 +51,7 @@ class BreakOutException(Exception):
 
 @skip.if_python3()
 @skip.if_pypy()
-class test_QoS__init__(object):
+class test_QoS__init__:
 
     def setup(self):
         self.mock_session = Mock()
@@ -72,7 +70,7 @@ class test_QoS__init__(object):
 
 @skip.if_python3()
 @skip.if_pypy()
-class test_QoS_can_consume(object):
+class test_QoS_can_consume:
 
     def setup(self):
         session = Mock()
@@ -96,7 +94,7 @@ class test_QoS_can_consume(object):
 
 @skip.if_python3()
 @skip.if_pypy()
-class test_QoS_can_consume_max_estimate(object):
+class test_QoS_can_consume_max_estimate:
 
     def setup(self):
         self.mock_session = Mock()
@@ -114,7 +112,7 @@ class test_QoS_can_consume_max_estimate(object):
 
 @skip.if_python3()
 @skip.if_pypy()
-class test_QoS_ack(object):
+class test_QoS_ack:
 
     def setup(self):
         self.mock_session = Mock()
@@ -136,7 +134,7 @@ class test_QoS_ack(object):
 
 @skip.if_python3()
 @skip.if_pypy()
-class test_QoS_reject(object):
+class test_QoS_reject:
 
     @pytest.fixture(autouse=True)
     def setup_qpid(self, patching):
@@ -177,12 +175,12 @@ class test_QoS_reject(object):
 
 @skip.if_python3()
 @skip.if_pypy()
-class test_QoS(object):
+class test_QoS:
 
     def mock_message_factory(self):
         """Create and return a mock message tag and delivery_tag."""
         m_delivery_tag = self.delivery_tag_generator.next()
-        m = 'message %s' % (m_delivery_tag, )
+        m = f'message {m_delivery_tag}'
         return m, m_delivery_tag
 
     def add_n_messages_to_qos(self, n, qos):
@@ -238,7 +236,7 @@ class test_QoS(object):
 
 @skip.if_python3()
 @skip.if_pypy()
-class ConnectionTestBase(object):
+class ConnectionTestBase:
 
     @patch(QPID_MODULE + '.qpid')
     def setup(self, mock_qpid):
@@ -410,7 +408,7 @@ class test_Connection_close(ConnectionTestBase):
 class test_Connection_close_channel(ConnectionTestBase):
 
     def setup(self):
-        super(test_Connection_close_channel, self).setup()
+        super().setup()
         self.conn.channels = Mock()
 
     def test_connection_close_channel_removes_channel_from_channel_list(self):
@@ -432,7 +430,7 @@ class test_Connection_close_channel(ConnectionTestBase):
 
 @skip.if_python3()
 @skip.if_pypy()
-class ChannelTestBase(object):
+class ChannelTestBase:
 
     @pytest.fixture(autouse=True)
     def setup_channel(self, patching):
@@ -844,7 +842,7 @@ class test_Channel_queue_delete(ChannelTestBase):
 
 @skip.if_python3()
 @skip.if_pypy()
-class test_Channel(object):
+class test_Channel:
 
     @patch(QPID_MODULE + '.qpidtoollibs')
     def setup(self, mock_qpidtoollibs):
@@ -1333,7 +1331,7 @@ class test_Channel(object):
 @skip.if_python3()
 @skip.if_pypy()
 @pytest.mark.usefixtures('disable_runtime_dependency_check')
-class test_Transport__init__(object):
+class test_Transport__init__:
 
     @pytest.fixture(autouse=True)
     def mock_verify_runtime_environment(self, patching):
@@ -1362,7 +1360,7 @@ class test_Transport__init__(object):
 @skip.if_python3()
 @skip.if_pypy()
 @pytest.mark.usefixtures('disable_runtime_dependency_check')
-class test_Transport_drain_events(object):
+class test_Transport_drain_events:
 
     @pytest.fixture(autouse=True)
     def setup_self(self, disable_runtime_dependency_check):
@@ -1414,7 +1412,7 @@ class test_Transport_drain_events(object):
 
 @skip.if_python3()
 @skip.if_pypy()
-class test_Transport_create_channel(object):
+class test_Transport_create_channel:
 
     @pytest.fixture(autouse=True)
     def setup_self(self, disable_runtime_dependency_check):
@@ -1439,12 +1437,12 @@ class test_Transport_create_channel(object):
 @skip.if_python3()
 @skip.if_pypy()
 @pytest.mark.usefixtures('disable_runtime_dependency_check')
-class test_Transport_establish_connection(object):
+class test_Transport_establish_connection:
 
     @pytest.fixture(autouse=True)
     def setup_self(self, disable_runtime_dependency_check):
 
-        class MockClient(object):
+        class MockClient:
             pass
 
         self.client = MockClient()
@@ -1655,7 +1653,7 @@ class test_Transport_establish_connection(object):
 
 @skip.if_python3()
 @skip.if_pypy()
-class test_Transport_class_attributes(object):
+class test_Transport_class_attributes:
 
     def test_verify_Connection_attribute(self):
         assert Connection is Transport.Connection
@@ -1692,7 +1690,7 @@ class test_Transport_class_attributes(object):
 @skip.if_python3()
 @skip.if_pypy()
 @pytest.mark.usefixtures('disable_runtime_dependency_check')
-class test_Transport_register_with_event_loop(object):
+class test_Transport_register_with_event_loop:
 
     def test_transport_register_with_event_loop_calls_add_reader(self):
         transport = Transport(Mock())
@@ -1707,7 +1705,7 @@ class test_Transport_register_with_event_loop(object):
 @skip.if_python3()
 @skip.if_pypy()
 @pytest.mark.usefixtures('disable_runtime_dependency_check')
-class test_Transport_Qpid_callback_handlers_async(object):
+class test_Transport_Qpid_callback_handlers_async:
 
     @pytest.fixture(autouse=True)
     def setup_self(self, patching, disable_runtime_dependency_check):
@@ -1727,7 +1725,7 @@ class test_Transport_Qpid_callback_handlers_async(object):
 @skip.if_python3()
 @skip.if_pypy()
 @pytest.mark.usefixtures('disable_runtime_dependency_check')
-class test_Transport_Qpid_callback_handlers_sync(object):
+class test_Transport_Qpid_callback_handlers_sync:
 
     @pytest.fixture(autouse=True)
     def setup(self, patching, disable_runtime_dependency_check):
@@ -1746,7 +1744,7 @@ class test_Transport_Qpid_callback_handlers_sync(object):
 @skip.if_python3()
 @skip.if_pypy()
 @pytest.mark.usefixtures('disable_runtime_dependency_check')
-class test_Transport_on_readable(object):
+class test_Transport_on_readable:
 
     @pytest.fixture(autouse=True)
     def setup_self(self, patching, disable_runtime_dependency_check):
@@ -1778,7 +1776,7 @@ class test_Transport_on_readable(object):
 @skip.if_python3()
 @skip.if_pypy()
 @pytest.mark.usefixtures('disable_runtime_dependency_check')
-class test_Transport_verify_runtime_environment(object):
+class test_Transport_verify_runtime_environment:
 
     @pytest.fixture(autouse=True)
     def setup_self(self, patching):
@@ -1816,7 +1814,7 @@ class test_Transport_verify_runtime_environment(object):
 @skip.if_python3()
 @skip.if_pypy()
 @pytest.mark.usefixtures('disable_runtime_dependency_check')
-class test_Transport(object):
+class test_Transport:
 
     def setup(self):
         """Creates a mock_client to be used in testing."""

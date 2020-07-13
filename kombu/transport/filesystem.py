@@ -2,7 +2,6 @@
 
 Transport using the file-system as the message store.
 """
-from __future__ import absolute_import, unicode_literals
 
 import os
 import shutil
@@ -65,7 +64,7 @@ class Channel(virtual.Channel):
 
     def _put(self, queue, payload, **kwargs):
         """Put `message` onto `queue`."""
-        filename = '%s_%s.%s.msg' % (int(round(monotonic() * 1000)),
+        filename = '{}_{}.{}.msg'.format(int(round(monotonic() * 1000)),
                                      uuid.uuid4(), queue)
         filename = os.path.join(self.data_folder_out, filename)
 
@@ -73,9 +72,9 @@ class Channel(virtual.Channel):
             f = open(filename, 'wb')
             lock(f, LOCK_EX)
             f.write(str_to_bytes(dumps(payload)))
-        except (IOError, OSError):
+        except OSError:
             raise ChannelError(
-                'Cannot add file {0!r} to directory'.format(filename))
+                f'Cannot add file {filename!r} to directory')
         finally:
             unlock(f)
             f.close()
@@ -101,7 +100,7 @@ class Channel(virtual.Channel):
                 # move the file to the tmp/processed folder
                 shutil.move(os.path.join(self.data_folder_in, filename),
                             processed_folder)
-            except IOError:
+            except OSError:
                 pass  # file could be locked, or removed in meantime so ignore
 
             filename = os.path.join(processed_folder, filename)
@@ -111,9 +110,9 @@ class Channel(virtual.Channel):
                 f.close()
                 if not self.store_processed:
                     os.remove(filename)
-            except (IOError, OSError):
+            except OSError:
                 raise ChannelError(
-                    'Cannot read file {0!r} from queue.'.format(filename))
+                    f'Cannot read file {filename!r} from queue.')
 
             return loads(bytes_to_str(payload))
 
@@ -148,7 +147,7 @@ class Channel(virtual.Channel):
         """Return the number of messages in `queue` as an :class:`int`."""
         count = 0
 
-        queue_find = '.{0}.msg'.format(queue)
+        queue_find = f'.{queue}.msg'
         folder = os.listdir(self.data_folder_in)
         while len(folder) > 0:
             filename = folder.pop()

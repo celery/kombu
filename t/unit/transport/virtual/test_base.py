@@ -1,5 +1,3 @@
-from __future__ import absolute_import, unicode_literals
-
 import io
 import pytest
 import warnings
@@ -117,7 +115,7 @@ class test_Message:
         if message.errors:
             message._reraise_error()
 
-        assert message.body == 'the quick brown fox...'.encode('utf-8')
+        assert message.body == b'the quick brown fox...'
         assert message.delivery_tag, tag
 
     def test_create_no_body(self):
@@ -133,7 +131,7 @@ class test_Message:
         tag = data['properties']['delivery_tag'] = uuid()
         message = c.message_to_python(data)
         dict_ = message.serializable()
-        assert dict_['body'] == 'the quick brown fox...'.encode('utf-8')
+        assert dict_['body'] == b'the quick brown fox...'
         assert dict_['properties']['delivery_tag'] == tag
         assert 'compression' not in dict_['headers']
 
@@ -343,7 +341,7 @@ class test_Channel:
 
         r1 = c.message_to_python(c.basic_get(n))
         assert r1
-        assert r1.body == 'nthex quick brown fox...'.encode('utf-8')
+        assert r1.body == b'nthex quick brown fox...'
         assert c.basic_get(n) is None
 
         consumer_tag = uuid()
@@ -353,7 +351,7 @@ class test_Channel:
         assert n + '2' in c._active_queues
         c.drain_events()
         r2 = c.message_to_python(messages[-1])
-        assert r2.body == 'nthex quick brown fox...'.encode('utf-8')
+        assert r2.body == b'nthex quick brown fox...'
         assert r2.delivery_info['exchange'] == n
         assert r2.delivery_info['routing_key'] == n
         with pytest.raises(virtual.Empty):
@@ -363,7 +361,7 @@ class test_Channel:
         c._restore(r2)
         r3 = c.message_to_python(c.basic_get(n))
         assert r3
-        assert r3.body == 'nthex quick brown fox...'.encode('utf-8')
+        assert r3.body == b'nthex quick brown fox...'
         assert c.basic_get(n) is None
 
     def test_basic_ack(self):

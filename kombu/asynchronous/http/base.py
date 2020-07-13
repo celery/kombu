@@ -1,5 +1,4 @@
 """Base async HTTP client implementation."""
-from __future__ import absolute_import, unicode_literals
 
 import sys
 
@@ -41,7 +40,7 @@ class Headers(dict):
 
 @Thenable.register
 @python_2_unicode_compatible
-class Request(object):
+class Request:
     """A HTTP Request.
 
     Arguments:
@@ -136,7 +135,7 @@ class Request(object):
         return '<Request: {0.method} {0.url} {0.body}>'.format(self)
 
 
-class Response(object):
+class Response:
     """HTTP Response.
 
     Arguments:
@@ -230,7 +229,7 @@ def header_parser(keyt=normalize_header):
             headers[key] = value.strip()
 
 
-class BaseClient(object):
+class BaseClient:
     Headers = Headers
     Request = Request
     Response = Response

@@ -1,5 +1,4 @@
 """Sending and receiving messages."""
-from __future__ import absolute_import, unicode_literals
 
 from itertools import count
 
@@ -16,7 +15,7 @@ __all__ = ('Exchange', 'Queue', 'Producer', 'Consumer')
 
 
 @python_2_unicode_compatible
-class Producer(object):
+class Producer:
     """Message Producer.
 
     Arguments:
@@ -77,7 +76,7 @@ class Producer(object):
             self.revive(self._channel)
 
     def __repr__(self):
-        return '<Producer: {0._channel}>'.format(self)
+        return f'<Producer: {self._channel}>'
 
     def __reduce__(self):
         return self.__class__, self.__reduce_args__()
@@ -277,7 +276,7 @@ class Producer(object):
 
 
 @python_2_unicode_compatible
-class Consumer(object):
+class Consumer:
     """Message consumer.
 
     Arguments:
@@ -599,7 +598,7 @@ class Consumer(object):
         return tag
 
     def _add_tag(self, queue, consumer_tag=None):
-        tag = consumer_tag or '{0}{1}'.format(
+        tag = consumer_tag or '{}{}'.format(
             self.tag_prefix, next(self._tags))
         self._active_tags[queue.name] = tag
         return tag

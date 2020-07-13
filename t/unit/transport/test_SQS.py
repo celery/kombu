@@ -5,7 +5,6 @@ http://github.com/pcsforeducation/sqs-mock-python. They have been patched
 slightly.
 """
 
-from __future__ import absolute_import, unicode_literals
 
 import os
 import pytest
@@ -39,7 +38,7 @@ example_predefined_queues = {
 }
 
 
-class SQSMessageMock(object):
+class SQSMessageMock:
     def __init__(self):
         """
         Imitate the SQS Message from boto3.
@@ -48,7 +47,7 @@ class SQSMessageMock(object):
         self.receipt_handle = "receipt_handle_xyz"
 
 
-class QueueMock(object):
+class QueueMock:
     """ Hold information about a queue. """
 
     def __init__(self, url, creation_attributes=None):
@@ -63,7 +62,7 @@ class QueueMock(object):
         return 'QueueMock: {} {} messages'.format(self.url, len(self.messages))
 
 
-class SQSClientMock(object):
+class SQSClientMock:
 
     def __init__(self, QueueName='unittest_queue'):
         """
@@ -80,7 +79,7 @@ class SQSClientMock(object):
         for q in self._queues.values():
             if q.url == url:
                 return q
-        raise Exception("Queue url {} not found".format(url))
+        raise Exception(f"Queue url {url} not found")
 
     def create_queue(self, QueueName=None, Attributes=None):
         q = self._queues[QueueName] = QueueMock(
@@ -316,7 +315,7 @@ class test_Channel:
 
         # Now test getting many messages
         for i in range(3):
-            message = 'message: {0}'.format(i)
+            message = f'message: {i}'
             self.producer.publish(message)
 
         self.channel._get_bulk(self.queue_name, max_if_unlimited=3)
@@ -420,7 +419,7 @@ class test_Channel:
         self.channel._get_bulk(self.queue_name)
         assert self.channel.connection._deliver.call_count == 5
         for i in range(5):
-            self.channel.qos.append(Mock(name='message{0}'.format(i)), i)
+            self.channel.qos.append(Mock(name=f'message{i}'), i)
 
         # Now, do the get again, the number of messages returned should be 1.
         self.channel.connection._deliver.reset_mock()
@@ -643,7 +642,7 @@ class test_Channel:
 
         # Getting many messages
         for i in range(3):
-            p.publish('message: {0}'.format(i))
+            p.publish(f'message: {i}')
 
         channel.connection._deliver = Mock(name='_deliver')
         channel._get_bulk(queue_name, max_if_unlimited=3)

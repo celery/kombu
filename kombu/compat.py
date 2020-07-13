@@ -2,7 +2,6 @@
 
 See https://pypi.org/project/carrot/ for documentation.
 """
-from __future__ import absolute_import, unicode_literals
 
 from itertools import count
 
@@ -55,13 +54,13 @@ class Publisher(messaging.Producer):
                                      routing_key=self.routing_key,
                                      auto_delete=self.auto_delete,
                                      durable=self.durable)
-        super(Publisher, self).__init__(connection, self.exchange, **kwargs)
+        super().__init__(connection, self.exchange, **kwargs)
 
     def send(self, *args, **kwargs):
         return self.publish(*args, **kwargs)
 
     def close(self):
-        super(Publisher, self).close()
+        super().close()
         self._closed = True
 
     def __enter__(self):
@@ -115,11 +114,11 @@ class Consumer(messaging.Consumer):
                       durable=self.durable,
                       exclusive=self.exclusive,
                       auto_delete=self.auto_delete)
-        super(Consumer, self).__init__(self.backend, queue, **kwargs)
+        super().__init__(self.backend, queue, **kwargs)
 
     def revive(self, channel):
         self.backend = channel
-        super(Consumer, self).revive(channel)
+        super().revive(channel)
 
     def close(self):
         self.cancel()
@@ -188,7 +187,7 @@ class ConsumerSet(messaging.Consumer):
             for queue_name, queue_options in items(from_dict):
                 queues.append(Queue.from_dict(queue_name, **queue_options))
 
-        super(ConsumerSet, self).__init__(self.backend, queues, **kwargs)
+        super().__init__(self.backend, queues, **kwargs)
 
     def iterconsume(self, limit=None, no_ack=False):
         return _iterconsume(self.connection, self, no_ack, limit)
@@ -205,7 +204,7 @@ class ConsumerSet(messaging.Consumer):
 
     def revive(self, channel):
         self.backend = channel
-        super(ConsumerSet, self).revive(channel)
+        super().revive(channel)
 
     def close(self):
         self.cancel()

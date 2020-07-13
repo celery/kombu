@@ -1,5 +1,3 @@
-from __future__ import absolute_import, unicode_literals
-
 import pytest
 import socket
 
@@ -333,7 +331,7 @@ class test_insured:
         conn.ensure_connection.assert_called_with(errback=custom_errback)
 
 
-class MockConsumer(object):
+class MockConsumer:
     consumers = set()
 
     def __init__(self, channel, queues=None, callbacks=None, **kwargs):
@@ -351,7 +349,7 @@ class MockConsumer(object):
 
 class test_itermessages:
 
-    class MockConnection(object):
+    class MockConnection:
         should_raise_timeout = False
 
         def drain_events(self, **kwargs):

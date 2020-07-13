@@ -1,5 +1,4 @@
 """Object utilities."""
-from __future__ import absolute_import, unicode_literals
 
 from copy import copy
 
@@ -19,7 +18,7 @@ def _any(v):
     return v
 
 
-class Object(object):
+class Object:
     """Common base class.
 
     Supports automatic kwargs->attributes handling, and cloning.
@@ -100,9 +99,9 @@ class MaybeChannelBound(Object):
     def _repr_entity(self, item=''):
         item = item or type(self).__name__
         if self.is_bound:
-            return '<{0} bound to chan:{1}>'.format(
+            return '<{} bound to chan:{}>'.format(
                 item or type(self).__name__, self.channel.channel_id)
-        return '<unbound {0}>'.format(item)
+        return f'<unbound {item}>'
 
     @property
     def is_bound(self):
@@ -115,7 +114,7 @@ class MaybeChannelBound(Object):
         channel = self._channel
         if channel is None:
             raise NotBoundError(
-                "Can't call method on {0} not bound to a channel".format(
+                "Can't call method on {} not bound to a channel".format(
                     type(self).__name__))
         if isinstance(channel, ChannelPromise):
             channel = self._channel = channel()

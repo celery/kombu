@@ -2,7 +2,6 @@
 # SQLAlchemy overrides != False to have special meaning and pep8 complains
 # flake8: noqa
 
-from __future__ import absolute_import, unicode_literals
 
 import threading
 from json import loads, dumps
@@ -33,7 +32,7 @@ class Channel(virtual.Channel):
 
     def __init__(self, connection, **kwargs):
         self._configure_entity_tablenames(connection.client.transport_options)
-        super(Channel, self).__init__(connection, **kwargs)
+        super().__init__(connection, **kwargs)
 
     def _configure_entity_tablenames(self, opts):
         self.queue_tablename = opts.get('queue_tablename', 'kombu_queue')

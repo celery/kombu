@@ -1,5 +1,3 @@
-from __future__ import absolute_import, unicode_literals
-
 import pickle
 
 import pytest
@@ -263,7 +261,7 @@ class test_retry_over_time:
     def test_retry_always(self):
         Predicate = self.Predicate
 
-        class Fun(object):
+        class Fun:
 
             def __init__(self):
                 self.calls = 0
