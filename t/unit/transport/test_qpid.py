@@ -1231,7 +1231,7 @@ class test_Channel(object):
         assert (mock_priority is
                 result['properties']['delivery_info']['priority'])
 
-    @patch('kombu.five.buffer_t')
+    @patch('__builtin__.buffer')
     @patch(QPID_MODULE + '.Channel.body_encoding')
     @patch(QPID_MODULE + '.Channel.encode_body')
     @patch(QPID_MODULE + '.Channel._put')
