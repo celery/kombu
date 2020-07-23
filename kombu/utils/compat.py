@@ -7,12 +7,9 @@ from functools import wraps
 
 from contextlib import contextmanager
 
-try:
-    from importlib import metadata as importlib_metadata
-except ImportError:
-    import importlib_metadata
+from importlib import metadata as importlib_metadata
 
-from kombu.five import reraise
+from kombu.exceptions import reraise
 
 try:
     from io import UnsupportedOperation

@@ -1,25 +1,16 @@
 """Functional Utilities."""
 
+from collections import OrderedDict, UserDict
+from collections.abc import Iterable, Mapping
 import random
 import sys
 import threading
 import inspect
 
-from collections import OrderedDict
-
-try:
-    from collections.abc import Iterable, Mapping
-except ImportError:
-    from collections import Iterable, Mapping
-
 from itertools import count, repeat
 from time import sleep, time
 
 from vine.utils import wraps
-
-from kombu.five import (
-    UserDict, items, keys, python_2_unicode_compatible, string_t, PY3,
-)
 
 from .encoding import safe_repr as _safe_repr
 
@@ -31,7 +22,6 @@ __all__ = (
 KEYWORD_MARK = object()
 
 
-@python_2_unicode_compatible
 class ChannelPromise:
 
     def __init__(self, contract):
@@ -116,7 +106,7 @@ class LRUCache(UserDict):
     def _iterate_keys(self):
         # userdict.keys in py3k calls __getitem__
         with self.mutex:
-            return keys(self.data)
+            return self.data.keys()
     iterkeys = _iterate_keys
 
     def incr(self, key, delta=1):
@@ -189,7 +179,6 @@ def memoize(maxsize=None, keyfun=None, Cache=LRUCache):
     return _memoize
 
 
-@python_2_unicode_compatible
 class lazy:
     """Holds lazy evaluation.
 
@@ -231,13 +220,6 @@ class lazy:
         return (self.__class__, (self._fun,), {'_args': self._args,
                                                '_kwargs': self._kwargs})
 
-    if sys.version_info[0] < 3:
-
-        def __cmp__(self, rhs):
-            if isinstance(rhs, self.__class__):
-                return -cmp(rhs, self())
-            return cmp(self(), rhs)
-
 
 def maybe_evaluate(value):
     """Evaluate value only if value is a :class:`lazy` instance."""
@@ -246,7 +228,7 @@ def maybe_evaluate(value):
     return value
 
 
-def is_list(obj, scalars=(Mapping, string_t), iters=(Iterable,)):
+def is_list(obj, scalars=(Mapping, str), iters=(Iterable,)):
     """Return true if the object is iterable.
 
     Note:
@@ -255,7 +237,7 @@ def is_list(obj, scalars=(Mapping, string_t), iters=(Iterable,)):
     return isinstance(obj, iters) and not isinstance(obj, scalars or ())
 
 
-def maybe_list(obj, scalars=(Mapping, string_t)):
+def maybe_list(obj, scalars=(Mapping, str)):
     """Return list of one element if ``l`` is a scalar."""
     return obj if obj is None or is_list(obj, scalars) else [obj]
 
@@ -263,7 +245,7 @@ def maybe_list(obj, scalars=(Mapping, string_t)):
 def dictfilter(d=None, **kw):
     """Remove all keys from dict ``d`` whose value is :const:`None`."""
     d = kw if d is None else (dict(d, **kw) if kw else d)
-    return {k: v for k, v in items(d) if v is not None}
+    return {k: v for k, v in d.items() if v is not None}
 
 
 def shufflecycle(it):
@@ -360,7 +342,7 @@ def retry_over_time(fun, catch, args=None, kwargs=None, errback=None,
 
 
 def reprkwargs(kwargs, sep=', ', fmt='{0}={1}'):
-    return sep.join(fmt.format(k, _safe_repr(v)) for k, v in items(kwargs))
+    return sep.join(fmt.format(k, _safe_repr(v)) for k, v in kwargs.items())
 
 
 def reprcall(name, args=(), kwargs=None, sep=', '):
@@ -373,16 +355,11 @@ def reprcall(name, args=(), kwargs=None, sep=', '):
 
 
 def accepts_argument(func, argument_name):
-    if PY3:
-        argument_spec = inspect.getfullargspec(func)
-        return (
-            argument_name in argument_spec.args or
-            argument_name in argument_spec.kwonlyargs
-        )
-
-    argument_spec = inspect.getargspec(func)
-    argument_names = argument_spec.args
-    return argument_name in argument_names
+    argument_spec = inspect.getfullargspec(func)
+    return (
+        argument_name in argument_spec.args or
+        argument_name in argument_spec.kwonlyargs
+    )
 
 
 # Compat names (before kombu 3.0)

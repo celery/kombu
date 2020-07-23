@@ -1,8 +1,7 @@
 """Token bucket implementation for rate limiting."""
 
 from collections import deque
-
-from kombu.five import monotonic
+from time import monotonic
 
 __all__ = ('TokenBucket',)
 

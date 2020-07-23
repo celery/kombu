@@ -20,12 +20,10 @@ try:
 except ImportError:  # pragma: no cover
     ssl_available = False
 
-from kombu.five import bytes_if_py2, string_t
-
 from .compat import NamedTuple
 from ..log import get_logger
 
-safequote = partial(quote, safe=bytes_if_py2(''))
+safequote = partial(quote, safe='')
 logger = get_logger(__name__)
 
 
@@ -114,7 +112,7 @@ def sanitize_url(url, mask='**'):
 def maybe_sanitize_url(url, mask='**'):
     # type: (Any, str) -> Any
     """Sanitize url, or do nothing if url undefined."""
-    if isinstance(url, string_t) and '://' in url:
+    if isinstance(url, str) and '://' in url:
         return sanitize_url(url, mask)
     return url
 

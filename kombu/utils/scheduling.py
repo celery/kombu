@@ -2,8 +2,6 @@
 
 from itertools import count
 
-from kombu.five import python_2_unicode_compatible
-
 from .imports import symbol_by_name
 
 __all__ = (
@@ -17,7 +15,6 @@ CYCLE_ALIASES = {
 }
 
 
-@python_2_unicode_compatible
 class FairCycle:
     """Cycle between resources.
 

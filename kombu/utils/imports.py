@@ -3,7 +3,7 @@
 import importlib
 import sys
 
-from kombu.five import reraise, string_t
+from kombu.exceptions import reraise
 
 
 def symbol_by_name(name, aliases=None, imp=None, package=None,
@@ -43,7 +43,7 @@ def symbol_by_name(name, aliases=None, imp=None, package=None,
     if imp is None:
         imp = importlib.import_module
 
-    if not isinstance(name, string_t):
+    if not isinstance(name, str):
         return name                                 # already a class
 
     name = aliases.get(name) or name

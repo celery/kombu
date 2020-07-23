@@ -5,8 +5,6 @@ import decimal
 import json as stdjson
 import uuid
 
-from kombu.five import PY3, buffer_t, text_t, bytes_t
-
 try:
     from django.utils.functional import Promise as DjangoPromise
 except ImportError:  # pragma: no cover
@@ -38,7 +36,7 @@ class JSONEncoder(_encoder_cls):
                 textual=(decimal.Decimal, uuid.UUID, DjangoPromise),
                 isinstance=isinstance,
                 datetime=datetime.datetime,
-                text_t=text_t):
+                text_t=str):
         reducer = getattr(o, '__json__', None)
         if reducer is not None:
             return reducer()
@@ -68,7 +66,7 @@ def dumps(s, _dumps=json.dumps, cls=None, default_kwargs=None, **kwargs):
                   **dict(default_kwargs, **kwargs))
 
 
-def loads(s, _loads=json.loads, decode_bytes=PY3):
+def loads(s, _loads=json.loads, decode_bytes=True):
     """Deserialize json from string."""
     # None of the json implementations supports decoding from
     # a buffer/memoryview, or even reading from a stream
@@ -80,10 +78,8 @@ def loads(s, _loads=json.loads, decode_bytes=PY3):
         s = s.tobytes().decode('utf-8')
     elif isinstance(s, bytearray):
         s = s.decode('utf-8')
-    elif decode_bytes and isinstance(s, bytes_t):
+    elif decode_bytes and isinstance(s, bytes):
         s = s.decode('utf-8')
-    elif isinstance(s, buffer_t):
-        s = text_t(s)  # ... awwwwwww :(
 
     try:
         return _loads(s)
