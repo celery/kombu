@@ -7,7 +7,6 @@ from itertools import count
 
 from . import messaging
 from .entity import Exchange, Queue
-from .five import items
 
 __all__ = ('Publisher', 'Consumer')
 
@@ -184,7 +183,7 @@ class ConsumerSet(messaging.Consumer):
             for consumer in consumers:
                 queues.extend(consumer.queues)
         if from_dict:
-            for queue_name, queue_options in items(from_dict):
+            for queue_name, queue_options in from_dict.items():
                 queues.append(Queue.from_dict(queue_name, **queue_options))
 
         super().__init__(self.backend, queues, **kwargs)

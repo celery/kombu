@@ -2,7 +2,6 @@
 
 import os
 import socket
-import sys
 
 from collections import OrderedDict
 from contextlib import contextmanager
@@ -21,9 +20,6 @@ except ImportError:  # pragma: no cover
 # (Issue #112)
 from kombu import exceptions
 
-from .five import (
-    bytes_if_py2, python_2_unicode_compatible, reraise, string_t, text_t,
-)
 from .log import get_logger
 from .resource import Resource
 from .transport import get_transport_cls, supports_librabbitmq
@@ -52,7 +48,6 @@ _log_connection = os.environ.get('KOMBU_LOG_CONNECTION', False)
 _log_channel = os.environ.get('KOMBU_LOG_CHANNEL', False)
 
 
-@python_2_unicode_compatible
 class Connection:
     """A connection to the broker.
 
@@ -169,7 +164,7 @@ class Connection:
             'login_method': login_method, 'heartbeat': heartbeat
         }
 
-        if hostname and not isinstance(hostname, string_t):
+        if hostname and not isinstance(hostname, str):
             alt.extend(hostname)
             hostname = alt[0]
             params.update(hostname=hostname)
@@ -273,7 +268,7 @@ class Connection:
     def _debug(self, msg, *args, **kwargs):
         if self._logger:  # pragma: no cover
             fmt = '[Kombu connection:{id:#x}] {msg}'
-            logger.debug(fmt.format(id=id(self), msg=text_t(msg)),
+            logger.debug(fmt.format(id=id(self), msg=str(msg)),
                          *args, **kwargs)
 
     def connect(self):
@@ -454,11 +449,9 @@ class Connection:
         except (ConnectionError, ChannelError):
             raise
         except self.recoverable_connection_errors as exc:
-            reraise(ConnectionError, ConnectionError(text_t(exc)),
-                    sys.exc_info()[2])
+            raise ConnectionError(str(exc)) from exc
         except self.recoverable_channel_errors as exc:
-            reraise(ChannelError, ChannelError(text_t(exc)),
-                    sys.exc_info()[2])
+            raise ChannelError(str(exc)) from exc
 
     @contextmanager
     def _dummy_context(self):
@@ -563,7 +556,7 @@ class Connection:
                         self._debug('ensure channel error: %r',
                                     exc, exc_info=1)
                         errback and errback(exc, 0)
-        _ensured.__name__ = bytes_if_py2(f'{fun.__name__}(ensured)')
+        _ensured.__name__ = f'{fun.__name__}(ensured)'
         _ensured.__doc__ = fun.__doc__
         _ensured.__module__ = fun.__module__
         return _ensured
@@ -616,7 +609,7 @@ class Connection:
     def get_transport_cls(self):
         """Get the currently used transport class."""
         transport_cls = self.transport_cls
-        if not transport_cls or isinstance(transport_cls, string_t):
+        if not transport_cls or isinstance(transport_cls, str):
             transport_cls = get_transport_cls(transport_cls)
         return transport_cls
 

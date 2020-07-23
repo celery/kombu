@@ -4,7 +4,6 @@ import numbers
 
 from .abstract import MaybeChannelBound, Object
 from .exceptions import ContentDisallowed
-from .five import python_2_unicode_compatible, string_t
 from .serialization import prepare_accept_content
 
 TRANSIENT_DELIVERY_MODE = 1
@@ -19,7 +18,7 @@ INTERNAL_EXCHANGE_PREFIX = ('amq.',)
 
 def _reprstr(s):
     s = repr(s)
-    if isinstance(s, string_t) and s.startswith("u'"):
+    if isinstance(s, str) and s.startswith("u'"):
         return s[2:-1]
     return s[1:-1]
 
@@ -37,7 +36,6 @@ def maybe_delivery_mode(
     return default
 
 
-@python_2_unicode_compatible
 class Exchange(MaybeChannelBound):
     """An Exchange declaration.
 
@@ -246,7 +244,7 @@ class Exchange(MaybeChannelBound):
         """
         properties = {} if properties is None else properties
         properties['delivery_mode'] = maybe_delivery_mode(self.delivery_mode)
-        if (isinstance(body, string_t) and
+        if (isinstance(body, str) and
                 properties.get('content_encoding', None)) is None:
             kwargs['content_encoding'] = 'utf-8'
         return self.channel.prepare_message(
@@ -265,7 +263,7 @@ class Exchange(MaybeChannelBound):
             mandatory (bool): Currently not supported.
             immediate (bool): Currently not supported.
         """
-        if isinstance(message, string_t):
+        if isinstance(message, str):
             message = self.Message(message)
         exchange = exchange or self.name
         return self.channel.basic_publish(
@@ -318,7 +316,6 @@ class Exchange(MaybeChannelBound):
         return not self.auto_delete
 
 
-@python_2_unicode_compatible
 class binding(Object):
     """Represents a queue or exchange binding.
 
@@ -373,7 +370,6 @@ class binding(Object):
         )
 
 
-@python_2_unicode_compatible
 class Queue(MaybeChannelBound):
     """A Queue declaration.
 

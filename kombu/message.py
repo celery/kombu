@@ -3,8 +3,7 @@
 import sys
 
 from .compression import decompress
-from .exceptions import MessageStateError
-from .five import python_2_unicode_compatible, reraise, text_t
+from .exceptions import reraise, MessageStateError
 from .serialization import loads
 from .utils.functional import dictfilter
 
@@ -14,7 +13,6 @@ ACK_STATES = {'ACK', 'REJECTED', 'REQUEUED'}
 IS_PYPY = hasattr(sys, 'pypy_version_info')
 
 
-@python_2_unicode_compatible
 class Message:
     """Base class for received messages.
 
@@ -83,7 +81,7 @@ class Message:
             except Exception:
                 self.errors.append(sys.exc_info())
 
-        if not self.errors and postencode and isinstance(body, text_t):
+        if not self.errors and postencode and isinstance(body, str):
             try:
                 body = body.encode(postencode)
             except Exception:

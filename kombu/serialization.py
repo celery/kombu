@@ -15,9 +15,8 @@ from contextlib import contextmanager
 from io import BytesIO
 
 from .exceptions import (
-    ContentDisallowed, DecodeError, EncodeError, SerializerNotInstalled
+    reraise, ContentDisallowed, DecodeError, EncodeError, SerializerNotInstalled
 )
-from .five import reraise, text_t
 from .utils.compat import entrypoints
 from .utils.encoding import bytes_to_str, str_to_bytes, bytes_t
 
@@ -203,7 +202,7 @@ class SerializerRegistry:
             return 'application/data', 'binary', data
 
         # For Unicode objects, force it into a string
-        if not serializer and isinstance(data, text_t):
+        if not serializer and isinstance(data, str):
             with _reraise_errors(EncodeError, exclude=()):
                 payload = data.encode('utf-8')
             return 'text/plain', 'utf-8', payload
@@ -261,7 +260,7 @@ class SerializerRegistry:
                 with _reraise_errors(DecodeError):
                     return decode(data)
             if content_encoding not in SKIP_DECODE and \
-                    not isinstance(data, text_t):
+                    not isinstance(data, str):
                 with _reraise_errors(DecodeError):
                     return _decode(data, content_encoding)
         return data
@@ -287,7 +286,7 @@ def raw_encode(data):
     """Special case serializer."""
     content_type = 'application/data'
     payload = data
-    if isinstance(payload, text_t):
+    if isinstance(payload, str):
         content_encoding = 'utf-8'
         with _reraise_errors(EncodeError, exclude=()):
             payload = payload.encode(content_encoding)

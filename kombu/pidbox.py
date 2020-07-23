@@ -14,7 +14,6 @@ from . import Exchange, Queue, Consumer, Producer
 from .clocks import LamportClock
 from .common import maybe_declare, oid_from
 from .exceptions import InconsistencyError
-from .five import range, string_t
 from .log import get_logger
 from .utils.functional import maybe_evaluate, reprcall
 from .utils.objects import cached_property
@@ -320,8 +319,8 @@ class Mailbox:
             raise ValueError(
                 'destination must be a list/tuple not {}'.format(
                     type(destination)))
-        if (pattern is not None and not isinstance(pattern, string_t) and
-                matcher is not None and not isinstance(matcher, string_t)):
+        if (pattern is not None and not isinstance(pattern, str) and
+                matcher is not None and not isinstance(matcher, str)):
             raise ValueError(
                 'pattern and matcher must be '
                 'strings not {}, {}'.format(type(pattern), type(matcher))

@@ -4,7 +4,6 @@ from copy import copy
 
 from .connection import maybe_channel
 from .exceptions import NotBoundError
-from .five import python_2_unicode_compatible
 from .utils.functional import ChannelPromise
 
 __all__ = ('Object', 'MaybeChannelBound')
@@ -53,7 +52,6 @@ class Object:
         return self.__class__(**self.as_dict())
 
 
-@python_2_unicode_compatible
 class MaybeChannelBound(Object):
     """Mixin for classes that can be bound to an AMQP channel."""
 

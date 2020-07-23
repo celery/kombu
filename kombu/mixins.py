@@ -8,7 +8,6 @@ from itertools import count
 from time import sleep
 
 from .common import ignore_errors
-from .five import range
 from .messaging import Consumer, Producer
 from .log import get_logger
 from .utils.compat import nested

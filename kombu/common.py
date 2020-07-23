@@ -13,7 +13,6 @@ from uuid import uuid5, uuid4, uuid3, NAMESPACE_OID
 from amqp import ChannelError, RecoverableConnectionError
 
 from .entity import Exchange, Queue
-from .five import bytes_if_py2, range
 from .log import get_logger
 from .serialization import registry as serializers
 from .utils.uuid import uuid
@@ -47,8 +46,8 @@ def get_node_id():
 
 
 def generate_oid(node_id, process_id, thread_id, instance):
-    ent = bytes_if_py2('{:x}-{:x}-{:x}-{:x}'.format(
-        node_id, process_id, thread_id, id(instance)))
+    ent = '{:x}-{:x}-{:x}-{:x}'.format(
+        node_id, process_id, thread_id, id(instance))
     try:
         ret = str(uuid3(NAMESPACE_OID, ent))
     except ValueError:

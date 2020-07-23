@@ -1,11 +1,10 @@
 """Generic resource pool implementation."""
 
-import os
-
 from collections import deque
+import os
+from queue import Empty, LifoQueue as _LifoQueue
 
 from . import exceptions
-from .five import Empty, LifoQueue as _LifoQueue
 from .utils.compat import register_after_fork
 from .utils.functional import lazy
 

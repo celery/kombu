@@ -4,14 +4,11 @@ from threading import Lock
 from itertools import islice
 from operator import itemgetter
 
-from .five import python_2_unicode_compatible, zip
-
 __all__ = ('LamportClock', 'timetuple')
 
 R_CLOCK = '_lamport(clock={0}, timestamp={1}, id={2} {3!r})'
 
 
-@python_2_unicode_compatible
 class timetuple(tuple):
     """Tuple of event clock information.
 
@@ -63,7 +60,6 @@ class timetuple(tuple):
     obj = property(itemgetter(3))
 
 
-@python_2_unicode_compatible
 class LamportClock:
     """Lamport's logical clock.
 

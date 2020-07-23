@@ -3,11 +3,12 @@
 import socket
 
 from collections import deque
+from queue import Empty
+from time import monotonic
 
 from . import entity
 from . import messaging
 from .connection import maybe_channel
-from .five import Empty, monotonic
 
 __all__ = ('SimpleQueue', 'SimpleBuffer')
 

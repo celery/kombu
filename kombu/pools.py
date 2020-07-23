@@ -5,7 +5,6 @@ import os
 from itertools import chain
 
 from .connection import Resource
-from .five import range, values
 from .messaging import Producer
 from .utils.collections import EqualityDict
 from .utils.compat import register_after_fork
@@ -118,7 +117,7 @@ producers = register_group(Producers(limit=use_global_limit))  # noqa: E305
 
 
 def _all_pools():
-    return chain(*[(values(g) if g else iter([])) for g in _groups])
+    return chain(*[(g.values() if g else iter([])) for g in _groups])
 
 
 def get_limit():

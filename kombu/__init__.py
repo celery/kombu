@@ -115,9 +115,7 @@ new_module.__dict__.update({
     '__package__': package,
     'version_info_t': version_info_t,
     'version_info': version_info,
-    'VERSION': VERSION,
-    'absolute_import': absolute_import,
-    'unicode_literals': unicode_literals,
+    'VERSION': VERSION
 })
 
 if os.environ.get('KOMBU_LOG_DEBUG'):  # pragma: no cover
