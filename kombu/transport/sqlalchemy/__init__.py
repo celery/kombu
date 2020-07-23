@@ -5,12 +5,12 @@
 
 import threading
 from json import loads, dumps
+from queue import Empty
 
 from sqlalchemy import create_engine
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
 
-from kombu.five import Empty
 from kombu.transport import virtual
 from kombu.utils import cached_property
 from kombu.utils.encoding import bytes_to_str

@@ -24,8 +24,8 @@ has to re-queue the item or it will be lost.
 
 import os
 import socket
+from queue import Empty
 
-from kombu.five import Empty
 from kombu.utils.encoding import bytes_to_str, ensure_bytes
 from kombu.utils.json import dumps, loads
 

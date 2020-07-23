@@ -14,9 +14,9 @@ https://azure.microsoft.com/en-us/services/storage/queues/
 
 """
 
+from queue import Empty
 import string
 
-from kombu.five import Empty, text_t
 from kombu.utils.encoding import safe_str
 from kombu.utils.json import loads, dumps
 from kombu.utils.objects import cached_property
@@ -63,7 +63,7 @@ class Channel(virtual.Channel):
 
     def entity_name(self, name, table=CHARS_REPLACE_TABLE):
         """Format AMQP queue name into a valid Azure Storage Queue name."""
-        return text_t(safe_str(name)).translate(table)
+        return str(safe_str(name)).translate(table)
 
     def _ensure_queue(self, queue):
         """Ensure a queue exists."""

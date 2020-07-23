@@ -10,9 +10,10 @@ import socket
 
 from collections import defaultdict
 from contextlib import contextmanager
+from queue import Empty
+from time import monotonic
 
 from kombu.exceptions import ChannelError
-from kombu.five import Empty, monotonic
 from kombu.log import get_logger
 from kombu.utils.json import loads, dumps
 from kombu.utils.objects import cached_property

@@ -6,11 +6,12 @@ Transport using the file-system as the message store.
 import os
 import shutil
 import uuid
+from queue import Empty
 import tempfile
+from time import monotonic
 
 from . import virtual
 from kombu.exceptions import ChannelError
-from kombu.five import Empty, monotonic
 from kombu.utils.encoding import bytes_to_str, str_to_bytes
 from kombu.utils.json import loads, dumps
 from kombu.utils.objects import cached_property

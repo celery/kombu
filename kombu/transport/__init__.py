@@ -1,6 +1,5 @@
 """Built-in transports."""
 
-from kombu.five import string_t
 from kombu.utils.compat import _detect_environment
 from kombu.utils.imports import symbol_by_name
 
@@ -53,7 +52,7 @@ def resolve_transport(transport=None):
             an actual transport class, or the fully qualified
             path to a transport class, or the alias of a transport.
     """
-    if isinstance(transport, string_t):
+    if isinstance(transport, str):
         try:
             transport = TRANSPORT_ALIASES[transport]
         except KeyError:

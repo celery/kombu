@@ -78,6 +78,7 @@ import base64
 import socket
 import string
 import uuid
+from queue import Empty
 
 from botocore.client import Config
 from botocore.exceptions import ClientError
@@ -87,7 +88,6 @@ from kombu.asynchronous import get_event_loop
 from kombu.asynchronous.aws.ext import boto3, exceptions
 from kombu.asynchronous.aws.sqs.connection import AsyncSQSConnection
 from kombu.asynchronous.aws.sqs.message import AsyncMessage
-from kombu.five import Empty, range, string_t, text_t
 from kombu.log import get_logger
 from kombu.utils import scheduling
 from kombu.utils.encoding import bytes_to_str, safe_str
@@ -204,17 +204,17 @@ class Channel(virtual.Channel):
         """Format AMQP queue name into a legal SQS queue name."""
         if name.endswith('.fifo'):
             partial = name[:-len('.fifo')]
-            partial = text_t(safe_str(partial)).translate(table)
+            partial = str(safe_str(partial)).translate(table)
             return partial + '.fifo'
         else:
-            return text_t(safe_str(name)).translate(table)
+            return str(safe_str(name)).translate(table)
 
     def canonical_queue_name(self, queue_name):
         return self.entity_name(self.queue_name_prefix + queue_name)
 
     def _new_queue(self, queue, **kwargs):
         """Ensure a queue with given name exists in SQS."""
-        if not isinstance(queue, string_t):
+        if not isinstance(queue, str):
             return queue
         # Translate to SQS name for consistency with initial
         # _queue_cache population.

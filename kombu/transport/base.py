@@ -8,7 +8,6 @@ import socket
 from amqp.exceptions import RecoverableConnectionError
 
 from kombu.exceptions import ChannelError, ConnectionError
-from kombu.five import items
 from kombu.message import Message
 from kombu.utils.functional import dictfilter
 from kombu.utils.objects import cached_property
@@ -54,7 +53,7 @@ def to_rabbitmq_queue_arguments(arguments, **options):
     """
     prepared = dictfilter(dict(
         _to_rabbitmq_queue_argument(key, value)
-        for key, value in items(options)
+        for key, value in options.items()
     ))
     return dict(arguments, **prepared) if prepared else arguments
 

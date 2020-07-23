@@ -19,8 +19,8 @@ https://azure.microsoft.com/en-us/services/service-bus/
 """
 
 import string
+from queue import Empty
 
-from kombu.five import Empty, text_t
 from kombu.utils.encoding import bytes_to_str, safe_str
 from kombu.utils.json import loads, dumps
 from kombu.utils.objects import cached_property
@@ -66,7 +66,7 @@ class Channel(virtual.Channel):
 
     def entity_name(self, name, table=CHARS_REPLACE_TABLE):
         """Format AMQP queue name into a valid ServiceBus queue name."""
-        return text_t(safe_str(name)).translate(table)
+        return str(safe_str(name)).translate(table)
 
     def _new_queue(self, queue, **kwargs):
         """Ensure a queue exists in ServiceBus."""

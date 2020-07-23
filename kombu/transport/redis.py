@@ -6,12 +6,12 @@ import socket
 from bisect import bisect
 from collections import namedtuple
 from contextlib import contextmanager
+from queue import Empty
 from time import time
 
 from vine import promise
 
 from kombu.exceptions import InconsistencyError, VersionMismatch
-from kombu.five import Empty, values, string_t
 from kombu.log import get_logger
 from kombu.utils.compat import register_after_fork
 from kombu.utils.eventio import poll, READ, ERR
@@ -259,7 +259,7 @@ class MultiChannelPoller:
         self.after_read = set()
 
     def close(self):
-        for fd in values(self._chan_to_sock):
+        for fd in self._chan_to_sock.values():
             try:
                 self.poller.unregister(fd)
             except (KeyError, ValueError):
@@ -509,7 +509,7 @@ class Channel(virtual.Channel):
         self.handlers = {'BRPOP': self._brpop_read, 'LISTEN': self._receive}
 
         if self.fanout_prefix:
-            if isinstance(self.fanout_prefix, string_t):
+            if isinstance(self.fanout_prefix, str):
                 self.keyprefix_fanout = self.fanout_prefix
         else:
             # previous versions did not set a fanout, so cannot enable

@@ -84,6 +84,8 @@ import socket
 import ssl
 import sys
 import uuid
+from queue import Empty
+from time import monotonic
 
 from gettext import gettext as _
 
@@ -114,8 +116,6 @@ try:
 except ImportError:  # pragma: no cover
     qpid = None
 
-
-from kombu.five import Empty, items, monotonic, PY3
 from kombu.log import get_logger
 from kombu.transport.virtual import Base64, Message
 from kombu.transport import base, virtual
@@ -1122,7 +1122,6 @@ class Channel(base.StdChannel):
         message['body'], body_encoding = self.encode_body(
             message['body'], self.body_encoding,
         )
-        message['body'] = buffer(message['body'])
         props = message['properties']
         props.update(
             body_encoding=body_encoding,
@@ -1453,17 +1452,6 @@ class Transport(base.Transport):
         :raises: RuntimeError if the runtime environment is not acceptable.
 
         """
-        if getattr(sys, 'pypy_version_info', None):
-            raise RuntimeError(
-                'The Qpid transport for Kombu does not '
-                'support PyPy. Try using Python 2.6+',
-            )
-        if PY3:
-            raise RuntimeError(
-                'The Qpid transport for Kombu does not '
-                'support Python 3. Try using Python 2.6+',
-            )
-
         if dependency_is_none(qpidtoollibs):
             raise RuntimeError(
                 'The Python package "qpidtoollibs" is missing. Install it '
@@ -1594,7 +1582,7 @@ class Transport(base.Transport):
 
         """
         conninfo = self.client
-        for name, default_value in items(self.default_connection_params):
+        for name, default_value in self.default_connection_params.items():
             if not getattr(conninfo, name, None):
                 setattr(conninfo, name, default_value)
         if conninfo.ssl:

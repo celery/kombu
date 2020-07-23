@@ -13,8 +13,9 @@ with the command: ``python -m kombu.transport.pyro``
 
 
 import sys
+from queue import Queue, Empty
 
-from kombu.five import reraise, Queue, Empty
+from kombu.exceptions import reraise
 from kombu.utils.objects import cached_property
 from kombu.log import get_logger
 from . import virtual

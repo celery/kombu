@@ -12,12 +12,12 @@ from array import array
 from collections import OrderedDict, defaultdict, namedtuple
 from itertools import count
 from multiprocessing.util import Finalize
-from time import sleep
+from queue import Empty
+from time import sleep, monotonic
 
 from amqp.protocol import queue_declare_ok_t
 
 from kombu.exceptions import ResourceError, ChannelError
-from kombu.five import Empty, items, monotonic
 from kombu.log import get_logger
 from kombu.utils.encoding import str_to_bytes, bytes_to_str
 from kombu.utils.div import emergency_dump_state
@@ -462,7 +462,7 @@ class Channel(AbstractChannel, base.StdChannel):
 
         # instantiate exchange types
         self.exchange_types = {
-            typ: cls(self) for typ, cls in items(self.exchange_types)
+            typ: cls(self) for typ, cls in self.exchange_types.items()
         }
 
         try:
