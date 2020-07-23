@@ -10,6 +10,7 @@ import os
 import pytest
 import random
 import string
+from queue import Empty
 
 from botocore.exceptions import ClientError
 from case import Mock, skip
@@ -18,7 +19,6 @@ from case.mock import patch
 from kombu import messaging
 from kombu import Connection, Exchange, Queue
 
-from kombu.five import Empty
 from kombu.transport import SQS
 
 SQS_Channel_sqs = SQS.Channel.sqs

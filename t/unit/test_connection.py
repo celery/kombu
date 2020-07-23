@@ -9,7 +9,6 @@ from case import Mock, patch, skip
 from kombu import Connection, Consumer, Producer, parse_url
 from kombu.connection import Resource
 from kombu.exceptions import OperationalError
-from kombu.five import items, range
 from kombu.utils.functional import lazy
 
 from t.mocks import Transport
@@ -60,7 +59,7 @@ class test_connection_utils:
 
     def assert_info(self, conn, **fields):
         info = conn.info()
-        for field, expected in items(fields):
+        for field, expected in fields.items():
             assert info[field] == expected
 
     @pytest.mark.parametrize('url,expected', [

@@ -5,7 +5,6 @@ from itertools import count
 from case import Mock, mock, patch
 
 from kombu import Connection
-from kombu.five import nextfun
 from kombu.transport import pyamqp
 
 
@@ -41,7 +40,7 @@ class test_Channel:
                 pass
 
         self.conn = Mock()
-        self.conn._get_free_channel_id.side_effect = nextfun(count(0))
+        self.conn._get_free_channel_id.side_effect = count(0).__next__
         self.conn.channels = {}
         self.channel = Channel(self.conn, 0)
 

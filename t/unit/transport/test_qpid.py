@@ -8,16 +8,12 @@ import uuid
 
 from collections import OrderedDict
 
-try:
-    from collections.abc import Callable
-except ImportError:
-    from collections import Callable
+from collections.abc import Callable
 
 from itertools import count
 
 from case import Mock, call, patch, skip
 
-from kombu.five import Empty, range, monotonic
 from kombu.transport.qpid import (AuthenticationFailure, Channel, Connection,
                                   ConnectionError, Message, NotFound, QoS,
                                   Transport)
@@ -1393,12 +1389,12 @@ class test_Transport_drain_events:
 
     def test_timeout_returns_no_earlier_then_asked_for(self):
         self.transport.session.next_receiver = self.mock_next_receiver
-        start_time = monotonic()
+        start_time = time.monotonic()
         try:
             self.transport.drain_events(self.mock_conn, timeout=1)
         except socket.timeout:
             pass
-        elapsed_time_in_s = monotonic() - start_time
+        elapsed_time_in_s = time.monotonic() - start_time
         assert elapsed_time_in_s >= 1.0
 
     def test_callback_is_called(self):

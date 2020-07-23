@@ -1,8 +1,8 @@
 import pytest
+from queue import Empty
 
 from case import Mock, skip
 
-from kombu.five import Empty
 from kombu.transport.consul import Channel, Transport
 
 

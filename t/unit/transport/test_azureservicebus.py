@@ -1,9 +1,9 @@
 import pytest
+from queue import Empty
 
 from case import skip, patch
 from kombu import messaging
 from kombu import Connection, Exchange, Queue
-from kombu.five import Empty
 from kombu.transport import azureservicebus
 
 try:

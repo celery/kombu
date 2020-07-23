@@ -1,10 +1,10 @@
 import datetime
 import pytest
+from queue import Empty
 
 from case import MagicMock, call, patch, skip
 
 from kombu import Connection
-from kombu.five import Empty
 
 
 def _create_mock_connection(url='', **kwargs):

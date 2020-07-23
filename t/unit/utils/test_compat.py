@@ -4,7 +4,6 @@ import types
 
 from case import Mock, mock, patch
 
-from kombu.five import bytes_if_py2
 from kombu.utils import compat
 from kombu.utils.compat import entrypoints, maybe_fileno
 
@@ -64,17 +63,15 @@ class test_detect_environment:
 
     def test_detect_environment_no_eventlet_or_gevent(self):
         try:
-            sys.modules['eventlet'] = types.ModuleType(
-                bytes_if_py2('eventlet'))
-            sys.modules['eventlet.patcher'] = types.ModuleType(
-                bytes_if_py2('patcher'))
+            sys.modules['eventlet'] = types.ModuleType('eventlet')
+            sys.modules['eventlet.patcher'] = types.ModuleType('patcher')
             assert compat._detect_environment() == 'default'
         finally:
             sys.modules.pop('eventlet.patcher', None)
             sys.modules.pop('eventlet', None)
         compat._detect_environment()
         try:
-            sys.modules['gevent'] = types.ModuleType(bytes_if_py2('gevent'))
+            sys.modules['gevent'] = types.ModuleType('gevent')
             assert compat._detect_environment() == 'default'
         finally:
             sys.modules.pop('gevent', None)

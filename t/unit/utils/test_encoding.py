@@ -2,9 +2,8 @@ import sys
 
 from contextlib import contextmanager
 
-from case import patch, skip
+from case import patch
 
-from kombu.five import bytes_t, string_t, string
 from kombu.utils.encoding import (
     get_default_encoding_file, safe_str,
     set_default_encoding_file, default_encoding,
@@ -44,24 +43,6 @@ class test_default_encoding:
                 getdefaultencoding.assert_called_with()
 
 
-@skip.if_python3()
-def test_str_to_bytes():
-    with clean_encoding() as e:
-        assert isinstance(e.str_to_bytes('foobar'), bytes_t)
-
-
-@skip.if_python3()
-def test_from_utf8():
-    with clean_encoding() as e:
-        assert isinstance(e.from_utf8('foobar'), bytes_t)
-
-
-@skip.if_python3()
-def test_default_encode():
-    with clean_encoding() as e:
-        assert e.default_encode(b'foo')
-
-
 class newbytes(bytes):
     """Mock class to simulate python-future newbytes class"""
     def __repr__(self):
@@ -71,7 +52,7 @@ class newbytes(bytes):
         return 'b' + f"'{super().__str__()}'"
 
 
-class newstr(string):
+class newstr(str):
     """Mock class to simulate python-future newstr class"""
 
     def encode(self, encoding=None, errors=None):
@@ -92,20 +73,20 @@ class test_safe_str:
         assert str(safe_str(newstr('foo'))) == 'foo'
 
     def test_when_unicode(self):
-        assert isinstance(safe_str('foo'), string_t)
+        assert isinstance(safe_str('foo'), str)
 
     def test_when_encoding_utf8(self):
         self._encoding.return_value = 'utf-8'
         assert default_encoding() == 'utf-8'
         s = 'The quiæk fåx jømps øver the lazy dåg'
         res = safe_str(s)
-        assert isinstance(res, string_t)
+        assert isinstance(res, str)
 
     def test_when_containing_high_chars(self):
         self._encoding.return_value = 'ascii'
         s = 'The quiæk fåx jømps øver the lazy dåg'
         res = safe_str(s)
-        assert isinstance(res, string_t)
+        assert isinstance(res, str)
         assert len(s) == len(res)
 
     def test_when_not_string(self):

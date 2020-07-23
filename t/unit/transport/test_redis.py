@@ -4,12 +4,11 @@ import types
 
 from collections import defaultdict
 from itertools import count
-
+from queue import Empty, Queue as _Queue
 from case import ANY, ContextMock, Mock, call, mock, skip, patch
 
 from kombu import Connection, Exchange, Queue, Consumer, Producer
 from kombu.exceptions import InconsistencyError, VersionMismatch
-from kombu.five import Empty, Queue as _Queue, bytes_if_py2
 from kombu.transport import virtual
 from kombu.utils import eventio  # patch poll
 from kombu.utils.json import dumps
@@ -1066,7 +1065,7 @@ def _redis_modules():
     class ResponseError(Exception):
         pass
 
-    exceptions = types.ModuleType(bytes_if_py2('redis.exceptions'))
+    exceptions = types.ModuleType('redis.exceptions')
     exceptions.ConnectionError = ConnectionError
     exceptions.AuthenticationError = AuthenticationError
     exceptions.InvalidData = InvalidData
@@ -1076,7 +1075,7 @@ def _redis_modules():
     class Redis:
         pass
 
-    myredis = types.ModuleType(bytes_if_py2('redis'))
+    myredis = types.ModuleType('redis')
     myredis.exceptions = exceptions
     myredis.Redis = Redis
 

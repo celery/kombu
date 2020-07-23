@@ -3,7 +3,6 @@ import pytest
 from case import Mock
 
 from kombu import Connection, Consumer, Exchange, Producer, Queue
-from kombu.five import text_t
 from kombu.message import Message
 from kombu.transport.base import (
     StdChannel, Transport, Management, to_rabbitmq_queue_arguments,
@@ -58,7 +57,7 @@ class test_Message:
         self.message = Message(channel=self.channel, delivery_tag=313)
 
     def test_postencode(self):
-        m = Message(text_t('FOO'), channel=self.channel, postencode='ccyzz')
+        m = Message('FOO', channel=self.channel, postencode='ccyzz')
         with pytest.raises(LookupError):
             m._reraise_error()
         m.ack()

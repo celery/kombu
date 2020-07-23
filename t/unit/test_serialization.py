@@ -8,7 +8,6 @@ from base64 import b64decode
 from case import call, mock, patch, skip
 
 from kombu.exceptions import ContentDisallowed, EncodeError, DecodeError
-from kombu.five import text_t, bytes_t
 from kombu.serialization import (
     registry, register, SerializerNotInstalled,
     raw_encode, register_yaml, register_msgpack,
@@ -123,7 +122,7 @@ class test_Serialization:
         assert isinstance(
             loads(unicode_string_as_utf8,
                   content_type='application/data', content_encoding='binary'),
-            bytes_t)
+            bytes)
 
         assert loads(
             unicode_string_as_utf8,
@@ -202,7 +201,7 @@ class test_Serialization:
                     content_encoding='binary')
         if sys.version_info[0] < 3:
             for k, v in res.items():
-                if isinstance(v, text_t):
+                if isinstance(v, str):
                     res[k] = v.encode()
                 if isinstance(v, (list, tuple)):
                     res[k] = [i.encode() for i in v]

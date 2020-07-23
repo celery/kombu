@@ -2,6 +2,7 @@ import io
 import pytest
 import warnings
 import socket
+from time import monotonic
 
 from case import MagicMock, Mock, patch
 
@@ -10,9 +11,8 @@ from kombu.compression import compress
 from kombu.exceptions import ResourceError, ChannelError
 from kombu.transport import virtual
 from kombu.utils.uuid import uuid
-from kombu.five import PY3, monotonic
 
-PRINT_FQDN = 'builtins.print' if PY3 else '__builtin__.print'
+PRINT_FQDN = 'builtins.print'
 
 
 def client(**kwargs):
