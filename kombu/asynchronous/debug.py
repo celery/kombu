@@ -1,6 +1,5 @@
 """Event-loop debugging tools."""
 
-from kombu.five import items, string_t
 from kombu.utils.eventio import READ, WRITE, ERR
 from kombu.utils.functional import reprcall
 
@@ -15,7 +14,7 @@ def repr_flag(flag):
 def _rcb(obj):
     if obj is None:
         return '<missing>'
-    if isinstance(obj, string_t):
+    if isinstance(obj, str):
         return obj
     if isinstance(obj, tuple):
         cb, args = obj
@@ -42,13 +41,13 @@ def repr_events(h, events):
 def repr_readers(h):
     """Return description of pending readers."""
     return ['({}){}->{}'.format(fd, _rcb(cb), repr_flag(READ | ERR))
-            for fd, cb in items(h.readers)]
+            for fd, cb in h.readers.items()]
 
 
 def repr_writers(h):
     """Return description of pending writers."""
     return ['({}){}->{}'.format(fd, _rcb(cb), repr_flag(WRITE))
-            for fd, cb in items(h.writers)]
+            for fd, cb in h.writers.items()]
 
 
 def callback_for(h, fd, flag, *default):

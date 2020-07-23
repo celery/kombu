@@ -5,7 +5,6 @@ from vine import promise, transform
 from kombu.asynchronous.aws.ext import AWSRequest, get_response
 
 from kombu.asynchronous.http import Headers, Request, get_client
-from kombu.five import items, python_2_unicode_compatible
 
 import io
 
@@ -32,7 +31,6 @@ __all__ = (
 )
 
 
-@python_2_unicode_compatible
 class AsyncHTTPResponse:
     """Async HTTP Response."""
 
@@ -48,7 +46,7 @@ class AsyncHTTPResponse:
         return self.response.headers.get(name, default)
 
     def getheaders(self):
-        return list(items(self.response.headers))
+        return list(self.response.headers.items())
 
     @property
     def msg(self):
@@ -70,7 +68,6 @@ class AsyncHTTPResponse:
         return repr(self.response)
 
 
-@python_2_unicode_compatible
 class AsyncHTTPSConnection:
     """Async HTTP Connection."""
 
@@ -99,7 +96,7 @@ class AsyncHTTPSConnection:
             else:
                 self.body = read()
         if headers is not None:
-            self.headers.extend(list(items(headers)))
+            self.headers.extend(list(headers.items()))
 
     def getrequest(self):
         headers = Headers(self.headers)

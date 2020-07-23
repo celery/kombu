@@ -7,10 +7,10 @@ from collections import namedtuple
 from datetime import datetime
 from functools import total_ordering
 from weakref import proxy as weakrefproxy
+from time import monotonic
 
 from vine.utils import wraps
 
-from kombu.five import monotonic, python_2_unicode_compatible
 from kombu.log import get_logger
 from time import time as _time
 
@@ -44,7 +44,6 @@ def to_timestamp(d, default_timezone=utc, time=monotonic):
 
 
 @total_ordering
-@python_2_unicode_compatible
 class Entry:
     """Schedule Entry."""
 
