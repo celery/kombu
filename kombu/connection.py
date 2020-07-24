@@ -248,8 +248,6 @@ class Connection(object):
                      insist, ssl, transport, connect_timeout,
                      login_method, heartbeat):
         transport = transport or 'amqp'
-        if transport == 'amqp' and supports_librabbitmq():
-            transport = 'librabbitmq'
         if transport == 'rediss' and ssl_available and not ssl:
             logger.warning(
                 'Secure redis scheme specified (rediss) with no ssl '
