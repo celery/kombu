@@ -27,7 +27,7 @@ from .five import (
 )
 from .log import get_logger
 from .resource import Resource
-from .transport import get_transport_cls, supports_librabbitmq
+from .transport import get_transport_cls
 from .utils.collections import HashedSeq
 from .utils.functional import dictfilter, lazy, retry_over_time, shufflecycle
 from .utils.objects import cached_property
