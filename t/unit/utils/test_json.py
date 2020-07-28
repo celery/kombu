@@ -83,7 +83,7 @@ class test_dumps_loads:
 
     @skip.if_python3()
     def test_loads_buffer(self):
-        assert loads(buffer(dumps({'x': 'z'}))) == {'x': 'z'}
+        assert loads(buffer(dumps({'x': 'z'}))) == {'x': 'z'}  # noqa: F821
 
     def test_loads_DecodeError(self):
         _loads = Mock(name='_loads')
