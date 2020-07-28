@@ -844,6 +844,8 @@ class Connection(object):
                 conn_opts['interval_step'] = transport_opts['interval_step']
             if 'interval_max' in transport_opts:
                 conn_opts['interval_max'] = transport_opts['interval_max']
+            if 'timeout' in transport_opts:
+                conn_opts['timeout'] = transport_opts['timeout']                
         return conn_opts
 
     @property
