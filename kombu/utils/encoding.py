@@ -76,7 +76,7 @@ else:
 
     def str_to_bytes(s):                # noqa
         """Convert str to bytes."""
-        if isinstance(s, unicode):
+        if isinstance(s, unicode):  # noqa: F821
             return s.encode()
         return s
 
@@ -90,9 +90,9 @@ else:
 
     def default_encode(obj, file=None):            # noqa
         """Get default encoding."""
-        return unicode(obj, default_encoding(file))
+        return unicode(obj, default_encoding(file))  # noqa: F821
 
-    str_t = unicode
+    str_t = unicode  # noqa: F821
     ensure_bytes = str_to_bytes
 
 
@@ -130,10 +130,10 @@ else:
     def _safe_str(s, errors='replace', file=None):  # noqa
         encoding = default_encoding(file)
         try:
-            if isinstance(s, unicode):
+            if isinstance(s, unicode):  # noqa: F821
                 return _ensure_str(s.encode(encoding, errors),
                                    encoding, errors)
-            return unicode(s, encoding, errors)
+            return unicode(s, encoding, errors)  # noqa: F821
         except Exception as exc:
             return '<Unrepresentable {0!r}: {1!r} {2!r}>'.format(
                 type(s), exc, '\n'.join(traceback.format_stack()))

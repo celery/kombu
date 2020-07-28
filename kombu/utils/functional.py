@@ -236,8 +236,8 @@ class lazy(object):
 
         def __cmp__(self, rhs):
             if isinstance(rhs, self.__class__):
-                return -cmp(rhs, self())
-            return cmp(self(), rhs)
+                return -cmp(rhs, self())  # noqa: F821
+            return cmp(self(), rhs)  # noqa: F821
 
 
 def maybe_evaluate(value):
