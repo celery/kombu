@@ -67,6 +67,7 @@ import socket
 import string
 import uuid
 
+from botocore.exceptions import ClientError
 from vine import transform, ensure_promise, promise
 
 from kombu.asynchronous import get_event_loop
@@ -458,17 +459,21 @@ class Channel(virtual.Channel):
             message = self.qos.get(delivery_tag).delivery_info
             sqs_message = message['sqs_message']
         except KeyError:
-            pass
+            super(Channel, self).basic_ack(delivery_tag)
         else:
             queue = None
             if 'routing_key' in message:
                 queue = self.canonical_queue_name(message['routing_key'])
 
-            self.sqs(queue=queue).delete_message(
-                QueueUrl=message['sqs_queue'],
-                ReceiptHandle=sqs_message['ReceiptHandle'],
-            )
-        super(Channel, self).basic_ack(delivery_tag)
+            try:
+                self.sqs(queue=queue).delete_message(
+                    QueueUrl=message['sqs_queue'],
+                    ReceiptHandle=sqs_message['ReceiptHandle']
+                )
+            except ClientError:
+                super(Channel, self).basic_reject(delivery_tag)
+            else:
+                super(Channel, self).basic_ack(delivery_tag)
 
     def _size(self, queue):
         """Return the number of messages in a queue."""
@@ -527,8 +532,8 @@ class Channel(virtual.Channel):
             q = self.predefined_queues[queue]
             c = self._predefined_queue_clients[queue] = self.new_sqs_client(
                 region=q.get('region', self.region),
-                access_key_id=q['access_key_id'] or self.conninfo.userid,
-                secret_access_key=q['secret_access_key'] or self.conninfo.password,  # noqa: E501
+                access_key_id=q.get('access_key_id', self.conninfo.userid),
+                secret_access_key=q.get('secret_access_key', self.conninfo.password),  # noqa: E501
             )
             return c
 

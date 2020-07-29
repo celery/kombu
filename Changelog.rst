@@ -4,7 +4,66 @@
  Change history
 ================
 
-.. _version-4.6.7:
+.. _version-4.6.11:
+
+4.6.11
+=======
+:release-date: 2020-06-24 1.15 P.M UTC+6:00
+:release-by: Asif Saif Uddin
+
+- Revert incompatible changes in #1193 and additional improvements (#1211) 
+- Default_channel should reconnect automatically (#1209) 
+
+
+.. _version-4.6.10:
+
+4.6.10
+======
+:release-date: 2020-06-03 10.45 A.M UTC+6:00
+:release-by: Asif Saif Uddin
+
+- Doc improvement.
+- set _connection in _ensure_connection (#1205)
+- Fix for the issue #1172 
+- reuse connection [bug fix]
+
+
+.. _version-4.6.9:
+
+4.6.9
+=====
+:release-date: 2020-06-01 14.00 P.M UTC+6:00
+:release-by: Asif Saif Uddin
+
+- Prevent failure if AWS creds are not explicitly defined on predefined.
+- Raise RecoverableConnectionError in maybe_declare with retry on and.
+- Fix for the issue #1172 .
+- possible fix for #1174 .
+- Fix: make SQLAlchemy Channel init thread-safe
+- Added integration testing infrastructure for RabbitMQ
+- Initial redis integration tests implementation
+- SQLAlchemy transport: Use Query.with_for_update() instead of deprecated
+- Fix Consumer Encoding
+- Added Integration tests for direct, topic and fanout exchange types
+- Added TTL integration tests
+- Added integration tests for priority queues
+- fix 100% cpu usage on linux while using sqs
+- Modified Mutex to use redis LuaLock implementation
+- Fix: eliminate remaining race conditions from SQLAlchemy Channel
+- Fix connection imaybe_declare (#1196)
+- Fix for issue #1198: Celery crashes in cases where there aren’t enough
+- Ensure connection when connecting to broker
+- update pyamqp to 2.6 with optional cythonization
+
+.. _version-4.6.8:
+
+4.6.8
+=====
+:release-date: 2020-03-29 20:45 A.M UTC+6:00
+:release-by: Asif Saif Uddin
+
+
+.. _version-4.6.8:
 
 4.6.7
 =====

@@ -110,7 +110,6 @@ setup(
     packages=setuptools.find_packages(exclude=['t', 't.*']),
     version=meta['version'],
     description=meta['doc'],
-    long_description=readme(),
     keywords='messaging message amqp rabbitmq redis actor producer consumer',
     author=meta['author'],
     author_email=meta['contact'],

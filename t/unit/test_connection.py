@@ -131,7 +131,9 @@ class test_Connection:
 
     def test_establish_connection(self):
         conn = self.conn
+        assert not conn.connected
         conn.connect()
+        assert conn.connected
         assert conn.connection.connected
         assert conn.host == 'localhost:5672'
         channel = conn.channel()
@@ -141,6 +143,40 @@ class test_Connection:
         conn.close()
         assert not _connection.connected
         assert isinstance(conn.transport, Transport)
+
+    def test_reuse_connection(self):
+        conn = self.conn
+        assert conn.connect() is conn.connection is conn.connect()
+
+    def test_connect_no_transport_options(self):
+        conn = self.conn
+        conn._ensure_connection = Mock()
+
+        conn.connect()
+        # ensure_connection must be called to return immidiately
+        # and fail with transport exception
+        conn._ensure_connection.assert_called_with(
+            max_retries=1, reraise_as_library_errors=False
+        )
+
+    def test_connect_transport_options(self):
+        conn = self.conn
+        conn.transport_options = {
+            'max_retries': 1,
+            'interval_start': 2,
+            'interval_step': 3,
+            'interval_max': 4,
+            'ignore_this': True
+        }
+        conn._ensure_connection = Mock()
+
+        conn.connect()
+        # connect() is ignoring transport options
+        # ensure_connection must be called to return immidiately
+        # and fail with transport exception
+        conn._ensure_connection.assert_called_with(
+            max_retries=1, reraise_as_library_errors=False
+        )
 
     def test_multiple_urls(self):
         conn1 = Connection('amqp://foo;amqp://bar')
@@ -383,6 +419,18 @@ class test_Connection:
         conn._close()
         conn._default_channel.close.assert_called_with()
 
+    def test_auto_reconnect_default_channel(self):
+        # tests GH issue: #1208
+        # Tests that default_channel automatically reconnects when connection
+        # closed
+        c = Connection('memory://')
+        c._closed = True
+        with patch.object(
+            c, '_connection_factory', side_effect=c._connection_factory
+        ) as cf_mock:
+            c.default_channel
+            cf_mock.assert_called_once_with()
+
     def test_close_when_default_channel_close_raises(self):
 
         class Conn(Connection):
@@ -405,32 +453,6 @@ class test_Connection:
 
         defchan.close.assert_called_with()
         assert conn._default_channel is None
-
-    def test_default_channel_no_transport_options(self):
-        conn = self.conn
-        conn.ensure_connection = Mock()
-
-        assert conn.default_channel
-        conn.ensure_connection.assert_called_with()
-
-    def test_default_channel_transport_options(self):
-        conn = self.conn
-        conn.transport_options = options = {
-            'max_retries': 1,
-            'interval_start': 2,
-            'interval_step': 3,
-            'interval_max': 4,
-            'ignore_this': True
-        }
-        conn.ensure_connection = Mock()
-
-        assert conn.default_channel
-        conn.ensure_connection.assert_called_with(**{
-            k: v for k, v in options.items()
-            if k in ['max_retries',
-                     'interval_start',
-                     'interval_step',
-                     'interval_max']})
 
     def test_ensure_connection(self):
         assert self.conn.ensure_connection()

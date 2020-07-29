@@ -14,7 +14,6 @@ from kombu.exceptions import InconsistencyError, VersionMismatch
 from kombu.five import Empty, Queue as _Queue, bytes_if_py2
 from kombu.transport import virtual
 from kombu.utils import eventio  # patch poll
-from kombu.utils.encoding import str_to_bytes
 from kombu.utils.json import dumps
 
 
@@ -1358,48 +1357,40 @@ class test_Mutex:
 
     def test_mutex(self, lock_id='xxx'):
         client = Mock(name='client')
-        with patch('kombu.transport.redis.uuid') as uuid:
-            # Won
-            uuid.return_value = lock_id
-            client.setnx.return_value = True
-            client.pipeline = ContextMock()
-            pipe = client.pipeline.return_value
-            pipe.get.return_value = str_to_bytes(lock_id)  # redis gives bytes
-            held = False
-            with redis.Mutex(client, 'foo1', 100):
-                held = True
-            assert held
-            client.setnx.assert_called_with('foo1', lock_id)
-            pipe.get.return_value = b'yyy'
-            held = False
-            with redis.Mutex(client, 'foo1', 100):
-                held = True
-            assert held
+        lock = client.lock.return_value = Mock(name='lock')
 
-            # Did not win
-            client.expire.reset_mock()
-            pipe.get.return_value = str_to_bytes(lock_id)
-            client.setnx.return_value = False
-            with pytest.raises(redis.MutexHeld):
-                held = False
-                with redis.Mutex(client, 'foo1', '100'):
-                    held = True
-                assert not held
-            client.ttl.return_value = 0
-            with pytest.raises(redis.MutexHeld):
-                held = False
-                with redis.Mutex(client, 'foo1', '100'):
-                    held = True
-                assert not held
-            client.expire.assert_called()
+        # Won
+        lock.acquire.return_value = True
+        held = False
+        with redis.Mutex(client, 'foo1', 100):
+            held = True
+        assert held
+        lock.acquire.assert_called_with(blocking=False)
+        client.lock.assert_called_with('foo1', timeout=100)
 
-            # Wins but raises WatchError (and that is ignored)
-            client.setnx.return_value = True
-            pipe.watch.side_effect = redis.redis.WatchError()
-            held = False
+        client.reset_mock()
+        lock.reset_mock()
+
+        # Did not win
+        lock.acquire.return_value = False
+        held = False
+        with pytest.raises(redis.MutexHeld):
             with redis.Mutex(client, 'foo1', 100):
                 held = True
-            assert held
+            assert not held
+        lock.acquire.assert_called_with(blocking=False)
+        client.lock.assert_called_with('foo1', timeout=100)
+
+        client.reset_mock()
+        lock.reset_mock()
+
+        # Wins but raises LockNotOwnedError (and that is ignored)
+        lock.acquire.return_value = True
+        lock.release.side_effect = redis.redis.exceptions.LockNotOwnedError()
+        held = False
+        with redis.Mutex(client, 'foo1', 100):
+            held = True
+        assert held
 
 
 @skip.unless_module('redis.sentinel')

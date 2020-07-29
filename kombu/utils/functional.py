@@ -247,18 +247,18 @@ def maybe_evaluate(value):
     return value
 
 
-def is_list(l, scalars=(Mapping, string_t), iters=(Iterable,)):
+def is_list(obj, scalars=(Mapping, string_t), iters=(Iterable,)):
     """Return true if the object is iterable.
 
     Note:
         Returns false if object is a mapping or string.
     """
-    return isinstance(l, iters) and not isinstance(l, scalars or ())
+    return isinstance(obj, iters) and not isinstance(obj, scalars or ())
 
 
-def maybe_list(l, scalars=(Mapping, string_t)):
+def maybe_list(obj, scalars=(Mapping, string_t)):
     """Return list of one element if ``l`` is a scalar."""
-    return l if l is None or is_list(l, scalars) else [l]
+    return obj if obj is None or is_list(obj, scalars) else [obj]
 
 
 def dictfilter(d=None, **kw):

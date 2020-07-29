@@ -21,7 +21,6 @@ from kombu.utils.json import loads, dumps
 from kombu.utils.objects import cached_property
 from kombu.utils.scheduling import cycle_by_name
 from kombu.utils.url import _parse_url
-from kombu.utils.uuid import uuid
 from kombu.utils.compat import _detect_environment
 from kombu.utils.functional import accepts_argument
 
@@ -108,28 +107,24 @@ class MutexHeld(Exception):
 
 @contextmanager
 def Mutex(client, name, expire):
-    """The Redis lock implementation (probably shaky)."""
-    lock_id = uuid()
-    i_won = client.setnx(name, lock_id)
+    """Acquire redis lock in non blocking way.
+
+    Raise MutexHeld if not successful.
+    """
+    lock = client.lock(name, timeout=expire)
+    lock_acquired = False
     try:
-        if i_won:
-            client.expire(name, expire)
+        lock_acquired = lock.acquire(blocking=False)
+        if lock_acquired:
             yield
         else:
-            if not client.ttl(name):
-                client.expire(name, expire)
             raise MutexHeld()
     finally:
-        if i_won:
+        if lock_acquired:
             try:
-                with client.pipeline(True) as pipe:
-                    pipe.watch(name)
-                    if bytes_to_str(pipe.get(name)) == lock_id:
-                        pipe.multi()
-                        pipe.delete(name)
-                        pipe.execute()
-                    pipe.unwatch()
-            except redis.WatchError:
+                lock.release()
+            except redis.exceptions.LockNotOwnedError:
+                # when lock is expired
                 pass
 
 
@@ -779,7 +774,7 @@ class Channel(virtual.Channel):
     def _q_for_pri(self, queue, pri):
         pri = self.priority(pri)
         if pri:
-            return "{{{}}}{}{}".format(queue, self.sep, pri)
+            return "{}{}{}".format(queue, self.sep, pri)
         return queue
 
     def priority(self, n):

@@ -4,6 +4,7 @@
 
 from __future__ import absolute_import, unicode_literals
 
+import threading
 from json import loads, dumps
 
 from sqlalchemy import create_engine
@@ -20,6 +21,8 @@ from .models import (ModelBase, Queue as QueueBase, Message as MessageBase,
 
 VERSION = (1, 1, 0)
 __version__ = '.'.join(map(str, VERSION))
+
+_MUTEX = threading.RLock()
 
 
 class Channel(virtual.Channel):
@@ -53,10 +56,17 @@ class Channel(virtual.Channel):
     def _open(self):
         conninfo = self.connection.client
         if conninfo.hostname not in self._engines:
-            engine = self._engine_from_config()
-            Session = sessionmaker(bind=engine)
-            metadata.create_all(engine)
-            self._engines[conninfo.hostname] = engine, Session
+            with _MUTEX:
+                if conninfo.hostname in self._engines:
+                    # Engine was created while we were waiting to
+                    # acquire the lock.
+                    return self._engines[conninfo.hostname]
+
+                engine = self._engine_from_config()
+                Session = sessionmaker(bind=engine)
+                metadata.create_all(engine)
+                self._engines[conninfo.hostname] = engine, Session
+
         return self._engines[conninfo.hostname]
 
     @property
@@ -70,12 +80,21 @@ class Channel(virtual.Channel):
         obj = self.session.query(self.queue_cls) \
             .filter(self.queue_cls.name == queue).first()
         if not obj:
-            obj = self.queue_cls(queue)
-            self.session.add(obj)
-            try:
-                self.session.commit()
-            except OperationalError:
-                self.session.rollback()
+            with _MUTEX:
+                obj = self.session.query(self.queue_cls) \
+                    .filter(self.queue_cls.name == queue).first()
+                if obj:
+                    # Queue was created while we were waiting to
+                    # acquire the lock.
+                    return obj
+
+                obj = self.queue_cls(queue)
+                self.session.add(obj)
+                try:
+                    self.session.commit()
+                except OperationalError:
+                    self.session.rollback()
+
         return obj
 
     def _new_queue(self, queue, **kwargs):
@@ -96,7 +115,7 @@ class Channel(virtual.Channel):
             self.session.execute('BEGIN IMMEDIATE TRANSACTION')
         try:
             msg = self.session.query(self.message_cls) \
-                .with_lockmode('update') \
+                .with_for_update() \
                 .filter(self.message_cls.queue_id == obj.id) \
                 .filter(self.message_cls.visible != False) \
                 .order_by(self.message_cls.sent_at) \
@@ -127,9 +146,16 @@ class Channel(virtual.Channel):
         return self._query_all(queue).count()
 
     def _declarative_cls(self, name, base, ns):
-        if name in class_registry:
-            return class_registry[name]
-        return type(str(name), (base, ModelBase), ns)
+        if name not in class_registry:
+            with _MUTEX:
+                if name in class_registry:
+                    # Class was registered while we were waiting to
+                    # acquire the lock.
+                    return class_registry[name]
+
+                return type(str(name), (base, ModelBase), ns)
+
+        return class_registry[name]
 
     @cached_property
     def queue_cls(self):

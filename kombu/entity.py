@@ -245,9 +245,11 @@ class Exchange(MaybeChannelBound):
 
             headers (Dict): Message headers.
         """
-        # XXX This method is unused by kombu itself AFAICT [ask].
         properties = {} if properties is None else properties
         properties['delivery_mode'] = maybe_delivery_mode(self.delivery_mode)
+        if (isinstance(body, string_t) and
+                properties.get('content_encoding', None)) is None:
+            kwargs['content_encoding'] = 'utf-8'
         return self.channel.prepare_message(
             body,
             properties=properties,

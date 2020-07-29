@@ -12,7 +12,9 @@ import pytest
 import random
 import string
 
+from botocore.exceptions import ClientError
 from case import Mock, skip
+from case.mock import patch
 
 from kombu import messaging
 from kombu import Connection, Exchange, Queue
@@ -506,6 +508,83 @@ class test_Channel:
             QueueUrl=message['sqs_queue'],
             ReceiptHandle=message['sqs_message']['ReceiptHandle']
         )
+        assert {1} == self.channel.qos._dirty
+
+    @patch('kombu.transport.virtual.base.Channel.basic_ack')
+    @patch('kombu.transport.virtual.base.Channel.basic_reject')
+    def test_basic_ack_with_mocked_channel_methods(self, basic_reject_mock,
+                                                   basic_ack_mock):
+        """Test that basic_ack calls the delete_message properly"""
+        message = {
+            'sqs_message': {
+                'ReceiptHandle': '1'
+            },
+            'sqs_queue': 'testing_queue'
+        }
+        mock_messages = Mock()
+        mock_messages.delivery_info = message
+        self.channel.qos.append(mock_messages, 1)
+        self.channel.sqs().delete_message = Mock()
+        self.channel.basic_ack(1)
+        self.sqs_conn_mock.delete_message.assert_called_with(
+            QueueUrl=message['sqs_queue'],
+            ReceiptHandle=message['sqs_message']['ReceiptHandle']
+        )
+        basic_ack_mock.assert_called_with(1)
+        assert not basic_reject_mock.called
+
+    @patch('kombu.transport.virtual.base.Channel.basic_ack')
+    @patch('kombu.transport.virtual.base.Channel.basic_reject')
+    def test_basic_ack_without_sqs_message(self, basic_reject_mock,
+                                           basic_ack_mock):
+        """Test that basic_ack calls the delete_message properly"""
+        message = {
+            'sqs_queue': 'testing_queue'
+        }
+        mock_messages = Mock()
+        mock_messages.delivery_info = message
+        self.channel.qos.append(mock_messages, 1)
+        self.channel.sqs().delete_message = Mock()
+        self.channel.basic_ack(1)
+        assert not self.sqs_conn_mock.delete_message.called
+        basic_ack_mock.assert_called_with(1)
+        assert not basic_reject_mock.called
+
+    @patch('kombu.transport.virtual.base.Channel.basic_ack')
+    @patch('kombu.transport.virtual.base.Channel.basic_reject')
+    def test_basic_ack_invalid_receipt_handle(self, basic_reject_mock,
+                                              basic_ack_mock):
+        """Test that basic_ack calls the delete_message properly"""
+        message = {
+            'sqs_message': {
+                'ReceiptHandle': '2'
+            },
+            'sqs_queue': 'testing_queue'
+        }
+        error_response = {
+            'Error': {
+                'Code': 'InvalidParameterValue',
+                'Message': 'Value 2 for parameter ReceiptHandle is invalid.'
+                           ' Reason: The receipt handle has expired.'
+            }
+        }
+        operation_name = 'DeleteMessage'
+
+        mock_messages = Mock()
+        mock_messages.delivery_info = message
+        self.channel.qos.append(mock_messages, 2)
+        self.channel.sqs().delete_message = Mock()
+        self.channel.sqs().delete_message.side_effect = ClientError(
+            error_response=error_response,
+            operation_name=operation_name
+        )
+        self.channel.basic_ack(2)
+        self.sqs_conn_mock.delete_message.assert_called_with(
+            QueueUrl=message['sqs_queue'],
+            ReceiptHandle=message['sqs_message']['ReceiptHandle']
+        )
+        basic_reject_mock.assert_called_with(2)
+        assert not basic_ack_mock.called
 
     def test_predefined_queues_primes_queue_cache(self):
         connection = Connection(transport=SQS.Transport, transport_options={

@@ -4,7 +4,7 @@
 
 |build-status| |coverage| |license| |wheel| |pyversion| |pyimp| |[![Downloads](https://pepy.tech/badge/kombu)](https://pepy.tech/project/kombu)|
 
-:Version: 4.6.8
+:Version: 4.6.11
 :Documentation: https://kombu.readthedocs.io/
 :Download: https://pypi.org/project/kombu/
 :Source: https://github.com/celery/kombu/
@@ -41,7 +41,7 @@ Features
 
     * Virtual transports makes it really easy to add support for non-AMQP
       transports. There is already built-in support for `Redis`_,
-      `Amazon SQS`_, `ZooKeeper`_, `SoftLayer MQ`_ and `Pyro`_.
+      `Amazon SQS`_, `ZooKeeper`_, `SoftLayer MQ`_, `MongoDB`_ and `Pyro`_.
 
     * In-memory transport for unit testing.
 
@@ -76,6 +76,7 @@ and the `Wikipedia article about AMQP`_.
 .. _`librabbitmq`: https://pypi.org/project/librabbitmq/
 .. _`Pyro`: https://pyro4.readthedocs.io/
 .. _`SoftLayer MQ`: https://sldn.softlayer.com/reference/messagequeueapi
+.. _`MongoDB`: https://www.mongodb.com/
 
 .. _transport-comparison:
 
