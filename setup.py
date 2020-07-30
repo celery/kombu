@@ -8,9 +8,6 @@ import setuptools.command.test
 
 from distutils.command.install import INSTALL_SCHEMES
 
-if sys.version_info < (2, 7):
-    raise Exception('Kombu 4.0 requires Python 2.7 or higher.')
-
 try:
     from setuptools import setup
 except ImportError:
@@ -44,6 +41,8 @@ try:
                 meta.update(handler(m))
 finally:
     meta_fh.close()
+
+
 # --
 
 
@@ -79,7 +78,7 @@ def reqs(*f):
     return [
         r for r in (
             strip_comments(l) for l in open(
-                os.path.join(os.getcwd(), 'requirements', *f)).readlines()
+            os.path.join(os.getcwd(), 'requirements', *f)).readlines()
         ) if r]
 
 
@@ -117,7 +116,7 @@ setup(
     zip_safe=False,
     license='BSD',
     cmdclass={'test': pytest},
-    python_requires=">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*",
+    python_requires=">=3.6",
     install_requires=reqs('default.txt'),
     tests_require=reqs('test.txt'),
     extras_require={
@@ -141,13 +140,11 @@ setup(
         'License :: OSI Approved :: BSD License',
         'Operating System :: OS Independent',
         'Programming Language :: Python',
+        'Programming Language :: Python :: 3 :: Only',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
-        'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 2',
         'Programming Language :: Python :: Implementation :: CPython',
         'Programming Language :: Python :: Implementation :: PyPy',
         'Intended Audience :: Developers',
