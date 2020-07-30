@@ -28,19 +28,12 @@ _integration_job: &integration_job
 
 jobs:
   include:
-    - python: 2.7
-      env: TOXENV=2.7-unit
-    - python: 3.5
-      env: TOXENV=3.5-unit
     - python: 3.6
       env: TOXENV=3.6-unit
     - python: 3.7
       env: TOXENV=3.7-linux-unit
     - python: 3.8
       env: TOXENV=3.8-linux-unit
-    - python: pypy2.7-7.1.1
-      env: TOXENV=pypy-unit
-      dist: xenial
     - python: pypy3.5-7.0
       env: TOXENV=pypy3-unit
       dist: xenial
@@ -48,18 +41,12 @@ jobs:
       stage: lint
     - env: TOXENV=flakeplus
       stage: lint
-    - python: '3.6'
+    - python: '3.8'
       env: TOXENV=apicheck
       stage: lint
-    - python: '3.6'
+    - python: '3.8'
       env: TOXENV=pydocstyle
       stage: lint
-    - python: 2.7
-      <<: *integration_job
-      env: TOXENV=2.7-integration-py-amqp
-    - python: 3.5
-      <<: *integration_job
-      env: TOXENV=3.5-integration-py-amqp
     - python: 3.6
       <<: *integration_job
       env: TOXENV=3.6-integration-py-amqp
@@ -69,18 +56,9 @@ jobs:
     - python: 3.8
       <<: *integration_job
       env: TOXENV=3.8-linux-integration-py-amqp
-    - python: pypy2.7-7.1.1
-      <<: *integration_job
-      env: TOXENV=pypy-integration-py-amqp
     - python: pypy3.5-7.0
       <<: *integration_job
       env: TOXENV=pypy3-integration-py-amqp
-    - python: 2.7
-      <<: *integration_job
-      env: TOXENV=2.7-integration-redis
-    - python: 3.5
-      <<: *integration_job
-      env: TOXENV=3.5-integration-redis
     - python: 3.6
       <<: *integration_job
       env: TOXENV=3.6-integration-redis
@@ -90,9 +68,6 @@ jobs:
     - python: 3.8
       <<: *integration_job
       env: TOXENV=3.8-linux-integration-redis
-    - python: pypy2.7-7.1.1
-      <<: *integration_job
-      env: TOXENV=pypy-integration-redis
     - python: pypy3.5-7.0
       <<: *integration_job
       env: TOXENV=pypy3-integration-redis
