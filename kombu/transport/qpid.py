@@ -123,6 +123,10 @@ from kombu.transport import base, virtual
 
 logger = get_logger(__name__)
 
+try:
+    buffer
+except NameError:
+    buffer = bytes
 
 OBJECT_ALREADY_EXISTS_STRING = 'object already exists'
 

@@ -1,4 +1,5 @@
 os: linux
+dist: xenial
 language: python
 cache: pip
 
@@ -36,8 +37,8 @@ jobs:
       env: TOXENV=3.8-linux-unit
     - python: pypy3.5-7.0
       env: TOXENV=pypy3-unit
-      dist: xenial
-    - env: TOXENV=flake8
+    - python: '3.8'
+      env: TOXENV=flake8
       stage: lint
     - python: '3.8'
       env: TOXENV=apicheck
