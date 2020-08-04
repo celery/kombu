@@ -45,6 +45,7 @@ class test_default_encoding:
 
 class newbytes(bytes):
     """Mock class to simulate python-future newbytes class"""
+
     def __repr__(self):
         return 'b' + super().__repr__()
 

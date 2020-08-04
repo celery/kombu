@@ -468,12 +468,12 @@ class Channel(base.StdChannel):
 
         """
         if not exchange:
-            address = '{}; {{assert: always, node: {{type: queue}}}}'.format(
-                routing_key)
+            address = f'{routing_key}; ' \
+                      '{{assert: always, node: {{type: queue}}}}'
             msg_subject = None
         else:
-            address = '{}/{}; {{assert: always, node: {{type: topic}}}}'.format(
-                exchange, routing_key)
+            address = f'{exchange}/{routing_key}; '\
+                      '{{assert: always, node: {{type: topic}}}}'
             msg_subject = str(routing_key)
         sender = self.transport.session.sender(address)
         qpid_message = qpid.messaging.Message(content=message,

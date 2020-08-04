@@ -15,7 +15,8 @@ from contextlib import contextmanager
 from io import BytesIO
 
 from .exceptions import (
-    reraise, ContentDisallowed, DecodeError, EncodeError, SerializerNotInstalled
+    reraise, ContentDisallowed, DecodeError,
+    EncodeError, SerializerNotInstalled
 )
 from .utils.compat import entrypoints
 from .utils.encoding import bytes_to_str, str_to_bytes, bytes_t

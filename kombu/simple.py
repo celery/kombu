@@ -140,7 +140,7 @@ class SimpleQueue(SimpleBase):
                                       routing_key=routing_key,
                                       compression=compression)
         super().__init__(channel, producer,
-                                          consumer, no_ack, **kwargs)
+                         consumer, no_ack, **kwargs)
 
 
 class SimpleBuffer(SimpleQueue):

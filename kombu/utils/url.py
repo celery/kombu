@@ -79,6 +79,8 @@ def url_to_parts(url):
         unquote(path or '') or None,
         dict(parse_qsl(parts.query)),
     )
+
+
 _parse_url = url_to_parts  # noqa
 
 

@@ -66,7 +66,7 @@ class Channel(virtual.Channel):
     def _put(self, queue, payload, **kwargs):
         """Put `message` onto `queue`."""
         filename = '{}_{}.{}.msg'.format(int(round(monotonic() * 1000)),
-                                     uuid.uuid4(), queue)
+                                         uuid.uuid4(), queue)
         filename = os.path.join(self.data_folder_out, filename)
 
         try:

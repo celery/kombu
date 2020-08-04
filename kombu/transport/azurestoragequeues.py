@@ -59,7 +59,7 @@ class Channel(virtual.Channel):
             self._noack_queues.add(queue)
 
         return super().basic_consume(queue, no_ack,
-                                                  *args, **kwargs)
+                                     *args, **kwargs)
 
     def entity_name(self, name, table=CHARS_REPLACE_TABLE):
         """Format AMQP queue name into a valid Azure Storage Queue name."""

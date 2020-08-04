@@ -7,8 +7,8 @@ from kombu.utils.functional import reprcall
 def repr_flag(flag):
     """Return description of event loop flag."""
     return '{}{}{}'.format('R' if flag & READ else '',
-                              'W' if flag & WRITE else '',
-                              '!' if flag & ERR else '')
+                           'W' if flag & WRITE else '',
+                           '!' if flag & ERR else '')
 
 
 def _rcb(obj):

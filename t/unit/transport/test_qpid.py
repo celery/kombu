@@ -5,6 +5,7 @@ import socket
 import sys
 import time
 import uuid
+from queue import Empty
 
 from collections import OrderedDict
 

@@ -93,7 +93,6 @@ class StdChannel:
            Reply queue semantics: can be used to delete the queue
            after transient reply message received.
         """
-        pass
 
     def prepare_queue_arguments(self, arguments, **kwargs):
         return arguments

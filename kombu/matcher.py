@@ -10,8 +10,6 @@ from .utils.encoding import bytes_to_str
 class MatcherNotInstalled(Exception):
     """Matcher not installed/found."""
 
-    pass
-
 
 class MatcherRegistry:
     """Pattern matching function registry."""
@@ -72,7 +70,6 @@ class MatcherRegistry:
 #: Global registry of matchers.
 registry = MatcherRegistry()
 
-
 """
 .. function:: match(data, pattern, matcher=default_matcher,
                     matcher_kwargs=None):
@@ -96,7 +93,6 @@ registry = MatcherRegistry()
 """
 match = registry.match
 
-
 """
 .. function:: register(name, matcher):
     Register a new matching method.
@@ -105,7 +101,6 @@ match = registry.match
     :param matcher: A method that will be passed data and pattern.
 """
 register = registry.register
-
 
 """
 .. function:: unregister(name):
@@ -132,7 +127,6 @@ register_pcre()
 
 # Default matching method is 'glob'
 registry._set_default_matcher('glob')
-
 
 # Load entrypoints from installed extensions
 for ep, args in entrypoints('kombu.matchers'):

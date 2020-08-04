@@ -3,7 +3,6 @@
 import errno
 import math
 import select as __select__
-import socket
 import sys
 
 from numbers import Integral
@@ -132,8 +131,8 @@ class _kqueue:
         kevents = []
         if events & WRITE:
             kevents.append(kevent(fd,
-                           filter=KQ_FILTER_WRITE,
-                           flags=flags))
+                                  filter=KQ_FILTER_WRITE,
+                                  flags=flags))
         if not kevents or events & READ:
             kevents.append(
                 kevent(fd, filter=KQ_FILTER_READ, flags=flags),

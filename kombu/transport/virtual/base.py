@@ -302,7 +302,6 @@ class QoS:
             This is implementation optional, and currently only
             used by the Redis transport.
         """
-        pass
 
 
 class Message(base.Message):
@@ -385,7 +384,6 @@ class AbstractChannel:
             Your transport can override this method if it needs
             to do something whenever a new queue is declared.
         """
-        pass
 
     def _has_queue(self, queue, **kwargs):
         """Verify that queue exists.

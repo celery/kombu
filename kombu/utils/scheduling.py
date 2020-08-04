@@ -57,7 +57,6 @@ class FairCycle:
 
     def close(self):
         """Close cycle."""
-        pass
 
     def __repr__(self):
         """``repr(cycle)``."""
@@ -94,7 +93,6 @@ class priority_cycle(round_robin_cycle):
 
     def rotate(self, last_used):
         """Unused in this implementation."""
-        pass
 
 
 class sorted_cycle(priority_cycle):

@@ -46,7 +46,7 @@ class Channel(virtual.Channel):
         if no_ack:
             self._noack_queues.add(queue)
         return super().basic_consume(queue, no_ack,
-                                                  *args, **kwargs)
+                                     *args, **kwargs)
 
     def basic_cancel(self, consumer_tag):
         if consumer_tag in self._consumers:
