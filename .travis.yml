@@ -35,7 +35,7 @@ jobs:
       env: TOXENV=3.7-linux-unit
     - python: 3.8
       env: TOXENV=3.8-linux-unit
-    - python: pypy3.5-7.0
+    - python: pypy3.6-7.3.1
       env: TOXENV=pypy3-unit
     - python: '3.8'
       env: TOXENV=flake8
@@ -55,7 +55,7 @@ jobs:
     - python: 3.8
       <<: *integration_job
       env: TOXENV=3.8-linux-integration-py-amqp
-    - python: pypy3.5-7.0
+    - python: pypy3.6-7.3.1
       <<: *integration_job
       env: TOXENV=pypy3-integration-py-amqp
     - python: 3.6
@@ -67,7 +67,7 @@ jobs:
     - python: 3.8
       <<: *integration_job
       env: TOXENV=3.8-linux-integration-redis
-    - python: pypy3.5-7.0
+    - python: pypy3.6-7.3.1
       <<: *integration_job
       env: TOXENV=pypy3-integration-redis
 
