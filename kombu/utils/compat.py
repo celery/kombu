@@ -7,7 +7,11 @@ from functools import wraps
 
 from contextlib import contextmanager
 
-from importlib import metadata as importlib_metadata
+try:
+    from importlib import metadata as importlib_metadata
+except ImportError:
+    # TODO: Remove this when we drop support for Python 3.7
+    import importlib_metadata
 
 from kombu.exceptions import reraise
 
