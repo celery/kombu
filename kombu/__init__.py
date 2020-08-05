@@ -9,7 +9,7 @@ if sys.version_info < (2, 7):  # pragma: no cover
 
 from collections import namedtuple  # noqa
 
-__version__ = '4.6.11'
+__version__ = '5.0.0'
 __author__ = 'Ask Solem'
 __contact__ = 'auvipy@gmail.com, ask@celeryproject.org'
 __homepage__ = 'https://kombu.readthedocs.io'
