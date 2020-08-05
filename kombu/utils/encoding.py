@@ -69,14 +69,6 @@ def default_encode(obj):
     return obj
 
 
-str_t = str
-
-try:
-    bytes_t = bytes
-except NameError:  # pragma: no cover
-    bytes_t = str  # noqa
-
-
 def safe_str(s, errors='replace'):
     """Safe form of str(), void of unicode errors."""
     s = bytes_to_str(s)

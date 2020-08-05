@@ -19,7 +19,7 @@ from .exceptions import (
     EncodeError, SerializerNotInstalled
 )
 from .utils.compat import entrypoints
-from .utils.encoding import bytes_to_str, str_to_bytes, bytes_t
+from .utils.encoding import bytes_to_str, str_to_bytes
 
 __all__ = ('pickle', 'loads', 'dumps', 'register', 'unregister')
 SKIP_DECODE = frozenset(['binary', 'ascii-8bit'])
@@ -197,7 +197,7 @@ class SerializerRegistry:
         # If a raw string was sent, assume binary encoding
         # (it's likely either ASCII or a raw binary file, and a character
         # set of 'binary' will encompass both, even if not ideal.
-        if not serializer and isinstance(data, bytes_t):
+        if not serializer and isinstance(data, bytes):
             # In Python 3+, this would be "bytes"; allow binary data to be
             # sent as a message without getting encoder errors
             return 'application/data', 'binary', data
