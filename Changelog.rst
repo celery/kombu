@@ -4,6 +4,16 @@
  Change history
 ================
 
+.. _version-5.0.0:
+
+5.0.0
+=====
+:release-date: 2020-08-05 16:00 P.M UTC+3:00
+:release-by: Omer Katz
+
+- **BREAKING CHANGE**: Dropped support for Python 2 (#1232)
+- Add an SQS transport option for custom botocore config (#1219)
+
 .. _version-4.6.11:
 
 4.6.11
@@ -11,8 +21,8 @@
 :release-date: 2020-06-24 1.15 P.M UTC+6:00
 :release-by: Asif Saif Uddin
 
-- Revert incompatible changes in #1193 and additional improvements (#1211) 
-- Default_channel should reconnect automatically (#1209) 
+- Revert incompatible changes in #1193 and additional improvements (#1211)
+- Default_channel should reconnect automatically (#1209)
 
 
 .. _version-4.6.10:
@@ -24,7 +34,7 @@
 
 - Doc improvement.
 - set _connection in _ensure_connection (#1205)
-- Fix for the issue #1172 
+- Fix for the issue #1172
 - reuse connection [bug fix]
 
 
@@ -74,7 +84,7 @@
 - Add peek lock settings to be changed using transport options (#1119).
 - Fix redis health checks (#1122).
 - Reset ready before execute callback (#1126).
-- Add missing parameter queue_args in kombu.connection.SimpleBuffer (#1128) 
+- Add missing parameter queue_args in kombu.connection.SimpleBuffer (#1128)
 
 .. _version-4.6.6:
 
@@ -83,12 +93,12 @@
 :release-date: 2019-11-11 00:15 A.M UTC+6:00
 :release-by: Asif Saif Uddin
 
-- Revert _lookup_direct and related changes of redis. 
+- Revert _lookup_direct and related changes of redis.
 - Python 3.8 support
 - Fix 'NoneType' object has no attribute 'can_read' bug of redis transport
-- Issue #1019 Fix redis transport socket timeout 
+- Issue #1019 Fix redis transport socket timeout
 - Add wait timeout settings to receive queue message (#1110)
-- Bump py-amqp to 2.5.2 
+- Bump py-amqp to 2.5.2
 
 .. _version-4.6.5:
 
@@ -97,14 +107,14 @@
 :release-date: 2019-09-30 19:30 P.M UTC+6:00
 :release-by: Asif Saif Uddin
 
-- Revert _lookup api and correct redis implemetnation. 
+- Revert _lookup api and correct redis implemetnation.
 - Major overhaul of redis test cases by adding more full featured fakeredis module.
 - Add more test cases to boost coverage of kombu redis transport.
 - Refactor the producer consumer test cases to be based on original mocks and be passing
 - Fix lingering line length issue in test.
 - Sanitise url when include_password is false
 - Pinned pycurl to 7.43.0.2 as it is the latest build with wheels provided
-- Bump py-amqp to 2.5.2 
+- Bump py-amqp to 2.5.2
 
 
 .. _version-4.6.4:
@@ -116,12 +126,12 @@
 
 - Use importlib-metadata instead of pkg_resources for better performance
 - Allow users to switch URLs while omitting the resource identifier (#1032)
-- Don't stop receiving tasks on 503 SQS error. (#1064) 
+- Don't stop receiving tasks on 503 SQS error. (#1064)
 - Fix maybe declare (#1066)
 - Revert "Revert "Use SIMEMBERS instead of SMEMBERS to check for queue (Redis Broker)
 - Fix MongoDB backend to work properly with TTL (#1076)
 - Make sure that max_retries=0 is treated differently than None (#1080)
-- Bump py-amqp to 2.5.1 
+- Bump py-amqp to 2.5.1
 
 
 .. _version-4.6.3:
