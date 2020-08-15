@@ -1,6 +1,6 @@
 import pytest
 
-from case import Mock, patch
+from unittest.mock import Mock, patch
 
 from kombu import Connection, Exchange, Queue
 from kombu import compat

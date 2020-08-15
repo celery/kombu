@@ -4,7 +4,8 @@ import socket
 
 from copy import copy, deepcopy
 
-from case import Mock, patch, skip
+from unittest.mock import Mock, patch
+from case import skip
 
 from kombu import Connection, Consumer, Producer, parse_url
 from kombu.connection import Resource

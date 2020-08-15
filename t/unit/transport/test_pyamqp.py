@@ -2,7 +2,8 @@ import sys
 
 from itertools import count
 
-from case import Mock, mock, patch
+from unittest.mock import Mock, patch
+from case import mock
 
 from kombu import Connection
 from kombu.transport import pyamqp

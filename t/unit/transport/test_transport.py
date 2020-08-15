@@ -1,4 +1,4 @@
-from case import Mock, patch
+from unittest.mock import Mock, patch
 
 from kombu import transport
 

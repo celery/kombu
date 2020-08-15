@@ -5,7 +5,8 @@ import types
 from collections import defaultdict
 from itertools import count
 from queue import Empty, Queue as _Queue
-from case import ANY, ContextMock, Mock, call, mock, skip, patch
+from unittest.mock import ANY, Mock, call, patch
+from case import ContextMock, mock, skip
 
 from kombu import Connection, Exchange, Queue, Consumer, Producer
 from kombu.exceptions import InconsistencyError, VersionMismatch

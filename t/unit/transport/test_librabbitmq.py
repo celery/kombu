@@ -1,6 +1,7 @@
 import pytest
 
-from case import Mock, patch, skip
+from unittest.mock import Mock, patch
+from case import skip
 
 try:
     import librabbitmq

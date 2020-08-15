@@ -5,7 +5,7 @@ from datetime import datetime
 from decimal import Decimal
 from uuid import uuid4
 
-from case import MagicMock, Mock
+from unittest.mock import MagicMock, Mock
 
 from kombu.utils.encoding import str_to_bytes
 from kombu.utils.json import _DecodeError, dumps, loads

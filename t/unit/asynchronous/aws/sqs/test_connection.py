@@ -1,4 +1,4 @@
-from case import Mock, MagicMock
+from unittest.mock import Mock, MagicMock
 
 from kombu.asynchronous.aws.sqs.connection import (
     AsyncSQSConnection

@@ -2,7 +2,8 @@ import pytest
 import socket
 
 from amqp import RecoverableConnectionError
-from case import ContextMock, Mock, patch
+from unittest.mock import Mock, patch
+from case import ContextMock
 
 from kombu import common
 from kombu.common import (

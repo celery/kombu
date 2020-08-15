@@ -2,7 +2,7 @@ import sys
 
 from contextlib import contextmanager
 
-from case import patch
+from unittest.mock import patch
 
 from kombu.utils.encoding import (
     get_default_encoding_file, safe_str,

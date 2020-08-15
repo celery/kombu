@@ -1,6 +1,7 @@
 import pytest
 
-from case import Mock, call, patch, skip
+from unittest.mock import Mock, call, patch
+from case import skip
 
 from kombu.asynchronous.http.curl import READ, WRITE, CurlClient
 

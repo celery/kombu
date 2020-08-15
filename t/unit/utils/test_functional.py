@@ -4,7 +4,8 @@ import pytest
 
 from itertools import count
 
-from case import Mock, mock
+from unittest.mock import Mock
+from case import mock
 
 from kombu.utils import functional as utils
 from kombu.utils.functional import (

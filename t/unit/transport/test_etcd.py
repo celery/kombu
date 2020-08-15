@@ -1,7 +1,8 @@
 import pytest
 from queue import Empty
 
-from case import Mock, patch, skip
+from unittest.mock import Mock, patch
+from case import skip
 
 from kombu.transport.etcd import Channel, Transport
 

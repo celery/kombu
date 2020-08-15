@@ -1,5 +1,6 @@
 import pytest
-from case import patch, skip
+from unittest.mock import patch
+from case import skip
 
 from kombu import Connection
 

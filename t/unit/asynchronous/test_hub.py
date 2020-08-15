@@ -1,7 +1,7 @@
 import errno
 import pytest
 
-from case import Mock, call, patch
+from unittest.mock import Mock, call, patch
 from vine import promise
 
 from kombu.asynchronous import hub as _hub
