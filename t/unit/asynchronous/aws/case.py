@@ -1,9 +1,10 @@
 import pytest
 
 from case import skip
+import t.skip
 
 
-@skip.if_pypy()
+@t.skip.if_pypy
 @skip.unless_module('boto3')
 @skip.unless_module('pycurl')
 @pytest.mark.usefixtures('hub')

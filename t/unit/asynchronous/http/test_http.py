@@ -12,6 +12,7 @@ from kombu.asynchronous.http.base import BaseClient, normalize_header
 from kombu.exceptions import HttpError
 
 from t.mocks import PromiseMock
+import t.skip
 
 
 class test_Headers:
@@ -144,7 +145,7 @@ class test_BaseClient:
         c.close.assert_called_with()
 
 
-@skip.if_pypy()
+@t.skip.if_pypy
 @skip.unless_module('pycurl')
 class test_Client:
 

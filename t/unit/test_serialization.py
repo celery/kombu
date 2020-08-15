@@ -18,6 +18,8 @@ from kombu.serialization import (
 )
 from kombu.utils.encoding import str_to_bytes
 
+import t.skip
+
 # For content_encoding tests
 unicode_string = 'abcdé\u8463'
 unicode_string_as_utf8 = unicode_string.encode('utf-8')
@@ -193,7 +195,7 @@ class test_Serialization:
         )
         assert a == b
 
-    @skip.if_pypy()
+    @t.skip.if_pypy
     @skip.unless_module('msgpack', (ImportError, ValueError))
     def test_msgpack_loads(self):
         register_msgpack()
@@ -208,7 +210,7 @@ class test_Serialization:
                     res[k] = [i.encode() for i in v]
         assert res == msgpack_py_data
 
-    @skip.if_pypy()
+    @t.skip.if_pypy
     @skip.unless_module('msgpack', (ImportError, ValueError))
     def test_msgpack_dumps(self):
         register_msgpack()
