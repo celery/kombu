@@ -1,7 +1,7 @@
 import tempfile
 
+import pytest
 from case import skip
-from case.skip import SkipTest
 
 from kombu import Connection, Exchange, Queue, Consumer, Producer
 
@@ -15,7 +15,7 @@ class test_FilesystemTransport:
             data_folder_in = tempfile.mkdtemp()
             data_folder_out = tempfile.mkdtemp()
         except Exception:
-            raise SkipTest('filesystem transport: cannot create tempfiles')
+            pytest.skip('filesystem transport: cannot create tempfiles')
         self.c = Connection(transport='filesystem',
                             transport_options={
                                 'data_folder_in': data_folder_in,
