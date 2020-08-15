@@ -1,12 +1,12 @@
 import tempfile
 
 import pytest
-from case import skip
+import t.skip
 
 from kombu import Connection, Exchange, Queue, Consumer, Producer
 
 
-@skip.if_win32()
+@t.skip.if_win32
 class test_FilesystemTransport:
 
     def setup(self):
