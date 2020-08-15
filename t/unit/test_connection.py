@@ -102,7 +102,7 @@ class test_connection_utils:
         # see Appendix A of http://www.rabbitmq.com/uri-spec.html
         self.assert_info(Connection(url), **expected)
 
-    @skip.todo('urllib cannot parse ipv6 urls')
+    @pytest.mark.skip('TODO: urllib cannot parse ipv6 urls')
     def test_url_IPV6(self):
         self.assert_info(
             Connection('amqp://[::1]'),
