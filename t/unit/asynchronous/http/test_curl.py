@@ -5,8 +5,9 @@ from case import skip
 
 from kombu.asynchronous.http.curl import READ, WRITE, CurlClient
 
+import t.skip
 
-@skip.if_pypy()
+@t.skip.if_pypy
 @skip.unless_module('pycurl')
 @pytest.mark.usefixtures('hub')
 class test_CurlClient:
