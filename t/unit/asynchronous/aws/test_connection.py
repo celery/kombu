@@ -4,7 +4,7 @@ import pytest
 
 from contextlib import contextmanager
 
-from case import Mock
+from unittest.mock import Mock
 from vine.abstract import Thenable
 
 from kombu.exceptions import HttpError

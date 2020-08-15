@@ -1,7 +1,8 @@
 import pytest
 from queue import Empty
 
-from case import Mock, skip
+from unittest.mock import Mock
+from case import skip
 
 from kombu.transport.consul import Channel, Transport
 

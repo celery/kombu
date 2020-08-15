@@ -1,7 +1,8 @@
 import pytest
 from queue import Empty
 
-from case import skip, patch
+from unittest.mock import patch
+from case import skip
 from kombu import messaging
 from kombu import Connection, Exchange, Queue
 from kombu.transport import azureservicebus

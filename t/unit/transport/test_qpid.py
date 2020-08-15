@@ -13,7 +13,8 @@ from collections.abc import Callable
 
 from itertools import count
 
-from case import Mock, call, patch, skip
+from unittest.mock import Mock, call, patch
+from case import skip
 
 from kombu.transport.qpid import (AuthenticationFailure, Channel, Connection,
                                   ConnectionError, Message, NotFound, QoS,

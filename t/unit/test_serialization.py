@@ -5,7 +5,8 @@ import sys
 
 from base64 import b64decode
 
-from case import call, mock, patch, skip
+from unittest.mock import call, patch
+from case import mock, skip
 
 from kombu.exceptions import ContentDisallowed, EncodeError, DecodeError
 from kombu.serialization import (

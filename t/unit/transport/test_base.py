@@ -1,6 +1,6 @@
 import pytest
 
-from case import Mock
+from unittest.mock import Mock
 
 from kombu import Connection, Consumer, Exchange, Producer, Queue
 from kombu.message import Message

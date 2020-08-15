@@ -2,7 +2,8 @@ import socket
 import sys
 import types
 
-from case import Mock, mock, patch
+from unittest.mock import Mock, patch
+from case import mock
 
 from kombu.utils import compat
 from kombu.utils.compat import entrypoints, maybe_fileno

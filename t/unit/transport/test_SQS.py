@@ -13,8 +13,9 @@ import string
 from queue import Empty
 
 from botocore.exceptions import ClientError
-from case import Mock, skip
-from case.mock import patch
+from unittest.mock import Mock, patch
+from case import skip
+
 
 from kombu import messaging
 from kombu import Connection, Exchange, Queue

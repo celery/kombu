@@ -4,7 +4,7 @@ import sys
 
 from collections import defaultdict
 
-from case import Mock, patch
+from unittest.mock import Mock, patch
 
 from kombu import Connection, Consumer, Producer, Exchange, Queue
 from kombu.exceptions import MessageStateError

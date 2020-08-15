@@ -1,6 +1,6 @@
 import pytest
 
-from case import Mock
+from unittest.mock import Mock
 
 from kombu.asynchronous.aws.sqs.message import AsyncMessage
 from kombu.asynchronous.aws.sqs.queue import AsyncQueue

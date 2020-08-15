@@ -2,7 +2,7 @@ import pytest
 
 from datetime import datetime
 
-from case import Mock, patch
+from unittest.mock import Mock, patch
 
 from kombu.asynchronous.timer import Entry, Timer, to_timestamp
 

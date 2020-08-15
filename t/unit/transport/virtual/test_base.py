@@ -4,7 +4,7 @@ import warnings
 import socket
 from time import monotonic
 
-from case import MagicMock, Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 from kombu import Connection
 from kombu.compression import compress

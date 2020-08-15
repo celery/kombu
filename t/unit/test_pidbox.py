@@ -2,7 +2,7 @@ import pytest
 import socket
 import warnings
 
-from case import Mock, patch
+from unittest.mock import Mock, patch
 
 from kombu import Connection
 from kombu import pidbox

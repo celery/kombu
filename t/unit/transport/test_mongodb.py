@@ -2,7 +2,8 @@ import datetime
 import pytest
 from queue import Empty
 
-from case import MagicMock, call, patch, skip
+from unittest.mock import MagicMock, call, patch
+from case import skip
 
 from kombu import Connection
 

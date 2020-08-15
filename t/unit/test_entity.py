@@ -1,7 +1,7 @@
 import pickle
 import pytest
 
-from case import Mock, call
+from unittest.mock import Mock, call
 
 from kombu import Connection, Exchange, Producer, Queue, binding
 from kombu.abstract import MaybeChannelBound

@@ -1,6 +1,7 @@
 from itertools import count
 
-from case import ContextMock, Mock
+from unittest.mock import Mock
+from case import ContextMock
 
 from kombu.transport import base
 from kombu.utils import json

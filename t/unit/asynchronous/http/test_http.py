@@ -4,7 +4,8 @@ from io import BytesIO
 
 from vine import promise
 
-from case import Mock, skip
+from unittest.mock import Mock
+from case import skip
 
 from kombu.asynchronous import http
 from kombu.asynchronous.http.base import BaseClient, normalize_header
