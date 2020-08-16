@@ -1,9 +1,11 @@
 import datetime
 import pytest
+
+pymongo = pytest.importorskip('pymongo')
+
 from queue import Empty
 
 from unittest.mock import MagicMock, call, patch
-from case import skip
 
 from kombu import Connection
 
@@ -44,7 +46,6 @@ def _create_mock_connection(url='', **kwargs):
     return Connection(url, transport=Transport, **kwargs)
 
 
-@skip.unless_module('pymongo')
 class test_mongodb_uri_parsing:
 
     def test_defaults(self):
@@ -137,7 +138,6 @@ class BaseMongoDBChannelCase:
         self.assert_operation_has_calls(cname, mname, [call(*args, **kwargs)])
 
 
-@skip.unless_module('pymongo')
 class test_mongodb_channel(BaseMongoDBChannelCase):
 
     def setup(self):
@@ -151,7 +151,6 @@ class test_mongodb_channel(BaseMongoDBChannelCase):
         self.channel.client.assert_not_called()
 
     def test_get(self):
-        import pymongo
 
         self.set_operation_return_value('messages', 'find_and_modify', {
             '_id': 'docId', 'payload': '{"some": "data"}',
@@ -332,7 +331,6 @@ class test_mongodb_channel(BaseMongoDBChannelCase):
         )
 
     def test_create_broadcast_cursor(self):
-        import pymongo
 
         with patch.object(pymongo, 'version_tuple', (2, )):
             self.channel._create_broadcast_cursor(
@@ -359,7 +357,6 @@ class test_mongodb_channel(BaseMongoDBChannelCase):
             )
 
     def test_open_rc_version(self):
-        import pymongo
 
         def server_info(self):
             return {'version': '3.6.0-rc'}
@@ -368,7 +365,6 @@ class test_mongodb_channel(BaseMongoDBChannelCase):
             self.channel._open()
 
 
-@skip.unless_module('pymongo')
 class test_mongodb_channel_ttl(BaseMongoDBChannelCase):
 
     def setup(self):
@@ -393,7 +389,6 @@ class test_mongodb_channel_ttl(BaseMongoDBChannelCase):
         )
 
     def test_get(self):
-        import pymongo
 
         self.set_operation_return_value('queues', 'find_one', {
             '_id': 'docId', 'options': {'arguments': {'x-expires': 777}},
@@ -508,7 +503,6 @@ class test_mongodb_channel_ttl(BaseMongoDBChannelCase):
         )
 
 
-@skip.unless_module('pymongo')
 class test_mongodb_channel_calc_queue_size(BaseMongoDBChannelCase):
 
     def setup(self):

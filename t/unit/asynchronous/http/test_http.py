@@ -5,7 +5,6 @@ from io import BytesIO
 from vine import promise
 
 from unittest.mock import Mock
-from case import skip
 
 from kombu.asynchronous import http
 from kombu.asynchronous.http.base import BaseClient, normalize_header
@@ -146,10 +145,10 @@ class test_BaseClient:
 
 
 @t.skip.if_pypy
-@skip.unless_module('pycurl')
 class test_Client:
 
     def test_get_client(self, hub):
+        pytest.importorskip('pycurl')
         client = http.get_client()
         assert client.hub is hub
         client2 = http.get_client(hub)

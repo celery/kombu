@@ -1,10 +1,11 @@
 import pytest
-from case import skip
 from kombu import Connection
+
+pytest.importorskip('kazoo')
+
 from kombu.transport import zookeeper
 
 
-@skip.unless_module('kazoo')
 class test_Channel:
     def setup(self):
         self.connection = self.create_connection()
