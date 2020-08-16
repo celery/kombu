@@ -1,8 +1,8 @@
 import pytest
 
-pytest.importorskip('librabbitmq')
-
 from unittest.mock import Mock, patch
+
+pytest.importorskip('librabbitmq')
 
 from kombu.transport import librabbitmq  # noqa
 

@@ -19,8 +19,8 @@ from kombu import Connection, Exchange, Queue
 
 boto3 = pytest.importorskip('boto3')
 
-from botocore.exceptions import ClientError
-from kombu.transport import SQS
+from kombu.transport import SQS                 # noqa
+from botocore.exceptions import ClientError     # noqa
 
 SQS_Channel_sqs = SQS.Channel.sqs
 

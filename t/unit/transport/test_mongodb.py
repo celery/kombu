@@ -1,13 +1,13 @@
 import datetime
 import pytest
 
-pymongo = pytest.importorskip('pymongo')
-
 from queue import Empty
 
 from unittest.mock import MagicMock, call, patch
 
 from kombu import Connection
+
+pymongo = pytest.importorskip('pymongo')
 
 
 def _create_mock_connection(url='', **kwargs):
