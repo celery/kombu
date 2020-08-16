@@ -5,9 +5,9 @@ from unittest.mock import patch
 from kombu import messaging
 from kombu import Connection, Exchange, Queue
 
-pytest.importorskip('azure.servicebus')
-
 from kombu.transport import azureservicebus
+
+pytest.importorskip('azure.servicebus')
 
 try:
     # azure-servicebus version >= 0.50.0

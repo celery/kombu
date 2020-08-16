@@ -1,12 +1,12 @@
 import pytest
 
-pytest.importorskip('etcd')
-
 from queue import Empty
 
 from unittest.mock import Mock, patch
 
 from kombu.transport.etcd import Channel, Transport
+
+pytest.importorskip('etcd')
 
 
 class test_Etcd:

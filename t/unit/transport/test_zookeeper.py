@@ -1,9 +1,8 @@
 import pytest
 from kombu import Connection
+from kombu.transport import zookeeper
 
 pytest.importorskip('kazoo')
-
-from kombu.transport import zookeeper
 
 
 class test_Channel:

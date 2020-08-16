@@ -1,12 +1,12 @@
 import pytest
 
-pytest.importorskip('pycurl')
-
 from unittest.mock import Mock, call, patch
 
 from kombu.asynchronous.http.curl import READ, WRITE, CurlClient
 
 import t.skip
+
+pytest.importorskip('pycurl')
 
 
 @t.skip.if_pypy

@@ -1,12 +1,12 @@
 import pytest
 
-pytest.importorskip('consul')
-
 from queue import Empty
 
 from unittest.mock import Mock
 
 from kombu.transport.consul import Channel, Transport
+
+pytest.importorskip('consul')
 
 
 class test_Consul:
