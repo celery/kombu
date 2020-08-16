@@ -2,9 +2,11 @@ import pytest
 from queue import Empty
 
 from unittest.mock import patch
-from case import skip
 from kombu import messaging
 from kombu import Connection, Exchange, Queue
+
+pytest.importorskip('azure.servicebus')
+
 from kombu.transport import azureservicebus
 
 try:
@@ -96,7 +98,6 @@ class AzureServiceBusClientMock:
             del queue
 
 
-@skip.unless_module('azure.servicebus')
 class test_Channel:
 
     def handleMessageCallback(self, message):

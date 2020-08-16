@@ -1,4 +1,5 @@
 import pytest
+
 import socket
 import types
 
@@ -6,7 +7,7 @@ from collections import defaultdict
 from itertools import count
 from queue import Empty, Queue as _Queue
 from unittest.mock import ANY, Mock, call, patch
-from case import ContextMock, mock, skip
+from case import ContextMock, mock
 
 from kombu import Connection, Exchange, Queue, Consumer, Producer
 from kombu.exceptions import InconsistencyError, VersionMismatch
@@ -30,6 +31,9 @@ class _poll(eventio._select):
 
 
 eventio.poll = _poll
+
+pytest.importorskip('redis')
+
 # must import after poller patch, pep8 complains
 from kombu.transport import redis  # noqa
 
@@ -237,7 +241,6 @@ class Transport(redis.Transport):
         return ((KeyError,), (IndexError,))
 
 
-@skip.unless_module('redis')
 class test_Channel:
 
     def setup(self):
@@ -911,7 +914,6 @@ class test_Channel:
             ]
 
 
-@skip.unless_module('redis')
 class test_Redis:
 
     def setup(self):
@@ -1083,7 +1085,6 @@ def _redis_modules():
     return myredis, exceptions
 
 
-@skip.unless_module('redis')
 class test_MultiChannelPoller:
 
     def setup(self):
@@ -1350,7 +1351,6 @@ class test_MultiChannelPoller:
         channel._poll_error.assert_called_with('BRPOP')
 
 
-@skip.unless_module('redis')
 class test_Mutex:
 
     def test_mutex(self, lock_id='xxx'):
@@ -1391,7 +1391,6 @@ class test_Mutex:
         assert held
 
 
-@skip.unless_module('redis.sentinel')
 class test_RedisSentinel:
 
     def test_method_called(self):

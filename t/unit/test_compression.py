@@ -2,7 +2,7 @@ import pytest
 
 import sys
 
-from case import mock, skip
+from case import mock
 
 from kombu import compression
 
@@ -12,8 +12,8 @@ class test_compression:
     def test_encoders__gzip(self):
         assert 'application/x-gzip' in compression.encoders()
 
-    @skip.unless_module('bz2')
     def test_encoders__bz2(self):
+        pytest.importorskip('bz2')
         assert 'application/x-bz2' in compression.encoders()
 
     def test_encoders__brotli(self):

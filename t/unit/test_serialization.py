@@ -6,7 +6,7 @@ import sys
 from base64 import b64decode
 
 from unittest.mock import call, patch
-from case import mock, skip
+from case import mock
 
 from kombu.exceptions import ContentDisallowed, EncodeError, DecodeError
 from kombu.serialization import (
@@ -196,9 +196,9 @@ class test_Serialization:
         assert a == b
 
     @t.skip.if_pypy
-    @skip.unless_module('msgpack', (ImportError, ValueError))
     def test_msgpack_loads(self):
         register_msgpack()
+        pytest.importorskip('msgpack')
         res = loads(msgpack_data,
                     content_type='application/x-msgpack',
                     content_encoding='binary')
@@ -211,8 +211,8 @@ class test_Serialization:
         assert res == msgpack_py_data
 
     @t.skip.if_pypy
-    @skip.unless_module('msgpack', (ImportError, ValueError))
     def test_msgpack_dumps(self):
+        pytest.importorskip('msgpack')
         register_msgpack()
         a = loads(
             dumps(msgpack_py_data, serializer='msgpack')[-1],
@@ -226,16 +226,16 @@ class test_Serialization:
         )
         assert a == b
 
-    @skip.unless_module('yaml')
     def test_yaml_loads(self):
+        pytest.importorskip('yaml')
         register_yaml()
         assert loads(
             yaml_data,
             content_type='application/x-yaml',
             content_encoding='utf-8') == py_data
 
-    @skip.unless_module('yaml')
     def test_yaml_dumps(self):
+        pytest.importorskip('yaml')
         register_yaml()
         a = loads(
             dumps(py_data, serializer='yaml')[-1],

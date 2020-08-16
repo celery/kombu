@@ -12,14 +12,14 @@ import random
 import string
 from queue import Empty
 
-from botocore.exceptions import ClientError
 from unittest.mock import Mock, patch
-from case import skip
-
 
 from kombu import messaging
 from kombu import Connection, Exchange, Queue
 
+boto3 = pytest.importorskip('boto3')
+
+from botocore.exceptions import ClientError
 from kombu.transport import SQS
 
 SQS_Channel_sqs = SQS.Channel.sqs
@@ -127,7 +127,6 @@ class SQSClientMock:
                 q.messages = []
 
 
-@skip.unless_module('boto3')
 class test_Channel:
 
     def handleMessageCallback(self, message):
@@ -202,7 +201,6 @@ class test_Channel:
         assert self.queue_name in self.channel._queue_cache
 
     def test_region(self):
-        import boto3
         _environ = dict(os.environ)
 
         # when the region is unspecified
