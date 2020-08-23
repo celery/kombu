@@ -4,6 +4,16 @@
  Change history
 ================
 
+.. _version-5.0.1:
+
+5.0.1
+=====
+:release-date: 2020-08-23 19:10 P.M UTC+3:00
+:release-by: Omer Katz
+
+- Removed kombu.five from the reference documentation since it no longer exists
+- Adjusted the stable documentation's version in Sphinx's configuration since that was overlooked in the latest release
+
 .. _version-5.0.0:
 
 5.0.0
