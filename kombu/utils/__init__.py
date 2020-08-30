@@ -1,5 +1,4 @@
 """DEPRECATED - Import from modules below."""
-from __future__ import absolute_import, print_function, unicode_literals
 
 from .collections import EqualityDict
 from .compat import fileno, maybe_fileno, nested, register_after_fork

@@ -1,10 +1,8 @@
 """Selector Utilities."""
-from __future__ import absolute_import, unicode_literals
 
 import errno
 import math
 import select as __select__
-import socket
 import sys
 
 from numbers import Integral
@@ -57,7 +55,7 @@ except AttributeError:
     SELECT_BAD_FD = {errno.EBADF}
 
 
-class _epoll(object):
+class _epoll:
 
     def __init__(self):
         self._epoll = epoll()
@@ -73,9 +71,9 @@ class _epoll(object):
     def unregister(self, fd):
         try:
             self._epoll.unregister(fd)
-        except (socket.error, ValueError, KeyError, TypeError):
+        except (OSError, ValueError, KeyError, TypeError):
             pass
-        except (IOError, OSError) as exc:
+        except OSError as exc:
             if getattr(exc, 'errno', None) not in (errno.ENOENT, errno.EPERM):
                 raise
 
@@ -90,7 +88,7 @@ class _epoll(object):
         self._epoll.close()
 
 
-class _kqueue(object):
+class _kqueue:
     w_fflags = (KQ_NOTE_WRITE | KQ_NOTE_EXTEND |
                 KQ_NOTE_ATTRIB | KQ_NOTE_DELETE)
 
@@ -110,7 +108,7 @@ class _kqueue(object):
         if events:
             try:
                 self._control(fd, events, KQ_EV_DELETE)
-            except socket.error:
+            except OSError:
                 pass
 
     def watch_file(self, fd):
@@ -133,8 +131,8 @@ class _kqueue(object):
         kevents = []
         if events & WRITE:
             kevents.append(kevent(fd,
-                           filter=KQ_FILTER_WRITE,
-                           flags=flags))
+                                  filter=KQ_FILTER_WRITE,
+                                  flags=flags))
         if not kevents or events & READ:
             kevents.append(
                 kevent(fd, filter=KQ_FILTER_READ, flags=flags),
@@ -177,7 +175,7 @@ class _kqueue(object):
         self._kqueue.close()
 
 
-class _poll(object):
+class _poll:
 
     def __init__(self):
         self._poller = xpoll()
@@ -200,7 +198,7 @@ class _poll(object):
     def unregister(self, fd):
         try:
             fd = fileno(fd)
-        except socket.error as exc:
+        except OSError as exc:
             # we don't know the previous fd of this object
             # but it will be removed by the next poll iteration.
             if getattr(exc, 'errno', None) in SELECT_BAD_FD:
@@ -215,7 +213,7 @@ class _poll(object):
         timeout = 0 if timeout and timeout < 0 else round((timeout or 0) * 1e3)
         try:
             event_list = self._quick_poll(timeout)
-        except (_selecterr, socket.error) as exc:
+        except (_selecterr, OSError) as exc:
             if getattr(exc, 'errno', None) == errno.EINTR:
                 return
             raise
@@ -239,7 +237,7 @@ class _poll(object):
         self._poller = None
 
 
-class _select(object):
+class _select:
 
     def __init__(self):
         self._all = (self._rfd,
@@ -260,14 +258,14 @@ class _select(object):
         for fd in self._rfd | self._wfd | self._efd:
             try:
                 _selectf([fd], [], [], 0)
-            except (_selecterr, socket.error) as exc:
+            except (_selecterr, OSError) as exc:
                 if getattr(exc, 'errno', None) in SELECT_BAD_FD:
                     self.unregister(fd)
 
     def unregister(self, fd):
         try:
             fd = fileno(fd)
-        except socket.error as exc:
+        except OSError as exc:
             # we don't know the previous fd of this object
             # but it will be removed by the next poll iteration.
             if getattr(exc, 'errno', None) in SELECT_BAD_FD:
@@ -282,7 +280,7 @@ class _select(object):
             read, write, error = _selectf(
                 self._rfd, self._wfd, self._efd, timeout,
             )
-        except (_selecterr, socket.error) as exc:
+        except (_selecterr, OSError) as exc:
             if getattr(exc, 'errno', None) == errno.EINTR:
                 return
             elif getattr(exc, 'errno', None) in SELECT_BAD_FD:

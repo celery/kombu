@@ -2,7 +2,6 @@
 
 Emulates the AMQ API for non-AMQ transports.
 """
-from __future__ import absolute_import, print_function, unicode_literals
 
 import base64
 import socket
@@ -13,12 +12,12 @@ from array import array
 from collections import OrderedDict, defaultdict, namedtuple
 from itertools import count
 from multiprocessing.util import Finalize
-from time import sleep
+from queue import Empty
+from time import sleep, monotonic
 
 from amqp.protocol import queue_declare_ok_t
 
 from kombu.exceptions import ResourceError, ChannelError
-from kombu.five import Empty, items, monotonic
 from kombu.log import get_logger
 from kombu.utils.encoding import str_to_bytes, bytes_to_str
 from kombu.utils.div import emergency_dump_state
@@ -61,7 +60,7 @@ queue_binding_t = namedtuple('queue_binding_t', (
 ))
 
 
-class Base64(object):
+class Base64:
     """Base64 codec."""
 
     def encode(self, s):
@@ -79,7 +78,7 @@ class UndeliverableWarning(UserWarning):
     """The message could not be delivered to a queue."""
 
 
-class BrokerState(object):
+class BrokerState:
     """Broker state holds exchanges, queues and bindings."""
 
     #: Mapping of exchange name to
@@ -149,7 +148,7 @@ class BrokerState(object):
         )
 
 
-class QoS(object):
+class QoS:
     """Quality of Service guarantees.
 
     Only supports `prefetch_count` at this point.
@@ -303,7 +302,6 @@ class QoS(object):
             This is implementation optional, and currently only
             used by the Redis transport.
         """
-        pass
 
 
 class Message(base.Message):
@@ -315,7 +313,7 @@ class Message(base.Message):
         body = payload.get('body')
         if body:
             body = channel.decode_body(body, properties.get('body_encoding'))
-        super(Message, self).__init__(
+        super().__init__(
             body=body,
             channel=channel,
             delivery_tag=properties['delivery_tag'],
@@ -343,7 +341,7 @@ class Message(base.Message):
         }
 
 
-class AbstractChannel(object):
+class AbstractChannel:
     """Abstract channel interface.
 
     This is an abstract class defining the channel methods
@@ -386,7 +384,6 @@ class AbstractChannel(object):
             Your transport can override this method if it needs
             to do something whenever a new queue is declared.
         """
-        pass
 
     def _has_queue(self, queue, **kwargs):
         """Verify that queue exists.
@@ -463,14 +460,14 @@ class Channel(AbstractChannel, base.StdChannel):
 
         # instantiate exchange types
         self.exchange_types = {
-            typ: cls(self) for typ, cls in items(self.exchange_types)
+            typ: cls(self) for typ, cls in self.exchange_types.items()
         }
 
         try:
             self.channel_id = self.connection._avail_channel_ids.pop()
         except IndexError:
             raise ResourceError(
-                'No free channel ids, current={0}, channel_max={1}'.format(
+                'No free channel ids, current={}, channel_max={}'.format(
                     len(self.connection.channels),
                     self.connection.channel_max), (20, 10),
             )
@@ -491,7 +488,7 @@ class Channel(AbstractChannel, base.StdChannel):
         if passive:
             if exchange not in self.state.exchanges:
                 raise ChannelError(
-                    'NOT_FOUND - no exchange {0!r} in vhost {1!r}'.format(
+                    'NOT_FOUND - no exchange {!r} in vhost {!r}'.format(
                         exchange, self.connection.client.virtual_host or '/'),
                     (50, 10), 'Channel.exchange_declare', '404',
                 )
@@ -523,7 +520,7 @@ class Channel(AbstractChannel, base.StdChannel):
         queue = queue or 'amq.gen-%s' % uuid()
         if passive and not self._has_queue(queue, **kwargs):
             raise ChannelError(
-                'NOT_FOUND - no queue {0!r} in vhost {1!r}'.format(
+                'NOT_FOUND - no queue {!r} in vhost {!r}'.format(
                     queue, self.connection.client.virtual_host or '/'),
                 (50, 10), 'Channel.queue_declare', '404',
             )
@@ -853,7 +850,7 @@ class Management(base.Management):
     """Base class for the AMQP management API."""
 
     def __init__(self, transport):
-        super(Management, self).__init__(transport)
+        super().__init__(transport)
         self.channel = transport.client.channel()
 
     def get_bindings(self):
@@ -972,7 +969,7 @@ class Transport(base.Transport):
     def _deliver(self, message, queue):
         if not queue:
             raise KeyError(
-                'Received message without destination queue: {0}'.format(
+                'Received message without destination queue: {}'.format(
                     message))
         try:
             callback = self._callbacks[queue]
@@ -993,7 +990,7 @@ class Transport(base.Transport):
     def on_message_ready(self, channel, message, queue):
         if not queue or queue not in self._callbacks:
             raise KeyError(
-                'Message for queue {0!r} without consumers: {1}'.format(
+                'Message for queue {!r} without consumers: {}'.format(
                     queue, message))
         self._callbacks[queue](message)
 

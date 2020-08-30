@@ -1,5 +1,4 @@
 """Custom maps, sequences, etc."""
-from __future__ import absolute_import, unicode_literals
 
 
 class HashedSeq(list):

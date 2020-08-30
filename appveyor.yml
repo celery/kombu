@@ -6,16 +6,6 @@ environment:
       WITH_COMPILER: "cmd /E:ON /V:ON /C .\\extra\\appveyor\\run_with_compiler.cmd"
 
   matrix:
-    - TOXENV: "2.7"
-      TOX_APPVEYOR_X64: 0
-      PYTHON_VERSION: "2.7.x"
-      PYTHON_ARCH: "32"
-
-    - TOXENV: "3.5"
-      TOX_APPVEYOR_X64: 0
-      PYTHON_VERSION: "3.5.x"
-      PYTHON_ARCH: "32"
-
     - TOXENV: "3.6"
       TOX_APPVEYOR_X64: 0
       PYTHON_VERSION: "3.6.x"
@@ -25,18 +15,6 @@ environment:
       TOX_APPVEYOR_X64: 0
       PYTHON_VERSION: "3.7.x"
       PYTHON_ARCH: "32"
-
-    - TOXENV: "2.7"
-      TOX_APPVEYOR_X64: 1
-      PYTHON_VERSION: "2.7.x"
-      PYTHON_ARCH: "64"
-      WINDOWS_SDK_VERSION: "v7.0"
-
-    - TOXENV: "3.5"
-      TOX_APPVEYOR_X64: 1
-      PYTHON_VERSION: "3.5.x"
-      PYTHON_ARCH: "64"
-      WINDOWS_SDK_VERSION: "v7.1"
 
     - TOXENV: "3.6"
       TOX_APPVEYOR_X64: 1

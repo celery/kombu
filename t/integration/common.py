@@ -1,5 +1,3 @@
-from __future__ import absolute_import, unicode_literals
-
 import socket
 from contextlib import closing
 from time import sleep
@@ -8,7 +6,7 @@ import pytest
 import kombu
 
 
-class BasicFunctionality(object):
+class BasicFunctionality:
 
     def test_connect(self, connection):
         assert connection.connect()
@@ -127,7 +125,7 @@ class BasicFunctionality(object):
                 message.ack()
 
 
-class BaseExchangeTypes(object):
+class BaseExchangeTypes:
 
     def _callback(self, body, message):
         message.ack()
@@ -215,7 +213,7 @@ class BaseExchangeTypes(object):
                     self._consume(conn, test_queue3)
 
 
-class BaseTimeToLive(object):
+class BaseTimeToLive:
     def test_publish_consume(self, connection):
         test_queue = kombu.Queue('ttl_test', routing_key='ttl_test')
 
@@ -263,7 +261,7 @@ class BaseTimeToLive(object):
                     buf.get(timeout=1)
 
 
-class BasePriority(object):
+class BasePriority:
 
     PRIORITY_ORDER = 'asc'
 
@@ -386,15 +384,15 @@ class BasePriority(object):
 class BaseFailover(BasicFunctionality):
 
     def test_connect(self, failover_connection):
-        super(BaseFailover, self).test_connect(failover_connection)
+        super().test_connect(failover_connection)
 
     def test_publish_consume(self, failover_connection):
-        super(BaseFailover, self).test_publish_consume(failover_connection)
+        super().test_publish_consume(failover_connection)
 
     def test_consume_empty_queue(self, failover_connection):
-        super(BaseFailover, self).test_consume_empty_queue(failover_connection)
+        super().test_consume_empty_queue(failover_connection)
 
     def test_simple_buffer_publish_consume(self, failover_connection):
-        super(BaseFailover, self).test_simple_buffer_publish_consume(
+        super().test_simple_buffer_publish_consume(
             failover_connection
         )

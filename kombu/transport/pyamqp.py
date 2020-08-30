@@ -1,9 +1,7 @@
 """Pure-Python amqp transport."""
-from __future__ import absolute_import, unicode_literals
 
 import amqp
 
-from kombu.five import items
 from kombu.utils.amq_manager import get_manager
 from kombu.utils.text import version_string_as_tuple
 
@@ -19,7 +17,7 @@ class Message(base.Message):
 
     def __init__(self, msg, channel=None, **kwargs):
         props = msg.properties
-        super(Message, self).__init__(
+        super().__init__(
             body=msg.body,
             channel=channel,
             delivery_tag=msg.delivery_tag,
@@ -109,7 +107,7 @@ class Transport(base.Transport):
     def establish_connection(self):
         """Establish connection to the AMQP broker."""
         conninfo = self.client
-        for name, default_value in items(self.default_connection_params):
+        for name, default_value in self.default_connection_params.items():
             if not getattr(conninfo, name, None):
                 setattr(conninfo, name, default_value)
         if conninfo.hostname == 'localhost':
@@ -173,7 +171,7 @@ class SSLTransport(Transport):
     """AMQP SSL Transport."""
 
     def __init__(self, *args, **kwargs):
-        super(SSLTransport, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         # ugh, not exactly pure, but hey, it's python.
         if not self.client.ssl:  # not dict or False

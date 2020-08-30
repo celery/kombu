@@ -1,12 +1,10 @@
 """SoftLayer Message Queue transport."""
-from __future__ import absolute_import, unicode_literals
 
 import socket
 import string
-
 import os
+from queue import Empty
 
-from kombu.five import Empty, text_t
 from kombu.utils.encoding import bytes_to_str, safe_str
 from kombu.utils.json import loads, dumps
 from kombu.utils.objects import cached_property
@@ -39,7 +37,7 @@ class Channel(virtual.Channel):
             raise ImportError(
                 'SLMQ transport requires the softlayer_messaging library',
             )
-        super(Channel, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         queues = self.slmq.queues()
         for queue in queues:
             self._queue_cache[queue] = queue
@@ -47,18 +45,18 @@ class Channel(virtual.Channel):
     def basic_consume(self, queue, no_ack, *args, **kwargs):
         if no_ack:
             self._noack_queues.add(queue)
-        return super(Channel, self).basic_consume(queue, no_ack,
-                                                  *args, **kwargs)
+        return super().basic_consume(queue, no_ack,
+                                     *args, **kwargs)
 
     def basic_cancel(self, consumer_tag):
         if consumer_tag in self._consumers:
             queue = self._tag_to_queue[consumer_tag]
             self._noack_queues.discard(queue)
-        return super(Channel, self).basic_cancel(consumer_tag)
+        return super().basic_cancel(consumer_tag)
 
     def entity_name(self, name, table=CHARS_REPLACE_TABLE):
         """Format AMQP queue name into a valid SLQS queue name."""
-        return text_t(safe_str(name)).translate(table)
+        return str(safe_str(name)).translate(table)
 
     def _new_queue(self, queue, **kwargs):
         """Ensure a queue exists in SLQS."""
@@ -79,7 +77,7 @@ class Channel(virtual.Channel):
         queue_name = self.entity_name(queue)
         self._queue_cache.pop(queue_name, None)
         self.slmq.queue(queue_name).delete(force=True)
-        super(Channel, self)._delete(queue_name)
+        super()._delete(queue_name)
 
     def _put(self, queue, message, **kwargs):
         """Put message onto queue."""
@@ -109,7 +107,7 @@ class Channel(virtual.Channel):
             pass
         else:
             self.delete_message(queue, delivery_info['slmq_message_id'])
-        super(Channel, self).basic_ack(delivery_tag)
+        super().basic_ack(delivery_tag)
 
     def _size(self, queue):
         """Return the number of messages in a queue."""
@@ -143,9 +141,9 @@ class Channel(virtual.Channel):
             secure = bool(os.environ.get(
                 'SLMQ_SECURE', self.transport_options.get('secure')) or True,
             )
-            endpoint = '{0}://{1}{2}'.format(
+            endpoint = '{}://{}{}'.format(
                 'https' if secure else 'http', host,
-                ':{0}'.format(port) if port else '',
+                f':{port}' if port else '',
             )
 
             self._slmq = get_client(account, endpoint=endpoint)

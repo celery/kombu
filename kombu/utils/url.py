@@ -1,7 +1,6 @@
 """URL Utilities."""
 # flake8: noqa
 
-from __future__ import absolute_import, unicode_literals
 
 try:
     from collections.abc import Mapping
@@ -21,12 +20,10 @@ try:
 except ImportError:  # pragma: no cover
     ssl_available = False
 
-from kombu.five import bytes_if_py2, string_t
-
 from .compat import NamedTuple
 from ..log import get_logger
 
-safequote = partial(quote, safe=bytes_if_py2(''))
+safequote = partial(quote, safe='')
 logger = get_logger(__name__)
 
 
@@ -82,6 +79,8 @@ def url_to_parts(url):
         unquote(path or '') or None,
         dict(parse_qsl(parts.query)),
     )
+
+
 _parse_url = url_to_parts  # noqa
 
 
@@ -89,7 +88,7 @@ def as_url(scheme, host=None, port=None, user=None, password=None,
            path=None, query=None, sanitize=False, mask='**'):
     # type: (str, str, int, str, str, str, str, bool, str) -> str
     """Generate URL from component parts."""
-    parts = ['{0}://'.format(scheme)]
+    parts = [f'{scheme}://']
     if user or password:
         if user:
             parts.append(safequote(user))
@@ -115,7 +114,7 @@ def sanitize_url(url, mask='**'):
 def maybe_sanitize_url(url, mask='**'):
     # type: (Any, str) -> Any
     """Sanitize url, or do nothing if url undefined."""
-    if isinstance(url, string_t) and '://' in url:
+    if isinstance(url, str) and '://' in url:
         return sanitize_url(url, mask)
     return url
 

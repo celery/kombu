@@ -1,22 +1,20 @@
 """Event-loop debugging tools."""
-from __future__ import absolute_import, unicode_literals
 
-from kombu.five import items, string_t
 from kombu.utils.eventio import READ, WRITE, ERR
 from kombu.utils.functional import reprcall
 
 
 def repr_flag(flag):
     """Return description of event loop flag."""
-    return '{0}{1}{2}'.format('R' if flag & READ else '',
-                              'W' if flag & WRITE else '',
-                              '!' if flag & ERR else '')
+    return '{}{}{}'.format('R' if flag & READ else '',
+                           'W' if flag & WRITE else '',
+                           '!' if flag & ERR else '')
 
 
 def _rcb(obj):
     if obj is None:
         return '<missing>'
-    if isinstance(obj, string_t):
+    if isinstance(obj, str):
         return obj
     if isinstance(obj, tuple):
         cb, args = obj
@@ -32,7 +30,7 @@ def repr_active(h):
 def repr_events(h, events):
     """Return description of events returned by poll."""
     return ', '.join(
-        '{0}({1})->{2}'.format(
+        '{}({})->{}'.format(
             _rcb(callback_for(h, fd, fl, '(GONE)')), fd,
             repr_flag(fl),
         )
@@ -42,14 +40,14 @@ def repr_events(h, events):
 
 def repr_readers(h):
     """Return description of pending readers."""
-    return ['({0}){1}->{2}'.format(fd, _rcb(cb), repr_flag(READ | ERR))
-            for fd, cb in items(h.readers)]
+    return ['({}){}->{}'.format(fd, _rcb(cb), repr_flag(READ | ERR))
+            for fd, cb in h.readers.items()]
 
 
 def repr_writers(h):
     """Return description of pending writers."""
-    return ['({0}){1}->{2}'.format(fd, _rcb(cb), repr_flag(WRITE))
-            for fd, cb in items(h.writers)]
+    return ['({}){}->{}'.format(fd, _rcb(cb), repr_flag(WRITE))
+            for fd, cb in h.writers.items()]
 
 
 def callback_for(h, fd, flag, *default):

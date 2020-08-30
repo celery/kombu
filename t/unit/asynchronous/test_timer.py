@@ -1,13 +1,10 @@
-from __future__ import absolute_import, unicode_literals
-
 import pytest
 
 from datetime import datetime
 
-from case import Mock, patch
+from unittest.mock import Mock, patch
 
 from kombu.asynchronous.timer import Entry, Timer, to_timestamp
-from kombu.five import bytes_if_py2
 
 
 class test_to_timestamp:
@@ -100,7 +97,7 @@ class test_Timer:
             t.schedule.enter_after = Mock()
 
             myfun = Mock()
-            myfun.__name__ = bytes_if_py2('myfun')
+            myfun.__name__ = 'myfun'
             t.call_repeatedly(0.03, myfun)
 
             assert t.schedule.enter_after.call_count == 1

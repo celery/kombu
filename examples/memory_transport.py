@@ -11,7 +11,7 @@ task_queues = [video_queue]
 
 
 def handle_message(body, message):
-    print("%s RECEIVED MESSAGE: %r" % (time.time(), body))
+    print(f"{time.time()} RECEIVED MESSAGE: {body!r}")
     message.ack()
 
 

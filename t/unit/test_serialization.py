@@ -1,16 +1,14 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
-from __future__ import absolute_import, unicode_literals
 
 import pytest
 import sys
 
 from base64 import b64decode
 
-from case import call, mock, patch, skip
+from unittest.mock import call, patch
+from case import mock
 
 from kombu.exceptions import ContentDisallowed, EncodeError, DecodeError
-from kombu.five import text_t, bytes_t
 from kombu.serialization import (
     registry, register, SerializerNotInstalled,
     raw_encode, register_yaml, register_msgpack,
@@ -19,6 +17,8 @@ from kombu.serialization import (
     disable_insecure_serializers,
 )
 from kombu.utils.encoding import str_to_bytes
+
+import t.skip
 
 # For content_encoding tests
 unicode_string = 'abcdé\u8463'
@@ -125,7 +125,7 @@ class test_Serialization:
         assert isinstance(
             loads(unicode_string_as_utf8,
                   content_type='application/data', content_encoding='binary'),
-            bytes_t)
+            bytes)
 
         assert loads(
             unicode_string_as_utf8,
@@ -195,24 +195,24 @@ class test_Serialization:
         )
         assert a == b
 
-    @skip.if_pypy()
-    @skip.unless_module('msgpack', (ImportError, ValueError))
+    @t.skip.if_pypy
     def test_msgpack_loads(self):
         register_msgpack()
+        pytest.importorskip('msgpack')
         res = loads(msgpack_data,
                     content_type='application/x-msgpack',
                     content_encoding='binary')
         if sys.version_info[0] < 3:
             for k, v in res.items():
-                if isinstance(v, text_t):
+                if isinstance(v, str):
                     res[k] = v.encode()
                 if isinstance(v, (list, tuple)):
                     res[k] = [i.encode() for i in v]
         assert res == msgpack_py_data
 
-    @skip.if_pypy()
-    @skip.unless_module('msgpack', (ImportError, ValueError))
+    @t.skip.if_pypy
     def test_msgpack_dumps(self):
+        pytest.importorskip('msgpack')
         register_msgpack()
         a = loads(
             dumps(msgpack_py_data, serializer='msgpack')[-1],
@@ -226,16 +226,16 @@ class test_Serialization:
         )
         assert a == b
 
-    @skip.unless_module('yaml')
     def test_yaml_loads(self):
+        pytest.importorskip('yaml')
         register_yaml()
         assert loads(
             yaml_data,
             content_type='application/x-yaml',
             content_encoding='utf-8') == py_data
 
-    @skip.unless_module('yaml')
     def test_yaml_dumps(self):
+        pytest.importorskip('yaml')
         register_yaml()
         a = loads(
             dumps(py_data, serializer='yaml')[-1],
@@ -299,8 +299,8 @@ class test_Serialization:
                      accept=['application/x-doomsday'])
 
     def test_raw_encode(self):
-        assert raw_encode('foo'.encode('utf-8')) == (
-            'application/data', 'binary', 'foo'.encode('utf-8'),
+        assert raw_encode(b'foo') == (
+            'application/data', 'binary', b'foo',
         )
 
     @mock.mask_modules('yaml')

@@ -49,8 +49,8 @@ acknowledge is set.
 .. code-block:: python
 
     >>> def callback(body, message):
-    ... print(body)
-    ... message.ack()
+    ...     print(body)
+    ...     message.ack()
 
     >>> consumer.register_callback(callback)
 

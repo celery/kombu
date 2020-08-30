@@ -1,5 +1,3 @@
-from __future__ import absolute_import, unicode_literals
-
 from kombu.utils.objects import cached_property
 
 
@@ -7,7 +5,7 @@ class test_cached_property:
 
     def test_deleting(self):
 
-        class X(object):
+        class X:
             xx = False
 
             @cached_property
@@ -27,7 +25,7 @@ class test_cached_property:
 
     def test_when_access_from_class(self):
 
-        class X(object):
+        class X:
             xx = None
 
             @cached_property

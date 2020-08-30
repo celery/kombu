@@ -2,16 +2,15 @@
 # SQLAlchemy overrides != False to have special meaning and pep8 complains
 # flake8: noqa
 
-from __future__ import absolute_import, unicode_literals
 
 import threading
 from json import loads, dumps
+from queue import Empty
 
 from sqlalchemy import create_engine
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
 
-from kombu.five import Empty
 from kombu.transport import virtual
 from kombu.utils import cached_property
 from kombu.utils.encoding import bytes_to_str
@@ -33,7 +32,7 @@ class Channel(virtual.Channel):
 
     def __init__(self, connection, **kwargs):
         self._configure_entity_tablenames(connection.client.transport_options)
-        super(Channel, self).__init__(connection, **kwargs)
+        super().__init__(connection, **kwargs)
 
     def _configure_entity_tablenames(self, opts):
         self.queue_tablename = opts.get('queue_tablename', 'kombu_queue')

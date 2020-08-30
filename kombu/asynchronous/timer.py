@@ -1,6 +1,4 @@
-# -*- coding: utf-8 -*-
 """Timer scheduling Python callbacks."""
-from __future__ import absolute_import, unicode_literals
 
 import heapq
 import sys
@@ -9,10 +7,10 @@ from collections import namedtuple
 from datetime import datetime
 from functools import total_ordering
 from weakref import proxy as weakrefproxy
+from time import monotonic
 
 from vine.utils import wraps
 
-from kombu.five import monotonic, python_2_unicode_compatible
 from kombu.log import get_logger
 from time import time as _time
 
@@ -46,8 +44,7 @@ def to_timestamp(d, default_timezone=utc, time=monotonic):
 
 
 @total_ordering
-@python_2_unicode_compatible
-class Entry(object):
+class Entry:
     """Schedule Entry."""
 
     if not IS_PYPY:  # pragma: no cover
@@ -74,7 +71,7 @@ class Entry(object):
             pass
 
     def __repr__(self):
-        return '<TimerEntry: {0}(*{1!r}, **{2!r})'.format(
+        return '<TimerEntry: {}(*{!r}, **{!r})'.format(
             self.fun.__name__, self.args, self.kwargs)
 
     # must not use hash() to order entries
@@ -90,7 +87,7 @@ class Entry(object):
         self.canceled = value
 
 
-class Timer(object):
+class Timer:
     """Async timer implementation."""
 
     Entry = Entry

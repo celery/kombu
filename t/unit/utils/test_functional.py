@@ -1,16 +1,12 @@
-from __future__ import absolute_import, unicode_literals
-
 import pickle
 
 import pytest
 
 from itertools import count
 
-from case import Mock, mock, skip
+from unittest.mock import Mock
+from case import mock
 
-from kombu.five import (
-    items, PY3,
-)
 from kombu.utils import functional as utils
 from kombu.utils.functional import (
     ChannelPromise, LRUCache, fxrange, fxrangemax, memoize, lazy,
@@ -104,7 +100,7 @@ class test_LRUCache:
     def test_items(self):
         c = LRUCache()
         c.update(a=1, b=2, c=3)
-        assert list(items(c))
+        assert list(c.items())
 
     def test_incr(self):
         c = LRUCache()
@@ -137,11 +133,6 @@ class test_lazy:
 
     def test__repr__(self):
         assert repr(lazy(lambda: 'fi fa fo')).strip('u') == "'fi fa fo'"
-
-    @skip.if_python3()
-    def test__cmp__(self):
-        assert lazy(lambda: 10).__cmp__(lazy(lambda: 20)) == -1
-        assert lazy(lambda: 10).__cmp__(5) == 1
 
     def test_evaluate(self):
         assert lazy(lambda: 2 + 2)() == 4
@@ -263,7 +254,7 @@ class test_retry_over_time:
     def test_retry_always(self):
         Predicate = self.Predicate
 
-        class Fun(object):
+        class Fun:
 
             def __init__(self):
                 self.calls = 0
@@ -326,13 +317,7 @@ class test_accepts_arg:
 
     def test_invalid_argument(self):
         assert not accepts_argument(self.function, 'random_argument')
-        if PY3:
-            assert not accepts_argument(test_accepts_arg, 'foo')
 
     def test_raise_exception(self):
         with pytest.raises(Exception):
             accepts_argument(None, 'foo')
-
-        if not PY3:
-            with pytest.raises(Exception):
-                accepts_argument(test_accepts_arg, 'foo')

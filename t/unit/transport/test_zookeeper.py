@@ -1,12 +1,10 @@
-from __future__ import absolute_import, unicode_literals
-
 import pytest
-from case import skip
 from kombu import Connection
 from kombu.transport import zookeeper
 
+pytest.importorskip('kazoo')
 
-@skip.unless_module('kazoo')
+
 class test_Channel:
     def setup(self):
         self.connection = self.create_connection()

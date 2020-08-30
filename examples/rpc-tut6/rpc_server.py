@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-from __future__ import absolute_import, unicode_literals
 
 from kombu import Connection, Queue
 from kombu.mixins import ConsumerProducerMixin
@@ -31,7 +30,7 @@ class Worker(ConsumerProducerMixin):
 
     def on_request(self, message):
         n = message.payload['n']
-        print(' [.] fib({0})'.format(n))
+        print(f' [.] fib({n})')
         result = fib(n)
 
         self.producer.publish(

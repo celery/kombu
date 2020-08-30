@@ -76,7 +76,6 @@ options override and replace any other default or specified values. If using
 Celery, this can be accomplished by setting the
 *BROKER_TRANSPORT_OPTIONS* Celery option.
 """
-from __future__ import absolute_import, unicode_literals
 
 from collections import OrderedDict
 import os
@@ -85,6 +84,8 @@ import socket
 import ssl
 import sys
 import uuid
+from queue import Empty
+from time import monotonic
 
 from gettext import gettext as _
 
@@ -115,8 +116,6 @@ try:
 except ImportError:  # pragma: no cover
     qpid = None
 
-
-from kombu.five import Empty, items, monotonic, PY3
 from kombu.log import get_logger
 from kombu.transport.virtual import Base64, Message
 from kombu.transport import base, virtual
@@ -124,6 +123,10 @@ from kombu.transport import base, virtual
 
 logger = get_logger(__name__)
 
+try:
+    buffer
+except NameError:
+    buffer = bytes
 
 OBJECT_ALREADY_EXISTS_STRING = 'object already exists'
 
@@ -148,7 +151,7 @@ class AuthenticationFailure(Exception):
     """Cannot authenticate with Qpid."""
 
 
-class QoS(object):
+class QoS:
     """A helper object for message prefetch and ACKing purposes.
 
     :keyword prefetch_count: Initial prefetch count, hard set to 1.
@@ -465,12 +468,12 @@ class Channel(base.StdChannel):
 
         """
         if not exchange:
-            address = '%s; {assert: always, node: {type: queue}}' % (
-                routing_key,)
+            address = f'{routing_key}; ' \
+                      '{{assert: always, node: {{type: queue}}}}'
             msg_subject = None
         else:
-            address = '%s/%s; {assert: always, node: {type: topic}}' % (
-                exchange, routing_key)
+            address = f'{exchange}/{routing_key}; '\
+                      '{{assert: always, node: {{type: topic}}}}'
             msg_subject = str(routing_key)
         sender = self.transport.session.sender(address)
         qpid_message = qpid.messaging.Message(content=message,
@@ -517,7 +520,7 @@ class Channel(base.StdChannel):
         """
         queue_to_purge = self._broker.getQueue(queue)
         if queue_to_purge is None:
-            error_text = "NOT_FOUND - no queue '{0}'".format(queue)
+            error_text = f"NOT_FOUND - no queue '{queue}'"
             raise NotFound(code=404, text=error_text)
         message_count = queue_to_purge.values['msgDepth']
         if message_count > 0:
@@ -1123,7 +1126,6 @@ class Channel(base.StdChannel):
         message['body'], body_encoding = self.encode_body(
             message['body'], self.body_encoding,
         )
-        message['body'] = buffer(message['body'])
         props = message['properties']
         props.update(
             body_encoding=body_encoding,
@@ -1212,7 +1214,7 @@ class Channel(base.StdChannel):
             return default
 
 
-class Connection(object):
+class Connection:
     """Qpid Connection.
 
     Encapsulate a connection object for the
@@ -1436,7 +1438,7 @@ class Transport(base.Transport):
 
     def __init__(self, *args, **kwargs):
         self.verify_runtime_environment()
-        super(Transport, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.use_async_interface = False
 
     def verify_runtime_environment(self):
@@ -1454,17 +1456,6 @@ class Transport(base.Transport):
         :raises: RuntimeError if the runtime environment is not acceptable.
 
         """
-        if getattr(sys, 'pypy_version_info', None):
-            raise RuntimeError(
-                'The Qpid transport for Kombu does not '
-                'support PyPy. Try using Python 2.6+',
-            )
-        if PY3:
-            raise RuntimeError(
-                'The Qpid transport for Kombu does not '
-                'support Python 3. Try using Python 2.6+',
-            )
-
         if dependency_is_none(qpidtoollibs):
             raise RuntimeError(
                 'The Python package "qpidtoollibs" is missing. Install it '
@@ -1595,7 +1586,7 @@ class Transport(base.Transport):
 
         """
         conninfo = self.client
-        for name, default_value in items(self.default_connection_params):
+        for name, default_value in self.default_connection_params.items():
             if not getattr(conninfo, name, None):
                 setattr(conninfo, name, default_value)
         if conninfo.ssl:

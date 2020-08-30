@@ -1,5 +1,4 @@
 """Serialization utilities."""
-from __future__ import absolute_import, unicode_literals
 
 import codecs
 import os
@@ -16,11 +15,11 @@ from contextlib import contextmanager
 from io import BytesIO
 
 from .exceptions import (
-    ContentDisallowed, DecodeError, EncodeError, SerializerNotInstalled
+    reraise, ContentDisallowed, DecodeError,
+    EncodeError, SerializerNotInstalled
 )
-from .five import reraise, text_t
 from .utils.compat import entrypoints
-from .utils.encoding import bytes_to_str, str_to_bytes, bytes_t
+from .utils.encoding import bytes_to_str, str_to_bytes
 
 __all__ = ('pickle', 'loads', 'dumps', 'register', 'unregister')
 SKIP_DECODE = frozenset(['binary', 'ascii-8bit'])
@@ -60,10 +59,10 @@ def pickle_loads(s, load=pickle_load):
 
 
 def parenthesize_alias(first, second):
-    return '%s (%s)' % (first, second) if first else second
+    return f'{first} ({second})' if first else second
 
 
-class SerializerRegistry(object):
+class SerializerRegistry:
     """The registry keeps track of serialization methods."""
 
     def __init__(self):
@@ -137,7 +136,7 @@ class SerializerRegistry(object):
             self.name_to_type.pop(name, None)
         except KeyError:
             raise SerializerNotInstalled(
-                'No encoder/decoder installed for {0}'.format(name))
+                f'No encoder/decoder installed for {name}')
 
     def _set_default_serializer(self, name):
         """Set the default serialization method used by this library.
@@ -156,7 +155,7 @@ class SerializerRegistry(object):
              self._default_encode) = self._encoders[name]
         except KeyError:
             raise SerializerNotInstalled(
-                'No encoder installed for {0}'.format(name))
+                f'No encoder installed for {name}')
 
     def dumps(self, data, serializer=None):
         """Encode data.
@@ -193,18 +192,18 @@ class SerializerRegistry(object):
             return raw_encode(data)
         if serializer and not self._encoders.get(serializer):
             raise SerializerNotInstalled(
-                'No encoder installed for {0}'.format(serializer))
+                f'No encoder installed for {serializer}')
 
         # If a raw string was sent, assume binary encoding
         # (it's likely either ASCII or a raw binary file, and a character
         # set of 'binary' will encompass both, even if not ideal.
-        if not serializer and isinstance(data, bytes_t):
+        if not serializer and isinstance(data, bytes):
             # In Python 3+, this would be "bytes"; allow binary data to be
             # sent as a message without getting encoder errors
             return 'application/data', 'binary', data
 
         # For Unicode objects, force it into a string
-        if not serializer and isinstance(data, text_t):
+        if not serializer and isinstance(data, str):
             with _reraise_errors(EncodeError, exclude=()):
                 payload = data.encode('utf-8')
             return 'text/plain', 'utf-8', payload
@@ -262,14 +261,14 @@ class SerializerRegistry(object):
                 with _reraise_errors(DecodeError):
                     return decode(data)
             if content_encoding not in SKIP_DECODE and \
-                    not isinstance(data, text_t):
+                    not isinstance(data, str):
                 with _reraise_errors(DecodeError):
                     return _decode(data, content_encoding)
         return data
 
     def _for_untrusted_content(self, ctype, why):
         return ContentDisallowed(
-            'Refusing to deserialize {0} content of type {1}'.format(
+            'Refusing to deserialize {} content of type {}'.format(
                 why,
                 parenthesize_alias(self.type_to_name.get(ctype, ctype), ctype),
             ),
@@ -288,7 +287,7 @@ def raw_encode(data):
     """Special case serializer."""
     content_type = 'application/data'
     payload = data
-    if isinstance(payload, text_t):
+    if isinstance(payload, str):
         content_encoding = 'utf-8'
         with _reraise_errors(EncodeError, exclude=()):
             payload = payload.encode(content_encoding)

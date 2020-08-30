@@ -1,12 +1,10 @@
 """Generic resource pool implementation."""
-from __future__ import absolute_import, unicode_literals
-
-import os
 
 from collections import deque
+import os
+from queue import Empty, LifoQueue as _LifoQueue
 
 from . import exceptions
-from .five import Empty, LifoQueue as _LifoQueue
 from .utils.compat import register_after_fork
 from .utils.functional import lazy
 
@@ -25,7 +23,7 @@ class LifoQueue(_LifoQueue):
         self.queue = deque()
 
 
-class Resource(object):
+class Resource:
     """Pool of resources."""
 
     LimitExceeded = exceptions.LimitExceeded
@@ -174,7 +172,7 @@ class Resource(object):
         if (self._dirty and 0 < limit < self._limit) and not ignore_errors:
             if not force:
                 raise RuntimeError(
-                    "Can't shrink pool when in use: was={0} now={1}".format(
+                    "Can't shrink pool when in use: was={} now={}".format(
                         self._limit, limit))
             reset = True
         self._limit = limit
@@ -220,10 +218,10 @@ class Resource(object):
         def acquire(self, *args, **kwargs):  # noqa
             import traceback
             id = self._next_resource_id = self._next_resource_id + 1
-            print('+{0} ACQUIRE {1}'.format(id, self.__class__.__name__))
+            print(f'+{id} ACQUIRE {self.__class__.__name__}')
             r = self._orig_acquire(*args, **kwargs)
             r._resource_id = id
-            print('-{0} ACQUIRE {1}'.format(id, self.__class__.__name__))
+            print(f'-{id} ACQUIRE {self.__class__.__name__}')
             if not hasattr(r, 'acquired_by'):
                 r.acquired_by = []
             r.acquired_by.append(traceback.format_stack())
@@ -231,8 +229,8 @@ class Resource(object):
 
         def release(self, resource):  # noqa
             id = resource._resource_id
-            print('+{0} RELEASE {1}'.format(id, self.__class__.__name__))
+            print(f'+{id} RELEASE {self.__class__.__name__}')
             r = self._orig_release(resource)
-            print('-{0} RELEASE {1}'.format(id, self.__class__.__name__))
+            print(f'-{id} RELEASE {self.__class__.__name__}')
             self._next_resource_id -= 1
             return r

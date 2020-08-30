@@ -11,11 +11,11 @@ This broker can be launched by simply executing this transport module directly,
 with the command: ``python -m kombu.transport.pyro``
 """
 
-from __future__ import absolute_import, unicode_literals
 
 import sys
+from queue import Queue, Empty
 
-from kombu.five import reraise, Queue, Empty
+from kombu.exceptions import reraise
 from kombu.utils.objects import cached_property
 from kombu.log import get_logger
 from . import virtual
@@ -42,7 +42,7 @@ class Channel(virtual.Channel):
     """Pyro Channel."""
 
     def close(self):
-        super(Channel, self).close()
+        super().close()
         if self.shared_queues:
             self.shared_queues._pyroRelease()
 
@@ -129,7 +129,7 @@ if pyro is not None:
 
     @pyro.expose
     @pyro.behavior(instance_mode="single")
-    class KombuBroker(object):
+    class KombuBroker:
         """Kombu Broker used by the Pyro transport.
 
         You have to run this as a separate (Pyro) service.
@@ -174,11 +174,11 @@ if pyro is not None:
 if __name__ == "__main__":
     print("Launching Broker for Kombu's Pyro transport.")
     with pyro.Daemon() as daemon:
-        print("(Expecting a Pyro name server at {0}:{1})"
+        print("(Expecting a Pyro name server at {}:{})"
               .format(pyro.config.NS_HOST, pyro.config.NS_PORT))
         with pyro.locateNS() as ns:
             print("You can connect with Kombu using the url "
-                  "'pyro://{0}/kombu.broker'".format(pyro.config.NS_HOST))
+                  "'pyro://{}/kombu.broker'".format(pyro.config.NS_HOST))
             uri = daemon.register(KombuBroker)
             ns.register("kombu.broker", uri)
         daemon.requestLoop()

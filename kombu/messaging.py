@@ -1,5 +1,4 @@
 """Sending and receiving messages."""
-from __future__ import absolute_import, unicode_literals
 
 from itertools import count
 
@@ -8,15 +7,13 @@ from .compression import compress
 from .connection import maybe_channel, is_connection
 from .entity import Exchange, Queue, maybe_delivery_mode
 from .exceptions import ContentDisallowed
-from .five import items, python_2_unicode_compatible, text_t, values
 from .serialization import dumps, prepare_accept_content
 from .utils.functional import ChannelPromise, maybe_list
 
 __all__ = ('Exchange', 'Queue', 'Producer', 'Consumer')
 
 
-@python_2_unicode_compatible
-class Producer(object):
+class Producer:
     """Message Producer.
 
     Arguments:
@@ -77,7 +74,7 @@ class Producer(object):
             self.revive(self._channel)
 
     def __repr__(self):
-        return '<Producer: {0._channel}>'.format(self)
+        return f'<Producer: {self._channel}>'
 
     def __reduce__(self):
         return self.__class__, self.__reduce_args__()
@@ -253,7 +250,7 @@ class Producer(object):
         else:
             # If the programmer doesn't want us to serialize,
             # make sure content_encoding is set.
-            if isinstance(body, text_t):
+            if isinstance(body, str):
                 if not content_encoding:
                     content_encoding = 'utf-8'
                 body = body.encode(content_encoding)
@@ -276,8 +273,7 @@ class Producer(object):
             pass
 
 
-@python_2_unicode_compatible
-class Consumer(object):
+class Consumer:
     """Message consumer.
 
     Arguments:
@@ -398,7 +394,7 @@ class Consumer(object):
         self._active_tags.clear()
         channel = self.channel = maybe_channel(channel)
         # modify dict size while iterating over it is not allowed
-        for qname, queue in list(items(self._queues)):
+        for qname, queue in list(self._queues.items()):
             # name may have changed after declare
             self._queues.pop(qname, None)
             queue = self._queues[queue.name] = queue(self.channel)
@@ -417,7 +413,7 @@ class Consumer(object):
             This is done automatically at instantiation
             when :attr:`auto_declare` is set.
         """
-        for queue in values(self._queues):
+        for queue in self._queues.values():
             queue.declare()
 
     def register_callback(self, callback):
@@ -467,7 +463,7 @@ class Consumer(object):
         Arguments:
             no_ack (bool): See :attr:`no_ack`.
         """
-        queues = list(values(self._queues))
+        queues = list(self._queues.values())
         if queues:
             no_ack = self.no_ack if no_ack is None else no_ack
 
@@ -484,7 +480,7 @@ class Consumer(object):
             mean the server will not send any more messages for this consumer.
         """
         cancel = self.channel.basic_cancel
-        for tag in values(self._active_tags):
+        for tag in self._active_tags.values():
             cancel(tag)
         self._active_tags.clear()
     close = cancel
@@ -514,7 +510,7 @@ class Consumer(object):
         Warning:
             This will *delete all ready messages*, there is no undo operation.
         """
-        return sum(queue.purge() for queue in values(self._queues))
+        return sum(queue.purge() for queue in self._queues.values())
 
     def flow(self, active):
         """Enable/disable flow from peer.
@@ -599,7 +595,7 @@ class Consumer(object):
         return tag
 
     def _add_tag(self, queue, consumer_tag=None):
-        tag = consumer_tag or '{0}{1}'.format(
+        tag = consumer_tag or '{}{}'.format(
             self.tag_prefix, next(self._tags))
         self._active_tags[queue.name] = tag
         return tag

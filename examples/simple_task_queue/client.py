@@ -1,5 +1,3 @@
-from __future__ import absolute_import, unicode_literals
-
 from kombu.pools import producers
 
 from .queues import task_exchange

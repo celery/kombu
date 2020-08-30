@@ -1,5 +1,4 @@
 """Common Utilities."""
-from __future__ import absolute_import, unicode_literals
 
 import os
 import socket
@@ -14,7 +13,6 @@ from uuid import uuid5, uuid4, uuid3, NAMESPACE_OID
 from amqp import ChannelError, RecoverableConnectionError
 
 from .entity import Exchange, Queue
-from .five import bytes_if_py2, range
 from .log import get_logger
 from .serialization import registry as serializers
 from .utils.uuid import uuid
@@ -48,8 +46,8 @@ def get_node_id():
 
 
 def generate_oid(node_id, process_id, thread_id, instance):
-    ent = bytes_if_py2('%x-%x-%x-%x' % (
-        node_id, process_id, thread_id, id(instance)))
+    ent = '{:x}-{:x}-{:x}-{:x}'.format(
+        node_id, process_id, thread_id, id(instance))
     try:
         ret = str(uuid3(NAMESPACE_OID, ent))
     except ValueError:
@@ -96,10 +94,10 @@ class Broadcast(Queue):
                  alias=None,
                  **kwargs):
         if unique:
-            queue = '{0}.{1}'.format(queue or 'bcast', uuid())
+            queue = '{}.{}'.format(queue or 'bcast', uuid())
         else:
-            queue = queue or 'bcast.{0}'.format(uuid())
-        super(Broadcast, self).__init__(
+            queue = queue or f'bcast.{uuid()}'
+        super().__init__(
             alias=alias or name,
             queue=queue,
             name=queue,
@@ -132,7 +130,7 @@ def _ensure_channel_is_bound(entity, channel):
     if not is_bound:
         if not channel:
             raise ChannelError(
-                "Cannot bind channel {} to entity {}".format(channel, entity))
+                f"Cannot bind channel {channel} to entity {entity}")
         entity = entity.bind(channel)
         return entity
 
@@ -146,7 +144,7 @@ def _maybe_declare(entity, channel):
     if channel is None:
         if not entity.is_bound:
             raise ChannelError(
-                "channel is None and entity {} not bound.".format(entity))
+                f"channel is None and entity {entity} not bound.")
         channel = entity.channel
 
     declared = ident = None
@@ -353,7 +351,7 @@ def insured(pool, fun, args, kwargs, errback=None, on_revive=None, **opts):
         return retval
 
 
-class QoS(object):
+class QoS:
     """Thread safe increment/decrement of a channels prefetch_count.
 
     Arguments:

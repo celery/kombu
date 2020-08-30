@@ -1,5 +1,3 @@
-from __future__ import absolute_import, unicode_literals
-
 import os
 
 import pytest
@@ -13,7 +11,7 @@ from .common import (
 
 def get_connection(
         hostname, port, vhost):
-    return kombu.Connection('redis://{}:{}'.format(hostname, port))
+    return kombu.Connection(f'redis://{hostname}:{port}')
 
 
 @pytest.fixture()

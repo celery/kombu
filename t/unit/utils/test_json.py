@@ -1,5 +1,3 @@
-from __future__ import absolute_import, unicode_literals
-
 import pytest
 import pytz
 
@@ -7,14 +5,13 @@ from datetime import datetime
 from decimal import Decimal
 from uuid import uuid4
 
-from case import MagicMock, Mock, skip
+from unittest.mock import MagicMock, Mock
 
-from kombu.five import text_t
 from kombu.utils.encoding import str_to_bytes
 from kombu.utils.json import _DecodeError, dumps, loads
 
 
-class Custom(object):
+class Custom:
 
     def __init__(self, data):
         self.data = data
@@ -37,18 +34,18 @@ class test_JSONEncoder:
         ))
         assert serialized == {
             'datetime': now.isoformat(),
-            'tz': '{0}Z'.format(now_utc.isoformat().split('+', 1)[0]),
+            'tz': '{}Z'.format(now_utc.isoformat().split('+', 1)[0]),
             'time': now.time().isoformat(),
             'date': stripped.isoformat(),
         }
 
     def test_Decimal(self):
         d = Decimal('3314132.13363235235324234123213213214134')
-        assert loads(dumps({'d': d})), {'d': text_t(d)}
+        assert loads(dumps({'d': d})), {'d': str(d)}
 
     def test_UUID(self):
         id = uuid4()
-        assert loads(dumps({'u': id})), {'u': text_t(id)}
+        assert loads(dumps({'u': id})), {'u': str(id)}
 
     def test_default(self):
         with pytest.raises(TypeError):
@@ -80,10 +77,6 @@ class test_dumps_loads:
         assert loads(
             str_to_bytes(dumps({'x': 'z'})),
             decode_bytes=True) == {'x': 'z'}
-
-    @skip.if_python3()
-    def test_loads_buffer(self):
-        assert loads(buffer(dumps({'x': 'z'}))) == {'x': 'z'}
 
     def test_loads_DecodeError(self):
         _loads = Mock(name='_loads')

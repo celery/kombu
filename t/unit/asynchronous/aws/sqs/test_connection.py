@@ -1,7 +1,4 @@
-# -*- coding: utf-8 -*-
-from __future__ import absolute_import, unicode_literals
-
-from case import Mock, MagicMock
+from unittest.mock import Mock, MagicMock
 
 from kombu.asynchronous.aws.sqs.connection import (
     AsyncSQSConnection

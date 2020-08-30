@@ -21,12 +21,11 @@ This queue does not offer reliable consumption.  An entry is removed from
 the queue prior to being processed.  So if an error occurs, the consumer
 has to re-queue the item or it will be lost.
 """
-from __future__ import absolute_import, unicode_literals
 
 import os
 import socket
+from queue import Empty
 
-from kombu.five import Empty
 from kombu.utils.encoding import bytes_to_str, ensure_bytes
 from kombu.utils.json import dumps, loads
 
@@ -82,7 +81,7 @@ class Channel(virtual.Channel):
     _queues = {}
 
     def __init__(self, connection, **kwargs):
-        super(Channel, self).__init__(connection, **kwargs)
+        super().__init__(connection, **kwargs)
         vhost = self.connection.client.virtual_host
         self._vhost = '/{}'.format(vhost.strip('/'))
 
@@ -165,7 +164,7 @@ class Channel(virtual.Channel):
         host_port = (conninfo.hostname, conninfo.port or DEFAULT_PORT)
         if host_port not in hosts:
             hosts.insert(0, host_port)
-        conn_str = ','.join(['%s:%s' % (h, p) for h, p in hosts])
+        conn_str = ','.join([f'{h}:{p}' for h, p in hosts])
         conn = KazooClient(conn_str)
         conn.start()
         return conn
@@ -196,7 +195,7 @@ class Transport(virtual.Transport):
         if kazoo is None:
             raise ImportError('The kazoo library is not installed')
 
-        super(Transport, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def driver_version(self):
         return kazoo.__version__

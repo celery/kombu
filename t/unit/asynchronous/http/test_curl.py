@@ -1,15 +1,15 @@
-# -*- coding: utf-8 -*-
-from __future__ import absolute_import, unicode_literals
-
 import pytest
 
-from case import Mock, call, patch, skip
+from unittest.mock import Mock, call, patch
 
 from kombu.asynchronous.http.curl import READ, WRITE, CurlClient
 
+import t.skip
 
-@skip.if_pypy()
-@skip.unless_module('pycurl')
+pytest.importorskip('pycurl')
+
+
+@t.skip.if_pypy
 @pytest.mark.usefixtures('hub')
 class test_CurlClient:
 

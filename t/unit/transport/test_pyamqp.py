@@ -1,13 +1,11 @@
-from __future__ import absolute_import, unicode_literals
-
 import sys
 
 from itertools import count
 
-from case import Mock, mock, patch
+from unittest.mock import Mock, patch
+from case import mock
 
 from kombu import Connection
-from kombu.five import nextfun
 from kombu.transport import pyamqp
 
 
@@ -43,7 +41,7 @@ class test_Channel:
                 pass
 
         self.conn = Mock()
-        self.conn._get_free_channel_id.side_effect = nextfun(count(0))
+        self.conn._get_free_channel_id.side_effect = count(0).__next__
         self.conn.channels = {}
         self.channel = Channel(self.conn, 0)
 
@@ -110,7 +108,7 @@ class test_Transport:
 
     def test_dnspython_localhost_resolve_bug(self):
 
-        class Conn(object):
+        class Conn:
 
             def __init__(self, **kwargs):
                 vars(self).update(kwargs)
@@ -154,7 +152,7 @@ class test_pyamqp:
             Connection = MockConnection
 
         c = Connection(port=None, transport=Transport).connect()
-        assert c['host'] == '127.0.0.1:%s' % (Transport.default_port,)
+        assert c['host'] == f'127.0.0.1:{Transport.default_port}'
 
     def test_custom_port(self):
 
