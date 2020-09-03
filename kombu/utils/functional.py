@@ -16,7 +16,7 @@ from .encoding import safe_repr as _safe_repr
 
 __all__ = (
     'LRUCache', 'memoize', 'lazy', 'maybe_evaluate',
-    'is_list', 'maybe_list', 'dictfilter',
+    'is_list', 'maybe_list', 'dictfilter', 'retry_over_time',
 )
 
 KEYWORD_MARK = object()
