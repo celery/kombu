@@ -4,6 +4,15 @@
  Change history
 ================
 
+.. _version-5.0.2:
+
+5.0.2
+=====
+:release-date: 2020-09-06 6:30 P.M UTC+3:00
+:release-by: Omer Katz
+
+- Bump required amqp version to 5.0.0.
+
 .. _version-5.0.1:
 
 5.0.1
