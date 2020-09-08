@@ -1,6 +1,5 @@
 """Redis transport."""
 
-import os
 import numbers
 import socket
 
@@ -55,10 +54,6 @@ NO_ROUTE_ERROR = """
 Cannot route message for exchange {0!r}: Table empty or key no longer exists.
 Probably the key ({1!r}) has been removed from the Redis database.
 """
-
-KEY_PREFIX = os.environ.get('KOMBU_REDIS_PREFIX', '')
-if KEY_PREFIX:
-    KEY_PREFIX = '{p}:'.format(p=KEY_PREFIX)
 
 # This implementation may seem overly complex, but I assure you there is
 # a good reason for doing it this way.
@@ -408,16 +403,16 @@ class Channel(virtual.Channel):
     _subclient = None
     _closing = False
     supports_fanout = True
-    keyprefix_queue = '{p}_kombu.binding.%s'.format(p=KEY_PREFIX)
+    keyprefix_queue = '_kombu.binding.%s'
     keyprefix_fanout = '/{db}.'
     sep = '\x06\x16'
     _in_poll = False
     _in_listen = False
     _fanout_queues = {}
     ack_emulation = True
-    unacked_key = '{p}unacked'.format(p=KEY_PREFIX)
-    unacked_index_key = '{p}unacked_index'.format(p=KEY_PREFIX)
-    unacked_mutex_key = '{p}unacked_mutex'.format(p=KEY_PREFIX)
+    unacked_key = 'unacked'
+    unacked_index_key = 'unacked_index'
+    unacked_mutex_key = 'unacked_mutex'
     unacked_mutex_expire = 300  # 5 minutes
     unacked_restore_limit = None
     visibility_timeout = 3600   # 1 hour
