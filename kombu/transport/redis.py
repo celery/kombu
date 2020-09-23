@@ -1091,16 +1091,28 @@ class SentinelChannel(Channel):
 
     Broker url is supposed to look like:
 
-    sentinel://0.0.0.0:26379;sentinel://0.0.0.0:26380/...
+    .. code-block::
+
+        sentinel://0.0.0.0:26379;sentinel://0.0.0.0:26380/...
 
     where each sentinel is separated by a `;`.
 
     Other arguments for the sentinel should come from the transport options
-    (see :method:`Celery.connection` which is in charge of creating the
-    `Connection` object).
+    (see `transport_options` of :class:`~kombu.connection.Connection`).
 
     You must provide at least one option in Transport options:
      * `master_name` - name of the redis group to poll
+
+    Example:
+
+    .. code-block:: python
+
+        >>> import kombu
+        >>> c = kombu.Connection(
+             'sentinel://sentinel1:26379;sentinel://sentinel2:26379',
+             transport_options={'master_name': 'mymaster'}
+        )
+        >>> c.connect()
     """
 
     from_transport_options = Channel.from_transport_options + (
