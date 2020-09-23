@@ -1410,6 +1410,7 @@ class test_RedisSentinel:
     def test_getting_master_from_sentinel(self):
         with patch('redis.sentinel.Sentinel') as patched:
             connection = Connection(
+                'sentinel://localhost/;'
                 'sentinel://localhost:65532/;'
                 'sentinel://user@localhost:65533/;'
                 'sentinel://:password@localhost:65534/;'
@@ -1422,6 +1423,7 @@ class test_RedisSentinel:
             connection.channel()
             patched.assert_called_once_with(
                 [
+                    ('localhost', 26379),
                     ('localhost', 65532),
                     ('localhost', 65533),
                     ('localhost', 65534),
