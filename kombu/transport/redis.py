@@ -1149,6 +1149,11 @@ class SentinelChannel(Channel):
 
         master_name = getattr(self, 'master_name', None)
 
+        if master_name is None:
+            raise ValueError(
+                "'master_name' transport option must be specified."
+            )
+
         return sentinel_inst.master_for(
             master_name,
             self.Client,

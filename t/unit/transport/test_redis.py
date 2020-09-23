@@ -1474,3 +1474,13 @@ class test_RedisSentinel:
         )
         with pytest.raises(ConnectionError):
             connection.channel()
+
+    def test_missing_master_name_transport_option(self):
+        connection = Connection(
+            'sentinel://localhost:65534/',
+        )
+        with patch('redis.sentinel.Sentinel'),  \
+             pytest.raises(ValueError) as excinfo:
+            connection.connect()
+        expected = "'master_name' transport option must be specified."
+        assert expected == excinfo.value.args[0]
