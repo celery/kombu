@@ -1134,7 +1134,8 @@ class SentinelChannel(Channel):
         for url in self.connection.client.alt:
             url = _parse_url(url)
             if url.scheme == 'sentinel':
-                sentinels.append((url.hostname, url.port))
+                port = url.port or self.connection.default_port
+                sentinels.append((url.hostname, port))
 
         # Fallback for when only one sentinel is provided.
         if not sentinels:
@@ -1147,6 +1148,11 @@ class SentinelChannel(Channel):
             **additional_params)
 
         master_name = getattr(self, 'master_name', None)
+
+        if master_name is None:
+            raise ValueError(
+                "'master_name' transport option must be specified."
+            )
 
         return sentinel_inst.master_for(
             master_name,
