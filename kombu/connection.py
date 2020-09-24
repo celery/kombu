@@ -278,10 +278,15 @@ class Connection(object):
                          *args, **kwargs)
 
     def connect(self):
-        """Establish connection to server immediately."""
-        return self._ensure_connection(
+        """Establish connection to server immediately, ignore transport options except timeout."""
+        kw_args = dict(
             max_retries=1, reraise_as_library_errors=False
         )
+        conn_opts = self._extract_failover_opts()
+        timeout = conn_opts.get("timeout", None)
+        if timeout is not None:
+            kw_args["timeout"] = timeout
+        return self._ensure_connection(**kw_args)
 
     def channel(self):
         """Create and return a new channel."""
@@ -477,7 +482,7 @@ class Connection(object):
 
     def ensure(self, obj, fun, errback=None, max_retries=None,
                interval_start=1, interval_step=1, interval_max=1,
-               on_revive=None):
+               connection_timeout=None, on_revive=None):
         """Ensure operation completes.
 
         Regardless of any channel/connection errors occurring.
@@ -504,6 +509,7 @@ class Connection(object):
                 for each retry.
             interval_max (float): Maximum number of seconds to sleep between
                 each retry.
+            connection_timeout (float): Maximum number of seconds total to wait before giving up each.
             on_revive (Callable): Optional callback called whenever
                 revival completes successfully
 
@@ -547,10 +553,12 @@ class Connection(object):
                         remaining_retries = None
                         if max_retries is not None:
                             remaining_retries = max(max_retries - retries, 1)
+                        # possible failover transport options are given as kwargs, do not use _extract_failover_opts
                         self._ensure_connection(
                             errback,
                             remaining_retries,
                             interval_start, interval_step, interval_max,
+                            timeout=connection_timeout,
                             reraise_as_library_errors=False,
                         )
                         channel = self.default_channel
@@ -844,8 +852,8 @@ class Connection(object):
                 conn_opts['interval_step'] = transport_opts['interval_step']
             if 'interval_max' in transport_opts:
                 conn_opts['interval_max'] = transport_opts['interval_max']
-            if 'timeout' in transport_opts:
-                conn_opts['timeout'] = transport_opts['timeout']                
+            if 'connection_timeout' in transport_opts:
+                conn_opts['timeout'] = transport_opts['connection_timeout']
         return conn_opts
 
     @property
@@ -865,9 +873,14 @@ class Connection(object):
         """
         if not self._closed:
             if not self.connected:
-                return self._ensure_connection(
+                kw_args = dict(
                     max_retries=1, reraise_as_library_errors=False
                 )
+                conn_opts = self._extract_failover_opts()
+                timeout = conn_opts.get("timeout", None)
+                if timeout is not None:
+                    kw_args["timeout"] = timeout
+                return self._ensure_connection(**kw_args)
             return self._connection
 
     def _connection_factory(self):

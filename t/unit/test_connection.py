@@ -166,6 +166,7 @@ class test_Connection:
             'interval_start': 2,
             'interval_step': 3,
             'interval_max': 4,
+            'connection_timeout': 15,
             'ignore_this': True
         }
         conn._ensure_connection = Mock()
@@ -175,7 +176,61 @@ class test_Connection:
         # ensure_connection must be called to return immidiately
         # and fail with transport exception
         conn._ensure_connection.assert_called_with(
-            max_retries=1, reraise_as_library_errors=False
+            timeout=15, max_retries=1, reraise_as_library_errors=False
+        )
+
+    def test_default_channel_failover_with_timeout(self):
+        conn = self.conn
+        conn.transport_options = {
+            'connection_timeout': 15,
+        }
+        conn._ensure_connection = Mock()
+
+        # ensure_connection is mocked, disable second call
+        conn._default_channel = "something"
+
+        conn.default_channel
+
+        # default channel creation must honor given timeout option, and is only creating one connection
+        assert conn._ensure_connection.call_count == 1
+        assert conn._ensure_connection.call_args.kwargs.get("timeout", None) == 15
+
+    def test_default_channel_failover(self):
+        conn = self.conn
+        conn.transport_options = {
+            'max_retries': 2,
+            'interval_start': 3,
+            'interval_step': 4,
+            'interval_max': 5,
+        }
+        conn._ensure_connection = Mock()
+
+        # ensure_connection is mocked, disable second call
+        conn._default_channel = "something"
+
+        conn.default_channel
+
+        # default channel creation must honor given timeout option, and is only creating one connection
+        assert conn._ensure_connection.call_count == 1
+        assert set(conn.transport_options.items()).issubset(set(conn._ensure_connection.call_args.kwargs.items()))
+
+    def test_channel_failover(self):
+        conn = self.conn
+        conn.transport_options = {
+            'connection_timeout': 16,
+            'max_retries': 2,
+            'interval_start': 3,
+            'interval_step': 4,
+            'interval_max': 5,
+        }
+        conn._ensure_connection = Mock()
+
+        conn.channel()
+
+        # channel creation must honor given timeout option, and is only creating one connection
+        assert conn._ensure_connection.call_count == 1
+        conn._ensure_connection.assert_called_with(
+            timeout=16, max_retries=1, reraise_as_library_errors=False
         )
 
     def test_multiple_urls(self):
