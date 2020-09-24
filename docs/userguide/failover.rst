@@ -99,8 +99,6 @@ Consumer with failover functionality can be implemented using following function
 
     >>> def consume():
     ...     while True:
-    ...         drain_events = conn.ensure(
-    ...             conn, conn.drain_events)
     ...         try:
     ...             conn.drain_events(timeout=1)
     ...         except socket.timeout:
@@ -129,8 +127,6 @@ The full example implementing consumer with failover is as follows:
     >>> with Connection('amqp://broker1:5672;amqp://broker2:5672') as conn:
     ...     def consume():
     ...         while True:
-    ...             drain_events = conn.ensure(
-    ...                 conn, conn.drain_events)
     ...             try:
     ...                 conn.drain_events(timeout=1)
     ...             except socket.timeout:
