@@ -77,4 +77,3 @@
     kombu.utils.time
     kombu.utils.url
     kombu.utils.uuid
-    kombu.five
