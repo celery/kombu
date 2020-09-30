@@ -297,7 +297,7 @@ class Mailbox:
         chan = channel or self.connection.default_channel
         exchange = self.exchange
         if reply_ticket:
-            maybe_declare(self.reply_queue(channel))
+            maybe_declare(self.reply_queue(chan))
             message.update(ticket=reply_ticket,
                            reply_to={'exchange': self.reply_exchange.name,
                                      'routing_key': self.oid})
@@ -356,7 +356,7 @@ class Mailbox:
             accept = self.accept
         chan = channel or self.connection.default_channel
         queue = self.reply_queue
-        consumer = Consumer(channel, [queue], accept=accept, no_ack=True)
+        consumer = Consumer(chan, [queue], accept=accept, no_ack=True)
         responses = []
         unclaimed = self.unclaimed
         adjust_clock = self.clock.adjust
