@@ -1,2 +1,2 @@
 def hello_task(who='world'):
-    print(f'Hello {who}')
+    return(f'Hello {who}')
