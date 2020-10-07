@@ -1,48 +1,54 @@
-"""Amazon SQS Transport.
+"""Amazon SQS transport module for Kombu.
 
-Amazon SQS transport module for Kombu.  This package implements an AMQP-like
-interface on top of Amazons SQS service, with the goal of being optimized for
-high performance and reliability.
+This package implements an AMQP-like interface on top of Amazons SQS service,
+with the goal of being optimized for high performance and reliability.
 
 The default settings for this module are focused now on high performance in
 task queue situations where tasks are small, idempotent and run very fast.
 
-SQS Features supported by this transport:
-  Long Polling:
-    https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-long-polling.html
+SQS Features supported by this transport
+========================================
+Long Polling
+------------
+https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-long-polling.html
 
-    Long polling is enabled by setting the `wait_time_seconds` transport
-    option to a number > 1.  Amazon supports up to 20 seconds.  This is
-    enabled with 10 seconds by default.
+Long polling is enabled by setting the `wait_time_seconds` transport
+option to a number > 1.  Amazon supports up to 20 seconds.  This is
+enabled with 10 seconds by default.
 
-  Batch API Actions:
-   https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-batch-api.html
+Batch API Actions
+-----------------
+https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-batch-api.html
 
-    The default behavior of the SQS Channel.drain_events() method is to
-    request up to the 'prefetch_count' messages on every request to SQS.
-    These messages are stored locally in a deque object and passed back
-    to the Transport until the deque is empty, before triggering a new
-    API call to Amazon.
+The default behavior of the SQS Channel.drain_events() method is to
+request up to the 'prefetch_count' messages on every request to SQS.
+These messages are stored locally in a deque object and passed back
+to the Transport until the deque is empty, before triggering a new
+API call to Amazon.
 
-    This behavior dramatically speeds up the rate that you can pull tasks
-    from SQS when you have short-running tasks (or a large number of workers).
+This behavior dramatically speeds up the rate that you can pull tasks
+from SQS when you have short-running tasks (or a large number of workers).
 
-    When a Celery worker has multiple queues to monitor, it will pull down
-    up to 'prefetch_count' messages from queueA and work on them all before
-    moving on to queueB.  If queueB is empty, it will wait up until
-    'polling_interval' expires before moving back and checking on queueA.
+When a Celery worker has multiple queues to monitor, it will pull down
+up to 'prefetch_count' messages from queueA and work on them all before
+moving on to queueB.  If queueB is empty, it will wait up until
+'polling_interval' expires before moving back and checking on queueA.
 
-Other Features supported by this transport:
-  Predefined Queues:
-    The default behavior of this transport is to use a single AWS credential
-    pair in order to manage all SQS queues (e.g. listing queues, creating
-    queues, polling queues, deleting messages).
+Other Features supported by this transport
+==========================================
+Predefined Queues
+-----------------
+The default behavior of this transport is to use a single AWS credential
+pair in order to manage all SQS queues (e.g. listing queues, creating
+queues, polling queues, deleting messages).
 
-    If it is preferable for your environment to use a single AWS credential, you
-    can use the 'predefined_queues' setting inside the  'transport_options' map.
-    This setting allows you to specify the SQS queue URL and AWS credentials for
-    each of your queues. For example, if you have two queues which both already
-    exist in AWS) you can tell this transport about them as follows:
+If it is preferable for your environment to use a single AWS credential, you
+can use the 'predefined_queues' setting inside the  'transport_options' map.
+This setting allows you to specify the SQS queue URL and AWS credentials for
+each of your queues. For example, if you have two queues which both already
+exist in AWS) you can tell this transport about them as follows:
+
+.. code-block:: python
 
     transport_options = {
       'predefined_queues': {
@@ -59,9 +65,13 @@ Other Features supported by this transport:
       }
     }
 
-  Client config:
-    In some cases you may need to override the botocore config. You can do it
-    as follows:
+
+Client config
+-------------
+In some cases you may need to override the botocore config. You can do it
+as follows:
+
+.. code-block:: python
 
     transport_option = {
       'client-config': {
@@ -69,8 +79,8 @@ Other Features supported by this transport:
        },
     }
 
-    For a complete list of settings you can adjust using this option see
-    https://botocore.amazonaws.com/v1/documentation/api/latest/reference/config.html
+For a complete list of settings you can adjust using this option see
+https://botocore.amazonaws.com/v1/documentation/api/latest/reference/config.html
 """  # noqa: E501
 
 
