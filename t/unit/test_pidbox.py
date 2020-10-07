@@ -95,6 +95,47 @@ class test_Mailbox:
         de.side_effect = socket.timeout
         mailbox._collect(ticket, limit=1, channel=channel)
 
+    def test_reply__collect_uses_default_channel(self):
+        class ConsumerCalled(Exception):
+            pass
+
+        def fake_Consumer(channel, *args, **kwargs):
+            raise ConsumerCalled(channel)
+
+        ticket = uuid()
+        with patch('kombu.pidbox.Consumer') as Consumer:
+            mailbox = pidbox.Mailbox('test_reply__collect')(self.connection)
+            assert mailbox.connection.default_channel is not None
+            Consumer.side_effect = fake_Consumer
+            try:
+                mailbox._collect(ticket, limit=1)
+            except ConsumerCalled as c:
+                assert c.args[0] is not None
+            except Exception:
+                raise
+            else:
+                assert False, "Consumer not called"
+
+    def test__publish_uses_default_channel(self):
+        class QueueCalled(Exception):
+            pass
+
+        def queue__call__side(channel, *args, **kwargs):
+            raise QueueCalled(channel)
+
+        ticket = uuid()
+        with patch.object(pidbox.Queue, '__call__') as queue__call__:
+            mailbox = pidbox.Mailbox('test_reply__collect')(self.connection)
+            queue__call__.side_effect = queue__call__side
+            try:
+                mailbox._publish(ticket, {}, reply_ticket=ticket)
+            except QueueCalled as c:
+                assert c.args[0] is not None
+            except Exception:
+                raise
+            else:
+                assert False, "Queue not called"
+
     def test_constructor(self):
         assert self.mailbox.connection is None
         assert self.mailbox.exchange.name
