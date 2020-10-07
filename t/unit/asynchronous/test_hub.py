@@ -159,7 +159,10 @@ class test_Hub:
         self.hub = Hub()
 
     def teardown(self):
-        self.hub.close()
+        try:
+            self.hub.close()
+        except IOError:
+            pass
 
     def test_reset(self):
         self.hub.close = Mock(name='close')
