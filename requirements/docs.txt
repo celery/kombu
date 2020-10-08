@@ -1,3 +1,5 @@
 git+https://github.com/celery/sphinx_celery.git
 -r extras/mongodb.txt
--r extras/sqs.txt
+# we cannot use directly extras/sqs.txt
+# since readthedocs cannot install pycurl
+boto3>=1.4.4
