@@ -2,7 +2,7 @@
  kombu - Messaging library for Python
 ========================================
 
-|build-status| |coverage| |license| |wheel| |pyversion| |pyimp| |[![Downloads](https://pepy.tech/badge/kombu)](https://pepy.tech/project/kombu)|
+|build-status| |coverage| |license| |wheel| |pyversion| |pyimp| |downloads|
 
 :Version: 5.0.2
 :Documentation: https://kombu.readthedocs.io/
@@ -358,6 +358,8 @@ file in the top distribution directory for the full license text.
 .. |pyimp| image:: https://img.shields.io/pypi/implementation/kombu.svg
      :alt: Support Python implementations.
      :target: https://pypi.org/project/kombu/
+.. |downloads| image:: https://pepy.tech/badge/kombu
+    :target: https://pepy.tech/project/kombu
      
 kombu as part of the Tidelift Subscription
 ======= 
