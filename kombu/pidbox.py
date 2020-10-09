@@ -11,10 +11,11 @@ from itertools import count
 from threading import local
 from time import time
 
+from kombu.transport import redis
 from . import Exchange, Queue, Consumer, Producer
 from .clocks import LamportClock
 from .common import maybe_declare, oid_from
-from .exceptions import InconsistencyError
+from .exceptions import InconsistencyError, OperationalError
 from .five import range, string_t
 from .log import get_logger
 from .utils.functional import maybe_evaluate, reprcall
@@ -284,6 +285,12 @@ class Mailbox(object):
                     }, retry=True,
                     **opts
                 )
+            except OperationalError as exc:
+                # Fixes https://github.com/celery/kombu/issues/1063
+                if exc.args and exc.args[0] == redis.NO_ROUTE_ERROR.format(exchange, routing_key):
+                    pass
+                else:
+                    raise
             except InconsistencyError:
                 # queue probably deleted and no one is expecting a reply.
                 pass
