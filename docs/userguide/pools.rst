@@ -122,7 +122,7 @@ to the ``news`` exchange:
 Setting pool limits
 -------------------
 
-By default every connection instance has a limit of 200 connections.
+By default every connection instance has a limit of 10 connections.
 You can change this limit using :func:`kombu.pools.set_limit`.
 You are able to grow the pool at runtime, but you can't shrink it,
 so it is best to set the limit as early as possible after your application
