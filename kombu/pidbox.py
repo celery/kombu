@@ -285,13 +285,6 @@ class Mailbox(object):
                     }, retry=True,
                     **opts
                 )
-            except OperationalError as exc:
-                # Fixes https://github.com/celery/kombu/issues/1063
-                if exc.args and redis.NO_ROUTE_ERROR.format(exchange, routing_key) in exc.args[0]:
-                    error('NO_ROUTE_ERROR caught: %r', exc, exc_info=1)
-                    pass
-                else:
-                    raise
             except InconsistencyError:
                 # queue probably deleted and no one is expecting a reply.
                 pass
