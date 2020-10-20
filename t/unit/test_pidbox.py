@@ -6,9 +6,11 @@ import warnings
 
 from case import Mock, patch
 
+import kombu
 from kombu import Connection
 from kombu import pidbox
-from kombu.exceptions import ContentDisallowed, InconsistencyError
+from kombu.exceptions import ContentDisallowed, InconsistencyError, OperationalError
+from kombu.transport import redis
 from kombu.utils.uuid import uuid
 
 
@@ -57,6 +59,26 @@ class test_Mailbox:
                 {'foo': 'bar'}, mailbox.reply_exchange, mailbox.oid, 'foo',
             )
             producer.publish.assert_called()
+
+    def test_publish_reply_handles_redis_OperationalError_wth_no_route_error_msg(self):
+        mailbox = pidbox.Mailbox('reply.celery')(self.connection)
+        exchange = mailbox.reply_exchange.name
+        channel = self.connection.channel()
+        mailbox.reply_queue(channel).declare()
+        ticket = uuid()
+        # Using Channel._lookup as a proxy (in absence of a redis integration test) to mock the actual
+        # redis.get_table call which produces the OperationalError, since _lookup is just a level above
+        # redis.get_table on the stack trace.
+        with patch.object(kombu.transport.virtual.Channel, '_lookup') as simulate_redis_get_table_err:
+            # raise the actual redis error
+            simulate_redis_get_table_err.side_effect = OperationalError(
+                redis.NO_ROUTE_ERROR.format(exchange, mailbox.oid))
+            try:
+                mailbox._publish_reply({'foo': 'bar'}, exchange, mailbox.oid, ticket)
+            except OperationalError as exc:
+                if pidbox.is_no_route_error_for_reply_celery_pidbox(exc.args[0]):
+                    pytest.fail("NO_ROUTE_ERROR with specific message should have been caught")
+
 
     def test_reply__collect(self):
         mailbox = pidbox.Mailbox('test_reply__collect')(self.connection)
