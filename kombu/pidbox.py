@@ -11,7 +11,6 @@ from itertools import count
 from threading import local
 from time import time
 
-from kombu.transport import redis
 from . import Exchange, Queue, Consumer, Producer
 from .clocks import LamportClock
 from .common import maybe_declare, oid_from
