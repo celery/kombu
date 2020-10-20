@@ -14,7 +14,7 @@ from time import time
 from . import Exchange, Queue, Consumer, Producer
 from .clocks import LamportClock
 from .common import maybe_declare, oid_from
-from .exceptions import InconsistencyError
+from .exceptions import InconsistencyError, OperationalError
 from .five import range, string_t
 from .log import get_logger
 from .utils.functional import maybe_evaluate, reprcall
@@ -151,6 +151,14 @@ class Node(object):
                                     serializer=self.mailbox.serializer)
 
 
+def is_no_route_error_for_reply_celery_pidbox(exc_str):
+    if "Cannot route message for exchange" in exc_str \
+        and "Table empty or key no longer exists" in exc_str \
+        and "reply.celery.pidbox" in exc_str:
+        return True
+    return False
+
+
 class Mailbox(object):
     """Process Mailbox."""
 
@@ -284,6 +292,14 @@ class Mailbox(object):
                     }, retry=True,
                     **opts
                 )
+            except OperationalError as exc:
+                # Fixes https://github.com/celery/kombu/issues/1063
+
+                if not exc.args and not is_no_route_error_for_reply_celery_pidbox(exc.args[0]):
+                    raise
+
+                error('NO_ROUTE_ERROR caught: %r', exc, exc_info=1)
+
             except InconsistencyError:
                 # queue probably deleted and no one is expecting a reply.
                 pass
