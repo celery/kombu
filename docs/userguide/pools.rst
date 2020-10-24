@@ -119,7 +119,7 @@ to the ``news`` exchange:
 
 .. _default-pool-limits:
 
-Setting pool limits
+Pool limits
 -------------------
 
 By default every connection instance has a limit of 10 connections.
@@ -132,6 +132,19 @@ starts:
 
     >>> from kombu import pools
     >>> pools.set_limit()
+
+You can also get current limit using :func:`kombu.pools.get_limit`:
+
+.. code-block:: pycon
+
+    >>> from kombu import pools
+    >>> pools.get_limit()
+    10
+    >>> pools.set_limit(100)
+    100
+    >>> kombu.pools.get_limit()
+    100
+
 
 Resetting all pools
 -------------------
