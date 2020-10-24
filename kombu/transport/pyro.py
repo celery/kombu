@@ -1,14 +1,34 @@
-"""Pyro transport, and Kombu Broker daemon.
+"""Pyro transport module for kombu.
+
+Pyro transport, and Kombu Broker daemon.
 
 Requires the :mod:`Pyro4` library to be installed.
 
+Features
+========
+* Type: Virtual
+* Supports Direct: Yes
+* Supports Topic: Yes
+* Supports Fanout: No
+* Supports Priority: No
+* Supports TTL: No
+
+Connection String
+=================
+
 To use the Pyro transport with Kombu, use an url of the form:
-``pyro://localhost/kombu.broker``
+
+.. code-block::
+
+    pyro://localhost/kombu.broker
 
 The hostname is where the transport will be looking for a Pyro name server,
 which is used in turn to locate the kombu.broker Pyro service.
 This broker can be launched by simply executing this transport module directly,
 with the command: ``python -m kombu.transport.pyro``
+
+Transport Options
+=================
 """
 
 

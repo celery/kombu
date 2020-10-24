@@ -1,4 +1,22 @@
-"""SoftLayer Message Queue transport."""
+"""SoftLayer Message Queue transport module for kombu.
+
+Features
+========
+* Type: Virtual
+* Supports Direct: Yes
+* Supports Topic: Yes
+* Supports Fanout: No
+* Supports Priority: No
+* Supports TTL: No
+
+Connection String
+=================
+ *Unreviewed*
+
+Transport Options
+=================
+ *Unreviewed*
+"""
 
 import socket
 import string

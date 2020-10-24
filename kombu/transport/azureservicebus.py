@@ -1,10 +1,4 @@
-"""Azure Service Bus Message Queue transport.
-
-The transport can be enabled by setting the CELERY_BROKER_URL to:
-
-```
-azureservicebus://{SAS policy name}:{SAS key}@{Service Bus Namespace}
-```
+"""Azure Service Bus Message Queue transport module for kombu.
 
 Note that the Shared Access Policy used to connect to Azure Service Bus
 requires Manage, Send and Listen claims since the broker will create new
@@ -16,6 +10,31 @@ have to be regenerated before it can be used in the connection URL.
 More information about Azure Service Bus:
 https://azure.microsoft.com/en-us/services/service-bus/
 
+Features
+========
+* Type: Virtual
+* Supports Direct: *Unreviewed*
+* Supports Topic: *Unreviewed*
+* Supports Fanout: *Unreviewed*
+* Supports Priority: *Unreviewed*
+* Supports TTL: *Unreviewed*
+
+Connection String
+=================
+
+Connection string has the following format:
+
+.. code-block::
+
+    azureservicebus://SAS_POLICY_NAME:SAS_KEY@SERVICE_BUSNAMESPACE
+
+Transport Options
+=================
+
+* ``visibility_timeout``
+* ``queue_name_prefix``
+* ``wait_time_seconds``
+* ``peek_lock``
 """
 
 import string
