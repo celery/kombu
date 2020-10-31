@@ -336,9 +336,9 @@ This software is licensed under the `New BSD License`. See the `LICENSE`
 file in the top distribution directory for the full license text.
 
 
-.. |build-status| image:: https://secure.travis-ci.org/celery/kombu.png?branch=master
+.. |build-status| image:: https://api.travis-ci.com/celery/kombu.png?branch=master
     :alt: Build status
-    :target: https://travis-ci.org/celery/kombu
+    :target: https://travis-ci.com/celery/kombu
 
 .. |coverage| image:: https://codecov.io/github/celery/kombu/coverage.svg?branch=master
     :target: https://codecov.io/github/celery/kombu?branch=master
