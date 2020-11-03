@@ -24,9 +24,8 @@
         :members:
         :undoc-members:
 
-=====================================================================
- SQLAlchemy Transport Model - ``kombu.transport.sqlalchemy.models``
-=====================================================================
+SQLAlchemy Transport Model - ``kombu.transport.sqlalchemy.models``
+==================================================================
 
 
 .. currentmodule:: kombu.transport.sqlalchemy.models
