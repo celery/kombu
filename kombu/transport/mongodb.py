@@ -1,7 +1,36 @@
-"""MongoDB transport.
+# copyright: (c) 2010 - 2013 by Flavio Percoco Premoli.
+# license: BSD, see LICENSE for more details.
 
-:copyright: (c) 2010 - 2013 by Flavio Percoco Premoli.
-:license: BSD, see LICENSE for more details.
+"""MongoDB transport module for kombu.
+
+Features
+========
+* Type: Virtual
+* Supports Direct: Yes
+* Supports Topic: Yes
+* Supports Fanout: Yes
+* Supports Priority: Yes
+* Supports TTL: Yes
+
+Connection String
+=================
+ *Unreviewed*
+
+Transport Options
+=================
+
+* ``connect_timeout``,
+* ``ssl``,
+* ``ttl``,
+* ``capped_queue_size``,
+* ``default_hostname``,
+* ``default_port``,
+* ``default_database``,
+* ``messages_collection``,
+* ``routing_collection``,
+* ``broadcast_collection``,
+* ``queues_collection``,
+* ``calc_queue_size``,
 """
 
 import datetime

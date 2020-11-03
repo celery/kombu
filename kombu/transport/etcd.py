@@ -1,8 +1,27 @@
-"""Etcd Transport.
+"""Etcd Transport module for Kombu.
 
 It uses Etcd as a store to transport messages in Queues
 
 It uses python-etcd for talking to Etcd's HTTP API
+
+Features
+========
+* Type: Virtual
+* Supports Direct: *Unreviewed*
+* Supports Topic: *Unreviewed*
+* Supports Fanout: *Unreviewed*
+* Supports Priority: *Unreviewed*
+* Supports TTL: *Unreviewed*
+
+Connection String
+=================
+
+Connection string has the following format:
+
+.. code-block::
+
+    'etcd'://SERVER:PORT
+
 """
 
 import os

@@ -1,8 +1,30 @@
-"""Consul Transport.
+"""Consul Transport module for Kombu.
+
+Features
+========
 
 It uses Consul.io's Key/Value store to transport messages in Queues
 
 It uses python-consul for talking to Consul's HTTP API
+
+Features
+========
+* Type: Native
+* Supports Direct: Yes
+* Supports Topic: *Unreviewed*
+* Supports Fanout: *Unreviewed*
+* Supports Priority: *Unreviewed*
+* Supports TTL: *Unreviewed*
+
+Connection String
+=================
+
+Connection string has the following format:
+
+.. code-block::
+
+    consul://CONSUL_ADDRESS[:PORT]
+
 """
 
 import uuid

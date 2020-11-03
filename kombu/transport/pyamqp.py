@@ -1,4 +1,38 @@
-"""Pure-Python amqp transport."""
+"""pyamqp transport module for Kombu.
+
+Pure-Python amqp transport using py-amqp library.
+
+Features
+========
+* Type: Native
+* Supports Direct: Yes
+* Supports Topic: Yes
+* Supports Fanout: Yes
+* Supports Priority: Yes
+* Supports TTL: Yes
+
+Connection String
+=================
+Connection string can have the following formats:
+
+.. code-block::
+
+    amqp://[USER:PASSWORD@]BROKER_ADDRESS[:PORT][/VIRTUALHOST]
+    [USER:PASSWORD@]BROKER_ADDRESS[:PORT][/VIRTUALHOST]
+    amqp://
+
+For TLS encryption use:
+
+.. code-block::
+
+    amqps://[USER:PASSWORD@]BROKER_ADDRESS[:PORT][/VIRTUALHOST]
+
+Transport Options
+=================
+Transport Options are passed to constructor of underlying py-amqp
+:class:`~kombu.connection.Connection` class.
+"""
+
 
 import amqp
 

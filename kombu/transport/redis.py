@@ -1,4 +1,53 @@
-"""Redis transport."""
+"""Redis transport module for Kombu.
+
+Features
+========
+* Type: Virtual
+* Supports Direct: Yes
+* Supports Topic: Yes
+* Supports Fanout: Yes
+* Supports Priority: Yes
+* Supports TTL: No
+
+Connection String
+=================
+Connection string has the following format:
+
+.. code-block::
+
+    redis://REDIS_ADDRESS[:PORT][/VIRTUALHOST]
+    rediss://REDIS_ADDRESS[:PORT][/VIRTUALHOST]
+
+To use sentinel for dynamic Redis discovery,
+the connection string has following format:
+
+.. code-block::
+
+    sentinel://SENTINEL_ADDRESS[:PORT]
+
+Transport Options
+=================
+* ``sep``
+* ``ack_emulation``: (bool) If set to True transport will
+  simulate Acknowledge of AMQP protocol.
+* ``unacked_key``
+* ``unacked_index_key``
+* ``unacked_mutex_key``
+* ``unacked_mutex_expire``
+* ``visibility_timeout``
+* ``unacked_restore_limit``
+* ``fanout_prefix``
+* ``fanout_patterns``
+* ``socket_timeout``
+* ``socket_connect_timeout``
+* ``socket_keepalive``
+* ``socket_keepalive_options``
+* ``queue_order_strategy``
+* ``max_connections``
+* ``health_check_interval``
+* ``retry_on_timeout``
+* ``priority_steps``
+"""
 
 import numbers
 import socket

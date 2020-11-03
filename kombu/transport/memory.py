@@ -1,4 +1,26 @@
-"""In-memory transport."""
+"""In-memory transport module for Kombu.
+
+Simple transport using memory for storing messages.
+Messages can be passed only between threads.
+
+Features
+========
+* Type: Virtual
+* Supports Direct: Yes
+* Supports Topic: Yes
+* Supports Fanout: No
+* Supports Priority: No
+* Supports TTL: Yes
+
+Connection String
+=================
+Connection string is in the following format:
+
+.. code-block::
+
+    memory://
+
+"""
 
 from queue import Queue
 

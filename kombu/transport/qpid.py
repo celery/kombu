@@ -1,4 +1,4 @@
-"""Qpid Transport.
+"""Qpid Transport module for kombu.
 
 `Qpid`_ transport using `qpid-python`_ as the client and `qpid-tools`_ for
 broker management.
@@ -26,6 +26,15 @@ or to install the requirements manually:
 .. _`Qpid`: https://qpid.apache.org/
 .. _`qpid-python`: https://pypi.org/project/qpid-python/
 .. _`qpid-tools`: https://pypi.org/project/qpid-tools/
+
+Features
+========
+* Type: Native
+* Supports Direct: Yes
+* Supports Topic: Yes
+* Supports Fanout: Yes
+* Supports Priority: Yes
+* Supports TTL: Yes
 
 Authentication
 ==============

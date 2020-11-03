@@ -81,6 +81,15 @@ as follows:
 
 For a complete list of settings you can adjust using this option see
 https://botocore.amazonaws.com/v1/documentation/api/latest/reference/config.html
+
+Features
+========
+* Type: Virtual
+* Supports Direct: Yes
+* Supports Topic: Yes
+* Supports Fanout: Yes
+* Supports Priority: No
+* Supports TTL: No
 """  # noqa: E501
 
 
