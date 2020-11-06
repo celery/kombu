@@ -61,7 +61,6 @@ class Connection:
 
         >>> import ssl
         >>> Connection('amqp://', login_method='EXTERNAL', ssl={
-        ...    'ca_certs': '/etc/pki/tls/certs/something.crt',
         ...    'keyfile': '/etc/something/system.key',
         ...    'certfile': '/etc/something/system.cert',
         ...    'cert_reqs': ssl.CERT_REQUIRED,

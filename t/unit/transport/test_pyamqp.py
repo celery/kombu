@@ -91,7 +91,6 @@ class test_Transport:
 
     def test_ssl_cert_passed(self):
         ssl_dict = {
-            'ca_certs': '/etc/pki/tls/certs/something.crt',
             'cert_reqs': "ssl.CERT_REQUIRED",
         }
         ssl_dict_copy = {k: ssl_dict[k] for k in ssl_dict}
