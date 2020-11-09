@@ -1465,3 +1465,25 @@ class test_RedisSentinel:
             connection.connect()
         expected = "'master_name' transport option must be specified."
         assert expected == excinfo.value.args[0]
+
+    def test_sentinel_with_ssl(self):
+        ssl_params = {
+            'ssl_cert_reqs': 2,
+            'ssl_ca_certs': '/foo/ca.pem',
+            'ssl_certfile': '/foo/cert.crt',
+            'ssl_keyfile': '/foo/pkey.key'
+        }
+        with patch('redis.sentinel.Sentinel') as patched:
+            with Connection(
+                    'sentinel://',
+                    transport_options={'master_name': 'not_important'},
+                    ssl=ssl_params) as conn:
+                params = conn.default_channel._connparams()
+                assert params['ssl_cert_reqs'] == ssl_params['ssl_cert_reqs']
+                assert params['ssl_ca_certs'] == ssl_params['ssl_ca_certs']
+                assert params['ssl_certfile'] == ssl_params['ssl_certfile']
+                assert params['ssl_keyfile'] == ssl_params['ssl_keyfile']
+                assert params.get('ssl') is None
+                from kombu.transport.redis import SentinelManagedSSLConnection
+                assert (params['connection_class'] is
+                        SentinelManagedSSLConnection)
