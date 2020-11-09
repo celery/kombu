@@ -115,7 +115,8 @@ class Producer:
                 mandatory=False, immediate=False, priority=0,
                 content_type=None, content_encoding=None, serializer=None,
                 headers=None, compression=None, exchange=None, retry=False,
-                retry_policy=None, declare=None, expiration=None,
+                retry_policy=None, declare=None, expiration=None, timeout=None,
+                confirm_timeout=None,
                 **properties):
         """Publish message to the specified exchange.
 
@@ -144,6 +145,11 @@ class Producer:
                 supported by :meth:`~kombu.Connection.ensure`.
             expiration (float): A TTL in seconds can be specified per message.
                 Default is no expiration.
+            timeout (float): Set timeout to wait maximum timeout second
+                for message to publish.
+            confirm_timeout (float): When the channel is in confirm mode set
+                confirm_timeout to wait maximum confirm_timeout
+                second for message to confirm.
             **properties (Any): Additional message properties, see AMQP spec.
         """
         _publish = self._publish
@@ -175,12 +181,13 @@ class Producer:
         return _publish(
             body, priority, content_type, content_encoding,
             headers, properties, routing_key, mandatory, immediate,
-            exchange_name, declare,
+            exchange_name, declare, timeout, confirm_timeout
         )
 
     def _publish(self, body, priority, content_type, content_encoding,
                  headers, properties, routing_key, mandatory,
-                 immediate, exchange, declare):
+                 immediate, exchange, declare, timeout=None,
+                 confirm_timeout=None):
         channel = self.channel
         message = channel.prepare_message(
             body, priority, content_type,
@@ -198,6 +205,7 @@ class Producer:
             message,
             exchange=exchange, routing_key=routing_key,
             mandatory=mandatory, immediate=immediate,
+            timeout=timeout, confirm_timeout=confirm_timeout
         )
 
     def _get_channel(self):
@@ -211,6 +219,7 @@ class Producer:
 
     def _set_channel(self, channel):
         self._channel = channel
+
     channel = property(_get_channel, _set_channel)
 
     def revive(self, channel):
@@ -237,6 +246,7 @@ class Producer:
 
     def release(self):
         pass
+
     close = release
 
     def _prepare(self, body, serializer=None, content_type=None,
@@ -358,7 +368,7 @@ class Consumer:
     #: Mapping of queues we consume from.
     _queues = None
 
-    _tags = count(1)   # global
+    _tags = count(1)  # global
 
     def __init__(self, channel, queues=None, no_ack=None, auto_declare=None,
                  callbacks=None, on_decode_error=None, on_message=None,
@@ -483,6 +493,7 @@ class Consumer:
         for tag in self._active_tags.values():
             cancel(tag)
         self._active_tags.clear()
+
     close = cancel
 
     def cancel_by_queue(self, queue):
