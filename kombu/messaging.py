@@ -116,7 +116,6 @@ class Producer:
                 content_type=None, content_encoding=None, serializer=None,
                 headers=None, compression=None, exchange=None, retry=False,
                 retry_policy=None, declare=None, expiration=None, timeout=None,
-                confirm_timeout=None,
                 **properties):
         """Publish message to the specified exchange.
 
@@ -147,9 +146,6 @@ class Producer:
                 Default is no expiration.
             timeout (float): Set timeout to wait maximum timeout second
                 for message to publish.
-            confirm_timeout (float): When the channel is in confirm mode set
-                confirm_timeout to wait maximum confirm_timeout
-                second for message to confirm.
             **properties (Any): Additional message properties, see AMQP spec.
         """
         _publish = self._publish
@@ -181,13 +177,12 @@ class Producer:
         return _publish(
             body, priority, content_type, content_encoding,
             headers, properties, routing_key, mandatory, immediate,
-            exchange_name, declare, timeout, confirm_timeout
+            exchange_name, declare, timeout
         )
 
     def _publish(self, body, priority, content_type, content_encoding,
                  headers, properties, routing_key, mandatory,
-                 immediate, exchange, declare, timeout=None,
-                 confirm_timeout=None):
+                 immediate, exchange, declare, timeout=None):
         channel = self.channel
         message = channel.prepare_message(
             body, priority, content_type,
@@ -205,7 +200,7 @@ class Producer:
             message,
             exchange=exchange, routing_key=routing_key,
             mandatory=mandatory, immediate=immediate,
-            timeout=timeout, confirm_timeout=confirm_timeout
+            timeout=timeout
         )
 
     def _get_channel(self):
