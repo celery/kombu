@@ -137,6 +137,14 @@ class test_Producer:
         properties = p._channel.prepare_message.call_args[0][5]
         assert properties['expiration'] == '10000'
 
+    def test_publish_with_timeout(self):
+        p = self.connection.Producer()
+        p.channel = Mock()
+        p.channel.connection.client.declared_entities = set()
+        p.publish('test_timeout', exchange=Exchange('foo'), timeout=1)
+        timeout = p._channel.basic_publish.call_args[1]['timeout']
+        assert timeout == 1
+
     def test_publish_with_reply_to(self):
         p = self.connection.Producer()
         p.channel = Mock()
