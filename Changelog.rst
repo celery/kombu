@@ -91,8 +91,15 @@
 :release-date: 2020-03-29 20:45 A.M UTC+6:00
 :release-by: Asif Saif Uddin
 
+- Added support for health_check_interval option in broker_transport_options (#1145)
+- Added retry_on_timeout parameter to Redis Channel (#1150)
+- Added support for standard values for ssl_cert_reqs query parameter for Redis (#1139)
+- Added predefined_queues option to SQS transport (#1156)
+- Added ssl certificate verification against ca certificates when amqps is used for pyamqp transport (#1151)
+- Fix issue (#701) where kombu.transport.redis.Mutex is broken in python 3 (#1141)
+- Fix brop error in Redis Channel (#1144)
 
-.. _version-4.6.8:
+.. _version-4.6.7:
 
 4.6.7
 =====
