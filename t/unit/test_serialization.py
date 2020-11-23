@@ -1,7 +1,6 @@
 #!/usr/bin/python
 
 import pytest
-import sys
 
 from base64 import b64decode
 
@@ -202,12 +201,6 @@ class test_Serialization:
         res = loads(msgpack_data,
                     content_type='application/x-msgpack',
                     content_encoding='binary')
-        if sys.version_info[0] < 3:
-            for k, v in res.items():
-                if isinstance(v, str):
-                    res[k] = v.encode()
-                if isinstance(v, (list, tuple)):
-                    res[k] = [i.encode() for i in v]
         assert res == msgpack_py_data
 
     @t.skip.if_pypy
