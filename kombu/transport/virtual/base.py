@@ -28,7 +28,7 @@ from kombu.transport import base
 
 from .exchange import STANDARD_EXCHANGE_TYPES
 
-ARRAY_TYPE_H = 'H' if sys.version_info[0] == 3 else b'H'
+ARRAY_TYPE_H = 'H'
 
 UNDELIVERABLE_FMT = """\
 Message could not be delivered: No queues bound to exchange {exchange!r} \
