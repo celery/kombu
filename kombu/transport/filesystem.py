@@ -65,7 +65,7 @@ Features
 * Type: Virtual
 * Supports Direct: Yes
 * Supports Topic: Yes
-* Supports Fanout: No
+* Supports Fanout: Yes
 * Supports Priority: No
 * Supports TTL: No
 
@@ -94,6 +94,7 @@ import tempfile
 import uuid
 from queue import Empty
 from time import monotonic
+from collections import namedtuple
 
 from kombu.exceptions import ChannelError
 from kombu.utils.encoding import bytes_to_str, str_to_bytes
@@ -148,43 +149,94 @@ else:
 class Channel(virtual.Channel):
     """Filesystem Channel."""
 
+    supports_fanout = True
+
+    def get_table(self, exchange):
+        filename = '{}.exchange'.format(exchange)
+        filename =  os.path.join(self.control_folder,filename)
+        try:
+            f = open(filename,'r')
+            exchange_table = loads(bytes_to_str(f.read()))
+            result =  [tuple(q) for q in exchange_table]
+            return result
+        except FileNotFoundError:
+            return []
+        except OSError:
+            raise ChannelError(
+                f'Cannot open {filename}')
+        finally:
+            f.close()
+
+    def _queue_bind(self, exchange, routing_key, pattern, queue):
+        filename = '{}.exchange'.format(exchange)
+        filename = os.path.join(self.control_folder,filename)
+        try:
+            d_fileno = os.open(self.control_folder,os.O_RDONLY)
+            d = namedtuple('Directory',[])
+            d.fileno = lambda: d_fileno
+            
+            lock(d,LOCK_EX)
+            if os.path.isfile(filename):
+                f = open(filename,'r')
+                exchange_table = loads(bytes_to_str(f.read()))
+                f.close()
+            else:
+                exchange_table = []
+            queues = [tuple(q) for q in exchange_table]
+            queue_val = (routing_key or '', pattern or '', queue or '' )
+            if (queue_val not in queues):
+                exchange_table = [queue_val] +  queues
+            f = open(filename,'wb')
+            f.write(str_to_bytes(dumps(exchange_table)))
+        except OSError:
+            raise ChannelError(
+                f'Cannot open {filename!r}')
+        finally:
+            unlock(d)
+            if (f):
+                f.close()
+
+    def _put_fanout(self, exchange, payload, routing_key, **kwargs):
+        for q in self.get_table(exchange):
+            self._put(q[2], payload, **kwargs)
+
     def _put(self, queue, payload, **kwargs):
         """Put `message` onto `queue`."""
-        filename = '{}_{}.{}.msg'.format(int(round(monotonic() * 1000)),
-                                         uuid.uuid4(), queue)
-        filename = os.path.join(self.data_folder_out, filename)
-
+        queue_folder = os.path.join(self.data_folder_out, queue)
+        filename = '{}_{}.msg'.format(int(round(monotonic() * 1000)),uuid.uuid4())
+        filename = os.path.join(queue_folder, filename)
+        f = None # define file descriptor
         try:
+            os.makedirs(queue_folder, exist_ok = True)
             f = open(filename, 'wb')
             lock(f, LOCK_EX)
             f.write(str_to_bytes(dumps(payload)))
         except OSError:
-            raise ChannelError(
-                f'Cannot add file {filename!r} to directory')
+            raise ChannelError(f'Cannot create {filename}')
         finally:
-            unlock(f)
-            f.close()
+            if (f):
+                unlock(f)
+                f.close()
 
     def _get(self, queue):
         """Get next message from `queue`."""
-        queue_find = '.' + queue + '.msg'
-        folder = os.listdir(self.data_folder_in)
-        folder = sorted(folder)
-        while len(folder) > 0:
-            filename = folder.pop(0)
+        queue_folder = os.path.join(self.data_folder_in, queue)
+        if (not os.path.exists(queue_folder)):
+            raise Empty()
 
-            # only handle message for the requested queue
-            if filename.find(queue_find) < 0:
-                continue
-
+        messages = os.listdir(queue_folder)
+        messages = sorted(messages)
+        while len(messages) > 0:
+            filename = messages.pop(0)
             if self.store_processed:
-                processed_folder = self.processed_folder
+                processed_folder = os.path.join(self.processed_folder, queue)
+                os.makedirs(processed_folder, exist_ok = True)
             else:
                 processed_folder = tempfile.gettempdir()
 
             try:
                 # move the file to the tmp/processed folder
-                shutil.move(os.path.join(self.data_folder_in, filename),
+                shutil.move(os.path.join(queue_folder, filename),
                             processed_folder)
             except OSError:
                 pass  # file could be locked, or removed in meantime so ignore
@@ -208,43 +260,24 @@ class Channel(virtual.Channel):
         """Remove all messages from `queue`."""
         count = 0
         queue_find = '.' + queue + '.msg'
+        queue_folder = os.path.join(self.data_folder_out, queue)
 
-        folder = os.listdir(self.data_folder_in)
-        while len(folder) > 0:
-            filename = folder.pop()
-            try:
-                # only purge messages for the requested queue
-                if filename.find(queue_find) < 0:
-                    continue
-
-                filename = os.path.join(self.data_folder_in, filename)
-                os.remove(filename)
-
-                count += 1
-
-            except OSError:
-                # we simply ignore its existence, as it was probably
-                # processed by another worker
-                pass
-
-        return count
-
+        try:
+            count = len(os.listdir(queue_folder))
+            shutil.rmtree(queue_folder)
+            return count
+        except OSError:
+            # we simply ignore its existence, as it was probably
+            # processed by another worker
+            return 0
+        
     def _size(self, queue):
         """Return the number of messages in `queue` as an :class:`int`."""
-        count = 0
+        try:
+            return len(os.listdir(self.data_folder_in))
+        except OSError:
+            return 0
 
-        queue_find = f'.{queue}.msg'
-        folder = os.listdir(self.data_folder_in)
-        while len(folder) > 0:
-            filename = folder.pop()
-
-            # only handle message for the requested queue
-            if filename.find(queue_find) < 0:
-                continue
-
-            count += 1
-
-        return count
 
     @property
     def transport_options(self):
@@ -266,9 +299,20 @@ class Channel(virtual.Channel):
     def processed_folder(self):
         return self.transport_options.get('processed_folder', 'processed')
 
+    @cached_property
+    def control_folder(self):
+        return self.transport_options.get('control_folder', 'control')
+
+
 
 class Transport(virtual.Transport):
     """Filesystem Transport."""
+
+    implements = virtual.Transport.implements.extend(
+        asynchronous=False,
+        exchange_type=frozenset(['direct', 'topic', 'fanout'])
+    )
+
 
     Channel = Channel
     # filesystem backend state is global.
