@@ -258,8 +258,6 @@ class Channel(virtual.Channel):
 
     def _purge(self, queue):
         """Remove all messages from `queue`."""
-        count = 0
-        queue_find = '.' + queue + '.msg'
         queue_folder = os.path.join(self.data_folder_out, queue)
 
         try:
