@@ -14,7 +14,7 @@ from time import time
 from . import Exchange, Queue, Consumer, Producer
 from .clocks import LamportClock
 from .common import maybe_declare, oid_from
-from .exceptions import InconsistencyError
+from .exceptions import InconsistencyError, OperationalError
 from .five import range, string_t
 from .log import get_logger
 from .utils.functional import maybe_evaluate, reprcall
@@ -284,6 +284,24 @@ class Mailbox(object):
                     }, retry=True,
                     **opts
                 )
+            except OperationalError as exc:
+                # Fixes https://github.com/celery/kombu/issues/1063
+                # Source: https://github.com/lambacck/kombu/pull/1
+
+                if not exc.args:
+                    raise
+
+                arg0 = exc.args[0]
+                noroute = "Cannot route message for exchange" in arg0
+                table_empty = "Table empty or key no longer exists." in arg0
+                target = "reply.celery.pidbox" in arg0
+
+                isinconsitency = noroute and table_empty and target
+                if not isinconsitency:
+                    raise
+
+                error('NO_ROUTE_ERROR caught: %r', exc, exc_info=1)
+
             except InconsistencyError:
                 # queue probably deleted and no one is expecting a reply.
                 pass
