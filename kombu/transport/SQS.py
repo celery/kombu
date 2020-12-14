@@ -538,11 +538,12 @@ class Channel(virtual.Channel):
         #         if "can't set attribute" not in str(exc):
         #             raise
 
-    def new_sqs_client(self, region, access_key_id, secret_access_key):
+    def new_sqs_client(self, region, access_key_id, secret_access_key, session_token=None):
         session = boto3.session.Session(
             region_name=region,
             aws_access_key_id=access_key_id,
             aws_secret_access_key=secret_access_key,
+            aws_session_token=session_token,
         )
         is_secure = self.is_secure if self.is_secure is not None else True
         client_kwargs = {
@@ -568,6 +569,7 @@ class Channel(virtual.Channel):
                 region=q.get('region', self.region),
                 access_key_id=q.get('access_key_id', self.conninfo.userid),
                 secret_access_key=q.get('secret_access_key', self.conninfo.password),  # noqa: E501
+                session_token=q.get('session_token', None),
             )
             return c
 
