@@ -191,7 +191,7 @@ class Response:
         """The full contents of the response body.
 
         Note:
-            Accessing this propery will evaluate the buffer
+            Accessing this property will evaluate the buffer
             and subsequent accesses will be cached.
         """
         if self._body is None:
