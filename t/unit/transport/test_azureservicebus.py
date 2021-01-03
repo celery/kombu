@@ -17,7 +17,7 @@ pytest.importorskip('azure.servicebus')
 from azure.servicebus import ServiceBusMessage, ServiceBusReceiveMode
 
 
-class ASBQueue(object):
+class ASBQueue:
     def __init__(self, kwargs):
         self.options = kwargs
         self.items = []
@@ -28,7 +28,7 @@ class ASBQueue(object):
     def get_receiver(self, kwargs):
         receive_mode = kwargs.get('receive_mode', ServiceBusReceiveMode.PEEK_LOCK)
 
-        class Receiver(object):
+        class Receiver:
             def close(self):
                 pass
 
@@ -51,7 +51,7 @@ class ASBQueue(object):
         return Receiver()
 
     def get_sender(self):
-        class Sender(object):
+        class Sender:
             def close(self):
                 pass
 
@@ -61,7 +61,7 @@ class ASBQueue(object):
         return Sender()
 
 
-class ASBMock(object):
+class ASBMock:
     def __init__(self):
         self.queues = {}
 
@@ -72,7 +72,7 @@ class ASBMock(object):
         return self.queues[queue_name].get_sender()
 
 
-class ASBMgmtMock(object):
+class ASBMgmtMock:
     def __init__(self, queues):
         self.queues = queues
 
@@ -92,7 +92,7 @@ class ASBMgmtMock(object):
 
 
 URL_NOCREDS = 'azureservicebus://'
-URL_CREDS = 'azureservicebus://policyname:key@hostname'
+URL_CREDS = 'azureservicebus://policyname:ke/y@hostname'
 
 
 def test_queue_service_nocredentials():
@@ -107,6 +107,9 @@ def test_queue_service():
     conn = Connection(URL_CREDS, transport=azureservicebus.Transport)
     with patch('kombu.transport.azureservicebus.ServiceBusClient') as m:
         channel = conn.channel()
+
+        # Check the SAS token "ke/y" has been parsed from the url correctly
+        assert channel._sas_key == 'ke/y'
 
         m.from_connection_string.return_value = 'test'
 

@@ -4,9 +4,6 @@ Note that the Shared Access Policy used to connect to Azure Service Bus
 requires Manage, Send and Listen claims since the broker will create new
 queues and delete old queues as required.
 
-Note that if the SAS key for the Service Bus account contains a slash, it will
-have to be regenerated before it can be used in the connection URL.
-
 More information about Azure Service Bus:
 https://azure.microsoft.com/en-us/services/service-bus/
 
@@ -31,11 +28,10 @@ Connection string has the following format:
 Transport Options
 =================
 
-* ``visibility_timeout``
-* ``queue_name_prefix``
-* ``wait_time_seconds``
-* ``peek_lock``
-* ``peek_lock_seconds``
+* ``queue_name_prefix`` - String prefix to prepend to queue names in a service bus namespace
+* ``wait_time_seconds`` - Number of seconds to wait to receive messages. Default ``5``
+* ``peek_lock_seconds`` - Number of seconds the message is visible for before it is requeued
+and sent to another consumer. Default ``60``
 """
 
 import string
@@ -61,7 +57,7 @@ CHARS_REPLACE_TABLE = {
 }
 
 
-class SendReceive(object):
+class SendReceive:
     def __init__(self, receiver: Optional[ServiceBusReceiver] = None, sender: Optional[ServiceBusSender] = None):
         self.receiver = receiver  # type: ServiceBusReceiver
         self.sender = sender  # type: ServiceBusSender
@@ -89,11 +85,38 @@ class Channel(virtual.Channel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # Validate ASB connection string
-        if not all([self.conninfo.hostname, self.conninfo.userid, self.conninfo.password]):
-            raise ValueError('Need an URI like azureservicebus://{SAS policy name}:{SAS key}@{ServiceBus Namespace}')
+        self._namespace = None
+        self._policy = None
+        self._sas_key = None
+        self._connection_string = None
+
+        self._try_parse_connection_string()
 
         self.qos.restore_at_shutdown = False
+
+    def _try_parse_connection_string(self) -> None:
+        # URL like azureservicebus://{SAS policy name}:{SAS key}@{ServiceBus Namespace}
+        # urllib parse does not work as the sas key could contain a slash
+        # e.g. azureservicebus://rootpolicy:some/key@somenamespace
+        uri = self.conninfo.hostname.replace('azureservicebus://', '')  # > 'rootpolicy:some/key@somenamespace'
+        policykeypair, self._namespace = uri.rsplit('@', 1)  # > 'rootpolicy:some/key',  'somenamespace'
+        self._policy, self._sas_key = policykeypair.split(':', 1)  # > 'rootpolicy', 'some/key'
+
+        # Validate ASB connection string
+        if not all([self._namespace, self._policy, self._sas_key]):
+            raise ValueError('Need an URI like azureservicebus://{SAS policy name}:{SAS key}@{ServiceBus Namespace}')
+
+        # Convert
+        endpoint = 'sb://' + self._namespace
+        if not endpoint.endswith('.net'):
+            endpoint += '.servicebus.windows.net'
+
+        conn_dict = {
+            'Endpoint': endpoint,
+            'SharedAccessKeyName': self._policy,
+            'SharedAccessKey': self._sas_key,
+        }
+        self._connection_string = ';'.join([key + '=' + value for key, value in conn_dict.items()])
 
     def basic_consume(self, queue, no_ack, *args, **kwargs):
         if no_ack:
@@ -121,21 +144,22 @@ class Channel(virtual.Channel):
             self._queue_cache[name] = obj
         return obj
 
-    def get_connection_string(self) -> str:
-        # Generating endpoint string saves us importing internal class ServiceBusSharedKeyCredential
-        # Convert endpoint into fqdn
-        endpoint = 'sb://' + self.conninfo.hostname
-        if not endpoint.endswith('.net'):
-            endpoint += '.servicebus.windows.net'
+    def _get_asb_sender(self, queue: str) -> SendReceive:
+        queue_obj = self._queue_cache.get(queue, None)
+        if queue_obj is None or queue_obj.sender is None:
+            sender = self.queue_service.get_queue_sender(queue)
+            queue_obj = self._add_queue_to_cache(queue, sender=sender)
+        return queue_obj
 
-        conn_dict = {
-            'Endpoint': endpoint,
-            'SharedAccessKeyName': self.conninfo.userid,
-            'SharedAccessKey': self.conninfo.password,
-        }
-        conn_str = ';'.join([key + '=' + value for key, value in conn_dict.items()])
-
-        return conn_str
+    def _get_asb_receiver(self, queue: str,
+                          recv_mode: ServiceBusReceiveMode = ServiceBusReceiveMode.PEEK_LOCK,
+                          queue_cache_key: Optional[str] = None) -> SendReceive:
+        cache_key = queue_cache_key or queue
+        queue_obj = self._queue_cache.get(cache_key, None)
+        if queue_obj is None or queue_obj.receiver is None:
+            receiver = self.queue_service.get_queue_receiver(queue_name=queue, receive_mode=recv_mode)
+            queue_obj = self._add_queue_to_cache(cache_key, receiver=receiver)
+        return queue_obj
 
     def entity_name(self, name: str, table: Optional[Dict[int, int]] = None) -> str:
         """Format AMQP queue name into a valid ServiceBus queue name."""
@@ -177,11 +201,7 @@ class Channel(virtual.Channel):
         queue = self.entity_name(self.queue_name_prefix + queue)
         msg = ServiceBusMessage(dumps(message))
 
-        queue_obj = self._queue_cache.get(queue, None)
-        if queue_obj is None or queue_obj.sender is None:
-            sender = self.queue_service.get_queue_sender(queue)
-            queue_obj = self._add_queue_to_cache(queue, sender=sender)
-
+        queue_obj = self._get_asb_sender(queue)
         queue_obj.sender.send_messages(msg)
 
     def _get(self, queue: str, timeout: Optional[Union[float, int]] = None) -> Dict[str, Any]:
@@ -192,11 +212,7 @@ class Channel(virtual.Channel):
 
         queue = self.entity_name(self.queue_name_prefix + queue)
 
-        queue_obj = self._queue_cache.get(queue, None)
-        if queue_obj is None or queue_obj.receiver is None:
-            receiver = self.queue_service.get_queue_receiver(queue_name=queue, receive_mode=recv_mode)
-            queue_obj = self._add_queue_to_cache(queue, receiver=receiver)
-
+        queue_obj = self._get_asb_receiver(queue, recv_mode)
         messages = queue_obj.receiver.receive_messages(max_message_count=1,
                                                        max_wait_time=timeout or self.wait_time_seconds)
 
@@ -222,10 +238,7 @@ class Channel(virtual.Channel):
             return super().basic_ack(delivery_tag)
 
         queue = self.entity_name(self.queue_name_prefix + delivery_info['exchange'])
-        queue_obj = self._queue_cache.get(queue, None)
-        if queue_obj is None or queue_obj.receiver is None:
-            receiver = self.queue_service.get_queue_receiver(queue)
-            queue_obj = self._add_queue_to_cache(queue, receiver=receiver)
+        queue_obj = self._get_asb_receiver(queue)  # recv_mode is PEEK_LOCK when ack'ing messages
 
         try:
             queue_obj.receiver.complete_message(delivery_info['azure_message'])
@@ -253,8 +266,7 @@ class Channel(virtual.Channel):
         # By default all the receivers will be in PEEK_LOCK receive mode
         queue_obj = self._queue_cache.get(queue, None)
         if queue not in self._noack_queues or queue_obj is None or queue_obj.receiver is None:
-            receiver = self.queue_service.get_queue_receiver(queue_name=queue, receive_mode=ServiceBusReceiveMode.RECEIVE_AND_DELETE)
-            queue_obj = self._add_queue_to_cache('purge_' + queue, receiver=receiver)
+            queue_obj = self._get_asb_receiver(queue, ServiceBusReceiveMode.RECEIVE_AND_DELETE, 'purge_' + queue)
 
         while True:
             messages = queue_obj.receiver.receive_messages(max_message_count=max_purge_count,
@@ -280,13 +292,13 @@ class Channel(virtual.Channel):
     @property
     def queue_service(self) -> ServiceBusClient:
         if self._queue_service is None:
-            self._queue_service = ServiceBusClient.from_connection_string(self.get_connection_string())
+            self._queue_service = ServiceBusClient.from_connection_string(self._connection_string)
         return self._queue_service
 
     @property
     def queue_mgmt_service(self) -> ServiceBusAdministrationClient:
         if self._queue_mgmt_service is None:
-            self._queue_mgmt_service = ServiceBusAdministrationClient.from_connection_string(self.get_connection_string())
+            self._queue_mgmt_service = ServiceBusAdministrationClient.from_connection_string(self._connection_string)
         return self._queue_mgmt_service
 
     @property
@@ -320,3 +332,4 @@ class Transport(virtual.Transport):
 
     polling_interval = 1
     default_port = None
+    can_parse_url = True
