@@ -1,244 +1,277 @@
+import json
 import pytest
+import base64
+import random
 from queue import Empty
 
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
+from collections import namedtuple
 from kombu import messaging
 from kombu import Connection, Exchange, Queue
 
 from kombu.transport import azureservicebus
-
+import azure.servicebus.exceptions
+import azure.core.exceptions
 pytest.importorskip('azure.servicebus')
 
-try:
-    # azure-servicebus version >= 0.50.0
-    from azure.servicebus.control_client import Message, ServiceBusService
-except ImportError:
-    try:
-        # azure-servicebus version <= 0.21.1
-        from azure.servicebus import Message, ServiceBusService
-    except ImportError:
-        ServiceBusService = Message = None
+from azure.servicebus import ServiceBusMessage, ServiceBusReceiveMode
 
 
-class QueueMock:
-    """ Hold information about a queue. """
+class ASBQueue:
+    def __init__(self, kwargs):
+        self.options = kwargs
+        self.items = []
+        self.waiting_ack = []
+        self.send_calls = []
+        self.recv_calls = []
 
-    def __init__(self, name):
-        self.name = name
-        self.messages = []
-        self.message_count = len(self.messages)
+    def get_receiver(self, kwargs):
+        receive_mode = kwargs.get('receive_mode', ServiceBusReceiveMode.PEEK_LOCK)
 
-    def __repr__(self):
-        return 'QueueMock: {} messages'.format(len(self.messages))
+        class Receiver:
+            def close(self):
+                pass
+
+            def receive_messages(_self, **kwargs2):
+                max_message_count = kwargs2.get('max_message_count', 1)
+                result = []
+                if self.items:
+                    while self.items or len(result) > max_message_count:
+                        item = self.items.pop(0)
+                        if receive_mode is ServiceBusReceiveMode.PEEK_LOCK:
+                            self.waiting_ack.append(item)
+                        result.append(item)
+
+                self.recv_calls.append({
+                    'receiver_options': kwargs,
+                    'receive_messages_options': kwargs2,
+                    'messages': result
+                })
+                return result
+        return Receiver()
+
+    def get_sender(self):
+        class Sender:
+            def close(self):
+                pass
+
+            def send_messages(_self, msg):
+                self.send_calls.append(msg)
+                self.items.append(msg)
+        return Sender()
 
 
-def _create_mock_connection(url='', **kwargs):
-
-    class _Channel(azureservicebus.Channel):
-        # reset _fanout_queues for each instance
-        queues = []
-        _queue_service = None
-
-        def list_queues(self):
-            return self.queues
-
-        @property
-        def queue_service(self):
-            if self._queue_service is None:
-                self._queue_service = AzureServiceBusClientMock()
-            return self._queue_service
-
-    class Transport(azureservicebus.Transport):
-        Channel = _Channel
-
-    return Connection(url, transport=Transport, **kwargs)
-
-
-class AzureServiceBusClientMock:
-
+class ASBMock:
     def __init__(self):
-        """
-        Imitate the ServiceBus Client.
-        """
-        # queues doesn't exist on the real client, here for testing.
-        self.queues = []
-        self._queue_cache = {}
-        self.queues.append(self.create_queue(queue_name='unittest_queue'))
+        self.queues = {}
 
-    def create_queue(self, queue_name, queue=None, fail_on_exist=False):
-        queue = QueueMock(name=queue_name)
-        self.queues.append(queue)
-        self._queue_cache[queue_name] = queue
-        return queue
+    def get_queue_receiver(self, queue_name, **kwargs):
+        return self.queues[queue_name].get_receiver(kwargs)
 
-    def get_queue(self, queue_name=None):
-        for queue in self.queues:
-            if queue.name == queue_name:
-                return queue
-
-    def list_queues(self):
-        return self.queues
-
-    def send_queue_message(self, queue_name=None, message=None):
-        queue = self.get_queue(queue_name)
-        queue.messages.append(message)
-
-    def receive_queue_message(self, queue_name, peek_lock=True, timeout=60):
-        queue = self.get_queue(queue_name)
-        if queue and len(queue.messages):
-            return queue.messages.pop(0)
-        return Message()
-
-    def read_delete_queue_message(self, queue_name, timeout='60'):
-        return self.receive_queue_message(queue_name, timeout=timeout)
-
-    def delete_queue(self, queue_name=None):
-        queue = self.get_queue(queue_name)
-        if queue:
-            del queue
+    def get_queue_sender(self, queue_name):
+        return self.queues[queue_name].get_sender()
 
 
-class test_Channel:
+class ASBMgmtMock:
+    def __init__(self, queues):
+        self.queues = queues
 
-    def handleMessageCallback(self, message):
-        self.callback_message = message
+    def create_queue(self, queue_name, **kwargs):
+        if queue_name in self.queues:
+            raise azure.core.exceptions.ResourceExistsError()
+        self.queues[queue_name] = ASBQueue(kwargs)
 
-    def setup(self):
-        self.url = 'azureservicebus://'
-        self.queue_name = 'unittest_queue'
+    def delete_queue(self, queue_name):
+        self.queues.pop(queue_name, None)
 
-        self.exchange = Exchange('test_servicebus', type='direct')
-        self.queue = Queue(self.queue_name, self.exchange, self.queue_name)
-        self.connection = _create_mock_connection(self.url)
-        self.channel = self.connection.default_channel
-        self.queue(self.channel).declare()
+    def get_queue_runtime_properties(self, queue_name):
+        count = len(self.queues[queue_name].items)
+        mock = MagicMock()
+        mock.total_message_count = count
+        return mock
 
-        self.producer = messaging.Producer(self.channel,
-                                           self.exchange,
-                                           routing_key=self.queue_name)
 
-        self.channel.basic_consume(self.queue_name,
-                                   no_ack=False,
-                                   callback=self.handleMessageCallback,
-                                   consumer_tag='unittest')
+URL_NOCREDS = 'azureservicebus://'
+URL_CREDS = 'azureservicebus://policyname:ke/y@hostname'
 
-    def teardown(self):
-        # Removes QoS reserved messages so we don't restore msgs on shutdown.
-        try:
-            qos = self.channel._qos
-        except AttributeError:
-            pass
-        else:
-            if qos:
-                qos._dirty.clear()
-                qos._delivered.clear()
 
-    def test_queue_service(self):
-        # Test gettings queue service without credentials
-        conn = Connection(self.url, transport=azureservicebus.Transport)
-        with pytest.raises(ValueError) as exc:
-            conn.channel()
-            assert exc == 'You need to provide servicebus namespace'
+def test_queue_service_nocredentials():
+    conn = Connection(URL_NOCREDS, transport=azureservicebus.Transport)
+    with pytest.raises(ValueError) as exc:
+        conn.channel()
+        assert exc == 'Need an URI like azureservicebus://{SAS policy name}:{SAS key}@{ServiceBus Namespace}'
 
-        # Test getting queue service when queue_service is not setted
-        with patch('kombu.transport.azureservicebus.ServiceBusService') as m:
-            channel = conn.channel()
 
-            # Remove queue service to get from service bus again
-            channel._queue_service = None
-            channel.queue_service
+def test_queue_service():
+    # Test gettings queue service without credentials
+    conn = Connection(URL_CREDS, transport=azureservicebus.Transport)
+    with patch('kombu.transport.azureservicebus.ServiceBusClient') as m:
+        channel = conn.channel()
 
-            assert m.call_count == 2
+        # Check the SAS token "ke/y" has been parsed from the url correctly
+        assert channel._sas_key == 'ke/y'
 
-            # Calling queue_service again needs to reuse ServiceBus instance
-            channel.queue_service
-            assert m.call_count == 2
+        m.from_connection_string.return_value = 'test'
 
-    def test_conninfo(self):
-        conninfo = self.channel.conninfo
-        assert conninfo is self.connection
+        # Remove queue service to get from service bus again
+        channel._queue_service = None
+        assert channel.queue_service == 'test'
+        assert m.from_connection_string.call_count == 1
 
-    def test_transport_type(self):
-        transport_options = self.channel.transport_options
-        assert transport_options == {}
+        # Ensure that queue_service is cached
+        assert channel.queue_service == 'test'
+        assert m.from_connection_string.call_count == 1
 
-    def test_visibility_timeout(self):
-        # Test getting default visibility timeout
-        assert (
-            self.channel.visibility_timeout ==
-            azureservicebus.Channel.default_visibility_timeout
-        )
 
-        # Test getting value setted in transport options
-        del self.channel.visibility_timeout
-        self.channel.transport_options['visibility_timeout'] = 10
-        assert self.channel.visibility_timeout == 10
+def test_conninfo():
+    conn = Connection(URL_CREDS, transport=azureservicebus.Transport)
+    channel = conn.channel()
+    assert channel.conninfo is conn
 
-    def test_wait_timeout_seconds(self):
-        # Test getting default wait timeout seconds
-        assert (
-            self.channel.wait_time_seconds ==
-            azureservicebus.Channel.default_wait_time_seconds
-        )
 
-        # Test getting value setted in transport options
-        del self.channel.wait_time_seconds
-        self.channel.transport_options['wait_time_seconds'] = 10
-        assert self.channel.wait_time_seconds == 10
+def test_transport_type():
+    conn = Connection(URL_CREDS, transport=azureservicebus.Transport)
+    channel = conn.channel()
+    assert not channel.transport_options
 
-    def test_peek_lock(self):
-        # Test getting default peek lock
-        assert (
-            self.channel.peek_lock ==
-            azureservicebus.Channel.default_peek_lock
-        )
 
-        # Test getting value setted in transport options
-        del self.channel.peek_lock
-        self.channel.transport_options['peek_lock'] = True
-        assert self.channel.peek_lock is True
+def test_default_wait_timeout_seconds():
+    conn = Connection(URL_CREDS, transport=azureservicebus.Transport)
+    channel = conn.channel()
 
-    def test_get_from_azure(self):
-        # Test getting a single message
-        message = 'my test message'
-        self.producer.publish(message)
-        result = self.channel._get(self.queue_name)
-        assert 'body' in result.keys()
+    assert channel.wait_time_seconds == azureservicebus.Channel.default_wait_time_seconds
 
-        # Test getting multiple messages
-        for i in range(3):
-            message = f'message: {i}'
-            self.producer.publish(message)
 
-        queue_service = self.channel.queue_service
-        assert len(queue_service.get_queue(self.queue_name).messages) == 3
+def test_custom_wait_timeout_seconds():
+    conn = Connection(URL_CREDS, transport=azureservicebus.Transport, transport_options={'wait_time_seconds': 10})
+    channel = conn.channel()
 
-        for i in range(3):
-            result = self.channel._get(self.queue_name)
+    assert channel.wait_time_seconds == 10
 
-        assert len(queue_service.get_queue(self.queue_name).messages) == 0
 
-    def test_get_with_empty_list(self):
-        with pytest.raises(Empty):
-            self.channel._get(self.queue_name)
+def test_default_peek_lock_seconds():
+    conn = Connection(URL_CREDS, transport=azureservicebus.Transport)
+    channel = conn.channel()
 
-    def test_put_and_get(self):
-        message = 'my test message'
-        self.producer.publish(message)
-        results = self.queue(self.channel).get().payload
-        assert message == results
+    assert channel.peek_lock_seconds == azureservicebus.Channel.default_peek_lock_seconds
 
-    def test_delete_queue(self):
-        # Test deleting queue without message
-        queue_name = 'new_unittest_queue'
-        self.channel._new_queue(queue_name)
 
-        assert queue_name in self.channel._queue_cache
-        self.channel._delete(queue_name)
-        assert queue_name not in self.channel._queue_cache
+def test_custom_peek_lock_seconds():
+    conn = Connection(URL_CREDS, transport=azureservicebus.Transport,
+                      transport_options={'peek_lock_seconds': 65})
+    channel = conn.channel()
 
-        # Test deleting queue with message
-        message = 'my test message'
-        self.producer.publish(message)
-        self.channel._delete(self.queue_name)
-        assert queue_name not in self.channel._queue_cache
+    assert channel.peek_lock_seconds == 65
+
+
+def test_invalid_peek_lock_seconds():
+    # Max is 300
+    conn = Connection(URL_CREDS, transport=azureservicebus.Transport,
+                      transport_options={'peek_lock_seconds': 900})
+    channel = conn.channel()
+
+    assert channel.peek_lock_seconds == 300
+
+
+@pytest.fixture
+def random_queue():
+    return 'azureservicebus_queue_{0}'.format(random.randint(1000,9999))
+
+
+@pytest.fixture
+def mock_asb():
+    return ASBMock()
+
+
+@pytest.fixture
+def mock_asb_management(mock_asb):
+    return ASBMgmtMock(queues=mock_asb.queues)
+
+
+MockQueue = namedtuple('MockQueue', ['queue_name', 'asb', 'asb_mgmt', 'conn', 'channel', 'producer', 'queue'])
+
+
+@pytest.fixture
+def mock_queue(mock_asb, mock_asb_management, random_queue) -> MockQueue:
+    exchange = Exchange('test_servicebus', type='direct')
+    queue = Queue(random_queue, exchange, random_queue)
+    conn = Connection(URL_CREDS, transport=azureservicebus.Transport)
+    channel = conn.channel()
+    channel._queue_service = mock_asb
+    channel._queue_mgmt_service = mock_asb_management
+
+    queue(channel).declare()
+    producer = messaging.Producer(channel, exchange, routing_key=random_queue)
+
+    return MockQueue(
+        random_queue,
+        mock_asb,
+        mock_asb_management,
+        conn,
+        channel,
+        producer,
+        queue
+    )
+
+
+def test_basic_put_get(mock_queue: MockQueue):
+    text_message = "test message"
+
+    # This ends up hitting channel._put
+    mock_queue.producer.publish(text_message)
+
+    assert len(mock_queue.asb.queues[mock_queue.queue_name].items) == 1
+    azure_msg = mock_queue.asb.queues[mock_queue.queue_name].items[0]
+    assert isinstance(azure_msg, ServiceBusMessage)
+
+    message = mock_queue.channel._get(mock_queue.queue_name)
+    azure_msg_decoded = json.loads(str(azure_msg))
+
+    assert message['body'] == azure_msg_decoded['body']
+
+    # Check the message has been annotated with the azure message object
+    # which is used to ack later
+    assert message['properties']['delivery_info']['azure_message'] is azure_msg
+
+    assert base64.b64decode(message['body']).decode() == text_message
+
+    # Ack is on by default, check an ack is waiting
+    assert len(mock_queue.asb.queues[mock_queue.queue_name].waiting_ack) == 1
+
+
+def test_empty_queue_get(mock_queue: MockQueue):
+    with pytest.raises(Empty):
+        mock_queue.channel._get(mock_queue.queue_name)
+
+
+def test_delete_empty_queue(mock_queue: MockQueue):
+    chan = mock_queue.channel
+    queue_name = 'random_queue_{0}'.format(random.randint(1000, 9999))
+
+    chan._new_queue(queue_name)
+    assert queue_name in chan._queue_cache
+    chan._delete(queue_name)
+    assert queue_name not in chan._queue_cache
+
+
+def test_delete_populated_queue(mock_queue: MockQueue):
+    mock_queue.producer.publish('test1234')
+
+    mock_queue.channel._delete(mock_queue.queue_name)
+    assert mock_queue.queue_name not in mock_queue.channel._queue_cache
+
+
+def test_purge(mock_queue: MockQueue):
+    mock_queue.producer.publish('test1234')
+    mock_queue.producer.publish('test1234')
+    mock_queue.producer.publish('test1234')
+    mock_queue.producer.publish('test1234')
+
+    size = mock_queue.channel._size(mock_queue.queue_name)
+    assert size == 4
+
+    assert mock_queue.channel._purge(mock_queue.queue_name) == 4
+
+    size = mock_queue.channel._size(mock_queue.queue_name)
+    assert size == 0
+    assert len(mock_queue.asb.queues[mock_queue.queue_name].waiting_ack) == 0
