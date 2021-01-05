@@ -661,11 +661,16 @@ class Connection:
 
     def as_uri(self, include_password=False, mask='**',
                getfields=itemgetter('port', 'userid', 'password',
-                                    'virtual_host', 'transport')):
+                                    'virtual_host', 'transport')) -> str:
         """Convert connection parameters to URL form."""
         hostname = self.hostname or 'localhost'
         if self.transport.can_parse_url:
             connection_as_uri = self.hostname
+            try:
+                return self.transport.as_uri(connection_as_uri, include_password, mask)
+            except NotImplementedError:
+                pass
+
             if self.uri_prefix:
                 connection_as_uri = f'{self.uri_prefix}+{hostname}'
             if not include_password:
