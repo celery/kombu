@@ -577,6 +577,7 @@ class Channel(virtual.Channel):
                 region=q.get('region', self.region),
                 access_key_id=q.get('access_key_id', self.conninfo.userid),
                 secret_access_key=q.get('secret_access_key', self.conninfo.password),  # noqa: E501
+                # With session_token, this client’s access will expire, but it’s useful for testing
                 session_token=q.get('session_token', None),
             )
             return c
