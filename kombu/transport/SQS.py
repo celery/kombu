@@ -42,8 +42,8 @@ The default behavior of this transport is to use a single AWS credential
 pair in order to manage all SQS queues (e.g. listing queues, creating
 queues, polling queues, deleting messages).
 
-If it is preferable for your environment to use a single AWS credential, you
-can use the 'predefined_queues' setting inside the  'transport_options' map.
+If it is preferable for your environment to use multiple AWS credentials, you
+can use the 'predefined_queues' setting inside the 'transport_options' map.
 This setting allows you to specify the SQS queue URL and AWS credentials for
 each of your queues. For example, if you have two queues which both already
 exist in AWS) you can tell this transport about them as follows:
@@ -64,6 +64,14 @@ exist in AWS) you can tell this transport about them as follows:
         },
       }
     }
+
+If you authenticate using Okta_ (e.g. calling |gac|_), you can also specify
+a 'session_token' to connect to a queue. Note that those tokens have a
+limited lifetime and are therefore only suited for short-lived tests.
+
+.. _Okta: https://www.okta.com/
+.. _gac: https://github.com/Nike-Inc/gimme-aws-creds#readme
+.. |gac| replace:: ``gimme-aws-creds``
 
 
 Client config
@@ -538,11 +546,12 @@ class Channel(virtual.Channel):
         #         if "can't set attribute" not in str(exc):
         #             raise
 
-    def new_sqs_client(self, region, access_key_id, secret_access_key):
+    def new_sqs_client(self, region, access_key_id, secret_access_key, session_token=None):
         session = boto3.session.Session(
             region_name=region,
             aws_access_key_id=access_key_id,
             aws_secret_access_key=secret_access_key,
+            aws_session_token=session_token,
         )
         is_secure = self.is_secure if self.is_secure is not None else True
         client_kwargs = {
@@ -568,6 +577,8 @@ class Channel(virtual.Channel):
                 region=q.get('region', self.region),
                 access_key_id=q.get('access_key_id', self.conninfo.userid),
                 secret_access_key=q.get('secret_access_key', self.conninfo.password),  # noqa: E501
+                # With session_token, this client’s access will expire, but it’s useful for testing
+                session_token=q.get('session_token', None),
             )
             return c
 
