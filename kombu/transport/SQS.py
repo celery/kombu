@@ -42,8 +42,8 @@ The default behavior of this transport is to use a single AWS credential
 pair in order to manage all SQS queues (e.g. listing queues, creating
 queues, polling queues, deleting messages).
 
-If it is preferable for your environment to use a single AWS credential, you
-can use the 'predefined_queues' setting inside the  'transport_options' map.
+If it is preferable for your environment to use multiple AWS credentials, you
+can use the 'predefined_queues' setting inside the 'transport_options' map.
 This setting allows you to specify the SQS queue URL and AWS credentials for
 each of your queues. For example, if you have two queues which both already
 exist in AWS) you can tell this transport about them as follows:
@@ -64,6 +64,14 @@ exist in AWS) you can tell this transport about them as follows:
         },
       }
     }
+
+If you authenticate using Okta_ (e.g. calling |gac|_), you can also specify
+a 'session_token' to connect to a queue. Note that those tokens have a
+limited lifetime and are therefore only suited for short-lived tests.
+
+.. _Okta: https://www.okta.com/
+.. _gac: https://github.com/Nike-Inc/gimme-aws-creds#readme
+.. |gac| replace:: ``gimme-aws-creds``
 
 
 Client config
