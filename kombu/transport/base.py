@@ -234,6 +234,12 @@ class Transport:
             reader = self.__reader = self._make_reader(connection)
         reader(loop)
 
+    def as_uri(self, uri: str, include_password=False, mask='**') -> str:
+        """
+        Customise the display format of the URI
+        """
+        raise NotImplementedError()
+
     @property
     def default_connection_params(self):
         return {}

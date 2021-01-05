@@ -68,7 +68,7 @@ class ASBMock:
     def get_queue_receiver(self, queue_name, **kwargs):
         return self.queues[queue_name].get_receiver(kwargs)
 
-    def get_queue_sender(self, queue_name):
+    def get_queue_sender(self, queue_name, **kwargs):
         return self.queues[queue_name].get_sender()
 
 
