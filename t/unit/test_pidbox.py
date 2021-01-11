@@ -1,6 +1,7 @@
 from __future__ import absolute_import, unicode_literals
 
 import pytest
+import mock
 import socket
 import warnings
 
@@ -8,8 +9,9 @@ from case import Mock, patch
 
 from kombu import Connection
 from kombu import pidbox
-from kombu.exceptions import ContentDisallowed, InconsistencyError
+from kombu.exceptions import ContentDisallowed, InconsistencyError, OperationalError
 from kombu.utils.uuid import uuid
+from kombu.transport.redis import NO_ROUTE_ERROR
 
 
 def is_cast(message):
@@ -221,6 +223,34 @@ class test_Mailbox:
         assert exchange == 'exchange'
         assert routing_key == 'rkey'
         assert ticket == 'TICKET'
+
+    @mock.patch('kombu.transport.memory.Channel._lookup',)
+    def test_reply__inconsistency_error(self, _lookup):
+        mailbox = self.mailbox(self.connection)
+        node = mailbox.Node('test_reply')
+
+        @node.handler
+        def my_handler_name(state):
+            return 42
+
+        _lookup.side_effect = InconsistencyError(
+            NO_ROUTE_ERROR.format("reply.celery.pidbox",
+                                  "_kombu.binding.reply.celery.pidbox")
+        )
+        node.dispatch('my_handler_name',
+                      reply_to={'exchange': 'exchange',
+                                'routing_key': 'rkey'},
+                      ticket='TICKET')
+
+        _lookup.side_effect = InconsistencyError(
+            NO_ROUTE_ERROR.format("other",
+                                  "_kombu.binding.reply.other.pidbox")
+        )
+        with pytest.raises(OperationalError) as cm:
+            node.dispatch('my_handler_name',
+                          reply_to={'exchange': 'exchange',
+                                    'routing_key': 'rkey'},
+                          ticket='TICKET')
 
     def test_handle_message(self):
         node = self.bound.Node('test_dispatch_from_message')
