@@ -132,7 +132,7 @@ Quick overview
     video_queue = Queue('video', exchange=media_exchange, routing_key='video')
 
     def process_media(body, message):
-        print body
+        print(body)
         message.ack()
 
     # connections
