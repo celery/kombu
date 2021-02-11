@@ -95,8 +95,10 @@ class test_CurlClient:
             x._handle_socket(0xff3f, fd, x._multi, None, _pycurl)
 
     def test_set_timeout(self):
-        x = self.Client()
+        hub = Mock(name='hub')
+        x = self.Client(hub)
         x._set_timeout(100)
+        hub.call_later.assert_called_with(100, x._timeout_check)
 
     def test_timeout_check(self):
         with patch('kombu.asynchronous.http.curl.pycurl') as _pycurl:
