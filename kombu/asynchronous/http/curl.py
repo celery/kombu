@@ -100,7 +100,7 @@ class CurlClient(BaseClient):
                 self._fds[fd] = READ | WRITE
 
     def _set_timeout(self, msecs):
-        pass  # TODO
+        self.hub.call_later(msecs, self._timeout_check)
 
     def _timeout_check(self, _pycurl=pycurl):
         self._pop_from_hub()
