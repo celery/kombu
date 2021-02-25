@@ -19,11 +19,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-20.04]
+        os: [ubuntu-20.04, macos-latest]
         python-version: ['3.6', '3.7', '3.8', '3.9', 'pypy3']
         exclude:
-          #- os: macos-latest
-          #  python-version: 3.6, 3.7
+          - os: macos-latest
+            python-version: 3.6, 3.7
           #- os: windows-latest
           #  python-version: 3.6, 3.7
      # additional service containers to run
