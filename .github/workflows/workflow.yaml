@@ -19,13 +19,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-20.04, macos-latest, windows-latest]
+        os: [ubuntu-20.04]
         python-version: ['3.6', '3.7', '3.8', '3.9', 'pypy3']
         exclude:
-          - os: macos-latest
-            python-version: 3.6, 3.7
-          - os: windows-latest
-            python-version: 3.6, 3.7
+          #- os: macos-latest
+          #  python-version: 3.6, 3.7
+          #- os: windows-latest
+          #  python-version: 3.6, 3.7
      # additional service containers to run
     services:
       # postgres service
@@ -40,11 +40,11 @@ jobs:
           - 5432:5432
         # set health checks to wait until service has started
         options: >-
-          --healthcheck_cmd = /bin/bash -c 'rabbitmq-diagnostics ping -q'
-          --healthcheck_interval = 10
-          --healthcheck_timeout = 10
-          --healthcheck_retries = 30
-          --healthcheck_start_period = 5
+          --health_cmd = /bin/bash -c 'rabbitmq-diagnostics ping -q'
+          --health_interval = 10
+          --health_timeout = 10
+          --health_retries = 30
+          --health_start_period = 5
 
     steps:
     - uses: actions/checkout@v2
