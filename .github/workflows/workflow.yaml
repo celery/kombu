@@ -40,7 +40,7 @@ jobs:
           - 5432:5432
         # set health checks to wait until service has started
         options: >-
-          --health_cmd = /bin/bash -c 'rabbitmq-diagnostics ping -q'
+          --health_cmd = "rabbitmq-diagnostics ping -q"
           --health_interval = 10
           --health_timeout = 10
           --health_retries = 30
