@@ -734,3 +734,36 @@ class Transport(virtual.Transport):
     @property
     def default_connection_params(self):
         return {'port': self.default_port}
+
+
+class QoS(virtual.QoS):
+    # TODO - this need to be changed celery variables, need to see how we can do so since its only for SQS
+    retry_policy = {1: 10, 2: 20, 3: 40, 4: 80, 5: 320, 6: 640}
+    exponential_retry_tasks = ['svc.tasks.tasks.task1']
+    queue_name = 'sqs-us-east-1-amazonaws-com_...'
+
+    def reject(self, delivery_tag, requeue=False):
+        super().reject(delivery_tag, requeue=requeue)
+        if self.queue_name and self.exponential_retry_tasks:
+            self.apply_exponential_backoff_policy(delivery_tag)
+
+    def apply_exponential_backoff_policy(self, delivery_tag):
+        queue_url = self.channel._queue_cache[self.queue_name]
+        task_name, number_of_retries = self.extract_task_name_and_number_of_retries(delivery_tag)
+        if task_name in self.exponential_retry_tasks:
+            c = self.channel.sqs(self.queue_name)
+            c.change_message_visibility(
+                QueueUrl=queue_url,
+                ReceiptHandle=delivery_tag,
+                VisibilityTimeout=self.retry_policy.get(number_of_retries)
+            )
+
+    def extract_task_name_and_number_of_retries(self, delivery_tag):
+        message = self._delivered.get(delivery_tag)
+        message_headers = message.headers
+        task_name = message_headers['task']
+        number_of_retries = int(message.properties['delivery_info']['sqs_message']['Attributes']['ApproximateReceiveCount'])
+        return task_name, number_of_retries
+
+
+Channel.QoS = QoS
