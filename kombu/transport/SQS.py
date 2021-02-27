@@ -749,7 +749,9 @@ class QoS(virtual.QoS):
 
     def extract_backoff_policy_configuration(self,  delivery_tag):
         queue_name = self._delivered.get(delivery_tag).delivery_info.get('routing_key')
-        queue_config = self.channel.predefined_queues[queue_name]
+        if not queue_name:
+            return None, None, None
+        queue_config = self.channel.predefined_queues.get(queue_name, {})
         exponential_retry_tasks = queue_config.get('exponential_retry_tasks')
         retry_policy = queue_config.get('retry_policy')
         return queue_name, exponential_retry_tasks, retry_policy
