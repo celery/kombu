@@ -651,16 +651,16 @@ class test_Channel:
 
         assert len(channel.sqs(queue_name)._queues[queue_name].messages) == 0
 
-    def test_predefined_queues_extract_retry_policy(self):
+    def test_predefined_queues_backoff_policy(self):
         connection = Connection(transport=SQS.Transport, transport_options={
             'predefined_queues': example_predefined_queues,
         })
         channel = connection.channel()
 
-        def apply_exponential_backoff_policy(queue_name, delivery_tag, retry_policy, exponential_retry_tasks):
+        def apply_backoff_policy(queue_name, delivery_tag, retry_policy, backoff_tasks):
             return None
 
-        mock_apply_policy = Mock(side_effect=apply_exponential_backoff_policy)
+        mock_apply_policy = Mock(side_effect=apply_backoff_policy)
         channel.qos.apply_exponential_backoff_policy = mock_apply_policy
 
         queue_name = "queue-1"
