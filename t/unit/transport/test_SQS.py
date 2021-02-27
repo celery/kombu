@@ -657,7 +657,7 @@ class test_Channel:
         })
         channel = connection.channel()
 
-        def apply_exponential_backoff_policy(delivery_tag):
+        def apply_exponential_backoff_policy(queue_name, delivery_tag, retry_policy, exponential_retry_tasks):
             return None
 
         mock_apply_policy = Mock(side_effect=apply_exponential_backoff_policy)
