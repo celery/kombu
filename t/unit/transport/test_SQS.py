@@ -30,6 +30,8 @@ example_predefined_queues = {
         'url': 'https://sqs.us-east-1.amazonaws.com/xxx/queue-1',
         'access_key_id': 'a',
         'secret_access_key': 'b',
+        'exponential_retry_tasks': ['svc.tasks.tasks.task1'],
+        'retry_policy':  {1: 10, 2: 20, 3: 40, 4: 80, 5: 320, 6: 640}
     },
     'queue-2': {
         'url': 'https://sqs.us-east-1.amazonaws.com/xxx/queue-2',
@@ -648,3 +650,32 @@ class test_Channel:
         channel.connection._deliver.assert_called()
 
         assert len(channel.sqs(queue_name)._queues[queue_name].messages) == 0
+
+    def test_predefined_queues_extract_retry_policy(self):
+        connection = Connection(transport=SQS.Transport, transport_options={
+            'predefined_queues': example_predefined_queues,
+        })
+        channel = connection.channel()
+
+        def apply_exponential_backoff_policy(delivery_tag):
+            return None
+
+        mock_apply_policy = Mock(side_effect=apply_exponential_backoff_policy)
+        channel.qos.apply_exponential_backoff_policy = mock_apply_policy
+
+        queue_name = "queue-1"
+
+        exchange = Exchange('test_SQS', type='direct')
+        p = messaging.Producer(channel, exchange, routing_key=queue_name)
+        queue = Queue(queue_name, exchange, queue_name)
+        queue(channel).declare()
+
+        # Getting a single message
+        message = {
+            'redelivered': True,
+            'properties': {'delivery_tag': 'test_message_id'}
+        }
+        p.publish(message)
+        queue.reject('test_message_id')
+        mock_apply_policy.assert_called_once_with('queue-1', 'test_message_id',
+                                                  {1: 10, 2: 20, 3: 40, 4: 80, 5: 320, 6: 640}, ['svc.tasks.tasks.task1'])
