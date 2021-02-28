@@ -39,12 +39,12 @@ jobs:
         ports:
           - 5432:5432
         # set health checks to wait until service has started
-        options: >-
-          --health_cmd = "rabbitmq-diagnostics ping -q"
-          --health_interval = 10
-          --health_timeout = 10
-          --health_retries = 30
-          --health_start_period = 5
+        #options: >-
+         # --health_cmd = "rabbitmq-diagnostics ping -q"
+         # --health_interval = 10
+         # --health_timeout = 10
+         # --health_retries = 30
+         # --health_start_period = 5
 
     steps:
     - uses: actions/checkout@v2
