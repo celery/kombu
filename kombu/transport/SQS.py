@@ -68,6 +68,10 @@ exist in AWS) you can tell this transport about them as follows:
         },
       }
     }
+    
+backoff_policy & backoff_tasks are optional arguments, letting change message 
+visibility timeout, in order to have different time between specific tasks
+retries. This would apply after task failure.
 
 If you authenticate using Okta_ (e.g. calling |gac|_), you can also specify
 a 'session_token' to connect to a queue. Note that those tokens have a

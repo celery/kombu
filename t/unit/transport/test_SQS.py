@@ -679,3 +679,41 @@ class test_Channel:
         queue.reject('test_message_id')
         mock_apply_policy.assert_called_once_with('queue-1', 'test_message_id',
                                                   {1: 10, 2: 20, 3: 40, 4: 80, 5: 320, 6: 640}, ['svc.tasks.tasks.task1'])
+
+    def test_predefined_queues_change_visibility_timeout(self):
+        connection = Connection(transport=SQS.Transport, transport_options={
+            'predefined_queues': example_predefined_queues,
+        })
+        channel = connection.channel()
+
+        boto_mock = Mock()
+
+        def extract_task_name_and_number_of_retries(queue_name, delivery_tag, retry_policy, backoff_tasks):
+            return 'svc.tasks.tasks.task1', 2
+
+        def sqs(queue_name):
+            return boto_mock
+
+        mock_extract_task_name_and_number_of_retries = Mock(side_effect=extract_task_name_and_number_of_retries)
+        channel.qos.apply_exponential_backoff_policy = mock_extract_task_name_and_number_of_retries
+
+        channel.qos.sqs = Mock(side_effect=sqs)
+
+        queue_name = "queue-1"
+
+        exchange = Exchange('test_SQS', type='direct')
+        p = messaging.Producer(channel, exchange, routing_key=queue_name)
+        queue = Queue(queue_name, exchange, queue_name)
+        queue(channel).declare()
+
+        # Getting a single message
+        message = {
+            'redelivered': True,
+            'properties': {'delivery_tag': 'test_message_id'}
+        }
+        p.publish(message)
+        queue.reject('test_message_id')
+
+        boto_mock.assert_called_once_with(QueueUrl='https://sqs.us-east-1.amazonaws.com/xxx/queue-1',
+                                          ReceiptHandle='test_message_id',
+                                          VisibilityTimeout=20)
