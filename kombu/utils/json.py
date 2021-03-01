@@ -14,7 +14,10 @@ except ImportError:  # pragma: no cover
 try:
     import simplejson as json
     from simplejson.decoder import JSONDecodeError as _DecodeError
-    _json_extra_kwargs = {'use_decimal': False}
+    _json_extra_kwargs = {
+        'use_decimal': False,
+        'namedtuple_as_object': False,
+    }
 except ImportError:                 # pragma: no cover
     import json                     # noqa
     _json_extra_kwargs = {}           # noqa
