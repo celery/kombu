@@ -676,7 +676,7 @@ class test_Channel:
             'properties': {'delivery_tag': 'test_message_id'}
         }
         p.publish(message)
-        queue.reject('test_message_id')
+        channel.qos.reject('test_message_id')
         mock_apply_policy.assert_called_once_with('queue-1', 'test_message_id',
                                                   {1: 10, 2: 20, 3: 40, 4: 80, 5: 320, 6: 640}, ['svc.tasks.tasks.task1'])
 
@@ -712,7 +712,7 @@ class test_Channel:
             'properties': {'delivery_tag': 'test_message_id'}
         }
         p.publish(message)
-        queue.reject('test_message_id')
+        channel.qos.reject('test_message_id')
 
         boto_mock.assert_called_once_with(QueueUrl='https://sqs.us-east-1.amazonaws.com/xxx/queue-1',
                                           ReceiptHandle='test_message_id',
