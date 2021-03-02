@@ -69,8 +69,7 @@ exist in AWS) you can tell this transport about them as follows:
       }
     }
     
-backoff_policy & backoff_tasks are optional arguments, letting change message 
-visibility timeout, in order to have different time between specific tasks
+backoff_policy & backoff_tasks are optional arguments. These arguments automatically change the message visibility timeout, in order to have different times between specific task
 retries. This would apply after task failure.
 
 If you authenticate using Okta_ (e.g. calling |gac|_), you can also specify
