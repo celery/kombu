@@ -56,14 +56,21 @@ exist in AWS) you can tell this transport about them as follows:
           'url': 'https://sqs.us-east-1.amazonaws.com/xxx/aaa',
           'access_key_id': 'a',
           'secret_access_key': 'b',
+          'backoff_policy': {1: 10, 2: 20, 3: 40, 4: 80, 5: 320, 6: 640}, # optional
+          'backoff_tasks': ['svc.tasks.tasks.task1'] # optional
         },
         'queue-2': {
           'url': 'https://sqs.us-east-1.amazonaws.com/xxx/bbb',
           'access_key_id': 'c',
           'secret_access_key': 'd',
+          'backoff_policy': {1: 10, 2: 20, 3: 40, 4: 80, 5: 320, 6: 640}, # optional
+          'backoff_tasks': ['svc.tasks.tasks.task2'] # optional
         },
       }
     }
+    
+backoff_policy & backoff_tasks are optional arguments. These arguments automatically change the message visibility timeout, in order to have different times between specific task
+retries. This would apply after task failure.
 
 If you authenticate using Okta_ (e.g. calling |gac|_), you can also specify
 a 'session_token' to connect to a queue. Note that those tokens have a
@@ -148,6 +155,48 @@ class UndefinedQueueException(Exception):
     """Predefined queues are being used and an undefined queue was used."""
 
 
+class QoS(virtual.QoS):
+    def reject(self, delivery_tag, requeue=False):
+        super().reject(delivery_tag, requeue=requeue)
+        routing_key, message, backoff_tasks, backoff_policy = self._extract_backoff_policy_configuration_and_message(delivery_tag)
+        if routing_key and message and backoff_tasks and backoff_policy:
+            self.apply_backoff_policy(routing_key, delivery_tag, backoff_policy, backoff_tasks)
+
+    def _extract_backoff_policy_configuration_and_message(self, delivery_tag):
+        try:
+            message = self._delivered[delivery_tag]
+            routing_key = message.delivery_info['routing_key']
+        except KeyError:
+            return None, None, None, None
+        if not routing_key or not message:
+            return None, None, None, None
+        queue_config = self.channel.predefined_queues.get(routing_key, {})
+        backoff_tasks = queue_config.get('backoff_tasks')
+        backoff_policy = queue_config.get('backoff_policy')
+        return routing_key, message, backoff_tasks, backoff_policy
+
+    def apply_backoff_policy(self, routing_key, delivery_tag, backoff_policy, backoff_tasks):
+        queue_url = self.channel._queue_cache[routing_key]
+        task_name, number_of_retries = self.extract_task_name_and_number_of_retries(delivery_tag)
+        if not task_name or not number_of_retries:
+            return None
+        policy_value = backoff_policy.get(number_of_retries)
+        if task_name in backoff_tasks and policy_value is not None:
+            c = self.channel.sqs(routing_key)
+            c.change_message_visibility(
+                QueueUrl=queue_url,
+                ReceiptHandle=delivery_tag,
+                VisibilityTimeout=policy_value
+            )
+
+    @staticmethod
+    def extract_task_name_and_number_of_retries(message):
+        message_headers = message.headers
+        task_name = message_headers['task']
+        number_of_retries = int(message.properties['delivery_info']['sqs_message']['Attributes']['ApproximateReceiveCount'])
+        return task_name, number_of_retries
+
+
 class Channel(virtual.Channel):
     """SQS Channel."""
 
@@ -161,6 +210,7 @@ class Channel(virtual.Channel):
     _predefined_queue_clients = {}  # A client for each predefined queue
     _queue_cache = {}
     _noack_queues = set()
+    QoS = QoS
 
     def __init__(self, *args, **kwargs):
         if boto3 is None:

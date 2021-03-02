@@ -30,6 +30,8 @@ example_predefined_queues = {
         'url': 'https://sqs.us-east-1.amazonaws.com/xxx/queue-1',
         'access_key_id': 'a',
         'secret_access_key': 'b',
+        'backoff_tasks': ['svc.tasks.tasks.task1'],
+        'backoff_policy':  {1: 10, 2: 20, 3: 40, 4: 80, 5: 320, 6: 640}
     },
     'queue-2': {
         'url': 'https://sqs.us-east-1.amazonaws.com/xxx/queue-2',
@@ -648,3 +650,58 @@ class test_Channel:
         channel.connection._deliver.assert_called()
 
         assert len(channel.sqs(queue_name)._queues[queue_name].messages) == 0
+
+    def test_predefined_queues_backoff_policy(self):
+        connection = Connection(transport=SQS.Transport, transport_options={
+            'predefined_queues': example_predefined_queues,
+        })
+        channel = connection.channel()
+
+        def apply_backoff_policy(queue_name, delivery_tag, retry_policy, backoff_tasks):
+            return None
+
+        mock_apply_policy = Mock(side_effect=apply_backoff_policy)
+        channel.qos.apply_backoff_policy = mock_apply_policy
+        queue_name = "queue-1"
+
+        exchange = Exchange('test_SQS', type='direct')
+        queue = Queue(queue_name, exchange, queue_name)
+        queue(channel).declare()
+
+        message_mock = Mock()
+        message_mock.delivery_info = {'routing_key': queue_name}
+        channel.qos._delivered['test_message_id'] = message_mock
+        channel.qos.reject('test_message_id')
+        mock_apply_policy.assert_called_once_with('queue-1', 'test_message_id',
+                                                  {1: 10, 2: 20, 3: 40, 4: 80, 5: 320, 6: 640}, ['svc.tasks.tasks.task1'])
+
+    def test_predefined_queues_change_visibility_timeout(self):
+        connection = Connection(transport=SQS.Transport, transport_options={
+            'predefined_queues': example_predefined_queues,
+        })
+        channel = connection.channel()
+
+        def extract_task_name_and_number_of_retries(delivery_tag):
+            return 'svc.tasks.tasks.task1', 2
+
+        mock_extract_task_name_and_number_of_retries = Mock(side_effect=extract_task_name_and_number_of_retries)
+        channel.qos.extract_task_name_and_number_of_retries = mock_extract_task_name_and_number_of_retries
+
+        queue_name = "queue-1"
+
+        exchange = Exchange('test_SQS', type='direct')
+        queue = Queue(queue_name, exchange, queue_name)
+        queue(channel).declare()
+
+        message_mock = Mock()
+        message_mock.delivery_info = {'routing_key': queue_name}
+        channel.qos._delivered['test_message_id'] = message_mock
+
+        channel.sqs = Mock()
+        sqs_queue_mock = Mock()
+        channel.sqs.return_value = sqs_queue_mock
+        channel.qos.reject('test_message_id')
+
+        sqs_queue_mock.change_message_visibility.assert_called_once_with(QueueUrl='https://sqs.us-east-1.amazonaws.com/xxx/queue-1',
+                                                                         ReceiptHandle='test_message_id',
+                                                                         VisibilityTimeout=20)

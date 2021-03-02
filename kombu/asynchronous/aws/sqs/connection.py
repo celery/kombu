@@ -58,7 +58,7 @@ class AsyncSQSConnection(AsyncAWSQueryConnection):
 
     def receive_message(self, queue, queue_url,
                         number_messages=1, visibility_timeout=None,
-                        attributes=None, wait_time_seconds=None,
+                        attributes=('ApproximateReceiveCount',), wait_time_seconds=None,
                         callback=None):
         params = {'MaxNumberOfMessages': number_messages}
         if visibility_timeout:
