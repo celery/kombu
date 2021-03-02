@@ -751,7 +751,10 @@ class QoS(virtual.QoS):
             self.apply_backoff_policy(queue_name, delivery_tag, backoff_policy, backoff_tasks)
 
     def extract_backoff_policy_configuration(self,  delivery_tag):
-        queue_name = self._delivered.get(delivery_tag).delivery_info.get('routing_key')
+        try:
+            queue_name = self._delivered.get[delivery_tag].delivery_info['routing_key']
+        except KeyError:
+            return None, None, None
         if not queue_name:
             return None, None, None
         queue_config = self.channel.predefined_queues.get(queue_name, {})
