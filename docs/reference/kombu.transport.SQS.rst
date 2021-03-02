@@ -26,6 +26,7 @@
 Back-off policy
 ------------------------
 Back-off policy is using SQS visibility timeout mechanism altering time diff between task retries.
+Number of retries is managed by SQS (``ApproximateReceiveCount`` message attribute), no need adding count of some sort.
 
 Configuring the queues and backoff policy::
 
@@ -42,8 +43,11 @@ Configuring the queues and backoff policy::
     }
 
 
-The above policy:
+``backoff_policy`` dictionary where key is number of retries, and value is delay seconds between retries (i.e
+SQS visibility timeout)
+``backoff_tasks`` list of task names to apply the above policy
 
+The above policy:
 
 +-----------------------------------------+--------------------------------------------+
 | **Attempt**                             | **Delay**                                  |
