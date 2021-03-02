@@ -158,9 +158,9 @@ class UndefinedQueueException(Exception):
 class QoS(virtual.QoS):
     def reject(self, delivery_tag, requeue=False):
         super().reject(delivery_tag, requeue=requeue)
-        queue_name, message, backoff_tasks, backoff_policy = self._extract_backoff_policy_configuration_and_message(delivery_tag)
-        if queue_name and backoff_tasks and backoff_policy:
-            self.apply_backoff_policy(queue_name, delivery_tag, backoff_policy, backoff_tasks)
+        routing_key, message, backoff_tasks, backoff_policy = self._extract_backoff_policy_configuration_and_message(delivery_tag)
+        if routing_key and message and backoff_tasks and backoff_policy:
+            self.apply_backoff_policy(routing_key, delivery_tag, backoff_policy, backoff_tasks)
 
     def _extract_backoff_policy_configuration_and_message(self, delivery_tag):
         try:
