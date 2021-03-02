@@ -167,9 +167,9 @@ class QoS(virtual.QoS):
             message = self._delivered[delivery_tag]
             routing_key = message.delivery_info['routing_key']
         except KeyError:
-            return None, None, None
+            return None, None, None, None
         if not routing_key or not message:
-            return None, None, None
+            return None, None, None, None
         queue_config = self.channel.predefined_queues.get(routing_key, {})
         backoff_tasks = queue_config.get('backoff_tasks')
         backoff_policy = queue_config.get('backoff_policy')
