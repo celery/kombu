@@ -175,14 +175,14 @@ class QoS(virtual.QoS):
         backoff_policy = queue_config.get('backoff_policy')
         return routing_key, message, backoff_tasks, backoff_policy
 
-    def apply_backoff_policy(self, queue_name, delivery_tag, backoff_policy, backoff_tasks):
-        queue_url = self.channel._queue_cache[queue_name]
+    def apply_backoff_policy(self, routing_key, delivery_tag, backoff_policy, backoff_tasks):
+        queue_url = self.channel._queue_cache[routing_key]
         task_name, number_of_retries = self.extract_task_name_and_number_of_retries(delivery_tag)
         if not task_name or not number_of_retries:
             return None
         policy_value = backoff_policy.get(number_of_retries)
         if task_name in backoff_tasks and policy_value is not None:
-            c = self.channel.sqs(queue_name)
+            c = self.channel.sqs(routing_key)
             c.change_message_visibility(
                 QueueUrl=queue_url,
                 ReceiptHandle=delivery_tag,
