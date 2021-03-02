@@ -156,6 +156,48 @@ class UndefinedQueueException(Exception):
     """Predefined queues are being used and an undefined queue was used."""
 
 
+class QoS(virtual.QoS):
+    def reject(self, delivery_tag, requeue=False):
+        super().reject(delivery_tag, requeue=requeue)
+        queue_name, message, backoff_tasks, backoff_policy = self._extract_backoff_policy_configuration_and_message(delivery_tag)
+        if queue_name and backoff_tasks and backoff_policy:
+            self.apply_backoff_policy(queue_name, delivery_tag, backoff_policy, backoff_tasks)
+
+    def _extract_backoff_policy_configuration_and_message(self, delivery_tag):
+        try:
+            message = self._delivered[delivery_tag]
+            routing_key = message.delivery_info['routing_key']
+        except KeyError:
+            return None, None, None
+        if not routing_key or not message:
+            return None, None, None
+        queue_config = self.channel.predefined_queues.get(routing_key, {})
+        backoff_tasks = queue_config.get('backoff_tasks')
+        backoff_policy = queue_config.get('backoff_policy')
+        return routing_key, message, backoff_tasks, backoff_policy
+
+    def apply_backoff_policy(self, queue_name, delivery_tag, backoff_policy, backoff_tasks):
+        queue_url = self.channel._queue_cache[queue_name]
+        task_name, number_of_retries = self.extract_task_name_and_number_of_retries(delivery_tag)
+        if not task_name or not number_of_retries:
+            return None
+        policy_value = backoff_policy.get(number_of_retries)
+        if task_name in backoff_tasks and policy_value is not None:
+            c = self.channel.sqs(queue_name)
+            c.change_message_visibility(
+                QueueUrl=queue_url,
+                ReceiptHandle=delivery_tag,
+                VisibilityTimeout=policy_value
+            )
+
+    @staticmethod
+    def extract_task_name_and_number_of_retries(message):
+        message_headers = message.headers
+        task_name = message_headers['task']
+        number_of_retries = int(message.properties['delivery_info']['sqs_message']['Attributes']['ApproximateReceiveCount'])
+        return task_name, number_of_retries
+
+
 class Channel(virtual.Channel):
     """SQS Channel."""
 
@@ -169,6 +211,7 @@ class Channel(virtual.Channel):
     _predefined_queue_clients = {}  # A client for each predefined queue
     _queue_cache = {}
     _noack_queues = set()
+    QoS = QoS
 
     def __init__(self, *args, **kwargs):
         if boto3 is None:
@@ -742,41 +785,3 @@ class Transport(virtual.Transport):
     @property
     def default_connection_params(self):
         return {'port': self.default_port}
-
-
-class QoS(virtual.QoS):
-    def reject(self, delivery_tag, requeue=False):
-        super().reject(delivery_tag, requeue=requeue)
-        queue_name, backoff_tasks, backoff_policy = self.extract_backoff_policy_configuration(delivery_tag)
-        if queue_name and backoff_tasks and backoff_policy:
-            self.apply_backoff_policy(queue_name, delivery_tag, backoff_policy, backoff_tasks)
-
-    def extract_backoff_policy_configuration(self,  delivery_tag):
-        queue_name = self._delivered.get(delivery_tag).delivery_info.get('routing_key')
-        if not queue_name:
-            return None, None, None
-        queue_config = self.channel.predefined_queues.get(queue_name, {})
-        backoff_tasks = queue_config.get('backoff_tasks')
-        backoff_policy = queue_config.get('backoff_policy')
-        return queue_name, backoff_tasks, backoff_policy
-
-    def apply_backoff_policy(self, queue_name, delivery_tag, backoff_policy, backoff_tasks):
-        queue_url = self.channel._queue_cache[queue_name]
-        task_name, number_of_retries = self.extract_task_name_and_number_of_retries(delivery_tag)
-        if task_name in backoff_tasks:
-            c = self.channel.sqs(queue_name)
-            c.change_message_visibility(
-                QueueUrl=queue_url,
-                ReceiptHandle=delivery_tag,
-                VisibilityTimeout=backoff_policy.get(number_of_retries)
-            )
-
-    def extract_task_name_and_number_of_retries(self, delivery_tag):
-        message = self._delivered.get(delivery_tag)
-        message_headers = message.headers
-        task_name = message_headers['task']
-        number_of_retries = int(message.properties['delivery_info']['sqs_message']['Attributes']['ApproximateReceiveCount'])
-        return task_name, number_of_retries
-
-
-Channel.QoS = QoS
