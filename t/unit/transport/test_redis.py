@@ -1,7 +1,6 @@
 import pytest
 import fakeredis
 import redis
-import unittest
 import socket
 
 from array import array
@@ -56,7 +55,7 @@ class ResponseError(Exception):
     pass
 
 
-class DummyParser(object):
+class DummyParser:
 
     def __init__(self, *args, **kwargs):
         self.socket_read_size = 1
@@ -79,7 +78,7 @@ class FakeRedisSocket(fakeredis._server.FakeSocket):
     filenos = count(30)
 
     def __init__(self, server):
-        super(FakeRedisSocket, self).__init__(server)
+        super().__init__(server)
         self._server = server
         self._fileno = next(self.filenos)
         self.data = []
@@ -134,7 +133,7 @@ class FakeRedisConnectionPool(redis.ConnectionPool):
         connection_kwargs['client'] = None
         connection_kwargs['server'] = None
         self._connections = []
-        super(FakeRedisConnectionPool, self).__init__(
+        super().__init__(
             connection_class=connection_class,
             max_connections=max_connections,
             **connection_kwargs
@@ -160,7 +159,7 @@ class FakeRedisClient(fakeredis.FakeStrictRedis):
         self.server = server = fakeredis.FakeServer()
         connection_pool = FakeRedisConnectionPool(FakeRedisConnection)
         self.connection_pool = connection_pool
-        super(FakeRedisClient, self).__init__(
+        super().__init__(
             db=db, port=port, connection_pool=connection_pool, server=server)
         self.connection = FakeRedisConnection(self, server)
         self.response_callbacks = dict()
@@ -206,7 +205,7 @@ class FakeRedisClient(fakeredis.FakeStrictRedis):
         self.queues.pop(key, None)
 
 
-class FakeRedisClientLite(object):
+class FakeRedisClientLite:
     """The original FakeRedis client from Kombu to support the
     Producer/Consumer TestCases, preferred to use FakeRedisClient."""
     queues = {}
@@ -332,7 +331,7 @@ class FakeRedisClientLite(object):
             self._sock.data.append((cmd, args))
 
 
-class FakePipelineLite(object):
+class FakePipelineLite:
 
     def __init__(self, client):
         self.client = client
@@ -457,7 +456,7 @@ class FakeRedisKombuChannel(kombu_redis.Channel):
     _fanout_queues = {}
 
     def __init__(self, *args, **kwargs):
-        super(FakeRedisKombuChannel, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def _get_client(self):
         return FakeRedisClient
@@ -500,7 +499,7 @@ class FakeRedisKombuTransportLite(kombu_redis.Transport):
     Channel = FakeRedisKombuChannelLite
 
     def __init__(self, *args, **kwargs):
-        super(FakeRedisKombuTransportLite, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def _get_errors(self):
         return ((KeyError,), (IndexError,))
@@ -511,13 +510,13 @@ class FakeRedisKombuTransport(FakeRedisKombuTransportLite):
 
 
 @skip.unless_module('redis')
-class TestRedisChannel(unittest.TestCase):
+class test_RedisChannel:
 
-    def setUp(self):
+    def setup(self):
         self.connection = self.create_connection()
         self.channel = self.connection.default_channel
 
-    def tearDown(self):
+    def teardown(self):
         self.connection = None
         self.channel = None
         global _fake_redis_client
@@ -1190,9 +1189,9 @@ class TestRedisChannel(unittest.TestCase):
 
 @skip.unless_module('redis')
 @mock.patch('redis.Connection', FakeRedisConnection)
-class TestRedisConnections(unittest.TestCase):
+class test_RedisConnections:
 
-    def setUp(self):
+    def setup(self):
         self.connection = self.create_connection()
         self.exchange_name = exchange_name = 'test_Redis'
         self.exchange = Exchange(exchange_name, type='direct')
@@ -1200,7 +1199,7 @@ class TestRedisConnections(unittest.TestCase):
         self.queue(self.connection.default_channel).declare()
         self.real_scard = FakeRedisClient.scard
 
-    def tearDown(self):
+    def teardown(self):
         self.connection.close()
         self.queue = None
         self.exchange = None
@@ -1347,9 +1346,9 @@ class TestRedisConnections(unittest.TestCase):
 
 
 @skip.unless_module('redis')
-class TestKombuRedisMultiChannelPoller(unittest.TestCase):
+class test_KombuRedisMultiChannelPoller:
 
-    def setUp(self):
+    def setup(self):
         self.Poller = kombu_redis.MultiChannelPoller
 
     def test_on_poll_start(self):
@@ -1595,7 +1594,7 @@ class TestKombuRedisMultiChannelPoller(unittest.TestCase):
 
 
 @skip.unless_module('redis')
-class TestKombuRedisMutex(unittest.TestCase):
+class test_KombuRedisMutex:
 
     def test_mutex(self, lock_id='xxx'):
         client = Mock(name='client')
@@ -1635,8 +1634,8 @@ class TestKombuRedisMutex(unittest.TestCase):
         assert held
 
 
-class TestRedisProducerConsumer(unittest.TestCase):
-    def setUp(self):
+class test_RedisProducerConsumer:
+    def setup(self):
         self.connection = self.create_connection()
         self.channel = self.connection.default_channel
         self.routing_key = routing_key = 'test_redis_producer'
@@ -1695,7 +1694,7 @@ class TestRedisProducerConsumer(unittest.TestCase):
 
 
 @skip.unless_module('redis.sentinel')
-class TestRedisSentinel(unittest.TestCase):
+class test_RedisSentinel:
 
     def test_method_called(self):
         with patch.object(kombu_redis.SentinelChannel,
