@@ -1101,13 +1101,10 @@ class test_RedisChannel:
         assert kombu_redis.Transport.driver_version(self.connection.transport)
 
     def test_transport_get_errors_when_InvalidData_used(self):
-        try:
-            errors = kombu_redis.Transport._get_errors(
-                self.connection.transport)
-            assert errors
-            assert redis.exceptions.DataError in errors[1]
-        except Exception:
-            raise
+        errors = kombu_redis.Transport._get_errors(
+            self.connection.transport)
+        assert errors
+        assert redis.exceptions.DataError in errors[1]
 
     def test_empty_queues_key(self):
         channel = self.channel
@@ -1175,10 +1172,10 @@ class test_RedisChannel:
                 )
 
     def test_sep_transport_option(self):
-        conn_kwargs = dict(
-            transport=FakeRedisKombuTransport,
-            transport_options={'sep': ':'})
-        with Connection(**conn_kwargs) as conn:
+        with Connection(
+                transport=FakeRedisKombuTransport,
+                transport_options={'sep': ':'}
+        ) as conn:
             key = conn.default_channel.keyprefix_queue % 'celery'
             conn.default_channel.client.sadd(key, 'celery::celery')
             assert conn.default_channel.sep == ':'
@@ -1285,8 +1282,8 @@ class test_RedisConnections:
 
     def test_redis_queue_lookup_gets_queue_when_exchange_doesnot_exist(self):
         # Given:  A test redis client and channel
-        fake_redis_client = _get_fake_redis_client()
         redis_channel = self.connection.default_channel
+        fake_redis_client = self.connection.default_channel.client
         # Given: The default queue is set:
         default_queue = 'default_queue'
         redis_channel.deadletter_queue = default_queue
@@ -1301,8 +1298,8 @@ class test_RedisConnections:
 
     def test_redis_queue_lookup_gets_default_when_route_doesnot_exist(self):
         # Given:  A test redis client and channel
-        fake_redis_client = _get_fake_redis_client()
         redis_channel = self.connection.default_channel
+        fake_redis_client = self.connection.default_channel.client
         # Given: The default queue is set:
         default_queue = 'default_queue'
         redis_channel.deadletter_queue = default_queue
@@ -1316,9 +1313,9 @@ class test_RedisConnections:
         assert lookup_queue_result == [default_queue]
 
     def test_redis_queue_lookup_client_raises_key_error_gets_default(self):
-        fake_redis_client = _get_fake_redis_client()
-        fake_redis_client.smembers = Mock(side_effect=KeyError)
         redis_channel = self.connection.default_channel
+        fake_redis_client = self.connection.default_channel.client
+        fake_redis_client.smembers = Mock(side_effect=KeyError)
         routing_key = redis_channel.keyprefix_queue % self.exchange
         redis_channel.queue_bind(routing_key, self.exchange_name, routing_key)
         fake_redis_client.sadd(routing_key, routing_key)
@@ -1330,7 +1327,7 @@ class test_RedisConnections:
         assert lookup_queue_result == [default_queue_name]
 
     def test_redis_queue_lookup_client_raises_key_error_gets_deadletter(self):
-        fake_redis_client = _get_fake_redis_client()
+        fake_redis_client = self.connection.default_channel.client
         fake_redis_client.smembers = Mock(side_effect=KeyError)
         redis_channel = self.connection.default_channel
         routing_key = redis_channel.keyprefix_queue % self.exchange
