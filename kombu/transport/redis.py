@@ -766,8 +766,7 @@ class Channel(virtual.Channel):
         queues = self._queue_cycle.consume(len(self.active_queues))
         if not queues:
             return
-        _q_for_pri = self._queue_for_priority
-        keys = [_q_for_pri(queue, pri) for pri in self.priority_steps
+        keys = [self._q_for_pri(queue, pri) for pri in self.priority_steps
                 for queue in queues] + [timeout or 0]
         self._in_poll = self.client.connection
         self.client.connection.send_command('BRPOP', *keys)
@@ -803,8 +802,7 @@ class Channel(virtual.Channel):
     def _get(self, queue):
         with self.conn_or_acquire() as client:
             for pri in self.priority_steps:
-                queue_name = self._queue_for_priority(queue, pri)
-                item = client.rpop(queue_name)
+                item = client.rpop(self._q_for_pri(queue, pri))
                 if item:
                     return loads(bytes_to_str(item))
             raise Empty()
@@ -813,15 +811,14 @@ class Channel(virtual.Channel):
         with self.conn_or_acquire() as client:
             with client.pipeline() as pipe:
                 for pri in self.priority_steps:
-                    queue_name = self._queue_for_priority(queue, pri)
-                    pipe = pipe.llen(queue_name)
+                    pipe = pipe.llen(self._q_for_pri(queue, pri))
                 sizes = pipe.execute()
-                return sum(s for s in sizes
-                           if isinstance(s, numbers.Integral))
+                return sum(size for size in sizes
+                           if isinstance(size, numbers.Integral))
 
-    def _queue_for_priority(self, queue, pri):
-        queue_priority = self.priority(pri)
-        if queue_priority:
+    def _q_for_pri(self, queue, pri):
+        pri = self.priority(pri)
+        if pri:
             return f"{queue}{self.sep}{pri}"
         return queue
 
@@ -834,7 +831,7 @@ class Channel(virtual.Channel):
         pri = self._get_message_priority(message, reverse=False)
 
         with self.conn_or_acquire() as client:
-            client.lpush(self._queue_for_priority(queue, pri), dumps(message))
+            client.lpush(self._q_for_pri(queue, pri), dumps(message))
 
     def _put_fanout(self, exchange, message, routing_key, **kwargs):
         """Deliver fanout message."""
@@ -869,14 +866,14 @@ class Channel(virtual.Channel):
                                        queue or '']))
             with client.pipeline() as pipe:
                 for pri in self.priority_steps:
-                    pipe = pipe.delete(self._queue_for_priority(queue, pri))
+                    pipe = pipe.delete(self._q_for_pri(queue, pri))
                 pipe.execute()
 
     def _has_queue(self, queue, **kwargs):
         with self.conn_or_acquire() as client:
             with client.pipeline() as pipe:
                 for pri in self.priority_steps:
-                    pipe = pipe.exists(self._queue_for_priority(queue, pri))
+                    pipe = pipe.exists(self._q_for_pri(queue, pri))
                 return any(pipe.execute())
 
     def get_table(self, exchange):
@@ -891,8 +888,8 @@ class Channel(virtual.Channel):
         with self.conn_or_acquire() as client:
             with client.pipeline() as pipe:
                 for pri in self.priority_steps:
-                    priority_queue = self._queue_for_priority(queue, pri)
-                    pipe = pipe.llen(priority_queue).delete(priority_queue)
+                    priq = self._q_for_pri(queue, pri)
+                    pipe = pipe.llen(priq).delete(priq)
                 sizes = pipe.execute()
                 return sum(sizes[::2])
 
