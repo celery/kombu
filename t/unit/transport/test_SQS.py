@@ -4,8 +4,7 @@ NOTE: The SQSQueueMock and SQSConnectionMock classes originally come from
 http://github.com/pcsforeducation/sqs-mock-python. They have been patched
 slightly.
 """
-
-
+import base64
 import os
 import pytest
 import random
@@ -329,6 +328,14 @@ class test_Channel:
     def test_get_bulk_raises_empty(self):
         with pytest.raises(Empty):
             self.channel._get_bulk(self.queue_name)
+
+    def test_is_base64_encoded(self):
+        raw = b'{"id": "4cc7438e-afd4-4f8f-a2f3-f46567e7ca77","task": "celery.task.PingTask",' \
+              b'"args": [],"kwargs": {},"retries": 0,"eta": "2009-11-17T12:30:56.527191"}'
+        b64_enc = base64.b64encode(raw)
+        assert self.channel._Channel__b64_encoded(b64_enc)
+        assert not self.channel._Channel__b64_encoded(raw)
+        assert not self.channel._Channel__b64_encoded(b"test123")
 
     def test_messages_to_python(self):
         from kombu.asynchronous.aws.sqs.message import Message

@@ -370,11 +370,21 @@ class Channel(virtual.Channel):
         else:
             c.send_message(**kwargs)
 
-    def _message_to_python(self, message, queue_name, queue):
+    @staticmethod
+    def __b64_encoded(byte_string):
         try:
-            body = base64.b64decode(message['Body'].encode())
+            return base64.b64encode(base64.b64decode(byte_string)) == byte_string
+        except Exception:  # pylint: disable=broad-except
+            return False
+
+    def _message_to_python(self, message, queue_name, queue):
+        body = message['Body'].encode()
+        try:
+            if self.__b64_encoded(body):
+                body = base64.b64decode(body)
         except TypeError:
-            body = message['Body'].encode()
+            pass
+
         payload = loads(bytes_to_str(body))
         if queue_name in self._noack_queues:
             queue = self._new_queue(queue_name)
