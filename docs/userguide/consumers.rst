@@ -54,14 +54,20 @@ acknowledgement is set.
 
     >>> consumer.register_callback(callback)
 
-Draining events from a single consumer. Method ``drain_events`` by default blocks indefinitely. This example sets timeout to 1 second:
+Draining events from a single consumer
+--------------------------------------
 
+The method ``drain_events`` blocks indefinitely by default. This example sets the timeout to 1 second:
+ 
 .. code-block:: python
 
     >>> with consumer:
     ...     connection.drain_events(timeout=1)
 
-Draining events from several consumers. Each consumer has its own list of queues. Each consumer accepts `'json'` format of data:
+Draining events from several consumers
+--------------------------------------
+
+Each consumer has its own list of queues. Each consumer accepts data in `'json'` format:
 
 .. code-block:: python
 
