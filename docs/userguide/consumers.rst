@@ -73,8 +73,10 @@ Each consumer has its own list of queues. Each consumer accepts data in `'json'`
 
     >>> from kombu.utils.compat import nested
 
-    >>> queues1 = [Queue('queue11', routing_key='queue12')]
-    >>> queues2 = [Queue('queue21', routing_key='queue22')]
+    >>> queues1 = [Queue('queue11', routing_key='queue11'),
+                   Queue('queue12', routing_key='queue12')]
+    >>> queues2 = [Queue('queue21', routing_key='queue21'),
+                   Queue('queue22', routing_key='queue22')]
     >>> with connection.channel(), connection.channel() as (channel1, channel2):
     ...     with nested(Consumer(channel1, queues1, accept=['json']),
     ...                 Consumer(channel2, queues2, accept=['json'])):
