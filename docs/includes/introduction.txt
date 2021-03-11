@@ -181,7 +181,7 @@ just remember to close the objects after use:
 
 .. code-block:: python
 
-    from kombu import Connection, Consumer, Producer
+    from kombu import Connection, Consumer
 
     connection = Connection()
         # ...
