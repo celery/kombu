@@ -121,7 +121,7 @@ mixin class and overriding some of the methods:
 
         def get_consumers(self, Consumer, channel):
             return [
-                Consumer(queues, callbacks=[self.on_message], accept=['json']),
+                Consumer(channel, callbacks=[self.on_message], accept=['json']),
             ]
 
         def on_message(self, body, message):
