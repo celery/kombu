@@ -627,7 +627,12 @@ class Connection:
                 transport_cls, transport_cls)
         D = self.transport.default_connection_params
 
-        hostname = self.hostname or D.get('hostname')
+        if not self.hostname:
+            logger.warning(f"No hostname was supplied. Reverting to default '{D.get('hostname')}'")
+            hostname = D.get('hostname')
+        else:
+            hostname = self.hostname
+
         if self.uri_prefix:
             hostname = f'{self.uri_prefix}+{hostname}'
 
