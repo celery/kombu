@@ -24,7 +24,7 @@ drain events from all channels on that connection.
 
         >>> Consumer(conn, accept=['json', 'pickle', 'msgpack', 'yaml'])
 
-You can create a consumer using a Connection. Consumer is consuming from single queue with name `'queue'`:
+You can create a consumer using a Connection. This consumer is consuming from a single queue with name `'queue'`:
 
 .. code-block:: python
 
@@ -41,10 +41,10 @@ consumes from single queue with name `'queue'`:
     ...     with conn.channel() as channel:
     ...         consumer = Consumer(channel, queue)
 
-Consumer needs to specify handler of received data. This handler specified in form of callback. Callback function is called
-by kombu library every time a new message is received. Callback is called with two parameters ``body`` containing deserialized
-data sent by producer and :class:`~kombu.message.Message` instance ``message``. User is also responsible for acknowledging of message when manual
-acknowledge is set.
+A consumer needs to specify a handler for received data. This handler is specified in the form of a callback. The callback function is called
+by kombu every time a new message is received. The callback is called with two parameters: ``body``, containing deserialized
+data sent by a producer, and a :class:`~kombu.message.Message` instance ``message``. The user is responsible for acknowledging messages when manual
+acknowledgement is set.
 
 .. code-block:: python
 
