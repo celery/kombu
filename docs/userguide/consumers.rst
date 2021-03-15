@@ -153,7 +153,7 @@ and with multiple channels again:
                              callbacks=[self.on_special_message],
                              accept=['json'])]
 
-        def on_consumer_end(self, connection, default_channel):
+        def on_consume_end(self, connection, default_channel):
             if self.channel2:
                 self.channel2.close()
 
