@@ -173,7 +173,7 @@ Or handle channels manually:
 
     with connection.channel() as channel:
         producer = Producer(channel, ...)
-        consumer = Producer(channel)
+        consumer = Consumer(channel)
 
 
 All objects can be used outside of with statements too,
@@ -181,7 +181,7 @@ just remember to close the objects after use:
 
 .. code-block:: python
 
-    from kombu import Connection, Consumer, Producer
+    from kombu import Connection, Consumer
 
     connection = Connection()
         # ...
@@ -235,7 +235,7 @@ There are some concepts you should be familiar with before starting:
 
     * Consumers
 
-        Consumers declares a queue, binds it to a exchange and receives
+        A consumer declares a queue, binds it to an exchange and receives
         messages from it.
 
     * Queues
