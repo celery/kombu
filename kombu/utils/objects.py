@@ -21,6 +21,11 @@ class cached_property(_cached_property):
             # This is a backport so we set this ourselves.
             self.attrname = self.func.__name__
 
+    def __get__(self, instance, owner=None):
+        # TODO: Remove this after we drop support for Python<3.8
+        #  or fix the signature in the cached_property package
+        return super().__get__(instance, owner)
+
     def __set__(self, instance, value):
         if instance is None:
             return self
