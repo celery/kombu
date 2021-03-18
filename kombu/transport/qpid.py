@@ -584,10 +584,7 @@ class Channel(base.StdChannel):
         :rtype: bool
 
         """
-        if self._broker.getQueue(queue):
-            return True
-        else:
-            return False
+        return bool(self._broker.getQueue(queue))
 
     def queue_declare(self, queue, passive=False, durable=False,
                       exclusive=False, auto_delete=True, nowait=False,
