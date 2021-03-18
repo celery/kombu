@@ -4,7 +4,7 @@ import datetime
 
 from sqlalchemy import (Column, Integer, String, Text, DateTime,
                         Sequence, Boolean, ForeignKey, SmallInteger, Index)
-from sqlalchemy.ext.declarative import declarative_base, declared_attr
+from sqlalchemy.orm import declarative_base, declared_attr
 from sqlalchemy.orm import relation
 from sqlalchemy.schema import MetaData
 
