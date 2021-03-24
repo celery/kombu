@@ -633,8 +633,8 @@ class Channel(virtual.Channel):
     def sqs(self, queue=None):
         if queue is not None and self.predefined_queues:
             if queue not in self.predefined_queues:
-                raise UndefinedQueueException(("Queue with name '{}' must be defined in "
-                                               "'predefined_queues'.").format(queue))
+                raise UndefinedQueueException((f"Queue with name '{queue}' must be defined"
+                                               f" in 'predefined_queues'."))
             q = self.predefined_queues[queue]
             if not self.transport_options.get('sts_role_arn'):
                 if queue in self._predefined_queue_clients:
