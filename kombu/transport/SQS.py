@@ -634,8 +634,8 @@ class Channel(virtual.Channel):
         if queue is not None and self.predefined_queues:
 
             if queue not in self.predefined_queues:
-                raise UndefinedQueueException((f"Queue with name '{queue}' must be defined"
-                                               f" in 'predefined_queues'."))
+                raise UndefinedQueueException(f"Queue with name '{queue}' must be defined"
+                                                                     " in 'predefined_queues'.")
             q = self.predefined_queues[queue]
             if self.transport_options.get('sts_role_arn'):
                 return self.handle_sts_session(queue, q)
