@@ -638,7 +638,7 @@ class Channel(virtual.Channel):
                                                                      " in 'predefined_queues'.")
             q = self.predefined_queues[queue]
             if self.transport_options.get('sts_role_arn'):
-                return self.handle_sts_session(queue, q)
+                return self._handle_sts_session(queue, q)
             if not self.transport_options.get('sts_role_arn'):
                 if queue in self._predefined_queue_clients:
                     return self._predefined_queue_clients[queue]
@@ -659,7 +659,7 @@ class Channel(virtual.Channel):
         )
         return c
 
-    def handle_sts_session(self, queue, q):
+    def _handle_sts_session(self, queue, q):
         if not hasattr(self, 'sts_expiration'):  # STS token - token init
             sts_creds = self.generate_sts_session_token(self.transport_options.get('sts_role_arn'),
                                                         self.transport_options.get('sts_token_timeout', 900))
