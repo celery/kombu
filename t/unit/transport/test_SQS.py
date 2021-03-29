@@ -6,6 +6,8 @@ slightly.
 """
 import base64
 import os
+from datetime import datetime, timedelta
+
 import pytest
 import random
 import string
@@ -712,3 +714,78 @@ class test_Channel:
         sqs_queue_mock.change_message_visibility.assert_called_once_with(QueueUrl='https://sqs.us-east-1.amazonaws.com/xxx/queue-1',
                                                                          ReceiptHandle='test_message_id',
                                                                          VisibilityTimeout=20)
+
+    def test_sts_new_session(self):
+        # Arrange
+        connection = Connection(transport=SQS.Transport, transport_options={
+            'predefined_queues': example_predefined_queues,
+            'sts_role_arn': 'test::arn'
+        })
+        channel = connection.channel()
+        sqs = SQS_Channel_sqs.__get__(channel, SQS.Channel)
+        queue_name = 'queue-1'
+
+        exchange = Exchange('test_SQS', type='direct')
+        queue = Queue(queue_name, exchange, queue_name)
+        mock_generate_sts_session_token = Mock()
+        mock_new_sqs_client = Mock()
+        channel.new_sqs_client = mock_new_sqs_client
+        mock_generate_sts_session_token.side_effect = [{'Expiration': 123, 'SessionToken': 123, 'AccessKeyId': 123, 'SecretAccessKey': 123}]
+        channel.generate_sts_session_token = mock_generate_sts_session_token
+
+        # Act
+        sqs(queue=queue_name)
+
+        # Assert
+        mock_generate_sts_session_token.assert_called_once()
+
+    def test_sts_session_expired(self):
+        # Arrange
+        connection = Connection(transport=SQS.Transport, transport_options={
+            'predefined_queues': example_predefined_queues,
+            'sts_role_arn': 'test::arn'
+        })
+        channel = connection.channel()
+        sqs = SQS_Channel_sqs.__get__(channel, SQS.Channel)
+        channel.sts_expiration = datetime.utcnow() - timedelta(days=1)
+        queue_name = 'queue-1'
+
+        exchange = Exchange('test_SQS', type='direct')
+        queue = Queue(queue_name, exchange, queue_name)
+        mock_generate_sts_session_token = Mock()
+        mock_new_sqs_client = Mock()
+        channel.new_sqs_client = mock_new_sqs_client
+        mock_generate_sts_session_token.side_effect = [{'Expiration': 123, 'SessionToken': 123, 'AccessKeyId': 123, 'SecretAccessKey': 123}]
+        channel.generate_sts_session_token = mock_generate_sts_session_token
+
+        # Act
+        sqs(queue=queue_name)
+
+        # Assert
+        mock_generate_sts_session_token.assert_called_once()
+
+    def test_sts_session_not_expired(self):
+        # Arrange
+        connection = Connection(transport=SQS.Transport, transport_options={
+            'predefined_queues': example_predefined_queues,
+            'sts_role_arn': 'test::arn'
+        })
+        channel = connection.channel()
+        channel.sts_expiration = datetime.utcnow() + timedelta(days=1)
+        queue_name = 'queue-1'
+
+        exchange = Exchange('test_SQS', type='direct')
+        queue = Queue(queue_name, exchange, queue_name)
+        mock_generate_sts_session_token = Mock()
+        mock_new_sqs_client = Mock()
+        channel.new_sqs_client = mock_new_sqs_client
+        channel._predefined_queue_clients = {queue_name: 'mock_client'}
+        mock_generate_sts_session_token.side_effect = [{'Expiration': 123, 'SessionToken': 123, 'AccessKeyId': 123, 'SecretAccessKey': 123}]
+        channel.generate_sts_session_token = mock_generate_sts_session_token
+
+        # Act
+        channel.sqs(queue=queue_name)
+
+        # Assert
+        mock_generate_sts_session_token.assert_not_called()
+

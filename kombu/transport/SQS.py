@@ -67,10 +67,16 @@ exist in AWS) you can tell this transport about them as follows:
           'backoff_tasks': ['svc.tasks.tasks.task2'] # optional
         },
       }
+    'sts_role_arn': 'arn:aws:iam::<xxx>:role/STSTest', # optional
+    'sts_token_timeout': 900 # optional
     }
     
 backoff_policy & backoff_tasks are optional arguments. These arguments automatically change the message visibility timeout, in order to have different times between specific task
 retries. This would apply after task failure.
+
+AWS STS authentication is supported, by using sts_role_arn, and sts_token_timeout. sts_role_arn is the assumed IAM role ARN we are trying to access with.
+sts_token_timeout is the token timeout, defaults (and minimum) to 900 seconds. After the mentioned period, a new token will be created.
+
 
 If you authenticate using Okta_ (e.g. calling |gac|_), you can also specify
 a 'session_token' to connect to a queue. Note that those tokens have a
@@ -112,6 +118,7 @@ import base64
 import socket
 import string
 import uuid
+from datetime import datetime
 from queue import Empty
 
 from botocore.client import Config
@@ -625,22 +632,22 @@ class Channel(virtual.Channel):
 
     def sqs(self, queue=None):
         if queue is not None and self.predefined_queues:
-            if queue in self._predefined_queue_clients:
-                return self._predefined_queue_clients[queue]
+
             if queue not in self.predefined_queues:
-                raise UndefinedQueueException((
-                    "Queue with name '{}' must be defined in "
-                    "'predefined_queues'."
-                ).format(queue))
+                raise UndefinedQueueException(f"Queue with name '{queue}' must be defined"
+                                                                     " in 'predefined_queues'.")
             q = self.predefined_queues[queue]
-            c = self._predefined_queue_clients[queue] = self.new_sqs_client(
-                region=q.get('region', self.region),
-                access_key_id=q.get('access_key_id', self.conninfo.userid),
-                secret_access_key=q.get('secret_access_key', self.conninfo.password),  # noqa: E501
-                # With session_token, this client’s access will expire, but it’s useful for testing
-                session_token=q.get('session_token', None),
-            )
-            return c
+            if self.transport_options.get('sts_role_arn'):
+                return self._handle_sts_session(queue, q)
+            if not self.transport_options.get('sts_role_arn'):
+                if queue in self._predefined_queue_clients:
+                    return self._predefined_queue_clients[queue]
+                else:
+                    c = self._predefined_queue_clients[queue] = self.new_sqs_client(
+                        region=q.get('region', self.region),
+                        access_key_id=q.get('access_key_id', self.conninfo.userid),
+                        secret_access_key=q.get('secret_access_key', self.conninfo.password))
+                    return c
 
         if self._sqs is not None:
             return self._sqs
@@ -652,9 +659,44 @@ class Channel(virtual.Channel):
         )
         return c
 
+    def _handle_sts_session(self, queue, q):
+        if not hasattr(self, 'sts_expiration'):  # STS token - token init
+            sts_creds = self.generate_sts_session_token(self.transport_options.get('sts_role_arn'),
+                                                        self.transport_options.get('sts_token_timeout', 900))
+            self.sts_expiration = sts_creds['Expiration']
+            c = self._predefined_queue_clients[queue] = self.new_sqs_client(
+                region=q.get('region', self.region),
+                access_key_id=sts_creds['AccessKeyId'],
+                secret_access_key=sts_creds['SecretAccessKey'],
+                session_token=sts_creds['SessionToken'],
+            )
+            return c
+        elif self.sts_expiration.replace(tzinfo=None) < datetime.utcnow():  # STS token - refresh if expired
+            sts_creds = self.generate_sts_session_token(self.transport_options.get('sts_role_arn'),
+                                                        self.transport_options.get('sts_token_timeout', 900))
+            self.sts_expiration = sts_creds['Expiration']
+            c = self._predefined_queue_clients[queue] = self.new_sqs_client(
+                region=q.get('region', self.region),
+                access_key_id=sts_creds['AccessKeyId'],
+                secret_access_key=sts_creds['SecretAccessKey'],
+                session_token=sts_creds['SessionToken'],
+            )
+            return c
+        else:  # STS token - ruse existing
+            return self._predefined_queue_clients[queue]
+
+    def generate_sts_session_token(self, role_arn, token_expiry_seconds):
+        sts_client = boto3.client('sts')
+        sts_policy = sts_client.assume_role(
+            RoleArn=role_arn,
+            RoleSessionName='Celery',
+            DurationSeconds=token_expiry_seconds
+        )
+        return sts_policy['Credentials']
+
     def asynsqs(self, queue=None):
         if queue is not None and self.predefined_queues:
-            if queue in self._predefined_queue_async_clients:
+            if queue in self._predefined_queue_async_clients and not hasattr(self, 'sts_expiration'):
                 return self._predefined_queue_async_clients[queue]
             if queue not in self.predefined_queues:
                 raise UndefinedQueueException((
