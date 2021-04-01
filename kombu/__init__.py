@@ -5,7 +5,7 @@ import re
 import sys
 from collections import namedtuple  # noqa
 
-__version__ = '5.0.2'
+__version__ = '5.1.0b1'
 __author__ = 'Ask Solem'
 __contact__ = 'auvipy@gmail.com, ask@celeryproject.org'
 __homepage__ = 'https://kombu.readthedocs.io'
