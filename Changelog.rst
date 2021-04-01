@@ -4,6 +4,43 @@
  Change history
 ================
 
+.. _version-5.1.0b1:
+
+5.1.0b1
+=======
+:release-date: 2021-04-01 10:30 P.M UTC+6:00
+:release-by: Asiff Saif Uddin
+
+- Wheels are no longer universal.
+- Revert "Added redis transport key_prefix from envvars".
+- Redis Transport: Small improvements of `SentinelChannel` (#1253).
+- Fix pidbox not using default channels.
+- Revert "on worker restart - restore visible regardless to time (#905)".
+- Add vine to dependencies.
+- Pin urllib3<1.26 to fix failing unittests.
+- Add timeout to producer publish (#1269).
+- Remove python2 compatibility code (#1277).
+- redis: Support Sentinel with SSL.
+- Support for Azure Service Bus 7.0.0 (#1284).
+- Allow specifying session token (#1283).
+- kombu/asynchronous/http/curl: implement _set_timeout.
+- Disable namedtuple to object feature in simplejson (#1297).
+- Update to tox docker 2.0.
+- SQS back-off policy (#1301).
+- Fixed SQS unittests.
+- Fix: non kombu json message decoding in SQS transport (#1306).
+- Add Github Actions CI (#1309).
+- Update default pickle protocol version to 4 (#1314).
+- Update connection.py (#1311).
+- Drop support for the lzma backport.
+- Drop obsolete code importing pickle (#1315).
+- Update default login method for librabbitmq and pyamqp (#936).
+- SQS Broker - handle STS authentication with AWS (#1322).
+- Min py-amqp version is v5.0.6 (#1325).
+- Numerous docs & example fixes.
+- Use a thread-safe implementation of cached_property (#1316).
+
+
 .. _version-5.0.2:
 
 5.0.2
