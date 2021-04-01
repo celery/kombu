@@ -2,13 +2,8 @@
 
 import codecs
 import os
+import pickle
 import sys
-
-import pickle as pypickle
-try:
-    import cPickle as cpickle
-except ImportError:  # pragma: no cover
-    cpickle = None  # noqa
 
 from collections import namedtuple
 from contextlib import contextmanager
@@ -32,12 +27,10 @@ if sys.platform.startswith('java'):  # pragma: no cover
 else:
     _decode = codecs.decode
 
-pickle = cpickle or pypickle
 pickle_load = pickle.load
 
-#: Kombu requires Python 2.5 or later so we use protocol 2 by default.
-#: There's a new protocol (3) but this is only supported by Python 3.
-pickle_protocol = int(os.environ.get('PICKLE_PROTOCOL', 2))
+#: We have to use protocol 4 until we drop support for Python 3.6 and 3.7.
+pickle_protocol = int(os.environ.get('PICKLE_PROTOCOL', 4))
 
 codec = namedtuple('codec', ('content_type', 'content_encoding', 'encoder'))
 
