@@ -278,8 +278,11 @@ def test_purge(mock_queue: MockQueue):
 
 
 def test_custom_queue_name_prefix():
-    conn = Connection(URL_CREDS, transport=azureservicebus.Transport,
-                      transport_options={'queue_name_prefix': 'test-queue'})
+    conn = Connection(
+        URL_CREDS,
+        transport=azureservicebus.Transport,
+        transport_options={'queue_name_prefix': 'test-queue'}
+    )
     channel = conn.channel()
 
     assert channel.queue_name_prefix == 'test-queue'
