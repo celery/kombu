@@ -20,11 +20,11 @@ jobs:
       - name: Install dependencies
         run: pip install --upgrade pip setuptools wheel tox tox-docker
       - name: Run flake8
-        run: tox -v -e py-flake8 -- -v
+        run: tox -v -e flake8 -- -v
       - name: Run pydocstyle
-        run: tox -v -e py-pydocstyle -- -v
+        run: tox -v -e pydocstyle -- -v
       - name: Run apicheck
-        run: tox -v -e py-apicheck -- -v
+        run: tox -v -e apicheck -- -v
   #################### Unittests ####################
   unittest:
     needs: lint
