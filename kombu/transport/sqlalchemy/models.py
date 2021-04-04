@@ -4,9 +4,14 @@ import datetime
 
 from sqlalchemy import (Column, Integer, String, Text, DateTime,
                         Sequence, Boolean, ForeignKey, SmallInteger, Index)
-from sqlalchemy.ext.declarative import declarative_base, declared_attr
 from sqlalchemy.orm import relation
 from sqlalchemy.schema import MetaData
+
+try:
+    from sqlalchemy.orm import declarative_base, declared_attr
+except ImportError:
+    # TODO: Remove this once we drop support for SQLAlchemy < 1.4.
+    from sqlalchemy.ext.declarative import declarative_base, declared_attr
 
 class_registry = {}
 metadata = MetaData()
