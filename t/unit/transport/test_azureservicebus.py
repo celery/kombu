@@ -275,3 +275,28 @@ def test_purge(mock_queue: MockQueue):
     size = mock_queue.channel._size(mock_queue.queue_name)
     assert size == 0
     assert len(mock_queue.asb.queues[mock_queue.queue_name].waiting_ack) == 0
+
+
+def test_custom_queue_name_prefix():
+    conn = Connection(
+        URL_CREDS,
+        transport=azureservicebus.Transport,
+        transport_options={'queue_name_prefix': 'test-queue'}
+    )
+    channel = conn.channel()
+
+    assert channel.queue_name_prefix == 'test-queue'
+
+
+def test_custom_entity_name():
+    conn = Connection(URL_CREDS, transport=azureservicebus.Transport)
+    channel = conn.channel()
+
+    # dashes allowed and dots replaced by dashes
+    assert channel.entity_name('test-celery') == 'test-celery'
+    assert channel.entity_name('test.celery') == 'test-celery'
+
+    # all other punctuations replaced by underscores
+    assert channel.entity_name('test_celery') == 'test_celery'
+    assert channel.entity_name('test:celery') == 'test_celery'
+    assert channel.entity_name('test+celery') == 'test_celery'

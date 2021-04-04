@@ -66,8 +66,10 @@ from azure.servicebus.management import ServiceBusAdministrationClient
 from . import virtual
 
 # dots are replaced by dash, all other punctuation replaced by underscore.
+PUNCTUATIONS_TO_REPLACE = set(string.punctuation) - {'_', '.', '-'}
 CHARS_REPLACE_TABLE = {
-    ord(c): 0x5f for c in string.punctuation if c not in '_'
+    ord('.'): ord('-'),
+    **{ord(c): ord('_') for c in PUNCTUATIONS_TO_REPLACE}
 }
 
 
