@@ -9,7 +9,7 @@ jobs:
         python-version: [3.8]
     steps:
       - name: Install system packages
-        run: sudo apt-get install libcurl4-openssl-dev libssl-dev
+        run: sudo apt update && sudo apt-get install libcurl4-openssl-dev libssl-dev
       - name: Check out code from GitHub
         uses: actions/checkout@v2.3.4
       - name: Set up Python ${{ matrix.python-version }}
@@ -34,7 +34,7 @@ jobs:
         python-version: [3.6,3.7,3.8]
     steps:
       - name: Install system packages
-        run: sudo apt-get install libcurl4-openssl-dev libssl-dev
+        run: sudo apt update && sudo apt-get install libcurl4-openssl-dev libssl-dev
       - name: Check out code from GitHub
         uses: actions/checkout@v2.3.4
       - name: Set up Python ${{ matrix.python-version }}
@@ -55,7 +55,7 @@ jobs:
         python-version: [3.6,3.7,3.8,pypy3]
     steps:
       - name: Install system packages
-        run: sudo apt-get install libcurl4-openssl-dev libssl-dev
+        run: sudo apt update && sudo apt-get install libcurl4-openssl-dev libssl-dev
       - name: Check out code from GitHub
         uses: actions/checkout@v2.3.4
       - name: Set up Python ${{ matrix.python-version }}
