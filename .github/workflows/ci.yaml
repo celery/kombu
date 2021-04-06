@@ -9,7 +9,7 @@ jobs:
         python-version: [3.8]
     steps:
       - name: Install system packages
-        run: sudo apt-get install libcurl4-openssl-dev libssl-dev
+        run: sudo apt update && sudo apt-get install libcurl4-openssl-dev libssl-dev
       - name: Check out code from GitHub
         uses: actions/checkout@v2.3.4
       - name: Set up Python ${{ matrix.python-version }}
@@ -20,11 +20,11 @@ jobs:
       - name: Install dependencies
         run: pip install --upgrade pip setuptools wheel tox tox-docker
       - name: Run flake8
-        run: tox -v -e py-flake8 -- -v
+        run: tox -v -e flake8 -- -v
       - name: Run pydocstyle
-        run: tox -v -e py-pydocstyle -- -v
+        run: tox -v -e pydocstyle -- -v
       - name: Run apicheck
-        run: tox -v -e py-apicheck -- -v
+        run: tox -v -e apicheck -- -v
   #################### Unittests ####################
   unittest:
     needs: lint
@@ -34,7 +34,7 @@ jobs:
         python-version: [3.6,3.7,3.8]
     steps:
       - name: Install system packages
-        run: sudo apt-get install libcurl4-openssl-dev libssl-dev
+        run: sudo apt update && sudo apt-get install libcurl4-openssl-dev libssl-dev
       - name: Check out code from GitHub
         uses: actions/checkout@v2.3.4
       - name: Set up Python ${{ matrix.python-version }}
@@ -55,7 +55,7 @@ jobs:
         python-version: [3.6,3.7,3.8,pypy3]
     steps:
       - name: Install system packages
-        run: sudo apt-get install libcurl4-openssl-dev libssl-dev
+        run: sudo apt update && sudo apt-get install libcurl4-openssl-dev libssl-dev
       - name: Check out code from GitHub
         uses: actions/checkout@v2.3.4
       - name: Set up Python ${{ matrix.python-version }}
