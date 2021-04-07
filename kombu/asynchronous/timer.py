@@ -155,7 +155,7 @@ class Timer:
         return self._enter(eta, priority, entry)
 
     def enter_after(self, secs, entry, priority=0, time=monotonic):
-        return self.enter_at(entry, time() + secs, priority)
+        return self.enter_at(entry, time() + float(secs), priority)
 
     def _enter(self, eta, priority, entry, push=heapq.heappush):
         push(self._queue, scheduled(eta, priority, entry))
