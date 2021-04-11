@@ -168,6 +168,8 @@ class UndefinedQueueException(Exception):
 
 
 class QoS(virtual.QoS):
+    """Quality of Service guarantees implementation for SQS."""
+
     def reject(self, delivery_tag, requeue=False):
         super().reject(delivery_tag, requeue=requeue)
         routing_key, message, backoff_tasks, backoff_policy = \

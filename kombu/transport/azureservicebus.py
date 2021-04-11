@@ -82,6 +82,8 @@ CHARS_REPLACE_TABLE = {
 
 
 class SendReceive:
+    """Container for Sender and Receiver."""
+
     def __init__(self,
                  receiver: Optional[ServiceBusReceiver] = None,
                  sender: Optional[ServiceBusSender] = None):
