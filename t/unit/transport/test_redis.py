@@ -1473,7 +1473,7 @@ class test_RedisSentinel:
             'ssl_certfile': '/foo/cert.crt',
             'ssl_keyfile': '/foo/pkey.key'
         }
-        with patch('redis.sentinel.Sentinel') as patched:
+        with patch('redis.sentinel.Sentinel'):
             with Connection(
                     'sentinel://',
                     transport_options={'master_name': 'not_important'},
