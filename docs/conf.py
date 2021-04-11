@@ -22,6 +22,7 @@ globals().update(conf.build_config(
         'kombu.asynchronous.aws.ext',
         'kombu.asynchronous.aws.sqs.ext',
         'kombu.transport.qpid_patches',
+        'kombu.transport.librabbitmq',
         'kombu.utils',
         'kombu.transport.virtual.base',
     ],
