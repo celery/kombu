@@ -56,10 +56,11 @@ class AsyncSQSConnection(AsyncAWSQueryConnection):
             queue.id, callback=callback,
         )
 
-    def receive_message(self, queue, queue_url,
-                        number_messages=1, visibility_timeout=None,
-                        attributes=('ApproximateReceiveCount',), wait_time_seconds=None,
-                        callback=None):
+    def receive_message(
+        self, queue, queue_url, number_messages=1, visibility_timeout=None,
+        attributes=('ApproximateReceiveCount',), wait_time_seconds=None,
+        callback=None
+    ):
         params = {'MaxNumberOfMessages': number_messages}
         if visibility_timeout:
             params['VisibilityTimeout'] = visibility_timeout

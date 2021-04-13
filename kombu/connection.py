@@ -628,7 +628,9 @@ class Connection:
         D = self.transport.default_connection_params
 
         if not self.hostname:
-            logger.warning(f"No hostname was supplied. Reverting to default '{D.get('hostname')}'")
+            logger.warning(
+                "No hostname was supplied. "
+                f"Reverting to default '{D.get('hostname')}'")
             hostname = D.get('hostname')
         else:
             hostname = self.hostname
@@ -672,7 +674,8 @@ class Connection:
         if self.transport.can_parse_url:
             connection_as_uri = self.hostname
             try:
-                return self.transport.as_uri(connection_as_uri, include_password, mask)
+                return self.transport.as_uri(
+                    connection_as_uri, include_password, mask)
             except NotImplementedError:
                 pass
 

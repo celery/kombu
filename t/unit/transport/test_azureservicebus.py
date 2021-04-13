@@ -14,7 +14,7 @@ import azure.servicebus.exceptions
 import azure.core.exceptions
 pytest.importorskip('azure.servicebus')
 
-from azure.servicebus import ServiceBusMessage, ServiceBusReceiveMode
+from azure.servicebus import ServiceBusMessage, ServiceBusReceiveMode   # noqa
 
 
 class ASBQueue:
@@ -26,7 +26,8 @@ class ASBQueue:
         self.recv_calls = []
 
     def get_receiver(self, kwargs):
-        receive_mode = kwargs.get('receive_mode', ServiceBusReceiveMode.PEEK_LOCK)
+        receive_mode = kwargs.get(
+            'receive_mode', ServiceBusReceiveMode.PEEK_LOCK)
 
         class Receiver:
             def close(self):
@@ -99,7 +100,7 @@ def test_queue_service_nocredentials():
     conn = Connection(URL_NOCREDS, transport=azureservicebus.Transport)
     with pytest.raises(ValueError) as exc:
         conn.channel()
-        assert exc == 'Need an URI like azureservicebus://{SAS policy name}:{SAS key}@{ServiceBus Namespace}'
+        assert exc == 'Need an URI like azureservicebus://{SAS policy name}:{SAS key}@{ServiceBus Namespace}'   # noqa
 
 
 def test_queue_service():
@@ -139,11 +140,16 @@ def test_default_wait_timeout_seconds():
     conn = Connection(URL_CREDS, transport=azureservicebus.Transport)
     channel = conn.channel()
 
-    assert channel.wait_time_seconds == azureservicebus.Channel.default_wait_time_seconds
+    assert channel.wait_time_seconds == \
+        azureservicebus.Channel.default_wait_time_seconds
 
 
 def test_custom_wait_timeout_seconds():
-    conn = Connection(URL_CREDS, transport=azureservicebus.Transport, transport_options={'wait_time_seconds': 10})
+    conn = Connection(
+        URL_CREDS,
+        transport=azureservicebus.Transport,
+        transport_options={'wait_time_seconds': 10}
+    )
     channel = conn.channel()
 
     assert channel.wait_time_seconds == 10
@@ -153,7 +159,8 @@ def test_default_peek_lock_seconds():
     conn = Connection(URL_CREDS, transport=azureservicebus.Transport)
     channel = conn.channel()
 
-    assert channel.peek_lock_seconds == azureservicebus.Channel.default_peek_lock_seconds
+    assert channel.peek_lock_seconds == \
+        azureservicebus.Channel.default_peek_lock_seconds
 
 
 def test_custom_peek_lock_seconds():
@@ -175,7 +182,7 @@ def test_invalid_peek_lock_seconds():
 
 @pytest.fixture
 def random_queue():
-    return 'azureservicebus_queue_{0}'.format(random.randint(1000,9999))
+    return 'azureservicebus_queue_{0}'.format(random.randint(1000, 9999))
 
 
 @pytest.fixture
@@ -188,7 +195,10 @@ def mock_asb_management(mock_asb):
     return ASBMgmtMock(queues=mock_asb.queues)
 
 
-MockQueue = namedtuple('MockQueue', ['queue_name', 'asb', 'asb_mgmt', 'conn', 'channel', 'producer', 'queue'])
+MockQueue = namedtuple(
+    'MockQueue',
+    ['queue_name', 'asb', 'asb_mgmt', 'conn', 'channel', 'producer', 'queue']
+)
 
 
 @pytest.fixture

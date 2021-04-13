@@ -70,12 +70,17 @@ exist in AWS) you can tell this transport about them as follows:
     'sts_role_arn': 'arn:aws:iam::<xxx>:role/STSTest', # optional
     'sts_token_timeout': 900 # optional
     }
-    
-backoff_policy & backoff_tasks are optional arguments. These arguments automatically change the message visibility timeout, in order to have different times between specific task
-retries. This would apply after task failure.
 
-AWS STS authentication is supported, by using sts_role_arn, and sts_token_timeout. sts_role_arn is the assumed IAM role ARN we are trying to access with.
-sts_token_timeout is the token timeout, defaults (and minimum) to 900 seconds. After the mentioned period, a new token will be created.
+backoff_policy & backoff_tasks are optional arguments. These arguments
+automatically change the message visibility timeout, in order to have
+different times between specific task retries. This would apply after
+task failure.
+
+AWS STS authentication is supported, by using sts_role_arn, and
+sts_token_timeout. sts_role_arn is the assumed IAM role ARN we are trying
+to access with. sts_token_timeout is the token timeout, defaults (and minimum)
+to 900 seconds. After the mentioned period, a new token will be created.
+
 
 
 If you authenticate using Okta_ (e.g. calling |gac|_), you can also specify
@@ -163,11 +168,16 @@ class UndefinedQueueException(Exception):
 
 
 class QoS(virtual.QoS):
+    """Quality of Service guarantees implementation for SQS."""
+
     def reject(self, delivery_tag, requeue=False):
         super().reject(delivery_tag, requeue=requeue)
-        routing_key, message, backoff_tasks, backoff_policy = self._extract_backoff_policy_configuration_and_message(delivery_tag)
+        routing_key, message, backoff_tasks, backoff_policy = \
+            self._extract_backoff_policy_configuration_and_message(
+                delivery_tag)
         if routing_key and message and backoff_tasks and backoff_policy:
-            self.apply_backoff_policy(routing_key, delivery_tag, backoff_policy, backoff_tasks)
+            self.apply_backoff_policy(
+                routing_key, delivery_tag, backoff_policy, backoff_tasks)
 
     def _extract_backoff_policy_configuration_and_message(self, delivery_tag):
         try:
@@ -182,9 +192,11 @@ class QoS(virtual.QoS):
         backoff_policy = queue_config.get('backoff_policy')
         return routing_key, message, backoff_tasks, backoff_policy
 
-    def apply_backoff_policy(self, routing_key, delivery_tag, backoff_policy, backoff_tasks):
+    def apply_backoff_policy(self, routing_key, delivery_tag,
+                             backoff_policy, backoff_tasks):
         queue_url = self.channel._queue_cache[routing_key]
-        task_name, number_of_retries = self.extract_task_name_and_number_of_retries(delivery_tag)
+        task_name, number_of_retries = \
+            self.extract_task_name_and_number_of_retries(delivery_tag)
         if not task_name or not number_of_retries:
             return None
         policy_value = backoff_policy.get(number_of_retries)
@@ -200,7 +212,9 @@ class QoS(virtual.QoS):
     def extract_task_name_and_number_of_retries(message):
         message_headers = message.headers
         task_name = message_headers['task']
-        number_of_retries = int(message.properties['delivery_info']['sqs_message']['Attributes']['ApproximateReceiveCount'])
+        number_of_retries = int(
+            message.properties['delivery_info']['sqs_message']
+                              ['Attributes']['ApproximateReceiveCount'])
         return task_name, number_of_retries
 
 
@@ -380,7 +394,9 @@ class Channel(virtual.Channel):
     @staticmethod
     def __b64_encoded(byte_string):
         try:
-            return base64.b64encode(base64.b64decode(byte_string)) == byte_string
+            return base64.b64encode(
+                base64.b64decode(byte_string)
+            ) == byte_string
         except Exception:  # pylint: disable=broad-except
             return False
 
@@ -613,7 +629,8 @@ class Channel(virtual.Channel):
         #         if "can't set attribute" not in str(exc):
         #             raise
 
-    def new_sqs_client(self, region, access_key_id, secret_access_key, session_token=None):
+    def new_sqs_client(self, region, access_key_id,
+                       secret_access_key, session_token=None):
         session = boto3.session.Session(
             region_name=region,
             aws_access_key_id=access_key_id,
@@ -634,8 +651,9 @@ class Channel(virtual.Channel):
         if queue is not None and self.predefined_queues:
 
             if queue not in self.predefined_queues:
-                raise UndefinedQueueException(f"Queue with name '{queue}' must be defined"
-                                                                     " in 'predefined_queues'.")
+                raise UndefinedQueueException(
+                    f"Queue with name '{queue}' must be defined"
+                    " in 'predefined_queues'.")
             q = self.predefined_queues[queue]
             if self.transport_options.get('sts_role_arn'):
                 return self._handle_sts_session(queue, q)
@@ -643,10 +661,14 @@ class Channel(virtual.Channel):
                 if queue in self._predefined_queue_clients:
                     return self._predefined_queue_clients[queue]
                 else:
-                    c = self._predefined_queue_clients[queue] = self.new_sqs_client(
-                        region=q.get('region', self.region),
-                        access_key_id=q.get('access_key_id', self.conninfo.userid),
-                        secret_access_key=q.get('secret_access_key', self.conninfo.password))
+                    c = self._predefined_queue_clients[queue] = \
+                        self.new_sqs_client(
+                            region=q.get('region', self.region),
+                            access_key_id=q.get(
+                                'access_key_id', self.conninfo.userid),
+                            secret_access_key=q.get(
+                                'secret_access_key', self.conninfo.password)
+                    )
                     return c
 
         if self._sqs is not None:
@@ -661,8 +683,9 @@ class Channel(virtual.Channel):
 
     def _handle_sts_session(self, queue, q):
         if not hasattr(self, 'sts_expiration'):  # STS token - token init
-            sts_creds = self.generate_sts_session_token(self.transport_options.get('sts_role_arn'),
-                                                        self.transport_options.get('sts_token_timeout', 900))
+            sts_creds = self.generate_sts_session_token(
+                self.transport_options.get('sts_role_arn'),
+                self.transport_options.get('sts_token_timeout', 900))
             self.sts_expiration = sts_creds['Expiration']
             c = self._predefined_queue_clients[queue] = self.new_sqs_client(
                 region=q.get('region', self.region),
@@ -671,9 +694,11 @@ class Channel(virtual.Channel):
                 session_token=sts_creds['SessionToken'],
             )
             return c
-        elif self.sts_expiration.replace(tzinfo=None) < datetime.utcnow():  # STS token - refresh if expired
-            sts_creds = self.generate_sts_session_token(self.transport_options.get('sts_role_arn'),
-                                                        self.transport_options.get('sts_token_timeout', 900))
+        # STS token - refresh if expired
+        elif self.sts_expiration.replace(tzinfo=None) < datetime.utcnow():
+            sts_creds = self.generate_sts_session_token(
+                self.transport_options.get('sts_role_arn'),
+                self.transport_options.get('sts_token_timeout', 900))
             self.sts_expiration = sts_creds['Expiration']
             c = self._predefined_queue_clients[queue] = self.new_sqs_client(
                 region=q.get('region', self.region),
@@ -696,7 +721,8 @@ class Channel(virtual.Channel):
 
     def asynsqs(self, queue=None):
         if queue is not None and self.predefined_queues:
-            if queue in self._predefined_queue_async_clients and not hasattr(self, 'sts_expiration'):
+            if queue in self._predefined_queue_async_clients and \
+               not hasattr(self, 'sts_expiration'):
                 return self._predefined_queue_async_clients[queue]
             if queue not in self.predefined_queues:
                 raise UndefinedQueueException((
@@ -704,9 +730,10 @@ class Channel(virtual.Channel):
                     "'predefined_queues'."
                 ).format(queue))
             q = self.predefined_queues[queue]
-            c = self._predefined_queue_async_clients[queue] = AsyncSQSConnection(  # noqa: E501
-                sqs_connection=self.sqs(queue=queue),
-                region=q.get('region', self.region)
+            c = self._predefined_queue_async_clients[queue] = \
+                AsyncSQSConnection(
+                    sqs_connection=self.sqs(queue=queue),
+                    region=q.get('region', self.region)
             )
             return c
 

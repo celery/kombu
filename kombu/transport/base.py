@@ -235,9 +235,7 @@ class Transport:
         reader(loop)
 
     def as_uri(self, uri: str, include_password=False, mask='**') -> str:
-        """
-        Customise the display format of the URI
-        """
+        """Customise the display format of the URI."""
         raise NotImplementedError()
 
     @property
