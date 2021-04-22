@@ -169,6 +169,7 @@ class UndefinedQueueException(Exception):
 
 class GossipUsingSQSIsNotSupportedException(Exception):
     """Ping/Gossip is not supported using SQS broker."""
+    
     def __init__(self):
         super().__init__("Ping/Gossip is not supported using SQS broker.\n"
                          "SQS queue is a standalone infrastructure component, "
