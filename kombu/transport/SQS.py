@@ -171,7 +171,8 @@ class GossipUsingSQSIsNotSupportedException(Exception):
     def __init__(self):
         super().__init__("Ping/Gossip is not supported using SQS broker.\n"
                          "SQS queue is a standalone infrastructure component, "
-                         "creating a new queue will not provide evidence for successful gossip.")
+                         "creating a new queue will not provide evidence for "
+                         "successful gossip.")
 
 
 class QoS(virtual.QoS):
