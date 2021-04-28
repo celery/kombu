@@ -130,7 +130,7 @@ def nested(*managers):  # pragma: no cover
             while exits:
                 exit = exits.pop()
                 try:
-                    if exit(*exc):
+                    if sys.exit(*exc):
                         exc = (None, None, None)
                 except:
                     exc = sys.exc_info()

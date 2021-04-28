@@ -73,7 +73,6 @@ class test_Timer:
         assert x.schedule is x
 
     def test_handle_error(self):
-        from datetime import datetime
         on_error = Mock(name='on_error')
 
         s = Timer(on_error=on_error)
