@@ -1043,6 +1043,7 @@ class test_Redis:
             assert conn.transport.channel_errors
 
     def test_check_at_least_we_try_to_connect_and_fail(self):
+        import redis
         connection = Connection('redis://localhost:65534/')
 
         with pytest.raises(redis.exceptions.ConnectionError):

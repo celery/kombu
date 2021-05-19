@@ -79,7 +79,7 @@ class test_timetuple:
         assert a <= b
         assert b >= a
 
-        assert (timetuple(134, time(), 'A', 'obj').__lt__(()) is
+        assert (timetuple(134, time(), 'A', 'obj').__lt__(tuple()) is
                 NotImplemented)
         assert timetuple(134, t2, 'A', 'obj') > timetuple(133, t1, 'A', 'obj')
         assert timetuple(134, t1, 'B', 'obj') > timetuple(134, t1, 'A', 'obj')
