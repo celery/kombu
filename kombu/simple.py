@@ -23,7 +23,7 @@ class SimpleBase:
     def __exit__(self, *exc_info):
         self.close()
 
-    def __init__(self, channel, producer, consumer, no_ack=False):
+    def __init__(self, channel, producer, consumer, no_ack=False, accept=None):
         self.channel = maybe_channel(channel)
         self.producer = producer
         self.consumer = consumer
@@ -31,6 +31,7 @@ class SimpleBase:
         self.queue = self.consumer.queues[0]
         self.buffer = deque()
         self.consumer.register_callback(self._receive)
+        self.accept = accept
 
     def get(self, block=True, timeout=None):
         if not block:
@@ -67,7 +68,7 @@ class SimpleBase:
                 remaining = timeout - elapsed
 
     def get_nowait(self):
-        m = self.queue.get(no_ack=self.no_ack)
+        m = self.queue.get(no_ack=self.no_ack, accept=self.accept)
         if not m:
             raise self.Empty()
         return m
@@ -140,7 +141,7 @@ class SimpleQueue(SimpleBase):
                                       routing_key=routing_key,
                                       compression=compression)
         super().__init__(channel, producer,
-                         consumer, no_ack, **kwargs)
+                         consumer, no_ack, accept)
 
 
 class SimpleBuffer(SimpleQueue):
