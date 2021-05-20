@@ -54,6 +54,11 @@ class SimpleBase:
         with pytest.raises(ContentDisallowed):
             q.get_nowait().payload
 
+        q = self.Queue('test_accept1', serializer='json', accept=[])
+        q.put({'hello': 'SimpleSync'})
+        with pytest.raises(ContentDisallowed):
+            q.get_nowait().payload
+
         q = self.Queue(
             'test_accept2', serializer='pickle', accept=['json', 'pickle'])
         q.put({'hello': 'SimpleSync'})
@@ -61,6 +66,11 @@ class SimpleBase:
 
     def test_get_accept(self):
         q = self.Queue('test_accept', serializer='pickle', accept=['json'])
+        q.put({'hello': 'SimpleSync'})
+        with pytest.raises(ContentDisallowed):
+            q.get().payload
+
+        q = self.Queue('test_accept1', serializer='pickle', accept=[])
         q.put({'hello': 'SimpleSync'})
         with pytest.raises(ContentDisallowed):
             q.get().payload
