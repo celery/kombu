@@ -119,7 +119,7 @@ class SimpleQueue(SimpleBase):
 
     def __init__(self, channel, name, no_ack=None, queue_opts=None,
                  queue_args=None, exchange_opts=None, serializer=None,
-                 compression=None, accept=None, **kwargs):
+                 compression=None, accept=None):
         queue = name
         queue_opts = dict(self.queue_opts, **queue_opts or {})
         queue_args = dict(self.queue_args, **queue_args or {})
