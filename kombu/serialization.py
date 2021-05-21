@@ -445,7 +445,17 @@ for ep, args in entrypoints('kombu.serializers'):  # pragma: no cover
 
 
 def prepare_accept_content(content_types, name_to_type=None):
+    """Replace aliases of content_types with full names from registry.
+
+    Raises:
+        SerializerNotInstalled: If the serialization method
+            requested is not available.
+    """
     name_to_type = registry.name_to_type if not name_to_type else name_to_type
     if content_types is not None:
-        return {n if '/' in n else name_to_type[n] for n in content_types}
+        try:
+            return {n if '/' in n else name_to_type[n] for n in content_types}
+        except KeyError as e:
+            raise SerializerNotInstalled(
+                f'No encoder/decoder installed for {e.args[0]}')
     return content_types
