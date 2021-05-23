@@ -4,6 +4,17 @@
  Change history
 ================
 
+5.1.0
+=====
+:release-date: 2021-05-23 7:00 P.M UTC+3:00
+:release-by: Omer Katz
+
+- Fix queue names special characters replacement for Azure Service Bus. (#1324)
+- Add support for SQLAlchemy 1.4. (#1328)
+- Coerce seconds argument to a floating point number in ``Timer.enter_after``. (#1330)
+- Add accept parameter to SimpleQueue class. (#1140)
+- ``prepare_accept_content()`` now raises ``SerializerNotInstalled`` instead of ``KeyError``. (#1343)
+
 .. _version-5.1.0b1:
 
 5.1.0b1

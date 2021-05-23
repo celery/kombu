@@ -13,7 +13,7 @@ from kombu.serialization import (
     raw_encode, register_yaml, register_msgpack,
     dumps, loads, pickle, pickle_protocol,
     unregister, register_pickle, enable_insecure_serializers,
-    disable_insecure_serializers,
+    disable_insecure_serializers, prepare_accept_content
 )
 from kombu.utils.encoding import str_to_bytes
 
@@ -307,3 +307,12 @@ class test_Serialization:
         register_msgpack()
         with pytest.raises(SerializerNotInstalled):
             loads('foo', 'application/x-msgpack', 'utf-8')
+
+    def test_prepare_accept_content(self):
+        assert {'application/json'} == prepare_accept_content(['json'])
+        assert {'application/json'} == prepare_accept_content(
+            ['application/json'])
+
+    def test_prepare_accept_content_bad_serializer(self):
+        with pytest.raises(SerializerNotInstalled):
+            prepare_accept_content(['bad_serializer'])
