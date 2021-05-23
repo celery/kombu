@@ -15,12 +15,8 @@ except ImportError:
 
 from kombu.exceptions import reraise
 
-try:
-    from io import UnsupportedOperation
-    FILENO_ERRORS = (AttributeError, ValueError, UnsupportedOperation)
-except ImportError:  # pragma: no cover
-    # Py2
-    FILENO_ERRORS = (AttributeError, ValueError)  # noqa
+from io import UnsupportedOperation
+FILENO_ERRORS = (AttributeError, ValueError, UnsupportedOperation)
 
 try:
     from billiard.util import register_after_fork
@@ -30,14 +26,6 @@ except ImportError:  # pragma: no cover
     except ImportError:
         register_after_fork = None  # noqa
 
-try:
-    from typing import NamedTuple
-except ImportError:
-    import collections
-
-    def NamedTuple(name, fields):
-        """Typed version of collections.namedtuple."""
-        return collections.namedtuple(name, [k for k, _ in fields])
 
 _environment = None
 

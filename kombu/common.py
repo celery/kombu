@@ -17,13 +17,6 @@ from .log import get_logger
 from .serialization import registry as serializers
 from .utils.uuid import uuid
 
-try:
-    from _thread import get_ident
-except ImportError:                             # pragma: no cover
-    try:                                        # noqa
-        from thread import get_ident            # noqa
-    except ImportError:                         # pragma: no cover
-        from dummy_thread import get_ident      # noqa
 
 __all__ = ('Broadcast', 'maybe_declare', 'uuid',
            'itermessages', 'send_reply',
@@ -59,7 +52,7 @@ def oid_from(instance, threads=True):
     return generate_oid(
         get_node_id(),
         os.getpid(),
-        get_ident() if threads else 0,
+        threading.get_ident() if threads else 0,
         instance,
     )
 
