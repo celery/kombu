@@ -14,7 +14,6 @@ from . import Exchange, Queue, Consumer, Producer
 from .clocks import LamportClock
 from .common import maybe_declare, oid_from
 from .exceptions import InconsistencyError, OperationalError
-from .five import range
 
 from .log import get_logger
 from .utils.functional import maybe_evaluate, reprcall
