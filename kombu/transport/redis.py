@@ -1,5 +1,53 @@
-"""Redis transport."""
-from __future__ import absolute_import, unicode_literals
+"""Redis transport module for Kombu.
+
+Features
+========
+* Type: Virtual
+* Supports Direct: Yes
+* Supports Topic: Yes
+* Supports Fanout: Yes
+* Supports Priority: Yes
+* Supports TTL: No
+
+Connection String
+=================
+Connection string has the following format:
+
+.. code-block::
+
+    redis://REDIS_ADDRESS[:PORT][/VIRTUALHOST]
+    rediss://REDIS_ADDRESS[:PORT][/VIRTUALHOST]
+
+To use sentinel for dynamic Redis discovery,
+the connection string has following format:
+
+.. code-block::
+
+    sentinel://SENTINEL_ADDRESS[:PORT]
+
+Transport Options
+=================
+* ``sep``
+* ``ack_emulation``: (bool) If set to True transport will
+  simulate Acknowledge of AMQP protocol.
+* ``unacked_key``
+* ``unacked_index_key``
+* ``unacked_mutex_key``
+* ``unacked_mutex_expire``
+* ``visibility_timeout``
+* ``unacked_restore_limit``
+* ``fanout_prefix``
+* ``fanout_patterns``
+* ``socket_timeout``
+* ``socket_connect_timeout``
+* ``socket_keepalive``
+* ``socket_keepalive_options``
+* ``queue_order_strategy``
+* ``max_connections``
+* ``health_check_interval``
+* ``retry_on_timeout``
+* ``priority_steps``
+"""
 
 import numbers
 import socket
@@ -7,12 +55,12 @@ import socket
 from bisect import bisect
 from collections import namedtuple
 from contextlib import contextmanager
+from queue import Empty
 from time import time
 
 from vine import promise
 
 from kombu.exceptions import InconsistencyError, VersionMismatch
-from kombu.five import Empty, values, string_t
 from kombu.log import get_logger
 from kombu.utils.compat import register_after_fork
 from kombu.utils.eventio import poll, READ, ERR
@@ -21,7 +69,6 @@ from kombu.utils.json import loads, dumps
 from kombu.utils.objects import cached_property
 from kombu.utils.scheduling import cycle_by_name
 from kombu.utils.url import _parse_url
-from kombu.utils.compat import _detect_environment
 from kombu.utils.functional import accepts_argument
 
 from . import virtual
@@ -138,7 +185,7 @@ class QoS(virtual.QoS):
     restore_at_shutdown = True
 
     def __init__(self, *args, **kwargs):
-        super(QoS, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._vrestore_count = 0
 
     def append(self, message, delivery_tag):
@@ -156,7 +203,7 @@ class QoS(virtual.QoS):
                 .hset(self.unacked_key, delivery_tag,
                       dumps([message._raw, EX, RK])) \
                 .execute()
-            super(QoS, self).append(message, delivery_tag)
+            super().append(message, delivery_tag)
 
     def restore_unacked(self, client=None):
         with self.channel.conn_or_acquire(client) as client:
@@ -166,7 +213,7 @@ class QoS(virtual.QoS):
 
     def ack(self, delivery_tag):
         self._remove_from_indices(delivery_tag).execute()
-        super(QoS, self).ack(delivery_tag)
+        super().ack(delivery_tag)
 
     def reject(self, delivery_tag, requeue=False):
         if requeue:
@@ -195,9 +242,6 @@ class QoS(virtual.QoS):
             try:
                 with Mutex(client, self.unacked_mutex_key,
                            self.unacked_mutex_expire):
-                    env = _detect_environment()
-                    if env == 'gevent':
-                        ceil = time()
                     visible = client.zrevrangebyscore(
                         self.unacked_index_key, ceil, 0,
                         start=num and start, num=num, withscores=True)
@@ -236,7 +280,7 @@ class QoS(virtual.QoS):
         return self.channel.visibility_timeout
 
 
-class MultiChannelPoller(object):
+class MultiChannelPoller:
     """Async I/O poller for Redis transport."""
 
     eventflags = READ | ERR
@@ -260,7 +304,7 @@ class MultiChannelPoller(object):
         self.after_read = set()
 
     def close(self):
-        for fd in values(self._chan_to_sock):
+        for fd in self._chan_to_sock.values():
             try:
                 self.poller.unregister(fd)
             except (KeyError, ValueError):
@@ -494,9 +538,10 @@ class Channel(virtual.Channel):
     )
 
     connection_class = redis.Connection if redis else None
+    connection_class_ssl = redis.SSLConnection if redis else None
 
     def __init__(self, *args, **kwargs):
-        super(Channel, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         if not self.ack_emulation:  # disable visibility timeout
             self.QoS = virtual.QoS
@@ -510,7 +555,7 @@ class Channel(virtual.Channel):
         self.handlers = {'BRPOP': self._brpop_read, 'LISTEN': self._receive}
 
         if self.fanout_prefix:
-            if isinstance(self.fanout_prefix, string_t):
+            if isinstance(self.fanout_prefix, str):
                 self.keyprefix_fanout = self.fanout_prefix
         else:
             # previous versions did not set a fanout, so cannot enable
@@ -572,7 +617,7 @@ class Channel(virtual.Channel):
 
     def _restore(self, message, leftmost=False):
         if not self.ack_emulation:
-            return super(Channel, self)._restore(message)
+            return super()._restore(message)
         tag = message.delivery_tag
         with self.conn_or_acquire() as client:
             with client.pipeline() as pipe:
@@ -591,7 +636,7 @@ class Channel(virtual.Channel):
             exchange, _ = self._fanout_queues[queue]
             self.active_fanout_queues.add(queue)
             self._fanout_to_queue[exchange] = queue
-        ret = super(Channel, self).basic_consume(queue, *args, **kwargs)
+        ret = super().basic_consume(queue, *args, **kwargs)
 
         # Update fair cycle between queues.
         #
@@ -635,7 +680,7 @@ class Channel(virtual.Channel):
             self._fanout_to_queue.pop(exchange)
         except KeyError:
             pass
-        ret = super(Channel, self).basic_cancel(consumer_tag)
+        ret = super().basic_cancel(consumer_tag)
         self._update_queue_cycle()
         return ret
 
@@ -774,7 +819,7 @@ class Channel(virtual.Channel):
     def _q_for_pri(self, queue, pri):
         pri = self.priority(pri)
         if pri:
-            return "{}{}{}".format(queue, self.sep, pri)
+            return f"{queue}{self.sep}{pri}"
         return queue
 
     def priority(self, n):
@@ -862,7 +907,7 @@ class Channel(virtual.Channel):
                         self.queue_delete(queue, client=client)
             self._disconnect_pools()
             self._close_clients()
-        super(Channel, self).close()
+        super().close()
 
     def _close_clients(self):
         # Close connections
@@ -884,7 +929,7 @@ class Channel(virtual.Channel):
                 vhost = int(vhost)
             except ValueError:
                 raise ValueError(
-                    'Database is int between 0 and limit - 1, not {0}'.format(
+                    'Database is int between 0 and limit - 1, not {}'.format(
                         vhost,
                     ))
         return vhost
@@ -924,7 +969,7 @@ class Channel(virtual.Channel):
             # 'ssl_cert_reqs', 'ssl_ca_certs', 'ssl_certfile', 'ssl_keyfile'
             try:
                 connparams.update(conninfo.ssl)
-                connparams['connection_class'] = redis.SSLConnection
+                connparams['connection_class'] = self.connection_class_ssl
             except TypeError:
                 pass
         host = connparams['host']
@@ -955,7 +1000,7 @@ class Channel(virtual.Channel):
         if asynchronous:
             class Connection(connection_cls):
                 def disconnect(self):
-                    super(Connection, self).disconnect()
+                    super().disconnect()
                     channel._on_connection_disconnect(self)
             connection_cls = Connection
 
@@ -1042,7 +1087,7 @@ class Transport(virtual.Transport):
     def __init__(self, *args, **kwargs):
         if redis is None:
             raise ImportError('Missing redis library (pip install redis)')
-        super(Transport, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         # Get redis-py exceptions.
         self.connection_errors, self.channel_errors = self._get_errors()
@@ -1087,21 +1132,47 @@ class Transport(virtual.Transport):
         return get_redis_error_classes()
 
 
+if sentinel:
+    class SentinelManagedSSLConnection(
+            sentinel.SentinelManagedConnection,
+            redis.SSLConnection):
+        """Connect to a Redis server using Sentinel + TLS.
+
+        Use Sentinel to identify which Redis server is the current master
+        to connect to and when connecting to the Master server, use an
+        SSL Connection.
+        """
+
+        pass
+
+
 class SentinelChannel(Channel):
     """Channel with explicit Redis Sentinel knowledge.
 
     Broker url is supposed to look like:
 
-    sentinel://0.0.0.0:26379;sentinel://0.0.0.0:26380/...
+    .. code-block::
+
+        sentinel://0.0.0.0:26379;sentinel://0.0.0.0:26380/...
 
     where each sentinel is separated by a `;`.
 
     Other arguments for the sentinel should come from the transport options
-    (see :method:`Celery.connection` which is in charge of creating the
-    `Connection` object).
+    (see `transport_options` of :class:`~kombu.connection.Connection`).
 
     You must provide at least one option in Transport options:
      * `master_name` - name of the redis group to poll
+
+    Example:
+
+    .. code-block:: python
+
+        >>> import kombu
+        >>> c = kombu.Connection(
+             'sentinel://sentinel1:26379;sentinel://sentinel2:26379',
+             transport_options={'master_name': 'mymaster'}
+        )
+        >>> c.connect()
     """
 
     from_transport_options = Channel.from_transport_options + (
@@ -1110,6 +1181,7 @@ class SentinelChannel(Channel):
         'sentinel_kwargs')
 
     connection_class = sentinel.SentinelManagedConnection if sentinel else None
+    connection_class_ssl = SentinelManagedSSLConnection if sentinel else None
 
     def _sentinel_managed_pool(self, asynchronous=False):
         connparams = self._connparams(asynchronous)
@@ -1123,7 +1195,8 @@ class SentinelChannel(Channel):
         for url in self.connection.client.alt:
             url = _parse_url(url)
             if url.scheme == 'sentinel':
-                sentinels.append((url.hostname, url.port))
+                port = url.port or self.connection.default_port
+                sentinels.append((url.hostname, port))
 
         # Fallback for when only one sentinel is provided.
         if not sentinels:
@@ -1136,6 +1209,11 @@ class SentinelChannel(Channel):
             **additional_params)
 
         master_name = getattr(self, 'master_name', None)
+
+        if master_name is None:
+            raise ValueError(
+                "'master_name' transport option must be specified."
+            )
 
         return sentinel_inst.master_for(
             master_name,

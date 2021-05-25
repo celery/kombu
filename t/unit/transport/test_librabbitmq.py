@@ -1,23 +1,13 @@
-from __future__ import absolute_import, unicode_literals
-
 import pytest
 
-from case import Mock, patch, skip
+from unittest.mock import Mock, patch
 
-try:
-    import librabbitmq
-except ImportError:
-    librabbitmq = None  # noqa
-else:
-    from kombu.transport import librabbitmq  # noqa
+pytest.importorskip('librabbitmq')
+
+from kombu.transport import librabbitmq  # noqa
 
 
-@skip.unless_module('librabbitmq')
-class lrmqCase:
-    pass
-
-
-class test_Message(lrmqCase):
+class test_Message:
 
     def test_init(self):
         chan = Mock(name='channel')
@@ -29,7 +19,7 @@ class test_Message(lrmqCase):
         assert message.properties['prop'] == 42
 
 
-class test_Channel(lrmqCase):
+class test_Channel:
 
     def test_prepare_message(self):
         conn = Mock(name='connection')
@@ -59,7 +49,7 @@ class test_Channel(lrmqCase):
         assert body3 == body
 
 
-class test_Transport(lrmqCase):
+class test_Transport:
 
     def setup(self):
         self.client = Mock(name='client')

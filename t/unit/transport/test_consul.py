@@ -1,14 +1,14 @@
-from __future__ import absolute_import, unicode_literals
-
 import pytest
 
-from case import Mock, skip
+from queue import Empty
 
-from kombu.five import Empty
+from unittest.mock import Mock
+
 from kombu.transport.consul import Channel, Transport
 
+pytest.importorskip('consul')
 
-@skip.unless_module('consul')
+
 class test_Consul:
 
     def setup(self):

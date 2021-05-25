@@ -1,16 +1,11 @@
-# -*- coding: utf-8 -*-
 """Semaphores and concurrency primitives."""
-from __future__ import absolute_import, unicode_literals
 
 from collections import deque
-
-from kombu.five import python_2_unicode_compatible
 
 __all__ = ('DummyLock', 'LaxBoundedSemaphore')
 
 
-@python_2_unicode_compatible
-class LaxBoundedSemaphore(object):
+class LaxBoundedSemaphore:
     """Asynchronous Bounded Semaphore.
 
     Lax means that the value will stay within the specified
@@ -93,12 +88,12 @@ class LaxBoundedSemaphore(object):
         self.value = self.initial_value
 
     def __repr__(self):
-        return '<{0} at {1:#x} value:{2} waiting:{3}>'.format(
+        return '<{} at {:#x} value:{} waiting:{}>'.format(
             self.__class__.__name__, id(self), self.value, len(self._waiting),
         )
 
 
-class DummyLock(object):
+class DummyLock:
     """Pretending to be a lock."""
 
     def __enter__(self):

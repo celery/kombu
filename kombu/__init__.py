@@ -1,16 +1,11 @@
 """Messaging library for Python."""
-from __future__ import absolute_import, unicode_literals
 
 import os
 import re
 import sys
-
-if sys.version_info < (2, 7):  # pragma: no cover
-    raise Exception('Kombu 4.6 requires Python versions 2.7 or later.')
-
 from collections import namedtuple  # noqa
 
-__version__ = '4.6.11'
+__version__ = '5.1.0'
 __author__ = 'Ask Solem'
 __contact__ = 'auvipy@gmail.com, ask@celeryproject.org'
 __homepage__ = 'https://kombu.readthedocs.io'
@@ -116,9 +111,7 @@ new_module.__dict__.update({
     '__package__': package,
     'version_info_t': version_info_t,
     'version_info': version_info,
-    'VERSION': VERSION,
-    'absolute_import': absolute_import,
-    'unicode_literals': unicode_literals,
+    'VERSION': VERSION
 })
 
 if os.environ.get('KOMBU_LOG_DEBUG'):  # pragma: no cover

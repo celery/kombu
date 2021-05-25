@@ -35,7 +35,7 @@ This is equivalent to:
     >>> from kombu.simple import SimpleQueue, SimpleBuffer
 
     >>> channel = connection.channel()
-    >>> queue = SimpleBuffer(channel)
+    >>> queue = SimpleBuffer(channel, 'mybuffer')
     >>> # ... do something with queue
     >>> channel.close()
     >>> queue.close()

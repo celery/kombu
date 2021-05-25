@@ -1,5 +1,4 @@
 """Div. Utilities."""
-from __future__ import absolute_import, unicode_literals, print_function
 
 from .encoding import default_encode
 
@@ -16,7 +15,7 @@ def emergency_dump_state(state, open_file=open, dump=None, stderr=None):
         import pickle
         dump = pickle.dump
     persist = mktemp()
-    print('EMERGENCY DUMP STATE TO FILE -> {0} <-'.format(persist),  # noqa
+    print(f'EMERGENCY DUMP STATE TO FILE -> {persist} <-',  # noqa
           file=stderr)
     fh = open_file(persist, 'w')
     try:
@@ -24,7 +23,7 @@ def emergency_dump_state(state, open_file=open, dump=None, stderr=None):
             dump(state, fh, protocol=0)
         except Exception as exc:
             print(  # noqa
-                'Cannot pickle state: {0!r}. Fallback to pformat.'.format(exc),
+                f'Cannot pickle state: {exc!r}. Fallback to pformat.',
                 file=stderr,
             )
             fh.write(default_encode(pformat(state)))

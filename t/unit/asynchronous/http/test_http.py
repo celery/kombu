@@ -1,18 +1,17 @@
-from __future__ import absolute_import, unicode_literals
-
 import pytest
 
 from io import BytesIO
 
 from vine import promise
 
-from case import Mock, skip
+from unittest.mock import Mock
 
 from kombu.asynchronous import http
 from kombu.asynchronous.http.base import BaseClient, normalize_header
 from kombu.exceptions import HttpError
 
 from t.mocks import PromiseMock
+import t.skip
 
 
 class test_Headers:
@@ -145,11 +144,11 @@ class test_BaseClient:
         c.close.assert_called_with()
 
 
-@skip.if_pypy()
-@skip.unless_module('pycurl')
+@t.skip.if_pypy
 class test_Client:
 
     def test_get_client(self, hub):
+        pytest.importorskip('pycurl')
         client = http.get_client()
         assert client.hub is hub
         client2 = http.get_client(hub)

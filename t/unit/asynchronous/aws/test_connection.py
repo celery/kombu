@@ -1,15 +1,13 @@
-# -*- coding: utf-8 -*-
-from __future__ import absolute_import, unicode_literals
+from io import StringIO
 
 import pytest
 
 from contextlib import contextmanager
 
-from case import Mock
+from unittest.mock import Mock
 from vine.abstract import Thenable
 
 from kombu.exceptions import HttpError
-from kombu.five import WhateverIO
 
 from kombu.asynchronous import http
 from kombu.asynchronous.aws.connection import (
@@ -118,7 +116,7 @@ class test_AsyncHTTPSConnection(AWSCase):
         request = x.getresponse(callback)
         x.http_client.add_request.assert_called_with(request)
 
-        buf = WhateverIO()
+        buf = StringIO()
         buf.write('The quick brown fox jumps')
 
         headers = http.Headers({'X-Foo': 'Hello', 'X-Bar': 'World'})

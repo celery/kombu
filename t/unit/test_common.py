@@ -1,10 +1,9 @@
-from __future__ import absolute_import, unicode_literals
-
 import pytest
 import socket
 
 from amqp import RecoverableConnectionError
-from case import ContextMock, Mock, patch
+from unittest.mock import Mock, patch
+from case import ContextMock
 
 from kombu import common
 from kombu.common import (
@@ -19,12 +18,11 @@ from t.mocks import MockPool
 
 def test_generate_oid():
     from uuid import NAMESPACE_OID
-    from kombu.five import bytes_if_py2
 
     instance = Mock()
 
     args = (1, 1001, 2001, id(instance))
-    ent = bytes_if_py2('%x-%x-%x-%x' % args)
+    ent = '%x-%x-%x-%x' % args
 
     with patch('kombu.common.uuid3') as mock_uuid3, \
             patch('kombu.common.uuid5') as mock_uuid5:
@@ -333,7 +331,7 @@ class test_insured:
         conn.ensure_connection.assert_called_with(errback=custom_errback)
 
 
-class MockConsumer(object):
+class MockConsumer:
     consumers = set()
 
     def __init__(self, channel, queues=None, callbacks=None, **kwargs):
@@ -351,7 +349,7 @@ class MockConsumer(object):
 
 class test_itermessages:
 
-    class MockConnection(object):
+    class MockConnection:
         should_raise_timeout = False
 
         def drain_events(self, **kwargs):

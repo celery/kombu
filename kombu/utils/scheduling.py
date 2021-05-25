@@ -1,9 +1,6 @@
 """Scheduling Utilities."""
-from __future__ import absolute_import, unicode_literals
 
 from itertools import count
-
-from kombu.five import python_2_unicode_compatible
 
 from .imports import symbol_by_name
 
@@ -18,8 +15,7 @@ CYCLE_ALIASES = {
 }
 
 
-@python_2_unicode_compatible
-class FairCycle(object):
+class FairCycle:
     """Cycle between resources.
 
     Consume from a set of resources, where each resource gets
@@ -61,7 +57,6 @@ class FairCycle(object):
 
     def close(self):
         """Close cycle."""
-        pass
 
     def __repr__(self):
         """``repr(cycle)``."""
@@ -69,7 +64,7 @@ class FairCycle(object):
             self=self, size=len(self.resources))
 
 
-class round_robin_cycle(object):
+class round_robin_cycle:
     """Iterator that cycles between items in round-robin."""
 
     def __init__(self, it=None):
@@ -98,7 +93,6 @@ class priority_cycle(round_robin_cycle):
 
     def rotate(self, last_used):
         """Unused in this implementation."""
-        pass
 
 
 class sorted_cycle(priority_cycle):

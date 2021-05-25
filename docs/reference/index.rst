@@ -5,6 +5,9 @@
 :Release: |version|
 :Date: |today|
 
+Kombu Core
+==========
+
 .. toctree::
     :maxdepth: 1
 
@@ -24,6 +27,42 @@
     kombu.pools
     kombu.abstract
     kombu.resource
+    kombu.serialization
+
+Kombu Transports
+================
+
+.. toctree::
+    :maxdepth: 1
+
+    kombu.transport
+    kombu.transport.base
+    kombu.transport.virtual
+    kombu.transport.virtual.exchange
+    kombu.transport.azurestoragequeues
+    kombu.transport.azureservicebus
+    kombu.transport.pyamqp
+    kombu.transport.librabbitmq
+    kombu.transport.qpid
+    kombu.transport.memory
+    kombu.transport.redis
+    kombu.transport.mongodb
+    kombu.transport.consul
+    kombu.transport.etcd
+    kombu.transport.zookeeper
+    kombu.transport.filesystem
+    kombu.transport.sqlalchemy
+    kombu.transport.SQS
+    kombu.transport.SLMQ
+    kombu.transport.pyro
+
+
+Kombu Asynchronous
+==================
+
+.. toctree::
+    :maxdepth: 1
+
     kombu.asynchronous
     kombu.asynchronous.hub
     kombu.asynchronous.semaphore
@@ -38,28 +77,13 @@
     kombu.asynchronous.aws.sqs.connection
     kombu.asynchronous.aws.sqs.message
     kombu.asynchronous.aws.sqs.queue
-    kombu.transport
-    kombu.transport.azurestoragequeues
-    kombu.transport.azureservicebus
-    kombu.transport.pyamqp
-    kombu.transport.librabbitmq
-    kombu.transport.qpid
-    kombu.transport.memory
-    kombu.transport.redis
-    kombu.transport.mongodb
-    kombu.transport.consul
-    kombu.transport.etcd
-    kombu.transport.zookeeper
-    kombu.transport.filesystem
-    kombu.transport.sqlalchemy
-    kombu.transport.sqlalchemy.models
-    kombu.transport.SQS
-    kombu.transport.SLMQ
-    kombu.transport.pyro
-    kombu.transport.base
-    kombu.transport.virtual
-    kombu.transport.virtual.exchange
-    kombu.serialization
+
+Kombu utils
+===========
+
+.. toctree::
+    :maxdepth: 1
+
     kombu.utils.amq_manager
     kombu.utils.collections
     kombu.utils.compat
@@ -77,4 +101,3 @@
     kombu.utils.time
     kombu.utils.url
     kombu.utils.uuid
-    kombu.five

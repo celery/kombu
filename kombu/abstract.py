@@ -1,11 +1,9 @@
 """Object utilities."""
-from __future__ import absolute_import, unicode_literals
 
 from copy import copy
 
 from .connection import maybe_channel
 from .exceptions import NotBoundError
-from .five import python_2_unicode_compatible
 from .utils.functional import ChannelPromise
 
 __all__ = ('Object', 'MaybeChannelBound')
@@ -19,7 +17,7 @@ def _any(v):
     return v
 
 
-class Object(object):
+class Object:
     """Common base class.
 
     Supports automatic kwargs->attributes handling, and cloning.
@@ -54,7 +52,6 @@ class Object(object):
         return self.__class__(**self.as_dict())
 
 
-@python_2_unicode_compatible
 class MaybeChannelBound(Object):
     """Mixin for classes that can be bound to an AMQP channel."""
 
@@ -92,7 +89,6 @@ class MaybeChannelBound(Object):
 
     def when_bound(self):
         """Callback called when the class is bound."""
-        pass
 
     def __repr__(self):
         return self._repr_entity(type(self).__name__)
@@ -100,9 +96,9 @@ class MaybeChannelBound(Object):
     def _repr_entity(self, item=''):
         item = item or type(self).__name__
         if self.is_bound:
-            return '<{0} bound to chan:{1}>'.format(
+            return '<{} bound to chan:{}>'.format(
                 item or type(self).__name__, self.channel.channel_id)
-        return '<unbound {0}>'.format(item)
+        return f'<unbound {item}>'
 
     @property
     def is_bound(self):
@@ -115,7 +111,7 @@ class MaybeChannelBound(Object):
         channel = self._channel
         if channel is None:
             raise NotBoundError(
-                "Can't call method on {0} not bound to a channel".format(
+                "Can't call method on {} not bound to a channel".format(
                     type(self).__name__))
         if isinstance(channel, ChannelPromise):
             channel = self._channel = channel()

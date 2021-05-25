@@ -1,17 +1,67 @@
-"""Kombu transport using SQLAlchemy as the message store."""
+"""SQLAlchemy Transport module for kombu.
+
+Kombu transport using SQL Database as the message store.
+
+Features
+========
+* Type: Virtual
+* Supports Direct: yes
+* Supports Topic: yes
+* Supports Fanout: no
+* Supports Priority: no
+* Supports TTL: no
+
+Connection String
+=================
+
+.. code-block::
+
+    sqla+SQL_ALCHEMY_CONNECTION_STRING
+    sqlalchemy+SQL_ALCHEMY_CONNECTION_STRING
+
+For details about ``SQL_ALCHEMY_CONNECTION_STRING`` see SQLAlchemy Engine Configuration documentation.
+Examples:
+
+.. code-block::
+
+    # PostgreSQL with default driver
+    sqla+postgresql://scott:tiger@localhost/mydatabase
+
+    # PostgreSQL with psycopg2 driver
+    sqla+postgresql+psycopg2://scott:tiger@localhost/mydatabase
+
+    # PostgreSQL with pg8000 driver
+    sqla+postgresql+pg8000://scott:tiger@localhost/mydatabase
+
+    # MySQL with default driver
+    sqla+mysql://scott:tiger@localhost/foo
+
+    # MySQL with mysqlclient driver (a maintained fork of MySQL-Python)
+    sqla+mysql+mysqldb://scott:tiger@localhost/foo
+
+    # MySQL with PyMySQL driver
+    sqla+mysql+pymysql://scott:tiger@localhost/foo
+
+Transport Options
+=================
+
+* ``queue_tablename``: Name of table storing queues.
+* ``message_tablename``: Name of table storing messages.
+
+Moreover parameters of :func:`sqlalchemy.create_engine()` function can be passed as transport options.
+"""
 # SQLAlchemy overrides != False to have special meaning and pep8 complains
 # flake8: noqa
 
-from __future__ import absolute_import, unicode_literals
 
 import threading
 from json import loads, dumps
+from queue import Empty
 
 from sqlalchemy import create_engine
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
 
-from kombu.five import Empty
 from kombu.transport import virtual
 from kombu.utils import cached_property
 from kombu.utils.encoding import bytes_to_str
@@ -33,7 +83,7 @@ class Channel(virtual.Channel):
 
     def __init__(self, connection, **kwargs):
         self._configure_entity_tablenames(connection.client.transport_options)
-        super(Channel, self).__init__(connection, **kwargs)
+        super().__init__(connection, **kwargs)
 
     def _configure_entity_tablenames(self, opts):
         self.queue_tablename = opts.get('queue_tablename', 'kombu_queue')

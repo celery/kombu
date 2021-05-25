@@ -1,17 +1,14 @@
-from __future__ import absolute_import, unicode_literals
-
 import pickle
 import pytest
 import socket
 
 from copy import copy, deepcopy
 
-from case import Mock, patch, skip
+from unittest.mock import Mock, patch
 
 from kombu import Connection, Consumer, Producer, parse_url
 from kombu.connection import Resource
 from kombu.exceptions import OperationalError
-from kombu.five import items, range
 from kombu.utils.functional import lazy
 
 from t.mocks import Transport
@@ -46,13 +43,13 @@ class test_connection_utils:
         assert conn.as_uri() == self.nopass
         assert conn.as_uri(include_password=True) == self.url
 
-    @skip.unless_module('redis')
     def test_as_uri_when_prefix(self):
+        pytest.importorskip('redis')
         conn = Connection('redis+socket:///var/spool/x/y/z/redis.sock')
         assert conn.as_uri() == 'redis+socket:///var/spool/x/y/z/redis.sock'
 
-    @skip.unless_module('pymongo')
     def test_as_uri_when_mongodb(self):
+        pytest.importorskip('pymongo')
         x = Connection('mongodb://localhost')
         assert x.as_uri()
 
@@ -62,7 +59,7 @@ class test_connection_utils:
 
     def assert_info(self, conn, **fields):
         info = conn.info()
-        for field, expected in items(fields):
+        for field, expected in fields.items():
             assert info[field] == expected
 
     @pytest.mark.parametrize('url,expected', [
@@ -104,7 +101,7 @@ class test_connection_utils:
         # see Appendix A of http://www.rabbitmq.com/uri-spec.html
         self.assert_info(Connection(url), **expected)
 
-    @skip.todo('urllib cannot parse ipv6 urls')
+    @pytest.mark.skip('TODO: urllib cannot parse ipv6 urls')
     def test_url_IPV6(self):
         self.assert_info(
             Connection('amqp://[::1]'),
@@ -117,8 +114,8 @@ class test_connection_utils:
         clone = deepcopy(conn)
         assert clone.alt == ['amqp://host']
 
-    @skip.unless_module('sqlalchemy')
     def test_parse_generated_as_uri_pg(self):
+        pytest.importorskip('sqlalchemy')
         conn = Connection(self.pg_url)
         assert conn.as_uri() == self.pg_nopass
         assert conn.as_uri(include_password=True) == self.pg_url

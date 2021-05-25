@@ -1,9 +1,7 @@
-from __future__ import absolute_import, unicode_literals
-
 import pickle
 import pytest
 
-from case import Mock, call
+from unittest.mock import Mock, call
 
 from kombu import Connection, Exchange, Producer, Queue, binding
 from kombu.abstract import MaybeChannelBound
@@ -71,7 +69,7 @@ class test_Exchange:
         bound = exchange.bind(chan)
         assert bound.is_bound
         assert bound.channel is chan
-        assert 'bound to chan:%r' % (chan.channel_id,) in repr(bound)
+        assert f'bound to chan:{chan.channel_id!r}' in repr(bound)
 
     def test_hash(self):
         assert hash(Exchange('a')) == hash(Exchange('a'))
@@ -220,7 +218,7 @@ class test_Queue:
         assert queue.exchange == exchange
 
     def test_constructor_with_string_exchange(self):
-        exchange_name = str('exchange_name')
+        exchange_name = 'exchange_name'
         queue = Queue(name='queue_name', exchange=exchange_name)
         assert queue.exchange == Exchange(exchange_name)
 

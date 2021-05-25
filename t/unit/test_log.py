@@ -1,9 +1,7 @@
-from __future__ import absolute_import, unicode_literals
-
 import logging
 import sys
 
-from case import ANY, Mock, patch
+from unittest.mock import ANY, Mock, patch
 
 from kombu.log import (
     get_logger,

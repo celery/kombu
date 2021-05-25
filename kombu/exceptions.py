@@ -1,14 +1,11 @@
 """Exceptions."""
-from __future__ import absolute_import, unicode_literals
 
 from socket import timeout as TimeoutError  # noqa
 
 from amqp import ChannelError, ConnectionError, ResourceError
 
-from kombu.five import python_2_unicode_compatible
-
 __all__ = (
-    'KombuError', 'OperationalError',
+    'reraise', 'KombuError', 'OperationalError',
     'NotBoundError', 'MessageStateError', 'TimeoutError',
     'LimitExceeded', 'ConnectionLimitExceeded',
     'ChannelLimitExceeded', 'ConnectionError', 'ChannelError',
@@ -16,6 +13,13 @@ __all__ = (
     'SerializationError', 'EncodeError', 'DecodeError', 'HttpError',
     'InconsistencyError',
 )
+
+
+def reraise(tp, value, tb=None):
+    """Reraise exception."""
+    if value.__traceback__ is not tb:
+        raise value.with_traceback(tb)
+    raise value
 
 
 class KombuError(Exception):
@@ -77,7 +81,6 @@ class InconsistencyError(ConnectionError):
     """
 
 
-@python_2_unicode_compatible
 class HttpError(Exception):
     """HTTP Client Error."""
 
@@ -85,7 +88,7 @@ class HttpError(Exception):
         self.code = code
         self.message = message
         self.response = response
-        super(HttpError, self).__init__(code, message, response)
+        super().__init__(code, message, response)
 
     def __str__(self):
         return 'HTTP {0.code}: {0.message}'.format(self)

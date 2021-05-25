@@ -1,12 +1,12 @@
-from __future__ import absolute_import, unicode_literals
-
 import pytest
-from case import patch, skip
+from unittest.mock import patch
 
 from kombu import Connection
 
 
-@skip.unless_module('sqlalchemy')
+pytest.importorskip('sqlalchemy')
+
+
 class test_SqlAlchemy:
 
     def test_url_parser(self):

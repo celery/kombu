@@ -1,5 +1,3 @@
-from __future__ import absolute_import, unicode_literals
-
 import os
 
 import pytest
@@ -12,12 +10,12 @@ from .common import (
 
 
 def get_connection(hostname, port, vhost):
-    return kombu.Connection('pyamqp://{}:{}'.format(hostname, port))
+    return kombu.Connection(f'pyamqp://{hostname}:{port}')
 
 
 def get_failover_connection(hostname, port, vhost):
     return kombu.Connection(
-        'pyamqp://localhost:12345;pyamqp://{}:{}'.format(hostname, port)
+        f'pyamqp://localhost:12345;pyamqp://{hostname}:{port}'
     )
 
 

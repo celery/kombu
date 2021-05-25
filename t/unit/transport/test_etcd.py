@@ -1,15 +1,14 @@
-from __future__ import absolute_import, unicode_literals
-
 import pytest
 
-from case import Mock, patch, skip
+from queue import Empty
 
-from kombu.five import Empty
+from unittest.mock import Mock, patch
 
 from kombu.transport.etcd import Channel, Transport
 
+pytest.importorskip('etcd')
 
-@skip.unless_module('etcd')
+
 class test_Etcd:
 
     def setup(self):

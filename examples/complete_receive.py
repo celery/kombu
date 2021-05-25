@@ -3,7 +3,6 @@ Example of simple consumer that waits for a single message, acknowledges it
 and exits.
 
 """
-from __future__ import absolute_import, unicode_literals, print_function
 
 from pprint import pformat
 
@@ -21,9 +20,9 @@ def pretty(obj):
 
 #: This is the callback applied when a message is received.
 def handle_message(body, message):
-    print('Received message: {0!r}'.format(body))
-    print('  properties:\n{0}'.format(pretty(message.properties)))
-    print('  delivery_info:\n{0}'.format(pretty(message.delivery_info)))
+    print(f'Received message: {body!r}')
+    print('  properties:\n{}'.format(pretty(message.properties)))
+    print('  delivery_info:\n{}'.format(pretty(message.delivery_info)))
     message.ack()
 
 #: Create a connection and a channel.

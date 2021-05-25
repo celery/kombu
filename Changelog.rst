@@ -4,6 +4,83 @@
  Change history
 ================
 
+5.1.0
+=====
+:release-date: 2021-05-23 7:00 P.M UTC+3:00
+:release-by: Omer Katz
+
+- Fix queue names special characters replacement for Azure Service Bus. (#1324)
+- Add support for SQLAlchemy 1.4. (#1328)
+- Coerce seconds argument to a floating point number in ``Timer.enter_after``. (#1330)
+- Add accept parameter to SimpleQueue class. (#1140)
+- ``prepare_accept_content()`` now raises ``SerializerNotInstalled`` instead of ``KeyError``. (#1343)
+
+.. _version-5.1.0b1:
+
+5.1.0b1
+=======
+:release-date: 2021-04-01 10:30 P.M UTC+6:00
+:release-by: Asiff Saif Uddin
+
+- Wheels are no longer universal.
+- Revert "Added redis transport key_prefix from envvars".
+- Redis Transport: Small improvements of `SentinelChannel` (#1253).
+- Fix pidbox not using default channels.
+- Revert "on worker restart - restore visible regardless to time (#905)".
+- Add vine to dependencies.
+- Pin urllib3<1.26 to fix failing unittests.
+- Add timeout to producer publish (#1269).
+- Remove python2 compatibility code (#1277).
+- redis: Support Sentinel with SSL.
+- Support for Azure Service Bus 7.0.0 (#1284).
+- Allow specifying session token (#1283).
+- kombu/asynchronous/http/curl: implement _set_timeout.
+- Disable namedtuple to object feature in simplejson (#1297).
+- Update to tox docker 2.0.
+- SQS back-off policy (#1301).
+- Fixed SQS unittests.
+- Fix: non kombu json message decoding in SQS transport (#1306).
+- Add Github Actions CI (#1309).
+- Update default pickle protocol version to 4 (#1314).
+- Update connection.py (#1311).
+- Drop support for the lzma backport.
+- Drop obsolete code importing pickle (#1315).
+- Update default login method for librabbitmq and pyamqp (#936).
+- SQS Broker - handle STS authentication with AWS (#1322).
+- Min py-amqp version is v5.0.6 (#1325).
+- Numerous docs & example fixes.
+- Use a thread-safe implementation of cached_property (#1316).
+
+
+.. _version-5.0.2:
+
+5.0.2
+=====
+:release-date: 2020-09-06 6:30 P.M UTC+3:00
+:release-by: Omer Katz
+
+- Bump required amqp version to 5.0.0.
+
+.. _version-5.0.1:
+
+5.0.1
+=====
+:release-date: 2020-08-23 19:10 P.M UTC+3:00
+:release-by: Omer Katz
+
+- Removed kombu.five from the reference documentation since it no longer exists
+- Adjusted the stable documentation's version in Sphinx's configuration since that was overlooked in the latest release
+
+.. _version-5.0.0:
+
+5.0.0
+=====
+:release-date: 2020-08-05 16:00 P.M UTC+3:00
+:release-by: Omer Katz
+
+- **BREAKING CHANGE**: Dropped support for Python 2 (#1232)
+- Add an SQS transport option for custom botocore config (#1219)
+
 .. _version-4.6.11:
 
 4.6.11
@@ -11,8 +88,8 @@
 :release-date: 2020-06-24 1.15 P.M UTC+6:00
 :release-by: Asif Saif Uddin
 
-- Revert incompatible changes in #1193 and additional improvements (#1211) 
-- Default_channel should reconnect automatically (#1209) 
+- Revert incompatible changes in #1193 and additional improvements (#1211)
+- Default_channel should reconnect automatically (#1209)
 
 
 .. _version-4.6.10:
@@ -24,7 +101,7 @@
 
 - Doc improvement.
 - set _connection in _ensure_connection (#1205)
-- Fix for the issue #1172 
+- Fix for the issue #1172
 - reuse connection [bug fix]
 
 
@@ -62,8 +139,15 @@
 :release-date: 2020-03-29 20:45 A.M UTC+6:00
 :release-by: Asif Saif Uddin
 
+- Added support for health_check_interval option in broker_transport_options (#1145)
+- Added retry_on_timeout parameter to Redis Channel (#1150)
+- Added support for standard values for ssl_cert_reqs query parameter for Redis (#1139)
+- Added predefined_queues option to SQS transport (#1156)
+- Added ssl certificate verification against ca certificates when amqps is used for pyamqp transport (#1151)
+- Fix issue (#701) where kombu.transport.redis.Mutex is broken in python 3 (#1141)
+- Fix brop error in Redis Channel (#1144)
 
-.. _version-4.6.8:
+.. _version-4.6.7:
 
 4.6.7
 =====
@@ -74,7 +158,7 @@
 - Add peek lock settings to be changed using transport options (#1119).
 - Fix redis health checks (#1122).
 - Reset ready before execute callback (#1126).
-- Add missing parameter queue_args in kombu.connection.SimpleBuffer (#1128) 
+- Add missing parameter queue_args in kombu.connection.SimpleBuffer (#1128)
 
 .. _version-4.6.6:
 
@@ -83,12 +167,12 @@
 :release-date: 2019-11-11 00:15 A.M UTC+6:00
 :release-by: Asif Saif Uddin
 
-- Revert _lookup_direct and related changes of redis. 
+- Revert _lookup_direct and related changes of redis.
 - Python 3.8 support
 - Fix 'NoneType' object has no attribute 'can_read' bug of redis transport
-- Issue #1019 Fix redis transport socket timeout 
+- Issue #1019 Fix redis transport socket timeout
 - Add wait timeout settings to receive queue message (#1110)
-- Bump py-amqp to 2.5.2 
+- Bump py-amqp to 2.5.2
 
 .. _version-4.6.5:
 
@@ -97,14 +181,14 @@
 :release-date: 2019-09-30 19:30 P.M UTC+6:00
 :release-by: Asif Saif Uddin
 
-- Revert _lookup api and correct redis implemetnation. 
+- Revert _lookup api and correct redis implemetnation.
 - Major overhaul of redis test cases by adding more full featured fakeredis module.
 - Add more test cases to boost coverage of kombu redis transport.
 - Refactor the producer consumer test cases to be based on original mocks and be passing
 - Fix lingering line length issue in test.
 - Sanitise url when include_password is false
 - Pinned pycurl to 7.43.0.2 as it is the latest build with wheels provided
-- Bump py-amqp to 2.5.2 
+- Bump py-amqp to 2.5.2
 
 
 .. _version-4.6.4:
@@ -116,12 +200,12 @@
 
 - Use importlib-metadata instead of pkg_resources for better performance
 - Allow users to switch URLs while omitting the resource identifier (#1032)
-- Don't stop receiving tasks on 503 SQS error. (#1064) 
+- Don't stop receiving tasks on 503 SQS error. (#1064)
 - Fix maybe declare (#1066)
 - Revert "Revert "Use SIMEMBERS instead of SMEMBERS to check for queue (Redis Broker)
 - Fix MongoDB backend to work properly with TTL (#1076)
 - Make sure that max_retries=0 is treated differently than None (#1080)
-- Bump py-amqp to 2.5.1 
+- Bump py-amqp to 2.5.1
 
 
 .. _version-4.6.3:

@@ -1,7 +1,28 @@
-"""In-memory transport."""
-from __future__ import absolute_import, unicode_literals
+"""In-memory transport module for Kombu.
 
-from kombu.five import Queue, values
+Simple transport using memory for storing messages.
+Messages can be passed only between threads.
+
+Features
+========
+* Type: Virtual
+* Supports Direct: Yes
+* Supports Topic: Yes
+* Supports Fanout: No
+* Supports Priority: No
+* Supports TTL: Yes
+
+Connection String
+=================
+Connection string is in the following format:
+
+.. code-block::
+
+    memory://
+
+"""
+
+from queue import Queue
 
 from . import base
 from . import virtual
@@ -54,8 +75,8 @@ class Channel(virtual.Channel):
         return size
 
     def close(self):
-        super(Channel, self).close()
-        for queue in values(self.queues):
+        super().close()
+        for queue in self.queues.values():
             queue.empty()
         self.queues = {}
 

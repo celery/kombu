@@ -1,11 +1,9 @@
 """Exchange and Queue declarations."""
-from __future__ import absolute_import, unicode_literals
 
 import numbers
 
 from .abstract import MaybeChannelBound, Object
 from .exceptions import ContentDisallowed
-from .five import python_2_unicode_compatible, string_t
 from .serialization import prepare_accept_content
 
 TRANSIENT_DELIVERY_MODE = 1
@@ -20,13 +18,13 @@ INTERNAL_EXCHANGE_PREFIX = ('amq.',)
 
 def _reprstr(s):
     s = repr(s)
-    if isinstance(s, string_t) and s.startswith("u'"):
+    if isinstance(s, str) and s.startswith("u'"):
         return s[2:-1]
     return s[1:-1]
 
 
 def pretty_bindings(bindings):
-    return '[{0}]'.format(', '.join(map(str, bindings)))
+    return '[{}]'.format(', '.join(map(str, bindings)))
 
 
 def maybe_delivery_mode(
@@ -38,7 +36,6 @@ def maybe_delivery_mode(
     return default
 
 
-@python_2_unicode_compatible
 class Exchange(MaybeChannelBound):
     """An Exchange declaration.
 
@@ -155,13 +152,13 @@ class Exchange(MaybeChannelBound):
     )
 
     def __init__(self, name='', type='', channel=None, **kwargs):
-        super(Exchange, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.name = name or self.name
         self.type = type or self.type
         self.maybe_bind(channel)
 
     def __hash__(self):
-        return hash('E|%s' % (self.name,))
+        return hash(f'E|{self.name}')
 
     def _can_declare(self):
         return not self.no_declare and (
@@ -247,7 +244,7 @@ class Exchange(MaybeChannelBound):
         """
         properties = {} if properties is None else properties
         properties['delivery_mode'] = maybe_delivery_mode(self.delivery_mode)
-        if (isinstance(body, string_t) and
+        if (isinstance(body, str) and
                 properties.get('content_encoding', None)) is None:
             kwargs['content_encoding'] = 'utf-8'
         return self.channel.prepare_message(
@@ -266,7 +263,7 @@ class Exchange(MaybeChannelBound):
             mandatory (bool): Currently not supported.
             immediate (bool): Currently not supported.
         """
-        if isinstance(message, string_t):
+        if isinstance(message, str):
             message = self.Message(message)
         exchange = exchange or self.name
         return self.channel.basic_publish(
@@ -310,7 +307,7 @@ class Exchange(MaybeChannelBound):
         return self._repr_entity(self)
 
     def __str__(self):
-        return 'Exchange {0}({1})'.format(
+        return 'Exchange {}({})'.format(
             _reprstr(self.name) or repr(''), self.type,
         )
 
@@ -319,7 +316,6 @@ class Exchange(MaybeChannelBound):
         return not self.auto_delete
 
 
-@python_2_unicode_compatible
 class binding(Object):
     """Represents a queue or exchange binding.
 
@@ -366,15 +362,14 @@ class binding(Object):
                            channel=channel)
 
     def __repr__(self):
-        return '<binding: {0}>'.format(self)
+        return f'<binding: {self}>'
 
     def __str__(self):
-        return '{0}->{1}'.format(
+        return '{}->{}'.format(
             _reprstr(self.exchange.name), _reprstr(self.routing_key),
         )
 
 
-@python_2_unicode_compatible
 class Queue(MaybeChannelBound):
     """A Queue declaration.
 
@@ -569,7 +564,7 @@ class Queue(MaybeChannelBound):
     def __init__(self, name='', exchange=None, routing_key='',
                  channel=None, bindings=None, on_declared=None,
                  **kwargs):
-        super(Queue, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.name = name or self.name
         if isinstance(exchange, str):
             self.exchange = Exchange(exchange)
@@ -592,12 +587,12 @@ class Queue(MaybeChannelBound):
 
     def bind(self, channel):
         on_declared = self.on_declared
-        bound = super(Queue, self).bind(channel)
+        bound = super().bind(channel)
         bound.on_declared = on_declared
         return bound
 
     def __hash__(self):
-        return hash('Q|%s' % (self.name,))
+        return hash(f'Q|{self.name}')
 
     def when_bound(self):
         if self.exchange:
@@ -862,7 +857,7 @@ class Queue(MaybeChannelBound):
                      bindings=bindings)
 
     def as_dict(self, recurse=False):
-        res = super(Queue, self).as_dict(recurse)
+        res = super().as_dict(recurse)
         if not recurse:
             return res
         bindings = res.get('bindings')
