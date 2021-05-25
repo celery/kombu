@@ -71,11 +71,9 @@ class test_Mailbox:
             # raise the actual redis error
             simulate_redis_get_table_err.side_effect = OperationalError(
                 redis.NO_ROUTE_ERROR.format(exchange, mailbox.oid))
-            try:
+            with pytest.raises(OperationalError) as exc_info:
                 mailbox._publish_reply({'foo': 'bar'}, exchange, mailbox.oid, ticket)
-            except OperationalError as exc:
-                if pidbox.is_no_route_error_for_reply_celery_pidbox(exc.args[0]):
-                    pytest.fail("NO_ROUTE_ERROR with specific message should have been caught")
+            assert pidbox.is_no_route_error_for_reply_celery_pidbox(exc_info.value.args[0])
 
 
     def test_reply__collect(self):
