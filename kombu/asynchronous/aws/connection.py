@@ -6,25 +6,13 @@ from kombu.asynchronous.aws.ext import AWSRequest, get_response
 
 from kombu.asynchronous.http import Headers, Request, get_client
 
-import io
+from email import message_from_bytes
+from email.mime.message import MIMEMessage
 
-try:  # pragma: no cover
-    from email import message_from_bytes
-    from email.mime.message import MIMEMessage
+def message_from_headers(hdr):  # noqa
+    bs = "\r\n".join("{}: {}".format(*h) for h in hdr)
+    return message_from_bytes(bs.encode())
 
-    # py3
-    def message_from_headers(hdr):  # noqa
-        bs = "\r\n".join("{}: {}".format(*h) for h in hdr)
-        return message_from_bytes(bs.encode())
-
-except ImportError:  # pragma: no cover
-    from mimetools import Message as MIMEMessage  # noqa
-
-    # py2
-    def message_from_headers(hdr):  # noqa
-        return io.BytesIO(b'\r\n'.join(
-            b'{}: {}'.format(*h) for h in hdr
-        ))
 
 __all__ = (
     'AsyncHTTPSConnection', 'AsyncConnection',

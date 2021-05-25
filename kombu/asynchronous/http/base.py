@@ -1,6 +1,7 @@
 """Base async HTTP client implementation."""
 
 import sys
+from http.client import responses
 
 from vine import Thenable, promise, maybe_promise
 
@@ -9,10 +10,6 @@ from kombu.utils.compat import coro
 from kombu.utils.encoding import bytes_to_str
 from kombu.utils.functional import maybe_list, memoize
 
-try:  # pragma: no cover
-    from http.client import responses
-except ImportError:
-    from httplib import responses  # noqa
 
 __all__ = ('Headers', 'Response', 'Request')
 
