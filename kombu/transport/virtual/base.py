@@ -97,6 +97,7 @@ class BrokerState:
 
     #: The queue index is used to access directly (constant time)
     #: all the bindings of a certain queue.  It has the following structure::
+    #:
     #:     {
     #:         queue: {
     #:             (queue, exchange, routing_key),
