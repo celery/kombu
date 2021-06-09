@@ -39,12 +39,17 @@ Connection string has the following format:
 Transport Options
 =================
 
-* ``queue_name_prefix`` - String prefix to prepend to queue names in a service bus namespace.
-* ``wait_time_seconds`` - Number of seconds to wait to receive messages. Default ``5``
-* ``peek_lock_seconds`` - Number of seconds the message is visible for before it is requeued and sent to another consumer. Default ``60``
-* ``uamqp_keep_alive_interval`` - Interval in seconds the Azure uAMQP library should send keepalive messages. Default ``30``
+* ``queue_name_prefix`` - String prefix to prepend to queue names in a
+  service bus namespace.
+* ``wait_time_seconds`` - Number of seconds to wait to receive messages.
+  Default ``5``
+* ``peek_lock_seconds`` - Number of seconds the message is visible for before
+  it is requeued and sent to another consumer. Default ``60``
+* ``uamqp_keep_alive_interval`` - Interval in seconds the Azure uAMQP library
+  should send keepalive messages. Default ``30``
 * ``retry_total`` - Azure SDK retry total. Default ``3``
-* ``retry_backoff_factor`` - Azure SDK exponential backoff factor. Default ``0.8``
+* ``retry_backoff_factor`` - Azure SDK exponential backoff factor.
+  Default ``0.8``
 * ``retry_backoff_max`` - Azure SDK retry total time. Default ``120``
 """
 
