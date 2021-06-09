@@ -669,7 +669,7 @@
 
 - Fixed string handling when using python-future module
 
-    Contributed by **John Koehl"
+    Contributed by **John Koehl**
 
 - Replaced "async" with "asynchronous" in preparation for Python 3.7
 

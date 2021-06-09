@@ -27,6 +27,7 @@ it takes a channel or a connection as an argument:
 Having a producer instance you can publish messages:
 
 .. code-block:: pycon
+
     >>> from kombu import Exchange
 
     >>> exchange = Exchange('name', type='direct')
