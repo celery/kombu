@@ -9,11 +9,10 @@ from collections import namedtuple
 from kombu import messaging
 from kombu import Connection, Exchange, Queue
 
-from kombu.transport import azureservicebus
-import azure.servicebus.exceptions
-import azure.core.exceptions
 pytest.importorskip('azure.servicebus')
-
+from kombu.transport import azureservicebus   # noqa 
+import azure.servicebus.exceptions   # noqa
+import azure.core.exceptions   # noqa
 from azure.servicebus import ServiceBusMessage, ServiceBusReceiveMode   # noqa
 
 
