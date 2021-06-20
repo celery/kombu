@@ -695,6 +695,10 @@ class test_Channel:
         self.channel.connection.client.hostname = 'george.vandelay.com'
         assert self.channel._connparams()['host'] == 'george.vandelay.com'
 
+    def test_connparams_username(self):
+        self.channel.connection.client.userid = 'kombu'
+        assert self.channel._connparams()['username'] == 'kombu'
+
     def test_connparams_password_for_unix_socket(self):
         self.channel.connection.client.hostname = \
             'socket://:foo@/var/run/redis.sock'
@@ -1414,7 +1418,7 @@ class test_RedisSentinel:
                 min_other_sentinels=0, password=None, sentinel_kwargs=None,
                 socket_connect_timeout=None, socket_keepalive=None,
                 socket_keepalive_options=None, socket_timeout=None,
-                retry_on_timeout=None)
+                username=None, retry_on_timeout=None)
 
             master_for = patched.return_value.master_for
             master_for.assert_called()
@@ -1437,7 +1441,7 @@ class test_RedisSentinel:
                 min_other_sentinels=0, password=None, sentinel_kwargs=None,
                 socket_connect_timeout=None, socket_keepalive=None,
                 socket_keepalive_options=None, socket_timeout=None,
-                retry_on_timeout=None)
+                username=None, retry_on_timeout=None)
 
             master_for = patched.return_value.master_for
             master_for.assert_called()
