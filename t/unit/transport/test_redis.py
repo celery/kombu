@@ -699,6 +699,14 @@ class test_Channel:
         self.channel.connection.client.userid = 'kombu'
         assert self.channel._connparams()['username'] == 'kombu'
 
+    def test_connparams_client_credentials(self):
+        self.channel.connection.client.hostname = \
+            'redis://foo:bar@127.0.0.1:6379/0'
+        connection_parameters = self.channel._connparams()
+
+        assert connection_parameters['username'] == 'foo'
+        assert connection_parameters['password'] == 'bar'
+
     def test_connparams_password_for_unix_socket(self):
         self.channel.connection.client.hostname = \
             'socket://:foo@/var/run/redis.sock'
