@@ -15,15 +15,15 @@ Connection string has the following format:
 
 .. code-block::
 
-    redis://REDIS_ADDRESS[:PORT][/VIRTUALHOST]
-    rediss://REDIS_ADDRESS[:PORT][/VIRTUALHOST]
+    redis://[USER:PASSWORD@]REDIS_ADDRESS[:PORT][/VIRTUALHOST]
+    rediss://[USER:PASSWORD@]REDIS_ADDRESS[:PORT][/VIRTUALHOST]
 
 To use sentinel for dynamic Redis discovery,
 the connection string has following format:
 
 .. code-block::
 
-    sentinel://SENTINEL_ADDRESS[:PORT]
+    sentinel://[USER:PASSWORD@]SENTINEL_ADDRESS[:PORT]
 
 Transport Options
 =================
