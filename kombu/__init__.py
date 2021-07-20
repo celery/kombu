@@ -38,8 +38,8 @@ if STATICA_HACK:  # pragma: no cover
     from kombu.message import Message  # noqa
     from kombu.messaging import Consumer, Producer  # noqa
     from kombu.pools import connections, producers  # noqa
-    from kombu.serialization import (disable_insecure_serializers,  # noqa
-                                     enable_insecure_serializers)
+    from kombu.serialization import disable_insecure_serializers  # noqa
+    from kombu.serialization import enable_insecure_serializers
     from kombu.utils.url import parse_url  # noqa
 
 # Lazy loading.

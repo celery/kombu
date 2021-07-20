@@ -9,7 +9,7 @@ from kombu.asynchronous.aws.ext import AWSRequest, get_response
 from kombu.asynchronous.http import Headers, Request, get_client
 
 
-def message_from_headers(hdr):  # noqa
+def message_from_headers(hdr):
     bs = "\r\n".join("{}: {}".format(*h) for h in hdr)
     return message_from_bytes(bs.encode())
 
