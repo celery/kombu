@@ -25,6 +25,7 @@ def handle_message(body, message):
     print('  delivery_info:\n{}'.format(pretty(message.delivery_info)))
     message.ack()
 
+
 #: Create a connection and a channel.
 #: If hostname, userid, password and virtual_host is not specified
 #: the values below are the default, but listed here so it can

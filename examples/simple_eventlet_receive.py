@@ -37,4 +37,5 @@ def wait_many(timeout=1):
                     message.ack()
                     print(message.payload)
 
+
 eventlet.spawn(wait_many).wait()

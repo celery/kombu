@@ -19,6 +19,11 @@ connection = Connection("memory:///")
 consumer = Consumer(connection, task_queues, callbacks=[handle_message])
 
 producer = connection.Producer(serializer='json')
-producer.publish({"foo": "bar"}, exchange=media_exchange, routing_key='video', declare=task_queues)
+producer.publish(
+    {"foo": "bar"},
+    exchange=media_exchange,
+    routing_key='video',
+    declare=task_queues,
+)
 consumer.consume()
 connection.drain_events()
