@@ -1,6 +1,5 @@
 import pickle
-
-from io import StringIO, BytesIO
+from io import BytesIO, StringIO
 
 from kombu.utils.div import emergency_dump_state
 

@@ -4,13 +4,14 @@ import errno
 from contextlib import contextmanager
 from queue import Empty
 from time import sleep
-from types import GeneratorType as generator  # noqa
+from types import GeneratorType as generator
+
+from vine import Thenable, promise
 
 from kombu.log import get_logger
 from kombu.utils.compat import fileno
 from kombu.utils.eventio import ERR, READ, WRITE, poll
 from kombu.utils.objects import cached_property
-from vine import Thenable, promise
 
 from .timer import Timer
 

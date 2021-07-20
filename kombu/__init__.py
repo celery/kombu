@@ -3,7 +3,7 @@
 import os
 import re
 import sys
-from collections import namedtuple  # noqa
+from collections import namedtuple
 
 __version__ = '5.1.0'
 __author__ = 'Ask Solem'
@@ -32,17 +32,15 @@ if STATICA_HACK:  # pragma: no cover
     # This is never executed, but tricks static analyzers (PyDev, PyCharm,
     # pylint, etc.) into knowing the types of these symbols, and what
     # they contain.
-    from kombu.connection import Connection, BrokerConnection   # noqa
-    from kombu.entity import Exchange, Queue, binding           # noqa
-    from kombu.message import Message                           # noqa
-    from kombu.messaging import Consumer, Producer              # noqa
-    from kombu.pools import connections, producers              # noqa
-    from kombu.utils.url import parse_url                       # noqa
-    from kombu.common import eventloop, uuid                    # noqa
-    from kombu.serialization import (                           # noqa
-        enable_insecure_serializers,
-        disable_insecure_serializers,
-    )
+    from kombu.common import eventloop, uuid  # noqa
+    from kombu.connection import BrokerConnection, Connection  # noqa
+    from kombu.entity import Exchange, Queue, binding  # noqa
+    from kombu.message import Message  # noqa
+    from kombu.messaging import Consumer, Producer  # noqa
+    from kombu.pools import connections, producers  # noqa
+    from kombu.serialization import disable_insecure_serializers  # noqa
+    from kombu.serialization import enable_insecure_serializers  # noqa
+    from kombu.utils.url import parse_url  # noqa
 
 # Lazy loading.
 # - See werkzeug/__init__.py for the rationale behind this.

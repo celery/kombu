@@ -1,16 +1,14 @@
 import pickle
-import pytest
 import socket
-
 from copy import copy, deepcopy
-
 from unittest.mock import Mock, patch
+
+import pytest
 
 from kombu import Connection, Consumer, Producer, parse_url
 from kombu.connection import Resource
 from kombu.exceptions import OperationalError
 from kombu.utils.functional import lazy
-
 from t.mocks import Transport
 
 

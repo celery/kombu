@@ -12,13 +12,13 @@ from kombu.utils.encoding import bytes_to_str
 from .base import BaseClient
 
 try:
-    import pycurl  # noqa
+    import pycurl
 except ImportError:  # pragma: no cover
-    pycurl = Curl = METH_TO_CURL = None  # noqa
+    pycurl = Curl = METH_TO_CURL = None
 else:
-    from pycurl import Curl  # noqa
+    from pycurl import Curl
 
-    METH_TO_CURL = {  # noqa
+    METH_TO_CURL = {
         'GET': pycurl.HTTPGET,
         'POST': pycurl.POST,
         'PUT': pycurl.UPLOAD,

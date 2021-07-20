@@ -3,13 +3,12 @@
 import sys
 from http.client import responses
 
-from vine import Thenable, promise, maybe_promise
+from vine import Thenable, maybe_promise, promise
 
 from kombu.exceptions import HttpError
 from kombu.utils.compat import coro
 from kombu.utils.encoding import bytes_to_str
 from kombu.utils.functional import maybe_list, memoize
-
 
 __all__ = ('Headers', 'Response', 'Request')
 

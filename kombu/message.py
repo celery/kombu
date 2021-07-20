@@ -3,7 +3,7 @@
 import sys
 
 from .compression import decompress
-from .exceptions import reraise, MessageStateError
+from .exceptions import MessageStateError, reraise
 from .serialization import loads
 from .utils.functional import dictfilter
 

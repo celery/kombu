@@ -1,8 +1,8 @@
 import socket
 import sys
 import types
-
 from unittest.mock import Mock, patch
+
 from case import mock
 
 from kombu.utils import compat

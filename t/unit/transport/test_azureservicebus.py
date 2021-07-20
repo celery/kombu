@@ -1,19 +1,20 @@
-import json
-import pytest
 import base64
+import json
 import random
-from queue import Empty
-
-from unittest.mock import patch, MagicMock
 from collections import namedtuple
-from kombu import messaging
-from kombu import Connection, Exchange, Queue
+from queue import Empty
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+from kombu import Connection, Exchange, Queue, messaging
 
 pytest.importorskip('azure.servicebus')
-from kombu.transport import azureservicebus   # noqa 
-import azure.servicebus.exceptions   # noqa
-import azure.core.exceptions   # noqa
-from azure.servicebus import ServiceBusMessage, ServiceBusReceiveMode   # noqa
+import azure.core.exceptions  # noqa
+import azure.servicebus.exceptions  # noqa
+from azure.servicebus import ServiceBusMessage, ServiceBusReceiveMode  # noqa
+
+from kombu.transport import azureservicebus  # noqa
 
 
 class ASBQueue:
@@ -181,7 +182,7 @@ def test_invalid_peek_lock_seconds():
 
 @pytest.fixture
 def random_queue():
-    return 'azureservicebus_queue_{0}'.format(random.randint(1000, 9999))
+    return f'azureservicebus_queue_{random.randint(1000, 9999)}'
 
 
 @pytest.fixture
@@ -255,7 +256,7 @@ def test_empty_queue_get(mock_queue: MockQueue):
 
 def test_delete_empty_queue(mock_queue: MockQueue):
     chan = mock_queue.channel
-    queue_name = 'random_queue_{0}'.format(random.randint(1000, 9999))
+    queue_name = f'random_queue_{random.randint(1000, 9999)}'
 
     chan._new_queue(queue_name)
     assert queue_name in chan._queue_cache

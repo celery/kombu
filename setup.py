@@ -2,16 +2,15 @@
 import os
 import re
 import sys
+from distutils.command.install import INSTALL_SCHEMES
 
 import setuptools
 import setuptools.command.test
 
-from distutils.command.install import INSTALL_SCHEMES
-
 try:
     from setuptools import setup
 except ImportError:
-    from distutils.core import setup  # noqa
+    from distutils.core import setup
 
 # -- Parse meta
 re_meta = re.compile(r'__(\w+?)__\s*=\s*(.*)')
@@ -70,16 +69,13 @@ py_version = sys.version_info
 is_pypy = hasattr(sys, 'pypy_version_info')
 
 
-def strip_comments(l):
-    return l.split('#', 1)[0].strip()
+def strip_comments(line):
+    return line.split('#', 1)[0].strip()
 
 
 def reqs(*f):
-    return [
-        r for r in (
-            strip_comments(l) for l in open(
-            os.path.join(os.getcwd(), 'requirements', *f)).readlines()
-        ) if r]
+    with open(os.path.join(os.getcwd(), "requirements", *f)) as reqs_file:
+        return [r for r in (strip_comments(line) for line in reqs_file) if r]
 
 
 def extras(*p):

@@ -1,10 +1,9 @@
-import pytest
-
 from unittest.mock import Mock, call, patch
 
-from kombu.asynchronous.http.curl import READ, WRITE, CurlClient
+import pytest
 
 import t.skip
+from kombu.asynchronous.http.curl import READ, WRITE, CurlClient
 
 pytest.importorskip('pycurl')
 

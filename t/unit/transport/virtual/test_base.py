@@ -1,14 +1,14 @@
 import io
-import pytest
-import warnings
 import socket
+import warnings
 from time import monotonic
-
 from unittest.mock import MagicMock, Mock, patch
+
+import pytest
 
 from kombu import Connection
 from kombu.compression import compress
-from kombu.exceptions import ResourceError, ChannelError
+from kombu.exceptions import ChannelError, ResourceError
 from kombu.transport import virtual
 from kombu.utils.uuid import uuid
 

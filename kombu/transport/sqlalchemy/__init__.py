@@ -55,7 +55,7 @@ Moreover parameters of :func:`sqlalchemy.create_engine()` function can be passed
 
 
 import threading
-from json import loads, dumps
+from json import dumps, loads
 from queue import Empty
 
 from sqlalchemy import create_engine
@@ -65,9 +65,11 @@ from sqlalchemy.orm import sessionmaker
 from kombu.transport import virtual
 from kombu.utils import cached_property
 from kombu.utils.encoding import bytes_to_str
-from .models import (ModelBase, Queue as QueueBase, Message as MessageBase,
-                     class_registry, metadata)
 
+from .models import Message as MessageBase
+from .models import ModelBase
+from .models import Queue as QueueBase
+from .models import class_registry, metadata
 
 VERSION = (1, 1, 0)
 __version__ = '.'.join(map(str, VERSION))

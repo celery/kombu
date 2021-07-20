@@ -1,8 +1,7 @@
-import pytest
-
 from queue import Empty
-
 from unittest.mock import Mock
+
+import pytest
 
 from kombu.transport.consul import Channel, Transport
 

@@ -22,11 +22,10 @@ Connection string is in the following format:
 
 """
 
+from collections import defaultdict
 from queue import Queue
 
-from . import base
-from . import virtual
-from collections import defaultdict
+from . import base, virtual
 
 
 class Channel(virtual.Channel):

@@ -51,7 +51,6 @@ Transport Options
 
 import numbers
 import socket
-
 from bisect import bisect
 from collections import namedtuple
 from contextlib import contextmanager
@@ -63,25 +62,25 @@ from vine import promise
 from kombu.exceptions import InconsistencyError, VersionMismatch
 from kombu.log import get_logger
 from kombu.utils.compat import register_after_fork
-from kombu.utils.eventio import poll, READ, ERR
 from kombu.utils.encoding import bytes_to_str
-from kombu.utils.json import loads, dumps
+from kombu.utils.eventio import ERR, READ, poll
+from kombu.utils.functional import accepts_argument
+from kombu.utils.json import dumps, loads
 from kombu.utils.objects import cached_property
 from kombu.utils.scheduling import cycle_by_name
 from kombu.utils.url import _parse_url
-from kombu.utils.functional import accepts_argument
 
 from . import virtual
 
 try:
     import redis
 except ImportError:  # pragma: no cover
-    redis = None     # noqa
+    redis = None
 
 try:
     from redis import sentinel
 except ImportError:  # pragma: no cover
-    sentinel = None  # noqa
+    sentinel = None
 
 
 logger = get_logger('kombu.transport.redis')
@@ -121,6 +120,7 @@ Probably the key ({1!r}) has been removed from the Redis database.
 def get_redis_error_classes():
     """Return tuple of redis error classes."""
     from redis import exceptions
+
     # This exception suddenly changed name between redis-py versions
     if hasattr(exceptions, 'InvalidData'):
         DataError = exceptions.InvalidData

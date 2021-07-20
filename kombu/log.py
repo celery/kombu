@@ -4,7 +4,6 @@ import logging
 import numbers
 import os
 import sys
-
 from logging.handlers import WatchedFileHandler
 
 from .utils.encoding import safe_repr, safe_str

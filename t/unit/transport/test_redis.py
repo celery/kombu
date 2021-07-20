@@ -1,15 +1,15 @@
-import pytest
-
 import socket
 import types
-
 from collections import defaultdict
 from itertools import count
-from queue import Empty, Queue as _Queue
+from queue import Empty
+from queue import Queue as _Queue
 from unittest.mock import ANY, Mock, call, patch
+
+import pytest
 from case import ContextMock, mock
 
-from kombu import Connection, Exchange, Queue, Consumer, Producer
+from kombu import Connection, Consumer, Exchange, Producer, Queue
 from kombu.exceptions import InconsistencyError, VersionMismatch
 from kombu.transport import virtual
 from kombu.utils import eventio  # patch poll
@@ -314,6 +314,7 @@ class test_Channel:
 
     def test_get_redis_ConnectionError(self):
         from redis.exceptions import ConnectionError
+
         from kombu.transport.redis import get_redis_ConnectionError
         connection_error = get_redis_ConnectionError()
         assert connection_error == ConnectionError

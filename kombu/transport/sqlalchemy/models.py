@@ -2,8 +2,8 @@
 
 import datetime
 
-from sqlalchemy import (Column, Integer, String, Text, DateTime,
-                        Sequence, Boolean, ForeignKey, SmallInteger, Index)
+from sqlalchemy import (Boolean, Column, DateTime, ForeignKey, Index, Integer,
+                        Sequence, SmallInteger, String, Text)
 from sqlalchemy.orm import relation
 from sqlalchemy.schema import MetaData
 

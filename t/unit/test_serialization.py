@@ -1,23 +1,21 @@
 #!/usr/bin/python
 
-import pytest
-
 from base64 import b64decode
-
 from unittest.mock import call, patch
+
+import pytest
 from case import mock
 
-from kombu.exceptions import ContentDisallowed, EncodeError, DecodeError
-from kombu.serialization import (
-    registry, register, SerializerNotInstalled,
-    raw_encode, register_yaml, register_msgpack,
-    dumps, loads, pickle, pickle_protocol,
-    unregister, register_pickle, enable_insecure_serializers,
-    disable_insecure_serializers, prepare_accept_content
-)
-from kombu.utils.encoding import str_to_bytes
-
 import t.skip
+from kombu.exceptions import ContentDisallowed, DecodeError, EncodeError
+from kombu.serialization import (SerializerNotInstalled,
+                                 disable_insecure_serializers, dumps,
+                                 enable_insecure_serializers, loads, pickle,
+                                 pickle_protocol, prepare_accept_content,
+                                 raw_encode, register, register_msgpack,
+                                 register_pickle, register_yaml, registry,
+                                 unregister)
+from kombu.utils.encoding import str_to_bytes
 
 # For content_encoding tests
 unicode_string = 'abcdé\u8463'

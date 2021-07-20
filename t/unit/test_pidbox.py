@@ -1,11 +1,10 @@
-import pytest
 import socket
 import warnings
-
 from unittest.mock import Mock, patch
 
-from kombu import Connection
-from kombu import pidbox
+import pytest
+
+from kombu import Connection, pidbox
 from kombu.exceptions import ContentDisallowed, InconsistencyError
 from kombu.utils.uuid import uuid
 

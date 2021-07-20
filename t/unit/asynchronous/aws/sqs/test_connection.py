@@ -1,13 +1,10 @@
-from unittest.mock import Mock, MagicMock
+from unittest.mock import MagicMock, Mock
 
-from kombu.asynchronous.aws.sqs.connection import (
-    AsyncSQSConnection
-)
 from kombu.asynchronous.aws.ext import boto3
+from kombu.asynchronous.aws.sqs.connection import AsyncSQSConnection
 from kombu.asynchronous.aws.sqs.message import AsyncMessage
 from kombu.asynchronous.aws.sqs.queue import AsyncQueue
 from kombu.utils.uuid import uuid
-
 from t.mocks import PromiseMock
 
 from ..case import AWSCase

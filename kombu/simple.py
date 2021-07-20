@@ -1,13 +1,11 @@
 """Simple messaging interface."""
 
 import socket
-
 from collections import deque
 from queue import Empty
 from time import monotonic
 
-from . import entity
-from . import messaging
+from . import entity, messaging
 from .connection import maybe_channel
 
 __all__ = ('SimpleQueue', 'SimpleBuffer')

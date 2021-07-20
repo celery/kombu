@@ -1,11 +1,9 @@
-import pytest
-
 from unittest.mock import Mock, patch
 
-from kombu import Connection, Exchange, Queue
-from kombu import compat
+import pytest
 
-from t.mocks import Transport, Channel
+from kombu import Connection, Exchange, Queue, compat
+from t.mocks import Channel, Transport
 
 
 class test_misc:

@@ -1,7 +1,6 @@
 """Public resource pools."""
 
 import os
-
 from itertools import chain
 
 from .connection import Resource
@@ -107,7 +106,7 @@ class Connections(PoolGroup):
         return connection.Pool(limit=limit)
 
 
-connections = register_group(Connections(limit=use_global_limit))  # noqa: E305
+connections = register_group(Connections(limit=use_global_limit))
 
 
 class Producers(PoolGroup):
@@ -117,11 +116,11 @@ class Producers(PoolGroup):
         return ProducerPool(connections[connection], limit=limit)
 
 
-producers = register_group(Producers(limit=use_global_limit))  # noqa: E305
+producers = register_group(Producers(limit=use_global_limit))
 
 
 def _all_pools():
-    return chain(*[(g.values() if g else iter([])) for g in _groups])
+    return chain(*((g.values() if g else iter([])) for g in _groups))
 
 
 def get_limit():

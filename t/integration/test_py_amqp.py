@@ -1,12 +1,11 @@
 import os
 
 import pytest
+
 import kombu
 
-from .common import (
-    BasicFunctionality, BaseExchangeTypes,
-    BaseTimeToLive, BasePriority, BaseFailover
-)
+from .common import (BaseExchangeTypes, BaseFailover, BasePriority,
+                     BaseTimeToLive, BasicFunctionality)
 
 
 def get_connection(hostname, port, vhost):

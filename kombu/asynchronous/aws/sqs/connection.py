@@ -8,7 +8,6 @@ from .ext import boto3
 from .message import AsyncMessage
 from .queue import AsyncQueue
 
-
 __all__ = ('AsyncSQSConnection',)
 
 
@@ -84,7 +83,7 @@ class AsyncSQSConnection(AsyncAWSQueryConnection):
     def delete_message_batch(self, queue, messages, callback=None):
         params = {}
         for i, m in enumerate(messages):
-            prefix = 'DeleteMessageBatchRequestEntry.{}'.format(i + 1)
+            prefix = f'DeleteMessageBatchRequestEntry.{i + 1}'
             params.update({
                 f'{prefix}.Id': m.id,
                 f'{prefix}.ReceiptHandle': m.receipt_handle,
@@ -114,7 +113,7 @@ class AsyncSQSConnection(AsyncAWSQueryConnection):
     def send_message_batch(self, queue, messages, callback=None):
         params = {}
         for i, msg in enumerate(messages):
-            prefix = 'SendMessageBatchRequestEntry.{}'.format(i + 1)
+            prefix = f'SendMessageBatchRequestEntry.{i + 1}'
             params.update({
                 f'{prefix}.Id': msg[0],
                 f'{prefix}.MessageBody': msg[1],
@@ -137,7 +136,7 @@ class AsyncSQSConnection(AsyncAWSQueryConnection):
     def change_message_visibility_batch(self, queue, messages, callback=None):
         params = {}
         for i, t in enumerate(messages):
-            pre = 'ChangeMessageVisibilityBatchRequestEntry.{}'.format(i + 1)
+            pre = f'ChangeMessageVisibilityBatchRequestEntry.{i + 1}'
             params.update({
                 f'{pre}.Id': t[0].id,
                 f'{pre}.ReceiptHandle': t[0].receipt_handle,

@@ -1,8 +1,7 @@
 import sys
-
 from itertools import count
-
 from unittest.mock import Mock, patch
+
 from case import mock
 
 from kombu import Connection

@@ -1,12 +1,11 @@
-import pytest
-import pytz
-
 from collections import namedtuple
 from datetime import datetime
 from decimal import Decimal
+from unittest.mock import MagicMock, Mock
 from uuid import uuid4
 
-from unittest.mock import MagicMock, Mock
+import pytest
+import pytz
 
 from kombu.utils.encoding import str_to_bytes
 from kombu.utils.json import _DecodeError, dumps, loads

@@ -1,4 +1,5 @@
 import pytest
+
 from kombu import Connection
 from kombu.transport import zookeeper
 

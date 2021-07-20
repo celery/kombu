@@ -1,11 +1,10 @@
 """Functional Utilities."""
 
-from collections import OrderedDict, UserDict
-from collections.abc import Iterable, Mapping
+import inspect
 import random
 import threading
-import inspect
-
+from collections import OrderedDict, UserDict
+from collections.abc import Iterable, Mapping
 from itertools import count, repeat
 from time import sleep, time
 
@@ -37,7 +36,7 @@ class ChannelPromise:
         try:
             return repr(self.__value__)
         except AttributeError:
-            return '<promise: 0x{:x}>'.format(id(self.__contract__))
+            return f'<promise: 0x{id(self.__contract__):x}>'
 
 
 class LRUCache(UserDict):

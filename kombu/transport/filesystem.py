@@ -90,17 +90,17 @@ Transport Options
 
 import os
 import shutil
+import tempfile
 import uuid
 from queue import Empty
-import tempfile
 from time import monotonic
 
-from . import virtual
 from kombu.exceptions import ChannelError
 from kombu.utils.encoding import bytes_to_str, str_to_bytes
-from kombu.utils.json import loads, dumps
+from kombu.utils.json import dumps, loads
 from kombu.utils.objects import cached_property
 
+from . import virtual
 
 VERSION = (1, 0, 0)
 __version__ = '.'.join(map(str, VERSION))
@@ -108,14 +108,14 @@ __version__ = '.'.join(map(str, VERSION))
 # needs win32all to work on Windows
 if os.name == 'nt':
 
+    import pywintypes
     import win32con
     import win32file
-    import pywintypes
 
     LOCK_EX = win32con.LOCKFILE_EXCLUSIVE_LOCK
     # 0 is the default
-    LOCK_SH = 0                                     # noqa
-    LOCK_NB = win32con.LOCKFILE_FAIL_IMMEDIATELY    # noqa
+    LOCK_SH = 0
+    LOCK_NB = win32con.LOCKFILE_FAIL_IMMEDIATELY
     __overlapped = pywintypes.OVERLAPPED()
 
     def lock(file, flags):
@@ -131,13 +131,13 @@ if os.name == 'nt':
 elif os.name == 'posix':
 
     import fcntl
-    from fcntl import LOCK_EX, LOCK_SH, LOCK_NB     # noqa
+    from fcntl import LOCK_EX, LOCK_NB, LOCK_SH  # noqa
 
-    def lock(file, flags):  # noqa
+    def lock(file, flags):
         """Create file lock."""
         fcntl.flock(file.fileno(), flags)
 
-    def unlock(file):       # noqa
+    def unlock(file):
         """Remove file lock."""
         fcntl.flock(file.fileno(), fcntl.LOCK_UN)
 else:

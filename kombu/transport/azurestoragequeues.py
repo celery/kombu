@@ -30,11 +30,11 @@ Transport Options
 * ``queue_name_prefix``
 """
 
-from queue import Empty
 import string
+from queue import Empty
 
 from kombu.utils.encoding import safe_str
-from kombu.utils.json import loads, dumps
+from kombu.utils.json import dumps, loads
 from kombu.utils.objects import cached_property
 
 from . import virtual
@@ -42,7 +42,7 @@ from . import virtual
 try:
     from azure.storage.queue import QueueService
 except ImportError:  # pragma: no cover
-    QueueService = None  # noqa
+    QueueService = None
 
 # Azure storage queues allow only alphanumeric and dashes
 # so, replace everything with a dash

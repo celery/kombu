@@ -55,19 +55,19 @@ Transport Options
 
 import string
 from queue import Empty
-from typing import Dict, Any, Optional, Union, Set, Tuple
-
-from kombu.utils.encoding import bytes_to_str, safe_str
-from kombu.utils.json import loads, dumps
-from kombu.utils.objects import cached_property
+from typing import Any, Dict, Optional, Set, Tuple, Union
 
 import azure.core.exceptions
 import azure.servicebus.exceptions
 import isodate
-from azure.servicebus import (
-    ServiceBusClient, ServiceBusMessage, ServiceBusReceiver, ServiceBusSender,
-    ServiceBusReceiveMode)
+from azure.servicebus import (ServiceBusClient, ServiceBusMessage,
+                              ServiceBusReceiveMode, ServiceBusReceiver,
+                              ServiceBusSender)
 from azure.servicebus.management import ServiceBusAdministrationClient
+
+from kombu.utils.encoding import bytes_to_str, safe_str
+from kombu.utils.json import dumps, loads
+from kombu.utils.objects import cached_property
 
 from . import virtual
 
@@ -438,7 +438,7 @@ class Transport(virtual.Transport):
     @classmethod
     def as_uri(cls, uri: str, include_password=False, mask='**') -> str:
         namespace, policy, sas_key = cls.parse_uri(uri)
-        return 'azureservicebus://{0}:{1}@{2}'.format(
+        return 'azureservicebus://{}:{}@{}'.format(
             policy,
             sas_key if include_password else mask,
             namespace

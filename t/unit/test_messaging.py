@@ -1,16 +1,14 @@
 import pickle
-import pytest
 import sys
-
 from collections import defaultdict
-
 from unittest.mock import Mock, patch
 
-from kombu import Connection, Consumer, Producer, Exchange, Queue
+import pytest
+
+from kombu import Connection, Consumer, Exchange, Producer, Queue
 from kombu.exceptions import MessageStateError
 from kombu.utils import json
 from kombu.utils.functional import ChannelPromise
-
 from t.mocks import Transport
 
 

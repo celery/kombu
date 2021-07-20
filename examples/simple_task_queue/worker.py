@@ -1,5 +1,5 @@
-from kombu.mixins import ConsumerMixin
 from kombu.log import get_logger
+from kombu.mixins import ConsumerMixin
 from kombu.utils.functional import reprcall
 
 from .queues import task_queues
@@ -28,9 +28,11 @@ class Worker(ConsumerMixin):
             logger.error('task raised exception: %r', exc)
         message.ack()
 
+
 if __name__ == '__main__':
     from kombu import Connection
     from kombu.utils.debug import setup_logging
+
     # setup root logger
     setup_logging(loglevel='INFO', loggers=[''])
 
