@@ -27,9 +27,8 @@ Connection string has the following format:
 
 """
 
-import uuid
 import socket
-
+import uuid
 from collections import defaultdict
 from contextlib import contextmanager
 from queue import Empty
@@ -37,7 +36,7 @@ from time import monotonic
 
 from kombu.exceptions import ChannelError
 from kombu.log import get_logger
-from kombu.utils.json import loads, dumps
+from kombu.utils.json import dumps, loads
 from kombu.utils.objects import cached_property
 
 from . import virtual
@@ -215,7 +214,7 @@ class Channel(virtual.Channel):
         only one node reads at the same time. This is for read consistency
         """
         with self._queue_lock(queue, raising=Empty):
-            key = '{}/msg/'.format(self._key_prefix(queue))
+            key = f'{self._key_prefix(queue)}/msg/'
             logger.debug('Fetching key %s with index %s', key, self.index)
             self.index, data = self.client.kv.get(
                 key=key, recurse=True,
@@ -241,14 +240,14 @@ class Channel(virtual.Channel):
     def _purge(self, queue):
         self._destroy_session(queue)
         return self.client.kv.delete(
-            key='{}/msg/'.format(self._key_prefix(queue)),
+            key=f'{self._key_prefix(queue)}/msg/',
             recurse=True,
         )
 
     def _size(self, queue):
         size = 0
         try:
-            key = '{}/msg/'.format(self._key_prefix(queue))
+            key = f'{self._key_prefix(queue)}/msg/'
             logger.debug('Fetching key recursively %s with index %s',
                          key, self.index)
             self.index, data = self.client.kv.get(

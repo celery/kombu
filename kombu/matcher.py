@@ -1,7 +1,7 @@
 """Pattern matching registry."""
 
-from re import match as rematch
 from fnmatch import fnmatch
+from re import match as rematch
 
 from .utils.compat import entrypoints
 from .utils.encoding import bytes_to_str

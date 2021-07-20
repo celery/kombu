@@ -86,34 +86,33 @@ Celery, this can be accomplished by setting the
 *BROKER_TRANSPORT_OPTIONS* Celery option.
 """
 
-from collections import OrderedDict
 import os
 import select
 import socket
 import ssl
 import sys
 import uuid
+from collections import OrderedDict
+from gettext import gettext as _
 from queue import Empty
 from time import monotonic
-
-from gettext import gettext as _
 
 import amqp.protocol
 
 try:
     import fcntl
 except ImportError:
-    fcntl = None  # noqa
+    fcntl = None
 
 try:
     import qpidtoollibs
 except ImportError:  # pragma: no cover
-    qpidtoollibs = None     # noqa
+    qpidtoollibs = None
 
 try:
-    from qpid.messaging.exceptions import ConnectionError, NotFound
+    from qpid.messaging.exceptions import ConnectionError
     from qpid.messaging.exceptions import Empty as QpidEmpty
-    from qpid.messaging.exceptions import SessionClosed
+    from qpid.messaging.exceptions import NotFound, SessionClosed
 except ImportError:  # pragma: no cover
     ConnectionError = None
     NotFound = None
@@ -126,9 +125,8 @@ except ImportError:  # pragma: no cover
     qpid = None
 
 from kombu.log import get_logger
-from kombu.transport.virtual import Base64, Message
 from kombu.transport import base, virtual
-
+from kombu.transport.virtual import Base64, Message
 
 logger = get_logger(__name__)
 

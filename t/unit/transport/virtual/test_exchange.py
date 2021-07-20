@@ -1,10 +1,9 @@
-import pytest
-
 from unittest.mock import Mock
+
+import pytest
 
 from kombu import Connection
 from kombu.transport.virtual import exchange
-
 from t.mocks import Transport
 
 

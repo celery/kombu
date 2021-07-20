@@ -86,8 +86,8 @@ try:
         socket.error,
     )
 except ImportError:
-    kazoo = None  # noqa
-    KZ_CONNECTION_ERRORS = KZ_CHANNEL_ERRORS = ()  # noqa
+    kazoo = None
+    KZ_CONNECTION_ERRORS = KZ_CHANNEL_ERRORS = ()
 
 DEFAULT_PORT = 2181
 

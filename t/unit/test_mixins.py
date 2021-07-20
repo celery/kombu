@@ -1,7 +1,7 @@
-import pytest
 import socket
-
 from unittest.mock import Mock, patch
+
+import pytest
 from case import ContextMock
 
 from kombu.mixins import ConsumerMixin

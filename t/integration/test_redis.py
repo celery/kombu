@@ -1,12 +1,11 @@
 import os
-
-import pytest
-import kombu
 from time import sleep
 
-from .common import (
-    BasicFunctionality, BaseExchangeTypes, BasePriority
-)
+import pytest
+
+import kombu
+
+from .common import BaseExchangeTypes, BasePriority, BasicFunctionality
 
 
 def get_connection(

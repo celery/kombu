@@ -1,6 +1,6 @@
 from itertools import count
-
 from unittest.mock import Mock
+
 from case import ContextMock
 
 from kombu.transport import base

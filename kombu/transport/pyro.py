@@ -33,11 +33,12 @@ Transport Options
 
 
 import sys
-from queue import Queue, Empty
+from queue import Empty, Queue
 
 from kombu.exceptions import reraise
-from kombu.utils.objects import cached_property
 from kombu.log import get_logger
+from kombu.utils.objects import cached_property
+
 from . import virtual
 
 try:
@@ -45,7 +46,7 @@ try:
     from Pyro4.errors import NamingError
     from Pyro4.util import SerializerBase
 except ImportError:          # pragma: no cover
-    pyro = NamingError = SerializerBase = None  # noqa
+    pyro = NamingError = SerializerBase = None
 
 DEFAULT_PORT = 9090
 E_NAMESERVER = """\

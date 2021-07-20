@@ -1,6 +1,6 @@
-import pytest
-
 from unittest.mock import Mock
+
+import pytest
 
 from kombu.utils.scheduling import FairCycle, cycle_by_name
 

@@ -2,17 +2,16 @@
 
 import heapq
 import sys
-
 from collections import namedtuple
 from datetime import datetime
 from functools import total_ordering
-from weakref import proxy as weakrefproxy
 from time import monotonic
+from time import time as _time
+from weakref import proxy as weakrefproxy
 
 from vine.utils import wraps
 
 from kombu.log import get_logger
-from time import time as _time
 
 try:
     from pytz import utc

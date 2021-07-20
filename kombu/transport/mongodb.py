@@ -37,19 +37,17 @@ import datetime
 from queue import Empty
 
 import pymongo
-from pymongo import errors
-from pymongo import MongoClient, uri_parser
+from pymongo import MongoClient, errors, uri_parser
 from pymongo.cursor import CursorType
 
 from kombu.exceptions import VersionMismatch
 from kombu.utils.compat import _detect_environment
 from kombu.utils.encoding import bytes_to_str
-from kombu.utils.json import loads, dumps
+from kombu.utils.json import dumps, loads
 from kombu.utils.objects import cached_property
 
 from . import virtual
 from .base import to_rabbitmq_queue_arguments
-
 
 E_SERVER_VERSION = """\
 Kombu requires MongoDB version 1.3+ (server is {0})\

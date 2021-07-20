@@ -1,18 +1,15 @@
 import pickle
+from itertools import count
+from unittest.mock import Mock
 
 import pytest
-
-from itertools import count
-
-from unittest.mock import Mock
 from case import mock
 
 from kombu.utils import functional as utils
-from kombu.utils.functional import (
-    ChannelPromise, LRUCache, fxrange, fxrangemax, memoize, lazy,
-    maybe_evaluate, maybe_list, reprcall, reprkwargs, retry_over_time,
-    accepts_argument,
-)
+from kombu.utils.functional import (ChannelPromise, LRUCache, accepts_argument,
+                                    fxrange, fxrangemax, lazy, maybe_evaluate,
+                                    maybe_list, memoize, reprcall, reprkwargs,
+                                    retry_over_time)
 
 
 class test_ChannelPromise:

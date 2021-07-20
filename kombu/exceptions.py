@@ -1,6 +1,6 @@
 """Exceptions."""
 
-from socket import timeout as TimeoutError  # noqa
+from socket import timeout as TimeoutError
 
 from amqp import ChannelError, ConnectionError, ResourceError
 

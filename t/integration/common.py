@@ -3,6 +3,7 @@ from contextlib import closing
 from time import sleep
 
 import pytest
+
 import kombu
 
 

@@ -2,12 +2,10 @@
 
 import os
 import socket
-
 from collections import OrderedDict
 from contextlib import contextmanager
 from itertools import count, cycle
 from operator import itemgetter
-
 
 try:
     from ssl import CERT_NONE
@@ -26,7 +24,7 @@ from .transport import get_transport_cls, supports_librabbitmq
 from .utils.collections import HashedSeq
 from .utils.functional import dictfilter, lazy, retry_over_time, shufflecycle
 from .utils.objects import cached_property
-from .utils.url import as_url, parse_url, quote, urlparse, maybe_sanitize_url
+from .utils.url import as_url, maybe_sanitize_url, parse_url, quote, urlparse
 
 __all__ = ('Connection', 'ConnectionPool', 'ChannelPool')
 
@@ -819,7 +817,7 @@ class Connection:
         return exchange_type in self.transport.implements.exchange_type
 
     def __repr__(self):
-        return '<Connection: {} at {:#x}>'.format(self.as_uri(), id(self))
+        return f'<Connection: {self.as_uri()} at {id(self):#x}>'
 
     def __copy__(self):
         return self.clone()
@@ -972,7 +970,7 @@ class Connection:
         return self.transport.implements.asynchronous
 
 
-BrokerConnection = Connection  # noqa: E305
+BrokerConnection = Connection
 
 
 class ConnectionPool(Resource):

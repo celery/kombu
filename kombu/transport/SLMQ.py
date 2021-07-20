@@ -18,13 +18,13 @@ Transport Options
  *Unreviewed*
 """
 
+import os
 import socket
 import string
-import os
 from queue import Empty
 
 from kombu.utils.encoding import bytes_to_str, safe_str
-from kombu.utils.json import loads, dumps
+from kombu.utils.json import dumps, loads
 from kombu.utils.objects import cached_property
 
 from . import virtual
@@ -33,7 +33,7 @@ try:
     from softlayer_messaging import get_client
     from softlayer_messaging.errors import ResponseError
 except ImportError:  # pragma: no cover
-    get_client = ResponseError = None  # noqa
+    get_client = ResponseError = None
 
 # dots are replaced by dash, all other punctuation replaced by underscore.
 CHARS_REPLACE_TABLE = {

@@ -12,7 +12,7 @@ class test_cached_property:
             def foo(self):
                 return 42
 
-            @foo.deleter  # noqa
+            @foo.deleter
             def foo(self, value):
                 self.xx = value
 
@@ -32,7 +32,7 @@ class test_cached_property:
             def foo(self):
                 return 42
 
-            @foo.setter  # noqa
+            @foo.setter
             def foo(self, value):
                 self.xx = 10
 

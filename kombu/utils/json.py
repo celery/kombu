@@ -8,7 +8,7 @@ import uuid
 try:
     from django.utils.functional import Promise as DjangoPromise
 except ImportError:  # pragma: no cover
-    class DjangoPromise:  # noqa
+    class DjangoPromise:
         """Dummy object."""
 
 try:
@@ -19,10 +19,10 @@ try:
         'namedtuple_as_object': False,
     }
 except ImportError:                 # pragma: no cover
-    import json                     # noqa
-    _json_extra_kwargs = {}           # noqa
+    import json
+    _json_extra_kwargs = {}
 
-    class _DecodeError(Exception):  # noqa
+    class _DecodeError(Exception):
         pass
 
 

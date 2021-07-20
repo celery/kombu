@@ -3,7 +3,6 @@
 
 
 from collections.abc import Mapping
-
 from functools import partial
 from typing import NamedTuple
 from urllib.parse import parse_qsl, quote, unquote, urlparse
@@ -74,7 +73,7 @@ def url_to_parts(url):
     )
 
 
-_parse_url = url_to_parts  # noqa
+_parse_url = url_to_parts
 
 
 def as_url(scheme, host=None, port=None, user=None, password=None,

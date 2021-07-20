@@ -1,6 +1,6 @@
-import pytest
-
 from unittest.mock import Mock
+
+import pytest
 
 from kombu import Connection, Exchange, Queue
 from kombu.exceptions import ContentDisallowed

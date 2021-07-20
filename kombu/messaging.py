@@ -4,7 +4,7 @@ from itertools import count
 
 from .common import maybe_declare
 from .compression import compress
-from .connection import maybe_channel, is_connection
+from .connection import is_connection, maybe_channel
 from .entity import Exchange, Queue, maybe_delivery_mode
 from .exceptions import ContentDisallowed
 from .serialization import dumps, prepare_accept_content
@@ -626,7 +626,7 @@ class Consumer:
             return on_m(message) if on_m else self.receive(decoded, message)
 
     def __repr__(self):
-        return '<{name}: {0.queues}>'.format(self, name=type(self).__name__)
+        return f'<{type(self).__name__}: {self.queues}>'
 
     @property
     def connection(self):

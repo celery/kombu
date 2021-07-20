@@ -1,25 +1,21 @@
-import pytest
 import select
-import ssl
 import socket
+import ssl
 import sys
 import time
 import uuid
-from queue import Empty
-
 from collections import OrderedDict
-
 from collections.abc import Callable
-
 from itertools import count
-
+from queue import Empty
 from unittest.mock import Mock, call, patch
+
+import pytest
 
 from kombu.transport.qpid import (AuthenticationFailure, Channel, Connection,
                                   ConnectionError, Message, NotFound, QoS,
                                   Transport)
 from kombu.transport.virtual import Base64
-
 
 QPID_MODULE = 'kombu.transport.qpid'
 

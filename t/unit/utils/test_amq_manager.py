@@ -1,6 +1,6 @@
-import pytest
-
 from unittest.mock import patch
+
+import pytest
 from case import mock
 
 from kombu import Connection

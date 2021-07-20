@@ -2,16 +2,15 @@
 import os
 import re
 import sys
+from distutils.command.install import INSTALL_SCHEMES
 
 import setuptools
 import setuptools.command.test
 
-from distutils.command.install import INSTALL_SCHEMES
-
 try:
     from setuptools import setup
 except ImportError:
-    from distutils.core import setup  # noqa
+    from distutils.core import setup
 
 # -- Parse meta
 re_meta = re.compile(r'__(\w+?)__\s*=\s*(.*)')

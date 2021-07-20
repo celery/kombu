@@ -6,22 +6,21 @@ slightly.
 """
 import base64
 import os
-from datetime import datetime, timedelta
-
-import pytest
 import random
 import string
+from datetime import datetime, timedelta
 from queue import Empty
-
 from unittest.mock import Mock, patch
 
-from kombu import messaging
-from kombu import Connection, Exchange, Queue
+import pytest
+
+from kombu import Connection, Exchange, Queue, messaging
 
 boto3 = pytest.importorskip('boto3')
 
-from kombu.transport import SQS                 # noqa
-from botocore.exceptions import ClientError     # noqa
+from botocore.exceptions import ClientError  # noqa
+
+from kombu.transport import SQS  # noqa
 
 SQS_Channel_sqs = SQS.Channel.sqs
 
@@ -63,7 +62,7 @@ class QueueMock:
         self.messages = []
 
     def __repr__(self):
-        return 'QueueMock: {} {} messages'.format(self.url, len(self.messages))
+        return f'QueueMock: {self.url} {len(self.messages)} messages'
 
 
 class SQSClientMock:

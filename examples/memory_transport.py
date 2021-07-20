@@ -3,7 +3,7 @@ Example that use memory transport for message produce.
 """
 import time
 
-from kombu import Connection, Exchange, Queue, Consumer
+from kombu import Connection, Consumer, Exchange, Queue
 
 media_exchange = Exchange('media', 'direct')
 video_queue = Queue('video', exchange=media_exchange, routing_key='video')

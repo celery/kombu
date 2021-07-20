@@ -1,7 +1,8 @@
 import atexit
 import os
-import pytest
 import sys
+
+import pytest
 
 from kombu.exceptions import VersionMismatch
 

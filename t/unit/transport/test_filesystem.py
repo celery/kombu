@@ -1,9 +1,9 @@
 import tempfile
 
 import pytest
-import t.skip
 
-from kombu import Connection, Exchange, Queue, Consumer, Producer
+import t.skip
+from kombu import Connection, Consumer, Exchange, Producer, Queue
 
 
 @t.skip.if_win32

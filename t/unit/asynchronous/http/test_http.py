@@ -1,17 +1,14 @@
-import pytest
-
 from io import BytesIO
-
-from vine import promise
-
 from unittest.mock import Mock
 
+import pytest
+from vine import promise
+
+import t.skip
 from kombu.asynchronous import http
 from kombu.asynchronous.http.base import BaseClient, normalize_header
 from kombu.exceptions import HttpError
-
 from t.mocks import PromiseMock
-import t.skip
 
 
 class test_Headers:
