@@ -1,9 +1,8 @@
-from __future__ import absolute_import, unicode_literals
-
 import atexit
 import os
-import pytest
 import sys
+
+import pytest
 
 from kombu.exceptions import VersionMismatch
 
@@ -72,7 +71,7 @@ def find_distribution_modules(name=__name__, file=__file__):
 def import_all_modules(name=__name__, file=__file__, skip=[]):
     for module in find_distribution_modules(name, file):
         if module not in skip:
-            print('preimporting %r for coverage...' % (module,))
+            print(f'preimporting {module!r} for coverage...')
             try:
                 __import__(module)
             except (ImportError, VersionMismatch, AttributeError):

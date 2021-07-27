@@ -1,20 +1,17 @@
-# -*- coding: utf-8 -*-
 """Timer scheduling Python callbacks."""
-from __future__ import absolute_import, unicode_literals
 
 import heapq
 import sys
-
 from collections import namedtuple
 from datetime import datetime
 from functools import total_ordering
+from time import monotonic
+from time import time as _time
 from weakref import proxy as weakrefproxy
 
 from vine.utils import wraps
 
-from kombu.five import monotonic, python_2_unicode_compatible
 from kombu.log import get_logger
-from time import time as _time
 
 try:
     from pytz import utc
@@ -46,8 +43,7 @@ def to_timestamp(d, default_timezone=utc, time=monotonic):
 
 
 @total_ordering
-@python_2_unicode_compatible
-class Entry(object):
+class Entry:
     """Schedule Entry."""
 
     if not IS_PYPY:  # pragma: no cover
@@ -74,7 +70,7 @@ class Entry(object):
             pass
 
     def __repr__(self):
-        return '<TimerEntry: {0}(*{1!r}, **{2!r})'.format(
+        return '<TimerEntry: {}(*{!r}, **{!r})'.format(
             self.fun.__name__, self.args, self.kwargs)
 
     # must not use hash() to order entries
@@ -90,7 +86,7 @@ class Entry(object):
         self.canceled = value
 
 
-class Timer(object):
+class Timer:
     """Async timer implementation."""
 
     Entry = Entry
@@ -158,7 +154,7 @@ class Timer(object):
         return self._enter(eta, priority, entry)
 
     def enter_after(self, secs, entry, priority=0, time=monotonic):
-        return self.enter_at(entry, time() + secs, priority)
+        return self.enter_at(entry, time() + float(secs), priority)
 
     def _enter(self, eta, priority, entry, push=heapq.heappush):
         push(self._queue, scheduled(eta, priority, entry))

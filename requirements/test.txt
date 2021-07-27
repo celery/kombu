@@ -1,5 +1,5 @@
 pytz>dev
 case>=1.5.2
-pytest
+pytest<=5.3.5
 pytest-sugar
 Pyro4

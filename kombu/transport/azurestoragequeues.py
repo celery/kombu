@@ -1,25 +1,40 @@
-"""Azure Storage Queues transport.
-
-The transport can be enabled by setting the CELERY_BROKER_URL to:
-
-```
-azurestoragequeues://:{Storage Account Access Key}@{Storage Account Name}
-```
-
-Note that if the access key for the storage account contains a slash, it will
-have to be regenerated before it can be used in the connection URL.
+"""Azure Storage Queues transport module for kombu.
 
 More information about Azure Storage Queues:
 https://azure.microsoft.com/en-us/services/storage/queues/
 
+Features
+========
+* Type: Virtual
+* Supports Direct: *Unreviewed*
+* Supports Topic: *Unreviewed*
+* Supports Fanout: *Unreviewed*
+* Supports Priority: *Unreviewed*
+* Supports TTL: *Unreviewed*
+
+Connection String
+=================
+
+Connection string has the following format:
+
+.. code-block::
+
+    azurestoragequeues://:STORAGE_ACCOUNT_ACCESS kEY@STORAGE_ACCOUNT_NAME
+
+Note that if the access key for the storage account contains a slash, it will
+have to be regenerated before it can be used in the connection URL.
+
+Transport Options
+=================
+
+* ``queue_name_prefix``
 """
-from __future__ import absolute_import, unicode_literals
 
 import string
+from queue import Empty
 
-from kombu.five import Empty, text_t
 from kombu.utils.encoding import safe_str
-from kombu.utils.json import loads, dumps
+from kombu.utils.json import dumps, loads
 from kombu.utils.objects import cached_property
 
 from . import virtual
@@ -27,7 +42,7 @@ from . import virtual
 try:
     from azure.storage.queue import QueueService
 except ImportError:  # pragma: no cover
-    QueueService = None  # noqa
+    QueueService = None
 
 # Azure storage queues allow only alphanumeric and dashes
 # so, replace everything with a dash
@@ -50,7 +65,7 @@ class Channel(virtual.Channel):
             raise ImportError('Azure Storage Queues transport requires the '
                               'azure-storage-queue library')
 
-        super(Channel, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         for queue_name in self.queue_service.list_queues():
             self._queue_name_cache[queue_name] = queue_name
@@ -59,12 +74,12 @@ class Channel(virtual.Channel):
         if no_ack:
             self._noack_queues.add(queue)
 
-        return super(Channel, self).basic_consume(queue, no_ack,
-                                                  *args, **kwargs)
+        return super().basic_consume(queue, no_ack,
+                                     *args, **kwargs)
 
     def entity_name(self, name, table=CHARS_REPLACE_TABLE):
         """Format AMQP queue name into a valid Azure Storage Queue name."""
-        return text_t(safe_str(name)).translate(table)
+        return str(safe_str(name)).translate(table)
 
     def _ensure_queue(self, queue):
         """Ensure a queue exists."""
@@ -81,7 +96,7 @@ class Channel(virtual.Channel):
         queue_name = self.entity_name(queue)
         self._queue_name_cache.pop(queue_name, None)
         self.queue_service.delete_queue(queue_name)
-        super(Channel, self)._delete(queue_name)
+        super()._delete(queue_name)
 
     def _put(self, queue, message, **kwargs):
         """Put message onto queue."""

@@ -1,39 +1,26 @@
 """Functional Utilities."""
-from __future__ import absolute_import, unicode_literals
 
-import random
-import sys
-import threading
 import inspect
-
-from collections import OrderedDict
-
-try:
-    from collections.abc import Iterable, Mapping
-except ImportError:
-    from collections import Iterable, Mapping
-
+import random
+import threading
+from collections import OrderedDict, UserDict
+from collections.abc import Iterable, Mapping
 from itertools import count, repeat
 from time import sleep, time
 
 from vine.utils import wraps
 
-from kombu.five import (
-    UserDict, items, keys, python_2_unicode_compatible, string_t, PY3,
-)
-
 from .encoding import safe_repr as _safe_repr
 
 __all__ = (
     'LRUCache', 'memoize', 'lazy', 'maybe_evaluate',
-    'is_list', 'maybe_list', 'dictfilter',
+    'is_list', 'maybe_list', 'dictfilter', 'retry_over_time',
 )
 
 KEYWORD_MARK = object()
 
 
-@python_2_unicode_compatible
-class ChannelPromise(object):
+class ChannelPromise:
 
     def __init__(self, contract):
         self.__contract__ = contract
@@ -49,7 +36,7 @@ class ChannelPromise(object):
         try:
             return repr(self.__value__)
         except AttributeError:
-            return '<promise: 0x{0:x}>'.format(id(self.__contract__))
+            return f'<promise: 0x{id(self.__contract__):x}>'
 
 
 class LRUCache(UserDict):
@@ -117,7 +104,7 @@ class LRUCache(UserDict):
     def _iterate_keys(self):
         # userdict.keys in py3k calls __getitem__
         with self.mutex:
-            return keys(self.data)
+            return self.data.keys()
     iterkeys = _iterate_keys
 
     def incr(self, key, delta=1):
@@ -137,20 +124,9 @@ class LRUCache(UserDict):
         self.__dict__ = state
         self.mutex = threading.RLock()
 
-    if sys.version_info[0] == 3:  # pragma: no cover
-        keys = _iterate_keys
-        values = _iterate_values
-        items = _iterate_items
-    else:  # noqa
-
-        def keys(self):
-            return list(self._iterate_keys())
-
-        def values(self):
-            return list(self._iterate_values())
-
-        def items(self):
-            return list(self._iterate_items())
+    keys = _iterate_keys
+    values = _iterate_values
+    items = _iterate_items
 
 
 def memoize(maxsize=None, keyfun=None, Cache=LRUCache):
@@ -190,8 +166,7 @@ def memoize(maxsize=None, keyfun=None, Cache=LRUCache):
     return _memoize
 
 
-@python_2_unicode_compatible
-class lazy(object):
+class lazy:
     """Holds lazy evaluation.
 
     Evaluated when called or if the :meth:`evaluate` method is called.
@@ -232,13 +207,6 @@ class lazy(object):
         return (self.__class__, (self._fun,), {'_args': self._args,
                                                '_kwargs': self._kwargs})
 
-    if sys.version_info[0] < 3:
-
-        def __cmp__(self, rhs):
-            if isinstance(rhs, self.__class__):
-                return -cmp(rhs, self())
-            return cmp(self(), rhs)
-
 
 def maybe_evaluate(value):
     """Evaluate value only if value is a :class:`lazy` instance."""
@@ -247,24 +215,24 @@ def maybe_evaluate(value):
     return value
 
 
-def is_list(l, scalars=(Mapping, string_t), iters=(Iterable,)):
+def is_list(obj, scalars=(Mapping, str), iters=(Iterable,)):
     """Return true if the object is iterable.
 
     Note:
         Returns false if object is a mapping or string.
     """
-    return isinstance(l, iters) and not isinstance(l, scalars or ())
+    return isinstance(obj, iters) and not isinstance(obj, scalars or ())
 
 
-def maybe_list(l, scalars=(Mapping, string_t)):
+def maybe_list(obj, scalars=(Mapping, str)):
     """Return list of one element if ``l`` is a scalar."""
-    return l if l is None or is_list(l, scalars) else [l]
+    return obj if obj is None or is_list(obj, scalars) else [obj]
 
 
 def dictfilter(d=None, **kw):
     """Remove all keys from dict ``d`` whose value is :const:`None`."""
     d = kw if d is None else (dict(d, **kw) if kw else d)
-    return {k: v for k, v in items(d) if v is not None}
+    return {k: v for k, v in d.items() if v is not None}
 
 
 def shufflecycle(it):
@@ -361,12 +329,12 @@ def retry_over_time(fun, catch, args=None, kwargs=None, errback=None,
 
 
 def reprkwargs(kwargs, sep=', ', fmt='{0}={1}'):
-    return sep.join(fmt.format(k, _safe_repr(v)) for k, v in items(kwargs))
+    return sep.join(fmt.format(k, _safe_repr(v)) for k, v in kwargs.items())
 
 
 def reprcall(name, args=(), kwargs=None, sep=', '):
     kwargs = {} if not kwargs else kwargs
-    return '{0}({1}{2}{3})'.format(
+    return '{}({}{}{})'.format(
         name, sep.join(map(_safe_repr, args or ())),
         (args and kwargs) and sep or '',
         reprkwargs(kwargs, sep),
@@ -374,16 +342,11 @@ def reprcall(name, args=(), kwargs=None, sep=', '):
 
 
 def accepts_argument(func, argument_name):
-    if PY3:
-        argument_spec = inspect.getfullargspec(func)
-        return (
-            argument_name in argument_spec.args or
-            argument_name in argument_spec.kwonlyargs
-        )
-
-    argument_spec = inspect.getargspec(func)
-    argument_names = argument_spec.args
-    return argument_name in argument_names
+    argument_spec = inspect.getfullargspec(func)
+    return (
+        argument_name in argument_spec.args or
+        argument_name in argument_spec.kwonlyargs
+    )
 
 
 # Compat names (before kombu 3.0)

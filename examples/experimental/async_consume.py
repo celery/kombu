@@ -1,7 +1,6 @@
 #!/usr/bin/env python
-from __future__ import absolute_import, unicode_literals
 
-from kombu import Connection, Exchange, Queue, Producer, Consumer
+from kombu import Connection, Consumer, Exchange, Producer, Queue
 from kombu.asynchronous import Hub
 
 hub = Hub()
@@ -16,7 +15,7 @@ def send_message(conn):
 
 
 def on_message(message):
-    print('received: {0!r}'.format(message.body))
+    print(f'received: {message.body!r}')
     message.ack()
     hub.stop()  # <-- exit after one message
 

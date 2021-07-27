@@ -1,4 +1,4 @@
-:Version: 4.6.7
+:Version: 5.1.01
 :Web: https://kombu.readthedocs.io/
 :Download: https://pypi.org/project/kombu/
 :Source: https://github.com/celery/kombu/
@@ -36,7 +36,7 @@ Features
     * Virtual transports makes it really easy to add support for non-AMQP
       transports. There is already built-in support for `Redis`_,
       `Amazon SQS`_, `Azure Storage Queues`_, `Azure Service Bus`_,
-      `ZooKeeper`_, `SoftLayer MQ`_ and `Pyro`_.
+      `ZooKeeper`_, `SoftLayer MQ`_, `MongoDB`_ and `Pyro`_.
 
     * In-memory transport for unit testing.
 
@@ -73,6 +73,7 @@ and the `Wikipedia article about AMQP`_.
 .. _`librabbitmq`: https://pypi.org/project/librabbitmq/
 .. _`Pyro`: https://pyro4.readthedocs.io/
 .. _`SoftLayer MQ`: http://www.softlayer.com/services/additional/message-queue
+.. _`MongoDB`: https://www.mongodb.com/
 
 .. _transport-comparison:
 
@@ -131,7 +132,7 @@ Quick overview
     video_queue = Queue('video', exchange=media_exchange, routing_key='video')
 
     def process_media(body, message):
-        print body
+        print(body)
         message.ack()
 
     # connections
@@ -172,7 +173,7 @@ Or handle channels manually:
 
     with connection.channel() as channel:
         producer = Producer(channel, ...)
-        consumer = Producer(channel)
+        consumer = Consumer(channel)
 
 
 All objects can be used outside of with statements too,
@@ -180,7 +181,7 @@ just remember to close the objects after use:
 
 .. code-block:: python
 
-    from kombu import Connection, Consumer, Producer
+    from kombu import Connection, Consumer
 
     connection = Connection()
         # ...
@@ -234,7 +235,7 @@ There are some concepts you should be familiar with before starting:
 
     * Consumers
 
-        Consumers declares a queue, binds it to a exchange and receives
+        A consumer declares a queue, binds it to an exchange and receives
         messages from it.
 
     * Queues

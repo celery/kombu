@@ -1,9 +1,8 @@
-from __future__ import absolute_import, unicode_literals
-
-import pytest
 import socket
 
-from kombu import Connection, Exchange, Queue, Consumer, Producer
+import pytest
+
+from kombu import Connection, Consumer, Exchange, Producer, Queue
 
 
 class test_PyroTransport:
@@ -77,7 +76,7 @@ class test_PyroTransport:
         )
         message = consumer.queues[0].get()._raw
 
-        class Cycle(object):
+        class Cycle:
 
             def get(self, callback, timeout=None):
                 return (message, 'foo'), c1

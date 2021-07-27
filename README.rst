@@ -2,9 +2,9 @@
  kombu - Messaging library for Python
 ========================================
 
-|build-status| |coverage| |license| |wheel| |pyversion| |pyimp| |[![Downloads](https://pepy.tech/badge/kombu)](https://pepy.tech/project/kombu)|
+|build-status| |coverage| |license| |wheel| |pyversion| |pyimp| |downloads|
 
-:Version: 4.6.7
+:Version: 5.1.0
 :Documentation: https://kombu.readthedocs.io/
 :Download: https://pypi.org/project/kombu/
 :Source: https://github.com/celery/kombu/
@@ -41,7 +41,7 @@ Features
 
     * Virtual transports makes it really easy to add support for non-AMQP
       transports. There is already built-in support for `Redis`_,
-      `Amazon SQS`_, `ZooKeeper`_, `SoftLayer MQ`_ and `Pyro`_.
+      `Amazon SQS`_, `ZooKeeper`_, `SoftLayer MQ`_, `MongoDB`_ and `Pyro`_.
 
     * In-memory transport for unit testing.
 
@@ -76,6 +76,7 @@ and the `Wikipedia article about AMQP`_.
 .. _`librabbitmq`: https://pypi.org/project/librabbitmq/
 .. _`Pyro`: https://pyro4.readthedocs.io/
 .. _`SoftLayer MQ`: https://sldn.softlayer.com/reference/messagequeueapi
+.. _`MongoDB`: https://www.mongodb.com/
 
 .. _transport-comparison:
 
@@ -335,9 +336,9 @@ This software is licensed under the `New BSD License`. See the `LICENSE`
 file in the top distribution directory for the full license text.
 
 
-.. |build-status| image:: https://secure.travis-ci.org/celery/kombu.png?branch=master
+.. |build-status| image:: https://api.travis-ci.com/celery/kombu.png?branch=master
     :alt: Build status
-    :target: https://travis-ci.org/celery/kombu
+    :target: https://travis-ci.com/celery/kombu
 
 .. |coverage| image:: https://codecov.io/github/celery/kombu/coverage.svg?branch=master
     :target: https://codecov.io/github/celery/kombu?branch=master
@@ -357,6 +358,8 @@ file in the top distribution directory for the full license text.
 .. |pyimp| image:: https://img.shields.io/pypi/implementation/kombu.svg
      :alt: Support Python implementations.
      :target: https://pypi.org/project/kombu/
+.. |downloads| image:: https://pepy.tech/badge/kombu
+    :target: https://pepy.tech/project/kombu
      
 kombu as part of the Tidelift Subscription
 ======= 

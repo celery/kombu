@@ -1,18 +1,17 @@
-# -*- coding: utf-8 -*-
 """Event loop implementation."""
-from __future__ import absolute_import, unicode_literals
 
 import errno
 from contextlib import contextmanager
+from queue import Empty
 from time import sleep
-from types import GeneratorType as generator  # noqa
+from types import GeneratorType as generator
 
-from kombu.five import Empty, python_2_unicode_compatible, range
+from vine import Thenable, promise
+
 from kombu.log import get_logger
 from kombu.utils.compat import fileno
 from kombu.utils.eventio import ERR, READ, WRITE, poll
 from kombu.utils.objects import cached_property
-from vine import Thenable, promise
 
 from .timer import Timer
 
@@ -51,8 +50,7 @@ def set_event_loop(loop):
     return loop
 
 
-@python_2_unicode_compatible
-class Hub(object):
+class Hub:
     """Event loop object.
 
     Arguments:
@@ -128,7 +126,7 @@ class Hub(object):
         self.call_soon(_raise_stop_error)
 
     def __repr__(self):
-        return '<Hub@{0:#x}: R:{1} W:{2}>'.format(
+        return '<Hub@{:#x}: R:{} W:{}>'.format(
             id(self), len(self.readers), len(self.writers),
         )
 

@@ -1,5 +1,4 @@
 """HTTP Client using pyCurl."""
-from __future__ import absolute_import, unicode_literals
 
 from collections import deque
 from functools import partial
@@ -8,19 +7,18 @@ from time import time
 
 from kombu.asynchronous.hub import READ, WRITE, get_event_loop
 from kombu.exceptions import HttpError
-from kombu.five import bytes_if_py2, items
 from kombu.utils.encoding import bytes_to_str
 
 from .base import BaseClient
 
 try:
-    import pycurl  # noqa
+    import pycurl
 except ImportError:  # pragma: no cover
-    pycurl = Curl = METH_TO_CURL = None  # noqa
+    pycurl = Curl = METH_TO_CURL = None
 else:
-    from pycurl import Curl  # noqa
+    from pycurl import Curl
 
-    METH_TO_CURL = {  # noqa
+    METH_TO_CURL = {
         'GET': pycurl.HTTPGET,
         'POST': pycurl.POST,
         'PUT': pycurl.UPLOAD,
@@ -29,7 +27,7 @@ else:
 
 __all__ = ('CurlClient',)
 
-DEFAULT_USER_AGENT = bytes_if_py2('Mozilla/5.0 (compatible; pycurl)')
+DEFAULT_USER_AGENT = 'Mozilla/5.0 (compatible; pycurl)'
 EXTRA_METHODS = frozenset(['DELETE', 'OPTIONS', 'PATCH'])
 
 
@@ -42,7 +40,7 @@ class CurlClient(BaseClient):
         if pycurl is None:
             raise ImportError('The curl client requires the pycurl library.')
         hub = hub or get_event_loop()
-        super(CurlClient, self).__init__(hub)
+        super().__init__(hub)
         self.max_clients = max_clients
 
         self._multi = pycurl.CurlMulti()
@@ -75,36 +73,47 @@ class CurlClient(BaseClient):
         self._set_timeout(0)
         return request
 
+    # the next two methods are used for linux/epoll workaround:
+    # we temporarily remove all curl fds from hub, so curl cannot
+    # close a fd which is still inside epoll
+    def _pop_from_hub(self):
+        for fd in self._fds:
+            self.hub.remove(fd)
+
+    def _push_to_hub(self):
+        for fd, events in self._fds.items():
+            if events & READ:
+                self.hub.add_reader(fd, self.on_readable, fd)
+            if events & WRITE:
+                self.hub.add_writer(fd, self.on_writable, fd)
+
     def _handle_socket(self, event, fd, multi, data, _pycurl=pycurl):
         if event == _pycurl.POLL_REMOVE:
             if fd in self._fds:
-                self.hub.remove(fd)
                 self._fds.pop(fd, None)
         else:
-            if fd in self._fds:
-                self.hub.remove(fd)
             if event == _pycurl.POLL_IN:
-                self.hub.add_reader(fd, self.on_readable, fd)
                 self._fds[fd] = READ
             elif event == _pycurl.POLL_OUT:
-                self.hub.add_writer(fd, self.on_writable, fd)
                 self._fds[fd] = WRITE
             elif event == _pycurl.POLL_INOUT:
-                self.hub.add_reader(fd, self.on_readable, fd)
-                self.hub.add_writer(fd, self.on_writable, fd)
                 self._fds[fd] = READ | WRITE
 
     def _set_timeout(self, msecs):
-        pass  # TODO
+        self.hub.call_later(msecs, self._timeout_check)
 
     def _timeout_check(self, _pycurl=pycurl):
-        while 1:
-            try:
-                ret, _ = self._multi.socket_all()
-            except pycurl.error as exc:
-                ret = exc.args[0]
-            if ret != _pycurl.E_CALL_MULTI_PERFORM:
-                break
+        self._pop_from_hub()
+        try:
+            while 1:
+                try:
+                    ret, _ = self._multi.socket_all()
+                except pycurl.error as exc:
+                    ret = exc.args[0]
+                if ret != _pycurl.E_CALL_MULTI_PERFORM:
+                    break
+        finally:
+            self._push_to_hub()
         self._process_pending_requests()
 
     def on_readable(self, fd, _pycurl=pycurl):
@@ -114,13 +123,17 @@ class CurlClient(BaseClient):
         return self._on_event(fd, _pycurl.CSELECT_OUT)
 
     def _on_event(self, fd, event, _pycurl=pycurl):
-        while 1:
-            try:
-                ret, _ = self._socket_action(fd, event)
-            except pycurl.error as exc:
-                ret = exc.args[0]
-            if ret != _pycurl.E_CALL_MULTI_PERFORM:
-                break
+        self._pop_from_hub()
+        try:
+            while 1:
+                try:
+                    ret, _ = self._socket_action(fd, event)
+                except pycurl.error as exc:
+                    ret = exc.args[0]
+                if ret != _pycurl.E_CALL_MULTI_PERFORM:
+                    break
+        finally:
+            self._push_to_hub()
         self._process_pending_requests()
 
     def _process_pending_requests(self):
@@ -188,7 +201,7 @@ class CurlClient(BaseClient):
 
         setopt(
             _pycurl.HTTPHEADER,
-            ['{0}: {1}'.format(*h) for h in items(request.headers)],
+            ['{}: {}'.format(*h) for h in request.headers.items()],
         )
 
         setopt(
@@ -216,7 +229,7 @@ class CurlClient(BaseClient):
             setopt(_pycurl.PROXY, request.proxy_host)
             setopt(_pycurl.PROXYPORT, request.proxy_port)
             if request.proxy_username:
-                setopt(_pycurl.PROXYUSERPWD, '{0}:{1}'.format(
+                setopt(_pycurl.PROXYUSERPWD, '{}:{}'.format(
                     request.proxy_username, request.proxy_password or ''))
         else:
             setopt(_pycurl.PROXY, '')
@@ -261,7 +274,7 @@ class CurlClient(BaseClient):
                 'digest': _pycurl.HTTPAUTH_DIGEST
             }[request.auth_mode or 'basic']
             setopt(_pycurl.HTTPAUTH, auth_mode)
-            userpwd = '{0}:{1}'.format(
+            userpwd = '{}:{}'.format(
                 request.auth_username, request.auth_password or '',
             )
             setopt(_pycurl.USERPWD, userpwd)

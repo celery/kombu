@@ -1,43 +1,30 @@
 """Python Compatibility Utilities."""
-from __future__ import absolute_import, unicode_literals
 
 import numbers
 import sys
-
-from functools import wraps
-
 from contextlib import contextmanager
+from functools import wraps
 
 try:
     from importlib import metadata as importlib_metadata
 except ImportError:
+    # TODO: Remove this when we drop support for Python 3.7
     import importlib_metadata
 
-from kombu.five import reraise
+from io import UnsupportedOperation
 
-try:
-    from io import UnsupportedOperation
-    FILENO_ERRORS = (AttributeError, ValueError, UnsupportedOperation)
-except ImportError:  # pragma: no cover
-    # Py2
-    FILENO_ERRORS = (AttributeError, ValueError)  # noqa
+from kombu.exceptions import reraise
+
+FILENO_ERRORS = (AttributeError, ValueError, UnsupportedOperation)
 
 try:
     from billiard.util import register_after_fork
 except ImportError:  # pragma: no cover
     try:
-        from multiprocessing.util import register_after_fork  # noqa
+        from multiprocessing.util import register_after_fork
     except ImportError:
-        register_after_fork = None  # noqa
+        register_after_fork = None
 
-try:
-    from typing import NamedTuple
-except ImportError:
-    import collections
-
-    def NamedTuple(name, fields):
-        """Typed version of collections.namedtuple."""
-        return collections.namedtuple(name, [k for k, _ in fields])
 
 _environment = None
 
@@ -56,8 +43,9 @@ def _detect_environment():
     # ## -eventlet-
     if 'eventlet' in sys.modules:
         try:
-            from eventlet.patcher import is_monkey_patched as is_eventlet
             import socket
+
+            from eventlet.patcher import is_monkey_patched as is_eventlet
 
             if is_eventlet(socket):
                 return 'eventlet'
@@ -67,8 +55,9 @@ def _detect_environment():
     # ## -gevent-
     if 'gevent' in sys.modules:
         try:
-            from gevent import socket as _gsocket
             import socket
+
+            from gevent import socket as _gsocket
 
             if socket.socket is _gsocket.socket:
                 return 'gevent'

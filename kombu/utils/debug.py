@@ -1,11 +1,9 @@
 """Debugging support."""
-from __future__ import absolute_import, unicode_literals
 
 import logging
 
 from vine.utils import wraps
 
-from kombu.five import items, python_2_unicode_compatible
 from kombu.log import get_logger
 
 __all__ = ('setup_logging', 'Logwrapped')
@@ -20,8 +18,7 @@ def setup_logging(loglevel=logging.DEBUG, loggers=None):
         logger.setLevel(loglevel)
 
 
-@python_2_unicode_compatible
-class Logwrapped(object):
+class Logwrapped:
     """Wrap all object methods, to log on call."""
 
     __ignore = ('__enter__', '__exit__')
@@ -42,14 +39,14 @@ class Logwrapped(object):
             info = ''
             if self.ident:
                 info += self.ident.format(self.instance)
-            info += '{0.__name__}('.format(meth)
+            info += f'{meth.__name__}('
             if args:
                 info += ', '.join(map(repr, args))
             if kwargs:
                 if args:
                     info += ', '
-                info += ', '.join('{k}={v!r}'.format(k=key, v=value)
-                                  for key, value in items(kwargs))
+                info += ', '.join(f'{key}={value!r}'
+                                  for key, value in kwargs.items())
             info += ')'
             self.logger.debug(info)
             return meth(*args, **kwargs)

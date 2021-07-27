@@ -1,9 +1,7 @@
 """Generic process mailbox."""
-from __future__ import absolute_import, unicode_literals
 
 import socket
 import warnings
-
 from collections import defaultdict, deque
 from contextlib import contextmanager
 from copy import copy
@@ -11,16 +9,15 @@ from itertools import count
 from threading import local
 from time import time
 
-from . import Exchange, Queue, Consumer, Producer
+from . import Consumer, Exchange, Producer, Queue
 from .clocks import LamportClock
 from .common import maybe_declare, oid_from
 from .exceptions import InconsistencyError, OperationalError
-from .five import range, string_t
 from .log import get_logger
+from .matcher import match
 from .utils.functional import maybe_evaluate, reprcall
 from .utils.objects import cached_property
 from .utils.uuid import uuid
-from .matcher import match
 
 REPLY_QUEUE_EXPIRES = 10
 
@@ -37,7 +34,7 @@ logger = get_logger(__name__)
 debug, error = logger.debug, logger.error
 
 
-class Node(object):
+class Node:
     """Mailbox node."""
 
     #: hostname of the node.
@@ -151,7 +148,7 @@ class Node(object):
                                     serializer=self.mailbox.serializer)
 
 
-class Mailbox(object):
+class Mailbox:
     """Process Mailbox."""
 
     node_cls = Node
@@ -236,7 +233,7 @@ class Mailbox(object):
     def get_reply_queue(self):
         oid = self.oid
         return Queue(
-            '%s.%s' % (oid, self.reply_exchange.name),
+            f'{oid}.{self.reply_exchange.name}',
             exchange=self.reply_exchange,
             routing_key=oid,
             durable=False,
@@ -251,7 +248,7 @@ class Mailbox(object):
 
     def get_queue(self, hostname):
         return Queue(
-            '%s.%s.pidbox' % (hostname, self.namespace),
+            f'{hostname}.{self.namespace}.pidbox',
             exchange=self.exchange,
             durable=False,
             auto_delete=True,
@@ -317,7 +314,7 @@ class Mailbox(object):
         chan = channel or self.connection.default_channel
         exchange = self.exchange
         if reply_ticket:
-            maybe_declare(self.reply_queue(channel))
+            maybe_declare(self.reply_queue(chan))
             message.update(ticket=reply_ticket,
                            reply_to={'exchange': self.reply_exchange.name,
                                      'routing_key': self.oid})
@@ -337,10 +334,10 @@ class Mailbox(object):
         if destination is not None and \
                 not isinstance(destination, (list, tuple)):
             raise ValueError(
-                'destination must be a list/tuple not {0}'.format(
+                'destination must be a list/tuple not {}'.format(
                     type(destination)))
-        if (pattern is not None and not isinstance(pattern, string_t) and
-                matcher is not None and not isinstance(matcher, string_t)):
+        if (pattern is not None and not isinstance(pattern, str) and
+                matcher is not None and not isinstance(matcher, str)):
             raise ValueError(
                 'pattern and matcher must be '
                 'strings not {}, {}'.format(type(pattern), type(matcher))
@@ -376,7 +373,7 @@ class Mailbox(object):
             accept = self.accept
         chan = channel or self.connection.default_channel
         queue = self.reply_queue
-        consumer = Consumer(channel, [queue], accept=accept, no_ack=True)
+        consumer = Consumer(chan, [queue], accept=accept, no_ack=True)
         responses = []
         unclaimed = self.unclaimed
         adjust_clock = self.clock.adjust

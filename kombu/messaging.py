@@ -1,22 +1,19 @@
 """Sending and receiving messages."""
-from __future__ import absolute_import, unicode_literals
 
 from itertools import count
 
 from .common import maybe_declare
 from .compression import compress
-from .connection import maybe_channel, is_connection
+from .connection import is_connection, maybe_channel
 from .entity import Exchange, Queue, maybe_delivery_mode
 from .exceptions import ContentDisallowed
-from .five import items, python_2_unicode_compatible, text_t, values
 from .serialization import dumps, prepare_accept_content
 from .utils.functional import ChannelPromise, maybe_list
 
 __all__ = ('Exchange', 'Queue', 'Producer', 'Consumer')
 
 
-@python_2_unicode_compatible
-class Producer(object):
+class Producer:
     """Message Producer.
 
     Arguments:
@@ -77,7 +74,7 @@ class Producer(object):
             self.revive(self._channel)
 
     def __repr__(self):
-        return '<Producer: {0._channel}>'.format(self)
+        return f'<Producer: {self._channel}>'
 
     def __reduce__(self):
         return self.__class__, self.__reduce_args__()
@@ -118,7 +115,7 @@ class Producer(object):
                 mandatory=False, immediate=False, priority=0,
                 content_type=None, content_encoding=None, serializer=None,
                 headers=None, compression=None, exchange=None, retry=False,
-                retry_policy=None, declare=None, expiration=None,
+                retry_policy=None, declare=None, expiration=None, timeout=None,
                 **properties):
         """Publish message to the specified exchange.
 
@@ -147,6 +144,8 @@ class Producer(object):
                 supported by :meth:`~kombu.Connection.ensure`.
             expiration (float): A TTL in seconds can be specified per message.
                 Default is no expiration.
+            timeout (float): Set timeout to wait maximum timeout second
+                for message to publish.
             **properties (Any): Additional message properties, see AMQP spec.
         """
         _publish = self._publish
@@ -178,12 +177,12 @@ class Producer(object):
         return _publish(
             body, priority, content_type, content_encoding,
             headers, properties, routing_key, mandatory, immediate,
-            exchange_name, declare,
+            exchange_name, declare, timeout
         )
 
     def _publish(self, body, priority, content_type, content_encoding,
                  headers, properties, routing_key, mandatory,
-                 immediate, exchange, declare):
+                 immediate, exchange, declare, timeout=None):
         channel = self.channel
         message = channel.prepare_message(
             body, priority, content_type,
@@ -201,6 +200,7 @@ class Producer(object):
             message,
             exchange=exchange, routing_key=routing_key,
             mandatory=mandatory, immediate=immediate,
+            timeout=timeout
         )
 
     def _get_channel(self):
@@ -214,6 +214,7 @@ class Producer(object):
 
     def _set_channel(self, channel):
         self._channel = channel
+
     channel = property(_get_channel, _set_channel)
 
     def revive(self, channel):
@@ -240,6 +241,7 @@ class Producer(object):
 
     def release(self):
         pass
+
     close = release
 
     def _prepare(self, body, serializer=None, content_type=None,
@@ -253,7 +255,7 @@ class Producer(object):
         else:
             # If the programmer doesn't want us to serialize,
             # make sure content_encoding is set.
-            if isinstance(body, text_t):
+            if isinstance(body, str):
                 if not content_encoding:
                     content_encoding = 'utf-8'
                 body = body.encode(content_encoding)
@@ -276,8 +278,7 @@ class Producer(object):
             pass
 
 
-@python_2_unicode_compatible
-class Consumer(object):
+class Consumer:
     """Message consumer.
 
     Arguments:
@@ -362,7 +363,7 @@ class Consumer(object):
     #: Mapping of queues we consume from.
     _queues = None
 
-    _tags = count(1)   # global
+    _tags = count(1)  # global
 
     def __init__(self, channel, queues=None, no_ack=None, auto_declare=None,
                  callbacks=None, on_decode_error=None, on_message=None,
@@ -398,7 +399,7 @@ class Consumer(object):
         self._active_tags.clear()
         channel = self.channel = maybe_channel(channel)
         # modify dict size while iterating over it is not allowed
-        for qname, queue in list(items(self._queues)):
+        for qname, queue in list(self._queues.items()):
             # name may have changed after declare
             self._queues.pop(qname, None)
             queue = self._queues[queue.name] = queue(self.channel)
@@ -417,7 +418,7 @@ class Consumer(object):
             This is done automatically at instantiation
             when :attr:`auto_declare` is set.
         """
-        for queue in values(self._queues):
+        for queue in self._queues.values():
             queue.declare()
 
     def register_callback(self, callback):
@@ -467,7 +468,7 @@ class Consumer(object):
         Arguments:
             no_ack (bool): See :attr:`no_ack`.
         """
-        queues = list(values(self._queues))
+        queues = list(self._queues.values())
         if queues:
             no_ack = self.no_ack if no_ack is None else no_ack
 
@@ -484,9 +485,10 @@ class Consumer(object):
             mean the server will not send any more messages for this consumer.
         """
         cancel = self.channel.basic_cancel
-        for tag in values(self._active_tags):
+        for tag in self._active_tags.values():
             cancel(tag)
         self._active_tags.clear()
+
     close = cancel
 
     def cancel_by_queue(self, queue):
@@ -514,7 +516,7 @@ class Consumer(object):
         Warning:
             This will *delete all ready messages*, there is no undo operation.
         """
-        return sum(queue.purge() for queue in values(self._queues))
+        return sum(queue.purge() for queue in self._queues.values())
 
     def flow(self, active):
         """Enable/disable flow from peer.
@@ -599,7 +601,7 @@ class Consumer(object):
         return tag
 
     def _add_tag(self, queue, consumer_tag=None):
-        tag = consumer_tag or '{0}{1}'.format(
+        tag = consumer_tag or '{}{}'.format(
             self.tag_prefix, next(self._tags))
         self._active_tags[queue.name] = tag
         return tag
@@ -624,7 +626,7 @@ class Consumer(object):
             return on_m(message) if on_m else self.receive(decoded, message)
 
     def __repr__(self):
-        return '<{name}: {0.queues}>'.format(self, name=type(self).__name__)
+        return f'<{type(self).__name__}: {self.queues}>'
 
     @property
     def connection(self):

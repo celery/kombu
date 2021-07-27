@@ -1,12 +1,9 @@
-from __future__ import absolute_import, unicode_literals
+from unittest.mock import Mock
 
 import pytest
 
-from case import Mock
-
 from kombu import Connection
 from kombu.transport.virtual import exchange
-
 from t.mocks import Transport
 
 

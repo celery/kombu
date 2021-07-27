@@ -4,26 +4,44 @@ NOTE: The SQSQueueMock and SQSConnectionMock classes originally come from
 http://github.com/pcsforeducation/sqs-mock-python. They have been patched
 slightly.
 """
-
-from __future__ import absolute_import, unicode_literals
-
+import base64
 import os
-import pytest
 import random
 import string
+from datetime import datetime, timedelta
+from queue import Empty
+from unittest.mock import Mock, patch
 
-from case import Mock, skip
+import pytest
 
-from kombu import messaging
-from kombu import Connection, Exchange, Queue
+from kombu import Connection, Exchange, Queue, messaging
 
-from kombu.five import Empty
-from kombu.transport import SQS
+boto3 = pytest.importorskip('boto3')
+
+from botocore.exceptions import ClientError  # noqa
+
+from kombu.transport import SQS  # noqa
 
 SQS_Channel_sqs = SQS.Channel.sqs
 
 
-class SQSMessageMock(object):
+example_predefined_queues = {
+    'queue-1': {
+        'url': 'https://sqs.us-east-1.amazonaws.com/xxx/queue-1',
+        'access_key_id': 'a',
+        'secret_access_key': 'b',
+        'backoff_tasks': ['svc.tasks.tasks.task1'],
+        'backoff_policy': {1: 10, 2: 20, 3: 40, 4: 80, 5: 320, 6: 640}
+    },
+    'queue-2': {
+        'url': 'https://sqs.us-east-1.amazonaws.com/xxx/queue-2',
+        'access_key_id': 'c',
+        'secret_access_key': 'd',
+    },
+}
+
+
+class SQSMessageMock:
     def __init__(self):
         """
         Imitate the SQS Message from boto3.
@@ -32,7 +50,7 @@ class SQSMessageMock(object):
         self.receipt_handle = "receipt_handle_xyz"
 
 
-class QueueMock(object):
+class QueueMock:
     """ Hold information about a queue. """
 
     def __init__(self, url, creation_attributes=None):
@@ -44,24 +62,19 @@ class QueueMock(object):
         self.messages = []
 
     def __repr__(self):
-        return 'QueueMock: {} {} messages'.format(self.url, len(self.messages))
+        return f'QueueMock: {self.url} {len(self.messages)} messages'
 
 
-class SQSClientMock(object):
+class SQSClientMock:
 
-    def __init__(self):
+    def __init__(self, QueueName='unittest_queue'):
         """
         Imitate the SQS Client from boto3.
         """
         self._receive_messages_calls = 0
         # _queues doesn't exist on the real client, here for testing.
         self._queues = {}
-        for n in range(1):
-            name = 'q_{}'.format(n)
-            url = 'sqs://q_{}'.format(n)
-            self.create_queue(QueueName=name)
-
-        url = self.create_queue(QueueName='unittest_queue')['QueueUrl']
+        url = self.create_queue(QueueName=QueueName)['QueueUrl']
         self.send_message(QueueUrl=url, MessageBody='hello')
 
     def _get_q(self, url):
@@ -69,11 +82,11 @@ class SQSClientMock(object):
         for q in self._queues.values():
             if q.url == url:
                 return q
-        raise Exception("Queue url {} not found".format(url))
+        raise Exception(f"Queue url {url} not found")
 
     def create_queue(self, QueueName=None, Attributes=None):
         q = self._queues[QueueName] = QueueMock(
-            'sqs://' + QueueName,
+            'https://sqs.us-east-1.amazonaws.com/xxx/' + QueueName,
             Attributes,
         )
         return {'QueueUrl': q.url}
@@ -116,7 +129,6 @@ class SQSClientMock(object):
                 q.messages = []
 
 
-@skip.unless_module('boto3')
 class test_Channel:
 
     def handleMessageCallback(self, message):
@@ -133,10 +145,21 @@ class test_Channel:
 
         # Mock the sqs() method that returns an SQSConnection object and
         # instead return an SQSConnectionMock() object.
-        self.sqs_conn_mock = SQSClientMock()
+        sqs_conn_mock = SQSClientMock()
+        self.sqs_conn_mock = sqs_conn_mock
+
+        predefined_queues_sqs_conn_mocks = {
+            'queue-1': SQSClientMock(QueueName='queue-1'),
+            'queue-2': SQSClientMock(QueueName='queue-2'),
+        }
 
         def mock_sqs():
-            return self.sqs_conn_mock
+            def sqs(self, queue=None):
+                if queue in predefined_queues_sqs_conn_mocks:
+                    return predefined_queues_sqs_conn_mocks[queue]
+                return sqs_conn_mock
+
+            return sqs
 
         SQS.Channel.sqs = mock_sqs()
 
@@ -180,7 +203,6 @@ class test_Channel:
         assert self.queue_name in self.channel._queue_cache
 
     def test_region(self):
-        import boto3
         _environ = dict(os.environ)
 
         # when the region is unspecified
@@ -218,7 +240,7 @@ class test_Channel:
         expected_endpoint_url = 'http://localhost:5493'
         assert self.channel.endpoint_url == expected_endpoint_url
         boto3_sqs = SQS_Channel_sqs.__get__(self.channel, SQS.Channel)
-        assert boto3_sqs._endpoint.host == expected_endpoint_url
+        assert boto3_sqs()._endpoint.host == expected_endpoint_url
 
     def test_none_hostname_persists(self):
         conn = Connection(hostname=None, transport=SQS.Transport)
@@ -253,6 +275,19 @@ class test_Channel:
         # For cleanup purposes, delete the queue and the queue file
         self.channel._delete(queue_name)
 
+    def test_botocore_config_override(self):
+        expected_connect_timeout = 5
+        client_config = {'connect_timeout': expected_connect_timeout}
+        self.connection = Connection(
+            transport=SQS.Transport,
+            transport_options={'client-config': client_config},
+        )
+        self.channel = self.connection.channel()
+        self.channel._sqs = None
+        boto3_sqs = SQS_Channel_sqs.__get__(self.channel, SQS.Channel)
+        botocore_config = boto3_sqs()._client_config
+        assert botocore_config.connect_timeout == expected_connect_timeout
+
     def test_dont_create_duplicate_new_queue(self):
         # All queue names start with "q", except "unittest_queue".
         # which is definitely out of cache when get_all_queues returns the
@@ -281,7 +316,7 @@ class test_Channel:
 
         # Now test getting many messages
         for i in range(3):
-            message = 'message: {0}'.format(i)
+            message = f'message: {i}'
             self.producer.publish(message)
 
         self.channel._get_bulk(self.queue_name, max_if_unlimited=3)
@@ -294,6 +329,14 @@ class test_Channel:
     def test_get_bulk_raises_empty(self):
         with pytest.raises(Empty):
             self.channel._get_bulk(self.queue_name)
+
+    def test_is_base64_encoded(self):
+        raw = b'{"id": "4cc7438e-afd4-4f8f-a2f3-f46567e7ca77","task": "celery.task.PingTask",' \
+              b'"args": [],"kwargs": {},"retries": 0,"eta": "2009-11-17T12:30:56.527191"}'     # noqa
+        b64_enc = base64.b64encode(raw)
+        assert self.channel._Channel__b64_encoded(b64_enc)
+        assert not self.channel._Channel__b64_encoded(raw)
+        assert not self.channel._Channel__b64_encoded(b"test123")
 
     def test_messages_to_python(self):
         from kombu.asynchronous.aws.sqs.message import Message
@@ -350,7 +393,7 @@ class test_Channel:
         assert message == results
 
     def test_redelivered(self):
-        self.channel.sqs.change_message_visibility = \
+        self.channel.sqs().change_message_visibility = \
             Mock(name='change_message_visibility')
         message = {
             'redelivered': True,
@@ -385,7 +428,7 @@ class test_Channel:
         self.channel._get_bulk(self.queue_name)
         assert self.channel.connection._deliver.call_count == 5
         for i in range(5):
-            self.channel.qos.append(Mock(name='message{0}'.format(i)), i)
+            self.channel.qos.append(Mock(name=f'message{i}'), i)
 
         # Now, do the get again, the number of messages returned should be 1.
         self.channel.connection._deliver.reset_mock()
@@ -480,9 +523,288 @@ class test_Channel:
         mock_messages = Mock()
         mock_messages.delivery_info = message
         self.channel.qos.append(mock_messages, 1)
-        self.channel.sqs.delete_message = Mock()
+        self.channel.sqs().delete_message = Mock()
         self.channel.basic_ack(1)
         self.sqs_conn_mock.delete_message.assert_called_with(
             QueueUrl=message['sqs_queue'],
             ReceiptHandle=message['sqs_message']['ReceiptHandle']
         )
+        assert {1} == self.channel.qos._dirty
+
+    @patch('kombu.transport.virtual.base.Channel.basic_ack')
+    @patch('kombu.transport.virtual.base.Channel.basic_reject')
+    def test_basic_ack_with_mocked_channel_methods(self, basic_reject_mock,
+                                                   basic_ack_mock):
+        """Test that basic_ack calls the delete_message properly"""
+        message = {
+            'sqs_message': {
+                'ReceiptHandle': '1'
+            },
+            'sqs_queue': 'testing_queue'
+        }
+        mock_messages = Mock()
+        mock_messages.delivery_info = message
+        self.channel.qos.append(mock_messages, 1)
+        self.channel.sqs().delete_message = Mock()
+        self.channel.basic_ack(1)
+        self.sqs_conn_mock.delete_message.assert_called_with(
+            QueueUrl=message['sqs_queue'],
+            ReceiptHandle=message['sqs_message']['ReceiptHandle']
+        )
+        basic_ack_mock.assert_called_with(1)
+        assert not basic_reject_mock.called
+
+    @patch('kombu.transport.virtual.base.Channel.basic_ack')
+    @patch('kombu.transport.virtual.base.Channel.basic_reject')
+    def test_basic_ack_without_sqs_message(self, basic_reject_mock,
+                                           basic_ack_mock):
+        """Test that basic_ack calls the delete_message properly"""
+        message = {
+            'sqs_queue': 'testing_queue'
+        }
+        mock_messages = Mock()
+        mock_messages.delivery_info = message
+        self.channel.qos.append(mock_messages, 1)
+        self.channel.sqs().delete_message = Mock()
+        self.channel.basic_ack(1)
+        assert not self.sqs_conn_mock.delete_message.called
+        basic_ack_mock.assert_called_with(1)
+        assert not basic_reject_mock.called
+
+    @patch('kombu.transport.virtual.base.Channel.basic_ack')
+    @patch('kombu.transport.virtual.base.Channel.basic_reject')
+    def test_basic_ack_invalid_receipt_handle(self, basic_reject_mock,
+                                              basic_ack_mock):
+        """Test that basic_ack calls the delete_message properly"""
+        message = {
+            'sqs_message': {
+                'ReceiptHandle': '2'
+            },
+            'sqs_queue': 'testing_queue'
+        }
+        error_response = {
+            'Error': {
+                'Code': 'InvalidParameterValue',
+                'Message': 'Value 2 for parameter ReceiptHandle is invalid.'
+                           ' Reason: The receipt handle has expired.'
+            }
+        }
+        operation_name = 'DeleteMessage'
+
+        mock_messages = Mock()
+        mock_messages.delivery_info = message
+        self.channel.qos.append(mock_messages, 2)
+        self.channel.sqs().delete_message = Mock()
+        self.channel.sqs().delete_message.side_effect = ClientError(
+            error_response=error_response,
+            operation_name=operation_name
+        )
+        self.channel.basic_ack(2)
+        self.sqs_conn_mock.delete_message.assert_called_with(
+            QueueUrl=message['sqs_queue'],
+            ReceiptHandle=message['sqs_message']['ReceiptHandle']
+        )
+        basic_reject_mock.assert_called_with(2)
+        assert not basic_ack_mock.called
+
+    def test_predefined_queues_primes_queue_cache(self):
+        connection = Connection(transport=SQS.Transport, transport_options={
+            'predefined_queues': example_predefined_queues,
+        })
+        channel = connection.channel()
+
+        assert 'queue-1' in channel._queue_cache
+        assert 'queue-2' in channel._queue_cache
+
+    def test_predefined_queues_new_queue_raises_if_queue_not_exists(self):
+        connection = Connection(transport=SQS.Transport, transport_options={
+            'predefined_queues': example_predefined_queues,
+        })
+        channel = connection.channel()
+
+        with pytest.raises(SQS.UndefinedQueueException):
+            channel._new_queue('queue-99')
+
+    def test_predefined_queues_get_from_sqs(self):
+        connection = Connection(transport=SQS.Transport, transport_options={
+            'predefined_queues': example_predefined_queues,
+        })
+        channel = connection.channel()
+
+        def message_to_python(message, queue_name, queue):
+            return message
+
+        channel._message_to_python = Mock(side_effect=message_to_python)
+
+        queue_name = "queue-1"
+
+        exchange = Exchange('test_SQS', type='direct')
+        p = messaging.Producer(channel, exchange, routing_key=queue_name)
+        queue = Queue(queue_name, exchange, queue_name)
+        queue(channel).declare()
+
+        # Getting a single message
+        p.publish('message')
+        result = channel._get(queue_name)
+
+        assert 'Body' in result.keys()
+
+        # Getting many messages
+        for i in range(3):
+            p.publish(f'message: {i}')
+
+        channel.connection._deliver = Mock(name='_deliver')
+        channel._get_bulk(queue_name, max_if_unlimited=3)
+        channel.connection._deliver.assert_called()
+
+        assert len(channel.sqs(queue_name)._queues[queue_name].messages) == 0
+
+    def test_predefined_queues_backoff_policy(self):
+        connection = Connection(transport=SQS.Transport, transport_options={
+            'predefined_queues': example_predefined_queues,
+        })
+        channel = connection.channel()
+
+        def apply_backoff_policy(
+                queue_name, delivery_tag, retry_policy, backoff_tasks):
+            return None
+
+        mock_apply_policy = Mock(side_effect=apply_backoff_policy)
+        channel.qos.apply_backoff_policy = mock_apply_policy
+        queue_name = "queue-1"
+
+        exchange = Exchange('test_SQS', type='direct')
+        queue = Queue(queue_name, exchange, queue_name)
+        queue(channel).declare()
+
+        message_mock = Mock()
+        message_mock.delivery_info = {'routing_key': queue_name}
+        channel.qos._delivered['test_message_id'] = message_mock
+        channel.qos.reject('test_message_id')
+        mock_apply_policy.assert_called_once_with(
+            'queue-1', 'test_message_id',
+            {1: 10, 2: 20, 3: 40, 4: 80, 5: 320, 6: 640},
+            ['svc.tasks.tasks.task1']
+        )
+
+    def test_predefined_queues_change_visibility_timeout(self):
+        connection = Connection(transport=SQS.Transport, transport_options={
+            'predefined_queues': example_predefined_queues,
+        })
+        channel = connection.channel()
+
+        def extract_task_name_and_number_of_retries(delivery_tag):
+            return 'svc.tasks.tasks.task1', 2
+
+        mock_extract_task_name_and_number_of_retries = Mock(
+            side_effect=extract_task_name_and_number_of_retries)
+        channel.qos.extract_task_name_and_number_of_retries = \
+            mock_extract_task_name_and_number_of_retries
+
+        queue_name = "queue-1"
+
+        exchange = Exchange('test_SQS', type='direct')
+        queue = Queue(queue_name, exchange, queue_name)
+        queue(channel).declare()
+
+        message_mock = Mock()
+        message_mock.delivery_info = {'routing_key': queue_name}
+        channel.qos._delivered['test_message_id'] = message_mock
+
+        channel.sqs = Mock()
+        sqs_queue_mock = Mock()
+        channel.sqs.return_value = sqs_queue_mock
+        channel.qos.reject('test_message_id')
+
+        sqs_queue_mock.change_message_visibility.assert_called_once_with(
+            QueueUrl='https://sqs.us-east-1.amazonaws.com/xxx/queue-1',
+            ReceiptHandle='test_message_id', VisibilityTimeout=20)
+
+    def test_sts_new_session(self):
+        # Arrange
+        connection = Connection(transport=SQS.Transport, transport_options={
+            'predefined_queues': example_predefined_queues,
+            'sts_role_arn': 'test::arn'
+        })
+        channel = connection.channel()
+        sqs = SQS_Channel_sqs.__get__(channel, SQS.Channel)
+        queue_name = 'queue-1'
+
+        mock_generate_sts_session_token = Mock()
+        mock_new_sqs_client = Mock()
+        channel.new_sqs_client = mock_new_sqs_client
+        mock_generate_sts_session_token.side_effect = [
+            {
+                'Expiration': 123,
+                'SessionToken': 123,
+                'AccessKeyId': 123,
+                'SecretAccessKey': 123
+            }
+        ]
+        channel.generate_sts_session_token = mock_generate_sts_session_token
+
+        # Act
+        sqs(queue=queue_name)
+
+        # Assert
+        mock_generate_sts_session_token.assert_called_once()
+
+    def test_sts_session_expired(self):
+        # Arrange
+        connection = Connection(transport=SQS.Transport, transport_options={
+            'predefined_queues': example_predefined_queues,
+            'sts_role_arn': 'test::arn'
+        })
+        channel = connection.channel()
+        sqs = SQS_Channel_sqs.__get__(channel, SQS.Channel)
+        channel.sts_expiration = datetime.utcnow() - timedelta(days=1)
+        queue_name = 'queue-1'
+
+        mock_generate_sts_session_token = Mock()
+        mock_new_sqs_client = Mock()
+        channel.new_sqs_client = mock_new_sqs_client
+        mock_generate_sts_session_token.side_effect = [
+            {
+                'Expiration': 123,
+                'SessionToken': 123,
+                'AccessKeyId': 123,
+                'SecretAccessKey': 123
+            }
+        ]
+        channel.generate_sts_session_token = mock_generate_sts_session_token
+
+        # Act
+        sqs(queue=queue_name)
+
+        # Assert
+        mock_generate_sts_session_token.assert_called_once()
+
+    def test_sts_session_not_expired(self):
+        # Arrange
+        connection = Connection(transport=SQS.Transport, transport_options={
+            'predefined_queues': example_predefined_queues,
+            'sts_role_arn': 'test::arn'
+        })
+        channel = connection.channel()
+        channel.sts_expiration = datetime.utcnow() + timedelta(days=1)
+        queue_name = 'queue-1'
+
+        mock_generate_sts_session_token = Mock()
+        mock_new_sqs_client = Mock()
+        channel.new_sqs_client = mock_new_sqs_client
+        channel._predefined_queue_clients = {queue_name: 'mock_client'}
+        mock_generate_sts_session_token.side_effect = [
+            {
+                'Expiration': 123,
+                'SessionToken': 123,
+                'AccessKeyId': 123,
+                'SecretAccessKey': 123
+            }
+        ]
+        channel.generate_sts_session_token = mock_generate_sts_session_token
+
+        # Act
+        channel.sqs(queue=queue_name)
+
+        # Assert
+        mock_generate_sts_session_token.assert_not_called()

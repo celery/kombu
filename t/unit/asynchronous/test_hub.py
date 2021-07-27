@@ -1,22 +1,18 @@
-from __future__ import absolute_import, unicode_literals
-
 import errno
-import pytest
+from unittest.mock import Mock, call, patch
 
-from case import Mock, call, patch
+import pytest
 from vine import promise
 
+from kombu.asynchronous import ERR, READ, WRITE, Hub
 from kombu.asynchronous import hub as _hub
-from kombu.asynchronous import Hub, READ, WRITE, ERR
-from kombu.asynchronous.debug import callback_for, repr_flag, _rcb
-from kombu.asynchronous.hub import (
-    Stop, get_event_loop, set_event_loop,
-    _raise_stop_error, _dummy_context
-)
+from kombu.asynchronous.debug import _rcb, callback_for, repr_flag
+from kombu.asynchronous.hub import (Stop, _dummy_context, _raise_stop_error,
+                                    get_event_loop, set_event_loop)
 from kombu.asynchronous.semaphore import DummyLock, LaxBoundedSemaphore
 
 
-class File(object):
+class File:
 
     def __init__(self, fd):
         self.fd = fd
@@ -237,7 +233,7 @@ class test_Hub:
         poller = self.hub.poller
         self.hub.stop()
         mock_callback = Mock()
-        self.hub._ready = set([mock_callback])
+        self.hub._ready = {mock_callback}
         self.hub.close()
         poller.close.assert_called_with()
         mock_callback.assert_called_once_with()

@@ -1,18 +1,14 @@
-from __future__ import absolute_import, unicode_literals
-
 import pickle
-import pytest
 import sys
-
 from collections import defaultdict
+from unittest.mock import Mock, patch
 
-from case import Mock, patch
+import pytest
 
-from kombu import Connection, Consumer, Producer, Exchange, Queue
+from kombu import Connection, Consumer, Exchange, Producer, Queue
 from kombu.exceptions import MessageStateError
 from kombu.utils import json
 from kombu.utils.functional import ChannelPromise
-
 from t.mocks import Transport
 
 
@@ -97,7 +93,7 @@ class test_Producer:
         assert json.loads(zlib.decompress(m).decode('utf-8')) == message
 
     def test_prepare_custom_content_type(self):
-        message = 'the quick brown fox'.encode('utf-8')
+        message = b'the quick brown fox'
         channel = self.connection.channel()
         p = Producer(channel, self.exchange, serializer='json')
         m, ctype, cencoding = p._prepare(message, content_type='custom')
@@ -138,6 +134,14 @@ class test_Producer:
         p.publish('hello', exchange=Exchange('foo'), expiration=10)
         properties = p._channel.prepare_message.call_args[0][5]
         assert properties['expiration'] == '10000'
+
+    def test_publish_with_timeout(self):
+        p = self.connection.Producer()
+        p.channel = Mock()
+        p.channel.connection.client.declared_entities = set()
+        p.publish('test_timeout', exchange=Exchange('foo'), timeout=1)
+        timeout = p._channel.basic_publish.call_args[1]['timeout']
+        assert timeout == 1
 
     def test_publish_with_reply_to(self):
         p = self.connection.Producer()

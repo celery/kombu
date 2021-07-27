@@ -1,18 +1,14 @@
-# -*- coding: utf-8 -*-
 """Mixins."""
-from __future__ import absolute_import, unicode_literals
 
 import socket
-
 from contextlib import contextmanager
 from functools import partial
 from itertools import count
 from time import sleep
 
 from .common import ignore_errors
-from .five import range
-from .messaging import Consumer, Producer
 from .log import get_logger
+from .messaging import Consumer, Producer
 from .utils.compat import nested
 from .utils.encoding import safe_repr
 from .utils.limits import TokenBucket
@@ -37,7 +33,7 @@ Broker connection error, trying again in %s seconds: %r.\
 """
 
 
-class ConsumerMixin(object):
+class ConsumerMixin:
     """Convenience mixin for implementing consumer programs.
 
     It can be used outside of threads, with threads, or greenthreads
@@ -200,7 +196,7 @@ class ConsumerMixin(object):
                     elapsed += safety_interval
                     if timeout and elapsed >= timeout:
                         raise
-                except socket.error:
+                except OSError:
                     if not self.should_stop:
                         raise
                 else:

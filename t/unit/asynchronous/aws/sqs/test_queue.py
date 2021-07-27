@@ -1,13 +1,9 @@
-# -*- coding: utf-8 -*-
-from __future__ import absolute_import, unicode_literals
+from unittest.mock import Mock
 
 import pytest
 
-from case import Mock
-
 from kombu.asynchronous.aws.sqs.message import AsyncMessage
 from kombu.asynchronous.aws.sqs.queue import AsyncQueue
-
 from t.mocks import PromiseMock
 
 from ..case import AWSCase
@@ -89,7 +85,7 @@ class test_AsyncQueue(AWSCase):
         self.callback.assert_called_with(messages[0])
 
     def MockMessage(self, id, md5):
-        m = Mock(name='Message-{0}'.format(id))
+        m = Mock(name=f'Message-{id}')
         m.id = id
         m.md5 = md5
         return m

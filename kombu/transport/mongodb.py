@@ -1,27 +1,53 @@
-"""MongoDB transport.
+# copyright: (c) 2010 - 2013 by Flavio Percoco Premoli.
+# license: BSD, see LICENSE for more details.
 
-:copyright: (c) 2010 - 2013 by Flavio Percoco Premoli.
-:license: BSD, see LICENSE for more details.
+"""MongoDB transport module for kombu.
+
+Features
+========
+* Type: Virtual
+* Supports Direct: Yes
+* Supports Topic: Yes
+* Supports Fanout: Yes
+* Supports Priority: Yes
+* Supports TTL: Yes
+
+Connection String
+=================
+ *Unreviewed*
+
+Transport Options
+=================
+
+* ``connect_timeout``,
+* ``ssl``,
+* ``ttl``,
+* ``capped_queue_size``,
+* ``default_hostname``,
+* ``default_port``,
+* ``default_database``,
+* ``messages_collection``,
+* ``routing_collection``,
+* ``broadcast_collection``,
+* ``queues_collection``,
+* ``calc_queue_size``,
 """
-from __future__ import absolute_import, unicode_literals
 
 import datetime
+from queue import Empty
 
 import pymongo
-from pymongo import errors
-from pymongo import MongoClient, uri_parser
+from pymongo import MongoClient, errors, uri_parser
 from pymongo.cursor import CursorType
 
 from kombu.exceptions import VersionMismatch
-from kombu.five import Empty, string_t
 from kombu.utils.compat import _detect_environment
 from kombu.utils.encoding import bytes_to_str
-from kombu.utils.json import loads, dumps
+from kombu.utils.json import dumps, loads
 from kombu.utils.objects import cached_property
 
 from . import virtual
 from .base import to_rabbitmq_queue_arguments
-
 
 E_SERVER_VERSION = """\
 Kombu requires MongoDB version 1.3+ (server is {0})\
@@ -32,7 +58,7 @@ Kombu requires MongoDB version 2.2+ (server is {0}) for TTL indexes support\
 """
 
 
-class BroadcastCursor(object):
+class BroadcastCursor:
     """Cursor for broadcast queues."""
 
     def __init__(self, cursor):
@@ -112,7 +138,7 @@ class Channel(virtual.Channel):
     ))
 
     def __init__(self, *vargs, **kwargs):
-        super(Channel, self).__init__(*vargs, **kwargs)
+        super().__init__(*vargs, **kwargs)
 
         self._broadcast_cursors = {}
 
@@ -155,7 +181,7 @@ class Channel(virtual.Channel):
         # Do not calculate actual queue size if requested
         # for performance considerations
         if not self.calc_queue_size:
-            return super(Channel, self)._size(queue)
+            return super()._size(queue)
 
         if queue in self._fanout_queues:
             return self._get_broadcast_cursor(queue).get_size()
@@ -225,7 +251,7 @@ class Channel(virtual.Channel):
         if self.ttl:
             self.queues.remove({'_id': queue})
 
-        super(Channel, self).queue_delete(queue, **kwargs)
+        super().queue_delete(queue, **kwargs)
 
         if queue in self._fanout_queues:
             try:
@@ -407,7 +433,7 @@ class Channel(virtual.Channel):
         Note:
             `queue` must be either queue name or options itself.
         """
-        if isinstance(queue, string_t):
+        if isinstance(queue, str):
             doc = self.queues.find_one({'_id': queue})
 
             if not doc:
