@@ -73,7 +73,8 @@ class Connection:
         URL (str, Sequence): Broker URL, or a list of URLs.
 
     Keyword Arguments:
-        ssl (bool): Use SSL to connect to the server. Default is ``False``.
+        ssl (bool/dict): Use SSL to connect to the server.
+            Default is ``False``.
             May not be supported by the specified transport.
         transport (Transport): Default transport if not specified in the URL.
         connect_timeout (float): Timeout in seconds for connecting to the

@@ -31,6 +31,40 @@ Transport Options
 =================
 Transport Options are passed to constructor of underlying py-amqp
 :class:`~kombu.connection.Connection` class.
+
+Using TLS
+=========
+Transport over TLS can be enabled by ``ssl`` parameter of
+:class:`~kombu.Connection` class. By setting ``ssl=True``, TLS transport is
+used::
+
+    conn = Connect('amqp://', ssl=True)
+
+This is equivalent to ``amqps://`` transport URI::
+
+    conn = Connect('amqps://')
+
+For adding additional parameters to underlying TLS, ``ssl`` parameter should
+be set with dict instead of True::
+
+    conn = Connect('amqp://broker.example.com', ssl={
+            'keyfile': '/path/to/keyfile'
+            'certfile': '/path/to/certfile',
+            'ca_certs': '/path/to/ca_certfile'
+        }
+    )
+
+All parameters are passed to ``ssl`` parameter of
+:class:`amqp.connection.Connection` class.
+
+SSL option ``server_hostname`` can be set to ``None`` which is causing using
+hostname from broker URL. This is usefull when failover is used to fill
+``server_hostname`` with currently used broker::
+
+    conn = Connect('amqp://broker1.example.com;broker2.example.com', ssl={
+            'server_hostname': None
+        }
+    )
 """
 
 
@@ -146,6 +180,11 @@ class Transport(base.Transport):
                 setattr(conninfo, name, default_value)
         if conninfo.hostname == 'localhost':
             conninfo.hostname = '127.0.0.1'
+        # when server_hostname is None, use hostname from URI.
+        if isinstance(conninfo.ssl, dict) and \
+                'server_hostname' in conninfo.ssl and \
+                conninfo.ssl['server_hostname'] is None:
+            conninfo.ssl['server_hostname'] = conninfo.hostname
         opts = dict({
             'host': conninfo.host,
             'userid': conninfo.userid,
