@@ -1,9 +1,10 @@
 import sys
 from itertools import count
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, patch, MagicMock
 
 from case import mock
 
+import pytest
 from kombu import Connection
 from kombu.transport import pyamqp
 
@@ -160,6 +161,47 @@ class test_pyamqp:
 
         c = Connection(port=1337, transport=Transport).connect()
         assert c['host'] == '127.0.0.1:1337'
+
+    def test_ssl(self):
+        # Test setting TLS by ssl=True.
+        class Transport(pyamqp.Transport):
+            Connection = MagicMock()
+
+        Connection(transport=Transport, ssl=True).connect()
+        Transport.Connection.assert_called_once()
+        _, kwargs = Transport.Connection.call_args
+        assert kwargs['ssl'] is True
+
+    def test_ssl_dict(self):
+        # Test setting TLS by setting ssl as dict.
+        class Transport(pyamqp.Transport):
+            Connection = MagicMock()
+
+        Connection(transport=Transport, ssl={'a': 1, 'b': 2}).connect()
+        Transport.Connection.assert_called_once()
+        _, kwargs = Transport.Connection.call_args
+        assert kwargs['ssl'] == {'a': 1, 'b': 2}
+
+    @pytest.mark.parametrize(
+        'hostname',
+        [
+            'broker.example.com',
+            'amqp://broker.example.com/0',
+            'amqps://broker.example.com/0',
+            'amqp://guest:guest@broker.example.com/0',
+            'amqp://broker.example.com;broker2.example.com'
+        ])
+    def test_ssl_server_hostname(self, hostname):
+        # Test setting server_hostname from URI.
+        class Transport(pyamqp.Transport):
+            Connection = MagicMock()
+
+        Connection(
+            hostname, transport=Transport, ssl={'server_hostname': None}
+        ).connect()
+        Transport.Connection.assert_called_once()
+        _, kwargs = Transport.Connection.call_args
+        assert kwargs['ssl'] == {'server_hostname': 'broker.example.com'}
 
     def test_register_with_event_loop(self):
         t = pyamqp.Transport(Mock())
