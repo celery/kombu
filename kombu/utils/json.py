@@ -12,18 +12,18 @@ except ImportError:  # pragma: no cover
         """Dummy object."""
 
 try:
+    import json
+    _json_extra_kwargs = {}
+
+    class _DecodeError(Exception):
+        pass
+except ImportError:                 # pragma: no cover
     import simplejson as json
     from simplejson.decoder import JSONDecodeError as _DecodeError
     _json_extra_kwargs = {
         'use_decimal': False,
         'namedtuple_as_object': False,
     }
-except ImportError:                 # pragma: no cover
-    import json
-    _json_extra_kwargs = {}
-
-    class _DecodeError(Exception):
-        pass
 
 
 _encoder_cls = type(json._default_encoder)
