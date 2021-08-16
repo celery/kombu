@@ -38,7 +38,8 @@ Transport Options
 * ``unacked_restore_limit``
 * ``fanout_prefix``
 * ``fanout_patterns``
-* ``global_keyprefix``: (str) The global key prefix to be prepended to all keys used by Kombu
+* ``global_keyprefix``: (str) The global key prefix to be prepended to all keys
+  used by Kombu
 * ``socket_timeout``
 * ``socket_connect_timeout``
 * ``socket_keepalive``
@@ -50,6 +51,7 @@ Transport Options
 * ``priority_steps``
 """
 
+import functools
 import numbers
 import socket
 from bisect import bisect
@@ -178,6 +180,95 @@ def Mutex(client, name, expire):
 
 def _after_fork_cleanup_channel(channel):
     channel._after_fork()
+
+
+class GlobalKeyPrefixMixin:
+    """Mixin to provide common logic for global key prefixing.
+
+    Overriding all the methods used by Kombu with the same key prefixing logic
+    would be cumbersome and inefficient. Hence, we override the command
+    execution logic that is called by all commands.
+    """
+
+    PREFIXED_SIMPLE_COMMANDS = [
+        "HDEL",
+        "HGET",
+        "HSET",
+        "LLEN",
+        "LPUSH",
+        "PUBLISH",
+        "SADD",
+        "SET",
+        "SMEMBERS",
+        "ZADD",
+        "ZREM",
+        "ZREVRANGEBYSCORE",
+    ]
+
+    PREFIXED_COMPLEX_COMMANDS = {
+        "BRPOP": {"args_start": 0, "args_end": -1},
+        "EVALSHA": {"args_start": 2, "args_end": 3},
+    }
+
+    def _prefix_args(self, args):
+        args = list(args)
+        command = args.pop(0)
+
+        if command in self.PREFIXED_SIMPLE_COMMANDS:
+            args[0] = self.global_keyprefix + str(args[0])
+
+        if command in self.PREFIXED_COMPLEX_COMMANDS.keys():
+            args_start = self.PREFIXED_COMPLEX_COMMANDS[command]["args_start"]
+            args_end = self.PREFIXED_COMPLEX_COMMANDS[command]["args_end"]
+
+            pre_args = args[:args_start] if args_start > 0 else []
+
+            if args_end is not None:
+                post_args = args[args_end:]
+            elif args_end < 0:
+                post_args = args[len(args):]
+            else:
+                post_args = []
+
+            args = pre_args + [
+                self.global_keyprefix + str(arg)
+                for arg in args[args_start:args_end]
+            ] + post_args
+
+        return [command, *args]
+
+    def execute_command(self, *args, **kwargs):
+        return super().execute_command(*self._prefix_args(args), **kwargs)
+
+    def pipeline(self, transaction=True, shard_hint=None):
+        return PrefixedRedisPipeline(
+            self.connection_pool,
+            self.response_callbacks,
+            transaction,
+            shard_hint,
+            global_keyprefix=self.global_keyprefix,
+        )
+
+
+class PrefixedStrictRedis(GlobalKeyPrefixMixin, redis.Redis):
+    """Returns a ``StrictRedis`` client that prefixes the keys it uses."""
+
+    def __init__(self, *args, **kwargs):
+        self.global_keyprefix = kwargs.pop('global_keyprefix', '')
+        redis.Redis.__init__(self, *args, **kwargs)
+
+
+class PrefixedRedisPipeline(GlobalKeyPrefixMixin, redis.client.Pipeline):
+    """Custom Redis pipeline that takes global_keyprefix into consideration.
+
+    As the ``PrefixedStrictRedis`` client uses the `global_keyprefix` to prefix
+    the keys it uses, the pipeline called by the client must be able to prefix
+    the keys as well.
+    """
+
+    def __init__(self, *args, **kwargs):
+        self.global_keyprefix = kwargs.pop('global_keyprefix', '')
+        redis.client.Pipeline.__init__(self, *args, **kwargs)
 
 
 class QoS(virtual.QoS):
@@ -569,23 +660,6 @@ class Channel(virtual.Channel):
             # by default.
             self.keyprefix_fanout = ''
 
-        # Prepend the global key prefix
-        self.unacked_key = self._queue_with_prefix(self.unacked_key)
-        self.unacked_index_key = self._queue_with_prefix(
-            self.unacked_index_key
-        )
-        self.unacked_mutex_key = self._queue_with_prefix(
-            self.unacked_mutex_key
-        )
-
-        # The default `keyprefix_queue` starts with an underscore, therefore
-        # adding a prefix ending an undescore will result in double
-        # underscores. Since both `keyprefix_queue` and `global_keyprefix`
-        # can be set by the user, this behavior is better than manipulating
-        # `keyprefix_queue` here.
-        self.keyprefix_queue = self._queue_with_prefix(self.keyprefix_queue)
-        self.keyprefix_fanout = self._queue_with_prefix(self.keyprefix_fanout)
-
         # Evaluate connection.
         try:
             self.client.ping()
@@ -600,10 +674,6 @@ class Channel(virtual.Channel):
 
         if register_after_fork is not None:
             register_after_fork(self, _after_fork_cleanup_channel)
-
-    def _queue_with_prefix(self, queue):
-        """Return the queue name prefixed with `global_keyprefix` if set."""
-        return self.global_keyprefix + queue
 
     def _after_fork(self):
         self._disconnect_pools()
@@ -660,7 +730,6 @@ class Channel(virtual.Channel):
         return self._restore(message, leftmost=True)
 
     def basic_consume(self, queue, *args, **kwargs):
-        queue = self._queue_with_prefix(queue)
         if queue in self._fanout_queues:
             exchange, _ = self._fanout_queues[queue]
             self.active_fanout_queues.add(queue)
@@ -798,7 +867,12 @@ class Channel(virtual.Channel):
         keys = [self._q_for_pri(queue, pri) for pri in self.priority_steps
                 for queue in queues] + [timeout or 0]
         self._in_poll = self.client.connection
-        self.client.connection.send_command('BRPOP', *keys)
+
+        command_args = ['BRPOP', *keys]
+        if self.global_keyprefix:
+            command_args = self.client._prefix_args(command_args)
+
+        self.client.connection.send_command(*command_args)
 
     def _brpop_read(self, **options):
         try:
@@ -875,7 +949,6 @@ class Channel(virtual.Channel):
             self.auto_delete_queues.add(queue)
 
     def _queue_bind(self, exchange, routing_key, pattern, queue):
-        queue = self._queue_with_prefix(queue)
         if self.typeof(exchange).type == 'fanout':
             # Mark exchange as fanout.
             self._fanout_queues[queue] = (
@@ -1055,6 +1128,13 @@ class Channel(virtual.Channel):
             raise VersionMismatch(
                 'Redis transport requires redis-py versions 3.2.0 or later. '
                 'You have {0.__version__}'.format(redis))
+
+        if self.global_keyprefix:
+            return functools.partial(
+                PrefixedStrictRedis,
+                global_keyprefix=self.global_keyprefix,
+            )
+
         return redis.StrictRedis
 
     @contextmanager
