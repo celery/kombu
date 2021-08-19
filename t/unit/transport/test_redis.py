@@ -12,7 +12,6 @@ from case import ContextMock, mock
 from kombu import Connection, Consumer, Exchange, Producer, Queue
 from kombu.exceptions import InconsistencyError, VersionMismatch
 from kombu.transport import virtual
-from kombu.transport.redis import GlobalKeyPrefixMixin
 from kombu.utils import eventio  # patch poll
 from kombu.utils.json import dumps
 
@@ -1548,12 +1547,14 @@ class test_RedisSentinel:
 
 class test_GlobalKeyPrefixMixin:
 
+    from kombu.transport.redis import GlobalKeyPrefixMixin
+
     global_keyprefix = "prefix_"
     mixin = GlobalKeyPrefixMixin()
     mixin.global_keyprefix = global_keyprefix
 
     def test_prefix_simple_args(self):
-        for command in GlobalKeyPrefixMixin.PREFIXED_SIMPLE_COMMANDS:
+        for command in self.mixin.PREFIXED_SIMPLE_COMMANDS:
             prefixed_args = self.mixin._prefix_args([command, "fake_key"])
             assert prefixed_args == [
                 command,
