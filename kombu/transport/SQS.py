@@ -762,7 +762,7 @@ class Channel(virtual.Channel):
     @cached_property
     def predefined_queues(self):
         """Map of queue_name to predefined queue settings."""
-        return self.transport_options.get('predefined_queues', None)
+        return self.transport_options.get('predefined_queues', {})
 
     @cached_property
     def queue_name_prefix(self):

@@ -607,6 +607,24 @@ class test_Channel:
         basic_reject_mock.assert_called_with(2)
         assert not basic_ack_mock.called
 
+    def test_reject_when_no_predefined_queues(self):
+        connection = Connection(transport=SQS.Transport, transport_options={})
+        channel = connection.channel()
+
+        mock_apply_backoff_policy = Mock()
+        channel.qos.apply_backoff_policy = mock_apply_backoff_policy
+        queue_name = "queue-1"
+
+        exchange = Exchange('test_SQS', type='direct')
+        queue = Queue(queue_name, exchange, queue_name)
+        queue(channel).declare()
+
+        message_mock = Mock()
+        message_mock.delivery_info = {'routing_key': queue_name}
+        channel.qos._delivered['test_message_id'] = message_mock
+        channel.qos.reject('test_message_id')
+        mock_apply_backoff_policy.assert_not_called()
+
     def test_predefined_queues_primes_queue_cache(self):
         connection = Connection(transport=SQS.Transport, transport_options={
             'predefined_queues': example_predefined_queues,
