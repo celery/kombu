@@ -249,6 +249,7 @@ class GlobalKeyPrefixMixin:
             key = key[len(self.global_keyprefix):]
             return key, value
         return ret
+
     def execute_command(self, *args, **kwargs):
         return super().execute_command(*self._prefix_args(args), **kwargs)
 
