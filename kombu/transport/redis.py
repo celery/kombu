@@ -238,7 +238,7 @@ class GlobalKeyPrefixMixin:
         return [command, *args]
 
     def parse_response(self, connection, command_name, **options):
-        """Parses a response from the Redis server.
+        """Parse a response from the Redis server.
 
         Method wraps ``redis.parse_response()`` to remove prefixes of keys
         returned by redis command.
