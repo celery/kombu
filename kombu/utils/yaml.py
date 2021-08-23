@@ -40,4 +40,13 @@ def register_yaml_decoder(type_: Type):
 
 
 def represent__yaml__(self, data):
+    """
+    Custom representer for yaml dumper
+    https://pyyaml.org/wiki/PyYAMLDocumentationhttps://pyyaml.org/wiki/PyYAMLDocumentation
+
+    Arguments:
+        self (yaml.Dumper): dumper being executed
+        data (Any): data being serializer into yaml.
+                    We expect to find a method __yaml__ on this object.
+    """
     return self.represent_dict(data.__yaml__())
