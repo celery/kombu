@@ -237,6 +237,18 @@ class GlobalKeyPrefixMixin:
 
         return [command, *args]
 
+    def parse_response(self, connection, command_name, **options):
+        """Parses a response from the Redis server.
+
+        Method wraps ``redis.parse_response()`` to remove prefixes of keys
+        returned by redis command.
+        """
+        ret = super().parse_response(connection, command_name, **options)
+        if command_name == 'BRPOP' and ret:
+            key, value = ret
+            key = key[len(self.global_keyprefix):]
+            return key, value
+        return ret
     def execute_command(self, *args, **kwargs):
         return super().execute_command(*self._prefix_args(args), **kwargs)
 
