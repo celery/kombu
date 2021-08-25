@@ -746,7 +746,7 @@ class test_Channel:
     def test_get_client(self):
         import redis as R
         KombuRedis = redis.Channel._get_client(self.channel)
-        assert KombuRedis
+        assert isinstance(KombuRedis(), R.StrictRedis)
 
         Rv = getattr(R, 'VERSION', None)
         try:
@@ -756,6 +756,12 @@ class test_Channel:
         finally:
             if Rv is not None:
                 R.VERSION = Rv
+
+    def test_get_prefixed_client(self):
+        from kombu.transport.redis import PrefixedStrictRedis
+        self.channel.global_keyprefix = "test_"
+        PrefixedRedis = redis.Channel._get_client(self.channel)
+        assert isinstance(PrefixedRedis(), PrefixedStrictRedis)
 
     def test_get_response_error(self):
         from redis.exceptions import ResponseError
@@ -925,6 +931,43 @@ class test_Channel:
             assert conn.default_channel.get_table('celery') == [
                 ('celery', '', 'celery'),
             ]
+
+    @patch("redis.StrictRedis.execute_command")
+    def test_global_keyprefix(self, mock_execute_command):
+        from kombu.transport.redis import PrefixedStrictRedis
+
+        with Connection(transport=Transport) as conn:
+            client = PrefixedStrictRedis(global_keyprefix='foo_')
+
+            channel = conn.channel()
+            channel._create_client = Mock()
+            channel._create_client.return_value = client
+
+            body = {'hello': 'world'}
+            channel._put_fanout('exchange', body, '')
+            mock_execute_command.assert_called_with(
+                'PUBLISH',
+                'foo_/{db}.exchange',
+                dumps(body)
+            )
+
+    @patch("redis.StrictRedis.execute_command")
+    def test_global_keyprefix_queue_bind(self, mock_execute_command):
+        from kombu.transport.redis import PrefixedStrictRedis
+
+        with Connection(transport=Transport) as conn:
+            client = PrefixedStrictRedis(global_keyprefix='foo_')
+
+            channel = conn.channel()
+            channel._create_client = Mock()
+            channel._create_client.return_value = client
+
+            channel._queue_bind('default', '', None, 'queue')
+            mock_execute_command.assert_called_with(
+                'SADD',
+                'foo__kombu.binding.default',
+                '\x06\x16\x06\x16queue'
+            )
 
 
 class test_Redis:
@@ -1500,3 +1543,52 @@ class test_RedisSentinel:
                 from kombu.transport.redis import SentinelManagedSSLConnection
                 assert (params['connection_class'] is
                         SentinelManagedSSLConnection)
+
+
+class test_GlobalKeyPrefixMixin:
+
+    from kombu.transport.redis import GlobalKeyPrefixMixin
+
+    global_keyprefix = "prefix_"
+    mixin = GlobalKeyPrefixMixin()
+    mixin.global_keyprefix = global_keyprefix
+
+    def test_prefix_simple_args(self):
+        for command in self.mixin.PREFIXED_SIMPLE_COMMANDS:
+            prefixed_args = self.mixin._prefix_args([command, "fake_key"])
+            assert prefixed_args == [
+                command,
+                f"{self.global_keyprefix}fake_key"
+            ]
+
+    def test_prefix_brpop_args(self):
+        prefixed_args = self.mixin._prefix_args([
+            "BRPOP",
+            "fake_key",
+            "fake_key2",
+            "not_prefixed"
+        ])
+
+        assert prefixed_args == [
+            "BRPOP",
+            f"{self.global_keyprefix}fake_key",
+            f"{self.global_keyprefix}fake_key2",
+            "not_prefixed",
+        ]
+
+    def test_prefix_evalsha_args(self):
+        prefixed_args = self.mixin._prefix_args([
+            "EVALSHA",
+            "not_prefixed",
+            "not_prefixed",
+            "fake_key",
+            "not_prefixed",
+        ])
+
+        assert prefixed_args == [
+            "EVALSHA",
+            "not_prefixed",
+            "not_prefixed",
+            f"{self.global_keyprefix}fake_key",
+            "not_prefixed",
+        ]

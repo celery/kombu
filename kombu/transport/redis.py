@@ -38,6 +38,8 @@ Transport Options
 * ``unacked_restore_limit``
 * ``fanout_prefix``
 * ``fanout_patterns``
+* ``global_keyprefix``: (str) The global key prefix to be prepended to all keys
+  used by Kombu
 * ``socket_timeout``
 * ``socket_connect_timeout``
 * ``socket_keepalive``
@@ -49,6 +51,7 @@ Transport Options
 * ``priority_steps``
 """
 
+import functools
 import numbers
 import socket
 from bisect import bisect
@@ -177,6 +180,108 @@ def Mutex(client, name, expire):
 
 def _after_fork_cleanup_channel(channel):
     channel._after_fork()
+
+
+class GlobalKeyPrefixMixin:
+    """Mixin to provide common logic for global key prefixing.
+
+    Overriding all the methods used by Kombu with the same key prefixing logic
+    would be cumbersome and inefficient. Hence, we override the command
+    execution logic that is called by all commands.
+    """
+
+    PREFIXED_SIMPLE_COMMANDS = [
+        "HDEL",
+        "HGET",
+        "HSET",
+        "LLEN",
+        "LPUSH",
+        "PUBLISH",
+        "SADD",
+        "SET",
+        "SMEMBERS",
+        "ZADD",
+        "ZREM",
+        "ZREVRANGEBYSCORE",
+    ]
+
+    PREFIXED_COMPLEX_COMMANDS = {
+        "BRPOP": {"args_start": 0, "args_end": -1},
+        "EVALSHA": {"args_start": 2, "args_end": 3},
+    }
+
+    def _prefix_args(self, args):
+        args = list(args)
+        command = args.pop(0)
+
+        if command in self.PREFIXED_SIMPLE_COMMANDS:
+            args[0] = self.global_keyprefix + str(args[0])
+
+        if command in self.PREFIXED_COMPLEX_COMMANDS.keys():
+            args_start = self.PREFIXED_COMPLEX_COMMANDS[command]["args_start"]
+            args_end = self.PREFIXED_COMPLEX_COMMANDS[command]["args_end"]
+
+            pre_args = args[:args_start] if args_start > 0 else []
+
+            if args_end is not None:
+                post_args = args[args_end:]
+            elif args_end < 0:
+                post_args = args[len(args):]
+            else:
+                post_args = []
+
+            args = pre_args + [
+                self.global_keyprefix + str(arg)
+                for arg in args[args_start:args_end]
+            ] + post_args
+
+        return [command, *args]
+
+    def parse_response(self, connection, command_name, **options):
+        """Parse a response from the Redis server.
+
+        Method wraps ``redis.parse_response()`` to remove prefixes of keys
+        returned by redis command.
+        """
+        ret = super().parse_response(connection, command_name, **options)
+        if command_name == 'BRPOP' and ret:
+            key, value = ret
+            key = key[len(self.global_keyprefix):]
+            return key, value
+        return ret
+
+    def execute_command(self, *args, **kwargs):
+        return super().execute_command(*self._prefix_args(args), **kwargs)
+
+    def pipeline(self, transaction=True, shard_hint=None):
+        return PrefixedRedisPipeline(
+            self.connection_pool,
+            self.response_callbacks,
+            transaction,
+            shard_hint,
+            global_keyprefix=self.global_keyprefix,
+        )
+
+
+class PrefixedStrictRedis(GlobalKeyPrefixMixin, redis.Redis):
+    """Returns a ``StrictRedis`` client that prefixes the keys it uses."""
+
+    def __init__(self, *args, **kwargs):
+        self.global_keyprefix = kwargs.pop('global_keyprefix', '')
+        redis.Redis.__init__(self, *args, **kwargs)
+
+
+class PrefixedRedisPipeline(GlobalKeyPrefixMixin, redis.client.Pipeline):
+    """Custom Redis pipeline that takes global_keyprefix into consideration.
+
+    As the ``PrefixedStrictRedis`` client uses the `global_keyprefix` to prefix
+    the keys it uses, the pipeline called by the client must be able to prefix
+    the keys as well.
+    """
+
+    def __init__(self, *args, **kwargs):
+        self.global_keyprefix = kwargs.pop('global_keyprefix', '')
+        redis.client.Pipeline.__init__(self, *args, **kwargs)
 
 
 class QoS(virtual.QoS):
@@ -485,6 +590,11 @@ class Channel(virtual.Channel):
     #: Disable for backwards compatibility with Kombu 3.x.
     fanout_patterns = True
 
+    #: The global key prefix will be prepended to all keys used
+    #: by Kombu, which can be useful when a redis database is shared
+    #: by different users. By default, no prefix is prepended.
+    global_keyprefix = ''
+
     #: Order in which we consume from queues.
     #:
     #: Can be either string alias, or a cycle strategy class
@@ -526,6 +636,7 @@ class Channel(virtual.Channel):
          'unacked_restore_limit',
          'fanout_prefix',
          'fanout_patterns',
+         'global_keyprefix',
          'socket_timeout',
          'socket_connect_timeout',
          'socket_keepalive',
@@ -769,7 +880,12 @@ class Channel(virtual.Channel):
         keys = [self._q_for_pri(queue, pri) for pri in self.priority_steps
                 for queue in queues] + [timeout or 0]
         self._in_poll = self.client.connection
-        self.client.connection.send_command('BRPOP', *keys)
+
+        command_args = ['BRPOP', *keys]
+        if self.global_keyprefix:
+            command_args = self.client._prefix_args(command_args)
+
+        self.client.connection.send_command(*command_args)
 
     def _brpop_read(self, **options):
         try:
@@ -1025,6 +1141,13 @@ class Channel(virtual.Channel):
             raise VersionMismatch(
                 'Redis transport requires redis-py versions 3.2.0 or later. '
                 'You have {0.__version__}'.format(redis))
+
+        if self.global_keyprefix:
+            return functools.partial(
+                PrefixedStrictRedis,
+                global_keyprefix=self.global_keyprefix,
+            )
+
         return redis.StrictRedis
 
     @contextmanager
