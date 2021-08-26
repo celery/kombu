@@ -1561,6 +1561,21 @@ class test_GlobalKeyPrefixMixin:
                 f"{self.global_keyprefix}fake_key"
             ]
 
+    def test_prefix_delete_args(self):
+        prefixed_args = self.mixin._prefix_args([
+            "DEL",
+            "fake_key",
+            "fake_key2",
+            "fake_key3"
+        ])
+
+        assert prefixed_args == [
+            "DEL",
+            f"{self.global_keyprefix}fake_key",
+            f"{self.global_keyprefix}fake_key2",
+            f"{self.global_keyprefix}fake_key3",
+        ]
+
     def test_prefix_brpop_args(self):
         prefixed_args = self.mixin._prefix_args([
             "BRPOP",
