@@ -197,7 +197,10 @@ class GlobalKeyPrefixMixin:
         "LLEN",
         "LPUSH",
         "PUBLISH",
+        "RPUSH",
+        "RPOP",
         "SADD",
+        "SREM",
         "SET",
         "SMEMBERS",
         "ZADD",
@@ -206,6 +209,7 @@ class GlobalKeyPrefixMixin:
     ]
 
     PREFIXED_COMPLEX_COMMANDS = {
+        "DEL": {"args_start": 0, "args_end": None},
         "BRPOP": {"args_start": 0, "args_end": -1},
         "EVALSHA": {"args_start": 2, "args_end": 3},
     }
@@ -222,13 +226,10 @@ class GlobalKeyPrefixMixin:
             args_end = self.PREFIXED_COMPLEX_COMMANDS[command]["args_end"]
 
             pre_args = args[:args_start] if args_start > 0 else []
+            post_args = []
 
             if args_end is not None:
                 post_args = args[args_end:]
-            elif args_end < 0:
-                post_args = args[len(args):]
-            else:
-                post_args = []
 
             args = pre_args + [
                 self.global_keyprefix + str(arg)
