@@ -875,9 +875,6 @@ class Transport(base.Transport):
     Cycle = FairCycle
     Management = Management
 
-    #: Global :class:`BrokerState` containing declared exchanges and bindings.
-    state = BrokerState()
-
     #: :class:`~kombu.utils.scheduling.FairCycle` instance
     #: used to fairly drain events from channels (set by constructor).
     cycle = None
@@ -905,6 +902,8 @@ class Transport(base.Transport):
 
     def __init__(self, client, **kwargs):
         self.client = client
+        # :class:`BrokerState` containing declared exchanges and bindings.
+        self.state = BrokerState()
         self.channels = []
         self._avail_channels = []
         self._callbacks = {}
