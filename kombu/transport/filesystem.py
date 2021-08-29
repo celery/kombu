@@ -271,10 +271,15 @@ class Transport(virtual.Transport):
     """Filesystem Transport."""
 
     Channel = Channel
-
+    # filesystem backend state is global.
+    global_state = virtual.BrokerState()
     default_port = 0
     driver_type = 'filesystem'
     driver_name = 'filesystem'
+
+    def __init__(self, client, **kwargs):
+        super().__init__(client, **kwargs)
+        self.state = self.global_state
 
     def driver_version(self):
         return 'N/A'

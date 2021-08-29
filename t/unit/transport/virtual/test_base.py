@@ -550,6 +550,13 @@ class test_Transport:
     def setup(self):
         self.transport = client().transport
 
+    def test_state_is_transport_specific(self):
+        # Tests that each Transport of Connection instance
+        # has own state attribute
+        conn1 = client()
+        conn2 = client()
+        assert conn1.transport.state != conn2.transport.state
+
     def test_custom_polling_interval(self):
         x = client(transport_options={'polling_interval': 32.3})
         assert x.transport.polling_interval == 32.3
