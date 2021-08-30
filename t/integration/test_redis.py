@@ -9,11 +9,12 @@ from .common import BaseExchangeTypes, BasePriority, BasicFunctionality
 
 
 def get_connection(
-        hostname, port, vhost):
-    return kombu.Connection(f'redis://{hostname}:{port}')
+        hostname, port, vhost, transport_options=None):
+    return kombu.Connection(
+        f'redis://{hostname}:{port}', transport_options=transport_options)
 
 
-@pytest.fixture()
+@pytest.fixture(params=[None, {'global_keyprefix': '_prefixed_'}])
 def connection(request):
     # this fixture yields plain connections to broker and TLS encrypted
     return get_connection(
@@ -22,6 +23,7 @@ def connection(request):
         vhost=getattr(
             request.config, "slaveinput", {}
         ).get("slaveid", None),
+        transport_options=request.param
     )
 
 
