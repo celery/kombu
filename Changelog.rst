@@ -4,6 +4,26 @@
  Change history
 ================
 
+5.2.0rc1
+========
+:release-date: 2021-09-07 7:00 P.M UTC+6:00
+:release-by: Asif Saif Uddin
+
+- Remove backward compatible code not used anymore (#1344).
+- Add support for setting redis username (#1351).
+- Add support for Python 3.9.
+- Use hostname from URI when server_host is None.
+- Use Python's built-in json module by default, instead of simplejson.
+- SQS Channel.predefined_queues should be {} if not defined.
+- Add global key prefix for keys set by Redis transporter (#1349).
+- fix: raise BrokenPipeError (#1231).
+- fix: add missing commands to prefix.
+- Make BrokerState Transport specific.
+- Tests & Docs cleanup.
+
+.. _version-5.2.0rc1:
+
+
 5.1.0
 =====
 :release-date: 2021-05-23 7:00 P.M UTC+3:00
