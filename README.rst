@@ -29,15 +29,7 @@ Features
 * Allows application authors to support several message server
   solutions by using pluggable transports.
 
-    * AMQP transport using the `py-amqp`_, `librabbitmq`_, or `qpid-python`_ libraries.
-
-    * High performance AMQP transport written in C - when using `librabbitmq`_
-
-      This is automatically enabled if librabbitmq is installed:
-
-      ::
-
-        $ pip install librabbitmq
+    * AMQP transport using the `py-amqp`_, or `qpid-python`_ libraries.
 
     * Virtual transports makes it really easy to add support for non-AMQP
       transports. There is already built-in support for `Redis`_,
