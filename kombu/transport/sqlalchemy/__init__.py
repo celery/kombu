@@ -71,7 +71,7 @@ from .models import ModelBase
 from .models import Queue as QueueBase
 from .models import class_registry, metadata
 
-VERSION = (1, 4, 14)
+VERSION = (1, 4, 1)
 __version__ = '.'.join(map(str, VERSION))
 
 _MUTEX = threading.RLock()
