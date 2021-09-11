@@ -1466,7 +1466,7 @@ class test_RedisSentinel:
                     ('localhost', 65534),
                     ('localhost', 65535),
                 ],
-                connection_class=mock.ANY, db=0, max_connections=10,
+                connection_class=ANY, db=0, max_connections=10,
                 min_other_sentinels=0, password=None, sentinel_kwargs=None,
                 socket_connect_timeout=None, socket_keepalive=None,
                 socket_keepalive_options=None, socket_timeout=None,
@@ -1489,7 +1489,7 @@ class test_RedisSentinel:
             connection.channel()
             patched.assert_called_once_with(
                 [('localhost', 65532)],
-                connection_class=mock.ANY, db=0, max_connections=10,
+                connection_class=ANY, db=0, max_connections=10,
                 min_other_sentinels=0, password=None, sentinel_kwargs=None,
                 socket_connect_timeout=None, socket_keepalive=None,
                 socket_keepalive_options=None, socket_timeout=None,
