@@ -1,5 +1,3 @@
-import sys
-import time
 from itertools import count
 from unittest.mock import Mock
 

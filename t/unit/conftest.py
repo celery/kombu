@@ -14,6 +14,7 @@ _SIO_write = io.StringIO.write
 _SIO_init = io.StringIO.__init__
 sentinel = object()
 
+
 @pytest.fixture(scope='session')
 def multiprocessing_workaround(request):
     yield
@@ -105,6 +106,7 @@ class WhateverIO(io.StringIO):
     def write(self, data):
         _SIO_write(self, data.decode() if isinstance(data, bytes) else data)
 
+
 def noop(*args, **kwargs):
     pass
 
@@ -113,6 +115,7 @@ def module_name(s):
     if isinstance(s, bytes):
         return s.decode()
     return s
+
 
 class _patching:
 
@@ -163,11 +166,13 @@ class _patching:
         modules = sorted(set(modules))
         return _wrap_context(mock.module(*modules), self.request)
 
+
 class _stdouts:
 
     def __init__(self, stdout, stderr):
         self.stdout = stdout
         self.stderr = stderr
+
 
 @pytest.fixture
 def stdouts():
@@ -196,6 +201,7 @@ def stdouts():
         sys.stderr = prev_err
         sys.__stdout__ = prev_rout
         sys.__stderr__ = prev_rerr
+
 
 @pytest.fixture
 def patching(monkeypatch, request):
@@ -230,6 +236,7 @@ def sleepdeprived(request):
         yield
     finally:
         module.sleep = old_sleep
+
 
 @pytest.fixture
 def module_exists(request):
@@ -266,6 +273,7 @@ def module_exists(request):
             sys.modules.pop(module.__name__, None)
         for module in old_modules:
             sys.modules[module.__name__] = module
+
 
 # Taken from
 # http://bitbucket.org/runeh/snippets/src/tip/missing_modules.py
