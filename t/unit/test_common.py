@@ -3,7 +3,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 from amqp import RecoverableConnectionError
-from case import ContextMock
+from t.mocks import ContextMock
 
 from kombu import common
 from kombu.common import (PREFETCH_COUNT_MAX, Broadcast, QoS, collect_replies,
