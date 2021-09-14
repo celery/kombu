@@ -2,6 +2,7 @@ import socket
 import sys
 import types
 from unittest.mock import Mock, patch
+
 import pytest
 
 from kombu.utils import compat

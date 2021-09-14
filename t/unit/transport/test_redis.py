@@ -7,13 +7,14 @@ from queue import Queue as _Queue
 from unittest.mock import ANY, Mock, call, patch
 
 import pytest
-from t.mocks import ContextMock
 
 from kombu import Connection, Consumer, Exchange, Producer, Queue
 from kombu.exceptions import InconsistencyError, VersionMismatch
 from kombu.transport import virtual
 from kombu.utils import eventio  # patch poll
 from kombu.utils.json import dumps
+from t.mocks import ContextMock
+
 
 def _redis_modules():
 

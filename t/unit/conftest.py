@@ -1,13 +1,13 @@
 import atexit
+import builtins
+import io
 import os
 import sys
-import io
 import types
-import builtins
+from unittest.mock import MagicMock
 
 import pytest
 
-from unittest.mock import MagicMock
 from kombu.exceptions import VersionMismatch
 
 _SIO_write = io.StringIO.write
@@ -114,7 +114,7 @@ def module_name(s):
         return s.decode()
     return s
 
-class _patching(object):
+class _patching:
 
     def __init__(self, monkeypatch, request):
         self.monkeypatch = monkeypatch
@@ -163,7 +163,7 @@ class _patching(object):
         modules = sorted(set(modules))
         return _wrap_context(mock.module(*modules), self.request)
 
-class _stdouts(object):
+class _stdouts:
 
     def __init__(self, stdout, stderr):
         self.stdout = stdout
