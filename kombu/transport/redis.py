@@ -856,7 +856,7 @@ class Channel(virtual.Channel):
         except self.connection_errors:
             self._in_listen = None
             raise
-        if response is not None:
+        if isinstance(response, (list, tuple)):
             payload = self._handle_message(c, response)
             if bytes_to_str(payload['type']).endswith('message'):
                 channel = bytes_to_str(payload['channel'])

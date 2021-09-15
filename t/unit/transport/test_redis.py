@@ -576,6 +576,12 @@ class test_Channel:
 
         assert self.channel._receive_one(self.channel.subclient) is None
 
+    def test_receive_invalid_response_type(self):
+        s = self.channel.subclient = Mock()
+        for resp in ['foo', None]:
+            s.parse_response.return_value = resp
+            assert self.channel._receive_one(self.channel.subclient) is None
+
     def test_receive_connection_has_gone(self):
         def _receive_one(c):
             c.connection = None
