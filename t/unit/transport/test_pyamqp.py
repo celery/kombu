@@ -3,7 +3,6 @@ from itertools import count
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-from case import mock
 
 from kombu import Connection
 from kombu.transport import pyamqp
@@ -133,8 +132,8 @@ class test_Transport:
         assert connection.client is None
         connection.close.assert_called_with()
 
-    @mock.mask_modules('ssl')
-    def test_import_no_ssl(self):
+    @pytest.mark.masked_modules('ssl')
+    def test_import_no_ssl(self, mask_modules):
         pm = sys.modules.pop('amqp.connection')
         try:
             from amqp.connection import SSLError

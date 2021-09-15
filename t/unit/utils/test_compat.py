@@ -3,7 +3,7 @@ import sys
 import types
 from unittest.mock import Mock, patch
 
-from case import mock
+import pytest
 
 from kombu.utils import compat
 from kombu.utils.compat import entrypoints, maybe_fileno
@@ -42,8 +42,8 @@ class test_detect_environment:
         finally:
             compat._environment = None
 
-    @mock.module_exists('eventlet', 'eventlet.patcher')
-    def test_detect_environment_eventlet(self):
+    @pytest.mark.ensured_modules('eventlet', 'eventlet.patcher')
+    def test_detect_environment_eventlet(self, module_exists):
         with patch('eventlet.patcher.is_monkey_patched', create=True) as m:
             assert sys.modules['eventlet']
             m.return_value = True
@@ -51,8 +51,8 @@ class test_detect_environment:
             m.assert_called_with(socket)
             assert env == 'eventlet'
 
-    @mock.module_exists('gevent')
-    def test_detect_environment_gevent(self):
+    @pytest.mark.ensured_modules('gevent')
+    def test_detect_environment_gevent(self, module_exists):
         with patch('gevent.socket', create=True) as m:
             prev, socket.socket = socket.socket, m.socket
             try:

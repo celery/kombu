@@ -7,13 +7,47 @@ from queue import Queue as _Queue
 from unittest.mock import ANY, Mock, call, patch
 
 import pytest
-from case import ContextMock, mock
 
 from kombu import Connection, Consumer, Exchange, Producer, Queue
 from kombu.exceptions import InconsistencyError, VersionMismatch
 from kombu.transport import virtual
 from kombu.utils import eventio  # patch poll
 from kombu.utils.json import dumps
+from t.mocks import ContextMock
+
+
+def _redis_modules():
+
+    class ConnectionError(Exception):
+        pass
+
+    class AuthenticationError(Exception):
+        pass
+
+    class InvalidData(Exception):
+        pass
+
+    class InvalidResponse(Exception):
+        pass
+
+    class ResponseError(Exception):
+        pass
+
+    exceptions = types.ModuleType('redis.exceptions')
+    exceptions.ConnectionError = ConnectionError
+    exceptions.AuthenticationError = AuthenticationError
+    exceptions.InvalidData = InvalidData
+    exceptions.InvalidResponse = InvalidResponse
+    exceptions.ResponseError = ResponseError
+
+    class Redis:
+        pass
+
+    myredis = types.ModuleType('redis')
+    myredis.exceptions = exceptions
+    myredis.Redis = Redis
+
+    return myredis, exceptions
 
 
 class _poll(eventio._select):
@@ -980,8 +1014,8 @@ class test_Redis:
     def teardown(self):
         self.connection.close()
 
-    @mock.replace_module_value(redis.redis, 'VERSION', [3, 0, 0])
-    def test_publish__get_redispyv3(self):
+    @pytest.mark.replace_module_value(redis.redis, 'VERSION', [3, 0, 0])
+    def test_publish__get_redispyv3(self, replace_module_value):
         channel = self.connection.channel()
         producer = Producer(channel, self.exchange, routing_key='test_Redis')
         self.queue(channel).declare()
@@ -993,8 +1027,8 @@ class test_Redis:
         assert self.queue(channel).get() is None
         assert self.queue(channel).get() is None
 
-    @mock.replace_module_value(redis.redis, 'VERSION', [2, 5, 10])
-    def test_publish__get_redispyv2(self):
+    @pytest.mark.replace_module_value(redis.redis, 'VERSION', [2, 5, 10])
+    def test_publish__get_redispyv2(self, replace_module_value):
         channel = self.connection.channel()
         producer = Producer(channel, self.exchange, routing_key='test_Redis')
         self.queue(channel).declare()
@@ -1089,14 +1123,15 @@ class test_Redis:
             channel._get('does-not-exist')
         channel.close()
 
-    def test_get_client(self):
-        with mock.module_exists(*_redis_modules()):
-            conn = Connection(transport=Transport)
-            chan = conn.channel()
-            assert chan.Client
-            assert chan.ResponseError
-            assert conn.transport.connection_errors
-            assert conn.transport.channel_errors
+    @pytest.mark.ensured_modules(*_redis_modules())
+    def test_get_client(self, module_exists):
+        # with module_exists(*_redis_modules()):
+        conn = Connection(transport=Transport)
+        chan = conn.channel()
+        assert chan.Client
+        assert chan.ResponseError
+        assert conn.transport.connection_errors
+        assert conn.transport.channel_errors
 
     def test_check_at_least_we_try_to_connect_and_fail(self):
         import redis
@@ -1105,40 +1140,6 @@ class test_Redis:
         with pytest.raises(redis.exceptions.ConnectionError):
             chan = connection.channel()
             chan._size('some_queue')
-
-
-def _redis_modules():
-
-    class ConnectionError(Exception):
-        pass
-
-    class AuthenticationError(Exception):
-        pass
-
-    class InvalidData(Exception):
-        pass
-
-    class InvalidResponse(Exception):
-        pass
-
-    class ResponseError(Exception):
-        pass
-
-    exceptions = types.ModuleType('redis.exceptions')
-    exceptions.ConnectionError = ConnectionError
-    exceptions.AuthenticationError = AuthenticationError
-    exceptions.InvalidData = InvalidData
-    exceptions.InvalidResponse = InvalidResponse
-    exceptions.ResponseError = ResponseError
-
-    class Redis:
-        pass
-
-    myredis = types.ModuleType('redis')
-    myredis.exceptions = exceptions
-    myredis.Redis = Redis
-
-    return myredis, exceptions
 
 
 class test_MultiChannelPoller:

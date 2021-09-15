@@ -16,6 +16,10 @@ def pytest_configure(config):
         "markers",
         "env(name): mark test to run only on named environment",
     )
+    config.addinivalue_line("markers", "replace_module_value")
+    config.addinivalue_line("markers", "masked_modules")
+    config.addinivalue_line("markers", "ensured_modules")
+    config.addinivalue_line("markers", "sleepdeprived_patched_module")
 
 
 def pytest_runtest_setup(item):

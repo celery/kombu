@@ -3,7 +3,6 @@ from itertools import count
 from unittest.mock import Mock
 
 import pytest
-from case import mock
 
 from kombu.utils import functional as utils
 from kombu.utils.functional import (ChannelPromise, LRUCache, accepts_argument,
@@ -182,8 +181,8 @@ class test_retry_over_time:
         assert interval == sleepvals[self.index]
         return interval
 
-    @mock.sleepdeprived(module=utils)
-    def test_simple(self):
+    @pytest.mark.sleepdeprived_patched_module(utils)
+    def test_simple(self, sleepdeprived):
         prev_count, utils.count = utils.count, Mock()
         try:
             utils.count.return_value = list(range(1))
@@ -217,8 +216,8 @@ class test_retry_over_time:
                 errback=None, timeout=1,
             )
 
-    @mock.sleepdeprived(module=utils)
-    def test_retry_zero(self):
+    @pytest.mark.sleepdeprived_patched_module(utils)
+    def test_retry_zero(self, sleepdeprived):
         with pytest.raises(self.Predicate):
             retry_over_time(
                 self.myfun, self.Predicate,
@@ -232,8 +231,8 @@ class test_retry_over_time:
                 max_retries=0, errback=None, interval_max=14,
             )
 
-    @mock.sleepdeprived(module=utils)
-    def test_retry_once(self):
+    @pytest.mark.sleepdeprived_patched_module(utils)
+    def test_retry_once(self, sleepdeprived):
         with pytest.raises(self.Predicate):
             retry_over_time(
                 self.myfun, self.Predicate,
@@ -247,8 +246,8 @@ class test_retry_over_time:
                 max_retries=1, errback=None, interval_max=14,
             )
 
-    @mock.sleepdeprived(module=utils)
-    def test_retry_always(self):
+    @pytest.mark.sleepdeprived_patched_module(utils)
+    def test_retry_always(self, sleepdeprived):
         Predicate = self.Predicate
 
         class Fun:
