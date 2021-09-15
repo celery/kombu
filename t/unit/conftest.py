@@ -132,11 +132,6 @@ class _patching:
         self.monkeypatch.setattr(path, value)
         return value
 
-    def object(self, target, attribute, *args, **kwargs):
-        return _wrap_context(
-            patch.object(target, attribute, *args, **kwargs),
-            self.request)
-
     def _value_or_mock(self, value, new, name, path, **kwargs):
         if value is sentinel:
             value = new(name=name or path.rpartition('.')[2])
@@ -155,16 +150,6 @@ class _patching:
         value = self._value_or_mock(value, new, name, dic, **kwargs)
         self.monkeypatch.setitem(dic, name, value)
         return value
-
-    def modules(self, *mods):
-        modules = []
-        for mod in mods:
-            mod = mod.split('.')
-            modules.extend(reversed([
-                '.'.join(mod[:-i] if i else mod) for i in range(len(mod))
-            ]))
-        modules = sorted(set(modules))
-        return _wrap_context(mock.module(*modules), self.request)
 
 
 class _stdouts:
