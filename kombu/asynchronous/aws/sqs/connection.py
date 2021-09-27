@@ -17,8 +17,7 @@ class AsyncSQSConnection(AsyncAWSQueryConnection):
     def __init__(self, sqs_connection, debug=0, region=None, **kwargs):
         if boto3 is None:
             raise ImportError('boto3 is not installed')
-        AsyncAWSQueryConnection.__init__(
-            self,
+        super().__init__(
             sqs_connection,
             region_name=region, debug=debug,
             **kwargs

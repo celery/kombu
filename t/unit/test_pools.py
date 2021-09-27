@@ -14,7 +14,7 @@ class test_ProducerPool:
 
         def __init__(self, *args, **kwargs):
             self.instance = Mock()
-            pools.ProducerPool.__init__(self, *args, **kwargs)
+            super().__init__(*args, **kwargs)
 
         def Producer(self, connection):
             return self.instance

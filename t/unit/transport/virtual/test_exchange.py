@@ -69,7 +69,7 @@ class test_Topic(ExchangeCase):
     ]
 
     def setup(self):
-        ExchangeCase.setup(self)
+        super().setup()
         self.table = [(rkey, self.e.key_to_pattern(rkey), queue)
                       for rkey, _, queue in self.table]
 
@@ -114,7 +114,7 @@ class test_TopicMultibind(ExchangeCase):
     ]
 
     def setup(self):
-        ExchangeCase.setup(self)
+        super().setup()
         self.table = [(rkey, self.e.key_to_pattern(rkey), queue)
                       for rkey, _, queue in self.table]
 

@@ -33,10 +33,10 @@ class EqualityDict(dict):
         h = eqhash(key)
         if h not in self:
             return self.__missing__(key)
-        return dict.__getitem__(self, h)
+        return super().__getitem__(h)
 
     def __setitem__(self, key, value):
-        return dict.__setitem__(self, eqhash(key), value)
+        return super().__setitem__(eqhash(key), value)
 
     def __delitem__(self, key):
-        return dict.__delitem__(self, eqhash(key))
+        return super().__delitem__(eqhash(key))
