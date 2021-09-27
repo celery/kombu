@@ -396,7 +396,7 @@ class test_QoS:
     class _QoS(QoS):
         def __init__(self, value):
             self.value = value
-            QoS.__init__(self, None, value)
+            super().__init__(None, value)
 
         def set(self, value):
             return value

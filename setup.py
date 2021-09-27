@@ -86,7 +86,7 @@ class pytest(setuptools.command.test.test):
     user_options = [('pytest-args=', 'a', 'Arguments to pass to py.test')]
 
     def initialize_options(self):
-        setuptools.command.test.test.initialize_options(self)
+        super().initialize_options()
         self.pytest_args = []
 
     def run_tests(self):

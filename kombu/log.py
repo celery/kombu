@@ -115,7 +115,7 @@ class Log(LogMixin):
     def get_logger(self):
         if self._logger:
             return self._logger
-        return LogMixin.get_logger(self)
+        return super().get_logger()
 
     @property
     def logger_name(self):
