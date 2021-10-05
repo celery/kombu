@@ -341,7 +341,7 @@ class test_Mailbox:
             return m.payload
 
 
-GLOBAL_PIDBOX = None
+GLOBAL_PIDBOX = pidbox.Mailbox('global_unittest_mailbox')
 
 
 def getoid():
@@ -350,10 +350,6 @@ def getoid():
 
 class test_PidboxOid:
     """Unittests checking oid consistency of Pidbox"""
-
-    def setup(self):
-        global GLOBAL_PIDBOX
-        GLOBAL_PIDBOX = pidbox.Mailbox('unittest_mailbox')
 
     def test_oid_consistency(self):
         """Tests that oid is consistent in single process"""
