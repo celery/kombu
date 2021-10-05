@@ -1,6 +1,7 @@
 import socket
 import warnings
 from unittest.mock import Mock, patch
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 
 import pytest
 
@@ -338,3 +339,42 @@ class test_Mailbox:
         m = consumer.queues[0].get()
         if m:
             return m.payload
+
+
+GLOBAL_PIDBOX = None
+
+
+def getoid():
+    return GLOBAL_PIDBOX.oid
+
+
+class test_PidboxOid:
+    """Unittests checking oid consistency of Pidbox"""
+
+    def setup(self):
+        global GLOBAL_PIDBOX
+        GLOBAL_PIDBOX = pidbox.Mailbox('unittest_mailbox')
+
+    def test_oid_consistency(self):
+        """Tests that oid is consistent in single process"""
+        m1 = pidbox.Mailbox('mailbox1')
+        m2 = pidbox.Mailbox('mailbox2')
+        assert m1.oid == m1.oid
+        assert m2.oid == m2.oid
+        assert m1.oid != m2.oid
+
+    def test_subprocess_oid(self):
+        """Tests that subprocess will not share oid with parent process."""
+        oid = GLOBAL_PIDBOX.oid
+        with ProcessPoolExecutor() as e:
+            res = e.submit(getoid)
+            subprocess_oid = res.result()
+        assert subprocess_oid != oid
+
+    def test_thread_oid(self):
+        """Tests that threads will not share oid."""
+        oid = GLOBAL_PIDBOX.oid
+        with ThreadPoolExecutor() as e:
+            res = e.submit(getoid)
+            subprocess_oid = res.result()
+        assert subprocess_oid != oid
