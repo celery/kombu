@@ -1,7 +1,7 @@
 import socket
 import warnings
-from unittest.mock import Mock, patch
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+from unittest.mock import Mock, patch
 
 import pytest
 
