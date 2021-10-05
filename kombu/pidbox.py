@@ -6,7 +6,6 @@ from collections import defaultdict, deque
 from contextlib import contextmanager
 from copy import copy
 from itertools import count
-from threading import local
 from time import time
 
 from . import Consumer, Exchange, Producer, Queue
@@ -187,7 +186,6 @@ class Mailbox:
         self.clock = LamportClock() if clock is None else clock
         self.exchange = self._get_exchange(self.namespace, self.type)
         self.reply_exchange = self._get_reply_exchange(self.namespace)
-        self._tls = local()
         self.unclaimed = defaultdict(deque)
         self.accept = self.accept if accept is None else accept
         self.serializer = self.serializer if serializer is None else serializer
@@ -404,13 +402,9 @@ class Mailbox:
                         durable=False,
                         delivery_mode='transient')
 
-    @cached_property
+    @property
     def oid(self):
-        try:
-            return self._tls.OID
-        except AttributeError:
-            oid = self._tls.OID = oid_from(self)
-            return oid
+        return oid_from(self)
 
     @cached_property
     def producer_pool(self):
