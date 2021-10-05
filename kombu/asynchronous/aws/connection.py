@@ -178,7 +178,7 @@ class AsyncAWSQueryConnection(AsyncConnection):
         if not http_client_params:
             http_client_params = {}
         super().__init__(sqs_connection, http_client,
-                                 **http_client_params)
+                         **http_client_params)
 
     def make_request(self, operation, params_, path, verb, callback=None):  # noqa
         params = params_.copy()
