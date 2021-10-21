@@ -9,7 +9,7 @@ from unittest.mock import ANY, Mock, call, patch
 import pytest
 
 from kombu import Connection, Consumer, Exchange, Producer, Queue
-from kombu.exceptions import InconsistencyError, VersionMismatch
+from kombu.exceptions import VersionMismatch
 from kombu.transport import virtual
 from kombu.utils import eventio  # patch poll
 from kombu.utils.json import dumps
@@ -907,13 +907,12 @@ class test_Channel:
             ('celery', '', 'celery'),
         ]
 
-        # ... then for some reason, the _kombu.binding.celery key gets lost
+        # Remove one last queue from exchange. After this call no queue
+        # is in bound to exchange.
         channel.client.srem(key)
 
-        # which raises a channel error so that the consumer/publisher
-        # can recover by redeclaring the required entities.
-        with pytest.raises(InconsistencyError):
-            self.channel.get_table('celery')
+        # get_table() should return empty list of queues
+        assert self.channel.get_table('celery') == []
 
     def test_socket_connection(self):
         with patch('kombu.transport.redis.Channel._create_client'):

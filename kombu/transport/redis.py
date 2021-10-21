@@ -100,10 +100,6 @@ error_classes_t = namedtuple('error_classes_t', (
     'connection_errors', 'channel_errors',
 ))
 
-NO_ROUTE_ERROR = """
-Cannot route message for exchange {0!r}: Table empty or key no longer exists.
-Probably the key ({1!r}) has been removed from the Redis database.
-"""
 
 # This implementation may seem overly complex, but I assure you there is
 # a good reason for doing it this way.
@@ -998,7 +994,9 @@ class Channel(virtual.Channel):
         with self.conn_or_acquire() as client:
             values = client.smembers(key)
             if not values:
-                raise InconsistencyError(NO_ROUTE_ERROR.format(exchange, key))
+                # table does not exists since all queues bound to the exchange
+                # were deleted. We need just return empty list.
+                return []
             return [tuple(bytes_to_str(val).split(self.sep)) for val in values]
 
     def _purge(self, queue):
