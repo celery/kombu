@@ -36,6 +36,7 @@
 - Return empty list instead of InconsistencyError when exchange table is empty.
 - [pre-commit.ci] pre-commit autoupdate.
 
+.. _version-5.2.0rc1:
 
 5.2.0rc1
 ========
@@ -54,8 +55,7 @@
 - Make BrokerState Transport specific.
 - Tests & Docs cleanup.
 
-.. _version-5.2.0rc1:
-
+.. _version-5.1.0:
 
 5.1.0
 =====
