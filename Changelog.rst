@@ -4,6 +4,40 @@
  Change history
 ================
 
+.. _version-5.2.0:
+
+5.2.0
+=====
+:release-date: soon
+:release-by: Naomi Elstein
+
+- v 1.4.x (#1338).
+- stop mentioning librabbitmq (#1381).
+- Merge branch 'master' of https://github.com/celery/kombu
+- test new pytest version (#1383).
+- drop python 3.6 from CI (#1382).
+- Use ANY from unittest instead of case.mock.
+- Fix missing dependency to redis in docs requirements.
+- [pre-commit.ci] pre-commit autoupdate.
+- Remove dependency to case (#1389).
+- Fix: check redis response type.
+- [pre-commit.ci] pre-commit autoupdate (#1393).
+- py3.7+ on setup (#1392).
+- Prevent caching of oid in pidbox (#1394).
+- Added unittests for #1394 .
+- fix flake8 in kombu/asynchronous/aws/connection.py (#1397).
+- [pre-commit.ci] pre-commit autoupdate.
+- Fix test_pidbox unittests to support non-linux platforms (#1398).
+- [pre-commit.ci] pre-commit autoupdate.
+- removre bdist.
+- add python 3.10 to CI & fix other issues (#1402).
+- try to fix CI (#1407).
+- Dont failfast when pypy3 tests fail (#1408).
+- Return empty list instead of InconsistencyError when exchange table is empty.
+- [pre-commit.ci] pre-commit autoupdate.
+
+.. _version-5.2.0rc1:
+
 5.2.0rc1
 ========
 :release-date: 2021-09-07 7:00 P.M UTC+6:00
@@ -21,8 +55,7 @@
 - Make BrokerState Transport specific.
 - Tests & Docs cleanup.
 
-.. _version-5.2.0rc1:
-
+.. _version-5.1.0:
 
 5.1.0
 =====
