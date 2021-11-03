@@ -33,7 +33,7 @@
 - add python 3.10 to CI & fix other issues (#1402).
 - try to fix CI (#1407).
 - Dont failfast when pypy3 tests fail (#1408).
-- Return empty list instead of InconsistencyError when exchange table is empty.
+- Return empty list instead of InconsistencyError when exchange table is empty (#1404).
 - [pre-commit.ci] pre-commit autoupdate.
 
 .. _version-5.2.0rc1:
