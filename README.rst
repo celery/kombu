@@ -305,7 +305,7 @@ Mailing list
 
 Join the `celery-users`_ mailing list.
 
-.. _`celery-users`: https://groups.google.com/group/celery-users/
+.. _`kombu forum`: https://github.com/celery/kombu/discussions
 
 Bug tracker
 ===========
