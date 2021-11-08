@@ -4,11 +4,22 @@
  Change history
 ================
 
+.. _version-5.2.1:
+
+5.2.1
+=====
+:release-date: 8 Nov, 2021
+:release-by: Asif Saif Uddin
+
+- Bump redis version to >= 3.4.1.
+- try latest sqs dependencies ti fix security warning.
+- Tests & dependency updates
+
 .. _version-5.2.0:
 
 5.2.0
 =====
-:release-date: soon
+:release-date: 5 Nov, 2021
 :release-by: Naomi Elstein
 
 - v 1.4.x (#1338).
