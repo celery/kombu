@@ -5,7 +5,7 @@ import re
 import sys
 from collections import namedtuple
 
-__version__ = '5.2.0'
+__version__ = '5.2.1'
 __author__ = 'Ask Solem'
 __contact__ = 'auvipy@gmail.com, ask@celeryproject.org'
 __homepage__ = 'https://kombu.readthedocs.io'
