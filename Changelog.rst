@@ -4,6 +4,16 @@
  Change history
 ================
 
+.. _version-5.2.2:
+
+5.2.2
+=====
+:release-date: 16 Nov, 2021
+:release-by: Asif Saif Uddin
+
+- Pin redis version to >= 3.4.1<4.0.0 as it is not fully compatible yet.
+
+
 .. _version-5.2.1:
 
 5.2.1
