@@ -144,19 +144,19 @@ class BaseExchangeTypes:
         with consumer:
             connection.drain_events(timeout=1)
 
-    def _publish(self, channel, exchange, queues, routing_key=None):
+    def _publish(self, channel, exchange, queues=None, routing_key=None):
         producer = kombu.Producer(channel, exchange=exchange)
         if routing_key:
             producer.publish(
                 {'hello': 'world'},
-                declare=list(queues),
+                declare=list(queues) if queues else None,
                 serializer='pickle',
                 routing_key=routing_key
             )
         else:
             producer.publish(
                 {'hello': 'world'},
-                declare=list(queues),
+                declare=list(queues) if queues else None,
                 serializer='pickle'
             )
 
@@ -179,6 +179,13 @@ class BaseExchangeTypes:
                 self._publish(channel, ex, [test_queue1, test_queue2], 'd1')
                 self._consume(conn, test_queue1)
                 # direct2 queue should not have data
+                with pytest.raises(socket.timeout):
+                    self._consume(conn, test_queue2)
+                # test that publishing using key which is not used results in
+                # discarted message.
+                self._publish(channel, ex, [test_queue1, test_queue2], 'd3')
+                with pytest.raises(socket.timeout):
+                    self._consume(conn, test_queue1)
                 with pytest.raises(socket.timeout):
                     self._consume(conn, test_queue2)
 
@@ -212,6 +219,15 @@ class BaseExchangeTypes:
                 with pytest.raises(socket.timeout):
                     # topic3 queue should not have data
                     self._consume(conn, test_queue3)
+
+    def test_publish_empty_exchange(self, connection):
+        ex = kombu.Exchange('test_empty_exchange', type='topic')
+        with connection as conn:
+            with conn.channel() as channel:
+                self._publish(
+                    channel, ex,
+                    routing_key='t.1'
+                )
 
 
 class BaseTimeToLive:

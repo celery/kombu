@@ -32,7 +32,9 @@ jobs:
         python-version: [3.7,3.8,3.9]
         experimental: [false]
         include:
-          - python-version: pypy3
+          - python-version: pypy-3.7
+            experimental: true
+          - python-version: pypy-3.8
             experimental: true
     steps:
       - name: Install system packages
@@ -46,10 +48,13 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
         run: pip install --upgrade pip setuptools wheel tox tox-docker
+      # Tox fails if a Python versions contains a hyphen, this changes "pypy-3.8" to "pypy3.8".
+      - name: Determine Python version
+        run: echo PYTHON_VERSION=$(echo ${{ matrix.python-version }} | sed s/-//) >> $GITHUB_ENV
       - name: Run AMQP integration tests
-        run: tox -v -e ${{ matrix.python-version }}-linux-integration-py-amqp -- -v
+        run: tox -v -e ${{ env.PYTHON_VERSION }}-linux-integration-py-amqp -- -v
       - name: Run redis integration tests
-        run: tox -v -e ${{ matrix.python-version }}-linux-integration-py-redis -- -v
+        run: tox -v -e ${{ env.PYTHON_VERSION }}-linux-integration-py-redis -- -v
 
   #################### Linters and checkers ####################
   lint:
