@@ -407,7 +407,7 @@ class BaseMessage:
                 message = queue.get_nowait()
                 message.ack()
                 with pytest.raises(queue.Empty):
-                    message = queue.get_nowait()
+                    queue.get_nowait()
 
     def test_reject_no_requeue(self, connection):
         with connection as conn:
@@ -416,7 +416,7 @@ class BaseMessage:
                 message = queue.get_nowait()
                 message.reject(requeue=False)
                 with pytest.raises(queue.Empty):
-                    message = queue.get_nowait()
+                    queue.get_nowait()
 
     def test_reject_requeue(self, connection):
         with connection as conn:
