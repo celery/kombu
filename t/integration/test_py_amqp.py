@@ -5,7 +5,7 @@ import pytest
 import kombu
 
 from .common import (BaseExchangeTypes, BaseFailover, BasePriority,
-                     BaseTimeToLive, BasicFunctionality)
+                     BaseTimeToLive, BasicFunctionality, BaseMessage)
 
 
 def get_connection(hostname, port, vhost):
@@ -72,4 +72,10 @@ class test_PyAMQPPriority(BasePriority):
 @pytest.mark.env('py-amqp')
 @pytest.mark.flaky(reruns=5, reruns_delay=2)
 class test_PyAMQPFailover(BaseFailover):
+    pass
+
+
+@pytest.mark.env('py-amqp')
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
+class test_PyAMQPMessage(BaseMessage):
     pass
