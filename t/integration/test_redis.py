@@ -6,7 +6,8 @@ import redis
 
 import kombu
 
-from .common import BaseExchangeTypes, BasePriority, BasicFunctionality, BaseMessage
+from .common import (BaseExchangeTypes, BaseMessage, BasePriority,
+                     BasicFunctionality)
 
 
 def get_connection(
