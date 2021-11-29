@@ -39,16 +39,6 @@ def connection(request):
 def invalid_connection():
     return kombu.Connection('redis://localhost:12345')
 
-@pytest.mark.env('redis')
-def test_credentials():
-    get_connection(
-        hostname=os.environ.get('REDIS_HOST', 'localhost'),
-        port=os.environ.get('REDIS_6379_TCP', '6379'),
-        vhost=None,
-        user_name='redis_user',
-        password='redis_password'
-    ).connect()
-
 
 @pytest.mark.env('redis')
 def test_failed_credentials():
