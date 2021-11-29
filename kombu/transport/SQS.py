@@ -167,6 +167,16 @@ class UndefinedQueueException(Exception):
     """Predefined queues are being used and an undefined queue was used."""
 
 
+class GossipUsingSQSIsNotSupportedException(Exception):
+    """Ping/Gossip is not supported using SQS broker."""
+
+    def __init__(self):
+        super().__init__("Ping/Gossip is not supported using SQS broker.\n"
+                         "SQS queue is a standalone infrastructure component, "
+                         "creating a new queue will not provide evidence for "
+                         "successful gossip.")
+
+
 class QoS(virtual.QoS):
     """Quality of Service guarantees implementation for SQS."""
 
@@ -314,6 +324,10 @@ class Channel(virtual.Channel):
         """Ensure a queue with given name exists in SQS."""
         if not isinstance(queue, str):
             return queue
+
+        if queue.endswith('reply-celery-pidbox'):
+            raise GossipUsingSQSIsNotSupportedException()
+
         # Translate to SQS name for consistency with initial
         # _queue_cache population.
         queue = self.canonical_queue_name(queue)
