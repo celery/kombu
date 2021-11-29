@@ -13,7 +13,6 @@ from kombu.exceptions import VersionMismatch
 from kombu.transport import virtual
 from kombu.utils import eventio  # patch poll
 from kombu.utils.json import dumps
-from t.mocks import ContextMock
 
 
 def _redis_modules():
@@ -413,9 +412,9 @@ class test_Channel:
                 restore_transaction(pipe)
 
                 pipe.multi.assert_called_once_with()
-                pipe.hdel.assert_called_once_with(unacked_key, message.delivery_tag)
+                pipe.hdel.assert_called_once_with(
+                        unacked_key, message.delivery_tag)
                 loads.assert_not_called()
-
 
             client = self.channel._create_client = Mock(name='client')
             client = client()
@@ -442,10 +441,10 @@ class test_Channel:
 
                 loads.assert_called_with(result)
                 pipe.multi.assert_called_once_with()
-                pipe.hdel.assert_called_once_with(unacked_key, message.delivery_tag)
+                pipe.hdel.assert_called_once_with(
+                        unacked_key, message.delivery_tag)
                 loads.assert_called()
                 restore.assert_called_with('M', 'EX', 'RK', pipe, False)
-
 
             client = self.channel._create_client = Mock(name='client')
             client = client()
