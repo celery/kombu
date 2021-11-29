@@ -430,7 +430,7 @@ class BaseMessage:
 
     def test_requeue(self, connection):
         with connection as conn:
-            with closing(conn.SimpleQueue('test_requeue3')) as queue:
+            with closing(conn.SimpleQueue('test_requeue')) as queue:
                 queue.put({'Hello': 'World'}, headers={'k1': 'v1'})
                 message = queue.get_nowait()
                 message.requeue()
