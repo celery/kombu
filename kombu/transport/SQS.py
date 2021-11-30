@@ -369,7 +369,7 @@ class Channel(virtual.Channel):
         q_url = self._new_queue(queue)
         kwargs = {'QueueUrl': q_url,
                   'MessageBody': AsyncMessage().encode(dumps(message))}
-        if queue.endswith('.fifo'):
+        if queue.endswith('.fifo') or q_url.endswith('.fifo'):
             if 'MessageGroupId' in message['properties']:
                 kwargs['MessageGroupId'] = \
                     message['properties']['MessageGroupId']

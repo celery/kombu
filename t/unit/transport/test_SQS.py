@@ -38,6 +38,16 @@ example_predefined_queues = {
         'access_key_id': 'c',
         'secret_access_key': 'd',
     },
+    'fifo-queue-3': {
+        'url': 'https://sqs.us-east-1.amazonaws.com/xxx/queue-3.fifo',
+        'access_key_id': 'e',
+        'secret_access_key': 'f',
+    },
+    'queue-4.fifo': {
+        'url': 'https://sqs.us-east-1.amazonaws.com/xxx/queue-4.fifo',
+        'access_key_id': 'g',
+        'secret_access_key': 'h',
+    },
 }
 
 
@@ -151,7 +161,14 @@ class test_Channel:
         predefined_queues_sqs_conn_mocks = {
             'queue-1': SQSClientMock(QueueName='queue-1'),
             'queue-2': SQSClientMock(QueueName='queue-2'),
+            'fifo-queue-3': SQSClientMock(QueueName='fifo-queue-3'),
+            'queue-4.fifo': SQSClientMock(QueueName='queue-4.fifo')
         }
+        # Override queue url for fifo-queue-3
+        # to match example_predefined_queues
+        predefined_queues_sqs_conn_mocks['fifo-queue-3'] \
+            ._queues['fifo-queue-3'] = QueueMock(
+                'https://sqs.us-east-1.amazonaws.com/xxx/queue-3.fifo')
 
         def mock_sqs():
             def sqs(self, queue=None):
@@ -737,6 +754,28 @@ class test_Channel:
         sqs_queue_mock.change_message_visibility.assert_called_once_with(
             QueueUrl='https://sqs.us-east-1.amazonaws.com/xxx/queue-1',
             ReceiptHandle='test_message_id', VisibilityTimeout=20)
+
+    @pytest.mark.parametrize('queue_name', ('fifo-queue-3', 'queue-4.fifo'))
+    def test_predefined_queues_put_to_fifo_queue(self, queue_name):
+        connection = Connection(transport=SQS.Transport, transport_options={
+            'predefined_queues': example_predefined_queues,
+        })
+        channel = connection.channel()
+        exchange = Exchange('test_SQS', type='direct')
+        p = messaging.Producer(channel, exchange, routing_key=queue_name)
+
+        queue = Queue(queue_name, exchange, queue_name)
+        queue(channel).declare()
+
+        channel.sqs = Mock()
+        sqs_queue_mock = Mock()
+        channel.sqs.return_value = sqs_queue_mock
+        p.publish('message')
+
+        sqs_queue_mock.send_message.assert_called_once()
+        assert 'MessageGroupId' in sqs_queue_mock.send_message.call_args.kwargs
+        assert 'MessageDeduplicationId' in \
+            sqs_queue_mock.send_message.call_args.kwargs
 
     def test_sts_new_session(self):
         # Arrange
