@@ -38,16 +38,11 @@ example_predefined_queues = {
         'access_key_id': 'c',
         'secret_access_key': 'd',
     },
-    'fifo-queue-3': {
+    'queue-3.fifo': {
         'url': 'https://sqs.us-east-1.amazonaws.com/xxx/queue-3.fifo',
         'access_key_id': 'e',
         'secret_access_key': 'f',
-    },
-    'queue-4.fifo': {
-        'url': 'https://sqs.us-east-1.amazonaws.com/xxx/queue-4.fifo',
-        'access_key_id': 'g',
-        'secret_access_key': 'h',
-    },
+    }
 }
 
 
@@ -161,14 +156,8 @@ class test_Channel:
         predefined_queues_sqs_conn_mocks = {
             'queue-1': SQSClientMock(QueueName='queue-1'),
             'queue-2': SQSClientMock(QueueName='queue-2'),
-            'fifo-queue-3': SQSClientMock(QueueName='fifo-queue-3'),
-            'queue-4.fifo': SQSClientMock(QueueName='queue-4.fifo')
+            'queue-3.fifo': SQSClientMock(QueueName='queue-3.fifo')
         }
-        # Override queue url for fifo-queue-3
-        # to match example_predefined_queues
-        predefined_queues_sqs_conn_mocks['fifo-queue-3'] \
-            ._queues['fifo-queue-3'] = QueueMock(
-                'https://sqs.us-east-1.amazonaws.com/xxx/queue-3.fifo')
 
         def mock_sqs():
             def sqs(self, queue=None):
@@ -755,12 +744,14 @@ class test_Channel:
             QueueUrl='https://sqs.us-east-1.amazonaws.com/xxx/queue-1',
             ReceiptHandle='test_message_id', VisibilityTimeout=20)
 
-    @pytest.mark.parametrize('queue_name', ('fifo-queue-3', 'queue-4.fifo'))
-    def test_predefined_queues_put_to_fifo_queue(self, queue_name):
+    def test_predefined_queues_put_to_fifo_queue(self):
         connection = Connection(transport=SQS.Transport, transport_options={
             'predefined_queues': example_predefined_queues,
         })
         channel = connection.channel()
+
+        queue_name = 'queue-3.fifo'
+
         exchange = Exchange('test_SQS', type='direct')
         p = messaging.Producer(channel, exchange, routing_key=queue_name)
 
@@ -773,9 +764,32 @@ class test_Channel:
         p.publish('message')
 
         sqs_queue_mock.send_message.assert_called_once()
-        assert 'MessageGroupId' in sqs_queue_mock.send_message.call_args.kwargs
+        assert 'MessageGroupId' in sqs_queue_mock.send_message.call_args[1]
         assert 'MessageDeduplicationId' in \
-            sqs_queue_mock.send_message.call_args.kwargs
+            sqs_queue_mock.send_message.call_args[1]
+
+    @pytest.mark.parametrize('predefined_queues', (
+        {
+            'invalid-fifo-queue-name': {
+                'url': 'https://sqs.us-east-1.amazonaws.com/xxx/queue.fifo',
+                'access_key_id': 'a',
+                'secret_access_key': 'b'
+            }
+        },
+        {
+            'standard-queue.fifo': {
+                'url': 'https://sqs.us-east-1.amazonaws.com/xxx/queue',
+                'access_key_id': 'a',
+                'secret_access_key': 'b'
+            }
+        }
+    ))
+    def test_predefined_queues_invalid_configuration(self, predefined_queues):
+        connection = Connection(transport=SQS.Transport, transport_options={
+            'predefined_queues': predefined_queues,
+        })
+        with pytest.raises(SQS.InvalidQueueException):
+            connection.channel()
 
     def test_sts_new_session(self):
         # Arrange
