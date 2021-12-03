@@ -59,8 +59,8 @@ exist in AWS) you can tell this transport about them as follows:
           'backoff_policy': {1: 10, 2: 20, 3: 40, 4: 80, 5: 320, 6: 640}, # optional
           'backoff_tasks': ['svc.tasks.tasks.task1'] # optional
         },
-        'queue-2': {
-          'url': 'https://sqs.us-east-1.amazonaws.com/xxx/bbb',
+        'queue-2.fifo': {
+          'url': 'https://sqs.us-east-1.amazonaws.com/xxx/bbb.fifo',
           'access_key_id': 'c',
           'secret_access_key': 'd',
           'backoff_policy': {1: 10, 2: 20, 3: 40, 4: 80, 5: 320, 6: 640}, # optional
@@ -70,6 +70,9 @@ exist in AWS) you can tell this transport about them as follows:
     'sts_role_arn': 'arn:aws:iam::<xxx>:role/STSTest', # optional
     'sts_token_timeout': 900 # optional
     }
+
+Note that FIFO and standard queues must be named accordingly (the name of
+a FIFO queue must end with the .fifo suffix).
 
 backoff_policy & backoff_tasks are optional arguments. These arguments
 automatically change the message visibility timeout, in order to have
@@ -167,6 +170,10 @@ class UndefinedQueueException(Exception):
     """Predefined queues are being used and an undefined queue was used."""
 
 
+class InvalidQueueException(Exception):
+    """Predefined queues are being used and configuration is not valid."""
+
+
 class QoS(virtual.QoS):
     """Quality of Service guarantees implementation for SQS."""
 
@@ -237,6 +244,7 @@ class Channel(virtual.Channel):
         if boto3 is None:
             raise ImportError('boto3 is not installed')
         super().__init__(*args, **kwargs)
+        self._validate_predifined_queues()
 
         # SQS blows up if you try to create a new queue when one already
         # exists but with a different visibility_timeout.  This prepopulates
@@ -245,6 +253,26 @@ class Channel(virtual.Channel):
         self._update_queue_cache(self.queue_name_prefix)
 
         self.hub = kwargs.get('hub') or get_event_loop()
+
+    def _validate_predifined_queues(self):
+        """Check that standard and FIFO queues are named properly.
+
+        AWS requires FIFO queues to have a name
+        that ends with the .fifo suffix.
+        """
+        for queue_name, q in self.predefined_queues.items():
+            fifo_url = q['url'].endswith('.fifo')
+            fifo_name = queue_name.endswith('.fifo')
+            if fifo_url and not fifo_name:
+                raise InvalidQueueException(
+                    "Queue with url '{}' must have a name "
+                    "ending with .fifo".format(q['url'])
+                )
+            elif not fifo_url and fifo_name:
+                raise InvalidQueueException(
+                    "Queue with name '{}' is not a FIFO queue: "
+                    "'{}'".format(queue_name, q['url'])
+                )
 
     def _update_queue_cache(self, queue_name_prefix):
         if self.predefined_queues:
