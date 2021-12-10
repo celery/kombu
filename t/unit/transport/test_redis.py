@@ -13,7 +13,6 @@ from kombu.exceptions import VersionMismatch
 from kombu.transport import virtual
 from kombu.utils import eventio  # patch poll
 from kombu.utils.json import dumps
-from t.mocks import ContextMock
 
 
 def _redis_modules():
@@ -401,38 +400,56 @@ class test_Channel:
             )
             crit.assert_called()
 
-    def test_restore(self):
+    def test_restore_no_messages(self):
         message = Mock(name='message')
+
         with patch('kombu.transport.redis.loads') as loads:
-            loads.return_value = 'M', 'EX', 'RK'
+            def transaction_handler(restore_transaction, unacked_key):
+                assert unacked_key == self.channel.unacked_key
+                pipe = Mock(name='pipe')
+                pipe.hget.return_value = None
+
+                restore_transaction(pipe)
+
+                pipe.multi.assert_called_once_with()
+                pipe.hdel.assert_called_once_with(
+                        unacked_key, message.delivery_tag)
+                loads.assert_not_called()
+
             client = self.channel._create_client = Mock(name='client')
             client = client()
-            client.pipeline = ContextMock()
-            restore = self.channel._do_restore_message = Mock(
-                name='_do_restore_message',
-            )
-            pipe = client.pipeline.return_value
-            pipe_hget = Mock(name='pipe.hget')
-            pipe.hget.return_value = pipe_hget
-            pipe_hget_hdel = Mock(name='pipe.hget.hdel')
-            pipe_hget.hdel.return_value = pipe_hget_hdel
-            result = Mock(name='result')
-            pipe_hget_hdel.execute.return_value = None, None
-
+            client.transaction.side_effect = transaction_handler
             self.channel._restore(message)
-            client.pipeline.assert_called_with()
-            unacked_key = self.channel.unacked_key
-            loads.assert_not_called()
+            client.transaction.assert_called()
 
-            tag = message.delivery_tag
-            pipe.hget.assert_called_with(unacked_key, tag)
-            pipe_hget.hdel.assert_called_with(unacked_key, tag)
-            pipe_hget_hdel.execute.assert_called_with()
+    def test_restore_messages(self):
+        message = Mock(name='message')
 
-            pipe_hget_hdel.execute.return_value = result, None
+        with patch('kombu.transport.redis.loads') as loads:
+
+            def transaction_handler(restore_transaction, unacked_key):
+                assert unacked_key == self.channel.unacked_key
+                restore = self.channel._do_restore_message = Mock(
+                    name='_do_restore_message',
+                )
+                result = Mock(name='result')
+                loads.return_value = 'M', 'EX', 'RK'
+                pipe = Mock(name='pipe')
+                pipe.hget.return_value = result
+
+                restore_transaction(pipe)
+
+                loads.assert_called_with(result)
+                pipe.multi.assert_called_once_with()
+                pipe.hdel.assert_called_once_with(
+                        unacked_key, message.delivery_tag)
+                loads.assert_called()
+                restore.assert_called_with('M', 'EX', 'RK', pipe, False)
+
+            client = self.channel._create_client = Mock(name='client')
+            client = client()
+            client.transaction.side_effect = transaction_handler
             self.channel._restore(message)
-            loads.assert_called_with(result)
-            restore.assert_called_with('M', 'EX', 'RK', client, False)
 
     def test_qos_restore_visible(self):
         client = self.channel._create_client = Mock(name='client')

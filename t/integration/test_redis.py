@@ -6,7 +6,8 @@ import redis
 
 import kombu
 
-from .common import BaseExchangeTypes, BasePriority, BasicFunctionality
+from .common import (BaseExchangeTypes, BaseMessage, BasePriority,
+                     BasicFunctionality)
 
 
 def get_connection(
@@ -120,3 +121,9 @@ class test_RedisPriority(BasePriority):
                 assert received_messages[0] == {'msg': 'second'}
                 assert received_messages[1] == {'msg': 'first'}
                 assert received_messages[2] == {'msg': 'third'}
+
+
+@pytest.mark.env('redis')
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
+class test_RedisMessage(BaseMessage):
+    pass
