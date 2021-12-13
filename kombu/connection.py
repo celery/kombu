@@ -837,7 +837,7 @@ class Connection:
         return self.transport.qos_semantics_matches_spec(self.connection)
 
     def _extract_failover_opts(self):
-        conn_opts = {}
+        conn_opts = {'timeout': self.connect_timeout}
         transport_opts = self.transport_options
         if transport_opts:
             if 'max_retries' in transport_opts:
