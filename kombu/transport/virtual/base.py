@@ -462,9 +462,15 @@ class Channel(AbstractChannel, base.StdChannel):
             typ: cls(self) for typ, cls in self.exchange_types.items()
         }
 
-        try:
-            self.channel_id = self.connection._avail_channel_ids.pop()
-        except IndexError:
+        # Cast to a set for fast lookups, and keep stored as an array for lower memory usage.
+        used_channel_ids = set(self.connection._used_channel_ids)
+
+        for channel_id in range(1, self.connection.channel_max + 1):
+            if channel_id not in used_channel_ids:
+                self.connection._used_channel_ids.append(channel_id)
+                self.channel_id = channel_id
+                break
+        else:
             raise ResourceError(
                 'No free channel ids, current={}, channel_max={}'.format(
                     len(self.connection.channels),
@@ -907,9 +913,7 @@ class Transport(base.Transport):
         polling_interval = client.transport_options.get('polling_interval')
         if polling_interval is not None:
             self.polling_interval = polling_interval
-        self._avail_channel_ids = array(
-            ARRAY_TYPE_H, range(self.channel_max, 0, -1),
-        )
+        self._used_channel_ids = array(ARRAY_TYPE_H)
 
     def create_channel(self, connection):
         try:
@@ -921,7 +925,11 @@ class Transport(base.Transport):
 
     def close_channel(self, channel):
         try:
-            self._avail_channel_ids.append(channel.channel_id)
+            try:
+                self._used_channel_ids.remove(channel.channel_id)
+            except ValueError:
+                # channel id already removed
+                pass
             try:
                 self.channels.remove(channel)
             except ValueError:

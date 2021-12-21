@@ -1,6 +1,7 @@
 import io
 import socket
 import warnings
+from array import array
 from time import monotonic
 from unittest.mock import MagicMock, Mock, patch
 
@@ -178,11 +179,18 @@ class test_Channel:
         if self.channel._qos is not None:
             self.channel._qos._on_collect.cancel()
 
+    def test_init__channel_id(self):
+        """Ensure the channel_id is incremented when creating new channels on the same connection."""
+        assert self.channel.channel_id == 1
+        channel_2 = self.channel.connection.client.channel()
+        assert channel_2.channel_id == 2
+
     def test_exceeds_channel_max(self):
         c = client()
         t = c.transport
-        avail = t._avail_channel_ids = Mock(name='_avail_channel_ids')
-        avail.pop.side_effect = IndexError()
+        c.transport.channel_max = 2
+        virtual.Channel(t)
+        virtual.Channel(t)
         with pytest.raises(ResourceError):
             virtual.Channel(t)
 
@@ -576,6 +584,21 @@ class test_Transport:
         assert not self.transport.channels
         del(c1)  # so pyflakes doesn't complain
         del(c2)
+
+    def test_create_channel(self):
+        """Ensure create_channel can create channels successfully."""
+        assert self.transport.channels == []
+        created_channel = self.transport.create_channel(self.transport)
+        assert self.transport.channels == [created_channel]
+
+    def test_close_channel(self):
+        """Ensure close_channel actually removes the channel and updates _used_channel_ids."""
+        assert self.transport._used_channel_ids == array('H')
+        created_channel = self.transport.create_channel(self.transport)
+        assert self.transport._used_channel_ids == array('H', (1,))
+        self.transport.close_channel(created_channel)
+        assert self.transport.channels == []
+        assert self.transport._used_channel_ids == array('H')
 
     def test_drain_channel(self):
         channel = self.transport.create_channel(self.transport)
