@@ -272,6 +272,7 @@ class Transport(redis.Transport):
     connection_errors = (KeyError,)
     channel_errors = (IndexError,)
 
+
 class test_Channel:
 
     def setup(self):

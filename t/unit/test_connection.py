@@ -574,7 +574,9 @@ class test_Connection:
         assert conn.channel_errors == (KeyError, ValueError)
 
     def test_channel_errors__exception_no_cache(self):
-        """Ensure the channel_errors can be retrieved without an initialized transport."""
+        """Ensure the channel_errors can be retrieved without an initialized
+        transport.
+        """
 
         class MyTransport(Transport):
             channel_errors = (KeyError,)
@@ -592,7 +594,9 @@ class test_Connection:
         assert conn.connection_errors == (KeyError, ValueError)
 
     def test_connection_errors__exception_no_cache(self):
-        """Ensure the connection_errors can be retrieved without an initialized transport."""
+        """Ensure the connection_errors can be retrieved without an
+        initialized transport.
+        """
 
         class MyTransport(Transport):
             connection_errors = (KeyError,)
@@ -610,7 +614,9 @@ class test_Connection:
         assert conn.recoverable_connection_errors == (KeyError, ValueError)
 
     def test_recoverable_connection_errors__fallback(self):
-        """Ensure missing recoverable_connection_errors on the Transport does not cause a fatal error."""
+        """Ensure missing recoverable_connection_errors on the Transport does
+        not cause a fatal error.
+        """
 
         class MyTransport(Transport):
             connection_errors = (KeyError,)
@@ -620,7 +626,9 @@ class test_Connection:
         assert conn.recoverable_connection_errors == (KeyError, ValueError)
 
     def test_recoverable_connection_errors__exception_no_cache(self):
-        """Ensure the recoverable_connection_errors can be retrieved without an initialized transport."""
+        """Ensure the recoverable_connection_errors can be retrieved without
+        an initialized transport.
+        """
 
         class MyTransport(Transport):
             recoverable_connection_errors = (KeyError,)
@@ -638,7 +646,9 @@ class test_Connection:
         assert conn.recoverable_channel_errors == (KeyError, ValueError)
 
     def test_recoverable_channel_errors__fallback(self):
-        """Ensure missing recoverable_channel_errors on the Transport does not cause a fatal error."""
+        """Ensure missing recoverable_channel_errors on the Transport does not
+        cause a fatal error.
+        """
 
         class MyTransport(Transport):
             pass
@@ -647,7 +657,9 @@ class test_Connection:
         assert conn.recoverable_channel_errors == ()
 
     def test_recoverable_channel_errors__exception_no_cache(self):
-        """Ensure the recoverable_channel_errors can be retrieved without an initialized transport."""
+        """Ensure the recoverable_channel_errors can be retrieved without an
+        initialized transport.
+        """
         class MyTransport(Transport):
             recoverable_channel_errors = (KeyError,)
 
