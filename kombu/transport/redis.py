@@ -1214,13 +1214,14 @@ class Transport(virtual.Transport):
         exchange_type=frozenset(['direct', 'topic', 'fanout'])
     )
 
+    if redis:
+        connection_errors, channel_errors = get_redis_error_classes()
+
     def __init__(self, *args, **kwargs):
         if redis is None:
             raise ImportError('Missing redis library (pip install redis)')
         super().__init__(*args, **kwargs)
 
-        # Get redis-py exceptions.
-        self.connection_errors, self.channel_errors = self._get_errors()
         # All channels share the same poller.
         self.cycle = MultiChannelPoller()
 
