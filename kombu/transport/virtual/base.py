@@ -462,21 +462,7 @@ class Channel(AbstractChannel, base.StdChannel):
             typ: cls(self) for typ, cls in self.exchange_types.items()
         }
 
-        # Cast to a set for fast lookups, and keep stored as an array
-        # for lower memory usage.
-        used_channel_ids = set(self.connection._used_channel_ids)
-
-        for channel_id in range(1, self.connection.channel_max + 1):
-            if channel_id not in used_channel_ids:
-                self.connection._used_channel_ids.append(channel_id)
-                self.channel_id = channel_id
-                break
-        else:
-            raise ResourceError(
-                'No free channel ids, current={}, channel_max={}'.format(
-                    len(self.connection.channels),
-                    self.connection.channel_max), (20, 10),
-            )
+        self.channel_id = self._get_free_channel_id()
 
         topts = self.connection.client.transport_options
         for opt_name in self.from_transport_options:
@@ -850,6 +836,22 @@ class Channel(AbstractChannel, base.StdChannel):
             priority = self.default_priority
 
         return (self.max_priority - priority) if reverse else priority
+
+    def _get_free_channel_id(self):
+        # Cast to a set for fast lookups, and keep stored as an array
+        # for lower memory usage.
+        used_channel_ids = set(self.connection._used_channel_ids)
+
+        for channel_id in range(1, self.connection.channel_max + 1):
+            if channel_id not in used_channel_ids:
+                self.connection._used_channel_ids.append(channel_id)
+                return channel_id
+
+        raise ResourceError(
+            'No free channel ids, current={}, channel_max={}'.format(
+                len(self.connection.channels),
+                self.connection.channel_max), (20, 10),
+        )
 
 
 class Management(base.Management):

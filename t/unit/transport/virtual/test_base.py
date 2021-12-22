@@ -179,22 +179,19 @@ class test_Channel:
         if self.channel._qos is not None:
             self.channel._qos._on_collect.cancel()
 
-    def test_init__channel_id(self):
-        """Ensure the channel_id is incremented when creating new channels on
-        the same connection.
-        """
-        assert self.channel.channel_id == 1
-        channel_2 = self.channel.connection.client.channel()
-        assert channel_2.channel_id == 2
+    def test_get_free_channel_id(self):
+        conn = client()
+        channel = conn.channel()
+        assert channel.channel_id == 1
+        assert channel._get_free_channel_id() == 2
 
-    def test_exceeds_channel_max(self):
-        c = client()
-        t = c.transport
-        c.transport.channel_max = 2
-        virtual.Channel(t)
-        virtual.Channel(t)
+    def test_get_free_channel_id__exceeds_channel_max(self):
+        conn = client()
+        conn.transport.channel_max = 2
+        channel = conn.channel()
+        channel._get_free_channel_id()
         with pytest.raises(ResourceError):
-            virtual.Channel(t)
+            channel._get_free_channel_id()
 
     def test_exchange_bind_interface(self):
         with pytest.raises(NotImplementedError):
