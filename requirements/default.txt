@@ -1,4 +1,4 @@
 importlib-metadata>=0.18; python_version<"3.8"
 cached_property; python_version<"3.8"
-amqp>=5.0.7,<6.0.0
+amqp>=5.0.9,<6.0.0
 vine
