@@ -1258,10 +1258,6 @@ class Transport(virtual.Transport):
         """Handle AIO event for one of our file descriptors."""
         self.cycle.on_readable(fileno)
 
-    def _get_errors(self):
-        """Utility to import redis-py's exceptions at runtime."""
-        return get_redis_error_classes()
-
 
 if sentinel:
     class SentinelManagedSSLConnection(
