@@ -462,7 +462,8 @@ class Channel(AbstractChannel, base.StdChannel):
             typ: cls(self) for typ, cls in self.exchange_types.items()
         }
 
-        # Cast to a set for fast lookups, and keep stored as an array for lower memory usage.
+        # Cast to a set for fast lookups, and keep stored as an array
+        # for lower memory usage.
         used_channel_ids = set(self.connection._used_channel_ids)
 
         for channel_id in range(1, self.connection.channel_max + 1):

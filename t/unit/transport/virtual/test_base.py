@@ -180,7 +180,9 @@ class test_Channel:
             self.channel._qos._on_collect.cancel()
 
     def test_init__channel_id(self):
-        """Ensure the channel_id is incremented when creating new channels on the same connection."""
+        """Ensure the channel_id is incremented when creating new channels on
+        the same connection.
+        """
         assert self.channel.channel_id == 1
         channel_2 = self.channel.connection.client.channel()
         assert channel_2.channel_id == 2
@@ -592,7 +594,9 @@ class test_Transport:
         assert self.transport.channels == [created_channel]
 
     def test_close_channel(self):
-        """Ensure close_channel actually removes the channel and updates _used_channel_ids."""
+        """Ensure close_channel actually removes the channel and updates
+        _used_channel_ids.
+        """
         assert self.transport._used_channel_ids == array('H')
         created_channel = self.transport.create_channel(self.transport)
         assert self.transport._used_channel_ids == array('H', (1,))
