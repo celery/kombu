@@ -898,6 +898,7 @@ class test_Channel:
 
     def test_transport_errors_when_InvalidData_used(self):
         from redis import exceptions
+
         from kombu.transport.redis import get_redis_error_classes
 
         class ID(Exception):
