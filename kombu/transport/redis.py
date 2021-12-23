@@ -1237,6 +1237,12 @@ class Transport(virtual.Transport):
         def _on_disconnect(connection):
             if connection._sock:
                 loop.remove(connection._sock)
+
+            # stop polling in the event loop
+            try:
+                loop.on_tick.remove(on_poll_start)
+            except KeyError:
+                pass
         cycle._on_connection_disconnect = _on_disconnect
 
         def on_poll_start():
