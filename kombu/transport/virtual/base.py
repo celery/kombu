@@ -462,14 +462,7 @@ class Channel(AbstractChannel, base.StdChannel):
             typ: cls(self) for typ, cls in self.exchange_types.items()
         }
 
-        try:
-            self.channel_id = self.connection._avail_channel_ids.pop()
-        except IndexError:
-            raise ResourceError(
-                'No free channel ids, current={}, channel_max={}'.format(
-                    len(self.connection.channels),
-                    self.connection.channel_max), (20, 10),
-            )
+        self.channel_id = self._get_free_channel_id()
 
         topts = self.connection.client.transport_options
         for opt_name in self.from_transport_options:
@@ -844,6 +837,22 @@ class Channel(AbstractChannel, base.StdChannel):
 
         return (self.max_priority - priority) if reverse else priority
 
+    def _get_free_channel_id(self):
+        # Cast to a set for fast lookups, and keep stored as an array
+        # for lower memory usage.
+        used_channel_ids = set(self.connection._used_channel_ids)
+
+        for channel_id in range(1, self.connection.channel_max + 1):
+            if channel_id not in used_channel_ids:
+                self.connection._used_channel_ids.append(channel_id)
+                return channel_id
+
+        raise ResourceError(
+            'No free channel ids, current={}, channel_max={}'.format(
+                len(self.connection.channels),
+                self.connection.channel_max), (20, 10),
+        )
+
 
 class Management(base.Management):
     """Base class for the AMQP management API."""
@@ -907,9 +916,7 @@ class Transport(base.Transport):
         polling_interval = client.transport_options.get('polling_interval')
         if polling_interval is not None:
             self.polling_interval = polling_interval
-        self._avail_channel_ids = array(
-            ARRAY_TYPE_H, range(self.channel_max, 0, -1),
-        )
+        self._used_channel_ids = array(ARRAY_TYPE_H)
 
     def create_channel(self, connection):
         try:
@@ -921,7 +928,11 @@ class Transport(base.Transport):
 
     def close_channel(self, channel):
         try:
-            self._avail_channel_ids.append(channel.channel_id)
+            try:
+                self._used_channel_ids.remove(channel.channel_id)
+            except ValueError:
+                # channel id already removed
+                pass
             try:
                 self.channels.remove(channel)
             except ValueError:
