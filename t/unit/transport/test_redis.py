@@ -855,7 +855,10 @@ class test_Channel:
         ])
 
     @pytest.mark.parametrize('poll_started', [True, False])
-    def test_register_with_event_loop__on_disconnect__loop_cleanup(self, poll_started):
+    def test_register_with_event_loop__on_disconnect__loop_cleanup(
+        self,
+        poll_started,
+    ):
         """Ensure event loop polling stops on disconnect (if started)."""
         transport = self.connection.transport
         self.connection._sock = None
@@ -1193,9 +1196,9 @@ class test_MultiChannelPoller:
     def test_on_poll_start(self):
         p = self.Poller()
         p._channels = []
-        assert p.poll_started == False
+        assert p.poll_started is False
         p.on_poll_start()
-        assert p.poll_started == True
+        assert p.poll_started is True
         p._register_BRPOP = Mock(name='_register_BRPOP')
         p._register_LISTEN = Mock(name='_register_LISTEN')
 
