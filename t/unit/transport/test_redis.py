@@ -854,28 +854,24 @@ class test_Channel:
             call(13, transport.on_readable, 13),
         ])
 
-    @pytest.mark.parametrize('poll_started', [True, False])
-    def test_register_with_event_loop__on_disconnect__loop_cleanup(
-        self,
-        poll_started,
-    ):
+    @pytest.mark.parametrize('fds', [{12: 'LISTEN', 13: 'BRPOP'}, {}])
+    def test_register_with_event_loop__on_disconnect__loop_cleanup(self, fds):
         """Ensure event loop polling stops on disconnect (if started)."""
         transport = self.connection.transport
         self.connection._sock = None
         transport.cycle = Mock(name='cycle')
-        transport.cycle.fds = {12: 'LISTEN', 13: 'BRPOP'}
+        transport.cycle.fds = fds
         conn = Mock(name='conn')
         conn.client = Mock(name='client', transport_options={})
         loop = Mock(name='loop')
         loop.on_tick = set()
         redis.Transport.register_with_event_loop(transport, conn, loop)
         assert len(loop.on_tick) == 1
-        transport.cycle.poll_started = poll_started
         transport.cycle._on_connection_disconnect(self.connection)
-        if poll_started:
+        if fds:
             assert len(loop.on_tick) == 0
         else:
-            # on_tick shouldn't be cleared when cycle.poll_started is False
+            # on_tick shouldn't be cleared when polling hasn't started
             assert len(loop.on_tick) == 1
 
     def test_configurable_health_check(self):
@@ -1196,9 +1192,7 @@ class test_MultiChannelPoller:
     def test_on_poll_start(self):
         p = self.Poller()
         p._channels = []
-        assert p.poll_started is False
         p.on_poll_start()
-        assert p.poll_started is True
         p._register_BRPOP = Mock(name='_register_BRPOP')
         p._register_LISTEN = Mock(name='_register_LISTEN')
 

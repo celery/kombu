@@ -397,9 +397,6 @@ class MultiChannelPoller:
     #: Set of one-shot callbacks to call after reading from socket.
     after_read = None
 
-    #: Set by :meth:`on_poll_start` after successfully running once.
-    poll_started = False
-
     def __init__(self):
         # active channels
         self._channels = set()
@@ -477,7 +474,6 @@ class MultiChannelPoller:
                     self._register_BRPOP(channel)
             if channel.active_fanout_queues:    # LISTEN mode?
                 self._register_LISTEN(channel)
-        self.poll_started = True
 
     def on_poll_init(self, poller):
         self.poller = poller
@@ -1243,7 +1239,7 @@ class Transport(virtual.Transport):
                 loop.remove(connection._sock)
 
             # must have started polling or this will break reconnection
-            if cycle.poll_started:
+            if cycle.fds:
                 # stop polling in the event loop
                 try:
                     loop.on_tick.remove(on_poll_start)
