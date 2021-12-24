@@ -587,6 +587,16 @@ class test_Connection:
         conn = Connection('example.com;example.com;')
         assert conn.as_uri() == 'amqp://guest:**@example.com:5672//'
 
+    def test_connection_respect_its_timeout(self):
+        invalid_port = 1222
+        with Connection(
+            f'amqp://guest:guest@localhost:{invalid_port}//',
+            transport_options={'max_retries': 2},
+            connect_timeout=1
+        ) as conn:
+            with pytest.raises(OperationalError):
+                conn.default_channel
+
 
 class test_Connection_with_transport_options:
 
