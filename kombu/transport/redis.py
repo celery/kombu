@@ -1238,11 +1238,13 @@ class Transport(virtual.Transport):
             if connection._sock:
                 loop.remove(connection._sock)
 
-            # stop polling in the event loop
-            try:
-                loop.on_tick.remove(on_poll_start)
-            except KeyError:
-                pass
+            # must have started polling or this will break reconnection
+            if cycle.fds:
+                # stop polling in the event loop
+                try:
+                    loop.on_tick.remove(on_poll_start)
+                except KeyError:
+                    pass
         cycle._on_connection_disconnect = _on_disconnect
 
         def on_poll_start():
