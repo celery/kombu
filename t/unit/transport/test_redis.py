@@ -269,9 +269,8 @@ class Channel(redis.Channel):
 
 class Transport(redis.Transport):
     Channel = Channel
-
-    def _get_errors(self):
-        return ((KeyError,), (IndexError,))
+    connection_errors = (KeyError,)
+    channel_errors = (IndexError,)
 
 
 class test_Channel:
@@ -907,14 +906,21 @@ class test_Channel:
         redis.Transport.on_readable(transport, 13)
         cycle.on_readable.assert_called_with(13)
 
-    def test_transport_get_errors(self):
-        assert redis.Transport._get_errors(self.connection.transport)
+    def test_transport_connection_errors(self):
+        """Ensure connection_errors are populated."""
+        assert redis.Transport.connection_errors
+
+    def test_transport_channel_errors(self):
+        """Ensure connection_errors are populated."""
+        assert redis.Transport.channel_errors
 
     def test_transport_driver_version(self):
         assert redis.Transport.driver_version(self.connection.transport)
 
-    def test_transport_get_errors_when_InvalidData_used(self):
+    def test_transport_errors_when_InvalidData_used(self):
         from redis import exceptions
+
+        from kombu.transport.redis import get_redis_error_classes
 
         class ID(Exception):
             pass
@@ -924,7 +930,7 @@ class test_Channel:
         exceptions.InvalidData = ID
         exceptions.DataError = None
         try:
-            errors = redis.Transport._get_errors(self.connection.transport)
+            errors = get_redis_error_classes()
             assert errors
             assert ID in errors[1]
         finally:

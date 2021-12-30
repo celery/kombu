@@ -5,6 +5,7 @@ import pytest
 import redis
 
 import kombu
+from kombu.transport.redis import Transport
 
 from .common import (BaseExchangeTypes, BaseMessage, BasePriority,
                      BasicFunctionality)
@@ -56,7 +57,11 @@ def test_failed_credentials():
 @pytest.mark.env('redis')
 @pytest.mark.flaky(reruns=5, reruns_delay=2)
 class test_RedisBasicFunctionality(BasicFunctionality):
-    pass
+    def test_failed_connection__ConnectionError(self, invalid_connection):
+        # method raises transport exception
+        with pytest.raises(redis.exceptions.ConnectionError) as ex:
+            invalid_connection.connection
+        assert ex.type in Transport.connection_errors
 
 
 @pytest.mark.env('redis')
