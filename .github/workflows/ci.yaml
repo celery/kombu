@@ -18,7 +18,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
-        run: pip install --upgrade pip 'setuptools<59.7.0' wheel tox tox-docker
+        run: pip install --upgrade pip setuptools wheel tox tox-docker
       - name: Run unittest
         run: tox -v -e ${{ matrix.python-version }}-linux-unit -- -v
   #################### Integration tests ####################
@@ -47,7 +47,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
-        run: pip install --upgrade pip 'setuptools<59.7.0' wheel tox tox-docker
+        run: pip install --upgrade pip setuptools wheel tox tox-docker
       # Tox fails if a Python versions contains a hyphen, this changes "pypy-3.8" to "pypy3.8".
       - name: Determine Python version
         run: echo PYTHON_VERSION=$(echo ${{ matrix.python-version }} | sed s/-//) >> $GITHUB_ENV
@@ -74,7 +74,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
-        run: pip install --upgrade pip 'setuptools<59.7.0' wheel tox tox-docker
+        run: pip install --upgrade pip setuptools wheel tox tox-docker
       - name: Run flake8
         run: tox -v -e flake8 -- -v
       - name: Run pydocstyle
