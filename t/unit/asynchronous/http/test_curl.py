@@ -1,4 +1,5 @@
-from unittest.mock import Mock, call, patch
+from io import BytesIO
+from unittest.mock import ANY, Mock, call, patch
 
 import pytest
 
@@ -131,3 +132,24 @@ class test_CurlClient:
             x._on_event.assert_called_with(fd, _pycurl.CSELECT_IN)
             x.on_writable(fd, _pycurl=_pycurl)
             x._on_event.assert_called_with(fd, _pycurl.CSELECT_OUT)
+
+    def test_setup_request_sets_proxy_when_specified(self):
+        with patch('kombu.asynchronous.http.curl.pycurl') as _pycurl:
+            x = self.Client()
+            proxy_host = 'http://www.example.com'
+            request = Mock(
+                name='request', headers={}, auth_mode=None, proxy_host=None
+            )
+            proxied_request = Mock(
+                name='request', headers={}, auth_mode=None,
+                proxy_host=proxy_host, proxy_port=123
+            )
+            x._setup_request(
+                x.Curl, request, BytesIO(), x.Headers(), _pycurl=_pycurl
+            )
+            with pytest.raises(AssertionError):
+                x.Curl.setopt.assert_any_call(_pycurl.PROXY, ANY)
+            x._setup_request(
+                x.Curl, proxied_request, BytesIO(), x.Headers(), _pycurl
+            )
+            x.Curl.setopt.assert_any_call(_pycurl.PROXY, proxy_host)
