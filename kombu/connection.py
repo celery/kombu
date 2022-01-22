@@ -529,7 +529,7 @@ class Connection:
                             # the error if it persists after a new connection
                             # was successfully established.
                             raise
-                        if max_retries is not None and retries > max_retries:
+                        if max_retries is not None and retries >= max_retries:
                             raise
                         self._debug('ensure connection error: %r',
                                     exc, exc_info=1)
