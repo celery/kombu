@@ -120,7 +120,7 @@ if os.name == 'nt':
     __overlapped = pywintypes.OVERLAPPED()
 
     @contextmanager
-    def flock(file, flags):  # noqa
+    def flock(file, flags):
         try:
             """Create file lock."""
             hfile = win32file._get_osfhandle(file.fileno())
@@ -137,7 +137,7 @@ elif os.name == 'posix':
     from fcntl import LOCK_EX, LOCK_NB, LOCK_SH  # noqa
 
     @contextmanager
-    def flock(file, flags):  # noqa
+    def flock(file, flags):
         try:
             """Create file lock."""
             fcntl.flock(file.fileno(), flags)
@@ -163,9 +163,9 @@ class Channel(virtual.Channel):
         try:
             with open(filename, 'wb') as f, flock(f, LOCK_EX):
                 f.write(str_to_bytes(dumps(payload)))
-        except (IOError, OSError):
+        except OSError:
             raise ChannelError(
-                'Cannot add file {0!r} to directory'.format(filename))
+                f'Cannot add file {filename!r} to directory')
 
     def _get(self, queue):
         """Get next message from `queue`."""
