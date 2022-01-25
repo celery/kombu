@@ -8,7 +8,7 @@ import socket
 import sys
 import warnings
 from array import array
-from collections import OrderedDict, defaultdict, namedtuple
+from collections import defaultdict, namedtuple
 from itertools import count
 from multiprocessing.util import Finalize
 from queue import Empty
@@ -160,7 +160,7 @@ class QoS:
     #: current prefetch count value
     prefetch_count = 0
 
-    #: :class:`~collections.OrderedDict` of active messages.
+    #: dictionary of active messages.
     #: *NOTE*: Can only be modified by the consuming thread.
     _delivered = None
 
@@ -177,7 +177,7 @@ class QoS:
         self.channel = channel
         self.prefetch_count = prefetch_count or 0
 
-        self._delivered = OrderedDict()
+        self._delivered = {}
         self._delivered.restored = False
         self._dirty = set()
         self._quick_ack = self._dirty.add

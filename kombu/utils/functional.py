@@ -3,7 +3,7 @@
 import inspect
 import random
 import threading
-from collections import OrderedDict, UserDict
+from collections import UserDict
 from collections.abc import Iterable, Mapping
 from itertools import count, repeat
 from time import sleep, time
@@ -52,7 +52,7 @@ class LRUCache(UserDict):
     def __init__(self, limit=None):
         self.limit = limit
         self.mutex = threading.RLock()
-        self.data = OrderedDict()
+        self.data = {}
 
     def __getitem__(self, key):
         with self.mutex:
