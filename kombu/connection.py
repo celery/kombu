@@ -2,7 +2,6 @@
 
 import os
 import socket
-from collections import OrderedDict
 from contextlib import contextmanager
 from itertools import count, cycle
 from operator import itemgetter
@@ -658,7 +657,7 @@ class Connection:
 
     def info(self):
         """Get connection info."""
-        return OrderedDict(self._info())
+        return dict(self._info())
 
     def __eqhash__(self):
         return HashedSeq(self.transport_cls, self.hostname, self.userid,
