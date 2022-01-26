@@ -8,6 +8,7 @@ import socket
 import sys
 import warnings
 from array import array
+from collections import OrderedDict
 from collections import defaultdict, namedtuple
 from itertools import count
 from multiprocessing.util import Finalize
@@ -177,7 +178,9 @@ class QoS:
         self.channel = channel
         self.prefetch_count = prefetch_count or 0
 
-        self._delivered = {}
+        # Because we set an attribute on the OrderedDict, which
+        # is not possible with an ordinary dictionary
+        self._delivered = OrderedDict()
         self._delivered.restored = False
         self._dirty = set()
         self._quick_ack = self._dirty.add
