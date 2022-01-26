@@ -8,8 +8,7 @@ import socket
 import sys
 import warnings
 from array import array
-from collections import OrderedDict
-from collections import defaultdict, namedtuple
+from collections import OrderedDict, defaultdict, namedtuple
 from itertools import count
 from multiprocessing.util import Finalize
 from queue import Empty
