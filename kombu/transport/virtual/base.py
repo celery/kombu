@@ -160,7 +160,7 @@ class QoS:
     #: current prefetch count value
     prefetch_count = 0
 
-    #: dictionary of active messages.
+    #: :class:`~collections.OrderedDict` of active messages.
     #: *NOTE*: Can only be modified by the consuming thread.
     _delivered = None
 
