@@ -717,6 +717,7 @@ class Channel(virtual.Channel):
         try:
             try:
                 payload['headers']['redelivered'] = True
+                payload['properties']['delivery_info']['redelivered'] = True
             except KeyError:
                 pass
             for queue in self._lookup(exchange, routing_key):
