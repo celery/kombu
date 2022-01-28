@@ -407,7 +407,12 @@ class test_Channel:
             "body": base64.b64encode(dumps([
                 [],
                 {},
-                {"callbacks": None, "errbacks": None, "chain": None, "chord": None},
+                {
+                    "callbacks": None,
+                    "errbacks": None,
+                    "chain": None,
+                    "chord": None,
+                },
             ]).encode()).decode(),
             "content-encoding": "utf-8",
             "content-type": "application/json",
