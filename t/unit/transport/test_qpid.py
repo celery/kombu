@@ -33,7 +33,7 @@ class QpidException(Exception):
     """
 
     def __init__(self, code=None, text=None):
-        super(Exception, self).__init__(self)
+        super().__init__(self)
         self.code = code
         self.text = text
 
