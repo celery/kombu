@@ -61,7 +61,7 @@ class Request:
         auth_password (str): Password for HTTP authentication.
         auth_mode (str): Type of HTTP authentication (``basic`` or ``digest``).
         user_agent (str): Custom user agent for this request.
-        network_interace (str): Network interface to use for this request.
+        network_interface (str): Network interface to use for this request.
         on_ready (Callable): Callback to be called when the response has been
             received. Must accept single ``response`` argument.
         on_stream (Callable): Optional callback to be called every time body

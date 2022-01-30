@@ -12,7 +12,7 @@ def list_first(rs):
     return rs[0] if len(rs) == 1 else None
 
 
-class AsyncQueue():
+class AsyncQueue:
     """Async SQS Queue."""
 
     def __init__(self, connection=None, url=None, message_class=AsyncMessage):
