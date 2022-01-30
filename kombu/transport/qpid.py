@@ -92,7 +92,6 @@ import socket
 import ssl
 import sys
 import uuid
-from collections import OrderedDict
 from gettext import gettext as _
 from queue import Empty
 from time import monotonic
@@ -189,7 +188,7 @@ class QoS:
     def __init__(self, session, prefetch_count=1):
         self.session = session
         self.prefetch_count = 1
-        self._not_yet_acked = OrderedDict()
+        self._not_yet_acked = {}
 
     def can_consume(self):
         """Return True if the :class:`Channel` can consume more messages.
@@ -229,8 +228,8 @@ class QoS:
         """Append message to the list of un-ACKed messages.
 
         Add a message, referenced by the delivery_tag, for ACKing,
-        rejecting, or getting later. Messages are saved into an
-        :class:`collections.OrderedDict` by delivery_tag.
+        rejecting, or getting later. Messages are saved into a
+        dict by delivery_tag.
 
         :param message: A received message that has not yet been ACKed.
         :type message: qpid.messaging.Message

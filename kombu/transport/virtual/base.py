@@ -177,6 +177,8 @@ class QoS:
         self.channel = channel
         self.prefetch_count = prefetch_count or 0
 
+        # Standard Python dictionaries do not support setting attributes
+        # on the object, hence the use of OrderedDict
         self._delivered = OrderedDict()
         self._delivered.restored = False
         self._dirty = set()
