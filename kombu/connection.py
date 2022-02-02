@@ -625,7 +625,7 @@ class Connection:
                 transport_cls, transport_cls)
         D = self.transport.default_connection_params
 
-        if not self.hostname:
+        if not self.hostname and D.get('hostname'):
             logger.warning(
                 "No hostname was supplied. "
                 f"Reverting to default '{D.get('hostname')}'")
