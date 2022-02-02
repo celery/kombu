@@ -1,4 +1,3 @@
-import logging
 import pickle
 import socket
 from copy import copy, deepcopy
@@ -110,8 +109,7 @@ class test_connection_utils:
     ])
     def test_sqs_example_urls(self, url, expected, caplog):
         pytest.importorskip('boto3')
-        with caplog.at_level(logging.WARNING):
-            self.assert_info(Connection('sqs://'), **expected)
+        self.assert_info(Connection('sqs://'), **expected)
         assert not caplog.records
 
     @pytest.mark.skip('TODO: urllib cannot parse ipv6 urls')
