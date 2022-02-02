@@ -99,6 +99,19 @@ class test_connection_utils:
         # see Appendix A of http://www.rabbitmq.com/uri-spec.html
         self.assert_info(Connection(url), **expected)
 
+    @pytest.mark.parametrize('url,expected', [
+        ('sqs://user:pass@',
+         {'userid': None, 'password': None, 'hostname': None,
+          'port': None, 'virtual_host': '/'}),
+        ('sqs://',
+         {'userid': None, 'password': None, 'hostname': None,
+          'port': None, 'virtual_host': '/'}),
+    ])
+    def test_sqs_example_urls(self, url, expected, caplog):
+        pytest.importorskip('boto3')
+        self.assert_info(Connection('sqs://'), **expected)
+        assert not caplog.records
+
     @pytest.mark.skip('TODO: urllib cannot parse ipv6 urls')
     def test_url_IPV6(self):
         self.assert_info(
