@@ -1114,6 +1114,26 @@ class test_Channel:
                 '\x06\x16\x06\x16queue'
             )
 
+    @patch("redis.client.PubSub.execute_command")
+    def test_global_keyprefix_pubsub(self, mock_execute_command):
+        from kombu.transport.redis import PrefixedStrictRedis
+
+        with Connection(transport=Transport) as conn:
+            client = PrefixedStrictRedis(global_keyprefix='foo_')
+
+            channel = conn.channel()
+            channel.global_keyprefix = 'foo_'
+            channel._create_client = Mock()
+            channel._create_client.return_value = client
+            channel.subclient.connection = Mock()
+            channel.active_fanout_queues.add('a')
+
+            channel._subscribe()
+            mock_execute_command.assert_called_with(
+                'PSUBSCRIBE',
+                'foo_/{db}.a',
+            )
+
 
 class test_Redis:
 
