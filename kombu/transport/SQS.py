@@ -215,8 +215,8 @@ class QoS(virtual.QoS):
                 VisibilityTimeout=policy_value
             )
 
-    @staticmethod
-    def extract_task_name_and_number_of_retries(message):
+    def extract_task_name_and_number_of_retries(self, delivery_tag):
+        message = self._delivered[delivery_tag]
         message_headers = message.headers
         task_name = message_headers['task']
         number_of_retries = int(
