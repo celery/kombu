@@ -106,6 +106,9 @@ setup(
     author=meta['author'],
     author_email=meta['contact'],
     url=meta['homepage'],
+    project_urls={
+        'Source': 'https://github.com/celery/kombu'
+    },
     platforms=['any'],
     zip_safe=False,
     license='BSD',
