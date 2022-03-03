@@ -395,8 +395,11 @@ class Channel(virtual.Channel):
     def _put(self, queue, message, **kwargs):
         """Put message onto queue."""
         q_url = self._new_queue(queue)
-        kwargs = {'QueueUrl': q_url,
-                  'MessageBody': AsyncMessage().encode(dumps(message))}
+        if self.sqs_base64_encoding:
+            body = AsyncMessage().encode(dumps(message))
+        else:
+            body = dumps(message)
+        kwargs = {'QueueUrl': q_url, 'MessageBody': body}
         if queue.endswith('.fifo'):
             if 'MessageGroupId' in message['properties']:
                 kwargs['MessageGroupId'] = \
@@ -420,22 +423,19 @@ class Channel(virtual.Channel):
             c.send_message(**kwargs)
 
     @staticmethod
-    def __b64_encoded(byte_string):
+    def _optional_b64_decode(byte_string):
         try:
-            return base64.b64encode(
-                base64.b64decode(byte_string)
-            ) == byte_string
+            data = base64.b64decode(byte_string)
+            if base64.b64encode(data) == byte_string:
+                return data
+            # else the base64 module found some embedded base64 content
+            # that should be ignored.
         except Exception:  # pylint: disable=broad-except
-            return False
+            pass
+        return byte_string
 
     def _message_to_python(self, message, queue_name, queue):
-        body = message['Body'].encode()
-        try:
-            if self.__b64_encoded(body):
-                body = base64.b64decode(body)
-        except TypeError:
-            pass
-
+        body = self._optional_b64_decode(message['Body'].encode())
         payload = loads(bytes_to_str(body))
         if queue_name in self._noack_queues:
             queue = self._new_queue(queue_name)
@@ -836,6 +836,10 @@ class Channel(virtual.Channel):
     def wait_time_seconds(self):
         return self.transport_options.get('wait_time_seconds',
                                           self.default_wait_time_seconds)
+
+    @cached_property
+    def sqs_base64_encoding(self):
+        return self.transport_options.get('sqs_base64_encoding', True)
 
 
 class Transport(virtual.Transport):

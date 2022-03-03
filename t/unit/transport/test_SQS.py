@@ -336,13 +336,13 @@ class test_Channel:
         with pytest.raises(Empty):
             self.channel._get_bulk(self.queue_name)
 
-    def test_is_base64_encoded(self):
+    def test_optional_b64_decode(self):
         raw = b'{"id": "4cc7438e-afd4-4f8f-a2f3-f46567e7ca77","task": "celery.task.PingTask",' \
               b'"args": [],"kwargs": {},"retries": 0,"eta": "2009-11-17T12:30:56.527191"}'     # noqa
         b64_enc = base64.b64encode(raw)
-        assert self.channel._Channel__b64_encoded(b64_enc)
-        assert not self.channel._Channel__b64_encoded(raw)
-        assert not self.channel._Channel__b64_encoded(b"test123")
+        assert self.channel._optional_b64_decode(b64_enc) == raw
+        assert self.channel._optional_b64_decode(raw) == raw
+        assert self.channel._optional_b64_decode(b"test123") == b"test123"
 
     def test_messages_to_python(self):
         from kombu.asynchronous.aws.sqs.message import Message
