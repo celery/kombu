@@ -4,6 +4,28 @@
  Change history
 ================
 
+.. _version-5.2.4:
+
+5.2.4
+=====
+:release-date: 06 Mar, 2022
+:release-by: Asif Saif Uddin
+
+- Allow getting recoverable_connection_errors without an active transport.
+- Prevent KeyError: 'purelib' by removing INSTALLED_SCHEME hack from setup.py.
+- Revert "try pining setuptools (#1466)" (#1481).
+- Fix issue #789: Async http code not allowing for proxy config (#790).
+- Fix The incorrect times of retrying.
+- Set redelivered property for Celery with Redis (#1484).
+- Remove use of OrderedDict in various places (#1483).
+- Warn about missing hostname only when default one is available (#1488).
+- All supported versions of Python define __package__.
+- Added global_keyprefix support for pubsub clients (#1495).
+- try pytest 7 (#1497).
+- Add an option to not base64-encode SQS messages.
+- Fix SQS extract_task_name message reference.
+
+
 .. _version-5.2.3:
 
 5.2.3
