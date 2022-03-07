@@ -88,15 +88,15 @@ Transport Options
 * ``processed_folder`` - directory where are backed up processed files.
 """
 
-import os
 import glob
+import os
 import shutil
 import tempfile
 import uuid
-from queue import Empty
-from time import monotonic
 from collections import namedtuple
 from contextlib import contextmanager
+from queue import Empty
+from time import monotonic
 
 from kombu.exceptions import ChannelError
 from kombu.utils.encoding import bytes_to_str, str_to_bytes
@@ -160,7 +160,7 @@ class Channel(virtual.Channel):
 
     @contextmanager
     def _get_exchange_file_obj(self, exchange, mode="rb"):
-        filename = "{}.exchange".format(exchange)
+        filename = f"{exchange}.exchange"
         filename = os.path.join(self.control_folder, filename)
         try:
             f_obj = open(filename, mode)
