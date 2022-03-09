@@ -1,4 +1,5 @@
 import tempfile
+from queue import Empty
 
 import pytest
 
@@ -8,40 +9,33 @@ from kombu import Connection, Consumer, Exchange, Producer, Queue
 
 @t.skip.if_win32
 class test_FilesystemTransport:
+
     def setup(self):
         self.channels = set()
         try:
             data_folder_in = tempfile.mkdtemp()
             data_folder_out = tempfile.mkdtemp()
         except Exception:
-            pytest.skip("filesystem transport: cannot create tempfiles")
-        self.c = Connection(
-            transport="filesystem",
-            transport_options={
-                "data_folder_in": data_folder_in,
-                "data_folder_out": data_folder_out,
-            },
-        )
+            pytest.skip('filesystem transport: cannot create tempfiles')
+        self.c = Connection(transport='filesystem',
+                            transport_options={
+                                'data_folder_in': data_folder_in,
+                                'data_folder_out': data_folder_out,
+                            })
         self.channels.add(self.c.default_channel)
-        self.p = Connection(
-            transport="filesystem",
-            transport_options={
-                "data_folder_in": data_folder_out,
-                "data_folder_out": data_folder_in,
-            },
-        )
+        self.p = Connection(transport='filesystem',
+                            transport_options={
+                                'data_folder_in': data_folder_out,
+                                'data_folder_out': data_folder_in,
+                            })
         self.channels.add(self.p.default_channel)
-        self.e = Exchange("test_transport_filesystem")
-        self.q = Queue(
-            "test_transport_filesystem",
-            exchange=self.e,
-            routing_key="test_transport_filesystem",
-        )
-        self.q2 = Queue(
-            "test_transport_filesystem2",
-            exchange=self.e,
-            routing_key="test_transport_filesystem2",
-        )
+        self.e = Exchange('test_transport_filesystem')
+        self.q = Queue('test_transport_filesystem',
+                       exchange=self.e,
+                       routing_key='test_transport_filesystem')
+        self.q2 = Queue('test_transport_filesystem2',
+                        exchange=self.e,
+                        routing_key='test_transport_filesystem2')
 
     def teardown(self):
         # make sure we don't attempt to restore messages at shutdown.
@@ -61,10 +55,12 @@ class test_FilesystemTransport:
 
     def test_produce_consume_noack(self):
         producer = Producer(self._add_channel(self.p.channel()), self.e)
-        consumer = Consumer(self._add_channel(self.c.channel()), self.q, no_ack=True)
+        consumer = Consumer(self._add_channel(self.c.channel()), self.q,
+                            no_ack=True)
 
         for i in range(10):
-            producer.publish({"foo": i}, routing_key="test_transport_filesystem")
+            producer.publish({'foo': i},
+                             routing_key='test_transport_filesystem')
 
         _received = []
 
@@ -90,9 +86,11 @@ class test_FilesystemTransport:
         self.q2(consumer_channel).declare()
 
         for i in range(10):
-            producer.publish({"foo": i}, routing_key="test_transport_filesystem")
+            producer.publish({'foo': i},
+                             routing_key='test_transport_filesystem')
         for i in range(10):
-            producer.publish({"foo": i}, routing_key="test_transport_filesystem2")
+            producer.publish({'foo': i},
+                             routing_key='test_transport_filesystem2')
 
         _received1 = []
         _received2 = []
@@ -119,17 +117,16 @@ class test_FilesystemTransport:
         assert len(_received1) + len(_received2) == 20
 
         # compression
-        producer.publish(
-            {"compressed": True},
-            routing_key="test_transport_filesystem",
-            compression="zlib",
-        )
+        producer.publish({'compressed': True},
+                         routing_key='test_transport_filesystem',
+                         compression='zlib')
         m = self.q(consumer_channel).get()
-        assert m.payload == {"compressed": True}
+        assert m.payload == {'compressed': True}
 
         # queue.delete
         for i in range(10):
-            producer.publish({"foo": i}, routing_key="test_transport_filesystem")
+            producer.publish({'foo': i},
+                             routing_key='test_transport_filesystem')
         assert self.q(consumer_channel).get()
         self.q(consumer_channel).delete()
         self.q(consumer_channel).declare()
@@ -137,14 +134,15 @@ class test_FilesystemTransport:
 
         # queue.purge
         for i in range(10):
-            producer.publish({"foo": i}, routing_key="test_transport_filesystem2")
+            producer.publish({'foo': i},
+                             routing_key='test_transport_filesystem2')
         assert self.q2(consumer_channel).get()
         self.q2(consumer_channel).purge()
         assert self.q2(consumer_channel).get() is None
 
 
 @t.skip.if_win32
-class test_FilesystemFanout(test_FilesystemTransport):
+class test_FilesystemFanout:
     def setup(self):
         try:
             data_folder_in = tempfile.mkdtemp()
@@ -153,7 +151,7 @@ class test_FilesystemFanout(test_FilesystemTransport):
         except Exception:
             pytest.skip("filesystem transport: cannot create tempfiles")
 
-        self.consume_connection = Connection(
+        self.consumer_connection = Connection(
             transport="filesystem",
             transport_options={
                 "data_folder_in": data_folder_in,
@@ -161,7 +159,7 @@ class test_FilesystemFanout(test_FilesystemTransport):
                 "control_folder": control_folder,
             },
         )
-        self.consume_channel = self.consume_connection.default_channel
+        self.consume_channel = self.consumer_connection.channel()
         self.produce_connection = Connection(
             transport="filesystem",
             transport_options={
@@ -170,15 +168,28 @@ class test_FilesystemFanout(test_FilesystemTransport):
                 "control_folder": control_folder,
             },
         )
-        self.produce_channel = self.produce_connection.default_channel
-        self.exchange = Exchange("test_transport_filesystem", "fanout")
-        self.q1 = Queue("queue1", exchange=self.exchange, routing_key="")
-        self.q2 = Queue("queue2", exchange=self.exchange, routing_key="")
+        self.producer_channel = self.produce_connection.channel()
+        self.exchange = Exchange("filesystem_exchange_fanout", type="fanout")
+        self.q1 = Queue("queue1", exchange=self.exchange)
+        self.q2 = Queue("queue2", exchange=self.exchange)
+
+    def teardown(self):
+        # make sure we don't attempt to restore messages at shutdown.
+        for channel in [self.producer_channel, self.consumer_connection]:
+            try:
+                channel._qos._dirty.clear()
+            except AttributeError:
+                pass
+            try:
+                channel._qos._delivered.clear()
+            except AttributeError:
+                pass
 
     def test_produce_consume(self):
-        producer = Producer(self.produce_channel, self.exchange)
-        consumer1 = Consumer(self.consume_channel, self.q1, no_ack=True)
-        consumer2 = Consumer(self.consume_channel, self.q2, no_ack=True)
+
+        producer = Producer(self.producer_channel, self.exchange)
+        consumer1 = Consumer(self.consume_channel, self.q1)
+        consumer2 = Consumer(self.consume_channel, self.q2)
         self.q2(self.consume_channel).declare()
 
         for i in range(10):
@@ -204,7 +215,7 @@ class test_FilesystemFanout(test_FilesystemTransport):
         while 1:
             try:
                 self.consume_channel.drain_events()
-            except:
+            except Empty:
                 break
 
         assert len(_received1) + len(_received2) == 20
