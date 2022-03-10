@@ -86,6 +86,7 @@ Transport Options
 * ``store_processed`` - if set to True, all processed messages are backed up to
   ``processed_folder``.
 * ``processed_folder`` - directory where are backed up processed files.
+* ``control_folder`` - directory where are exchange-queue table stored.
 """
 
 import os
@@ -317,7 +318,7 @@ class Channel(virtual.Channel):
     def processed_folder(self):
         return self.transport_options.get('processed_folder', 'processed')
 
-    @cached_property
+    @property
     def control_folder(self):
         return Path(self.transport_options.get('control_folder', 'control'))
 
