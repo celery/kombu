@@ -94,6 +94,7 @@ import tempfile
 import uuid
 from collections import namedtuple
 from contextlib import contextmanager
+from pathlib import Path
 from queue import Empty
 from time import monotonic
 
@@ -161,17 +162,17 @@ class Channel(virtual.Channel):
 
     @contextmanager
     def _get_exchange_file_obj(self, exchange, mode="rb"):
-        filename = f"{exchange}.exchange"
-        filename = os.path.join(self.control_folder, filename)
-        os.makedirs(self.control_folder, exist_ok=True)
-        f_obj = open(filename, mode)
+        file = self.control_folder / f"{exchange}.exchange"
+        if "w" in mode:
+            self.control_folder.mkdir(exist_ok=True)
+        f_obj = file.open(mode)
 
         try:
             if "w" in mode:
                 lock(f_obj, LOCK_EX)
             yield f_obj
         except OSError:
-            raise ChannelError(f"Cannot open {filename}")
+            raise ChannelError(f"Cannot open {file}")
         finally:
             if "w" in mode:
                 unlock(f_obj)
@@ -318,7 +319,7 @@ class Channel(virtual.Channel):
 
     @cached_property
     def control_folder(self):
-        return self.transport_options.get('control_folder', 'control')
+        return Path(self.transport_options.get('control_folder', 'control'))
 
 
 class Transport(virtual.Transport):
