@@ -65,7 +65,7 @@ Features
 * Type: Virtual
 * Supports Direct: Yes
 * Supports Topic: Yes
-* Supports Fanout: No
+* Supports Fanout: Yes
 * Supports Priority: No
 * Supports TTL: No
 
@@ -86,12 +86,16 @@ Transport Options
 * ``store_processed`` - if set to True, all processed messages are backed up to
   ``processed_folder``.
 * ``processed_folder`` - directory where are backed up processed files.
+* ``control_folder`` - directory where are exchange-queue table stored.
 """
 
 import os
 import shutil
 import tempfile
 import uuid
+from collections import namedtuple
+from contextlib import contextmanager
+from pathlib import Path
 from queue import Empty
 from time import monotonic
 
@@ -128,6 +132,7 @@ if os.name == 'nt':
         hfile = win32file._get_osfhandle(file.fileno())
         win32file.UnlockFileEx(hfile, 0, 0xffff0000, __overlapped)
 
+
 elif os.name == 'posix':
 
     import fcntl
@@ -140,13 +145,60 @@ elif os.name == 'posix':
     def unlock(file):
         """Remove file lock."""
         fcntl.flock(file.fileno(), fcntl.LOCK_UN)
+
+
 else:
     raise RuntimeError(
         'Filesystem plugin only defined for NT and POSIX platforms')
 
 
+exchange_queue_t = namedtuple("exchange_queue_t",
+                              ["routing_key", "pattern", "queue"])
+
+
 class Channel(virtual.Channel):
     """Filesystem Channel."""
+
+    supports_fanout = True
+
+    @contextmanager
+    def _get_exchange_file_obj(self, exchange, mode="rb"):
+        file = self.control_folder / f"{exchange}.exchange"
+        if "w" in mode:
+            self.control_folder.mkdir(exist_ok=True)
+        f_obj = file.open(mode)
+
+        try:
+            if "w" in mode:
+                lock(f_obj, LOCK_EX)
+            yield f_obj
+        except OSError:
+            raise ChannelError(f"Cannot open {file}")
+        finally:
+            if "w" in mode:
+                unlock(f_obj)
+            f_obj.close()
+
+    def get_table(self, exchange):
+        try:
+            with self._get_exchange_file_obj(exchange) as f_obj:
+                exchange_table = loads(bytes_to_str(f_obj.read()))
+                return [exchange_queue_t(*q) for q in exchange_table]
+        except FileNotFoundError:
+            return []
+
+    def _queue_bind(self, exchange, routing_key, pattern, queue):
+        queues = self.get_table(exchange)
+        queue_val = exchange_queue_t(routing_key or "", pattern or "",
+                                     queue or "")
+        if queue_val not in queues:
+            queues.insert(0, queue_val)
+        with self._get_exchange_file_obj(exchange, "wb") as f_obj:
+            f_obj.write(str_to_bytes(dumps(queues)))
+
+    def _put_fanout(self, exchange, payload, routing_key, **kwargs):
+        for q in self.get_table(exchange):
+            self._put(q.queue, payload, **kwargs)
 
     def _put(self, queue, payload, **kwargs):
         """Put `message` onto `queue`."""
@@ -266,9 +318,18 @@ class Channel(virtual.Channel):
     def processed_folder(self):
         return self.transport_options.get('processed_folder', 'processed')
 
+    @property
+    def control_folder(self):
+        return Path(self.transport_options.get('control_folder', 'control'))
+
 
 class Transport(virtual.Transport):
     """Filesystem Transport."""
+
+    implements = virtual.Transport.implements.extend(
+        asynchronous=False,
+        exchange_type=frozenset(['direct', 'topic', 'fanout'])
+    )
 
     Channel = Channel
     # filesystem backend state is global.
