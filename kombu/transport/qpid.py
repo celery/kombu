@@ -1,4 +1,4 @@
-"""Qpid Transport.
+"""Qpid Transport module for kombu.
 
 `Qpid`_ transport using `qpid-python`_ as the client and `qpid-tools`_ for
 broker management.
@@ -26,6 +26,15 @@ or to install the requirements manually:
 .. _`Qpid`: https://qpid.apache.org/
 .. _`qpid-python`: https://pypi.org/project/qpid-python/
 .. _`qpid-tools`: https://pypi.org/project/qpid-tools/
+
+Features
+========
+* Type: Native
+* Supports Direct: Yes
+* Supports Topic: Yes
+* Supports Fanout: Yes
+* Supports Priority: Yes
+* Supports TTL: Yes
 
 Authentication
 ==============
@@ -77,34 +86,32 @@ Celery, this can be accomplished by setting the
 *BROKER_TRANSPORT_OPTIONS* Celery option.
 """
 
-from collections import OrderedDict
 import os
 import select
 import socket
 import ssl
 import sys
 import uuid
+from gettext import gettext as _
 from queue import Empty
 from time import monotonic
-
-from gettext import gettext as _
 
 import amqp.protocol
 
 try:
     import fcntl
 except ImportError:
-    fcntl = None  # noqa
+    fcntl = None
 
 try:
     import qpidtoollibs
 except ImportError:  # pragma: no cover
-    qpidtoollibs = None     # noqa
+    qpidtoollibs = None
 
 try:
-    from qpid.messaging.exceptions import ConnectionError, NotFound
+    from qpid.messaging.exceptions import ConnectionError
     from qpid.messaging.exceptions import Empty as QpidEmpty
-    from qpid.messaging.exceptions import SessionClosed
+    from qpid.messaging.exceptions import NotFound, SessionClosed
 except ImportError:  # pragma: no cover
     ConnectionError = None
     NotFound = None
@@ -117,9 +124,8 @@ except ImportError:  # pragma: no cover
     qpid = None
 
 from kombu.log import get_logger
-from kombu.transport.virtual import Base64, Message
 from kombu.transport import base, virtual
-
+from kombu.transport.virtual import Base64, Message
 
 logger = get_logger(__name__)
 
@@ -182,7 +188,7 @@ class QoS:
     def __init__(self, session, prefetch_count=1):
         self.session = session
         self.prefetch_count = 1
-        self._not_yet_acked = OrderedDict()
+        self._not_yet_acked = {}
 
     def can_consume(self):
         """Return True if the :class:`Channel` can consume more messages.
@@ -222,8 +228,8 @@ class QoS:
         """Append message to the list of un-ACKed messages.
 
         Add a message, referenced by the delivery_tag, for ACKing,
-        rejecting, or getting later. Messages are saved into an
-        :class:`collections.OrderedDict` by delivery_tag.
+        rejecting, or getting later. Messages are saved into a
+        dict by delivery_tag.
 
         :param message: A received message that has not yet been ACKed.
         :type message: qpid.messaging.Message

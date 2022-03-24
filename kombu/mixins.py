@@ -1,15 +1,14 @@
 """Mixins."""
 
 import socket
-
 from contextlib import contextmanager
 from functools import partial
 from itertools import count
 from time import sleep
 
 from .common import ignore_errors
-from .messaging import Consumer, Producer
 from .log import get_logger
+from .messaging import Consumer, Producer
 from .utils.compat import nested
 from .utils.encoding import safe_repr
 from .utils.limits import TokenBucket

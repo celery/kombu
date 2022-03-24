@@ -1,14 +1,15 @@
 import io
-import pytest
-import warnings
 import socket
+import warnings
+from array import array
 from time import monotonic
-
 from unittest.mock import MagicMock, Mock, patch
+
+import pytest
 
 from kombu import Connection
 from kombu.compression import compress
-from kombu.exceptions import ResourceError, ChannelError
+from kombu.exceptions import ChannelError, ResourceError
 from kombu.transport import virtual
 from kombu.utils.uuid import uuid
 
@@ -178,13 +179,19 @@ class test_Channel:
         if self.channel._qos is not None:
             self.channel._qos._on_collect.cancel()
 
-    def test_exceeds_channel_max(self):
-        c = client()
-        t = c.transport
-        avail = t._avail_channel_ids = Mock(name='_avail_channel_ids')
-        avail.pop.side_effect = IndexError()
+    def test_get_free_channel_id(self):
+        conn = client()
+        channel = conn.channel()
+        assert channel.channel_id == 1
+        assert channel._get_free_channel_id() == 2
+
+    def test_get_free_channel_id__exceeds_channel_max(self):
+        conn = client()
+        conn.transport.channel_max = 2
+        channel = conn.channel()
+        channel._get_free_channel_id()
         with pytest.raises(ResourceError):
-            virtual.Channel(t)
+            channel._get_free_channel_id()
 
     def test_exchange_bind_interface(self):
         with pytest.raises(NotImplementedError):
@@ -550,6 +557,13 @@ class test_Transport:
     def setup(self):
         self.transport = client().transport
 
+    def test_state_is_transport_specific(self):
+        # Tests that each Transport of Connection instance
+        # has own state attribute
+        conn1 = client()
+        conn2 = client()
+        assert conn1.transport.state != conn2.transport.state
+
     def test_custom_polling_interval(self):
         x = client(transport_options={'polling_interval': 32.3})
         assert x.transport.polling_interval == 32.3
@@ -569,6 +583,23 @@ class test_Transport:
         assert not self.transport.channels
         del(c1)  # so pyflakes doesn't complain
         del(c2)
+
+    def test_create_channel(self):
+        """Ensure create_channel can create channels successfully."""
+        assert self.transport.channels == []
+        created_channel = self.transport.create_channel(self.transport)
+        assert self.transport.channels == [created_channel]
+
+    def test_close_channel(self):
+        """Ensure close_channel actually removes the channel and updates
+        _used_channel_ids.
+        """
+        assert self.transport._used_channel_ids == array('H')
+        created_channel = self.transport.create_channel(self.transport)
+        assert self.transport._used_channel_ids == array('H', (1,))
+        self.transport.close_channel(created_channel)
+        assert self.transport.channels == []
+        assert self.transport._used_channel_ids == array('H')
 
     def test_drain_channel(self):
         channel = self.transport.create_channel(self.transport)

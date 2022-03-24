@@ -1,7 +1,7 @@
-import pytest
 import sys
-
 from unittest.mock import Mock, patch
+
+import pytest
 
 from kombu.message import Message
 

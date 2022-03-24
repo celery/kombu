@@ -1,16 +1,14 @@
 import pickle
-import pytest
 import sys
-
 from collections import defaultdict
-
 from unittest.mock import Mock, patch
 
-from kombu import Connection, Consumer, Producer, Exchange, Queue
+import pytest
+
+from kombu import Connection, Consumer, Exchange, Producer, Queue
 from kombu.exceptions import MessageStateError
 from kombu.utils import json
 from kombu.utils.functional import ChannelPromise
-
 from t.mocks import Transport
 
 
@@ -136,6 +134,14 @@ class test_Producer:
         p.publish('hello', exchange=Exchange('foo'), expiration=10)
         properties = p._channel.prepare_message.call_args[0][5]
         assert properties['expiration'] == '10000'
+
+    def test_publish_with_timeout(self):
+        p = self.connection.Producer()
+        p.channel = Mock()
+        p.channel.connection.client.declared_entities = set()
+        p.publish('test_timeout', exchange=Exchange('foo'), timeout=1)
+        timeout = p._channel.basic_publish.call_args[1]['timeout']
+        assert timeout == 1
 
     def test_publish_with_reply_to(self):
         p = self.connection.Producer()

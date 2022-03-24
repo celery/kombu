@@ -1,23 +1,44 @@
-"""Pyro transport, and Kombu Broker daemon.
+"""Pyro transport module for kombu.
+
+Pyro transport, and Kombu Broker daemon.
 
 Requires the :mod:`Pyro4` library to be installed.
 
+Features
+========
+* Type: Virtual
+* Supports Direct: Yes
+* Supports Topic: Yes
+* Supports Fanout: No
+* Supports Priority: No
+* Supports TTL: No
+
+Connection String
+=================
+
 To use the Pyro transport with Kombu, use an url of the form:
-``pyro://localhost/kombu.broker``
+
+.. code-block::
+
+    pyro://localhost/kombu.broker
 
 The hostname is where the transport will be looking for a Pyro name server,
 which is used in turn to locate the kombu.broker Pyro service.
 This broker can be launched by simply executing this transport module directly,
 with the command: ``python -m kombu.transport.pyro``
+
+Transport Options
+=================
 """
 
 
 import sys
-from queue import Queue, Empty
+from queue import Empty, Queue
 
 from kombu.exceptions import reraise
-from kombu.utils.objects import cached_property
 from kombu.log import get_logger
+from kombu.utils.objects import cached_property
+
 from . import virtual
 
 try:
@@ -25,7 +46,7 @@ try:
     from Pyro4.errors import NamingError
     from Pyro4.util import SerializerBase
 except ImportError:          # pragma: no cover
-    pyro = NamingError = SerializerBase = None  # noqa
+    pyro = NamingError = SerializerBase = None
 
 DEFAULT_PORT = 9090
 E_NAMESERVER = """\
@@ -92,11 +113,16 @@ class Transport(virtual.Transport):
     Channel = Channel
 
     #: memory backend state is global.
-    state = virtual.BrokerState()
+    # TODO: To be checked whether state can be per-Transport
+    global_state = virtual.BrokerState()
 
     default_port = DEFAULT_PORT
 
     driver_type = driver_name = 'pyro'
+
+    def __init__(self, client, **kwargs):
+        super().__init__(client, **kwargs)
+        self.state = self.global_state
 
     def _open(self):
         logger.debug("trying Pyro nameserver to find the broker daemon")

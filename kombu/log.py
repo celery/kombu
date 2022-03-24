@@ -4,7 +4,6 @@ import logging
 import numbers
 import os
 import sys
-
 from logging.handlers import WatchedFileHandler
 
 from .utils.encoding import safe_repr, safe_str
@@ -13,11 +12,8 @@ from .utils.objects import cached_property
 
 __all__ = ('LogMixin', 'LOG_LEVELS', 'get_loglevel', 'setup_logging')
 
-try:
-    LOG_LEVELS = dict(logging._nameToLevel)
-    LOG_LEVELS.update(logging._levelToName)
-except AttributeError:
-    LOG_LEVELS = dict(logging._levelNames)
+LOG_LEVELS = dict(logging._nameToLevel)
+LOG_LEVELS.update(logging._levelToName)
 LOG_LEVELS.setdefault('FATAL', logging.FATAL)
 LOG_LEVELS.setdefault(logging.FATAL, 'FATAL')
 DISABLE_TRACEBACKS = os.environ.get('DISABLE_TRACEBACKS')
@@ -119,7 +115,7 @@ class Log(LogMixin):
     def get_logger(self):
         if self._logger:
             return self._logger
-        return LogMixin.get_logger(self)
+        return super().get_logger()
 
     @property
     def logger_name(self):

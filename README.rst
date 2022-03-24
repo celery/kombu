@@ -2,9 +2,9 @@
  kombu - Messaging library for Python
 ========================================
 
-|build-status| |coverage| |license| |wheel| |pyversion| |pyimp| |[![Downloads](https://pepy.tech/badge/kombu)](https://pepy.tech/project/kombu)|
+|build-status| |coverage| |license| |wheel| |pyversion| |pyimp| |downloads|
 
-:Version: 5.0.1
+:Version: 5.2.4
 :Documentation: https://kombu.readthedocs.io/
 :Download: https://pypi.org/project/kombu/
 :Source: https://github.com/celery/kombu/
@@ -29,15 +29,7 @@ Features
 * Allows application authors to support several message server
   solutions by using pluggable transports.
 
-    * AMQP transport using the `py-amqp`_, `librabbitmq`_, or `qpid-python`_ libraries.
-
-    * High performance AMQP transport written in C - when using `librabbitmq`_
-
-      This is automatically enabled if librabbitmq is installed:
-
-      ::
-
-        $ pip install librabbitmq
+    * AMQP transport using the `py-amqp`_, or `qpid-python`_ libraries.
 
     * Virtual transports makes it really easy to add support for non-AMQP
       transports. There is already built-in support for `Redis`_,
@@ -313,7 +305,7 @@ Mailing list
 
 Join the `celery-users`_ mailing list.
 
-.. _`celery-users`: https://groups.google.com/group/celery-users/
+.. _`kombu forum`: https://github.com/celery/kombu/discussions
 
 Bug tracker
 ===========
@@ -336,9 +328,9 @@ This software is licensed under the `New BSD License`. See the `LICENSE`
 file in the top distribution directory for the full license text.
 
 
-.. |build-status| image:: https://secure.travis-ci.org/celery/kombu.png?branch=master
+.. |build-status| image:: https://api.travis-ci.com/celery/kombu.png?branch=master
     :alt: Build status
-    :target: https://travis-ci.org/celery/kombu
+    :target: https://travis-ci.com/celery/kombu
 
 .. |coverage| image:: https://codecov.io/github/celery/kombu/coverage.svg?branch=master
     :target: https://codecov.io/github/celery/kombu?branch=master
@@ -358,11 +350,13 @@ file in the top distribution directory for the full license text.
 .. |pyimp| image:: https://img.shields.io/pypi/implementation/kombu.svg
      :alt: Support Python implementations.
      :target: https://pypi.org/project/kombu/
-     
+.. |downloads| image:: https://pepy.tech/badge/kombu
+    :target: https://pepy.tech/project/kombu
+
 kombu as part of the Tidelift Subscription
-======= 
+=======
 
 The maintainers of kombu and thousands of other packages are working with Tidelift to deliver commercial support and maintenance for the open source dependencies you use to build your applications. Save time, reduce risk, and improve code health, while paying the maintainers of the exact dependencies you use. [Learn more.](https://tidelift.com/subscription/pkg/pypi-kombu?utm_source=pypi-kombu&utm_medium=referral&utm_campaign=readme&utm_term=repo)
-    
+
 --
 

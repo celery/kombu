@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from kombu import Connection, Exchange, Queue, Producer, Consumer
+from kombu import Connection, Consumer, Exchange, Producer, Queue
 from kombu.asynchronous import Hub
 
 hub = Hub()

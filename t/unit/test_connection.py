@@ -1,16 +1,14 @@
 import pickle
-import pytest
 import socket
-
 from copy import copy, deepcopy
-
 from unittest.mock import Mock, patch
+
+import pytest
 
 from kombu import Connection, Consumer, Producer, parse_url
 from kombu.connection import Resource
 from kombu.exceptions import OperationalError
 from kombu.utils.functional import lazy
-
 from t.mocks import Transport
 
 
@@ -100,6 +98,19 @@ class test_connection_utils:
     def test_rabbitmq_example_urls(self, url, expected):
         # see Appendix A of http://www.rabbitmq.com/uri-spec.html
         self.assert_info(Connection(url), **expected)
+
+    @pytest.mark.parametrize('url,expected', [
+        ('sqs://user:pass@',
+         {'userid': None, 'password': None, 'hostname': None,
+          'port': None, 'virtual_host': '/'}),
+        ('sqs://',
+         {'userid': None, 'password': None, 'hostname': None,
+          'port': None, 'virtual_host': '/'}),
+    ])
+    def test_sqs_example_urls(self, url, expected, caplog):
+        pytest.importorskip('boto3')
+        self.assert_info(Connection('sqs://'), **expected)
+        assert not caplog.records
 
     @pytest.mark.skip('TODO: urllib cannot parse ipv6 urls')
     def test_url_IPV6(self):
@@ -295,7 +306,9 @@ class test_Connection:
         assert not c.is_evented
 
     def test_register_with_event_loop(self):
-        c = Connection(transport=Mock)
+        transport = Mock(name='transport')
+        transport.connection_errors = []
+        c = Connection(transport=transport)
         loop = Mock(name='loop')
         c.register_with_event_loop(loop)
         c.transport.register_with_event_loop.assert_called_with(
@@ -479,7 +492,7 @@ class test_Connection:
         def publish():
             raise _ConnectionError('failed connection')
 
-        self.conn.transport.connection_errors = (_ConnectionError,)
+        self.conn.get_transport_cls().connection_errors = (_ConnectionError,)
         ensured = self.conn.ensure(self.conn, publish)
         with pytest.raises(OperationalError):
             ensured()
@@ -487,7 +500,7 @@ class test_Connection:
     def test_autoretry(self):
         myfun = Mock()
 
-        self.conn.transport.connection_errors = (KeyError,)
+        self.conn.get_transport_cls().connection_errors = (KeyError,)
 
         def on_call(*args, **kwargs):
             myfun.side_effect = None
@@ -573,6 +586,18 @@ class test_Connection:
         conn = Connection(transport=MyTransport)
         assert conn.channel_errors == (KeyError, ValueError)
 
+    def test_channel_errors__exception_no_cache(self):
+        """Ensure the channel_errors can be retrieved without an initialized
+        transport.
+        """
+
+        class MyTransport(Transport):
+            channel_errors = (KeyError,)
+
+        conn = Connection(transport=MyTransport)
+        MyTransport.__init__ = Mock(side_effect=Exception)
+        assert conn.channel_errors == (KeyError,)
+
     def test_connection_errors(self):
 
         class MyTransport(Transport):
@@ -581,6 +606,80 @@ class test_Connection:
         conn = Connection(transport=MyTransport)
         assert conn.connection_errors == (KeyError, ValueError)
 
+    def test_connection_errors__exception_no_cache(self):
+        """Ensure the connection_errors can be retrieved without an
+        initialized transport.
+        """
+
+        class MyTransport(Transport):
+            connection_errors = (KeyError,)
+
+        conn = Connection(transport=MyTransport)
+        MyTransport.__init__ = Mock(side_effect=Exception)
+        assert conn.connection_errors == (KeyError,)
+
+    def test_recoverable_connection_errors(self):
+
+        class MyTransport(Transport):
+            recoverable_connection_errors = (KeyError, ValueError)
+
+        conn = Connection(transport=MyTransport)
+        assert conn.recoverable_connection_errors == (KeyError, ValueError)
+
+    def test_recoverable_connection_errors__fallback(self):
+        """Ensure missing recoverable_connection_errors on the Transport does
+        not cause a fatal error.
+        """
+
+        class MyTransport(Transport):
+            connection_errors = (KeyError,)
+            channel_errors = (ValueError,)
+
+        conn = Connection(transport=MyTransport)
+        assert conn.recoverable_connection_errors == (KeyError, ValueError)
+
+    def test_recoverable_connection_errors__exception_no_cache(self):
+        """Ensure the recoverable_connection_errors can be retrieved without
+        an initialized transport.
+        """
+
+        class MyTransport(Transport):
+            recoverable_connection_errors = (KeyError,)
+
+        conn = Connection(transport=MyTransport)
+        MyTransport.__init__ = Mock(side_effect=Exception)
+        assert conn.recoverable_connection_errors == (KeyError,)
+
+    def test_recoverable_channel_errors(self):
+
+        class MyTransport(Transport):
+            recoverable_channel_errors = (KeyError, ValueError)
+
+        conn = Connection(transport=MyTransport)
+        assert conn.recoverable_channel_errors == (KeyError, ValueError)
+
+    def test_recoverable_channel_errors__fallback(self):
+        """Ensure missing recoverable_channel_errors on the Transport does not
+        cause a fatal error.
+        """
+
+        class MyTransport(Transport):
+            pass
+
+        conn = Connection(transport=MyTransport)
+        assert conn.recoverable_channel_errors == ()
+
+    def test_recoverable_channel_errors__exception_no_cache(self):
+        """Ensure the recoverable_channel_errors can be retrieved without an
+        initialized transport.
+        """
+        class MyTransport(Transport):
+            recoverable_channel_errors = (KeyError,)
+
+        conn = Connection(transport=MyTransport)
+        MyTransport.__init__ = Mock(side_effect=Exception)
+        assert conn.recoverable_channel_errors == (KeyError,)
+
     def test_multiple_urls_hostname(self):
         conn = Connection(['example.com;amqp://example.com'])
         assert conn.as_uri() == 'amqp://guest:**@example.com:5672//'
@@ -588,6 +687,16 @@ class test_Connection:
         assert conn.as_uri() == 'amqp://guest:**@example.com:5672//'
         conn = Connection('example.com;example.com;')
         assert conn.as_uri() == 'amqp://guest:**@example.com:5672//'
+
+    def test_connection_respect_its_timeout(self):
+        invalid_port = 1222
+        with Connection(
+            f'amqp://guest:guest@localhost:{invalid_port}//',
+            transport_options={'max_retries': 2},
+            connect_timeout=1
+        ) as conn:
+            with pytest.raises(OperationalError):
+                conn.default_channel
 
 
 class test_Connection_with_transport_options:

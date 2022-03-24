@@ -12,13 +12,13 @@ from kombu.utils.encoding import bytes_to_str
 from .base import BaseClient
 
 try:
-    import pycurl  # noqa
+    import pycurl
 except ImportError:  # pragma: no cover
-    pycurl = Curl = METH_TO_CURL = None  # noqa
+    pycurl = Curl = METH_TO_CURL = None
 else:
-    from pycurl import Curl  # noqa
+    from pycurl import Curl
 
-    METH_TO_CURL = {  # noqa
+    METH_TO_CURL = {
         'GET': pycurl.HTTPGET,
         'POST': pycurl.POST,
         'PUT': pycurl.UPLOAD,
@@ -100,7 +100,7 @@ class CurlClient(BaseClient):
                 self._fds[fd] = READ | WRITE
 
     def _set_timeout(self, msecs):
-        pass  # TODO
+        self.hub.call_later(msecs, self._timeout_check)
 
     def _timeout_check(self, _pycurl=pycurl):
         self._pop_from_hub()
@@ -231,9 +231,6 @@ class CurlClient(BaseClient):
             if request.proxy_username:
                 setopt(_pycurl.PROXYUSERPWD, '{}:{}'.format(
                     request.proxy_username, request.proxy_password or ''))
-        else:
-            setopt(_pycurl.PROXY, '')
-            curl.unsetopt(_pycurl.PROXYUSERPWD)
 
         setopt(_pycurl.SSL_VERIFYPEER, 1 if request.validate_cert else 0)
         setopt(_pycurl.SSL_VERIFYHOST, 2 if request.validate_cert else 0)

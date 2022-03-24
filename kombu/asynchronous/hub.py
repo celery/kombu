@@ -1,16 +1,18 @@
 """Event loop implementation."""
 
 import errno
+import threading
 from contextlib import contextmanager
 from queue import Empty
 from time import sleep
-from types import GeneratorType as generator  # noqa
+from types import GeneratorType as generator
+
+from vine import Thenable, promise
 
 from kombu.log import get_logger
 from kombu.utils.compat import fileno
 from kombu.utils.eventio import ERR, READ, WRITE, poll
 from kombu.utils.objects import cached_property
-from vine import Thenable, promise
 
 from .timer import Timer
 
@@ -77,6 +79,7 @@ class Hub:
         self.on_tick = set()
         self.on_close = set()
         self._ready = set()
+        self._ready_lock = threading.Lock()
 
         self._running = False
         self._loop = None
@@ -197,7 +200,8 @@ class Hub:
     def call_soon(self, callback, *args):
         if not isinstance(callback, Thenable):
             callback = promise(callback, args)
-        self._ready.add(callback)
+        with self._ready_lock:
+            self._ready.add(callback)
         return callback
 
     def call_later(self, delay, callback, *args):
@@ -241,6 +245,12 @@ class Hub:
         except (AttributeError, KeyError, OSError):
             pass
 
+    def _pop_ready(self):
+        with self._ready_lock:
+            ready = self._ready
+            self._ready = set()
+            return ready
+
     def close(self, *args):
         [self._unregister(fd) for fd in self.readers]
         self.readers.clear()
@@ -256,8 +266,7 @@ class Hub:
         # To avoid infinite loop where one of the callables adds items
         # to self._ready (via call_soon or otherwise).
         # we create new list with current self._ready
-        todos = list(self._ready)
-        self._ready = set()
+        todos = self._pop_ready()
         for item in todos:
             item()
 
@@ -287,8 +296,7 @@ class Hub:
         propagate = self.propagate_errors
 
         while 1:
-            todo = self._ready
-            self._ready = set()
+            todo = self._pop_ready()
 
             for tick_callback in on_tick:
                 tick_callback()

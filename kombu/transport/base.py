@@ -15,13 +15,13 @@ from kombu.utils.time import maybe_s_to_ms
 
 __all__ = ('Message', 'StdChannel', 'Management', 'Transport')
 
-RABBITMQ_QUEUE_ARGUMENTS = {  # type: Mapping[str, Tuple[str, Callable]]
+RABBITMQ_QUEUE_ARGUMENTS = {
     'expires': ('x-expires', maybe_s_to_ms),
     'message_ttl': ('x-message-ttl', maybe_s_to_ms),
     'max_length': ('x-max-length', int),
     'max_length_bytes': ('x-max-length-bytes', int),
     'max_priority': ('x-max-priority', int),
-}
+}  # type: Mapping[str, Tuple[str, Callable]]
 
 
 def to_rabbitmq_queue_arguments(arguments, **options):
@@ -233,6 +233,10 @@ class Transport:
         if reader is None:
             reader = self.__reader = self._make_reader(connection)
         reader(loop)
+
+    def as_uri(self, uri: str, include_password=False, mask='**') -> str:
+        """Customise the display format of the URI."""
+        raise NotImplementedError()
 
     @property
     def default_connection_params(self):

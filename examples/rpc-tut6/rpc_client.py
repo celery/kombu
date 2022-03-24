@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from kombu import Connection, Producer, Consumer, Queue, uuid
+from kombu import Connection, Consumer, Producer, Queue, uuid
 
 
 class FibonacciRpcClient:

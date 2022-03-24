@@ -4,7 +4,6 @@ import errno
 import math
 import select as __select__
 import sys
-
 from numbers import Integral
 
 from . import fileno

@@ -1,20 +1,38 @@
-"""Etcd Transport.
+"""Etcd Transport module for Kombu.
 
 It uses Etcd as a store to transport messages in Queues
 
 It uses python-etcd for talking to Etcd's HTTP API
+
+Features
+========
+* Type: Virtual
+* Supports Direct: *Unreviewed*
+* Supports Topic: *Unreviewed*
+* Supports Fanout: *Unreviewed*
+* Supports Priority: *Unreviewed*
+* Supports TTL: *Unreviewed*
+
+Connection String
+=================
+
+Connection string has the following format:
+
+.. code-block::
+
+    'etcd'://SERVER:PORT
+
 """
 
 import os
 import socket
-
 from collections import defaultdict
 from contextlib import contextmanager
 from queue import Empty
 
 from kombu.exceptions import ChannelError
 from kombu.log import get_logger
-from kombu.utils.json import loads, dumps
+from kombu.utils.json import dumps, loads
 from kombu.utils.objects import cached_property
 
 from . import virtual
@@ -168,7 +186,7 @@ class Channel(virtual.Channel):
                 self.client.delete(key=item['key'])
                 return msg_content
             except (TypeError, IndexError, etcd.EtcdException) as error:
-                logger.debug('_get failed: {}:{}'.format(type(error), error))
+                logger.debug(f'_get failed: {type(error)}:{error}')
 
             raise Empty()
 
@@ -224,20 +242,21 @@ class Transport(virtual.Transport):
     implements = virtual.Transport.implements.extend(
         exchange_type=frozenset(['direct']))
 
+    if etcd:
+        connection_errors = (
+            virtual.Transport.connection_errors + (etcd.EtcdException, )
+        )
+
+        channel_errors = (
+            virtual.Transport.channel_errors + (etcd.EtcdException, )
+        )
+
     def __init__(self, *args, **kwargs):
         """Create a new instance of etcd.Transport."""
         if etcd is None:
             raise ImportError('Missing python-etcd library')
 
         super().__init__(*args, **kwargs)
-
-        self.connection_errors = (
-            virtual.Transport.connection_errors + (etcd.EtcdException, )
-        )
-
-        self.channel_errors = (
-            virtual.Transport.channel_errors + (etcd.EtcdException, )
-        )
 
     def verify_connection(self, connection):
         """Verify the connection works."""

@@ -1,13 +1,11 @@
 """Simple messaging interface."""
 
 import socket
-
 from collections import deque
 from queue import Empty
 from time import monotonic
 
-from . import entity
-from . import messaging
+from . import entity, messaging
 from .connection import maybe_channel
 
 __all__ = ('SimpleQueue', 'SimpleBuffer')
@@ -67,7 +65,7 @@ class SimpleBase:
                 remaining = timeout - elapsed
 
     def get_nowait(self):
-        m = self.queue.get(no_ack=self.no_ack)
+        m = self.queue.get(no_ack=self.no_ack, accept=self.consumer.accept)
         if not m:
             raise self.Empty()
         return m
@@ -118,7 +116,7 @@ class SimpleQueue(SimpleBase):
 
     def __init__(self, channel, name, no_ack=None, queue_opts=None,
                  queue_args=None, exchange_opts=None, serializer=None,
-                 compression=None, **kwargs):
+                 compression=None, accept=None):
         queue = name
         queue_opts = dict(self.queue_opts, **queue_opts or {})
         queue_args = dict(self.queue_args, **queue_args or {})
@@ -134,13 +132,13 @@ class SimpleQueue(SimpleBase):
         else:
             exchange = queue.exchange
             routing_key = queue.routing_key
-        consumer = messaging.Consumer(channel, queue)
+        consumer = messaging.Consumer(channel, queue, accept=accept)
         producer = messaging.Producer(channel, exchange,
                                       serializer=serializer,
                                       routing_key=routing_key,
                                       compression=compression)
         super().__init__(channel, producer,
-                         consumer, no_ack, **kwargs)
+                         consumer, no_ack)
 
 
 class SimpleBuffer(SimpleQueue):

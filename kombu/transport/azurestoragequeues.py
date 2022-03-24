@@ -1,24 +1,40 @@
-"""Azure Storage Queues transport.
-
-The transport can be enabled by setting the CELERY_BROKER_URL to:
-
-```
-azurestoragequeues://:{Storage Account Access Key}@{Storage Account Name}
-```
-
-Note that if the access key for the storage account contains a slash, it will
-have to be regenerated before it can be used in the connection URL.
+"""Azure Storage Queues transport module for kombu.
 
 More information about Azure Storage Queues:
 https://azure.microsoft.com/en-us/services/storage/queues/
 
+Features
+========
+* Type: Virtual
+* Supports Direct: *Unreviewed*
+* Supports Topic: *Unreviewed*
+* Supports Fanout: *Unreviewed*
+* Supports Priority: *Unreviewed*
+* Supports TTL: *Unreviewed*
+
+Connection String
+=================
+
+Connection string has the following format:
+
+.. code-block::
+
+    azurestoragequeues://:STORAGE_ACCOUNT_ACCESS kEY@STORAGE_ACCOUNT_NAME
+
+Note that if the access key for the storage account contains a slash, it will
+have to be regenerated before it can be used in the connection URL.
+
+Transport Options
+=================
+
+* ``queue_name_prefix``
 """
 
-from queue import Empty
 import string
+from queue import Empty
 
 from kombu.utils.encoding import safe_str
-from kombu.utils.json import loads, dumps
+from kombu.utils.json import dumps, loads
 from kombu.utils.objects import cached_property
 
 from . import virtual
@@ -26,7 +42,7 @@ from . import virtual
 try:
     from azure.storage.queue import QueueService
 except ImportError:  # pragma: no cover
-    QueueService = None  # noqa
+    QueueService = None
 
 # Azure storage queues allow only alphanumeric and dashes
 # so, replace everything with a dash

@@ -1,8 +1,8 @@
 """Logical Clocks and Synchronization."""
 
-from threading import Lock
 from itertools import islice
 from operator import itemgetter
+from threading import Lock
 
 __all__ = ('LamportClock', 'timetuple')
 

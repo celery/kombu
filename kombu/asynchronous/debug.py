@@ -1,6 +1,6 @@
 """Event-loop debugging tools."""
 
-from kombu.utils.eventio import READ, WRITE, ERR
+from kombu.utils.eventio import ERR, READ, WRITE
 from kombu.utils.functional import reprcall
 
 
@@ -40,13 +40,13 @@ def repr_events(h, events):
 
 def repr_readers(h):
     """Return description of pending readers."""
-    return ['({}){}->{}'.format(fd, _rcb(cb), repr_flag(READ | ERR))
+    return [f'({fd}){_rcb(cb)}->{repr_flag(READ | ERR)}'
             for fd, cb in h.readers.items()]
 
 
 def repr_writers(h):
     """Return description of pending writers."""
-    return ['({}){}->{}'.format(fd, _rcb(cb), repr_flag(WRITE))
+    return [f'({fd}){_rcb(cb)}->{repr_flag(WRITE)}'
             for fd, cb in h.writers.items()]
 
 

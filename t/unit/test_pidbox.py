@@ -1,11 +1,11 @@
-import pytest
 import socket
 import warnings
-
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from unittest.mock import Mock, patch
 
-from kombu import Connection
-from kombu import pidbox
+import pytest
+
+from kombu import Connection, pidbox
 from kombu.exceptions import ContentDisallowed, InconsistencyError
 from kombu.utils.uuid import uuid
 
@@ -94,6 +94,47 @@ class test_Mailbox:
         de = mailbox.connection.drain_events = Mock()
         de.side_effect = socket.timeout
         mailbox._collect(ticket, limit=1, channel=channel)
+
+    def test_reply__collect_uses_default_channel(self):
+        class ConsumerCalled(Exception):
+            pass
+
+        def fake_Consumer(channel, *args, **kwargs):
+            raise ConsumerCalled(channel)
+
+        ticket = uuid()
+        with patch('kombu.pidbox.Consumer') as Consumer:
+            mailbox = pidbox.Mailbox('test_reply__collect')(self.connection)
+            assert mailbox.connection.default_channel is not None
+            Consumer.side_effect = fake_Consumer
+            try:
+                mailbox._collect(ticket, limit=1)
+            except ConsumerCalled as c:
+                assert c.args[0] is not None
+            except Exception:
+                raise
+            else:
+                assert False, "Consumer not called"
+
+    def test__publish_uses_default_channel(self):
+        class QueueCalled(Exception):
+            pass
+
+        def queue__call__side(channel, *args, **kwargs):
+            raise QueueCalled(channel)
+
+        ticket = uuid()
+        with patch.object(pidbox.Queue, '__call__') as queue__call__:
+            mailbox = pidbox.Mailbox('test_reply__collect')(self.connection)
+            queue__call__.side_effect = queue__call__side
+            try:
+                mailbox._publish(ticket, {}, reply_ticket=ticket)
+            except QueueCalled as c:
+                assert c.args[0] is not None
+            except Exception:
+                raise
+            else:
+                assert False, "Queue not called"
 
     def test_constructor(self):
         assert self.mailbox.connection is None
@@ -298,3 +339,38 @@ class test_Mailbox:
         m = consumer.queues[0].get()
         if m:
             return m.payload
+
+
+GLOBAL_PIDBOX = pidbox.Mailbox('global_unittest_mailbox')
+
+
+def getoid():
+    return GLOBAL_PIDBOX.oid
+
+
+class test_PidboxOid:
+    """Unittests checking oid consistency of Pidbox"""
+
+    def test_oid_consistency(self):
+        """Tests that oid is consistent in single process"""
+        m1 = pidbox.Mailbox('mailbox1')
+        m2 = pidbox.Mailbox('mailbox2')
+        assert m1.oid == m1.oid
+        assert m2.oid == m2.oid
+        assert m1.oid != m2.oid
+
+    def test_subprocess_oid(self):
+        """Tests that subprocess will not share oid with parent process."""
+        oid = GLOBAL_PIDBOX.oid
+        with ProcessPoolExecutor() as e:
+            res = e.submit(getoid)
+            subprocess_oid = res.result()
+        assert subprocess_oid != oid
+
+    def test_thread_oid(self):
+        """Tests that threads will not share oid."""
+        oid = GLOBAL_PIDBOX.oid
+        with ThreadPoolExecutor() as e:
+            res = e.submit(getoid)
+            subprocess_oid = res.result()
+        assert subprocess_oid != oid

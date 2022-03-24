@@ -1,6 +1,6 @@
 from kombu.asynchronous import get_event_loop
 
-from .base import Request, Headers, Response
+from .base import Headers, Request, Response
 
 __all__ = ('Client', 'Headers', 'Response', 'Request')
 

@@ -1,8 +1,9 @@
 """Generic resource pool implementation."""
 
-from collections import deque
 import os
-from queue import Empty, LifoQueue as _LifoQueue
+from collections import deque
+from queue import Empty
+from queue import LifoQueue as _LifoQueue
 
 from . import exceptions
 from .utils.compat import register_after_fork
@@ -215,7 +216,7 @@ class Resource:
 
         _next_resource_id = 0
 
-        def acquire(self, *args, **kwargs):  # noqa
+        def acquire(self, *args, **kwargs):
             import traceback
             id = self._next_resource_id = self._next_resource_id + 1
             print(f'+{id} ACQUIRE {self.__class__.__name__}')
@@ -227,7 +228,7 @@ class Resource:
             r.acquired_by.append(traceback.format_stack())
             return r
 
-        def release(self, resource):  # noqa
+        def release(self, resource):
             id = resource._resource_id
             print(f'+{id} RELEASE {self.__class__.__name__}')
             r = self._orig_release(resource)

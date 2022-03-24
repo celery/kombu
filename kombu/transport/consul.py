@@ -1,13 +1,34 @@
-"""Consul Transport.
+"""Consul Transport module for Kombu.
+
+Features
+========
 
 It uses Consul.io's Key/Value store to transport messages in Queues
 
 It uses python-consul for talking to Consul's HTTP API
+
+Features
+========
+* Type: Native
+* Supports Direct: Yes
+* Supports Topic: *Unreviewed*
+* Supports Fanout: *Unreviewed*
+* Supports Priority: *Unreviewed*
+* Supports TTL: *Unreviewed*
+
+Connection String
+=================
+
+Connection string has the following format:
+
+.. code-block::
+
+    consul://CONSUL_ADDRESS[:PORT]
+
 """
 
-import uuid
 import socket
-
+import uuid
 from collections import defaultdict
 from contextlib import contextmanager
 from queue import Empty
@@ -15,7 +36,7 @@ from time import monotonic
 
 from kombu.exceptions import ChannelError
 from kombu.log import get_logger
-from kombu.utils.json import loads, dumps
+from kombu.utils.json import dumps, loads
 from kombu.utils.objects import cached_property
 
 from . import virtual
@@ -193,7 +214,7 @@ class Channel(virtual.Channel):
         only one node reads at the same time. This is for read consistency
         """
         with self._queue_lock(queue, raising=Empty):
-            key = '{}/msg/'.format(self._key_prefix(queue))
+            key = f'{self._key_prefix(queue)}/msg/'
             logger.debug('Fetching key %s with index %s', key, self.index)
             self.index, data = self.client.kv.get(
                 key=key, recurse=True,
@@ -219,14 +240,14 @@ class Channel(virtual.Channel):
     def _purge(self, queue):
         self._destroy_session(queue)
         return self.client.kv.delete(
-            key='{}/msg/'.format(self._key_prefix(queue)),
+            key=f'{self._key_prefix(queue)}/msg/',
             recurse=True,
         )
 
     def _size(self, queue):
         size = 0
         try:
-            key = '{}/msg/'.format(self._key_prefix(queue))
+            key = f'{self._key_prefix(queue)}/msg/'
             logger.debug('Fetching key recursively %s with index %s',
                          key, self.index)
             self.index, data = self.client.kv.get(
@@ -255,23 +276,24 @@ class Transport(virtual.Transport):
     driver_type = 'consul'
     driver_name = 'consul'
 
-    def __init__(self, *args, **kwargs):
-        if consul is None:
-            raise ImportError('Missing python-consul library')
-
-        super().__init__(*args, **kwargs)
-
-        self.connection_errors = (
+    if consul:
+        connection_errors = (
             virtual.Transport.connection_errors + (
                 consul.ConsulException, consul.base.ConsulException
             )
         )
 
-        self.channel_errors = (
+        channel_errors = (
             virtual.Transport.channel_errors + (
                 consul.ConsulException, consul.base.ConsulException
             )
         )
+
+    def __init__(self, *args, **kwargs):
+        if consul is None:
+            raise ImportError('Missing python-consul library')
+
+        super().__init__(*args, **kwargs)
 
     def verify_connection(self, connection):
         port = connection.client.port or self.default_port

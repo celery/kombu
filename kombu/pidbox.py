@@ -2,23 +2,21 @@
 
 import socket
 import warnings
-
 from collections import defaultdict, deque
 from contextlib import contextmanager
 from copy import copy
 from itertools import count
-from threading import local
 from time import time
 
-from . import Exchange, Queue, Consumer, Producer
+from . import Consumer, Exchange, Producer, Queue
 from .clocks import LamportClock
 from .common import maybe_declare, oid_from
 from .exceptions import InconsistencyError
 from .log import get_logger
+from .matcher import match
 from .utils.functional import maybe_evaluate, reprcall
 from .utils.objects import cached_property
 from .utils.uuid import uuid
-from .matcher import match
 
 REPLY_QUEUE_EXPIRES = 10
 
@@ -188,7 +186,6 @@ class Mailbox:
         self.clock = LamportClock() if clock is None else clock
         self.exchange = self._get_exchange(self.namespace, self.type)
         self.reply_exchange = self._get_reply_exchange(self.namespace)
-        self._tls = local()
         self.unclaimed = defaultdict(deque)
         self.accept = self.accept if accept is None else accept
         self.serializer = self.serializer if serializer is None else serializer
@@ -297,7 +294,7 @@ class Mailbox:
         chan = channel or self.connection.default_channel
         exchange = self.exchange
         if reply_ticket:
-            maybe_declare(self.reply_queue(channel))
+            maybe_declare(self.reply_queue(chan))
             message.update(ticket=reply_ticket,
                            reply_to={'exchange': self.reply_exchange.name,
                                      'routing_key': self.oid})
@@ -356,7 +353,7 @@ class Mailbox:
             accept = self.accept
         chan = channel or self.connection.default_channel
         queue = self.reply_queue
-        consumer = Consumer(channel, [queue], accept=accept, no_ack=True)
+        consumer = Consumer(chan, [queue], accept=accept, no_ack=True)
         responses = []
         unclaimed = self.unclaimed
         adjust_clock = self.clock.adjust
@@ -405,13 +402,9 @@ class Mailbox:
                         durable=False,
                         delivery_mode='transient')
 
-    @cached_property
+    @property
     def oid(self):
-        try:
-            return self._tls.OID
-        except AttributeError:
-            oid = self._tls.OID = oid_from(self)
-            return oid
+        return oid_from(self)
 
     @cached_property
     def producer_pool(self):

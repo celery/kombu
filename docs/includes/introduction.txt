@@ -1,4 +1,4 @@
-:Version: 5.0.1
+:Version: 5.2.4
 :Web: https://kombu.readthedocs.io/
 :Download: https://pypi.org/project/kombu/
 :Source: https://github.com/celery/kombu/
@@ -23,15 +23,7 @@ Features
 * Allows application authors to support several message server
   solutions by using pluggable transports.
 
-    * AMQP transport using the `py-amqp`_, `librabbitmq`_, or `qpid-python`_ libraries.
-
-    * High performance AMQP transport written in C - when using `librabbitmq`_
-
-      This is automatically enabled if librabbitmq is installed:
-
-      .. code-block:: console
-
-        $ pip install librabbitmq
+    * AMQP transport using the `py-amqp`_, `redis`_, or `SQS`_ libraries.
 
     * Virtual transports makes it really easy to add support for non-AMQP
       transports. There is already built-in support for `Redis`_,
@@ -132,7 +124,7 @@ Quick overview
     video_queue = Queue('video', exchange=media_exchange, routing_key='video')
 
     def process_media(body, message):
-        print body
+        print(body)
         message.ack()
 
     # connections
@@ -173,7 +165,7 @@ Or handle channels manually:
 
     with connection.channel() as channel:
         producer = Producer(channel, ...)
-        consumer = Producer(channel)
+        consumer = Consumer(channel)
 
 
 All objects can be used outside of with statements too,
@@ -181,7 +173,7 @@ just remember to close the objects after use:
 
 .. code-block:: python
 
-    from kombu import Connection, Consumer, Producer
+    from kombu import Connection, Consumer
 
     connection = Connection()
         # ...
@@ -235,7 +227,7 @@ There are some concepts you should be familiar with before starting:
 
     * Consumers
 
-        Consumers declares a queue, binds it to a exchange and receives
+        A consumer declares a queue, binds it to an exchange and receives
         messages from it.
 
     * Queues

@@ -2,17 +2,16 @@
 
 import heapq
 import sys
-
 from collections import namedtuple
 from datetime import datetime
 from functools import total_ordering
-from weakref import proxy as weakrefproxy
 from time import monotonic
+from time import time as _time
+from weakref import proxy as weakrefproxy
 
 from vine.utils import wraps
 
 from kombu.log import get_logger
-from time import time as _time
 
 try:
     from pytz import utc
@@ -155,7 +154,7 @@ class Timer:
         return self._enter(eta, priority, entry)
 
     def enter_after(self, secs, entry, priority=0, time=monotonic):
-        return self.enter_at(entry, time() + secs, priority)
+        return self.enter_at(entry, time() + float(secs), priority)
 
     def _enter(self, eta, priority, entry, push=heapq.heappush):
         push(self._queue, scheduled(eta, priority, entry))

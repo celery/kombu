@@ -1,9 +1,8 @@
-import pytest
-
 from unittest.mock import Mock
 
-from kombu import Connection, Producer
-from kombu import pools
+import pytest
+
+from kombu import Connection, Producer, pools
 from kombu.connection import ConnectionPool
 from kombu.utils.collections import eqhash
 
@@ -15,7 +14,7 @@ class test_ProducerPool:
 
         def __init__(self, *args, **kwargs):
             self.instance = Mock()
-            pools.ProducerPool.__init__(self, *args, **kwargs)
+            super().__init__(*args, **kwargs)
 
         def Producer(self, connection):
             return self.instance

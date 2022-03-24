@@ -1,6 +1,6 @@
-import pytest
-
 from unittest.mock import Mock
+
+import pytest
 
 from kombu import Exchange
 from kombu.utils.imports import symbol_by_name

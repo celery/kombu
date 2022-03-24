@@ -1,6 +1,6 @@
-import pytest
-
 from unittest.mock import Mock, patch
+
+import pytest
 
 pytest.importorskip('librabbitmq')
 

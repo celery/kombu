@@ -1,8 +1,7 @@
-import pytest
-
 from datetime import datetime
-
 from unittest.mock import Mock, patch
+
+import pytest
 
 from kombu.asynchronous.timer import Entry, Timer, to_timestamp
 

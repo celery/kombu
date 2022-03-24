@@ -1,8 +1,6 @@
 import pickle
-
 from heapq import heappush
 from time import time
-
 from unittest.mock import Mock
 
 from kombu.clocks import LamportClock, timetuple

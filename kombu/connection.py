@@ -2,12 +2,9 @@
 
 import os
 import socket
-
-from collections import OrderedDict
 from contextlib import contextmanager
 from itertools import count, cycle
 from operator import itemgetter
-
 
 try:
     from ssl import CERT_NONE
@@ -26,7 +23,7 @@ from .transport import get_transport_cls
 from .utils.collections import HashedSeq
 from .utils.functional import dictfilter, lazy, retry_over_time, shufflecycle
 from .utils.objects import cached_property
-from .utils.url import as_url, parse_url, quote, urlparse, maybe_sanitize_url
+from .utils.url import as_url, maybe_sanitize_url, parse_url, quote, urlparse
 
 __all__ = ('Connection', 'ConnectionPool', 'ChannelPool')
 
@@ -75,7 +72,8 @@ class Connection:
         URL (str, Sequence): Broker URL, or a list of URLs.
 
     Keyword Arguments:
-        ssl (bool): Use SSL to connect to the server. Default is ``False``.
+        ssl (bool/dict): Use SSL to connect to the server.
+            Default is ``False``.
             May not be supported by the specified transport.
         transport (Transport): Default transport if not specified in the URL.
         connect_timeout (float): Timeout in seconds for connecting to the
@@ -528,7 +526,7 @@ class Connection:
                             # the error if it persists after a new connection
                             # was successfully established.
                             raise
-                        if max_retries is not None and retries > max_retries:
+                        if max_retries is not None and retries >= max_retries:
                             raise
                         self._debug('ensure connection error: %r',
                                     exc, exc_info=1)
@@ -625,7 +623,14 @@ class Connection:
                 transport_cls, transport_cls)
         D = self.transport.default_connection_params
 
-        hostname = self.hostname or D.get('hostname')
+        if not self.hostname and D.get('hostname'):
+            logger.warning(
+                "No hostname was supplied. "
+                f"Reverting to default '{D.get('hostname')}'")
+            hostname = D.get('hostname')
+        else:
+            hostname = self.hostname
+
         if self.uri_prefix:
             hostname = f'{self.uri_prefix}+{hostname}'
 
@@ -650,7 +655,7 @@ class Connection:
 
     def info(self):
         """Get connection info."""
-        return OrderedDict(self._info())
+        return dict(self._info())
 
     def __eqhash__(self):
         return HashedSeq(self.transport_cls, self.hostname, self.userid,
@@ -659,11 +664,17 @@ class Connection:
 
     def as_uri(self, include_password=False, mask='**',
                getfields=itemgetter('port', 'userid', 'password',
-                                    'virtual_host', 'transport')):
+                                    'virtual_host', 'transport')) -> str:
         """Convert connection parameters to URL form."""
         hostname = self.hostname or 'localhost'
         if self.transport.can_parse_url:
             connection_as_uri = self.hostname
+            try:
+                return self.transport.as_uri(
+                    connection_as_uri, include_password, mask)
+            except NotImplementedError:
+                pass
+
             if self.uri_prefix:
                 connection_as_uri = f'{self.uri_prefix}+{hostname}'
             if not include_password:
@@ -804,7 +815,7 @@ class Connection:
         return exchange_type in self.transport.implements.exchange_type
 
     def __repr__(self):
-        return '<Connection: {} at {:#x}>'.format(self.as_uri(), id(self))
+        return f'<Connection: {self.as_uri()} at {id(self):#x}>'
 
     def __copy__(self):
         return self.clone()
@@ -823,7 +834,7 @@ class Connection:
         return self.transport.qos_semantics_matches_spec(self.connection)
 
     def _extract_failover_opts(self):
-        conn_opts = {}
+        conn_opts = {'timeout': self.connect_timeout}
         transport_opts = self.transport_options
         if transport_opts:
             if 'max_retries' in transport_opts:
@@ -918,7 +929,7 @@ class Connection:
         but where the connection must be closed and re-established first.
         """
         try:
-            return self.transport.recoverable_connection_errors
+            return self.get_transport_cls().recoverable_connection_errors
         except AttributeError:
             # There were no such classification before,
             # and all errors were assumed to be recoverable,
@@ -934,19 +945,19 @@ class Connection:
         recovered from without re-establishing the connection.
         """
         try:
-            return self.transport.recoverable_channel_errors
+            return self.get_transport_cls().recoverable_channel_errors
         except AttributeError:
             return ()
 
     @cached_property
     def connection_errors(self):
         """List of exceptions that may be raised by the connection."""
-        return self.transport.connection_errors
+        return self.get_transport_cls().connection_errors
 
     @cached_property
     def channel_errors(self):
         """List of exceptions that may be raised by the channel."""
-        return self.transport.channel_errors
+        return self.get_transport_cls().channel_errors
 
     @property
     def supports_heartbeats(self):
@@ -957,7 +968,7 @@ class Connection:
         return self.transport.implements.asynchronous
 
 
-BrokerConnection = Connection  # noqa: E305
+BrokerConnection = Connection
 
 
 class ConnectionPool(Resource):

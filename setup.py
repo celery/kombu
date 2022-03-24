@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import os
 import re
 import sys
@@ -6,12 +6,10 @@ import sys
 import setuptools
 import setuptools.command.test
 
-from distutils.command.install import INSTALL_SCHEMES
-
 try:
     from setuptools import setup
 except ImportError:
-    from distutils.core import setup  # noqa
+    from distutils.core import setup
 
 # -- Parse meta
 re_meta = re.compile(r'__(\w+?)__\s*=\s*(.*)')
@@ -57,9 +55,6 @@ def fullsplit(path, result=None):
     return fullsplit(head, [tail] + result)
 
 
-for scheme in list(INSTALL_SCHEMES.values()):
-    scheme['data'] = scheme['purelib']
-
 # if os.path.exists('README.rst'):
 #    long_description = codecs.open('README.rst', 'r', 'utf-8').read()
 # else:
@@ -70,16 +65,13 @@ py_version = sys.version_info
 is_pypy = hasattr(sys, 'pypy_version_info')
 
 
-def strip_comments(l):
-    return l.split('#', 1)[0].strip()
+def strip_comments(line):
+    return line.split('#', 1)[0].strip()
 
 
 def reqs(*f):
-    return [
-        r for r in (
-            strip_comments(l) for l in open(
-            os.path.join(os.getcwd(), 'requirements', *f)).readlines()
-        ) if r]
+    with open(os.path.join(os.getcwd(), "requirements", *f)) as reqs_file:
+        return [r for r in (strip_comments(line) for line in reqs_file) if r]
 
 
 def extras(*p):
@@ -90,7 +82,7 @@ class pytest(setuptools.command.test.test):
     user_options = [('pytest-args=', 'a', 'Arguments to pass to py.test')]
 
     def initialize_options(self):
-        setuptools.command.test.test.initialize_options(self)
+        super().initialize_options()
         self.pytest_args = []
 
     def run_tests(self):
@@ -116,7 +108,7 @@ setup(
     zip_safe=False,
     license='BSD',
     cmdclass={'test': pytest},
-    python_requires=">=3.6",
+    python_requires=">=3.7",
     install_requires=reqs('default.txt'),
     tests_require=reqs('test.txt'),
     extras_require={
@@ -142,9 +134,10 @@ setup(
         'Programming Language :: Python',
         'Programming Language :: Python :: 3 :: Only',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
         'Programming Language :: Python :: Implementation :: CPython',
         'Programming Language :: Python :: Implementation :: PyPy',
         'Intended Audience :: Developers',

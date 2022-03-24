@@ -1,19 +1,14 @@
-import pytest
 import socket
-
-from amqp import RecoverableConnectionError
 from unittest.mock import Mock, patch
-from case import ContextMock
+
+import pytest
+from amqp import RecoverableConnectionError
 
 from kombu import common
-from kombu.common import (
-    Broadcast, maybe_declare,
-    send_reply, collect_replies,
-    declaration_cached, ignore_errors,
-    QoS, PREFETCH_COUNT_MAX, generate_oid
-)
-
-from t.mocks import MockPool
+from kombu.common import (PREFETCH_COUNT_MAX, Broadcast, QoS, collect_replies,
+                          declaration_cached, generate_oid, ignore_errors,
+                          maybe_declare, send_reply)
+from t.mocks import ContextMock, MockPool
 
 
 def test_generate_oid():
@@ -401,7 +396,7 @@ class test_QoS:
     class _QoS(QoS):
         def __init__(self, value):
             self.value = value
-            QoS.__init__(self, None, value)
+            super().__init__(None, value)
 
         def set(self, value):
             return value

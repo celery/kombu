@@ -1,31 +1,25 @@
+from contextlib import contextmanager
 from io import StringIO
+from unittest.mock import Mock
 
 import pytest
-
-from contextlib import contextmanager
-
-from unittest.mock import Mock
 from vine.abstract import Thenable
 
-from kombu.exceptions import HttpError
-
 from kombu.asynchronous import http
-from kombu.asynchronous.aws.connection import (
-    AsyncHTTPSConnection,
-    AsyncHTTPResponse,
-    AsyncConnection,
-    AsyncAWSQueryConnection,
-)
+from kombu.asynchronous.aws.connection import (AsyncAWSQueryConnection,
+                                               AsyncConnection,
+                                               AsyncHTTPResponse,
+                                               AsyncHTTPSConnection)
 from kombu.asynchronous.aws.ext import boto3
+from kombu.exceptions import HttpError
+from t.mocks import PromiseMock
 
 from .case import AWSCase
 
-from t.mocks import PromiseMock
-
 try:
-    from urllib.parse import urlparse, parse_qs
+    from urllib.parse import parse_qs, urlparse
 except ImportError:
-    from urlparse import urlparse, parse_qs  # noqa
+    from urlparse import parse_qs, urlparse
 
 # Not currently working
 VALIDATES_CERT = False

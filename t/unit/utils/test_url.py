@@ -8,8 +8,8 @@ import ssl
 import pytest
 
 import kombu.utils.url
-from kombu.utils.url import as_url, parse_url, maybe_sanitize_url
-from kombu.utils.url import parse_ssl_cert_reqs
+from kombu.utils.url import (as_url, maybe_sanitize_url, parse_ssl_cert_reqs,
+                             parse_url)
 
 
 def test_parse_url():

@@ -1,6 +1,6 @@
-========================================
- Message Serialization - ``kombu``
-========================================
+================================================
+ Message Serialization - ``kombu.serialization``
+================================================
 
 .. currentmodule:: kombu.serialization
 

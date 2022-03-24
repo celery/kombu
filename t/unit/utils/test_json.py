@@ -1,11 +1,11 @@
-import pytest
-import pytz
-
+from collections import namedtuple
 from datetime import datetime
 from decimal import Decimal
+from unittest.mock import MagicMock, Mock
 from uuid import uuid4
 
-from unittest.mock import MagicMock, Mock
+import pytest
+import pytz
 
 from kombu.utils.encoding import str_to_bytes
 from kombu.utils.json import _DecodeError, dumps, loads
@@ -42,6 +42,10 @@ class test_JSONEncoder:
     def test_Decimal(self):
         d = Decimal('3314132.13363235235324234123213213214134')
         assert loads(dumps({'d': d})), {'d': str(d)}
+
+    def test_namedtuple(self):
+        Foo = namedtuple('Foo', ['bar'])
+        assert loads(dumps(Foo(123))) == [123]
 
     def test_UUID(self):
         id = uuid4()

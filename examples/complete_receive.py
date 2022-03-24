@@ -6,7 +6,7 @@ and exits.
 
 from pprint import pformat
 
-from kombu import Connection, Exchange, Queue, Consumer, eventloop
+from kombu import Connection, Consumer, Exchange, Queue, eventloop
 
 #: By default messages sent to exchanges are persistent (delivery_mode=2),
 #: and queues and exchanges are durable.
@@ -21,9 +21,10 @@ def pretty(obj):
 #: This is the callback applied when a message is received.
 def handle_message(body, message):
     print(f'Received message: {body!r}')
-    print('  properties:\n{}'.format(pretty(message.properties)))
-    print('  delivery_info:\n{}'.format(pretty(message.delivery_info)))
+    print(f'  properties:\n{pretty(message.properties)}')
+    print(f'  delivery_info:\n{pretty(message.delivery_info)}')
     message.ack()
+
 
 #: Create a connection and a channel.
 #: If hostname, userid, password and virtual_host is not specified

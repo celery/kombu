@@ -32,7 +32,7 @@ if sys.platform.startswith('java'):  # pragma: no cover
         return 'utf-8'
 else:
 
-    def default_encoding(file=None):  # noqa
+    def default_encoding(file=None):
         """Get default encoding."""
         file = file or get_default_encoding_file()
         return getattr(file, 'encoding', None) or sys.getfilesystemencoding()

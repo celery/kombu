@@ -88,6 +88,9 @@ All of these are valid URLs:
 
     # Using Redis over a Unix socket
     redis+socket:///tmp/redis.sock
+    
+    # Using Redis sentinel
+    sentinel://sentinel1:26379;sentinel://sentinel2:26379
 
     # Using Qpid
     qpid://localhost/

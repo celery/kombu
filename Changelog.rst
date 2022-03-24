@@ -4,6 +4,178 @@
  Change history
 ================
 
+.. _version-5.2.4:
+
+5.2.4
+=====
+:release-date: 06 Mar, 2022
+:release-by: Asif Saif Uddin
+
+- Allow getting recoverable_connection_errors without an active transport.
+- Prevent KeyError: 'purelib' by removing INSTALLED_SCHEME hack from setup.py.
+- Revert "try pining setuptools (#1466)" (#1481).
+- Fix issue #789: Async http code not allowing for proxy config (#790).
+- Fix The incorrect times of retrying.
+- Set redelivered property for Celery with Redis (#1484).
+- Remove use of OrderedDict in various places (#1483).
+- Warn about missing hostname only when default one is available (#1488).
+- All supported versions of Python define __package__.
+- Added global_keyprefix support for pubsub clients (#1495).
+- try pytest 7 (#1497).
+- Add an option to not base64-encode SQS messages.
+- Fix SQS extract_task_name message reference.
+
+
+.. _version-5.2.3:
+
+5.2.3
+=====
+:release-date: 29 Dec, 2021
+:release-by: Asif Saif Uddin
+
+- Allow redis >= 4.0.2.
+- Fix PyPy CI jobs.
+- SQS transport: detect FIFO queue properly by checking queue URL (#1450).
+- Ensure that restore is atomic in redis transport (#1444).
+- Restrict setuptools>=59.1.1,<59.7.0.
+- Bump minimum py-amqp to v5.0.9 (#1462).
+- Reduce memory usage of Transport (#1470).
+- Prevent event loop polling on closed redis transports (and causing leak).
+- Respect connection timeout (#1458)
+- prevent redis event loop stopping on 'consumer: Cannot connect' (#1477).
+
+
+.. _version-5.2.2:
+
+5.2.2
+=====
+:release-date: 16 Nov, 2021
+:release-by: Asif Saif Uddin
+
+- Pin redis version to >= 3.4.1<4.0.0 as it is not fully compatible yet.
+
+
+.. _version-5.2.1:
+
+5.2.1
+=====
+:release-date: 8 Nov, 2021
+:release-by: Asif Saif Uddin
+
+- Bump redis version to >= 3.4.1.
+- try latest sqs dependencies ti fix security warning.
+- Tests & dependency updates
+
+.. _version-5.2.0:
+
+5.2.0
+=====
+:release-date: 5 Nov, 2021
+:release-by: Naomi Elstein
+
+- v 1.4.x (#1338).
+- stop mentioning librabbitmq (#1381).
+- Merge branch 'master' of https://github.com/celery/kombu
+- test new pytest version (#1383).
+- drop python 3.6 from CI (#1382).
+- Use ANY from unittest instead of case.mock.
+- Fix missing dependency to redis in docs requirements.
+- [pre-commit.ci] pre-commit autoupdate.
+- Remove dependency to case (#1389).
+- Fix: check redis response type.
+- [pre-commit.ci] pre-commit autoupdate (#1393).
+- py3.7+ on setup (#1392).
+- Prevent caching of oid in pidbox (#1394).
+- Added unittests for #1394 .
+- fix flake8 in kombu/asynchronous/aws/connection.py (#1397).
+- [pre-commit.ci] pre-commit autoupdate.
+- Fix test_pidbox unittests to support non-linux platforms (#1398).
+- [pre-commit.ci] pre-commit autoupdate.
+- removre bdist.
+- add python 3.10 to CI & fix other issues (#1402).
+- try to fix CI (#1407).
+- Dont failfast when pypy3 tests fail (#1408).
+- Return empty list instead of InconsistencyError when exchange table is empty (#1404).
+- [pre-commit.ci] pre-commit autoupdate.
+
+.. _version-5.2.0rc1:
+
+5.2.0rc1
+========
+:release-date: 2021-09-07 7:00 P.M UTC+6:00
+:release-by: Asif Saif Uddin
+
+- Remove backward compatible code not used anymore (#1344).
+- Add support for setting redis username (#1351).
+- Add support for Python 3.9.
+- Use hostname from URI when server_host is None.
+- Use Python's built-in json module by default, instead of simplejson.
+- SQS Channel.predefined_queues should be {} if not defined.
+- Add global key prefix for keys set by Redis transporter (#1349).
+- fix: raise BrokenPipeError (#1231).
+- fix: add missing commands to prefix.
+- Make BrokerState Transport specific.
+- Tests & Docs cleanup.
+
+.. _version-5.1.0:
+
+5.1.0
+=====
+:release-date: 2021-05-23 7:00 P.M UTC+3:00
+:release-by: Omer Katz
+
+- Fix queue names special characters replacement for Azure Service Bus. (#1324)
+- Add support for SQLAlchemy 1.4. (#1328)
+- Coerce seconds argument to a floating point number in ``Timer.enter_after``. (#1330)
+- Add accept parameter to SimpleQueue class. (#1140)
+- ``prepare_accept_content()`` now raises ``SerializerNotInstalled`` instead of ``KeyError``. (#1343)
+
+.. _version-5.1.0b1:
+
+5.1.0b1
+=======
+:release-date: 2021-04-01 10:30 P.M UTC+6:00
+:release-by: Asiff Saif Uddin
+
+- Wheels are no longer universal.
+- Revert "Added redis transport key_prefix from envvars".
+- Redis Transport: Small improvements of `SentinelChannel` (#1253).
+- Fix pidbox not using default channels.
+- Revert "on worker restart - restore visible regardless to time (#905)".
+- Add vine to dependencies.
+- Pin urllib3<1.26 to fix failing unittests.
+- Add timeout to producer publish (#1269).
+- Remove python2 compatibility code (#1277).
+- redis: Support Sentinel with SSL.
+- Support for Azure Service Bus 7.0.0 (#1284).
+- Allow specifying session token (#1283).
+- kombu/asynchronous/http/curl: implement _set_timeout.
+- Disable namedtuple to object feature in simplejson (#1297).
+- Update to tox docker 2.0.
+- SQS back-off policy (#1301).
+- Fixed SQS unittests.
+- Fix: non kombu json message decoding in SQS transport (#1306).
+- Add Github Actions CI (#1309).
+- Update default pickle protocol version to 4 (#1314).
+- Update connection.py (#1311).
+- Drop support for the lzma backport.
+- Drop obsolete code importing pickle (#1315).
+- Update default login method for librabbitmq and pyamqp (#936).
+- SQS Broker - handle STS authentication with AWS (#1322).
+- Min py-amqp version is v5.0.6 (#1325).
+- Numerous docs & example fixes.
+- Use a thread-safe implementation of cached_property (#1316).
+
+
+.. _version-5.0.2:
+
+5.0.2
+=====
+:release-date: 2020-09-06 6:30 P.M UTC+3:00
+:release-by: Omer Katz
+
+- Bump required amqp version to 5.0.0.
+
 .. _version-5.0.1:
 
 5.0.1
@@ -82,8 +254,15 @@
 :release-date: 2020-03-29 20:45 A.M UTC+6:00
 :release-by: Asif Saif Uddin
 
+- Added support for health_check_interval option in broker_transport_options (#1145)
+- Added retry_on_timeout parameter to Redis Channel (#1150)
+- Added support for standard values for ssl_cert_reqs query parameter for Redis (#1139)
+- Added predefined_queues option to SQS transport (#1156)
+- Added ssl certificate verification against ca certificates when amqps is used for pyamqp transport (#1151)
+- Fix issue (#701) where kombu.transport.redis.Mutex is broken in python 3 (#1141)
+- Fix brop error in Redis Channel (#1144)
 
-.. _version-4.6.8:
+.. _version-4.6.7:
 
 4.6.7
 =====
@@ -605,7 +784,7 @@
 
 - Fixed string handling when using python-future module
 
-    Contributed by **John Koehl"
+    Contributed by **John Koehl**
 
 - Replaced "async" with "asynchronous" in preparation for Python 3.7
 

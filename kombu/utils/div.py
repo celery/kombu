@@ -1,8 +1,8 @@
 """Div. Utilities."""
 
-from .encoding import default_encode
-
 import sys
+
+from .encoding import default_encode
 
 
 def emergency_dump_state(state, open_file=open, dump=None, stderr=None):
@@ -15,14 +15,14 @@ def emergency_dump_state(state, open_file=open, dump=None, stderr=None):
         import pickle
         dump = pickle.dump
     persist = mktemp()
-    print(f'EMERGENCY DUMP STATE TO FILE -> {persist} <-',  # noqa
+    print(f'EMERGENCY DUMP STATE TO FILE -> {persist} <-',
           file=stderr)
     fh = open_file(persist, 'w')
     try:
         try:
             dump(state, fh, protocol=0)
         except Exception as exc:
-            print(  # noqa
+            print(
                 f'Cannot pickle state: {exc!r}. Fallback to pformat.',
                 file=stderr,
             )

@@ -1,25 +1,45 @@
-"""Zookeeper transport.
+# copyright: (c) 2010 - 2013 by Mahendra M.
+# license: BSD, see LICENSE for more details.
 
-:copyright: (c) 2010 - 2013 by Mahendra M.
-:license: BSD, see LICENSE for more details.
+"""Zookeeper transport module for kombu.
 
-**Synopsis**
-
-Connects to a zookeeper node as <server>:<port>/<vhost>
-The <vhost> becomes the base for all the other znodes.  So we can use
-it like a vhost.
-
-This uses the built-in kazoo recipe for queues
+Zookeeper based transport. This transport uses the built-in kazoo Zookeeper
+based queue implementation.
 
 **References**
 
-- https://zookeeper.apache.org/doc/trunk/recipes.html#sc_recipes_Queues
+- https://zookeeper.apache.org/doc/current/recipes.html#sc_recipes_Queues
 - https://kazoo.readthedocs.io/en/latest/api/recipe/queue.html
 
 **Limitations**
 This queue does not offer reliable consumption.  An entry is removed from
 the queue prior to being processed.  So if an error occurs, the consumer
 has to re-queue the item or it will be lost.
+
+Features
+========
+* Type: Virtual
+* Supports Direct: Yes
+* Supports Topic: Yes
+* Supports Fanout: No
+* Supports Priority: Yes
+* Supports TTL: No
+
+Connection String
+=================
+Connects to a zookeeper node as:
+
+.. code-block::
+
+    zookeeper://SERVER:PORT/VHOST
+
+The <vhost> becomes the base for all the other znodes.  So we can use
+it like a vhost.
+
+
+Transport Options
+=================
+
 """
 
 import os
@@ -66,8 +86,8 @@ try:
         socket.error,
     )
 except ImportError:
-    kazoo = None  # noqa
-    KZ_CONNECTION_ERRORS = KZ_CHANNEL_ERRORS = ()  # noqa
+    kazoo = None
+    KZ_CONNECTION_ERRORS = KZ_CHANNEL_ERRORS = ()
 
 DEFAULT_PORT = 2181
 

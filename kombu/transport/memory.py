@@ -1,10 +1,31 @@
-"""In-memory transport."""
+"""In-memory transport module for Kombu.
 
+Simple transport using memory for storing messages.
+Messages can be passed only between threads.
+
+Features
+========
+* Type: Virtual
+* Supports Direct: Yes
+* Supports Topic: Yes
+* Supports Fanout: No
+* Supports Priority: No
+* Supports TTL: Yes
+
+Connection String
+=================
+Connection string is in the following format:
+
+.. code-block::
+
+    memory://
+
+"""
+
+from collections import defaultdict
 from queue import Queue
 
-from . import base
-from . import virtual
-from collections import defaultdict
+from . import base, virtual
 
 
 class Channel(virtual.Channel):
@@ -68,12 +89,16 @@ class Transport(virtual.Transport):
     Channel = Channel
 
     #: memory backend state is global.
-    state = virtual.BrokerState()
+    global_state = virtual.BrokerState()
 
     implements = base.Transport.implements
 
     driver_type = 'memory'
     driver_name = 'memory'
+
+    def __init__(self, client, **kwargs):
+        super().__init__(client, **kwargs)
+        self.state = self.global_state
 
     def driver_version(self):
         return 'N/A'

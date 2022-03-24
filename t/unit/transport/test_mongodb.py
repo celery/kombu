@@ -1,9 +1,8 @@
 import datetime
-import pytest
-
 from queue import Empty
-
 from unittest.mock import MagicMock, call, patch
+
+import pytest
 
 from kombu import Connection
 
@@ -11,7 +10,7 @@ pymongo = pytest.importorskip('pymongo')
 
 
 def _create_mock_connection(url='', **kwargs):
-    from kombu.transport import mongodb  # noqa
+    from kombu.transport import mongodb
 
     class _Channel(mongodb.Channel):
         # reset _fanout_queues for each instance

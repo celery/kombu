@@ -3,13 +3,9 @@
 import os
 import re
 import sys
+from collections import namedtuple
 
-if sys.version_info < (2, 7):  # pragma: no cover
-    raise Exception('Kombu 4.6 requires Python versions 2.7 or later.')
-
-from collections import namedtuple  # noqa
-
-__version__ = '5.0.1'
+__version__ = '5.2.4'
 __author__ = 'Ask Solem'
 __contact__ = 'auvipy@gmail.com, ask@celeryproject.org'
 __homepage__ = 'https://kombu.readthedocs.io'
@@ -36,17 +32,15 @@ if STATICA_HACK:  # pragma: no cover
     # This is never executed, but tricks static analyzers (PyDev, PyCharm,
     # pylint, etc.) into knowing the types of these symbols, and what
     # they contain.
-    from kombu.connection import Connection, BrokerConnection   # noqa
-    from kombu.entity import Exchange, Queue, binding           # noqa
-    from kombu.message import Message                           # noqa
-    from kombu.messaging import Consumer, Producer              # noqa
-    from kombu.pools import connections, producers              # noqa
-    from kombu.utils.url import parse_url                       # noqa
-    from kombu.common import eventloop, uuid                    # noqa
-    from kombu.serialization import (                           # noqa
-        enable_insecure_serializers,
-        disable_insecure_serializers,
-    )
+    from kombu.common import eventloop, uuid  # noqa
+    from kombu.connection import BrokerConnection, Connection  # noqa
+    from kombu.entity import Exchange, Queue, binding  # noqa
+    from kombu.message import Message  # noqa
+    from kombu.messaging import Consumer, Producer  # noqa
+    from kombu.pools import connections, producers  # noqa
+    from kombu.serialization import disable_insecure_serializers  # noqa
+    from kombu.serialization import enable_insecure_serializers  # noqa
+    from kombu.utils.url import parse_url  # noqa
 
 # Lazy loading.
 # - See werkzeug/__init__.py for the rationale behind this.
@@ -92,12 +86,6 @@ class module(ModuleType):
         return result
 
 
-# 2.5 does not define __package__
-try:
-    package = __package__
-except NameError:  # pragma: no cover
-    package = 'kombu'
-
 # keep a reference to this module so that it's not garbage collected
 old_module = sys.modules[__name__]
 
@@ -112,7 +100,7 @@ new_module.__dict__.update({
     '__contact__': __contact__,
     '__homepage__': __homepage__,
     '__docformat__': __docformat__,
-    '__package__': package,
+    '__package__': __package__,
     'version_info_t': version_info_t,
     'version_info': version_info,
     'VERSION': VERSION

@@ -1,16 +1,14 @@
 import errno
-import pytest
-
 from unittest.mock import Mock, call, patch
+
+import pytest
 from vine import promise
 
+from kombu.asynchronous import ERR, READ, WRITE, Hub
 from kombu.asynchronous import hub as _hub
-from kombu.asynchronous import Hub, READ, WRITE, ERR
-from kombu.asynchronous.debug import callback_for, repr_flag, _rcb
-from kombu.asynchronous.hub import (
-    Stop, get_event_loop, set_event_loop,
-    _raise_stop_error, _dummy_context
-)
+from kombu.asynchronous.debug import _rcb, callback_for, repr_flag
+from kombu.asynchronous.hub import (Stop, _dummy_context, _raise_stop_error,
+                                    get_event_loop, set_event_loop)
 from kombu.asynchronous.semaphore import DummyLock, LaxBoundedSemaphore
 
 
@@ -188,6 +186,12 @@ class test_Hub:
         promise.assert_called_with(callback, (1, 2, 3))
         assert promise() in self.hub._ready
         assert ret is promise()
+
+    def test_call_soon_uses_lock(self):
+        callback = Mock(name='callback')
+        with patch.object(self.hub, '_ready_lock', autospec=True) as lock:
+            self.hub.call_soon(callback)
+            assert lock.__enter__.called_once()
 
     def test_call_soon__promise_argument(self):
         callback = promise(Mock(name='callback'), (1, 2, 3))
@@ -535,3 +539,14 @@ class test_Hub:
         callbacks[0].assert_called_once_with()
         callbacks[1].assert_called_once_with()
         deferred.assert_not_called()
+
+    def test__pop_ready_pops_ready_items(self):
+        self.hub._ready.add(None)
+        ret = self.hub._pop_ready()
+        assert ret == {None}
+        assert self.hub._ready == set()
+
+    def test__pop_ready_uses_lock(self):
+        with patch.object(self.hub, '_ready_lock', autospec=True) as lock:
+            self.hub._pop_ready()
+            assert lock.__enter__.called_once()

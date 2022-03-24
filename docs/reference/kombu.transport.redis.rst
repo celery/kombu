@@ -22,3 +22,10 @@
     .. autoclass:: Channel
         :members:
         :undoc-members:
+
+    SentinelChannel
+    ---------------
+
+    .. autoclass:: SentinelChannel
+        :members:
+        :undoc-members:

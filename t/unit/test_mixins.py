@@ -1,10 +1,10 @@
-import pytest
 import socket
-
 from unittest.mock import Mock, patch
-from case import ContextMock
+
+import pytest
 
 from kombu.mixins import ConsumerMixin
+from t.mocks import ContextMock
 
 
 def Message(body, content_type='text/plain', content_encoding='utf-8'):

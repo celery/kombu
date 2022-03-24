@@ -1,5 +1,4 @@
 pytest-cov
-pytest-travis-fold
 codecov
 -r extras/redis.txt
 -r extras/yaml.txt
@@ -8,7 +7,6 @@ codecov
 -r extras/azurestoragequeues.txt
 -r extras/sqs.txt
 -r extras/consul.txt
--r extras/librabbitmq.txt
 -r extras/zookeeper.txt
 -r extras/brotli.txt
 -r extras/zstd.txt

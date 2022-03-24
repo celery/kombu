@@ -1,24 +1,20 @@
 #!/usr/bin/python
 
-import pytest
-import sys
-
 from base64 import b64decode
-
 from unittest.mock import call, patch
-from case import mock
 
-from kombu.exceptions import ContentDisallowed, EncodeError, DecodeError
-from kombu.serialization import (
-    registry, register, SerializerNotInstalled,
-    raw_encode, register_yaml, register_msgpack,
-    dumps, loads, pickle, pickle_protocol,
-    unregister, register_pickle, enable_insecure_serializers,
-    disable_insecure_serializers,
-)
-from kombu.utils.encoding import str_to_bytes
+import pytest
 
 import t.skip
+from kombu.exceptions import ContentDisallowed, DecodeError, EncodeError
+from kombu.serialization import (SerializerNotInstalled,
+                                 disable_insecure_serializers, dumps,
+                                 enable_insecure_serializers, loads, pickle,
+                                 pickle_protocol, prepare_accept_content,
+                                 raw_encode, register, register_msgpack,
+                                 register_pickle, register_yaml, registry,
+                                 unregister)
+from kombu.utils.encoding import str_to_bytes
 
 # For content_encoding tests
 unicode_string = 'abcdé\u8463'
@@ -202,12 +198,6 @@ class test_Serialization:
         res = loads(msgpack_data,
                     content_type='application/x-msgpack',
                     content_encoding='binary')
-        if sys.version_info[0] < 3:
-            for k, v in res.items():
-                if isinstance(v, str):
-                    res[k] = v.encode()
-                if isinstance(v, (list, tuple)):
-                    res[k] = [i.encode() for i in v]
         assert res == msgpack_py_data
 
     @t.skip.if_pypy
@@ -303,14 +293,23 @@ class test_Serialization:
             'application/data', 'binary', b'foo',
         )
 
-    @mock.mask_modules('yaml')
-    def test_register_yaml__no_yaml(self):
+    @pytest.mark.masked_modules('yaml')
+    def test_register_yaml__no_yaml(self, mask_modules):
         register_yaml()
         with pytest.raises(SerializerNotInstalled):
             loads('foo', 'application/x-yaml', 'utf-8')
 
-    @mock.mask_modules('msgpack')
-    def test_register_msgpack__no_msgpack(self):
+    @pytest.mark.masked_modules('msgpack')
+    def test_register_msgpack__no_msgpack(self, mask_modules):
         register_msgpack()
         with pytest.raises(SerializerNotInstalled):
             loads('foo', 'application/x-msgpack', 'utf-8')
+
+    def test_prepare_accept_content(self):
+        assert {'application/json'} == prepare_accept_content(['json'])
+        assert {'application/json'} == prepare_accept_content(
+            ['application/json'])
+
+    def test_prepare_accept_content_bad_serializer(self):
+        with pytest.raises(SerializerNotInstalled):
+            prepare_accept_content(['bad_serializer'])

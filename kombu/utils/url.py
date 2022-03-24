@@ -2,40 +2,32 @@
 # flake8: noqa
 
 
-try:
-    from collections.abc import Mapping
-except ImportError:
-    from collections import Mapping
-
+from collections.abc import Mapping
 from functools import partial
+from typing import NamedTuple
+from urllib.parse import parse_qsl, quote, unquote, urlparse
 
-try:
-    from urllib.parse import parse_qsl, quote, unquote, urlparse
-except ImportError:
-    from urllib import quote, unquote                  # noqa
-    from urlparse import urlparse, parse_qsl    # noqa
 try:
     import ssl
     ssl_available = True
 except ImportError:  # pragma: no cover
     ssl_available = False
 
-from .compat import NamedTuple
 from ..log import get_logger
 
 safequote = partial(quote, safe='')
 logger = get_logger(__name__)
 
+class urlparts(NamedTuple):
+    """Named tuple representing parts of the URL."""
 
-urlparts = NamedTuple('urlparts', [
-    ('scheme', str),
-    ('hostname', str),
-    ('port', int),
-    ('username', str),
-    ('password', str),
-    ('path', str),
-    ('query', Mapping),
-])
+    scheme: str
+    hostname: str
+    port: int
+    username: str
+    password: str
+    path: str
+    query: Mapping
 
 
 def parse_url(url):
@@ -81,7 +73,7 @@ def url_to_parts(url):
     )
 
 
-_parse_url = url_to_parts  # noqa
+_parse_url = url_to_parts
 
 
 def as_url(scheme, host=None, port=None, user=None, password=None,

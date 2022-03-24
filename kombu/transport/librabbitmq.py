@@ -184,5 +184,5 @@ class Transport(base.Transport):
             'port': (self.default_ssl_port if self.client.ssl
                      else self.default_port),
             'hostname': 'localhost',
-            'login_method': 'AMQPLAIN',
+            'login_method': 'PLAIN',
         }

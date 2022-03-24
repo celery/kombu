@@ -1,9 +1,7 @@
-from kombu.matcher import (
-    match, register, registry, unregister, fnmatch, rematch,
-    MatcherNotInstalled
-)
-
 import pytest
+
+from kombu.matcher import (MatcherNotInstalled, fnmatch, match, register,
+                           registry, rematch, unregister)
 
 
 class test_Matcher:

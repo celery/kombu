@@ -12,15 +12,15 @@ class test_cached_property:
             def foo(self):
                 return 42
 
-            @foo.deleter  # noqa
+            @foo.deleter
             def foo(self, value):
                 self.xx = value
 
         x = X()
-        del(x.foo)
+        del x.foo
         assert not x.xx
         x.__dict__['foo'] = 'here'
-        del(x.foo)
+        del x.foo
         assert x.xx == 'here'
 
     def test_when_access_from_class(self):
@@ -32,7 +32,7 @@ class test_cached_property:
             def foo(self):
                 return 42
 
-            @foo.setter  # noqa
+            @foo.setter
             def foo(self, value):
                 self.xx = 10
 
@@ -48,4 +48,4 @@ class test_cached_property:
         x.foo = 30
         assert x.xx == 10
 
-        del(x.foo)
+        del x.foo

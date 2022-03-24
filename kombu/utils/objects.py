@@ -1,64 +1,57 @@
 """Object Utilities."""
 
+__all__ = ('cached_property',)
 
-class cached_property:
-    """Cached property descriptor.
+try:
+    from functools import _NOT_FOUND
+    from functools import cached_property as _cached_property
+except ImportError:
+    # TODO: Remove this fallback once we drop support for Python < 3.8
+    from cached_property import threaded_cached_property as _cached_property
 
-    Caches the return value of the get method on first call.
+    _NOT_FOUND = object()
 
-    Examples:
-        .. code-block:: python
 
-            @cached_property
-            def connection(self):
-                return Connection()
+class cached_property(_cached_property):
+    """Implementation of Cached property."""
 
-            @connection.setter  # Prepares stored value
-            def connection(self, value):
-                if value is None:
-                    raise TypeError('Connection must be a connection')
-                return value
-
-            @connection.deleter
-            def connection(self, value):
-                # Additional action to do at del(self.attr)
-                if value is not None:
-                    print('Connection {0!r} deleted'.format(value)
-    """
-
-    def __init__(self, fget=None, fset=None, fdel=None, doc=None):
-        self.__get = fget
+    def __init__(self, fget=None, fset=None, fdel=None):
+        super().__init__(fget)
         self.__set = fset
         self.__del = fdel
-        self.__doc__ = doc or fget.__doc__
-        self.__name__ = fget.__name__
-        self.__module__ = fget.__module__
 
-    def __get__(self, obj, type=None):
-        if obj is None:
-            return self
-        try:
-            return obj.__dict__[self.__name__]
-        except KeyError:
-            value = obj.__dict__[self.__name__] = self.__get(obj)
-            return value
+        if not hasattr(self, 'attrname'):
+            # This is a backport so we set this ourselves.
+            self.attrname = self.func.__name__
 
-    def __set__(self, obj, value):
-        if obj is None:
-            return self
-        if self.__set is not None:
-            value = self.__set(obj, value)
-        obj.__dict__[self.__name__] = value
+    def __get__(self, instance, owner=None):
+        # TODO: Remove this after we drop support for Python<3.8
+        #  or fix the signature in the cached_property package
+        return super().__get__(instance, owner)
 
-    def __delete__(self, obj, _sentinel=object()):
-        if obj is None:
+    def __set__(self, instance, value):
+        if instance is None:
             return self
-        value = obj.__dict__.pop(self.__name__, _sentinel)
-        if self.__del is not None and value is not _sentinel:
-            self.__del(obj, value)
+
+        with self.lock:
+            if self.__set is not None:
+                value = self.__set(instance, value)
+
+            cache = instance.__dict__
+            cache[self.attrname] = value
+
+    def __delete__(self, instance):
+        if instance is None:
+            return self
+
+        with self.lock:
+            value = instance.__dict__.pop(self.attrname, _NOT_FOUND)
+
+            if self.__del and value is not _NOT_FOUND:
+                self.__del(instance, value)
 
     def setter(self, fset):
-        return self.__class__(self.__get, fset, self.__del)
+        return self.__class__(self.func, fset, self.__del)
 
     def deleter(self, fdel):
-        return self.__class__(self.__get, self.__set, fdel)
+        return self.__class__(self.func, self.__set, fdel)

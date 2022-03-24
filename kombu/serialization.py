@@ -2,22 +2,14 @@
 
 import codecs
 import os
+import pickle
 import sys
-
-import pickle as pypickle
-try:
-    import cPickle as cpickle
-except ImportError:  # pragma: no cover
-    cpickle = None  # noqa
-
 from collections import namedtuple
 from contextlib import contextmanager
 from io import BytesIO
 
-from .exceptions import (
-    reraise, ContentDisallowed, DecodeError,
-    EncodeError, SerializerNotInstalled
-)
+from .exceptions import (ContentDisallowed, DecodeError, EncodeError,
+                         SerializerNotInstalled, reraise)
 from .utils.compat import entrypoints
 from .utils.encoding import bytes_to_str, str_to_bytes
 
@@ -32,12 +24,10 @@ if sys.platform.startswith('java'):  # pragma: no cover
 else:
     _decode = codecs.decode
 
-pickle = cpickle or pypickle
 pickle_load = pickle.load
 
-#: Kombu requires Python 2.5 or later so we use protocol 2 by default.
-#: There's a new protocol (3) but this is only supported by Python 3.
-pickle_protocol = int(os.environ.get('PICKLE_PROTOCOL', 2))
+#: We have to use protocol 4 until we drop support for Python 3.6 and 3.7.
+pickle_protocol = int(os.environ.get('PICKLE_PROTOCOL', 4))
 
 codec = namedtuple('codec', ('content_type', 'content_encoding', 'encoder'))
 
@@ -330,13 +320,8 @@ def register_yaml():
         registry.register('yaml', None, not_available, 'application/x-yaml')
 
 
-if sys.version_info[0] == 3:  # pragma: no cover
-
-    def unpickle(s):
-        return pickle_loads(str_to_bytes(s))
-
-else:
-    unpickle = pickle_loads  # noqa
+def unpickle(s):
+    return pickle_loads(str_to_bytes(s))
 
 
 def register_pickle():
@@ -457,7 +442,17 @@ for ep, args in entrypoints('kombu.serializers'):  # pragma: no cover
 
 
 def prepare_accept_content(content_types, name_to_type=None):
+    """Replace aliases of content_types with full names from registry.
+
+    Raises:
+        SerializerNotInstalled: If the serialization method
+            requested is not available.
+    """
     name_to_type = registry.name_to_type if not name_to_type else name_to_type
     if content_types is not None:
-        return {n if '/' in n else name_to_type[n] for n in content_types}
+        try:
+            return {n if '/' in n else name_to_type[n] for n in content_types}
+        except KeyError as e:
+            raise SerializerNotInstalled(
+                f'No encoder/decoder installed for {e.args[0]}')
     return content_types

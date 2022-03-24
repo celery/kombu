@@ -1,8 +1,8 @@
-import pytest
 from unittest.mock import patch
 
-from kombu import Connection
+import pytest
 
+from kombu import Connection
 
 pytest.importorskip('sqlalchemy')
 
