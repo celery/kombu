@@ -187,6 +187,12 @@ class test_Hub:
         assert promise() in self.hub._ready
         assert ret is promise()
 
+    def test_call_soon_uses_lock(self):
+        callback = Mock(name='callback')
+        with patch.object(self.hub, '_ready_lock', autospec=True) as lock:
+            self.hub.call_soon(callback)
+            assert lock.__enter__.called_once()
+
     def test_call_soon__promise_argument(self):
         callback = promise(Mock(name='callback'), (1, 2, 3))
         ret = self.hub.call_soon(callback)
@@ -533,3 +539,14 @@ class test_Hub:
         callbacks[0].assert_called_once_with()
         callbacks[1].assert_called_once_with()
         deferred.assert_not_called()
+
+    def test__pop_ready_pops_ready_items(self):
+        self.hub._ready.add(None)
+        ret = self.hub._pop_ready()
+        assert ret == {None}
+        assert self.hub._ready == set()
+
+    def test__pop_ready_uses_lock(self):
+        with patch.object(self.hub, '_ready_lock', autospec=True) as lock:
+            self.hub._pop_ready()
+            assert lock.__enter__.called_once()
