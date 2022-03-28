@@ -279,11 +279,10 @@ class Transport(virtual.Transport):
         NoBrokersAvailable,
     )
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, client, **kwargs):
         if confluent_kafka is None:
             raise ImportError('The confluent-kafka library is not installed')
-
-        super().__init__(*args, **kwargs)
+        super().__init__(client, **kwargs)
 
     def driver_version(self):
         return confluent_kafka.__version__
