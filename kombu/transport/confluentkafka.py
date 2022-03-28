@@ -1,27 +1,25 @@
-from __future__ import absolute_import
+from collections import OrderedDict
+from queue import Empty
 
+from kombu.transport import virtual
 from kombu.utils import cached_property
 from kombu.utils.encoding import str_to_bytes
 from kombu.utils.json import dumps, loads
 
-from queue import Empty
-from kombu.transport import virtual
-from collections import OrderedDict
-
 try:
     import confluent_kafka
-    from confluent_kafka import Producer, Consumer, TopicPartition
+    from confluent_kafka import Consumer, Producer, TopicPartition
     from confluent_kafka.admin import AdminClient, NewTopic
-
 
     KAFKA_CONNECTION_ERRORS = ()
     KAFKA_CHANNEL_ERRORS = ()
 
 except ImportError:
-    confluent_kafka = None                                # noqa
-    KAFKA_CONNECTION_ERRORS = KAFKA_CHANNEL_ERRORS = ()   # noqa
+    confluent_kafka = None
+    KAFKA_CONNECTION_ERRORS = KAFKA_CHANNEL_ERRORS = ()
 
 from kombu.log import get_logger
+
 logger = get_logger(__name__)
 
 DEFAULT_PORT = 9092
@@ -69,18 +67,20 @@ class QoS(virtual.QoS):
         message = self._not_yet_acked.pop(delivery_tag)
         consumer = self.channel._get_consumer(message.topic)
         consumer.commit()
+        self.reject()
 
     def reject(self, delivery_tag, requeue=False):
         """Reject a message by delivery tag.
-        If requeue is True, then the last consumed message is reverted so it'll
-        be refetched on the next attempt. If False, that message is consumed and
-        ignored.
+        If requeue is True, then the last consumed message is reverted so
+        it'll be refetched on the next attempt.
+        If False, that message is consumed and ignored.
         """
         if requeue:
             message = self._not_yet_acked.pop(delivery_tag)
             consumer = self.channel._get_consumer(message.topic)
             for assignment in consumer.assignment():
-                topic_partition = TopicPartition(message.topic, assignment.partition)
+                topic_partition = TopicPartition(message.topic,
+                                                 assignment.partition)
                 [committed_offset] = consumer.committed([topic_partition])
                 consumer.seek(committed_offset)
         else:
@@ -98,7 +98,7 @@ class Channel(virtual.Channel):
     _client = None
 
     def __init__(self, *args, **kwargs):
-        super(Channel, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self._kafka_consumers = {}
         self._kafka_producers = {}
@@ -127,7 +127,9 @@ class Channel(virtual.Channel):
         if consumer is None:
             consumer = Consumer(
                 {**self.common_config,
-                 'group.id': self.transport_options.get('kafka_consumer_group') or f"{queue}-consumer-group",
+                 'group.id':
+                     self.transport_options.get('kafka_consumer_group') or
+                     f"{queue}-consumer-group",
                  'auto.offset.reset': 'earliest',
                  'enable.auto.commit': False,
                  }
@@ -195,8 +197,10 @@ class Channel(virtual.Channel):
             self.client.create_topics(
                 new_topics=[NewTopic(
                     queue,
-                    num_partitions=self.transport_options.get('num_partitions', 1),
-                    replication_factor=self.transport_options.get('replication_factor', 1)
+                    num_partitions=self.transport_options.get('num_partitions',
+                                                              1),
+                    replication_factor=self.transport_options.get(
+                        'replication_factor', 1)
                 )])
 
     def _has_queue(self, queue, **kwargs):
@@ -237,11 +241,14 @@ class Channel(virtual.Channel):
     @cached_property
     def common_config(self):
         config = {
-            'bootstrap.servers': '{0}:{1}'.format(self.conninfo.hostname, int(self.conninfo.port)),
+            'bootstrap.servers':
+                f'{self.conninfo.hostname}:{int(self.conninfo.port)}',
         }
-        if self.transport_options.get('security_protocol', 'plaintext').lower() != 'plaintext':
+        security_protocol = self.transport_options.get('security_protocol',
+                                                       'plaintext')
+        if security_protocol.lower() != 'plaintext':
             config.update({
-                'security.protocol': self.transport_options.get('security_protocol'),
+                'security.protocol': security_protocol,
                 'sasl.username': self.conninfo.userid,
                 'sasl.password': self.conninfo.password,
                 'sasl.mechanism': self.transport_options.get('sasl_mechanism'),
@@ -249,7 +256,7 @@ class Channel(virtual.Channel):
         return config
 
     def close(self):
-        super(Channel, self).close()
+        super().close()
         self._kafka_producers = {}
 
         for consumer in self._kafka_consumers.values():
@@ -277,13 +284,13 @@ class Transport(virtual.Transport):
         if confluent_kafka is None:
             raise ImportError('The confluent-kafka library is not installed')
 
-        super(Transport, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def driver_version(self):
         return confluent_kafka.__version__
 
     def establish_connection(self):
-        return super(Transport, self).establish_connection()
+        return super().establish_connection()
 
     def close_connection(self, connection):
-        return super(Transport, self).close_connection(connection)
+        return super().close_connection(connection)

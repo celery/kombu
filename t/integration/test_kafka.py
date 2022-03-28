@@ -1,13 +1,16 @@
 import pytest
 
 import kombu
-from .common import (BaseExchangeTypes, BaseMessage, BasicFunctionality, BaseFailover)
+
+from .common import (BaseExchangeTypes, BaseFailover, BaseMessage,
+                     BasicFunctionality)
 
 
 def get_connection(hostname, port):
     return kombu.Connection(
         f'confluentkafka://{hostname}:{port}',
     )
+
 
 def get_failover_connection(hostname, port):
     return kombu.Connection(
