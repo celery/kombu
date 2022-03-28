@@ -67,7 +67,6 @@ class QoS(virtual.QoS):
         message = self._not_yet_acked.pop(delivery_tag)
         consumer = self.channel._get_consumer(message.topic)
         consumer.commit()
-        self.reject()
 
     def reject(self, delivery_tag, requeue=False):
         """Reject a message by delivery tag.
