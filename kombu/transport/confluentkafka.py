@@ -1,16 +1,14 @@
-from __future__ import absolute_import
+from collections import OrderedDict
+from queue import Empty
 
+from kombu.transport import virtual
 from kombu.utils import cached_property
 from kombu.utils.encoding import str_to_bytes
 from kombu.utils.json import dumps, loads
 
-from queue import Empty
-from kombu.transport import virtual
-from collections import OrderedDict
-
 try:
     import confluent_kafka
-    from confluent_kafka import Producer, Consumer, TopicPartition
+    from confluent_kafka import Consumer, Producer, TopicPartition
     from confluent_kafka.admin import AdminClient, NewTopic
 
 
@@ -18,10 +16,11 @@ try:
     KAFKA_CHANNEL_ERRORS = ()
 
 except ImportError:
-    confluent_kafka = None                                # noqa
-    KAFKA_CONNECTION_ERRORS = KAFKA_CHANNEL_ERRORS = ()   # noqa
+    confluent_kafka = None
+    KAFKA_CONNECTION_ERRORS = KAFKA_CHANNEL_ERRORS = ()
 
 from kombu.log import get_logger
+
 logger = get_logger(__name__)
 
 DEFAULT_PORT = 9092
@@ -98,7 +97,7 @@ class Channel(virtual.Channel):
     _client = None
 
     def __init__(self, *args, **kwargs):
-        super(Channel, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self._kafka_consumers = {}
         self._kafka_producers = {}
@@ -237,7 +236,7 @@ class Channel(virtual.Channel):
     @cached_property
     def common_config(self):
         config = {
-            'bootstrap.servers': '{0}:{1}'.format(self.conninfo.hostname, int(self.conninfo.port)),
+            'bootstrap.servers': f'{self.conninfo.hostname}:{int(self.conninfo.port)}',
         }
         if self.transport_options.get('security_protocol', 'plaintext').lower() != 'plaintext':
             config.update({
@@ -249,7 +248,7 @@ class Channel(virtual.Channel):
         return config
 
     def close(self):
-        super(Channel, self).close()
+        super().close()
         self._kafka_producers = {}
 
         for consumer in self._kafka_consumers.values():
@@ -277,13 +276,13 @@ class Transport(virtual.Transport):
         if confluent_kafka is None:
             raise ImportError('The confluent-kafka library is not installed')
 
-        super(Transport, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def driver_version(self):
         return confluent_kafka.__version__
 
     def establish_connection(self):
-        return super(Transport, self).establish_connection()
+        return super().establish_connection()
 
     def close_connection(self, connection):
-        return super(Transport, self).close_connection(connection)
+        return super().close_connection(connection)
