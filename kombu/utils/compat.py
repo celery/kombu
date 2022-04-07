@@ -77,9 +77,13 @@ def detect_environment():
 
 def entrypoints(namespace):
     """Return setuptools entrypoints for namespace."""
+    if sys.version_info >= (3,10):
+        entry_points = importlib_metadata.entry_points(group=namespace)
+    else:
+        entry_points = importlib_metadata.entry_points().get(namespace, [])
     return (
         (ep, ep.load())
-        for ep in importlib_metadata.entry_points().get(namespace, [])
+        for ep in entry_points
     )
 
 
