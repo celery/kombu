@@ -1,5 +1,4 @@
 """Time Utilities."""
-# flake8: noqa
 from typing import Optional, Union
 
 __all__ = ('maybe_s_to_ms',)
