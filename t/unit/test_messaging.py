@@ -188,9 +188,8 @@ class test_Producer:
     def test_enter_exit(self):
         p = self.connection.Producer()
         p.release = Mock()
-
-        assert p.__enter__() is p
-        p.__exit__()
+        with p as x:
+            assert x is p
         p.release.assert_called_with()
 
     def test_connection_property_handles_AttributeError(self):

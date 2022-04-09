@@ -2,6 +2,7 @@
 
 import sys
 from http.client import responses
+from typing import TYPE_CHECKING, Optional, Type
 
 from vine import Thenable, maybe_promise, promise
 
@@ -9,6 +10,9 @@ from kombu.exceptions import HttpError
 from kombu.utils.compat import coro
 from kombu.utils.encoding import bytes_to_str
 from kombu.utils.functional import maybe_list, memoize
+
+if TYPE_CHECKING:
+    from types import TracebackType
 
 __all__ = ('Headers', 'Response', 'Request')
 
@@ -253,5 +257,10 @@ class BaseClient:
     def __enter__(self):
         return self
 
-    def __exit__(self, *exc_info):
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional['TracebackType']
+    ) -> None:
         self.close()

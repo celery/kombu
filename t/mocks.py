@@ -1,8 +1,12 @@
 from itertools import count
+from typing import TYPE_CHECKING, Optional, Type
 from unittest.mock import Mock
 
 from kombu.transport import base
 from kombu.utils import json
+
+if TYPE_CHECKING:
+    from types import TracebackType
 
 
 class _ContextMock(Mock):
@@ -13,7 +17,12 @@ class _ContextMock(Mock):
     def __enter__(self):
         return self
 
-    def __exit__(self, *exc_info):
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional['TracebackType']
+    ) -> None:
         pass
 
 

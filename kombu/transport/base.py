@@ -4,6 +4,7 @@
 
 import errno
 import socket
+from typing import TYPE_CHECKING, Optional, Type
 
 from amqp.exceptions import RecoverableConnectionError
 
@@ -12,6 +13,9 @@ from kombu.message import Message
 from kombu.utils.functional import dictfilter
 from kombu.utils.objects import cached_property
 from kombu.utils.time import maybe_s_to_ms
+
+if TYPE_CHECKING:
+    from types import TracebackType
 
 __all__ = ('Message', 'StdChannel', 'Management', 'Transport')
 
@@ -100,7 +104,12 @@ class StdChannel:
     def __enter__(self):
         return self
 
-    def __exit__(self, *exc_info):
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional['TracebackType']
+    ) -> None:
         self.close()
 
 
