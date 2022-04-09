@@ -3,7 +3,7 @@ from typing import Callable
 from uuid import UUID, uuid4
 
 
-def uuid(_uuid: Callable[..., UUID] = uuid4) -> str:
+def uuid(_uuid: Callable[[], UUID] = uuid4) -> str:
     """Generate unique id in UUID4 format.
 
     See Also:
