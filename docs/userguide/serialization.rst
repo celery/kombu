@@ -67,7 +67,7 @@ Each option has its advantages and disadvantages.
         to limit access to the broker so that untrusted
         parties do not have the ability to send messages!
 
-    By default Kombu uses pickle protocol 2, but this can be changed
+    By default Kombu uses pickle protocol 4, but this can be changed
     using the :envvar:`PICKLE_PROTOCOL` environment variable or by changing
     the global :data:`kombu.serialization.pickle_protocol` flag.
 

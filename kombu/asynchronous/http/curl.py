@@ -231,9 +231,6 @@ class CurlClient(BaseClient):
             if request.proxy_username:
                 setopt(_pycurl.PROXYUSERPWD, '{}:{}'.format(
                     request.proxy_username, request.proxy_password or ''))
-        else:
-            setopt(_pycurl.PROXY, '')
-            curl.unsetopt(_pycurl.PROXYUSERPWD)
 
         setopt(_pycurl.SSL_VERIFYPEER, 1 if request.validate_cert else 0)
         setopt(_pycurl.SSL_VERIFYHOST, 2 if request.validate_cert else 0)

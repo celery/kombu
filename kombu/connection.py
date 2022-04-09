@@ -2,7 +2,6 @@
 
 import os
 import socket
-from collections import OrderedDict
 from contextlib import contextmanager
 from itertools import count, cycle
 from operator import itemgetter
@@ -529,7 +528,7 @@ class Connection:
                             # the error if it persists after a new connection
                             # was successfully established.
                             raise
-                        if max_retries is not None and retries > max_retries:
+                        if max_retries is not None and retries >= max_retries:
                             raise
                         self._debug('ensure connection error: %r',
                                     exc, exc_info=1)
@@ -626,7 +625,7 @@ class Connection:
                 transport_cls, transport_cls)
         D = self.transport.default_connection_params
 
-        if not self.hostname:
+        if not self.hostname and D.get('hostname'):
             logger.warning(
                 "No hostname was supplied. "
                 f"Reverting to default '{D.get('hostname')}'")
@@ -658,7 +657,7 @@ class Connection:
 
     def info(self):
         """Get connection info."""
-        return OrderedDict(self._info())
+        return dict(self._info())
 
     def __eqhash__(self):
         return HashedSeq(self.transport_cls, self.hostname, self.userid,
@@ -837,7 +836,7 @@ class Connection:
         return self.transport.qos_semantics_matches_spec(self.connection)
 
     def _extract_failover_opts(self):
-        conn_opts = {}
+        conn_opts = {'timeout': self.connect_timeout}
         transport_opts = self.transport_options
         if transport_opts:
             if 'max_retries' in transport_opts:
@@ -932,7 +931,7 @@ class Connection:
         but where the connection must be closed and re-established first.
         """
         try:
-            return self.transport.recoverable_connection_errors
+            return self.get_transport_cls().recoverable_connection_errors
         except AttributeError:
             # There were no such classification before,
             # and all errors were assumed to be recoverable,
@@ -948,19 +947,19 @@ class Connection:
         recovered from without re-establishing the connection.
         """
         try:
-            return self.transport.recoverable_channel_errors
+            return self.get_transport_cls().recoverable_channel_errors
         except AttributeError:
             return ()
 
     @cached_property
     def connection_errors(self):
         """List of exceptions that may be raised by the connection."""
-        return self.transport.connection_errors
+        return self.get_transport_cls().connection_errors
 
     @cached_property
     def channel_errors(self):
         """List of exceptions that may be raised by the channel."""
-        return self.transport.channel_errors
+        return self.get_transport_cls().channel_errors
 
     @property
     def supports_heartbeats(self):

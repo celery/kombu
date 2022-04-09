@@ -2,7 +2,6 @@
 import os
 import re
 import sys
-from distutils.command.install import INSTALL_SCHEMES
 
 import setuptools
 import setuptools.command.test
@@ -55,9 +54,6 @@ def fullsplit(path, result=None):
         return result
     return fullsplit(head, [tail] + result)
 
-
-for scheme in list(INSTALL_SCHEMES.values()):
-    scheme['data'] = scheme['purelib']
 
 # if os.path.exists('README.rst'):
 #    long_description = codecs.open('README.rst', 'r', 'utf-8').read()

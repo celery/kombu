@@ -4,7 +4,7 @@
 
 |build-status| |coverage| |license| |wheel| |pyversion| |pyimp| |downloads|
 
-:Version: 5.2.0
+:Version: 5.2.4
 :Documentation: https://kombu.readthedocs.io/
 :Download: https://pypi.org/project/kombu/
 :Source: https://github.com/celery/kombu/
@@ -305,7 +305,7 @@ Mailing list
 
 Join the `celery-users`_ mailing list.
 
-.. _`celery-users`: https://groups.google.com/group/celery-users/
+.. _`kombu forum`: https://github.com/celery/kombu/discussions
 
 Bug tracker
 ===========

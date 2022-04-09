@@ -1,4 +1,4 @@
 pytz>dev
-pytest~=6.2
+pytest~=7.0.1
 pytest-sugar
 Pyro4

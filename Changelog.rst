@@ -4,11 +4,73 @@
  Change history
 ================
 
+.. _version-5.2.4:
+
+5.2.4
+=====
+:release-date: 06 Mar, 2022
+:release-by: Asif Saif Uddin
+
+- Allow getting recoverable_connection_errors without an active transport.
+- Prevent KeyError: 'purelib' by removing INSTALLED_SCHEME hack from setup.py.
+- Revert "try pining setuptools (#1466)" (#1481).
+- Fix issue #789: Async http code not allowing for proxy config (#790).
+- Fix The incorrect times of retrying.
+- Set redelivered property for Celery with Redis (#1484).
+- Remove use of OrderedDict in various places (#1483).
+- Warn about missing hostname only when default one is available (#1488).
+- All supported versions of Python define __package__.
+- Added global_keyprefix support for pubsub clients (#1495).
+- try pytest 7 (#1497).
+- Add an option to not base64-encode SQS messages.
+- Fix SQS extract_task_name message reference.
+
+
+.. _version-5.2.3:
+
+5.2.3
+=====
+:release-date: 29 Dec, 2021
+:release-by: Asif Saif Uddin
+
+- Allow redis >= 4.0.2.
+- Fix PyPy CI jobs.
+- SQS transport: detect FIFO queue properly by checking queue URL (#1450).
+- Ensure that restore is atomic in redis transport (#1444).
+- Restrict setuptools>=59.1.1,<59.7.0.
+- Bump minimum py-amqp to v5.0.9 (#1462).
+- Reduce memory usage of Transport (#1470).
+- Prevent event loop polling on closed redis transports (and causing leak).
+- Respect connection timeout (#1458)
+- prevent redis event loop stopping on 'consumer: Cannot connect' (#1477).
+
+
+.. _version-5.2.2:
+
+5.2.2
+=====
+:release-date: 16 Nov, 2021
+:release-by: Asif Saif Uddin
+
+- Pin redis version to >= 3.4.1<4.0.0 as it is not fully compatible yet.
+
+
+.. _version-5.2.1:
+
+5.2.1
+=====
+:release-date: 8 Nov, 2021
+:release-by: Asif Saif Uddin
+
+- Bump redis version to >= 3.4.1.
+- try latest sqs dependencies ti fix security warning.
+- Tests & dependency updates
+
 .. _version-5.2.0:
 
 5.2.0
 =====
-:release-date: soon
+:release-date: 5 Nov, 2021
 :release-by: Naomi Elstein
 
 - v 1.4.x (#1338).

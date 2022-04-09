@@ -216,8 +216,7 @@ class GlobalKeyPrefixMixin:
 
         if command in self.PREFIXED_SIMPLE_COMMANDS:
             args[0] = self.global_keyprefix + str(args[0])
-
-        if command in self.PREFIXED_COMPLEX_COMMANDS.keys():
+        elif command in self.PREFIXED_COMPLEX_COMMANDS:
             args_start = self.PREFIXED_COMPLEX_COMMANDS[command]["args_start"]
             args_end = self.PREFIXED_COMPLEX_COMMANDS[command]["args_end"]
 
@@ -267,6 +266,13 @@ class PrefixedStrictRedis(GlobalKeyPrefixMixin, redis.Redis):
         self.global_keyprefix = kwargs.pop('global_keyprefix', '')
         redis.Redis.__init__(self, *args, **kwargs)
 
+    def pubsub(self, **kwargs):
+        return PrefixedRedisPubSub(
+            self.connection_pool,
+            global_keyprefix=self.global_keyprefix,
+            **kwargs,
+        )
+
 
 class PrefixedRedisPipeline(GlobalKeyPrefixMixin, redis.client.Pipeline):
     """Custom Redis pipeline that takes global_keyprefix into consideration.
@@ -279,6 +285,58 @@ class PrefixedRedisPipeline(GlobalKeyPrefixMixin, redis.client.Pipeline):
     def __init__(self, *args, **kwargs):
         self.global_keyprefix = kwargs.pop('global_keyprefix', '')
         redis.client.Pipeline.__init__(self, *args, **kwargs)
+
+
+class PrefixedRedisPubSub(redis.client.PubSub):
+    """Redis pubsub client that takes global_keyprefix into consideration."""
+
+    PUBSUB_COMMANDS = (
+        "SUBSCRIBE",
+        "UNSUBSCRIBE",
+        "PSUBSCRIBE",
+        "PUNSUBSCRIBE",
+    )
+
+    def __init__(self, *args, **kwargs):
+        self.global_keyprefix = kwargs.pop('global_keyprefix', '')
+        super().__init__(*args, **kwargs)
+
+    def _prefix_args(self, args):
+        args = list(args)
+        command = args.pop(0)
+
+        if command in self.PUBSUB_COMMANDS:
+            args = [
+                self.global_keyprefix + str(arg)
+                for arg in args
+            ]
+
+        return [command, *args]
+
+    def parse_response(self, *args, **kwargs):
+        """Parse a response from the Redis server.
+
+        Method wraps ``PubSub.parse_response()`` to remove prefixes of keys
+        returned by redis command.
+        """
+        ret = super().parse_response(*args, **kwargs)
+        if ret is None:
+            return ret
+
+        # response formats
+        # SUBSCRIBE and UNSUBSCRIBE
+        #  -> [message type, channel, message]
+        # PSUBSCRIBE and PUNSUBSCRIBE
+        #  -> [message type, pattern, channel, message]
+        message_type, *channels, message = ret
+        return [
+            message_type,
+            *[channel[len(self.global_keyprefix):] for channel in channels],
+            message,
+        ]
+
+    def execute_command(self, *args, **kwargs):
+        return super().execute_command(*self._prefix_args(args), **kwargs)
 
 
 class QoS(virtual.QoS):
@@ -353,13 +411,17 @@ class QoS(virtual.QoS):
                 pass
 
     def restore_by_tag(self, tag, client=None, leftmost=False):
-        with self.channel.conn_or_acquire(client) as client:
-            with client.pipeline() as pipe:
-                p, _, _ = self._remove_from_indices(
-                    tag, pipe.hget(self.unacked_key, tag)).execute()
+
+        def restore_transaction(pipe):
+            p = pipe.hget(self.unacked_key, tag)
+            pipe.multi()
+            self._remove_from_indices(tag, pipe)
             if p:
                 M, EX, RK = loads(bytes_to_str(p))  # json is unicode
-                self.channel._do_restore_message(M, EX, RK, client, leftmost)
+                self.channel._do_restore_message(M, EX, RK, pipe, leftmost)
+
+        with self.channel.conn_or_acquire(client) as client:
+            client.transaction(restore_transaction, self.unacked_key)
 
     @cached_property
     def unacked_key(self):
@@ -709,32 +771,35 @@ class Channel(virtual.Channel):
             self.connection.cycle._on_connection_disconnect(connection)
 
     def _do_restore_message(self, payload, exchange, routing_key,
-                            client=None, leftmost=False):
-        with self.conn_or_acquire(client) as client:
+                            pipe, leftmost=False):
+        try:
             try:
-                try:
-                    payload['headers']['redelivered'] = True
-                except KeyError:
-                    pass
-                for queue in self._lookup(exchange, routing_key):
-                    (client.lpush if leftmost else client.rpush)(
-                        queue, dumps(payload),
-                    )
-            except Exception:
-                crit('Could not restore message: %r', payload, exc_info=True)
+                payload['headers']['redelivered'] = True
+                payload['properties']['delivery_info']['redelivered'] = True
+            except KeyError:
+                pass
+            for queue in self._lookup(exchange, routing_key):
+                (pipe.lpush if leftmost else pipe.rpush)(
+                    queue, dumps(payload),
+                )
+        except Exception:
+            crit('Could not restore message: %r', payload, exc_info=True)
 
     def _restore(self, message, leftmost=False):
         if not self.ack_emulation:
             return super()._restore(message)
         tag = message.delivery_tag
-        with self.conn_or_acquire() as client:
-            with client.pipeline() as pipe:
-                P, _ = pipe.hget(self.unacked_key, tag) \
-                           .hdel(self.unacked_key, tag) \
-                           .execute()
+
+        def restore_transaction(pipe):
+            P = pipe.hget(self.unacked_key, tag)
+            pipe.multi()
+            pipe.hdel(self.unacked_key, tag)
             if P:
                 M, EX, RK = loads(bytes_to_str(P))  # json is unicode
-                self._do_restore_message(M, EX, RK, client, leftmost)
+                self._do_restore_message(M, EX, RK, pipe, leftmost)
+
+        with self.conn_or_acquire() as client:
+            client.transaction(restore_transaction, self.unacked_key)
 
     def _restore_at_beginning(self, message):
         return self._restore(message, leftmost=True)
@@ -1208,13 +1273,14 @@ class Transport(virtual.Transport):
         exchange_type=frozenset(['direct', 'topic', 'fanout'])
     )
 
+    if redis:
+        connection_errors, channel_errors = get_redis_error_classes()
+
     def __init__(self, *args, **kwargs):
         if redis is None:
             raise ImportError('Missing redis library (pip install redis)')
         super().__init__(*args, **kwargs)
 
-        # Get redis-py exceptions.
-        self.connection_errors, self.channel_errors = self._get_errors()
         # All channels share the same poller.
         self.cycle = MultiChannelPoller()
 
@@ -1231,6 +1297,14 @@ class Transport(virtual.Transport):
         def _on_disconnect(connection):
             if connection._sock:
                 loop.remove(connection._sock)
+
+            # must have started polling or this will break reconnection
+            if cycle.fds:
+                # stop polling in the event loop
+                try:
+                    loop.on_tick.remove(on_poll_start)
+                except KeyError:
+                    pass
         cycle._on_connection_disconnect = _on_disconnect
 
         def on_poll_start():
@@ -1250,10 +1324,6 @@ class Transport(virtual.Transport):
     def on_readable(self, fileno):
         """Handle AIO event for one of our file descriptors."""
         self.cycle.on_readable(fileno)
-
-    def _get_errors(self):
-        """Utility to import redis-py's exceptions at runtime."""
-        return get_redis_error_classes()
 
 
 if sentinel:

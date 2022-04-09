@@ -1,3 +1,4 @@
+from array import array
 from queue import Empty
 from unittest.mock import Mock
 
@@ -12,6 +13,8 @@ class test_Consul:
 
     def setup(self):
         self.connection = Mock()
+        self.connection._used_channel_ids = array('H')
+        self.connection.channel_max = 65535
         self.connection.client.transport_options = {}
         self.connection.client.port = 303
         self.consul = self.patching('consul.Consul').return_value
