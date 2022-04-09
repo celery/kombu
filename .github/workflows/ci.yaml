@@ -81,3 +81,5 @@ jobs:
         run: tox -v -e pydocstyle -- -v
       - name: Run apicheck
         run: tox -v -e apicheck -- -v
+      - name: Run mypy
+        run: tox -v -e mypy -- -v
