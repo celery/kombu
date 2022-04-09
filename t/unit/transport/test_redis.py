@@ -6,6 +6,7 @@ from collections import defaultdict
 from itertools import count
 from queue import Empty
 from queue import Queue as _Queue
+from typing import TYPE_CHECKING, Optional, Type
 from unittest.mock import ANY, Mock, call, patch
 
 import pytest
@@ -15,6 +16,9 @@ from kombu.exceptions import VersionMismatch
 from kombu.transport import virtual
 from kombu.utils import eventio  # patch poll
 from kombu.utils.json import dumps
+
+if TYPE_CHECKING:
+    from types import TracebackType
 
 
 def _redis_modules():
@@ -231,7 +235,12 @@ class Pipeline:
     def __enter__(self):
         return self
 
-    def __exit__(self, *exc_info):
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional['TracebackType']
+    ) -> None:
         pass
 
     def __getattr__(self, key):

@@ -91,9 +91,8 @@ class SimpleBase:
     def test_enter_exit(self):
         q = self.Queue('test_enter_exit')
         q.close = Mock()
-
-        assert q.__enter__() is q
-        q.__exit__()
+        with q as x:
+            assert x is q
         q.close.assert_called_with()
 
     def test_qsize(self):

@@ -398,14 +398,12 @@ class test_Connection:
         qsms.assert_called_with(self.conn.connection)
 
     def test__enter____exit__(self):
-        conn = self.conn
-        context = conn.__enter__()
-        assert context is conn
-        conn.connect()
-        assert conn.connection.connected
-        conn.__exit__()
-        assert conn.connection is None
-        conn.close()    # again
+        with self.conn as context:
+            assert context is self.conn
+            self.conn.connect()
+            assert self.conn.connection.connected
+        assert self.conn.connection is None
+        self.conn.close()    # again
 
     def test_close_survives_connerror(self):
 

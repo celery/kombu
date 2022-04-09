@@ -4,9 +4,13 @@ import socket
 from collections import deque
 from queue import Empty
 from time import monotonic
+from typing import TYPE_CHECKING, Optional, Type
 
 from . import entity, messaging
 from .connection import maybe_channel
+
+if TYPE_CHECKING:
+    from types import TracebackType
 
 __all__ = ('SimpleQueue', 'SimpleBuffer')
 
@@ -18,7 +22,12 @@ class SimpleBase:
     def __enter__(self):
         return self
 
-    def __exit__(self, *exc_info):
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional['TracebackType']
+    ) -> None:
         self.close()
 
     def __init__(self, channel, producer, consumer, no_ack=False):

@@ -13,6 +13,7 @@ from itertools import count
 from multiprocessing.util import Finalize
 from queue import Empty
 from time import monotonic, sleep
+from typing import TYPE_CHECKING, Optional, Type
 
 from amqp.protocol import queue_declare_ok_t
 
@@ -25,6 +26,9 @@ from kombu.utils.scheduling import FairCycle
 from kombu.utils.uuid import uuid
 
 from .exchange import STANDARD_EXCHANGE_TYPES
+
+if TYPE_CHECKING:
+    from types import TracebackType
 
 ARRAY_TYPE_H = 'H'
 
@@ -722,7 +726,8 @@ class Channel(AbstractChannel, base.StdChannel):
         message = message.serializable()
         message['redelivered'] = True
         for queue in self._lookup(
-                delivery_info['exchange'], delivery_info['routing_key']):
+            delivery_info['exchange'],
+                delivery_info['routing_key']):
             self._put(queue, message)
 
     def _restore_at_beginning(self, message):
@@ -799,7 +804,12 @@ class Channel(AbstractChannel, base.StdChannel):
     def __enter__(self):
         return self
 
-    def __exit__(self, *exc_info):
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional['TracebackType']
+    ) -> None:
         self.close()
 
     @property
@@ -947,7 +957,7 @@ class Transport(base.Transport):
         # this channel is then used as the next requested channel.
         # (returned by ``create_channel``).
         self._avail_channels.append(self.create_channel(self))
-        return self     # for drain events
+        return self  # for drain events
 
     def close_connection(self, connection):
         self.cycle.close()

@@ -115,12 +115,14 @@ class test_Publisher:
         pub.close()
 
     def test__enter__exit__(self):
-        pub = compat.Publisher(self.connection,
-                               exchange='test_Publisher_send',
-                               routing_key='rkey')
-        x = pub.__enter__()
-        assert x is pub
-        x.__exit__()
+        pub = compat.Publisher(
+            self.connection,
+            exchange='test_Publisher_send',
+            routing_key='rkey'
+        )
+        with pub as x:
+            assert x is pub
+
         assert pub._closed
 
 
@@ -158,11 +160,14 @@ class test_Consumer:
         assert q2.exchange.auto_delete
 
     def test__enter__exit__(self, n='test__enter__exit__'):
-        c = compat.Consumer(self.connection, queue=n, exchange=n,
-                            routing_key='rkey')
-        x = c.__enter__()
-        assert x is c
-        x.__exit__()
+        c = compat.Consumer(
+            self.connection,
+            queue=n,
+            exchange=n,
+            routing_key='rkey'
+        )
+        with c as x:
+            assert x is c
         assert c._closed
 
     def test_revive(self, n='test_revive'):
