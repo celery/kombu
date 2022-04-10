@@ -2,7 +2,6 @@
 # flake8: noqa
 
 
-from ctypes import cast
 from difflib import SequenceMatcher
 from typing import Iterator, Optional, Sequence, Tuple, Union
 
