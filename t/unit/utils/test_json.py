@@ -6,10 +6,11 @@ from uuid import uuid4
 
 import pytest
 import pytz
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 from kombu.utils.encoding import str_to_bytes
 from kombu.utils.json import _DecodeError, dumps, loads
-from hypothesis import given, strategies as st, settings
 
 
 class Custom:
