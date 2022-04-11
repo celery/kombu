@@ -25,7 +25,6 @@ class test_JSONEncoder:
     def test_datetime(self):
         now = datetime.utcnow()
         now_utc = now.replace(tzinfo=pytz.utc)
-        stripped = datetime(*now.timetuple()[:3])
         serialized = loads(dumps({
             'datetime': now,
             'tz': now_utc,
