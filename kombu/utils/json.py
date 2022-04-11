@@ -79,7 +79,7 @@ def dumps(s, _dumps=json.dumps, cls=None, default_kwargs=None, **kwargs):
 
 
 def object_hook(dct):
-    """Hook function to perform custom deserialization"""
+    """Hook function to perform custom deserialization."""
     if "__bytes__" in dct:
         return dct["bytes"].encode("utf-8")
     if "__base64__" in dct:
