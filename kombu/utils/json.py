@@ -4,6 +4,7 @@ import datetime
 import decimal
 import json as stdjson
 import uuid
+import base64
 
 try:
     from django.utils.functional import Promise as DjangoPromise
@@ -56,7 +57,13 @@ class JSONEncoder(_encoder_cls):
             elif isinstance(o, textual):
                 return text_t(o)
             elif isinstance(o, bytes):
-                return {"bytes": o.decode("utf-8"), "__bytes__": True}
+                try:
+                    return {"bytes": o.decode("utf-8"), "__bytes__": True}
+                except UnicodeDecodeError:
+                    return {
+                        "bytes": base64.b64encode(o).decode("utf-8"),
+                        "__base64__": True,
+                    }
             return super().default(o)
 
 
@@ -74,6 +81,8 @@ def dumps(s, _dumps=json.dumps, cls=None, default_kwargs=None, **kwargs):
 def object_hook(dct):
     if "__bytes__" in dct:
         return dct["bytes"].encode("utf-8")
+    if "__base64__" in dct:
+        return base64.b64decode(dct["bytes"].encode("utf-8"))
     return dct
 
 
