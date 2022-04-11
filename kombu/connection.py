@@ -1064,5 +1064,5 @@ def maybe_channel(channel: Union["Channel", Connection]) -> "Channel":
     return channel
 
 
-def is_connection(obj: Any) -> TypeGuard[Connection]:
+def is_connection(obj: Any) -> "TypeGuard[Connection]":
     return isinstance(obj, Connection)
