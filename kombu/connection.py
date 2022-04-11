@@ -890,7 +890,7 @@ class Connection:
         return self._connection
 
     @property
-    def default_channel(self) -> Channel:
+    def default_channel(self) -> "Channel":
         """Default channel.
 
         Created upon access and closed when the connection is closed.
@@ -1053,7 +1053,7 @@ class ChannelPool(Resource):
         return channel
 
 
-def maybe_channel(channel: Union[Channel, Connection]) -> Channel:
+def maybe_channel(channel: Union["Channel", Connection]) -> "Channel":
     """Get channel from object.
 
     Return the default channel if argument is a connection instance,
