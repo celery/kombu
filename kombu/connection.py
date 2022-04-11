@@ -2,9 +2,11 @@
 
 import os
 import socket
+import sys
 from contextlib import contextmanager
 from itertools import count, cycle
 from operator import itemgetter
+from typing import TYPE_CHECKING, Any, Union
 
 try:
     from ssl import CERT_NONE
@@ -24,6 +26,15 @@ from .utils.collections import HashedSeq
 from .utils.functional import dictfilter, lazy, retry_over_time, shufflecycle
 from .utils.objects import cached_property
 from .utils.url import as_url, maybe_sanitize_url, parse_url, quote, urlparse
+
+if TYPE_CHECKING:
+    from kombu.transport.virtual import Channel
+
+    if sys.version_info < (3, 10):
+        from typing_extensions import TypeGuard
+    else:
+        from typing import TypeGuard
+
 
 __all__ = ('Connection', 'ConnectionPool', 'ChannelPool')
 
@@ -879,7 +890,7 @@ class Connection:
         return self._connection
 
     @property
-    def default_channel(self):
+    def default_channel(self) -> Channel:
         """Default channel.
 
         Created upon access and closed when the connection is closed.
@@ -1042,7 +1053,7 @@ class ChannelPool(Resource):
         return channel
 
 
-def maybe_channel(channel):
+def maybe_channel(channel: Union[Channel, Connection]) -> Channel:
     """Get channel from object.
 
     Return the default channel if argument is a connection instance,
@@ -1053,5 +1064,5 @@ def maybe_channel(channel):
     return channel
 
 
-def is_connection(obj):
+def is_connection(obj: Any) -> TypeGuard[Connection]:
     return isinstance(obj, Connection)
