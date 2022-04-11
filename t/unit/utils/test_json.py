@@ -33,10 +33,10 @@ class test_JSONEncoder:
             'time': now.time()},
         ))
         assert serialized == {
-            'datetime': now.isoformat(),
-            'tz': '{}Z'.format(now_utc.isoformat().split('+', 1)[0]),
+            'datetime': now,
+            'tz': now_utc,
             'time': now.time().isoformat(),
-            'date': stripped.isoformat(),
+            'date':  datetime(now.year, now.month, now.day, 0, 0, 0, 0),
         }
 
     def test_Decimal(self):

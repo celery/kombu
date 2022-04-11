@@ -5,6 +5,8 @@ import decimal
 import json as stdjson
 import uuid
 
+from kombu.utils.iso8601 import parse_iso8601
+
 try:
     from django.utils.functional import Promise as DjangoPromise
 except ImportError:  # pragma: no cover
@@ -71,7 +73,7 @@ def dumps(s, _dumps=json.dumps, cls=None, default_kwargs=None, **kwargs):
 
 def object_hook(dct):
     if "__datetime__" in dct:
-        return datetime.datetime.fromisoformat(dct["datetime"])
+        return parse_iso8601(dct["datetime"])
     return dct
 
 
