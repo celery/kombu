@@ -1,7 +1,8 @@
 """Object utilities."""
 
 from copy import copy
-from typing import TYPE_CHECKING, Any, Callable, Dict, Tuple, Type, TypeVar, Optional, Union
+from typing import (TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, Type,
+                    TypeVar)
 
 from .connection import maybe_channel
 from .exceptions import NotBoundError
@@ -15,9 +16,14 @@ __all__ = ('Object', 'MaybeChannelBound')
 
 _T = TypeVar("_T")
 _ObjectType = TypeVar("_ObjectType", bound="Object")
-_MaybeChannelBoundType = TypeVar("_MaybeChannelBoundType", bound="MaybeChannelBound")
+_MaybeChannelBoundType = TypeVar(
+    "_MaybeChannelBoundType", bound="MaybeChannelBound"
+)
 
-def unpickle_dict(cls: Type[_ObjectType], kwargs: Dict[str, Any]) -> _ObjectType:
+
+def unpickle_dict(
+    cls: Type[_ObjectType], kwargs: Dict[str, Any]
+) -> _ObjectType:
     return cls(**kwargs)
 
 
@@ -54,7 +60,8 @@ class Object:
         }
 
     def __reduce__(self: _ObjectType) -> Tuple[
-        Callable[[Type[_ObjectType], Dict[str, Any]], _ObjectType], Tuple[Type[_ObjectType], Dict[str, Any]]
+        Callable[[Type[_ObjectType], Dict[str, Any]], _ObjectType],
+        Tuple[Type[_ObjectType], Dict[str, Any]]
     ]:
         return unpickle_dict, (self.__class__, self.as_dict())
 
@@ -71,15 +78,21 @@ class MaybeChannelBound(Object):
     #: Defines whether maybe_declare can skip declaring this entity twice.
     can_cache_declaration = False
 
-    def __call__(self: _MaybeChannelBoundType, channel: Channel) -> _MaybeChannelBoundType:
+    def __call__(
+        self: _MaybeChannelBoundType, channel: Channel
+    ) -> _MaybeChannelBoundType:
         """`self(channel) -> self.bind(channel)`."""
         return self.bind(channel)
 
-    def bind(self: _MaybeChannelBoundType, channel: Channel) -> _MaybeChannelBoundType:
+    def bind(
+        self: _MaybeChannelBoundType, channel: Channel
+    ) -> _MaybeChannelBoundType:
         """Create copy of the instance that is bound to a channel."""
         return copy(self).maybe_bind(channel)
 
-    def maybe_bind(self: _MaybeChannelBoundType, channel: Channel) -> _MaybeChannelBoundType:
+    def maybe_bind(
+        self: _MaybeChannelBoundType, channel: Channel
+    ) -> _MaybeChannelBoundType:
         """Bind instance to channel if not already bound."""
         if not self.is_bound and channel:
             self._channel = maybe_channel(channel)
