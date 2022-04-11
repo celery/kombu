@@ -72,26 +72,26 @@ class Object:
 class MaybeChannelBound(Object):
     """Mixin for classes that can be bound to an AMQP channel."""
 
-    _channel: Optional[Channel] = None
+    _channel: Optional["Channel"] = None
     _is_bound = False
 
     #: Defines whether maybe_declare can skip declaring this entity twice.
     can_cache_declaration = False
 
     def __call__(
-        self: _MaybeChannelBoundType, channel: Channel
+        self: _MaybeChannelBoundType, channel: "Channel"
     ) -> _MaybeChannelBoundType:
         """`self(channel) -> self.bind(channel)`."""
         return self.bind(channel)
 
     def bind(
-        self: _MaybeChannelBoundType, channel: Channel
+        self: _MaybeChannelBoundType, channel: "Channel"
     ) -> _MaybeChannelBoundType:
         """Create copy of the instance that is bound to a channel."""
         return copy(self).maybe_bind(channel)
 
     def maybe_bind(
-        self: _MaybeChannelBoundType, channel: Channel
+        self: _MaybeChannelBoundType, channel: "Channel"
     ) -> _MaybeChannelBoundType:
         """Bind instance to channel if not already bound."""
         if not self.is_bound and channel:
@@ -100,7 +100,7 @@ class MaybeChannelBound(Object):
             self._is_bound = True
         return self
 
-    def revive(self, channel: Channel) -> None:
+    def revive(self, channel: "Channel") -> None:
         """Revive channel after the connection has been re-established.
 
         Used by :meth:`~kombu.Connection.ensure`.
@@ -129,7 +129,7 @@ class MaybeChannelBound(Object):
         return self._is_bound and self._channel is not None
 
     @property
-    def channel(self) -> Channel:
+    def channel(self) -> "Channel":
         """Current channel if the object is bound."""
         channel = self._channel
         if channel is None:
