@@ -39,6 +39,10 @@ class test_JSONEncoder:
             'date': stripped.isoformat(),
         }
 
+    def test_binary(self):
+        serialized = loads(dumps({'args': (b'7a108737-0b0a-4acc-a32f-f8a5e6726775',)}))
+        assert serialized == {'args': [b'7a108737-0b0a-4acc-a32f-f8a5e6726775']}
+
     def test_Decimal(self):
         d = Decimal('3314132.13363235235324234123213213214134')
         assert loads(dumps({'d': d})), {'d': str(d)}

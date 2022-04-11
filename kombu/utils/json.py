@@ -55,6 +55,8 @@ class JSONEncoder(_encoder_cls):
                 return o.isoformat()
             elif isinstance(o, textual):
                 return text_t(o)
+            elif isinstance(o, bytes):
+                return {"bytes": o.decode("utf-8"), "__bytes__": True}
             return super().default(o)
 
 
@@ -69,7 +71,13 @@ def dumps(s, _dumps=json.dumps, cls=None, default_kwargs=None, **kwargs):
                   **dict(default_kwargs, **kwargs))
 
 
-def loads(s, _loads=json.loads, decode_bytes=True):
+def object_hook(dct):
+    if "__bytes__" in dct:
+        return dct["bytes"].encode("utf-8")
+    return dct
+
+
+def loads(s, _loads=json.loads, decode_bytes=True, object_hook=object_hook):
     """Deserialize json from string."""
     # None of the json implementations supports decoding from
     # a buffer/memoryview, or even reading from a stream
@@ -85,7 +93,7 @@ def loads(s, _loads=json.loads, decode_bytes=True):
         s = s.decode('utf-8')
 
     try:
-        return _loads(s)
+        return _loads(s, object_hook=object_hook)
     except _DecodeError:
         # catch "Unpaired high surrogate" error
         return stdjson.loads(s)
