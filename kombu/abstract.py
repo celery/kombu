@@ -1,7 +1,8 @@
 """Object utilities."""
 
 from copy import copy
-from typing import TYPE_CHECKING, Any, Callable, Dict, Tuple, Type, TypeVar, Optional, Union
+from typing import (TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, Type,
+                    TypeVar, Union)
 
 from .connection import maybe_channel
 from .exceptions import NotBoundError
