@@ -1,8 +1,13 @@
 """Exceptions."""
 
 from socket import timeout as TimeoutError
+from types import TracebackType
+from typing import TYPE_CHECKING, Optional, Type, TypeVar
 
 from amqp import ChannelError, ConnectionError, ResourceError
+
+if TYPE_CHECKING:
+    from kombu.asynchronous.http import Response
 
 __all__ = (
     'reraise', 'KombuError', 'OperationalError',
@@ -14,8 +19,14 @@ __all__ = (
     'InconsistencyError',
 )
 
+BaseExceptionType = TypeVar('BaseExceptionType', bound=BaseException)
 
-def reraise(tp, value, tb=None):
+
+def reraise(
+    tp: Type[BaseExceptionType],
+    value: BaseExceptionType,
+    tb: Optional[TracebackType] = None
+) -> BaseExceptionType:
     """Reraise exception."""
     if value.__traceback__ is not tb:
         raise value.with_traceback(tb)
@@ -84,11 +95,16 @@ class InconsistencyError(ConnectionError):
 class HttpError(Exception):
     """HTTP Client Error."""
 
-    def __init__(self, code, message=None, response=None):
+    def __init__(
+        self,
+        code: int,
+        message: Optional[str] = None,
+        response: Optional["Response"] = None
+    ) -> None:
         self.code = code
         self.message = message
         self.response = response
         super().__init__(code, message, response)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return 'HTTP {0.code}: {0.message}'.format(self)
