@@ -79,7 +79,7 @@ class round_robin_cycle(Generic[ResourceType]):
     def __init__(self, it: Optional[Sequence[ResourceType]] = None):
         self.items = it if it is not None else []
 
-    def update(self, it: Iterable[ResourceType]):
+    def update(self, it: Iterable[ResourceType]) -> None:
         """Update items from iterable."""
         self.items[:] = it
 
