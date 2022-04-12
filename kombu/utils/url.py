@@ -4,7 +4,7 @@
 
 from collections.abc import Mapping
 from functools import partial
-from typing import Any, Dict, NamedTuple, Optional, TypeVar
+from typing import Dict, NamedTuple, Optional, TypeVar, Union
 from urllib.parse import parse_qsl, quote, unquote, urlparse
 
 try:
@@ -27,10 +27,12 @@ class urlparts(NamedTuple):
     username: str
     password: str
     path: str
-    query: Mapping
+    query: Mapping[str, str]
 
 
-def parse_url(url: str) -> Dict[str, Any]:
+def parse_url(url: str) -> Dict[str, Union[
+        str, int, Dict[str, str], 'ssl.VerifyMode'
+    ]]:
     """Parse URL into mapping of components."""
     scheme, host, port, user, password, path, query = _parse_url(url)
     if query:
