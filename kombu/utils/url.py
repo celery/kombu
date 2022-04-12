@@ -4,7 +4,7 @@
 
 from collections.abc import Mapping
 from functools import partial
-from typing import Any, Dict, NamedTuple, Optional, TypeVar, Union
+from typing import Any, Dict, NamedTuple, Optional, TypeVar
 from urllib.parse import parse_qsl, quote, unquote, urlparse
 
 try:
@@ -101,7 +101,7 @@ def sanitize_url(url: str, mask: str='**') -> str:
     return as_url(*_parse_url(url), sanitize=True, mask=mask)
 
 _T = TypeVar("_T")
-def maybe_sanitize_url(url: _T, mask: str='**') -> Union[_T, str]:
+def maybe_sanitize_url(url: _T, mask: str='**') -> _T:
     """Sanitize url, or do nothing if url undefined."""
     if isinstance(url, str) and '://' in url:
         return sanitize_url(url, mask)
