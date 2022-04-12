@@ -1,5 +1,6 @@
 """JSON Serialization Utilities."""
 
+import base64
 import datetime
 import decimal
 import json as stdjson
@@ -55,6 +56,14 @@ class JSONEncoder(_encoder_cls):
                 return o.isoformat()
             elif isinstance(o, textual):
                 return text_t(o)
+            elif isinstance(o, bytes):
+                try:
+                    return {"bytes": o.decode("utf-8"), "__bytes__": True}
+                except UnicodeDecodeError:
+                    return {
+                        "bytes": base64.b64encode(o).decode("utf-8"),
+                        "__base64__": True,
+                    }
             return super().default(o)
 
 
@@ -69,7 +78,16 @@ def dumps(s, _dumps=json.dumps, cls=None, default_kwargs=None, **kwargs):
                   **dict(default_kwargs, **kwargs))
 
 
-def loads(s, _loads=json.loads, decode_bytes=True):
+def object_hook(dct):
+    """Hook function to perform custom deserialization."""
+    if "__bytes__" in dct:
+        return dct["bytes"].encode("utf-8")
+    if "__base64__" in dct:
+        return base64.b64decode(dct["bytes"].encode("utf-8"))
+    return dct
+
+
+def loads(s, _loads=json.loads, decode_bytes=True, object_hook=object_hook):
     """Deserialize json from string."""
     # None of the json implementations supports decoding from
     # a buffer/memoryview, or even reading from a stream
@@ -85,7 +103,7 @@ def loads(s, _loads=json.loads, decode_bytes=True):
         s = s.decode('utf-8')
 
     try:
-        return _loads(s)
+        return _loads(s, object_hook=object_hook)
     except _DecodeError:
         # catch "Unpaired high surrogate" error
         return stdjson.loads(s)
