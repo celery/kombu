@@ -53,7 +53,7 @@ class FairCycle(Generic[ResourceType, CallbackType, FunReturnType]):
                 if not self.resources:
                     raise self.predicate()
 
-    def get(self, callback: CallbackType, **kwargs) -> FunReturnType:
+    def get(self, callback: CallbackType, **kwargs: Any) -> FunReturnType:
         """Get from next resource."""
         for tried in count(0):  # for infinity
             resource = self._next()
