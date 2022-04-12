@@ -72,6 +72,7 @@ def dumps(s, _dumps=json.dumps, cls=None, default_kwargs=None, **kwargs):
 
 
 def object_hook(dct):
+    """Hook function to perform custom deserialization."""
     if "__datetime__" in dct:
         return parse_iso8601(dct["datetime"])
     return dct
