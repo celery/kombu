@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections import deque
 from time import monotonic
 
 __all__ = ('TokenBucket',)
@@ -23,32 +22,21 @@ class TokenBucket:
         section of any multithreaded code.
     """
 
-    #: The rate in tokens/second that the bucket will be refilled.
-    fill_rate = None
+    def __init__(
+        self,
+        fill_rate: str | int | float,
+        capacity: int = 1
+    ) -> None:
+        #: Maximum number of tokens in the bucket.
+        self.capacity = self._tokens = float(capacity)
 
-    #: Maximum number of tokens in the bucket.
-    capacity = 1
-
-    #: Timestamp of the last time a token was taken out of the bucket.
-    timestamp = None
-
-    def __init__(self, fill_rate, capacity=1):
-        self.capacity = float(capacity)
-        self._tokens = capacity
+        #: Rate in tokens/second that the bucket will be refilled.
         self.fill_rate = float(fill_rate)
-        self.timestamp = monotonic()
-        self.contents = deque()
 
-    def add(self, item):
-        self.contents.append(item)
+        #: Timestamp of the last time a token was taken out of the bucket.
+        self.timestamp: float = monotonic()
 
-    def pop(self):
-        return self.contents.popleft()
-
-    def clear_pending(self):
-        self.contents.clear()
-
-    def can_consume(self, tokens=1):
+    def can_consume(self, tokens: int = 1) -> bool:
         """Check if one or more tokens can be consumed.
 
         Returns:
@@ -64,7 +52,7 @@ class TokenBucket:
             return True
         return False
 
-    def expected_time(self, tokens=1):
+    def expected_time(self, tokens: int = 1) -> float:
         """Return estimated time of token availability.
 
         Returns:
@@ -74,10 +62,10 @@ class TokenBucket:
         tokens = max(tokens, _tokens)
         return (tokens - _tokens) / self.fill_rate
 
-    def _get_tokens(self):
+    def _get_tokens(self) -> int:
         if self._tokens < self.capacity:
             now = monotonic()
             delta = self.fill_rate * (now - self.timestamp)
             self._tokens = min(self.capacity, self._tokens + delta)
             self.timestamp = now
-        return self._tokens
+        return int(self._tokens)
