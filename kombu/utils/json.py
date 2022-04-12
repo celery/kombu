@@ -1,5 +1,6 @@
 """JSON Serialization Utilities."""
 
+import base64
 import datetime
 import decimal
 import json as stdjson
@@ -57,6 +58,14 @@ class JSONEncoder(_encoder_cls):
                 return o.isoformat()
             elif isinstance(o, textual):
                 return text_t(o)
+            elif isinstance(o, bytes):
+                try:
+                    return {"bytes": o.decode("utf-8"), "__bytes__": True}
+                except UnicodeDecodeError:
+                    return {
+                        "bytes": base64.b64encode(o).decode("utf-8"),
+                        "__base64__": True,
+                    }
             return super().default(o)
 
 
@@ -75,6 +84,10 @@ def object_hook(dct):
     """Hook function to perform custom deserialization."""
     if "__datetime__" in dct:
         return parse_iso8601(dct["datetime"])
+    if "__bytes__" in dct:
+        return dct["bytes"].encode("utf-8")
+    if "__base64__" in dct:
+        return base64.b64decode(dct["bytes"].encode("utf-8"))
     return dct
 
 

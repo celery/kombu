@@ -6,6 +6,8 @@ from uuid import uuid4
 
 import pytest
 import pytz
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 from kombu.utils.encoding import str_to_bytes
 from kombu.utils.json import _DecodeError, dumps, loads
@@ -36,6 +38,16 @@ class test_JSONEncoder:
             'tz': now_utc,
             'time': now.time().isoformat(),
             'date':  datetime(now.year, now.month, now.day, 0, 0, 0, 0),
+        }
+
+    @given(message=st.binary())
+    @settings(print_blob=True)
+    def test_binary(self, message):
+        serialized = loads(dumps({
+            'args': (message,),
+        }))
+        assert serialized == {
+            'args': [message],
         }
 
     def test_Decimal(self):
