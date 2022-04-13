@@ -4,8 +4,9 @@ from collections import deque
 from functools import partial
 from io import BytesIO
 from time import time
+from typing import Optional
 
-from kombu.asynchronous.hub import READ, WRITE, get_event_loop
+from kombu.asynchronous.hub import READ, WRITE, Hub, get_event_loop
 from kombu.exceptions import HttpError
 from kombu.utils.encoding import bytes_to_str
 
@@ -36,7 +37,7 @@ class CurlClient(BaseClient):
 
     Curl = Curl
 
-    def __init__(self, hub=None, max_clients=10):
+    def __init__(self, hub: Optional[Hub] = None, max_clients: int = 10):
         if pycurl is None:
             raise ImportError('The curl client requires the pycurl library.')
         hub = hub or get_event_loop()
