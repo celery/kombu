@@ -61,7 +61,7 @@ def resolve_transport(transport: Optional[str] = None) -> Optional[str]:
         except KeyError:
             if '.' not in transport and ':' not in transport:
                 from kombu.utils.text import fmatch_best
-                alt = fmatch_best(transport, list(TRANSPORT_ALIASES.keys()))
+                alt = fmatch_best(transport, TRANSPORT_ALIASES)
                 if alt:
                     raise KeyError(
                         'No such transport: {}.  Did you mean {}?'.format(
