@@ -3,8 +3,8 @@
 import base64
 import datetime
 import decimal
-import uuid
 import json
+import uuid
 
 try:
     from django.utils.functional import Promise as DjangoPromise
