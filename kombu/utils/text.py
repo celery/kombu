@@ -3,7 +3,7 @@
 
 
 from difflib import SequenceMatcher
-from typing import Iterator, Optional, Sequence, Tuple, Union
+from typing import Iterable, Iterator, Optional, Tuple, Union
 
 from kombu import version_info_t
 
@@ -17,7 +17,7 @@ def escape_regex(p, white=''):
                    for c in p)
 
 
-def fmatch_iter(needle: str, haystack: Sequence[str], min_ratio: float = 0.6) -> Iterator[Tuple[float, str]]:
+def fmatch_iter(needle: str, haystack: Iterable[str], min_ratio: float = 0.6) -> Iterator[Tuple[float, str]]:
     """Fuzzy match: iteratively.
 
     Yields:
@@ -29,7 +29,7 @@ def fmatch_iter(needle: str, haystack: Sequence[str], min_ratio: float = 0.6) ->
             yield ratio, key
 
 
-def fmatch_best(needle: str, haystack: Sequence[str], min_ratio: float = 0.6) -> Optional[str]:
+def fmatch_best(needle: str, haystack: Iterable[str], min_ratio: float = 0.6) -> Optional[str]:
     """Fuzzy match - Find best match (scalar)."""
     try:
         return sorted(
