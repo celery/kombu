@@ -2,6 +2,8 @@
 # flake8: noqa
 
 
+from __future__ import annotations
+
 from difflib import SequenceMatcher
 from typing import Iterable, Iterator, Optional, Tuple, Union
 
@@ -17,7 +19,7 @@ def escape_regex(p, white=''):
                    for c in p)
 
 
-def fmatch_iter(needle: str, haystack: Iterable[str], min_ratio: float = 0.6) -> Iterator[Tuple[float, str]]:
+def fmatch_iter(needle: str, haystack: Iterable[str], min_ratio: float = 0.6) -> Iterator[tuple[float, str]]:
     """Fuzzy match: iteratively.
 
     Yields:
@@ -29,7 +31,7 @@ def fmatch_iter(needle: str, haystack: Iterable[str], min_ratio: float = 0.6) ->
             yield ratio, key
 
 
-def fmatch_best(needle: str, haystack: Iterable[str], min_ratio: float = 0.6) -> Optional[str]:
+def fmatch_best(needle: str, haystack: Iterable[str], min_ratio: float = 0.6) -> str | None:
     """Fuzzy match - Find best match (scalar)."""
     try:
         return sorted(
@@ -53,15 +55,15 @@ def version_string_as_tuple(s: str) -> version_info_t:
 
 def _unpack_version(
     major: str,
-    minor: Union[str, int] = 0,
-    micro: Union[str, int] = 0,
+    minor: str | int = 0,
+    micro: str | int = 0,
     releaselevel: str = '',
     serial: str = ''
 ) -> version_info_t:
     return version_info_t(int(major), int(minor), micro, releaselevel, serial)
 
 
-def _splitmicro(micro: str, releaselevel: str = '', serial: str = '') -> Tuple[int, str, str]:
+def _splitmicro(micro: str, releaselevel: str = '', serial: str = '') -> tuple[int, str, str]:
     for index, char in enumerate(micro):
         if not char.isdigit():
             break

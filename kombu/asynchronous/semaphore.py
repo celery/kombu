@@ -1,7 +1,9 @@
 """Semaphores and concurrency primitives."""
+from __future__ import annotations
+
 import sys
 from collections import deque
-from typing import TYPE_CHECKING, Callable, Deque, Optional, Tuple, Type
+from typing import TYPE_CHECKING, Callable, Deque
 
 if sys.version_info < (3, 10):
     from typing_extensions import ParamSpec
@@ -42,7 +44,7 @@ class LaxBoundedSemaphore:
 
     def __init__(self, value: int) -> None:
         self.initial_value = self.value = value
-        self._waiting: Deque[Tuple] = deque()
+        self._waiting: Deque[tuple] = deque()
         self._add_waiter = self._waiting.append
         self._pop_waiter = self._waiting.popleft
 
@@ -111,13 +113,13 @@ class LaxBoundedSemaphore:
 class DummyLock:
     """Pretending to be a lock."""
 
-    def __enter__(self) -> 'DummyLock':
+    def __enter__(self) -> DummyLock:
         return self
 
     def __exit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional['TracebackType']
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None
     ) -> None:
         pass

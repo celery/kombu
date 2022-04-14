@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from kombu.utils.objects import cached_property
 
 

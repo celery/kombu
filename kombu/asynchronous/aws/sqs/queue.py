@@ -1,5 +1,7 @@
 """Amazon SQS queue implementation."""
 
+from __future__ import annotations
+
 from vine import transform
 
 from .message import AsyncMessage

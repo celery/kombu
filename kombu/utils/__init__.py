@@ -1,5 +1,7 @@
 """DEPRECATED - Import from modules below."""
 
+from __future__ import annotations
+
 from .collections import EqualityDict
 from .compat import fileno, maybe_fileno, nested, register_after_fork
 from .div import emergency_dump_state

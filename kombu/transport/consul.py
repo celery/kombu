@@ -27,6 +27,8 @@ Connection string has the following format:
 
 """
 
+from __future__ import annotations
+
 import socket
 import uuid
 from collections import defaultdict

@@ -1,5 +1,7 @@
 """Amazon SQS Connection."""
 
+from __future__ import annotations
+
 from vine import transform
 
 from kombu.asynchronous.aws.connection import AsyncAWSQueryConnection

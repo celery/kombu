@@ -1,12 +1,12 @@
 """Built-in transports."""
 
-from typing import Optional
+from __future__ import annotations
 
 from kombu.utils.compat import _detect_environment
 from kombu.utils.imports import symbol_by_name
 
 
-def supports_librabbitmq() -> Optional[bool]:
+def supports_librabbitmq() -> bool | None:
     """Return true if :pypi:`librabbitmq` can be used."""
     if _detect_environment() == 'default':
         try:
@@ -47,7 +47,7 @@ TRANSPORT_ALIASES = {
 _transport_cache = {}
 
 
-def resolve_transport(transport: Optional[str] = None) -> Optional[str]:
+def resolve_transport(transport: str | None = None) -> str | None:
     """Get transport by name.
 
     Arguments:
@@ -74,7 +74,7 @@ def resolve_transport(transport: Optional[str] = None) -> Optional[str]:
     return transport
 
 
-def get_transport_cls(transport: Optional[str] = None) -> Optional[str]:
+def get_transport_cls(transport: str | None = None) -> str | None:
     """Get transport class by name.
 
     The transport string is the full path to a transport class, e.g.::

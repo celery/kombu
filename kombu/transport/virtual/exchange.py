@@ -4,6 +4,8 @@ Implementations of the standard exchanges defined
 by the AMQ protocol  (excluding the `headers` exchange).
 """
 
+from __future__ import annotations
+
 import re
 
 from kombu.utils.text import escape_regex

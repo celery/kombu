@@ -50,9 +50,7 @@ Transport Options
 
 Moreover parameters of :func:`sqlalchemy.create_engine()` function can be passed as transport options.
 """
-# SQLAlchemy overrides != False to have special meaning and pep8 complains
-# flake8: noqa
-
+from __future__ import annotations
 
 import threading
 from json import dumps, loads
@@ -70,6 +68,13 @@ from .models import Message as MessageBase
 from .models import ModelBase
 from .models import Queue as QueueBase
 from .models import class_registry, metadata
+
+# SQLAlchemy overrides != False to have special meaning and pep8 complains
+# flake8: noqa
+
+
+
+
 
 VERSION = (1, 4, 1)
 __version__ = '.'.join(map(str, VERSION))

@@ -86,6 +86,8 @@ Celery, this can be accomplished by setting the
 *BROKER_TRANSPORT_OPTIONS* Celery option.
 """
 
+from __future__ import annotations
+
 import os
 import select
 import socket

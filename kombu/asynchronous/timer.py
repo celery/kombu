@@ -1,5 +1,7 @@
 """Timer scheduling Python callbacks."""
 
+from __future__ import annotations
+
 import heapq
 import sys
 from collections import namedtuple
@@ -7,7 +9,7 @@ from datetime import datetime
 from functools import total_ordering
 from time import monotonic
 from time import time as _time
-from typing import TYPE_CHECKING, Optional, Type
+from typing import TYPE_CHECKING
 from weakref import proxy as weakrefproxy
 
 from vine.utils import wraps
@@ -107,9 +109,9 @@ class Timer:
 
     def __exit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional['TracebackType']
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None
     ) -> None:
         self.stop()
 

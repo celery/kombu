@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from unittest.mock import MagicMock, Mock
 
 from kombu.asynchronous.aws.ext import boto3

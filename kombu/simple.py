@@ -1,10 +1,12 @@
 """Simple messaging interface."""
 
+from __future__ import annotations
+
 import socket
 from collections import deque
 from queue import Empty
 from time import monotonic
-from typing import TYPE_CHECKING, Optional, Type
+from typing import TYPE_CHECKING
 
 from . import entity, messaging
 from .connection import maybe_channel
@@ -24,9 +26,9 @@ class SimpleBase:
 
     def __exit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional['TracebackType']
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None
     ) -> None:
         self.close()
 

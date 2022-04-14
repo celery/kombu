@@ -1,5 +1,7 @@
 """Exceptions."""
 
+from __future__ import annotations
+
 from socket import timeout as TimeoutError
 
 from amqp import ChannelError, ConnectionError, ResourceError

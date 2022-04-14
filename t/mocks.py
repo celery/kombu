@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from itertools import count
-from typing import TYPE_CHECKING, Optional, Type
+from typing import TYPE_CHECKING
 from unittest.mock import Mock
 
 from kombu.transport import base
@@ -19,9 +21,9 @@ class _ContextMock(Mock):
 
     def __exit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional['TracebackType']
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None
     ) -> None:
         pass
 
