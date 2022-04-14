@@ -5,7 +5,7 @@ import datetime
 import decimal
 import json as stdjson
 import uuid
-from typing import Callable, Any, Dict, Union, List, Iterable, Mapping, Type
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Type, Union
 
 try:
     from django.utils.functional import Promise as DjangoPromise
