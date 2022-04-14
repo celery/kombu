@@ -3,8 +3,8 @@
 import base64
 import datetime
 import decimal
-import json as stdjson
 import uuid
+import json
 
 try:
     from django.utils.functional import Promise as DjangoPromise
@@ -12,19 +12,12 @@ except ImportError:  # pragma: no cover
     class DjangoPromise:
         """Dummy object."""
 
-try:
-    import json
-    _json_extra_kwargs = {}
 
-    class _DecodeError(Exception):
-        pass
-except ImportError:                 # pragma: no cover
-    import simplejson as json
-    from simplejson.decoder import JSONDecodeError as _DecodeError
-    _json_extra_kwargs = {
-        'use_decimal': False,
-        'namedtuple_as_object': False,
-    }
+_json_extra_kwargs = {}
+
+
+class _DecodeError(Exception):
+    pass
 
 
 _encoder_cls = type(json._default_encoder)
@@ -106,4 +99,4 @@ def loads(s, _loads=json.loads, decode_bytes=True, object_hook=object_hook):
         return _loads(s, object_hook=object_hook)
     except _DecodeError:
         # catch "Unpaired high surrogate" error
-        return stdjson.loads(s)
+        return json.loads(s)
