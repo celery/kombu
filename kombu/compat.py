@@ -3,8 +3,10 @@
 See https://pypi.org/project/carrot/ for documentation.
 """
 
+from __future__ import annotations
+
 from itertools import count
-from typing import TYPE_CHECKING, Optional, Type
+from typing import TYPE_CHECKING
 
 from . import messaging
 from .entity import Exchange, Queue
@@ -71,9 +73,9 @@ class Publisher(messaging.Producer):
 
     def __exit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional['TracebackType']
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None
     ) -> None:
         self.close()
 
@@ -138,9 +140,9 @@ class Consumer(messaging.Consumer):
 
     def __exit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional['TracebackType']
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None
     ) -> None:
         self.close()
 

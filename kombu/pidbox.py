@@ -1,5 +1,7 @@
 """Generic process mailbox."""
 
+from __future__ import annotations
+
 import socket
 import warnings
 from collections import defaultdict, deque

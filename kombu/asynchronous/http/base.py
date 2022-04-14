@@ -1,8 +1,10 @@
 """Base async HTTP client implementation."""
 
+from __future__ import annotations
+
 import sys
 from http.client import responses
-from typing import TYPE_CHECKING, Optional, Type
+from typing import TYPE_CHECKING
 
 from vine import Thenable, maybe_promise, promise
 
@@ -259,8 +261,8 @@ class BaseClient:
 
     def __exit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional['TracebackType']
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None
     ) -> None:
         self.close()

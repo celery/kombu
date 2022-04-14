@@ -1,12 +1,13 @@
 """Event loop implementation."""
 
+from __future__ import annotations
+
 import errno
 import threading
 from contextlib import contextmanager
 from queue import Empty
 from time import sleep
 from types import GeneratorType as generator
-from typing import Optional
 
 from vine import Thenable, promise
 
@@ -20,7 +21,7 @@ from .timer import Timer
 __all__ = ('Hub', 'get_event_loop', 'set_event_loop')
 logger = get_logger(__name__)
 
-_current_loop: Optional["Hub"] = None
+_current_loop: Hub | None = None
 
 W_UNKNOWN_EVENT = """\
 Received unknown event %r for fd %r, please contact support!\
@@ -40,12 +41,12 @@ def _dummy_context(*args, **kwargs):
     yield
 
 
-def get_event_loop() -> Optional["Hub"]:
+def get_event_loop() -> Hub | None:
     """Get current event loop object."""
     return _current_loop
 
 
-def set_event_loop(loop: Optional["Hub"]) -> Optional["Hub"]:
+def set_event_loop(loop: Hub | None) -> Hub | None:
     """Set the current event loop object."""
     global _current_loop
     _current_loop = loop

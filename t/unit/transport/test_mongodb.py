@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import datetime
 from queue import Empty
 from unittest.mock import MagicMock, call, patch

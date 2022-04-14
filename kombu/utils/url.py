@@ -2,6 +2,8 @@
 # flake8: noqa
 
 
+from __future__ import annotations
+
 from collections.abc import Mapping
 from functools import partial
 from typing import NamedTuple

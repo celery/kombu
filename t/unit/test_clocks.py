@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pickle
 from heapq import heappush
 from time import time

@@ -1,5 +1,7 @@
 """Amazon AWS Connection."""
 
+from __future__ import annotations
+
 from email import message_from_bytes
 from email.mime.message import MIMEMessage
 

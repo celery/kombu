@@ -2,9 +2,11 @@
 # flake8: noqa
 
 
+from __future__ import annotations
+
 import errno
 import socket
-from typing import TYPE_CHECKING, Optional, Type
+from typing import TYPE_CHECKING
 
 from amqp.exceptions import RecoverableConnectionError
 
@@ -106,9 +108,9 @@ class StdChannel:
 
     def __exit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional['TracebackType']
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None
     ) -> None:
         self.close()
 

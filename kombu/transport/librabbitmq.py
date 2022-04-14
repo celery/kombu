@@ -3,6 +3,8 @@
 .. _`librabbitmq`: https://pypi.org/project/librabbitmq/
 """
 
+from __future__ import annotations
+
 import os
 import socket
 import warnings

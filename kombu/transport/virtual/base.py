@@ -3,6 +3,8 @@
 Emulates the AMQ API for non-AMQ transports.
 """
 
+from __future__ import annotations
+
 import base64
 import socket
 import sys
@@ -13,7 +15,7 @@ from itertools import count
 from multiprocessing.util import Finalize
 from queue import Empty
 from time import monotonic, sleep
-from typing import TYPE_CHECKING, Optional, Type
+from typing import TYPE_CHECKING
 
 from amqp.protocol import queue_declare_ok_t
 
@@ -806,9 +808,9 @@ class Channel(AbstractChannel, base.StdChannel):
 
     def __exit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional['TracebackType']
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None
     ) -> None:
         self.close()
 

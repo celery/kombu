@@ -1,4 +1,4 @@
-from typing import List
+from __future__ import annotations
 
 from kombu.asynchronous.semaphore import LaxBoundedSemaphore
 
@@ -7,7 +7,7 @@ class test_LaxBoundedSemaphore:
 
     def test_over_release(self) -> None:
         x = LaxBoundedSemaphore(2)
-        calls: List[int] = []
+        calls: list[int] = []
         for i in range(1, 21):
             x.acquire(calls.append, i)
         x.release()

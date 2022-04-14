@@ -1,10 +1,12 @@
 """Messaging library for Python."""
 
+from __future__ import annotations
+
 import os
 import re
 import sys
 from collections import namedtuple
-from typing import Any, List, cast
+from typing import Any, cast
 
 __version__ = '5.2.4'
 __author__ = 'Ask Solem'
@@ -78,7 +80,7 @@ class module(ModuleType):
             return getattr(module, name)
         return ModuleType.__getattribute__(self, name)
 
-    def __dir__(self) -> List[str]:
+    def __dir__(self) -> list[str]:
         result = list(new_module.__all__)
         result.extend(('__file__', '__path__', '__doc__', '__all__',
                        '__docformat__', '__name__', '__path__', 'VERSION',

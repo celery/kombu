@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pickle
 import socket
 from copy import copy, deepcopy

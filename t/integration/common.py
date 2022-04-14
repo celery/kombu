@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import socket
 from contextlib import closing
 from time import sleep

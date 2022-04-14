@@ -1,5 +1,7 @@
 """Serialization utilities."""
 
+from __future__ import annotations
+
 import codecs
 import os
 import pickle
