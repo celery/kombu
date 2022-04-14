@@ -5,7 +5,7 @@ import datetime
 import decimal
 import json as stdjson
 import uuid
-from typing import Any, Callable, Dict, Iterable, List, Mapping, Union
+from typing import Callable, Any, Dict, Union, List, Iterable, Mapping, Type
 
 try:
     from django.utils.functional import Promise as DjangoPromise
@@ -36,12 +36,12 @@ class JSONEncoder(_encoder_cls):
     """Kombu custom json encoder."""
 
     def default(self, o: Any,
-                dates: Iterable[Any] = (datetime.datetime, datetime.date),
-                times: Iterable[Any] = (datetime.time,),
-                textual: Iterable[Any] = (decimal.Decimal, uuid.UUID, DjangoPromise),
-                isinstance: Any = isinstance,
-                datetime: Any = datetime.datetime,
-                text_t: Callable[[Any], str] = str) -> str:
+                dates: Iterable = (datetime.datetime, datetime.date),
+                times: Iterable = (datetime.time,),
+                textual: Any = (decimal.Decimal, uuid.UUID, DjangoPromise),
+                isinstance: Callable = isinstance,
+                datetime: Type[datetime.datetime] = datetime.datetime,
+                text_t: Callable[[Any], str] = str) -> Union[str, Dict]:
         reducer = getattr(o, '__json__', None)
         if reducer is not None:
             return reducer()
@@ -71,7 +71,10 @@ class JSONEncoder(_encoder_cls):
 _default_encoder = JSONEncoder
 
 
-def dumps(s: Union[Iterable, Mapping], _dumps=json.dumps, cls=None, default_kwargs=None, **kwargs):
+def dumps(s: Union[Iterable, Mapping],
+          _dumps: Callable[[Union[Dict, List]], str] = json.dumps,
+          cls: Type[json.encoder.JSONEncoder] = None,
+          default_kwargs=None, **kwargs):
     """Serialize object to json string."""
     if not default_kwargs:
         default_kwargs = _json_extra_kwargs
@@ -79,7 +82,7 @@ def dumps(s: Union[Iterable, Mapping], _dumps=json.dumps, cls=None, default_kwar
                   **dict(default_kwargs, **kwargs))
 
 
-def object_hook(dct: Dict):
+def object_hook(dct: Dict) -> Any:
     """Hook function to perform custom deserialization."""
     if "__bytes__" in dct:
         return dct["bytes"].encode("utf-8")
@@ -89,9 +92,9 @@ def object_hook(dct: Dict):
 
 
 def loads(s: str,
-          _loads: Callable[[str], Union[Dict, List]] = json.loads,
+          _loads: Callable[[str], Dict] = json.loads,
           decode_bytes: bool = True,
-          object_hook: Callable[[Dict], Dict] = object_hook):
+          object_hook: Callable[[Dict], Any] = object_hook):
     """Deserialize json from string."""
     # None of the json implementations supports decoding from
     # a buffer/memoryview, or even reading from a stream
