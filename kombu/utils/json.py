@@ -13,9 +13,6 @@ except ImportError:  # pragma: no cover
         """Dummy object."""
 
 
-_json_extra_kwargs = {}
-
-
 class _DecodeError(Exception):
     pass
 
@@ -65,8 +62,7 @@ _default_encoder = JSONEncoder
 
 def dumps(s, _dumps=json.dumps, cls=None, default_kwargs=None, **kwargs):
     """Serialize object to json string."""
-    if not default_kwargs:
-        default_kwargs = _json_extra_kwargs
+    default_kwargs = default_kwargs or {}
     return _dumps(s, cls=cls or _default_encoder,
                   **dict(default_kwargs, **kwargs))
 
