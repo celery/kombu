@@ -5,7 +5,7 @@ from __future__ import annotations
 import base64
 import datetime
 import decimal
-import json as stdjson
+import json
 import uuid
 
 try:
@@ -14,19 +14,9 @@ except ImportError:  # pragma: no cover
     class DjangoPromise:
         """Dummy object."""
 
-try:
-    import json
-    _json_extra_kwargs = {}
 
-    class _DecodeError(Exception):
-        pass
-except ImportError:                 # pragma: no cover
-    import simplejson as json
-    from simplejson.decoder import JSONDecodeError as _DecodeError
-    _json_extra_kwargs = {
-        'use_decimal': False,
-        'namedtuple_as_object': False,
-    }
+class _DecodeError(Exception):
+    pass
 
 
 _encoder_cls = type(json._default_encoder)
@@ -74,8 +64,7 @@ _default_encoder = JSONEncoder
 
 def dumps(s, _dumps=json.dumps, cls=None, default_kwargs=None, **kwargs):
     """Serialize object to json string."""
-    if not default_kwargs:
-        default_kwargs = _json_extra_kwargs
+    default_kwargs = default_kwargs or {}
     return _dumps(s, cls=cls or _default_encoder,
                   **dict(default_kwargs, **kwargs))
 
@@ -108,4 +97,4 @@ def loads(s, _loads=json.loads, decode_bytes=True, object_hook=object_hook):
         return _loads(s, object_hook=object_hook)
     except _DecodeError:
         # catch "Unpaired high surrogate" error
-        return stdjson.loads(s)
+        return json.loads(s)
