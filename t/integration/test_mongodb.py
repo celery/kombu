@@ -32,6 +32,7 @@ def connection(request):
         ).get("slaveid", 'tests'),
     )
 
+
 @pytest.mark.env('mongodb')
 @pytest.mark.flaky(reruns=5, reruns_delay=2)
 class test_MongoDBBasicFunctionality(BasicFunctionality):

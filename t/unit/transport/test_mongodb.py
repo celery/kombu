@@ -167,7 +167,11 @@ class test_mongodb_channel(BaseMongoDBChannelCase):
 
         assert event == {'some': 'data'}
 
-        self.set_operation_return_value('messages', 'find_one_and_delete', None)
+        self.set_operation_return_value(
+            'messages',
+            'find_one_and_delete',
+            None,
+        )
         with pytest.raises(Empty):
             self.channel._get('foobar')
 
@@ -437,9 +441,11 @@ class test_mongodb_channel_ttl(BaseMongoDBChannelCase):
             'routing', 'update_one',
             {'queue': 'foo', 'pattern': '*',
              'routing_key': 'foo', 'exchange': 'test_exchange'},
-            {'$set': {'queue': 'foo', 'pattern': '*',
-             'routing_key': 'foo', 'exchange': 'test_exchange',
-             'expire_at': self.expire_at}},
+            {'$set': {
+                'queue': 'foo', 'pattern': '*',
+                'routing_key': 'foo', 'exchange': 'test_exchange',
+                'expire_at': self.expire_at
+            }},
             upsert=True,
         )
 

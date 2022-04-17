@@ -154,7 +154,9 @@ class Channel(virtual.Channel):
                     '$set': {
                         '_id': queue,
                         'options': kwargs,
-                        'expire_at': self._get_queue_expire(kwargs, 'x-expires'),
+                        'expire_at': self._get_queue_expire(
+                            kwargs, 'x-expires'
+                        ),
                     },
                 },
                 upsert=True)
@@ -435,7 +437,8 @@ class Channel(virtual.Channel):
         return ret
 
     def _get_message_expire(self, message):
-        if value := message.get('properties', {}).get('expiration'):
+        value = message.get('properties', {}).get('expiration')
+        if value is not None:
             return self.get_now() + datetime.timedelta(milliseconds=int(value))
 
     def _get_queue_expire(self, queue, argument):
