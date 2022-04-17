@@ -1,5 +1,7 @@
 """Functional Utilities."""
 
+from __future__ import annotations
+
 import inspect
 import random
 import threading

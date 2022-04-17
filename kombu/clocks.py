@@ -1,9 +1,11 @@
 """Logical Clocks and Synchronization."""
 
+from __future__ import annotations
+
 from itertools import islice
 from operator import itemgetter
 from threading import Lock
-from typing import Any, List, Optional, Tuple, Type
+from typing import Any
 
 __all__ = ('LamportClock', 'timetuple')
 
@@ -25,8 +27,8 @@ class timetuple(tuple):
     __slots__ = ()
 
     def __new__(
-        cls, clock: Optional[int], timestamp: float, id: str, obj: Any = None
-    ) -> "timetuple":
+        cls, clock: int | None, timestamp: float, id: str, obj: Any = None
+    ) -> timetuple:
         return tuple.__new__(cls, (clock, timestamp, id, obj))
 
     def __repr__(self) -> str:
@@ -103,7 +105,7 @@ class LamportClock:
     value = 0
 
     def __init__(
-        self, initial_value: int = 0, Lock: Type[Lock] = Lock
+        self, initial_value: int = 0, Lock: type[Lock] = Lock
     ) -> None:
         self.value = initial_value
         self.mutex = Lock()
@@ -118,7 +120,7 @@ class LamportClock:
             self.value += 1
             return self.value
 
-    def sort_heap(self, h: List[Tuple[int, str]]) -> Tuple[int, str]:
+    def sort_heap(self, h: list[tuple[int, str]]) -> tuple[int, str]:
         """Sort heap of events.
 
         List of tuples containing at least two elements, representing

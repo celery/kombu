@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from kombu.pools import producers
 
 from .queues import task_exchange

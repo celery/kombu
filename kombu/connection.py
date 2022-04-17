@@ -1,11 +1,13 @@
 """Client (Connection)."""
 
+from __future__ import annotations
+
 import os
 import socket
 from contextlib import contextmanager
 from itertools import count, cycle
 from operator import itemgetter
-from typing import TYPE_CHECKING, Optional, Type
+from typing import TYPE_CHECKING
 
 try:
     from ssl import CERT_NONE
@@ -835,9 +837,9 @@ class Connection:
 
     def __exit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional['TracebackType']
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None
     ) -> None:
         self.release()
 

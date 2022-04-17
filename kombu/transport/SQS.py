@@ -122,6 +122,8 @@ Features
 """  # noqa: E501
 
 
+from __future__ import annotations
+
 import base64
 import socket
 import string

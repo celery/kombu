@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from array import array
 from queue import Empty
 from unittest.mock import Mock

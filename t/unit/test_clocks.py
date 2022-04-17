@@ -1,7 +1,8 @@
+from __future__ import annotations
+
 import pickle
 from heapq import heappush
 from time import time
-from typing import List, Tuple
 from unittest.mock import Mock
 
 from kombu.clocks import LamportClock, timetuple
@@ -35,7 +36,7 @@ class test_LamportClock:
         pid1 = 'a.example.com:312'
         pid2 = 'b.example.com:311'
 
-        events: List[Tuple[int, str]] = []
+        events: list[tuple[int, str]] = []
 
         m1 = (c.forward(), pid1)
         heappush(events, m1)

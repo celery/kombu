@@ -1,7 +1,9 @@
 """Sending and receiving messages."""
 
+from __future__ import annotations
+
 from itertools import count
-from typing import TYPE_CHECKING, Optional, Type
+from typing import TYPE_CHECKING
 
 from .common import maybe_declare
 from .compression import compress
@@ -242,9 +244,9 @@ class Producer:
 
     def __exit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional['TracebackType']
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None
     ) -> None:
         self.release()
 
@@ -446,9 +448,9 @@ class Consumer:
 
     def __exit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional['TracebackType']
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None
     ) -> None:
         if self.channel and self.channel.connection:
             conn_errors = self.channel.connection.client.connection_errors

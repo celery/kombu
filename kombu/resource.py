@@ -1,5 +1,7 @@
 """Generic resource pool implementation."""
 
+from __future__ import annotations
+
 import os
 from collections import deque
 from queue import Empty
@@ -199,7 +201,7 @@ class Resource:
                 self,
                 exc_type: type,
                 exc_val: Exception,
-                exc_tb: 'TracebackType'
+                exc_tb: TracebackType
             ) -> None:
                 pass
 

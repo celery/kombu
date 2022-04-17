@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import base64
 import copy
 import socket
@@ -6,7 +8,7 @@ from collections import defaultdict
 from itertools import count
 from queue import Empty
 from queue import Queue as _Queue
-from typing import TYPE_CHECKING, Optional, Type
+from typing import TYPE_CHECKING
 from unittest.mock import ANY, Mock, call, patch
 
 import pytest
@@ -237,9 +239,9 @@ class Pipeline:
 
     def __exit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional['TracebackType']
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None
     ) -> None:
         pass
 

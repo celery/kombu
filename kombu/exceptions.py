@@ -1,8 +1,10 @@
 """Exceptions."""
 
+from __future__ import annotations
+
 from socket import timeout as TimeoutError
 from types import TracebackType
-from typing import TYPE_CHECKING, Optional, Type, TypeVar
+from typing import TYPE_CHECKING, TypeVar
 
 from amqp import ChannelError, ConnectionError, ResourceError
 
@@ -23,9 +25,9 @@ BaseExceptionType = TypeVar('BaseExceptionType', bound=BaseException)
 
 
 def reraise(
-    tp: Type[BaseExceptionType],
+    tp: type[BaseExceptionType],
     value: BaseExceptionType,
-    tb: Optional[TracebackType] = None
+    tb: TracebackType | None = None
 ) -> BaseExceptionType:
     """Reraise exception."""
     if value.__traceback__ is not tb:
@@ -98,8 +100,8 @@ class HttpError(Exception):
     def __init__(
         self,
         code: int,
-        message: Optional[str] = None,
-        response: Optional["Response"] = None
+        message: str | None = None,
+        response: Response | None = None
     ) -> None:
         self.code = code
         self.message = message
