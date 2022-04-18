@@ -153,16 +153,15 @@ class test_mongodb_channel(BaseMongoDBChannelCase):
 
     def test_get(self):
 
-        self.set_operation_return_value('messages', 'find_and_modify', {
+        self.set_operation_return_value('messages', 'find_one_and_delete', {
             '_id': 'docId', 'payload': '{"some": "data"}',
         })
 
         event = self.channel._get('foobar')
         self.assert_collection_accessed('messages')
         self.assert_operation_called_with(
-            'messages', 'find_and_modify',
-            query={'queue': 'foobar'},
-            remove=True,
+            'messages', 'find_one_and_delete',
+            {'queue': 'foobar'},
             sort=[
                 ('priority', pymongo.ASCENDING),
             ],
@@ -170,7 +169,11 @@ class test_mongodb_channel(BaseMongoDBChannelCase):
 
         assert event == {'some': 'data'}
 
-        self.set_operation_return_value('messages', 'find_and_modify', None)
+        self.set_operation_return_value(
+            'messages',
+            'find_one_and_delete',
+            None,
+        )
         with pytest.raises(Empty):
             self.channel._get('foobar')
 
@@ -190,7 +193,7 @@ class test_mongodb_channel(BaseMongoDBChannelCase):
         self.channel._put('foobar', {'some': 'data'})
 
         self.assert_collection_accessed('messages')
-        self.assert_operation_called_with('messages', 'insert', {
+        self.assert_operation_called_with('messages', 'insert_one', {
             'queue': 'foobar',
             'priority': 9,
             'payload': '{"some": "data"}',
@@ -202,17 +205,17 @@ class test_mongodb_channel(BaseMongoDBChannelCase):
         self.channel._put_fanout('foobar', {'some': 'data'}, 'foo')
 
         self.assert_collection_accessed('messages.broadcast')
-        self.assert_operation_called_with('broadcast', 'insert', {
+        self.assert_operation_called_with('broadcast', 'insert_one', {
             'queue': 'foobar', 'payload': '{"some": "data"}',
         })
 
     def test_size(self):
-        self.set_operation_return_value('messages', 'find.count', 77)
+        self.set_operation_return_value('messages', 'count_documents', 77)
 
         result = self.channel._size('foobar')
         self.assert_collection_accessed('messages')
         self.assert_operation_called_with(
-            'messages', 'find', {'queue': 'foobar'},
+            'messages', 'count_documents', {'queue': 'foobar'},
         )
 
         assert result == 77
@@ -229,7 +232,7 @@ class test_mongodb_channel(BaseMongoDBChannelCase):
         assert result == 77
 
     def test_purge(self):
-        self.set_operation_return_value('messages', 'find.count', 77)
+        self.set_operation_return_value('messages', 'count_documents', 77)
 
         result = self.channel._purge('foobar')
         self.assert_collection_accessed('messages')
@@ -278,11 +281,11 @@ class test_mongodb_channel(BaseMongoDBChannelCase):
         self.channel._queue_bind('test_exchange', 'foo', '*', 'foo')
         self.assert_collection_accessed('messages.routing')
         self.assert_operation_called_with(
-            'routing', 'update',
+            'routing', 'update_one',
             {'queue': 'foo', 'pattern': '*',
              'routing_key': 'foo', 'exchange': 'test_exchange'},
-            {'queue': 'foo', 'pattern': '*',
-             'routing_key': 'foo', 'exchange': 'test_exchange'},
+            {'$set': {'queue': 'foo', 'pattern': '*',
+             'routing_key': 'foo', 'exchange': 'test_exchange'}},
             upsert=True,
         )
 
@@ -319,16 +322,16 @@ class test_mongodb_channel(BaseMongoDBChannelCase):
         self.channel._ensure_indexes(self.channel.client)
 
         self.assert_operation_called_with(
-            'messages', 'ensure_index',
+            'messages', 'create_index',
             [('queue', 1), ('priority', 1), ('_id', 1)],
             background=True,
         )
         self.assert_operation_called_with(
-            'broadcast', 'ensure_index',
+            'broadcast', 'create_index',
             [('queue', 1)],
         )
         self.assert_operation_called_with(
-            'routing', 'ensure_index', [('queue', 1), ('exchange', 1)],
+            'routing', 'create_index', [('queue', 1), ('exchange', 1)],
         )
 
     def test_create_broadcast_cursor(self):
@@ -383,9 +386,9 @@ class test_mongodb_channel_ttl(BaseMongoDBChannelCase):
         self.channel._new_queue('foobar')
 
         self.assert_operation_called_with(
-            'queues', 'update',
+            'queues', 'update_one',
             {'_id': 'foobar'},
-            {'_id': 'foobar', 'options': {}, 'expire_at': None},
+            {'$set': {'_id': 'foobar', 'options': {}, 'expire_at': None}},
             upsert=True,
         )
 
@@ -395,25 +398,23 @@ class test_mongodb_channel_ttl(BaseMongoDBChannelCase):
             '_id': 'docId', 'options': {'arguments': {'x-expires': 777}},
         })
 
-        self.set_operation_return_value('messages', 'find_and_modify', {
+        self.set_operation_return_value('messages', 'find_one_and_delete', {
             '_id': 'docId', 'payload': '{"some": "data"}',
         })
 
         self.channel._get('foobar')
         self.assert_collection_accessed('messages', 'messages.queues')
         self.assert_operation_called_with(
-            'messages', 'find_and_modify',
-            query={'queue': 'foobar'},
-            remove=True,
+            'messages', 'find_one_and_delete',
+            {'queue': 'foobar'},
             sort=[
                 ('priority', pymongo.ASCENDING),
             ],
         )
         self.assert_operation_called_with(
-            'routing', 'update',
+            'routing', 'update_many',
             {'queue': 'foobar'},
             {'$set': {'expire_at': self.expire_at}},
-            multi=True,
         )
 
     def test_put(self):
@@ -424,7 +425,7 @@ class test_mongodb_channel_ttl(BaseMongoDBChannelCase):
         self.channel._put('foobar', {'some': 'data'})
 
         self.assert_collection_accessed('messages')
-        self.assert_operation_called_with('messages', 'insert', {
+        self.assert_operation_called_with('messages', 'insert_one', {
             'queue': 'foobar',
             'priority': 9,
             'payload': '{"some": "data"}',
@@ -439,12 +440,14 @@ class test_mongodb_channel_ttl(BaseMongoDBChannelCase):
         self.channel._queue_bind('test_exchange', 'foo', '*', 'foo')
         self.assert_collection_accessed('messages.routing')
         self.assert_operation_called_with(
-            'routing', 'update',
+            'routing', 'update_one',
             {'queue': 'foo', 'pattern': '*',
              'routing_key': 'foo', 'exchange': 'test_exchange'},
-            {'queue': 'foo', 'pattern': '*',
-             'routing_key': 'foo', 'exchange': 'test_exchange',
-             'expire_at': self.expire_at},
+            {'$set': {
+                'queue': 'foo', 'pattern': '*',
+                'routing_key': 'foo', 'exchange': 'test_exchange',
+                'expire_at': self.expire_at
+            }},
             upsert=True,
         )
 
@@ -458,18 +461,18 @@ class test_mongodb_channel_ttl(BaseMongoDBChannelCase):
         self.channel._ensure_indexes(self.channel.client)
 
         self.assert_operation_called_with(
-            'messages', 'ensure_index', [('expire_at', 1)],
+            'messages', 'create_index', [('expire_at', 1)],
             expireAfterSeconds=0)
 
         self.assert_operation_called_with(
-            'routing', 'ensure_index', [('expire_at', 1)],
+            'routing', 'create_index', [('expire_at', 1)],
             expireAfterSeconds=0)
 
         self.assert_operation_called_with(
-            'queues', 'ensure_index', [('expire_at', 1)], expireAfterSeconds=0)
+            'queues', 'create_index', [('expire_at', 1)], expireAfterSeconds=0)
 
-    def test_get_expire(self):
-        result = self.channel._get_expire(
+    def test_get_queue_expire(self):
+        result = self.channel._get_queue_expire(
             {'arguments': {'x-expires': 777}}, 'x-expires')
 
         self.channel.client.assert_not_called()
@@ -480,8 +483,14 @@ class test_mongodb_channel_ttl(BaseMongoDBChannelCase):
             '_id': 'docId', 'options': {'arguments': {'x-expires': 777}},
         })
 
-        result = self.channel._get_expire('foobar', 'x-expires')
+        result = self.channel._get_queue_expire('foobar', 'x-expires')
         assert result == self.expire_at
+
+    def test_get_message_expire(self):
+        assert self.channel._get_message_expire({
+            'properties': {'expiration': 777},
+        }) == self.expire_at
+        assert self.channel._get_message_expire({}) is None
 
     def test_update_queues_expire(self):
         self.set_operation_return_value('queues', 'find_one', {
@@ -491,16 +500,14 @@ class test_mongodb_channel_ttl(BaseMongoDBChannelCase):
 
         self.assert_collection_accessed('messages.routing', 'messages.queues')
         self.assert_operation_called_with(
-            'routing', 'update',
+            'routing', 'update_many',
             {'queue': 'foobar'},
             {'$set': {'expire_at': self.expire_at}},
-            multi=True,
         )
         self.assert_operation_called_with(
-            'queues', 'update',
+            'queues', 'update_many',
             {'_id': 'foobar'},
             {'$set': {'expire_at': self.expire_at}},
-            multi=True,
         )
 
 
@@ -517,7 +524,7 @@ class test_mongodb_channel_calc_queue_size(BaseMongoDBChannelCase):
     # Tests
 
     def test_size(self):
-        self.set_operation_return_value('messages', 'find.count', 77)
+        self.set_operation_return_value('messages', 'count_documents', 77)
 
         result = self.channel._size('foobar')
 

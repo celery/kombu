@@ -138,12 +138,19 @@ class BaseExchangeTypes:
         message.delivery_info['exchange'] == ''
         assert message.payload == body
 
-    def _consume(self, connection, queue):
+    def _create_consumer(self, connection, queue):
         consumer = kombu.Consumer(
             connection, [queue], accept=['pickle']
         )
         consumer.register_callback(self._callback)
+        return consumer
+
+    def _consume_from(self, connection, consumer):
         with consumer:
+            connection.drain_events(timeout=1)
+
+    def _consume(self, connection, queue):
+        with self._create_consumer(connection, queue):
             connection.drain_events(timeout=1)
 
     def _publish(self, channel, exchange, queues=None, routing_key=None):
@@ -215,7 +222,6 @@ class BaseExchangeTypes:
                     channel, ex, [test_queue1, test_queue2, test_queue3],
                     routing_key='t.1'
                 )
-
                 self._consume(conn, test_queue1)
                 self._consume(conn, test_queue2)
                 with pytest.raises(socket.timeout):
