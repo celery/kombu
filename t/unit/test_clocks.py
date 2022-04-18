@@ -10,7 +10,7 @@ from kombu.clocks import LamportClock, timetuple
 
 class test_LamportClock:
 
-    def test_clocks(self):
+    def test_clocks(self) -> None:
         c1 = LamportClock()
         c2 = LamportClock()
 
@@ -31,12 +31,12 @@ class test_LamportClock:
         c1.adjust(c2.value)
         assert c1.value == c2.value + 1
 
-    def test_sort(self):
+    def test_sort(self) -> None:
         c = LamportClock()
         pid1 = 'a.example.com:312'
         pid2 = 'b.example.com:311'
 
-        events = []
+        events: list[tuple[int, str]] = []
 
         m1 = (c.forward(), pid1)
         heappush(events, m1)
@@ -58,15 +58,15 @@ class test_LamportClock:
 
 class test_timetuple:
 
-    def test_repr(self):
+    def test_repr(self) -> None:
         x = timetuple(133, time(), 'id', Mock())
         assert repr(x)
 
-    def test_pickleable(self):
+    def test_pickleable(self) -> None:
         x = timetuple(133, time(), 'id', 'obj')
         assert pickle.loads(pickle.dumps(x)) == tuple(x)
 
-    def test_order(self):
+    def test_order(self) -> None:
         t1 = time()
         t2 = time() + 300  # windows clock not reliable
         a = timetuple(133, t1, 'A', 'obj')
@@ -83,5 +83,6 @@ class test_timetuple:
                 NotImplemented)
         assert timetuple(134, t2, 'A', 'obj') > timetuple(133, t1, 'A', 'obj')
         assert timetuple(134, t1, 'B', 'obj') > timetuple(134, t1, 'A', 'obj')
-        assert (timetuple(None, t2, 'B', 'obj') >
-                timetuple(None, t1, 'A', 'obj'))
+        assert (
+            timetuple(None, t2, 'B', 'obj') > timetuple(None, t1, 'A', 'obj')
+        )
