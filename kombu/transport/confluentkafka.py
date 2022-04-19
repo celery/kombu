@@ -1,3 +1,54 @@
+"""confluent-kafka transport module for Kombu.
+
+Features
+========
+* Type: Virtual
+* Supports Direct: Yes
+* Supports Topic: Yes
+* Supports Fanout: No
+* Supports Priority: No
+* Supports TTL: No
+
+Connection String
+=================
+Connection string has the following format:
+
+.. code-block::
+
+    confluentkafka://[USER:PASSWORD@]KAFKA_ADDRESS[:PORT]
+
+Transport Options
+=================
+* ``connection_wait_time_seconds`` - Time in seconds to wait for connection
+  to succeed. Default ``5``
+* ``wait_time_seconds`` - Time in seconds to wait to receive messages.
+  Default ``5``
+* ``security_protocol`` - Protocol used to communicate with broker.
+  Visit https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md for
+  an explanation of valid values.
+  Default ``plaintext``
+* ``sasl_mechanism`` - SASL mechanism to use for authentication.
+  Visit https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md for
+  an explanation of valid values.
+* ``num_partitions`` - Number of partitions to create. Default ``1``
+* ``replication_factor`` - Replication factor of partitions. Default ``1``
+* ``topic_config`` - Topic configuration. Must be a dict whose key-value pairs
+  correspond with attributes in the
+  http://kafka.apache.org/documentation.html#topicconfigs.
+* ``kafka_common_config`` - Configuration applied to producer, consumer and
+  admin client. Must be a dict whose key-value pairs correspond with attributes
+  in the https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md.
+* ``kafka_producer_config`` - Producer configuration. Must be a dict whose
+  key-value pairs correspond with attributes in the
+  https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md.
+* ``kafka_consumer_config`` - Consumer configuration. Must be a dict whose
+  key-value pairs correspond with attributes in the
+  https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md.
+* ``kafka_admin_config`` - Admin client configuration. Must be a dict whose
+  key-value pairs correspond with attributes in the
+  https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md.
+"""
+
 from collections import OrderedDict
 from queue import Empty
 
