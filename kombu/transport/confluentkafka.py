@@ -38,7 +38,7 @@ class Message(virtual.Message):
 
 
 class QoS(virtual.QoS):
-    _not_yet_acked = OrderedDict()
+    _not_yet_acked = {}
 
     def can_consume(self):
         """Returns True if the :class:`Channel` can consume more messages, else
