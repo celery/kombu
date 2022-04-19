@@ -49,6 +49,8 @@ Transport Options
   https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md.
 """
 
+from __future__ import annotations
+
 from collections import OrderedDict
 from queue import Empty
 
