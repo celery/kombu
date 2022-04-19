@@ -38,7 +38,7 @@ jobs:
             experimental: true
     steps:
       - name: Install system packages
-        run: sudo apt update && sudo apt-get install libcurl4-openssl-dev libssl-dev librdkafka-dev
+        run: sudo apt update && sudo apt-get install libcurl4-openssl-dev libssl-dev
       - name: Check out code from GitHub
         uses: actions/checkout@v2.3.5
       - name: Set up Python ${{ matrix.python-version }}
