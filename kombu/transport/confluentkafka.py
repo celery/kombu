@@ -77,6 +77,8 @@ DEFAULT_PORT = 9092
 
 
 class NoBrokersAvailable(confluent_kafka.KafkaException):
+    """Kafka broker is not available exception."""
+
     retriable = True
 
 
@@ -89,11 +91,13 @@ class Message(virtual.Message):
 
 
 class QoS(virtual.QoS):
+    """Quality of Service guarantees."""
+
     _not_yet_acked = {}
 
     def can_consume(self):
-        """Returns True if the :class:`Channel` can consume more messages, else
-        False.
+        """Return true if the channel can be consumed from.
+
         :returns: True, if this QoS object can accept a message.
         :rtype: bool
         """
@@ -121,6 +125,7 @@ class QoS(virtual.QoS):
 
     def reject(self, delivery_tag, requeue=False):
         """Reject a message by delivery tag.
+
         If requeue is True, then the last consumed message is reverted so
         it'll be refetched on the next attempt.
         If False, that message is consumed and ignored.
@@ -141,6 +146,8 @@ class QoS(virtual.QoS):
 
 
 class Channel(virtual.Channel):
+    """Kafka Channel."""
+
     QoS = QoS
     Message = Message
 
@@ -157,12 +164,11 @@ class Channel(virtual.Channel):
         self._client = self._open()
 
     def sanitize_queue_name(self, queue):
-        """Need to sanitize the queue name, celery sometimes pushes in @
-        signs"""
+        """Need to sanitize the name, celery sometimes pushes in @ signs."""
         return str(queue).replace('@', '')
 
     def _get_producer(self, queue):
-        """Create/get a producer instance for the given topic/queue"""
+        """Create/get a producer instance for the given topic/queue."""
         queue = self.sanitize_queue_name(queue)
         producer = self._kafka_producers.get(queue, None)
         if producer is None:
@@ -175,7 +181,7 @@ class Channel(virtual.Channel):
         return producer
 
     def _get_consumer(self, queue):
-        """Create/get a consumer instance for the given topic/queue"""
+        """Create/get a consumer instance for the given topic/queue."""
         queue = self.sanitize_queue_name(queue)
         consumer = self._kafka_consumers.get(queue, None)
         if consumer is None:
@@ -192,14 +198,14 @@ class Channel(virtual.Channel):
         return consumer
 
     def _put(self, queue, message, **kwargs):
-        """Put a message on the topic/queue"""
+        """Put a message on the topic/queue."""
         queue = self.sanitize_queue_name(queue)
         producer = self._get_producer(queue)
         producer.produce(queue, str_to_bytes(dumps(message)))
         producer.flush()
 
     def _get(self, queue, **kwargs):
-        """Get a message from the topic/queue"""
+        """Get a message from the topic/queue."""
         queue = self.sanitize_queue_name(queue)
         consumer = self._get_consumer(queue)
         message = None
@@ -220,14 +226,14 @@ class Channel(virtual.Channel):
         return {**loads(message.value()), 'topic': message.topic()}
 
     def _delete(self, queue, *args, **kwargs):
-        """Delete a queue/topic"""
+        """Delete a queue/topic."""
         queue = self.sanitize_queue_name(queue)
         self._kafka_consumers[queue].close()
         self._kafka_consumers.pop(queue)
         self.client.delete_topics([queue])
 
     def _size(self, queue):
-        """Gets the number of pending messages in the topic/queue"""
+        """Get the number of pending messages in the topic/queue."""
         queue = self.sanitize_queue_name(queue)
 
         consumer = self._kafka_consumers.get(queue, None)
@@ -243,7 +249,7 @@ class Channel(virtual.Channel):
         return size
 
     def _new_queue(self, queue, **kwargs):
-        """Create a new topic if it does not exist"""
+        """Create a new topic if it does not exist."""
         queue = self.sanitize_queue_name(queue)
         if queue in self.client.list_topics().topics:
             return
@@ -257,7 +263,7 @@ class Channel(virtual.Channel):
         self.client.create_topics(new_topics=[topic])
 
     def _has_queue(self, queue, **kwargs):
-        """Check if a topic already exists"""
+        """Check if a topic already exists."""
         queue = self.sanitize_queue_name(queue)
         return queue in self.client.list_topics().topics
 
@@ -332,6 +338,8 @@ class Channel(virtual.Channel):
 
 
 class Transport(virtual.Transport):
+    """Kafka Transport."""
+
     def as_uri(self, uri: str, include_password=False, mask='**') -> str:
         pass
 
