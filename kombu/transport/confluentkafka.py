@@ -46,7 +46,7 @@ class QoS(virtual.QoS):
         :returns: True, if this QoS object can accept a message.
         :rtype: bool
         """
-        return not self.prefetch_count or len(self._not_yet_acked) < self\
+        return not self.prefetch_count or len(self._not_yet_acked) < self \
             .prefetch_count
 
     def can_consume_max_estimate(self):
@@ -94,6 +94,7 @@ class Channel(virtual.Channel):
     Message = Message
 
     default_wait_time_seconds = 5
+    default_connection_wait_time_seconds = 5
     _client = None
 
     def __init__(self, *args, **kwargs):
@@ -114,7 +115,10 @@ class Channel(virtual.Channel):
         queue = self.sanitize_queue_name(queue)
         producer = self._kafka_producers.get(queue, None)
         if producer is None:
-            producer = Producer(self.common_config)
+            producer = Producer({
+                **self.common_config,
+                **(self.options.get('kafka_producer_config') or {}),
+            })
             self._kafka_producers[queue] = producer
 
         return producer
@@ -124,15 +128,13 @@ class Channel(virtual.Channel):
         queue = self.sanitize_queue_name(queue)
         consumer = self._kafka_consumers.get(queue, None)
         if consumer is None:
-            consumer = Consumer(
-                {**self.common_config,
-                 'group.id':
-                     self.transport_options.get('kafka_consumer_group') or
-                     f"{queue}-consumer-group",
-                 'auto.offset.reset': 'earliest',
-                 'enable.auto.commit': False,
-                 }
-            )
+            consumer = Consumer({
+                'group.id': f'{queue}-consumer-group',
+                'auto.offset.reset': 'earliest',
+                'enable.auto.commit': False,
+                **self.common_config,
+                **(self.options.get('kafka_consumer_config') or {}),
+            })
             consumer.subscribe([queue])
             self._kafka_consumers[queue] = consumer
 
@@ -164,7 +166,7 @@ class Channel(virtual.Channel):
             logger.error(error)
             raise Empty()
 
-        return {**loads(message.value()), "topic": message.topic()}
+        return {**loads(message.value()), 'topic': message.topic()}
 
     def _delete(self, queue, *args, **kwargs):
         """Delete a queue/topic"""
@@ -192,15 +194,16 @@ class Channel(virtual.Channel):
     def _new_queue(self, queue, **kwargs):
         """Create a new topic if it does not exist"""
         queue = self.sanitize_queue_name(queue)
-        if queue not in self.client.list_topics().topics:
-            self.client.create_topics(
-                new_topics=[NewTopic(
-                    queue,
-                    num_partitions=self.transport_options.get('num_partitions',
-                                                              1),
-                    replication_factor=self.transport_options.get(
-                        'replication_factor', 1)
-                )])
+        if queue in self.client.list_topics().topics:
+            return
+
+        topic = NewTopic(
+            queue,
+            num_partitions=self.options.get('num_partitions', 1),
+            replication_factor=self.options.get('replication_factor', 1),
+            config=self.options.get('topic_config', {})
+        )
+        self.client.create_topics(new_topics=[topic])
 
     def _has_queue(self, queue, **kwargs):
         """Check if a topic already exists"""
@@ -208,7 +211,10 @@ class Channel(virtual.Channel):
         return queue in self.client.list_topics().topics
 
     def _open(self):
-        client = AdminClient(self.common_config)
+        client = AdminClient({
+            **self.common_config,
+            **(self.options.get('kafka_admin_config') or {}),
+        })
 
         try:
             # seems to be the only way to check connection
@@ -225,7 +231,7 @@ class Channel(virtual.Channel):
         return self._client
 
     @property
-    def transport_options(self):
+    def options(self):
         return self.connection.client.transport_options
 
     @property
@@ -234,24 +240,34 @@ class Channel(virtual.Channel):
 
     @cached_property
     def wait_time_seconds(self):
-        return self.transport_options.get('wait_time_seconds',
-                                          self.default_wait_time_seconds)
+        return self.options.get(
+            'wait_time_seconds', self.default_wait_time_seconds
+        )
+
+    @cached_property
+    def connection_wait_time_seconds(self):
+        return self.options.get(
+            'connection_wait_time_seconds',
+            self.default_connection_wait_time_seconds,
+        )
 
     @cached_property
     def common_config(self):
+        conninfo = self.connection.client
         config = {
             'bootstrap.servers':
-                f'{self.conninfo.hostname}:{int(self.conninfo.port)}',
+                f'{conninfo.hostname}:{int(conninfo.port) or DEFAULT_PORT}',
         }
-        security_protocol = self.transport_options.get('security_protocol',
-                                                       'plaintext')
+        security_protocol = self.options.get('security_protocol', 'plaintext')
         if security_protocol.lower() != 'plaintext':
             config.update({
                 'security.protocol': security_protocol,
-                'sasl.username': self.conninfo.userid,
-                'sasl.password': self.conninfo.password,
-                'sasl.mechanism': self.transport_options.get('sasl_mechanism'),
+                'sasl.username': conninfo.userid,
+                'sasl.password': conninfo.password,
+                'sasl.mechanism': self.options.get('sasl_mechanism'),
             })
+
+        config.update(self.options.get('kafka_common_config') or {})
         return config
 
     def close(self):
