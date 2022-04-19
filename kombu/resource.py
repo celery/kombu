@@ -1,13 +1,19 @@
 """Generic resource pool implementation."""
 
+from __future__ import annotations
+
 import os
 from collections import deque
 from queue import Empty
 from queue import LifoQueue as _LifoQueue
+from typing import TYPE_CHECKING
 
 from . import exceptions
 from .utils.compat import register_after_fork
 from .utils.functional import lazy
+
+if TYPE_CHECKING:
+    from types import TracebackType
 
 
 def _after_fork_cleanup_resource(resource):
@@ -191,7 +197,12 @@ class Resource:
             def __enter__(self):
                 pass
 
-            def __exit__(self, type, value, traceback):
+            def __exit__(
+                self,
+                exc_type: type,
+                exc_val: Exception,
+                exc_tb: TracebackType
+            ) -> None:
                 pass
 
         resource = self._resource

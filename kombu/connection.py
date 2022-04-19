@@ -1,10 +1,13 @@
 """Client (Connection)."""
 
+from __future__ import annotations
+
 import os
 import socket
 from contextlib import contextmanager
 from itertools import count, cycle
 from operator import itemgetter
+from typing import TYPE_CHECKING
 
 try:
     from ssl import CERT_NONE
@@ -12,6 +15,7 @@ try:
 except ImportError:  # pragma: no cover
     CERT_NONE = None
     ssl_available = False
+
 
 # jython breaks on relative import for .exceptions for some reason
 # (Issue #112)
@@ -24,6 +28,9 @@ from .utils.collections import HashedSeq
 from .utils.functional import dictfilter, lazy, retry_over_time, shufflecycle
 from .utils.objects import cached_property
 from .utils.url import as_url, maybe_sanitize_url, parse_url, quote, urlparse
+
+if TYPE_CHECKING:
+    from types import TracebackType
 
 __all__ = ('Connection', 'ConnectionPool', 'ChannelPool')
 
@@ -828,7 +835,12 @@ class Connection:
     def __enter__(self):
         return self
 
-    def __exit__(self, *args):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None
+    ) -> None:
         self.release()
 
     @property

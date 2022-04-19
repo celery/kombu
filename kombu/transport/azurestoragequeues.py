@@ -30,6 +30,8 @@ Transport Options
 * ``queue_name_prefix``
 """
 
+from __future__ import annotations
+
 import string
 from queue import Empty
 

@@ -1,5 +1,7 @@
 """Kombu transport using SQLAlchemy as the message store."""
 
+from __future__ import annotations
+
 import datetime
 
 from sqlalchemy import (Boolean, Column, DateTime, ForeignKey, Index, Integer,

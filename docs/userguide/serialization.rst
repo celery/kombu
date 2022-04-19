@@ -32,10 +32,9 @@ The accept argument can also include MIME-types.
 
 Each option has its advantages and disadvantages.
 
-`json` -- JSON is supported in many programming languages, is now
-    a standard part of Python (since 2.6), and is fairly fast to
-    decode using the modern Python libraries such as `cjson` or
-    `simplejson`.
+`json` -- JSON is supported in many programming languages, is
+    a standard part of Python, and is fairly fast to
+    decode.
 
     The primary disadvantage to `JSON` is that it limits you to
     the following data types: strings, Unicode, floats, boolean,
@@ -67,7 +66,7 @@ Each option has its advantages and disadvantages.
         to limit access to the broker so that untrusted
         parties do not have the ability to send messages!
 
-    By default Kombu uses pickle protocol 2, but this can be changed
+    By default Kombu uses pickle protocol 4, but this can be changed
     using the :envvar:`PICKLE_PROTOCOL` environment variable or by changing
     the global :data:`kombu.serialization.pickle_protocol` flag.
 

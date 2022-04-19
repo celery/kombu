@@ -1,5 +1,7 @@
 """Token bucket implementation for rate limiting."""
 
+from __future__ import annotations
+
 from collections import deque
 from time import monotonic
 

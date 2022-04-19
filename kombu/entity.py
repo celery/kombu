@@ -1,5 +1,7 @@
 """Exchange and Queue declarations."""
 
+from __future__ import annotations
+
 import numbers
 
 from .abstract import MaybeChannelBound, Object

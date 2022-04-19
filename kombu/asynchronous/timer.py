@@ -1,5 +1,7 @@
 """Timer scheduling Python callbacks."""
 
+from __future__ import annotations
+
 import heapq
 import sys
 from collections import namedtuple
@@ -7,6 +9,7 @@ from datetime import datetime
 from functools import total_ordering
 from time import monotonic
 from time import time as _time
+from typing import TYPE_CHECKING
 from weakref import proxy as weakrefproxy
 
 from vine.utils import wraps
@@ -17,6 +20,9 @@ try:
     from pytz import utc
 except ImportError:  # pragma: no cover
     utc = None
+
+if TYPE_CHECKING:
+    from types import TracebackType
 
 __all__ = ('Entry', 'Timer', 'to_timestamp')
 
@@ -101,7 +107,12 @@ class Timer:
     def __enter__(self):
         return self
 
-    def __exit__(self, *exc_info):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None
+    ) -> None:
         self.stop()
 
     def call_at(self, eta, fun, args=(), kwargs=None, priority=0):

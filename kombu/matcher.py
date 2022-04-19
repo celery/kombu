@@ -1,5 +1,7 @@
 """Pattern matching registry."""
 
+from __future__ import annotations
+
 from fnmatch import fnmatch
 from re import match as rematch
 

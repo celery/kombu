@@ -55,6 +55,8 @@ jobs:
         run: tox -v -e ${{ env.PYTHON_VERSION }}-linux-integration-py-amqp -- -v
       - name: Run redis integration tests
         run: tox -v -e ${{ env.PYTHON_VERSION }}-linux-integration-py-redis -- -v
+      - name: Run MongoDB integration tests
+        run: tox -v -e ${{ env.PYTHON_VERSION }}-linux-integration-py-mongodb -- -v
 
   #################### Linters and checkers ####################
   lint:
@@ -81,3 +83,5 @@ jobs:
         run: tox -v -e pydocstyle -- -v
       - name: Run apicheck
         run: tox -v -e apicheck -- -v
+      - name: Run mypy
+        run: tox -v -e mypy -- -v
