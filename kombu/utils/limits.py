@@ -52,7 +52,7 @@ class TokenBucket:
             return True
         return False
 
-    def expected_time(self, tokens: int = 1) -> float:
+    def expected_time(self, tokens: float = 1.0) -> float:
         """Return estimated time of token availability.
 
         Returns:
@@ -62,10 +62,10 @@ class TokenBucket:
         tokens = max(tokens, _tokens)
         return (tokens - _tokens) / self.fill_rate
 
-    def _get_tokens(self) -> int:
+    def _get_tokens(self) -> float:
         if self._tokens < self.capacity:
             now = monotonic()
             delta = self.fill_rate * (now - self.timestamp)
             self._tokens = min(self.capacity, self._tokens + delta)
             self.timestamp = now
-        return int(self._tokens)
+        return self._tokens
