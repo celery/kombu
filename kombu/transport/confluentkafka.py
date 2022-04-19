@@ -51,7 +51,6 @@ Transport Options
 
 from __future__ import annotations
 
-from collections import OrderedDict
 from queue import Empty
 
 from kombu.transport import virtual
