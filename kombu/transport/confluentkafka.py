@@ -1,5 +1,15 @@
 """confluent-kafka transport module for Kombu.
 
+Kafka transport using confluent-kafka library.
+
+**References**
+
+- http://docs.confluent.io/current/clients/confluent-kafka-python
+
+**Limitations**
+
+The confluent-kafka transport does not support PyPy environment.
+
 Features
 ========
 * Type: Virtual
