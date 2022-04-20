@@ -25,8 +25,7 @@ Transport Options
   Default ``5``
 * ``security_protocol`` - Protocol used to communicate with broker.
   Visit https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md for
-  an explanation of valid values.
-  Default ``plaintext``
+  an explanation of valid values. Default ``plaintext``
 * ``sasl_mechanism`` - SASL mechanism to use for authentication.
   Visit https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md for
   an explanation of valid values.

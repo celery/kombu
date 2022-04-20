@@ -12,4 +12,3 @@ codecov
 -r extras/brotli.txt
 -r extras/zstd.txt
 -r extras/sqlalchemy.txt
--r extras/confluentkafka.txt
