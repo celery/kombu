@@ -41,7 +41,6 @@ from azure.core.exceptions import ResourceExistsError
 from kombu.utils.encoding import safe_str
 from kombu.utils.json import dumps, loads
 from kombu.utils.objects import cached_property
-
 from . import virtual
 
 try:
@@ -72,7 +71,9 @@ class Channel(virtual.Channel):
 
         super().__init__(*args, **kwargs)
 
-        self._credential, self._url = Transport.parse_uri(self.conninfo.hostname)
+        self._credential, self._url = Transport.parse_uri(
+            self.conninfo.hostname
+        )
 
         for queue in self.queue_service.list_queues():
             self._queue_name_cache[queue['name']] = queue
@@ -92,7 +93,9 @@ class Channel(virtual.Channel):
         """Ensure a queue exists."""
         queue = self.entity_name(self.queue_name_prefix + queue)
         try:
-            q = self._queue_service.get_queue_client(queue=self._queue_name_cache[queue])
+            q = self._queue_service.get_queue_client(
+                queue=self._queue_name_cache[queue]
+            )
         except KeyError:
             try:
                 q = self.queue_service.create_queue(queue)
@@ -124,7 +127,6 @@ class Channel(virtual.Channel):
         except StopIteration:
             raise Empty()
 
-
         content = loads(message.content)
 
         q.delete_message(message=message)
@@ -146,7 +148,9 @@ class Channel(virtual.Channel):
     @property
     def queue_service(self):
         if self._queue_service is None:
-            self._queue_service = QueueServiceClient(account_url=self._url, credential=self._credential)
+            self._queue_service = QueueServiceClient(
+                account_url=self._url, credential=self._credential
+            )
 
         return self._queue_service
 
