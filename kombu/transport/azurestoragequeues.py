@@ -41,6 +41,7 @@ from azure.core.exceptions import ResourceExistsError
 from kombu.utils.encoding import safe_str
 from kombu.utils.json import dumps, loads
 from kombu.utils.objects import cached_property
+
 from . import virtual
 
 try:

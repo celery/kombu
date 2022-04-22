@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from unittest.mock import patch
 
 import pytest
@@ -5,7 +7,7 @@ import pytest
 from kombu import Connection
 
 pytest.importorskip('azure.storage.queue')
-from kombu.transport import azurestoragequeues # noqa
+from kombu.transport import azurestoragequeues  # noqa
 
 URL_NOCREDS = 'azurestoragequeues://'
 URL_CREDS = 'azurestoragequeues://sas/key%@https://STORAGE_ACCOUNT_NAME.queue.core.windows.net/' # noqa
