@@ -50,7 +50,7 @@ class JSONEncoder(_encoder_cls):
             if isinstance(o, dates):
                 if not isinstance(o, datetime):
                     o = datetime(o.year, o.month, o.day, 0, 0, 0, 0)
-                r = o.isoformat()
+                r = o.isoformat(timespec='microseconds')
                 if r.endswith("+00:00"):
                     r = r[:-6] + "Z"
                 return {"datetime": r, "__datetime__": True}
