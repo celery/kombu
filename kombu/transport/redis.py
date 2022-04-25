@@ -191,6 +191,7 @@ class GlobalKeyPrefixMixin:
     PREFIXED_SIMPLE_COMMANDS = [
         "HDEL",
         "HGET",
+        "HLEN",
         "HSET",
         "LLEN",
         "LPUSH",
