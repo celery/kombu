@@ -1,1 +1,1 @@
-azure-storage-queue
+azure-storage-queue>=12.2.0

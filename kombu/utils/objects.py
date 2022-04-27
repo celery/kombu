@@ -1,5 +1,7 @@
 """Object Utilities."""
 
+from __future__ import annotations
+
 __all__ = ('cached_property',)
 
 try:

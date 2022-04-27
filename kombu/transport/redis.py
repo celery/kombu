@@ -51,6 +51,8 @@ Transport Options
 * ``priority_steps``
 """
 
+from __future__ import annotations
+
 import functools
 import numbers
 import socket

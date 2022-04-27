@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import io
 import socket
 import warnings
@@ -462,9 +464,8 @@ class test_Channel:
             assert 'could not be delivered' in log[0].message.args[0]
 
     def test_context(self):
-        x = self.channel.__enter__()
-        assert x is self.channel
-        x.__exit__()
+        with self.channel as x:
+            assert x is self.channel
         assert x.closed
 
     def test_cycle_property(self):

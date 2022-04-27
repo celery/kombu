@@ -3,6 +3,8 @@ Example receiving a message using the SimpleQueue interface.
 
 """
 
+from __future__ import annotations
+
 from kombu import Connection
 
 #: Create connection

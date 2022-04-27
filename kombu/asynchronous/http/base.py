@@ -1,7 +1,10 @@
 """Base async HTTP client implementation."""
 
+from __future__ import annotations
+
 import sys
 from http.client import responses
+from typing import TYPE_CHECKING
 
 from vine import Thenable, maybe_promise, promise
 
@@ -9,6 +12,9 @@ from kombu.exceptions import HttpError
 from kombu.utils.compat import coro
 from kombu.utils.encoding import bytes_to_str
 from kombu.utils.functional import maybe_list, memoize
+
+if TYPE_CHECKING:
+    from types import TracebackType
 
 __all__ = ('Headers', 'Response', 'Request')
 
@@ -253,5 +259,10 @@ class BaseClient:
     def __enter__(self):
         return self
 
-    def __exit__(self, *exc_info):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None
+    ) -> None:
         self.close()

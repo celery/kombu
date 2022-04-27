@@ -4,6 +4,8 @@ and exits.
 
 """
 
+from __future__ import annotations
+
 from pprint import pformat
 
 from kombu import Connection, Consumer, Exchange, Queue, eventloop

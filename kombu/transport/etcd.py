@@ -24,6 +24,8 @@ Connection string has the following format:
 
 """
 
+from __future__ import annotations
+
 import os
 import socket
 from collections import defaultdict
