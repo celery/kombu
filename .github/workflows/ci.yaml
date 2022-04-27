@@ -20,7 +20,7 @@ jobs:
       - name: Install dependencies
         run: pip install --upgrade pip setuptools wheel tox tox-docker tox-gh-actions
       - name: Run unittest
-        run: tox -v -e ${{ matrix.python-version }}-linux-unit -- -v
+        run: tox -v -e ${{ matrix.python-version }}-unit -- -v
   #################### Integration tests ####################
   integration:
     needs: [unittest]
