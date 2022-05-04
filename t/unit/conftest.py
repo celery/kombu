@@ -6,11 +6,15 @@ import io
 import os
 import sys
 import types
+from typing import TYPE_CHECKING, Iterator
 from unittest.mock import MagicMock
 
 import pytest
 
 from kombu.exceptions import VersionMismatch
+
+if TYPE_CHECKING:
+    from kombu.asynchronous import Hub
 
 _SIO_write = io.StringIO.write
 _SIO_init = io.StringIO.__init__
@@ -50,7 +54,7 @@ def test_cases_has_patching(request, patching):
 
 
 @pytest.fixture
-def hub(request):
+def hub(request) -> Iterator[Hub]:
     from kombu.asynchronous import Hub, get_event_loop, set_event_loop
     _prev_hub = get_event_loop()
     hub = Hub()

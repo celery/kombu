@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sys
 from http.client import responses
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from vine import Thenable, maybe_promise, promise
 
@@ -16,13 +16,15 @@ from kombu.utils.functional import maybe_list, memoize
 if TYPE_CHECKING:
     from types import TracebackType
 
+    from kombu.asynchronous import Hub
+
 __all__ = ('Headers', 'Response', 'Request')
 
 PYPY = hasattr(sys, 'pypy_version_info')
 
 
 @memoize(maxsize=1000)
-def normalize_header(key):
+def normalize_header(key: str) -> str:
     return '-'.join(p.capitalize() for p in key.split('-'))
 
 
@@ -111,9 +113,9 @@ class Request:
                      'on_prepare', 'on_header', 'headers',
                      '__weakref__', '__dict__')
 
-    def __init__(self, url, method='GET', on_ready=None, on_timeout=None,
-                 on_stream=None, on_prepare=None, on_header=None,
-                 headers=None, **kwargs):
+    def __init__(self, url: str, method: str = 'GET', on_ready=None,
+                 on_timeout=None, on_stream=None, on_prepare=None,
+                 on_header=None, headers=None, **kwargs: Any) -> None:
         self.url = url
         self.method = method or self.method
         self.on_ready = maybe_promise(on_ready) or promise()
@@ -131,7 +133,7 @@ class Request:
     def then(self, callback, errback=None):
         self.on_ready.then(callback, errback)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return '<Request: {0.method} {0.url} {0.body}>'.format(self)
 
 
@@ -179,7 +181,7 @@ class Response:
         if self.error is None and (self.code < 200 or self.code > 299):
             self.error = HttpError(self.code, self.status, self)
 
-    def raise_for_error(self):
+    def raise_for_error(self) -> None:
         """Raise if the request resulted in an HTTP error code.
 
         Raises:
@@ -234,17 +236,17 @@ class BaseClient:
     Request = Request
     Response = Response
 
-    def __init__(self, hub, **kwargs):
+    def __init__(self, hub: Hub, **kwargs: Any) -> None:
         self.hub = hub
         self._header_parser = header_parser()
 
-    def perform(self, request, **kwargs):
+    def perform(self, request, **kwargs: Any) -> None:
         for req in maybe_list(request) or []:
             if not isinstance(req, self.Request):
                 req = self.Request(req, **kwargs)
             self.add_request(req)
 
-    def add_request(self, request):
+    def add_request(self, request: Request) -> Request:
         raise NotImplementedError('must implement add_request')
 
     def close(self):
@@ -256,7 +258,7 @@ class BaseClient:
         except StopIteration:
             self._header_parser = header_parser()
 
-    def __enter__(self):
+    def __enter__(self) -> BaseClient:
         return self
 
     def __exit__(
