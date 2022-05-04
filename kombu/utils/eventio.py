@@ -1,5 +1,7 @@
 """Selector Utilities."""
 
+from __future__ import annotations
+
 import errno
 import math
 import select as __select__

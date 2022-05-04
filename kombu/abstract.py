@@ -1,8 +1,9 @@
 """Object utilities."""
 
+from __future__ import annotations
+
 from copy import copy
-from typing import (TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, Type,
-                    TypeVar)
+from typing import TYPE_CHECKING, Any, Callable, TypeVar
 
 from .connection import maybe_channel
 from .exceptions import NotBoundError
@@ -22,7 +23,7 @@ _MaybeChannelBoundType = TypeVar(
 
 
 def unpickle_dict(
-    cls: Type[_ObjectType], kwargs: Dict[str, Any]
+    cls: type[_ObjectType], kwargs: dict[str, Any]
 ) -> _ObjectType:
     return cls(**kwargs)
 
@@ -37,7 +38,7 @@ class Object:
     Supports automatic kwargs->attributes handling, and cloning.
     """
 
-    attrs: Tuple[Tuple[str, Any], ...] = ()
+    attrs: tuple[tuple[str, Any], ...] = ()
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         for name, type_ in self.attrs:
@@ -50,7 +51,7 @@ class Object:
                 except AttributeError:
                     setattr(self, name, None)
 
-    def as_dict(self, recurse: bool = False) -> Dict[str, Any]:
+    def as_dict(self, recurse: bool = False) -> dict[str, Any]:
         def f(obj: Any, type: Callable[[Any], Any]) -> Any:
             if recurse and isinstance(obj, Object):
                 return obj.as_dict(recurse=True)
@@ -59,9 +60,9 @@ class Object:
             attr: f(getattr(self, attr), type) for attr, type in self.attrs
         }
 
-    def __reduce__(self: _ObjectType) -> Tuple[
-        Callable[[Type[_ObjectType], Dict[str, Any]], _ObjectType],
-        Tuple[Type[_ObjectType], Dict[str, Any]]
+    def __reduce__(self: _ObjectType) -> tuple[
+        Callable[[type[_ObjectType], dict[str, Any]], _ObjectType],
+        tuple[type[_ObjectType], dict[str, Any]]
     ]:
         return unpickle_dict, (self.__class__, self.as_dict())
 
@@ -72,26 +73,26 @@ class Object:
 class MaybeChannelBound(Object):
     """Mixin for classes that can be bound to an AMQP channel."""
 
-    _channel: Optional["Channel"] = None
+    _channel: Channel | None = None
     _is_bound = False
 
     #: Defines whether maybe_declare can skip declaring this entity twice.
     can_cache_declaration = False
 
     def __call__(
-        self: _MaybeChannelBoundType, channel: "Channel"
+        self: _MaybeChannelBoundType, channel: Channel
     ) -> _MaybeChannelBoundType:
         """`self(channel) -> self.bind(channel)`."""
         return self.bind(channel)
 
     def bind(
-        self: _MaybeChannelBoundType, channel: "Channel"
+        self: _MaybeChannelBoundType, channel: Channel
     ) -> _MaybeChannelBoundType:
         """Create copy of the instance that is bound to a channel."""
         return copy(self).maybe_bind(channel)
 
     def maybe_bind(
-        self: _MaybeChannelBoundType, channel: "Channel"
+        self: _MaybeChannelBoundType, channel: Channel
     ) -> _MaybeChannelBoundType:
         """Bind instance to channel if not already bound."""
         if not self.is_bound and channel:
@@ -100,7 +101,7 @@ class MaybeChannelBound(Object):
             self._is_bound = True
         return self
 
-    def revive(self, channel: "Channel") -> None:
+    def revive(self, channel: Channel) -> None:
         """Revive channel after the connection has been re-established.
 
         Used by :meth:`~kombu.Connection.ensure`.
@@ -129,7 +130,7 @@ class MaybeChannelBound(Object):
         return self._is_bound and self._channel is not None
 
     @property
-    def channel(self) -> "Channel":
+    def channel(self) -> Channel:
         """Current channel if the object is bound."""
         channel = self._channel
         if channel is None:

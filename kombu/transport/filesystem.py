@@ -89,6 +89,8 @@ Transport Options
 * ``control_folder`` - directory where are exchange-queue table stored.
 """
 
+from __future__ import annotations
+
 import os
 import shutil
 import tempfile

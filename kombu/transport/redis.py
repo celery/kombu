@@ -51,6 +51,8 @@ Transport Options
 * ``priority_steps``
 """
 
+from __future__ import annotations
+
 import functools
 import numbers
 import socket
@@ -189,6 +191,7 @@ class GlobalKeyPrefixMixin:
     PREFIXED_SIMPLE_COMMANDS = [
         "HDEL",
         "HGET",
+        "HLEN",
         "HSET",
         "LLEN",
         "LPUSH",

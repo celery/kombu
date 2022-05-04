@@ -11,7 +11,7 @@ jobs:
       - name: Install system packages
         run: sudo apt update && sudo apt-get install libcurl4-openssl-dev libssl-dev
       - name: Check out code from GitHub
-        uses: actions/checkout@v2.3.5
+        uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
         id: python
         uses: actions/setup-python@main
@@ -40,7 +40,7 @@ jobs:
       - name: Install system packages
         run: sudo apt update && sudo apt-get install libcurl4-openssl-dev libssl-dev
       - name: Check out code from GitHub
-        uses: actions/checkout@v2.3.5
+        uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
         id: python
         uses: actions/setup-python@main
@@ -55,6 +55,11 @@ jobs:
         run: tox -v -e ${{ env.PYTHON_VERSION }}-linux-integration-py-amqp -- -v
       - name: Run redis integration tests
         run: tox -v -e ${{ env.PYTHON_VERSION }}-linux-integration-py-redis -- -v
+      - name: Run MongoDB integration tests
+        run: tox -v -e ${{ env.PYTHON_VERSION }}-linux-integration-py-mongodb -- -v
+      - name: Run kafka integration tests
+        if: ${{ env.PYTHON_VERSION != 'pypy3.7' && env.PYTHON_VERSION != 'pypy3.8' }}
+        run: tox -v -e ${{ env.PYTHON_VERSION }}-linux-integration-py-kafka -- -v
 
   #################### Linters and checkers ####################
   lint:
@@ -67,7 +72,7 @@ jobs:
       - name: Install system packages
         run: sudo apt update && sudo apt-get install libcurl4-openssl-dev libssl-dev
       - name: Check out code from GitHub
-        uses: actions/checkout@v2.3.5
+        uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
         id: python
         uses: actions/setup-python@main

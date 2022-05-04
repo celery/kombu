@@ -1,8 +1,11 @@
 """JSON Serialization Utilities."""
 
+from __future__ import annotations
+
+import base64
 import datetime
 import decimal
-import json as stdjson
+import json
 import uuid
 
 try:
@@ -11,19 +14,9 @@ except ImportError:  # pragma: no cover
     class DjangoPromise:
         """Dummy object."""
 
-try:
-    import json
-    _json_extra_kwargs = {}
 
-    class _DecodeError(Exception):
-        pass
-except ImportError:                 # pragma: no cover
-    import simplejson as json
-    from simplejson.decoder import JSONDecodeError as _DecodeError
-    _json_extra_kwargs = {
-        'use_decimal': False,
-        'namedtuple_as_object': False,
-    }
+class _DecodeError(Exception):
+    pass
 
 
 _encoder_cls = type(json._default_encoder)
@@ -55,6 +48,14 @@ class JSONEncoder(_encoder_cls):
                 return o.isoformat()
             elif isinstance(o, textual):
                 return text_t(o)
+            elif isinstance(o, bytes):
+                try:
+                    return {"bytes": o.decode("utf-8"), "__bytes__": True}
+                except UnicodeDecodeError:
+                    return {
+                        "bytes": base64.b64encode(o).decode("utf-8"),
+                        "__base64__": True,
+                    }
             return super().default(o)
 
 
@@ -63,13 +64,21 @@ _default_encoder = JSONEncoder
 
 def dumps(s, _dumps=json.dumps, cls=None, default_kwargs=None, **kwargs):
     """Serialize object to json string."""
-    if not default_kwargs:
-        default_kwargs = _json_extra_kwargs
+    default_kwargs = default_kwargs or {}
     return _dumps(s, cls=cls or _default_encoder,
                   **dict(default_kwargs, **kwargs))
 
 
-def loads(s, _loads=json.loads, decode_bytes=True):
+def object_hook(dct):
+    """Hook function to perform custom deserialization."""
+    if "__bytes__" in dct:
+        return dct["bytes"].encode("utf-8")
+    if "__base64__" in dct:
+        return base64.b64decode(dct["bytes"].encode("utf-8"))
+    return dct
+
+
+def loads(s, _loads=json.loads, decode_bytes=True, object_hook=object_hook):
     """Deserialize json from string."""
     # None of the json implementations supports decoding from
     # a buffer/memoryview, or even reading from a stream
@@ -85,7 +94,7 @@ def loads(s, _loads=json.loads, decode_bytes=True):
         s = s.decode('utf-8')
 
     try:
-        return _loads(s)
+        return _loads(s, object_hook=object_hook)
     except _DecodeError:
         # catch "Unpaired high surrogate" error
-        return stdjson.loads(s)
+        return json.loads(s)

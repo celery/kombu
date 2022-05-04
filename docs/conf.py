@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from sphinx_celery import conf
 
 globals().update(conf.build_config(

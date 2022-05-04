@@ -1,5 +1,7 @@
 """Mixins."""
 
+from __future__ import annotations
+
 import socket
 from contextlib import contextmanager
 from functools import partial

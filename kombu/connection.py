@@ -1,12 +1,14 @@
 """Client (Connection)."""
 
+from __future__ import annotations
+
 import os
 import socket
 import sys
 from contextlib import contextmanager
 from itertools import count, cycle
 from operator import itemgetter
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 try:
     from ssl import CERT_NONE
@@ -14,6 +16,7 @@ try:
 except ImportError:  # pragma: no cover
     CERT_NONE = None
     ssl_available = False
+
 
 # jython breaks on relative import for .exceptions for some reason
 # (Issue #112)
@@ -35,6 +38,7 @@ if TYPE_CHECKING:
     else:
         from typing import TypeGuard
 
+    from types import TracebackType
 
 __all__ = ('Connection', 'ConnectionPool', 'ChannelPool')
 
@@ -839,7 +843,12 @@ class Connection:
     def __enter__(self):
         return self
 
-    def __exit__(self, *args):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None
+    ) -> None:
         self.release()
 
     @property
@@ -890,7 +899,7 @@ class Connection:
         return self._connection
 
     @property
-    def default_channel(self) -> "Channel":
+    def default_channel(self) -> Channel:
         """Default channel.
 
         Created upon access and closed when the connection is closed.
@@ -1053,7 +1062,7 @@ class ChannelPool(Resource):
         return channel
 
 
-def maybe_channel(channel: Union["Channel", Connection]) -> "Channel":
+def maybe_channel(channel: Channel | Connection) -> Channel:
     """Get channel from object.
 
     Return the default channel if argument is a connection instance,
@@ -1064,5 +1073,5 @@ def maybe_channel(channel: Union["Channel", Connection]) -> "Channel":
     return channel
 
 
-def is_connection(obj: Any) -> "TypeGuard[Connection]":
+def is_connection(obj: Any) -> TypeGuard[Connection]:
     return isinstance(obj, Connection)

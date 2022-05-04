@@ -1,5 +1,7 @@
 """Div. Utilities."""
 
+from __future__ import annotations
+
 import sys
 
 from .encoding import default_encode
