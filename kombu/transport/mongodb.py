@@ -313,6 +313,7 @@ class Channel(virtual.Channel):
                                  if self.connect_timeout else None),
         }
         options.update(parsed['options'])
+        options.update(client.transport_options)
         options = self._prepare_client_options(options)
 
         return hostname, dbname, options
