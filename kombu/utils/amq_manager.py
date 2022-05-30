@@ -6,7 +6,7 @@ from typing import Optional, Any
 
 from kombu import Connection
 
-DEFAULT_RABBIT_MQ_PORT = 15672
+DEFAULT_RABBITMQ_PORT = 15672
 
 
 def get_manager(client: Connection, hostname: Optional[str] = None,
@@ -22,7 +22,7 @@ def get_manager(client: Connection, hostname: Optional[str] = None,
                      getattr(client, name, None) or default)
 
     host = get('hostname', hostname, 'localhost')
-    port = get('port', port, DEFAULT_RABBIT_MQ_PORT)
+    port = get('port', port, DEFAULT_RABBITMQ_PORT)
     userid = get('userid', userid, 'guest')
     password = get('password', password, 'guest')
     return pyrabbit.Client(f'{host}:{port}', userid, password)
