@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-from typing import Optional, Any
+from typing import Any, Optional
 
 from kombu import Connection
 
 DEFAULT_RABBITMQ_PORT = 15672
 
 
-def get_manager(client: Connection, hostname: Optional[str] = None,
-                port: Optional[int] = None, userid: Optional[str] = None,
-                password: Optional[str] = None):
+def get_manager(client: Connection, hostname: str | None = None,
+                port: int | None = None, userid: str | None = None,
+                password: str | None = None):
     """Get pyrabbit manager."""
     import pyrabbit
     opt = client.transport_options.get
