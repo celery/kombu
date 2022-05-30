@@ -6,8 +6,6 @@ import decimal
 import json as stdjson
 import uuid
 
-from kombu.utils.iso8601 import parse_iso8601
-
 try:
     from django.utils.functional import Promise as DjangoPromise
 except ImportError:  # pragma: no cover
