@@ -6,8 +6,6 @@ import decimal
 import json as stdjson
 import uuid
 
-from kombu.utils.iso8601 import parse_iso8601
-
 try:
     from django.utils.functional import Promise as DjangoPromise
 except ImportError:  # pragma: no cover
@@ -51,8 +49,6 @@ class JSONEncoder(_encoder_cls):
                 if not isinstance(o, datetime):
                     o = datetime(o.year, o.month, o.day, 0, 0, 0, 0)
                 r = o.isoformat()
-                if r.endswith("+00:00"):
-                    r = r[:-6] + "Z"
                 return {"datetime": r, "__datetime__": True}
             elif isinstance(o, times):
                 return o.isoformat()
@@ -83,7 +79,7 @@ def dumps(s, _dumps=json.dumps, cls=None, default_kwargs=None, **kwargs):
 def object_hook(dct):
     """Hook function to perform custom deserialization."""
     if "__datetime__" in dct:
-        return parse_iso8601(dct["datetime"])
+        return datetime.datetime.fromisoformat(dct["datetime"])
     if "__bytes__" in dct:
         return dct["bytes"].encode("utf-8")
     if "__base64__" in dct:

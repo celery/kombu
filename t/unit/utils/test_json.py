@@ -23,7 +23,7 @@ class Custom:
 
 
 class test_JSONEncoder:
-
+    @pytest.mark.freeze_time("2015-10-21")
     def test_datetime(self):
         now = datetime.utcnow()
         now_utc = now.replace(tzinfo=pytz.utc)
