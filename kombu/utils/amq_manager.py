@@ -23,7 +23,8 @@ def get_manager(
     def get(name: str, val: Any, default: Any) -> Any:
         return (
             val if val is not None
-            else opt('manager_%s' % name) or getattr(client, name, None) or default
+            else opt(
+                'manager_%s' % name) or getattr(client, name, None) or default
         )
 
     host = get('hostname', hostname, 'localhost')
