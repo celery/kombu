@@ -41,9 +41,7 @@ class JSONEncoder(_encoder_cls):
                 if not isinstance(o, datetime):
                     o = datetime(o.year, o.month, o.day, 0, 0, 0, 0)
                 r = o.isoformat()
-                if r.endswith("+00:00"):
-                    r = r[:-6] + "Z"
-                return r
+                return {"datetime": r, "__datetime__": True}
             elif isinstance(o, times):
                 return o.isoformat()
             elif isinstance(o, textual):
@@ -71,6 +69,8 @@ def dumps(s, _dumps=json.dumps, cls=None, default_kwargs=None, **kwargs):
 
 def object_hook(dct):
     """Hook function to perform custom deserialization."""
+    if "__datetime__" in dct:
+        return datetime.datetime.fromisoformat(dct["datetime"])
     if "__bytes__" in dct:
         return dct["bytes"].encode("utf-8")
     if "__base64__" in dct:

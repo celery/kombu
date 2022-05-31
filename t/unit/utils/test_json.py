@@ -25,11 +25,10 @@ class Custom:
 
 
 class test_JSONEncoder:
-
+    @pytest.mark.freeze_time("2015-10-21")
     def test_datetime(self):
         now = datetime.utcnow()
         now_utc = now.replace(tzinfo=pytz.utc)
-        stripped = datetime(*now.timetuple()[:3])
         serialized = loads(dumps({
             'datetime': now,
             'tz': now_utc,
@@ -37,10 +36,10 @@ class test_JSONEncoder:
             'time': now.time()},
         ))
         assert serialized == {
-            'datetime': now.isoformat(),
-            'tz': '{}Z'.format(now_utc.isoformat().split('+', 1)[0]),
+            'datetime': now,
+            'tz': now_utc,
             'time': now.time().isoformat(),
-            'date': stripped.isoformat(),
+            'date':  datetime(now.year, now.month, now.day, 0, 0, 0, 0),
         }
 
     @given(message=st.binary())
