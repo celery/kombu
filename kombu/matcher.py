@@ -23,8 +23,8 @@ class MatcherRegistry:
     matcher_pattern_first = ["pcre", ]
 
     def __init__(self) -> None:
-        self._matchers: Dict[str, MatcherFunction] = {}
-        self._default_matcher: Optional[MatcherFunction] = None
+        self._matchers: dict[str, MatcherFunction] = {}
+        self._default_matcher: MatcherFunction | None = None
 
     def register(self, name: str, matcher: MatcherFunction) -> None:
         """Add matcher by name to the registry."""
@@ -60,8 +60,8 @@ class MatcherRegistry:
         self,
         data: bytes,
         pattern: bytes,
-        matcher: Optional[str] = None,
-        matcher_kwargs: Optional[Dict[str, str]] = None
+        matcher: str | None = None,
+        matcher_kwargs: dict[str, str] | None = None
     ) -> bool:
         """Call the matcher."""
         if matcher and not self._matchers.get(matcher):
