@@ -23,8 +23,8 @@ class MatcherRegistry:
     matcher_pattern_first = ["pcre", ]
 
     def __init__(self) -> None:
-        self._matchers: Dict[str, MatcherFunction] = {}
-        self._default_matcher: Optional[MatcherFunction] | None = None
+        self._matchers: dict[str, MatcherFunction] = {}
+        self._default_matcher: MatcherFunction | None | None = None
 
     def register(self, name: str, matcher: MatcherFunction) -> None:
         """Add matcher by name to the registry."""
