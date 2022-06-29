@@ -4,6 +4,35 @@
  Change history
 ================
 
+.. _version-5.3.0a1:
+
+5.3.0a1
+=======
+:release-date: 29 Jun, 2022
+:release-by: Asif Saif Uddin
+
+- Add fanout to filesystem (#1499).
+- Protect set of ready tasks by lock to avoid concurrent updates. (#1489).
+- Correct documentation stating kombu uses pickle protocol version 2.
+- Use new entry_points interface.
+- Add mypy to the pipeline (#1512).
+- Added possibility to serialize and deserialize binary messages in json (#1516).
+- Bump pyupgrade version and add __future__.annotations import.
+- json.py cleaning from outdated libs (#1533).
+- bump new py-amqp to 5.1.1 (#1534).
+- add GitHub URL for PyPi.
+- Upgrade pytest to ~=7.1.1.
+- Support pymongo 4.x (#1536).
+- Initial Kafka support (#1506).
+- Upgrade Azure Storage Queues transport to version 12 (#1539).
+- move to consul2 (#1544).
+- Datetime serialization and deserialization fixed (#1515).
+- Bump redis>=4.2.2 (#1546).
+- Update sqs dependencies (#1547).
+- Added HLEN to the list of prefixed redis commands (#1540).
+- Added some type annotations.
+
+
 .. _version-5.2.4:
 
 5.2.4
