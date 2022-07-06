@@ -416,7 +416,8 @@ class Channel(virtual.Channel):
         else:
             if "DelaySeconds" in message['properties']:
                 kwargs['DelaySeconds'] = message['properties']['DelaySeconds']
-
+            else:
+                kwargs['DelaySeconds'] = 0
         c = self.sqs(queue=self.canonical_queue_name(queue))
         if message.get('redelivered'):
             c.change_message_visibility(
