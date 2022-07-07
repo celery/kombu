@@ -402,22 +402,22 @@ class Channel(virtual.Channel):
         else:
             body = dumps(message)
         kwargs = {'QueueUrl': q_url, 'MessageBody': body}
-        if queue.endswith('.fifo'):
-            if 'MessageGroupId' in message['properties']:
-                kwargs['MessageGroupId'] = \
-                    message['properties']['MessageGroupId']
+
+        if 'properties' in message:
+            if queue.endswith('.fifo'):
+                if 'MessageGroupId' in message['properties']:
+                    kwargs['MessageGroupId'] = \
+                        message['properties']['MessageGroupId']
+                else:
+                    kwargs['MessageGroupId'] = 'default'
+                if 'MessageDeduplicationId' in message['properties']:
+                    kwargs['MessageDeduplicationId'] = \
+                        message['properties']['MessageDeduplicationId']
+                else:
+                    kwargs['MessageDeduplicationId'] = str(uuid.uuid4())
             else:
-                kwargs['MessageGroupId'] = 'default'
-            if 'MessageDeduplicationId' in message['properties']:
-                kwargs['MessageDeduplicationId'] = \
-                    message['properties']['MessageDeduplicationId']
-            else:
-                kwargs['MessageDeduplicationId'] = str(uuid.uuid4())
-        else:
-            if "DelaySeconds" in message['properties']:
-                kwargs['DelaySeconds'] = message['properties']['DelaySeconds']
-            else:
-                kwargs['DelaySeconds'] = 0
+                if "DelaySeconds" in message['properties']:
+                    kwargs['DelaySeconds'] = message['properties']['DelaySeconds']
         c = self.sqs(queue=self.canonical_queue_name(queue))
         if message.get('redelivered'):
             c.change_message_visibility(

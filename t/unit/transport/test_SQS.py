@@ -787,11 +787,12 @@ class test_Channel:
         channel.sqs = Mock()
         sqs_queue_mock = Mock()
         channel.sqs.return_value = sqs_queue_mock
-        p.publish('message')
+        p.publish('message', DelaySeconds=10)
 
         sqs_queue_mock.send_message.assert_called_once()
 
         assert 'DelaySeconds' in sqs_queue_mock.send_message.call_args[1]
+        assert sqs_queue_mock.send_message.call_args[1]['DelaySeconds'] == 10
 
     @pytest.mark.parametrize('predefined_queues', (
         {
