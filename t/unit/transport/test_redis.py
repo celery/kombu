@@ -1145,6 +1145,37 @@ class test_Channel:
                 'foo_/{db}.a',
             )
 
+    @patch("redis.client.Pipeline.execute_command")
+    def test_global_keyprefix_transaction(self, mock_execute_command):
+        from kombu.transport.redis import PrefixedStrictRedis
+
+        with Connection(transport=Transport) as conn:
+            def pipeline(transaction=True, shard_hint=None):
+                pipeline_obj = original_pipeline(
+                    transaction=transaction, shard_hint=shard_hint
+                )
+                mock_execute_command.side_effect = [
+                    None, None, pipeline_obj, pipeline_obj
+                ]
+                return pipeline_obj
+
+            client = PrefixedStrictRedis(global_keyprefix='foo_')
+            original_pipeline = client.pipeline
+            client.pipeline = pipeline
+
+            channel = conn.channel()
+            channel._create_client = Mock()
+            channel._create_client.return_value = client
+
+            channel.qos.restore_by_tag('test-tag')
+            assert mock_execute_command is not None
+            assert mock_execute_command.mock_calls == [
+                call('WATCH', 'foo_unacked'),
+                call('HGET', 'foo_unacked', 'test-tag'),
+                call('ZREM', 'foo_unacked_index', 'test-tag'),
+                call('HDEL', 'foo_unacked', 'test-tag')
+            ]
+
 
 class test_Redis:
 
