@@ -211,6 +211,7 @@ class GlobalKeyPrefixMixin:
         "DEL": {"args_start": 0, "args_end": None},
         "BRPOP": {"args_start": 0, "args_end": -1},
         "EVALSHA": {"args_start": 2, "args_end": 3},
+        "WATCH": {"args_start": 0, "args_end": None},
     }
 
     def _prefix_args(self, args):
