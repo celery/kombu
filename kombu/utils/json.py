@@ -29,7 +29,7 @@ class JSONEncoder(_encoder_cls):
     def default(self, o,
                 dates=(datetime.datetime, datetime.date),
                 times=(datetime.time,),
-                textual=(decimal.Decimal, uuid.UUID, DjangoPromise),
+                textual=(decimal.Decimal, DjangoPromise),
                 isinstance=isinstance,
                 datetime=datetime.datetime,
                 text_t=str):
@@ -44,6 +44,8 @@ class JSONEncoder(_encoder_cls):
                 return {"datetime": r, "__datetime__": True}
             elif isinstance(o, times):
                 return o.isoformat()
+            elif isinstance(o, uuid.UUID):
+                return {"uuid": str(o), "__uuid__": True, "version": o.version}
             elif isinstance(o, textual):
                 return text_t(o)
             elif isinstance(o, bytes):
@@ -75,6 +77,8 @@ def object_hook(dct):
         return dct["bytes"].encode("utf-8")
     if "__base64__" in dct:
         return base64.b64decode(dct["bytes"].encode("utf-8"))
+    if "__uuid__" in dct:
+        return uuid.UUID(dct["uuid"], version=dct["version"])
     return dct
 
 
