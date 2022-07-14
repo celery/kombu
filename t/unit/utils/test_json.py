@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import uuid
 from collections import namedtuple
 from datetime import datetime
 from decimal import Decimal
 from unittest.mock import MagicMock, Mock
-import uuid
 
 import pytest
 import pytz
