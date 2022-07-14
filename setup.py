@@ -131,6 +131,7 @@ setup(
         'azureservicebus': extras('azureservicebus.txt'),
         'qpid': extras('qpid.txt'),
         'consul': extras('consul.txt'),
+        'confluentkafka': extras('confluentkafka.txt'),
     },
     classifiers=[
         'Development Status :: 5 - Production/Stable',
