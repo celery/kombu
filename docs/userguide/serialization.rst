@@ -38,11 +38,17 @@ Each option has its advantages and disadvantages.
 
     The primary disadvantage to `JSON` is that it limits you to
     the following data types: strings, Unicode, floats, boolean,
-    dictionaries, and lists. Decimals and dates are notably missing.
+    dictionaries, lists, decimals, DjangoPromise, datetimes, dates,
+    time, bytes and UUIDs.
+
+    For dates, datetimes, UUIDs and bytes the serializer will generate
+    a dict that will later instruct the deserializer how to produce
+    the right type.
 
     Also, binary data will be transferred using Base64 encoding, which
     will cause the transferred data to be around 34% larger than an
-    encoding which supports native binary types.
+    encoding which supports native binary types. This will only happen
+    if the bytes object can't be decoded into utf8.
 
     However, if your data fits inside the above constraints and
     you need cross-language support, the default setting of `JSON`
