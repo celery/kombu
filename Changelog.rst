@@ -4,6 +4,19 @@
  Change history
 ================
 
+.. _version-5.3.0b1:
+
+5.3.0b1
+=======
+:release-date: 1 Aug, 2022
+:release-by: Asif Saif Uddin
+
+- Add ext.py files to setup.cfg.
+- Add support to SQS DelaySeconds (#1567).
+- Add WATCH to prefixed complex commands.
+- Avoid losing type of UUID when serializing/deserializing (#1575).
+- chore: add confluentkafka to extras.
+
 .. _version-5.3.0a1:
 
 5.3.0a1
