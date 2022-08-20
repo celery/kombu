@@ -103,7 +103,7 @@ class Channel(virtual.Channel):
             except ResourceExistsError:
                 q = self._queue_service.get_queue_client(queue=queue)
 
-            self._queue_name_cache[queue] = q
+            self._queue_name_cache[queue] = q.get_queue_properties()
         return q
 
     def _delete(self, queue, *args, **kwargs):
