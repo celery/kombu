@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import errno
-from unittest.mock import Mock, call, patch, ANY
+from unittest.mock import ANY, Mock, call, patch
 
 import pytest
 from vine import promise
