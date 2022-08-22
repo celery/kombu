@@ -1185,8 +1185,8 @@ class Channel(virtual.Channel):
 
         if asynchronous:
             class Connection(connection_cls):
-                def disconnect(self):
-                    super().disconnect()
+                def disconnect(self, *args):
+                    super().disconnect(*args)
                     channel._on_connection_disconnect(self)
             connection_cls = Connection
 
