@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import socket
 from time import sleep
 
 import pytest
@@ -134,3 +135,18 @@ class test_RedisPriority(BasePriority):
 @pytest.mark.flaky(reruns=5, reruns_delay=2)
 class test_RedisMessage(BaseMessage):
     pass
+
+
+@pytest.mark.env('redis')
+def test_RedisConnectTimeout(monkeypatch):
+    # simulate a connection timeout for a new connection
+    def connect_timeout(self):
+        raise socket.timeout
+    monkeypatch.setattr(
+        redis.connection.Connection, "_connect", connect_timeout)
+
+    # ensure the timeout raises a TimeoutError
+    with pytest.raises(redis.exceptions.TimeoutError):
+        # note the host/port here is irrelevant because
+        # connect will raise a socket.timeout
+        kombu.Connection('redis://localhost:12345').connect()
