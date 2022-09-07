@@ -93,6 +93,7 @@ from __future__ import annotations
 
 import os
 import shutil
+import signal
 import tempfile
 import uuid
 from collections import namedtuple
@@ -110,6 +111,26 @@ from . import virtual
 
 VERSION = (1, 0, 0)
 __version__ = '.'.join(map(str, VERSION))
+
+
+@contextmanager
+def timeout_manager(seconds: int):
+    def timeout_handler(signum, frame):
+        # Now that flock retries automatically when interrupted, we need
+        # an exception to stop it
+        # This exception will propagate on the main thread,
+        # make sure you're calling flock there
+        raise InterruptedError
+
+    original_handler = signal.signal(signal.SIGALRM, timeout_handler)
+
+    try:
+        signal.alarm(seconds)
+        yield
+    finally:
+        signal.alarm(0)
+        signal.signal(signal.SIGALRM, original_handler)
+
 
 # needs win32all to work on Windows
 if os.name == 'nt':
@@ -138,7 +159,7 @@ if os.name == 'nt':
 elif os.name == 'posix':
 
     import fcntl
-    from fcntl import LOCK_EX, LOCK_NB, LOCK_SH  # noqa
+    from fcntl import LOCK_EX, LOCK_SH
 
     def lock(file, flags):
         """Create file lock."""
@@ -152,6 +173,21 @@ elif os.name == 'posix':
 else:
     raise RuntimeError(
         'Filesystem plugin only defined for NT and POSIX platforms')
+
+
+@contextmanager
+def lock_with_timeout(file, flags, timeout: int = 1):
+    with timeout_manager(timeout):
+        try:
+            lock(file, flags)
+            yield
+        except InterruptedError:
+            # Catch the exception raised by the handler
+            # If we weren't raising an exception,
+            # flock would automatically retry on signals
+            raise BlockingIOError("Lock timed out")
+        finally:
+            unlock(file)
 
 
 exchange_queue_t = namedtuple("exchange_queue_t",
@@ -168,18 +204,14 @@ class Channel(virtual.Channel):
         file = self.control_folder / f"{exchange}.exchange"
         if "w" in mode:
             self.control_folder.mkdir(exist_ok=True)
-        f_obj = file.open(mode)
+        lock_mode = LOCK_EX if "w" in mode else LOCK_SH
 
-        try:
-            if "w" in mode:
-                lock(f_obj, LOCK_EX)
-            yield f_obj
-        except OSError:
-            raise ChannelError(f"Cannot open {file}")
-        finally:
-            if "w" in mode:
-                unlock(f_obj)
-            f_obj.close()
+        with file.open(mode) as f_obj:
+            try:
+                with lock_with_timeout(f_obj, lock_mode):
+                    yield f_obj
+            except OSError as err:
+                raise ChannelError(f"Cannot open {file}") from err
 
     def get_table(self, exchange):
         try:
@@ -209,15 +241,12 @@ class Channel(virtual.Channel):
         filename = os.path.join(self.data_folder_out, filename)
 
         try:
-            f = open(filename, 'wb')
-            lock(f, LOCK_EX)
-            f.write(str_to_bytes(dumps(payload)))
-        except OSError:
+            with open(filename, 'wb') as f:
+                with lock_with_timeout(f, LOCK_EX):
+                    f.write(str_to_bytes(dumps(payload)))
+        except OSError as err:
             raise ChannelError(
-                f'Cannot add file {filename!r} to directory')
-        finally:
-            unlock(f)
-            f.close()
+                f'Cannot add file {filename!r} to directory') from err
 
     def _get(self, queue):
         """Get next message from `queue`."""
@@ -245,14 +274,14 @@ class Channel(virtual.Channel):
 
             filename = os.path.join(processed_folder, filename)
             try:
-                f = open(filename, 'rb')
-                payload = f.read()
-                f.close()
-                if not self.store_processed:
-                    os.remove(filename)
-            except OSError:
+                with open(filename, 'rb') as f:
+                    with lock_with_timeout(f, LOCK_SH):
+                        payload = f.read()
+                        if not self.store_processed:
+                            os.remove(filename)
+            except OSError as err:
                 raise ChannelError(
-                    f'Cannot read file {filename!r} from queue.')
+                    f'Cannot read file {filename!r} from queue.') from err
 
             return loads(bytes_to_str(payload))
 
@@ -272,7 +301,9 @@ class Channel(virtual.Channel):
                     continue
 
                 filename = os.path.join(self.data_folder_in, filename)
-                os.remove(filename)
+                with open(filename, 'wb') as f:
+                    with lock_with_timeout(f, LOCK_EX):
+                        os.remove(filename)
 
                 count += 1
 
