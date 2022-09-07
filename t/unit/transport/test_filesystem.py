@@ -242,9 +242,8 @@ class test_FilesystemFanout:
 @t.skip.if_win32
 class test_FilesystemLock:
     def test_lock(self):
-        message_file = tempfile.mktemp()
-        with open(message_file, "w") as file_obj1, open(
-                message_file) as file_obj2:
+        file_obj1 = tempfile.NamedTemporaryFile()
+        with open(file_obj1.name) as file_obj2:
             lock(file_obj1, LOCK_SH)
             with pytest.raises(BlockingIOError):
                 lock(file_obj2, LOCK_EX | LOCK_NB)
@@ -255,6 +254,7 @@ class test_FilesystemLock:
             unlock(file_obj1)
             lock(file_obj2, LOCK_EX)
             unlock(file_obj2)
+        file_obj1.close()
 
 
 @t.skip.if_win32
