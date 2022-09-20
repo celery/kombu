@@ -38,10 +38,13 @@ class JSONEncoder(_encoder_cls):
             return reducer()
         else:
             if isinstance(o, dates):
+                marker = "__date__"
                 if not isinstance(o, datetime):
                     o = datetime(o.year, o.month, o.day, 0, 0, 0, 0)
+                else:
+                    marker = "__datetime__"
                 r = o.isoformat()
-                return {"datetime": r, "__datetime__": True}
+                return {"datetime": r, marker: True}
             elif isinstance(o, times):
                 return o.isoformat()
             elif isinstance(o, uuid.UUID):
@@ -71,6 +74,8 @@ def dumps(s, _dumps=json.dumps, cls=None, default_kwargs=None, **kwargs):
 
 def object_hook(dct):
     """Hook function to perform custom deserialization."""
+    if "__date__" in dct:
+        return datetime.datetime.fromisoformat(dct["datetime"]).date()
     if "__datetime__" in dct:
         return datetime.datetime.fromisoformat(dct["datetime"])
     if "__bytes__" in dct:

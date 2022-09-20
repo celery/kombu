@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 from collections import namedtuple
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from unittest.mock import MagicMock, Mock
 
@@ -39,7 +39,7 @@ class test_JSONEncoder:
             'datetime': now,
             'tz': now_utc,
             'time': now.time().isoformat(),
-            'date':  datetime(now.year, now.month, now.day, 0, 0, 0, 0),
+            'date':  date(now.year, now.month, now.day),
         }
 
     @given(message=st.binary())
