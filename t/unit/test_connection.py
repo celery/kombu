@@ -705,10 +705,13 @@ class test_Connection:
             connect_timeout=1,
             transport_options={'interval_start': 0, 'interval_step': 0},
         ) as conn:
-            conn._establish_connection = Mock(side_effect=conn._establish_connection)
+            conn._establish_connection = Mock(
+                side_effect=conn._establish_connection
+            )
             with pytest.raises(OperationalError):
                 conn.default_channel
-            # Never retried, because `retry_over_time` `timeout` is set to equal `connect_timeout`
+            # Never retried, because `retry_over_time` `timeout` is equal
+            # to `connect_timeout`
             conn._establish_connection.assert_called_once()
 
     def test_connection_failover_with_total_timeout(self):
@@ -716,9 +719,12 @@ class test_Connection:
             ['server1', 'server2'],
             transport=TimeoutingTransport,
             connect_timeout=1,
-            transport_options={'connect_retry_timeout': 2, 'interval_start': 0, 'interval_step': 0},
+            transport_options={'connect_retry_timeout': 2, 'interval_start': 0,
+                               'interval_step': 0},
         ) as conn:
-            conn._establish_connection = Mock(side_effect=conn._establish_connection)
+            conn._establish_connection = Mock(
+                side_effect=conn._establish_connection
+            )
             with pytest.raises(OperationalError):
                 conn.default_channel
             assert conn._establish_connection.call_count == 2
