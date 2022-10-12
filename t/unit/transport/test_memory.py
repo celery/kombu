@@ -133,8 +133,8 @@ class test_MemoryTransport:
         with pytest.raises(socket.timeout):
             self.c.drain_events(timeout=0.1)
 
-        del(c1)  # so pyflakes doesn't complain.
-        del(c2)
+        del c1  # so pyflakes doesn't complain.
+        del c2
 
     def test_drain_events_unregistered_queue(self):
         c1 = self.c.channel()

@@ -582,8 +582,8 @@ class test_Transport:
         assert len(self.transport.channels) == 2
         self.transport.close_connection(self.transport)
         assert not self.transport.channels
-        del(c1)  # so pyflakes doesn't complain
-        del(c2)
+        del c1  # so pyflakes doesn't complain
+        del c2
 
     def test_create_channel(self):
         """Ensure create_channel can create channels successfully."""
