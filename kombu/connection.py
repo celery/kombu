@@ -868,7 +868,8 @@ class Connection:
             if 'interval_max' in transport_opts:
                 conn_opts['interval_max'] = transport_opts['interval_max']
             if 'connect_retries_timeout' in transport_opts:
-                conn_opts['timeout'] = transport_opts['connect_retries_timeout']
+                conn_opts['timeout'] = \
+                    transport_opts['connect_retries_timeout']
         return conn_opts
 
     @property
