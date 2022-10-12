@@ -426,7 +426,7 @@ class Connection:
             callback (Callable): Optional callback that is called for every
                 internal iteration (1 s).
             timeout (int): Maximum amount of time in seconds to spend
-                waiting for connection
+                attempting to connect, total over all retries.
         """
         if self.connected:
             return self._connection
@@ -867,6 +867,9 @@ class Connection:
                 conn_opts['interval_step'] = transport_opts['interval_step']
             if 'interval_max' in transport_opts:
                 conn_opts['interval_max'] = transport_opts['interval_max']
+            if 'connect_retries_timeout' in transport_opts:
+                conn_opts['timeout'] = \
+                    transport_opts['connect_retries_timeout']
         return conn_opts
 
     @property

@@ -11,7 +11,7 @@ from kombu import Connection, Consumer, Producer, parse_url
 from kombu.connection import Resource
 from kombu.exceptions import OperationalError
 from kombu.utils.functional import lazy
-from t.mocks import Transport
+from t.mocks import TimeoutingTransport, Transport
 
 
 class test_connection_utils:
@@ -697,6 +697,37 @@ class test_Connection:
         ) as conn:
             with pytest.raises(OperationalError):
                 conn.default_channel
+
+    def test_connection_failover_without_total_timeout(self):
+        with Connection(
+            ['server1', 'server2'],
+            transport=TimeoutingTransport,
+            connect_timeout=1,
+            transport_options={'interval_start': 0, 'interval_step': 0},
+        ) as conn:
+            conn._establish_connection = Mock(
+                side_effect=conn._establish_connection
+            )
+            with pytest.raises(OperationalError):
+                conn.default_channel
+            # Never retried, because `retry_over_time` `timeout` is equal
+            # to `connect_timeout`
+            conn._establish_connection.assert_called_once()
+
+    def test_connection_failover_with_total_timeout(self):
+        with Connection(
+            ['server1', 'server2'],
+            transport=TimeoutingTransport,
+            connect_timeout=1,
+            transport_options={'connect_retries_timeout': 2,
+                               'interval_start': 0, 'interval_step': 0},
+        ) as conn:
+            conn._establish_connection = Mock(
+                side_effect=conn._establish_connection
+            )
+            with pytest.raises(OperationalError):
+                conn.default_channel
+            assert conn._establish_connection.call_count == 2
 
 
 class test_Connection_with_transport_options:
