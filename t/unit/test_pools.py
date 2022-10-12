@@ -141,7 +141,7 @@ class test_PoolGroup:
     def test_delitem(self):
         g = self.MyGroup()
         g['foo']
-        del(g['foo'])
+        del g['foo']
         assert 'foo' not in g
 
     def test_Connections(self):
