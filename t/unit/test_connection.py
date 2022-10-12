@@ -719,7 +719,7 @@ class test_Connection:
             ['server1', 'server2'],
             transport=TimeoutingTransport,
             connect_timeout=1,
-            transport_options={'connect_retry_timeout': 2, 'interval_start': 0,
+            transport_options={'connect_retries_timeout': 2, 'interval_start': 0,
                                'interval_step': 0},
         ) as conn:
             conn._establish_connection = Mock(
