@@ -35,7 +35,6 @@ from __future__ import annotations
 
 import string
 from queue import Empty
-from typing import Union
 
 from azure.core.exceptions import ResourceExistsError
 
@@ -192,7 +191,9 @@ class Transport(virtual.Transport):
             uri = uri.replace('azurestoragequeues://', '')
             # > 'some/key',  'url'
             credential, url = uri.rsplit('@', 1)
-            if "devstoreaccount1" in url and not ".core.windows.net" in url:  # azurite
+
+            # parse credential as a dict if Azurite is being used
+            if "devstoreaccount1" in url and ".core.windows.net" not in url:
                 credential = {
                     "account_name": "devstoreaccount1",
                     "account_key": credential,
