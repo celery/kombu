@@ -6,8 +6,7 @@ import os
 from itertools import chain
 from typing import Optional
 
-from .connection import Connection, ConnectionPool
-from .connection import Resource
+from .connection import Connection, ConnectionPool, Resource
 from .messaging import Producer
 from .utils.collections import EqualityDict
 from .utils.compat import register_after_fork
@@ -80,13 +79,13 @@ class ProducerPool(Resource):
 class PoolGroup(EqualityDict):
     """Collection of resource pools."""
 
-    def __init__(self, limit: Optional[int] = None, close_after_fork: bool = True):
+    def __init__(self, limit: int | None = None, close_after_fork: bool = True):
         self.limit = limit
         self.close_after_fork = close_after_fork
         if self.close_after_fork and register_after_fork is not None:
             register_after_fork(self, _after_fork_cleanup_group)
 
-    def create(self, resource, limit: Optional[int]):
+    def create(self, resource, limit: int | None):
         raise NotImplementedError('PoolGroups must define ``create``')
 
     def __missing__(self, resource):
@@ -106,7 +105,7 @@ def register_group(group):
 class Connections(PoolGroup):
     """Collection of connection pools."""
 
-    def create(self, connection: Connection, limit: Optional[int]):
+    def create(self, connection: Connection, limit: int | None):
         return connection.Pool(limit=limit)
 
     def __getitem__(self, connection: Connection) -> ConnectionPool:
