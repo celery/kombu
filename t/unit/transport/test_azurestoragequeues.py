@@ -45,4 +45,4 @@ def test_queue_service_works_for_azurite(creds, hostname):
             'account_name': 'devstoreaccount1',
             'account_key': 'Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw=='
         }
-        assert channel._url == 'http://{}:10001/devstoreaccount1'.format(hostname) # noqa
+        assert channel._url == f'http://{hostname}:10001/devstoreaccount1' # noqa

@@ -179,7 +179,7 @@ class Transport(virtual.Transport):
     can_parse_url = True
 
     @staticmethod
-    def parse_uri(uri: str) -> tuple[Union[str, dict], str]:
+    def parse_uri(uri: str) -> tuple[str | dict, str]:
         # URL like:
         #  azurestoragequeues://STORAGE_ACCOUNT_ACCESS_KEY@STORAGE_ACCOUNT_URL
         #  azurestoragequeues://SAS_TOKEN@STORAGE_ACCOUNT_URL
