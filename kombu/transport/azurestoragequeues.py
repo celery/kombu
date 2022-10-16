@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import string
 from queue import Empty
+from typing import Union
 
 from azure.core.exceptions import ResourceExistsError
 
@@ -178,7 +179,7 @@ class Transport(virtual.Transport):
     can_parse_url = True
 
     @staticmethod
-    def parse_uri(uri: str) -> tuple[str, str]:
+    def parse_uri(uri: str) -> tuple[Union[str, dict], str]:
         # URL like:
         #  azurestoragequeues://STORAGE_ACCOUNT_ACCESS_KEY@STORAGE_ACCOUNT_URL
         #  azurestoragequeues://SAS_TOKEN@STORAGE_ACCOUNT_URL
@@ -191,6 +192,11 @@ class Transport(virtual.Transport):
             uri = uri.replace('azurestoragequeues://', '')
             # > 'some/key',  'url'
             credential, url = uri.rsplit('@', 1)
+            if "devstoreaccount1" in url and not ".core.windows.net" in url:  # azurite
+                credential = {
+                    "account_name": "devstoreaccount1",
+                    "account_key": credential,
+                }
 
             # Validate parameters
             assert all([credential, url])
