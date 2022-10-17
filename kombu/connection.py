@@ -8,7 +8,7 @@ import sys
 from contextlib import contextmanager
 from itertools import count, cycle
 from operator import itemgetter
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 try:
     from ssl import CERT_NONE
