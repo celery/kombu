@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import os
 from itertools import chain
-from typing import Optional
 
 from .connection import Connection, ConnectionPool, Resource
 from .messaging import Producer
