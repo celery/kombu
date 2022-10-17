@@ -1039,7 +1039,7 @@ class ConnectionPool(Resource):
         resource._debug('acquired')
         return resource
 
-    def acquire(self, block: bool = False, timeout: Optional[int] = None) -> Connection:
+    def acquire(self, block: bool = False, timeout: int | None = None) -> Connection:
         return super().acquire(block, timeout)
 
 
