@@ -8,7 +8,7 @@ import sys
 from contextlib import contextmanager
 from itertools import count, cycle
 from operator import itemgetter
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Optional
 
 try:
     from ssl import CERT_NONE
@@ -1038,6 +1038,9 @@ class ConnectionPool(Resource):
             resource = resource()
         resource._debug('acquired')
         return resource
+
+    def acquire(self, block: bool = False, timeout: Optional[int] = None) -> Connection:
+        return super().acquire(block, timeout)
 
 
 class ChannelPool(Resource):
