@@ -4,6 +4,21 @@
  Change history
 ================
 
+.. _version-5.3.0b2:
+
+5.3.02
+=======
+:release-date: 19 Oct, 2022
+:release-by: Asif Saif Uddin
+
+- fix: save QueueProperties to _queue_name_cache instead of QueueClient.
+- hub: tick delay fix (#1587).
+- Fix incompatibility with redis in disconnect() (#1589).
+- Solve Kombu filesystem transport not thread safe.
+- importlib_metadata remove deprecated entry point interfaces (#1601).
+- Allow azurestoragequeues transport to be used with Azurite emulator in docker-compose (#1611).
+
+
 .. _version-5.3.0b1:
 
 5.3.0b1
