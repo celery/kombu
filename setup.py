@@ -111,7 +111,7 @@ setup(
     },
     platforms=['any'],
     zip_safe=False,
-    license='BSD',
+    license='BSD-3-Clause',
     cmdclass={'test': pytest},
     python_requires=">=3.7",
     install_requires=reqs('default.txt'),
