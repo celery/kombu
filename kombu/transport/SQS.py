@@ -569,11 +569,14 @@ class Channel(virtual.Channel):
         return callback
 
     def _get_async(self, queue, count=1, callback=None):
-        q = self._new_queue(queue)
+        q_url = self._new_queue(queue)
         qname = self.canonical_queue_name(queue)
         return self._get_from_sqs(
-            qname, count=count, connection=self.asynsqs(queue=qname),
-            callback=transform(self._on_messages_ready, callback, q, queue),
+            queue_name=qname, queue_url=q_url, count=count,
+            connection=self.asynsqs(queue=qname),
+            callback=transform(
+                self._on_messages_ready, callback, q_url, queue
+            ),
         )
 
     def _on_messages_ready(self, queue, qname, messages):
@@ -583,24 +586,14 @@ class Channel(virtual.Channel):
                 msg_parsed = self._message_to_python(msg, qname, queue)
                 callbacks[qname](msg_parsed)
 
-    def _get_from_sqs(self, queue,
-                      count=1, connection=None, callback=None):
+    def _get_from_sqs(self, queue_name, queue_url,
+                      connection, count=1, callback=None):
         """Retrieve and handle messages from SQS.
 
         Uses long polling and returns :class:`~vine.promises.promise`.
         """
-        connection = connection if connection is not None else queue.connection
-        if self.predefined_queues:
-            if queue not in self._queue_cache:
-                raise UndefinedQueueException((
-                    "Queue with name '{}' must be defined in "
-                    "'predefined_queues'."
-                ).format(queue))
-            queue_url = self._queue_cache[queue]
-        else:
-            queue_url = connection.get_queue_url(queue)
         return connection.receive_message(
-            queue, queue_url, number_messages=count,
+            queue_name, queue_url, number_messages=count,
             wait_time_seconds=self.wait_time_seconds,
             callback=callback,
         )
