@@ -497,6 +497,20 @@ class test_Connection:
         with pytest.raises(OperationalError):
             ensured()
 
+    def test_ensure_retry_errors_is_not_looping_infinitely(self):
+        class _MessageNacked(Exception):
+            pass
+
+        def publish():
+            raise _MessageNacked('NACK')
+
+        with pytest.raises(ValueError):
+            self.conn.ensure(
+                self.conn,
+                publish,
+                retry_errors=(_MessageNacked,)
+            )
+
     def test_autoretry(self):
         myfun = Mock()
 
