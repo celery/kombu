@@ -25,14 +25,14 @@ jobs:
   integration:
     needs: [unittest]
     runs-on: ubuntu-latest
-    continue-on-error: ${{ matrix.experimental }}
+    continue-on-error: False
     strategy:
       fail-fast: false
       matrix:
         python-version: [3.7,3.8,3.9]
         experimental: [false]
         include:
-          - python-version: pypy-3.7
+          - python-version: pypy-3.9
             experimental: true
           - python-version: pypy-3.8
             experimental: true
@@ -58,7 +58,7 @@ jobs:
       - name: Run MongoDB integration tests
         run: tox -v -e ${{ env.PYTHON_VERSION }}-linux-integration-py-mongodb -- -v
       - name: Run kafka integration tests
-        if: ${{ env.PYTHON_VERSION != 'pypy3.7' && env.PYTHON_VERSION != 'pypy3.8' }}
+        if: ${{ env.PYTHON_VERSION != 'pypy3.9' && env.PYTHON_VERSION != 'pypy3.8' }}
         run: tox -v -e ${{ env.PYTHON_VERSION }}-linux-integration-py-kafka -- -v
 
   #################### Linters and checkers ####################
