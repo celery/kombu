@@ -15,15 +15,34 @@ Features
 Connection String
 =================
 
-Connection string has the following format:
+Connection string has the following formats:
 
 .. code-block::
 
-    azurestoragequeues://STORAGE_ACCOUNT_ACCESS_KEY@STORAGE_ACCOUNT_URL
-    azurestoragequeues://SAS_TOKEN@STORAGE_ACCOUNT_URL
+    azurestoragequeues://<STORAGE_ACCOUNT_ACCESS_KEY>@<STORAGE_ACCOUNT_URL>
+    azurestoragequeues://<SAS_TOKEN>@<STORAGE_ACCOUNT_URL>
+    azurestoragequeues://DefaultAzureCredential@<STORAGE_ACCOUNT_URL>
+    azurestoragequeues://ManagedIdentityCredential@<STORAGE_ACCOUNT_URL>
 
-Note that if the access key for the storage account contains a slash, it will
-have to be regenerated before it can be used in the connection URL.
+Note that if the access key for the storage account contains a forward slash
+(``/``), it will have to be regenerated before it can be used in the connection
+URL.
+
+.. code-block::
+
+    azurestoragequeues://DefaultAzureCredential@<STORAGE_ACCOUNT_URL>
+    azurestoragequeues://ManagedIdentityCredential@<STORAGE_ACCOUNT_URL>
+
+If you wish to use an `Azure Managed Identity` you may use the
+``DefaultAzureCredential`` format of the connection string which will use
+``DefaultAzureCredential`` class in the azure-identity package. You may want to
+read the `azure-identity documentation` for more information on how the
+``DefaultAzureCredential`` works.
+
+.. _azure-identity documentation:
+https://learn.microsoft.com/en-us/python/api/overview/azure/identity-readme?view=azure-python
+.. _Azure Managed Identity:
+https://learn.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/overview
 
 Transport Options
 =================
@@ -48,6 +67,13 @@ try:
     from azure.storage.queue import QueueServiceClient
 except ImportError:  # pragma: no cover
     QueueServiceClient = None
+
+try:
+    from azure.identity import (DefaultAzureCredential,
+                                ManagedIdentityCredential)
+except ImportError:
+    DefaultAzureCredential = None
+    ManagedIdentityCredential = None
 
 # Azure storage queues allow only alphanumeric and dashes
 # so, replace everything with a dash
@@ -180,8 +206,10 @@ class Transport(virtual.Transport):
     @staticmethod
     def parse_uri(uri: str) -> tuple[str | dict, str]:
         # URL like:
-        #  azurestoragequeues://STORAGE_ACCOUNT_ACCESS_KEY@STORAGE_ACCOUNT_URL
-        #  azurestoragequeues://SAS_TOKEN@STORAGE_ACCOUNT_URL
+        #  azurestoragequeues://<STORAGE_ACCOUNT_ACCESS_KEY>@<STORAGE_ACCOUNT_URL>
+        #  azurestoragequeues://<SAS_TOKEN>@<STORAGE_ACCOUNT_URL>
+        #  azurestoragequeues://DefaultAzureCredential@<STORAGE_ACCOUNT_URL>
+        #  azurestoragequeues://ManagedIdentityCredential@<STORAGE_ACCOUNT_URL>
 
         # urllib parse does not work as the sas key could contain a slash
         # e.g.: azurestoragequeues://some/key@someurl
@@ -192,8 +220,20 @@ class Transport(virtual.Transport):
             # > 'some/key',  'url'
             credential, url = uri.rsplit('@', 1)
 
-            # parse credential as a dict if Azurite is being used
-            if "devstoreaccount1" in url and ".core.windows.net" not in url:
+            if "DefaultAzureCredential".lower() == credential.lower():
+                if DefaultAzureCredential is None:
+                    raise ImportError('Azure Storage Queues transport with a '
+                                      'DefaultAzureCredential requires the '
+                                      'azure-identity library')
+                credential = DefaultAzureCredential()
+            elif "ManagedIdentityCredential".lower() == credential.lower():
+                if ManagedIdentityCredential is None:
+                    raise ImportError('Azure Storage Queues transport with a '
+                                      'ManagedIdentityCredential requires the '
+                                      'azure-identity library')
+                credential = ManagedIdentityCredential()
+            elif "devstoreaccount1" in url and ".core.windows.net" not in url:
+                # parse credential as a dict if Azurite is being used
                 credential = {
                     "account_name": "devstoreaccount1",
                     "account_key": credential,
@@ -204,7 +244,10 @@ class Transport(virtual.Transport):
         except Exception:
             raise ValueError(
                 'Need a URI like '
-                'azurestoragequeues://{SAS or access key}@{URL}'
+                'azurestoragequeues://{SAS or access key}@{URL}, '
+                'azurestoragequeues://DefaultAzureCredential@{URL}, '
+                ', or '
+                'azurestoragequeues://ManagedIdentityCredential@{URL}'
             )
 
         return credential, url
