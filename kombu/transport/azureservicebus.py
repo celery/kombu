@@ -57,7 +57,7 @@ from __future__ import annotations
 
 import string
 from queue import Empty
-from typing import Any, Dict, Set
+from typing import Any
 
 import azure.core.exceptions
 import azure.servicebus.exceptions
