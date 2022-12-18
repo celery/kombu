@@ -497,6 +497,43 @@ class test_Connection:
         with pytest.raises(OperationalError):
             ensured()
 
+    def test_ensure_retry_errors_is_not_looping_infinitely(self):
+        class _MessageNacked(Exception):
+            pass
+
+        def publish():
+            raise _MessageNacked('NACK')
+
+        with pytest.raises(ValueError):
+            self.conn.ensure(
+                self.conn,
+                publish,
+                retry_errors=(_MessageNacked,)
+            )
+
+    def test_ensure_retry_errors_is_limited_by_max_retries(self):
+        class _MessageNacked(Exception):
+            pass
+
+        tries = 0
+
+        def publish():
+            nonlocal tries
+            tries += 1
+            if tries <= 3:
+                raise _MessageNacked('NACK')
+            # On the 4th try, we let it pass
+            return 'ACK'
+
+        ensured = self.conn.ensure(
+            self.conn,
+            publish,
+            max_retries=3,  # 3 retries + 1 initial try = 4 tries
+            retry_errors=(_MessageNacked,)
+        )
+
+        assert ensured() == 'ACK'
+
     def test_autoretry(self):
         myfun = Mock()
 
