@@ -35,7 +35,7 @@ from __future__ import annotations
 
 import string
 from queue import Empty
-from typing import Any
+from typing import Any, Optional
 
 from azure.core.exceptions import ResourceExistsError
 
@@ -61,7 +61,7 @@ class Channel(virtual.Channel):
     """Azure Storage Queues channel."""
 
     domain_format: str = 'kombu%(vhost)s'
-    _queue_service: QueueServiceClient | None = None
+    _queue_service: Optional[QueueServiceClient] = None
     _queue_name_cache: dict[Any, Any] = {}
     no_ack: bool = True
     _noack_queues: set[Any] = set()
@@ -175,7 +175,7 @@ class Transport(virtual.Transport):
     Channel = Channel
 
     polling_interval: int = 1
-    default_port: int | None = None
+    default_port: Optional[int] = None
     can_parse_url: bool = True
 
     @staticmethod
