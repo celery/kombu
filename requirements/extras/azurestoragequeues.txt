@@ -1,1 +1,2 @@
 azure-storage-queue>=12.2.0
+azure-identity>=1.12.0
