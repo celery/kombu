@@ -328,12 +328,12 @@ This software is licensed under the `New BSD License`. See the `LICENSE`
 file in the top distribution directory for the full license text.
 
 
-.. |build-status| image:: https://api.travis-ci.com/celery/kombu.png?branch=master
+.. |build-status| image:: https://github.com/celery/kombu/actions/workflows/ci.yaml/badge.svg
     :alt: Build status
-    :target: https://travis-ci.com/celery/kombu
+    :target: https://github.com/celery/kombu/actions/workflows/ci.yml
 
-.. |coverage| image:: https://codecov.io/github/celery/kombu/coverage.svg?branch=master
-    :target: https://codecov.io/github/celery/kombu?branch=master
+.. |coverage| image:: https://codecov.io/github/celery/kombu/coverage.svg?branch=main
+    :target: https://codecov.io/github/celery/kombu?branch=main
 
 .. |license| image:: https://img.shields.io/pypi/l/kombu.svg
     :alt: BSD License
