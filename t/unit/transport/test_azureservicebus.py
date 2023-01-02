@@ -203,14 +203,35 @@ MockQueue = namedtuple(
 )
 
 
+@pytest.fixture(autouse=True)
+def sbac_class_patch():
+    with patch('kombu.transport.azureservicebus.ServiceBusAdministrationClient') as sbac: # noqa
+        yield sbac
+
+
+@pytest.fixture(autouse=True)
+def sbc_class_patch():
+    with patch('kombu.transport.azureservicebus.ServiceBusClient') as sbc: # noqa
+        yield sbc
+
+
+@pytest.fixture(autouse=True)
+def mock_clients(
+    sbc_class_patch,
+    sbac_class_patch,
+    mock_asb,
+    mock_asb_management
+):
+    sbc_class_patch.from_connection_string.return_value = mock_asb
+    sbac_class_patch.from_connection_string.return_value = mock_asb_management
+
+
 @pytest.fixture
 def mock_queue(mock_asb, mock_asb_management, random_queue) -> MockQueue:
     exchange = Exchange('test_servicebus', type='direct')
     queue = Queue(random_queue, exchange, random_queue)
     conn = Connection(URL_CREDS, transport=azureservicebus.Transport)
     channel = conn.channel()
-    channel._queue_service = mock_asb
-    channel._queue_mgmt_service = mock_asb_management
 
     queue(channel).declare()
     producer = messaging.Producer(channel, exchange, routing_key=random_queue)
