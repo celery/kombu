@@ -124,7 +124,7 @@ def Mutex(client, name, expire):
         if lock_acquired:
             try:
                 lock.release()
-            except redis.exceptions.LockNotOwnedError:
+            except redis.exceptions.LockError:
                 # when lock is expired
                 pass
 
