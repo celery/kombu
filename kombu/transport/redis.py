@@ -108,27 +108,24 @@ class MutexHeld(Exception):
 
 @contextmanager
 def Mutex(client, name, expire):
-    lock_id = uuid()
-    i_won = client.setnx(name, lock_id)
+    """Acquire redis lock in non-blocking way.
+
+    Raise MutexHeld if not successful.
+    """
+    lock = client.lock(name, timeout=expire)
+    lock_acquired = False
     try:
-        if i_won:
-            client.expire(name, expire)
+        lock_acquired = lock.acquire(blocking=False)
+        if lock_acquired:
             yield
         else:
-            if not client.ttl(name):
-                client.expire(name, expire)
             raise MutexHeld()
     finally:
-        if i_won:
+        if lock_acquired:
             try:
-                with client.pipeline(True) as pipe:
-                    pipe.watch(name)
-                    if pipe.get(name) == lock_id:
-                        pipe.multi()
-                        pipe.delete(name)
-                        pipe.execute()
-                    pipe.unwatch()
-            except redis.WatchError:
+                lock.release()
+            except redis.exceptions.LockNotOwnedError:
+                # when lock is expired
                 pass
 
 
