@@ -1,4 +1,4 @@
- """Kombu transport using SQLAlchemy as the message store."""
+"""Kombu transport using SQLAlchemy as the message store."""
 
 from __future__ import annotations
 
