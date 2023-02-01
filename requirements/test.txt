@@ -1,5 +1,5 @@
-pytz>dev
-pytest~=7.1.1
+pytz
+pytest>=7.1.1
 pytest-sugar
 Pyro4
 hypothesis
