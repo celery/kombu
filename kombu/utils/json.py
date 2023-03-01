@@ -58,7 +58,7 @@ def dumps(
 
 
 def object_hook(o: dict):
-    """Convert custom object to native python datatypes"""
+    """Convert custom object to native python datatypes."""
     if o.keys() == {"__type__", "__value__"}:
         decoder = _decoders.get(o["__type__"])
         if decoder:
@@ -98,7 +98,7 @@ def register_type(
     encoder: Callable[[T], EncodedT],
     decoder: Callable[[EncodedT], T],
 ):
-    """Add support for serializing/deserializing native python type"""
+    """Add support for serializing/deserializing native python type."""
     _encoders[t] = (marker, encoder)
     _decoders[marker] = decoder
 
