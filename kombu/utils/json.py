@@ -20,6 +20,8 @@ except ImportError:
 
 
 class JSONEncoder(json.JSONEncoder):
+    """Kombu custom json encoder."""
+
     def default(self, o):
         reducer = getattr(o, "__json__", None)
         if reducer is not None:
@@ -56,6 +58,7 @@ def dumps(
 
 
 def object_hook(o: dict):
+    """Convert custom object to native python datatypes"""
     if o.keys() == {"__type__", "__value__"}:
         decoder = _decoders.get(o["__type__"])
         if decoder:
@@ -95,6 +98,7 @@ def register_type(
     encoder: Callable[[T], EncodedT],
     decoder: Callable[[EncodedT], T],
 ):
+    """Add support for serializing/deserializing native python type"""
     _encoders[t] = (marker, encoder)
     _decoders[marker] = decoder
 
