@@ -58,7 +58,7 @@ def dumps(
 
 
 def object_hook(o: dict):
-    """Convert custom object to native python datatypes."""
+    """Hook function to perform custom deserialization."""
     if o.keys() == {"__type__", "__value__"}:
         decoder = _decoders.get(o["__type__"])
         if decoder:
