@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import uuid
 from collections import namedtuple
-from datetime import date, datetime
+from datetime import datetime
 from decimal import Decimal
-from unittest.mock import MagicMock, Mock
 
 import pytest
 import pytz
@@ -12,7 +11,7 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from kombu.utils.encoding import str_to_bytes
-from kombu.utils.json import _DecodeError, dumps, loads
+from kombu.utils.json import dumps, loads
 
 
 class Custom:
@@ -29,18 +28,17 @@ class test_JSONEncoder:
     def test_datetime(self):
         now = datetime.utcnow()
         now_utc = now.replace(tzinfo=pytz.utc)
-        serialized = loads(dumps({
+
+        original = {
             'datetime': now,
             'tz': now_utc,
             'date': now.date(),
-            'time': now.time()},
-        ))
-        assert serialized == {
-            'datetime': now,
-            'tz': now_utc,
-            'time': now.time().isoformat(),
-            'date':  date(now.year, now.month, now.day),
+            'time': now.time(),
         }
+
+        serialized = loads(dumps(original))
+
+        assert serialized == original
 
     @given(message=st.binary())
     @settings(print_blob=True)
@@ -53,8 +51,10 @@ class test_JSONEncoder:
         }
 
     def test_Decimal(self):
-        d = Decimal('3314132.13363235235324234123213213214134')
-        assert loads(dumps({'d': d})), {'d': str(d)}
+        original = {'d': Decimal('3314132.13363235235324234123213213214134')}
+        serialized = loads(dumps(original))
+
+        assert serialized == original
 
     def test_namedtuple(self):
         Foo = namedtuple('Foo', ['bar'])
@@ -70,7 +70,7 @@ class test_JSONEncoder:
         for constructor in constructors:
             id = constructor()
             loaded_value = loads(dumps({'u': id}))
-            assert loaded_value, {'u': id}
+            assert loaded_value == {'u': id}
             assert loaded_value["u"].version == id.version
 
     def test_default(self):
@@ -103,9 +103,3 @@ class test_dumps_loads:
         assert loads(
             str_to_bytes(dumps({'x': 'z'})),
             decode_bytes=True) == {'x': 'z'}
-
-    def test_loads_DecodeError(self):
-        _loads = Mock(name='_loads')
-        _loads.side_effect = _DecodeError(
-            MagicMock(), MagicMock(), MagicMock())
-        assert loads(dumps({'x': 'z'}), _loads=_loads) == {'x': 'z'}
