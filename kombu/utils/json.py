@@ -33,7 +33,7 @@ class JSONEncoder(json.JSONEncoder):
                 return _as(marker, encoder(o))
 
         # Bytes is slightly trickier, so we cannot put them directly
-        # into _encoders, beacuse we use two formats: bytes, and base64.
+        # into _encoders, because we use two formats: bytes, and base64.
         if isinstance(o, bytes):
             try:
                 return _as("bytes", o.decode("utf-8"))
