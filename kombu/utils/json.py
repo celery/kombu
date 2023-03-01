@@ -32,7 +32,7 @@ class JSONEncoder(json.JSONEncoder):
             if isinstance(o, t):
                 return _as(marker, encoder(o))
 
-        # Bytes is slightly trickier, so we cannot pu them directly
+        # Bytes is slightly trickier, so we cannot put them directly
         # into _encoders, beacuse we use two formats: bytes, and base64.
         if isinstance(o, bytes):
             try:
