@@ -57,7 +57,8 @@ def dumps(
 
 def object_hook(o: dict):
     if o.keys() == {"__type__", "__value__"}:
-        if decoder := _decoders.get(o["__type__"]):
+        decoder = _decoders.get(o["__type__"])
+        if decoder:
             return decoder(o["__value__"])
         else:
             raise ValueError("Unsupported type", type, o)
