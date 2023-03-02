@@ -3,88 +3,70 @@
 from __future__ import annotations
 
 import base64
-import datetime
-import decimal
 import json
 import uuid
+from datetime import date, datetime, time
+from decimal import Decimal
+from typing import Any, Callable, TypeVar
+
+textual_types = ()
 
 try:
-    from django.utils.functional import Promise as DjangoPromise
-except ImportError:  # pragma: no cover
-    class DjangoPromise:
-        """Dummy object."""
+    from django.utils.functional import Promise
 
-
-class _DecodeError(Exception):
+    textual_types += (Promise,)
+except ImportError:
     pass
 
 
-_encoder_cls = type(json._default_encoder)
-_default_encoder = None   # ... set to JSONEncoder below.
-
-
-class JSONEncoder(_encoder_cls):
+class JSONEncoder(json.JSONEncoder):
     """Kombu custom json encoder."""
 
-    def default(self, o,
-                dates=(datetime.datetime, datetime.date),
-                times=(datetime.time,),
-                textual=(decimal.Decimal, DjangoPromise),
-                isinstance=isinstance,
-                datetime=datetime.datetime,
-                text_t=str):
-        reducer = getattr(o, '__json__', None)
+    def default(self, o):
+        reducer = getattr(o, "__json__", None)
         if reducer is not None:
             return reducer()
-        else:
-            if isinstance(o, dates):
-                marker = "__date__"
-                if not isinstance(o, datetime):
-                    o = datetime(o.year, o.month, o.day, 0, 0, 0, 0)
-                else:
-                    marker = "__datetime__"
-                r = o.isoformat()
-                return {"datetime": r, marker: True}
-            elif isinstance(o, times):
-                return o.isoformat()
-            elif isinstance(o, uuid.UUID):
-                return {"uuid": str(o), "__uuid__": True, "version": o.version}
-            elif isinstance(o, textual):
-                return text_t(o)
-            elif isinstance(o, bytes):
-                try:
-                    return {"bytes": o.decode("utf-8"), "__bytes__": True}
-                except UnicodeDecodeError:
-                    return {
-                        "bytes": base64.b64encode(o).decode("utf-8"),
-                        "__base64__": True,
-                    }
-            return super().default(o)
+
+        if isinstance(o, textual_types):
+            return str(o)
+
+        for t, (marker, encoder) in _encoders.items():
+            if isinstance(o, t):
+                return _as(marker, encoder(o))
+
+        # Bytes is slightly trickier, so we cannot put them directly
+        # into _encoders, because we use two formats: bytes, and base64.
+        if isinstance(o, bytes):
+            try:
+                return _as("bytes", o.decode("utf-8"))
+            except UnicodeDecodeError:
+                return _as("base64", base64.b64encode(o).decode("utf-8"))
+
+        return super().default(o)
 
 
-_default_encoder = JSONEncoder
+def _as(t: str, v: Any):
+    return {"__type__": t, "__value__": v}
 
 
-def dumps(s, _dumps=json.dumps, cls=None, default_kwargs=None, **kwargs):
+def dumps(
+    s, _dumps=json.dumps, cls=JSONEncoder, default_kwargs=None, **kwargs
+):
     """Serialize object to json string."""
     default_kwargs = default_kwargs or {}
-    return _dumps(s, cls=cls or _default_encoder,
-                  **dict(default_kwargs, **kwargs))
+    return _dumps(s, cls=cls, **dict(default_kwargs, **kwargs))
 
 
-def object_hook(dct):
+def object_hook(o: dict):
     """Hook function to perform custom deserialization."""
-    if "__date__" in dct:
-        return datetime.datetime.fromisoformat(dct["datetime"]).date()
-    if "__datetime__" in dct:
-        return datetime.datetime.fromisoformat(dct["datetime"])
-    if "__bytes__" in dct:
-        return dct["bytes"].encode("utf-8")
-    if "__base64__" in dct:
-        return base64.b64decode(dct["bytes"].encode("utf-8"))
-    if "__uuid__" in dct:
-        return uuid.UUID(dct["uuid"], version=dct["version"])
-    return dct
+    if o.keys() == {"__type__", "__value__"}:
+        decoder = _decoders.get(o["__type__"])
+        if decoder:
+            return decoder(o["__value__"])
+        else:
+            raise ValueError("Unsupported type", type, o)
+    else:
+        return o
 
 
 def loads(s, _loads=json.loads, decode_bytes=True, object_hook=object_hook):
@@ -96,14 +78,51 @@ def loads(s, _loads=json.loads, decode_bytes=True, object_hook=object_hook):
     # over.  Note that pickle does support buffer/memoryview
     # </rant>
     if isinstance(s, memoryview):
-        s = s.tobytes().decode('utf-8')
+        s = s.tobytes().decode("utf-8")
     elif isinstance(s, bytearray):
-        s = s.decode('utf-8')
+        s = s.decode("utf-8")
     elif decode_bytes and isinstance(s, bytes):
-        s = s.decode('utf-8')
+        s = s.decode("utf-8")
 
-    try:
-        return _loads(s, object_hook=object_hook)
-    except _DecodeError:
-        # catch "Unpaired high surrogate" error
-        return json.loads(s)
+    return _loads(s, object_hook=object_hook)
+
+
+DecoderT = EncoderT = Callable[[Any], Any]
+T = TypeVar("T")
+EncodedT = TypeVar("EncodedT")
+
+
+def register_type(
+    t: type[T],
+    marker: str,
+    encoder: Callable[[T], EncodedT],
+    decoder: Callable[[EncodedT], T],
+):
+    """Add support for serializing/deserializing native python type."""
+    _encoders[t] = (marker, encoder)
+    _decoders[marker] = decoder
+
+
+_encoders: dict[type, tuple[str, EncoderT]] = {}
+_decoders: dict[str, DecoderT] = {
+    "bytes": lambda o: o.encode("utf-8"),
+    "base64": lambda o: base64.b64decode(o.encode("utf-8")),
+}
+
+# NOTE: datetime should be registered before date,
+# because datetime is also instance of date.
+register_type(datetime, "datetime", datetime.isoformat, datetime.fromisoformat)
+register_type(
+    date,
+    "date",
+    lambda o: o.isoformat(),
+    lambda o: datetime.fromisoformat(o).date(),
+)
+register_type(time, "time", lambda o: o.isoformat(), time.fromisoformat)
+register_type(Decimal, "decimal", str, Decimal)
+register_type(
+    uuid.UUID,
+    "uuid",
+    lambda o: {"hex": o.hex, "version": o.version},
+    lambda o: uuid.UUID(**o),
+)
