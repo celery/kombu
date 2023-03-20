@@ -4,6 +4,24 @@
  Change history
 ================
 
+.. _version-5.3.0b3:
+
+5.3.0b3
+=======
+:release-date: 20 Mar, 2023
+:release-by: Asif Saif Uddin
+
+- Use SPDX license expression in project metadata.
+- Allowing Connection.ensure() to retry on specific exceptions given by policy (#1629).
+- Redis==4.3.4 temporarilly in an attempt to avoid BC (#1634).
+- Add managed identity support to azure storage queue (#1631).
+- Support sqla v2.0 (#1651).
+- Switch to Pyro5 (#1655).
+- Remove unused _setupfuns from serialization.py.
+- Refactor: Refactor utils/json (#1659).
+- Adapt the mock to correctly mock the behaviors as implemented on Python 3.10. (Ref #1663).
+
+
 .. _version-5.3.0b2:
 
 5.3.02
