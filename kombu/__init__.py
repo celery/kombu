@@ -8,7 +8,7 @@ import sys
 from collections import namedtuple
 from typing import Any, cast
 
-__version__ = '5.3.0b2'
+__version__ = '5.3.0b3'
 __author__ = 'Ask Solem'
 __contact__ = 'auvipy@gmail.com, ask@celeryproject.org'
 __homepage__ = 'https://kombu.readthedocs.io'
