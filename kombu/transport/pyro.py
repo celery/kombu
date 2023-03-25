@@ -42,10 +42,10 @@ from kombu.log import get_logger
 from kombu.utils.objects import cached_property
 
 from . import virtual
+from Pyro5.compatibility import Pyro4 as pyro
 
 try:
     from Pyro4 import NamingError, SerializerBase
-    from Pyro5.compatibility import Pyro4 as pyro
 except ImportError:          # pragma: no cover
     pyro = NamingError = SerializerBase = None
 
