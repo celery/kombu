@@ -44,9 +44,8 @@ from kombu.utils.objects import cached_property
 from . import virtual
 
 try:
+    from Pyro4 import NamingError, SerializerBase
     from Pyro5.compatibility import Pyro4 as pyro
-    from Pyro4 import NamingError
-    from Pyro4 import SerializerBase
 except ImportError:          # pragma: no cover
     pyro = NamingError = SerializerBase = None
 
