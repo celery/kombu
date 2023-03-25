@@ -37,12 +37,13 @@ from __future__ import annotations
 import sys
 from queue import Empty, Queue
 
+from Pyro5.compatibility import Pyro4 as pyro
+
 from kombu.exceptions import reraise
 from kombu.log import get_logger
 from kombu.utils.objects import cached_property
 
 from . import virtual
-from Pyro5.compatibility import Pyro4 as pyro
 
 try:
     from Pyro4 import NamingError, SerializerBase
