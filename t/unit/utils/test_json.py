@@ -11,7 +11,7 @@ from hypothesis import strategies as st
 
 from kombu.utils.encoding import str_to_bytes
 from kombu.utils.json import dumps, loads
-
+import sys
 if sys.version_info >= (3, 9):
     from zoneinfo import ZoneInfo
 else:
