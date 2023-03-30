@@ -16,10 +16,10 @@ from vine.utils import wraps
 
 from kombu.log import get_logger
 
-try:
-    from pytz import utc
-except ImportError:  # pragma: no cover
-    utc = None
+if sys.version_info >= (3, 9):
+    from zoneinfo import ZoneInfo
+else:
+    from backports.zoneinfo import ZoneInfo
 
 if TYPE_CHECKING:
     from types import TracebackType
@@ -29,7 +29,7 @@ __all__ = ('Entry', 'Timer', 'to_timestamp')
 logger = get_logger(__name__)
 
 DEFAULT_MAX_INTERVAL = 2
-EPOCH = datetime.utcfromtimestamp(0).replace(tzinfo=utc)
+EPOCH = datetime.utcfromtimestamp(0).replace(tzinfo=ZoneInfo("UTC"))
 IS_PYPY = hasattr(sys, 'pypy_version_info')
 
 scheduled = namedtuple('scheduled', ('eta', 'priority', 'entry'))
