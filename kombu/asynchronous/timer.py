@@ -19,7 +19,7 @@ from kombu.log import get_logger
 if sys.version_info >= (3, 9):
     from zoneinfo import ZoneInfo
 else:
-    from backports.zoneinfo import ZoneInfo # noqa
+    from backports.zoneinfo import ZoneInfo  # noqa
 
 if TYPE_CHECKING:
     from types import TracebackType
