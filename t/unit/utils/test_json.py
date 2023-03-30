@@ -16,7 +16,7 @@ from kombu.utils.json import dumps, loads
 if sys.version_info >= (3, 9):
     from zoneinfo import ZoneInfo
 else:
-    from backports.zoneinfo import ZoneInfo
+    from backports.zoneinfo import ZoneInfo # noqa
 
 
 class Custom:
