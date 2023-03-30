@@ -35,7 +35,7 @@ IS_PYPY = hasattr(sys, 'pypy_version_info')
 scheduled = namedtuple('scheduled', ('eta', 'priority', 'entry'))
 
 
-def to_timestamp(d, default_timezone=utc, time=monotonic):
+def to_timestamp(d, default_timezone=ZoneInfo("UTC"), time=monotonic):
     """Convert datetime to timestamp.
 
     If d' is already a timestamp, then that will be used.
