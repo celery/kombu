@@ -6,8 +6,8 @@ from datetime import datetime
 from decimal import Decimal
 
 import pytest
-from hypothesis import strategies as st
 from hypothesis import given, settings
+from hypothesis import strategies as st
 
 from kombu.utils.encoding import str_to_bytes
 from kombu.utils.json import dumps, loads
