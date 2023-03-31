@@ -17,9 +17,9 @@ from vine.utils import wraps
 from kombu.log import get_logger
 
 if sys.version_info >= (3, 9):
-    from zoneinfo import ZoneInfo  # pragma: no cover
+    from zoneinfo import ZoneInfo  # noqa
 else:
-    from backports.zoneinfo import ZoneInfo  # pragma: no cover
+    from backports.zoneinfo import ZoneInfo  # noqa
 
 if TYPE_CHECKING:
     from types import TracebackType
