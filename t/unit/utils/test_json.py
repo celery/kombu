@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import sys
 import uuid
 from collections import namedtuple
 from datetime import datetime
@@ -13,10 +12,10 @@ from hypothesis import strategies as st
 from kombu.utils.encoding import str_to_bytes
 from kombu.utils.json import dumps, loads
 
-if sys.version_info >= (3, 9):
+try:
     from zoneinfo import ZoneInfo
-else:
-    from backports.zoneinfo import ZoneInfo
+except ImportError:  # pragma: no cover
+    from backports.zoneinfo import ZoneInfo # noqa
 
 
 class Custom:

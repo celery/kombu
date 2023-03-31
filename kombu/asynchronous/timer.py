@@ -10,16 +10,16 @@ from functools import total_ordering
 from time import monotonic
 from time import time as _time
 from typing import TYPE_CHECKING
-from weakref import proxy as weakrefproxy
+from weakref import proxy as weskrefproxy
 
 from vine.utils import wraps
 
 from kombu.log import get_logger
 
-if sys.version_info >= (3, 9):
+try:
     from zoneinfo import ZoneInfo
-else:
-    from backports.zoneinfo import ZoneInfo
+except ImportError:  # pragma: no cover
+    from backports.zoneinfo import ZoneInfo # noqa
 
 if TYPE_CHECKING:
     from types import TracebackType
