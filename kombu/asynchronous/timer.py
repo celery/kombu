@@ -9,6 +9,7 @@ from datetime import datetime
 from functools import total_ordering
 from time import monotonic
 from time import time as _time
+from weakref import proxy as weakrefproxy
 from typing import TYPE_CHECKING
 
 from vine.utils import wraps
