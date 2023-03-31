@@ -15,7 +15,7 @@ from kombu.utils.json import dumps, loads
 try:
     from zoneinfo import ZoneInfo
 except ImportError:  # pragma: no cover
-    from backports.zoneinfo import ZoneInfo # noqa
+    from backports.zoneinfo import ZoneInfo  # noqa
 
 
 class Custom:

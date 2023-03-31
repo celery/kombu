@@ -10,7 +10,6 @@ from functools import total_ordering
 from time import monotonic
 from time import time as _time
 from typing import TYPE_CHECKING
-from weakref import proxy as weskrefproxy
 
 from vine.utils import wraps
 
@@ -19,7 +18,7 @@ from kombu.log import get_logger
 try:
     from zoneinfo import ZoneInfo
 except ImportError:  # pragma: no cover
-    from backports.zoneinfo import ZoneInfo # noqa
+    from backports.zoneinfo import ZoneInfo  # noqa
 
 if TYPE_CHECKING:
     from types import TracebackType
