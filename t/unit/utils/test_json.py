@@ -14,9 +14,9 @@ from kombu.utils.encoding import str_to_bytes
 from kombu.utils.json import dumps, loads
 
 if sys.version_info >= (3, 9):
-    from zoneinfo import ZoneInfo
+    from zoneinfo import ZoneInfo  # pragma: no cover
 else:
-    from backports.zoneinfo import ZoneInfo  # type: ignore
+    from backports.zoneinfo import ZoneInfo  # pragma: no cover
 
 
 class Custom:
