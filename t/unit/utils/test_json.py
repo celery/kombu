@@ -18,8 +18,8 @@ if sys.version_info >= (3, 9):
 else:
     from backports.zoneinfo import ZoneInfo
 
-class Custom:
 
+class Custom:
 
     def __init__(self, data):
         self.data = data
