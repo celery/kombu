@@ -11,10 +11,10 @@ from hypothesis import strategies as st
 
 from kombu.utils.encoding import str_to_bytes
 from kombu.utils.json import dumps, loads
-
-try:
+import sys
+if sys.version_info >= (3, 9):
     from zoneinfo import ZoneInfo
-except ImportError:  # pragma: no cover
+else:
     from backports.zoneinfo import ZoneInfo
 
 
