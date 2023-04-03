@@ -1,8 +1,8 @@
 setuptools>=47.0.0
 wheel>=0.29.0
-flake8>=2.5.4
-tox>=2.3.1
+flake8==5.0.4
+tox>=4.4.8
 sphinx2rst>=1.0
 bumpversion
 pydocstyle==1.1.1
-mypy==0.942
+mypy==1.1.1
