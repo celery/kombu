@@ -24,7 +24,7 @@
 
 .. _version-5.3.0b2:
 
-5.3.02
+5.3.0b2
 =======
 :release-date: 19 Oct, 2022
 :release-by: Asif Saif Uddin
