@@ -802,12 +802,12 @@ class Channel(AbstractChannel, base.StdChannel):
         self.exchange_types = None
 
     def encode_body(self, body, encoding=None):
-        if encoding:
+        if encoding and encoding.lower() != 'utf-8':
             return self.codecs.get(encoding).encode(body), encoding
         return body, encoding
 
     def decode_body(self, body, encoding=None):
-        if encoding:
+        if encoding and encoding.lower() != 'utf-8':
             return self.codecs.get(encoding).decode(body)
         return body
 
