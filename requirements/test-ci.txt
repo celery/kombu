@@ -1,7 +1,7 @@
 pytest-cov
-pytest-travis-fold
 codecov
 -r extras/redis.txt
+-r extras/mongodb.txt
 -r extras/yaml.txt
 -r extras/msgpack.txt
 -r extras/azureservicebus.txt

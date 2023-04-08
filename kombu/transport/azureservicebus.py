@@ -53,9 +53,11 @@ Transport Options
 * ``retry_backoff_max`` - Azure SDK retry total time. Default ``120``
 """
 
+from __future__ import annotations
+
 import string
 from queue import Empty
-from typing import Any, Dict, Optional, Set, Tuple, Union
+from typing import Any, Dict, Set
 
 import azure.core.exceptions
 import azure.servicebus.exceptions
@@ -83,10 +85,10 @@ class SendReceive:
     """Container for Sender and Receiver."""
 
     def __init__(self,
-                 receiver: Optional[ServiceBusReceiver] = None,
-                 sender: Optional[ServiceBusSender] = None):
-        self.receiver = receiver  # type: ServiceBusReceiver
-        self.sender = sender  # type: ServiceBusSender
+                 receiver: ServiceBusReceiver | None = None,
+                 sender: ServiceBusSender | None = None):
+        self.receiver: ServiceBusReceiver = receiver
+        self.sender: ServiceBusSender = sender
 
     def close(self) -> None:
         if self.receiver:
@@ -100,21 +102,19 @@ class SendReceive:
 class Channel(virtual.Channel):
     """Azure Service Bus channel."""
 
-    default_wait_time_seconds = 5  # in seconds
-    default_peek_lock_seconds = 60  # in seconds (default 60, max 300)
+    default_wait_time_seconds: int = 5  # in seconds
+    default_peek_lock_seconds: int = 60  # in seconds (default 60, max 300)
     # in seconds (is the default from service bus repo)
-    default_uamqp_keep_alive_interval = 30
+    default_uamqp_keep_alive_interval: int = 30
     # number of retries (is the default from service bus repo)
-    default_retry_total = 3
+    default_retry_total: int = 3
     # exponential backoff factor (is the default from service bus repo)
-    default_retry_backoff_factor = 0.8
+    default_retry_backoff_factor: float = 0.8
     # Max time to backoff (is the default from service bus repo)
-    default_retry_backoff_max = 120
-    domain_format = 'kombu%(vhost)s'
-    _queue_service = None  # type: ServiceBusClient
-    _queue_mgmt_service = None  # type: ServiceBusAdministrationClient
-    _queue_cache = {}  # type: Dict[str, SendReceive]
-    _noack_queues = set()  # type: Set[str]
+    default_retry_backoff_max: int = 120
+    domain_format: str = 'kombu%(vhost)s'
+    _queue_cache: Dict[str, SendReceive] = {}
+    _noack_queues: Set[str] = set()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -160,8 +160,8 @@ class Channel(virtual.Channel):
 
     def _add_queue_to_cache(
             self, name: str,
-            receiver: Optional[ServiceBusReceiver] = None,
-            sender: Optional[ServiceBusSender] = None
+            receiver: ServiceBusReceiver | None = None,
+            sender: ServiceBusSender | None = None
     ) -> SendReceive:
         if name in self._queue_cache:
             obj = self._queue_cache[name]
@@ -183,7 +183,7 @@ class Channel(virtual.Channel):
     def _get_asb_receiver(
             self, queue: str,
             recv_mode: ServiceBusReceiveMode = ServiceBusReceiveMode.PEEK_LOCK,
-            queue_cache_key: Optional[str] = None) -> SendReceive:
+            queue_cache_key: str | None = None) -> SendReceive:
         cache_key = queue_cache_key or queue
         queue_obj = self._queue_cache.get(cache_key, None)
         if queue_obj is None or queue_obj.receiver is None:
@@ -194,7 +194,7 @@ class Channel(virtual.Channel):
         return queue_obj
 
     def entity_name(
-            self, name: str, table: Optional[Dict[int, int]] = None) -> str:
+            self, name: str, table: dict[int, int] | None = None) -> str:
         """Format AMQP queue name into a valid ServiceBus queue name."""
         return str(safe_str(name)).translate(table or CHARS_REPLACE_TABLE)
 
@@ -227,7 +227,7 @@ class Channel(virtual.Channel):
         """Delete queue by name."""
         queue = self.entity_name(self.queue_name_prefix + queue)
 
-        self._queue_mgmt_service.delete_queue(queue)
+        self.queue_mgmt_service.delete_queue(queue)
         send_receive_obj = self._queue_cache.pop(queue, None)
         if send_receive_obj:
             send_receive_obj.close()
@@ -242,8 +242,8 @@ class Channel(virtual.Channel):
 
     def _get(
             self, queue: str,
-            timeout: Optional[Union[float, int]] = None
-    ) -> Dict[str, Any]:
+            timeout: float | int | None = None
+    ) -> dict[str, Any]:
         """Try to retrieve a single message off ``queue``."""
         # If we're not ack'ing for this queue, just change receive_mode
         recv_mode = ServiceBusReceiveMode.RECEIVE_AND_DELETE \
@@ -298,7 +298,7 @@ class Channel(virtual.Channel):
 
         return props.total_message_count
 
-    def _purge(self, queue):
+    def _purge(self, queue) -> int:
         """Delete all current messages in a queue."""
         # Azure doesn't provide a purge api yet
         n = 0
@@ -337,24 +337,19 @@ class Channel(virtual.Channel):
             if self.connection is not None:
                 self.connection.close_channel(self)
 
-    @property
+    @cached_property
     def queue_service(self) -> ServiceBusClient:
-        if self._queue_service is None:
-            self._queue_service = ServiceBusClient.from_connection_string(
-                self._connection_string,
-                retry_total=self.retry_total,
-                retry_backoff_factor=self.retry_backoff_factor,
-                retry_backoff_max=self.retry_backoff_max
-            )
-        return self._queue_service
+        return ServiceBusClient.from_connection_string(
+            self._connection_string,
+            retry_total=self.retry_total,
+            retry_backoff_factor=self.retry_backoff_factor,
+            retry_backoff_max=self.retry_backoff_max
+        )
 
-    @property
+    @cached_property
     def queue_mgmt_service(self) -> ServiceBusAdministrationClient:
-        if self._queue_mgmt_service is None:
-            self._queue_mgmt_service = \
-                ServiceBusAdministrationClient.from_connection_string(
+        return ServiceBusAdministrationClient.from_connection_string(
                     self._connection_string)
-        return self._queue_mgmt_service
 
     @property
     def conninfo(self):
@@ -412,7 +407,7 @@ class Transport(virtual.Transport):
     can_parse_url = True
 
     @staticmethod
-    def parse_uri(uri: str) -> Tuple[str, str, str]:
+    def parse_uri(uri: str) -> tuple[str, str, str]:
         # URL like:
         #  azureservicebus://{SAS policy name}:{SAS key}@{ServiceBus Namespace}
         # urllib parse does not work as the sas key could contain a slash

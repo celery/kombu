@@ -1,4 +1,6 @@
-pytz>dev
-pytest~=6.2
+pytz
+pytest>=7.1.1
 pytest-sugar
 Pyro4
+hypothesis
+pytest-freezer

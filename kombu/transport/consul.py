@@ -27,6 +27,8 @@ Connection string has the following format:
 
 """
 
+from __future__ import annotations
+
 import socket
 import uuid
 from collections import defaultdict
@@ -276,23 +278,24 @@ class Transport(virtual.Transport):
     driver_type = 'consul'
     driver_name = 'consul'
 
-    def __init__(self, *args, **kwargs):
-        if consul is None:
-            raise ImportError('Missing python-consul library')
-
-        super().__init__(*args, **kwargs)
-
-        self.connection_errors = (
+    if consul:
+        connection_errors = (
             virtual.Transport.connection_errors + (
                 consul.ConsulException, consul.base.ConsulException
             )
         )
 
-        self.channel_errors = (
+        channel_errors = (
             virtual.Transport.channel_errors + (
                 consul.ConsulException, consul.base.ConsulException
             )
         )
+
+    def __init__(self, *args, **kwargs):
+        if consul is None:
+            raise ImportError('Missing python-consul library')
+
+        super().__init__(*args, **kwargs)
 
     def verify_connection(self, connection):
         port = connection.client.port or self.default_port

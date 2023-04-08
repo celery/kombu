@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pickle
 from itertools import count
 from unittest.mock import Mock

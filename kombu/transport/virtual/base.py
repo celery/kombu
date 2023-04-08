@@ -3,6 +3,8 @@
 Emulates the AMQ API for non-AMQ transports.
 """
 
+from __future__ import annotations
+
 import base64
 import socket
 import sys
@@ -13,6 +15,7 @@ from itertools import count
 from multiprocessing.util import Finalize
 from queue import Empty
 from time import monotonic, sleep
+from typing import TYPE_CHECKING
 
 from amqp.protocol import queue_declare_ok_t
 
@@ -25,6 +28,9 @@ from kombu.utils.scheduling import FairCycle
 from kombu.utils.uuid import uuid
 
 from .exchange import STANDARD_EXCHANGE_TYPES
+
+if TYPE_CHECKING:
+    from types import TracebackType
 
 ARRAY_TYPE_H = 'H'
 
@@ -177,6 +183,8 @@ class QoS:
         self.channel = channel
         self.prefetch_count = prefetch_count or 0
 
+        # Standard Python dictionaries do not support setting attributes
+        # on the object, hence the use of OrderedDict
         self._delivered = OrderedDict()
         self._delivered.restored = False
         self._dirty = set()
@@ -462,14 +470,7 @@ class Channel(AbstractChannel, base.StdChannel):
             typ: cls(self) for typ, cls in self.exchange_types.items()
         }
 
-        try:
-            self.channel_id = self.connection._avail_channel_ids.pop()
-        except IndexError:
-            raise ResourceError(
-                'No free channel ids, current={}, channel_max={}'.format(
-                    len(self.connection.channels),
-                    self.connection.channel_max), (20, 10),
-            )
+        self.channel_id = self._get_free_channel_id()
 
         topts = self.connection.client.transport_options
         for opt_name in self.from_transport_options:
@@ -727,7 +728,8 @@ class Channel(AbstractChannel, base.StdChannel):
         message = message.serializable()
         message['redelivered'] = True
         for queue in self._lookup(
-                delivery_info['exchange'], delivery_info['routing_key']):
+            delivery_info['exchange'],
+                delivery_info['routing_key']):
             self._put(queue, message)
 
     def _restore_at_beginning(self, message):
@@ -804,7 +806,12 @@ class Channel(AbstractChannel, base.StdChannel):
     def __enter__(self):
         return self
 
-    def __exit__(self, *exc_info):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None
+    ) -> None:
         self.close()
 
     @property
@@ -843,6 +850,22 @@ class Channel(AbstractChannel, base.StdChannel):
             priority = self.default_priority
 
         return (self.max_priority - priority) if reverse else priority
+
+    def _get_free_channel_id(self):
+        # Cast to a set for fast lookups, and keep stored as an array
+        # for lower memory usage.
+        used_channel_ids = set(self.connection._used_channel_ids)
+
+        for channel_id in range(1, self.connection.channel_max + 1):
+            if channel_id not in used_channel_ids:
+                self.connection._used_channel_ids.append(channel_id)
+                return channel_id
+
+        raise ResourceError(
+            'No free channel ids, current={}, channel_max={}'.format(
+                len(self.connection.channels),
+                self.connection.channel_max), (20, 10),
+        )
 
 
 class Management(base.Management):
@@ -907,9 +930,7 @@ class Transport(base.Transport):
         polling_interval = client.transport_options.get('polling_interval')
         if polling_interval is not None:
             self.polling_interval = polling_interval
-        self._avail_channel_ids = array(
-            ARRAY_TYPE_H, range(self.channel_max, 0, -1),
-        )
+        self._used_channel_ids = array(ARRAY_TYPE_H)
 
     def create_channel(self, connection):
         try:
@@ -921,7 +942,11 @@ class Transport(base.Transport):
 
     def close_channel(self, channel):
         try:
-            self._avail_channel_ids.append(channel.channel_id)
+            try:
+                self._used_channel_ids.remove(channel.channel_id)
+            except ValueError:
+                # channel id already removed
+                pass
             try:
                 self.channels.remove(channel)
             except ValueError:
@@ -934,7 +959,7 @@ class Transport(base.Transport):
         # this channel is then used as the next requested channel.
         # (returned by ``create_channel``).
         self._avail_channels.append(self.create_channel(self))
-        return self     # for drain events
+        return self  # for drain events
 
     def close_connection(self, connection):
         self.cycle.close()

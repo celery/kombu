@@ -1,10 +1,11 @@
+from __future__ import annotations
+
 import select
 import socket
 import ssl
 import sys
 import time
 import uuid
-from collections import OrderedDict
 from collections.abc import Callable
 from itertools import count
 from queue import Empty
@@ -33,7 +34,7 @@ class QpidException(Exception):
     """
 
     def __init__(self, code=None, text=None):
-        super(Exception, self).__init__(self)
+        super().__init__(self)
         self.code = code
         self.text = text
 
@@ -57,7 +58,7 @@ class test_QoS__init__:
         assert qos_limit_two.prefetch_count == 1
 
     def test__init___not_yet_acked_is_initialized(self):
-        assert isinstance(self.qos._not_yet_acked, OrderedDict)
+        assert isinstance(self.qos._not_yet_acked, dict)
 
 
 @pytest.mark.skip(reason='Not supported in Python3')

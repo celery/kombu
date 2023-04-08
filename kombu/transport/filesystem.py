@@ -65,7 +65,7 @@ Features
 * Type: Virtual
 * Supports Direct: Yes
 * Supports Topic: Yes
-* Supports Fanout: No
+* Supports Fanout: Yes
 * Supports Priority: No
 * Supports TTL: No
 
@@ -86,21 +86,25 @@ Transport Options
 * ``store_processed`` - if set to True, all processed messages are backed up to
   ``processed_folder``.
 * ``processed_folder`` - directory where are backed up processed files.
+* ``control_folder`` - directory where are exchange-queue table stored.
 """
+
+from __future__ import annotations
 
 import os
 import shutil
 import tempfile
 import uuid
+from collections import namedtuple
+from pathlib import Path
 from queue import Empty
 from time import monotonic
 
 from kombu.exceptions import ChannelError
+from kombu.transport import virtual
 from kombu.utils.encoding import bytes_to_str, str_to_bytes
 from kombu.utils.json import dumps, loads
 from kombu.utils.objects import cached_property
-
-from . import virtual
 
 VERSION = (1, 0, 0)
 __version__ = '.'.join(map(str, VERSION))
@@ -128,10 +132,11 @@ if os.name == 'nt':
         hfile = win32file._get_osfhandle(file.fileno())
         win32file.UnlockFileEx(hfile, 0, 0xffff0000, __overlapped)
 
+
 elif os.name == 'posix':
 
     import fcntl
-    from fcntl import LOCK_EX, LOCK_NB, LOCK_SH  # noqa
+    from fcntl import LOCK_EX, LOCK_SH
 
     def lock(file, flags):
         """Create file lock."""
@@ -140,13 +145,65 @@ elif os.name == 'posix':
     def unlock(file):
         """Remove file lock."""
         fcntl.flock(file.fileno(), fcntl.LOCK_UN)
+
+
 else:
     raise RuntimeError(
         'Filesystem plugin only defined for NT and POSIX platforms')
 
 
+exchange_queue_t = namedtuple("exchange_queue_t",
+                              ["routing_key", "pattern", "queue"])
+
+
 class Channel(virtual.Channel):
     """Filesystem Channel."""
+
+    supports_fanout = True
+
+    def get_table(self, exchange):
+        file = self.control_folder / f"{exchange}.exchange"
+        try:
+            f_obj = file.open("r")
+            try:
+                lock(f_obj, LOCK_SH)
+                exchange_table = loads(bytes_to_str(f_obj.read()))
+                return [exchange_queue_t(*q) for q in exchange_table]
+            finally:
+                unlock(f_obj)
+                f_obj.close()
+        except FileNotFoundError:
+            return []
+        except OSError:
+            raise ChannelError(f"Cannot open {file}")
+
+    def _queue_bind(self, exchange, routing_key, pattern, queue):
+        file = self.control_folder / f"{exchange}.exchange"
+        self.control_folder.mkdir(exist_ok=True)
+        queue_val = exchange_queue_t(routing_key or "", pattern or "",
+                                     queue or "")
+        try:
+            if file.exists():
+                f_obj = file.open("rb+", buffering=0)
+                lock(f_obj, LOCK_EX)
+                exchange_table = loads(bytes_to_str(f_obj.read()))
+                queues = [exchange_queue_t(*q) for q in exchange_table]
+                if queue_val not in queues:
+                    queues.insert(0, queue_val)
+                    f_obj.seek(0)
+                    f_obj.write(str_to_bytes(dumps(queues)))
+            else:
+                f_obj = file.open("wb", buffering=0)
+                lock(f_obj, LOCK_EX)
+                queues = [queue_val]
+                f_obj.write(str_to_bytes(dumps(queues)))
+        finally:
+            unlock(f_obj)
+            f_obj.close()
+
+    def _put_fanout(self, exchange, payload, routing_key, **kwargs):
+        for q in self.get_table(exchange):
+            self._put(q.queue, payload, **kwargs)
 
     def _put(self, queue, payload, **kwargs):
         """Put `message` onto `queue`."""
@@ -155,7 +212,7 @@ class Channel(virtual.Channel):
         filename = os.path.join(self.data_folder_out, filename)
 
         try:
-            f = open(filename, 'wb')
+            f = open(filename, 'wb', buffering=0)
             lock(f, LOCK_EX)
             f.write(str_to_bytes(dumps(payload)))
         except OSError:
@@ -187,7 +244,8 @@ class Channel(virtual.Channel):
                 shutil.move(os.path.join(self.data_folder_in, filename),
                             processed_folder)
             except OSError:
-                pass  # file could be locked, or removed in meantime so ignore
+                # file could be locked, or removed in meantime so ignore
+                continue
 
             filename = os.path.join(processed_folder, filename)
             try:
@@ -266,9 +324,18 @@ class Channel(virtual.Channel):
     def processed_folder(self):
         return self.transport_options.get('processed_folder', 'processed')
 
+    @property
+    def control_folder(self):
+        return Path(self.transport_options.get('control_folder', 'control'))
+
 
 class Transport(virtual.Transport):
     """Filesystem Transport."""
+
+    implements = virtual.Transport.implements.extend(
+        asynchronous=False,
+        exchange_type=frozenset(['direct', 'topic', 'fanout'])
+    )
 
     Channel = Channel
     # filesystem backend state is global.

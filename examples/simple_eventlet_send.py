@@ -7,6 +7,8 @@ message sent.
 
 """
 
+from __future__ import annotations
+
 import eventlet
 
 from kombu import Connection

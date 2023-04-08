@@ -24,6 +24,8 @@ Connection string has the following format:
 
 """
 
+from __future__ import annotations
+
 import os
 import socket
 from collections import defaultdict
@@ -242,20 +244,21 @@ class Transport(virtual.Transport):
     implements = virtual.Transport.implements.extend(
         exchange_type=frozenset(['direct']))
 
+    if etcd:
+        connection_errors = (
+            virtual.Transport.connection_errors + (etcd.EtcdException, )
+        )
+
+        channel_errors = (
+            virtual.Transport.channel_errors + (etcd.EtcdException, )
+        )
+
     def __init__(self, *args, **kwargs):
         """Create a new instance of etcd.Transport."""
         if etcd is None:
             raise ImportError('Missing python-etcd library')
 
         super().__init__(*args, **kwargs)
-
-        self.connection_errors = (
-            virtual.Transport.connection_errors + (etcd.EtcdException, )
-        )
-
-        self.channel_errors = (
-            virtual.Transport.channel_errors + (etcd.EtcdException, )
-        )
 
     def verify_connection(self, connection):
         """Verify the connection works."""

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import socket
 import sys
 import types
@@ -14,10 +16,14 @@ def test_entrypoints():
         'kombu.utils.compat.importlib_metadata.entry_points', create=True
     ) as iterep:
         eps = [Mock(), Mock()]
-        iterep.return_value = {'kombu.test': eps}
+        iterep.return_value = (
+            {'kombu.test': eps} if sys.version_info < (3, 10) else eps)
 
         assert list(entrypoints('kombu.test'))
-        iterep.assert_called_with()
+        if sys.version_info < (3, 10):
+            iterep.assert_called_with()
+        else:
+            iterep.assert_called_with(group='kombu.test')
         eps[0].load.assert_called_with()
         eps[1].load.assert_called_with()
 

@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
+from __future__ import annotations
+
 import os
 import re
 import sys
-from distutils.command.install import INSTALL_SCHEMES
 
 import setuptools
 import setuptools.command.test
@@ -56,9 +57,6 @@ def fullsplit(path, result=None):
     return fullsplit(head, [tail] + result)
 
 
-for scheme in list(INSTALL_SCHEMES.values()):
-    scheme['data'] = scheme['purelib']
-
 # if os.path.exists('README.rst'):
 #    long_description = codecs.open('README.rst', 'r', 'utf-8').read()
 # else:
@@ -108,9 +106,12 @@ setup(
     author=meta['author'],
     author_email=meta['contact'],
     url=meta['homepage'],
+    project_urls={
+        'Source': 'https://github.com/celery/kombu'
+    },
     platforms=['any'],
     zip_safe=False,
-    license='BSD',
+    license='BSD-3-Clause',
     cmdclass={'test': pytest},
     python_requires=">=3.7",
     install_requires=reqs('default.txt'),
@@ -130,6 +131,7 @@ setup(
         'azureservicebus': extras('azureservicebus.txt'),
         'qpid': extras('qpid.txt'),
         'consul': extras('consul.txt'),
+        'confluentkafka': extras('confluentkafka.txt'),
     },
     classifiers=[
         'Development Status :: 5 - Production/Stable',

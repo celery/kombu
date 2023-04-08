@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import errno
-from unittest.mock import Mock, call, patch
+from unittest.mock import ANY, Mock, call, patch
 
 import pytest
 from vine import promise
@@ -186,6 +188,12 @@ class test_Hub:
         promise.assert_called_with(callback, (1, 2, 3))
         assert promise() in self.hub._ready
         assert ret is promise()
+
+    def test_call_soon_uses_lock(self):
+        callback = Mock(name='callback')
+        with patch.object(self.hub, '_ready_lock', autospec=True) as lock:
+            self.hub.call_soon(callback)
+            assert lock.__enter__.called_once()
 
     def test_call_soon__promise_argument(self):
         callback = promise(Mock(name='callback'), (1, 2, 3))
@@ -533,3 +541,31 @@ class test_Hub:
         callbacks[0].assert_called_once_with()
         callbacks[1].assert_called_once_with()
         deferred.assert_not_called()
+
+    def test_loop__no_todo_tick_delay(self):
+        cb = Mock(name='parent')
+        cb.todo, cb.tick, cb.poller = Mock(), Mock(), Mock()
+        cb.poller.poll.side_effect = lambda obj: ()
+        self.hub.poller = cb.poller
+        self.hub.add(2, Mock(), READ)
+        self.hub.call_soon(cb.todo)
+        self.hub.on_tick = [cb.tick]
+
+        next(self.hub.loop)
+
+        cb.assert_has_calls([
+            call.todo(),
+            call.tick(),
+            call.poller.poll(ANY),
+        ])
+
+    def test__pop_ready_pops_ready_items(self):
+        self.hub._ready.add(None)
+        ret = self.hub._pop_ready()
+        assert ret == {None}
+        assert self.hub._ready == set()
+
+    def test__pop_ready_uses_lock(self):
+        with patch.object(self.hub, '_ready_lock', autospec=True) as lock:
+            self.hub._pop_ready()
+            assert lock.__enter__.called_once()

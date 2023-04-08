@@ -1,6 +1,9 @@
 """Sending and receiving messages."""
 
+from __future__ import annotations
+
 from itertools import count
+from typing import TYPE_CHECKING
 
 from .common import maybe_declare
 from .compression import compress
@@ -9,6 +12,9 @@ from .entity import Exchange, Queue, maybe_delivery_mode
 from .exceptions import ContentDisallowed
 from .serialization import dumps, prepare_accept_content
 from .utils.functional import ChannelPromise, maybe_list
+
+if TYPE_CHECKING:
+    from types import TracebackType
 
 __all__ = ('Exchange', 'Queue', 'Producer', 'Consumer')
 
@@ -236,7 +242,12 @@ class Producer:
     def __enter__(self):
         return self
 
-    def __exit__(self, *exc_info):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None
+    ) -> None:
         self.release()
 
     def release(self):
@@ -435,7 +446,12 @@ class Consumer:
         self.consume()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None
+    ) -> None:
         if self.channel and self.channel.connection:
             conn_errors = self.channel.connection.client.connection_errors
             if not isinstance(exc_val, conn_errors):

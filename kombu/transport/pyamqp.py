@@ -68,6 +68,8 @@ hostname from broker URL. This is usefull when failover is used to fill
 """
 
 
+from __future__ import annotations
+
 import amqp
 
 from kombu.utils.amq_manager import get_manager

@@ -1,10 +1,15 @@
 """Pattern matching registry."""
 
+from __future__ import annotations
+
 from fnmatch import fnmatch
 from re import match as rematch
+from typing import Callable, cast
 
 from .utils.compat import entrypoints
 from .utils.encoding import bytes_to_str
+
+MatcherFunction = Callable[[str, str], bool]
 
 
 class MatcherNotInstalled(Exception):
@@ -17,15 +22,15 @@ class MatcherRegistry:
     MatcherNotInstalled = MatcherNotInstalled
     matcher_pattern_first = ["pcre", ]
 
-    def __init__(self):
-        self._matchers = {}
-        self._default_matcher = None
+    def __init__(self) -> None:
+        self._matchers: dict[str, MatcherFunction] = {}
+        self._default_matcher: MatcherFunction | None = None
 
-    def register(self, name, matcher):
+    def register(self, name: str, matcher: MatcherFunction) -> None:
         """Add matcher by name to the registry."""
         self._matchers[name] = matcher
 
-    def unregister(self, name):
+    def unregister(self, name: str) -> None:
         """Remove matcher by name from the registry."""
         try:
             self._matchers.pop(name)
@@ -34,7 +39,7 @@ class MatcherRegistry:
                 f'No matcher installed for {name}'
             )
 
-    def _set_default_matcher(self, name):
+    def _set_default_matcher(self, name: str) -> None:
         """Set the default matching method.
 
         :param name: The name of the registered matching method.
@@ -51,7 +56,13 @@ class MatcherRegistry:
                 f'No matcher installed for {name}'
             )
 
-    def match(self, data, pattern, matcher=None, matcher_kwargs=None):
+    def match(
+        self,
+        data: bytes,
+        pattern: bytes,
+        matcher: str | None = None,
+        matcher_kwargs: dict[str, str] | None = None
+    ) -> bool:
         """Call the matcher."""
         if matcher and not self._matchers.get(matcher):
             raise self.MatcherNotInstalled(
@@ -97,7 +108,7 @@ match = registry.match
 .. function:: register(name, matcher):
     Register a new matching method.
 
-    :param name: A convience name for the mathing method.
+    :param name: A convenient name for the mathing method.
     :param matcher: A method that will be passed data and pattern.
 """
 register = registry.register
@@ -111,14 +122,14 @@ register = registry.register
 unregister = registry.unregister
 
 
-def register_glob():
+def register_glob() -> None:
     """Register glob into default registry."""
     registry.register('glob', fnmatch)
 
 
-def register_pcre():
+def register_pcre() -> None:
     """Register pcre into default registry."""
-    registry.register('pcre', rematch)
+    registry.register('pcre', cast(MatcherFunction, rematch))
 
 
 # Register the base matching methods.

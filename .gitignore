@@ -26,6 +26,7 @@ kombu/tests/coverage.xml
 .coverage
 dump.rdb
 .idea/
+.vscode/
 .cache/
 .pytest_cache/
 htmlcov/
@@ -34,3 +35,4 @@ coverage.xml
 venv/
 env
 .eggs
+.python-version

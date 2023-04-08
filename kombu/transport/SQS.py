@@ -59,8 +59,8 @@ exist in AWS) you can tell this transport about them as follows:
           'backoff_policy': {1: 10, 2: 20, 3: 40, 4: 80, 5: 320, 6: 640}, # optional
           'backoff_tasks': ['svc.tasks.tasks.task1'] # optional
         },
-        'queue-2': {
-          'url': 'https://sqs.us-east-1.amazonaws.com/xxx/bbb',
+        'queue-2.fifo': {
+          'url': 'https://sqs.us-east-1.amazonaws.com/xxx/bbb.fifo',
           'access_key_id': 'c',
           'secret_access_key': 'd',
           'backoff_policy': {1: 10, 2: 20, 3: 40, 4: 80, 5: 320, 6: 640}, # optional
@@ -70,6 +70,9 @@ exist in AWS) you can tell this transport about them as follows:
     'sts_role_arn': 'arn:aws:iam::<xxx>:role/STSTest', # optional
     'sts_token_timeout': 900 # optional
     }
+
+Note that FIFO and standard queues must be named accordingly (the name of
+a FIFO queue must end with the .fifo suffix).
 
 backoff_policy & backoff_tasks are optional arguments. These arguments
 automatically change the message visibility timeout, in order to have
@@ -119,6 +122,8 @@ Features
 """  # noqa: E501
 
 
+from __future__ import annotations
+
 import base64
 import socket
 import string
@@ -167,6 +172,10 @@ class UndefinedQueueException(Exception):
     """Predefined queues are being used and an undefined queue was used."""
 
 
+class InvalidQueueException(Exception):
+    """Predefined queues are being used and configuration is not valid."""
+
+
 class QoS(virtual.QoS):
     """Quality of Service guarantees implementation for SQS."""
 
@@ -208,8 +217,8 @@ class QoS(virtual.QoS):
                 VisibilityTimeout=policy_value
             )
 
-    @staticmethod
-    def extract_task_name_and_number_of_retries(message):
+    def extract_task_name_and_number_of_retries(self, delivery_tag):
+        message = self._delivered[delivery_tag]
         message_headers = message.headers
         task_name = message_headers['task']
         number_of_retries = int(
@@ -237,6 +246,7 @@ class Channel(virtual.Channel):
         if boto3 is None:
             raise ImportError('boto3 is not installed')
         super().__init__(*args, **kwargs)
+        self._validate_predifined_queues()
 
         # SQS blows up if you try to create a new queue when one already
         # exists but with a different visibility_timeout.  This prepopulates
@@ -245,6 +255,26 @@ class Channel(virtual.Channel):
         self._update_queue_cache(self.queue_name_prefix)
 
         self.hub = kwargs.get('hub') or get_event_loop()
+
+    def _validate_predifined_queues(self):
+        """Check that standard and FIFO queues are named properly.
+
+        AWS requires FIFO queues to have a name
+        that ends with the .fifo suffix.
+        """
+        for queue_name, q in self.predefined_queues.items():
+            fifo_url = q['url'].endswith('.fifo')
+            fifo_name = queue_name.endswith('.fifo')
+            if fifo_url and not fifo_name:
+                raise InvalidQueueException(
+                    "Queue with url '{}' must have a name "
+                    "ending with .fifo".format(q['url'])
+                )
+            elif not fifo_url and fifo_name:
+                raise InvalidQueueException(
+                    "Queue with name '{}' is not a FIFO queue: "
+                    "'{}'".format(queue_name, q['url'])
+                )
 
     def _update_queue_cache(self, queue_name_prefix):
         if self.predefined_queues:
@@ -367,20 +397,28 @@ class Channel(virtual.Channel):
     def _put(self, queue, message, **kwargs):
         """Put message onto queue."""
         q_url = self._new_queue(queue)
-        kwargs = {'QueueUrl': q_url,
-                  'MessageBody': AsyncMessage().encode(dumps(message))}
-        if queue.endswith('.fifo'):
-            if 'MessageGroupId' in message['properties']:
-                kwargs['MessageGroupId'] = \
-                    message['properties']['MessageGroupId']
-            else:
-                kwargs['MessageGroupId'] = 'default'
-            if 'MessageDeduplicationId' in message['properties']:
-                kwargs['MessageDeduplicationId'] = \
-                    message['properties']['MessageDeduplicationId']
-            else:
-                kwargs['MessageDeduplicationId'] = str(uuid.uuid4())
+        if self.sqs_base64_encoding:
+            body = AsyncMessage().encode(dumps(message))
+        else:
+            body = dumps(message)
+        kwargs = {'QueueUrl': q_url, 'MessageBody': body}
 
+        if 'properties' in message:
+            if queue.endswith('.fifo'):
+                if 'MessageGroupId' in message['properties']:
+                    kwargs['MessageGroupId'] = \
+                        message['properties']['MessageGroupId']
+                else:
+                    kwargs['MessageGroupId'] = 'default'
+                if 'MessageDeduplicationId' in message['properties']:
+                    kwargs['MessageDeduplicationId'] = \
+                        message['properties']['MessageDeduplicationId']
+                else:
+                    kwargs['MessageDeduplicationId'] = str(uuid.uuid4())
+            else:
+                if "DelaySeconds" in message['properties']:
+                    kwargs['DelaySeconds'] = \
+                        message['properties']['DelaySeconds']
         c = self.sqs(queue=self.canonical_queue_name(queue))
         if message.get('redelivered'):
             c.change_message_visibility(
@@ -392,22 +430,19 @@ class Channel(virtual.Channel):
             c.send_message(**kwargs)
 
     @staticmethod
-    def __b64_encoded(byte_string):
+    def _optional_b64_decode(byte_string):
         try:
-            return base64.b64encode(
-                base64.b64decode(byte_string)
-            ) == byte_string
+            data = base64.b64decode(byte_string)
+            if base64.b64encode(data) == byte_string:
+                return data
+            # else the base64 module found some embedded base64 content
+            # that should be ignored.
         except Exception:  # pylint: disable=broad-except
-            return False
+            pass
+        return byte_string
 
     def _message_to_python(self, message, queue_name, queue):
-        body = message['Body'].encode()
-        try:
-            if self.__b64_encoded(body):
-                body = base64.b64decode(body)
-        except TypeError:
-            pass
-
+        body = self._optional_b64_decode(message['Body'].encode())
         payload = loads(bytes_to_str(body))
         if queue_name in self._noack_queues:
             queue = self._new_queue(queue_name)
@@ -808,6 +843,10 @@ class Channel(virtual.Channel):
     def wait_time_seconds(self):
         return self.transport_options.get('wait_time_seconds',
                                           self.default_wait_time_seconds)
+
+    @cached_property
+    def sqs_base64_encoding(self):
+        return self.transport_options.get('sqs_base64_encoding', True)
 
 
 class Transport(virtual.Transport):

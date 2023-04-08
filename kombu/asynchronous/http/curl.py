@@ -1,11 +1,13 @@
 """HTTP Client using pyCurl."""
 
+from __future__ import annotations
+
 from collections import deque
 from functools import partial
 from io import BytesIO
 from time import time
 
-from kombu.asynchronous.hub import READ, WRITE, get_event_loop
+from kombu.asynchronous.hub import READ, WRITE, Hub, get_event_loop
 from kombu.exceptions import HttpError
 from kombu.utils.encoding import bytes_to_str
 
@@ -36,7 +38,7 @@ class CurlClient(BaseClient):
 
     Curl = Curl
 
-    def __init__(self, hub=None, max_clients=10):
+    def __init__(self, hub: Hub | None = None, max_clients: int = 10):
         if pycurl is None:
             raise ImportError('The curl client requires the pycurl library.')
         hub = hub or get_event_loop()
@@ -231,9 +233,6 @@ class CurlClient(BaseClient):
             if request.proxy_username:
                 setopt(_pycurl.PROXYUSERPWD, '{}:{}'.format(
                     request.proxy_username, request.proxy_password or ''))
-        else:
-            setopt(_pycurl.PROXY, '')
-            curl.unsetopt(_pycurl.PROXYUSERPWD)
 
         setopt(_pycurl.SSL_VERIFYPEER, 1 if request.validate_cert else 0)
         setopt(_pycurl.SSL_VERIFYHOST, 2 if request.validate_cert else 0)
@@ -253,7 +252,7 @@ class CurlClient(BaseClient):
             setopt(meth, True)
 
         if request.method in ('POST', 'PUT'):
-            body = request.body.encode('utf-8') if request.body else bytes()
+            body = request.body.encode('utf-8') if request.body else b''
             reqbuffer = BytesIO(body)
             setopt(_pycurl.READFUNCTION, reqbuffer.read)
             if request.method == 'POST':

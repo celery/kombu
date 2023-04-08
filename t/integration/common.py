@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import socket
 from contextlib import closing
 from time import sleep
@@ -136,12 +138,19 @@ class BaseExchangeTypes:
         message.delivery_info['exchange'] == ''
         assert message.payload == body
 
-    def _consume(self, connection, queue):
+    def _create_consumer(self, connection, queue):
         consumer = kombu.Consumer(
             connection, [queue], accept=['pickle']
         )
         consumer.register_callback(self._callback)
+        return consumer
+
+    def _consume_from(self, connection, consumer):
         with consumer:
+            connection.drain_events(timeout=1)
+
+    def _consume(self, connection, queue):
+        with self._create_consumer(connection, queue):
             connection.drain_events(timeout=1)
 
     def _publish(self, channel, exchange, queues=None, routing_key=None):
@@ -213,7 +222,6 @@ class BaseExchangeTypes:
                     channel, ex, [test_queue1, test_queue2, test_queue3],
                     routing_key='t.1'
                 )
-
                 self._consume(conn, test_queue1)
                 self._consume(conn, test_queue2)
                 with pytest.raises(socket.timeout):
@@ -396,6 +404,47 @@ class BasePriority:
                     msg = buf.get(timeout=1)
                     msg.ack()
                     assert msg.payload == data
+
+
+class BaseMessage:
+
+    def test_ack(self, connection):
+        with connection as conn:
+            with closing(conn.SimpleQueue('test_ack')) as queue:
+                queue.put({'Hello': 'World'}, headers={'k1': 'v1'})
+                message = queue.get_nowait()
+                message.ack()
+                with pytest.raises(queue.Empty):
+                    queue.get_nowait()
+
+    def test_reject_no_requeue(self, connection):
+        with connection as conn:
+            with closing(conn.SimpleQueue('test_reject_no_requeue')) as queue:
+                queue.put({'Hello': 'World'}, headers={'k1': 'v1'})
+                message = queue.get_nowait()
+                message.reject(requeue=False)
+                with pytest.raises(queue.Empty):
+                    queue.get_nowait()
+
+    def test_reject_requeue(self, connection):
+        with connection as conn:
+            with closing(conn.SimpleQueue('test_reject_requeue')) as queue:
+                queue.put({'Hello': 'World'}, headers={'k1': 'v1'})
+                message = queue.get_nowait()
+                message.reject(requeue=True)
+                message2 = queue.get_nowait()
+                assert message.body == message2.body
+                message2.ack()
+
+    def test_requeue(self, connection):
+        with connection as conn:
+            with closing(conn.SimpleQueue('test_requeue')) as queue:
+                queue.put({'Hello': 'World'}, headers={'k1': 'v1'})
+                message = queue.get_nowait()
+                message.requeue()
+                message2 = queue.get_nowait()
+                assert message.body == message2.body
+                message2.ack()
 
 
 class BaseFailover(BasicFunctionality):

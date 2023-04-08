@@ -1,7 +1,10 @@
 """Base async HTTP client implementation."""
 
+from __future__ import annotations
+
 import sys
 from http.client import responses
+from typing import TYPE_CHECKING
 
 from vine import Thenable, maybe_promise, promise
 
@@ -9,6 +12,9 @@ from kombu.exceptions import HttpError
 from kombu.utils.compat import coro
 from kombu.utils.encoding import bytes_to_str
 from kombu.utils.functional import maybe_list, memoize
+
+if TYPE_CHECKING:
+    from types import TracebackType
 
 __all__ = ('Headers', 'Response', 'Request')
 
@@ -61,7 +67,7 @@ class Request:
         auth_password (str): Password for HTTP authentication.
         auth_mode (str): Type of HTTP authentication (``basic`` or ``digest``).
         user_agent (str): Custom user agent for this request.
-        network_interace (str): Network interface to use for this request.
+        network_interface (str): Network interface to use for this request.
         on_ready (Callable): Callback to be called when the response has been
             received. Must accept single ``response`` argument.
         on_stream (Callable): Optional callback to be called every time body
@@ -253,5 +259,10 @@ class BaseClient:
     def __enter__(self):
         return self
 
-    def __exit__(self, *exc_info):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None
+    ) -> None:
         self.close()

@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+from __future__ import annotations
+
 from kombu import Connection, Queue
 from kombu.mixins import ConsumerProducerMixin
 
