@@ -1,6 +1,6 @@
-pytz
 pytest>=7.1.1
 pytest-sugar
 Pyro4
 hypothesis
 pytest-freezer
+backports.zoneinfo>=0.2.1; python_version < '3.9'
