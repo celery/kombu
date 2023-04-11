@@ -333,3 +333,89 @@ def test_custom_entity_name():
     assert channel.entity_name('test_celery') == 'test_celery'
     assert channel.entity_name('test:celery') == 'test_celery'
     assert channel.entity_name('test+celery') == 'test_celery'
+
+
+def test_basic_ack_complete_message(mock_queue: MockQueue):
+    mock_queue.producer.publish("test message")
+    message = mock_queue.channel._get(mock_queue.queue_name)
+    mock_queue.channel.qos.get = MagicMock(
+        return_value=mock_queue.channel.Message(
+            message, mock_queue.channel
+        )
+    )
+    receiver_mock = MagicMock()
+    receiver_mock.complete_message = MagicMock(return_value=None)
+    queue_object_mock = MagicMock()
+    queue_object_mock.receiver = receiver_mock
+    mock_queue.channel._get_asb_receiver = MagicMock(
+        return_value=queue_object_mock)
+    with patch(
+        'kombu.transport.virtual.base.Channel.basic_ack'
+    ) as super_basic_ack:
+        mock_queue.channel.basic_ack("test_delivery_tag")
+        assert mock_queue.channel.qos.get.call_count == 1
+        assert mock_queue.channel._get_asb_receiver.call_count == 1
+        assert queue_object_mock.receiver.complete_message.call_count == 1
+        assert super_basic_ack.call_count == 1
+
+
+def test_basic_ack_when_already_settled(mock_queue: MockQueue):
+    mock_queue.producer.publish("test message")
+    message = mock_queue.channel._get(mock_queue.queue_name)
+    mock_queue.channel.qos.get = MagicMock(
+        return_value=mock_queue.channel.Message(
+            message, mock_queue.channel
+        )
+    )
+    receiver_mock = MagicMock()
+    receiver_mock.complete_message = MagicMock(
+        side_effect=azure.servicebus.exceptions.MessageAlreadySettled())
+    queue_object_mock = MagicMock()
+    queue_object_mock.receiver = receiver_mock
+    mock_queue.channel._get_asb_receiver = MagicMock(
+        return_value=queue_object_mock)
+    with patch(
+        'kombu.transport.virtual.base.Channel.basic_ack'
+    ) as super_basic_ack:
+        mock_queue.channel.basic_ack("test_delivery_tag")
+        assert mock_queue.channel.qos.get.call_count == 1
+        assert mock_queue.channel._get_asb_receiver.call_count == 1
+        assert queue_object_mock.receiver.complete_message.call_count == 1
+        assert super_basic_ack.call_count == 1
+
+
+def test_basic_ack_when_qos_raises_keyerror(mock_queue: MockQueue):
+    """Test that basic_ack calls super method when keyerror"""
+    mock_queue.channel.qos.get = MagicMock(side_effect=KeyError())
+    with patch(
+        'kombu.transport.virtual.base.Channel.basic_ack'
+    ) as super_basic_ack:
+        mock_queue.channel.basic_ack("invented_delivery_tag")
+        assert super_basic_ack.call_count == 1
+        assert mock_queue.channel.qos.get.call_count == 1
+
+
+def test_basic_ack_reject_message_when_raises_exception(
+    mock_queue: MockQueue
+):
+    mock_queue.producer.publish("test message")
+    message = mock_queue.channel._get(mock_queue.queue_name)
+    mock_queue.channel.qos.get = MagicMock(
+        return_value=mock_queue.channel.Message(
+            message, mock_queue.channel
+        )
+    )
+    receiver_mock = MagicMock()
+    receiver_mock.complete_message = MagicMock(side_effect=Exception())
+    queue_object_mock = MagicMock()
+    queue_object_mock.receiver = receiver_mock
+    mock_queue.channel._get_asb_receiver = MagicMock(
+        return_value=queue_object_mock)
+    with patch(
+        'kombu.transport.virtual.base.Channel.basic_reject'
+    ) as super_basic_reject:
+        mock_queue.channel.basic_ack("test_delivery_tag")
+        assert mock_queue.channel.qos.get.call_count == 1
+        assert mock_queue.channel._get_asb_receiver.call_count == 1
+        assert queue_object_mock.receiver.complete_message.call_count == 1
+        assert super_basic_reject.call_count == 1
