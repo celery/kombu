@@ -191,6 +191,7 @@ class GlobalKeyPrefixMixin:
     PREFIXED_SIMPLE_COMMANDS = [
         "HDEL",
         "HGET",
+        "HLEN",
         "HSET",
         "LLEN",
         "LPUSH",
@@ -210,6 +211,7 @@ class GlobalKeyPrefixMixin:
         "DEL": {"args_start": 0, "args_end": None},
         "BRPOP": {"args_start": 0, "args_end": -1},
         "EVALSHA": {"args_start": 2, "args_end": 3},
+        "WATCH": {"args_start": 0, "args_end": None},
     }
 
     def _prefix_args(self, args):
@@ -1183,8 +1185,8 @@ class Channel(virtual.Channel):
 
         if asynchronous:
             class Connection(connection_cls):
-                def disconnect(self):
-                    super().disconnect()
+                def disconnect(self, *args):
+                    super().disconnect(*args)
                     channel._on_connection_disconnect(self)
             connection_cls = Connection
 

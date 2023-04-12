@@ -56,7 +56,7 @@ import threading
 from json import dumps, loads
 from queue import Empty
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
 
@@ -169,7 +169,7 @@ class Channel(virtual.Channel):
     def _get(self, queue):
         obj = self._get_or_create(queue)
         if self.session.bind.name == 'sqlite':
-            self.session.execute('BEGIN IMMEDIATE TRANSACTION')
+            self.session.execute(text('BEGIN IMMEDIATE TRANSACTION'))
         try:
             msg = self.session.query(self.message_cls) \
                 .with_for_update() \

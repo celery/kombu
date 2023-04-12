@@ -770,6 +770,30 @@ class test_Channel:
         assert 'MessageDeduplicationId' in \
             sqs_queue_mock.send_message.call_args[1]
 
+    def test_predefined_queues_put_to_queue(self):
+        connection = Connection(transport=SQS.Transport, transport_options={
+            'predefined_queues': example_predefined_queues,
+        })
+        channel = connection.channel()
+
+        queue_name = 'queue-2'
+
+        exchange = Exchange('test_SQS', type='direct')
+        p = messaging.Producer(channel, exchange, routing_key=queue_name)
+
+        queue = Queue(queue_name, exchange, queue_name)
+        queue(channel).declare()
+
+        channel.sqs = Mock()
+        sqs_queue_mock = Mock()
+        channel.sqs.return_value = sqs_queue_mock
+        p.publish('message', DelaySeconds=10)
+
+        sqs_queue_mock.send_message.assert_called_once()
+
+        assert 'DelaySeconds' in sqs_queue_mock.send_message.call_args[1]
+        assert sqs_queue_mock.send_message.call_args[1]['DelaySeconds'] == 10
+
     @pytest.mark.parametrize('predefined_queues', (
         {
             'invalid-fifo-queue-name': {

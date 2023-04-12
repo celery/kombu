@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import os
 import socket
+import sys
 from contextlib import contextmanager
 from itertools import count, cycle
 from operator import itemgetter
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 try:
     from ssl import CERT_NONE
@@ -30,6 +31,13 @@ from .utils.objects import cached_property
 from .utils.url import as_url, maybe_sanitize_url, parse_url, quote, urlparse
 
 if TYPE_CHECKING:
+    from kombu.transport.virtual import Channel
+
+    if sys.version_info < (3, 10):
+        from typing_extensions import TypeGuard
+    else:
+        from typing import TypeGuard
+
     from types import TracebackType
 
 __all__ = ('Connection', 'ConnectionPool', 'ChannelPool')
@@ -418,7 +426,7 @@ class Connection:
             callback (Callable): Optional callback that is called for every
                 internal iteration (1 s).
             timeout (int): Maximum amount of time in seconds to spend
-                waiting for connection
+                attempting to connect, total over all retries.
         """
         if self.connected:
             return self._connection
@@ -474,7 +482,7 @@ class Connection:
 
     def ensure(self, obj, fun, errback=None, max_retries=None,
                interval_start=1, interval_step=1, interval_max=1,
-               on_revive=None):
+               on_revive=None, retry_errors=None):
         """Ensure operation completes.
 
         Regardless of any channel/connection errors occurring.
@@ -503,6 +511,9 @@ class Connection:
                 each retry.
             on_revive (Callable): Optional callback called whenever
                 revival completes successfully
+            retry_errors (tuple): Optional list of errors to retry on
+                regardless of the connection state. Must provide max_retries
+                if this is specified.
 
         Examples:
             >>> from kombu import Connection, Producer
@@ -517,6 +528,15 @@ class Connection:
             ...                       errback=errback, max_retries=3)
             >>> publish({'hello': 'world'}, routing_key='dest')
         """
+        if retry_errors is None:
+            retry_errors = tuple()
+        elif max_retries is None:
+            # If the retry_errors is specified, but max_retries is not,
+            # this could lead into an infinite loop potentially.
+            raise ValueError(
+                "max_retries must be specified if retry_errors is specified"
+            )
+
         def _ensured(*args, **kwargs):
             got_connection = 0
             conn_errors = self.recoverable_connection_errors
@@ -528,6 +548,11 @@ class Connection:
                 for retries in count(0):  # for infinity
                     try:
                         return fun(*args, **kwargs)
+                    except retry_errors as exc:
+                        if max_retries is not None and retries >= max_retries:
+                            raise
+                        self._debug('ensure retry policy error: %r',
+                                    exc, exc_info=1)
                     except conn_errors as exc:
                         if got_connection and not has_modern_errors:
                             # transport can not distinguish between
@@ -859,6 +884,9 @@ class Connection:
                 conn_opts['interval_step'] = transport_opts['interval_step']
             if 'interval_max' in transport_opts:
                 conn_opts['interval_max'] = transport_opts['interval_max']
+            if 'connect_retries_timeout' in transport_opts:
+                conn_opts['timeout'] = \
+                    transport_opts['connect_retries_timeout']
         return conn_opts
 
     @property
@@ -891,7 +919,7 @@ class Connection:
         return self._connection
 
     @property
-    def default_channel(self):
+    def default_channel(self) -> Channel:
         """Default channel.
 
         Created upon access and closed when the connection is closed.
@@ -1054,7 +1082,7 @@ class ChannelPool(Resource):
         return channel
 
 
-def maybe_channel(channel):
+def maybe_channel(channel: Channel | Connection) -> Channel:
     """Get channel from object.
 
     Return the default channel if argument is a connection instance,
@@ -1065,5 +1093,5 @@ def maybe_channel(channel):
     return channel
 
 
-def is_connection(obj):
+def is_connection(obj: Any) -> TypeGuard[Connection]:
     return isinstance(obj, Connection)

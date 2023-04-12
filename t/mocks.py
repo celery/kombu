@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from itertools import count
 from typing import TYPE_CHECKING
 from unittest.mock import Mock
@@ -202,3 +203,15 @@ class Transport(base.Transport):
 
     def close_connection(self, connection):
         connection.connected = False
+
+
+class TimeoutingTransport(Transport):
+    recoverable_connection_errors = (TimeoutError,)
+
+    def __init__(self, connect_timeout=1, **kwargs):
+        self.connect_timeout = connect_timeout
+        super().__init__(**kwargs)
+
+    def establish_connection(self):
+        time.sleep(self.connect_timeout)
+        raise TimeoutError('timed out')

@@ -384,18 +384,6 @@ register_msgpack()
 # Default serializer is 'json'
 registry._set_default_serializer('json')
 
-
-_setupfuns = {
-    'json': register_json,
-    'pickle': register_pickle,
-    'yaml': register_yaml,
-    'msgpack': register_msgpack,
-    'application/json': register_json,
-    'application/x-yaml': register_yaml,
-    'application/x-python-serialize': register_pickle,
-    'application/x-msgpack': register_msgpack,
-}
-
 NOTSET = object()
 
 
