@@ -363,7 +363,7 @@ class Channel(virtual.Channel):
                     "defined in 'predefined_queues'."
                 ).format(queue))
 
-            attributes = {'VisibilityTimeout': str(self.visibility_timeout)}
+            attributes = {'VisibilityTimeout': self.visibility_timeout()}
             if queue.endswith('.fifo'):
                 attributes['FifoQueue'] = 'true'
 
