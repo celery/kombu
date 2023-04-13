@@ -10,11 +10,14 @@ from kombu import Connection
 
 pymongo = pytest.importorskip('pymongo')
 
-# must import following after above validation to avoid error and skip tests if missing
-# these are used to define real spec of the corresponding mocks, to ensure called methods exist in real objects
-from pymongo.collection import Collection  # isort:skip # noqa: E402 # pylint: disable=C0413
-from pymongo.database import Database  # isort:skip # noqa: E402 # pylint: disable=C0413
-from kombu.transport.mongodb import BroadcastCursor  # isort:skip # noqa: E402 # pylint: disable=C0413
+# must import following after above validation to avoid error
+# and skip tests if missing
+# these are used to define real spec of the corresponding mocks,
+# to ensure called methods exist in real objects
+# pylint: disable=C0413
+from pymongo.collection import Collection  # isort:skip # noqa: E402
+from pymongo.database import Database  # isort:skip # noqa: E402
+from kombu.transport.mongodb import BroadcastCursor  # isort:skip # noqa: E402
 
 
 def _create_mock_connection(url='', **kwargs):
@@ -28,7 +31,8 @@ def _create_mock_connection(url='', **kwargs):
         now = datetime.datetime.utcnow()
 
         def _create_client(self):
-            # not really a 'MongoClient', but an actual pre-established Database connection
+            # not really a 'MongoClient',
+            # but an actual pre-established Database connection
             mock = MagicMock(name='client', spec=Database)
 
             # we need new mock object for every collection
@@ -329,7 +333,9 @@ class test_mongodb_channel(BaseMongoDBChannelCase):
 
     def test_create_broadcast_exists(self):
         # simulate already created collection
-        self.channel.client.list_collection_names.return_value = ['messages.broadcast']
+        self.channel.client.list_collection_names.return_value = [
+            'messages.broadcast'
+        ]
 
         broadcast = self.channel._create_broadcast(self.channel.client)
         self.channel.client.create_collection.assert_not_called()
