@@ -1,5 +1,4 @@
 pytest-cov
-codecov
 -r extras/redis.txt
 -r extras/mongodb.txt
 -r extras/yaml.txt
