@@ -698,8 +698,8 @@ class Channel(AbstractChannel, base.StdChannel):
         """Find all queues matching `routing_key` for the given `exchange`.
 
         Returns:
-            str: queue name -- must return the string `default`
-                if no queues matched.
+            list[str]: queue names -- must return `[default]`
+                if default is set and no queues matched.
         """
         if default is None:
             default = self.deadletter_queue

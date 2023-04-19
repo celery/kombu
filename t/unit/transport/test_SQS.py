@@ -443,6 +443,38 @@ class test_Channel:
         self.channel._get_bulk(self.queue_name)
         self.channel.connection._deliver.assert_called_once()
 
+    # hub required for successful instantiation of AsyncSQSConnection
+    @pytest.mark.usefixtures('hub')
+    def test_get_async(self):
+        """Basic coverage of async code typically used via:
+        basic_consume > _loop1 > _schedule_queue > _get_bulk_async"""
+        # Prepare
+        for i in range(3):
+            message = 'message: %s' % i
+            self.producer.publish(message)
+
+        # SQS.Channel.asynsqs constructs AsyncSQSConnection using self.sqs
+        # which is already a mock thanks to `setup` above, we just need to
+        # mock the async-specific methods (as test_AsyncSQSConnection does)
+        async_sqs_conn = self.channel.asynsqs(self.queue_name)
+        async_sqs_conn.get_list = Mock(name='X.get_list')
+
+        # Call key method
+        self.channel._get_bulk_async(self.queue_name)
+
+        assert async_sqs_conn.get_list.call_count == 1
+        get_list_args = async_sqs_conn.get_list.call_args[0]
+        get_list_kwargs = async_sqs_conn.get_list.call_args[1]
+        assert get_list_args[0] == 'ReceiveMessage'
+        assert get_list_args[1] == {
+            'MaxNumberOfMessages': SQS.SQS_MAX_MESSAGES,
+            'AttributeName.1': 'ApproximateReceiveCount',
+            'WaitTimeSeconds': self.channel.wait_time_seconds,
+        }
+        assert get_list_args[3] == \
+               self.channel.sqs().get_queue_url(self.queue_name).url
+        assert get_list_kwargs['parent'] == self.queue_name
+
     def test_drain_events_with_empty_list(self):
         def mock_can_consume():
             return False
