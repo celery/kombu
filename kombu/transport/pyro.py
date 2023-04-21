@@ -49,7 +49,7 @@ try:
     import Pyro5.api as pyro
     from Pyro5.errors import NamingError
     from Pyro5.serializers import SerializerBase
- except ImportError:          # pragma: no cover
+except ImportError:          # pragma: no cover
      pyro = NamingError = SerializerBase = None
 
 DEFAULT_PORT = 9090
