@@ -9,7 +9,7 @@ jobs:
         python-version: [3.7,3.8,3.9,"3.10"]
     steps:
       - name: Install system packages
-        run: sudo apt update && sudo apt-get install libcurl4-openssl-dev libssl-dev
+        run: sudo apt-get update && sudo apt-get install libcurl4-openssl-dev libssl-dev
       - name: Check out code from GitHub
         uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
@@ -18,7 +18,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
-        run: pip install --upgrade pip setuptools wheel tox tox-docker
+        run: pip install --upgrade pip wheel tox tox-docker
       - name: Run unittest
         run: tox -v -e ${{ matrix.python-version }}-linux-unit -- -v
   #################### Integration tests ####################
@@ -36,7 +36,7 @@ jobs:
             experimental: true
     steps:
       - name: Install system packages
-        run: sudo apt update && sudo apt-get install libcurl4-openssl-dev libssl-dev
+        run: sudo apt-get update && sudo apt-get install libcurl4-openssl-dev libssl-dev
       - name: Check out code from GitHub
         uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
@@ -45,7 +45,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
-        run: pip install --upgrade pip setuptools wheel tox tox-docker
+        run: pip install --upgrade pip wheel tox tox-docker
       # Tox fails if a Python versions contains a hyphen, this changes "pypy-3.9" to "pypy3.9".
       - name: Determine Python version
         run: echo PYTHON_VERSION=$(echo ${{ matrix.python-version }} | sed s/-//) >> $GITHUB_ENV
@@ -68,7 +68,7 @@ jobs:
         python-version: ["3.10"]
     steps:
       - name: Install system packages
-        run: sudo apt update && sudo apt-get install libcurl4-openssl-dev libssl-dev
+        run: sudo apt-get update && sudo apt-get install libcurl4-openssl-dev libssl-dev
       - name: Check out code from GitHub
         uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
@@ -77,7 +77,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
-        run: pip install --upgrade pip setuptools wheel tox tox-docker
+        run: pip install --upgrade pip wheel tox tox-docker
       - name: Run flake8
         run: tox -v -e flake8 -- -v
       - name: Run pydocstyle
