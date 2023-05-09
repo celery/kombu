@@ -1,0 +1,105 @@
+[tool.poetry]
+name = "kombu"
+version = "5.3.0b3"
+description = "Messaging library for Python."
+authors = ["Ask Solem <auvipy@gmail.com>"]
+license = "BSD-3-Clause"
+readme = "README.rst"
+homepage = "https://kombu.readthedocs.io"
+repository = "https://github.com/celery/kombu"
+documentation = "https://kombu.readthedocs.io"
+keywords = ['messaging', 'message', 'amqp', 'rabbitmq', 'redis', 'actor', 'producer', 'consumer']
+classifiers = [
+        'Development Status :: 5 - Production/Stable',
+        'License :: OSI Approved :: BSD License',
+        'Operating System :: OS Independent',
+        'Programming Language :: Python',
+        'Programming Language :: Python :: 3 :: Only',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: Implementation :: CPython',
+        'Programming Language :: Python :: Implementation :: PyPy',
+        'Intended Audience :: Developers',
+        'Topic :: Communications',
+        'Topic :: System :: Distributed Computing',
+        'Topic :: System :: Networking',
+        'Topic :: Software Development :: Libraries :: Python Modules',
+    ]
+
+
+[tool.poetry.dependencies]
+python = "^3.8.1"
+importlib-metadata = {version = ">=3.6", markers = "python_version < \"3.8\""}
+cached-property = {markers = "python_version < \"3.8\"", version = "^1.5.2"}
+typing-extensions = {markers = "python_version < \"3.10\"", version = "^4.5.0"}
+amqp = ">=5.1.1,<6.0.0"
+vine = "*"
+
+
+[tool.poetry.group.test.dependencies]
+pytest = "7.3.1"
+pytest-sugar = "*"
+pyro4 = "*"
+hypothesis = "*"
+pytest-freezer = "*"
+backports-zoneinfo = {version = ">=0.2.1", markers = "python_version < \"3.9\""}
+
+
+[tool.poetry.group.docs.dependencies]
+boto3 = ">=1.4.4"
+sphinx-celery = {git = "https://github.com/celery/sphinx_celery.git"}
+redis = ">=4.3.6,<4.4.0"
+pymongo = ">=4.1.1"
+sqlalchemy = ">=1.4.47,<2.1"
+azure-servicebus = {version = ">=7.9.0", markers = "platform_python_implementation == \"CPython\""}
+
+
+[tool.poetry.group.dev.dependencies]
+amqp = {git = "https://github.com/celery/py-amqp.git"}
+vine = {git = "https://github.com/celery/vine.git"}
+
+
+[tool.poetry.group.test-ci.dependencies]
+pytest-cov = "*"
+redis = ">=4.3.6,<4.4.0"
+pymongo = ">=4.1.1"
+pyyaml = ">=3.10"
+msgpack = "*"
+azure-storage-queue = ">=12.6.0"
+azure-identity = ">=1.12.0"
+azure-servicebus = {version = ">=7.9.0", markers = "platform_python_implementation == \"CPython\""}
+boto3 = "1.26.104"
+pycurl = "7.43.0.5"
+urllib3 = "1.26.15"
+python-consul2 = "*"
+kazoo = ">=2.8.0"
+brotlipy = {version = ">=0.7.0", markers = "platform_python_implementation == \"PyPy\""}
+brotli = {version = ">=1.0.9", markers = "platform_python_implementation == \"CPython\""}
+zstandard = "*"
+sqlalchemy = ">=1.4.47,<2.1"
+codecov = {version = "^2.1.13", markers = "sys_platform == 'win32'"}
+
+
+[tool.poetry.group.pkgutils.dependencies]
+setuptools = ">=47.0.0"
+wheel = ">=0.29.0"
+flake8 = "^6.0.0"
+tox = ">=4.4.8"
+sphinx2rst = ">=1.0"
+bumpversion = "*"
+pydocstyle = "1.1.1"
+mypy = "1.2.0"
+
+
+[tool.poetry.group.funtest.dependencies]
+pymongo = "*"
+kazoo = "*"
+boto3 = "1.26.104"
+redis = ">=4.3.6,<4.4.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
