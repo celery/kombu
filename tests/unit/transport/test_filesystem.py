@@ -7,11 +7,11 @@ from unittest.mock import call, patch
 
 import pytest
 
-import t.skip
+import tests.skip
 from kombu import Connection, Consumer, Exchange, Producer, Queue
 
 
-@t.skip.if_win32
+@tests.skip.if_win32
 class test_FilesystemTransport:
 
     def setup(self):
@@ -145,7 +145,7 @@ class test_FilesystemTransport:
         assert self.q2(consumer_channel).get() is None
 
 
-@t.skip.if_win32
+@tests.skip.if_win32
 class test_FilesystemFanout:
     def setup(self):
         try:
@@ -238,7 +238,7 @@ class test_FilesystemFanout:
         assert self.q2(self.consume_channel).get() is None
 
 
-@t.skip.if_win32
+@tests.skip.if_win32
 class test_FilesystemLock:
     def setup(self):
         try:

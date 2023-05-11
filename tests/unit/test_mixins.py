@@ -6,7 +6,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from kombu.mixins import ConsumerMixin
-from t.mocks import ContextMock
+from tests.mocks import ContextMock
 
 
 def Message(body, content_type='text/plain', content_encoding='utf-8'):

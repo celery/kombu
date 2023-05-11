@@ -7,7 +7,7 @@ from kombu.asynchronous.aws.sqs.connection import AsyncSQSConnection
 from kombu.asynchronous.aws.sqs.message import AsyncMessage
 from kombu.asynchronous.aws.sqs.queue import AsyncQueue
 from kombu.utils.uuid import uuid
-from t.mocks import PromiseMock
+from tests.mocks import PromiseMock
 
 from ..case import AWSCase
 

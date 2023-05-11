@@ -11,7 +11,7 @@ from kombu import Connection, Consumer, Exchange, Producer, Queue
 from kombu.exceptions import MessageStateError
 from kombu.utils import json
 from kombu.utils.functional import ChannelPromise
-from t.mocks import Transport
+from tests.mocks import Transport
 
 
 class test_Producer:
