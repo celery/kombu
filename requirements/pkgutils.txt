@@ -1,6 +1,6 @@
 setuptools>=47.0.0
 wheel>=0.29.0
-flake8==5.0.4
+flake8==6.0.0
 tox>=4.4.8
 sphinx2rst>=1.0
 bumpversion
