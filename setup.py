@@ -110,7 +110,6 @@ setup(
         'Source': 'https://github.com/celery/kombu'
     },
     platforms=['any'],
-    zip_safe=False,
     license='BSD-3-Clause',
     cmdclass={'test': pytest},
     python_requires=">=3.7",
