@@ -1,11 +1,15 @@
 pytest-cov
+codecov; sys_platform == 'win32'
+librabbitmq>=2.0.0; sys_platform == 'win32'
 -r extras/redis.txt
--r extras/mongodb.txt
+pymongo>=4.1.1; sys_platform != 'win32'
 -r extras/yaml.txt
 -r extras/msgpack.txt
 -r extras/azureservicebus.txt
 -r extras/azurestoragequeues.txt
--r extras/sqs.txt
+boto3==1.26.104; sys_platform != 'win32'
+pycurl==7.43.0.5; sys_platform != 'win32'
+urllib3==1.26.15; sys_platform != 'win32'
 -r extras/consul.txt
 -r extras/zookeeper.txt
 -r extras/brotli.txt
