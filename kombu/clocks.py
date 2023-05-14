@@ -86,7 +86,7 @@ class LamportClock:
     process receives a message, it resynchronizes its logical clock with
     the sender.
 
-    See Also:
+    See Also
     --------
         * `Lamport timestamps`_
 

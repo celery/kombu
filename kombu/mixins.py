@@ -66,7 +66,7 @@ class ConsumerMixin:
                     print('Got task: {0!r}'.format(body))
                     message.ack()
 
-    Methods:
+    Methods
     -------
         * :meth:`extra_context`
 

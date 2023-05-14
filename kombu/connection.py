@@ -334,7 +334,7 @@ class Connection:
         ---------
             timeout (float): Timeout in seconds before we give up.
 
-        Raises:
+        Raises
         ------
             socket.timeout: if the timeout is exceeded.
         """
@@ -527,7 +527,7 @@ class Connection:
                 regardless of the connection state. Must provide max_retries
                 if this is specified.
 
-        Examples:
+        Examples
         --------
             >>> from kombu import Connection, Producer
             >>> conn = Connection('amqp://')
@@ -614,7 +614,7 @@ class Connection:
         If a ``channel`` is not provided, then one will be automatically
         acquired (remember to close it afterwards).
 
-        See Also:
+        See Also
         --------
             :meth:`ensure` for the full list of supported keyword arguments.
 
@@ -745,7 +745,7 @@ class Connection:
     def Pool(self, limit=None, **kwargs):
         """Pool of connections.
 
-        See Also:
+        See Also
         --------
             :class:`ConnectionPool`.
 
@@ -774,7 +774,7 @@ class Connection:
     def ChannelPool(self, limit=None, **kwargs):
         """Pool of channels.
 
-        See Also:
+        See Also
         --------
             :class:`ChannelPool`.
 
@@ -850,7 +850,7 @@ class Connection:
         Create new :class:`~kombu.simple.SimpleQueue` using a channel
         from this connection.
 
-        See Also:
+        See Also
         --------
             Same as :meth:`SimpleQueue`, but configured with buffering
             semantics. The resulting queue and exchange will not be durable,

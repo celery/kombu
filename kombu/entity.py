@@ -52,7 +52,7 @@ class Exchange(MaybeChannelBound):
         arguments (Dict): See :attr:`arguments`.
         no_declare (bool): See :attr:`no_declare`
 
-    Attributes:
+    Attributes
     ----------
         name (str): Name of the exchange.
             Default is no name (the default exchange).
@@ -402,7 +402,7 @@ class Queue(MaybeChannelBound):
         max_length_bytes (int): See :attr:`max_length_bytes`.
         max_priority (int): See :attr:`max_priority`.
 
-    Attributes:
+    Attributes
     ----------
         name (str): Name of the queue.
             Default is no name (default queue destination).
@@ -694,7 +694,7 @@ class Queue(MaybeChannelBound):
         specific types of applications where synchronous functionality
         is more important than performance.
 
-        Returns:
+        Returns
         -------
             ~kombu.Message: if a message was available,
                 or :const:`None` otherwise.

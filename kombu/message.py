@@ -103,7 +103,7 @@ class Message:
 
         This will remove the message from the queue.
 
-        Raises:
+        Raises
         ------
             MessageStateError: If the message has already been
                 acknowledged/requeued/rejected.
@@ -149,7 +149,7 @@ class Message:
 
         The message will be discarded by the server.
 
-        Raises:
+        Raises
         ------
             MessageStateError: If the message has already been
                 acknowledged/requeued/rejected.
@@ -172,7 +172,7 @@ class Message:
             You must not use this method as a means of selecting messages
             to process.
 
-        Raises:
+        Raises
         ------
             MessageStateError: If the message has already been
                 acknowledged/requeued/rejected.

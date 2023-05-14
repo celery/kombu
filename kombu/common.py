@@ -204,7 +204,7 @@ def eventloop(conn, limit=None, timeout=None, ignore_timeouts=False):
 
     ``eventloop`` is a generator.
 
-    Examples:
+    Examples
     --------
         >>> from kombu.common import eventloop
 
@@ -221,7 +221,7 @@ def eventloop(conn, limit=None, timeout=None, ignore_timeouts=False):
         for _ in eventloop(connection, limit=1, timeout=1):
             pass
 
-    See Also:
+    See Also
     --------
         :func:`itermessages`, which is an event loop bound to one or more
         consumers, that yields any messages received.

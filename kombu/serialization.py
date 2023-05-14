@@ -118,7 +118,7 @@ class SerializerRegistry:
         ---------
             name (str): Registered serialization method name.
 
-        Raises:
+        Raises
         ------
             SerializerNotInstalled: If a serializer by that name
                 cannot be found.
@@ -142,7 +142,7 @@ class SerializerRegistry:
                 For example, `json` (default), `pickle`, `yaml`, `msgpack`,
                 or any custom methods registered using :meth:`register`.
 
-        Raises:
+        Raises
         ------
             SerializerNotInstalled: If the serialization method
                 requested is not available.
@@ -177,13 +177,13 @@ class SerializerRegistry:
                 serialization method will be used even if a :class:`str`
                 or :class:`unicode` object is passed in.
 
-        Returns:
+        Returns
         -------
             Tuple[str, str, str]: A three-item tuple containing the
             content type (e.g., `application/json`), content encoding, (e.g.,
             `utf-8`) and a string containing the serialized data.
 
-        Raises:
+        Raises
         ------
             SerializerNotInstalled: If the serialization method
                 requested is not available.
@@ -239,11 +239,11 @@ class SerializerRegistry:
 
             accept (Set): List of content-types to accept.
 
-        Raises:
+        Raises
         ------
             ContentDisallowed: If the content-type is not accepted.
 
-        Returns:
+        Returns
         -------
             Any: The unserialized data.
         """
@@ -354,7 +354,7 @@ def register_pickle():
 def register_msgpack():
     """Register msgpack serializer.
 
-    See Also:
+    See Also
     --------
         https://msgpack.org/.
     """
@@ -448,7 +448,7 @@ for ep, args in entrypoints('kombu.serializers'):  # pragma: no cover
 def prepare_accept_content(content_types, name_to_type=None):
     """Replace aliases of content_types with full names from registry.
 
-    Raises:
+    Raises
     ------
         SerializerNotInstalled: If the serialization method
             requested is not available.

@@ -20,7 +20,7 @@ Connection String
     sqlalchemy+SQL_ALCHEMY_CONNECTION_STRING
 
 For details about ``SQL_ALCHEMY_CONNECTION_STRING`` see SQLAlchemy Engine Configuration documentation.
-Examples:
+Examples
 --------
 .. code-block::
 

@@ -126,7 +126,7 @@ class Channel(virtual.Channel):
     def _has_queue(self, queue, **kwargs):
         """Verify that queue exists.
 
-        Returns:
+        Returns
         -------
             bool: Should return :const:`True` if the queue exists
                 or :const:`False` otherwise.

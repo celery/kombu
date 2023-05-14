@@ -11,7 +11,7 @@ __all__ = ('TokenBucket',)
 class TokenBucket:
     """Token Bucket Algorithm.
 
-    See Also:
+    See Also
     --------
         https://en.wikipedia.org/wiki/Token_Bucket
 
@@ -53,7 +53,7 @@ class TokenBucket:
     def can_consume(self, tokens=1):
         """Check if one or more tokens can be consumed.
 
-        Returns:
+        Returns
         -------
             bool: true if the number of tokens can be consumed
                 from the bucket.  If they can be consumed, a call will also
@@ -70,7 +70,7 @@ class TokenBucket:
     def expected_time(self, tokens=1):
         """Return estimated time of token availability.
 
-        Returns:
+        Returns
         -------
             float: the time in seconds.
         """

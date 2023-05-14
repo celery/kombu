@@ -611,7 +611,7 @@ class Consumer:
             body (Any): The decoded message body.
             message (~kombu.Message): The message instance.
 
-        Raises:
+        Raises
         ------
             NotImplementedError: If no consumer callbacks have been
                 registered.

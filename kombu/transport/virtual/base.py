@@ -212,7 +212,7 @@ class QoS:
         bulk 'get message' calls are preferred to many individual 'get message'
         calls - like SQS.
 
-        Returns:
+        Returns
         -------
             int: greater than zero.
         """
@@ -402,7 +402,7 @@ class AbstractChannel:
     def _has_queue(self, queue, **kwargs):
         """Verify that queue exists.
 
-        Returns:
+        Returns
         -------
             bool: Should return :const:`True` if the queue exists
                 or :const:`False` otherwise.
@@ -707,7 +707,7 @@ class Channel(AbstractChannel, base.StdChannel):
     def _lookup(self, exchange, routing_key, default=None):
         """Find all queues matching `routing_key` for the given `exchange`.
 
-        Returns:
+        Returns
         -------
             list[str]: queue names -- must return `[default]`
                 if default is set and no queues matched.
@@ -776,7 +776,7 @@ class Channel(AbstractChannel, base.StdChannel):
     def flow(self, active=True):
         """Enable/disable message flow.
 
-        Raises:
+        Raises
         ------
             NotImplementedError: as flow
                 is not implemented by the base virtual implementation.

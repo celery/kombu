@@ -100,7 +100,7 @@ class Channel(virtual.Channel):
         ---------
             queue (str): The name of the Queue.
 
-        Returns:
+        Returns
         -------
             str: The ID of the session.
         """
@@ -140,11 +140,11 @@ class Channel(virtual.Channel):
             queue (str): The name of the Queue.
             raising (Exception): Set custom lock error class.
 
-        Raises:
+        Raises
         ------
             LockError: if the lock cannot be acquired.
 
-        Returns:
+        Returns
         -------
             bool: success?
         """

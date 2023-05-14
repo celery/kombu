@@ -140,7 +140,7 @@ class Request:
 class Response:
     """HTTP Response.
 
-    Arguments:
+    Arguments
     ---------
         request (~kombu.asynchronous.http.Request): See :attr:`request`.
         code (int): See :attr:`code`.
@@ -149,7 +149,7 @@ class Response:
         effective_url (str): See :attr:`effective_url`.
         status (str): See :attr:`status`.
 
-    Attributes:
+    Attributes
     ----------
         request (~kombu.asynchronous.http.Request): object used to
             get this response.
@@ -186,7 +186,7 @@ class Response:
     def raise_for_error(self):
         """Raise if the request resulted in an HTTP error code.
 
-        Raises:
+        Raises
         ------
             :class:`~kombu.exceptions.HttpError`
         """

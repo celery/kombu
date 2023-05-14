@@ -305,7 +305,7 @@ class Channel(virtual.Channel):
     def drain_events(self, timeout=None, callback=None, **kwargs):
         """Return a single payload message from one of our queues.
 
-        Raises:
+        Raises
         ------
             Queue.Empty: if no messages available.
         """
@@ -319,7 +319,7 @@ class Channel(virtual.Channel):
     def _reset_cycle(self):
         """Reset the consume cycle.
 
-        Returns:
+        Returns
         -------
             FairCycle: object that points to our _get_bulk() method
                 rather than the standard _get() method.  This allows for
@@ -348,7 +348,7 @@ class Channel(virtual.Channel):
         Arguments:
         ---------
             queue (str): the AMQP queue name
-        Returns:
+        Returns
             str: the SQS queue URL
         """
         # Translate to SQS name for consistency with initial
@@ -488,7 +488,7 @@ class Channel(virtual.Channel):
             messages (SQSMessage): A list of SQS Message objects.
             queue (str): Name representing the queue they came from.
 
-        Returns:
+        Returns
         -------
             List: A list of Payload objects
         """
@@ -516,7 +516,7 @@ class Channel(virtual.Channel):
         ---------
             queue (str): The queue name to pull from.
 
-        Returns:
+        Returns
         -------
             List[Message]
         """

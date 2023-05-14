@@ -73,7 +73,7 @@ class Resource:
             timeout (float): Timeout to wait
                 if ``block`` is true.  Default is :const:`None` (forever).
 
-        Raises:
+        Raises
         ------
             LimitExceeded: if block is false and the limit has been exceeded.
         """
