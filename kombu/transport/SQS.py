@@ -343,6 +343,7 @@ class Channel(virtual.Channel):
     def _new_queue(self, queue, **kwargs):
         """
         Ensure a queue with given name exists in SQS.
+
         Arguments:
             queue (str): the AMQP queue name
         Returns:
