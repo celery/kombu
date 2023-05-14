@@ -6,7 +6,6 @@ import re
 import sys
 
 import setuptools
-import setuptools.command.test
 
 try:
     from setuptools import setup
@@ -80,18 +79,6 @@ def extras(*p):
     return reqs('extras', *p)
 
 
-class pytest(setuptools.command.test.test):
-    user_options = [('pytest-args=', 'a', 'Arguments to pass to py.test')]
-
-    def initialize_options(self):
-        super().initialize_options()
-        self.pytest_args = []
-
-    def run_tests(self):
-        import pytest
-        sys.exit(pytest.main(self.pytest_args))
-
-
 def readme():
     with open('README.rst') as f:
         return f.read()
@@ -110,9 +97,7 @@ setup(
         'Source': 'https://github.com/celery/kombu'
     },
     platforms=['any'],
-    zip_safe=False,
     license='BSD-3-Clause',
-    cmdclass={'test': pytest},
     python_requires=">=3.7",
     install_requires=reqs('default.txt'),
     tests_require=reqs('test.txt'),
