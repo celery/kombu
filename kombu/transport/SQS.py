@@ -341,8 +341,7 @@ class Channel(virtual.Channel):
         return self.entity_name(self.queue_name_prefix + queue_name)
 
     def _new_queue(self, queue, **kwargs):
-        """
-        Ensure a queue with given name exists in SQS.
+        """Ensure a queue with given name exists in SQS.
 
         Arguments:
             queue (str): the AMQP queue name
