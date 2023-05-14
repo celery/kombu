@@ -18,6 +18,7 @@ class timetuple(tuple):
     Can be used as part of a heap to keep events ordered.
 
     Arguments:
+    ---------
         clock (Optional[int]):  Event clock value.
         timestamp (float): Event UNIX timestamp value.
         id (str): Event host id (e.g. ``hostname:pid``).
@@ -86,6 +87,7 @@ class LamportClock:
     the sender.
 
     See Also:
+    --------
         * `Lamport timestamps`_
 
         * `Lamports distributed mutex`_

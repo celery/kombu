@@ -23,6 +23,7 @@ def fmatch_iter(needle: str, haystack: Iterable[str], min_ratio: float = 0.6) ->
     """Fuzzy match: iteratively.
 
     Yields:
+    ------
         Tuple: of ratio and key.
     """
     for key in haystack:

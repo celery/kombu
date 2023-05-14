@@ -64,6 +64,7 @@ class Connection:
     """A connection to the broker.
 
     Example:
+    -------
         >>> Connection('amqp://guest:guest@localhost:5672//')
         >>> Connection('amqp://foo;amqp://bar',
         ...            failover_strategy='round-robin')
@@ -80,13 +81,16 @@ class Connection:
         ... })
 
     Note:
+    ----
         SSL currently only works with the py-amqp, and qpid
         transports.  For other transports you can use stunnel.
 
     Arguments:
+    ---------
         URL (str, Sequence): Broker URL, or a list of URLs.
 
     Keyword Arguments:
+    -----------------
         ssl (bool/dict): Use SSL to connect to the server.
             Default is ``False``.
             May not be supported by the specified transport.
@@ -102,6 +106,7 @@ class Connection:
             around once per second.
 
     Note:
+    ----
         The connection is established lazily when needed. If you need the
         connection to be established, then force it by calling
         :meth:`connect`::
@@ -233,9 +238,11 @@ class Connection:
         """Switch connection parameters to use a new URL or hostname.
 
         Note:
+        ----
             Does not reconnect!
 
         Arguments:
+        ---------
             conn_str (str): either a hostname or URL.
         """
         self.close()
@@ -311,6 +318,7 @@ class Connection:
         this is a noop operation.
 
         Arguments:
+        ---------
             rate (int): Rate is how often the tick is called
                 compared to the actual heartbeat value.  E.g. if
                 the heartbeat is set to 3 seconds, and the tick
@@ -323,9 +331,11 @@ class Connection:
         """Wait for a single event from the server.
 
         Arguments:
+        ---------
             timeout (float): Timeout in seconds before we give up.
 
         Raises:
+        ------
             socket.timeout: if the timeout is exceeded.
         """
         return self.transport.drain_events(self.connection, **kwargs)
@@ -408,6 +418,7 @@ class Connection:
         specified.
 
         Arguments:
+        ---------
             errback (Callable): Optional callback called each time the
                 connection can't be established.  Arguments provided are
                 the exception raised and the interval that will be
@@ -491,6 +502,7 @@ class Connection:
         the function.
 
         Arguments:
+        ---------
             obj: The object to ensure an action on.
             fun (Callable): Method to apply.
 
@@ -516,6 +528,7 @@ class Connection:
                 if this is specified.
 
         Examples:
+        --------
             >>> from kombu import Connection, Producer
             >>> conn = Connection('amqp://')
             >>> producer = Producer(conn)
@@ -602,9 +615,11 @@ class Connection:
         acquired (remember to close it afterwards).
 
         See Also:
+        --------
             :meth:`ensure` for the full list of supported keyword arguments.
 
         Example:
+        -------
             >>> channel = connection.channel()
             >>> try:
             ...    ret, channel = connection.autoretry(
@@ -731,13 +746,16 @@ class Connection:
         """Pool of connections.
 
         See Also:
+        --------
             :class:`ConnectionPool`.
 
         Arguments:
+        ---------
             limit (int): Maximum number of active connections.
                 Default is no limit.
 
         Example:
+        -------
             >>> connection = Connection('amqp://')
             >>> pool = connection.Pool(2)
             >>> c1 = pool.acquire()
@@ -757,13 +775,16 @@ class Connection:
         """Pool of channels.
 
         See Also:
+        --------
             :class:`ChannelPool`.
 
         Arguments:
+        ---------
             limit (int): Maximum number of active channels.
                 Default is no limit.
 
         Example:
+        -------
             >>> connection = Connection('amqp://')
             >>> pool = connection.ChannelPool(2)
             >>> c1 = pool.acquire()
@@ -802,6 +823,7 @@ class Connection:
         also it will be used as the default routing key.
 
         Arguments:
+        ---------
             name (str, kombu.Queue): Name of the queue/or a queue.
             no_ack (bool): Disable acknowledgments. Default is false.
             queue_opts (Dict): Additional keyword arguments passed to the
@@ -829,6 +851,7 @@ class Connection:
         from this connection.
 
         See Also:
+        --------
             Same as :meth:`SimpleQueue`, but configured with buffering
             semantics. The resulting queue and exchange will not be durable,
             also auto delete is enabled. Messages will be transient (not
@@ -901,6 +924,7 @@ class Connection:
         """The underlying connection object.
 
         Warning:
+        -------
             This instance is transport specific, so do not
             depend on the interface of this object.
         """
@@ -925,6 +949,7 @@ class Connection:
         Created upon access and closed when the connection is closed.
 
         Note:
+        ----
             Can be used for automatic channel handling when you only need one
             channel, and also it is the channel implicitly used if
             a connection is passed instead of a channel, to functions that

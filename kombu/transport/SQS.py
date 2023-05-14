@@ -306,6 +306,7 @@ class Channel(virtual.Channel):
         """Return a single payload message from one of our queues.
 
         Raises:
+        ------
             Queue.Empty: if no messages available.
         """
         # If we're not allowed to consume or have no consumers, raise Empty
@@ -319,6 +320,7 @@ class Channel(virtual.Channel):
         """Reset the consume cycle.
 
         Returns:
+        -------
             FairCycle: object that points to our _get_bulk() method
                 rather than the standard _get() method.  This allows for
                 multiple messages to be returned at once from SQS (
@@ -344,6 +346,7 @@ class Channel(virtual.Channel):
         """Ensure a queue with given name exists in SQS.
 
         Arguments:
+        ---------
             queue (str): the AMQP queue name
         Returns:
             str: the SQS queue URL
@@ -481,10 +484,12 @@ class Channel(virtual.Channel):
         the 'ack' settings for that queue.
 
         Arguments:
+        ---------
             messages (SQSMessage): A list of SQS Message objects.
             queue (str): Name representing the queue they came from.
 
         Returns:
+        -------
             List: A list of Payload objects
         """
         q_url = self._new_queue(queue)
@@ -501,15 +506,18 @@ class Channel(virtual.Channel):
         prefetch_count).
 
         Note:
+        ----
             Ignores QoS limits so caller is responsible for checking
             that we are allowed to consume at least one message from the
             queue.  get_bulk will then ask QoS for an estimate of
             the number of extra messages that we can consume.
 
         Arguments:
+        ---------
             queue (str): The queue name to pull from.
 
         Returns:
+        -------
             List[Message]
         """
         # drain_events calls `can_consume` first, consuming

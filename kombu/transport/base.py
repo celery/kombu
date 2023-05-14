@@ -55,6 +55,7 @@ def to_rabbitmq_queue_arguments(arguments, **options):
             This will be converted to ``x-max-priority`` int.
 
     Returns:
+    -------
         Dict: RabbitMQ compatible queue arguments.
     """
     prepared = dictfilter(dict(
@@ -96,6 +97,7 @@ class StdChannel:
         """Callback called after RPC reply received.
 
         Notes:
+        -----
            Reply queue semantics: can be used to delete the queue
            after transient reply message received.
         """

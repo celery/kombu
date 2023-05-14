@@ -24,6 +24,7 @@ class FairCycle:
     an equal chance to be consumed from.
 
     Arguments:
+    ---------
         fun (Callable): Callback to call.
         resources (Sequence[Any]): List of resources.
         predicate (type): Exception predicate.

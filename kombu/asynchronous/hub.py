@@ -57,6 +57,7 @@ class Hub:
     """Event loop object.
 
     Arguments:
+    ---------
         timer (kombu.asynchronous.Timer): Specify custom timer instance.
     """
 

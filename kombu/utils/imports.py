@@ -29,6 +29,7 @@ def symbol_by_name(name, aliases=None, imp=None, package=None,
     mappings, the name is looked up in the aliases first.
 
     Examples:
+    --------
         >>> symbol_by_name('celery.concurrency.processes.TaskPool')
         <class 'celery.concurrency.processes.TaskPool'>
 
