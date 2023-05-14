@@ -163,7 +163,9 @@ class QoS(virtual.QoS):
 
     @contextmanager
     def pipe_or_acquire(self, pipe=None, client=None):
-        if pipe:
+        # haim: fix redis pipeline execution out of order:
+        # https://github.com/redis/redis-py/issues/994
+        if pipe is not None:
             yield pipe
         else:
             with self.channel.conn_or_acquire(client) as client:
