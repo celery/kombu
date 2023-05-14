@@ -14,7 +14,7 @@ jobs:
         uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
         id: python
-        uses: actions/setup-python@main
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
@@ -32,7 +32,7 @@ jobs:
         python-version: [3.8,3.9,"3.10"]
         experimental: [false]
         include:
-          - python-version: pypy-3.9
+          - python-version: pypy3.9
             experimental: true
     steps:
       - name: Install system packages
@@ -41,23 +41,21 @@ jobs:
         uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
         id: python
-        uses: actions/setup-python@main
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
         run: pip install --upgrade pip wheel tox tox-docker
       # Tox fails if a Python versions contains a hyphen, this changes "pypy-3.9" to "pypy3.9".
-      - name: Determine Python version
-        run: echo PYTHON_VERSION=$(echo ${{ matrix.python-version }} | sed s/-//) >> $GITHUB_ENV
       - name: Run AMQP integration tests
-        run: tox -v -e ${{ env.PYTHON_VERSION }}-linux-integration-py-amqp -- -v
+        run: tox -v -e ${{ matrix.python-version }}-linux-integration-py-amqp -- -v
       - name: Run redis integration tests
-        run: tox -v -e ${{ env.PYTHON_VERSION }}-linux-integration-py-redis -- -v
+        run: tox -v -e ${{ matrix.python-version }}-linux-integration-py-redis -- -v
       - name: Run MongoDB integration tests
-        run: tox -v -e ${{ env.PYTHON_VERSION }}-linux-integration-py-mongodb -- -v
+        run: tox -v -e ${{ matrix.python-version }}-linux-integration-py-mongodb -- -v
       - name: Run kafka integration tests
-        if: ${{ env.PYTHON_VERSION != 'pypy3.9'}}
-        run: tox -v -e ${{ env.PYTHON_VERSION }}-linux-integration-py-kafka -- -v
+        if: ${{ matrix.python-version != 'pypy3.9'}}
+        run: tox -v -e ${{ matrix.python-version }}-linux-integration-py-kafka -- -v
 
   #################### Linters and checkers ####################
   lint:
@@ -73,7 +71,7 @@ jobs:
         uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
         id: python
-        uses: actions/setup-python@main
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
