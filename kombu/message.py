@@ -20,7 +20,6 @@ class Message:
 
     Keyword Arguments:
     -----------------
-
         channel (ChannelT): If message was received, this should be the
             channel that the message was received on.
 

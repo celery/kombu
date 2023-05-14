@@ -1363,7 +1363,6 @@ class SentinelChannel(Channel):
 
     Example:
     -------
-
     .. code-block:: python
 
         >>> import kombu

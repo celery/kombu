@@ -68,7 +68,6 @@ class ConsumerMixin:
 
     Methods:
     -------
-
         * :meth:`extra_context`
 
             Optional extra context manager that will be entered

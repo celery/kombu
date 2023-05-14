@@ -22,7 +22,6 @@ Connection String
 For details about ``SQL_ALCHEMY_CONNECTION_STRING`` see SQLAlchemy Engine Configuration documentation.
 Examples:
 --------
-
 .. code-block::
 
     # PostgreSQL with default driver
