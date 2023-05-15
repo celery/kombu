@@ -1362,7 +1362,7 @@ class SentinelChannel(Channel):
      * `master_name` - name of the redis group to poll
 
     Example:
-
+    -------
     .. code-block:: python
 
         >>> import kombu

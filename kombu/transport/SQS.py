@@ -305,7 +305,8 @@ class Channel(virtual.Channel):
     def drain_events(self, timeout=None, callback=None, **kwargs):
         """Return a single payload message from one of our queues.
 
-        Raises:
+        Raises
+        ------
             Queue.Empty: if no messages available.
         """
         # If we're not allowed to consume or have no consumers, raise Empty
@@ -318,7 +319,8 @@ class Channel(virtual.Channel):
     def _reset_cycle(self):
         """Reset the consume cycle.
 
-        Returns:
+        Returns
+        -------
             FairCycle: object that points to our _get_bulk() method
                 rather than the standard _get() method.  This allows for
                 multiple messages to be returned at once from SQS (
@@ -341,11 +343,12 @@ class Channel(virtual.Channel):
         return self.entity_name(self.queue_name_prefix + queue_name)
 
     def _new_queue(self, queue, **kwargs):
-        """
-        Ensure a queue with given name exists in SQS.
+        """Ensure a queue with given name exists in SQS.
+
         Arguments:
+        ---------
             queue (str): the AMQP queue name
-        Returns:
+        Returns
             str: the SQS queue URL
         """
         # Translate to SQS name for consistency with initial
@@ -481,10 +484,12 @@ class Channel(virtual.Channel):
         the 'ack' settings for that queue.
 
         Arguments:
+        ---------
             messages (SQSMessage): A list of SQS Message objects.
             queue (str): Name representing the queue they came from.
 
-        Returns:
+        Returns
+        -------
             List: A list of Payload objects
         """
         q_url = self._new_queue(queue)
@@ -501,15 +506,18 @@ class Channel(virtual.Channel):
         prefetch_count).
 
         Note:
+        ----
             Ignores QoS limits so caller is responsible for checking
             that we are allowed to consume at least one message from the
             queue.  get_bulk will then ask QoS for an estimate of
             the number of extra messages that we can consume.
 
         Arguments:
+        ---------
             queue (str): The queue name to pull from.
 
-        Returns:
+        Returns
+        -------
             List[Message]
         """
         # drain_events calls `can_consume` first, consuming

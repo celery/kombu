@@ -17,6 +17,7 @@ class ExchangeType:
     Implements the specifics for an exchange type.
 
     Arguments:
+    ---------
         channel (ChannelT): AMQ Channel.
     """
 
@@ -28,7 +29,8 @@ class ExchangeType:
     def lookup(self, table, exchange, routing_key, default):
         """Lookup all queues matching `routing_key` in `exchange`.
 
-        Returns:
+        Returns
+        -------
             str: queue name, or 'default' if no queues matched.
         """
         raise NotImplementedError('subclass responsibility')
@@ -36,7 +38,8 @@ class ExchangeType:
     def prepare_bind(self, queue, exchange, routing_key, arguments):
         """Prepare queue-binding.
 
-        Returns:
+        Returns
+        -------
             Tuple[str, Pattern, str]: of `(routing_key, regex, queue)`
                 to be stored for bindings to this exchange.
         """
@@ -137,7 +140,8 @@ class FanoutExchange(ExchangeType):
     attribute is set to true, and the `Channel._queue_bind` and
     `Channel.get_table` methods are implemented.
 
-    See Also:
+    See Also
+    --------
         the redis backend for an example implementation of these methods.
     """
 
