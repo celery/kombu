@@ -98,7 +98,7 @@ setup(
     },
     platforms=['any'],
     license='BSD-3-Clause',
-    python_requires=">=3.8.1",
+    python_requires=">=3.8",
     install_requires=reqs('default.txt'),
     tests_require=reqs('test.txt'),
     extras_require={
