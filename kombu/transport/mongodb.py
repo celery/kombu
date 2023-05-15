@@ -448,6 +448,7 @@ class Channel(virtual.Channel):
         """Get expiration header named `argument` of queue definition.
 
         Note:
+        ----
             `queue` must be either queue name or options itself.
         """
         if isinstance(queue, str):

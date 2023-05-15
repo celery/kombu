@@ -49,6 +49,7 @@ class ConsumerMixin:
     channels can be used for different QoS requirements.
 
     Example:
+    -------
         .. code-block:: python
 
             class Worker(ConsumerMixin):
@@ -65,8 +66,8 @@ class ConsumerMixin:
                     print('Got task: {0!r}'.format(body))
                     message.ack()
 
-    Methods:
-
+    Methods
+    -------
         * :meth:`extra_context`
 
             Optional extra context manager that will be entered
@@ -257,6 +258,7 @@ class ConsumerProducerMixin(ConsumerMixin):
     publishing messages.
 
     Example:
+    -------
         .. code-block:: python
 
             class Worker(ConsumerProducerMixin):

@@ -11,13 +11,15 @@ __all__ = ('TokenBucket',)
 class TokenBucket:
     """Token Bucket Algorithm.
 
-    See Also:
+    See Also
+    --------
         https://en.wikipedia.org/wiki/Token_Bucket
 
         Most of this code was stolen from an entry in the ASPN Python Cookbook:
         https://code.activestate.com/recipes/511490/
 
     Warning:
+    -------
         Thread Safety: This implementation is not thread safe.
         Access to a `TokenBucket` instance should occur within the critical
         section of any multithreaded code.
@@ -51,7 +53,8 @@ class TokenBucket:
     def can_consume(self, tokens=1):
         """Check if one or more tokens can be consumed.
 
-        Returns:
+        Returns
+        -------
             bool: true if the number of tokens can be consumed
                 from the bucket.  If they can be consumed, a call will also
                 consume the requested number of tokens from the bucket.
@@ -67,7 +70,8 @@ class TokenBucket:
     def expected_time(self, tokens=1):
         """Return estimated time of token availability.
 
-        Returns:
+        Returns
+        -------
             float: the time in seconds.
         """
         _tokens = self._get_tokens()

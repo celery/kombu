@@ -67,12 +67,14 @@ class Resource:
         """Acquire resource.
 
         Arguments:
+        ---------
             block (bool): If the limit is exceeded,
                 then block until there is an available item.
             timeout (float): Timeout to wait
                 if ``block`` is true.  Default is :const:`None` (forever).
 
-        Raises:
+        Raises
+        ------
             LimitExceeded: if block is false and the limit has been exceeded.
         """
         if self._closed:
@@ -103,6 +105,7 @@ class Resource:
             """Release resource so it can be used by another thread.
 
             Warnings:
+            --------
                 The caller is responsible for discarding the object,
                 and to never use the resource again.  A new resource must
                 be acquired if so needed.

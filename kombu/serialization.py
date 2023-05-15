@@ -72,6 +72,7 @@ class SerializerRegistry:
         """Register a new encoder/decoder.
 
         Arguments:
+        ---------
             name (str): A convenience name for the serialization method.
 
             encoder (callable): A method that will be passed a python data
@@ -114,9 +115,11 @@ class SerializerRegistry:
         """Unregister registered encoder/decoder.
 
         Arguments:
+        ---------
             name (str): Registered serialization method name.
 
-        Raises:
+        Raises
+        ------
             SerializerNotInstalled: If a serializer by that name
                 cannot be found.
         """
@@ -134,11 +137,13 @@ class SerializerRegistry:
         """Set the default serialization method used by this library.
 
         Arguments:
+        ---------
             name (str): The name of the registered serialization method.
                 For example, `json` (default), `pickle`, `yaml`, `msgpack`,
                 or any custom methods registered using :meth:`register`.
 
-        Raises:
+        Raises
+        ------
             SerializerNotInstalled: If the serialization method
                 requested is not available.
         """
@@ -156,6 +161,7 @@ class SerializerRegistry:
         as an AMQP message body.
 
         Arguments:
+        ---------
             data (List, Dict, str): The message data to send.
 
             serializer (str): An optional string representing
@@ -171,12 +177,14 @@ class SerializerRegistry:
                 serialization method will be used even if a :class:`str`
                 or :class:`unicode` object is passed in.
 
-        Returns:
+        Returns
+        -------
             Tuple[str, str, str]: A three-item tuple containing the
             content type (e.g., `application/json`), content encoding, (e.g.,
             `utf-8`) and a string containing the serialized data.
 
-        Raises:
+        Raises
+        ------
             SerializerNotInstalled: If the serialization method
                 requested is not available.
         """
@@ -220,6 +228,7 @@ class SerializerRegistry:
         based on `content_type`.
 
         Arguments:
+        ---------
             data (bytes, buffer, str): The message data to deserialize.
 
             content_type (str): The content-type of the data.
@@ -230,10 +239,12 @@ class SerializerRegistry:
 
             accept (Set): List of content-types to accept.
 
-        Raises:
+        Raises
+        ------
             ContentDisallowed: If the content-type is not accepted.
 
-        Returns:
+        Returns
+        -------
             Any: The unserialized data.
         """
         content_type = (bytes_to_str(content_type) if content_type
@@ -343,7 +354,8 @@ def register_pickle():
 def register_msgpack():
     """Register msgpack serializer.
 
-    See Also:
+    See Also
+    --------
         https://msgpack.org/.
     """
     pack = unpack = None
@@ -391,6 +403,7 @@ def enable_insecure_serializers(choices=NOTSET):
     """Enable serializers that are considered to be unsafe.
 
     Note:
+    ----
         Will enable ``pickle``, ``yaml`` and ``msgpack`` by default, but you
         can also specify a list of serializers (by name or content type)
         to enable.
@@ -411,6 +424,7 @@ def disable_insecure_serializers(allowed=NOTSET):
     or you can specify a list of deserializers to allow.
 
     Note:
+    ----
         Producers will still be able to serialize data
         in these formats, but consumers will not accept
         incoming data using the untrusted content types.
@@ -434,7 +448,8 @@ for ep, args in entrypoints('kombu.serializers'):  # pragma: no cover
 def prepare_accept_content(content_types, name_to_type=None):
     """Replace aliases of content_types with full names from registry.
 
-    Raises:
+    Raises
+    ------
         SerializerNotInstalled: If the serialization method
             requested is not available.
     """

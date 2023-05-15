@@ -23,6 +23,7 @@ class Producer:
     """Message Producer.
 
     Arguments:
+    ---------
         channel (kombu.Connection, ChannelT): Connection or channel.
         exchange (kombu.entity.Exchange, str): Optional default exchange.
         routing_key (str): Optional default routing key.
@@ -93,6 +94,7 @@ class Producer:
         """Declare the exchange.
 
         Note:
+        ----
             This happens automatically at instantiation when
             the :attr:`auto_declare` flag is enabled.
         """
@@ -126,6 +128,7 @@ class Producer:
         """Publish message to the specified exchange.
 
         Arguments:
+        ---------
             body (Any): Message body.
             routing_key (str): Message routing key.
             delivery_mode (enum): See :attr:`delivery_mode`.
@@ -293,6 +296,7 @@ class Consumer:
     """Message consumer.
 
     Arguments:
+    ---------
         channel (kombu.Connection, ChannelT): see :attr:`channel`.
         queues (Sequence[kombu.Queue]): see :attr:`queues`.
         no_ack (bool): see :attr:`no_ack`.
@@ -426,6 +430,7 @@ class Consumer:
         """Declare queues, exchanges and bindings.
 
         Note:
+        ----
             This is done automatically at instantiation
             when :attr:`auto_declare` is set.
         """
@@ -436,6 +441,7 @@ class Consumer:
         """Register a new callback to be called when a message is received.
 
         Note:
+        ----
             The signature of the callback needs to accept two arguments:
             `(body, message)`, which is the decoded message body
             and the :class:`~kombu.Message` instance.
@@ -464,6 +470,7 @@ class Consumer:
         """Add a queue to the list of queues to consume from.
 
         Note:
+        ----
             This will not start consuming from the queue,
             for that you will have to call :meth:`consume` after.
         """
@@ -482,6 +489,7 @@ class Consumer:
         use :meth:`cancel_by_queue`).
 
         Arguments:
+        ---------
             no_ack (bool): See :attr:`no_ack`.
         """
         queues = list(self._queues.values())
@@ -497,6 +505,7 @@ class Consumer:
         """End all active queue consumers.
 
         Note:
+        ----
             This does not affect already delivered messages, but it does
             mean the server will not send any more messages for this consumer.
         """
@@ -530,6 +539,7 @@ class Consumer:
         """Purge messages from all queues.
 
         Warning:
+        -------
             This will *delete all ready messages*, there is no undo operation.
         """
         return sum(queue.purge() for queue in self._queues.values())
@@ -559,6 +569,7 @@ class Consumer:
         The prefetch window is Ignored if the :attr:`no_ack` option is set.
 
         Arguments:
+        ---------
             prefetch_size (int): Specify the prefetch window in octets.
                 The server will send a message in advance if it is equal to
                 or smaller in size than the available prefetch size (and
@@ -582,6 +593,7 @@ class Consumer:
         on the specified channel.
 
         Arguments:
+        ---------
             requeue (bool): By default the messages will be redelivered
                 to the original recipient. With `requeue` set to true, the
                 server will attempt to requeue the message, potentially then
@@ -595,10 +607,12 @@ class Consumer:
         This dispatches to the registered :attr:`callbacks`.
 
         Arguments:
+        ---------
             body (Any): The decoded message body.
             message (~kombu.Message): The message instance.
 
-        Raises:
+        Raises
+        ------
             NotImplementedError: If no consumer callbacks have been
                 registered.
         """

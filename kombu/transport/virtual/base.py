@@ -159,6 +159,7 @@ class QoS:
     Only supports `prefetch_count` at this point.
 
     Arguments:
+    ---------
         channel (ChannelT): Connection channel.
         prefetch_count (int): Initial prefetch count (defaults to 0).
     """
@@ -211,7 +212,8 @@ class QoS:
         bulk 'get message' calls are preferred to many individual 'get message'
         calls - like SQS.
 
-        Returns:
+        Returns
+        -------
             int: greater than zero.
         """
         pcount = self.prefetch_count
@@ -273,6 +275,7 @@ class QoS:
         """Restore all unacknowledged messages at shutdown/gc collect.
 
         Note:
+        ----
             Can only be called once for each instance, subsequent
             calls will be ignored.
         """
@@ -306,6 +309,7 @@ class QoS:
         To be filled in for visibility_timeout style implementations.
 
         Note:
+        ----
             This is implementation optional, and currently only
             used by the Redis transport.
         """
@@ -355,6 +359,7 @@ class AbstractChannel:
     you'd usually want to implement in a virtual channel.
 
     Note:
+    ----
         Do not subclass directly, but rather inherit
         from :class:`Channel`.
     """
@@ -379,6 +384,7 @@ class AbstractChannel:
         """Delete `queue`.
 
         Note:
+        ----
             This just purges the queue, if you need to do more you can
             override this method.
         """
@@ -388,6 +394,7 @@ class AbstractChannel:
         """Create new queue.
 
         Note:
+        ----
             Your transport can override this method if it needs
             to do something whenever a new queue is declared.
         """
@@ -395,7 +402,8 @@ class AbstractChannel:
     def _has_queue(self, queue, **kwargs):
         """Verify that queue exists.
 
-        Returns:
+        Returns
+        -------
             bool: Should return :const:`True` if the queue exists
                 or :const:`False` otherwise.
         """
@@ -414,6 +422,7 @@ class Channel(AbstractChannel, base.StdChannel):
     """Virtual channel.
 
     Arguments:
+    ---------
         connection (ConnectionT): The transport instance this
             channel is part of.
     """
@@ -675,6 +684,7 @@ class Channel(AbstractChannel, base.StdChannel):
         """Change QoS settings for this channel.
 
         Note:
+        ----
             Only `prefetch_count` is supported.
         """
         self.qos.prefetch_count = prefetch_count
@@ -697,7 +707,8 @@ class Channel(AbstractChannel, base.StdChannel):
     def _lookup(self, exchange, routing_key, default=None):
         """Find all queues matching `routing_key` for the given `exchange`.
 
-        Returns:
+        Returns
+        -------
             list[str]: queue names -- must return `[default]`
                 if default is set and no queues matched.
         """
@@ -765,7 +776,8 @@ class Channel(AbstractChannel, base.StdChannel):
     def flow(self, active=True):
         """Enable/disable message flow.
 
-        Raises:
+        Raises
+        ------
             NotImplementedError: as flow
                 is not implemented by the base virtual implementation.
         """
@@ -838,6 +850,7 @@ class Channel(AbstractChannel, base.StdChannel):
         The value is limited to within a boundary of 0 to 9.
 
         Note:
+        ----
             Higher value has more priority.
         """
         try:
@@ -887,6 +900,7 @@ class Transport(base.Transport):
     """Virtual transport.
 
     Arguments:
+    ---------
         client (kombu.Connection): The client this is a transport for.
     """
 
