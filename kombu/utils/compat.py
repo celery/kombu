@@ -6,6 +6,7 @@ import numbers
 import sys
 from contextlib import contextmanager
 from functools import wraps
+from typing import TYPE_CHECKING
 
 try:
     from importlib import metadata as importlib_metadata
@@ -16,6 +17,11 @@ except ImportError:
 from io import UnsupportedOperation
 
 from kombu.exceptions import reraise
+
+if TYPE_CHECKING:
+    from importlib.metadata import EntryPoint
+    from io import StringIO
+    from typing import Any, Callable, Generator, Optional, Tuple, Union
 
 FILENO_ERRORS = (AttributeError, ValueError, UnsupportedOperation)
 
@@ -31,7 +37,7 @@ except ImportError:  # pragma: no cover
 _environment = None
 
 
-def coro(gen):
+def coro(gen: Generator) -> Callable:
     """Decorator to mark generator as co-routine."""
     @wraps(gen)
     def wind_up(*args, **kwargs):
@@ -41,7 +47,7 @@ def coro(gen):
     return wind_up
 
 
-def _detect_environment():
+def _detect_environment() -> str:
     # ## -eventlet-
     if 'eventlet' in sys.modules:
         try:
@@ -69,7 +75,7 @@ def _detect_environment():
     return 'default'
 
 
-def detect_environment():
+def detect_environment() -> str:
     """Detect the current environment: default, eventlet, or gevent."""
     global _environment
     if _environment is None:
@@ -77,7 +83,7 @@ def detect_environment():
     return _environment
 
 
-def entrypoints(namespace):
+def entrypoints(namespace: str) -> Tuple[Tuple[EntryPoint, Any]]:
     """Return setuptools entrypoints for namespace."""
     if sys.version_info >= (3,10):
         entry_points = importlib_metadata.entry_points(group=namespace)
@@ -94,19 +100,19 @@ def entrypoints(namespace):
     )
 
 
-def fileno(f):
+def fileno(f: Union[numbers.Integral, StringIO]) -> numbers.Integral | int:
     """Get fileno from file-like object."""
     if isinstance(f, numbers.Integral):
         return f
     return f.fileno()
 
 
-def maybe_fileno(f):
+def maybe_fileno(f) -> Optional[numbers.Integral | int]:
     """Get object fileno, or :const:`None` if not defined."""
     try:
         return fileno(f)
     except FILENO_ERRORS:
-        pass
+        return None
 
 
 @contextmanager
