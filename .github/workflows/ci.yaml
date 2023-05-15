@@ -20,7 +20,7 @@ jobs:
       - name: Install dependencies
         run: pip install --upgrade pip wheel tox tox-docker
       - name: Run unittest
-        run: tox -v -e ${{ matrix.python-version }}-linux-unit -- -v
+        run: poetry run tox -v -e ${{ matrix.python-version }}-linux-unit -- -v
   #################### Integration tests ####################
   integration:
     needs: [unittest]
@@ -44,18 +44,21 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
+      - name: Setup Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: 1.4.2
       - name: Install dependencies
-        run: pip install --upgrade pip wheel tox tox-docker
-      # Tox fails if a Python versions contains a hyphen, this changes "pypy-3.9" to "pypy3.9".
+      - run: poetry install --with test,test-ci
       - name: Run AMQP integration tests
-        run: tox -v -e ${{ matrix.python-version }}-linux-integration-py-amqp -- -v
+        run: poetry run tox -v -e ${{ matrix.python-version }}-linux-integration-py-amqp -- -v
       - name: Run redis integration tests
-        run: tox -v -e ${{ matrix.python-version }}-linux-integration-py-redis -- -v
+        run: poetry run tox -v -e ${{ matrix.python-version }}-linux-integration-py-redis -- -v
       - name: Run MongoDB integration tests
-        run: tox -v -e ${{ matrix.python-version }}-linux-integration-py-mongodb -- -v
+        run: poetry run tox -v -e ${{ matrix.python-version }}-linux-integration-py-mongodb -- -v
       - name: Run kafka integration tests
         if: ${{ matrix.python-version != 'pypy3.9'}}
-        run: tox -v -e ${{ matrix.python-version }}-linux-integration-py-kafka -- -v
+        run: poetry run tox -v -e ${{ matrix.python-version }}-linux-integration-py-kafka -- -v
 
   #################### Linters and checkers ####################
   lint:
@@ -74,13 +77,17 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
+      - name: Setup Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: 1.4.2
       - name: Install dependencies
-        run: pip install --upgrade pip wheel tox tox-docker
+        run: poetry install --with test,test-ci
       - name: Run flake8
-        run: tox -v -e flake8 -- -v
+        run: poetry run tox -v -e flake8 -- -v
       - name: Run pydocstyle
-        run: tox -v -e pydocstyle -- -v
+        run: poetry run tox -v -e pydocstyle -- -v
       - name: Run apicheck
-        run: tox -v -e apicheck -- -v
+        run: poetry run tox -v -e apicheck -- -v
       - name: Run mypy
-        run: tox -v -e mypy -- -v
+        run: poetry run tox -v -e mypy -- -v

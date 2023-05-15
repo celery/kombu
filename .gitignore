@@ -36,3 +36,4 @@ venv/
 env
 .eggs
 .python-version
+poetry.lock
