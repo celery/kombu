@@ -7,7 +7,6 @@ import sys
 
 from setuptools import setup
 
-
 # -- Parse meta
 re_meta = re.compile(r'__(\w+?)__\s*=\s*(.*)')
 re_doc = re.compile(r'^"""(.+?)"""')
