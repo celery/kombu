@@ -1,5 +1,3 @@
-importlib-metadata>=3.6; python_version<"3.8"
-cached_property; python_version<"3.8"
 typing_extensions; python_version<"3.10"
 amqp>=5.1.1,<6.0.0
 vine
