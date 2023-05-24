@@ -4,6 +4,23 @@
  Change history
 ================
 
+.. _version-5.3.0rc1:
+
+5.3.0rc1
+========
+:release-date: 24 May, 2023
+:release-by: Asif Saif Uddin
+
+- Moved to pytest-freezer (#1683).
+- Deprecate pytz and use zoneinfo (#1680).
+- handle keyerror in azureservicebus transport when message is not
+found in qos and perform basic_ack (#1691).
+- fix mongodb transport obsolete calls (#1694).
+- SQS: avoid excessive GetQueueURL calls by using cached queue url (#1621).
+- Update confluentkafka.txt version (#1727).
+- Revert back to pyro4 for now.
+
+
 .. _version-5.3.0b3:
 
 5.3.0b3
