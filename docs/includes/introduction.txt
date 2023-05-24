@@ -1,4 +1,4 @@
-:Version: 5.3.0b3
+:Version: 5.3.0rc1
 :Web: https://kombu.readthedocs.io/
 :Download: https://pypi.org/project/kombu/
 :Source: https://github.com/celery/kombu/
