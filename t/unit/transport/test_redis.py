@@ -1105,8 +1105,8 @@ class test_Channel:
 
     def test_register_with_event_loop__on_disconnect__per_connection(self):
         """Disconnection stops the respective event loop."""
-        transport = self.connection.transport
-        self.connection._sock = None
+        connection = Connection(transport=Transport)
+        transport = connection.transport
         transport.cycle = Mock(name='cycle')
         transport.cycle.fds = {12: 'LISTEN', 13: 'BRPOP'}
 
