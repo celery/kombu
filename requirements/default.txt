@@ -1,3 +1,4 @@
 typing_extensions; python_version<"3.10"
 amqp>=5.1.1,<6.0.0
 vine
+backports.zoneinfo>=0.2.1; python_version < '3.9'
