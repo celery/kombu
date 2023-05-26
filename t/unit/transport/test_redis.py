@@ -940,7 +940,7 @@ class test_Channel:
         loop.on_tick = set()
         redis.Transport.register_with_event_loop(transport, conn, loop)
         assert len(loop.on_tick) == 1
-        transport.cycle._on_connection_disconnect(self.connection)
+        transport.cycle._on_connection_disconnect(conn)
         if fds:
             assert len(loop.on_tick) == 0
         else:
