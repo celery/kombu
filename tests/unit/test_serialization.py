@@ -7,7 +7,7 @@ from unittest.mock import call, patch
 
 import pytest
 
-import t.skip
+import tests.skip
 from kombu.exceptions import ContentDisallowed, DecodeError, EncodeError
 from kombu.serialization import (SerializerNotInstalled,
                                  disable_insecure_serializers, dumps,
@@ -193,7 +193,7 @@ class test_Serialization:
         )
         assert a == b
 
-    @t.skip.if_pypy
+    @tests.skip.if_pypy
     def test_msgpack_loads(self):
         register_msgpack()
         pytest.importorskip('msgpack')
@@ -202,7 +202,7 @@ class test_Serialization:
                     content_encoding='binary')
         assert res == msgpack_py_data
 
-    @t.skip.if_pypy
+    @tests.skip.if_pypy
     def test_msgpack_dumps(self):
         pytest.importorskip('msgpack')
         register_msgpack()

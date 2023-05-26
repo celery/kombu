@@ -9,7 +9,7 @@ from kombu import Connection, Exchange, Producer, Queue, binding
 from kombu.abstract import MaybeChannelBound
 from kombu.exceptions import NotBoundError
 from kombu.serialization import registry
-from t.mocks import Transport
+from tests.mocks import Transport
 
 
 def get_conn() -> Connection:

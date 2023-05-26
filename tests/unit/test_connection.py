@@ -11,7 +11,7 @@ from kombu import Connection, Consumer, Producer, parse_url
 from kombu.connection import Resource
 from kombu.exceptions import OperationalError
 from kombu.utils.functional import lazy
-from t.mocks import TimeoutingTransport, Transport
+from tests.mocks import TimeoutingTransport, Transport
 
 
 class test_connection_utils:

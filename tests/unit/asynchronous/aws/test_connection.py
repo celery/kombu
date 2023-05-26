@@ -14,7 +14,7 @@ from kombu.asynchronous.aws.connection import (AsyncAWSQueryConnection,
                                                AsyncHTTPSConnection)
 from kombu.asynchronous.aws.ext import boto3
 from kombu.exceptions import HttpError
-from t.mocks import PromiseMock
+from tests.mocks import PromiseMock
 
 from .case import AWSCase
 

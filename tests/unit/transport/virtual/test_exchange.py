@@ -6,7 +6,7 @@ import pytest
 
 from kombu import Connection
 from kombu.transport.virtual import exchange
-from t.mocks import Transport
+from tests.mocks import Transport
 
 
 class ExchangeCase:

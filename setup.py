@@ -5,7 +5,6 @@ import os
 import re
 import sys
 
-import setuptools
 from setuptools import setup
 
 # -- Parse meta
@@ -82,7 +81,6 @@ def readme():
 
 setup(
     name='kombu',
-    packages=setuptools.find_packages(exclude=['t', 't.*']),
     version=meta['version'],
     description=meta['doc'],
     keywords='messaging message amqp rabbitmq redis actor producer consumer',

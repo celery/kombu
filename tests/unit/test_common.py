@@ -11,7 +11,7 @@ from kombu import common
 from kombu.common import (PREFETCH_COUNT_MAX, Broadcast, QoS, collect_replies,
                           declaration_cached, generate_oid, ignore_errors,
                           maybe_declare, send_reply)
-from t.mocks import ContextMock, MockPool
+from tests.mocks import ContextMock, MockPool
 
 if TYPE_CHECKING:
     from types import TracebackType

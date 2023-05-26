@@ -6,11 +6,11 @@ from unittest.mock import Mock
 import pytest
 from vine import promise
 
-import t.skip
+import tests.skip
 from kombu.asynchronous import http
 from kombu.asynchronous.http.base import BaseClient, normalize_header
 from kombu.exceptions import HttpError
-from t.mocks import PromiseMock
+from tests.mocks import PromiseMock
 
 
 class test_Headers:
@@ -143,7 +143,7 @@ class test_BaseClient:
         c.close.assert_called_with()
 
 
-@t.skip.if_pypy
+@tests.skip.if_pypy
 class test_Client:
 
     def test_get_client(self, hub):

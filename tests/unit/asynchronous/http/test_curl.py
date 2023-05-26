@@ -5,13 +5,13 @@ from unittest.mock import ANY, Mock, call, patch
 
 import pytest
 
-import t.skip
+import tests.skip
 from kombu.asynchronous.http.curl import READ, WRITE, CurlClient
 
 pytest.importorskip('pycurl')
 
 
-@t.skip.if_pypy
+@tests.skip.if_pypy
 @pytest.mark.usefixtures('hub')
 class test_CurlClient:
 

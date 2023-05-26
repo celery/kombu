@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from kombu import Connection, Exchange, Queue, compat
-from t.mocks import Channel, Transport
+from tests.mocks import Channel, Transport
 
 
 class test_misc:
