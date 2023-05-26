@@ -1103,6 +1103,33 @@ class test_Channel:
             # on_tick shouldn't be cleared when polling hasn't started
             assert len(loop.on_tick) == 1
 
+    def test_register_with_event_loop__on_disconnect__per_connection(self):
+        """Disconnection stops the respective event loop."""
+        transport = self.connection.transport
+        self.connection._sock = None
+        transport.cycle = Mock(name='cycle')
+        transport.cycle.fds = {12: 'LISTEN', 13: 'BRPOP'}
+
+        # create a first connection and register with event loop
+        conn = Mock(name='conn')
+        conn.client = Mock(name='client', transport_options={})
+        loop = Mock(name='loop')
+        loop.on_tick = set()
+        redis.Transport.register_with_event_loop(transport, conn, loop)
+        assert len(loop.on_tick) == 1
+        first_on_tick = list(loop.on_tick)[0]
+
+        # create a second connection and register with event loop
+        conn_2 = Mock(name='conn_2')
+        conn_2.client = Mock(name='client', transport_options={})
+        redis.Transport.register_with_event_loop(transport, conn_2, loop)
+        assert len(loop.on_tick) == 2
+
+        # disconnect the first connection, expect its event loop entry to be removed
+        transport.cycle._on_connection_disconnect(conn)
+        assert len(loop.on_tick) == 1
+        assert list(loop.on_tick)[0] is not first_on_tick
+
     def test_configurable_health_check(self):
         transport = self.connection.transport
         transport.cycle = Mock(name='cycle')
