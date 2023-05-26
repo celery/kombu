@@ -1329,7 +1329,9 @@ class Transport(virtual.Transport):
             if cycle.fds:
                 # stop polling in the event loop
                 try:
-                    on_poll_start = self.on_poll_start_by_connection.pop(connection)
+                    on_poll_start = self.on_poll_start_by_connection.pop(
+                        connection
+                    )
                     loop.on_tick.remove(on_poll_start)
                 except KeyError:
                     pass

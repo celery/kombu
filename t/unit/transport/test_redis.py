@@ -1125,7 +1125,7 @@ class test_Channel:
         redis.Transport.register_with_event_loop(transport, conn_2, loop)
         assert len(loop.on_tick) == 2
 
-        # disconnect the first connection, expect its event loop entry to be removed
+        # disconnect the first connection, expected event loop entry removed
         transport.cycle._on_connection_disconnect(conn)
         assert len(loop.on_tick) == 1
         assert list(loop.on_tick)[0] is not first_on_tick
