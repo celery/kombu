@@ -47,7 +47,7 @@ def invalid_connection():
 @pytest.mark.env('redis')
 def test_failed_credentials():
     """Tests denied connection when wrong credentials were provided"""
-    with pytest.raises(redis.exceptions.ResponseError):
+    with pytest.raises(redis.exceptions.AuthenticationError):
         get_connection(
             hostname=os.environ.get('REDIS_HOST', 'localhost'),
             port=os.environ.get('REDIS_6379_TCP', '6379'),

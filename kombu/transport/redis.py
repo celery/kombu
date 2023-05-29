@@ -1143,11 +1143,17 @@ class Channel(virtual.Channel):
 
         # If the connection class does not support the `health_check_interval`
         # argument then remove it.
-        if (
-            hasattr(conn_class, '__init__') and
-            not accepts_argument(conn_class.__init__, 'health_check_interval')
-        ):
-            connparams.pop('health_check_interval')
+        if hasattr(conn_class, '__init__'):
+            # check health_check_interval for the class and bases
+            # classes
+            classes = [conn_class]
+            if hasattr(conn_class, '__bases__'):
+                classes += list(conn_class.__bases__)
+            for klass in classes:
+                if accepts_argument(klass.__init__, 'health_check_interval'):
+                    break
+            else:  # no break
+                connparams.pop('health_check_interval')
 
         if conninfo.ssl:
             # Connection(ssl={}) must be a dict containing the keys:
