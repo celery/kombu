@@ -4,6 +4,18 @@
  Change history
 ================
 
+.. _version-5.3.0rc2:
+
+5.3.0rc2
+========
+:release-date: 31 May, 2023
+:release-by: Asif Saif Uddin
+
+- add missing zoneinfo dependency (#1732).
+- Support redis >= 4.5.2
+- Loosen urlib3 version range for botocore compat
+
+
 .. _version-5.3.0rc1:
 
 5.3.0rc1
