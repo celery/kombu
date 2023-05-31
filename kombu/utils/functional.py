@@ -45,6 +45,7 @@ class LRUCache(UserDict):
     """LRU Cache implementation using a doubly linked list to track access.
 
     Arguments:
+    ---------
         limit (int): The maximum number of keys to keep in the cache.
             When a new key is inserted and the limit has been exceeded,
             the *Least Recently Used* key will be discarded from the
@@ -221,6 +222,7 @@ def is_list(obj, scalars=(Mapping, str), iters=(Iterable,)):
     """Return true if the object is iterable.
 
     Note:
+    ----
         Returns false if object is a mapping or string.
     """
     return isinstance(obj, iters) and not isinstance(obj, scalars or ())
@@ -279,11 +281,13 @@ def retry_over_time(fun, catch, args=None, kwargs=None, errback=None,
     is increased for every retry until the max seconds is reached.
 
     Arguments:
+    ---------
         fun (Callable): The function to try
         catch (Tuple[BaseException]): Exceptions to catch, can be either
             tuple or a single exception class.
 
     Keyword Arguments:
+    -----------------
         args (Tuple): Positional arguments passed on to the function.
         kwargs (Dict): Keyword arguments passed on to the function.
         errback (Callable): Callback for when an exception in ``catch``

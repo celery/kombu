@@ -149,6 +149,7 @@ class Timer:
         """Enter function into the scheduler.
 
         Arguments:
+        ---------
             entry (~kombu.asynchronous.timer.Entry): Item to enter.
             eta (datetime.datetime): Scheduled time.
             priority (int): Unused.

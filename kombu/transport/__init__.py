@@ -52,6 +52,7 @@ def resolve_transport(transport: str | None = None) -> str | None:
     """Get transport by name.
 
     Arguments:
+    ---------
         transport (Union[str, type]): This can be either
             an actual transport class, or the fully qualified
             path to a transport class, or the alias of a transport.

@@ -19,7 +19,7 @@ class Message:
     """Base class for received messages.
 
     Keyword Arguments:
-
+    -----------------
         channel (ChannelT): If message was received, this should be the
             channel that the message was received on.
 
@@ -103,7 +103,8 @@ class Message:
 
         This will remove the message from the queue.
 
-        Raises:
+        Raises
+        ------
             MessageStateError: If the message has already been
                 acknowledged/requeued/rejected.
         """
@@ -148,7 +149,8 @@ class Message:
 
         The message will be discarded by the server.
 
-        Raises:
+        Raises
+        ------
             MessageStateError: If the message has already been
                 acknowledged/requeued/rejected.
         """
@@ -166,10 +168,12 @@ class Message:
         """Reject this message and put it back on the queue.
 
         Warning:
+        -------
             You must not use this method as a means of selecting messages
             to process.
 
-        Raises:
+        Raises
+        ------
             MessageStateError: If the message has already been
                 acknowledged/requeued/rejected.
         """
@@ -189,6 +193,7 @@ class Message:
         Returning the original python structure sent by the publisher.
 
         Note:
+        ----
             The return value is memoized, use `_decode` to force
             re-evaluation.
         """
