@@ -7,9 +7,9 @@ pymongo>=4.1.1; sys_platform != 'win32'
 -r extras/msgpack.txt
 -r extras/azureservicebus.txt
 -r extras/azurestoragequeues.txt
-boto3==1.26.104; sys_platform != 'win32'
+boto3>=1.26.143; sys_platform != 'win32'
 pycurl==7.43.0.5; sys_platform != 'win32'
-urllib3==1.26.15; sys_platform != 'win32'
+urllib3>=1.26.16; sys_platform != 'win32'
 -r extras/consul.txt
 -r extras/zookeeper.txt
 -r extras/brotli.txt
