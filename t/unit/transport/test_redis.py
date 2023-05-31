@@ -1104,7 +1104,7 @@ class test_Channel:
             assert len(loop.on_tick) == 1
 
     def test_register_with_event_loop__on_disconnect__per_connection(self):
-        """Disconnection stops the respective event loop."""
+        """Disconnection removes the respective function in event loop."""
         connection = Connection(transport=Transport)
         transport = connection.transport
         transport.cycle = Mock(name='cycle')
