@@ -4,6 +4,28 @@
  Change history
 ================
 
+.. _version-5.3.0:
+
+5.3.0
+=====
+:release-date: 03 Jun, 2023
+:release-by: Asif Saif Uddin
+
+- Support for Kafka as transport.
+- Add fanout to filesystem (#1499).
+- Added possibility to serialize and deserialize binary messages in json (#1516).
+- Support pymongo 4.x (#1536).
+- Support redis-py 4.5.x.
+- Upgrade Azure Storage Queues transport to version 12 (#1539).
+- Add support to SQS DelaySeconds (#1567).
+- Add WATCH to prefixed complex commands.
+- Avoid losing type of UUID when serializing/deserializing (#1575).
+- Added HLEN to the list of prefixed redis commands (#1540).
+- Add managed identity support to azure storage queue (#1631).
+- Add Support of sqlalchemy v2.0.
+- Deprecate pytz and use zoneinfo (#1680)
+
+
 .. _version-5.3.0rc2:
 
 5.3.0rc2
