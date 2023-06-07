@@ -8,7 +8,7 @@ pymongo>=4.1.1; sys_platform != 'win32'
 -r extras/azureservicebus.txt
 -r extras/azurestoragequeues.txt
 boto3>=1.26.143; sys_platform != 'win32'
-pycurl==7.43.0.5; sys_platform != 'win32'
+pycurl>=7.43.0.5; sys_platform != 'win32' and platform_python_implementation=="CPython"
 urllib3>=1.26.16; sys_platform != 'win32'
 -r extras/consul.txt
 -r extras/zookeeper.txt
