@@ -273,23 +273,24 @@ class Channel(virtual.Channel):
         return msg
 
     def basic_ack(self, delivery_tag: str, multiple: bool = False) -> None:
-        delivery_info = self.qos.get(delivery_tag).delivery_info
-
-        if delivery_info['exchange'] in self._noack_queues:
-            return super().basic_ack(delivery_tag)
-
-        queue = delivery_info['azure_queue_name']
-        # recv_mode is PEEK_LOCK when ack'ing messages
-        queue_obj = self._get_asb_receiver(queue)
-
         try:
-            queue_obj.receiver.complete_message(delivery_info['azure_message'])
-        except azure.servicebus.exceptions.MessageAlreadySettled:
+            delivery_info = self.qos.get(delivery_tag).delivery_info
+        except KeyError:
             super().basic_ack(delivery_tag)
-        except Exception:
-            super().basic_reject(delivery_tag)
         else:
-            super().basic_ack(delivery_tag)
+            queue = delivery_info['azure_queue_name']
+            # recv_mode is PEEK_LOCK when ack'ing messages
+            queue_obj = self._get_asb_receiver(queue)
+
+            try:
+                queue_obj.receiver.complete_message(
+                    delivery_info['azure_message'])
+            except azure.servicebus.exceptions.MessageAlreadySettled:
+                super().basic_ack(delivery_tag)
+            except Exception:
+                super().basic_reject(delivery_tag)
+            else:
+                super().basic_ack(delivery_tag)
 
     def _size(self, queue: str) -> int:
         """Return the number of messages in a queue."""

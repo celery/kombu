@@ -4,6 +4,57 @@
  Change history
 ================
 
+.. _version-5.3.0:
+
+5.3.0
+=====
+:release-date: 03 Jun, 2023
+:release-by: Asif Saif Uddin
+
+- Support for Kafka as transport.
+- Add fanout to filesystem (#1499).
+- Added possibility to serialize and deserialize binary messages in json (#1516).
+- Support pymongo 4.x (#1536).
+- Support redis-py 4.5.x.
+- Upgrade Azure Storage Queues transport to version 12 (#1539).
+- Add support to SQS DelaySeconds (#1567).
+- Add WATCH to prefixed complex commands.
+- Avoid losing type of UUID when serializing/deserializing (#1575).
+- Added HLEN to the list of prefixed redis commands (#1540).
+- Add managed identity support to azure storage queue (#1631).
+- Add Support of sqlalchemy v2.0.
+- Deprecate pytz and use zoneinfo (#1680)
+
+
+.. _version-5.3.0rc2:
+
+5.3.0rc2
+========
+:release-date: 31 May, 2023
+:release-by: Asif Saif Uddin
+
+- add missing zoneinfo dependency (#1732).
+- Support redis >= 4.5.2
+- Loosen urlib3 version range for botocore compat
+
+
+.. _version-5.3.0rc1:
+
+5.3.0rc1
+========
+:release-date: 24 May, 2023
+:release-by: Asif Saif Uddin
+
+- Moved to pytest-freezer (#1683).
+- Deprecate pytz and use zoneinfo (#1680).
+- handle keyerror in azureservicebus transport when message is not
+found in qos and perform basic_ack (#1691).
+- fix mongodb transport obsolete calls (#1694).
+- SQS: avoid excessive GetQueueURL calls by using cached queue url (#1621).
+- Update confluentkafka.txt version (#1727).
+- Revert back to pyro4 for now.
+
+
 .. _version-5.3.0b3:
 
 5.3.0b3

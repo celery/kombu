@@ -1,17 +1,22 @@
 from __future__ import annotations
 
+import sys
 import uuid
 from collections import namedtuple
 from datetime import datetime
 from decimal import Decimal
 
 import pytest
-import pytz
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from kombu.utils.encoding import str_to_bytes
 from kombu.utils.json import dumps, loads
+
+if sys.version_info >= (3, 9):
+    from zoneinfo import ZoneInfo
+else:
+    from backports.zoneinfo import ZoneInfo
 
 
 class Custom:
@@ -27,7 +32,7 @@ class test_JSONEncoder:
     @pytest.mark.freeze_time("2015-10-21")
     def test_datetime(self):
         now = datetime.utcnow()
-        now_utc = now.replace(tzinfo=pytz.utc)
+        now_utc = now.replace(tzinfo=ZoneInfo("UTC"))
 
         original = {
             'datetime': now,

@@ -5,4 +5,4 @@ git+https://github.com/celery/sphinx_celery.git
 -r extras/azureservicebus.txt
 # we cannot use directly extras/sqs.txt
 # since readthedocs cannot install pycurl
-boto3>=1.4.4
+boto3>=1.26.143

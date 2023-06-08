@@ -6,13 +6,7 @@ import numbers
 import sys
 from contextlib import contextmanager
 from functools import wraps
-
-try:
-    from importlib import metadata as importlib_metadata
-except ImportError:
-    # TODO: Remove this when we drop support for Python 3.7
-    import importlib_metadata
-
+from importlib import metadata as importlib_metadata
 from io import UnsupportedOperation
 
 from kombu.exceptions import reraise
