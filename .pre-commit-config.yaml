@@ -1,12 +1,12 @@
 repos:
   - repo: https://github.com/asottile/pyupgrade
-    rev: v3.3.1
+    rev: v3.6.0
     hooks:
       - id: pyupgrade
         args: ["--py37-plus", "--keep-runtime-typing"]
 
   - repo: https://github.com/PyCQA/autoflake
-    rev: v2.1.0
+    rev: v2.1.1
     hooks:
       - id: autoflake
         args: ["--in-place", "--ignore-pass-after-docstring", "--imports"]
@@ -17,7 +17,7 @@ repos:
       - id: flake8
 
   - repo: https://github.com/asottile/yesqa
-    rev: v1.4.0
+    rev: v1.5.0
     hooks:
       - id: yesqa
 
