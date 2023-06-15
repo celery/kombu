@@ -20,7 +20,6 @@ else:
 
 
 class Custom:
-
     def __init__(self, data):
         self.data = data
 
@@ -71,6 +70,11 @@ class test_JSONEncoder:
             lambda: uuid.uuid3(uuid.NAMESPACE_URL, "https://example.org"),
             uuid.uuid4,
             lambda: uuid.uuid5(uuid.NAMESPACE_URL, "https://example.org"),
+            # The uuids below correspond to v6, v7 and v8 respectively and were
+            # generated using the package uuid6.
+            lambda: uuid.UUID("1ee0b1e6-dd55-63d2-867f-88cb9205458f"),
+            lambda: uuid.UUID("0188bcbb-8475-7605-a094-fe41c58df798"),
+            lambda: uuid.UUID("0188bcbb-8cb2-8bf7-b3b5-fd1faa0431bd"),
         ]
         for constructor in constructors:
             id = constructor()
