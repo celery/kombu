@@ -123,6 +123,6 @@ register_type(Decimal, "decimal", str, Decimal)
 register_type(
     uuid.UUID,
     "uuid",
-    lambda o: {"hex": o.hex, "version": o.version},
+    lambda o: {"hex": o.hex},
     lambda o: uuid.UUID(**o),
 )
