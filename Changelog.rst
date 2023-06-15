@@ -4,6 +4,19 @@
  Change history
 ================
 
+.. _version-5.3.1:
+
+5.3.1
+=====
+:release-date: 15 Jun, 2023
+:release-by: Asif Saif Uddin
+
+- Update pycurl version.
+- Declare python 3.11 support (#1425).
+- Fix: allow deserializing any version of UUID.
+- Update PyCurl version in SQS (#1747).
+
+
 .. _version-5.3.0:
 
 5.3.0
