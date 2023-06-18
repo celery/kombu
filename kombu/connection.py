@@ -543,12 +543,6 @@ class Connection:
         """
         if retry_errors is None:
             retry_errors = tuple()
-        elif max_retries is None:
-            # If the retry_errors is specified, but max_retries is not,
-            # this could lead into an infinite loop potentially.
-            raise ValueError(
-                "max_retries must be specified if retry_errors is specified"
-            )
 
         def _ensured(*args, **kwargs):
             got_connection = 0
