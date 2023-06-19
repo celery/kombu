@@ -5,13 +5,12 @@ from __future__ import annotations
 __all__ = ('cached_property',)
 
 try:
-    from functools import _NOT_FOUND
     from functools import cached_property as _cached_property
 except ImportError:
     # TODO: Remove this fallback once we drop support for Python < 3.8
     from cached_property import threaded_cached_property as _cached_property
 
-    _NOT_FOUND = object()
+_NOT_FOUND = object()
 
 
 class cached_property(_cached_property):
