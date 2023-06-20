@@ -524,8 +524,7 @@ class Connection:
             on_revive (Callable): Optional callback called whenever
                 revival completes successfully
             retry_errors (tuple): Optional list of errors to retry on
-                regardless of the connection state. Must provide max_retries
-                if this is specified.
+                regardless of the connection state.
 
         Examples
         --------
