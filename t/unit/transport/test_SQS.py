@@ -11,8 +11,8 @@ import os
 import random
 import string
 from datetime import datetime, timedelta
-from queue import Empty
 from operator import itemgetter
+from queue import Empty
 from unittest.mock import Mock, patch
 
 import pytest

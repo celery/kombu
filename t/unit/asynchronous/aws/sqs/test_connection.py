@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from unittest.mock import Mock
 
-from kombu.asynchronous.hub import Hub
 from kombu.asynchronous.aws.ext import boto3
 from kombu.asynchronous.aws.sqs.connection import AsyncSQSConnection
+from kombu.asynchronous.hub import Hub
 from kombu.utils.uuid import uuid
 from t.mocks import PromiseMock
 
