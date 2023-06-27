@@ -11,6 +11,7 @@ import os
 import random
 import string
 from datetime import datetime, timedelta
+from operator import itemgetter
 from queue import Empty
 from unittest.mock import Mock, patch
 
@@ -457,23 +458,21 @@ class test_Channel:
         # which is already a mock thanks to `setup` above, we just need to
         # mock the async-specific methods (as test_AsyncSQSConnection does)
         async_sqs_conn = self.channel.asynsqs(self.queue_name)
-        async_sqs_conn.get_list = Mock(name='X.get_list')
+        async_sqs_conn.receive_message = Mock(name='X.receive_message')
 
         # Call key method
         self.channel._get_bulk_async(self.queue_name)
 
-        assert async_sqs_conn.get_list.call_count == 1
-        get_list_args = async_sqs_conn.get_list.call_args[0]
-        get_list_kwargs = async_sqs_conn.get_list.call_args[1]
-        assert get_list_args[0] == 'ReceiveMessage'
-        assert get_list_args[1] == {
-            'MaxNumberOfMessages': SQS.SQS_MAX_MESSAGES,
-            'AttributeName.1': 'ApproximateReceiveCount',
-            'WaitTimeSeconds': self.channel.wait_time_seconds,
-        }
-        assert get_list_args[3] == \
-               self.channel.sqs().get_queue_url(self.queue_name).url
-        assert get_list_kwargs['parent'] == self.queue_name
+        assert async_sqs_conn.receive_message.call_count == 1
+
+        args, kwargs = async_sqs_conn.receive_message.call_args
+        (q_url, ) = args
+        (number_messages, wait_time_seconds, _) = itemgetter(
+            'number_messages', 'wait_time_seconds', 'callback'
+        )(kwargs)
+        assert q_url == self.channel.sqs().get_queue_url(self.queue_name).url
+        assert number_messages == SQS.SQS_MAX_MESSAGES
+        assert wait_time_seconds == self.channel.wait_time_seconds
 
     def test_drain_events_with_empty_list(self):
         def mock_can_consume():
