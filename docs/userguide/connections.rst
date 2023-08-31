@@ -67,7 +67,7 @@ resources:
 .. _connection-urls:
 
 Celery with SQS
-====
+=============
 
 .. code-block:: python
 
