@@ -66,6 +66,34 @@ resources:
 
 .. _connection-urls:
 
+Celery with SQS
+===============
+SQS broker url doesn't include queue_name_prefix by default.
+So we can use the following code snippet to make it work in celery.
+.. code-block:: python
+
+    from celery import Celery
+    def make_celery(app):
+        celery = Celery(
+            app.import_name,
+            broker="sqs://",
+            broker_transport_options={
+                "queue_name_prefix": "{SERVICE_ENV}-{SERVICE_NAME}-"
+            },
+        )
+        task_base = celery.Task
+
+        class ContextTask(task_base):
+            abstract = True
+
+            def __call__(self, *args, **kwargs):
+                with app.app_context():
+                    return task_base.__call__(self, *args, **kwargs)
+
+        celery.Task = ContextTask
+
+        return celery
+
 URLs
 ====
 
@@ -88,7 +116,7 @@ All of these are valid URLs:
 
     # Using Redis over a Unix socket
     redis+socket:///tmp/redis.sock
-    
+
     # Using Redis sentinel
     sentinel://sentinel1:26379;sentinel://sentinel2:26379
 
