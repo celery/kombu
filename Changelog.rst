@@ -4,6 +4,24 @@
  Change history
 ================
 
+.. _version-5.3.2:
+
+5.3.2
+=====
+:release-date: 31 Aug, 2023
+:release-by: Tomer Nosrati
+
+- Reverted unwanted constraint introduced in #1629 with max_retries (#1755)
+- Doc fix (hotfix for #1755) (#1758)
+- Python3.12: fix imports in kombu/utils/objects.py (#1756)
+- [fix #1726] Use boto3 for SQS async requests (#1759)
+- docs: Remove SimpleQueue import (#1764)
+- Fixed pre-commit issues (#1773)
+- azure service bus: add managed identity support (#1641)
+- fix: Prevent redis task loss when closing connection while in poll (#1733)
+- Kombu & celery with SQS #222 (#1779)
+- syntax correction (#1780)
+
 .. _version-5.3.1:
 
 5.3.1
