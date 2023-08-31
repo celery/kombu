@@ -68,7 +68,8 @@ resources:
 
 Celery with SQS
 =============
-SQS broker url doesn't include queue_name_prefix by default. So we can use the following code snippet to make it work.
+SQS broker url doesn't include queue_name_prefix by default.
+So we can use the following code snippet to make it work in celery.
 .. code-block:: python
 
     from celery import Celery
