@@ -176,6 +176,14 @@ class InvalidQueueException(Exception):
     """Predefined queues are being used and configuration is not valid."""
 
 
+class AccessDeniedQueueException(Exception):
+    """Raised when access to the AWS queue is denied.
+
+    This may occur if the permissions are not correctly set or the
+    credentials are invalid.
+    """
+
+
 class QoS(virtual.QoS):
     """Quality of Service guarantees implementation for SQS."""
 
@@ -633,7 +641,11 @@ class Channel(virtual.Channel):
                     QueueUrl=message['sqs_queue'],
                     ReceiptHandle=sqs_message['ReceiptHandle']
                 )
-            except ClientError:
+            except ClientError as exception:
+                if exception.response['Error']['Code'] == 'AccessDenied':
+                    raise AccessDeniedQueueException(
+                        exception.response["Error"]["Message"]
+                        )
                 super().basic_reject(delivery_tag)
             else:
                 super().basic_ack(delivery_tag)

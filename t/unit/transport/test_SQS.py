@@ -646,6 +646,46 @@ class test_Channel:
         basic_reject_mock.assert_called_with(2)
         assert not basic_ack_mock.called
 
+    @patch('kombu.transport.virtual.base.Channel.basic_ack')
+    @patch('kombu.transport.virtual.base.Channel.basic_reject')
+    def test_basic_ack_access_denied(self, basic_reject_mock, basic_ack_mock):
+        """Test that basic_ack raises AccessDeniedQueueException when
+           access is denied"""
+        message = {
+            'sqs_message': {
+                'ReceiptHandle': '2'
+            },
+            'sqs_queue': 'testing_queue'
+        }
+        error_response = {
+            'Error': {
+                'Code': 'AccessDenied',
+                'Message': """An error occurred (AccessDenied) when calling the
+                              DeleteMessage operation."""
+            }
+        }
+        operation_name = 'DeleteMessage'
+
+        mock_messages = Mock()
+        mock_messages.delivery_info = message
+        self.channel.qos.append(mock_messages, 2)
+        self.channel.sqs().delete_message = Mock()
+        self.channel.sqs().delete_message.side_effect = ClientError(
+            error_response=error_response,
+            operation_name=operation_name
+        )
+
+        # Expecting the custom AccessDeniedQueueException to be raised
+        with pytest.raises(SQS.AccessDeniedQueueException):
+            self.channel.basic_ack(2)
+
+        self.sqs_conn_mock.delete_message.assert_called_with(
+            QueueUrl=message['sqs_queue'],
+            ReceiptHandle=message['sqs_message']['ReceiptHandle']
+        )
+        assert not basic_reject_mock.called
+        assert not basic_ack_mock.called
+
     def test_reject_when_no_predefined_queues(self):
         connection = Connection(transport=SQS.Transport, transport_options={})
         channel = connection.channel()
