@@ -120,7 +120,7 @@ class Channel(virtual.Channel):
     default_uamqp_keep_alive_interval: int = 30
     # number of retries (is the default from service bus repo)
     default_retry_total: int = 3
-    default_max_lock_renewal_duration = 300
+    default_max_lock_renewal_duration: int = 300
     # exponential backoff factor (is the default from service bus repo)
     default_retry_backoff_factor: float = 0.8
     # Max time to backoff (is the default from service bus repo)
