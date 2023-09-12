@@ -53,6 +53,9 @@ Transport Options
 * ``retry_backoff_factor`` - Azure SDK exponential backoff factor.
   Default ``0.8``
 * ``retry_backoff_max`` - Azure SDK retry total time. Default ``120``
+* ``use_lock_renewal`` - Use Lock Renewal Azure SDK retry total time. Default ``120``
+* ``max_lock_renewal_duration`` - Azure SDK time in seconds that locks registered to a renewer
+  should be maintained for. Max value is ``300`` (5 minutes)
 """
 
 from __future__ import annotations
@@ -64,9 +67,9 @@ from typing import Any, Dict, Set
 import azure.core.exceptions
 import azure.servicebus.exceptions
 import isodate
-from azure.servicebus import (ServiceBusClient, ServiceBusMessage,
-                              ServiceBusReceiveMode, ServiceBusReceiver,
-                              ServiceBusSender)
+from azure.servicebus import (AutoLockRenewer, ServiceBusClient,
+                              ServiceBusMessage, ServiceBusReceiveMode,
+                              ServiceBusReceiver, ServiceBusSender)
 from azure.servicebus.management import ServiceBusAdministrationClient
 
 try:
@@ -117,6 +120,7 @@ class Channel(virtual.Channel):
     default_uamqp_keep_alive_interval: int = 30
     # number of retries (is the default from service bus repo)
     default_retry_total: int = 3
+    default_max_lock_renewal_duration = 300
     # exponential backoff factor (is the default from service bus repo)
     default_retry_backoff_factor: float = 0.8
     # Max time to backoff (is the default from service bus repo)
@@ -272,6 +276,15 @@ class Channel(virtual.Channel):
 
         # message.body is either byte or generator[bytes]
         message = messages[0]
+
+        if self.use_lock_renewal:
+            with self.queue_service.get_queue_receiver(
+                queue_name=queue,
+                receive_mode=ServiceBusReceiveMode.PEEK_LOCK,
+                keep_alive=self.uamqp_keep_alive_interval
+            ) as receiver, AutoLockRenewer() as lock_renewer:
+                lock_renewer.register(receiver, message, max_lock_renewal_duration=self.max_lock_renewal_duration)
+
         if not isinstance(message.body, bytes):
             body = b''.join(message.body)
         else:
@@ -394,6 +407,16 @@ class Channel(virtual.Channel):
     def wait_time_seconds(self) -> int:
         return self.transport_options.get('wait_time_seconds',
                                           self.default_wait_time_seconds)
+
+    @cached_property
+    def max_lock_renewal_duration(self) -> int:
+        return min(self.transport_options.get('max_lock_renewal_duration',
+                                              self.default_max_lock_renewal_duration),
+                   self.default_max_lock_renewal_duration)
+
+    @cached_property
+    def use_lock_renewal(self) -> int:
+        return self.transport_options.get('use_lock_renewal', False)
 
     @cached_property
     def peek_lock_seconds(self) -> int:
