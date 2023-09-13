@@ -53,7 +53,7 @@ Transport Options
 * ``retry_backoff_factor`` - Azure SDK exponential backoff factor.
   Default ``0.8``
 * ``retry_backoff_max`` - Azure SDK retry total time. Default ``120``
-* ``use_lock_renewal`` - Use Lock Renewal Azure SDK retry total time. Default ``120``
+* ``use_lock_renewal`` - Use Azure SDK Auto Lock Renewal. Works only if receive mode ``PEEK_LOCK`` is in use
 * ``max_lock_renewal_duration`` - Azure SDK time in seconds that locks registered to a renewer
   should be maintained for. Max value is ``300`` (5 minutes)
 """
@@ -203,8 +203,9 @@ class Channel(virtual.Channel):
         queue_obj = self._queue_cache.get(cache_key, None)
         if queue_obj is None or queue_obj.receiver is None:
             auto_lock_renewer = None
-            if self.use_lock_renewal:
-                auto_lock_renewer = AutoLockRenewer(max_lock_renewal_duration=self.max_lock_renewal_duration)
+            if self.use_lock_renewal and recv_mode == ServiceBusReceiveMode.PEEK_LOCK:
+                auto_lock_renewer = AutoLockRenewer(
+                    max_lock_renewal_duration=self.max_lock_renewal_duration)
 
             receiver = self.queue_service.get_queue_receiver(
                 queue_name=queue, receive_mode=recv_mode,
