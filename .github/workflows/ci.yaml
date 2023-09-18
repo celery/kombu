@@ -11,7 +11,7 @@ jobs:
       - name: Install system packages
         run: sudo apt-get update && sudo apt-get install libcurl4-openssl-dev libssl-dev
       - name: Check out code from GitHub
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
         id: python
         uses: actions/setup-python@v4
@@ -38,7 +38,7 @@ jobs:
       - name: Install system packages
         run: sudo apt-get update && sudo apt-get install libcurl4-openssl-dev libssl-dev
       - name: Check out code from GitHub
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
         id: python
         uses: actions/setup-python@v4
@@ -68,7 +68,7 @@ jobs:
       - name: Install system packages
         run: sudo apt-get update && sudo apt-get install libcurl4-openssl-dev libssl-dev
       - name: Check out code from GitHub
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
         id: python
         uses: actions/setup-python@v4
