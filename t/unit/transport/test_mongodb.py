@@ -87,19 +87,19 @@ class test_mongodb_uri_parsing:
         assert hostname == 'mongodb://localhost:27018'
 
     def test_replicaset_hosts(self):
-        url = 'mongodb://mongodb1.example.com:27317,mongodb2.example.com:27017/?replicaSet=test_rs'
+        url = 'mongodb://mongodb1.example.com:27317,mongodb2.example.com:27017/?replicaSet=test_rs'  # noqa
         channel = _create_mock_connection(url).default_channel
         hostname, dbname, options = channel._parse_uri()
 
-        assert hostname == 'mongodb://mongodb1.example.com:27317,mongodb2.example.com:27017/?replicaSet=test_rs'
+        assert hostname == 'mongodb://mongodb1.example.com:27317,mongodb2.example.com:27017/?replicaSet=test_rs'  # noqa
         assert options['replicaset'] == 'test_rs'
 
     def test_replicaset_hosts_custom_database(self):
-        url = 'mongodb://mongodb1.example.com:27317,mongodb2.example.com:27017/dbname?replicaSet=test_rs'
+        url = 'mongodb://mongodb1.example.com:27317,mongodb2.example.com:27017/dbname?replicaSet=test_rs'  # noqa
         channel = _create_mock_connection(url).default_channel
         hostname, dbname, options = channel._parse_uri()
 
-        assert hostname == 'mongodb://mongodb1.example.com:27317,mongodb2.example.com:27017/?replicaSet=test_rs'
+        assert hostname == 'mongodb://mongodb1.example.com:27317,mongodb2.example.com:27017/?replicaSet=test_rs'  # noqa
         assert dbname == 'dbname'
         assert options['replicaset'] == 'test_rs'
 
