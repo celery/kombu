@@ -47,6 +47,7 @@ from kombu.utils.compat import _detect_environment
 from kombu.utils.encoding import bytes_to_str
 from kombu.utils.json import dumps, loads
 from kombu.utils.objects import cached_property
+from kombu.utils.url import maybe_sanitize_url
 
 from . import virtual
 from .base import to_rabbitmq_queue_arguments
@@ -510,3 +511,15 @@ class Transport(virtual.Transport):
 
     def driver_version(self):
         return pymongo.version
+
+    def as_uri(self, uri: str, include_password=False, mask='**') -> str:
+        if not uri:
+            return 'mongodb://'
+        if include_password:
+            return uri
+
+        if ',' not in uri:
+            return maybe_sanitize_url(uri)
+
+        uri1, remainder = uri.split(',', 1)
+        return ','.join([maybe_sanitize_url(uri1), remainder])
