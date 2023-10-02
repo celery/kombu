@@ -140,6 +140,10 @@ class Channel(virtual.Channel):
     def _try_parse_connection_string(self) -> None:
         self._namespace, self._credential = Transport.parse_uri(
             self.conninfo.hostname)
+
+        if isinstance(self._credential, DefaultAzureCredential) or isinstance(self._credential, ManagedIdentityCredential):
+            return None
+
         if ":" in self._credential:
             self._policy, self._sas_key = self._credential.split(':', 1)
 
@@ -434,7 +438,7 @@ class Transport(virtual.Transport):
     can_parse_url = True
 
     @staticmethod
-    def parse_uri(uri: str) -> tuple[str, str, str]:
+    def parse_uri(uri: str) -> tuple[str, str | DefaultAzureCredential | ManagedIdentityCredential]:
         # URL like:
         #  azureservicebus://{SAS policy name}:{SAS key}@{ServiceBus Namespace}
         # urllib parse does not work as the sas key could contain a slash
