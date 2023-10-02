@@ -35,7 +35,7 @@ Connection string has the following formats:
 .. code-block::
 
     azureservicebus://SAS_POLICY_NAME:SAS_KEY@SERVICE_BUSNAMESPACE
-    azureservicebus://DefaultAzureIdentity@SERVICE_BUSNAMESPACE
+    azureservicebus://DefaultAzureCredential@SERVICE_BUSNAMESPACE
     azureservicebus://ManagedIdentityCredential@SERVICE_BUSNAMESPACE
 
 Transport Options
