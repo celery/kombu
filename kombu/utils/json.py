@@ -1,5 +1,5 @@
 """JSON Serialization Utilities."""
-
+import base64
 import datetime
 import decimal
 import json as stdjson
@@ -69,6 +69,19 @@ def dumps(s, _dumps=json.dumps, cls=None, default_kwargs=None, **kwargs):
                   **dict(default_kwargs, **kwargs))
 
 
+def object_hook(dct):
+    """Hook function to perform custom deserialization."""
+    if "__bytes__" in dct:
+        return dct["bytes"].encode("utf-8")
+    if "__base64__" in dct:
+        return base64.b64decode(dct["bytes"].encode("utf-8"))
+    if "__uuid__" in dct:
+        return uuid.UUID(dct["uuid"], version=dct["version"])
+    if "__datetime__" in dct:
+        return datetime.datetime.fromisoformat(dct["datetime"])
+    return dct
+
+
 def loads(s, _loads=json.loads, decode_bytes=True):
     """Deserialize json from string."""
     # None of the json implementations supports decoding from
@@ -88,4 +101,4 @@ def loads(s, _loads=json.loads, decode_bytes=True):
         return _loads(s)
     except _DecodeError:
         # catch "Unpaired high surrogate" error
-        return stdjson.loads(s)
+        return stdjson.loads(s, object_hook=object_hook)
