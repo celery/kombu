@@ -16,6 +16,13 @@ import azure.core.exceptions  # noqa
 import azure.servicebus.exceptions  # noqa
 from azure.servicebus import ServiceBusMessage, ServiceBusReceiveMode  # noqa
 
+try:
+    from azure.identity import (DefaultAzureCredential,
+                                ManagedIdentityCredential)
+except ImportError:
+    DefaultAzureCredential = None
+    ManagedIdentityCredential = None
+
 from kombu.transport import azureservicebus  # noqa
 
 
@@ -95,7 +102,9 @@ class ASBMgmtMock:
 
 
 URL_NOCREDS = 'azureservicebus://'
-URL_CREDS = 'azureservicebus://policyname:ke/y@hostname'
+URL_CREDS_SAS = 'azureservicebus://policyname:ke/y@hostname'
+URL_CREDS_DA = 'azureservicebus://DefaultAzureCredential@hostname'
+URL_CREDS_MI = 'azureservicebus://ManagedIdentityCredential@hostname'
 
 
 def test_queue_service_nocredentials():
@@ -105,9 +114,9 @@ def test_queue_service_nocredentials():
         assert exc == 'Need an URI like azureservicebus://{SAS policy name}:{SAS key}@{ServiceBus Namespace}'   # noqa
 
 
-def test_queue_service():
+def test_queue_service_sas():
     # Test gettings queue service without credentials
-    conn = Connection(URL_CREDS, transport=azureservicebus.Transport)
+    conn = Connection(URL_CREDS_SAS, transport=azureservicebus.Transport)
     with patch('kombu.transport.azureservicebus.ServiceBusClient') as m:
         channel = conn.channel()
 
@@ -126,20 +135,38 @@ def test_queue_service():
         assert m.from_connection_string.call_count == 1
 
 
+def test_queue_service_da():
+    conn = Connection(URL_CREDS_DA, transport=azureservicebus.Transport)
+    channel = conn.channel()
+
+    # Check the DefaultAzureCredential has been parsed from the url correctly
+    # and the credential is a ManagedIdentityCredential
+    assert isinstance(channel._credential, DefaultAzureCredential)
+
+
+def test_queue_service_mi():
+    conn = Connection(URL_CREDS_MI, transport=azureservicebus.Transport)
+    channel = conn.channel()
+
+    # Check the ManagedIdentityCredential has been parsed from the url
+    # correctly and the credential is a ManagedIdentityCredential
+    assert isinstance(channel._credential, ManagedIdentityCredential)
+
+
 def test_conninfo():
-    conn = Connection(URL_CREDS, transport=azureservicebus.Transport)
+    conn = Connection(URL_CREDS_SAS, transport=azureservicebus.Transport)
     channel = conn.channel()
     assert channel.conninfo is conn
 
 
 def test_transport_type():
-    conn = Connection(URL_CREDS, transport=azureservicebus.Transport)
+    conn = Connection(URL_CREDS_SAS, transport=azureservicebus.Transport)
     channel = conn.channel()
     assert not channel.transport_options
 
 
 def test_default_wait_timeout_seconds():
-    conn = Connection(URL_CREDS, transport=azureservicebus.Transport)
+    conn = Connection(URL_CREDS_SAS, transport=azureservicebus.Transport)
     channel = conn.channel()
 
     assert channel.wait_time_seconds == \
@@ -148,7 +175,7 @@ def test_default_wait_timeout_seconds():
 
 def test_custom_wait_timeout_seconds():
     conn = Connection(
-        URL_CREDS,
+        URL_CREDS_SAS,
         transport=azureservicebus.Transport,
         transport_options={'wait_time_seconds': 10}
     )
@@ -158,7 +185,7 @@ def test_custom_wait_timeout_seconds():
 
 
 def test_default_peek_lock_seconds():
-    conn = Connection(URL_CREDS, transport=azureservicebus.Transport)
+    conn = Connection(URL_CREDS_SAS, transport=azureservicebus.Transport)
     channel = conn.channel()
 
     assert channel.peek_lock_seconds == \
@@ -166,7 +193,7 @@ def test_default_peek_lock_seconds():
 
 
 def test_custom_peek_lock_seconds():
-    conn = Connection(URL_CREDS, transport=azureservicebus.Transport,
+    conn = Connection(URL_CREDS_SAS, transport=azureservicebus.Transport,
                       transport_options={'peek_lock_seconds': 65})
     channel = conn.channel()
 
@@ -175,7 +202,7 @@ def test_custom_peek_lock_seconds():
 
 def test_invalid_peek_lock_seconds():
     # Max is 300
-    conn = Connection(URL_CREDS, transport=azureservicebus.Transport,
+    conn = Connection(URL_CREDS_SAS, transport=azureservicebus.Transport,
                       transport_options={'peek_lock_seconds': 900})
     channel = conn.channel()
 
@@ -230,7 +257,7 @@ def mock_clients(
 def mock_queue(mock_asb, mock_asb_management, random_queue) -> MockQueue:
     exchange = Exchange('test_servicebus', type='direct')
     queue = Queue(random_queue, exchange, random_queue)
-    conn = Connection(URL_CREDS, transport=azureservicebus.Transport)
+    conn = Connection(URL_CREDS_SAS, transport=azureservicebus.Transport)
     channel = conn.channel()
 
     queue(channel).declare()
@@ -312,7 +339,7 @@ def test_purge(mock_queue: MockQueue):
 
 def test_custom_queue_name_prefix():
     conn = Connection(
-        URL_CREDS,
+        URL_CREDS_SAS,
         transport=azureservicebus.Transport,
         transport_options={'queue_name_prefix': 'test-queue'}
     )
@@ -322,7 +349,7 @@ def test_custom_queue_name_prefix():
 
 
 def test_custom_entity_name():
-    conn = Connection(URL_CREDS, transport=azureservicebus.Transport)
+    conn = Connection(URL_CREDS_SAS, transport=azureservicebus.Transport)
     channel = conn.channel()
 
     # dashes allowed and dots replaced by dashes
