@@ -148,8 +148,8 @@ def test_queue_service_mi():
     conn = Connection(URL_CREDS_MI, transport=azureservicebus.Transport)
     channel = conn.channel()
 
-    # Check the ManagedIdentityCredential has been parsed from the url correctly
-    # and the credential is a ManagedIdentityCredential
+    # Check the ManagedIdentityCredential has been parsed from the url
+    # correctly and the credential is a ManagedIdentityCredential
     assert isinstance(channel._credential, ManagedIdentityCredential)
 
 
