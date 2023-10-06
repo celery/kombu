@@ -193,7 +193,7 @@ class AsyncAWSQueryConnection(AsyncConnection):
         param_payload = {'data': params}
         if verb.lower() == 'get':
             # query-based opts
-            signing_type = 'presignurl'
+            signing_type = 'presign-url'
             param_payload = {'params': params}
 
         request = AWSRequest(method=verb, url=path, **param_payload)
