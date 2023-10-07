@@ -382,7 +382,9 @@ class QoS(virtual.QoS):
     def reject(self, delivery_tag, requeue=False):
         if requeue:
             self.restore_by_tag(delivery_tag, leftmost=True)
-        self.ack(delivery_tag)
+        else:
+            self._remove_from_indices(delivery_tag).execute()
+        super().ack(delivery_tag)
 
     @contextmanager
     def pipe_or_acquire(self, pipe=None, client=None):
