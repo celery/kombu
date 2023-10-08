@@ -1523,6 +1523,7 @@ class test_MultiChannelPoller:
         qos = redis.QoS(channel)
         qos._remove_from_indices = Mock(name='_remove_from_indices')
         qos.reject(1234)
+        qos._remove_from_indices.assert_called_with(1234)
 
     def test_qos_requeue(self):
         p, channel = self.create_get()
