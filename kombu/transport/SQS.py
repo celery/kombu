@@ -613,10 +613,10 @@ class Channel(virtual.Channel):
         Uses long polling and returns :class:`~vine.promises.promise`.
         """
         return connection.receive_message(
-            queue_url,
-            number_messages=count,
+            queue_name, queue_url, number_messages=count,
             wait_time_seconds=self.wait_time_seconds,
-            callback=callback)
+            callback=callback,
+        )
 
     def _restore(self, message,
                  unwanted_delivery_info=('sqs_message', 'sqs_queue')):
@@ -674,6 +674,12 @@ class Channel(virtual.Channel):
 
     def close(self):
         super().close()
+        # if self._asynsqs:
+        #     try:
+        #         self.asynsqs().close()
+        #     except AttributeError as exc:  # FIXME ???
+        #         if "can't set attribute" not in str(exc):
+        #             raise
 
     def new_sqs_client(self, region, access_key_id,
                        secret_access_key, session_token=None):
