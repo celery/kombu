@@ -193,7 +193,7 @@ class test_Hub:
         callback = Mock(name='callback')
         with patch.object(self.hub, '_ready_lock', autospec=True) as lock:
             self.hub.call_soon(callback)
-            assert lock.__enter__.called_once()
+            lock.__enter__.assert_called_once()
 
     def test_call_soon__promise_argument(self):
         callback = promise(Mock(name='callback'), (1, 2, 3))
