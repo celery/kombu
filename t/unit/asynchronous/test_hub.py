@@ -568,4 +568,4 @@ class test_Hub:
     def test__pop_ready_uses_lock(self):
         with patch.object(self.hub, '_ready_lock', autospec=True) as lock:
             self.hub._pop_ready()
-            assert lock.__enter__.called_once()
+            lock.__enter__.assert_called_once()
