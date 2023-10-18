@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from threading import RLock
+
 __all__ = ('cached_property',)
 
 try:
@@ -25,10 +27,17 @@ class cached_property(_cached_property):
             # This is a backport so we set this ourselves.
             self.attrname = self.func.__name__
 
+        if not hasattr(self, 'lock'):
+            # Prior to Python 3.12, functools.cached_property has an
+            # undocumented lock which is required for thread-safe __set__
+            # and __delete__. Create one if it isn't already present.
+            self.lock = RLock()
+
     def __get__(self, instance, owner=None):
         # TODO: Remove this after we drop support for Python<3.8
         #  or fix the signature in the cached_property package
-        return super().__get__(instance, owner)
+        with self.lock:
+            return super().__get__(instance, owner)
 
     def __set__(self, instance, value):
         if instance is None:
