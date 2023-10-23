@@ -1,11 +1,9 @@
 from __future__ import annotations
 
 import json
-
 from unittest.mock import MagicMock, Mock
 
-from kombu.asynchronous.aws.ext import AWSRequest
-from kombu.asynchronous.aws.ext import boto3
+from kombu.asynchronous.aws.ext import AWSRequest, boto3
 from kombu.asynchronous.aws.sqs.connection import AsyncSQSConnection
 from kombu.asynchronous.aws.sqs.message import AsyncMessage
 from kombu.asynchronous.aws.sqs.queue import AsyncQueue
@@ -13,7 +11,6 @@ from kombu.utils.uuid import uuid
 from t.mocks import PromiseMock
 
 from ..case import AWSCase
-
 
 SQS_URL = 'https://sqs.us-west-2.amazonaws.com/'
 
