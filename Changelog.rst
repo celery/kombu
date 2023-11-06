@@ -4,6 +4,24 @@
  Change history
 ================
 
+.. _version-5.3.3:
+
+5.3.3
+=====
+:release-date: 6 Nov, 2023
+:release-by: Asif Saif Uddin
+
+- Raise access denied error when ack.
+- test redis 5.0.0.
+- fix azure servicebus using managed identity support (#1801).
+- Added as_uri method to MongoDB transport - Fixes #1795 (#1796).
+- Revert "[fix #1726] Use boto3 for SQS async requests (#1759)" (#1799).
+- Create a lock on cached_property if not present (#1811).
+- Bump kafka deps versions & fix integration test failures (#1818).
+- Added Python 3.12 support.
+- Fix: redis requeue concurrency bug #1800 (#1805).
+
+
 .. _version-5.3.2:
 
 5.3.2
