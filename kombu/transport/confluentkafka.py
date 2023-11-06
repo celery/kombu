@@ -69,7 +69,8 @@ from kombu.utils.json import dumps, loads
 
 try:
     import confluent_kafka
-    from confluent_kafka import Consumer, Producer, TopicPartition, KafkaException
+    from confluent_kafka import (Consumer, KafkaException, Producer,
+                                 TopicPartition)
     from confluent_kafka.admin import AdminClient, NewTopic
 
     KAFKA_CONNECTION_ERRORS = ()
