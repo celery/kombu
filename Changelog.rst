@@ -4,6 +4,16 @@
  Change history
 ================
 
+.. _version-5.3.4:
+
+5.3.4
+=====
+:release-date: 16 Nov, 2023
+:release-by: Asif Saif Uddin
+
+- Use the correct protocol for SQS requests (#1807).
+
+
 .. _version-5.3.3:
 
 5.3.3
