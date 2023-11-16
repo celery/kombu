@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import json
 from unittest.mock import MagicMock, Mock
 
-from kombu.asynchronous.aws.ext import boto3
+from kombu.asynchronous.aws.ext import AWSRequest, boto3
 from kombu.asynchronous.aws.sqs.connection import AsyncSQSConnection
 from kombu.asynchronous.aws.sqs.message import AsyncMessage
 from kombu.asynchronous.aws.sqs.queue import AsyncQueue
@@ -10,6 +11,8 @@ from kombu.utils.uuid import uuid
 from t.mocks import PromiseMock
 
 from ..case import AWSCase
+
+SQS_URL = 'https://sqs.us-west-2.amazonaws.com/'
 
 
 class test_AsyncSQSConnection(AWSCase):
@@ -30,6 +33,141 @@ class test_AsyncSQSConnection(AWSCase):
         sqs_client.get_queue_url = MagicMock(return_value={
             'QueueUrl': 'http://aws.com'
         })
+
+    def MockRequest(self):
+        return AWSRequest(
+            method='POST',
+            url='https://aws.com',
+        )
+
+    def MockOperationModel(self, operation_name, method):
+        mock = MagicMock()
+        mock.configure_mock(
+            http=MagicMock(
+                get=MagicMock(
+                    return_value=method,
+                )
+            ),
+            name=operation_name,
+            metadata={
+                'jsonVersion': '1.0',
+                'targetPrefix': 'sqs',
+            }
+        )
+        return mock
+
+    def MockServiceModel(self, operation_name, method):
+        service_model = MagicMock()
+        service_model.protocol = 'json',
+        service_model.operation_model = MagicMock(
+            return_value=self.MockOperationModel(operation_name, method)
+        )
+        return service_model
+
+    def assert_requests_equal(self, req1, req2):
+        assert req1.url == req2.url
+        assert req1.method == req2.method
+        assert req1.data == req2.data
+        assert req1.params == req2.params
+        assert dict(req1.headers) == dict(req2.headers)
+
+    def test_create_query_request(self):
+        operation_name = 'ReceiveMessage',
+        params = {
+            'MaxNumberOfMessages': 10,
+            'AttributeName.1': 'ApproximateReceiveCount',
+            'WaitTimeSeconds': 20
+        }
+        queue_url = f'{SQS_URL}/123456789012/celery-test'
+        verb = 'POST'
+        req = self.x._create_query_request(operation_name, params, queue_url,
+                                           verb)
+        self.assert_requests_equal(req, AWSRequest(
+            url=queue_url,
+            method=verb,
+            data={
+                'Action': (operation_name),
+                **params
+            },
+            headers={},
+        ))
+
+    def test_create_json_request(self):
+        operation_name = 'ReceiveMessage'
+        method = 'POST'
+        params = {
+            'MaxNumberOfMessages': 10,
+            'AttributeName.1': 'ApproximateReceiveCount',
+            'WaitTimeSeconds': 20
+        }
+        queue_url = f'{SQS_URL}/123456789012/celery-test'
+
+        self.x.sqs_connection = Mock()
+        self.x.sqs_connection._request_signer = Mock()
+        self.x.sqs_connection._endpoint.host = SQS_URL
+        self.x.sqs_connection.meta.service_model = Mock()
+        self.x.sqs_connection.meta.service_model.protocol = 'json',
+        self.x.sqs_connection.meta.service_model.operation_model = MagicMock(
+            return_value=self.MockOperationModel(operation_name, method)
+        )
+
+        req = self.x._create_json_request(operation_name, params, queue_url)
+        self.assert_requests_equal(req, AWSRequest(
+            url=SQS_URL,
+            method=method,
+            data=json.dumps({
+                **params,
+                "QueueUrl": queue_url
+            }),
+            headers={
+                'Content-Type': 'application/x-amz-json-1.0',
+                'X-Amz-Target': f'sqs.{operation_name}'
+            },
+        ))
+
+    def test_make_request__with_query_protocol(self):
+        # Do the necessary mocking.
+        self.x.sqs_connection = Mock()
+        self.x.sqs_connection._request_signer = Mock()
+        self.x.sqs_connection.meta.service_model.protocol = 'query'
+        self.x._create_query_request = Mock(return_value=self.MockRequest())
+
+        # Execute the make_request called and confirm we are creating a
+        # query request.
+        operation = 'ReceiveMessage',
+        params = {
+            'MaxNumberOfMessages': 10,
+            'AttributeName.1': 'ApproximateReceiveCount',
+            'WaitTimeSeconds': 20
+        }
+        queue_url = f'{SQS_URL}/123456789012/celery-test'
+        verb = 'POST'
+        self.x.make_request(operation, params, queue_url, verb)
+        self.x._create_query_request.assert_called_with(
+            operation, params, queue_url, verb
+        )
+
+    def test_make_request__with_json_protocol(self):
+        # Do the necessary mocking.
+        self.x.sqs_connection = Mock()
+        self.x.sqs_connection._request_signer = Mock()
+        self.x.sqs_connection.meta.service_model.protocol = 'json'
+        self.x._create_json_request = Mock(return_value=self.MockRequest())
+
+        # Execute the make_request called and confirm we are creating a
+        # query request.
+        operation = 'ReceiveMessage',
+        params = {
+            'MaxNumberOfMessages': 10,
+            'AttributeName.1': 'ApproximateReceiveCount',
+            'WaitTimeSeconds': 20
+        }
+        queue_url = f'{SQS_URL}/123456789012/celery-test'
+        verb = 'POST'
+        self.x.make_request(operation, params, queue_url, verb)
+        self.x._create_json_request.assert_called_with(
+            operation, params, queue_url
+        )
 
     def test_create_queue(self):
         self.x.create_queue('foo', callback=self.callback)
