@@ -481,7 +481,7 @@ class Transport(virtual.Transport):
     @classmethod
     def as_uri(cls, uri: str, include_password=False, mask='**') -> str:
         namespace, credential = cls.parse_uri(uri)
-        if ":" in credential:
+        if isinstance(credential, str) and ":" in credential:
             policy, sas_key = credential.split(':', 1)
             return 'azureservicebus://{}:{}@{}'.format(
                 policy,
@@ -490,6 +490,6 @@ class Transport(virtual.Transport):
             )
 
         return 'azureservicebus://{}@{}'.format(
-            credential,
+            credential.__class__.__name__,
             namespace
         )
