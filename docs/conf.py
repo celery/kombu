@@ -5,8 +5,8 @@ from sphinx_celery import conf
 globals().update(conf.build_config(
     'kombu', __file__,
     project='Kombu',
-    version_dev='5.1',
-    version_stable='5.0',
+    version_dev='6.0',
+    version_stable='5.3',
     canonical_url='https://kombu.readthedocs.io/',
     webdomain='kombu.readthedocs.io',
     github_project='celery/kombu',
