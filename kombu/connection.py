@@ -82,7 +82,7 @@ class Connection:
 
     Note:
     ----
-        SSL currently only works with the py-amqp, and qpid
+        SSL currently only works with the py-amqp, qpid and redis
         transports.  For other transports you can use stunnel.
 
     Arguments:
