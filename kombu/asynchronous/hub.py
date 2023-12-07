@@ -5,6 +5,7 @@ from __future__ import annotations
 import errno
 import threading
 from contextlib import contextmanager
+from copy import copy
 from queue import Empty
 from time import sleep
 from types import GeneratorType as generator
@@ -295,7 +296,6 @@ class Hub:
         scheduled = self.timer._queue
         consolidate = self.consolidate
         consolidate_callback = self.consolidate_callback
-        on_tick = self.on_tick
         propagate = self.propagate_errors
 
         while 1:
@@ -307,7 +307,7 @@ class Hub:
 
             poll_timeout = fire_timers(propagate=propagate) if scheduled else 1
 
-            for tick_callback in on_tick:
+            for tick_callback in copy(self.on_tick):
                 tick_callback()
 
             #  print('[[[HUB]]]: %s' % (self.repr_active(),))

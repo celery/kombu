@@ -134,6 +134,7 @@ def get_redis_error_classes():
             IOError,
             OSError,
             exceptions.ConnectionError,
+            exceptions.BusyLoadingError,
             exceptions.AuthenticationError,
             exceptions.TimeoutError)),
         (virtual.Transport.channel_errors + (
@@ -1229,7 +1230,7 @@ class Channel(virtual.Channel):
                 global_keyprefix=self.global_keyprefix,
             )
 
-        return redis.StrictRedis
+        return redis.Redis
 
     @contextmanager
     def conn_or_acquire(self, client=None):

@@ -541,7 +541,6 @@ class test_Hub:
 
         ticks_list[0].assert_has_calls([call()])
         ticks_list[1].assert_has_calls([call(), call()])
-        #self.hub.poller.unregister.assert_called_with()
 
     def test_loop__todo(self):
         deferred = Mock(name='cb_deferred')
