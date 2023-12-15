@@ -535,6 +535,19 @@ class test_Connection:
 
         myfun.assert_called()
 
+    @pytest.mark.timeout(5)
+    def test_retry_policy(self):
+        with pytest.raises(OperationalError):
+            conn = Connection('pyamqp://localhost:8000')
+            producer = conn.Producer(serializer='json')
+            producer.publish(
+                'Hello world!', retry=True, retry_policy={
+                    'interval_start': 0,
+                    'interval_step': 1,
+                    'interval_max': 5,
+                    'max_retries': 3,
+                })
+
     def test_SimpleQueue(self):
         conn = self.conn
         q = conn.SimpleQueue('foo')

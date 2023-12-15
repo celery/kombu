@@ -1,5 +1,6 @@
 pytest==7.4.3
 pytest-sugar
+pytest-timeout
 Pyro4
 hypothesis
 pytest-freezer
