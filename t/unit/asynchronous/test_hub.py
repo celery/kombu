@@ -525,6 +525,23 @@ class test_Hub:
         ticks[0].assert_called_once_with()
         ticks[1].assert_called_once_with()
 
+    def test_loop__tick_callbacks_on_ticks_change(self):
+        def callback_1():
+            ticks.remove(ticks_list[0])
+            return Mock(name='cb1')
+
+        ticks_list = [Mock(wraps=callback_1), Mock(name='cb2')]
+        ticks = set(ticks_list)
+
+        self.hub.on_tick = ticks
+        self.hub.poller.unregister = Mock()
+
+        next(self.hub.loop)
+        next(self.hub.loop)
+
+        ticks_list[0].assert_has_calls([call()])
+        ticks_list[1].assert_has_calls([call(), call()])
+
     def test_loop__todo(self):
         deferred = Mock(name='cb_deferred')
 
