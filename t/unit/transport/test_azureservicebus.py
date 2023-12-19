@@ -450,7 +450,6 @@ def test_basic_ack_reject_message_when_raises_exception(
 
 def test_returning_sas():
     conn = Connection(URL_CREDS_SAS, transport=azureservicebus.Transport)
-    print(conn.as_uri(True))
     assert conn.as_uri(True) == URL_CREDS_SAS
 
 
