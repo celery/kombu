@@ -455,7 +455,6 @@ def test_returning_sas():
 
 def test_returning_da():
     conn = Connection(URL_CREDS_DA, transport=azureservicebus.Transport)
-    print(conn.as_uri(True))
     assert conn.as_uri(True) == URL_CREDS_DA
 
 
