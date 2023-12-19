@@ -460,5 +460,4 @@ def test_returning_da():
 
 def test_returning_mi():
     conn = Connection(URL_CREDS_MI, transport=azureservicebus.Transport)
-    print(conn.as_uri(True))
     assert conn.as_uri(True) == URL_CREDS_MI
