@@ -446,3 +446,18 @@ def test_basic_ack_reject_message_when_raises_exception(
         assert mock_queue.channel._get_asb_receiver.call_count == 1
         assert queue_object_mock.receiver.complete_message.call_count == 1
         assert super_basic_reject.call_count == 1
+
+
+def test_returning_sas():
+    conn = Connection(URL_CREDS_SAS, transport=azureservicebus.Transport)
+    assert conn.as_uri(True) == URL_CREDS_SAS
+
+
+def test_returning_da():
+    conn = Connection(URL_CREDS_DA, transport=azureservicebus.Transport)
+    assert conn.as_uri(True) == URL_CREDS_DA
+
+
+def test_returning_mi():
+    conn = Connection(URL_CREDS_MI, transport=azureservicebus.Transport)
+    assert conn.as_uri(True) == URL_CREDS_MI
