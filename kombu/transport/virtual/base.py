@@ -304,7 +304,7 @@ class QoS:
             state.restored = True
 
     def restore_visible(self, *args, **kwargs):
-        """Restore any pending unackwnowledged messages.
+        """Restore any pending unacknowledged messages.
 
         To be filled in for visibility_timeout style implementations.
 
