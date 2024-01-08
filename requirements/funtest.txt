@@ -1,5 +1,5 @@
 # redis transport
-redis
+redis==5.0.1
 
 # MongoDB transport
 pymongo
