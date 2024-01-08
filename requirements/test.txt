@@ -1,5 +1,5 @@
 pytest==7.4.4
 pytest-sugar
-Pyro4
+Pyro4==4.82
 hypothesis
 pytest-freezer
