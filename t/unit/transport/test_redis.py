@@ -1770,6 +1770,7 @@ class test_RedisSentinel:
                 connection.channel().client.global_keyprefix
                 == 'some_prefix'
             )
+            connection.close()
 
 
 class test_GlobalKeyPrefixMixin:
