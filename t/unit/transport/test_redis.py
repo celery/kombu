@@ -1737,15 +1737,18 @@ class test_RedisSentinel:
     def test_can_create_connection_with_global_keyprefix(self):
         from redis.exceptions import ConnectionError
 
-        connection = Connection(
-            'sentinel://localhost:65534/',
-            transport_options={
-                'global_keyprefix': 'some_prefix',
-                'master_name': 'not_important',
-            },
-        )
-        with pytest.raises(ConnectionError):
-            connection.channel()
+        try:
+            connection = Connection(
+                'sentinel://localhost:65534/',
+                transport_options={
+                    'global_keyprefix': 'some_prefix',
+                    'master_name': 'not_important',
+                },
+            )
+            with pytest.raises(ConnectionError):
+                connection.channel()
+        finally:
+            connection.close()
 
     def test_can_create_correct_mixin_with_global_keyprefix(self):
         from kombu.transport.redis import GlobalKeyPrefixMixin
