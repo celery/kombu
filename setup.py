@@ -103,6 +103,7 @@ setup(
         'redis': extras('redis.txt'),
         'mongodb': extras('mongodb.txt'),
         'sqs': extras('sqs.txt'),
+        'gcpubsub': extras('gcpubsub.txt'),
         'zookeeper': extras('zookeeper.txt'),
         'sqlalchemy': extras('sqlalchemy.txt'),
         'librabbitmq': extras('librabbitmq.txt'),
