@@ -1429,7 +1429,7 @@ class SentinelChannel(Channel):
 
         return sentinel_inst.master_for(
             master_name,
-            self.Client,
+            redis.Redis,
         ).connection_pool
 
     def _get_pool(self, asynchronous=False):

@@ -1734,6 +1734,44 @@ class test_RedisSentinel:
                 assert (params['connection_class'] is
                         SentinelManagedSSLConnection)
 
+    def test_can_create_connection_with_global_keyprefix(self):
+        from redis.exceptions import ConnectionError
+
+        try:
+            connection = Connection(
+                'sentinel://localhost:65534/',
+                transport_options={
+                    'global_keyprefix': 'some_prefix',
+                    'master_name': 'not_important',
+                },
+            )
+            with pytest.raises(ConnectionError):
+                connection.channel()
+        finally:
+            connection.close()
+
+    def test_can_create_correct_mixin_with_global_keyprefix(self):
+        from kombu.transport.redis import GlobalKeyPrefixMixin
+
+        with patch('redis.sentinel.Sentinel'):
+            connection = Connection(
+                'sentinel://localhost:65534/',
+                transport_options={
+                    'global_keyprefix': 'some_prefix',
+                    'master_name': 'not_important',
+                },
+            )
+
+            assert isinstance(
+                connection.channel().client,
+                GlobalKeyPrefixMixin
+            )
+            assert (
+                connection.channel().client.global_keyprefix
+                == 'some_prefix'
+            )
+            connection.close()
+
 
 class test_GlobalKeyPrefixMixin:
 
