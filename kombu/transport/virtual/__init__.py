@@ -26,11 +26,14 @@ from kombu.five import Empty, items, monotonic
 from kombu.utils import emergency_dump_state, kwdict, say, uuid
 from kombu.utils.compat import OrderedDict
 from kombu.utils.encoding import str_to_bytes, bytes_to_str
+from kombu.log import get_logger
 
 from kombu.transport import base
 
 from .scheduling import FairCycle
 from .exchange import STANDARD_EXCHANGE_TYPES
+
+logger = get_logger('kombu.transport.virtual')
 
 ARRAY_TYPE_H = 'H' if sys.version_info[0] == 3 else b'H'
 
@@ -840,9 +843,10 @@ class Transport(base.Transport):
         message, queue = item
 
         if not queue or queue not in self._callbacks:
-            raise KeyError(
+            logger.warning(
                 'Message for queue {0!r} without consumers: {1}'.format(
                     queue, message))
+            return
 
         self._callbacks[queue](message)
 
