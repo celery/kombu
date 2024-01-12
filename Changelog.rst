@@ -4,6 +4,28 @@
  Change history
 ================
 
+.. _version-5.3.5:
+
+5.3.5
+=====
+:release-date: 12 Jan, 2024
+:release-by: Tomer Nosrati
+
+- Fix ReadTheDocs CI (#1827).
+- fix(docs): add Redis to the list of transports where SSL is supported (#1826).
+- Fixed Improper Method Call: Replaced `mktemp` (#1828).
+- Bump actions/setup-python from 4 to 5 (#1829).
+- Bump github/codeql-action from 2 to 3 (#1832).
+- fix: freeze set during ticks iter in async hub (#1830).
+- azure service bus: fix TypeError when using Managed Identities (#1825).
+- Fix unacknowledge typo in restore_visible() (#1839).
+- Changed pyup -> dependabot for updating dependencies (#1842).
+- Bump pytest from 7.4.3 to 7.4.4 (#1843).
+- Bump flake8 from 6.0.0 to 7.0.0 (#1845).
+- Bump mypy from 1.3.0 to 1.8.0 (#1844).
+- Fix crash when using global_keyprefix with a sentinel connection (#1838)
+- Fixed version_dev in docs/conf.py (#1875).
+
 .. _version-5.3.4:
 
 5.3.4
