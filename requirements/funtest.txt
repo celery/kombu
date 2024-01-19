@@ -8,7 +8,7 @@ pymongo
 kazoo
 
 # SQS transport
-boto3
+boto3>=1.26.143
 
 # Qpid transport
 qpid-python>=0.26
