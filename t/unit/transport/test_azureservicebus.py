@@ -133,6 +133,7 @@ def test_queue_service_sas():
         # Ensure that queue_service is cached
         assert channel.queue_service == 'test'
         assert m.from_connection_string.call_count == 1
+        assert channel._namespace == 'hostname.servicebus.windows.net'
 
 
 def test_queue_service_da():
@@ -142,6 +143,7 @@ def test_queue_service_da():
     # Check the DefaultAzureCredential has been parsed from the url correctly
     # and the credential is a ManagedIdentityCredential
     assert isinstance(channel._credential, DefaultAzureCredential)
+    assert channel._namespace == 'hostname.servicebus.windows.net'
 
 
 def test_queue_service_mi():
@@ -151,6 +153,7 @@ def test_queue_service_mi():
     # Check the ManagedIdentityCredential has been parsed from the url
     # correctly and the credential is a ManagedIdentityCredential
     assert isinstance(channel._credential, ManagedIdentityCredential)
+    assert channel._namespace == 'hostname.servicebus.windows.net'
 
 
 def test_conninfo():

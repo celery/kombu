@@ -148,13 +148,8 @@ class Channel(virtual.Channel):
         if ":" in self._credential:
             self._policy, self._sas_key = self._credential.split(':', 1)
 
-        # Convert
-        endpoint = 'sb://' + self._namespace
-        if not endpoint.endswith('.net'):
-            endpoint += '.servicebus.windows.net'
-
         conn_dict = {
-            'Endpoint': endpoint,
+            'Endpoint': 'sb://' + self._namespace,
             'SharedAccessKeyName': self._policy,
             'SharedAccessKey': self._sas_key,
         }
@@ -450,6 +445,9 @@ class Transport(virtual.Transport):
         uri = uri.replace('azureservicebus://', '')
         # > 'rootpolicy:some/key',  'somenamespace'
         credential, namespace = uri.rsplit('@', 1)
+
+        if not namespace.endswith('.net'):
+            namespace += '.servicebus.windows.net'
 
         if "DefaultAzureCredential".lower() == credential.lower():
             if DefaultAzureCredential is None:
