@@ -103,8 +103,11 @@ class ASBMgmtMock:
 
 URL_NOCREDS = 'azureservicebus://'
 URL_CREDS_SAS = 'azureservicebus://policyname:ke/y@hostname'
+URL_CREDS_SAS_FQ = 'azureservicebus://policyname:ke/y@hostname.servicebus.windows.net'
 URL_CREDS_DA = 'azureservicebus://DefaultAzureCredential@hostname'
+URL_CREDS_DA_FQ = 'azureservicebus://DefaultAzureCredential@hostname.servicebus.windows.net'
 URL_CREDS_MI = 'azureservicebus://ManagedIdentityCredential@hostname'
+URL_CREDS_MI_FQ = 'azureservicebus://ManagedIdentityCredential@hostname.servicebus.windows.net'
 
 
 def test_queue_service_nocredentials():
@@ -453,14 +456,14 @@ def test_basic_ack_reject_message_when_raises_exception(
 
 def test_returning_sas():
     conn = Connection(URL_CREDS_SAS, transport=azureservicebus.Transport)
-    assert conn.as_uri(True) == URL_CREDS_SAS
+    assert conn.as_uri(True) == URL_CREDS_SAS_FQ
 
 
 def test_returning_da():
     conn = Connection(URL_CREDS_DA, transport=azureservicebus.Transport)
-    assert conn.as_uri(True) == URL_CREDS_DA
+    assert conn.as_uri(True) == URL_CREDS_DA_FQ
 
 
 def test_returning_mi():
     conn = Connection(URL_CREDS_MI, transport=azureservicebus.Transport)
-    assert conn.as_uri(True) == URL_CREDS_MI
+    assert conn.as_uri(True) == URL_CREDS_MI_FQ
