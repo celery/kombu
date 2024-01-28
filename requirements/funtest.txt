@@ -5,7 +5,7 @@ redis
 pymongo
 
 # Zookeeper transport
-kazoo
+kazoo==2.10.0
 
 # SQS transport
 boto3>=1.26.143
