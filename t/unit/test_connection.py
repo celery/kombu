@@ -16,7 +16,7 @@ from t.mocks import TimeoutingTransport, Transport
 
 class test_connection_utils:
 
-    def setup(self):
+    def setup_method(self):
         self.url = 'amqp://user:pass@localhost:5672/my/vhost'
         self.nopass = 'amqp://user:**@localhost:5672/my/vhost'
         self.expected = {
@@ -136,7 +136,7 @@ class test_connection_utils:
 
 class test_Connection:
 
-    def setup(self):
+    def setup_method(self):
         self.conn = Connection(port=5672, transport=Transport)
 
     def test_establish_connection(self):
@@ -757,7 +757,7 @@ class test_Connection_with_transport_options:
 
     transport_options = {'pool_recycler': 3600, 'echo': True}
 
-    def setup(self):
+    def setup_method(self):
         self.conn = Connection(port=5672, transport=Transport,
                                transport_options=self.transport_options)
 

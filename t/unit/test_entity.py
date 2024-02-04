@@ -210,7 +210,7 @@ class test_Exchange:
 
 class test_Queue:
 
-    def setup(self) -> None:
+    def setup_method(self) -> None:
         self.exchange = Exchange('foo', 'direct')
 
     def test_constructor_with_actual_exchange(self) -> None:

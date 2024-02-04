@@ -17,7 +17,7 @@ SQS_URL = 'https://sqs.us-west-2.amazonaws.com/'
 
 class test_AsyncSQSConnection(AWSCase):
 
-    def setup(self):
+    def setup_method(self):
         session = boto3.session.Session(
             aws_access_key_id='AAA',
             aws_secret_access_key='AAAA',

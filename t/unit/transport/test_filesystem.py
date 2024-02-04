@@ -14,7 +14,7 @@ from kombu import Connection, Consumer, Exchange, Producer, Queue
 @t.skip.if_win32
 class test_FilesystemTransport:
 
-    def setup(self):
+    def setup_method(self):
         self.channels = set()
         try:
             data_folder_in = tempfile.mkdtemp()
@@ -41,7 +41,7 @@ class test_FilesystemTransport:
                         exchange=self.e,
                         routing_key='test_transport_filesystem2')
 
-    def teardown(self):
+    def teardown_method(self):
         # make sure we don't attempt to restore messages at shutdown.
         for channel in self.channels:
             try:
@@ -147,7 +147,7 @@ class test_FilesystemTransport:
 
 @t.skip.if_win32
 class test_FilesystemFanout:
-    def setup(self):
+    def setup_method(self):
         try:
             data_folder_in = tempfile.mkdtemp()
             data_folder_out = tempfile.mkdtemp()
@@ -177,7 +177,7 @@ class test_FilesystemFanout:
         self.q1 = Queue("queue1", exchange=self.exchange)
         self.q2 = Queue("queue2", exchange=self.exchange)
 
-    def teardown(self):
+    def teardown_method(self):
         # make sure we don't attempt to restore messages at shutdown.
         for channel in [self.producer_channel, self.consumer_connection]:
             try:
@@ -240,7 +240,7 @@ class test_FilesystemFanout:
 
 @t.skip.if_win32
 class test_FilesystemLock:
-    def setup(self):
+    def setup_method(self):
         try:
             data_folder_in = tempfile.mkdtemp()
             data_folder_out = tempfile.mkdtemp()
@@ -269,7 +269,7 @@ class test_FilesystemLock:
         self.exchange = Exchange("filesystem_exchange_lock", type="fanout")
         self.q = Queue("queue1", exchange=self.exchange)
 
-    def teardown(self):
+    def teardown_method(self):
         # make sure we don't attempt to restore messages at shutdown.
         for channel in [self.producer_channel, self.consumer_connection]:
             try:

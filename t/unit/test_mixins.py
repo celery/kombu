@@ -110,7 +110,7 @@ class test_ConsumerMixin:
 
 class test_ConsumerMixin_interface:
 
-    def setup(self):
+    def setup_method(self):
         self.c = ConsumerMixin()
 
     def test_get_consumers(self):

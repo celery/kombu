@@ -9,7 +9,7 @@ from kombu import Connection, Consumer, Exchange, Producer, Queue
 
 class test_MemoryTransport:
 
-    def setup(self):
+    def setup_method(self):
         self.c = Connection(transport='memory')
         self.e = Exchange('test_transport_memory')
         self.q = Queue('test_transport_memory',

@@ -169,7 +169,7 @@ class BaseMongoDBChannelCase:
 
 class test_mongodb_channel(BaseMongoDBChannelCase):
 
-    def setup(self):
+    def setup_method(self):
         self.connection = _create_mock_connection()
         self.channel = self.connection.default_channel
 
@@ -421,7 +421,7 @@ class test_mongodb_channel(BaseMongoDBChannelCase):
 
 class test_mongodb_channel_ttl(BaseMongoDBChannelCase):
 
-    def setup(self):
+    def setup_method(self):
         self.connection = _create_mock_connection(
             transport_options={'ttl': True},
         )
@@ -563,7 +563,7 @@ class test_mongodb_channel_ttl(BaseMongoDBChannelCase):
 
 class test_mongodb_channel_calc_queue_size(BaseMongoDBChannelCase):
 
-    def setup(self):
+    def setup_method(self):
         self.connection = _create_mock_connection(
             transport_options={'calc_queue_size': False})
         self.channel = self.connection.default_channel
@@ -584,7 +584,7 @@ class test_mongodb_channel_calc_queue_size(BaseMongoDBChannelCase):
 
 
 class test_mongodb_transport(BaseMongoDBChannelCase):
-    def setup(self):
+    def setup_method(self):
         self.connection = _create_mock_connection()
 
     def test_driver_version(self):

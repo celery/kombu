@@ -12,7 +12,7 @@ pytest.importorskip('etcd')
 
 class test_Etcd:
 
-    def setup(self):
+    def setup_method(self):
         self.connection = Mock()
         self.connection.client.transport_options = {}
         self.connection.client.port = 2739

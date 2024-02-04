@@ -199,7 +199,7 @@ class test_AsyncConnection(AWSCase):
 
 class test_AsyncAWSQueryConnection(AWSCase):
 
-    def setup(self):
+    def setup_method(self):
         session = boto3.session.Session(
             aws_access_key_id='AAA',
             aws_secret_access_key='AAAA',

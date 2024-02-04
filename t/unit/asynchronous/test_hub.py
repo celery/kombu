@@ -127,10 +127,10 @@ class test_LaxBoundedSemaphore:
 
 class test_Utils:
 
-    def setup(self):
+    def setup_method(self):
         self._prev_loop = get_event_loop()
 
-    def teardown(self):
+    def teardown_method(self):
         set_event_loop(self._prev_loop)
 
     def test_get_set_event_loop(self):
@@ -153,10 +153,10 @@ class test_Utils:
 
 class test_Hub:
 
-    def setup(self):
+    def setup_method(self):
         self.hub = Hub()
 
-    def teardown(self):
+    def teardown_method(self):
         self.hub.close()
 
     def test_reset(self):

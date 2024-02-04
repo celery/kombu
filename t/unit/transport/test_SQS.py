@@ -141,7 +141,7 @@ class test_Channel:
     def handleMessageCallback(self, message):
         self.callback_message = message
 
-    def setup(self):
+    def setup_method(self):
         """Mock the back-end SQS classes"""
         # Sanity check... if SQS is None, then it did not import and we
         # cannot execute our tests.
@@ -195,7 +195,7 @@ class test_Channel:
                                    callback=self.handleMessageCallback,
                                    consumer_tag='unittest')
 
-    def teardown(self):
+    def teardown_method(self):
         # Removes QoS reserved messages so we don't restore msgs on shutdown.
         try:
             qos = self.channel._qos
