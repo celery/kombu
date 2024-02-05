@@ -288,7 +288,7 @@ class Transport(redis.Transport):
 
 class test_Channel:
 
-    def setup(self):
+    def setup_method(self):
         self.connection = self.create_connection()
         self.channel = self.connection.default_channel
 
@@ -1179,12 +1179,12 @@ class test_Channel:
 
 class test_Redis:
 
-    def setup(self):
+    def setup_method(self):
         self.connection = Connection(transport=Transport)
         self.exchange = Exchange('test_Redis', type='direct')
         self.queue = Queue('test_Redis', self.exchange, 'test_Redis')
 
-    def teardown(self):
+    def teardown_method(self):
         self.connection.close()
 
     @pytest.mark.replace_module_value(redis.redis, 'VERSION', [3, 0, 0])
@@ -1326,7 +1326,7 @@ class test_Redis:
 
 class test_MultiChannelPoller:
 
-    def setup(self):
+    def setup_method(self):
         self.Poller = redis.MultiChannelPoller
 
     def test_on_poll_start(self):

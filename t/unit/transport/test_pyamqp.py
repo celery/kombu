@@ -27,7 +27,7 @@ class MockConnection(dict):
 
 class test_Channel:
 
-    def setup(self):
+    def setup_method(self):
 
         class Channel(pyamqp.Channel):
             wait_returns = []
@@ -81,7 +81,7 @@ class test_Channel:
 
 class test_Transport:
 
-    def setup(self):
+    def setup_method(self):
         self.connection = Connection('pyamqp://')
         self.transport = self.connection.transport
 

@@ -21,11 +21,11 @@ class SimpleBase:
     def _Queue(self, *args, **kwargs):
         raise NotImplementedError()
 
-    def setup(self):
+    def setup_method(self):
         self.connection = Connection(transport='memory')
         self.connection.default_channel.exchange_declare('amq.direct')
 
-    def teardown(self):
+    def teardown_method(self):
         self.connection.close()
         self.connection = None
 

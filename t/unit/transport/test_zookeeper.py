@@ -9,14 +9,14 @@ pytest.importorskip('kazoo')
 
 
 class test_Channel:
-    def setup(self):
+    def setup_method(self):
         self.connection = self.create_connection()
         self.channel = self.connection.default_channel
 
     def create_connection(self, **kwargs):
         return Connection(transport=zookeeper.Transport, **kwargs)
 
-    def teardown(self):
+    def teardown_method(self):
         self.connection.close()
 
     def test_put_puts_bytes_to_queue(self):
