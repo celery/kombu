@@ -1,5 +1,5 @@
 pytest==7.4.4
 pytest-sugar==1.0.0
 Pyro4
-hypothesis<=6.97.4
+hypothesis<=6.98.1
 pytest-freezer
