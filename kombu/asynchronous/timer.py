@@ -29,7 +29,7 @@ __all__ = ('Entry', 'Timer', 'to_timestamp')
 logger = get_logger(__name__)
 
 DEFAULT_MAX_INTERVAL = 2
-EPOCH = datetime.utcfromtimestamp(0).replace(tzinfo=ZoneInfo("UTC"))
+EPOCH = datetime.fromtimestamp(0, ZoneInfo("UTC"))
 IS_PYPY = hasattr(sys, 'pypy_version_info')
 
 scheduled = namedtuple('scheduled', ('eta', 'priority', 'entry'))
