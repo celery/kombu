@@ -1,4 +1,4 @@
-hypothesis<=6.98.4
+hypothesis<=6.98.5
 Pyro4
 pytest-freezer
 pytest-sugar==1.0.0
