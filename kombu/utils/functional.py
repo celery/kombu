@@ -2,7 +2,7 @@ from __future__ import absolute_import
 
 import sys
 
-from collections import Iterable, Mapping
+from collections.abc import Iterable, Mapping
 
 from kombu.five import string_t
 
