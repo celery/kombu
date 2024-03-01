@@ -1,9 +1,9 @@
 from __future__ import annotations
-from dataclasses import dataclass
 
 import sys
 import uuid
 from collections import namedtuple
+from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 
@@ -12,7 +12,8 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from kombu.utils.encoding import str_to_bytes
-from kombu.utils.json import dumps, loads, _register_default_types, register_type
+from kombu.utils.json import (_register_default_types, dumps, loads,
+                              register_type)
 
 if sys.version_info >= (3, 9):
     from zoneinfo import ZoneInfo
