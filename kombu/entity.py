@@ -722,7 +722,7 @@ class Queue(MaybeChannelBound):
                                         nowait=nowait) or 0
 
     def consume(self, consumer_tag='', callback=None,
-                no_ack=None, nowait=False):
+                no_ack=None, nowait=False, on_cancel=None):
         """Start a queue consumer.
 
         Consumers last as long as the channel they were created on, or
@@ -741,6 +741,9 @@ class Queue(MaybeChannelBound):
             nowait (bool): Do not wait for a reply.
 
             callback (Callable): callback called for each delivered message.
+
+            on_cancel (Callable): callback called on cancel notify received
+                from broker.
         """
         if no_ack is None:
             no_ack = self.no_ack
@@ -750,7 +753,9 @@ class Queue(MaybeChannelBound):
             consumer_tag=consumer_tag or '',
             callback=callback,
             nowait=nowait,
-            arguments=self.consumer_arguments)
+            arguments=self.consumer_arguments,
+            on_cancel=on_cancel,
+        )
 
     def cancel(self, consumer_tag):
         """Cancel a consumer by consumer tag."""

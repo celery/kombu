@@ -78,6 +78,12 @@ class test_Channel:
         self.channel.basic_cancel('my-consumer-tag')
         assert 'my-consumer-tag' not in self.channel.no_ack_consumers
 
+    def test_consume_registers_cancel_callback(self):
+        on_cancel = Mock()
+        self.channel.wait_returns = ['my-consumer-tag']
+        self.channel.basic_consume('foo', on_cancel=on_cancel)
+        assert self.channel.cancel_callbacks['my-consumer-tag'] == on_cancel
+
 
 class test_Transport:
 
