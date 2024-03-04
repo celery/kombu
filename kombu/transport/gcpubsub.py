@@ -178,6 +178,7 @@ class Channel(virtual.Channel):
     _stop_extender = threading.Event()
     _n_channels = AtomicCounter()
     _queue_cache: dict[str, QueueDescriptor] = {}
+    _tmp_subscriptions: set[str] = set()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -238,6 +239,7 @@ class Channel(virtual.Channel):
             subscription_path = self.subscriber.subscription_path(
                 self.project_id, uniq_sub_name
             )
+            self._tmp_subscriptions.add(subscription_path)
             self._fanout_exchanges.add(exchange)
             message_retention_duration = 600
         else:
@@ -597,6 +599,12 @@ class Channel(virtual.Channel):
             'unacked deadline extension thread [%s] stopped', thread_id
         )
 
+    def after_reply_message_received(self, queue):
+        queue = self.entity_name(queue)
+        sub = self.subscriber.subscription_path(self.project_id, queue)
+        logger.debug(f'after_reply_message_received: {queue=}, {sub=}')
+        self._tmp_subscriptions.add(sub)
+
     @cached_property
     def subscriber(self):
         return SubscriberClient()
@@ -655,6 +663,13 @@ class Channel(virtual.Channel):
         """Close the channel."""
 
         logger.debug('closing channel')
+        while self._tmp_subscriptions:
+            sub = self._tmp_subscriptions.pop()
+            with suppress(Exception):
+                logger.debug('deleting subscription: %s', sub)
+                self.subscriber.delete_subscription(
+                    request={"subscription": sub}
+                )
         if not self._n_channels.dec():
             self._stop_extender.set()
             Channel._unacked_extender.join()
