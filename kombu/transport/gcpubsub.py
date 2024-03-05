@@ -65,15 +65,14 @@ from google.cloud.pubsub_v1.publisher import exceptions as publisher_exceptions
 from google.cloud.pubsub_v1.subscriber import \
     exceptions as subscriber_exceptions
 from google.pubsub_v1 import gapic_version as package_version
-
 from kombu.entity import TRANSIENT_DELIVERY_MODE
 from kombu.log import get_logger
-from kombu.utils.encoding import safe_str, bytes_to_str
+from kombu.utils.encoding import bytes_to_str, safe_str
 
 try:
     from kombu.utils.json import dumps, loads
 except ImportError:
-    from anyjson import loads, dumps
+    from anyjson import dumps, loads
 try:
     from kombu.utils.objects import cached_property
 except ImportError:
@@ -434,15 +433,18 @@ class Channel(virtual.Channel):
             or exchange in self._fanout_exchanges
         )
 
-    def _get_bulk(self, queue:str, timeout: float):
+    def _get_bulk(self, queue: str, timeout: float):
         """Retrieves a bulk of messages from a queue."""
         prefixed_queue = self.entity_name(queue)
         qdesc = self._queue_cache[prefixed_queue]
+        max_messages = (
+            self.qos.can_consume_max_estimate() or self.bulk_max_messages
+        )
         try:
             response = self.subscriber.pull(
                 request={
                     'subscription': qdesc.subscription_path,
-                    'max_messages': self.bulk_max_messages,
+                    'max_messages': max_messages,
                 },
                 retry=Retry(deadline=self.retry_timeout_seconds),
                 timeout=timeout or self.wait_time_seconds,
@@ -602,7 +604,9 @@ class Channel(virtual.Channel):
     def after_reply_message_received(self, queue: str):
         queue = self.entity_name(queue)
         sub = self.subscriber.subscription_path(self.project_id, queue)
-        logger.debug(f'after_reply_message_received: queue: %s, sub: %s', queue, sub)
+        logger.debug(
+            f'after_reply_message_received: queue: %s, sub: %s', queue, sub
+        )
         self._tmp_subscriptions.add(sub)
 
     @cached_property
