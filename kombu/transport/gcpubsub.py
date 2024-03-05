@@ -382,7 +382,7 @@ class Channel(virtual.Channel):
             retry=Retry(deadline=self.retry_timeout_seconds),
         )
 
-    def _get(self, queue, timeout=None):
+    def _get(self, queue: str, timeout: float = None):
         """Retrieves a single message from a queue."""
 
         queue = self.entity_name(queue)
@@ -434,7 +434,7 @@ class Channel(virtual.Channel):
             or exchange in self._fanout_exchanges
         )
 
-    def _get_bulk(self, queue, timeout):
+    def _get_bulk(self, queue:str, timeout: float):
         """Retrieves a bulk of messages from a queue."""
         prefixed_queue = self.entity_name(queue)
         qdesc = self._queue_cache[prefixed_queue]
@@ -501,10 +501,10 @@ class Channel(virtual.Channel):
         self.queue_bind(exchange, exchange, routing_key)
         return [exchange]
 
-    def _size(self, queue) -> int:
+    def _size(self, queue: str) -> int:
         """Return the number of messages in a queue.
 
-        This is a rough estimation, as Pub/Sub doesn't provide
+        This is a *rough* estimation, as Pub/Sub doesn't provide
         an exact API.
         """
         queue = self.entity_name(queue)
@@ -547,7 +547,7 @@ class Channel(virtual.Channel):
             retry=Retry(deadline=self.retry_timeout_seconds),
         )
 
-    def _purge(self, queue):
+    def _purge(self, queue: str):
         """Delete all current messages in a queue."""
 
         queue = self.entity_name(queue)
@@ -599,10 +599,10 @@ class Channel(virtual.Channel):
             'unacked deadline extension thread [%s] stopped', thread_id
         )
 
-    def after_reply_message_received(self, queue):
+    def after_reply_message_received(self, queue: str):
         queue = self.entity_name(queue)
         sub = self.subscriber.subscription_path(self.project_id, queue)
-        logger.debug(f'after_reply_message_received: {queue=}, {sub=}')
+        logger.debug(f'after_reply_message_received: queue: %s, sub: %s', queue, sub)
         self._tmp_subscriptions.add(sub)
 
     @cached_property
